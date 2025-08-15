@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\SmartRag\SmartRag.csproj" />
+    <ProjectReference Include="..\SmartRAG\SmartRAG.csproj" />
   </ItemGroup>
 
   <ItemGroup>
