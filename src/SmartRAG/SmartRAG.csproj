@@ -1,0 +1,80 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    
+    <!-- NuGet Package Configuration -->
+    <PackageId>SmartRAG</PackageId>
+    <PackageVersion>1.0.0</PackageVersion>
+    <Authors>Barış Yerlikaya</Authors>
+    <Company>Barış Yerlikaya</Company>
+    <Product>SmartRAG</Product>
+    <Description>High-performance RAG (Retrieval-Augmented Generation) library for .NET that enables AI-powered document question-answering with multiple provider support and enterprise-grade vector storage.</Description>
+    <PackageTags>rag retrieval-augmented-generation ai llm document-qa vector-database openai anthropic gemini qdrant redis dotnet</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <PackageProjectUrl>https://github.com/byerlikaya/SmartRAG</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/byerlikaya/SmartRAG</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+    <PackageReleaseNotes>🚀 Initial Release: High-performance RAG implementation with multi-provider AI support, enterprise vector storage, and plug-and-play .NET integration</PackageReleaseNotes>
+    <Copyright>Copyright © Barış Yerlikaya 2025</Copyright>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    
+    <!-- Modern NuGet Features -->
+    <RepositoryBranch>main</RepositoryBranch>
+    <RepositoryCommit>$(SourceRevisionId)</RepositoryCommit>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    
+    <!-- Package Quality & Performance -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <WarningsAsErrors />
+    <PackageValidationBaselineVersion>1.0.0</PackageValidationBaselineVersion>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <Deterministic>true</Deterministic>
+    <PathMap>$(MSBuildProjectDirectory)=.</PathMap>
+    
+    <!-- NuGet Package Analyzer -->
+    <PackageOutputPath>$(MSBuildProjectDirectory)\nupkg</PackageOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Qdrant.Client" Version="1.7.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.0" />
+
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.0" />
+    <PackageReference Include="StackExchange.Redis" Version="2.7.10" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.0" />
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.0.1" />
+    <PackageReference Include="itext7" Version="8.0.2" />
+    <PackageReference Include="EPPlus" Version="7.0.5" />
+    
+    <!-- SourceLink for debugging -->
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All"/>
+    
+    <!-- Package validation and analysis -->
+    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="8.0.0" PrivateAssets="all" />
+    
+    <!-- Modern package tooling -->
+    <PackageReference Include="DotNet.ReproducibleBuilds" Version="1.1.1" PrivateAssets="All" />
+    <PackageReference Include="coverlet.collector" Version="6.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>
