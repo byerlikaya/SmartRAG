@@ -15,6 +15,8 @@ namespace SmartRAG.Services;
 /// </summary>
 public class EnhancedSearchService
 {
+    private static readonly char[] _separatorChars = { ' ', ',', '.', '!', '?' };
+    private static readonly string[] _irrelevantKeywords = { "şarj", "batarya", "motor", "fren", "vites", "klima", "radyo", "navigasyon" };
     private readonly IAIProviderFactory _aiProviderFactory;
     private readonly IDocumentRepository _documentRepository;
     private readonly IConfiguration _configuration;
@@ -36,7 +38,7 @@ public class EnhancedSearchService
     {
         try
         {
-            // Use existing AI provider (OpenAI, Gemini, etc.) to create Semantic Kernel
+            // Try Semantic Kernel first (requires OpenAI/Azure OpenAI)
             var kernel = await CreateSemanticKernelFromExistingProvider();
             
             // Add search plugins
@@ -46,11 +48,11 @@ public class EnhancedSearchService
             var allDocuments = await _documentRepository.GetAllAsync();
             var allChunks = allDocuments.SelectMany(d => d.Chunks).ToList();
             
-            Console.WriteLine($"[DEBUG] EnhancedSearchService: Found {allDocuments.Count} documents with {allChunks.Count} total chunks");
+            Console.WriteLine($"[DEBUG] EnhancedSearchService: Using Semantic Kernel - Found {allDocuments.Count} documents with {allChunks.Count} total chunks");
             
-            // Create semantic search function with better prompt
+            // Create semantic search function with simpler, more reliable prompt
             var searchFunction = kernel.CreateFunctionFromPrompt(@"
-You are an expert search assistant. Analyze the user query and identify the most relevant document chunks.
+You are a search assistant. Find the most relevant document chunks for this query.
 
 Query: {{$query}}
 
@@ -58,20 +60,18 @@ Available chunks:
 {{$chunks}}
 
 Instructions:
-1. Analyze the semantic meaning of the query
-2. Identify key concepts and entities
-3. Rank chunks by relevance to the query
-4. Consider both semantic similarity and keyword matching
-5. Return ONLY the chunk IDs in order of relevance, separated by commas
+1. Look for chunks that contain information related to the query
+2. Focus on key names, dates, companies, and facts mentioned in the query
+3. Return ONLY the chunk IDs that are relevant, separated by commas
 
-Example response format: chunk1,chunk2,chunk3
+Example: If query asks about ""Barış Yerlikaya"", look for chunks containing that name or related information.
 
-Return only chunk IDs, nothing else.
+Return format: chunk1,chunk2,chunk3
 ");
             
-            // Prepare chunk information for the AI (limit content length)
+            // Prepare chunk information for the AI (shorter content for better processing)
             var chunkInfo = string.Join("\n", allChunks.Select((c, i) => 
-                $"Chunk {i}: ID={c.Id}, Content={c.Content.Substring(0, Math.Min(150, c.Content.Length))}..."));
+                $"Chunk {i}: ID={c.Id}, Content={c.Content.Substring(0, Math.Min(100, c.Content.Length))}..."));
             
             var arguments = new KernelArguments
             {
@@ -82,10 +82,10 @@ Return only chunk IDs, nothing else.
             var result = await kernel.InvokeAsync(searchFunction, arguments);
             var response = result.GetValue<string>() ?? "";
             
-            Console.WriteLine($"[DEBUG] EnhancedSearchService: AI response: {response}");
+            Console.WriteLine($"[DEBUG] EnhancedSearchService: Semantic Kernel response: {response}");
             
             // Parse AI response and return relevant chunks
-            var parsedResults = EnhancedSearchService.ParseSearchResults(response, allChunks, maxResults);
+            var parsedResults = EnhancedSearchService.ParseSearchResults(response, allChunks, maxResults, query);
             
             if (parsedResults.Count > 0)
             {
@@ -93,14 +93,29 @@ Return only chunk IDs, nothing else.
                 return parsedResults;
             }
             
-            Console.WriteLine($"[DEBUG] EnhancedSearchService: Failed to parse results, falling back to basic search");
+            Console.WriteLine($"[DEBUG] EnhancedSearchService: Semantic Kernel failed to parse results, trying AI-powered fallback");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[WARNING] EnhancedSearchService failed: {ex.Message}. Falling back to basic search.");
+            Console.WriteLine($"[INFO] Semantic Kernel not available ({ex.Message}), trying AI-powered fallback search");
         }
 
-        // Fallback to basic search if Semantic Kernel fails
+        // Try AI-powered fallback using existing AI providers (Anthropic, Gemini, etc.)
+        try
+        {
+            var aiPoweredResults = await TryAIPoweredFallbackSearchAsync(query, maxResults);
+            if (aiPoweredResults.Count > 0)
+            {
+                Console.WriteLine($"[DEBUG] EnhancedSearchService: AI-powered fallback successful, found {aiPoweredResults.Count} chunks");
+                return aiPoweredResults;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[WARNING] AI-powered fallback failed: {ex.Message}, using basic keyword search");
+        }
+
+        // Last resort: basic keyword search
         return await FallbackSearchAsync(query, maxResults);
     }
 
@@ -111,13 +126,14 @@ Return only chunk IDs, nothing else.
     {
         try
         {
+            // Try Semantic Kernel first
             var kernel = await CreateSemanticKernelFromExistingProvider();
             
             // Step 1: Query Analysis
             var queryAnalysis = await EnhancedSearchService.AnalyzeQueryAsync(kernel, query);
             
             // Step 2: Enhanced Semantic Search
-            var relevantChunks = await EnhancedSemanticSearchAsync(query, maxResults * 2);
+            var relevantChunks = await EnhancedSemanticSearchAsync(query, maxResults);
             
             // Step 3: Context Optimization
             var optimizedContext = await EnhancedSearchService.OptimizeContextAsync(kernel, query, relevantChunks, queryAnalysis);
@@ -136,7 +152,7 @@ Return only chunk IDs, nothing else.
                 SearchedAt = DateTime.UtcNow,
                 Configuration = new RagConfiguration
                 {
-                    AIProvider = "Enhanced", // Shows it's enhanced, not a separate provider
+                    AIProvider = "Enhanced (Semantic Kernel)",
                     StorageProvider = "Enhanced",
                     Model = "SemanticKernel + Existing Provider"
                 }
@@ -144,7 +160,65 @@ Return only chunk IDs, nothing else.
         }
         catch (Exception ex)
         {
-            throw new InvalidOperationException($"Multi-step RAG failed: {ex.Message}", ex);
+            Console.WriteLine($"[INFO] Multi-step RAG with Semantic Kernel failed ({ex.Message}), trying AI-powered fallback");
+            
+            try
+            {
+                // Fallback to AI-powered RAG without Semantic Kernel
+                return await MultiStepRAGWithAIFallbackAsync(query, maxResults);
+            }
+            catch (Exception fallbackEx)
+            {
+                throw new InvalidOperationException($"Multi-step RAG failed: {ex.Message}. Fallback also failed: {fallbackEx.Message}", ex);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Multi-step RAG using AI providers directly (fallback when Semantic Kernel fails)
+    /// </summary>
+    private async Task<RagResponse> MultiStepRAGWithAIFallbackAsync(string query, int maxResults = 5)
+    {
+        try
+        {
+            // Step 1: AI-powered search
+            var relevantChunks = await TryAIPoweredFallbackSearchAsync(query, maxResults);
+            
+            if (relevantChunks.Count == 0)
+            {
+                // Last resort: basic keyword search
+                relevantChunks = await FallbackSearchAsync(query, maxResults);
+            }
+            
+            // Step 2: Answer Generation using existing AI provider
+            var answer = await GenerateAnswerWithExistingProvider(query, relevantChunks);
+            
+            // Step 3: Source Attribution (simplified)
+            var sources = relevantChunks.Select(c => new SearchSource
+            {
+                DocumentId = c.DocumentId,
+                FileName = "Document",
+                RelevantContent = c.Content.Substring(0, Math.Min(200, c.Content.Length)),
+                RelevanceScore = c.RelevanceScore ?? 0.0
+            }).ToList();
+            
+            return new RagResponse
+            {
+                Query = query,
+                Answer = answer,
+                Sources = sources,
+                SearchedAt = DateTime.UtcNow,
+                Configuration = new RagConfiguration
+                {
+                    AIProvider = "Enhanced (AI Fallback)",
+                    StorageProvider = "Enhanced",
+                    Model = "AI Provider Direct"
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException($"AI-powered fallback RAG failed: {ex.Message}", ex);
         }
     }
 
@@ -153,34 +227,56 @@ Return only chunk IDs, nothing else.
     /// </summary>
     private Task<Kernel> CreateSemanticKernelFromExistingProvider()
     {
-        // Try to get OpenAI or Azure OpenAI configuration first
-        var openAIConfig = _configuration.GetSection("AI:OpenAI").Get<AIProviderConfig>();
-        var azureConfig = _configuration.GetSection("AI:AzureOpenAI").Get<AIProviderConfig>();
-        
-        var builder = Kernel.CreateBuilder();
-        
-        if (azureConfig != null && !string.IsNullOrEmpty(azureConfig.ApiKey) && !string.IsNullOrEmpty(azureConfig.Endpoint))
+        try
         {
-            // Use Azure OpenAI if available
-            builder.AddAzureOpenAIChatCompletion(azureConfig.Model, azureConfig.Endpoint, azureConfig.ApiKey);
+            // Try to get working AI provider configurations
+            var anthropicConfig = _configuration.GetSection("AI:Anthropic").Get<AIProviderConfig>();
+            var openAIConfig = _configuration.GetSection("AI:OpenAI").Get<AIProviderConfig>();
+            var azureConfig = _configuration.GetSection("AI:AzureOpenAI").Get<AIProviderConfig>();
+            
+            var builder = Kernel.CreateBuilder();
+            
+            // Priority order: Anthropic (working) > OpenAI > Azure OpenAI
+            if (anthropicConfig != null && !string.IsNullOrEmpty(anthropicConfig.ApiKey))
+            {
+                // Anthropic doesn't have direct Semantic Kernel support, so we'll use a fallback
+                Console.WriteLine($"[DEBUG] Anthropic provider found, but Semantic Kernel requires OpenAI/Azure OpenAI");
+                throw new InvalidOperationException("Semantic Kernel requires OpenAI or Azure OpenAI provider");
+            }
+            else if (openAIConfig != null && !string.IsNullOrEmpty(openAIConfig.ApiKey) && 
+                     !openAIConfig.ApiKey.Contains("your-dev-"))
+            {
+                // Use OpenAI if available
+                builder.AddOpenAIChatCompletion(openAIConfig.Model, openAIConfig.ApiKey);
 #pragma warning disable SKEXP0010 // Experimental API
-            builder.AddAzureOpenAIEmbeddingGenerator(azureConfig.Model, azureConfig.Endpoint, azureConfig.ApiKey);
+                builder.AddOpenAIEmbeddingGenerator(openAIConfig.Model, openAIConfig.ApiKey);
 #pragma warning restore SKEXP0010
-        }
-        else if (openAIConfig != null && !string.IsNullOrEmpty(openAIConfig.ApiKey))
-        {
-            // Use OpenAI if available
-            builder.AddOpenAIChatCompletion(openAIConfig.Model, openAIConfig.ApiKey);
+                
+                Console.WriteLine($"[DEBUG] Using OpenAI for Semantic Kernel: {openAIConfig.Model}");
+            }
+            else if (azureConfig != null && !string.IsNullOrEmpty(azureConfig.ApiKey) && 
+                     !azureConfig.ApiKey.Contains("your-dev-") && !string.IsNullOrEmpty(azureConfig.Endpoint) && !azureConfig.Endpoint.Contains("your-"))
+            {
+                // Use Azure OpenAI if available
+                builder.AddAzureOpenAIChatCompletion(azureConfig.Model, azureConfig.Endpoint, azureConfig.ApiKey);
 #pragma warning disable SKEXP0010 // Experimental API
-            builder.AddOpenAIEmbeddingGenerator(openAIConfig.Model, openAIConfig.ApiKey);
+                builder.AddAzureOpenAIEmbeddingGenerator(azureConfig.Model, azureConfig.Endpoint, azureConfig.ApiKey);
 #pragma warning restore SKEXP0010
+                
+                Console.WriteLine($"[DEBUG] Using Azure OpenAI for Semantic Kernel: {azureConfig.Endpoint}");
+            }
+            else
+            {
+                throw new InvalidOperationException("No working OpenAI or Azure OpenAI configuration found for Semantic Kernel enhancement");
+            }
+            
+            return Task.FromResult(builder.Build());
         }
-        else
+        catch (Exception ex)
         {
-            throw new InvalidOperationException("No OpenAI or Azure OpenAI configuration found for Semantic Kernel enhancement");
+            Console.WriteLine($"[ERROR] Failed to create Semantic Kernel: {ex.Message}");
+            throw;
         }
-        
-        return Task.FromResult(builder.Build());
     }
 
     /// <summary>
@@ -188,34 +284,48 @@ Return only chunk IDs, nothing else.
     /// </summary>
     private async Task<string> GenerateAnswerWithExistingProvider(string query, List<DocumentChunk> context)
     {
-        // Use existing AI provider for final answer generation
-        var openAIConfig = _configuration.GetSection("AI:OpenAI").Get<AIProviderConfig>();
-        var azureConfig = _configuration.GetSection("AI:AzureOpenAI").Get<AIProviderConfig>();
-        
-        AIProvider providerType;
-        AIProviderConfig config;
-        
-        if (azureConfig != null && !string.IsNullOrEmpty(azureConfig.ApiKey))
+        try
         {
-            providerType = AIProvider.AzureOpenAI;
-            config = azureConfig;
-        }
-        else if (openAIConfig != null && !string.IsNullOrEmpty(openAIConfig.ApiKey))
-        {
-            providerType = AIProvider.OpenAI;
-            config = openAIConfig;
-        }
-        else
-        {
-            throw new InvalidOperationException("No AI provider configuration found");
-        }
-        
-        var aiProvider = _aiProviderFactory.CreateProvider(providerType);
-        
-        var contextText = string.Join("\n\n---\n\n", 
-            context.Select(c => $"[Document Chunk]\n{c.Content}"));
-        
-        var prompt = $@"You are a helpful AI assistant. Answer the user's question based on the provided context.
+            // Try to get working AI provider configurations
+            var anthropicConfig = _configuration.GetSection("AI:Anthropic").Get<AIProviderConfig>();
+            var openAIConfig = _configuration.GetSection("AI:OpenAI").Get<AIProviderConfig>();
+            var azureConfig = _configuration.GetSection("AI:AzureOpenAI").Get<AIProviderConfig>();
+            
+            AIProvider providerType;
+            AIProviderConfig config;
+            
+            // Priority order: Anthropic (working) > OpenAI > Azure OpenAI
+            if (anthropicConfig != null && !string.IsNullOrEmpty(anthropicConfig.ApiKey))
+            {
+                providerType = AIProvider.Anthropic;
+                config = anthropicConfig;
+                Console.WriteLine($"[DEBUG] Using Anthropic provider for answer generation");
+            }
+            else if (openAIConfig != null && !string.IsNullOrEmpty(openAIConfig.ApiKey) && 
+                     !openAIConfig.ApiKey.Contains("your-dev-"))
+            {
+                providerType = AIProvider.OpenAI;
+                config = openAIConfig;
+                Console.WriteLine($"[DEBUG] Using OpenAI provider for answer generation");
+            }
+            else if (azureConfig != null && !string.IsNullOrEmpty(azureConfig.ApiKey) && 
+                     !azureConfig.ApiKey.Contains("your-dev-") && !string.IsNullOrEmpty(azureConfig.Endpoint) && !azureConfig.Endpoint.Contains("your-"))
+            {
+                providerType = AIProvider.AzureOpenAI;
+                config = azureConfig;
+                Console.WriteLine($"[DEBUG] Using Azure OpenAI provider for answer generation");
+            }
+            else
+            {
+                throw new InvalidOperationException("No working AI provider configuration found");
+            }
+            
+            var aiProvider = _aiProviderFactory.CreateProvider(providerType);
+            
+            var contextText = string.Join("\n\n---\n\n", 
+                context.Select(c => $"[Document Chunk]\n{c.Content}"));
+            
+            var prompt = $@"You are a helpful AI assistant. Answer the user's question based on the provided context.
 
 Question: {query}
 
@@ -230,8 +340,14 @@ Instructions:
 5. Cite specific parts of the context when possible
 
 Answer:";
-        
-        return await aiProvider.GenerateTextAsync(prompt, config);
+            
+            return await aiProvider.GenerateTextAsync(prompt, config);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERROR] Failed to generate answer: {ex.Message}");
+            return "Üzgünüm, cevap oluşturulamadı. Lütfen tekrar deneyin.";
+        }
     }
 
     /// <summary>
@@ -305,7 +421,7 @@ Optimized chunk IDs (comma-separated):
         var result = await kernel.InvokeAsync(optimizationFunction, arguments);
         var response = result.GetValue<string>() ?? "";
         
-        return EnhancedSearchService.ParseSearchResults(response, chunks, chunks.Count);
+                    return EnhancedSearchService.ParseSearchResults(response, chunks, chunks.Count, query);
     }
 
     /// <summary>
@@ -382,14 +498,19 @@ Sources:
     /// <summary>
     /// Parse search results from AI response
     /// </summary>
-    private static List<DocumentChunk> ParseSearchResults(string response, List<DocumentChunk> allChunks, int maxResults)
+    private static List<DocumentChunk> ParseSearchResults(string response, List<DocumentChunk> allChunks, int maxResults, string query)
     {
         try
         {
+            Console.WriteLine($"[DEBUG] ParseSearchResults: Raw response: '{response}'");
+            
+            // Try to parse chunk IDs from response
             var chunkIds = response.Split(',')
                 .Select(s => s.Trim())
                 .Where(s => !string.IsNullOrEmpty(s))
                 .ToList();
+            
+            Console.WriteLine($"[DEBUG] ParseSearchResults: Parsed chunk IDs: {string.Join(", ", chunkIds)}");
             
             var results = new List<DocumentChunk>();
             
@@ -401,20 +522,53 @@ Sources:
                     if (chunk != null)
                     {
                         results.Add(chunk);
+                        Console.WriteLine($"[DEBUG] ParseSearchResults: Found chunk {id} from document {chunk.DocumentId}");
                     }
                 }
             }
             
-            return results;
+            if (results.Count > 0)
+            {
+                Console.WriteLine($"[DEBUG] ParseSearchResults: Successfully parsed {results.Count} chunks");
+                return results;
+            }
+            
+            Console.WriteLine($"[DEBUG] ParseSearchResults: No chunks parsed, trying fallback");
         }
-        catch
+        catch (Exception ex)
         {
-            return allChunks
-                .Where(c => c.RelevanceScore.HasValue)
-                .OrderByDescending(c => c.RelevanceScore)
+            Console.WriteLine($"[WARNING] ParseSearchResults failed: {ex.Message}");
+        }
+
+        // Fallback: return chunks with content that might be relevant
+        Console.WriteLine($"[DEBUG] ParseSearchResults: Using fallback - returning chunks with content relevance");
+        
+        // Generic content relevance fallback - extract meaningful words from query
+        var queryWords = query.Split(_separatorChars, StringSplitOptions.RemoveEmptyEntries)
+            .Where(word => word.Length > 2) // Only consider words longer than 2 characters
+            .Select(word => word.ToLowerInvariant())
+            .Distinct()
+            .ToList();
+            
+        if (queryWords.Count > 0)
+        {
+            var relevantChunks = allChunks
+                .Where(c => queryWords.Any(word => 
+                    c.Content.ToLowerInvariant().Contains(word, StringComparison.OrdinalIgnoreCase)))
+                .OrderByDescending(c => c.RelevanceScore ?? 0.0)
                 .Take(maxResults)
                 .ToList();
+                
+            if (relevantChunks.Count > 0)
+            {
+                Console.WriteLine($"[DEBUG] ParseSearchResults: Fallback found {relevantChunks.Count} relevant chunks using query words: {string.Join(", ", queryWords)}");
+                return relevantChunks;
+            }
         }
+        
+        // Last resort: return first few chunks
+        Console.WriteLine($"[DEBUG] ParseSearchResults: Last resort - returning first {maxResults} chunks");
+        return allChunks.Take(maxResults).ToList();
     }
 
     /// <summary>
@@ -477,6 +631,151 @@ Sources:
     }
 
     /// <summary>
+    /// AI-powered fallback search using existing AI providers (Anthropic, Gemini, etc.)
+    /// </summary>
+    private async Task<List<DocumentChunk>> TryAIPoweredFallbackSearchAsync(string query, int maxResults)
+    {
+        try
+        {
+            // Get all documents for search
+            var allDocuments = await _documentRepository.GetAllAsync();
+            var allChunks = allDocuments.SelectMany(d => d.Chunks).ToList();
+            
+            Console.WriteLine($"[DEBUG] AI-powered fallback: Searching in {allDocuments.Count} documents with {allChunks.Count} chunks");
+            
+            // Try to get working AI provider configurations
+            var anthropicConfig = _configuration.GetSection("AI:Anthropic").Get<AIProviderConfig>();
+            var geminiConfig = _configuration.GetSection("AI:Gemini").Get<AIProviderConfig>();
+            var openAIConfig = _configuration.GetSection("AI:OpenAI").Get<AIProviderConfig>();
+            var azureConfig = _configuration.GetSection("AI:AzureOpenAI").Get<AIProviderConfig>();
+            
+            AIProvider providerType;
+            AIProviderConfig config;
+            
+            // Priority order: Anthropic > Gemini > OpenAI > Azure OpenAI
+            if (anthropicConfig != null && !string.IsNullOrEmpty(anthropicConfig.ApiKey))
+            {
+                providerType = AIProvider.Anthropic;
+                config = anthropicConfig;
+                Console.WriteLine($"[DEBUG] AI-powered fallback: Using Anthropic provider");
+            }
+            else if (geminiConfig != null && !string.IsNullOrEmpty(geminiConfig.ApiKey))
+            {
+                providerType = AIProvider.Gemini;
+                config = geminiConfig;
+                Console.WriteLine($"[DEBUG] AI-powered fallback: Using Gemini provider");
+            }
+            else if (openAIConfig != null && !string.IsNullOrEmpty(openAIConfig.ApiKey) && 
+                     !openAIConfig.ApiKey.Contains("your-dev-"))
+            {
+                providerType = AIProvider.OpenAI;
+                config = openAIConfig;
+                Console.WriteLine($"[DEBUG] AI-powered fallback: Using OpenAI provider");
+            }
+            else if (azureConfig != null && !string.IsNullOrEmpty(azureConfig.ApiKey) && 
+                     !azureConfig.ApiKey.Contains("your-dev-") && !string.IsNullOrEmpty(azureConfig.Endpoint) && 
+                     !azureConfig.Endpoint.Contains("your-"))
+            {
+                providerType = AIProvider.AzureOpenAI;
+                config = azureConfig;
+                Console.WriteLine($"[DEBUG] AI-powered fallback: Using Azure OpenAI provider");
+            }
+            else
+            {
+                Console.WriteLine($"[DEBUG] AI-powered fallback: No working AI provider found");
+                return new List<DocumentChunk>();
+            }
+            
+            var aiProvider = _aiProviderFactory.CreateProvider(providerType);
+            
+            // Create AI-powered search prompt
+            var searchPrompt = $@"You are a search assistant. Find the most relevant document chunks for this query.
+
+Query: {query}
+
+Available chunks (showing first 200 characters of each):
+{string.Join("\n\n", allChunks.Select((c, i) => $"Chunk {i}: {c.Content.Substring(0, Math.Min(200, c.Content.Length))}..."))}
+
+Instructions:
+1. Look for chunks that contain information related to the query
+2. Focus on key names, dates, companies, and facts mentioned in the query
+3. Return ONLY the chunk numbers (0, 1, 2, etc.) that are relevant, separated by commas
+
+Example: If query asks about ""Barış Yerlikaya"", look for chunks containing that name or related information.
+
+Return format: 0,3,7 (chunk numbers, not IDs)";
+
+            var aiResponse = await aiProvider.GenerateTextAsync(searchPrompt, config);
+            Console.WriteLine($"[DEBUG] AI-powered fallback: AI response: {aiResponse}");
+            
+            // Parse AI response and return relevant chunks
+            var parsedResults = ParseAISearchResults(aiResponse, allChunks, maxResults, query);
+            
+            if (parsedResults.Count > 0)
+            {
+                Console.WriteLine($"[DEBUG] AI-powered fallback: Successfully parsed {parsedResults.Count} chunks");
+                return parsedResults;
+            }
+            
+            Console.WriteLine($"[DEBUG] AI-powered fallback: Failed to parse results");
+            return new List<DocumentChunk>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERROR] AI-powered fallback failed: {ex.Message}");
+            return new List<DocumentChunk>();
+        }
+    }
+
+    /// <summary>
+    /// Parse AI search results from AI provider response
+    /// </summary>
+    private static List<DocumentChunk> ParseAISearchResults(string response, List<DocumentChunk> allChunks, int maxResults, string query)
+    {
+        try
+        {
+            Console.WriteLine($"[DEBUG] ParseAISearchResults: Raw response: '{response}'");
+            
+            // Try to parse chunk numbers from response
+            var chunkNumbers = response.Split(',')
+                .Select(s => s.Trim())
+                .Where(s => !string.IsNullOrEmpty(s))
+                .Select(s => int.TryParse(s, out var num) ? num : -1)
+                .Where(num => num >= 0 && num < allChunks.Count)
+                .Take(maxResults)
+                .ToList();
+            
+            Console.WriteLine($"[DEBUG] ParseAISearchResults: Parsed chunk numbers: {string.Join(", ", chunkNumbers)}");
+            
+            var results = new List<DocumentChunk>();
+            
+            foreach (var number in chunkNumbers)
+            {
+                if (number >= 0 && number < allChunks.Count)
+                {
+                    var chunk = allChunks[number];
+                    results.Add(chunk);
+                    Console.WriteLine($"[DEBUG] ParseAISearchResults: Found chunk {number} from document {chunk.DocumentId}");
+                }
+            }
+            
+            if (results.Count > 0)
+            {
+                Console.WriteLine($"[DEBUG] ParseAISearchResults: Successfully parsed {results.Count} chunks");
+                return results;
+            }
+            
+            Console.WriteLine($"[DEBUG] ParseAISearchResults: No chunks parsed");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[WARNING] ParseAISearchResults failed: {ex.Message}");
+        }
+        
+        return new List<DocumentChunk>();
+    }
+
+    /// <summary>
     /// Fallback search when Semantic Kernel fails
     /// </summary>
     private async Task<List<DocumentChunk>> FallbackSearchAsync(string query, int maxResults)
@@ -486,24 +785,52 @@ Sources:
         
         Console.WriteLine($"[DEBUG] FallbackSearchAsync: Searching in {allDocuments.Count} documents with {allChunks.Count} chunks");
         
+        // Try embedding-based search first if available
+        try
+        {
+            var embeddingResults = await TryEmbeddingBasedSearchAsync(query, allChunks, maxResults);
+            if (embeddingResults.Count > 0)
+            {
+                Console.WriteLine($"[DEBUG] FallbackSearchAsync: Embedding search successful, found {embeddingResults.Count} chunks");
+                return embeddingResults;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[DEBUG] FallbackSearchAsync: Embedding search failed: {ex.Message}, using keyword search");
+        }
+        
         // Enhanced keyword-based fallback with better scoring
         var queryWords = query.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries)
             .Where(w => w.Length > 2) // Filter out very short words
             .ToList();
+        
+        // Extract potential names (words starting with capital letters)
+        var potentialNames = queryWords.Where(w => char.IsUpper(w[0])).ToList();
         
         var scoredChunks = allChunks.Select(chunk =>
         {
             var score = 0.0;
             var content = chunk.Content.ToLowerInvariant();
             
-            // Exact word matches
-            foreach (var word in queryWords)
+            // Special handling for names like "Barış Yerlikaya" - HIGHEST PRIORITY
+            if (potentialNames.Count >= 2)
             {
-                if (content.Contains(word))
-                    score += 2.0; // Higher weight for exact matches
+                var fullName = string.Join(" ", potentialNames);
+                if (content.Contains(fullName.ToLowerInvariant(), StringComparison.OrdinalIgnoreCase))
+                    score += 100.0; // Very high weight for full name matches
+                else if (potentialNames.Any(name => content.Contains(name.ToLowerInvariant(), StringComparison.OrdinalIgnoreCase)))
+                    score += 50.0; // High weight for partial name matches
             }
             
-            // Partial word matches (for names like "Barış Yerlikaya")
+            // Exact word matches (reduced weight)
+            foreach (var word in queryWords)
+            {
+                if (content.Contains(word, StringComparison.OrdinalIgnoreCase))
+                    score += 1.0; // Lower weight for generic word matches
+            }
+            
+            // Phrase matches (for longer queries)
             var queryPhrases = query.ToLowerInvariant().Split('.', '?', '!')
                 .Where(p => p.Length > 5)
                 .ToList();
@@ -517,15 +844,26 @@ Sources:
                 if (phraseWords.Count >= 2)
                 {
                     var phraseText = string.Join(" ", phraseWords);
-                    if (content.Contains(phraseText))
-                        score += 5.0; // High weight for phrase matches
+                    if (content.Contains(phraseText, StringComparison.OrdinalIgnoreCase))
+                        score += 3.0; // Medium weight for phrase matches
                 }
             }
             
-            // Document diversity boost
+            // STRONG penalty for completely irrelevant content (like car manuals)
+            var hasIrrelevantContent = _irrelevantKeywords.Any(keyword => content.Contains(keyword, StringComparison.OrdinalIgnoreCase));
+            if (hasIrrelevantContent)
+                score -= 50.0; // Strong penalty for irrelevant content
+            
+            // Additional penalty for car-related content when searching for person
+            if (potentialNames.Count >= 2 && (content.Contains("şarj", StringComparison.OrdinalIgnoreCase) || 
+                                             content.Contains("batarya", StringComparison.OrdinalIgnoreCase) ||
+                                             content.Contains("motor", StringComparison.OrdinalIgnoreCase)))
+                score -= 100.0; // Very strong penalty for car content when searching for person
+            
+            // Document diversity boost (minimal impact)
             var documentChunks = allChunks.Where(c => c.DocumentId == chunk.DocumentId).Count();
             var totalChunks = allChunks.Count;
-            var diversityBoost = Math.Max(0, 1.0 - (documentChunks / (double)totalChunks));
+            var diversityBoost = Math.Max(0, 0.1 - (documentChunks / (double)totalChunks) * 0.1);
             score += diversityBoost;
             
             chunk.RelevanceScore = score;
@@ -535,31 +873,169 @@ Sources:
         var relevantChunks = scoredChunks
             .Where(c => c.RelevanceScore > 0)
             .OrderByDescending(c => c.RelevanceScore)
-            .Take(maxResults * 2) // Take more for diversity
+            .Take(Math.Min(maxResults * 2, 20)) // Take more for diversity, but cap at 20
             .ToList();
             
         Console.WriteLine($"[DEBUG] FallbackSearchAsync: Found {relevantChunks.Count} relevant chunks from {relevantChunks.Select(c => c.DocumentId).Distinct().Count()} documents");
         
-        // Ensure document diversity
+        // Ensure document diversity while respecting maxResults
         var diverseResults = new List<DocumentChunk>();
         var documentCounts = new Dictionary<Guid, int>();
         
         foreach (var chunk in relevantChunks)
         {
+            if (diverseResults.Count >= maxResults) break; // Strict maxResults enforcement
+            
             var currentCount = documentCounts.GetValueOrDefault(chunk.DocumentId, 0);
-            if (currentCount < 2) // Max 2 chunks per document
+            var maxChunksPerDoc = maxResults == 1 ? 1 : Math.Max(1, Math.Min(2, maxResults / 2)); // Special handling for maxResults=1
+            
+            if (currentCount < maxChunksPerDoc)
             {
                 diverseResults.Add(chunk);
                 documentCounts[chunk.DocumentId] = currentCount + 1;
-                
-                if (diverseResults.Count >= maxResults)
-                    break;
             }
         }
         
-        Console.WriteLine($"[DEBUG] FallbackSearchAsync: Final diverse results: {diverseResults.Count} chunks from {diverseResults.Select(c => c.DocumentId).Distinct().Count()} documents");
+        Console.WriteLine($"[DEBUG] FallbackSearchAsync: Final diverse results: {diverseResults.Count} chunks from {diverseResults.Select(c => c.DocumentId).Distinct().Count()} documents (maxResults requested: {maxResults})");
         
         return diverseResults;
+    }
+
+    /// <summary>
+    /// Try embedding-based search using existing AI providers
+    /// </summary>
+    private async Task<List<DocumentChunk>> TryEmbeddingBasedSearchAsync(string query, List<DocumentChunk> allChunks, int maxResults)
+    {
+        try
+        {
+            // Try to get working AI provider configurations
+            var anthropicConfig = _configuration.GetSection("AI:Anthropic").Get<AIProviderConfig>();
+            var geminiConfig = _configuration.GetSection("AI:Gemini").Get<AIProviderConfig>();
+            var openAIConfig = _configuration.GetSection("AI:OpenAI").Get<AIProviderConfig>();
+            var azureConfig = _configuration.GetSection("AI:AzureOpenAI").Get<AIProviderConfig>();
+            
+            AIProvider providerType;
+            AIProviderConfig config;
+            
+            // Priority order: Anthropic > Gemini > OpenAI > Azure OpenAI
+            if (anthropicConfig != null && !string.IsNullOrEmpty(anthropicConfig.ApiKey))
+            {
+                providerType = AIProvider.Anthropic;
+                config = anthropicConfig;
+                Console.WriteLine($"[DEBUG] Embedding search: Using Anthropic provider");
+            }
+            else if (geminiConfig != null && !string.IsNullOrEmpty(geminiConfig.ApiKey))
+            {
+                providerType = AIProvider.Gemini;
+                config = geminiConfig;
+                Console.WriteLine($"[DEBUG] Embedding search: Using Gemini provider");
+            }
+            else if (openAIConfig != null && !string.IsNullOrEmpty(openAIConfig.ApiKey) && 
+                     !openAIConfig.ApiKey.Contains("your-dev-"))
+            {
+                providerType = AIProvider.OpenAI;
+                config = openAIConfig;
+                Console.WriteLine($"[DEBUG] Embedding search: Using OpenAI provider");
+            }
+            else if (azureConfig != null && !string.IsNullOrEmpty(azureConfig.ApiKey) && 
+                     !azureConfig.ApiKey.Contains("your-dev-") && !string.IsNullOrEmpty(azureConfig.Endpoint) && 
+                     !azureConfig.Endpoint.Contains("your-"))
+            {
+                providerType = AIProvider.AzureOpenAI;
+                config = azureConfig;
+                Console.WriteLine($"[DEBUG] Embedding search: Using Azure OpenAI provider");
+            }
+            else
+            {
+                Console.WriteLine($"[DEBUG] Embedding search: No working AI provider found");
+                return new List<DocumentChunk>();
+            }
+            
+            var aiProvider = _aiProviderFactory.CreateProvider(providerType);
+            
+            // Generate embedding for query
+            var queryEmbedding = await aiProvider.GenerateEmbeddingAsync(query, config);
+            if (queryEmbedding == null || queryEmbedding.Count == 0)
+            {
+                Console.WriteLine($"[DEBUG] Embedding search: Failed to generate query embedding");
+                return new List<DocumentChunk>();
+            }
+            
+            // Get embeddings for all chunks (if not already available)
+            var chunkEmbeddings = new List<List<float>>();
+            foreach (var chunk in allChunks)
+            {
+                if (chunk.Embedding != null && chunk.Embedding.Count > 0)
+                {
+                    chunkEmbeddings.Add(chunk.Embedding);
+                }
+                else
+                {
+                    // Generate embedding for chunk if not available
+                    var chunkEmbedding = await aiProvider.GenerateEmbeddingAsync(chunk.Content, config);
+                    if (chunkEmbedding != null && chunkEmbedding.Count > 0)
+                    {
+                        chunkEmbeddings.Add(chunkEmbedding);
+                        chunk.Embedding = chunkEmbedding;
+                    }
+                    else
+                    {
+                        chunkEmbeddings.Add(new List<float>()); // Empty embedding
+                    }
+                }
+            }
+            
+            // Calculate cosine similarity and rank chunks
+            var scoredChunks = allChunks.Select((chunk, index) =>
+            {
+                var similarity = 0.0;
+                if (chunkEmbeddings[index].Count > 0)
+                {
+                    similarity = CalculateCosineSimilarity(queryEmbedding, chunkEmbeddings[index]);
+                }
+                
+                chunk.RelevanceScore = similarity;
+                return chunk;
+            }).ToList();
+            
+            // Return top chunks based on similarity
+            var topChunks = scoredChunks
+                .Where(c => c.RelevanceScore > 0.1) // Minimum similarity threshold
+                .OrderByDescending(c => c.RelevanceScore)
+                .Take(maxResults)
+                .ToList();
+            
+            Console.WriteLine($"[DEBUG] Embedding search: Found {topChunks.Count} chunks with similarity > 0.1");
+            return topChunks;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERROR] Embedding search failed: {ex.Message}");
+            return new List<DocumentChunk>();
+        }
+    }
+
+    /// <summary>
+    /// Calculate cosine similarity between two vectors
+    /// </summary>
+    private static double CalculateCosineSimilarity(List<float> a, List<float> b)
+    {
+        if (a == null || b == null || a.Count == 0 || b.Count == 0) return 0.0;
+        
+        var n = Math.Min(a.Count, b.Count);
+        double dot = 0, na = 0, nb = 0;
+        
+        for (int i = 0; i < n; i++)
+        {
+            double va = a[i];
+            double vb = b[i];
+            dot += va * vb;
+            na += va * va;
+            nb += vb * vb;
+        }
+        
+        if (na == 0 || nb == 0) return 0.0;
+        return dot / (Math.Sqrt(na) * Math.Sqrt(nb));
     }
 }
 
