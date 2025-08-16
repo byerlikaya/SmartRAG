@@ -109,7 +109,7 @@ public class DocumentService(
 
         try
         {
-            // Use EnhancedSearchService with Semantic Kernel for better search
+            // Use EnhancedSearchService directly (simplified without Semantic Kernel)
             var enhancedSearchService = new EnhancedSearchService(aiProviderFactory, documentRepository, configuration);
             var enhancedResults = await enhancedSearchService.EnhancedSemanticSearchAsync(query, maxResults * 2);
             
@@ -130,7 +130,7 @@ public class DocumentService(
             Console.WriteLine($"[WARNING] EnhancedSearchService failed: {ex.Message}. Falling back to basic search.");
         }
 
-        // Fallback to basic search if Semantic Kernel fails
+        // Fallback to basic search if EnhancedSearchService fails
         return await PerformBasicSearchAsync(query, maxResults);
     }
 
@@ -168,15 +168,22 @@ public class DocumentService(
                         if (chunk.Embedding != null && chunk.Embedding.Count > 0)
                         {
                             var score = ComputeCosineSimilarity(queryEmbedding, chunk.Embedding);
+                            Console.WriteLine($"[DEBUG] Chunk {chunk.Id} from {doc.FileName}: score={score:F4}, query_emb_dim={queryEmbedding.Count}, chunk_emb_dim={chunk.Embedding.Count}, content={chunk.Content.Substring(0, Math.Min(100, chunk.Content.Length))}...");
                             vecScored.Add((chunk, score));
                         }
                     }
                 }
 
+                // Apply improved relevance scoring with content-based boosting
                 var semanticResults = vecScored
-                    .OrderByDescending(x => x.score)
+                    .Select(x => {
+                        var improvedScore = ImproveRelevanceScore(x.score, x.chunk.Content, cleanedQuery);
+                        Console.WriteLine($"[DEBUG] Improved relevance score: chunk={x.chunk.Id}, base={x.score:F4}, final={improvedScore:F4}");
+                        x.chunk.RelevanceScore = improvedScore;
+                        return x.chunk;
+                    })
+                    .OrderByDescending(x => x.RelevanceScore)
                     .Take(maxResults * 2)
-                    .Select(x => { x.chunk.RelevanceScore = x.score; return x.chunk; })
                     .ToList();
 
                 allResults.AddRange(semanticResults);
@@ -399,6 +406,7 @@ public class DocumentService(
                         {
                             // No rate limit - continue at full speed (2000 RPM)
                             Console.WriteLine($"[INFO] No rate limit detected, continuing at full speed (2000 RPM)");
+                            // No delay needed for 2000 RPM
                         }
                     }
                 }
@@ -443,12 +451,17 @@ public class DocumentService(
             var jsonContent = System.Text.Json.JsonSerializer.Serialize(payload);
             var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
             
+            Console.WriteLine($"[DEBUG] VoyageAI batch request payload: {jsonContent}");
             var response = await client.PostAsync("https://api.voyageai.com/v1/embeddings", content);
             var responseContent = await response.Content.ReadAsStringAsync();
             
+            Console.WriteLine($"[DEBUG] VoyageAI batch response: {response.StatusCode} - {responseContent}");
+            
             if (response.IsSuccessStatusCode)
             {
-                return ParseVoyageAIBatchResponse(responseContent);
+                var parsedEmbeddings = ParseVoyageAIBatchResponse(responseContent);
+                Console.WriteLine($"[DEBUG] VoyageAI batch parsed: {parsedEmbeddings?.Count ?? 0} embeddings");
+                return parsedEmbeddings;
             }
             else
             {
@@ -519,17 +532,38 @@ public class DocumentService(
         if (a == null || b == null) return 0.0;
         int n = Math.Min(a.Count, b.Count);
         if (n == 0) return 0.0;
-        double dot = 0, na = 0, nb = 0;
+        
+        // Normalize embeddings for better similarity calculation
+        var normalizedA = NormalizeEmbedding(a);
+        var normalizedB = NormalizeEmbedding(b);
+        
+        double dot = 0;
         for (int i = 0; i < n; i++)
         {
-            double va = a[i];
-            double vb = b[i];
-            dot += va * vb;
-            na += va * va;
-            nb += vb * vb;
+            dot += normalizedA[i] * normalizedB[i];
         }
-        if (na == 0 || nb == 0) return 0.0;
-        return dot / (Math.Sqrt(na) * Math.Sqrt(nb));
+        
+        // Cosine similarity is just dot product of normalized vectors
+        return dot;
+    }
+    
+    /// <summary>
+    /// Normalizes embedding vector to unit length for better similarity calculation
+    /// </summary>
+    private static List<double> NormalizeEmbedding(List<float> embedding)
+    {
+        if (embedding == null || embedding.Count == 0) return new List<double>();
+        
+        // Convert to double for better precision
+        var doubleEmbedding = embedding.Select(x => (double)x).ToList();
+        
+        // Calculate magnitude
+        double magnitude = Math.Sqrt(doubleEmbedding.Sum(x => x * x));
+        
+        if (magnitude == 0) return doubleEmbedding;
+        
+        // Normalize to unit length
+        return doubleEmbedding.Select(x => x / magnitude).ToList();
     }
 
     public Task<Dictionary<string, object>> GetStorageStatisticsAsync()
@@ -544,6 +578,43 @@ public class DocumentService(
         };
 
         return Task.FromResult(stats);
+    }
+    
+    /// <summary>
+    /// Improves relevance score by considering content similarity and keyword matching
+    /// </summary>
+    private static double ImproveRelevanceScore(double baseScore, string content, string query)
+    {
+        if (string.IsNullOrEmpty(content) || string.IsNullOrEmpty(query))
+            return baseScore;
+        
+        var improvedScore = baseScore;
+        
+        // Convert to lowercase for case-insensitive comparison
+        var lowerContent = content.ToLowerInvariant();
+        var lowerQuery = query.ToLowerInvariant();
+        
+        // Extract key terms from query (simple approach)
+        var queryTerms = lowerQuery.Split(new[] { ' ', ',', '.', '?', '!' }, StringSplitOptions.RemoveEmptyEntries)
+            .Where(term => term.Length > 2) // Only meaningful terms
+            .ToList();
+        
+        // Calculate content relevance boost
+        var contentBoost = 0.0;
+        foreach (var term in queryTerms)
+        {
+            if (lowerContent.Contains(term))
+            {
+                contentBoost += 0.1; // 10% boost per matching term
+            }
+        }
+        
+        // Apply content boost (cap at 50% to avoid over-boosting)
+        contentBoost = Math.Min(contentBoost, 0.5);
+        improvedScore += contentBoost;
+        
+        // Ensure score doesn't exceed 1.0
+        return Math.Min(improvedScore, 1.0);
     }
 
     /// <summary>
@@ -678,12 +749,24 @@ public class DocumentService(
                 // Progress update
                 Console.WriteLine($"[INFO] Progress: {processedChunks}/{chunksToProcess.Count} chunks processed, {successCount} embeddings generated");
                 
-                // Rate limiting: Wait between batches (VoyageAI 3 RPM limit)
+                // Smart rate limiting: Check if we need to wait based on VoyageAI response
                 if (batchIndex < totalBatches - 1) // Don't wait after last batch
                 {
-                    var waitTime = 20; // 20 seconds for 3 RPM
-                    Console.WriteLine($"[INFO] Rate limiting: Waiting {waitTime} seconds before next batch...");
-                    await Task.Delay(waitTime * 1000);
+                    // Check if the last batch was successful (no rate limiting)
+                    var lastBatchSuccess = successCount > 0; // If we got embeddings, no rate limit
+                    
+                    if (!lastBatchSuccess)
+                    {
+                        // Rate limited - wait 20 seconds for 3 RPM
+                        Console.WriteLine($"[INFO] Rate limit detected, waiting 20 seconds for 3 RPM limit...");
+                        await Task.Delay(20000);
+                    }
+                    else
+                    {
+                        // No rate limit - continue at full speed (2000 RPM)
+                        Console.WriteLine($"[INFO] No rate limit detected, continuing at full speed (2000 RPM)");
+                        // No delay needed for 2000 RPM
+                    }
                 }
             }
             
@@ -712,6 +795,32 @@ public class DocumentService(
         if (string.IsNullOrWhiteSpace(query))
             throw new ArgumentException("Query cannot be empty", nameof(query));
 
+        // Try EnhancedSearchService first
+        try
+        {
+            var enhancedSearchService = new EnhancedSearchService(aiProviderFactory, documentRepository, configuration);
+            var enhancedResponse = await enhancedSearchService.MultiStepRAGAsync(query, maxResults);
+            
+            if (enhancedResponse != null && !string.IsNullOrEmpty(enhancedResponse.Answer))
+            {
+                Console.WriteLine($"[DEBUG] EnhancedSearchService RAG successful, using enhanced response");
+                return enhancedResponse;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[WARNING] EnhancedSearchService RAG failed: {ex.Message}, falling back to basic RAG");
+        }
+
+        // Fallback to basic RAG implementation
+        return await GenerateBasicRagAnswerAsync(query, maxResults);
+    }
+
+    /// <summary>
+    /// Basic RAG implementation when Semantic Kernel is not available
+    /// </summary>
+    private async Task<RagResponse> GenerateBasicRagAnswerAsync(string query, int maxResults = 5)
+    {
         // Get all documents for cross-document analysis
         var allDocuments = await GetAllDocumentsAsync();
 
