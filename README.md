@@ -53,7 +53,7 @@ SmartRAG automatically detects whether your query is a general conversation or a
 
 ### **Document Search** (RAG with your documents)
 - 🔍 **"What are the main benefits in the contract?"** → Searches your documents
-- 🔍 **"Barış Yerlikaya maaşı nedir?"** → Searches your documents (Turkish)
+- 🔍 **"Çalışan maaş bilgileri nedir?"** → Searches your documents (Turkish)
 - 🔍 **"2025年第一季度报告的主要发现是什么？"** → Searches your documents (Chinese)
 - 🔍 **"Show me the employee salary data"** → Searches your documents
 
