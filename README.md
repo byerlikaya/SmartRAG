@@ -55,7 +55,22 @@ dotnet add package SmartRAG
 
 ## 🚀 Quick Start
 
-### 1. **Basic Setup**
+### 1. **Development Setup**
+```bash
+# Clone the repository
+git clone https://github.com/byerlikaya/SmartRAG.git
+cd SmartRAG
+
+# Copy development configuration template
+cp src/SmartRAG.API/appsettings.Development.template.json src/SmartRAG.API/appsettings.Development.json
+
+# Edit appsettings.Development.json with your API keys
+# - OpenAI API Key
+# - Azure OpenAI credentials
+# - Database connection strings
+```
+
+### 2. **Basic Setup**
 ```csharp
 using SmartRAG.Extensions;
 using SmartRAG.Enums;

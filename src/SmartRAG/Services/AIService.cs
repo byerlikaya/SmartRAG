@@ -14,10 +14,12 @@ public class AIService(IAIProviderFactory aiProviderFactory, SmartRagOptions opt
     {
         try
         {
-            var selectedProvider = options.AIProvider;
-            var aiProvider = aiProviderFactory.CreateProvider(selectedProvider);
-            var providerKey = selectedProvider.ToString();
+            var aiProvider = aiProviderFactory.CreateProvider(options.AIProvider);
+
+            var providerKey = options.AIProvider.ToString();
+
             var providerConfig = configuration.GetSection($"AI:{providerKey}").Get<AIProviderConfig>();
+
             if (providerConfig == null)
                 return $"AI provider configuration not found for '{providerKey}'.";
 
@@ -25,6 +27,7 @@ public class AIService(IAIProviderFactory aiProviderFactory, SmartRagOptions opt
             var attempt = 0;
             var maxAttempts = Math.Max(1, options.MaxRetryAttempts);
             var delayMs = Math.Max(0, options.RetryDelayMs);
+
             while (true)
             {
                 try
@@ -98,6 +101,31 @@ public class AIService(IAIProviderFactory aiProviderFactory, SmartRagOptions opt
         catch (Exception)
         {
             throw;
+        }
+    }
+
+    public async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts)
+    {
+        try
+        {
+            var selectedProvider = options.AIProvider;
+            var aiProvider = aiProviderFactory.CreateProvider(selectedProvider);
+            var providerKey = selectedProvider.ToString();
+            var providerConfig = configuration.GetSection($"AI:{providerKey}").Get<AIProviderConfig>();
+            
+            if (providerConfig == null)
+                return [];
+
+            // Generate embeddings individually but in parallel for better performance
+            var embeddingTasks = texts.Select(async text => await aiProvider.GenerateEmbeddingAsync(text, providerConfig)).ToList();
+            var embeddings = await Task.WhenAll(embeddingTasks);
+            
+            return embeddings.Where(e => e != null && e.Count > 0).ToList();
+        }
+        catch (Exception)
+        {
+            // Return empty list on error
+            return [];
         }
     }
 
