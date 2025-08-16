@@ -24,7 +24,7 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
     {
         try
         {
-            var content = await ExtractTextAsync(fileStream, fileName, contentType);
+            var content = await DocumentParserService.ExtractTextAsync(fileStream, fileName, contentType);
 
             var documentId = Guid.NewGuid();
             var chunks = CreateChunks(content, documentId);
@@ -100,7 +100,7 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
     /// <summary>
     /// Parses Word document and extracts text content
     /// </summary>
-    private async Task<string> ParseWordDocumentAsync(Stream fileStream)
+    private static async Task<string> ParseWordDocumentAsync(Stream fileStream)
     {
         try
         {
@@ -161,7 +161,7 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
     /// <summary>
     /// Parses PDF document and extracts text content
     /// </summary>
-    private async Task<string> ParsePdfDocumentAsync(Stream fileStream)
+    private static async Task<string> ParsePdfDocumentAsync(Stream fileStream)
     {
         try
         {
@@ -201,7 +201,7 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
     /// <summary>
     /// Parses text-based document
     /// </summary>
-    private async Task<string> ParseTextDocumentAsync(Stream fileStream)
+    private static async Task<string> ParseTextDocumentAsync(Stream fileStream)
     {
         try
         {
@@ -272,19 +272,19 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
             "application/msword", "application/pdf"
         ];
 
-    private async Task<string> ExtractTextAsync(Stream fileStream, string fileName, string contentType)
+    private static async Task<string> ExtractTextAsync(Stream fileStream, string fileName, string contentType)
     {
         if (IsWordDocument(fileName, contentType))
         {
-            return await ParseWordDocumentAsync(fileStream);
+            return await DocumentParserService.ParseWordDocumentAsync(fileStream);
         }
         else if (IsPdfDocument(fileName, contentType))
         {
-            return await ParsePdfDocumentAsync(fileStream);
+            return await DocumentParserService.ParsePdfDocumentAsync(fileStream);
         }
         else if (IsTextBasedFile(fileName, contentType))
         {
-            return await ParseTextDocumentAsync(fileStream);
+            return await DocumentParserService.ParseTextDocumentAsync(fileStream);
         }
         else
         {

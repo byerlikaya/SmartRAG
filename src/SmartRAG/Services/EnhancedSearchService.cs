@@ -40,7 +40,7 @@ public class EnhancedSearchService
             var kernel = await CreateSemanticKernelFromExistingProvider();
             
             // Add search plugins
-            await AddSearchPluginsAsync(kernel);
+            await EnhancedSearchService.AddSearchPluginsAsync(kernel);
             
             // Get all documents for search
             var allDocuments = await _documentRepository.GetAllAsync();
@@ -79,7 +79,7 @@ Return only the chunk IDs in order of relevance, separated by commas.
             var response = result.GetValue<string>() ?? "";
             
             // Parse AI response and return relevant chunks
-            return ParseSearchResults(response, allChunks, maxResults);
+            return EnhancedSearchService.ParseSearchResults(response, allChunks, maxResults);
         }
         catch (Exception)
         {
@@ -98,19 +98,19 @@ Return only the chunk IDs in order of relevance, separated by commas.
             var kernel = await CreateSemanticKernelFromExistingProvider();
             
             // Step 1: Query Analysis
-            var queryAnalysis = await AnalyzeQueryAsync(kernel, query);
+            var queryAnalysis = await EnhancedSearchService.AnalyzeQueryAsync(kernel, query);
             
             // Step 2: Enhanced Semantic Search
             var relevantChunks = await EnhancedSemanticSearchAsync(query, maxResults * 2);
             
             // Step 3: Context Optimization
-            var optimizedContext = await OptimizeContextAsync(kernel, query, relevantChunks, queryAnalysis);
+            var optimizedContext = await EnhancedSearchService.OptimizeContextAsync(kernel, query, relevantChunks, queryAnalysis);
             
             // Step 4: Answer Generation using existing AI provider
             var answer = await GenerateAnswerWithExistingProvider(query, optimizedContext);
             
             // Step 5: Source Attribution
-            var sources = await GenerateSourcesAsync(kernel, query, optimizedContext);
+            var sources = await EnhancedSearchService.GenerateSourcesAsync(kernel, query, optimizedContext);
             
             return new RagResponse
             {
@@ -135,7 +135,7 @@ Return only the chunk IDs in order of relevance, separated by commas.
     /// <summary>
     /// Create Semantic Kernel using existing AI provider configuration
     /// </summary>
-    private async Task<Kernel> CreateSemanticKernelFromExistingProvider()
+    private Task<Kernel> CreateSemanticKernelFromExistingProvider()
     {
         // Try to get OpenAI or Azure OpenAI configuration first
         var openAIConfig = _configuration.GetSection("AI:OpenAI").Get<AIProviderConfig>();
@@ -164,7 +164,7 @@ Return only the chunk IDs in order of relevance, separated by commas.
             throw new InvalidOperationException("No OpenAI or Azure OpenAI configuration found for Semantic Kernel enhancement");
         }
         
-        return builder.Build();
+        return Task.FromResult(builder.Build());
     }
 
     /// <summary>
@@ -221,7 +221,7 @@ Answer:";
     /// <summary>
     /// Query intent analysis using Semantic Kernel
     /// </summary>
-    private async Task<QueryAnalysis> AnalyzeQueryAsync(Kernel kernel, string query)
+    private static async Task<QueryAnalysis> AnalyzeQueryAsync(Kernel kernel, string query)
     {
         var analysisFunction = kernel.CreateFunctionFromPrompt(@"
 Analyze the following query and provide structured analysis:
@@ -245,13 +245,13 @@ Analysis:
         var result = await kernel.InvokeAsync(analysisFunction, arguments);
         var analysisText = result.GetValue<string>() ?? "{}";
         
-        return ParseQueryAnalysis(analysisText);
+        return EnhancedSearchService.ParseQueryAnalysis(analysisText);
     }
 
     /// <summary>
     /// Context optimization using Semantic Kernel
     /// </summary>
-    private async Task<List<DocumentChunk>> OptimizeContextAsync(
+    private static async Task<List<DocumentChunk>> OptimizeContextAsync(
         Kernel kernel, 
         string query, 
         List<DocumentChunk> chunks, 
@@ -289,13 +289,13 @@ Optimized chunk IDs (comma-separated):
         var result = await kernel.InvokeAsync(optimizationFunction, arguments);
         var response = result.GetValue<string>() ?? "";
         
-        return ParseSearchResults(response, chunks, chunks.Count);
+        return EnhancedSearchService.ParseSearchResults(response, chunks, chunks.Count);
     }
 
     /// <summary>
     /// Source attribution using Semantic Kernel
     /// </summary>
-    private async Task<List<SearchSource>> GenerateSourcesAsync(
+    private static async Task<List<SearchSource>> GenerateSourcesAsync(
         Kernel kernel, 
         string query, 
         List<DocumentChunk> context)
@@ -340,13 +340,13 @@ Sources:
         var result = await kernel.InvokeAsync(sourceFunction, arguments);
         var response = result.GetValue<string>() ?? "[]";
         
-        return ParseSources(response, context);
+        return EnhancedSearchService.ParseSources(response, context);
     }
 
     /// <summary>
     /// Add search-specific plugins to Semantic Kernel
     /// </summary>
-    private async Task AddSearchPluginsAsync(Kernel kernel)
+    private static Task AddSearchPluginsAsync(Kernel kernel)
     {
         try
         {
@@ -359,12 +359,14 @@ Sources:
             // Continue without plugins if they fail to load
             Console.WriteLine($"Warning: Failed to add search plugins: {ex.Message}");
         }
+        
+        return Task.CompletedTask;
     }
 
     /// <summary>
     /// Parse search results from AI response
     /// </summary>
-    private List<DocumentChunk> ParseSearchResults(string response, List<DocumentChunk> allChunks, int maxResults)
+    private static List<DocumentChunk> ParseSearchResults(string response, List<DocumentChunk> allChunks, int maxResults)
     {
         try
         {
@@ -402,7 +404,7 @@ Sources:
     /// <summary>
     /// Parse query analysis from AI response
     /// </summary>
-    private QueryAnalysis ParseQueryAnalysis(string analysisText)
+    private static QueryAnalysis ParseQueryAnalysis(string analysisText)
     {
         try
         {
@@ -433,7 +435,7 @@ Sources:
     /// <summary>
     /// Parse sources from AI response
     /// </summary>
-    private List<SearchSource> ParseSources(string response, List<DocumentChunk> context)
+    private static List<SearchSource> ParseSources(string response, List<DocumentChunk> context)
     {
         try
         {
@@ -515,12 +517,14 @@ public class QueryAnalysis
 /// </summary>
 public class SearchPlugin
 {
+    private static readonly string[] QuestionWords = { "what", "how", "why", "when", "where", "who" };
+
     [KernelFunction("analyze_query")]
     [Description("Analyze a search query for intent and requirements")]
-    public string AnalyzeQuery(string query)
+    public static string AnalyzeQuery(string query)
     {
         var words = query.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        var hasQuestionWords = words.Any(w => new[] { "what", "how", "why", "when", "where", "who" }.Contains(w));
+        var hasQuestionWords = words.Any(w => QuestionWords.Contains(w));
         var complexity = words.Length > 5 ? "complex" : words.Length > 3 ? "moderate" : "simple";
         
         return $"Query analysis: {words.Length} words, Question: {hasQuestionWords}, Complexity: {complexity}";
@@ -528,7 +532,7 @@ public class SearchPlugin
     
     [KernelFunction("calculate_relevance")]
     [Description("Calculate relevance score between query and content")]
-    public double CalculateRelevance(string query, string content)
+    public static double CalculateRelevance(string query, string content)
     {
         var queryWords = query.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries);
         var contentLower = content.ToLowerInvariant();

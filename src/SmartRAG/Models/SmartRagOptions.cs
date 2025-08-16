@@ -50,7 +50,7 @@ public class SmartRagOptions
     /// <summary>
     /// Whether to enable fallback providers when primary provider fails
     /// </summary>
-    public bool EnableFallbackProviders { get; set; } = false;
+    public bool EnableFallbackProviders { get; set; }
 
     /// <summary>
     /// List of fallback AI providers to try when primary provider fails
