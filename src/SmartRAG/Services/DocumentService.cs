@@ -5,6 +5,7 @@ using SmartRAG.Enums;
 using SmartRAG.Factories;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
+using SmartRAG.Providers;
 
 namespace SmartRAG.Services;
 
@@ -235,6 +236,9 @@ public class DocumentService(
         if (string.IsNullOrWhiteSpace(query))
             throw new ArgumentException("Query cannot be empty", nameof(query));
 
+        // Note: Semantic Kernel enhancement is available through EnhancedSearchService
+        // but not integrated into DocumentService to maintain simplicity
+
         // Get all documents for cross-document analysis
         var allDocuments = await GetAllDocumentsAsync();
 
@@ -309,6 +313,12 @@ public class DocumentService(
             Configuration = GetRagConfiguration()
         };
     }
+
+    // Semantic Kernel enhancement methods removed to keep DocumentService simple
+    // Use EnhancedSearchService for advanced Semantic Kernel features
+
+    // All Semantic Kernel methods removed to keep DocumentService simple
+    // Use EnhancedSearchService for advanced Semantic Kernel features
 
     /// <summary>
     /// Applies advanced re-ranking algorithm to improve chunk selection

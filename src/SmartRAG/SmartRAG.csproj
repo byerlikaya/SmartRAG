@@ -47,6 +47,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.SemanticKernel" Version="1.62.0" />
     <PackageReference Include="Qdrant.Client" Version="1.7.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.0" />
@@ -61,7 +62,7 @@
     <PackageReference Include="EPPlus" Version="7.0.5" />
     
     <!-- SourceLink for debugging -->
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All"/>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
     
     <!-- Package validation and analysis -->
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" PrivateAssets="all" />
