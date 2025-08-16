@@ -4,9 +4,11 @@ using SmartRAG.Entities;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
 using System.Globalization;
+using Document = SmartRAG.Entities.Document;
+using QdrantDocument = Qdrant.Client.Grpc.Document;
 
 namespace SmartRAG.Repositories;
-public class QdrantDocumentRepository : IDocumentRepository
+public class QdrantDocumentRepository : IDocumentRepository, IDisposable
 {
     private readonly QdrantClient _client;
     private readonly QdrantConfig _config;
@@ -23,7 +25,7 @@ public class QdrantDocumentRepository : IDocumentRepository
         string host;
         bool useHttps;
 
-        if (config.Host.StartsWith("http://") || config.Host.StartsWith("https://"))
+        if (config.Host.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || config.Host.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
         {
             var uri = new Uri(config.Host);
             host = uri.Host;
@@ -155,7 +157,7 @@ public class QdrantDocumentRepository : IDocumentRepository
     }
 
     private static Distance GetDistanceMetric(string metric)
-        => metric.ToLower() switch
+        => metric.ToLower(CultureInfo.InvariantCulture) switch
         {
             "cosine" => Distance.Cosine,
             "dot" => Distance.Dot,
@@ -219,7 +221,7 @@ public class QdrantDocumentRepository : IDocumentRepository
     /// Create Document from metadata
     /// </summary>
     private static Document CreateDocumentFromMetadata(DocumentMetadata metadata)
-        => new()
+        => new Document()
         {
             Id = metadata.Id,
             FileName = metadata.FileName,
@@ -255,7 +257,7 @@ public class QdrantDocumentRepository : IDocumentRepository
     /// <summary>
     /// Helper class for document metadata extraction
     /// </summary>
-    private class DocumentMetadata
+    private sealed class DocumentMetadata
     {
         public Guid Id { get; set; }
         public string FileName { get; set; } = string.Empty;
@@ -284,7 +286,7 @@ public class QdrantDocumentRepository : IDocumentRepository
             Console.WriteLine($"[INFO] Generating embeddings for {document.Chunks.Count} chunks...");
             var embeddingTasks = document.Chunks.Select(async (chunk, index) =>
             {
-                if (chunk.Embedding == null || !chunk.Embedding.Any())
+                if (chunk.Embedding == null || chunk.Embedding.Count == 0)
                 {
                     chunk.Embedding = await GenerateEmbeddingAsync(chunk.Content) ?? new List<float>();
                     if (index % 10 == 0) // Progress every 10 chunks
@@ -484,7 +486,7 @@ public class QdrantDocumentRepository : IDocumentRepository
         }
         catch (Exception)
         {
-            return [];
+            return new List<Document>();
         }
     }
 
@@ -563,7 +565,7 @@ public class QdrantDocumentRepository : IDocumentRepository
 
             // FALLBACK: Generate embedding for semantic search
             var queryEmbedding = await GenerateEmbeddingAsync(query);
-            if (queryEmbedding == null || !queryEmbedding.Any())
+            if (queryEmbedding == null || queryEmbedding.Count == 0)
             {
                 // Fallback to text search if embedding fails
                 return await FallbackTextSearchAsync(query, maxResults);
@@ -579,12 +581,12 @@ public class QdrantDocumentRepository : IDocumentRepository
             Console.WriteLine($"[DEBUG] Looking for collections starting with: {_collectionName}_doc_");
 
             // Look for collections that match our document collection pattern
-            var documentCollections = collections.Where(c => c.StartsWith(_collectionName + "_doc_")).ToList();
+            var documentCollections = collections.Where(c => c.StartsWith(_collectionName + "_doc_", StringComparison.OrdinalIgnoreCase)).ToList();
 
             Console.WriteLine($"[INFO] Found {documentCollections.Count} document collections: {string.Join(", ", documentCollections)}");
 
             // If no document collections found, check main collection
-            if (!documentCollections.Any())
+            if (documentCollections.Count == 0)
             {
                 Console.WriteLine($"[WARNING] No document collections found, checking main collection: {_collectionName}");
                 if (collections.Contains(_collectionName))
@@ -630,7 +632,7 @@ public class QdrantDocumentRepository : IDocumentRepository
                                     Id = Guid.NewGuid(), // Generate new ID since we can't parse PointId
                                     DocumentId = Guid.Parse(docId),
                                     Content = content,
-                                    ChunkIndex = int.Parse(chunkIndex),
+                                    ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
                                     RelevanceScore = result.Score // Score is already float
                                 };
                                 allChunks.Add(chunk);
@@ -686,7 +688,7 @@ public class QdrantDocumentRepository : IDocumentRepository
 
             // Ensure we don't lose underrepresented documents before higher-level diversity
             Console.WriteLine($"[INFO] Total chunks found across all collections: {deduped.Count}");
-            // Take top K per document to improve coverage of key fields (e.g., acente/sahibi)
+            // Take top K per document to improve coverage of key fields
             var perDocTopK = Math.Max(1, Math.Min(3, maxResults));
             var topPerDocument = deduped
                 .GroupBy(c => c.DocumentId)
@@ -740,19 +742,19 @@ public class QdrantDocumentRepository : IDocumentRepository
         {
             Console.WriteLine($"[INFO] Using global fallback text search for query: {query}");
             var queryLower = query.ToLowerInvariant();
-            var relevantChunks = new List<DocumentChunk>();
+            var relevantChunk = new List<DocumentChunk>();
 
             // Get all collections to search in
             var collections = await _client.ListCollectionsAsync();
             Console.WriteLine($"[DEBUG] All collections for fallback search: {string.Join(", ", collections)}");
 
             // Look for collections that match our document collection pattern
-            var documentCollections = collections.Where(c => c.StartsWith(_collectionName + "_doc_")).ToList();
+            var documentCollections = collections.Where(c => c.StartsWith(_collectionName + "_doc_", StringComparison.OrdinalIgnoreCase)).ToList();
 
             Console.WriteLine($"[INFO] Found {documentCollections.Count} document collections for fallback search: {string.Join(", ", documentCollections)}");
             Console.WriteLine($"[DEBUG] Looking for collections starting with: {_collectionName}_doc_");
 
-            if (!documentCollections.Any())
+            if (documentCollections.Count == 0)
             {
                 Console.WriteLine($"[WARNING] No document collections found for fallback search");
                 Console.WriteLine($"[DEBUG] Available collections that might match: {string.Join(", ", collections.Where(c => c.Contains("doc_")))}");
@@ -791,12 +793,12 @@ public class QdrantDocumentRepository : IDocumentRepository
                                         Id = Guid.NewGuid(),
                                         DocumentId = Guid.Parse(docId),
                                         Content = content,
-                                        ChunkIndex = int.Parse(chunkIndex),
+                                        ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
                                         RelevanceScore = 0.5 // Default score for text search
                                     };
-                                    relevantChunks.Add(chunk);
+                                    relevantChunk.Add(chunk);
 
-                                    if (relevantChunks.Count >= maxResults)
+                                    if (relevantChunk.Count >= maxResults)
                                         break;
                                 }
                             }
@@ -810,7 +812,7 @@ public class QdrantDocumentRepository : IDocumentRepository
                         }
                     }
 
-                    if (relevantChunks.Count >= maxResults)
+                    if (relevantChunk.Count >= maxResults)
                         break;
                 }
                 catch (Exception ex)
@@ -819,8 +821,8 @@ public class QdrantDocumentRepository : IDocumentRepository
                 }
             }
 
-            Console.WriteLine($"[INFO] Global fallback text search found {relevantChunks.Count} chunks");
-            return relevantChunks.Take(maxResults).ToList();
+            Console.WriteLine($"[INFO] Global fallback text search found {relevantChunk.Count} chunks");
+            return relevantChunk.Take(maxResults).ToList();
         }
         catch (Exception ex)
         {
@@ -867,7 +869,7 @@ public class QdrantDocumentRepository : IDocumentRepository
                                 Id = Guid.NewGuid(),
                                 DocumentId = Guid.Parse(docId),
                                 Content = content,
-                                ChunkIndex = int.Parse(chunkIndex),
+                                ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
                                 RelevanceScore = 0.5 // Default score for text search
                             };
                             relevantChunks.Add(chunk);
@@ -956,18 +958,18 @@ public class QdrantDocumentRepository : IDocumentRepository
 
             // If config doesn't have it, detect from existing collections
             var collections = await _client.ListCollectionsAsync();
-            var documentCollections = collections.Where(c => c.StartsWith(_collectionName + "_doc_")).ToList();
+            var documentCollections = collections.Where(c => c.StartsWith(_collectionName + "_doc_", StringComparison.OrdinalIgnoreCase)).ToList();
 
             // If no document collections, check main collection
-            if (!documentCollections.Any() && collections.Contains(_collectionName))
+            if (documentCollections.Count == 0 && collections.Contains(_collectionName))
             {
                 documentCollections.Add(_collectionName);
             }
 
-            if (documentCollections.Any())
+            if (documentCollections.Count > 0)
             {
                 // Get dimension from first available collection
-                var firstCollection = documentCollections.First();
+                var firstCollection = documentCollections.Count > 0 ? documentCollections.First() : _collectionName;
                 var collectionInfo = await _client.GetCollectionInfoAsync(firstCollection);
 
                 // Try to get dimension from collection info
@@ -1028,14 +1030,14 @@ public class QdrantDocumentRepository : IDocumentRepository
             var keywords = ExtractImportantKeywords(query);
             Console.WriteLine($"[DEBUG] Extracted keywords: {string.Join(", ", keywords)}");
 
-            if (!keywords.Any())
+            if (keywords.Count == 0)
             {
                 Console.WriteLine("[DEBUG] No meaningful keywords found, skipping hybrid search");
                 return hybridResults;
             }
 
             var collections = await _client.ListCollectionsAsync();
-            var documentCollections = collections.Where(c => c.StartsWith($"{_collectionName}_doc_")).ToList();
+            var documentCollections = collections.Where(c => c.StartsWith($"{_collectionName}_doc_", StringComparison.OrdinalIgnoreCase)).ToList();
 
             foreach (var collectionName in documentCollections)
             {
@@ -1100,7 +1102,7 @@ public class QdrantDocumentRepository : IDocumentRepository
     /// </summary>
     private static double CalculateKeywordMatchScore(string content, List<string> keywords)
     {
-        if (!keywords.Any()) return 0.0;
+        if (keywords.Count == 0) return 0.0;
 
         var contentLower = content.ToLowerInvariant();
         var matches = 0;
@@ -1133,5 +1135,11 @@ public class QdrantDocumentRepository : IDocumentRepository
             "nedir", "midir", "ne", "kaç", "adı", "olarak", "için", "ile", "mi", "mı"
         };
         return stopWords.Contains(word);
+    }
+
+    public void Dispose()
+    {
+        _client?.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

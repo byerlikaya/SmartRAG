@@ -13,6 +13,23 @@ public class FileSystemDocumentRepository : IDocumentRepository
     private readonly string _metadataFile;
     private readonly Lock _lock = new();
 
+    /// <summary>
+    /// Shared JsonSerializerOptions for consistent serialization
+    /// </summary>
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        WriteIndented = true,
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
+    /// <summary>
+    /// Shared JsonSerializerOptions for deserialization
+    /// </summary>
+    private static readonly JsonSerializerOptions _jsonDeserializeOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
+
     public FileSystemDocumentRepository(string basePath)
     {
         _basePath = Path.GetFullPath(basePath);
@@ -50,11 +67,7 @@ public class FileSystemDocumentRepository : IDocumentRepository
                 Chunks = document.Chunks
             };
 
-            var json = JsonSerializer.Serialize(documentData, new JsonSerializerOptions
-            {
-                WriteIndented = true,
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            });
+            var json = JsonSerializer.Serialize(documentData, _jsonOptions);
 
             File.WriteAllText(documentPath, json);
 
@@ -126,10 +139,7 @@ public class FileSystemDocumentRepository : IDocumentRepository
                 return [];
 
             var json = File.ReadAllText(_metadataFile);
-            var documents = JsonSerializer.Deserialize<List<Document>>(json, new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            });
+            var documents = JsonSerializer.Deserialize<List<Document>>(json, _jsonDeserializeOptions);
 
             return documents ?? [];
         }
@@ -142,11 +152,7 @@ public class FileSystemDocumentRepository : IDocumentRepository
 
     private void SaveMetadata(List<Document> documents)
     {
-        var json = JsonSerializer.Serialize(documents, new JsonSerializerOptions
-        {
-            WriteIndented = true,
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        });
+        var json = JsonSerializer.Serialize(documents, _jsonOptions);
 
         File.WriteAllText(_metadataFile, json);
     }

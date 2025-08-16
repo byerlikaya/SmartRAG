@@ -12,6 +12,8 @@ SmartRAG is a **production-ready** .NET 9.0 library that provides a complete **R
 ## ✨ Key Highlights
 
 - 🎯 **AI Question Answering**: Ask questions about your documents and get intelligent, contextual answers
+- 🧠 **Smart Query Intent Detection**: Automatically distinguishes between general conversation and document search queries
+- 🌍 **Language-Agnostic**: Works with any language without hardcoded patterns or keywords
 - 🤖 **Universal AI Support**: 5 dedicated providers + CustomProvider for unlimited AI APIs  
 - 🏢 **Enterprise Storage**: Vector databases, Redis, SQL, FileSystem with advanced configurations
 - 🧠 **Advanced RAG Pipeline**: Smart chunking, semantic retrieval, AI-powered answer generation
@@ -25,16 +27,37 @@ SmartRAG is a **production-ready** .NET 9.0 library that provides a complete **R
 ```
 📄 Document Upload → 🔍 Smart Chunking → 🧠 AI Embeddings → 💾 Vector Storage
                                                                         ↓
-🙋‍♂️ User Question → 🔍 Find Relevant Chunks → 🤖 AI Answer Generation → ✨ Smart Response
+🙋‍♂️ User Question → 🎯 Intent Detection → 🔍 Find Relevant Chunks → 🤖 AI Answer Generation → ✨ Smart Response
 ```
 
 ### 🏆 **Production Features**
 - **Smart Chunking**: Maintains context continuity between document segments
+- **Intelligent Query Routing**: Automatically routes general conversation to AI chat, document queries to RAG search
+- **Language-Agnostic Design**: No hardcoded language patterns - works globally with any language
 - **Multiple Storage Options**: From in-memory to enterprise vector databases
 - **AI Provider Flexibility**: Switch between providers without code changes
 - **Document Intelligence**: Advanced parsing for PDF, Word, and text formats
 - **Configuration-First**: Environment-based configuration with sensible defaults
 - **Dependency Injection**: Full DI container integration
+
+## 🧠 Smart Query Intent Detection
+
+SmartRAG automatically detects whether your query is a general conversation or a document search request:
+
+### **General Conversation** (Direct AI Chat)
+- ✅ **"How are you?"** → Direct AI response
+- ✅ **"What's the weather like?"** → Direct AI response  
+- ✅ **"Tell me a joke"** → Direct AI response
+- ✅ **"Emin misin?"** → Direct AI response (Turkish)
+- ✅ **"你好吗？"** → Direct AI response (Chinese)
+
+### **Document Search** (RAG with your documents)
+- 🔍 **"What are the main benefits in the contract?"** → Searches your documents
+- 🔍 **"Barış Yerlikaya maaşı nedir?"** → Searches your documents (Turkish)
+- 🔍 **"2025年第一季度报告的主要发现是什么？"** → Searches your documents (Chinese)
+- 🔍 **"Show me the employee salary data"** → Searches your documents
+
+**How it works:** The system analyzes query structure (numbers, dates, formats, length) to determine intent without any hardcoded language patterns.
 
 ## 📦 Installation
 
@@ -55,7 +78,22 @@ dotnet add package SmartRAG
 
 ## 🚀 Quick Start
 
-### 1. **Basic Setup**
+### 1. **Development Setup**
+```bash
+# Clone the repository
+git clone https://github.com/byerlikaya/SmartRAG.git
+cd SmartRAG
+
+# Copy development configuration template
+cp src/SmartRAG.API/appsettings.Development.template.json src/SmartRAG.API/appsettings.Development.json
+
+# Edit appsettings.Development.json with your API keys
+# - OpenAI API Key
+# - Azure OpenAI credentials
+# - Database connection strings
+```
+
+### 2. **Basic Setup**
 ```csharp
 using SmartRAG.Extensions;
 using SmartRAG.Enums;
@@ -140,7 +178,7 @@ cp src/SmartRAG.API/appsettings.json src/SmartRAG.API/appsettings.Development.js
 }
 ```
 
-📖 **[Complete Configuration Guide](docs/configuration.md)**
+📖 **[Complete Configuration Guide](docs/configuration.md) | [🔧 Troubleshooting Guide](docs/troubleshooting.md)**
 
 ## 🤖 AI Providers - Universal Support
 
@@ -363,18 +401,29 @@ curl -X DELETE "http://localhost:5000/api/documents/{document-id}"
 curl "http://localhost:5000/api/documents/search"
 ```
 
-### **AI Question Answering**
+### **AI Question Answering & Chat**
+
+SmartRAG handles both document search and general conversation automatically:
+
 ```bash
-# Ask questions about your documents
+# Ask questions about your documents (RAG mode)
 curl -X POST "http://localhost:5000/api/search/search" \
   -H "Content-Type: application/json" \
   -d '{
     "query": "What are the main risks mentioned in the financial report?",
     "maxResults": 5
   }'
+
+# General conversation (Direct AI chat mode)
+curl -X POST "http://localhost:5000/api/search/search" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "How are you today?",
+    "maxResults": 1
+  }'
 ```
 
-**Response Example:**
+**Document Search Response Example:**
 ```json
 {
   "query": "What are the main risks mentioned in the financial report?",
@@ -387,7 +436,27 @@ curl -X POST "http://localhost:5000/api/search/search" \
       "relevanceScore": 0.94
     }
   ],
-  "processingTimeMs": 1180
+  "searchedAt": "2025-08-16T14:57:06.2312433Z",
+  "configuration": {
+    "aiProvider": "Anthropic",
+    "storageProvider": "Redis",
+    "model": "Claude + VoyageAI"
+  }
+}
+```
+
+**General Chat Response Example:**
+```json
+{
+  "query": "How are you today?",
+  "answer": "I'm doing well, thank you for asking! I'm here to help you with any questions you might have about your documents or just general conversation. How can I assist you today?",
+  "sources": [],
+  "searchedAt": "2025-08-16T14:57:06.2312433Z",
+  "configuration": {
+    "aiProvider": "Anthropic",
+    "storageProvider": "Redis", 
+    "model": "Claude + VoyageAI"
+  }
 }
 ```
 
@@ -395,10 +464,12 @@ curl -X POST "http://localhost:5000/api/search/search" \
 ## 📊 Performance & Scaling
 
 ### **Benchmarks**
-- **Document Upload**: ~500ms for 10MB PDF
-- **Semantic Search**: ~200ms with 10K documents
-- **AI Response**: ~2-5s depending on provider
-- **Memory Usage**: ~50MB base + documents in memory
+- **Document Upload**: ~500ms for 100KB file, ~1-2s for 1MB file
+- **Semantic Search**: ~200ms for simple queries, ~500ms for complex queries
+- **AI Response**: ~2-5s for 5 sources, ~3-8s for 10 sources
+- **Memory Usage**: ~50MB base + documents, ~100MB with Redis cache
+
+
 
 ### **Scaling Tips**
 - Use **Redis** or **Qdrant** for production workloads
@@ -438,13 +509,20 @@ We welcome contributions!
 
 ## 📈 Roadmap
 
-### **Version 1.1.0**
+### **Version 1.1.0** ✅ **COMPLETED**
+- [x] **Smart Query Intent Detection** - Automatically routes queries to chat vs document search
+- [x] **Language-Agnostic Design** - Removed all hardcoded language patterns
+- [x] **Enhanced Search Relevance** - Improved name detection and content scoring
+- [x] **Unicode Normalization** - Fixed special character handling issues
+- [x] **Rate Limiting & Retry Logic** - Robust API handling with exponential backoff
+
+### **Version 1.2.0** 🚧 **IN PROGRESS**
 - [ ] Excel file support with EPPlus
 - [ ] Batch document processing
 - [ ] Advanced search filters
 - [ ] Performance monitoring
 
-### **Version 1.2.0**
+### **Version 1.3.0** 🔮 **PLANNED**
 - [ ] Multi-modal document support (images, tables)
 - [ ] Real-time collaboration features
 - [ ] Advanced analytics dashboard

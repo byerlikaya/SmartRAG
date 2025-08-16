@@ -3,6 +3,7 @@ using SmartRAG.Entities;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
 using System.Data;
+using System.Globalization;
 using System.Text.Json;
 
 namespace SmartRAG.Repositories;
@@ -84,8 +85,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
     public Task<Document> AddAsync(Document document)
     {
         // Basic validation
-        if (document == null)
-            throw new ArgumentNullException(nameof(document));
+        ArgumentNullException.ThrowIfNull(document);
 
         if (string.IsNullOrEmpty(document.FileName))
             throw new ArgumentException("FileName cannot be null or empty", nameof(document));
@@ -259,7 +259,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
                         Content = reader.GetString("Content"),
                         ContentType = reader.GetString("ContentType"),
                         FileSize = reader.GetInt64("FileSize"),
-                        UploadedAt = DateTime.Parse(reader.GetString("UploadedAt")),
+                        UploadedAt = DateTime.Parse(reader.GetString("UploadedAt"), CultureInfo.InvariantCulture),
                         UploadedBy = reader.GetString("UploadedBy"),
                         Chunks = []
                     };
@@ -273,7 +273,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
                         DocumentId = id,
                         Content = reader.GetString("ChunkContent"),
                         ChunkIndex = reader.GetInt32("ChunkIndex"),
-                        CreatedAt = DateTime.Parse(reader.GetString("CreatedAt")),
+                        CreatedAt = DateTime.Parse(reader.GetString("CreatedAt"), CultureInfo.InvariantCulture),
                         RelevanceScore = reader.IsDBNull("RelevanceScore") ? 0.0 : reader.GetDouble("RelevanceScore"),
                         Embedding = reader.IsDBNull("Embedding")
                         ? []
@@ -341,7 +341,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
                         Content = reader.GetString("Content"),
                         ContentType = reader.GetString("ContentType"),
                         FileSize = reader.GetInt64("FileSize"),
-                        UploadedAt = DateTime.Parse(reader.GetString("UploadedAt")),
+                        UploadedAt = DateTime.Parse(reader.GetString("UploadedAt"), CultureInfo.InvariantCulture),
                         UploadedBy = reader.GetString("UploadedBy"),
                         Chunks = []
                     };
@@ -356,7 +356,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
                         DocumentId = documentId,
                         Content = reader.GetString("ChunkContent"),
                         ChunkIndex = reader.GetInt32("ChunkIndex"),
-                        CreatedAt = DateTime.Parse(reader.GetString("CreatedAt")),
+                        CreatedAt = DateTime.Parse(reader.GetString("CreatedAt"), CultureInfo.InvariantCulture),
                         RelevanceScore = reader.IsDBNull("RelevanceScore") ? 0.0 : reader.GetDouble("RelevanceScore"),
                         Embedding = reader.IsDBNull("Embedding")
                         ? []
@@ -434,7 +434,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
             command.CommandText = "SELECT COUNT(*) FROM Documents";
 
             var result = command.ExecuteScalar();
-            return Task.FromResult(Convert.ToInt32(result));
+            return Task.FromResult(Convert.ToInt32(result, CultureInfo.InvariantCulture));
         }
         catch (Exception ex)
         {
@@ -539,7 +539,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
                     DocumentId = Guid.Parse(reader.GetString("DocumentId")),
                     Content = reader.GetString("Content"),
                     ChunkIndex = reader.GetInt32("ChunkIndex"),
-                    CreatedAt = DateTime.Parse(reader.GetString("CreatedAt")),
+                    CreatedAt = DateTime.Parse(reader.GetString("CreatedAt"), CultureInfo.InvariantCulture),
                     RelevanceScore = reader.IsDBNull("RelevanceScore") ? 0.0 : reader.GetDouble("RelevanceScore"),
                     Embedding = reader.IsDBNull("Embedding") ? new List<float>() : JsonSerializer.Deserialize<List<float>>(reader.GetString("Embedding")) ?? new List<float>()
                 };
@@ -563,5 +563,6 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
             _connection.Close();
         }
         _connection.Dispose();
+        GC.SuppressFinalize(this);
     }
 }

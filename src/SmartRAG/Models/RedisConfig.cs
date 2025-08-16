@@ -11,13 +11,13 @@ public class RedisConfig
 
     public string? Username { get; set; }
 
-    public int Database { get; set; } = 0;
+    public int Database { get; set; }
 
     public string KeyPrefix { get; set; } = "smartrag:doc:";
 
     public int ConnectionTimeout { get; set; } = 30;
 
-    public bool EnableSsl { get; set; } = false;
+    public bool EnableSsl { get; set; }
 
     public int RetryCount { get; set; } = 3;
 
