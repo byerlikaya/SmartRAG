@@ -128,7 +128,28 @@ Return format: 0,3,7 (chunk numbers, not IDs)";
     {
         try
         {
-            // Step 1: Simple search
+            // Check if this is a general conversation query
+            if (IsGeneralConversationQuery(query))
+            {
+                Console.WriteLine($"[DEBUG] MultiStepRAGAsync: Detected general conversation query: '{query}'");
+                var chatResponse = await HandleGeneralConversationAsync(query);
+            
+            return new RagResponse
+            {
+                Query = query,
+                    Answer = chatResponse,
+                    Sources = new List<SearchSource>(), // No sources for chat
+                SearchedAt = DateTime.UtcNow,
+                Configuration = new RagConfiguration
+                {
+                        AIProvider = "Anthropic",
+                        StorageProvider = "Chat Mode",
+                        Model = "Claude + Chat"
+                    }
+                };
+            }
+            
+            // Step 1: Simple search for document-related queries
             var relevantChunks = await EnhancedSemanticSearchAsync(query, maxResults);
             
             if (relevantChunks.Count == 0)
@@ -664,5 +685,56 @@ Answer:";
         return searchWords.All(searchWord => 
             contentWords.Any(contentWord => 
                 contentWord.Contains(searchWord, StringComparison.OrdinalIgnoreCase)));
+    }
+    
+    /// <summary>
+    /// Check if query is a general conversation question (not document search)
+    /// </summary>
+    private static bool IsGeneralConversationQuery(string query)
+    {
+        if (string.IsNullOrWhiteSpace(query)) return false;
+        
+        // Simple detection: if query has document-like structure, it's document search
+        // Otherwise, it's general conversation
+        
+        var hasDocumentStructure = query.Any(char.IsDigit) || 
+                                query.Contains(":") || 
+                                query.Contains("/") || 
+                                query.Contains("-") ||
+                                query.Length > 50; // Very long queries are usually document searches
+        
+        // If it has document structure, it's document search
+        // If not, it's general conversation
+        return !hasDocumentStructure;
+    }
+    
+    /// <summary>
+    /// Handle general conversation queries
+    /// </summary>
+    private async Task<string> HandleGeneralConversationAsync(string query)
+    {
+        try
+        {
+            var anthropicConfig = _configuration.GetSection("AI:Anthropic").Get<AIProviderConfig>();
+            if (anthropicConfig == null || string.IsNullOrEmpty(anthropicConfig.ApiKey))
+            {
+                return "Sorry, I cannot chat right now. Please try again later.";
+            }
+            
+            var aiProvider = _aiProviderFactory.CreateProvider(AIProvider.Anthropic);
+            
+            var prompt = $@"You are a helpful AI assistant. Answer the user's question naturally and friendly.
+
+User: {query}
+
+Answer:";
+            
+            return await aiProvider.GenerateTextAsync(prompt, anthropicConfig);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERROR] General conversation failed: {ex.Message}");
+            return "Sorry, I cannot chat right now. Please try again later.";
+        }
     }
 }
