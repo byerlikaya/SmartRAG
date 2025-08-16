@@ -368,33 +368,14 @@ public class DocumentService(
                 enhancedScore += keywordDensity * 0.2; // 20% boost for keyword matches
             }
 
-            // Domain-specific boosts (insurance/policy context)
-            var domainBoost = 0.0;
-            var wantsAgency = cleanedQueryKeywords.Any(k => k.Contains("acente") || k.Contains("kasko"));
-            var wantsOwner = cleanedQueryKeywords.Any(k => k.Contains("sahibi") || k.Contains("adi") || k.Contains("ad") || k.Contains("isim") || k.Contains("sigorta"));
-            var wantsCarSpeed = cleanedQueryKeywords.Any(k => k.Contains("hyundai") || k.Contains("ioniq") || k.Contains("hiz") || k.Contains("hız"));
-            var wantsAbidik = cleanedQueryKeywords.Any(k => k.Contains("abidik"));
-
-            if (wantsAgency)
-            {
-                if (chunkContent.Contains("acente") || chunkContent.Contains("düzenleyen") || chunkContent.Contains("aracilik") || chunkContent.Contains("aracılık"))
-                    domainBoost += 0.25;
-            }
-            if (wantsOwner)
-            {
-                if (chunkContent.Contains("sigorta ettiren") || chunkContent.Contains("sigortali") || chunkContent.Contains("sigortalı") || chunkContent.Contains("sahibi") || chunkContent.Contains("adi ") || chunkContent.Contains("adı ") || chunkContent.Contains("isim"))
-                    domainBoost += 0.25;
-            }
-            if (wantsCarSpeed)
-            {
-                if (chunkContent.Contains("hyundai ioniq 5") || chunkContent.Contains("max hiz") || chunkContent.Contains("maksimum hız") || chunkContent.Contains("km/s"))
-                    domainBoost += 0.2;
-            }
-            if (wantsAbidik && chunkContent.Contains("abidik"))
-            {
-                domainBoost += 0.2;
-            }
-            enhancedScore += domainBoost;
+            // Generic content relevance boost
+            var contentBoost = 0.0;
+            
+            // Boost for query term matches in content
+            var queryTermMatches = queryKeywords.Count(term => chunkContent.Contains(term, StringComparison.OrdinalIgnoreCase));
+            contentBoost += Math.Min(0.3, queryTermMatches * 0.1); // Max 30% boost
+            
+            enhancedScore += contentBoost;
 
             // Factor 2: Content length optimization (not too short, not too long)
             var contentLength = chunk.Content.Length;
@@ -665,10 +646,9 @@ public class DocumentService(
         var finalChunks = new List<DocumentChunk>();
         var remainingSlots = maxResults;
 
-        // Build domain-aware keyword list from query
+        // Build keyword list from query
         var queryKeywords = ExtractKeywords(query.ToLowerInvariant());
-        var domainHints = new List<string> { "acente", "düzenleyen", "aracilik", "aracılık", "sigorta ettiren", "sigortali", "sigortalı", "sahibi", "adi", "adı", "isim", "hyundai", "ioniq", "hiz", "hız", "abidik" };
-        var targetKeywords = new HashSet<string>(queryKeywords.Concat(domainHints.Where(h => queryKeywords.Any(qk => h.Contains(qk) || qk.Contains(h)))), StringComparer.OrdinalIgnoreCase);
+        var targetKeywords = new HashSet<string>(queryKeywords, StringComparer.OrdinalIgnoreCase);
 
         // Process each document group
         foreach (var group in documentGroups.OrderByDescending(g => g.Max(c => c.RelevanceScore ?? 0.0)))

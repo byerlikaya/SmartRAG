@@ -688,7 +688,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
 
             // Ensure we don't lose underrepresented documents before higher-level diversity
             Console.WriteLine($"[INFO] Total chunks found across all collections: {deduped.Count}");
-            // Take top K per document to improve coverage of key fields (e.g., acente/sahibi)
+            // Take top K per document to improve coverage of key fields
             var perDocTopK = Math.Max(1, Math.Min(3, maxResults));
             var topPerDocument = deduped
                 .GroupBy(c => c.DocumentId)
