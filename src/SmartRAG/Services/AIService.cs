@@ -55,7 +55,7 @@ public class AIService(IAIProviderFactory aiProviderFactory, SmartRagOptions opt
             }
 
             // Try fallback providers if enabled
-            if (options.EnableFallbackProviders && options.FallbackProviders.Any())
+            if (options.EnableFallbackProviders && options.FallbackProviders.Count > 0)
             {
                 return await TryFallbackProvidersAsync(query, context);
             }
@@ -65,7 +65,7 @@ public class AIService(IAIProviderFactory aiProviderFactory, SmartRagOptions opt
         catch (Exception)
         {
             // Try fallback providers on error if enabled
-            if (options.EnableFallbackProviders && options.FallbackProviders.Any())
+            if (options.EnableFallbackProviders && options.FallbackProviders.Count > 0)
             {
                 try
                 {

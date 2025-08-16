@@ -35,7 +35,7 @@ public class DocumentService(
             throw new ArgumentException($"Unsupported file type: {ext}. Supported types: {list}");
         }
 
-        if (!string.IsNullOrWhiteSpace(contentType) && !supportedContentTypes.Any(ct => contentType.StartsWith(ct)))
+        if (!string.IsNullOrWhiteSpace(contentType) && !supportedContentTypes.Any(ct => contentType.StartsWith(ct, StringComparison.OrdinalIgnoreCase)))
         {
             var list = string.Join(", ", supportedContentTypes);
             throw new ArgumentException($"Unsupported content type: {contentType}. Supported types: {list}");
@@ -117,7 +117,7 @@ public class DocumentService(
                     .Select(x => { x.chunk.RelevanceScore = x.score; return x.chunk; })
                     .ToList();
 
-                if (topVec.Any())
+                if (topVec.Count > 0)
                     return topVec;
             }
         }
@@ -148,7 +148,7 @@ public class DocumentService(
         }
 
         // If primary search yields poor results, try fuzzy matching
-        if (!primary.Any() || primary.Count < maxResults / 2)
+        if (primary.Count == 0 || primary.Count < maxResults / 2)
         {
             var fuzzyResults = await PerformFuzzySearch(cleanedQuery, maxResults);
             primary.AddRange(fuzzyResults.Where(f => !primary.Any(p => p.Id == f.Id)));
@@ -198,7 +198,7 @@ public class DocumentService(
         }
     }
 
-    private static double ComputeCosineSimilarity(IReadOnlyList<float> a, IReadOnlyList<float> b)
+    private static double ComputeCosineSimilarity(List<float> a, List<float> b)
     {
         if (a == null || b == null) return 0.0;
         int n = Math.Min(a.Count, b.Count);
@@ -243,7 +243,7 @@ public class DocumentService(
         var allDocuments = await GetAllDocumentsAsync();
 
         // Cross-document detection
-        var isCrossDocument = await IsCrossDocumentQueryAsync(query, allDocuments);
+        var isCrossDocument = DocumentService.IsCrossDocumentQueryAsync(query, allDocuments);
 
         List<DocumentChunk> relevantChunks;
 
@@ -265,7 +265,7 @@ public class DocumentService(
         // Optimize context assembly: combine chunks intelligently
         var contextMaxResults = isCrossDocument ? Math.Max(maxResults, 3) : maxResults;
 
-        var optimizedChunks = OptimizeContextWindow(relevantChunks, contextMaxResults, query);
+        var optimizedChunks = DocumentService.OptimizeContextWindow(relevantChunks, contextMaxResults, query);
 
         var documentIdToName = new Dictionary<Guid, string>();
         foreach (var docId in optimizedChunks.Select(c => c.DocumentId).Distinct())
@@ -323,9 +323,9 @@ public class DocumentService(
     /// <summary>
     /// Applies advanced re-ranking algorithm to improve chunk selection
     /// </summary>
-    private List<DocumentChunk> ApplyReranking(List<DocumentChunk> chunks, string query, int maxResults)
+    private static List<DocumentChunk> ApplyReranking(List<DocumentChunk> chunks, string query, int maxResults)
     {
-        if (!chunks.Any())
+        if (chunks.Count == 0)
             return chunks;
 
         var queryKeywords = ExtractKeywords(query.ToLowerInvariant());
@@ -352,7 +352,7 @@ public class DocumentService(
                 }
             }
 
-            if (cleanedQueryKeywords.Any())
+            if (cleanedQueryKeywords.Count > 0)
             {
                 var exactMatchRatio = (double)exactMatches / cleanedQueryKeywords.Count;
                 enhancedScore += exactMatchRatio * 0.6; // 60% boost for exact matches!
@@ -362,7 +362,7 @@ public class DocumentService(
             var chunkKeywords = ExtractKeywords(chunkContent);
             var commonKeywords = queryKeywords.Intersect(chunkKeywords, StringComparer.OrdinalIgnoreCase).Count();
 
-            if (queryKeywords.Any())
+            if (queryKeywords.Count > 0)
             {
                 var keywordDensity = (double)commonKeywords / queryKeywords.Count;
                 enhancedScore += keywordDensity * 0.2; // 20% boost for keyword matches
@@ -425,7 +425,7 @@ public class DocumentService(
     /// </summary>
     private static double CalculateTermProximity(string content, List<string> queryTerms)
     {
-        if (!queryTerms.Any()) return 0.0;
+        if (queryTerms.Count == 0) return 0.0;
 
         var contentLower = content.ToLowerInvariant();
         var termPositions = new List<int>();
@@ -439,7 +439,7 @@ public class DocumentService(
             }
         }
 
-        if (termPositions.Count < 2) return termPositions.Any() ? 0.5 : 0.0;
+        if (termPositions.Count < 2) return termPositions.Count > 0 ? 0.5 : 0.0;
 
         // Calculate average distance between terms
         termPositions.Sort();
@@ -457,9 +457,9 @@ public class DocumentService(
     /// <summary>
     /// Applies diversity selection to avoid too many chunks from same document
     /// </summary>
-    private List<DocumentChunk> ApplyDiversityAndSelect(List<DocumentChunk> chunks, int maxResults)
+    private static List<DocumentChunk> ApplyDiversityAndSelect(List<DocumentChunk> chunks, int maxResults)
     {
-        if (!chunks.Any()) return new List<DocumentChunk>();
+        if (chunks.Count == 0) return new List<DocumentChunk>();
 
         var uniqueDocumentIds = chunks.Select(c => c.DocumentId).Distinct().ToList();
 
@@ -655,9 +655,9 @@ public class DocumentService(
     /// <summary>
     /// Optimizes context window by intelligently selecting and combining chunks
     /// </summary>
-    private List<DocumentChunk> OptimizeContextWindow(List<DocumentChunk> chunks, int maxResults, string query)
+    private static List<DocumentChunk> OptimizeContextWindow(List<DocumentChunk> chunks, int maxResults, string query)
     {
-        if (!chunks.Any()) return new List<DocumentChunk>();
+        if (chunks.Count == 0) return new List<DocumentChunk>();
 
         // Group chunks by document for better context
         var documentGroups = chunks.GroupBy(c => c.DocumentId).ToList();
@@ -719,7 +719,7 @@ public class DocumentService(
     /// <summary>
     /// Detects if query requires information from multiple documents
     /// </summary>
-    private async Task<bool> IsCrossDocumentQueryAsync(string query, List<Document> allDocuments)
+    private static bool IsCrossDocumentQueryAsync(string query, List<Document> allDocuments)
     {
         if (allDocuments.Count <= 1)
             return false;
@@ -893,8 +893,8 @@ public class DocumentService(
             .OrderByDescending(c => c.RelevanceScore ?? 0.0)
             .ToList();
 
-        var rerankedChunks = ApplyReranking(uniqueChunks, query, searchResults);
-        var finalChunks = ApplyDiversityAndSelect(rerankedChunks, adjustedMaxResults);
+        var rerankedChunks = DocumentService.ApplyReranking(uniqueChunks, query, searchResults);
+        var finalChunks = DocumentService.ApplyDiversityAndSelect(rerankedChunks, adjustedMaxResults);
 
         return finalChunks;
     }
@@ -916,10 +916,10 @@ public class DocumentService(
             .ToList();
 
         // Apply advanced re-ranking algorithm
-        var rerankedChunks = ApplyReranking(uniqueChunks, query, searchResults);
+        var rerankedChunks = DocumentService.ApplyReranking(uniqueChunks, query, searchResults);
 
         // Apply standard diversity selection
-        return ApplyDiversityAndSelect(rerankedChunks, maxResults);
+        return DocumentService.ApplyDiversityAndSelect(rerankedChunks, maxResults);
     }
 
     /// <summary>

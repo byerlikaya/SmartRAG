@@ -3,6 +3,7 @@ using SmartRAG.Interfaces;
 using SmartRAG.Models;
 using StackExchange.Redis;
 using System.Text.Json;
+using System.Globalization;
 
 namespace SmartRAG.Repositories;
 
@@ -80,10 +81,10 @@ public class RedisDocumentRepository : IDocumentRepository
             new("id", document.Id.ToString()),
             new("fileName", document.FileName),
             new("contentType", document.ContentType),
-            new("fileSize", document.FileSize.ToString()),
+            new("fileSize", document.FileSize.ToString(CultureInfo.InvariantCulture)),
             new("uploadedAt", document.UploadedAt.ToString("O")),
             new("uploadedBy", document.UploadedBy),
-            new("chunkCount", document.Chunks.Count.ToString())
+            new("chunkCount", document.Chunks.Count.ToString(CultureInfo.InvariantCulture))
         };
 
         var hashTask = transaction.HashSetAsync(metadataKey, metadata);
