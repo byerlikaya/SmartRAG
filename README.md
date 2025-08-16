@@ -469,38 +469,7 @@ curl -X POST "http://localhost:5000/api/search/search" \
 - **AI Response**: ~2-5s for 5 sources, ~3-8s for 10 sources
 - **Memory Usage**: ~50MB base + documents, ~100MB with Redis cache
 
-### **Performance Testing**
-SmartRAG includes built-in benchmark tools to measure performance:
 
-```bash
-# Run comprehensive performance test
-curl -X POST "http://localhost:5000/api/benchmark/performance-test" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "testDocumentUpload": true,
-    "testSearch": true,
-    "testAIResponse": true,
-    "testEndToEnd": true,
-    "documentSizeKB": 100,
-    "searchQuery": "What are the main topics discussed?",
-    "maxResults": 5
-  }'
-
-# Get system information
-curl "http://localhost:5000/api/benchmark/system-info"
-```
-
-**Expected Results (Development Environment):**
-- **Document Upload**: 100KB → ~500ms, 1MB → ~1-2s
-- **Search Response**: Simple query → ~200ms, Complex → ~500ms  
-- **AI Response**: 5 sources → ~2-5s, 10 sources → ~3-8s
-- **Memory Usage**: Base ~50MB + document cache
-
-**Production Performance (Redis + Anthropic):**
-- **Document Upload**: 1MB → ~1-2s, 10MB → ~5-10s
-- **Search Response**: Complex query → ~500ms, Large dataset → ~1-2s
-- **AI Response**: 10 sources → ~3-8s, 20 sources → ~5-15s
-- **Memory Usage**: Base ~100MB + Redis cache
 
 ### **Scaling Tips**
 - Use **Redis** or **Qdrant** for production workloads
