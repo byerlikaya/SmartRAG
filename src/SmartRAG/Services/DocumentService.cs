@@ -5,6 +5,7 @@ using SmartRAG.Enums;
 using SmartRAG.Factories;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
+using System.Text.Json;
 
 namespace SmartRAG.Services;
 
@@ -46,7 +47,7 @@ public class DocumentService(
         var allChunkContents = document.Chunks.Select(c => c.Content).ToList();
         var allEmbeddings = await TryGenerateEmbeddingsBatchAsync(allChunkContents);
 
-        // Apply embeddings to chunks
+        // Apply embeddings to chunks with retry mechanism
         for (int i = 0; i < document.Chunks.Count; i++)
         {
             try
@@ -54,14 +55,39 @@ public class DocumentService(
                 var chunk = document.Chunks[i];
                 // Ensure chunk metadata is consistent
                 chunk.DocumentId = document.Id;
-                chunk.Embedding = allEmbeddings?[i] ?? [];
+                
+                // Check if embedding was generated successfully
+                if (allEmbeddings != null && i < allEmbeddings.Count && allEmbeddings[i] != null && allEmbeddings[i].Count > 0)
+                {
+                    chunk.Embedding = allEmbeddings[i];
+                    Console.WriteLine($"[DEBUG] Chunk {i}: Embedding generated successfully ({allEmbeddings[i].Count} dimensions)");
+                }
+                else
+                {
+                    // Retry individual embedding generation for this chunk
+                    Console.WriteLine($"[DEBUG] Chunk {i}: Batch embedding failed, trying individual generation");
+                    var individualEmbedding = await TryGenerateEmbeddingWithFallback(chunk.Content);
+                    
+                    if (individualEmbedding != null && individualEmbedding.Count > 0)
+                    {
+                        chunk.Embedding = individualEmbedding;
+                        Console.WriteLine($"[DEBUG] Chunk {i}: Individual embedding successful ({individualEmbedding.Count} dimensions)");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[WARNING] Chunk {i}: Failed to generate embedding after retry");
+                        chunk.Embedding = new List<float>(); // Empty but not null
+                    }
+                }
+                
                 if (chunk.CreatedAt == default)
                     chunk.CreatedAt = DateTime.UtcNow;
             }
-            catch
+            catch (Exception ex)
             {
+                Console.WriteLine($"[ERROR] Chunk {i}: Failed to process: {ex.Message}");
                 // If embedding generation fails, leave it empty and continue
-                document.Chunks[i].Embedding = [];
+                document.Chunks[i].Embedding = new List<float>(); // Empty but not null
             }
         }
 
@@ -185,40 +211,123 @@ public class DocumentService(
     {
         try
         {
-            return await aiService.GenerateEmbeddingsAsync(text);
+            Console.WriteLine($"[DEBUG] Trying primary AI service for embedding generation");
+            var result = await aiService.GenerateEmbeddingsAsync(text);
+            if (result != null && result.Count > 0)
+            {
+                Console.WriteLine($"[DEBUG] Primary AI service successful: {result.Count} dimensions");
+                return result;
+            }
+            Console.WriteLine($"[DEBUG] Primary AI service returned null or empty embedding");
         }
-        catch
+        catch (Exception ex)
         {
-            var embeddingProviders = new[]
-            {
-                "Anthropic",
-                "OpenAI",
-                "Gemini"
-            };
+            Console.WriteLine($"[DEBUG] Primary AI service failed: {ex.Message}");
+        }
 
-            foreach (var provider in embeddingProviders)
+        var embeddingProviders = new[]
+        {
+            "Anthropic",
+            "OpenAI",
+            "Gemini"
+        };
+
+        foreach (var provider in embeddingProviders)
+        {
+            try
             {
-                try
+                Console.WriteLine($"[DEBUG] Trying {provider} provider for embedding generation");
+                var providerEnum = Enum.Parse<AIProvider>(provider);
+                var aiProvider = ((AIProviderFactory)aiProviderFactory).CreateProvider(providerEnum);
+                var providerConfig = configuration.GetSection($"AI:{provider}").Get<AIProviderConfig>();
+
+                if (providerConfig != null && !string.IsNullOrEmpty(providerConfig.ApiKey))
                 {
-                    var providerEnum = Enum.Parse<AIProvider>(provider);
-                    var aiProvider = ((AIProviderFactory)aiProviderFactory).CreateProvider(providerEnum);
-                    var providerConfig = configuration.GetSection($"AI:{provider}").Get<AIProviderConfig>();
-
-                    if (providerConfig != null && !string.IsNullOrEmpty(providerConfig.ApiKey))
+                    Console.WriteLine($"[DEBUG] {provider} config found, API key: {providerConfig.ApiKey.Substring(0, 8)}...");
+                    var embedding = await aiProvider.GenerateEmbeddingAsync(text, providerConfig);
+                    if (embedding != null && embedding.Count > 0)
                     {
-                        var embedding = await aiProvider.GenerateEmbeddingAsync(text, providerConfig);
-                        if (embedding != null && embedding.Count > 0)
-                            return embedding;
+                        Console.WriteLine($"[DEBUG] {provider} successful: {embedding.Count} dimensions");
+                        return embedding;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[DEBUG] {provider} returned null or empty embedding");
                     }
                 }
-                catch
+                else
                 {
-                    continue;
+                    Console.WriteLine($"[DEBUG] {provider} config not found or API key missing");
                 }
             }
-
-            return null;
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DEBUG] {provider} failed: {ex.Message}");
+                continue;
+            }
         }
+
+        Console.WriteLine($"[DEBUG] All embedding providers failed for text: {text.Substring(0, Math.Min(50, text.Length))}...");
+        
+        // Special test for VoyageAI if Anthropic is configured
+        try
+        {
+            var anthropicConfig = configuration.GetSection("AI:Anthropic").Get<AIProviderConfig>();
+            if (anthropicConfig != null && !string.IsNullOrEmpty(anthropicConfig.EmbeddingApiKey))
+            {
+                Console.WriteLine($"[DEBUG] Testing VoyageAI directly with key: {anthropicConfig.EmbeddingApiKey.Substring(0, 8)}...");
+                
+                using var client = new HttpClient();
+                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {anthropicConfig.EmbeddingApiKey}");
+                
+                var testPayload = new
+                {
+                    input = new[] { "test" },
+                    model = anthropicConfig.EmbeddingModel ?? "voyage-3.5",
+                    input_type = "document"
+                };
+                
+                var jsonContent = System.Text.Json.JsonSerializer.Serialize(testPayload);
+                var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+                
+                var response = await client.PostAsync("https://api.voyageai.com/v1/embeddings", content);
+                var responseContent = await response.Content.ReadAsStringAsync();
+                
+                Console.WriteLine($"[DEBUG] VoyageAI test response: {response.StatusCode} - {responseContent}");
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    Console.WriteLine($"[DEBUG] VoyageAI is working! Trying to parse embedding...");
+                    // Parse the response and return a test embedding
+                    try
+                    {
+                        using var doc = System.Text.Json.JsonDocument.Parse(responseContent);
+                        if (doc.RootElement.TryGetProperty("data", out var dataArray) && dataArray.ValueKind == JsonValueKind.Array)
+                        {
+                            var firstEmbedding = dataArray.EnumerateArray().FirstOrDefault();
+                            if (firstEmbedding.TryGetProperty("embedding", out var embeddingArray) && embeddingArray.ValueKind == JsonValueKind.Array)
+                            {
+                                var testEmbedding = embeddingArray.EnumerateArray()
+                                    .Select(x => x.GetSingle())
+                                    .ToList();
+                                Console.WriteLine($"[DEBUG] VoyageAI test embedding generated: {testEmbedding.Count} dimensions");
+                                return testEmbedding;
+                            }
+                        }
+                    }
+                    catch (Exception parseEx)
+                    {
+                        Console.WriteLine($"[DEBUG] Failed to parse VoyageAI response: {parseEx.Message}");
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[DEBUG] VoyageAI direct test failed: {ex.Message}");
+        }
+        
+        return null;
     }
 
     /// <summary>
@@ -241,11 +350,168 @@ public class DocumentService(
             // Fallback to individual generation if batch fails
         }
 
-        // Fallback: generate embeddings individually (but still in parallel)
+        // Special handling for VoyageAI: Process in smaller batches to respect 3 RPM limit
+        try
+        {
+            var anthropicConfig = configuration.GetSection("AI:Anthropic").Get<AIProviderConfig>();
+            if (anthropicConfig != null && !string.IsNullOrEmpty(anthropicConfig.EmbeddingApiKey))
+            {
+                Console.WriteLine($"[DEBUG] Trying VoyageAI batch processing with rate limiting...");
+                
+                // Process in smaller batches (3 chunks per minute = 20 seconds between batches)
+                const int rateLimitBatchSize = 3;
+                var allEmbeddings = new List<List<float>>();
+                
+                for (int i = 0; i < texts.Count; i += rateLimitBatchSize)
+                {
+                    var currentBatch = texts.Skip(i).Take(rateLimitBatchSize).ToList();
+                    Console.WriteLine($"[DEBUG] Processing VoyageAI batch {i/rateLimitBatchSize + 1}: chunks {i+1}-{Math.Min(i+rateLimitBatchSize, texts.Count)}");
+                    
+                    // Generate embeddings for current batch using VoyageAI
+                    var batchEmbeddings = await GenerateVoyageAIBatchAsync(currentBatch, anthropicConfig);
+                    
+                    if (batchEmbeddings != null && batchEmbeddings.Count == currentBatch.Count)
+                    {
+                        allEmbeddings.AddRange(batchEmbeddings);
+                        Console.WriteLine($"[DEBUG] VoyageAI batch {i/rateLimitBatchSize + 1} successful: {batchEmbeddings.Count} embeddings");
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[WARNING] VoyageAI batch {i/rateLimitBatchSize + 1} failed, using individual fallback");
+                        // Fallback to individual generation for this batch
+                        var individualEmbeddings = await GenerateIndividualEmbeddingsAsync(currentBatch);
+                        allEmbeddings.AddRange(individualEmbeddings);
+                    }
+                    
+                    // Smart rate limiting: Detect if we hit rate limits and adjust
+                    if (i + rateLimitBatchSize < texts.Count)
+                    {
+                        // Check if we got rate limited in the last batch
+                        var lastBatchSuccess = batchEmbeddings != null && batchEmbeddings.Count > 0;
+                        
+                        if (!lastBatchSuccess)
+                        {
+                            // Rate limited - wait 20 seconds for 3 RPM
+                            Console.WriteLine($"[INFO] Rate limit detected, waiting 20 seconds for 3 RPM limit...");
+                            await Task.Delay(20000);
+                        }
+                        else
+                        {
+                            // No rate limit - continue at full speed (2000 RPM)
+                            Console.WriteLine($"[INFO] No rate limit detected, continuing at full speed (2000 RPM)");
+                        }
+                    }
+                }
+                
+                if (allEmbeddings.Count == texts.Count)
+                {
+                    Console.WriteLine($"[DEBUG] VoyageAI batch processing completed: {allEmbeddings.Count} embeddings");
+                    return allEmbeddings;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[DEBUG] VoyageAI batch processing failed: {ex.Message}");
+        }
+
+        // Final fallback: generate embeddings individually (but still in parallel)
+        Console.WriteLine($"[DEBUG] Falling back to individual embedding generation for {texts.Count} chunks");
         var embeddingTasks = texts.Select(async text => await TryGenerateEmbeddingWithFallback(text)).ToList();
         var embeddings = await Task.WhenAll(embeddingTasks);
         
         return embeddings.Where(e => e != null).Select(e => e!).ToList();
+    }
+    
+    /// <summary>
+    /// Generates embeddings for a batch using VoyageAI directly
+    /// </summary>
+    private async Task<List<List<float>>?> GenerateVoyageAIBatchAsync(List<string> texts, AIProviderConfig config)
+    {
+        try
+        {
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {config.EmbeddingApiKey}");
+            
+            var payload = new
+            {
+                input = texts,
+                model = config.EmbeddingModel ?? "voyage-3.5",
+                input_type = "document"
+            };
+            
+            var jsonContent = System.Text.Json.JsonSerializer.Serialize(payload);
+            var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+            
+            var response = await client.PostAsync("https://api.voyageai.com/v1/embeddings", content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+            
+            if (response.IsSuccessStatusCode)
+            {
+                return ParseVoyageAIBatchResponse(responseContent);
+            }
+            else
+            {
+                Console.WriteLine($"[DEBUG] VoyageAI batch request failed: {response.StatusCode} - {responseContent}");
+                return null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[DEBUG] VoyageAI batch generation failed: {ex.Message}");
+            return null;
+        }
+    }
+    
+    /// <summary>
+    /// Parses VoyageAI batch response
+    /// </summary>
+    private static List<List<float>>? ParseVoyageAIBatchResponse(string response)
+    {
+        try
+        {
+            using var doc = System.Text.Json.JsonDocument.Parse(response);
+            
+            if (doc.RootElement.TryGetProperty("data", out var dataArray) && dataArray.ValueKind == JsonValueKind.Array)
+            {
+                var embeddings = new List<List<float>>();
+                
+                foreach (var item in dataArray.EnumerateArray())
+                {
+                    if (item.TryGetProperty("embedding", out var embeddingArray) && embeddingArray.ValueKind == JsonValueKind.Array)
+                    {
+                        var embedding = embeddingArray.EnumerateArray()
+                            .Select(x => x.GetSingle())
+                            .ToList();
+                        embeddings.Add(embedding);
+                    }
+                }
+                
+                return embeddings.Count > 0 ? embeddings : null;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[DEBUG] Failed to parse VoyageAI batch response: {ex.Message}");
+        }
+        
+        return null;
+    }
+    
+    /// <summary>
+    /// Generates embeddings individually for a batch as fallback
+    /// </summary>
+    private async Task<List<List<float>>> GenerateIndividualEmbeddingsAsync(List<string> texts)
+    {
+        var embeddings = new List<List<float>>();
+        
+        foreach (var text in texts)
+        {
+            var embedding = await TryGenerateEmbeddingWithFallback(text);
+            embeddings.Add(embedding ?? new List<float>());
+        }
+        
+        return embeddings;
     }
 
     private static double ComputeCosineSimilarity(List<float> a, List<float> b)
@@ -278,7 +544,167 @@ public class DocumentService(
         };
 
         return Task.FromResult(stats);
+    }
 
+    /// <summary>
+    /// Regenerate embeddings for all existing documents (useful for fixing missing embeddings)
+    /// </summary>
+    public async Task<bool> RegenerateAllEmbeddingsAsync()
+    {
+        try
+        {
+            Console.WriteLine("[INFO] Starting embedding regeneration for all documents...");
+            
+            var allDocuments = await documentRepository.GetAllAsync();
+            var totalChunks = allDocuments.Sum(d => d.Chunks.Count);
+            var processedChunks = 0;
+            var successCount = 0;
+            
+            // Collect all chunks that need embedding regeneration
+            var chunksToProcess = new List<DocumentChunk>();
+            var documentChunkMap = new Dictionary<DocumentChunk, Document>();
+            
+            foreach (var document in allDocuments)
+            {
+                Console.WriteLine($"[INFO] Document: {document.FileName} ({document.Chunks.Count} chunks)");
+                
+                foreach (var chunk in document.Chunks)
+                {
+                    // Skip if embedding already exists and is valid
+                    if (chunk.Embedding != null && chunk.Embedding.Count > 0)
+                    {
+                        processedChunks++;
+                        continue;
+                    }
+                    
+                    chunksToProcess.Add(chunk);
+                    documentChunkMap[chunk] = document;
+                }
+            }
+            
+            Console.WriteLine($"[INFO] Total chunks to process: {chunksToProcess.Count} out of {totalChunks}");
+            
+            if (chunksToProcess.Count == 0)
+            {
+                Console.WriteLine("[INFO] All chunks already have valid embeddings. No processing needed.");
+                return true;
+            }
+            
+            // Process chunks in batches of 128 (VoyageAI max batch size)
+            const int batchSize = 128;
+            var totalBatches = (int)Math.Ceiling((double)chunksToProcess.Count / batchSize);
+            
+            Console.WriteLine($"[INFO] Processing in {totalBatches} batches of {batchSize} chunks");
+            
+            for (int batchIndex = 0; batchIndex < totalBatches; batchIndex++)
+            {
+                var startIndex = batchIndex * batchSize;
+                var endIndex = Math.Min(startIndex + batchSize, chunksToProcess.Count);
+                var currentBatch = chunksToProcess.Skip(startIndex).Take(endIndex - startIndex).ToList();
+                
+                Console.WriteLine($"[INFO] Processing batch {batchIndex + 1}/{totalBatches}: chunks {startIndex + 1}-{endIndex}");
+                
+                // Generate embeddings for current batch
+                var batchContents = currentBatch.Select(c => c.Content).ToList();
+                var batchEmbeddings = await TryGenerateEmbeddingsBatchAsync(batchContents);
+                
+                if (batchEmbeddings != null && batchEmbeddings.Count == currentBatch.Count)
+                {
+                    // Apply embeddings to chunks
+                    for (int i = 0; i < currentBatch.Count; i++)
+                    {
+                        var chunk = currentBatch[i];
+                        var embedding = batchEmbeddings[i];
+                        
+                        if (embedding != null && embedding.Count > 0)
+                        {
+                            chunk.Embedding = embedding;
+                            successCount++;
+                            Console.WriteLine($"[DEBUG] Chunk {chunk.Id}: Batch embedding successful ({embedding.Count} dimensions)");
+                        }
+                        else
+                        {
+                            Console.WriteLine($"[WARNING] Chunk {chunk.Id}: Batch embedding failed, trying individual generation");
+                            
+                            // Fallback to individual generation
+                            var individualEmbedding = await TryGenerateEmbeddingWithFallback(chunk.Content);
+                            if (individualEmbedding != null && individualEmbedding.Count > 0)
+                            {
+                                chunk.Embedding = individualEmbedding;
+                                successCount++;
+                                Console.WriteLine($"[DEBUG] Chunk {chunk.Id}: Individual embedding successful ({individualEmbedding.Count} dimensions)");
+                            }
+                            else
+                            {
+                                Console.WriteLine($"[WARNING] Chunk {chunk.Id}: All embedding methods failed");
+                            }
+                        }
+                        
+                        processedChunks++;
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"[WARNING] Batch {batchIndex + 1} failed, processing individually");
+                    
+                    // Process chunks individually if batch fails
+                    foreach (var chunk in currentBatch)
+                    {
+                        try
+                        {
+                            var newEmbedding = await TryGenerateEmbeddingWithFallback(chunk.Content);
+                            
+                            if (newEmbedding != null && newEmbedding.Count > 0)
+                            {
+                                chunk.Embedding = newEmbedding;
+                                successCount++;
+                                Console.WriteLine($"[DEBUG] Chunk {chunk.Id}: Individual embedding successful ({newEmbedding.Count} dimensions)");
+                            }
+                            else
+                            {
+                                Console.WriteLine($"[WARNING] Chunk {chunk.Id}: Failed to generate embedding");
+                            }
+                            
+                            processedChunks++;
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"[ERROR] Chunk {chunk.Id}: Failed to regenerate embedding: {ex.Message}");
+                            processedChunks++;
+                        }
+                    }
+                }
+                
+                // Progress update
+                Console.WriteLine($"[INFO] Progress: {processedChunks}/{chunksToProcess.Count} chunks processed, {successCount} embeddings generated");
+                
+                // Rate limiting: Wait between batches (VoyageAI 3 RPM limit)
+                if (batchIndex < totalBatches - 1) // Don't wait after last batch
+                {
+                    var waitTime = 20; // 20 seconds for 3 RPM
+                    Console.WriteLine($"[INFO] Rate limiting: Waiting {waitTime} seconds before next batch...");
+                    await Task.Delay(waitTime * 1000);
+                }
+            }
+            
+            // Save all documents with updated embeddings
+            var documentsToUpdate = documentChunkMap.Values.Distinct().ToList();
+            Console.WriteLine($"[INFO] Saving {documentsToUpdate.Count} documents with updated embeddings...");
+            
+            foreach (var document in documentsToUpdate)
+            {
+                await documentRepository.DeleteAsync(document.Id);
+                await documentRepository.AddAsync(document);
+            }
+            
+            Console.WriteLine($"[INFO] Embedding regeneration completed. {successCount} embeddings generated for {processedChunks} chunks in {totalBatches} batches.");
+            return successCount > 0;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[ERROR] Failed to regenerate embeddings: {ex.Message}");
+            return false;
+        }
     }
 
     public async Task<RagResponse> GenerateRagAnswerAsync(string query, int maxResults = 5)
@@ -294,8 +720,8 @@ public class DocumentService(
 
         List<DocumentChunk> relevantChunks;
 
-        // Increase maxResults for better document coverage
-        var adjustedMaxResults = Math.Max(maxResults * 3, 15); // Minimum 15 chunks
+        // Increase maxResults for better document coverage, but respect user's maxResults
+        var adjustedMaxResults = maxResults == 1 ? 1 : Math.Max(maxResults * 2, 5); // Respect maxResults=1, otherwise reasonable increase
 
         if (isCrossDocument)
         {
@@ -487,20 +913,27 @@ public class DocumentService(
         Console.WriteLine($"[DEBUG] ApplyDiversityAndSelect: Total chunks: {chunks.Count}, Unique documents: {uniqueDocumentIds.Count}");
         Console.WriteLine($"[DEBUG] Document IDs: {string.Join(", ", uniqueDocumentIds.Take(5))}");
 
-        // Calculate min chunks per document - ensure we don't exceed available chunks
-        var minChunksPerDocument = Math.Max(1, Math.Min(2, maxResults / uniqueDocumentIds.Count)); // Min 1, Max 2
-        var maxChunksPerDocument = Math.Max(minChunksPerDocument, maxResults); // Allow more chunks per doc
+        // Calculate min chunks per document - respect maxResults constraint
+        var minChunksPerDocument = Math.Max(1, Math.Min(2, Math.Max(1, maxResults / uniqueDocumentIds.Count))); // Min 1, Max 2
+        var maxChunksPerDocument = Math.Min(maxResults, Math.Max(minChunksPerDocument, 2)); // Don't exceed maxResults
 
         Console.WriteLine($"[DEBUG] Min chunks per doc: {minChunksPerDocument}, Max chunks per doc: {maxChunksPerDocument}");
 
         var selectedChunks = new List<DocumentChunk>();
         var documentChunkCounts = new Dictionary<Guid, int>();
 
-        // First pass: ensure minimum representation from each document
+        // First pass: ensure minimum representation from each document, but respect maxResults
+        var totalSelected = 0;
         foreach (var documentId in uniqueDocumentIds)
         {
+            if (totalSelected >= maxResults) break; // Stop if we've reached maxResults
+            
             var availableChunks = chunks.Where(c => c.DocumentId == documentId).ToList();
             var actualMinChunks = Math.Min(minChunksPerDocument, availableChunks.Count);
+            
+            // Don't exceed maxResults
+            var availableSlots = maxResults - totalSelected;
+            actualMinChunks = Math.Min(actualMinChunks, availableSlots);
 
             var documentChunks = availableChunks
                                      .OrderByDescending(c => c.RelevanceScore ?? 0.0)
@@ -511,9 +944,10 @@ public class DocumentService(
 
             selectedChunks.AddRange(documentChunks);
             documentChunkCounts[documentId] = documentChunks.Count;
+            totalSelected += documentChunks.Count;
         }
 
-        // Second pass: fill remaining slots with best remaining chunks
+        // Second pass: fill remaining slots with best remaining chunks, but respect maxResults
         var remainingSlots = maxResults - selectedChunks.Count;
         if (remainingSlots > 0)
         {
@@ -523,7 +957,7 @@ public class DocumentService(
 
             foreach (var chunk in remainingChunks)
             {
-                if (remainingSlots <= 0) break;
+                if (remainingSlots <= 0 || selectedChunks.Count >= maxResults) break;
 
                 var currentCount = documentChunkCounts.GetValueOrDefault(chunk.DocumentId, 0);
                 if (currentCount < maxChunksPerDocument)
@@ -535,9 +969,10 @@ public class DocumentService(
             }
         }
 
+        // Ensure we don't exceed maxResults
         var finalResult = selectedChunks.Take(maxResults).ToList();
 
-        Console.WriteLine($"[DEBUG] Final result: {finalResult.Count} chunks from {finalResult.Select(c => c.DocumentId).Distinct().Count()} documents");
+        Console.WriteLine($"[DEBUG] Final result: {finalResult.Count} chunks from {finalResult.Select(c => c.DocumentId).Distinct().Count()} documents (maxResults requested: {maxResults})");
 
         return finalResult;
     }
@@ -900,7 +1335,7 @@ public class DocumentService(
     /// </summary>
     private async Task<List<DocumentChunk>> PerformCrossDocumentSearchAsync(string query, List<Document> allDocuments, int maxResults)
     {
-        var adjustedMaxResults = Math.Max(maxResults, 3); // Minimum 3 results for cross-document
+                    var adjustedMaxResults = maxResults == 1 ? 1 : Math.Max(maxResults, 3); // Respect maxResults=1, otherwise minimum 3
 
         // Direct search with original query for cross-document
         var searchResults = Math.Max(adjustedMaxResults * 3, options.MaxSearchResults);

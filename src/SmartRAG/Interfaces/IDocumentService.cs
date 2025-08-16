@@ -15,4 +15,5 @@ public interface IDocumentService
     Task<List<DocumentChunk>> SearchDocumentsAsync(string query, int maxResults = 5);
     Task<Dictionary<string, object>> GetStorageStatisticsAsync();
     Task<RagResponse> GenerateRagAnswerAsync(string query, int maxResults = 5);
+    Task<bool> RegenerateAllEmbeddingsAsync();
 }
