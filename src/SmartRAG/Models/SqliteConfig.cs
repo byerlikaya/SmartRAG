@@ -8,6 +8,4 @@ public class SqliteConfig
     public string DatabasePath { get; set; } = "SmartRag.db";
 
     public bool EnableForeignKeys { get; set; } = true;
-
-    public int ConnectionTimeout { get; set; } = 30;
 }
