@@ -168,6 +168,12 @@ cp src/SmartRAG.API/appsettings.json src/SmartRAG.API/appsettings.Development.js
       "ApiKey": "sk-proj-YOUR_REAL_KEY",
       "Model": "gpt-4",
       "EmbeddingModel": "text-embedding-ada-002"
+    },
+    "Anthropic": {
+      "ApiKey": "sk-ant-YOUR_REAL_KEY",
+      "Model": "claude-3.5-sonnet",
+      "EmbeddingApiKey": "voyage-YOUR_REAL_KEY",
+      "EmbeddingModel": "voyage-large-2"
     }
   },
   "Storage": {
@@ -180,6 +186,14 @@ cp src/SmartRAG.API/appsettings.json src/SmartRAG.API/appsettings.Development.js
 
 📖 **[Complete Configuration Guide](docs/configuration.md) | [🔧 Troubleshooting Guide](docs/troubleshooting.md)**
 
+### 🔑 **Important Note for Anthropic Users**
+**Anthropic Claude models require a separate VoyageAI API key for embeddings:**
+- **Why?** Anthropic doesn't provide embedding models, so we use VoyageAI's high-quality embeddings
+- **Official Documentation:** [Anthropic Embeddings Guide](https://docs.anthropic.com/en/docs/build-with-claude/embeddings#how-to-get-embeddings-with-anthropic)
+- **Get API Key:** [VoyageAI API Keys](https://console.voyageai.com/)
+- **Models:** `voyage-large-2` (recommended), `voyage-code-2`, `voyage-01`
+- **Documentation:** [VoyageAI Embeddings API](https://docs.voyageai.com/embeddings/)
+
 ## 🤖 AI Providers - Universal Support
 
 ### 🎯 **Dedicated Providers** (Optimized & Battle-Tested)
@@ -187,7 +201,7 @@ cp src/SmartRAG.API/appsettings.json src/SmartRAG.API/appsettings.Development.js
 | Provider | Capabilities | Special Features |
 |----------|-------------|------------------|
 | **🤖 OpenAI** | ✅ Latest GPT models<br/>✅ Advanced embeddings | Industry standard, reliable, extensive model family |
-| **🧠 Anthropic** | ✅ Claude family models<br/>✅ High-quality embeddings | Safety-focused, constitutional AI, long context |
+| **🧠 Anthropic** | ✅ Claude family models<br/>✅ VoyageAI embeddings | Safety-focused, constitutional AI, long context, requires separate VoyageAI API key |
 | **🌟 Google Gemini** | ✅ Gemini models<br/>✅ Multimodal embeddings | Multimodal support, latest Google AI innovations |
 | **☁️ Azure OpenAI** | ✅ Enterprise GPT models<br/>✅ Enterprise embeddings | GDPR compliant, enterprise security, SLA support |
 
@@ -316,7 +330,9 @@ services.AddSmartRAG(configuration, options =>
       "ApiKey": "sk-ant-...",
       "Model": "claude-3.5-sonnet",
       "MaxTokens": 4096,
-      "Temperature": 0.3
+      "Temperature": 0.3,
+      "EmbeddingApiKey": "voyage-...",
+      "EmbeddingModel": "voyage-large-2"
     }
   },
   "Storage": {
