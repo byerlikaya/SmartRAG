@@ -4,6 +4,8 @@ using SmartRAG.Entities;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
 using System.Globalization;
+using Document = SmartRAG.Entities.Document;
+using QdrantDocument = Qdrant.Client.Grpc.Document;
 
 namespace SmartRAG.Repositories;
 public class QdrantDocumentRepository : IDocumentRepository
@@ -219,7 +221,7 @@ public class QdrantDocumentRepository : IDocumentRepository
     /// Create Document from metadata
     /// </summary>
     private static Document CreateDocumentFromMetadata(DocumentMetadata metadata)
-        => new()
+        => new Document()
         {
             Id = metadata.Id,
             FileName = metadata.FileName,
@@ -484,7 +486,7 @@ public class QdrantDocumentRepository : IDocumentRepository
         }
         catch (Exception)
         {
-            return [];
+            return new List<Document>();
         }
     }
 
@@ -740,7 +742,7 @@ public class QdrantDocumentRepository : IDocumentRepository
         {
             Console.WriteLine($"[INFO] Using global fallback text search for query: {query}");
             var queryLower = query.ToLowerInvariant();
-            var relevantChunks = new List<DocumentChunk>();
+            var relevantChunk = new List<DocumentChunk>();
 
             // Get all collections to search in
             var collections = await _client.ListCollectionsAsync();
@@ -794,9 +796,9 @@ public class QdrantDocumentRepository : IDocumentRepository
                                         ChunkIndex = int.Parse(chunkIndex),
                                         RelevanceScore = 0.5 // Default score for text search
                                     };
-                                    relevantChunks.Add(chunk);
+                                    relevantChunk.Add(chunk);
 
-                                    if (relevantChunks.Count >= maxResults)
+                                    if (relevantChunk.Count >= maxResults)
                                         break;
                                 }
                             }
@@ -810,7 +812,7 @@ public class QdrantDocumentRepository : IDocumentRepository
                         }
                     }
 
-                    if (relevantChunks.Count >= maxResults)
+                    if (relevantChunk.Count >= maxResults)
                         break;
                 }
                 catch (Exception ex)
@@ -819,8 +821,8 @@ public class QdrantDocumentRepository : IDocumentRepository
                 }
             }
 
-            Console.WriteLine($"[INFO] Global fallback text search found {relevantChunks.Count} chunks");
-            return relevantChunks.Take(maxResults).ToList();
+            Console.WriteLine($"[INFO] Global fallback text search found {relevantChunk.Count} chunks");
+            return relevantChunk.Take(maxResults).ToList();
         }
         catch (Exception ex)
         {
@@ -967,7 +969,7 @@ public class QdrantDocumentRepository : IDocumentRepository
             if (documentCollections.Any())
             {
                 // Get dimension from first available collection
-                var firstCollection = documentCollections.First();
+                var firstCollection = documentCollections.Any() ? documentCollections.First() : _collectionName;
                 var collectionInfo = await _client.GetCollectionInfoAsync(firstCollection);
 
                 // Try to get dimension from collection info
