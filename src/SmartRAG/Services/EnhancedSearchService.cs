@@ -1,6 +1,8 @@
 using Microsoft.SemanticKernel;
+using Microsoft.Extensions.Configuration;
 using System.ComponentModel;
 using SmartRAG.Entities;
+using SmartRAG.Enums;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
 using SmartRAG.Factories;
@@ -79,7 +81,7 @@ Return only the chunk IDs in order of relevance, separated by commas.
             // Parse AI response and return relevant chunks
             return ParseSearchResults(response, allChunks, maxResults);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             // Fallback to basic search if Semantic Kernel fails
             return await FallbackSearchAsync(query, maxResults);
@@ -145,13 +147,17 @@ Return only the chunk IDs in order of relevance, separated by commas.
         {
             // Use Azure OpenAI if available
             builder.AddAzureOpenAIChatCompletion(azureConfig.Model, azureConfig.Endpoint, azureConfig.ApiKey);
+#pragma warning disable SKEXP0010 // Experimental API
             builder.AddAzureOpenAIEmbeddingGenerator(azureConfig.Model, azureConfig.Endpoint, azureConfig.ApiKey);
+#pragma warning restore SKEXP0010
         }
         else if (openAIConfig != null && !string.IsNullOrEmpty(openAIConfig.ApiKey))
         {
             // Use OpenAI if available
             builder.AddOpenAIChatCompletion(openAIConfig.Model, openAIConfig.ApiKey);
+#pragma warning disable SKEXP0010 // Experimental API
             builder.AddOpenAIEmbeddingGenerator(openAIConfig.Model, openAIConfig.ApiKey);
+#pragma warning restore SKEXP0010
         }
         else
         {
