@@ -5,7 +5,6 @@ using SmartRAG.Enums;
 using SmartRAG.Factories;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
-using SmartRAG.Providers;
 
 namespace SmartRAG.Services;
 
@@ -43,22 +42,26 @@ public class DocumentService(
 
         var document = await documentParserService.ParseDocumentAsync(fileStream, fileName, contentType, uploadedBy);
 
-        // Generate embeddings for each chunk to enable semantic search
-        foreach (var chunk in document.Chunks)
+        // Generate embeddings for all chunks in batch for better performance
+        var allChunkContents = document.Chunks.Select(c => c.Content).ToList();
+        var allEmbeddings = await TryGenerateEmbeddingsBatchAsync(allChunkContents);
+
+        // Apply embeddings to chunks
+        for (int i = 0; i < document.Chunks.Count; i++)
         {
             try
             {
+                var chunk = document.Chunks[i];
                 // Ensure chunk metadata is consistent
                 chunk.DocumentId = document.Id;
-                var embedding = await TryGenerateEmbeddingWithFallback(chunk.Content);
-                chunk.Embedding = embedding ?? [];
+                chunk.Embedding = allEmbeddings?[i] ?? [];
                 if (chunk.CreatedAt == default)
                     chunk.CreatedAt = DateTime.UtcNow;
             }
             catch
             {
                 // If embedding generation fails, leave it empty and continue
-                chunk.Embedding = [];
+                document.Chunks[i].Embedding = [];
             }
         }
 
@@ -77,9 +80,40 @@ public class DocumentService(
     {
         if (string.IsNullOrWhiteSpace(query))
             throw new ArgumentException("Query cannot be empty", nameof(query));
-        var cleanedQuery = query;
 
-        // For semantic search, try to use a provider that supports embeddings
+        try
+        {
+            // Use EnhancedSearchService with Semantic Kernel for better search
+            var enhancedSearchService = new EnhancedSearchService(aiProviderFactory, documentRepository, configuration);
+            var enhancedResults = await enhancedSearchService.EnhancedSemanticSearchAsync(query, maxResults * 2);
+            
+            if (enhancedResults.Count > 0)
+            {
+                Console.WriteLine($"[DEBUG] EnhancedSearchService returned {enhancedResults.Count} chunks from {enhancedResults.Select(c => c.DocumentId).Distinct().Count()} documents");
+                
+                // Apply diversity selection to ensure chunks from different documents
+                var diverseResults = ApplyDiversityAndSelect(enhancedResults, maxResults);
+                
+                Console.WriteLine($"[DEBUG] Final diverse results: {diverseResults.Count} chunks from {diverseResults.Select(c => c.DocumentId).Distinct().Count()} documents");
+                
+                return diverseResults;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[WARNING] EnhancedSearchService failed: {ex.Message}. Falling back to basic search.");
+        }
+
+        // Fallback to basic search if Semantic Kernel fails
+        return await PerformBasicSearchAsync(query, maxResults);
+    }
+
+    /// <summary>
+    /// Basic search fallback when Semantic Kernel is not available
+    /// </summary>
+    private async Task<List<DocumentChunk>> PerformBasicSearchAsync(string query, int maxResults)
+    {
+        var cleanedQuery = query;
         var allDocs = await documentRepository.GetAllAsync();
 
         // Fix any chunks with missing DocumentId
@@ -92,9 +126,11 @@ public class DocumentService(
             }
         }
 
+        var allResults = new List<DocumentChunk>();
+
         try
         {
-            // Try embedding generation (will use embedding-capable provider if available)
+            // Try embedding generation
             var queryEmbedding = await TryGenerateEmbeddingWithFallback(cleanedQuery);
             if (queryEmbedding != null && queryEmbedding.Count > 0)
             {
@@ -111,51 +147,38 @@ public class DocumentService(
                     }
                 }
 
-                var topVec = vecScored
+                var semanticResults = vecScored
                     .OrderByDescending(x => x.score)
-                    .Take(maxResults)
+                    .Take(maxResults * 2)
                     .Select(x => { x.chunk.RelevanceScore = x.score; return x.chunk; })
                     .ToList();
 
-                if (topVec.Count > 0)
-                    return topVec;
+                allResults.AddRange(semanticResults);
             }
         }
         catch
         {
+            // Continue with other search methods
         }
 
-        var primary = await documentRepository.SearchAsync(cleanedQuery, maxResults);
+        // Repository search
+        var primary = await documentRepository.SearchAsync(cleanedQuery, maxResults * 2);
+        allResults.AddRange(primary);
 
-        Console.WriteLine($"[DEBUG] SearchDocumentsAsync: Repository returned {primary.Count} chunks");
-        Console.WriteLine($"[DEBUG] SearchDocumentsAsync: Unique documents: {primary.Select(c => c.DocumentId).Distinct().Count()}");
-
-        // Debug DocumentId parsing
-        foreach (var chunk in primary.Take(5))
-        {
-            Console.WriteLine($"[DEBUG] Chunk {chunk.Id}: DocumentId = {chunk.DocumentId}, IsEmpty = {chunk.DocumentId == Guid.Empty}");
-        }
-
-
-        foreach (var chunk in primary)
-        {
-            if (chunk.DocumentId == Guid.Empty)
-            {
-                var parentDoc = allDocs.FirstOrDefault(d => d.Chunks.Any(c => c.Id == chunk.Id));
-                if (parentDoc != null)
-                    chunk.DocumentId = parentDoc.Id;
-            }
-        }
-
-        // If primary search yields poor results, try fuzzy matching
-        if (primary.Count == 0 || primary.Count < maxResults / 2)
+        // Fuzzy search if needed
+        if (allResults.Count < maxResults)
         {
             var fuzzyResults = await PerformFuzzySearch(cleanedQuery, maxResults);
-            primary.AddRange(fuzzyResults.Where(f => !primary.Any(p => p.Id == f.Id)));
+            allResults.AddRange(fuzzyResults.Where(f => !allResults.Any(p => p.Id == f.Id)));
         }
 
-        // Do not trim here; let callers handle reranking/diversity and final limits
-        return primary;
+        // Remove duplicates and ensure diversity
+        var uniqueResults = allResults
+            .GroupBy(c => c.Id)
+            .Select(g => g.OrderByDescending(c => c.RelevanceScore ?? 0.0).First())
+            .ToList();
+
+        return ApplyDiversityAndSelect(uniqueResults, maxResults);
     }
 
     private async Task<List<float>?> TryGenerateEmbeddingWithFallback(string text)
@@ -198,6 +221,33 @@ public class DocumentService(
         }
     }
 
+    /// <summary>
+    /// Generates embeddings for multiple texts in batch for better performance
+    /// </summary>
+    private async Task<List<List<float>>?> TryGenerateEmbeddingsBatchAsync(List<string> texts)
+    {
+        if (texts == null || texts.Count == 0)
+            return null;
+
+        try
+        {
+            // Try batch embedding generation first
+            var batchEmbeddings = await aiService.GenerateEmbeddingsBatchAsync(texts);
+            if (batchEmbeddings != null && batchEmbeddings.Count == texts.Count)
+                return batchEmbeddings;
+        }
+        catch
+        {
+            // Fallback to individual generation if batch fails
+        }
+
+        // Fallback: generate embeddings individually (but still in parallel)
+        var embeddingTasks = texts.Select(async text => await TryGenerateEmbeddingWithFallback(text)).ToList();
+        var embeddings = await Task.WhenAll(embeddingTasks);
+        
+        return embeddings.Where(e => e != null).Select(e => e!).ToList();
+    }
+
     private static double ComputeCosineSimilarity(List<float> a, List<float> b)
     {
         if (a == null || b == null) return 0.0;
@@ -236,14 +286,11 @@ public class DocumentService(
         if (string.IsNullOrWhiteSpace(query))
             throw new ArgumentException("Query cannot be empty", nameof(query));
 
-        // Note: Semantic Kernel enhancement is available through EnhancedSearchService
-        // but not integrated into DocumentService to maintain simplicity
-
         // Get all documents for cross-document analysis
         var allDocuments = await GetAllDocumentsAsync();
 
         // Cross-document detection
-        var isCrossDocument = DocumentService.IsCrossDocumentQueryAsync(query, allDocuments);
+        var isCrossDocument = IsCrossDocumentQueryAsync(query, allDocuments);
 
         List<DocumentChunk> relevantChunks;
 
@@ -259,15 +306,13 @@ public class DocumentService(
             relevantChunks = await PerformStandardSearchAsync(query, adjustedMaxResults);
         }
 
-        Console.WriteLine($"[DEBUG] GenerateRagAnswerAsync: Got {relevantChunks.Count} chunks from search");
-        Console.WriteLine($"[DEBUG] GenerateRagAnswerAsync: Unique documents: {relevantChunks.Select(c => c.DocumentId).Distinct().Count()}");
-
         // Optimize context assembly: combine chunks intelligently
         var contextMaxResults = isCrossDocument ? Math.Max(maxResults, 3) : maxResults;
 
-        var optimizedChunks = DocumentService.OptimizeContextWindow(relevantChunks, contextMaxResults, query);
+        var optimizedChunks = OptimizeContextWindow(relevantChunks, contextMaxResults, query);
 
         var documentIdToName = new Dictionary<Guid, string>();
+
         foreach (var docId in optimizedChunks.Select(c => c.DocumentId).Distinct())
         {
             var doc = await GetDocumentAsync(docId);
@@ -279,6 +324,7 @@ public class DocumentService(
 
         // Create enhanced context with metadata for better AI understanding
         var enhancedContext = new List<string>();
+
         foreach (var chunk in optimizedChunks.OrderByDescending(c => c.RelevanceScore ?? 0.0))
         {
             var docName = documentIdToName.TryGetValue(chunk.DocumentId, out var name) ? name : "Document";
@@ -313,12 +359,6 @@ public class DocumentService(
             Configuration = GetRagConfiguration()
         };
     }
-
-    // Semantic Kernel enhancement methods removed to keep DocumentService simple
-    // Use EnhancedSearchService for advanced Semantic Kernel features
-
-    // All Semantic Kernel methods removed to keep DocumentService simple
-    // Use EnhancedSearchService for advanced Semantic Kernel features
 
     /// <summary>
     /// Applies advanced re-ranking algorithm to improve chunk selection
@@ -370,11 +410,11 @@ public class DocumentService(
 
             // Generic content relevance boost
             var contentBoost = 0.0;
-            
+
             // Boost for query term matches in content
             var queryTermMatches = queryKeywords.Count(term => chunkContent.Contains(term, StringComparison.OrdinalIgnoreCase));
             contentBoost += Math.Min(0.3, queryTermMatches * 0.1); // Max 30% boost
-            
+
             enhancedScore += contentBoost;
 
             // Factor 2: Content length optimization (not too short, not too long)

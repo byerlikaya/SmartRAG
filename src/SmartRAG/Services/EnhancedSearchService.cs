@@ -46,7 +46,9 @@ public class EnhancedSearchService
             var allDocuments = await _documentRepository.GetAllAsync();
             var allChunks = allDocuments.SelectMany(d => d.Chunks).ToList();
             
-            // Create semantic search function
+            Console.WriteLine($"[DEBUG] EnhancedSearchService: Found {allDocuments.Count} documents with {allChunks.Count} total chunks");
+            
+            // Create semantic search function with better prompt
             var searchFunction = kernel.CreateFunctionFromPrompt(@"
 You are an expert search assistant. Analyze the user query and identify the most relevant document chunks.
 
@@ -60,14 +62,16 @@ Instructions:
 2. Identify key concepts and entities
 3. Rank chunks by relevance to the query
 4. Consider both semantic similarity and keyword matching
-5. Return the most relevant chunks
+5. Return ONLY the chunk IDs in order of relevance, separated by commas
 
-Return only the chunk IDs in order of relevance, separated by commas.
+Example response format: chunk1,chunk2,chunk3
+
+Return only chunk IDs, nothing else.
 ");
             
-            // Prepare chunk information for the AI
+            // Prepare chunk information for the AI (limit content length)
             var chunkInfo = string.Join("\n", allChunks.Select((c, i) => 
-                $"Chunk {i}: ID={c.Id}, Content={c.Content.Substring(0, Math.Min(200, c.Content.Length))}..."));
+                $"Chunk {i}: ID={c.Id}, Content={c.Content.Substring(0, Math.Min(150, c.Content.Length))}..."));
             
             var arguments = new KernelArguments
             {
@@ -78,14 +82,26 @@ Return only the chunk IDs in order of relevance, separated by commas.
             var result = await kernel.InvokeAsync(searchFunction, arguments);
             var response = result.GetValue<string>() ?? "";
             
+            Console.WriteLine($"[DEBUG] EnhancedSearchService: AI response: {response}");
+            
             // Parse AI response and return relevant chunks
-            return EnhancedSearchService.ParseSearchResults(response, allChunks, maxResults);
+            var parsedResults = EnhancedSearchService.ParseSearchResults(response, allChunks, maxResults);
+            
+            if (parsedResults.Count > 0)
+            {
+                Console.WriteLine($"[DEBUG] EnhancedSearchService: Successfully parsed {parsedResults.Count} chunks from {parsedResults.Select(c => c.DocumentId).Distinct().Count()} documents");
+                return parsedResults;
+            }
+            
+            Console.WriteLine($"[DEBUG] EnhancedSearchService: Failed to parse results, falling back to basic search");
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Fallback to basic search if Semantic Kernel fails
-            return await FallbackSearchAsync(query, maxResults);
+            Console.WriteLine($"[WARNING] EnhancedSearchService failed: {ex.Message}. Falling back to basic search.");
         }
+
+        // Fallback to basic search if Semantic Kernel fails
+        return await FallbackSearchAsync(query, maxResults);
     }
 
     /// <summary>
@@ -468,29 +484,82 @@ Sources:
         var allDocuments = await _documentRepository.GetAllAsync();
         var allChunks = allDocuments.SelectMany(d => d.Chunks).ToList();
         
-        // Simple keyword-based fallback
-        var queryWords = query.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        Console.WriteLine($"[DEBUG] FallbackSearchAsync: Searching in {allDocuments.Count} documents with {allChunks.Count} chunks");
+        
+        // Enhanced keyword-based fallback with better scoring
+        var queryWords = query.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Where(w => w.Length > 2) // Filter out very short words
+            .ToList();
         
         var scoredChunks = allChunks.Select(chunk =>
         {
             var score = 0.0;
             var content = chunk.Content.ToLowerInvariant();
             
+            // Exact word matches
             foreach (var word in queryWords)
             {
                 if (content.Contains(word))
-                    score += 1.0;
+                    score += 2.0; // Higher weight for exact matches
             }
+            
+            // Partial word matches (for names like "Barış Yerlikaya")
+            var queryPhrases = query.ToLowerInvariant().Split('.', '?', '!')
+                .Where(p => p.Length > 5)
+                .ToList();
+                
+            foreach (var phrase in queryPhrases)
+            {
+                var phraseWords = phrase.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+                    .Where(w => w.Length > 3)
+                    .ToList();
+                    
+                if (phraseWords.Count >= 2)
+                {
+                    var phraseText = string.Join(" ", phraseWords);
+                    if (content.Contains(phraseText))
+                        score += 5.0; // High weight for phrase matches
+                }
+            }
+            
+            // Document diversity boost
+            var documentChunks = allChunks.Where(c => c.DocumentId == chunk.DocumentId).Count();
+            var totalChunks = allChunks.Count;
+            var diversityBoost = Math.Max(0, 1.0 - (documentChunks / (double)totalChunks));
+            score += diversityBoost;
             
             chunk.RelevanceScore = score;
             return chunk;
         }).ToList();
         
-        return scoredChunks
+        var relevantChunks = scoredChunks
             .Where(c => c.RelevanceScore > 0)
             .OrderByDescending(c => c.RelevanceScore)
-            .Take(maxResults)
+            .Take(maxResults * 2) // Take more for diversity
             .ToList();
+            
+        Console.WriteLine($"[DEBUG] FallbackSearchAsync: Found {relevantChunks.Count} relevant chunks from {relevantChunks.Select(c => c.DocumentId).Distinct().Count()} documents");
+        
+        // Ensure document diversity
+        var diverseResults = new List<DocumentChunk>();
+        var documentCounts = new Dictionary<Guid, int>();
+        
+        foreach (var chunk in relevantChunks)
+        {
+            var currentCount = documentCounts.GetValueOrDefault(chunk.DocumentId, 0);
+            if (currentCount < 2) // Max 2 chunks per document
+            {
+                diverseResults.Add(chunk);
+                documentCounts[chunk.DocumentId] = currentCount + 1;
+                
+                if (diverseResults.Count >= maxResults)
+                    break;
+            }
+        }
+        
+        Console.WriteLine($"[DEBUG] FallbackSearchAsync: Final diverse results: {diverseResults.Count} chunks from {diverseResults.Select(c => c.DocumentId).Distinct().Count()} documents");
+        
+        return diverseResults;
     }
 }
 
