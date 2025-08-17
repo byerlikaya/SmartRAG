@@ -150,10 +150,7 @@ public abstract class BaseAIProvider : IAIProvider
     {
         try
         {
-            var options = new JsonSerializerOptions
-            {
-                Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
-            };
+            var options = GetJsonSerializerOptions();
             var json = JsonSerializer.Serialize(payload, options);
 
             var content = new StringContent(json, Encoding.UTF8, "application/json");
@@ -218,6 +215,19 @@ public abstract class BaseAIProvider : IAIProvider
 
         return "No response generated";
     }
+
+    /// <summary>
+    /// Shared JsonSerializerOptions for consistent serialization
+    /// </summary>
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
+    };
+
+    /// <summary>
+    /// Get shared JsonSerializerOptions instance
+    /// </summary>
+    private static JsonSerializerOptions GetJsonSerializerOptions() => _jsonOptions;
 
     #endregion
 }

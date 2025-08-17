@@ -97,4 +97,41 @@ public class DocumentsController(IDocumentService documentService, IDocumentPars
 
         return NoContent();
     }
+
+    /// <summary>
+    /// Regenerate embeddings for all existing documents
+    /// </summary>
+    [HttpPost("regenerate-embeddings")]
+    public async Task<ActionResult> RegenerateAllEmbeddings()
+    {
+        try
+        {
+            Console.WriteLine("[API] Embedding regeneration requested");
+            
+            var success = await documentService.RegenerateAllEmbeddingsAsync();
+            
+            if (success)
+            {
+                return Ok(new { 
+                    message = "Embedding regeneration completed successfully",
+                    timestamp = DateTime.UtcNow
+                });
+            }
+            else
+            {
+                return StatusCode(500, new { 
+                    message = "Embedding regeneration failed",
+                    timestamp = DateTime.UtcNow
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[API ERROR] Embedding regeneration failed: {ex.Message}");
+            return StatusCode(500, new { 
+                message = $"Internal server error: {ex.Message}",
+                timestamp = DateTime.UtcNow
+            });
+        }
+    }
 }
