@@ -547,11 +547,7 @@ We welcome contributions!
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🌟 Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=byerlikaya/SmartRAG&type=Date)](https://star-history.com/#byerlikaya/SmartRAG&Date)
-
----
 
 **Built with ❤️ by Barış Yerlikaya**
 
