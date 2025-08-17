@@ -73,7 +73,7 @@ dotnet add package SmartRAG
 
 ### PackageReference
 ```xml
-<PackageReference Include="SmartRAG" Version="1.0.0" />
+<PackageReference Include="SmartRAG" Version="1.0.1" />
 ```
 
 ## 🚀 Quick Start
@@ -525,7 +525,7 @@ We welcome contributions!
 
 ## 🆕 What's New
 
-### **Latest Release (v1.1.0)**
+### **Latest Release (v1.0.1)**
 - 🧠 **Smart Query Intent Detection** - Automatically routes queries to chat vs document search
 - 🌍 **Language-Agnostic Design** - Removed all hardcoded language patterns  
 - 🔍 **Enhanced Search Relevance** - Improved name detection and content scoring
