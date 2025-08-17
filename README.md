@@ -523,26 +523,18 @@ We welcome contributions!
 4. Add tests
 5. Submit a pull request
 
-## 📈 Roadmap
+## 🆕 What's New
 
-### **Version 1.1.0** ✅ **COMPLETED**
-- [x] **Smart Query Intent Detection** - Automatically routes queries to chat vs document search
-- [x] **Language-Agnostic Design** - Removed all hardcoded language patterns
-- [x] **Enhanced Search Relevance** - Improved name detection and content scoring
-- [x] **Unicode Normalization** - Fixed special character handling issues
-- [x] **Rate Limiting & Retry Logic** - Robust API handling with exponential backoff
-
-### **Version 1.2.0** 🚧 **IN PROGRESS**
-- [ ] Excel file support with EPPlus
-- [ ] Batch document processing
-- [ ] Advanced search filters
-- [ ] Performance monitoring
-
-### **Version 1.3.0** 🔮 **PLANNED**
-- [ ] Multi-modal document support (images, tables)
-- [ ] Real-time collaboration features
-- [ ] Advanced analytics dashboard
-- [ ] GraphQL API support
+### **Latest Release (v1.1.0)**
+- 🧠 **Smart Query Intent Detection** - Automatically routes queries to chat vs document search
+- 🌍 **Language-Agnostic Design** - Removed all hardcoded language patterns  
+- 🔍 **Enhanced Search Relevance** - Improved name detection and content scoring
+- 🔤 **Unicode Normalization** - Fixed special character handling issues
+- ⚡ **Rate Limiting & Retry Logic** - Robust API handling with exponential backoff
+- 🚀 **VoyageAI Integration** - Anthropic embedding support
+- 📚 **Enhanced Documentation** - Official documentation links
+- 🧹 **Configuration Cleanup** - Removed unnecessary fields
+- 🎯 **Project Simplification** - Streamlined for better performance
 
 ## 📚 Resources
 
