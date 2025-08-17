@@ -20,8 +20,8 @@ static void RegisterServices(IServiceCollection services, IConfiguration configu
 
     // Add SmartRag services with minimal configuration
     services.UseSmartRag(configuration,
-        storageProvider: StorageProvider.Redis,  // Default: InMemory
-        aiProvider: AIProvider.Gemini               // Use OpenAI provider
+        storageProvider: StorageProvider.InMemory,  // Default: InMemory
+        aiProvider: AIProvider.OpenAI               // Use OpenAI provider
     );
 
     services.AddCors(options =>
