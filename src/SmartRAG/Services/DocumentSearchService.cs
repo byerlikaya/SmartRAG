@@ -331,7 +331,7 @@ namespace SmartRAG.Services;
             .ToList();
 
         logger.LogDebug("PerformBasicSearchAsync: Query words: [{QueryWords}]", string.Join(", ", queryWords.Select(SanitizeForLog)));
-        logger.LogDebug("PerformBasicSearchAsync: Potential names: [{PotentialNames}]", string.Join(", ", potentialNames));
+        logger.LogDebug("PerformBasicSearchAsync: Potential names: [{PotentialNames}]", string.Join(", ", potentialNames.Select(SanitizeForLog)));
 
         var scoredChunks = allChunks.Select(chunk =>
         {
@@ -346,7 +346,7 @@ namespace SmartRAG.Services;
                 {
                     score += 200.0; // Very high weight for full name matches
                     logger.LogDebug("PerformBasicSearchAsync: Found FULL NAME match: '{FullName}' in chunk: {ChunkPreview}...",
-                        fullName, chunk.Content.Substring(0, Math.Min(100, chunk.Content.Length)));
+                        SanitizeForLog(fullName), chunk.Content.Substring(0, Math.Min(100, chunk.Content.Length)));
                 }
                 else if (potentialNames.Any(name => ContainsNormalizedName(content, name)))
                 {
