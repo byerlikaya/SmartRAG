@@ -19,7 +19,7 @@
     <RepositoryUrl>https://github.com/byerlikaya/SmartRAG</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageReleaseNotes>🔧 Bug Fixes & Improvements: Enhanced query intent detection, language-agnostic design, Unicode normalization, rate limiting improvements, VoyageAI integration, and comprehensive documentation updates</PackageReleaseNotes>
+    <PackageReleaseNotes>v1.0.1: Enhanced query intent detection, language-agnostic design, Unicode normalization, rate limiting improvements, VoyageAI integration, and comprehensive documentation updates</PackageReleaseNotes>
     <Copyright>Copyright © Barış Yerlikaya 2025</Copyright>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <IncludeSymbols>true</IncludeSymbols>
