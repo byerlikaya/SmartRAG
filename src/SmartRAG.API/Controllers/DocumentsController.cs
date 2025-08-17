@@ -13,7 +13,9 @@ namespace SmartRAG.API.Controllers;
 [Route("api/[controller]")]
 [Produces("application/json")]
 [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-public class DocumentsController(IDocumentService documentService, IDocumentParserService documentParser) : ControllerBase
+public class DocumentsController(
+    IDocumentService documentService,
+    IDocumentParserService documentParser) : ControllerBase
 {
     /// <summary>
     /// Gets supported file types and content types
@@ -59,6 +61,35 @@ public class DocumentsController(IDocumentService documentService, IDocumentPars
     }
 
     /// <summary>
+    /// Upload multiple documents to the system
+    /// </summary>
+    [HttpPost("upload-multiple")]
+    public async Task<ActionResult<List<Entities.Document>>> UploadDocuments(List<IFormFile> files)
+    {
+        if (files == null || files.Count == 0)
+            return BadRequest("No files provided");
+
+        try
+        {
+            var fileStreams = files.Select(f => f.OpenReadStream());
+            var fileNames = files.Select(f => f.FileName);
+            var contentTypes = files.Select(f => f.ContentType);
+
+            var documents = await documentService.UploadDocumentsAsync(
+                fileStreams, 
+                fileNames, 
+                contentTypes, 
+                "system");
+
+            return CreatedAtAction(nameof(GetAllDocuments), documents);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Internal server error: {ex.Message}");
+        }
+    }
+
+    /// <summary>
     /// Get a document by ID
     /// </summary>
     [HttpGet("{id:guid}")]
@@ -82,7 +113,6 @@ public class DocumentsController(IDocumentService documentService, IDocumentPars
 
         return Ok(documents);
     }
-
 
     /// <summary>
     /// Delete a document

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Scalar.AspNetCore;
 using SmartRAG.Enums;
 using SmartRAG.Extensions;
@@ -13,6 +14,14 @@ app.Run();
 
 static void RegisterServices(IServiceCollection services, IConfiguration configuration)
 {
+    // Configure logging
+    services.AddLogging(builder =>
+    {
+        builder.ClearProviders();
+        builder.AddConsole();
+        builder.AddDebug();
+        builder.SetMinimumLevel(LogLevel.Debug);
+    });
 
     services.AddControllers();
     services.AddEndpointsApiExplorer();
