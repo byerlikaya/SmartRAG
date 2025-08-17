@@ -7,9 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-- Initial project structure
-- Planning for future releases
+### Planned
+- Excel file support with EPPlus
+- Batch document processing
+- Advanced search filters
+- Performance monitoring
+
+## [1.0.1] - 2025-01-19
+
+### Improved
+- 🧠 **Smart Query Intent Detection**: Enhanced query routing between chat and document search
+- 🌍 **Language-Agnostic Design**: Removed all hardcoded language patterns for global compatibility
+- 🔍 **Enhanced Search Relevance**: Improved name detection and content scoring algorithms
+- 🔤 **Unicode Normalization**: Fixed special character handling issues (e.g., Turkish characters)
+- ⚡ **Rate Limiting & Retry Logic**: Robust API handling with exponential backoff
+- 🚀 **VoyageAI Integration**: Optimized Anthropic embedding support
+- 📚 **Enhanced Documentation**: Added official documentation links and troubleshooting guide
+- 🧹 **Configuration Cleanup**: Removed unnecessary configuration fields
+- 🎯 **Project Simplification**: Streamlined codebase for better performance
+
+### Fixed
+- Query intent detection for general conversation vs document search
+- Special character handling in search queries
+- Rate limiting issues with AI providers
+- Configuration validation and error handling
 
 ## [1.0.0] - 2025-01-19
 

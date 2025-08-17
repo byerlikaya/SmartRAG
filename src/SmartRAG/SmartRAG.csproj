@@ -7,7 +7,7 @@
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
-    <PackageVersion>1.0.0</PackageVersion>
+    <PackageVersion>1.0.1</PackageVersion>
     <Authors>Barış Yerlikaya</Authors>
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
@@ -19,7 +19,7 @@
     <RepositoryUrl>https://github.com/byerlikaya/SmartRAG</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageReleaseNotes>🚀 Initial Release: High-performance RAG implementation with multi-provider AI support, enterprise vector storage, and plug-and-play .NET integration</PackageReleaseNotes>
+    <PackageReleaseNotes>🔧 Bug Fixes & Improvements: Enhanced query intent detection, language-agnostic design, Unicode normalization, rate limiting improvements, VoyageAI integration, and comprehensive documentation updates</PackageReleaseNotes>
     <Copyright>Copyright © Barış Yerlikaya 2025</Copyright>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <IncludeSymbols>true</IncludeSymbols>
