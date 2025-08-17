@@ -9,14 +9,22 @@ using System.Text.Json;
 
 namespace SmartRAG.Services;
 
-public class DocumentSearchService(
-    IDocumentRepository documentRepository,
-    IAIService aiService,
-    IAIProviderFactory aiProviderFactory,
-    IConfiguration configuration,
-    SmartRagOptions options,
-    ILogger<DocumentSearchService> logger) : IDocumentSearchService
-{
+    public class DocumentSearchService(
+        IDocumentRepository documentRepository,
+        IAIService aiService,
+        IAIProviderFactory aiProviderFactory,
+        IConfiguration configuration,
+        SmartRagOptions options,
+        ILogger<DocumentSearchService> logger) : IDocumentSearchService
+    {
+        /// <summary>
+        /// Sanitizes user input for safe logging by removing newlines and carriage returns.
+        /// </summary>
+        private static string SanitizeForLog(string input)
+        {
+            if (input == null) return string.Empty;
+            return input.Replace("\r", "").Replace("\n", "");
+        }
     public async Task<List<DocumentChunk>> SearchDocumentsAsync(string query, int maxResults = 5)
     {
         if (string.IsNullOrWhiteSpace(query))
@@ -322,7 +330,7 @@ public class DocumentSearchService(
             .Where(w => w.Length > 2 && char.IsUpper(w[0]))
             .ToList();
 
-        logger.LogDebug("PerformBasicSearchAsync: Query words: [{QueryWords}]", string.Join(", ", queryWords));
+        logger.LogDebug("PerformBasicSearchAsync: Query words: [{QueryWords}]", string.Join(", ", queryWords.Select(SanitizeForLog)));
         logger.LogDebug("PerformBasicSearchAsync: Potential names: [{PotentialNames}]", string.Join(", ", potentialNames));
 
         var scoredChunks = allChunks.Select(chunk =>
@@ -344,8 +352,8 @@ public class DocumentSearchService(
                 {
                     score += 100.0; // High weight for partial name matches
                     var foundNames = potentialNames.Where(name => ContainsNormalizedName(content, name)).ToList();
-                    logger.LogDebug("PerformBasicSearchAsync: Found PARTIAL name matches: [{FoundNames}] in chunk: {ChunkPreview}...",
-                        string.Join(", ", foundNames), chunk.Content.Substring(0, Math.Min(100, chunk.Content.Length)));
+                                        logger.LogDebug("PerformBasicSearchAsync: Found PARTIAL name matches: [{FoundNames}] in chunk: {ChunkPreview}...", 
+                        string.Join(", ", foundNames.Select(SanitizeForLog)), chunk.Content.Substring(0, Math.Min(100, chunk.Content.Length)));
                 }
             }
 
