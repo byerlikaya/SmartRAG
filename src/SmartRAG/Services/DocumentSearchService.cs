@@ -566,7 +566,7 @@ namespace SmartRAG.Services;
                 if (attempt < maxRetries - 1)
                 {
                     var delay = retryDelayMs * (int)Math.Pow(2, attempt);
-                    ServiceLogMessages.LogRateLimitedRetry(logger, delay, attempt + 1, null);
+                    ServiceLogMessages.LogRateLimitedRetry(logger, delay, attempt + 1, maxRetries, null);
                     await Task.Delay(delay);
                 }
                 else
