@@ -95,3 +95,70 @@ jobs:
         
     - name: Publish to NuGet
       run: dotnet nuget push ./nupkgs/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+
+  release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [build, publish]
+    if: github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release]')
+    permissions:
+      contents: write
+      packages: read
+    
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: nuget-packages
+        path: ./nupkgs
+        
+    - name: Get version from package
+      id: get_version
+      run: |
+        PACKAGE_VERSION=$(dotnet list package --format json | jq -r '.projects[0].frameworks[].packages[] | select(.id=="SmartRAG") | .resolved')
+        echo "version=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
+        
+    - name: Create Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ steps.get_version.outputs.version }}
+        release_name: Release v${{ steps.get_version.outputs.version }}
+        body: |
+          ## What's New
+          
+          ### Latest Release (v${{ steps.get_version.outputs.version }})
+          - 🧠 **Smart Query Intent Detection** - Automatically routes queries to chat vs document search
+          - 🌍 **Language-Agnostic Design** - Removed all hardcoded language patterns  
+          - 🔍 **Enhanced Search Relevance** - Improved name detection and content scoring
+          - 🔤 **Unicode Normalization** - Fixed special character handling issues
+          - ⚡ **Rate Limiting & Retry Logic** - Robust API handling with exponential backoff
+          - 🚀 **VoyageAI Integration** - Anthropic embedding support
+          - 📚 **Enhanced Documentation** - Official documentation links
+          - 🧹 **Configuration Cleanup** - Removed unnecessary fields
+          - 🎯 **Project Simplification** - Streamlined for better performance
+          
+          ## Downloads
+          - NuGet Package: [SmartRAG v${{ steps.get_version.outputs.version }}](https://www.nuget.org/packages/SmartRAG/${{ steps.get_version.outputs.version }})
+          
+          ## Installation
+          ```bash
+          dotnet add package SmartRAG --version ${{ steps.get_version.outputs.version }}
+          ```
+        draft: false
+        prerelease: false
+        
+    - name: Upload Release Assets
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./nupkgs/*.nupkg
+        asset_name: SmartRAG.${{ steps.get_version.outputs.version }}.nupkg
+        asset_content_type: application/octet-stream
