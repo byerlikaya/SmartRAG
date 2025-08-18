@@ -3,6 +3,7 @@ using SmartRAG.Enums;
 using SmartRAG.Extensions;
 using Microsoft.OpenApi.Models;
 using SmartRAG.API.Filters;
+using SmartRAG.Diagnostics.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -56,6 +57,9 @@ static void RegisterServices(IServiceCollection services, IConfiguration configu
         aiProvider: AIProvider.Gemini               // Use OpenAI provider
     );
 
+    // Add SSE logging capabilities
+    services.AddSmartRagSseLogging();
+
     services.AddCors(options =>
     {
         options.AddPolicy("AllowAll", policy =>
@@ -84,4 +88,7 @@ static void ConfigureMiddleware(WebApplication app, IWebHostEnvironment environm
     app.UseCors("AllowAll");
     app.UseAuthorization();
     app.MapControllers();
+
+    // SSE log stream endpoint
+    app.MapSmartRagLogStream("/api/logs/stream");
 }
