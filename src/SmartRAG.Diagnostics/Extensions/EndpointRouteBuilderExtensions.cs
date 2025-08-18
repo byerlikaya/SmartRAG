@@ -26,6 +26,16 @@ public static class EndpointRouteBuilderExtensions
 					await context.Response.Body.FlushAsync();
 				}
 			}
+			catch (OperationCanceledException)
+			{
+				// Client bağlantıyı kırdığında normal durum, log'lamaya gerek yok
+				// Bu exception'ı handle et ve sessizce çık
+			}
+			catch (Exception ex)
+			{
+				// Diğer hataları log'la
+				Console.WriteLine($"[LogStream] Error in SSE stream: {ex.Message}");
+			}
 			finally
 			{
 				stream.Unsubscribe(id);

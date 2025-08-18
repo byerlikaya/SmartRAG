@@ -685,13 +685,15 @@ public class DocumentSearchService(
     {
         try
         {
-            var anthropicConfig = configuration.GetSection("AI:Anthropic").Get<AIProviderConfig>();
-            if (anthropicConfig == null || string.IsNullOrEmpty(anthropicConfig.ApiKey))
+            // Use the configured AI provider from options
+            var aiProvider = aiProviderFactory.CreateProvider(_options.AIProvider);
+            var providerKey = _options.AIProvider.ToString();
+            var providerConfig = configuration.GetSection($"AI:{providerKey}").Get<AIProviderConfig>();
+            
+            if (providerConfig == null || string.IsNullOrEmpty(providerConfig.ApiKey))
             {
                 return "Sorry, I cannot chat right now. Please try again later.";
             }
-
-            var aiProvider = ((AIProviderFactory)aiProviderFactory).CreateProvider(AIProvider.Anthropic);
 
             var prompt = $@"You are a helpful AI assistant. Answer the user's question naturally and friendly.
 
@@ -699,7 +701,7 @@ User: {query}
 
 Answer:";
 
-            return await aiProvider.GenerateTextAsync(prompt, anthropicConfig);
+            return await aiProvider.GenerateTextAsync(prompt, providerConfig);
         }
         catch (Exception)
         {
