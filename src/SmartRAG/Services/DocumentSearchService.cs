@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SmartRAG.Entities;
 using SmartRAG.Enums;
 using SmartRAG.Factories;
@@ -15,9 +16,10 @@ public class DocumentSearchService(
     IAIService aiService,
     IAIProviderFactory aiProviderFactory,
     IConfiguration configuration,
-    SmartRagOptions options,
+    IOptions<SmartRagOptions> options,
     ILogger<DocumentSearchService> logger) : IDocumentSearchService
 {
+    private readonly SmartRagOptions _options = options.Value;
 
     /// <summary>
     /// Sanitizes user input for safe logging by removing newlines and carriage returns.
@@ -451,8 +453,8 @@ public class DocumentSearchService(
     {
         return new RagConfiguration
         {
-            AIProvider = options.AIProvider.ToString(),
-            StorageProvider = options.StorageProvider.ToString(),
+            AIProvider = _options.AIProvider.ToString(),
+            StorageProvider = _options.StorageProvider.ToString(),
             Model = configuration["AI:OpenAI:Model"] ?? "gpt-3.5-turbo"
         };
     }

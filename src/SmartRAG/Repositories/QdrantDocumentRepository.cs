@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
 using SmartRAG.Entities;
@@ -16,31 +17,31 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
     private static readonly SemaphoreSlim _collectionInitLock = new(1, 1);
     private bool _collectionReady;
 
-    public QdrantDocumentRepository(QdrantConfig config)
+    public QdrantDocumentRepository(IOptions<QdrantConfig> config)
     {
-        _config = config;
-        _collectionName = config.CollectionName;
+        _config = config.Value;
+        _collectionName = _config.CollectionName;
 
 
         string host;
         bool useHttps;
 
-        if (config.Host.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || config.Host.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+        if (config.Value.Host.StartsWith("http://", StringComparison.OrdinalIgnoreCase) || config.Value.Host.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
         {
-            var uri = new Uri(config.Host);
+            var uri = new Uri(config.Value.Host);
             host = uri.Host;
             useHttps = uri.Scheme == "https";
         }
         else
         {
-            host = config.Host;
-            useHttps = config.UseHttps;
+            host = config.Value.Host;
+            useHttps = config.Value.UseHttps;
         }
 
         _client = new QdrantClient(
             host,
             https: useHttps,
-            apiKey: config.ApiKey,
+            apiKey: config.Value.ApiKey,
             grpcTimeout: TimeSpan.FromMinutes(5)
         );
 
