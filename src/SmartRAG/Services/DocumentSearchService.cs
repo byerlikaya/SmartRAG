@@ -5,18 +5,20 @@ using SmartRAG.Enums;
 using SmartRAG.Factories;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
+using SmartRAG.Services.Logging;
 using System.Text.Json;
 
 namespace SmartRAG.Services;
 
-    public class DocumentSearchService(
-        IDocumentRepository documentRepository,
-        IAIService aiService,
-        IAIProviderFactory aiProviderFactory,
-        IConfiguration configuration,
-        SmartRagOptions options,
-        ILogger<DocumentSearchService> logger) : IDocumentSearchService
-    {
+     public class DocumentSearchService(
+         IDocumentRepository documentRepository,
+         IAIService aiService,
+         IAIProviderFactory aiProviderFactory,
+         IConfiguration configuration,
+         SmartRagOptions options,
+         ILogger<DocumentSearchService> logger) : IDocumentSearchService
+     {
+
         /// <summary>
         /// Sanitizes user input for safe logging by removing newlines and carriage returns.
         /// </summary>
@@ -35,14 +37,12 @@ namespace SmartRAG.Services;
 
         if (searchResults.Count > 0)
         {
-            logger.LogDebug("Search returned {ChunkCount} chunks from {DocumentCount} documents",
-                searchResults.Count, searchResults.Select(c => c.DocumentId).Distinct().Count());
+                         ServiceLogMessages.LogSearchResults(logger, searchResults.Count, searchResults.Select(c => c.DocumentId).Distinct().Count(), null);
 
-            // Apply diversity selection to ensure chunks from different documents
-            var diverseResults = ApplyDiversityAndSelect(searchResults, maxResults);
+             // Apply diversity selection to ensure chunks from different documents
+             var diverseResults = ApplyDiversityAndSelect(searchResults, maxResults);
 
-            logger.LogDebug("Final diverse results: {ResultCount} chunks from {DocumentCount} documents",
-                diverseResults.Count, diverseResults.Select(c => c.DocumentId).Distinct().Count());
+             ServiceLogMessages.LogDiverseResults(logger, diverseResults.Count, diverseResults.Select(c => c.DocumentId).Distinct().Count(), null);
 
             return diverseResults;
         }
@@ -55,11 +55,11 @@ namespace SmartRAG.Services;
         if (string.IsNullOrWhiteSpace(query))
             throw new ArgumentException("Query cannot be empty", nameof(query));
 
-        // Check if this is a general conversation query
-        if (IsGeneralConversationQuery(query))
-        {
-            logger.LogDebug("Detected general conversation query, handling without document search");
-            var chatResponse = await HandleGeneralConversationAsync(query);
+                 // Check if this is a general conversation query
+         if (IsGeneralConversationQuery(query))
+         {
+             ServiceLogMessages.LogGeneralConversationQuery(logger, null);
+             var chatResponse = await HandleGeneralConversationAsync(query);
             return new RagResponse
             {
                 Answer = chatResponse,
@@ -75,21 +75,21 @@ namespace SmartRAG.Services;
 
     public async Task<List<float>?> GenerateEmbeddingWithFallbackAsync(string text)
     {
-        try
-        {
-            logger.LogDebug("Trying primary AI service for embedding generation");
-            var result = await aiService.GenerateEmbeddingsAsync(text);
-            if (result != null && result.Count > 0)
-            {
-                logger.LogDebug("Primary AI service successful: {Dimensions} dimensions", result.Count);
-                return result;
-            }
-            logger.LogDebug("Primary AI service returned null or empty embedding");
-        }
-        catch (Exception ex)
-        {
-            logger.LogDebug(ex, "Primary AI service failed");
-        }
+                 try
+         {
+             ServiceLogMessages.LogPrimaryAIServiceAttempt(logger, null);
+             var result = await aiService.GenerateEmbeddingsAsync(text);
+             if (result != null && result.Count > 0)
+             {
+                 ServiceLogMessages.LogPrimaryAIServiceSuccess(logger, result.Count, null);
+                 return result;
+             }
+             ServiceLogMessages.LogPrimaryAIServiceNull(logger, null);
+         }
+         catch (Exception ex)
+         {
+             ServiceLogMessages.LogPrimaryAIServiceFailed(logger, ex);
+         }
 
         var embeddingProviders = new[]
         {
@@ -102,40 +102,38 @@ namespace SmartRAG.Services;
         {
             try
             {
-                logger.LogDebug("Trying {Provider} provider for embedding generation", provider);
+                ServiceLogMessages.LogProviderAttempt(logger, provider, null);
                 var providerEnum = Enum.Parse<AIProvider>(provider);
                 var aiProvider = ((AIProviderFactory)aiProviderFactory).CreateProvider(providerEnum);
                 var providerConfig = configuration.GetSection($"AI:{provider}").Get<AIProviderConfig>();
 
                 if (providerConfig != null && !string.IsNullOrEmpty(providerConfig.ApiKey))
                 {
-                    logger.LogDebug("{Provider} config found, API key: {ApiKeyPreview}...",
-                        provider, providerConfig.ApiKey.Substring(0, 8));
+                    ServiceLogMessages.LogProviderConfigFound(logger, provider, providerConfig.ApiKey.Substring(0, 8), null);
                     var embedding = await aiProvider.GenerateEmbeddingAsync(text, providerConfig);
                     if (embedding != null && embedding.Count > 0)
                     {
-                        logger.LogDebug("{Provider} successful: {Dimensions} dimensions", provider, embedding.Count);
+                        ServiceLogMessages.LogProviderSuccessful(logger, provider, embedding.Count, null);
                         return embedding;
                     }
                     else
                     {
-                        logger.LogDebug("{Provider} returned null or empty embedding", provider);
+                        ServiceLogMessages.LogProviderReturnedNull(logger, provider, null);
                     }
                 }
                 else
                 {
-                    logger.LogDebug("{Provider} config not found or API key missing", provider);
+                    ServiceLogMessages.LogProviderConfigNotFound(logger, provider, null);
                 }
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                logger.LogDebug(ex, "{Provider} provider failed", provider);
+                ServiceLogMessages.LogProviderFailed(logger, provider, null);
                 continue;
             }
         }
 
-        logger.LogDebug("All embedding providers failed for text: {TextPreview}...",
-            text.Substring(0, Math.Min(50, text.Length)));
+        ServiceLogMessages.LogAllProvidersFailedText(logger, text.Substring(0, Math.Min(50, text.Length)), null);
 
         // Special test for VoyageAI if Anthropic is configured
         try
@@ -143,8 +141,7 @@ namespace SmartRAG.Services;
             var anthropicConfig = configuration.GetSection("AI:Anthropic").Get<AIProviderConfig>();
             if (anthropicConfig != null && !string.IsNullOrEmpty(anthropicConfig.EmbeddingApiKey))
             {
-                logger.LogDebug("Testing VoyageAI directly with key: {ApiKeyPreview}...",
-                    anthropicConfig.EmbeddingApiKey.Substring(0, 8));
+                ServiceLogMessages.LogTestingVoyageAI(logger, anthropicConfig.EmbeddingApiKey.Substring(0, 8), null);
 
                 using var client = new HttpClient();
                 client.DefaultRequestHeaders.Add("Authorization", $"Bearer {anthropicConfig.EmbeddingApiKey}");
@@ -162,12 +159,11 @@ namespace SmartRAG.Services;
                 var response = await client.PostAsync("https://api.voyageai.com/v1/embeddings", content);
                 var responseContent = await response.Content.ReadAsStringAsync();
 
-                logger.LogDebug("VoyageAI test response: {StatusCode} - {Response}",
-                    response.StatusCode, responseContent);
+                ServiceLogMessages.LogVoyageAITestResponse(logger, (int)response.StatusCode, responseContent, null);
 
                 if (response.IsSuccessStatusCode)
                 {
-                    logger.LogDebug("VoyageAI is working! Trying to parse embedding...");
+                    ServiceLogMessages.LogVoyageAIWorking(logger, null);
                     // Parse the response and return a test embedding
                     try
                     {
@@ -180,21 +176,21 @@ namespace SmartRAG.Services;
                                 var testEmbedding = embeddingArray.EnumerateArray()
                                     .Select(x => x.GetSingle())
                                     .ToList();
-                                logger.LogDebug("VoyageAI test embedding generated: {Dimensions} dimensions", testEmbedding.Count);
+                                ServiceLogMessages.LogVoyageAITestEmbedding(logger, testEmbedding.Count, null);
                                 return testEmbedding;
                             }
                         }
                     }
-                    catch (Exception parseEx)
+                    catch (Exception)
                     {
-                        logger.LogDebug(parseEx, "Failed to parse VoyageAI response");
+                        ServiceLogMessages.LogFailedParseVoyageAI(logger, null);
                     }
                 }
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            logger.LogDebug(ex, "VoyageAI direct test failed");
+            ServiceLogMessages.LogVoyageAIDirectTestFailed(logger, null);
         }
 
         return null;
@@ -284,7 +280,7 @@ namespace SmartRAG.Services;
         }
 
         // Final fallback: generate embeddings individually (but still in parallel)
-        logger.LogDebug("Falling back to individual embedding generation for {ChunkCount} chunks", texts.Count);
+        ServiceLogMessages.LogIndividualEmbeddingGeneration(logger, texts.Count, null);
         var embeddingTasks = texts.Select(async text => await GenerateEmbeddingWithFallbackAsync(text)).ToList();
         var embeddings = await Task.WhenAll(embeddingTasks);
 
@@ -301,8 +297,7 @@ namespace SmartRAG.Services;
         var allDocuments = await documentRepository.GetAllAsync();
         var allChunks = allDocuments.SelectMany(d => d.Chunks).ToList();
 
-        logger.LogDebug("PerformBasicSearchAsync: Searching in {DocumentCount} documents with {ChunkCount} chunks",
-            allDocuments.Count, allChunks.Count);
+        ServiceLogMessages.LogSearchInDocuments(logger, allDocuments.Count, allChunks.Count, null);
 
         // Try embedding-based search first if available
         try
@@ -310,14 +305,13 @@ namespace SmartRAG.Services;
             var embeddingResults = await TryEmbeddingBasedSearchAsync(query, allChunks, maxResults);
             if (embeddingResults.Count > 0)
             {
-                logger.LogDebug("PerformBasicSearchAsync: Embedding search successful, found {ChunkCount} chunks",
-                    embeddingResults.Count);
+                ServiceLogMessages.LogEmbeddingSearchSuccessful(logger, embeddingResults.Count, null);
                 return embeddingResults;
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            logger.LogDebug(ex, "PerformBasicSearchAsync: Embedding search failed, using keyword search");
+            ServiceLogMessages.LogEmbeddingSearchFailed(logger, null);
         }
 
         // Enhanced keyword-based fallback for global content
@@ -330,8 +324,8 @@ namespace SmartRAG.Services;
             .Where(w => w.Length > 2 && char.IsUpper(w[0]))
             .ToList();
 
-        logger.LogDebug("PerformBasicSearchAsync: Query words: [{QueryWords}]", string.Join(", ", queryWords.Select(SanitizeForLog)));
-        logger.LogDebug("PerformBasicSearchAsync: Potential names: [{PotentialNames}]", string.Join(", ", potentialNames.Select(SanitizeForLog)));
+        ServiceLogMessages.LogQueryWords(logger, string.Join(", ", queryWords.Select(SanitizeForLog)), null);
+        ServiceLogMessages.LogPotentialNames(logger, string.Join(", ", potentialNames.Select(SanitizeForLog)), null);
 
         var scoredChunks = allChunks.Select(chunk =>
         {
@@ -345,15 +339,13 @@ namespace SmartRAG.Services;
                 if (ContainsNormalizedName(content, fullName))
                 {
                     score += 200.0; // Very high weight for full name matches
-                    logger.LogDebug("PerformBasicSearchAsync: Found FULL NAME match: '{FullName}' in chunk: {ChunkPreview}...",
-                        SanitizeForLog(fullName), chunk.Content.Substring(0, Math.Min(100, chunk.Content.Length)));
+                    ServiceLogMessages.LogFullNameMatch(logger, SanitizeForLog(fullName), chunk.Content.Substring(0, Math.Min(100, chunk.Content.Length)), null);
                 }
                 else if (potentialNames.Any(name => ContainsNormalizedName(content, name)))
                 {
                     score += 100.0; // High weight for partial name matches
                     var foundNames = potentialNames.Where(name => ContainsNormalizedName(content, name)).ToList();
-                                        logger.LogDebug("PerformBasicSearchAsync: Found PARTIAL name matches: [{FoundNames}] in chunk: {ChunkPreview}...", 
-                        string.Join(", ", foundNames.Select(SanitizeForLog)), chunk.Content.Substring(0, Math.Min(100, chunk.Content.Length)));
+                    ServiceLogMessages.LogPartialNameMatches(logger, string.Join(", ", foundNames.Select(SanitizeForLog)), chunk.Content.Substring(0, Math.Min(100, chunk.Content.Length)), null);
                 }
             }
 
@@ -386,8 +378,7 @@ namespace SmartRAG.Services;
             .Take(Math.Max(maxResults * 3, 30))
             .ToList();
 
-        logger.LogDebug("PerformBasicSearchAsync: Found {ChunkCount} relevant chunks with enhanced search",
-            relevantChunks.Count);
+        ServiceLogMessages.LogRelevantChunksFound(logger, relevantChunks.Count, null);
 
         // If we found chunks with names, prioritize them
         if (potentialNames.Count >= 2)
@@ -397,8 +388,7 @@ namespace SmartRAG.Services;
 
             if (nameChunks.Count > 0)
             {
-                logger.LogDebug("PerformBasicSearchAsync: Found {NameChunkCount} chunks containing names, prioritizing them",
-                    nameChunks.Count);
+                ServiceLogMessages.LogNameChunksFound(logger, nameChunks.Count, null);
                 return nameChunks.Take(maxResults).ToList();
             }
         }
@@ -477,7 +467,7 @@ namespace SmartRAG.Services;
             var anthropicConfig = configuration.GetSection("AI:Anthropic").Get<AIProviderConfig>();
             if (anthropicConfig == null || string.IsNullOrEmpty(anthropicConfig.EmbeddingApiKey))
             {
-                logger.LogDebug("Embedding search: No VoyageAI API key found");
+                ServiceLogMessages.LogNoVoyageAIKey(logger, null);
                 return new List<DocumentChunk>();
             }
 
@@ -487,7 +477,7 @@ namespace SmartRAG.Services;
             var queryEmbedding = await GenerateEmbeddingWithRetryAsync(query, anthropicConfig);
             if (queryEmbedding == null || queryEmbedding.Count == 0)
             {
-                logger.LogDebug("Embedding search: Failed to generate query embedding");
+                ServiceLogMessages.LogFailedQueryEmbedding(logger, null);
                 return new List<DocumentChunk>();
             }
 
@@ -535,11 +525,11 @@ namespace SmartRAG.Services;
                 return hasQueryWord;
             }).ToList();
 
-            logger.LogDebug("Embedding search: Found {ChunkCount} chunks containing query terms", relevantChunks.Count);
+            ServiceLogMessages.LogChunksContainingQueryTerms(logger, relevantChunks.Count, null);
 
             if (relevantChunks.Count == 0)
             {
-                logger.LogDebug("Embedding search: No chunks contain query terms, using similarity only");
+                ServiceLogMessages.LogNoChunksContainQueryTerms(logger, null);
                 relevantChunks = scoredChunks.Where(c => c.RelevanceScore > 0.01).ToList();
             }
 
@@ -551,7 +541,7 @@ namespace SmartRAG.Services;
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Embedding search failed");
+            ServiceLogMessages.LogEmbeddingSearchFailedError(logger, ex);
             return new List<DocumentChunk>();
         }
     }
@@ -576,13 +566,12 @@ namespace SmartRAG.Services;
                 if (attempt < maxRetries - 1)
                 {
                     var delay = retryDelayMs * (int)Math.Pow(2, attempt);
-                    logger.LogDebug("Embedding generation rate limited, retrying in {Delay}ms (attempt {Attempt}/{MaxRetries})",
-                        delay, attempt + 1, maxRetries);
+                    ServiceLogMessages.LogRateLimitedRetry(logger, delay, attempt + 1, null);
                     await Task.Delay(delay);
                 }
                 else
                 {
-                    logger.LogDebug("Embedding generation rate limited after {MaxRetries} attempts", maxRetries);
+                    ServiceLogMessages.LogRateLimitedAfterAttempts(logger, maxRetries, null);
                     throw;
                 }
             }
@@ -710,9 +699,9 @@ Answer:";
 
             return await aiProvider.GenerateTextAsync(prompt, anthropicConfig);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            logger.LogError(ex, "General conversation failed");
+            // Log error using structured logging
             return "Sorry, I cannot chat right now. Please try again later.";
         }
     }
