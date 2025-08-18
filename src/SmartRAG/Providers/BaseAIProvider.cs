@@ -116,7 +116,7 @@ public abstract class BaseAIProvider : IAIProvider
     {
         var handler = new HttpClientHandler();
         
-        // Handle SSL/TLS issues for Gemini and other providers
+        // Handle SSL/TLS issues for all providers
         handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
         {
             // For development/testing, you might want to bypass certificate validation
@@ -128,22 +128,9 @@ public abstract class BaseAIProvider : IAIProvider
 
         if (!string.IsNullOrEmpty(apiKey))
         {
-            // Determine auth header type based on provider
-            var authHeader = ProviderType switch
-            {
-                AIProvider.OpenAI or AIProvider.AzureOpenAI => "Authorization",
-                AIProvider.Anthropic => "x-api-key",
-                AIProvider.Gemini => "x-goog-api-key",
-                _ => "Authorization"
-            };
-
-            var authValue = ProviderType switch
-            {
-                AIProvider.OpenAI or AIProvider.AzureOpenAI => $"Bearer {apiKey}",
-                AIProvider.Anthropic => apiKey,
-                AIProvider.Gemini => apiKey,
-                _ => $"Bearer {apiKey}"
-            };
+                    // Generic auth header - providers can override if needed
+        var authHeader = "Authorization";
+        var authValue = $"Bearer {apiKey}";
 
             client.DefaultRequestHeaders.Add(authHeader, authValue);
         }
@@ -227,7 +214,7 @@ public abstract class BaseAIProvider : IAIProvider
                     attempt++;
                     if (attempt < maxRetries)
                     {
-                        // For 429 errors, use longer delays: 2s, 4s, 8s
+                        // For 429 errors, use exponential backoff: 2s, 4s, 8s
                         var delay = 2000 * (int)Math.Pow(2, attempt - 1);
                         await Task.Delay(delay);
                         continue;
