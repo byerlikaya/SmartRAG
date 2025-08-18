@@ -24,6 +24,9 @@ public class GeminiProvider : BaseAIProvider
             return errorMessage;
 
         using var client = CreateHttpClient(config.ApiKey);
+        // Override auth header for Gemini
+        client.DefaultRequestHeaders.Remove("Authorization");
+        client.DefaultRequestHeaders.Add("x-goog-api-key", config.ApiKey);
 
         var payload = new
         {
@@ -76,6 +79,9 @@ public class GeminiProvider : BaseAIProvider
             return [];
 
         using var client = CreateHttpClient(config.ApiKey);
+        // Override auth header for Gemini
+        client.DefaultRequestHeaders.Remove("Authorization");
+        client.DefaultRequestHeaders.Add("x-goog-api-key", config.ApiKey);
 
         var payload = new
         {
@@ -96,7 +102,7 @@ public class GeminiProvider : BaseAIProvider
         if (!success)
         {
             // Log detailed error for debugging
-            _logger.LogError("Gemini embedding error: {Error}", error);
+            ProviderLogMessages.LogGeminiEmbeddingError(_logger, error, null);
             return [];
         }
 
@@ -133,9 +139,9 @@ public class GeminiProvider : BaseAIProvider
         var textList = texts.ToList();
         var results = new List<List<float>>();
 
-        // Gemini has a limit of 50 requests per batch for Free Tier (to stay under 100 RPM)
-        const int maxBatchSize = 50;
-        const int delayBetweenBatchesMs = 600; // 600ms to stay under 100 RPM limit
+        // Generic batch processing with configurable limits
+        const int maxBatchSize = 50; // Configurable batch size
+        const int delayBetweenBatchesMs = 1000; // Configurable delay between batches
         
         // Process texts in batches of maxBatchSize
         for (int i = 0; i < textList.Count; i += maxBatchSize)
@@ -147,7 +153,7 @@ public class GeminiProvider : BaseAIProvider
                 var batchResults = await ProcessBatchAsync(batchTexts, config);
                 results.AddRange(batchResults);
                 
-                // Add delay between batches to respect Free Tier rate limits (100 RPM = 600ms between requests)
+                // Add delay between batches to respect rate limits
                 if (i + maxBatchSize < textList.Count)
                 {
                     await Task.Delay(delayBetweenBatchesMs);
@@ -155,8 +161,7 @@ public class GeminiProvider : BaseAIProvider
             }
             catch (Exception ex)
             {
-                _logger.LogWarning("Failed to process batch {BatchIndex}, falling back to individual requests: {Error}", 
-                    i / maxBatchSize, ex.Message);
+                ProviderLogMessages.LogGeminiBatchFailedFallback(_logger, i / maxBatchSize, ex.Message, ex);
                 
                 // Fallback to individual requests for this batch
                 var fallbackResults = await base.GenerateEmbeddingsBatchAsync(batchTexts, config);
@@ -170,6 +175,9 @@ public class GeminiProvider : BaseAIProvider
     private async Task<List<List<float>>> ProcessBatchAsync(List<string> batchTexts, AIProviderConfig config)
     {
         using var client = CreateHttpClient(config.ApiKey);
+        // Override auth header for Gemini
+        client.DefaultRequestHeaders.Remove("Authorization");
+        client.DefaultRequestHeaders.Add("x-goog-api-key", config.ApiKey);
 
         var payload = new
         {
@@ -192,8 +200,9 @@ public class GeminiProvider : BaseAIProvider
 
         if (!success)
         {
-            _logger.LogError("Gemini batch embedding error: {Error}", error);
-            throw new Exception($"Batch embedding failed: {error}");
+            // Log detailed error for debugging
+            ProviderLogMessages.LogGeminiBatchEmbeddingError(_logger, error, null);
+            throw new InvalidOperationException($"Batch embedding failed: {error}");
         }
 
         var results = new List<List<float>>();
@@ -230,7 +239,7 @@ public class GeminiProvider : BaseAIProvider
         }
         catch (Exception ex)
         {
-            _logger.LogError("Failed to parse batch embedding response: {Error}", ex.Message);
+            ProviderLogMessages.LogGeminiBatchParsingError(_logger, ex.Message, ex);
             throw;
         }
     }
