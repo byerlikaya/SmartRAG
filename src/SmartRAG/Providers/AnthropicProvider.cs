@@ -1,14 +1,19 @@
 using SmartRAG.Enums;
 using SmartRAG.Models;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 
 namespace SmartRAG.Providers;
 
 /// <summary>
-/// Anthropic Claude AI provider implementation
+/// Anthropic Claude provider implementation
 /// </summary>
 public class AnthropicProvider : BaseAIProvider
 {
+    public AnthropicProvider(ILogger<AnthropicProvider> logger) : base(logger)
+    {
+    }
+
     public override AIProvider ProviderType => AIProvider.Anthropic;
 
     public override async Task<string> GenerateTextAsync(string prompt, AIProviderConfig config)

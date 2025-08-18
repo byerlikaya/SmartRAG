@@ -1,5 +1,6 @@
 using SmartRAG.Enums;
 using SmartRAG.Models;
+using Microsoft.Extensions.Logging;
 
 namespace SmartRAG.Providers;
 
@@ -8,6 +9,10 @@ namespace SmartRAG.Providers;
 /// </summary>
 public class AzureOpenAIProvider : BaseAIProvider
 {
+    public AzureOpenAIProvider(ILogger<AzureOpenAIProvider> logger) : base(logger)
+    {
+    }
+
     public override AIProvider ProviderType => AIProvider.AzureOpenAI;
 
     public override async Task<string> GenerateTextAsync(string prompt, AIProviderConfig config)
