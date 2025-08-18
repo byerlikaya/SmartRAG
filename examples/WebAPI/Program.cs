@@ -2,6 +2,7 @@ using Scalar.AspNetCore;
 using SmartRAG.Enums;
 using SmartRAG.Extensions;
 using Microsoft.OpenApi.Models;
+using SmartRAG.API.Filters;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -37,6 +38,7 @@ static void RegisterServices(IServiceCollection services, IConfiguration configu
         c.SwaggerDoc("v1", new OpenApiInfo { Title = "SmartRAG API", Version = "v1" });
         
         // Configure multipart file upload for multiple files
+        c.OperationFilter<MultipartFileUploadFilter>();
     });
     
     // Configure form options for file uploads
