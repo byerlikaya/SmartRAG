@@ -27,7 +27,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
     
-    <!-- Modern NuGet Features -->
+    <!-- GitHub Packages Configuration -->
     <RepositoryBranch>main</RepositoryBranch>
     <RepositoryCommit>$(SourceRevisionId)</RepositoryCommit>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
