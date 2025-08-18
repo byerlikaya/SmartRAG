@@ -1,6 +1,8 @@
 using SmartRAG.Enums;
 using SmartRAG.Models;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
+using System.Linq;
 
 namespace SmartRAG.Providers;
 
@@ -73,5 +75,69 @@ public class OpenAIProvider : BaseAIProvider
             return [];
 
         return ParseEmbeddingResponse(response);
+    }
+
+    public override async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config)
+    {
+        var (isValid, _) = ValidateConfig(config, requireApiKey: true, requireEndpoint: true, requireModel: false);
+
+        if (!isValid)
+            return [];
+
+        if (string.IsNullOrEmpty(config.EmbeddingModel))
+            return [];
+
+        var inputList = texts?.ToList() ?? new List<string>();
+        if (inputList.Count == 0)
+            return [];
+
+        using var client = CreateHttpClient(config.ApiKey);
+
+        var payload = new
+        {
+            input = inputList.ToArray(),
+            model = config.EmbeddingModel
+        };
+
+        var embeddingEndpoint = $"{config.Endpoint!.TrimEnd('/')}/embeddings";
+
+        var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint!, payload, "OpenAI");
+
+        if (!success)
+        {
+            // Preserve order and size with empty embeddings on failure
+            return Enumerable.Repeat(new List<float>(), inputList.Count).ToList();
+        }
+
+        var results = new List<List<float>>(capacity: inputList.Count);
+        try
+        {
+            using var doc = JsonDocument.Parse(response);
+            if (doc.RootElement.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in data.EnumerateArray())
+                {
+                    if (item.TryGetProperty("embedding", out var embedding) && embedding.ValueKind == JsonValueKind.Array)
+                    {
+                        var floats = new List<float>(embedding.GetArrayLength());
+                        foreach (var value in embedding.EnumerateArray())
+                        {
+                            if (value.TryGetSingle(out var f))
+                                floats.Add(f);
+                        }
+                        results.Add(floats);
+                    }
+                    else
+                    {
+                        results.Add(new List<float>());
+                    }
+                }
+            }
+            return results;
+        }
+        catch
+        {
+            return Enumerable.Repeat(new List<float>(), inputList.Count).ToList();
+        }
     }
 }
