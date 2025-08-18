@@ -10,23 +10,23 @@ using System.Text.Json;
 
 namespace SmartRAG.Services;
 
-     public class DocumentSearchService(
-         IDocumentRepository documentRepository,
-         IAIService aiService,
-         IAIProviderFactory aiProviderFactory,
-         IConfiguration configuration,
-         SmartRagOptions options,
-         ILogger<DocumentSearchService> logger) : IDocumentSearchService
-     {
+public class DocumentSearchService(
+    IDocumentRepository documentRepository,
+    IAIService aiService,
+    IAIProviderFactory aiProviderFactory,
+    IConfiguration configuration,
+    SmartRagOptions options,
+    ILogger<DocumentSearchService> logger) : IDocumentSearchService
+{
 
-        /// <summary>
-        /// Sanitizes user input for safe logging by removing newlines and carriage returns.
-        /// </summary>
-        private static string SanitizeForLog(string input)
-        {
-            if (input == null) return string.Empty;
-            return input.Replace("\r", "").Replace("\n", "");
-        }
+    /// <summary>
+    /// Sanitizes user input for safe logging by removing newlines and carriage returns.
+    /// </summary>
+    private static string SanitizeForLog(string input)
+    {
+        if (input == null) return string.Empty;
+        return input.Replace("\r", "").Replace("\n", "");
+    }
     public async Task<List<DocumentChunk>> SearchDocumentsAsync(string query, int maxResults = 5)
     {
         if (string.IsNullOrWhiteSpace(query))
@@ -37,12 +37,12 @@ namespace SmartRAG.Services;
 
         if (searchResults.Count > 0)
         {
-                         ServiceLogMessages.LogSearchResults(logger, searchResults.Count, searchResults.Select(c => c.DocumentId).Distinct().Count(), null);
+            ServiceLogMessages.LogSearchResults(logger, searchResults.Count, searchResults.Select(c => c.DocumentId).Distinct().Count(), null);
 
-             // Apply diversity selection to ensure chunks from different documents
-             var diverseResults = ApplyDiversityAndSelect(searchResults, maxResults);
+            // Apply diversity selection to ensure chunks from different documents
+            var diverseResults = ApplyDiversityAndSelect(searchResults, maxResults);
 
-             ServiceLogMessages.LogDiverseResults(logger, diverseResults.Count, diverseResults.Select(c => c.DocumentId).Distinct().Count(), null);
+            ServiceLogMessages.LogDiverseResults(logger, diverseResults.Count, diverseResults.Select(c => c.DocumentId).Distinct().Count(), null);
 
             return diverseResults;
         }
@@ -55,11 +55,11 @@ namespace SmartRAG.Services;
         if (string.IsNullOrWhiteSpace(query))
             throw new ArgumentException("Query cannot be empty", nameof(query));
 
-                 // Check if this is a general conversation query
-         if (IsGeneralConversationQuery(query))
-         {
-             ServiceLogMessages.LogGeneralConversationQuery(logger, null);
-             var chatResponse = await HandleGeneralConversationAsync(query);
+        // Check if this is a general conversation query
+        if (IsGeneralConversationQuery(query))
+        {
+            ServiceLogMessages.LogGeneralConversationQuery(logger, null);
+            var chatResponse = await HandleGeneralConversationAsync(query);
             return new RagResponse
             {
                 Answer = chatResponse,
@@ -75,21 +75,21 @@ namespace SmartRAG.Services;
 
     public async Task<List<float>?> GenerateEmbeddingWithFallbackAsync(string text)
     {
-                 try
-         {
-             ServiceLogMessages.LogPrimaryAIServiceAttempt(logger, null);
-             var result = await aiService.GenerateEmbeddingsAsync(text);
-             if (result != null && result.Count > 0)
-             {
-                 ServiceLogMessages.LogPrimaryAIServiceSuccess(logger, result.Count, null);
-                 return result;
-             }
-             ServiceLogMessages.LogPrimaryAIServiceNull(logger, null);
-         }
-         catch (Exception ex)
-         {
-             ServiceLogMessages.LogPrimaryAIServiceFailed(logger, ex);
-         }
+        try
+        {
+            ServiceLogMessages.LogPrimaryAIServiceAttempt(logger, null);
+            var result = await aiService.GenerateEmbeddingsAsync(text);
+            if (result != null && result.Count > 0)
+            {
+                ServiceLogMessages.LogPrimaryAIServiceSuccess(logger, result.Count, null);
+                return result;
+            }
+            ServiceLogMessages.LogPrimaryAIServiceNull(logger, null);
+        }
+        catch (Exception ex)
+        {
+            ServiceLogMessages.LogPrimaryAIServiceFailed(logger, ex);
+        }
 
         var embeddingProviders = new[]
         {
@@ -208,7 +208,7 @@ namespace SmartRAG.Services;
             if (batchEmbeddings != null && batchEmbeddings.Count == texts.Count)
                 return batchEmbeddings;
         }
-        catch
+        catch (Exception)
         {
             // Fallback to individual generation if batch fails
         }

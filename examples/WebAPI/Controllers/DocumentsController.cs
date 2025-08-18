@@ -64,7 +64,10 @@ public class DocumentsController(
     /// Upload multiple documents to the system
     /// </summary>
     [HttpPost("upload-multiple")]
-    public async Task<ActionResult<List<Entities.Document>>> UploadDocuments(List<IFormFile> files)
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(100 * 1024 * 1024)] // 100 MB
+    [RequestFormLimits(MultipartBodyLengthLimit = 100 * 1024 * 1024)]
+    public async Task<ActionResult<List<Entities.Document>>> UploadDocuments([FromForm] List<IFormFile> files)
     {
         if (files == null || files.Count == 0)
             return BadRequest("No files provided");
@@ -76,9 +79,9 @@ public class DocumentsController(
             var contentTypes = files.Select(f => f.ContentType);
 
             var documents = await documentService.UploadDocumentsAsync(
-                fileStreams, 
-                fileNames, 
-                contentTypes, 
+                fileStreams,
+                fileNames,
+                contentTypes,
                 "system");
 
             return CreatedAtAction(nameof(GetAllDocuments), documents);
@@ -88,7 +91,6 @@ public class DocumentsController(
             return StatusCode(500, $"Internal server error: {ex.Message}");
         }
     }
-
     /// <summary>
     /// Get a document by ID
     /// </summary>

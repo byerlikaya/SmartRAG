@@ -1,12 +1,8 @@
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SmartRAG.Entities;
-using SmartRAG.Enums;
-using SmartRAG.Factories;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
 using SmartRAG.Services.Logging;
-using System.Text.Json;
 
 namespace SmartRAG.Services;
 
@@ -58,36 +54,36 @@ public class DocumentService(
                 // Check if embedding was generated successfully
                 if (allEmbeddings != null && i < allEmbeddings.Count && allEmbeddings[i] != null && allEmbeddings[i].Count > 0)
                 {
-                                         chunk.Embedding = allEmbeddings[i];
-                     ServiceLogMessages.LogChunkEmbeddingSuccess(logger, i, allEmbeddings[i].Count, null);
-                 }
-                 else
-                 {
-                     // Retry individual embedding generation for this chunk
-                     ServiceLogMessages.LogChunkBatchEmbeddingFailed(logger, i, null);
-                     var individualEmbedding = await documentSearchService.GenerateEmbeddingWithFallbackAsync(chunk.Content);
-                     
-                     if (individualEmbedding != null && individualEmbedding.Count > 0)
-                     {
-                         chunk.Embedding = individualEmbedding;
-                         ServiceLogMessages.LogChunkIndividualEmbeddingSuccess(logger, i, individualEmbedding.Count, null);
-                     }
-                     else
-                     {
-                         ServiceLogMessages.LogChunkEmbeddingFailed(logger, i, null);
-                         chunk.Embedding = new List<float>(); // Empty but not null
-                     }
-                 }
-                 
-                 if (chunk.CreatedAt == default)
-                     chunk.CreatedAt = DateTime.UtcNow;
-             }
-             catch (Exception ex)
-             {
-                 ServiceLogMessages.LogChunkProcessingFailed(logger, i, ex);
-                 // If embedding generation fails, leave it empty and continue
-                 document.Chunks[i].Embedding = new List<float>(); // Empty but not null
-             }
+                    chunk.Embedding = allEmbeddings[i];
+                    ServiceLogMessages.LogChunkEmbeddingSuccess(logger, i, allEmbeddings[i].Count, null);
+                }
+                else
+                {
+                    // Retry individual embedding generation for this chunk
+                    ServiceLogMessages.LogChunkBatchEmbeddingFailed(logger, i, null);
+                    var individualEmbedding = await documentSearchService.GenerateEmbeddingWithFallbackAsync(chunk.Content);
+                    
+                    if (individualEmbedding != null && individualEmbedding.Count > 0)
+                    {
+                        chunk.Embedding = individualEmbedding;
+                        ServiceLogMessages.LogChunkIndividualEmbeddingSuccess(logger, i, individualEmbedding.Count, null);
+                    }
+                    else
+                    {
+                        ServiceLogMessages.LogChunkEmbeddingFailed(logger, i, null);
+                        chunk.Embedding = []; // Empty but not null
+                    }
+                }
+                
+                if (chunk.CreatedAt == default)
+                    chunk.CreatedAt = DateTime.UtcNow;
+            }
+            catch (Exception ex)
+            {
+                ServiceLogMessages.LogChunkProcessingFailed(logger, i, ex);
+                // If embedding generation fails, leave it empty and continue
+                document.Chunks[i].Embedding = []; // Empty but not null
+            }
         }
 
         var savedDocument = await documentRepository.AddAsync(document);
@@ -116,17 +112,17 @@ public class DocumentService(
         var uploadedDocuments = new List<Document>();
 
         // Parallel document upload for better performance
-        var uploadTasks = streamList.Select(async (stream, index) => 
+        var uploadTasks = streamList.Select(async (stream, index) =>
         {
-            try 
+            try
             {
                 return await UploadDocumentAsync(stream, nameList[index], typeList[index], uploadedBy);
-            }
-                         catch (Exception ex)
-             {
-                 ServiceLogMessages.LogDocumentUploadFailed(logger, nameList[index], ex);
-                 return null;
-             }
+        }
+        catch (Exception ex)
+        {
+                ServiceLogMessages.LogDocumentUploadFailed(logger, nameList[index], ex);
+        return null;
+    }
         });
 
         var uploadResults = await Task.WhenAll(uploadTasks);
@@ -154,14 +150,14 @@ public class DocumentService(
 
         return Task.FromResult(stats);
     }
-
+    
     public async Task<bool> RegenerateAllEmbeddingsAsync()
     {
-                 try
-         {
-             ServiceLogMessages.LogEmbeddingRegenerationStarted(logger, null);
-             
-             var allDocuments = await documentRepository.GetAllAsync();
+        try
+        {
+            ServiceLogMessages.LogEmbeddingRegenerationStarted(logger, null);
+            
+            var allDocuments = await documentRepository.GetAllAsync();
             var totalChunks = allDocuments.Sum(d => d.Chunks.Count);
             var processedChunks = 0;
             var successCount = 0;
@@ -172,35 +168,35 @@ public class DocumentService(
             
             foreach (var document in allDocuments)
             {
-                                 ServiceLogMessages.LogDocumentProcessing(logger, document.FileName, document.Chunks.Count, null);
-                 
-                 foreach (var chunk in document.Chunks)
-                 {
-                     // Skip if embedding already exists and is valid
-                     if (chunk.Embedding != null && chunk.Embedding.Count > 0)
-                     {
-                         processedChunks++;
-                         continue;
-                     }
-                     
-                     chunksToProcess.Add(chunk);
-                     documentChunkMap[chunk] = document;
-                 }
-             }
-             
-             ServiceLogMessages.LogTotalChunksToProcess(logger, chunksToProcess.Count, totalChunks, null);
-             
-             if (chunksToProcess.Count == 0)
-             {
-                 ServiceLogMessages.LogNoProcessingNeeded(logger, null);
-                 return true;
-             }
-             
-             // Process chunks in batches of 128 (VoyageAI max batch size)
-             const int batchSize = 128;
-             var totalBatches = (int)Math.Ceiling((double)chunksToProcess.Count / batchSize);
-             
-             ServiceLogMessages.LogBatchProcessing(logger, totalBatches, null);
+                ServiceLogMessages.LogDocumentProcessing(logger, document.FileName, document.Chunks.Count, null);
+                
+                foreach (var chunk in document.Chunks)
+                {
+                    // Skip if embedding already exists and is valid
+                    if (chunk.Embedding != null && chunk.Embedding.Count > 0)
+                    {
+                        processedChunks++;
+                        continue;
+                    }
+                    
+                    chunksToProcess.Add(chunk);
+                    documentChunkMap[chunk] = document;
+                }
+            }
+            
+            ServiceLogMessages.LogTotalChunksToProcess(logger, chunksToProcess.Count, totalChunks, null);
+            
+            if (chunksToProcess.Count == 0)
+            {
+                ServiceLogMessages.LogNoProcessingNeeded(logger, null);
+                return true;
+            }
+            
+            // Process chunks in batches of 128 (VoyageAI max batch size)
+            const int batchSize = 128;
+            var totalBatches = (int)Math.Ceiling((double)chunksToProcess.Count / batchSize);
+            
+            ServiceLogMessages.LogBatchProcessing(logger, totalBatches, null);
             
             for (int batchIndex = 0; batchIndex < totalBatches; batchIndex++)
             {
@@ -208,81 +204,81 @@ public class DocumentService(
                 var endIndex = Math.Min(startIndex + batchSize, chunksToProcess.Count);
                 var currentBatch = chunksToProcess.Skip(startIndex).Take(endIndex - startIndex).ToList();
                 
-                                 ServiceLogMessages.LogBatchProgress(logger, batchIndex + 1, totalBatches, null);
-                 
-                 // Generate embeddings for current batch
-                 var batchContents = currentBatch.Select(c => c.Content).ToList();
-                 var batchEmbeddings = await documentSearchService.GenerateEmbeddingsBatchAsync(batchContents);
-                 
-                 if (batchEmbeddings != null && batchEmbeddings.Count == currentBatch.Count)
-                 {
-                     // Apply embeddings to chunks
-                     for (int i = 0; i < currentBatch.Count; i++)
-                     {
-                         var chunk = currentBatch[i];
-                         var embedding = batchEmbeddings[i];
-                         
-                         if (embedding != null && embedding.Count > 0)
-                         {
-                             chunk.Embedding = embedding;
-                             successCount++;
-                             ServiceLogMessages.LogChunkBatchEmbeddingSuccess(logger, i, embedding.Count, null);
-                         }
-                         else
-                         {
-                             ServiceLogMessages.LogChunkBatchEmbeddingFailedRetry(logger, chunk.Id, null);
-                             
-                             // Fallback to individual generation
-                             var individualEmbedding = await documentSearchService.GenerateEmbeddingWithFallbackAsync(chunk.Content);
-                             if (individualEmbedding != null && individualEmbedding.Count > 0)
-                             {
-                                 chunk.Embedding = individualEmbedding;
-                                 successCount++;
-                                 ServiceLogMessages.LogChunkIndividualEmbeddingSuccessRetry(logger, chunk.Id, individualEmbedding.Count, null);
-                             }
-                             else
-                             {
-                                 ServiceLogMessages.LogChunkAllEmbeddingMethodsFailed(logger, chunk.Id, null);
-                             }
-                         }
-                         
-                         processedChunks++;
-                     }
-                 }
-                 else
-                 {
-                     ServiceLogMessages.LogBatchFailed(logger, batchIndex + 1, null);
-                     
-                     // Process chunks individually if batch fails
-                     foreach (var chunk in currentBatch)
-                     {
-                         try
-                         {
-                             var newEmbedding = await documentSearchService.GenerateEmbeddingWithFallbackAsync(chunk.Content);
-                             
-                             if (newEmbedding != null && newEmbedding.Count > 0)
-                             {
-                                 chunk.Embedding = newEmbedding;
-                                 successCount++;
-                                 ServiceLogMessages.LogChunkIndividualEmbeddingSuccessFinal(logger, chunk.Id, newEmbedding.Count, null);
-                             }
-                             else
-                             {
-                                 ServiceLogMessages.LogChunkEmbeddingGenerationFailed(logger, chunk.Id, null);
-                             }
-                             
-                             processedChunks++;
-                         }
-                         catch (Exception ex)
-                         {
-                             ServiceLogMessages.LogChunkEmbeddingRegenerationFailed(logger, chunk.Id, ex);
-                             processedChunks++;
-                         }
-                     }
-                 }
-                 
-                 // Progress update
-                 ServiceLogMessages.LogProgress(logger, processedChunks, chunksToProcess.Count, successCount, null);
+                ServiceLogMessages.LogBatchProgress(logger, batchIndex + 1, totalBatches, null);
+                
+                // Generate embeddings for current batch
+                var batchContents = currentBatch.Select(c => c.Content).ToList();
+                var batchEmbeddings = await documentSearchService.GenerateEmbeddingsBatchAsync(batchContents);
+                
+                if (batchEmbeddings != null && batchEmbeddings.Count == currentBatch.Count)
+                {
+                    // Apply embeddings to chunks
+                    for (int i = 0; i < currentBatch.Count; i++)
+                    {
+                        var chunk = currentBatch[i];
+                        var embedding = batchEmbeddings[i];
+                        
+                        if (embedding != null && embedding.Count > 0)
+                        {
+                            chunk.Embedding = embedding;
+                            successCount++;
+                            ServiceLogMessages.LogChunkBatchEmbeddingSuccess(logger, i, embedding.Count, null);
+                        }
+                        else
+                        {
+                            ServiceLogMessages.LogChunkBatchEmbeddingFailedRetry(logger, chunk.Id, null);
+                            
+                            // Fallback to individual generation
+                            var individualEmbedding = await documentSearchService.GenerateEmbeddingWithFallbackAsync(chunk.Content);
+                            if (individualEmbedding != null && individualEmbedding.Count > 0)
+                            {
+                                chunk.Embedding = individualEmbedding;
+                                successCount++;
+                                ServiceLogMessages.LogChunkIndividualEmbeddingSuccessRetry(logger, chunk.Id, individualEmbedding.Count, null);
+                            }
+                            else
+                            {
+                                ServiceLogMessages.LogChunkAllEmbeddingMethodsFailed(logger, chunk.Id, null);
+                            }
+                        }
+                        
+                        processedChunks++;
+                    }
+                }
+                else
+                {
+                    ServiceLogMessages.LogBatchFailed(logger, batchIndex + 1, null);
+                    
+                    // Process chunks individually if batch fails
+                    foreach (var chunk in currentBatch)
+                    {
+                        try
+                        {
+                            var newEmbedding = await documentSearchService.GenerateEmbeddingWithFallbackAsync(chunk.Content);
+                            
+                            if (newEmbedding != null && newEmbedding.Count > 0)
+                            {
+                                chunk.Embedding = newEmbedding;
+                                successCount++;
+                                ServiceLogMessages.LogChunkIndividualEmbeddingSuccessFinal(logger, chunk.Id, newEmbedding.Count, null);
+                            }
+                            else
+                            {
+                                ServiceLogMessages.LogChunkEmbeddingGenerationFailed(logger, chunk.Id, null);
+                            }
+                            
+                            processedChunks++;
+                        }
+                        catch (Exception ex)
+                        {
+                            ServiceLogMessages.LogChunkEmbeddingRegenerationFailed(logger, chunk.Id, ex);
+                            processedChunks++;
+                        }
+                    }
+                }
+                
+                // Progress update
+                ServiceLogMessages.LogProgress(logger, processedChunks, chunksToProcess.Count, successCount, null);
                 
                 // Smart rate limiting
                 if (batchIndex < totalBatches - 1) // Don't wait after last batch
@@ -291,23 +287,23 @@ public class DocumentService(
                 }
             }
             
-                         // Save all documents with updated embeddings
-             var documentsToUpdate = documentChunkMap.Values.Distinct().ToList();
-             ServiceLogMessages.LogSavingDocuments(logger, documentsToUpdate.Count, null);
-             
-             foreach (var document in documentsToUpdate)
-             {
-                 await documentRepository.DeleteAsync(document.Id);
-                 await documentRepository.AddAsync(document);
-             }
-             
-             ServiceLogMessages.LogEmbeddingRegenerationCompleted(logger, successCount, processedChunks, null);
-             return successCount > 0;
-         }
-         catch (Exception ex)
-         {
-             ServiceLogMessages.LogEmbeddingRegenerationFailed(logger, ex);
-             return false;
-         }
+            // Save all documents with updated embeddings
+            var documentsToUpdate = documentChunkMap.Values.Distinct().ToList();
+            ServiceLogMessages.LogSavingDocuments(logger, documentsToUpdate.Count, null);
+            
+            foreach (var document in documentsToUpdate)
+            {
+                await documentRepository.DeleteAsync(document.Id);
+                await documentRepository.AddAsync(document);
+            }
+            
+            ServiceLogMessages.LogEmbeddingRegenerationCompleted(logger, successCount, processedChunks, null);
+            return successCount > 0;
+        }
+        catch (Exception ex)
+        {
+            ServiceLogMessages.LogEmbeddingRegenerationFailed(logger, ex);
+            return false;
+        }
     }
 }
