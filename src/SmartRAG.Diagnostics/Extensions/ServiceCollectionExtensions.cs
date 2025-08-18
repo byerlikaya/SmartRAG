@@ -10,11 +10,10 @@ public static class ServiceCollectionExtensions
 {
 	public static IServiceCollection AddSmartRagSseLogging(this IServiceCollection services)
 	{
+		// Single ILogStream instance for all consumers
 		services.AddSingleton<ILogStream, LogStreamService>();
-		services.AddLogging(builder =>
-		{
-			builder.AddProvider(new SseLoggerProvider(services.BuildServiceProvider().GetRequiredService<ILogStream>()));
-		});
+		// Register logger provider via DI (no BuildServiceProvider usage)
+		services.AddSingleton<ILoggerProvider, SseLoggerProvider>();
 		return services;
 	}
 }

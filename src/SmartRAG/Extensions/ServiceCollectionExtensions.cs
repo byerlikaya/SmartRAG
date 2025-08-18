@@ -26,13 +26,13 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddSmartRag(this IServiceCollection services, IConfiguration configuration, Action<SmartRagOptions> configureOptions)
     {
-        // Configure SmartRagOptions using Options Pattern
+        // Configure SmartRagOptions using Options Pattern for non-provider settings
         services.Configure<SmartRagOptions>(options =>
         {
-            // First apply default values
-            // Then bind from configuration
-            configuration.GetSection("SmartRag").Bind(options);
-            // Finally apply user configuration
+            // Bind non-provider settings from configuration
+            configuration.GetSection("SmartRAG").Bind(options);
+            
+            // Apply user configuration (including provider selection)
             configureOptions(options);
         });
 
@@ -59,7 +59,7 @@ public static class ServiceCollectionExtensions
     public static IServiceCollection UseSmartRag(this IServiceCollection services,
                                                  IConfiguration configuration,
                                                  StorageProvider storageProvider = StorageProvider.InMemory,
-                                                 AIProvider aiProvider = AIProvider.Gemini)
+                                                 AIProvider aiProvider = AIProvider.OpenAI)
         => services.AddSmartRag(configuration, options =>
         {
             options.StorageProvider = storageProvider;
