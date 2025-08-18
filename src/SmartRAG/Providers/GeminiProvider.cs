@@ -111,4 +111,81 @@ public class GeminiProvider : BaseAIProvider
 
         return [];
     }
+
+    public override async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config)
+    {
+        var (isValid, errorMessage) = ValidateConfig(config, requireApiKey: true, requireEndpoint: true, requireModel: false);
+
+        if (!isValid) return [];
+
+        if (string.IsNullOrEmpty(config.EmbeddingModel))
+            return [];
+
+        using var client = CreateHttpClient(config.ApiKey);
+
+        var textList = texts.ToList();
+        var results = new List<List<float>>();
+
+        // Gemini supports batch embeddings in a single request
+        var payload = new
+        {
+            model = $"models/{config.EmbeddingModel}",
+            requests = textList.Select(text => new
+            {
+                content = new
+                {
+                    parts = new[]
+                    {
+                        new { text = text }
+                    }
+                }
+            }).ToArray()
+        };
+
+        var batchEndpoint = $"{config.Endpoint!.TrimEnd('/')}/models/{config.EmbeddingModel}:batchEmbedContents";
+
+        var (success, response, error) = await MakeHttpRequestAsync(client, batchEndpoint, payload, "Gemini");
+
+        if (!success)
+        {
+            // Fallback to individual requests if batch fails
+            return await base.GenerateEmbeddingsBatchAsync(texts, config);
+        }
+
+        try
+        {
+            using var doc = JsonDocument.Parse(response);
+
+            if (doc.RootElement.TryGetProperty("embeddings", out var embeddings) &&
+                embeddings.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var embedding in embeddings.EnumerateArray())
+                {
+                    if (embedding.TryGetProperty("embedding", out var embeddingProp) &&
+                        embeddingProp.TryGetProperty("values", out var values) &&
+                        values.ValueKind == JsonValueKind.Array)
+                    {
+                        var floats = new List<float>();
+                        foreach (var value in values.EnumerateArray())
+                        {
+                            if (value.TryGetSingle(out var f))
+                                floats.Add(f);
+                        }
+                        results.Add(floats);
+                    }
+                    else
+                    {
+                        results.Add(new List<float>());
+                    }
+                }
+            }
+
+            return results;
+        }
+        catch
+        {
+            // Fallback to individual requests if parsing fails
+            return await base.GenerateEmbeddingsBatchAsync(texts, config);
+        }
+    }
 }
