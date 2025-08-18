@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using SmartRAG.Enums;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
@@ -12,17 +13,14 @@ namespace SmartRAG.Factories;
 public class StorageFactory : IStorageFactory
 {
     private readonly IConfiguration _configuration;
-
     private readonly StorageProvider _currentProvider;
-
     private readonly SmartRagOptions _options;
-
     private IDocumentRepository? _currentRepository;
 
-    public StorageFactory(IConfiguration configuration, SmartRagOptions options)
+    public StorageFactory(IConfiguration configuration, IOptions<SmartRagOptions> options)
     {
         _configuration = configuration;
-        _options = options;
+        _options = options.Value;
 
         if (Enum.IsDefined(_options.StorageProvider))
         {
@@ -48,9 +46,9 @@ public class StorageFactory : IStorageFactory
         {
             StorageProvider.InMemory => new InMemoryDocumentRepository(config.InMemory),
             StorageProvider.FileSystem => new FileSystemDocumentRepository(config.FileSystemPath),
-            StorageProvider.Redis => new RedisDocumentRepository(config.Redis),
-            StorageProvider.Sqlite => new SqliteDocumentRepository(config.Sqlite),
-            StorageProvider.Qdrant => new QdrantDocumentRepository(config.Qdrant),
+            StorageProvider.Redis => new RedisDocumentRepository(Options.Create(config.Redis)),
+            StorageProvider.Sqlite => new SqliteDocumentRepository(Options.Create(config.Sqlite)),
+            StorageProvider.Qdrant => new QdrantDocumentRepository(Options.Create(config.Qdrant)),
             _ => throw new ArgumentException($"Unsupported storage provider: {config.Provider}")
         };
 

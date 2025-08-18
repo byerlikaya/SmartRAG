@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
@@ -13,9 +14,10 @@ public class DocumentService(
     IDocumentRepository documentRepository,
     IDocumentParserService documentParserService,
     IDocumentSearchService documentSearchService,
-    SmartRagOptions options,
+    IOptions<SmartRagOptions> options,
     ILogger<DocumentService> logger) : IDocumentService
 {
+    private readonly SmartRagOptions _options = options.Value;
 
     public async Task<Document> UploadDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy)
     {
@@ -143,9 +145,9 @@ public class DocumentService(
         {
             ["TotalDocuments"] = documentRepository.GetCountAsync().Result,
             ["DocumentCount"] = documentRepository.GetCountAsync().Result,
-            ["StorageProvider"] = options.StorageProvider.ToString(),
-            ["MaxChunkSize"] = options.MaxChunkSize,
-            ["ChunkOverlap"] = options.ChunkOverlap
+            ["StorageProvider"] = _options.StorageProvider.ToString(),
+            ["MaxChunkSize"] = _options.MaxChunkSize,
+            ["ChunkOverlap"] = _options.ChunkOverlap
         };
 
         return Task.FromResult(stats);

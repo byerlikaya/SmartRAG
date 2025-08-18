@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using SmartRAG.Enums;
 using SmartRAG.Factories;
 using SmartRAG.Interfaces;
@@ -25,10 +26,18 @@ public static class ServiceCollectionExtensions
     /// </summary>
     public static IServiceCollection AddSmartRag(this IServiceCollection services, IConfiguration configuration, Action<SmartRagOptions> configureOptions)
     {
-        var options = new SmartRagOptions();
+        // Configure SmartRagOptions using Options Pattern
+        services.Configure<SmartRagOptions>(options =>
+        {
+            // First apply default values
+            // Then bind from configuration
+            configuration.GetSection("SmartRag").Bind(options);
+            // Finally apply user configuration
+            configureOptions(options);
+        });
 
-        configureOptions(options);
-
+        // Also register as legacy singleton for backward compatibility during transition
+        services.AddSingleton<SmartRagOptions>(sp => sp.GetRequiredService<IOptions<SmartRagOptions>>().Value);
 
         services.AddSingleton<IAIProviderFactory, AIProviderFactory>();
         services.AddSingleton<IAIService, AIService>();
@@ -37,9 +46,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IDocumentParserService, DocumentParserService>();
         services.AddScoped<IDocumentSearchService, DocumentSearchService>();
 
-        services.AddSingleton(options);
-
-        ConfigureStorageProvider(services, configuration, options);
+        ConfigureStorageProvider(services, configuration);
 
         services.AddSingleton(sp => sp.GetRequiredService<IStorageFactory>().GetCurrentRepository());
 
@@ -59,59 +66,21 @@ public static class ServiceCollectionExtensions
             options.AIProvider = aiProvider;
         });
 
-    private static void ConfigureStorageProvider(IServiceCollection services, IConfiguration configuration, SmartRagOptions options)
+    private static void ConfigureStorageProvider(IServiceCollection services, IConfiguration configuration)
     {
-        var storageProvider = options.StorageProvider.ToString();
-
-        if (storageProvider.Equals("Redis", StringComparison.OrdinalIgnoreCase))
-        {
-            ConfigureRedisStorage(services, configuration);
-        }
-        else if (storageProvider.Equals("Qdrant", StringComparison.OrdinalIgnoreCase))
-        {
-            ConfigureQdrantStorage(services, configuration);
-        }
-        else if (storageProvider.Equals("Sqlite", StringComparison.OrdinalIgnoreCase))
-        {
-            ConfigureSQLiteStorage(services, configuration);
-        }
-        else if (storageProvider.Equals("FileSystem", StringComparison.OrdinalIgnoreCase))
-        {
-            ConfigureFileSystemStorage(services, configuration);
-        }
-    }
-
-
-    private static void ConfigureRedisStorage(IServiceCollection services, IConfiguration configuration)
-    {
-        var redisConfig = new RedisConfig();
-        configuration.GetSection("Storage:Redis").Bind(redisConfig);
-
-        services.AddSingleton(redisConfig);
-        services.AddSingleton<RedisDocumentRepository>();
-    }
-
-    private static void ConfigureQdrantStorage(IServiceCollection services, IConfiguration configuration)
-    {
-        var qdrantConfig = new QdrantConfig();
-        configuration.GetSection("Storage:Qdrant").Bind(qdrantConfig);
-
-        services.AddSingleton(qdrantConfig);
-        services.AddSingleton<QdrantDocumentRepository>();
-    }
-
-    private static void ConfigureSQLiteStorage(IServiceCollection services, IConfiguration configuration)
-    {
-        var sqliteConfig = new SqliteConfig();
-        configuration.GetSection("Storage:Sqlite").Bind(sqliteConfig);
-
-        services.AddSingleton(sqliteConfig);
-        services.AddSingleton<SqliteDocumentRepository>();
-    }
-
-    private static void ConfigureFileSystemStorage(IServiceCollection services, IConfiguration configuration)
-    {
-        var fileSystemPath = configuration["Storage:FileSystemPath"] ?? "Documents";
-        services.AddSingleton(new { FileSystemPath = fileSystemPath });
+        // Configure Redis storage
+        services.Configure<RedisConfig>(options => configuration.GetSection("Storage:Redis").Bind(options));
+        
+        // Configure Qdrant storage
+        services.Configure<QdrantConfig>(options => configuration.GetSection("Storage:Qdrant").Bind(options));
+        
+        // Configure SQLite storage
+        services.Configure<SqliteConfig>(options => configuration.GetSection("Storage:Sqlite").Bind(options));
+        
+        // Configure InMemory storage
+        services.Configure<InMemoryConfig>(options => configuration.GetSection("Storage:InMemory").Bind(options));
+        
+        // Configure FileSystem storage
+        services.Configure<StorageConfig>(options => configuration.GetSection("Storage:FileSystem").Bind(options));
     }
 }
