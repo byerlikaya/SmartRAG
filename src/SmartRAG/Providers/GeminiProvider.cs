@@ -1,6 +1,7 @@
 using SmartRAG.Enums;
 using SmartRAG.Models;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 
 namespace SmartRAG.Providers;
 
@@ -9,6 +10,10 @@ namespace SmartRAG.Providers;
 /// </summary>
 public class GeminiProvider : BaseAIProvider
 {
+    public GeminiProvider(ILogger<GeminiProvider> logger) : base(logger)
+    {
+    }
+
     public override AIProvider ProviderType => AIProvider.Gemini;
 
     public override async Task<string> GenerateTextAsync(string prompt, AIProviderConfig config)
@@ -89,7 +94,11 @@ public class GeminiProvider : BaseAIProvider
         var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint!, payload, "Gemini");
 
         if (!success)
+        {
+            // Log detailed error for debugging
+            _logger.LogError("Gemini embedding error: {Error}", error);
             return [];
+        }
 
         // Gemini has different embedding response format
         using var doc = JsonDocument.Parse(response);
@@ -148,6 +157,8 @@ public class GeminiProvider : BaseAIProvider
 
         if (!success)
         {
+            // Log detailed error for debugging
+            _logger.LogError("Gemini batch embedding error: {Error}", error);
             // Fallback to individual requests if batch fails
             return await base.GenerateEmbeddingsBatchAsync(texts, config);
         }

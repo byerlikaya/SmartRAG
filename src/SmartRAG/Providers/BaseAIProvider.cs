@@ -3,6 +3,7 @@ using SmartRAG.Interfaces;
 using SmartRAG.Models;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 
 namespace SmartRAG.Providers;
 
@@ -11,6 +12,13 @@ namespace SmartRAG.Providers;
 /// </summary>
 public abstract class BaseAIProvider : IAIProvider
 {
+    protected readonly ILogger _logger;
+
+    protected BaseAIProvider(ILogger logger)
+    {
+        _logger = logger;
+    }
+
     public abstract AIProvider ProviderType { get; }
 
     public abstract Task<string> GenerateTextAsync(string prompt, AIProviderConfig config);
@@ -203,7 +211,10 @@ public abstract class BaseAIProvider : IAIProvider
             var response = await client.PostAsync(endpoint, content);
 
             if (!response.IsSuccessStatusCode)
-                return (false, string.Empty, $"{providerName} error: {response.StatusCode}");
+            {
+                var errorBody = await response.Content.ReadAsStringAsync();
+                return (false, string.Empty, $"{providerName} error: {response.StatusCode} - {errorBody}");
+            }
 
             var responseBody = await response.Content.ReadAsStringAsync();
 
