@@ -200,7 +200,7 @@ public class DocumentService(
              const int batchSize = 128;
              var totalBatches = (int)Math.Ceiling((double)chunksToProcess.Count / batchSize);
              
-             ServiceLogMessages.LogBatchProcessing(logger, totalBatches, batchSize, null);
+             ServiceLogMessages.LogBatchProcessing(logger, totalBatches, null);
             
             for (int batchIndex = 0; batchIndex < totalBatches; batchIndex++)
             {
@@ -208,7 +208,7 @@ public class DocumentService(
                 var endIndex = Math.Min(startIndex + batchSize, chunksToProcess.Count);
                 var currentBatch = chunksToProcess.Skip(startIndex).Take(endIndex - startIndex).ToList();
                 
-                                 ServiceLogMessages.LogBatchProgress(logger, batchIndex + 1, totalBatches, startIndex + 1, endIndex, null);
+                                 ServiceLogMessages.LogBatchProgress(logger, batchIndex + 1, totalBatches, null);
                  
                  // Generate embeddings for current batch
                  var batchContents = currentBatch.Select(c => c.Content).ToList();
@@ -226,7 +226,7 @@ public class DocumentService(
                          {
                              chunk.Embedding = embedding;
                              successCount++;
-                             ServiceLogMessages.LogChunkBatchEmbeddingSuccess(logger, chunk.Id, embedding.Count, null);
+                             ServiceLogMessages.LogChunkBatchEmbeddingSuccess(logger, i, embedding.Count, null);
                          }
                          else
                          {
@@ -301,7 +301,7 @@ public class DocumentService(
                  await documentRepository.AddAsync(document);
              }
              
-             ServiceLogMessages.LogEmbeddingRegenerationCompleted(logger, successCount, processedChunks, totalBatches, null);
+             ServiceLogMessages.LogEmbeddingRegenerationCompleted(logger, successCount, processedChunks, null);
              return successCount > 0;
          }
          catch (Exception ex)
