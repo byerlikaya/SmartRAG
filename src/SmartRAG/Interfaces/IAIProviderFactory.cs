@@ -7,5 +7,8 @@ namespace SmartRAG.Interfaces;
 /// </summary>
 public interface IAIProviderFactory
 {
+    /// <summary>
+    /// Creates an AI provider instance of the specified type
+    /// </summary>
     IAIProvider CreateProvider(AIProvider providerType);
 }
