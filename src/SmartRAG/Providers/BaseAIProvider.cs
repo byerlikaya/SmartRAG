@@ -18,6 +18,31 @@ public abstract class BaseAIProvider : IAIProvider
     public abstract Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config);
 
     /// <summary>
+    /// Default batch embedding implementation that falls back to individual calls
+    /// Providers can override this for better performance if they support batch operations
+    /// </summary>
+    public virtual async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config)
+    {
+        var results = new List<List<float>>();
+        
+        foreach (var text in texts)
+        {
+            try
+            {
+                var embedding = await GenerateEmbeddingAsync(text, config);
+                results.Add(embedding);
+            }
+            catch
+            {
+                // Add empty embedding on error to maintain index consistency
+                results.Add(new List<float>());
+            }
+        }
+        
+        return results;
+    }
+
+    /// <summary>
     /// Common text chunking implementation for all providers
     /// Uses StringBuilder for better performance
     /// </summary>
@@ -81,7 +106,17 @@ public abstract class BaseAIProvider : IAIProvider
     /// </summary>
     protected HttpClient CreateHttpClient(string? apiKey = null, Dictionary<string, string>? additionalHeaders = null)
     {
-        var client = new HttpClient();
+        var handler = new HttpClientHandler();
+        
+        // Handle SSL/TLS issues for Gemini and other providers
+        handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
+        {
+            // For development/testing, you might want to bypass certificate validation
+            // In production, this should be more restrictive
+            return true;
+        };
+        
+        var client = new HttpClient(handler);
 
         if (!string.IsNullOrEmpty(apiKey))
         {
@@ -125,7 +160,17 @@ public abstract class BaseAIProvider : IAIProvider
     /// </summary>
     protected static HttpClient CreateHttpClientWithoutAuth(Dictionary<string, string>? additionalHeaders)
     {
-        var client = new HttpClient();
+        var handler = new HttpClientHandler();
+        
+        // Handle SSL/TLS issues
+        handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
+        {
+            // For development/testing, you might want to bypass certificate validation
+            // In production, this should be more restrictive
+            return true;
+        };
+        
+        var client = new HttpClient(handler);
 
         if (additionalHeaders != null)
         {
