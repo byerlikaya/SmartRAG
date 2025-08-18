@@ -196,34 +196,61 @@ public abstract class BaseAIProvider : IAIProvider
     }
 
     /// <summary>
-    /// Common HTTP POST request with error handling
+    /// Common HTTP POST request with error handling and retry logic
     /// </summary>
     protected static async Task<(bool success, string response, string errorMessage)> MakeHttpRequestAsync(
-        HttpClient client, string endpoint, object payload, string providerName)
+        HttpClient client, string endpoint, object payload, string providerName, int maxRetries = 3)
     {
-        try
+        var attempt = 0;
+        var baseDelayMs = 1000; // 1 second base delay
+
+        while (attempt < maxRetries)
         {
-            var options = GetJsonSerializerOptions();
-            var json = JsonSerializer.Serialize(payload, options);
-
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-            var response = await client.PostAsync(endpoint, content);
-
-            if (!response.IsSuccessStatusCode)
+            try
             {
+                var options = GetJsonSerializerOptions();
+                var json = JsonSerializer.Serialize(payload, options);
+
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var response = await client.PostAsync(endpoint, content);
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseBody = await response.Content.ReadAsStringAsync();
+                    return (true, responseBody, string.Empty);
+                }
+
+                // Handle specific error cases
+                if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                {
+                    attempt++;
+                    if (attempt < maxRetries)
+                    {
+                        // For 429 errors, use longer delays: 2s, 4s, 8s
+                        var delay = 2000 * (int)Math.Pow(2, attempt - 1);
+                        await Task.Delay(delay);
+                        continue;
+                    }
+                }
+
                 var errorBody = await response.Content.ReadAsStringAsync();
                 return (false, string.Empty, $"{providerName} error: {response.StatusCode} - {errorBody}");
             }
-
-            var responseBody = await response.Content.ReadAsStringAsync();
-
-            return (true, responseBody, string.Empty);
+            catch (Exception ex)
+            {
+                attempt++;
+                if (attempt < maxRetries)
+                {
+                    var delay = baseDelayMs * (int)Math.Pow(2, attempt - 1); // Exponential backoff
+                    await Task.Delay(delay);
+                    continue;
+                }
+                return (false, string.Empty, $"{providerName} request failed: {ex.Message}");
+            }
         }
-        catch (Exception ex)
-        {
-            return (false, string.Empty, $"{providerName} request failed: {ex.Message}");
-        }
+
+        return (false, string.Empty, $"{providerName} request failed after {maxRetries} attempts");
     }
 
     /// <summary>

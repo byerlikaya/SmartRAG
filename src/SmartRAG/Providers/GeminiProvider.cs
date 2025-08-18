@@ -130,17 +130,52 @@ public class GeminiProvider : BaseAIProvider
         if (string.IsNullOrEmpty(config.EmbeddingModel))
             return [];
 
-        using var client = CreateHttpClient(config.ApiKey);
-
         var textList = texts.ToList();
         var results = new List<List<float>>();
 
-        // Gemini supports batch embeddings in a single request
+        // Gemini has a limit of 50 requests per batch for Free Tier (to stay under 100 RPM)
+        const int maxBatchSize = 50;
+        const int delayBetweenBatchesMs = 600; // 600ms to stay under 100 RPM limit
+        
+        // Process texts in batches of maxBatchSize
+        for (int i = 0; i < textList.Count; i += maxBatchSize)
+        {
+            var batchTexts = textList.Skip(i).Take(maxBatchSize).ToList();
+            
+            try
+            {
+                var batchResults = await ProcessBatchAsync(batchTexts, config);
+                results.AddRange(batchResults);
+                
+                // Add delay between batches to respect Free Tier rate limits (100 RPM = 600ms between requests)
+                if (i + maxBatchSize < textList.Count)
+                {
+                    await Task.Delay(delayBetweenBatchesMs);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Failed to process batch {BatchIndex}, falling back to individual requests: {Error}", 
+                    i / maxBatchSize, ex.Message);
+                
+                // Fallback to individual requests for this batch
+                var fallbackResults = await base.GenerateEmbeddingsBatchAsync(batchTexts, config);
+                results.AddRange(fallbackResults);
+            }
+        }
+
+        return results;
+    }
+
+    private async Task<List<List<float>>> ProcessBatchAsync(List<string> batchTexts, AIProviderConfig config)
+    {
+        using var client = CreateHttpClient(config.ApiKey);
+
         var payload = new
         {
-            model = $"models/{config.EmbeddingModel}",
-            requests = textList.Select(text => new
+            requests = batchTexts.Select(text => new
             {
+                model = $"models/{config.EmbeddingModel}",
                 content = new
                 {
                     parts = new[]
@@ -157,11 +192,11 @@ public class GeminiProvider : BaseAIProvider
 
         if (!success)
         {
-            // Log detailed error for debugging
             _logger.LogError("Gemini batch embedding error: {Error}", error);
-            // Fallback to individual requests if batch fails
-            return await base.GenerateEmbeddingsBatchAsync(texts, config);
+            throw new Exception($"Batch embedding failed: {error}");
         }
+
+        var results = new List<List<float>>();
 
         try
         {
@@ -193,10 +228,10 @@ public class GeminiProvider : BaseAIProvider
 
             return results;
         }
-        catch
+        catch (Exception ex)
         {
-            // Fallback to individual requests if parsing fails
-            return await base.GenerateEmbeddingsBatchAsync(texts, config);
+            _logger.LogError("Failed to parse batch embedding response: {Error}", ex.Message);
+            throw;
         }
     }
 }
