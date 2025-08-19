@@ -296,9 +296,11 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
     private List<DocumentChunk> CreateChunks(string content, Guid documentId)
     {
         var chunks = new List<DocumentChunk>();
-        var maxChunkSize = Math.Max(1, options.MaxChunkSize);
-        var chunkOverlap = Math.Max(0, options.ChunkOverlap);
-        var minChunkSize = Math.Max(1, options.MinChunkSize);
+        
+        // Türkçe metinler için optimize edilmiş chunk boyutları
+        var maxChunkSize = Math.Max(1500, options.MaxChunkSize); // Daha küçük chunk'lar semantic search için daha iyi
+        var chunkOverlap = Math.Max(200, options.ChunkOverlap);  // Overlap azaltıldı
+        var minChunkSize = Math.Max(300, options.MinChunkSize);  // Minimum boyut azaltıldı
 
         if (content.Length <= maxChunkSize)
         {
@@ -323,26 +325,40 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
         {
             var endIndex = Math.Min(startIndex + maxChunkSize, content.Length);
 
-            // Try to find a good break point (end of sentence, word boundary)
+            // Semantic meaning korunarak akıllı chunking
             if (endIndex < content.Length)
             {
-                var searchStart = Math.Max(startIndex + minChunkSize, endIndex - 50);
-                var periodIndex = content.LastIndexOf('.', searchStart, endIndex - searchStart);
-                var spaceIndex = content.LastIndexOf(' ', searchStart, endIndex - searchStart);
-
-                if (periodIndex > searchStart)
+                // 1. Önce paragraf sonu ara (\n\n)
+                var paragraphEndIndex = FindParagraphEnd(content, startIndex, endIndex);
+                if (paragraphEndIndex > startIndex + minChunkSize)
                 {
-                    endIndex = periodIndex + 1;
+                    endIndex = paragraphEndIndex;
                 }
-                else if (spaceIndex > searchStart)
+                else
                 {
-                    endIndex = spaceIndex;
+                    // 2. Cümle sonu ara (. ! ?)
+                    var searchStart = Math.Max(startIndex + minChunkSize, endIndex - 150);
+                    var sentenceEndIndex = FindSentenceEnd(content, searchStart, endIndex);
+                    
+                    if (sentenceEndIndex > searchStart)
+                    {
+                        endIndex = sentenceEndIndex;
+                    }
+                    else
+                    {
+                        // 3. Kelime sınırında böl
+                        var wordBoundaryIndex = FindWordBoundary(content, searchStart, endIndex);
+                        if (wordBoundaryIndex > searchStart)
+                        {
+                            endIndex = wordBoundaryIndex;
+                        }
+                    }
                 }
             }
 
             var chunkContent = content.Substring(startIndex, endIndex - startIndex).Trim();
 
-            if (!string.IsNullOrWhiteSpace(chunkContent))
+            if (!string.IsNullOrWhiteSpace(chunkContent) && chunkContent.Length >= minChunkSize)
             {
                 chunks.Add(new DocumentChunk
                 {
@@ -358,10 +374,90 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
                 chunkIndex++;
             }
 
-            // Calculate next start position with overlap
+            // Overlap ile sonraki başlangıç pozisyonunu hesapla
             startIndex = Math.Max(startIndex + 1, endIndex - chunkOverlap);
         }
 
         return chunks;
+    }
+
+    /// <summary>
+    /// Paragraf sonunu bul (\n\n)
+    /// </summary>
+    private static int FindParagraphEnd(string content, int searchStart, int searchEnd)
+    {
+        var searchLength = searchEnd - searchStart;
+        if (searchLength <= 0) return searchEnd;
+
+        // Çift newline ara (\n\n)
+        var doubleNewlineIndex = content.LastIndexOf("\n\n", searchStart, searchLength);
+        if (doubleNewlineIndex > searchStart)
+        {
+            return doubleNewlineIndex + 2; // \n\n'i dahil et
+        }
+
+        // Tek newline ara
+        var newlineIndex = content.LastIndexOf('\n', searchStart, searchLength);
+        if (newlineIndex > searchStart)
+        {
+            return newlineIndex + 1; // \n'i dahil et
+        }
+
+        return searchEnd;
+    }
+
+    /// <summary>
+    /// Cümle sonunu bul (., !, ?)
+    /// </summary>
+    private static int FindSentenceEnd(string content, int searchStart, int searchEnd)
+    {
+        var searchLength = searchEnd - searchStart;
+        if (searchLength <= 0) return searchEnd;
+
+        // Cümle sonu işaretlerini ara
+        var periodIndex = content.LastIndexOf('.', searchStart, searchLength);
+        var exclamationIndex = content.LastIndexOf('!', searchStart, searchLength);
+        var questionIndex = content.LastIndexOf('?', searchStart, searchLength);
+
+        // En son cümle sonunu bul
+        var maxIndex = Math.Max(Math.Max(periodIndex, exclamationIndex), questionIndex);
+        
+        if (maxIndex > searchStart)
+        {
+            return maxIndex + 1; // Cümle sonu işaretini dahil et
+        }
+
+        return searchEnd;
+    }
+
+    /// <summary>
+    /// Kelime sınırını bul (boşluk, tab, newline, noktalama)
+    /// </summary>
+    private static int FindWordBoundary(string content, int searchStart, int searchEnd)
+    {
+        var searchLength = searchEnd - searchStart;
+        if (searchLength <= 0) return searchEnd;
+
+        // Türkçe için optimize edilmiş kelime sınırları
+        var spaceIndex = content.LastIndexOf(' ', searchStart, searchLength);
+        var tabIndex = content.LastIndexOf('\t', searchStart, searchLength);
+        var newlineIndex = content.LastIndexOf('\n', searchStart, searchLength);
+        var returnIndex = content.LastIndexOf('\r', searchStart, searchLength);
+        
+        // Türkçe noktalama işaretleri
+        var commaIndex = content.LastIndexOf(',', searchStart, searchLength);
+        var semicolonIndex = content.LastIndexOf(';', searchStart, searchLength);
+        var colonIndex = content.LastIndexOf(':', searchStart, searchLength);
+
+        // En son kelime sınırını bul
+        var maxIndex = Math.Max(Math.Max(Math.Max(Math.Max(Math.Max(Math.Max(
+            spaceIndex, tabIndex), newlineIndex), returnIndex), commaIndex), semicolonIndex), colonIndex);
+        
+        if (maxIndex > searchStart)
+        {
+            return maxIndex + 1; // Sınır karakterini dahil et
+        }
+
+        return searchEnd;
     }
 }

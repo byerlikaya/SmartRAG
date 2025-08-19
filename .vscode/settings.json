@@ -1,0 +1,23 @@
+{
+    "dotnet.defaultSolution": "SmartRAG.sln",
+    "omnisharp.enableRoslynAnalyzers": true,
+    "omnisharp.enableEditorConfigSupport": true,
+    "csharp.debug.stopAtEntry": false,
+    "csharp.debug.requireExactSource": false,
+    "csharp.debug.allowBreakpointsInUnverifiedSource": true,
+    "csharp.debug.breakOnExceptions": true,
+    "csharp.debug.showBreakpointsInOverviewRuler": true,
+    "csharp.debug.showInlineBreakpointCandidates": true,
+    "csharp.debug.justMyCode": false,
+    "csharp.debug.enableSourceLinkSupport": true,
+    "csharp.format.enable": true,
+    "csharp.semanticHighlighting.enabled": true,
+    "files.exclude": {
+        "**/bin": true,
+        "**/obj": true
+    },
+    "search.exclude": {
+        "**/bin": true,
+        "**/obj": true
+    }
+}

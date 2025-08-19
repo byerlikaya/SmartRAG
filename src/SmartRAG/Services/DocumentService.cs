@@ -1,10 +1,9 @@
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
 using SmartRAG.Services.Logging;
-using SmartRAG.Factories;
 
 namespace SmartRAG.Services;
 
@@ -42,26 +41,26 @@ public class DocumentService(
 
         var document = await documentParserService.ParseDocumentAsync(fileStream, fileName, contentType, uploadedBy);
 
-        logger.LogInformation("Document parsed successfully. Chunks: {ChunkCount}, Total size: {TotalSize} bytes", 
+        logger.LogInformation("Document parsed successfully. Chunks: {ChunkCount}, Total size: {TotalSize} bytes",
             document.Chunks.Count, document.Chunks.Sum(c => c.Content.Length));
 
         // Generate embeddings for all chunks in batch for better performance
         var allChunkContents = document.Chunks.Select(c => c.Content).ToList();
-        
+
         logger.LogInformation("Starting batch embedding generation for {ChunkCount} chunks...", allChunkContents.Count);
-        
+
         // Get the configured AI provider for embeddings
         var providerKey = options.AIProvider.ToString();
         var providerConfig = configuration.GetSection($"AI:{providerKey}").Get<AIProviderConfig>();
-        
+
         if (providerConfig != null && !string.IsNullOrEmpty(providerConfig.ApiKey))
         {
             var aiProvider = aiProviderFactory.CreateProvider(options.AIProvider);
-            
+
             // Add timeout for large documents
             var embeddingTask = aiProvider.GenerateEmbeddingsBatchAsync(allChunkContents, providerConfig);
             var timeoutTask = Task.Delay(TimeSpan.FromMinutes(10));
-            
+
             var completedTask = await Task.WhenAny(embeddingTask, timeoutTask);
             List<List<float>>? allEmbeddings = null;
 
@@ -78,14 +77,14 @@ public class DocumentService(
             // Apply embeddings to chunks with progress tracking
             var processedChunks = 0;
             var totalChunks = document.Chunks.Count;
-            
+
             for (int i = 0; i < document.Chunks.Count; i++)
             {
                 try
                 {
                     var chunk = document.Chunks[i];
                     chunk.DocumentId = document.Id;
-                    
+
                     // Check if embedding was generated successfully
                     if (allEmbeddings != null && i < allEmbeddings.Count && allEmbeddings[i] != null && allEmbeddings[i].Count > 0)
                     {
@@ -96,10 +95,10 @@ public class DocumentService(
                     {
                         // Retry individual embedding generation for this chunk with timeout
                         ServiceLogMessages.LogChunkBatchEmbeddingFailed(logger, i, null);
-                        
+
                         var individualTask = aiProvider.GenerateEmbeddingAsync(chunk.Content, providerConfig);
                         var individualTimeoutTask = Task.Delay(TimeSpan.FromSeconds(30));
-                        
+
                         var individualCompletedTask = await Task.WhenAny(individualTask, individualTimeoutTask);
                         List<float>? individualEmbedding = null;
 
@@ -123,14 +122,14 @@ public class DocumentService(
                             chunk.Embedding = []; // Empty but not null
                         }
                     }
-                    
+
                     if (chunk.CreatedAt == default)
                         chunk.CreatedAt = DateTime.UtcNow;
 
                     processedChunks++;
                     if (processedChunks % 10 == 0 || processedChunks == totalChunks)
                     {
-                        logger.LogInformation("Progress: {Processed}/{Total} chunks processed ({Percentage:F1}%)", 
+                        logger.LogInformation("Progress: {Processed}/{Total} chunks processed ({Percentage:F1}%)",
                             processedChunks, totalChunks, (processedChunks * 100.0) / totalChunks);
                     }
                 }
@@ -156,11 +155,11 @@ public class DocumentService(
         }
 
         logger.LogInformation("Starting document save to repository...");
-        
+
         // Add timeout for repository save operation
         var saveTask = documentRepository.AddAsync(document);
         var saveTimeoutTask = Task.Delay(TimeSpan.FromMinutes(5));
-        
+
         var saveCompletedTask = await Task.WhenAny(saveTask, saveTimeoutTask);
         Document savedDocument;
 
@@ -173,7 +172,7 @@ public class DocumentService(
             logger.LogError("Document save operation timed out after 5 minutes!");
             throw new TimeoutException("Document save operation timed out. The document may be too large.");
         }
-        logger.LogInformation("Document uploaded successfully. ID: {DocumentId}, Chunks: {ChunkCount}", 
+        logger.LogInformation("Document uploaded successfully. ID: {DocumentId}, Chunks: {ChunkCount}",
             savedDocument.Id, savedDocument.Chunks.Count);
 
         return savedDocument;
@@ -205,12 +204,12 @@ public class DocumentService(
             try
             {
                 return await UploadDocumentAsync(stream, nameList[index], typeList[index], uploadedBy);
-        }
-        catch (Exception ex)
-        {
+            }
+            catch (Exception ex)
+            {
                 ServiceLogMessages.LogDocumentUploadFailed(logger, nameList[index], ex);
-        return null;
-    }
+                return null;
+            }
         });
 
         var uploadResults = await Task.WhenAll(uploadTasks);
@@ -223,7 +222,66 @@ public class DocumentService(
 
     public async Task<List<Document>> GetAllDocumentsAsync() => await documentRepository.GetAllAsync();
 
-    public async Task<bool> DeleteDocumentAsync(Guid id) => await documentRepository.DeleteAsync(id);
+    public async Task<bool> DeleteDocumentAsync(Guid id)
+    {
+        try
+        {
+            // Önce document'ı al (embedding'leri temizlemek için)
+            var document = await documentRepository.GetByIdAsync(id);
+            if (document == null)
+            {
+                logger.LogWarning("Document not found for deletion: {DocumentId}", id);
+                return false;
+            }
+
+            // AI provider'dan embedding'leri temizle
+            try
+            {
+                var providerKey = options.AIProvider.ToString();
+                var providerConfig = configuration.GetSection($"AI:{providerKey}").Get<AIProviderConfig>();
+
+                if (providerConfig != null && !string.IsNullOrEmpty(providerConfig.ApiKey))
+                {
+                    var aiProvider = aiProviderFactory.CreateProvider(options.AIProvider);
+                    await aiProvider.ClearEmbeddingsAsync(document.Chunks);
+                    logger.LogDebug("AI provider embeddings cleared for document: {DocumentId}", document.Id);
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to clear AI provider embeddings for document: {DocumentId}", document.Id);
+            }
+
+            // Chunk'lardaki embedding'leri temizle
+            foreach (var chunk in document.Chunks)
+            {
+                if (chunk.Embedding != null && chunk.Embedding.Count > 0)
+                {
+                    chunk.Embedding.Clear();
+                    chunk.Embedding = null;
+                }
+            }
+
+            // Document'ı repository'den sil
+            var success = await documentRepository.DeleteAsync(id);
+
+            if (success)
+            {
+                logger.LogInformation("Document deleted successfully: {DocumentId}, {FileName}", id, document.FileName);
+            }
+            else
+            {
+                logger.LogWarning("Failed to delete document from repository: {DocumentId}", id);
+            }
+
+            return success;
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error deleting document: {DocumentId}", id);
+            return false;
+        }
+    }
 
     public Task<Dictionary<string, object>> GetStorageStatisticsAsync()
     {
@@ -238,177 +296,105 @@ public class DocumentService(
 
         return Task.FromResult(stats);
     }
-    
-    public async Task<bool> RegenerateAllEmbeddingsAsync()
+
+
+    /// <summary>
+    /// Tüm belgeleri sil (dikkatli kullan!)
+    /// </summary>
+    public async Task<bool> DeleteAllDocumentsAsync()
     {
         try
         {
-            ServiceLogMessages.LogEmbeddingRegenerationStarted(logger, null);
-            
+            logger.LogWarning("Starting deletion of ALL documents - this action cannot be undone!");
+
+            // Tüm belgeleri al
             var allDocuments = await documentRepository.GetAllAsync();
-            var totalChunks = allDocuments.Sum(d => d.Chunks.Count);
-            var processedChunks = 0;
-            var successCount = 0;
-            
-            // Collect all chunks that need embedding regeneration
-            var chunksToProcess = new List<DocumentChunk>();
-            var documentChunkMap = new Dictionary<DocumentChunk, Document>();
-            
-            foreach (var document in allDocuments)
+            var totalDocuments = allDocuments.Count;
+
+            if (totalDocuments == 0)
             {
-                ServiceLogMessages.LogDocumentProcessing(logger, document.FileName, document.Chunks.Count, null);
-                
-                foreach (var chunk in document.Chunks)
-                {
-                    // Skip if embedding already exists and is valid
-                    if (chunk.Embedding != null && chunk.Embedding.Count > 0)
-                    {
-                        processedChunks++;
-                        continue;
-                    }
-                    
-                    chunksToProcess.Add(chunk);
-                    documentChunkMap[chunk] = document;
-                }
-            }
-            
-            ServiceLogMessages.LogTotalChunksToProcess(logger, chunksToProcess.Count, totalChunks, null);
-            
-            if (chunksToProcess.Count == 0)
-            {
-                ServiceLogMessages.LogNoProcessingNeeded(logger, null);
+                logger.LogInformation("No documents found to delete");
                 return true;
             }
-            
-            // Process chunks in batches of 128 (VoyageAI max batch size)
-            const int batchSize = 128;
-            var totalBatches = (int)Math.Ceiling((double)chunksToProcess.Count / batchSize);
-            
-            ServiceLogMessages.LogBatchProcessing(logger, totalBatches, null);
-            
-            for (int batchIndex = 0; batchIndex < totalBatches; batchIndex++)
+
+            logger.LogInformation("Found {DocumentCount} documents to delete", totalDocuments);
+
+            var successCount = 0;
+            var failedCount = 0;
+
+            // AI provider'dan tüm embedding'leri temizle (batch işlem)
+            try
             {
-                var startIndex = batchIndex * batchSize;
-                var endIndex = Math.Min(startIndex + batchSize, chunksToProcess.Count);
-                var currentBatch = chunksToProcess.Skip(startIndex).Take(endIndex - startIndex).ToList();
-                
-                ServiceLogMessages.LogBatchProgress(logger, batchIndex + 1, totalBatches, null);
-                
-                var batchContents = currentBatch.Select(c => c.Content).ToList();
-                
-                // Get the configured AI provider for embeddings
                 var providerKey = options.AIProvider.ToString();
                 var providerConfig = configuration.GetSection($"AI:{providerKey}").Get<AIProviderConfig>();
-                
+
                 if (providerConfig != null && !string.IsNullOrEmpty(providerConfig.ApiKey))
                 {
                     var aiProvider = aiProviderFactory.CreateProvider(options.AIProvider);
-                    var batchEmbeddings = await aiProvider.GenerateEmbeddingsBatchAsync(batchContents, providerConfig);
-                    
-                    if (batchEmbeddings != null && batchEmbeddings.Count == currentBatch.Count)
+                    var allChunks = allDocuments.SelectMany(d => d.Chunks).ToList();
+                    await aiProvider.ClearEmbeddingsAsync(allChunks);
+                    logger.LogInformation("Cleared all embeddings from AI provider");
+                }
+            }
+            catch (Exception ex)
+            {
+                logger.LogWarning(ex, "Failed to clear AI provider embeddings");
+            }
+
+            // Her belgeyi tek tek sil
+            foreach (var document in allDocuments)
+            {
+                try
+                {
+                    logger.LogDebug("Deleting document: {DocumentId}, {FileName}", document.Id, document.FileName);
+
+                    // Chunk'lardaki embedding'leri temizle
+                    foreach (var chunk in document.Chunks)
                     {
-                        // Apply embeddings to chunks
-                        for (int i = 0; i < currentBatch.Count; i++)
+                        if (chunk.Embedding != null && chunk.Embedding.Count > 0)
                         {
-                            var chunk = currentBatch[i];
-                            var embedding = batchEmbeddings[i];
-                            
-                            if (embedding != null && embedding.Count > 0)
-                            {
-                                chunk.Embedding = embedding;
-                                successCount++;
-                                ServiceLogMessages.LogChunkBatchEmbeddingSuccess(logger, i, embedding.Count, null);
-                            }
-                            else
-                            {
-                                ServiceLogMessages.LogChunkBatchEmbeddingFailedRetry(logger, chunk.Id, null);
-                                
-                                // Fallback to individual generation
-                                var individualEmbedding = await aiProvider.GenerateEmbeddingAsync(chunk.Content, providerConfig);
-                                if (individualEmbedding != null && individualEmbedding.Count > 0)
-                                {
-                                    chunk.Embedding = individualEmbedding;
-                                    successCount++;
-                                    ServiceLogMessages.LogChunkIndividualEmbeddingSuccessRetry(logger, chunk.Id, individualEmbedding.Count, null);
-                                }
-                                else
-                                {
-                                    ServiceLogMessages.LogChunkAllEmbeddingMethodsFailed(logger, chunk.Id, null);
-                                }
-                            }
-                            
-                            processedChunks++;
+                            chunk.Embedding.Clear();
+                            chunk.Embedding = null;
                         }
+                    }
+
+                    // Repository'den sil
+                    var success = await documentRepository.DeleteAsync(document.Id);
+
+                    if (success)
+                    {
+                        successCount++;
+                        logger.LogDebug("Successfully deleted document: {DocumentId}", document.Id);
                     }
                     else
                     {
-                        ServiceLogMessages.LogBatchFailed(logger, batchIndex + 1, null);
-                        
-                        // Process chunks individually if batch fails
-                        foreach (var chunk in currentBatch)
-                        {
-                            try
-                            {
-                                var newEmbedding = await aiProvider.GenerateEmbeddingAsync(chunk.Content, providerConfig);
-                                
-                                if (newEmbedding != null && newEmbedding.Count > 0)
-                                {
-                                    chunk.Embedding = newEmbedding;
-                                    successCount++;
-                                    ServiceLogMessages.LogChunkIndividualEmbeddingSuccessFinal(logger, chunk.Id, newEmbedding.Count, null);
-                                }
-                                else
-                                {
-                                    ServiceLogMessages.LogChunkEmbeddingGenerationFailed(logger, chunk.Id, null);
-                                }
-                                
-                                processedChunks++;
-                            }
-                            catch (Exception ex)
-                            {
-                                ServiceLogMessages.LogChunkEmbeddingRegenerationFailed(logger, chunk.Id, ex);
-                                processedChunks++;
-                            }
-                        }
+                        failedCount++;
+                        logger.LogWarning("Failed to delete document from repository: {DocumentId}", document.Id);
                     }
                 }
-                else
+                catch (Exception ex)
                 {
-                    logger.LogWarning("No AI provider configuration found for embeddings. Skipping embedding generation.");
-                    // Set empty embeddings for all chunks
-                    foreach (var chunk in currentBatch)
-                    {
-                        chunk.Embedding = [];
-                        processedChunks++;
-                    }
-                }
-                
-                // Progress update
-                ServiceLogMessages.LogProgress(logger, processedChunks, chunksToProcess.Count, successCount, null);
-                
-                // Smart rate limiting
-                if (batchIndex < totalBatches - 1) // Don't wait after last batch
-                {
-                    await Task.Delay(1000); // Simple rate limiting
+                    failedCount++;
+                    logger.LogError(ex, "Error deleting document: {DocumentId}", document.Id);
                 }
             }
-            
-            // Save all documents with updated embeddings
-            var documentsToUpdate = documentChunkMap.Values.Distinct().ToList();
-            ServiceLogMessages.LogSavingDocuments(logger, documentsToUpdate.Count, null);
-            
-            foreach (var document in documentsToUpdate)
+
+            // Sonuçları logla
+            if (failedCount == 0)
             {
-                await documentRepository.DeleteAsync(document.Id);
-                await documentRepository.AddAsync(document);
+                logger.LogInformation("Successfully deleted ALL {SuccessCount} documents", successCount);
             }
-            
-            ServiceLogMessages.LogEmbeddingRegenerationCompleted(logger, successCount, processedChunks, null);
+            else
+            {
+                logger.LogWarning("Document deletion completed with errors. Success: {SuccessCount}, Failed: {FailedCount}",
+                    successCount, failedCount);
+            }
+
             return successCount > 0;
         }
         catch (Exception ex)
         {
-            ServiceLogMessages.LogEmbeddingRegenerationFailed(logger, ex);
+            logger.LogError(ex, "Critical error during bulk document deletion");
             return false;
         }
     }

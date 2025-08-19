@@ -38,6 +38,16 @@ static void RegisterServices(IServiceCollection services, IConfiguration configu
 
         // Configure multipart file upload for multiple files
         c.OperationFilter<MultipartFileUploadFilter>();
+        
+        // CORS sorununu çözmek için
+        c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+        {
+            Description = "JWT Authorization header using the Bearer scheme.",
+            Name = "Authorization",
+            In = ParameterLocation.Header,
+            Type = SecuritySchemeType.ApiKey,
+            Scheme = "Bearer"
+        });
     });
 
     // Configure form options for file uploads
@@ -61,6 +71,15 @@ static void RegisterServices(IServiceCollection services, IConfiguration configu
         {
             policy.AllowAnyOrigin()
                   .AllowAnyMethod()
+                  .AllowAnyHeader()
+                  .WithExposedHeaders("Content-Disposition");
+        });
+        
+        // Swagger UI için özel CORS policy
+        options.AddPolicy("SwaggerUI", policy =>
+        {
+            policy.AllowAnyOrigin()
+                  .AllowAnyMethod()
                   .AllowAnyHeader();
         });
     });
@@ -73,14 +92,26 @@ static void ConfigureMiddleware(WebApplication app, IWebHostEnvironment environm
     {
         app.MapOpenApi();
         app.MapSwagger();
-        app.UseSwaggerUI();
+        app.UseSwaggerUI(c =>
+        {
+            c.SwaggerEndpoint("/swagger/v1/swagger.json", "SmartRAG API v1");
+            c.RoutePrefix = string.Empty; // Root path'te Swagger UI açılsın
+        });
     }
 
     // Serve static files for simple upload page
     app.UseStaticFiles();
 
-    app.UseHttpsRedirection();
+    // Development ortamında HTTPS redirection'ı devre dışı bırak
+    if (!environment.IsDevelopment())
+    {
+        app.UseHttpsRedirection();
+    }
+    
+    // CORS middleware'ini doğru sırada ekle
     app.UseCors("AllowAll");
+    
+    app.UseRouting();
     app.UseAuthorization();
     app.MapControllers();
 }

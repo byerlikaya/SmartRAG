@@ -5,6 +5,11 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     
+    <!-- Debug Configuration -->
+    <DebugType>full</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+    <Optimize>false</Optimize>
+    
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
     <PackageVersion>1.0.1</PackageVersion>

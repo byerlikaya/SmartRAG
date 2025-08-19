@@ -1,0 +1,84 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch WebAPI (Debug)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "${workspaceFolder}/examples/WebAPI/bin/Debug/net9.0/SmartRAG.API.dll",
+            "args": [],
+            "cwd": "${workspaceFolder}/examples/WebAPI",
+            "stopAtEntry": false,
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+(https?://\\S+)",
+                "uriFormat": "%s"
+            },
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            },
+            "console": "integratedTerminal",
+            "requireExactSource": false,
+            "justMyCode": false,
+            "sourceFileMap": {
+                "D:\\Projects\\Cursor\\src\\SmartRAG": "${workspaceFolder}/src/SmartRAG",
+                "D:/Projects/Cursor/src/SmartRAG": "${workspaceFolder}/src/SmartRAG",
+                ".\\Services\\DocumentSearchService.cs": "${workspaceFolder}/src/SmartRAG/Services/DocumentSearchService.cs",
+                ".\\Services\\": "${workspaceFolder}/src/SmartRAG/Services/",
+                "Services\\": "${workspaceFolder}/src/SmartRAG/Services/"
+            }
+        },
+        {
+            "name": "Launch WebAPI (dotnet run - Debug)",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "build",
+            "program": "dotnet",
+            "args": [
+                "run",
+                "--project",
+                "${workspaceFolder}/examples/WebAPI",
+                "--configuration",
+                "Debug"
+            ],
+            "cwd": "${workspaceFolder}/examples/WebAPI",
+            "stopAtEntry": false,
+            "serverReadyAction": {
+                "action": "openExternally",
+                "pattern": "\\bNow listening on:\\s+(https?://\\S+)",
+                "uriFormat": "%s"
+            },
+            "env": {
+                "ASPNETCORE_ENVIRONMENT": "Development"
+            },
+            "console": "integratedTerminal",
+            "requireExactSource": false,
+            "justMyCode": false,
+            "sourceFileMap": {
+                "D:\\Projects\\Cursor\\src\\SmartRAG": "${workspaceFolder}/src/SmartRAG",
+                "D:/Projects/Cursor/src/SmartRAG": "${workspaceFolder}/src/SmartRAG",
+                "D:\\Projects\\Cursor\\src\\SmartRAG": "${workspaceFolder}/src/SmartRAG",
+                "D:/Projects/Cursor/src/SmartRAG": "${workspaceFolder}/src/SmartRAG",
+                ".\\Services\\DocumentSearchService.cs": "${workspaceFolder}/src/SmartRAG/Services/DocumentSearchService.cs",
+                ".\\Services\\": "${workspaceFolder}/src/SmartRAG/Services/",
+                "Services\\": "${workspaceFolder}/src/SmartRAG/Services/"
+            }
+        },
+        {
+            "name": "Attach to Process (Recommended)",
+            "type": "coreclr",
+            "request": "attach",
+            "processId": "${command:pickProcess}",
+            "justMyCode": false,
+            "requireExactSource": false,
+            "sourceFileMap": {
+                "D:\\Projects\\Cursor\\src\\SmartRAG": "${workspaceFolder}/src/SmartRAG",
+                "D:/Projects/Cursor/src/SmartRAG": "${workspaceFolder}/src/SmartRAG",
+                ".\\Services\\DocumentSearchService.cs": "${workspaceFolder}/src/SmartRAG/Services/DocumentSearchService.cs",
+                ".\\Services\\": "${workspaceFolder}/src/SmartRAG/Services/",
+                "Services\\": "${workspaceFolder}/src/SmartRAG/Services/"
+            }
+        }
+    ]
+}

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.SemanticKernel;
 using SmartRAG.Enums;
 using SmartRAG.Factories;
 using SmartRAG.Interfaces;
@@ -37,6 +38,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IDocumentParserService, DocumentParserService>();
         services.AddScoped<IDocumentSearchService, DocumentSearchService>();
 
+        // Add semantic search provider
+        services.AddScoped<ISemanticSearchProvider, SemanticKernelSearchProvider>();
+
         services.AddSingleton(options);
 
         ConfigureStorageProvider(services, configuration, options);
@@ -58,6 +62,8 @@ public static class ServiceCollectionExtensions
             options.StorageProvider = storageProvider;
             options.AIProvider = aiProvider;
         });
+
+
 
     private static void ConfigureStorageProvider(IServiceCollection services, IConfiguration configuration, SmartRagOptions options)
     {

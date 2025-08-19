@@ -42,7 +42,7 @@ public interface IDocumentService
     Task<Dictionary<string, object>> GetStorageStatisticsAsync();
 
     /// <summary>
-    /// Regenerate all embeddings
+    /// Deletes all documents (use with caution!)
     /// </summary>
-    Task<bool> RegenerateAllEmbeddingsAsync();
+    Task<bool> DeleteAllDocumentsAsync();
 }

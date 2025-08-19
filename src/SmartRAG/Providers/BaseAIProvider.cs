@@ -1,4 +1,5 @@
 using SmartRAG.Enums;
+using SmartRAG.Entities;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
 using System.Text;
@@ -60,6 +61,64 @@ public abstract class BaseAIProvider : IAIProvider
             chunks.Add(current.ToString().Trim());
 
         return Task.FromResult(chunks);
+    }
+    
+    /// <summary>
+    /// Default implementation for clearing embeddings
+    /// Most providers don't need special cleanup, so this is a no-op
+    /// </summary>
+    public virtual Task ClearEmbeddingsAsync(List<DocumentChunk> chunks)
+    {
+        // Default implementation: no special cleanup needed
+        return Task.CompletedTask;
+    }
+    
+    /// <summary>
+    /// Default implementation for clearing all cached embeddings
+    /// Most providers don't need special cleanup, so this is a no-op
+    /// </summary>
+    public virtual Task ClearAllEmbeddingsAsync()
+    {
+        // Default implementation: no special cleanup needed
+        return Task.CompletedTask;
+    }
+    
+    /// <summary>
+    /// Default implementation for regenerating embeddings for all documents
+    /// This is a complex operation that each provider might want to optimize differently
+    /// </summary>
+    public virtual async Task<bool> RegenerateAllEmbeddingsAsync(List<Document> documents)
+    {
+        // Default implementation: regenerate embeddings one by one
+        var totalChunks = documents.Sum(d => d.Chunks.Count);
+        var processedChunks = 0;
+        var successCount = 0;
+        
+        foreach (var document in documents)
+        {
+            foreach (var chunk in document.Chunks)
+            {
+                try
+                {
+                    // Skip if embedding already exists and is valid
+                    if (chunk.Embedding != null && chunk.Embedding.Count > 0)
+                    {
+                        processedChunks++;
+                        continue;
+                    }
+                    
+                    // Generate new embedding - each provider will have its own config
+                    // This is a basic implementation, providers should override this
+                    throw new NotImplementedException("Provider must implement RegenerateAllEmbeddingsAsync with proper configuration");
+                }
+                catch (Exception)
+                {
+                    processedChunks++;
+                }
+            }
+        }
+        
+        return successCount > 0;
     }
 
     #region Common Helper Methods

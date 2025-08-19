@@ -135,41 +135,28 @@ public class DocumentsController(
 
         return NoContent();
     }
-
+    
     /// <summary>
-    /// Regenerate embeddings for all existing documents
+    /// Delete ALL documents (use with extreme caution!)
     /// </summary>
-    [HttpPost("regenerate-embeddings")]
-    public async Task<ActionResult> RegenerateAllEmbeddings()
+    [HttpDelete("all")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    public async Task<ActionResult> DeleteAllDocuments()
     {
         try
         {
-            Console.WriteLine("[API] Embedding regeneration requested");
-            
-            var success = await documentService.RegenerateAllEmbeddingsAsync();
-            
+            var success = await documentService.DeleteAllDocumentsAsync();
             if (success)
-            {
-                return Ok(new { 
-                    message = "Embedding regeneration completed successfully",
-                    timestamp = DateTime.UtcNow
-                });
-            }
+                return Ok("All documents deleted successfully");
             else
-            {
-                return StatusCode(500, new { 
-                    message = "Embedding regeneration failed",
-                    timestamp = DateTime.UtcNow
-                });
-            }
+                return StatusCode(500, "Failed to delete all documents");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[API ERROR] Embedding regeneration failed: {ex.Message}");
-            return StatusCode(500, new { 
-                message = $"Internal server error: {ex.Message}",
-                timestamp = DateTime.UtcNow
-            });
+            return StatusCode(500, $"Error deleting all documents: {ex.Message}");
         }
     }
+
+
 }

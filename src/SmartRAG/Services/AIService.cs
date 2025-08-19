@@ -84,51 +84,6 @@ public class AIService(IAIProviderFactory aiProviderFactory, SmartRagOptions opt
         }
     }
 
-    public async Task<List<float>> GenerateEmbeddingsAsync(string text)
-    {
-        try
-        {
-            var selectedProvider = options.AIProvider;
-            var aiProvider = aiProviderFactory.CreateProvider(selectedProvider);
-            var providerKey = selectedProvider.ToString();
-            var providerConfig = configuration.GetSection($"AI:{providerKey}").Get<AIProviderConfig>();
-            if (providerConfig == null)
-                return [];
-
-            var embeddings = await aiProvider.GenerateEmbeddingAsync(text, providerConfig);
-            return embeddings;
-        }
-        catch (Exception)
-        {
-            throw;
-        }
-    }
-
-    public async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts)
-    {
-        try
-        {
-            var selectedProvider = options.AIProvider;
-            var aiProvider = aiProviderFactory.CreateProvider(selectedProvider);
-            var providerKey = selectedProvider.ToString();
-            var providerConfig = configuration.GetSection($"AI:{providerKey}").Get<AIProviderConfig>();
-            
-            if (providerConfig == null)
-                return [];
-
-            // Generate embeddings individually but in parallel for better performance
-            var embeddingTasks = texts.Select(async text => await aiProvider.GenerateEmbeddingAsync(text, providerConfig)).ToList();
-            var embeddings = await Task.WhenAll(embeddingTasks);
-            
-            return embeddings.Where(e => e != null && e.Count > 0).ToList();
-        }
-        catch (Exception)
-        {
-            // Return empty list on error
-            return [];
-        }
-    }
-
     private async Task<string> TryFallbackProvidersAsync(string query, IEnumerable<string> context)
     {
         foreach (var fallbackProvider in options.FallbackProviders)

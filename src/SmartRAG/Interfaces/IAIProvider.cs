@@ -1,3 +1,4 @@
+using SmartRAG.Entities;
 using SmartRAG.Models;
 
 namespace SmartRAG.Interfaces;
@@ -26,4 +27,19 @@ public interface IAIProvider
     /// Chunks text into smaller segments for processing
     /// </summary>
     Task<List<string>> ChunkTextAsync(string text, int maxChunkSize = 1000);
+    
+    /// <summary>
+    /// Clears embeddings for the given document chunks
+    /// </summary>
+    Task ClearEmbeddingsAsync(List<DocumentChunk> chunks);
+    
+    /// <summary>
+    /// Clears all cached embeddings
+    /// </summary>
+    Task ClearAllEmbeddingsAsync();
+    
+    /// <summary>
+    /// Regenerates embeddings for all documents
+    /// </summary>
+    Task<bool> RegenerateAllEmbeddingsAsync(List<Document> documents);
 }
