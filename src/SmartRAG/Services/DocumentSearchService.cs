@@ -57,8 +57,11 @@ public class DocumentSearchService(
         if (string.IsNullOrWhiteSpace(query))
             throw new ArgumentException("Query cannot be empty", nameof(query));
 
-        // Check if this is a general conversation query
-        if (IsGeneralConversationQuery(query))
+        // Universal approach: Check if documents contain relevant information for the query
+        // This approach is language-agnostic and doesn't rely on specific word patterns
+        var canAnswerFromDocuments = await CanAnswerFromDocumentsAsync(query);
+
+        if (!canAnswerFromDocuments)
         {
             ServiceLogMessages.LogGeneralConversationQuery(logger, null);
             var chatResponse = await HandleGeneralConversationAsync(query);
@@ -405,7 +408,24 @@ public class DocumentSearchService(
     {
         var chunks = await SearchDocumentsAsync(query, maxResults);
         var context = string.Join("\n\n", chunks.Select(c => c.Content));
-        var answer = await aiService.GenerateResponseAsync($"Question: {query}\n\nContext: {context}\n\nAnswer:", new List<string> { context });
+        
+        // Enhanced prompt for better AI understanding
+        var enhancedPrompt = $@"You are a helpful document analysis assistant. Answer questions based on the provided document context.
+
+IMPORTANT: 
+- Carefully analyze the context
+- Look for specific information that answers the question
+- If you find the information, provide a clear answer
+- If you cannot find it, say 'I cannot find this specific information in the provided documents'
+- Be precise and use exact information from documents
+
+Question: {query}
+
+Context: {context}
+
+Answer:";
+
+        var answer = await aiService.GenerateResponseAsync(enhancedPrompt, new List<string> { context });
 
         return new RagResponse
         {
@@ -474,7 +494,7 @@ public class DocumentSearchService(
                         return results.Count == texts.Count ? results : null;
                     }
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     ServiceLogMessages.LogFailedParseVoyageAI(logger, null);
                     return null;
@@ -486,7 +506,7 @@ public class DocumentSearchService(
                 return null;
             }
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             ServiceLogMessages.LogVoyageAIDirectTestFailed(logger, null);
             return null;
@@ -723,23 +743,52 @@ public class DocumentSearchService(
                 contentWord.Contains(searchWord, StringComparison.OrdinalIgnoreCase)));
     }
 
-    /// <summary>
-    /// Check if query is a general conversation question (not document search)
+        /// <summary>
+    /// Ultimate language-agnostic approach: ONLY check if documents contain relevant information
+    /// No word patterns, no language detection, no grammar analysis, no greeting detection
+    /// Pure content-based decision making
     /// </summary>
-    private static bool IsGeneralConversationQuery(string query)
+    private async Task<bool> CanAnswerFromDocumentsAsync(string query)
     {
-        if (string.IsNullOrWhiteSpace(query)) return false;
+        try
+        {
+            // Step 1: Search documents for any content related to the query
+            // This works regardless of the language of the query
+            var searchResults = await PerformBasicSearchAsync(query, 5);
+            
+            if (searchResults.Count == 0)
+            {
+                // No content found that matches the query in any way
+                return false;
+            }
 
-        // Simple detection: if query has document-like structure, it's document search
-        var hasDocumentStructure = query.Any(char.IsDigit) ||
-                                query.Contains(':') ||
-                                query.Contains('/') ||
-                                query.Contains('-') ||
-                                query.Length > 50;
+            // Step 2: Check if we found meaningful content with decent relevance
+            var hasRelevantContent = searchResults.Any(chunk => 
+                chunk.RelevanceScore > 0.1); // Reasonable threshold
 
-        // If it has document structure, it's document search
-        // If not, it's general conversation
-        return !hasDocumentStructure;
+            if (!hasRelevantContent)
+            {
+                // Found some content but it's not relevant enough
+                return false;
+            }
+
+            // Step 3: Check if the total content is substantial enough to potentially answer
+            var totalContentLength = searchResults
+                .Where(c => c.RelevanceScore > 0.1)
+                .Sum(c => c.Content.Length);
+
+            var hasSubstantialContent = totalContentLength > 50; // Minimum content threshold
+
+            // Final decision: If we have relevant and substantial content, use document search
+            // No other checks - let the content decide!
+            return hasRelevantContent && hasSubstantialContent;
+        }
+        catch (Exception ex)
+        {
+            // If there's an error, be conservative and assume it's document search
+            logger.LogWarning(ex, "Error in CanAnswerFromDocumentsAsync, assuming document search for safety");
+            return true;
+        }
     }
 
     /// <summary>
@@ -753,7 +802,7 @@ public class DocumentSearchService(
             var aiProvider = aiProviderFactory.CreateProvider(_options.AIProvider);
             var providerKey = _options.AIProvider.ToString();
             var providerConfig = configuration.GetSection($"AI:{providerKey}").Get<AIProviderConfig>();
-            
+
             if (providerConfig == null || string.IsNullOrEmpty(providerConfig.ApiKey))
             {
                 return "Sorry, I cannot chat right now. Please try again later.";
