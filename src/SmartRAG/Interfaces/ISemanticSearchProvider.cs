@@ -10,5 +10,5 @@ public interface ISemanticSearchProvider
     /// <summary>
     /// Search documents using semantic understanding
     /// </summary>
-    Task<List<DocumentChunk>> SearchDocumentsAsync(string query, int maxResults = 5);
+    Task<List<DocumentChunk>> SearchDocumentsAsync(string query, int maxResults = 10);
 }

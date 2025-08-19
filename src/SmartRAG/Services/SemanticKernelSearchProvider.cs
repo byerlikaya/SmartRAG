@@ -31,11 +31,14 @@ public class SemanticKernelSearchProvider : ISemanticSearchProvider
         _logger = logger;
     }
 
-    public async Task<List<DocumentChunk>> SearchDocumentsAsync(string query, int maxResults = 5)
+    public async Task<List<DocumentChunk>> SearchDocumentsAsync(string query, int maxResults = 10)
     {
         try
         {
             _logger.LogInformation("Starting semantic search for query: {Query}", query);
+
+            // Normalize query for better matching
+            var normalizedQuery = query.ToLowerInvariant().Trim();
 
             // Get all documents and chunks
             var allDocuments = await _documentRepository.GetAllAsync();
@@ -60,7 +63,7 @@ public class SemanticKernelSearchProvider : ISemanticSearchProvider
             var aiProvider = _aiProviderFactory.CreateProvider(_options.AIProvider);
 
             // 1. Generate query embedding (ONCE)
-            var queryEmbedding = await aiProvider.GenerateEmbeddingAsync(query, providerConfig);
+            var queryEmbedding = await aiProvider.GenerateEmbeddingAsync(normalizedQuery, providerConfig);
             if (queryEmbedding == null || queryEmbedding.Count == 0)
             {
                 _logger.LogWarning("Failed to generate query embedding");
@@ -68,7 +71,7 @@ public class SemanticKernelSearchProvider : ISemanticSearchProvider
             }
 
             // 2. Generate batch embeddings for all chunks (ONCE)
-            var allChunkContents = allChunks.Select(c => c.Content).ToList();
+            var allChunkContents = allChunks.Select(c => c.Content.ToLowerInvariant().Trim()).ToList();
             var allChunkEmbeddings = await aiProvider.GenerateEmbeddingsBatchAsync(allChunkContents, providerConfig);
 
             if (allChunkEmbeddings == null || allChunkEmbeddings.Count != allChunks.Count)
@@ -86,12 +89,17 @@ public class SemanticKernelSearchProvider : ISemanticSearchProvider
                 var chunkEmbedding = allChunkEmbeddings[i];
 
                 var similarity = CalculateCosineSimilarity(queryEmbedding, chunkEmbedding);
-                scoredChunks.Add((chunk, similarity));
+                
+                // Keyword boost: If chunk contains exact keywords from query, boost the score
+                var keywordBoost = CalculateKeywordBoost(normalizedQuery, chunk.Content.ToLowerInvariant());
+                var finalScore = similarity + keywordBoost;
+                
+                scoredChunks.Add((chunk, finalScore));
             }
 
             // 4. Sort by similarity and take top results
             var topChunks = scoredChunks
-                .Where(x => x.score > 0.3) // Only include relevant chunks
+                .Where(x => x.score > 0.3) // Restore original threshold
                 .OrderByDescending(x => x.score)
                 .Take(maxResults)
                 .Select(x =>
@@ -101,7 +109,8 @@ public class SemanticKernelSearchProvider : ISemanticSearchProvider
                 })
                 .ToList();
 
-            _logger.LogInformation("Found {Count} relevant chunks with similarity > 0.3", topChunks.Count);
+            _logger.LogInformation("Semantic search completed for query: {Query}, found {Count} relevant chunks", 
+                query, topChunks.Count);
             return topChunks;
         }
         catch (Exception ex)
@@ -110,7 +119,6 @@ public class SemanticKernelSearchProvider : ISemanticSearchProvider
             return new List<DocumentChunk>();
         }
     }
-
 
     /// <summary>
     /// Calculate cosine similarity between two embedding vectors
@@ -135,5 +143,24 @@ public class SemanticKernelSearchProvider : ISemanticSearchProvider
             return 0.0;
 
         return dotProduct / (Math.Sqrt(normA) * Math.Sqrt(normB));
+    }
+
+    /// <summary>
+    /// Calculate keyword boost based on exact word matches
+    /// </summary>
+    private static double CalculateKeywordBoost(string query, string content)
+    {
+        var queryWords = query.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var boost = 0.0;
+
+        foreach (var word in queryWords)
+        {
+            if (word.Length > 2 && content.Contains(word))
+            {
+                boost += 0.1; // Each matching word adds 0.1 boost
+            }
+        }
+
+        return Math.Min(boost, 0.5); // Maximum boost of 0.5
     }
 }

@@ -38,7 +38,7 @@ static void RegisterServices(IServiceCollection services, IConfiguration configu
 
         // Configure multipart file upload for multiple files
         c.OperationFilter<MultipartFileUploadFilter>();
-        
+
         // CORS sorununu çözmek için
         c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
         {
@@ -62,7 +62,7 @@ static void RegisterServices(IServiceCollection services, IConfiguration configu
     // Add SmartRag services with minimal configuration
     services.UseSmartRag(configuration,
         storageProvider: StorageProvider.Redis,  // Default: InMemory
-        aiProvider: AIProvider.AzureOpenAI               // Use OpenAI provider
+        aiProvider: AIProvider.Gemini               // Use OpenAI provider
     );
 
     services.AddCors(options =>
@@ -74,7 +74,7 @@ static void RegisterServices(IServiceCollection services, IConfiguration configu
                   .AllowAnyHeader()
                   .WithExposedHeaders("Content-Disposition");
         });
-        
+
         // Swagger UI için özel CORS policy
         options.AddPolicy("SwaggerUI", policy =>
         {
@@ -107,10 +107,10 @@ static void ConfigureMiddleware(WebApplication app, IWebHostEnvironment environm
     {
         app.UseHttpsRedirection();
     }
-    
+
     // CORS middleware'ini doğru sırada ekle
     app.UseCors("AllowAll");
-    
+
     app.UseRouting();
     app.UseAuthorization();
     app.MapControllers();

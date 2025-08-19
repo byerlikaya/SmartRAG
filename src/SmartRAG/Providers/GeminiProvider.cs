@@ -73,6 +73,7 @@ public class GeminiProvider : BaseAIProvider
 
         using var client = CreateHttpClient(config.ApiKey);
 
+        // Gemini embedding API formatı
         var payload = new
         {
             model = $"models/{config.EmbeddingModel}",
@@ -85,6 +86,7 @@ public class GeminiProvider : BaseAIProvider
             }
         };
 
+        // Gemini için dinamik embedding model adı kullan
         var embeddingEndpoint = $"{config.Endpoint!.TrimEnd('/')}/models/{config.EmbeddingModel}:embedContent";
 
         var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint!, payload, "Gemini");
@@ -123,55 +125,24 @@ public class GeminiProvider : BaseAIProvider
         if (string.IsNullOrEmpty(config.EmbeddingModel))
             return null;
 
-        using var client = CreateHttpClient(config.ApiKey);
-
-        var payload = new
+        // Gemini'de batch embedding endpoint'i yok, individual embedding kullan
+        var results = new List<List<float>>();
+        
+        foreach (var text in texts)
         {
-            model = $"models/{config.EmbeddingModel}",
-            requests = texts.Select(text => new
+            try
             {
-                content = new
-                {
-                    parts = new[]
-                    {
-                        new { text = text }
-                    }
-                }
-            }).ToArray()
-        };
-
-        var embeddingEndpoint = $"{config.Endpoint!.TrimEnd('/')}/models/{config.EmbeddingModel}:batchEmbedContents";
-
-        var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint!, payload, "Gemini");
-
-        if (!success)
-            return null;
-
-        // Parse batch Gemini embedding response
-        using var doc = JsonDocument.Parse(response);
-        if (doc.RootElement.TryGetProperty("embeddings", out var embeddings) && embeddings.ValueKind == JsonValueKind.Array)
-        {
-            var results = new List<List<float>>();
-            foreach (var item in embeddings.EnumerateArray())
-            {
-                if (item.TryGetProperty("embedding", out var embedding) && 
-                    embedding.TryGetProperty("values", out var values) && 
-                    values.ValueKind == JsonValueKind.Array)
-                {
-                    var embeddingList = values.EnumerateArray()
-                        .Select(x => x.GetSingle())
-                        .ToList();
-                    results.Add(embeddingList);
-                }
-                else
-                {
-                    results.Add(new List<float>());
-                }
+                var embedding = await GenerateEmbeddingAsync(text, config);
+                results.Add(embedding ?? new List<float>());
             }
-            return results.Count == texts.Count ? results : null;
+            catch (Exception)
+            {
+                // Hata durumunda boş embedding ekle
+                results.Add(new List<float>());
+            }
         }
 
-        return null;
+        return results.Count == texts.Count ? results : null;
     }
 
     public override async Task ClearEmbeddingsAsync(List<DocumentChunk> chunks)

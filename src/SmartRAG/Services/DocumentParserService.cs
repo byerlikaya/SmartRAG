@@ -300,6 +300,7 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
         // Basit ve güvenilir chunk boyutları
         var maxChunkSize = Math.Max(1000, options.MaxChunkSize);
         var minChunkSize = Math.Max(300, options.MinChunkSize);
+        var chunkOverlap = Math.Max(100, options.ChunkOverlap); // Overlap ekle
 
         // Tek chunk yeterliyse
         if (content.Length <= maxChunkSize)
@@ -321,7 +322,7 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
         var startIndex = 0;
         var chunkIndex = 0;
 
-        // Basit chunking - overlap YOK, sonsuz döngü imkansız
+        // Overlap ile chunking - önemli bilgiler kaybolmasın
         while (startIndex < content.Length)
         {
             var endIndex = Math.Min(startIndex + maxChunkSize, content.Length);
@@ -357,8 +358,8 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
                 chunkIndex++;
             }
 
-            // Sonraki chunk için başlangıç - overlap YOK, sadece endIndex
-            startIndex = endIndex;
+            // Sonraki chunk için başlangıç - OVERLAP ile
+            startIndex = Math.Max(startIndex + 1, endIndex - chunkOverlap);
             
             // Güvenlik kontrolü - startIndex her zaman ilerlemeli
             if (startIndex >= content.Length)

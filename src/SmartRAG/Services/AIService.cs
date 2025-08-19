@@ -23,6 +23,9 @@ public class AIService(IAIProviderFactory aiProviderFactory, SmartRagOptions opt
             if (providerConfig == null)
                 return $"AI provider configuration not found for '{providerKey}'.";
 
+            // Build the RAG prompt with context
+            var finalPrompt = BuildRagPrompt(query, context);
+
             string response;
             var attempt = 0;
             var maxAttempts = Math.Max(1, options.MaxRetryAttempts);
@@ -32,10 +35,7 @@ public class AIService(IAIProviderFactory aiProviderFactory, SmartRagOptions opt
             {
                 try
                 {
-                    // Build prompt with context and query and use full provider config
-                    var contextText = string.Join("\n\n", context);
-                    var prompt = $"Context:\n{contextText}\n\nQuestion: {query}\n\nAnswer:";
-                    response = await aiProvider.GenerateTextAsync(prompt, providerConfig);
+                    response = await aiProvider.GenerateTextAsync(finalPrompt, providerConfig);
                     break;
                 }
                 catch (Exception) when (options.RetryPolicy != RetryPolicy.None && attempt < maxAttempts - 1)
@@ -84,6 +84,20 @@ public class AIService(IAIProviderFactory aiProviderFactory, SmartRagOptions opt
         }
     }
 
+    /// <summary>
+    /// Build RAG prompt with context and query
+    /// </summary>
+    private string BuildRagPrompt(string query, IEnumerable<string> context)
+    {
+        if (!context.Any())
+        {
+            return $"User: {query}\n\nAnswer:";
+        }
+
+        var contextText = string.Join("\n\n", context);
+        return $"Context:\n{contextText}\n\nQuestion: {query}\n\nAnswer based on the context above:";
+    }
+
     private async Task<string> TryFallbackProvidersAsync(string query, IEnumerable<string> context)
     {
         foreach (var fallbackProvider in options.FallbackProviders)
@@ -94,9 +108,9 @@ public class AIService(IAIProviderFactory aiProviderFactory, SmartRagOptions opt
                 var key = fallbackProvider.ToString();
                 var config = configuration.GetSection($"AI:{key}").Get<AIProviderConfig>();
                 if (config == null) continue;
-                var contextText = string.Join("\n\n", context);
-                var prompt = $"Context:\n{contextText}\n\nQuestion: {query}\n\nAnswer:";
-                var response = await aiProvider.GenerateTextAsync(prompt, config);
+                
+                var finalPrompt = BuildRagPrompt(query, context);
+                var response = await aiProvider.GenerateTextAsync(finalPrompt, config);
 
                 if (!string.IsNullOrEmpty(response))
                 {
