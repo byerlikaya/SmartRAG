@@ -32,6 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 - **Gemini Provider**: Fixed embedding model configuration and batch processing
+- **AzureOpenAI Provider**: Enhanced batch embedding support and error handling
 - **Chunk Boundaries**: Resolved information loss at document chunk boundaries
 - **Search Relevance**: Improved keyword matching and scoring accuracy
 - **RAG Responses**: Fixed AI context handling for proper document-based answers
@@ -42,6 +43,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Enhanced `SemanticKernelSearchProvider` with production-ready hybrid search
 - Optimized `AIService` prompt construction for better RAG performance
 - Fixed Gemini API endpoint configuration and batch embedding handling
+- Enhanced `AzureOpenAIProvider` with batch embeddings and improved error handling
+- Added embedding management methods (`ClearEmbeddingsAsync`, `RegenerateAllEmbeddingsAsync`)
 
 ## [1.0.1] - 2025-01-19
 

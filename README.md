@@ -208,7 +208,7 @@ cp src/SmartRAG.API/appsettings.json src/SmartRAG.API/appsettings.Development.js
 | **🤖 OpenAI** | ✅ Latest GPT models<br/>✅ Advanced embeddings | Industry standard, reliable, extensive model family |
 | **🧠 Anthropic** | ✅ Claude family models<br/>✅ VoyageAI embeddings | Safety-focused, constitutional AI, long context, requires separate VoyageAI API key |
 | **🌟 Google Gemini** | ✅ Gemini models<br/>✅ Native embeddings | Multimodal support, latest Google AI innovations, optimized RAG performance |
-| **☁️ Azure OpenAI** | ✅ Enterprise GPT models<br/>✅ Enterprise embeddings | GDPR compliant, enterprise security, SLA support |
+| **☁️ Azure OpenAI** | ✅ Enterprise GPT models<br/>✅ Batch embeddings | GDPR compliant, enterprise security, SLA support, enhanced batch processing |
 
 ### 🛠️ **CustomProvider** - Universal API Support
 **One provider to rule them all!** Connect to any OpenAI-compatible API:
