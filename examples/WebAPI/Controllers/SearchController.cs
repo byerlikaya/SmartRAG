@@ -18,7 +18,7 @@ public class SearchController(IDocumentSearchService documentSearchService) : Co
     [HttpPost("search")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<object>> Search([FromBody] Contracts.SearchRequestIDto request)
+    public async Task<ActionResult<object>> Search([FromBody] Contracts.SearchRequest request)
     {
         string? query = request?.Query;
         int maxResults = request?.MaxResults ?? 5;
