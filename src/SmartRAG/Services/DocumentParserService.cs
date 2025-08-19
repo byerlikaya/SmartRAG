@@ -297,11 +297,11 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
     {
         var chunks = new List<DocumentChunk>();
         
-        // Türkçe metinler için optimize edilmiş chunk boyutları
-        var maxChunkSize = Math.Max(1200, options.MaxChunkSize); // Daha küçük chunk'lar semantic search için daha iyi
-        var chunkOverlap = Math.Max(250, options.ChunkOverlap);  // Overlap artırıldı - daha iyi context
-        var minChunkSize = Math.Max(400, options.MinChunkSize);  // Minimum boyut artırıldı - daha anlamlı chunk'lar
+        // Basit ve güvenilir chunk boyutları
+        var maxChunkSize = Math.Max(1000, options.MaxChunkSize);
+        var minChunkSize = Math.Max(300, options.MinChunkSize);
 
+        // Tek chunk yeterliyse
         if (content.Length <= maxChunkSize)
         {
             chunks.Add(new DocumentChunk
@@ -321,16 +321,18 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
         var startIndex = 0;
         var chunkIndex = 0;
 
+        // Basit chunking - overlap YOK, sonsuz döngü imkansız
         while (startIndex < content.Length)
         {
             var endIndex = Math.Min(startIndex + maxChunkSize, content.Length);
-
-            // BASİT ve ETKİLİ chunking - kelime sınırlarında böl
+            
+            // Kelime sınırında böl
             if (endIndex < content.Length)
             {
-                // Sadece kelime sınırında böl - çok karmaşık olmasın
                 var wordBoundaryIndex = FindWordBoundary(content, startIndex, endIndex);
-                if (wordBoundaryIndex > startIndex + minChunkSize && wordBoundaryIndex < endIndex + 100)
+                
+                // Sadece geçerli sınır bulunduysa kullan
+                if (wordBoundaryIndex > startIndex + minChunkSize && wordBoundaryIndex < endIndex + 50)
                 {
                     endIndex = wordBoundaryIndex;
                 }
@@ -338,6 +340,7 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
 
             var chunkContent = content.Substring(startIndex, endIndex - startIndex).Trim();
 
+            // Chunk'ı ekle
             if (!string.IsNullOrWhiteSpace(chunkContent) && chunkContent.Length >= minChunkSize)
             {
                 chunks.Add(new DocumentChunk
@@ -354,8 +357,14 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
                 chunkIndex++;
             }
 
-            // Overlap ile sonraki başlangıç pozisyonunu hesapla
-            startIndex = Math.Max(startIndex + 1, endIndex - chunkOverlap);
+            // Sonraki chunk için başlangıç - overlap YOK, sadece endIndex
+            startIndex = endIndex;
+            
+            // Güvenlik kontrolü - startIndex her zaman ilerlemeli
+            if (startIndex >= content.Length)
+            {
+                break;
+            }
         }
 
         return chunks;
@@ -413,79 +422,28 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
     }
 
     /// <summary>
-    /// Kelime sınırını bul - HEM İLERİYE HEM GERİYE doğru arama yaparak
+    /// Kelime sınırını bul - basit ve güvenilir
     /// </summary>
     private static int FindWordBoundary(string content, int searchStart, int searchEnd)
     {
         if (searchStart >= searchEnd || searchStart < 0 || searchEnd > content.Length)
             return searchEnd;
 
-        // İLERİYE DOĞRU arama - searchEnd'den sonraki ilk kelime sınırı
-        var forwardSpaceIndex = content.IndexOf(' ', searchEnd);
-        var forwardTabIndex = content.IndexOf('\t', searchEnd);
-        var forwardNewlineIndex = content.IndexOf('\n', searchEnd);
-        var forwardReturnIndex = content.IndexOf('\r', searchEnd);
+        // Sadece geriye doğru arama - daha güvenilir
+        var spaceIndex = content.LastIndexOf(' ', searchEnd - 1);
+        var newlineIndex = content.LastIndexOf('\n', searchEnd - 1);
+        var periodIndex = content.LastIndexOf('.', searchEnd - 1);
+        var commaIndex = content.LastIndexOf(',', searchEnd - 1);
+
+        // En son geçerli sınırı bul
+        var maxIndex = Math.Max(Math.Max(Math.Max(spaceIndex, newlineIndex), periodIndex), commaIndex);
         
-        // GERİYE DOĞRU arama - searchEnd'den önceki son kelime sınırı
-        var backwardSpaceIndex = content.LastIndexOf(' ', searchEnd - 1);
-        var backwardTabIndex = content.LastIndexOf('\t', searchEnd - 1);
-        var backwardNewlineIndex = content.LastIndexOf('\n', searchEnd - 1);
-        var backwardReturnIndex = content.LastIndexOf('\r', searchEnd - 1);
-
-        // Noktalama işaretleri - her iki yönde
-        var forwardCommaIndex = content.IndexOf(',', searchEnd);
-        var backwardCommaIndex = content.LastIndexOf(',', searchEnd - 1);
-        var forwardPeriodIndex = content.IndexOf('.', searchEnd);
-        var backwardPeriodIndex = content.LastIndexOf('.', searchEnd - 1);
-
-        // En iyi sınırı bul - hem ileriye hem geriye
-        var bestIndex = GetBestBoundaryIndex(searchEnd, searchStart, 
-            new[] { forwardSpaceIndex, forwardTabIndex, forwardNewlineIndex, forwardReturnIndex, 
-                    forwardCommaIndex, forwardPeriodIndex },
-            new[] { backwardSpaceIndex, backwardTabIndex, backwardNewlineIndex, backwardReturnIndex, 
-                    backwardCommaIndex, backwardPeriodIndex });
-
-        return bestIndex;
-    }
-
-    /// <summary>
-    /// En iyi kelime sınırını bul - ileriye ve geriye aramaları karşılaştır
-    /// </summary>
-    private static int GetBestBoundaryIndex(int currentPosition, int minPosition, int[] forwardIndexes, int[] backwardIndexes)
-    {
-        // İleriye doğru en yakın geçerli index
-        var validForwardIndexes = forwardIndexes
-            .Where(idx => idx > 0 && idx < int.MaxValue)
-            .ToList();
-
-        // Geriye doğru en yakın geçerli index
-        var validBackwardIndexes = backwardIndexes
-            .Where(idx => idx >= minPosition && idx < currentPosition)
-            .ToList();
-
-        if (!validForwardIndexes.Any() && !validBackwardIndexes.Any())
-            return currentPosition;
-
-        // Mesafeleri hesapla
-        var forwardDistance = validForwardIndexes.Any() ? validForwardIndexes.Min() - currentPosition : int.MaxValue;
-        var backwardDistance = validBackwardIndexes.Any() ? currentPosition - validBackwardIndexes.Max() : int.MaxValue;
-
-        // En yakın olanı seç (100 karakter sınırı ile)
-        if (forwardDistance <= 100 && backwardDistance <= 100)
+        // Sadece searchStart'tan sonraki sınırları kabul et
+        if (maxIndex >= searchStart)
         {
-            return forwardDistance <= backwardDistance 
-                ? validForwardIndexes.Min() 
-                : validBackwardIndexes.Max();
-        }
-        else if (forwardDistance <= 100)
-        {
-            return validForwardIndexes.Min();
-        }
-        else if (backwardDistance <= 100)
-        {
-            return validBackwardIndexes.Max();
+            return maxIndex + 1; // Sınır karakterini dahil et
         }
 
-        return currentPosition;
+        return searchEnd;
     }
 }
