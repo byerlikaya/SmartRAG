@@ -52,7 +52,13 @@ public class DocumentsController(
                 file.ContentType,
                 "system");
 
-            return CreatedAtAction(nameof(GetDocument), new { id = document.Id }, document);
+            // Return simple success response
+            return Ok(new { 
+                message = "Document uploaded successfully",
+                documentId = document.Id,
+                fileName = document.FileName,
+                chunkCount = document.Chunks?.Count ?? 0
+            });
         }
         catch (Exception ex)
         {
