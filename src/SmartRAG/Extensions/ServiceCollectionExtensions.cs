@@ -35,6 +35,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IStorageFactory, StorageFactory>();
         services.AddScoped<IDocumentService, DocumentService>();
         services.AddScoped<IDocumentParserService, DocumentParserService>();
+        services.AddScoped<IDocumentSearchService, DocumentSearchService>();
 
         services.AddSingleton(options);
 
