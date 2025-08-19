@@ -214,9 +214,33 @@ public abstract class BaseAIProvider : IAIProvider
                     attempt++;
                     if (attempt < maxRetries)
                     {
-                        // For 429 errors, use exponential backoff: 2s, 4s, 8s
-                        var delay = 2000 * (int)Math.Pow(2, attempt - 1);
-                        await Task.Delay(delay);
+                        // Respect Retry-After header if present; otherwise default to 60s for Azure
+                        var delayMs = 60000;
+                        try
+                        {
+                            if (response.Headers.TryGetValues("Retry-After", out var retryAfterValues))
+                            {
+                                var retryAfter = retryAfterValues.FirstOrDefault();
+                                if (!string.IsNullOrEmpty(retryAfter))
+                                {
+                                    if (int.TryParse(retryAfter, out var seconds))
+                                    {
+                                        delayMs = Math.Max(60000, seconds * 1000); // Minimum 60s for Azure
+                                    }
+                                    else if (DateTimeOffset.TryParse(retryAfter, out var retryDate))
+                                    {
+                                        var diff = retryDate - DateTimeOffset.UtcNow;
+                                        if (diff.TotalMilliseconds > 0)
+                                        {
+                                            delayMs = (int)Math.Max(60000, Math.Min(int.MaxValue, diff.TotalMilliseconds));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        catch { }
+
+                        await Task.Delay(delayMs);
                         continue;
                     }
                 }
