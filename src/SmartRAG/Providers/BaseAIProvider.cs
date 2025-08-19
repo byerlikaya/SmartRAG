@@ -18,6 +18,11 @@ public abstract class BaseAIProvider : IAIProvider
     public abstract Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config);
 
     /// <summary>
+    /// Generates embeddings for multiple texts in batch
+    /// </summary>
+    public abstract Task<List<List<float>>?> GenerateEmbeddingsBatchAsync(List<string> texts, AIProviderConfig config);
+
+    /// <summary>
     /// Common text chunking implementation for all providers
     /// Uses StringBuilder for better performance
     /// </summary>

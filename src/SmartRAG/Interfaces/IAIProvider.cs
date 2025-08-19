@@ -18,6 +18,11 @@ public interface IAIProvider
     Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config);
     
     /// <summary>
+    /// Generates embeddings for multiple texts in batch
+    /// </summary>
+    Task<List<List<float>>?> GenerateEmbeddingsBatchAsync(List<string> texts, AIProviderConfig config);
+    
+    /// <summary>
     /// Chunks text into smaller segments for processing
     /// </summary>
     Task<List<string>> ChunkTextAsync(string text, int maxChunkSize = 1000);

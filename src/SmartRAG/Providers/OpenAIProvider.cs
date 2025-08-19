@@ -69,4 +69,54 @@ public class OpenAIProvider : BaseAIProvider
 
         return ParseEmbeddingResponse(response);
     }
+
+    public override async Task<List<List<float>>?> GenerateEmbeddingsBatchAsync(List<string> texts, AIProviderConfig config)
+    {
+        var (isValid, errorMessage) = ValidateConfig(config, requireApiKey: true, requireEndpoint: true, requireModel: false);
+
+        if (!isValid || texts == null || texts.Count == 0)
+            return null;
+
+        if (string.IsNullOrEmpty(config.EmbeddingModel))
+            return null;
+
+        using var client = CreateHttpClient(config.ApiKey);
+
+        var payload = new
+        {
+            input = texts.ToArray(),
+            model = config.EmbeddingModel
+        };
+
+        var embeddingEndpoint = $"{config.Endpoint!.TrimEnd('/')}/embeddings";
+
+        var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint!, payload, "OpenAI");
+
+        if (!success)
+            return null;
+
+        // Parse batch embedding response
+        using var doc = System.Text.Json.JsonDocument.Parse(response);
+        if (doc.RootElement.TryGetProperty("data", out var data) && data.ValueKind == System.Text.Json.JsonValueKind.Array)
+        {
+            var results = new List<List<float>>();
+            foreach (var item in data.EnumerateArray())
+            {
+                if (item.TryGetProperty("embedding", out var embedding) && embedding.ValueKind == System.Text.Json.JsonValueKind.Array)
+                {
+                    var embeddingList = embedding.EnumerateArray()
+                        .Select(x => x.GetSingle())
+                        .ToList();
+                    results.Add(embeddingList);
+                }
+                else
+                {
+                    results.Add(new List<float>());
+                }
+            }
+            return results.Count == texts.Count ? results : null;
+        }
+
+        return null;
+    }
 }

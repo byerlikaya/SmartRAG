@@ -111,4 +111,65 @@ public class GeminiProvider : BaseAIProvider
 
         return [];
     }
+
+    public override async Task<List<List<float>>?> GenerateEmbeddingsBatchAsync(List<string> texts, AIProviderConfig config)
+    {
+        var (isValid, errorMessage) = ValidateConfig(config, requireApiKey: true, requireEndpoint: true, requireModel: false);
+
+        if (!isValid || texts == null || texts.Count == 0)
+            return null;
+
+        if (string.IsNullOrEmpty(config.EmbeddingModel))
+            return null;
+
+        using var client = CreateHttpClient(config.ApiKey);
+
+        var payload = new
+        {
+            model = $"models/{config.EmbeddingModel}",
+            requests = texts.Select(text => new
+            {
+                content = new
+                {
+                    parts = new[]
+                    {
+                        new { text = text }
+                    }
+                }
+            }).ToArray()
+        };
+
+        var embeddingEndpoint = $"{config.Endpoint!.TrimEnd('/')}/models/{config.EmbeddingModel}:batchEmbedContents";
+
+        var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint!, payload, "Gemini");
+
+        if (!success)
+            return null;
+
+        // Parse batch Gemini embedding response
+        using var doc = JsonDocument.Parse(response);
+        if (doc.RootElement.TryGetProperty("embeddings", out var embeddings) && embeddings.ValueKind == JsonValueKind.Array)
+        {
+            var results = new List<List<float>>();
+            foreach (var item in embeddings.EnumerateArray())
+            {
+                if (item.TryGetProperty("embedding", out var embedding) && 
+                    embedding.TryGetProperty("values", out var values) && 
+                    values.ValueKind == JsonValueKind.Array)
+                {
+                    var embeddingList = values.EnumerateArray()
+                        .Select(x => x.GetSingle())
+                        .ToList();
+                    results.Add(embeddingList);
+                }
+                else
+                {
+                    results.Add(new List<float>());
+                }
+            }
+            return results.Count == texts.Count ? results : null;
+        }
+
+        return null;
+    }
 }

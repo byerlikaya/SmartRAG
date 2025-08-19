@@ -105,6 +105,62 @@ public class AnthropicProvider : BaseAIProvider
         return ParseVoyageEmbeddingResponse(response);
     }
 
+    public override async Task<List<List<float>>?> GenerateEmbeddingsBatchAsync(List<string> texts, AIProviderConfig config)
+    {
+        // Anthropic uses Voyage AI for embeddings
+        var voyageApiKey = config.EmbeddingApiKey ?? config.ApiKey;
+        var voyageEndpoint = "https://api.voyageai.com";
+        var voyageModel = config.EmbeddingModel ?? "voyage-3.5";
+
+        if (string.IsNullOrEmpty(voyageApiKey) || texts == null || texts.Count == 0)
+            return null;
+
+        var additionalHeaders = new Dictionary<string, string>
+        {
+            { "Authorization", $"Bearer {voyageApiKey}" }
+        };
+
+        using var client = CreateHttpClientWithoutAuth(additionalHeaders);
+
+        var payload = new
+        {
+            input = texts.ToArray(),
+            model = voyageModel,
+            input_type = "document"
+        };
+
+        var embeddingEndpoint = $"{voyageEndpoint}/v1/embeddings";
+
+        var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload, "Voyage (Anthropic)");
+
+        if (!success)
+            return null;
+
+        // Parse batch VoyageAI response
+        using var doc = JsonDocument.Parse(response);
+        if (doc.RootElement.TryGetProperty("data", out var dataArray) && dataArray.ValueKind == JsonValueKind.Array)
+        {
+            var results = new List<List<float>>();
+            foreach (var item in dataArray.EnumerateArray())
+            {
+                if (item.TryGetProperty("embedding", out var embeddingArray) && embeddingArray.ValueKind == JsonValueKind.Array)
+                {
+                    var embeddingList = embeddingArray.EnumerateArray()
+                        .Select(x => x.GetSingle())
+                        .ToList();
+                    results.Add(embeddingList);
+                }
+                else
+                {
+                    results.Add(new List<float>());
+                }
+            }
+            return results.Count == texts.Count ? results : null;
+        }
+
+        return null;
+    }
+
     private static List<float> ParseVoyageEmbeddingResponse(string response)
     {
         using var doc = JsonDocument.Parse(response);

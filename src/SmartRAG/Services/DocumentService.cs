@@ -1,8 +1,10 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
 using SmartRAG.Services.Logging;
+using SmartRAG.Factories;
 
 namespace SmartRAG.Services;
 
@@ -13,6 +15,8 @@ public class DocumentService(
     IDocumentRepository documentRepository,
     IDocumentParserService documentParserService,
     IDocumentSearchService documentSearchService,
+    IConfiguration configuration,
+    IAIProviderFactory aiProviderFactory,
     SmartRagOptions options,
     ILogger<DocumentService> logger) : IDocumentService
 {
@@ -46,87 +50,108 @@ public class DocumentService(
         
         logger.LogInformation("Starting batch embedding generation for {ChunkCount} chunks...", allChunkContents.Count);
         
-        // Add timeout for large documents
-        var embeddingTask = documentSearchService.GenerateEmbeddingsBatchAsync(allChunkContents);
-        var timeoutTask = Task.Delay(TimeSpan.FromMinutes(10));
+        // Get the configured AI provider for embeddings
+        var providerKey = options.AIProvider.ToString();
+        var providerConfig = configuration.GetSection($"AI:{providerKey}").Get<AIProviderConfig>();
         
-        var completedTask = await Task.WhenAny(embeddingTask, timeoutTask);
-        List<List<float>>? allEmbeddings = null;
+        if (providerConfig != null && !string.IsNullOrEmpty(providerConfig.ApiKey))
+        {
+            var aiProvider = aiProviderFactory.CreateProvider(options.AIProvider);
+            
+            // Add timeout for large documents
+            var embeddingTask = aiProvider.GenerateEmbeddingsBatchAsync(allChunkContents, providerConfig);
+            var timeoutTask = Task.Delay(TimeSpan.FromMinutes(10));
+            
+            var completedTask = await Task.WhenAny(embeddingTask, timeoutTask);
+            List<List<float>>? allEmbeddings = null;
 
-        if (completedTask == embeddingTask)
-        {
-            allEmbeddings = await embeddingTask;
-            logger.LogInformation("Batch embedding generation completed successfully.");
-        }
-        else
-        {
-            logger.LogWarning("Embedding generation timed out after 10 minutes. Proceeding with partial embeddings.");
-        }
-
-        // Apply embeddings to chunks with progress tracking
-        var processedChunks = 0;
-        var totalChunks = document.Chunks.Count;
-        
-        for (int i = 0; i < document.Chunks.Count; i++)
-        {
-            try
+            if (completedTask == embeddingTask)
             {
-                var chunk = document.Chunks[i];
-                chunk.DocumentId = document.Id;
-                
-                // Check if embedding was generated successfully
-                if (allEmbeddings != null && i < allEmbeddings.Count && allEmbeddings[i] != null && allEmbeddings[i].Count > 0)
-                {
-                    chunk.Embedding = allEmbeddings[i];
-                    ServiceLogMessages.LogChunkEmbeddingSuccess(logger, i, allEmbeddings[i].Count, null);
-                }
-                else
-                {
-                    // Retry individual embedding generation for this chunk with timeout
-                    ServiceLogMessages.LogChunkBatchEmbeddingFailed(logger, i, null);
-                    
-                    var individualTask = documentSearchService.GenerateEmbeddingWithFallbackAsync(chunk.Content);
-                    var individualTimeoutTask = Task.Delay(TimeSpan.FromSeconds(30));
-                    
-                    var individualCompletedTask = await Task.WhenAny(individualTask, individualTimeoutTask);
-                    List<float>? individualEmbedding = null;
+                allEmbeddings = await embeddingTask;
+                logger.LogInformation("Batch embedding generation completed successfully.");
+            }
+            else
+            {
+                logger.LogWarning("Embedding generation timed out after 10 minutes. Proceeding with partial embeddings.");
+            }
 
-                    if (individualCompletedTask == individualTask)
+            // Apply embeddings to chunks with progress tracking
+            var processedChunks = 0;
+            var totalChunks = document.Chunks.Count;
+            
+            for (int i = 0; i < document.Chunks.Count; i++)
+            {
+                try
+                {
+                    var chunk = document.Chunks[i];
+                    chunk.DocumentId = document.Id;
+                    
+                    // Check if embedding was generated successfully
+                    if (allEmbeddings != null && i < allEmbeddings.Count && allEmbeddings[i] != null && allEmbeddings[i].Count > 0)
                     {
-                        individualEmbedding = await individualTask;
-                        if (individualEmbedding != null && individualEmbedding.Count > 0)
-                        {
-                            chunk.Embedding = individualEmbedding;
-                            ServiceLogMessages.LogChunkIndividualEmbeddingSuccess(logger, i, individualEmbedding.Count, null);
-                        }
-                        else
-                        {
-                            ServiceLogMessages.LogChunkEmbeddingFailed(logger, i, null);
-                            chunk.Embedding = []; // Empty but not null
-                        }
+                        chunk.Embedding = allEmbeddings[i];
+                        ServiceLogMessages.LogChunkEmbeddingSuccess(logger, i, allEmbeddings[i].Count, null);
                     }
                     else
                     {
-                        logger.LogWarning("Individual embedding generation timed out for chunk {ChunkIndex}", i);
-                        chunk.Embedding = []; // Empty but not null
+                        // Retry individual embedding generation for this chunk with timeout
+                        ServiceLogMessages.LogChunkBatchEmbeddingFailed(logger, i, null);
+                        
+                        var individualTask = aiProvider.GenerateEmbeddingAsync(chunk.Content, providerConfig);
+                        var individualTimeoutTask = Task.Delay(TimeSpan.FromSeconds(30));
+                        
+                        var individualCompletedTask = await Task.WhenAny(individualTask, individualTimeoutTask);
+                        List<float>? individualEmbedding = null;
+
+                        if (individualCompletedTask == individualTask)
+                        {
+                            individualEmbedding = await individualTask;
+                            if (individualEmbedding != null && individualEmbedding.Count > 0)
+                            {
+                                chunk.Embedding = individualEmbedding;
+                                ServiceLogMessages.LogChunkIndividualEmbeddingSuccess(logger, i, individualEmbedding.Count, null);
+                            }
+                            else
+                            {
+                                ServiceLogMessages.LogChunkEmbeddingFailed(logger, i, null);
+                                chunk.Embedding = []; // Empty but not null
+                            }
+                        }
+                        else
+                        {
+                            logger.LogWarning("Individual embedding generation timed out for chunk {ChunkIndex}", i);
+                            chunk.Embedding = []; // Empty but not null
+                        }
+                    }
+                    
+                    if (chunk.CreatedAt == default)
+                        chunk.CreatedAt = DateTime.UtcNow;
+
+                    processedChunks++;
+                    if (processedChunks % 10 == 0 || processedChunks == totalChunks)
+                    {
+                        logger.LogInformation("Progress: {Processed}/{Total} chunks processed ({Percentage:F1}%)", 
+                            processedChunks, totalChunks, (processedChunks * 100.0) / totalChunks);
                     }
                 }
-                
-                if (chunk.CreatedAt == default)
-                    chunk.CreatedAt = DateTime.UtcNow;
-
-                processedChunks++;
-                if (processedChunks % 10 == 0 || processedChunks == totalChunks)
+                catch (Exception ex)
                 {
-                    logger.LogInformation("Progress: {Processed}/{Total} chunks processed ({Percentage:F1}%)", 
-                        processedChunks, totalChunks, (processedChunks * 100.0) / totalChunks);
+                    ServiceLogMessages.LogChunkProcessingFailed(logger, i, ex);
+                    document.Chunks[i].Embedding = []; // Empty but not null
+                    processedChunks++;
                 }
             }
-            catch (Exception ex)
+        }
+        else
+        {
+            logger.LogWarning("No AI provider configuration found for embeddings. Skipping embedding generation.");
+            // Set empty embeddings for all chunks
+            foreach (var chunk in document.Chunks)
             {
-                ServiceLogMessages.LogChunkProcessingFailed(logger, i, ex);
-                document.Chunks[i].Embedding = []; // Empty but not null
-                processedChunks++;
+                chunk.Embedding = [];
+                chunk.DocumentId = document.Id;
+                if (chunk.CreatedAt == default)
+                    chunk.CreatedAt = DateTime.UtcNow;
             }
         }
 
@@ -269,74 +294,92 @@ public class DocumentService(
                 
                 ServiceLogMessages.LogBatchProgress(logger, batchIndex + 1, totalBatches, null);
                 
-                // Generate embeddings for current batch
                 var batchContents = currentBatch.Select(c => c.Content).ToList();
-                var batchEmbeddings = await documentSearchService.GenerateEmbeddingsBatchAsync(batchContents);
                 
-                if (batchEmbeddings != null && batchEmbeddings.Count == currentBatch.Count)
+                // Get the configured AI provider for embeddings
+                var providerKey = options.AIProvider.ToString();
+                var providerConfig = configuration.GetSection($"AI:{providerKey}").Get<AIProviderConfig>();
+                
+                if (providerConfig != null && !string.IsNullOrEmpty(providerConfig.ApiKey))
                 {
-                    // Apply embeddings to chunks
-                    for (int i = 0; i < currentBatch.Count; i++)
+                    var aiProvider = aiProviderFactory.CreateProvider(options.AIProvider);
+                    var batchEmbeddings = await aiProvider.GenerateEmbeddingsBatchAsync(batchContents, providerConfig);
+                    
+                    if (batchEmbeddings != null && batchEmbeddings.Count == currentBatch.Count)
                     {
-                        var chunk = currentBatch[i];
-                        var embedding = batchEmbeddings[i];
-                        
-                        if (embedding != null && embedding.Count > 0)
+                        // Apply embeddings to chunks
+                        for (int i = 0; i < currentBatch.Count; i++)
                         {
-                            chunk.Embedding = embedding;
-                            successCount++;
-                            ServiceLogMessages.LogChunkBatchEmbeddingSuccess(logger, i, embedding.Count, null);
-                        }
-                        else
-                        {
-                            ServiceLogMessages.LogChunkBatchEmbeddingFailedRetry(logger, chunk.Id, null);
+                            var chunk = currentBatch[i];
+                            var embedding = batchEmbeddings[i];
                             
-                            // Fallback to individual generation
-                            var individualEmbedding = await documentSearchService.GenerateEmbeddingWithFallbackAsync(chunk.Content);
-                            if (individualEmbedding != null && individualEmbedding.Count > 0)
+                            if (embedding != null && embedding.Count > 0)
                             {
-                                chunk.Embedding = individualEmbedding;
+                                chunk.Embedding = embedding;
                                 successCount++;
-                                ServiceLogMessages.LogChunkIndividualEmbeddingSuccessRetry(logger, chunk.Id, individualEmbedding.Count, null);
+                                ServiceLogMessages.LogChunkBatchEmbeddingSuccess(logger, i, embedding.Count, null);
                             }
                             else
                             {
-                                ServiceLogMessages.LogChunkAllEmbeddingMethodsFailed(logger, chunk.Id, null);
+                                ServiceLogMessages.LogChunkBatchEmbeddingFailedRetry(logger, chunk.Id, null);
+                                
+                                // Fallback to individual generation
+                                var individualEmbedding = await aiProvider.GenerateEmbeddingAsync(chunk.Content, providerConfig);
+                                if (individualEmbedding != null && individualEmbedding.Count > 0)
+                                {
+                                    chunk.Embedding = individualEmbedding;
+                                    successCount++;
+                                    ServiceLogMessages.LogChunkIndividualEmbeddingSuccessRetry(logger, chunk.Id, individualEmbedding.Count, null);
+                                }
+                                else
+                                {
+                                    ServiceLogMessages.LogChunkAllEmbeddingMethodsFailed(logger, chunk.Id, null);
+                                }
+                            }
+                            
+                            processedChunks++;
+                        }
+                    }
+                    else
+                    {
+                        ServiceLogMessages.LogBatchFailed(logger, batchIndex + 1, null);
+                        
+                        // Process chunks individually if batch fails
+                        foreach (var chunk in currentBatch)
+                        {
+                            try
+                            {
+                                var newEmbedding = await aiProvider.GenerateEmbeddingAsync(chunk.Content, providerConfig);
+                                
+                                if (newEmbedding != null && newEmbedding.Count > 0)
+                                {
+                                    chunk.Embedding = newEmbedding;
+                                    successCount++;
+                                    ServiceLogMessages.LogChunkIndividualEmbeddingSuccessFinal(logger, chunk.Id, newEmbedding.Count, null);
+                                }
+                                else
+                                {
+                                    ServiceLogMessages.LogChunkEmbeddingGenerationFailed(logger, chunk.Id, null);
+                                }
+                                
+                                processedChunks++;
+                            }
+                            catch (Exception ex)
+                            {
+                                ServiceLogMessages.LogChunkEmbeddingRegenerationFailed(logger, chunk.Id, ex);
+                                processedChunks++;
                             }
                         }
-                        
-                        processedChunks++;
                     }
                 }
                 else
                 {
-                    ServiceLogMessages.LogBatchFailed(logger, batchIndex + 1, null);
-                    
-                    // Process chunks individually if batch fails
+                    logger.LogWarning("No AI provider configuration found for embeddings. Skipping embedding generation.");
+                    // Set empty embeddings for all chunks
                     foreach (var chunk in currentBatch)
                     {
-                        try
-                        {
-                            var newEmbedding = await documentSearchService.GenerateEmbeddingWithFallbackAsync(chunk.Content);
-                            
-                            if (newEmbedding != null && newEmbedding.Count > 0)
-                            {
-                                chunk.Embedding = newEmbedding;
-                                successCount++;
-                                ServiceLogMessages.LogChunkIndividualEmbeddingSuccessFinal(logger, chunk.Id, newEmbedding.Count, null);
-                            }
-                            else
-                            {
-                                ServiceLogMessages.LogChunkEmbeddingGenerationFailed(logger, chunk.Id, null);
-                            }
-                            
-                            processedChunks++;
-                        }
-                        catch (Exception ex)
-                        {
-                            ServiceLogMessages.LogChunkEmbeddingRegenerationFailed(logger, chunk.Id, ex);
-                            processedChunks++;
-                        }
+                        chunk.Embedding = [];
+                        processedChunks++;
                     }
                 }
                 

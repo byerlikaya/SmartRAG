@@ -166,6 +166,82 @@ public class CustomProvider : BaseAIProvider
         return [];
     }
 
+    public override async Task<List<List<float>>?> GenerateEmbeddingsBatchAsync(List<string> texts, AIProviderConfig config)
+    {
+        var (isValid, errorMessage) = ValidateConfig(config, requireApiKey: false, requireEndpoint: true, requireModel: false);
+
+        if (!isValid || texts == null || texts.Count == 0)
+            return null;
+
+        if (string.IsNullOrEmpty(config.EmbeddingModel))
+            return null;
+
+        using var client = CreateHttpClient(config.ApiKey);
+
+        var payload = new
+        {
+            texts = texts.ToArray(),
+            model = config.EmbeddingModel
+        };
+
+        var (success, response, error) = await MakeHttpRequestAsync(client, config.Endpoint!, payload, "Custom AI");
+
+        if (!success)
+            return null;
+
+        // Custom AI has flexible batch embedding response format
+        try
+        {
+            var responseData = JsonSerializer.Deserialize<JsonElement>(response);
+            var results = new List<List<float>>();
+
+            // Try different batch embedding field names
+            if (responseData.TryGetProperty("embeddings", out var embeddings) && embeddings.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in embeddings.EnumerateArray())
+                {
+                    if (item.ValueKind == JsonValueKind.Array)
+                    {
+                        var embeddingList = item.EnumerateArray()
+                            .Select(x => x.GetSingle())
+                            .ToList();
+                        results.Add(embeddingList);
+                    }
+                    else
+                    {
+                        results.Add(new List<float>());
+                    }
+                }
+                return results.Count == texts.Count ? results : null;
+            }
+
+            if (responseData.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in data.EnumerateArray())
+                {
+                    if (item.TryGetProperty("embedding", out var embedding) && embedding.ValueKind == JsonValueKind.Array)
+                    {
+                        var embeddingList = embedding.EnumerateArray()
+                            .Select(x => x.GetSingle())
+                            .ToList();
+                        results.Add(embeddingList);
+                    }
+                    else
+                    {
+                        results.Add(new List<float>());
+                    }
+                }
+                return results.Count == texts.Count ? results : null;
+            }
+        }
+        catch
+        {
+            return null;
+        }
+
+        return null;
+    }
+
     /// <summary>
     /// Override ChunkTextAsync for custom endpoint optimization
     /// Uses string concatenation for better compatibility with various APIs
