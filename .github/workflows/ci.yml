@@ -122,8 +122,21 @@ jobs:
     - name: Get version from package
       id: get_version
       run: |
-        PACKAGE_VERSION=$(dotnet list package --format json | jq -r '.projects[0].frameworks[].packages[] | select(.id=="SmartRAG") | .resolved')
+        # Try to get version from csproj file first
+        PACKAGE_VERSION=$(grep -o '<PackageVersion>.*</PackageVersion>' src/SmartRAG/SmartRAG.csproj | sed 's/<PackageVersion>\(.*\)<\/PackageVersion>/\1/')
+        
+        # Fallback to dotnet list package if csproj method fails
+        if [ -z "$PACKAGE_VERSION" ]; then
+          PACKAGE_VERSION=$(dotnet list package --format json | jq -r '.projects[0].frameworks[].packages[] | select(.id=="SmartRAG") | .resolved // empty' 2>/dev/null || echo "1.0.2")
+        fi
+        
+        # Final fallback
+        if [ -z "$PACKAGE_VERSION" ]; then
+          PACKAGE_VERSION="1.0.2"
+        fi
+        
         echo "version=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
+        echo "Package version: $PACKAGE_VERSION"
         
     - name: Create Release
       uses: actions/create-release@v1
