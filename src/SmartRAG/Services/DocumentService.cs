@@ -38,17 +38,40 @@ public class DocumentService(
 
         var document = await documentParserService.ParseDocumentAsync(fileStream, fileName, contentType, uploadedBy);
 
+        logger.LogInformation("Document parsed successfully. Chunks: {ChunkCount}, Total size: {TotalSize} bytes", 
+            document.Chunks.Count, document.Chunks.Sum(c => c.Content.Length));
+
         // Generate embeddings for all chunks in batch for better performance
         var allChunkContents = document.Chunks.Select(c => c.Content).ToList();
-        var allEmbeddings = await documentSearchService.GenerateEmbeddingsBatchAsync(allChunkContents);
+        
+        logger.LogInformation("Starting batch embedding generation for {ChunkCount} chunks...", allChunkContents.Count);
+        
+        // Add timeout for large documents
+        var embeddingTask = documentSearchService.GenerateEmbeddingsBatchAsync(allChunkContents);
+        var timeoutTask = Task.Delay(TimeSpan.FromMinutes(10));
+        
+        var completedTask = await Task.WhenAny(embeddingTask, timeoutTask);
+        List<List<float>>? allEmbeddings = null;
 
-        // Apply embeddings to chunks with retry mechanism
+        if (completedTask == embeddingTask)
+        {
+            allEmbeddings = await embeddingTask;
+            logger.LogInformation("Batch embedding generation completed successfully.");
+        }
+        else
+        {
+            logger.LogWarning("Embedding generation timed out after 10 minutes. Proceeding with partial embeddings.");
+        }
+
+        // Apply embeddings to chunks with progress tracking
+        var processedChunks = 0;
+        var totalChunks = document.Chunks.Count;
+        
         for (int i = 0; i < document.Chunks.Count; i++)
         {
             try
             {
                 var chunk = document.Chunks[i];
-                // Ensure chunk metadata is consistent
                 chunk.DocumentId = document.Id;
                 
                 // Check if embedding was generated successfully
@@ -59,34 +82,74 @@ public class DocumentService(
                 }
                 else
                 {
-                    // Retry individual embedding generation for this chunk
+                    // Retry individual embedding generation for this chunk with timeout
                     ServiceLogMessages.LogChunkBatchEmbeddingFailed(logger, i, null);
-                    var individualEmbedding = await documentSearchService.GenerateEmbeddingWithFallbackAsync(chunk.Content);
                     
-                    if (individualEmbedding != null && individualEmbedding.Count > 0)
+                    var individualTask = documentSearchService.GenerateEmbeddingWithFallbackAsync(chunk.Content);
+                    var individualTimeoutTask = Task.Delay(TimeSpan.FromSeconds(30));
+                    
+                    var individualCompletedTask = await Task.WhenAny(individualTask, individualTimeoutTask);
+                    List<float>? individualEmbedding = null;
+
+                    if (individualCompletedTask == individualTask)
                     {
-                        chunk.Embedding = individualEmbedding;
-                        ServiceLogMessages.LogChunkIndividualEmbeddingSuccess(logger, i, individualEmbedding.Count, null);
+                        individualEmbedding = await individualTask;
+                        if (individualEmbedding != null && individualEmbedding.Count > 0)
+                        {
+                            chunk.Embedding = individualEmbedding;
+                            ServiceLogMessages.LogChunkIndividualEmbeddingSuccess(logger, i, individualEmbedding.Count, null);
+                        }
+                        else
+                        {
+                            ServiceLogMessages.LogChunkEmbeddingFailed(logger, i, null);
+                            chunk.Embedding = []; // Empty but not null
+                        }
                     }
                     else
                     {
-                        ServiceLogMessages.LogChunkEmbeddingFailed(logger, i, null);
+                        logger.LogWarning("Individual embedding generation timed out for chunk {ChunkIndex}", i);
                         chunk.Embedding = []; // Empty but not null
                     }
                 }
                 
                 if (chunk.CreatedAt == default)
                     chunk.CreatedAt = DateTime.UtcNow;
+
+                processedChunks++;
+                if (processedChunks % 10 == 0 || processedChunks == totalChunks)
+                {
+                    logger.LogInformation("Progress: {Processed}/{Total} chunks processed ({Percentage:F1}%)", 
+                        processedChunks, totalChunks, (processedChunks * 100.0) / totalChunks);
+                }
             }
             catch (Exception ex)
             {
                 ServiceLogMessages.LogChunkProcessingFailed(logger, i, ex);
-                // If embedding generation fails, leave it empty and continue
                 document.Chunks[i].Embedding = []; // Empty but not null
+                processedChunks++;
             }
         }
 
-        var savedDocument = await documentRepository.AddAsync(document);
+        logger.LogInformation("Starting document save to repository...");
+        
+        // Add timeout for repository save operation
+        var saveTask = documentRepository.AddAsync(document);
+        var saveTimeoutTask = Task.Delay(TimeSpan.FromMinutes(5));
+        
+        var saveCompletedTask = await Task.WhenAny(saveTask, saveTimeoutTask);
+        Document savedDocument;
+
+        if (saveCompletedTask == saveTask)
+        {
+            savedDocument = await saveTask;
+        }
+        else
+        {
+            logger.LogError("Document save operation timed out after 5 minutes!");
+            throw new TimeoutException("Document save operation timed out. The document may be too large.");
+        }
+        logger.LogInformation("Document uploaded successfully. ID: {DocumentId}, Chunks: {ChunkCount}", 
+            savedDocument.Id, savedDocument.Chunks.Count);
 
         return savedDocument;
     }
