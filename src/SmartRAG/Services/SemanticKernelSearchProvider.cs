@@ -70,7 +70,7 @@ public class SemanticKernelSearchProvider : ISemanticSearchProvider
             // 2. Generate batch embeddings for all chunks (ONCE)
             var allChunkContents = allChunks.Select(c => c.Content).ToList();
             var allChunkEmbeddings = await aiProvider.GenerateEmbeddingsBatchAsync(allChunkContents, providerConfig);
-            
+
             if (allChunkEmbeddings == null || allChunkEmbeddings.Count != allChunks.Count)
             {
                 _logger.LogWarning("Failed to generate batch embeddings for chunks");
@@ -84,7 +84,7 @@ public class SemanticKernelSearchProvider : ISemanticSearchProvider
             {
                 var chunk = allChunks[i];
                 var chunkEmbedding = allChunkEmbeddings[i];
-                
+
                 var similarity = CalculateCosineSimilarity(queryEmbedding, chunkEmbedding);
                 scoredChunks.Add((chunk, similarity));
             }
@@ -94,7 +94,8 @@ public class SemanticKernelSearchProvider : ISemanticSearchProvider
                 .Where(x => x.score > 0.3) // Only include relevant chunks
                 .OrderByDescending(x => x.score)
                 .Take(maxResults)
-                .Select(x => {
+                .Select(x =>
+                {
                     x.chunk.RelevanceScore = x.score;
                     return x.chunk;
                 })
@@ -109,7 +110,6 @@ public class SemanticKernelSearchProvider : ISemanticSearchProvider
             return new List<DocumentChunk>();
         }
     }
-
 
 
     /// <summary>

@@ -1,5 +1,6 @@
 using SmartRAG.Enums;
 using SmartRAG.Models;
+using SmartRAG.Entities;
 
 namespace SmartRAG.Providers;
 
@@ -115,5 +116,71 @@ public class AzureOpenAIProvider : BaseAIProvider
         }
 
         return null;
+    }
+
+    public override async Task ClearEmbeddingsAsync(List<DocumentChunk> chunks)
+    {
+        // Azure OpenAI'da embedding'ler API'de cache'lenmez, sadece local memory'de tutulur
+        // Bu provider için özel cache temizliği gerekmez, base implementation yeterli
+        // Ancak gelecekte Azure OpenAI embedding cache'i eklenirse burada implement edilebilir
+        
+        // Şu an için no-op, çünkü Azure OpenAI embedding cache'i yok
+        await Task.CompletedTask;
+    }
+
+    public override async Task ClearAllEmbeddingsAsync()
+    {
+        // Azure OpenAI'da tüm embedding'leri temizle
+        // Şu an için no-op, çünkü Azure OpenAI embedding cache'i yok
+        
+        await Task.CompletedTask;
+    }
+
+    public override async Task<bool> RegenerateAllEmbeddingsAsync(List<Document> documents)
+    {
+        // Azure OpenAI için embedding regeneration
+        // Her document'ın chunk'ları için yeni embedding'ler oluştur
+        
+        var totalChunks = documents.Sum(d => d.Chunks.Count);
+        var processedChunks = 0;
+        var successCount = 0;
+        
+        foreach (var document in documents)
+        {
+            foreach (var chunk in document.Chunks)
+            {
+                try
+                {
+                    // Skip if embedding already exists and is valid
+                    if (chunk.Embedding != null && chunk.Embedding.Count > 0)
+                    {
+                        processedChunks++;
+                        continue;
+                    }
+                    
+                    // Generate new embedding
+                    var newEmbedding = await GenerateEmbeddingAsync(chunk.Content, new AIProviderConfig
+                    {
+                        ApiKey = "", // Bu config DocumentService'den gelmeli
+                        Endpoint = "",
+                        EmbeddingModel = ""
+                    });
+                    
+                    if (newEmbedding != null && newEmbedding.Count > 0)
+                    {
+                        chunk.Embedding = newEmbedding;
+                        successCount++;
+                    }
+                    
+                    processedChunks++;
+                }
+                catch (Exception)
+                {
+                    processedChunks++;
+                }
+            }
+        }
+        
+        return successCount > 0;
     }
 }

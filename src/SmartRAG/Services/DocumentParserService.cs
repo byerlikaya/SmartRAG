@@ -386,19 +386,20 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
     /// </summary>
     private static int FindParagraphEnd(string content, int searchStart, int searchEnd)
     {
-        var searchLength = searchEnd - searchStart;
-        if (searchLength <= 0) return searchEnd;
+        // searchStart'tan searchEnd'e kadar olan aralıkta arama yap
+        if (searchStart >= searchEnd || searchStart < 0 || searchEnd > content.Length)
+            return searchEnd;
 
-        // Çift newline ara (\n\n)
-        var doubleNewlineIndex = content.LastIndexOf("\n\n", searchStart, searchLength);
-        if (doubleNewlineIndex > searchStart)
+        // Çift newline ara (\n\n) - searchStart'tan searchEnd'e kadar
+        var doubleNewlineIndex = content.LastIndexOf("\n\n", searchEnd - 1, searchEnd - searchStart);
+        if (doubleNewlineIndex >= searchStart)
         {
             return doubleNewlineIndex + 2; // \n\n'i dahil et
         }
 
         // Tek newline ara
-        var newlineIndex = content.LastIndexOf('\n', searchStart, searchLength);
-        if (newlineIndex > searchStart)
+        var newlineIndex = content.LastIndexOf('\n', searchEnd - 1, searchEnd - searchStart);
+        if (newlineIndex >= searchStart)
         {
             return newlineIndex + 1; // \n'i dahil et
         }
@@ -411,18 +412,19 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
     /// </summary>
     private static int FindSentenceEnd(string content, int searchStart, int searchEnd)
     {
-        var searchLength = searchEnd - searchStart;
-        if (searchLength <= 0) return searchEnd;
+        // searchStart'tan searchEnd'e kadar olan aralıkta arama yap
+        if (searchStart >= searchEnd || searchStart < 0 || searchEnd > content.Length)
+            return searchEnd;
 
-        // Cümle sonu işaretlerini ara
-        var periodIndex = content.LastIndexOf('.', searchStart, searchLength);
-        var exclamationIndex = content.LastIndexOf('!', searchStart, searchLength);
-        var questionIndex = content.LastIndexOf('?', searchStart, searchLength);
+        // Cümle sonu işaretlerini ara - searchStart'tan searchEnd'e kadar
+        var periodIndex = content.LastIndexOf('.', searchEnd - 1, searchEnd - searchStart);
+        var exclamationIndex = content.LastIndexOf('!', searchEnd - 1, searchEnd - searchStart);
+        var questionIndex = content.LastIndexOf('?', searchEnd - 1, searchEnd - searchStart);
 
         // En son cümle sonunu bul
         var maxIndex = Math.Max(Math.Max(periodIndex, exclamationIndex), questionIndex);
         
-        if (maxIndex > searchStart)
+        if (maxIndex >= searchStart)
         {
             return maxIndex + 1; // Cümle sonu işaretini dahil et
         }
@@ -435,25 +437,26 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
     /// </summary>
     private static int FindWordBoundary(string content, int searchStart, int searchEnd)
     {
-        var searchLength = searchEnd - searchStart;
-        if (searchLength <= 0) return searchEnd;
+        // searchStart'tan searchEnd'e kadar olan aralıkta arama yap
+        if (searchStart >= searchEnd || searchStart < 0 || searchEnd > content.Length)
+            return searchEnd;
 
-        // Türkçe için optimize edilmiş kelime sınırları
-        var spaceIndex = content.LastIndexOf(' ', searchStart, searchLength);
-        var tabIndex = content.LastIndexOf('\t', searchStart, searchLength);
-        var newlineIndex = content.LastIndexOf('\n', searchStart, searchLength);
-        var returnIndex = content.LastIndexOf('\r', searchStart, searchLength);
+        // Türkçe için optimize edilmiş kelime sınırları - searchStart'tan searchEnd'e kadar
+        var spaceIndex = content.LastIndexOf(' ', searchEnd - 1, searchEnd - searchStart);
+        var tabIndex = content.LastIndexOf('\t', searchEnd - 1, searchEnd - searchStart);
+        var newlineIndex = content.LastIndexOf('\n', searchEnd - 1, searchEnd - searchStart);
+        var returnIndex = content.LastIndexOf('\r', searchEnd - 1, searchEnd - searchStart);
         
         // Türkçe noktalama işaretleri
-        var commaIndex = content.LastIndexOf(',', searchStart, searchLength);
-        var semicolonIndex = content.LastIndexOf(';', searchStart, searchLength);
-        var colonIndex = content.LastIndexOf(':', searchStart, searchLength);
+        var commaIndex = content.LastIndexOf(',', searchEnd - 1, searchEnd - searchStart);
+        var semicolonIndex = content.LastIndexOf(';', searchEnd - 1, searchEnd - searchStart);
+        var colonIndex = content.LastIndexOf(':', searchEnd - 1, searchEnd - searchStart);
 
         // En son kelime sınırını bul
         var maxIndex = Math.Max(Math.Max(Math.Max(Math.Max(Math.Max(Math.Max(
             spaceIndex, tabIndex), newlineIndex), returnIndex), commaIndex), semicolonIndex), colonIndex);
         
-        if (maxIndex > searchStart)
+        if (maxIndex >= searchStart)
         {
             return maxIndex + 1; // Sınır karakterini dahil et
         }

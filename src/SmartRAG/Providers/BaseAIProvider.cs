@@ -64,61 +64,43 @@ public abstract class BaseAIProvider : IAIProvider
     }
     
     /// <summary>
-    /// Default implementation for clearing embeddings
-    /// Most providers don't need special cleanup, so this is a no-op
+    /// Default implementation for clearing embeddings from AI provider's cache/storage
+    /// Each provider must override this method to clear their own embedding cache
+    /// This is NOT for clearing chunk references (DocumentService handles that)
     /// </summary>
     public virtual Task ClearEmbeddingsAsync(List<DocumentChunk> chunks)
     {
-        // Default implementation: no special cleanup needed
-        return Task.CompletedTask;
+        // Base implementation: AI Provider'ın kendi embedding cache'ini temizle
+        // Her provider bu metodu override edip kendi cache'ini temizlemeli
+        
+        // Örnek: Azure OpenAI, Anthropic, Gemini hepsi kendi cache'lerini temizlemeli
+        throw new NotImplementedException($"Provider {ProviderType} must implement ClearEmbeddingsAsync to clear its own embedding cache");
     }
     
     /// <summary>
-    /// Default implementation for clearing all cached embeddings
-    /// Most providers don't need special cleanup, so this is a no-op
+    /// Default implementation for clearing all cached embeddings from AI provider's cache/storage
+    /// Each provider must override this method to clear their own embedding cache
+    /// This is NOT for clearing chunk references (DocumentService handles that)
     /// </summary>
     public virtual Task ClearAllEmbeddingsAsync()
     {
-        // Default implementation: no special cleanup needed
-        return Task.CompletedTask;
+        // Base implementation: AI Provider'ın tüm embedding cache'ini temizle
+        // Her provider bu metodu override edip kendi cache'ini temizlemeli
+        
+        // Örnek: Azure OpenAI, Anthropic, Gemini hepsi kendi cache'lerini temizlemeli
+        throw new NotImplementedException($"Provider {ProviderType} must implement ClearAllEmbeddingsAsync to clear its own embedding cache");
     }
     
     /// <summary>
     /// Default implementation for regenerating embeddings for all documents
-    /// This is a complex operation that each provider might want to optimize differently
+    /// This is a complex operation that each provider must implement with proper configuration
+    /// Base implementation throws NotImplementedException to force provider implementation
     /// </summary>
-    public virtual async Task<bool> RegenerateAllEmbeddingsAsync(List<Document> documents)
+    public virtual Task<bool> RegenerateAllEmbeddingsAsync(List<Document> documents)
     {
-        // Default implementation: regenerate embeddings one by one
-        var totalChunks = documents.Sum(d => d.Chunks.Count);
-        var processedChunks = 0;
-        var successCount = 0;
-        
-        foreach (var document in documents)
-        {
-            foreach (var chunk in document.Chunks)
-            {
-                try
-                {
-                    // Skip if embedding already exists and is valid
-                    if (chunk.Embedding != null && chunk.Embedding.Count > 0)
-                    {
-                        processedChunks++;
-                        continue;
-                    }
-                    
-                    // Generate new embedding - each provider will have its own config
-                    // This is a basic implementation, providers should override this
-                    throw new NotImplementedException("Provider must implement RegenerateAllEmbeddingsAsync with proper configuration");
-                }
-                catch (Exception)
-                {
-                    processedChunks++;
-                }
-            }
-        }
-        
-        return successCount > 0;
+        // This method must be implemented by each specific provider
+        // because each provider has different configuration and optimization strategies
+        throw new NotImplementedException($"Provider {ProviderType} must implement RegenerateAllEmbeddingsAsync with proper configuration");
     }
 
     #region Common Helper Methods

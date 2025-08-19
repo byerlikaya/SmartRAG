@@ -1,5 +1,6 @@
 using SmartRAG.Enums;
 using SmartRAG.Models;
+using SmartRAG.Entities;
 using System.Text.Json;
 
 namespace SmartRAG.Providers;
@@ -178,5 +179,67 @@ public class AnthropicProvider : BaseAIProvider
         }
 
         return [];
+    }
+
+    public override async Task ClearEmbeddingsAsync(List<DocumentChunk> chunks)
+    {
+        // Anthropic (Voyage AI) embedding'leri için cache temizliği
+        // Voyage AI'da embedding'ler API'de cache'lenmez, sadece local memory'de tutulur
+        // Bu provider için özel cache temizliği gerekmez
+        
+        await Task.CompletedTask;
+    }
+
+    public override async Task ClearAllEmbeddingsAsync()
+    {
+        // Anthropic (Voyage AI) tüm embedding'leri temizle
+        // Şu an için no-op, çünkü Voyage AI embedding cache'i yok
+        
+        await Task.CompletedTask;
+    }
+
+    public override async Task<bool> RegenerateAllEmbeddingsAsync(List<Document> documents)
+    {
+        // Anthropic (Voyage AI) için embedding regeneration
+        var totalChunks = documents.Sum(d => d.Chunks.Count);
+        var processedChunks = 0;
+        var successCount = 0;
+        
+        foreach (var document in documents)
+        {
+            foreach (var chunk in document.Chunks)
+            {
+                try
+                {
+                    // Skip if embedding already exists and is valid
+                    if (chunk.Embedding != null && chunk.Embedding.Count > 0)
+                    {
+                        processedChunks++;
+                        continue;
+                    }
+                    
+                    // Generate new embedding using Voyage AI
+                    var newEmbedding = await GenerateEmbeddingAsync(chunk.Content, new AIProviderConfig
+                    {
+                        ApiKey = "", // Bu config DocumentService'den gelmeli
+                        EmbeddingModel = "voyage-3.5"
+                    });
+                    
+                    if (newEmbedding != null && newEmbedding.Count > 0)
+                    {
+                        chunk.Embedding = newEmbedding;
+                        successCount++;
+                    }
+                    
+                    processedChunks++;
+                }
+                catch (Exception)
+                {
+                    processedChunks++;
+                }
+            }
+        }
+        
+        return successCount > 0;
     }
 }

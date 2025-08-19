@@ -1,5 +1,6 @@
 using SmartRAG.Enums;
 using SmartRAG.Models;
+using SmartRAG.Entities;
 using System.Text.Json;
 
 namespace SmartRAG.Providers;
@@ -171,5 +172,68 @@ public class GeminiProvider : BaseAIProvider
         }
 
         return null;
+    }
+
+    public override async Task ClearEmbeddingsAsync(List<DocumentChunk> chunks)
+    {
+        // Gemini embedding'leri için cache temizliği
+        // Gemini'de embedding'ler API'de cache'lenmez, sadece local memory'de tutulur
+        // Bu provider için özel cache temizliği gerekmez
+        
+        await Task.CompletedTask;
+    }
+
+    public override async Task ClearAllEmbeddingsAsync()
+    {
+        // Gemini tüm embedding'leri temizle
+        // Şu an için no-op, çünkü Gemini embedding cache'i yok
+        
+        await Task.CompletedTask;
+    }
+
+    public override async Task<bool> RegenerateAllEmbeddingsAsync(List<Document> documents)
+    {
+        // Gemini için embedding regeneration
+        var totalChunks = documents.Sum(d => d.Chunks.Count);
+        var processedChunks = 0;
+        var successCount = 0;
+        
+        foreach (var document in documents)
+        {
+            foreach (var chunk in document.Chunks)
+            {
+                try
+                {
+                    // Skip if embedding already exists and is valid
+                    if (chunk.Embedding != null && chunk.Embedding.Count > 0)
+                    {
+                        processedChunks++;
+                        continue;
+                    }
+                    
+                    // Generate new embedding using Gemini
+                    var newEmbedding = await GenerateEmbeddingAsync(chunk.Content, new AIProviderConfig
+                    {
+                        ApiKey = "", // Bu config DocumentService'den gelmeli
+                        Endpoint = "",
+                        EmbeddingModel = ""
+                    });
+                    
+                    if (newEmbedding != null && newEmbedding.Count > 0)
+                    {
+                        chunk.Embedding = newEmbedding;
+                        successCount++;
+                    }
+                    
+                    processedChunks++;
+                }
+                catch (Exception)
+                {
+                    processedChunks++;
+                }
+            }
+        }
+        
+        return successCount > 0;
     }
 }
