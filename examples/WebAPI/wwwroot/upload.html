@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="tr">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>SmartRAG - Multiple Document Upload</title>
+	<style>
+		body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',sans-serif;margin:40px;color:#0f172a;background:#f8fafc}
+		.card{max-width:720px;margin:auto;background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 2px 12px rgba(0,0,0,.05)}
+		.header{padding:20px 24px;border-bottom:1px solid #e5e7eb;font-weight:600}
+		.content{padding:24px}
+		label{display:block;margin-bottom:8px;color:#334155}
+		input[type=file]{width:100%;padding:10px;border:1px solid #e5e7eb;border-radius:8px}
+		button{margin-top:16px;background:#2563eb;color:#fff;border:none;border-radius:8px;padding:10px 16px;cursor:pointer}
+		pre{background:#0b1220;color:#e2e8f0;padding:12px;border-radius:8px;overflow:auto}
+	</style>
+</head>
+<body>
+	<div class="card">
+		<div class="header">Multiple Document Upload</div>
+		<div class="content">
+			<label for="files">Files (you can select multiple files)</label>
+			<input id="files" type="file" name="files" multiple />
+			<button id="send">Upload</button>
+			<div id="result" style="margin-top:16px"></div>
+			
+			<!-- Console Logs -->
+			<div style="margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 16px;">
+				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+					<strong>Console Logs (Real-time)</strong>
+					<button id="clearLogs" style="background: #6b7280; padding: 4px 8px; font-size: 12px;">Clear</button>
+				</div>
+				<div id="consoleLogs" style="background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 8px; height: 300px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4;"></div>
+			</div>
+		</div>
+	</div>
+	<script>
+		const btn = document.getElementById('send');
+		const input = document.getElementById('files');
+		const result = document.getElementById('result');
+		const consoleLogs = document.getElementById('consoleLogs');
+		const clearLogsBtn = document.getElementById('clearLogs');
+		
+		// Console log yakalama
+		function addLog(message, type = 'info') {
+			const timestamp = new Date().toLocaleTimeString();
+			const logEntry = document.createElement('div');
+			logEntry.style.marginBottom = '4px';
+			
+			let color = '#e2e8f0'; // default
+			if (type === 'error') color = '#fca5a5';
+			else if (type === 'warning') color = '#fcd34d';
+			else if (type === 'success') color = '#86efac';
+			
+			logEntry.innerHTML = `<span style="color: #94a3b8;">[${timestamp}]</span> <span style="color: ${color};">${message}</span>`;
+			consoleLogs.appendChild(logEntry);
+			consoleLogs.scrollTop = consoleLogs.scrollHeight;
+		}
+		
+		// Clear logs
+		clearLogsBtn.onclick = () => {
+			consoleLogs.innerHTML = '';
+			addLog('Logs cleared', 'info');
+		};
+		
+		// Initial log
+		addLog('Upload page ready', 'success');
+		
+		btn.onclick = async () => {
+			const files = input.files;
+			if (!files || files.length === 0) { 
+				result.innerHTML = '<div style="color: #dc2626;">❌ Please select files.</div>'; 
+				addLog('No files selected', 'error');
+				return; 
+			}
+			
+			addLog(`${files.length} files selected`, 'info');
+			
+			// Disable button and show loading
+			btn.disabled = true;
+			btn.textContent = 'Uploading...';
+			result.innerHTML = `<div style="color: #059669;">⏳ ${files.length} files uploading...</div>`;
+			
+			const form = new FormData();
+			for (const f of files) {
+				form.append('files', f);
+				addLog(`Adding file: ${f.name} (${(f.size / 1024).toFixed(1)} KB)`, 'info');
+			}
+			
+			addLog('Sending to API...', 'info');
+			
+			try {
+				const res = await fetch('/api/Documents/upload-multiple', { method: 'POST', body: form });
+				
+				if (res.ok) {
+					const data = await res.json();
+					addLog(`✅ ${files.length} files uploaded successfully!`, 'success');
+					
+					result.innerHTML = `
+						<div style="color: #059669; margin-bottom: 12px;">✅ ${files.length} files uploaded successfully!</div>
+						<div style="margin-bottom: 8px;"><strong>Uploaded Files:</strong></div>
+						<ul style="margin: 0; padding-left: 20px;">
+							${data.map(doc => `<li>${doc.fileName} (ID: ${doc.id})</li>`).join('')}
+						</ul>
+					`;
+					
+					// Log each uploaded document
+					data.forEach(doc => {
+						addLog(`📄 ${doc.fileName} uploaded (ID: ${doc.id})`, 'success');
+					});
+					
+				} else {
+					const errorText = await res.text();
+					addLog(`❌ API Error: ${res.status} ${res.statusText}`, 'error');
+					addLog(`Error Details: ${errorText}`, 'error');
+					
+					result.innerHTML = `
+						<div style="color: #dc2626;">❌ Error: ${res.status} ${res.statusText}</div>
+						<pre style="background: #fef2f2; color: #dc2626; padding: 8px; border-radius: 4px; margin-top: 8px;">${errorText}</pre>
+					`;
+				}
+			} catch (e) { 
+				addLog(`❌ Network Error: ${e.message}`, 'error');
+				result.innerHTML = `<div style="color: #dc2626;">❌ Upload failed: ${e.message}</div>`; 
+			} finally {
+				// Re-enable button
+				btn.disabled = false;
+				btn.textContent = 'Upload';
+				addLog('Upload process completed', 'info');
+			}
+		};
+	</script>
+</body>
+</html>

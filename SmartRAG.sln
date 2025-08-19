@@ -4,7 +4,7 @@ VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartRAG", "src\SmartRAG\SmartRAG.csproj", "{DECA885F-8815-4A0F-A12C-30563827C255}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartRAG.API", "src\SmartRAG.API\SmartRAG.API.csproj", "{E7606EAF-F26D-441F-B5A4-34A72A70DD6C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartRAG.API", "examples\WebAPI\SmartRAG.API.csproj", "{E7606EAF-F26D-441F-B5A4-34A72A70DD6C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

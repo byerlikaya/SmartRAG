@@ -10,7 +10,7 @@ namespace SmartRAG.API.Controllers;
 [Route("api/[controller]")]
 [Produces("application/json")]
 [ProducesResponseType(StatusCodes.Status500InternalServerError)]
-public class SearchController(IDocumentService documentService) : ControllerBase
+public class SearchController(IDocumentSearchService documentSearchService) : ControllerBase
 {
     /// <summary>
     /// Search documents using RAG (Retrieval-Augmented Generation)
@@ -28,7 +28,7 @@ public class SearchController(IDocumentService documentService) : ControllerBase
 
         try
         {
-            var response = await documentService.GenerateRagAnswerAsync(query, maxResults);
+            var response = await documentSearchService.GenerateRagAnswerAsync(query, maxResults);
             return Ok(response);
         }
         catch (Exception ex)
