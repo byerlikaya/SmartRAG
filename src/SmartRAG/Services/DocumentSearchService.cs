@@ -215,70 +215,73 @@ public class DocumentSearchService(
             // Fallback to individual generation if batch fails
         }
 
-        // Special handling for VoyageAI: Process in smaller batches to respect 3 RPM limit
-        try
+        // Special handling for VoyageAI: Only when AIProvider is Anthropic
+        if (_options.AIProvider == AIProvider.Anthropic)
         {
-            var anthropicConfig = configuration.GetSection("AI:Anthropic").Get<AIProviderConfig>();
-            if (anthropicConfig != null && !string.IsNullOrEmpty(anthropicConfig.EmbeddingApiKey))
+            try
             {
-                Console.WriteLine($"[DEBUG] Trying VoyageAI batch processing with rate limiting...");
-
-                // Process in smaller batches (3 chunks per minute = 20 seconds between batches)
-                const int rateLimitBatchSize = 3;
-                var allEmbeddings = new List<List<float>>();
-
-                for (int i = 0; i < texts.Count; i += rateLimitBatchSize)
+                var anthropicConfig = configuration.GetSection("AI:Anthropic").Get<AIProviderConfig>();
+                if (anthropicConfig != null && !string.IsNullOrEmpty(anthropicConfig.EmbeddingApiKey))
                 {
-                    var currentBatch = texts.Skip(i).Take(rateLimitBatchSize).ToList();
-                    Console.WriteLine($"[DEBUG] Processing VoyageAI batch {i / rateLimitBatchSize + 1}: chunks {i + 1}-{Math.Min(i + rateLimitBatchSize, texts.Count)}");
+                    Console.WriteLine($"[DEBUG] Trying VoyageAI batch processing with rate limiting...");
 
-                    // Generate embeddings for current batch using VoyageAI
-                    var batchEmbeddings = await GenerateVoyageAIBatchAsync(currentBatch, anthropicConfig);
+                    // Process in smaller batches (3 chunks per minute = 20 seconds between batches)
+                    const int rateLimitBatchSize = 3;
+                    var allEmbeddings = new List<List<float>>();
 
-                    if (batchEmbeddings != null && batchEmbeddings.Count == currentBatch.Count)
+                    for (int i = 0; i < texts.Count; i += rateLimitBatchSize)
                     {
-                        allEmbeddings.AddRange(batchEmbeddings);
-                        Console.WriteLine($"[DEBUG] VoyageAI batch {i / rateLimitBatchSize + 1} successful: {batchEmbeddings.Count} embeddings");
-                    }
-                    else
-                    {
-                        Console.WriteLine($"[WARNING] VoyageAI batch {i / rateLimitBatchSize + 1} failed, using individual fallback");
-                        // Fallback to individual generation for this batch
-                        var individualEmbeddings = await GenerateIndividualEmbeddingsAsync(currentBatch);
-                        allEmbeddings.AddRange(individualEmbeddings);
-                    }
+                        var currentBatch = texts.Skip(i).Take(rateLimitBatchSize).ToList();
+                        Console.WriteLine($"[DEBUG] Processing VoyageAI batch {i / rateLimitBatchSize + 1}: chunks {i + 1}-{Math.Min(i + rateLimitBatchSize, texts.Count)}");
 
-                    // Smart rate limiting: Detect if we hit rate limits and adjust
-                    if (i + rateLimitBatchSize < texts.Count)
-                    {
-                        // Check if we got rate limited in the last batch
-                        var lastBatchSuccess = batchEmbeddings != null && batchEmbeddings.Count > 0;
+                        // Generate embeddings for current batch using VoyageAI
+                        var batchEmbeddings = await GenerateVoyageAIBatchAsync(currentBatch, anthropicConfig);
 
-                        if (!lastBatchSuccess)
+                        if (batchEmbeddings != null && batchEmbeddings.Count == currentBatch.Count)
                         {
-                            // Rate limited - wait 20 seconds for 3 RPM
-                            Console.WriteLine($"[INFO] Rate limit detected, waiting 20 seconds for 3 RPM limit...");
-                            await Task.Delay(20000);
+                            allEmbeddings.AddRange(batchEmbeddings);
+                            Console.WriteLine($"[DEBUG] VoyageAI batch {i / rateLimitBatchSize + 1} successful: {batchEmbeddings.Count} embeddings");
                         }
                         else
                         {
-                            // No rate limit - continue at full speed (2000 RPM)
-                            Console.WriteLine($"[INFO] No rate limit detected, continuing at full speed (2000 RPM)");
-                            // No delay needed for 2000 RPM
+                            Console.WriteLine($"[WARNING] VoyageAI batch {i / rateLimitBatchSize + 1} failed, using individual fallback");
+                            // Fallback to individual generation for this batch
+                            var individualEmbeddings = await GenerateIndividualEmbeddingsAsync(currentBatch);
+                            allEmbeddings.AddRange(individualEmbeddings);
+                        }
+
+                        // Smart rate limiting: Detect if we hit rate limits and adjust
+                        if (i + rateLimitBatchSize < texts.Count)
+                        {
+                            // Check if we got rate limited in the last batch
+                            var lastBatchSuccess = batchEmbeddings != null && batchEmbeddings.Count > 0;
+
+                            if (!lastBatchSuccess)
+                            {
+                                // Rate limited - wait 20 seconds for 3 RPM
+                                Console.WriteLine($"[INFO] Rate limit detected, waiting 20 seconds for 3 RPM limit...");
+                                await Task.Delay(20000);
+                            }
+                            else
+                            {
+                                // No rate limit - continue at full speed (2000 RPM)
+                                Console.WriteLine($"[INFO] No rate limit detected, continuing at full speed (2000 RPM)");
+                                // No delay needed for 2000 RPM
+                            }
                         }
                     }
-                }
 
-                if (allEmbeddings.Count == texts.Count)
-                {
-                    Console.WriteLine($"[DEBUG] VoyageAI batch processing completed: {allEmbeddings.Count} embeddings");
-                    return allEmbeddings;
+                    if (allEmbeddings.Count == texts.Count)
+                    {
+                        Console.WriteLine($"[DEBUG] VoyageAI batch processing completed: {allEmbeddings.Count} embeddings");
+                        return allEmbeddings;
+                    }
                 }
             }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[DEBUG] VoyageAI batch processing failed: {ex.Message}");
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[DEBUG] VoyageAI batch processing failed: {ex.Message}");
+            }
         }
 
         // Final fallback: generate embeddings individually (but still in parallel)
@@ -427,15 +430,69 @@ public class DocumentSearchService(
 
     private async Task<List<List<float>>?> GenerateVoyageAIBatchAsync(List<string> texts, AIProviderConfig config)
     {
-        // VoyageAI batch işlemi için basit implementasyon
-        var results = new List<List<float>>();
-        foreach (var text in texts)
+        try
         {
-            var embedding = await GenerateEmbeddingWithFallbackAsync(text);
-            if (embedding != null)
-                results.Add(embedding);
+            // VoyageAI batch API kullan
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {config.EmbeddingApiKey}");
+
+            var payload = new
+            {
+                input = texts.ToArray(),
+                model = config.EmbeddingModel ?? "voyage-3.5",
+                input_type = "document"
+            };
+
+            var jsonContent = JsonSerializer.Serialize(payload);
+            var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+
+            var response = await client.PostAsync("https://api.voyageai.com/v1/embeddings", content);
+            var responseContent = await response.Content.ReadAsStringAsync();
+
+            if (response.IsSuccessStatusCode)
+            {
+                try
+                {
+                    using var doc = JsonDocument.Parse(responseContent);
+                    if (doc.RootElement.TryGetProperty("data", out var dataArray) && dataArray.ValueKind == JsonValueKind.Array)
+                    {
+                        var results = new List<List<float>>();
+                        foreach (var item in dataArray.EnumerateArray())
+                        {
+                            if (item.TryGetProperty("embedding", out var embeddingArray) && embeddingArray.ValueKind == JsonValueKind.Array)
+                            {
+                                var embedding = embeddingArray.EnumerateArray()
+                                    .Select(x => x.GetSingle())
+                                    .ToList();
+                                results.Add(embedding);
+                            }
+                            else
+                            {
+                                results.Add(new List<float>());
+                            }
+                        }
+                        return results.Count == texts.Count ? results : null;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    ServiceLogMessages.LogFailedParseVoyageAI(logger, null);
+                    return null;
+                }
+            }
+            else
+            {
+                ServiceLogMessages.LogVoyageAITestResponse(logger, (int)response.StatusCode, responseContent, null);
+                return null;
+            }
         }
-        return results;
+        catch (Exception ex)
+        {
+            ServiceLogMessages.LogVoyageAIDirectTestFailed(logger, null);
+            return null;
+        }
+
+        return null;
     }
 
     private async Task<List<List<float>>> GenerateIndividualEmbeddingsAsync(List<string> texts)
@@ -461,9 +518,16 @@ public class DocumentSearchService(
 
     /// <summary>
     /// Try embedding-based search using VoyageAI with intelligent filtering
+    /// Only when AIProvider is Anthropic
     /// </summary>
     private async Task<List<DocumentChunk>> TryEmbeddingBasedSearchAsync(string query, List<DocumentChunk> allChunks, int maxResults)
     {
+        // Only use VoyageAI when AIProvider is Anthropic
+        if (_options.AIProvider != AIProvider.Anthropic)
+        {
+            return new List<DocumentChunk>();
+        }
+
         try
         {
             var anthropicConfig = configuration.GetSection("AI:Anthropic").Get<AIProviderConfig>();

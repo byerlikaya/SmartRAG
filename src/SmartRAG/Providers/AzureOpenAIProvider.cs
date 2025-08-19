@@ -67,7 +67,8 @@ public class AzureOpenAIProvider : BaseAIProvider
 
         var url = $"{config.Endpoint!.TrimEnd('/')}/openai/deployments/{config.EmbeddingModel}/embeddings?api-version={config.ApiVersion}";
 
-        var (success, response, error) = await MakeHttpRequestAsync(client, url, payload, "Azure OpenAI");
+        // Azure OpenAI S0 tier için özel rate limiting (3 RPM)
+        var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, "Azure OpenAI", config);
 
         if (!success)
             return [];
@@ -98,7 +99,8 @@ public class AzureOpenAIProvider : BaseAIProvider
 
         var url = $"{config.Endpoint!.TrimEnd('/')}/openai/deployments/{config.EmbeddingModel}/embeddings?api-version={config.ApiVersion}";
 
-        var (success, response, error) = await MakeHttpRequestAsync(client, url, payload, "Azure OpenAI");
+        // Azure OpenAI S0 tier için özel rate limiting (3 RPM)
+        var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, "Azure OpenAI", config);
 
         if (!success)
         {
@@ -134,6 +136,43 @@ public class AzureOpenAIProvider : BaseAIProvider
         catch
         {
             return Enumerable.Repeat(new List<float>(), inputList.Count).ToList();
+        }
+    }
+
+    // Azure OpenAI S0 tier için rate limiting (3 RPM)
+    private static readonly SemaphoreSlim _rateLimitSemaphore = new SemaphoreSlim(1, 1);
+    private static DateTime _lastRequestTime = DateTime.MinValue;
+
+    /// <summary>
+    /// Azure OpenAI S0 tier için özel rate limiting (3 RPM)
+    /// </summary>
+    private async Task<(bool success, string response, string error)> MakeHttpRequestAsyncWithRateLimit(
+        HttpClient client, string endpoint, object payload, string providerName, AIProviderConfig config)
+    {
+        // S0 tier: 3 RPM - configurable minimum interval (default 60s)
+        var minIntervalMs = Math.Max(0, config.EmbeddingMinIntervalMs ?? 60000);
+
+        await _rateLimitSemaphore.WaitAsync();
+        try
+        {
+            var now = DateTime.UtcNow;
+            var timeSinceLastRequest = now - _lastRequestTime;
+            
+            if (timeSinceLastRequest.TotalMilliseconds < minIntervalMs)
+            {
+                var waitTime = minIntervalMs - (int)timeSinceLastRequest.TotalMilliseconds;
+                _logger.LogWarning("Azure OpenAI rate limit: waiting {WaitTime}ms", waitTime);
+                await Task.Delay(waitTime);
+            }
+            
+            _lastRequestTime = DateTime.UtcNow;
+            
+            // Normal request with retry logic
+            return await MakeHttpRequestAsync(client, endpoint, payload, providerName, maxRetries: 5);
+        }
+        finally
+        {
+            _rateLimitSemaphore.Release();
         }
     }
 }
