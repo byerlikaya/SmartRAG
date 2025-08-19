@@ -174,6 +174,11 @@ cp src/SmartRAG.API/appsettings.json src/SmartRAG.API/appsettings.Development.js
       "Model": "claude-3.5-sonnet",
       "EmbeddingApiKey": "voyage-YOUR_REAL_KEY",
       "EmbeddingModel": "voyage-large-2"
+    },
+    "Gemini": {
+      "ApiKey": "your-gemini-api-key",
+      "Model": "gemini-2.0-flash",
+      "EmbeddingModel": "embedding-001"
     }
   },
   "Storage": {
@@ -202,7 +207,7 @@ cp src/SmartRAG.API/appsettings.json src/SmartRAG.API/appsettings.Development.js
 |----------|-------------|------------------|
 | **🤖 OpenAI** | ✅ Latest GPT models<br/>✅ Advanced embeddings | Industry standard, reliable, extensive model family |
 | **🧠 Anthropic** | ✅ Claude family models<br/>✅ VoyageAI embeddings | Safety-focused, constitutional AI, long context, requires separate VoyageAI API key |
-| **🌟 Google Gemini** | ✅ Gemini models<br/>✅ Multimodal embeddings | Multimodal support, latest Google AI innovations |
+| **🌟 Google Gemini** | ✅ Gemini models<br/>✅ Native embeddings | Multimodal support, latest Google AI innovations, optimized RAG performance |
 | **☁️ Azure OpenAI** | ✅ Enterprise GPT models<br/>✅ Enterprise embeddings | GDPR compliant, enterprise security, SLA support |
 
 ### 🛠️ **CustomProvider** - Universal API Support
@@ -525,16 +530,17 @@ We welcome contributions!
 
 ## 🆕 What's New
 
-### **Latest Release (v1.0.1)**
+### **Latest Release (v1.0.2)**
+- 🚀 **Hybrid Search Algorithm** - Revolutionary semantic + keyword boost approach for superior relevance
+- 🎯 **Gemini RAG Optimization** - Full Google Gemini support with native embeddings and optimized performance
+- 🧩 **Smart Document Chunking** - Intelligent overlap to prevent information loss at chunk boundaries
+- 🔄 **Case-Insensitive Search** - Robust text normalization for multi-language support
+- 📊 **Enhanced Search Scoring** - Relevance scores >1.0 with keyword boosting for precise results
+- ⚡ **Production-Ready Performance** - Optimized maxResults and interface improvements
 - 🧠 **Smart Query Intent Detection** - Automatically routes queries to chat vs document search
 - 🌍 **Language-Agnostic Design** - Removed all hardcoded language patterns  
 - 🔍 **Enhanced Search Relevance** - Improved name detection and content scoring
 - 🔤 **Unicode Normalization** - Fixed special character handling issues
-- ⚡ **Rate Limiting & Retry Logic** - Robust API handling with exponential backoff
-- 🚀 **VoyageAI Integration** - Anthropic embedding support
-- 📚 **Enhanced Documentation** - Official documentation links
-- 🧹 **Configuration Cleanup** - Removed unnecessary fields
-- 🎯 **Project Simplification** - Streamlined for better performance
 
 ## 📚 Resources
 

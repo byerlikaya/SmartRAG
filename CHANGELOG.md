@@ -13,6 +13,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Advanced search filters
 - Performance monitoring
 
+## [1.0.2] - 2025-01-20
+
+### Added
+- 🚀 **Hybrid Search Algorithm**: Revolutionary semantic + keyword boost approach for superior relevance scoring
+- 🎯 **Gemini RAG Optimization**: Full Google Gemini support with native embeddings and optimized performance
+- 🧩 **Smart Document Chunking**: Intelligent overlap between chunks to prevent information loss at boundaries
+- 🔄 **Case-Insensitive Search**: Robust text normalization for improved multi-language support
+- 📊 **Enhanced Search Scoring**: Relevance scores >1.0 with keyword boosting for precise results
+- ⚡ **Production-Ready Performance**: Optimized maxResults parameter and interface improvements
+
+### Improved
+- **Semantic Search Engine**: Hybrid approach combining vector similarity with keyword matching
+- **AI Prompt Construction**: Enhanced RAG prompt building for better AI responses
+- **Document Chunking**: Added configurable overlap to preserve context between chunks
+- **Search Interface**: Increased default maxResults from 5 to 10 for better coverage
+- **Text Normalization**: Case-insensitive search with proper Unicode handling
+
+### Fixed
+- **Gemini Provider**: Fixed embedding model configuration and batch processing
+- **Chunk Boundaries**: Resolved information loss at document chunk boundaries
+- **Search Relevance**: Improved keyword matching and scoring accuracy
+- **RAG Responses**: Fixed AI context handling for proper document-based answers
+
+### Technical Details
+- Added `CalculateKeywordBoost` method for semantic + keyword hybrid scoring
+- Implemented chunk overlap in `DocumentParserService` for context preservation
+- Enhanced `SemanticKernelSearchProvider` with production-ready hybrid search
+- Optimized `AIService` prompt construction for better RAG performance
+- Fixed Gemini API endpoint configuration and batch embedding handling
+
 ## [1.0.1] - 2025-01-19
 
 ### Improved

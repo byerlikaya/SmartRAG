@@ -201,7 +201,7 @@ git filter-branch --force --index-filter \
     "Gemini": {
       "ApiKey": "AIzaSy...",
       "Endpoint": "https://generativelanguage.googleapis.com/v1beta",
-      "Model": "gemini-1.5-flash",
+      "Model": "gemini-2.0-flash",
       "EmbeddingModel": "embedding-001",
       "MaxTokens": 4096,
       "Temperature": 0.3
@@ -209,6 +209,8 @@ git filter-branch --force --index-filter \
   }
 }
 ```
+
+**📝 Note**: Gemini now supports optimized RAG performance with native embeddings and improved batch processing.
 
 ### **Storage Providers**
 
