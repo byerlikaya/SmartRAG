@@ -2,12 +2,9 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartRAG.Entities;
-using SmartRAG.Enums;
-using SmartRAG.Factories;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
 using SmartRAG.Services.Logging;
-using System.Text.Json;
 
 namespace SmartRAG.Services;
 
@@ -49,7 +46,7 @@ public class DocumentSearchService(
             return diverseResults;
         }
 
-            return searchResults;
+        return searchResults;
     }
 
     public async Task<RagResponse> GenerateRagAnswerAsync(string query, int maxResults = 5)
@@ -268,7 +265,7 @@ Answer:";
                 return new List<DocumentChunk>();
             }
 
-            // Calculate similarity for all chunks that have embeddings
+                        // Calculate similarity for all chunks that have embeddings
             var chunksWithEmbeddings = allChunks.Where(c => c.Embedding != null && c.Embedding.Count > 0).ToList();
             
             if (chunksWithEmbeddings.Count == 0)
@@ -276,28 +273,25 @@ Answer:";
                 return new List<DocumentChunk>();
             }
 
+            // Enhanced semantic search with hybrid scoring
             var scoredChunks = chunksWithEmbeddings.Select(chunk =>
             {
-                var similarity = CalculateCosineSimilarity(queryEmbedding, chunk.Embedding);
-                chunk.RelevanceScore = similarity;
+                var semanticSimilarity = CalculateCosineSimilarity(queryEmbedding, chunk.Embedding);
+                
+                // Hybrid scoring: Combine semantic similarity with keyword matching
+                var keywordScore = CalculateKeywordRelevanceScore(query, chunk.Content);
+                var hybridScore = (semanticSimilarity * 0.8) + (keywordScore * 0.2);
+                
+                chunk.RelevanceScore = hybridScore;
                 return chunk;
             }).ToList();
 
-            // Filter chunks that contain query terms
-            var queryWords = query.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries)
-                .Where(w => w.Length > 2)
+            // Get top chunks based on hybrid scoring
+            var relevantChunks = scoredChunks
+                .Where(c => c.RelevanceScore > 0.1) // Higher threshold for better quality
+                .OrderByDescending(c => c.RelevanceScore)
+                .Take(Math.Max(maxResults * 3, 30)) // Get more candidates for better selection
                 .ToList();
-
-            var relevantChunks = scoredChunks.Where(chunk =>
-            {
-                var content = chunk.Content.ToLowerInvariant();
-                return queryWords.Any(word => content.Contains(word, StringComparison.OrdinalIgnoreCase));
-            }).ToList();
-
-            if (relevantChunks.Count == 0)
-            {
-                relevantChunks = scoredChunks.Where(c => c.RelevanceScore > 0.01).ToList();
-            }
 
             return relevantChunks
                 .OrderByDescending(c => c.RelevanceScore)
@@ -312,6 +306,43 @@ Answer:";
     }
 
 
+
+    /// <summary>
+    /// Calculate keyword relevance score for better hybrid search
+    /// </summary>
+    private static double CalculateKeywordRelevanceScore(string query, string content)
+    {
+        if (string.IsNullOrEmpty(query) || string.IsNullOrEmpty(content))
+            return 0.0;
+
+        var queryWords = query.ToLowerInvariant()
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Where(w => w.Length > 2)
+            .ToList();
+
+        if (queryWords.Count == 0)
+            return 0.0;
+
+        var contentLower = content.ToLowerInvariant();
+        var score = 0.0;
+
+        foreach (var word in queryWords)
+        {
+            // Exact word match (highest score)
+            if (contentLower.Contains($" {word} ") || contentLower.StartsWith($"{word} ", StringComparison.OrdinalIgnoreCase) || contentLower.EndsWith($" {word}", StringComparison.OrdinalIgnoreCase))
+            {
+                score += 2.0;
+            }
+            // Partial word match (medium score)
+            else if (contentLower.Contains(word))
+            {
+                score += 1.0;
+            }
+        }
+
+        // Normalize score
+        return Math.Min(score / queryWords.Count, 1.0);
+    }
 
     /// <summary>
     /// Calculate cosine similarity between two vectors
@@ -390,7 +421,7 @@ Answer:";
                 contentWord.Contains(searchWord, StringComparison.OrdinalIgnoreCase)));
     }
 
-        /// <summary>
+    /// <summary>
     /// Ultimate language-agnostic approach: ONLY check if documents contain relevant information
     /// No word patterns, no language detection, no grammar analysis, no greeting detection
     /// Pure content-based decision making
@@ -402,7 +433,7 @@ Answer:";
             // Step 1: Search documents for any content related to the query
             // This works regardless of the language of the query
             var searchResults = await PerformBasicSearchAsync(query, 5);
-            
+
             if (searchResults.Count == 0)
             {
                 // No content found that matches the query in any way
@@ -410,7 +441,7 @@ Answer:";
             }
 
             // Step 2: Check if we found meaningful content with decent relevance
-            var hasRelevantContent = searchResults.Any(chunk => 
+            var hasRelevantContent = searchResults.Any(chunk =>
                 chunk.RelevanceScore > 0.1); // Reasonable threshold
 
             if (!hasRelevantContent)
