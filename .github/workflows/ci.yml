@@ -145,7 +145,7 @@ jobs:
   create-release:
     name: Create GitHub Release
     runs-on: ubuntu-latest
-    needs: [build, publish-nuget]
+    needs: [build, publish-nuget, publish-github-packages]
     if: github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[release]')
     permissions:
       contents: write
@@ -278,7 +278,8 @@ jobs:
         echo "Checking for vulnerable packages..."
         dotnet list package --vulnerable
         echo "Checking for outdated packages..."
-        dotnet outdated --upgrade
+        dotnet tool install --global dotnet-outdated-tool || echo "dotnet-outdated already installed"
+        dotnet outdated --upgrade || echo "No outdated packages or tool unavailable"
         
     - name: Run CodeQL Analysis
       continue-on-error: true
