@@ -20,4 +20,10 @@ public class AIProviderConfig
     public double Temperature { get; set; } = 0.7;
 
     public string? ApiVersion { get; set; }
+
+    /// <summary>
+    /// Optional minimum interval between embedding requests in milliseconds.
+    /// If null, provider defaults will be used (e.g., 60000 ms for Azure S0).
+    /// </summary>
+    public int? EmbeddingMinIntervalMs { get; set; }
 }

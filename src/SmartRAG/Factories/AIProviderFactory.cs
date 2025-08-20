@@ -1,6 +1,7 @@
 using SmartRAG.Enums;
 using SmartRAG.Interfaces;
 using SmartRAG.Providers;
+using Microsoft.Extensions.Logging;
 
 namespace SmartRAG.Factories;
 
@@ -10,20 +11,22 @@ namespace SmartRAG.Factories;
 public class AIProviderFactory : IAIProviderFactory
 {
     private readonly Dictionary<AIProvider, IAIProvider> _providers;
+    private readonly ILoggerFactory _loggerFactory;
 
-    public AIProviderFactory()
+    public AIProviderFactory(ILoggerFactory loggerFactory)
     {
+        _loggerFactory = loggerFactory;
         _providers = [];
         InitializeProviders();
     }
 
     private void InitializeProviders()
     {
-        _providers[AIProvider.Gemini] = new GeminiProvider();
-        _providers[AIProvider.OpenAI] = new OpenAIProvider();
-        _providers[AIProvider.Anthropic] = new AnthropicProvider();
-        _providers[AIProvider.AzureOpenAI] = new AzureOpenAIProvider();
-        _providers[AIProvider.Custom] = new CustomProvider();
+        _providers[AIProvider.Gemini] = new GeminiProvider(_loggerFactory.CreateLogger<GeminiProvider>());
+        _providers[AIProvider.OpenAI] = new OpenAIProvider(_loggerFactory.CreateLogger<OpenAIProvider>());
+        _providers[AIProvider.Anthropic] = new AnthropicProvider(_loggerFactory.CreateLogger<AnthropicProvider>());
+        _providers[AIProvider.AzureOpenAI] = new AzureOpenAIProvider(_loggerFactory.CreateLogger<AzureOpenAIProvider>());
+        _providers[AIProvider.Custom] = new CustomProvider(_loggerFactory.CreateLogger<CustomProvider>());
     }
 
     public IAIProvider CreateProvider(AIProvider providerType)

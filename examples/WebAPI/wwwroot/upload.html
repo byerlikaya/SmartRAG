@@ -28,7 +28,15 @@
 			<div style="margin-top: 24px; border-top: 1px solid #e5e7eb; padding-top: 16px;">
 				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
 					<strong>Console Logs (Real-time)</strong>
-					<button id="clearLogs" style="background: #6b7280; padding: 4px 8px; font-size: 12px;">Clear</button>
+					<div style="display: flex; gap: 8px;">
+						<select id="logFilter" style="padding: 4px 8px; border: 1px solid #e5e7eb; border-radius: 4px; font-size: 12px;">
+							<option value="all">All Logs</option>
+							<option value="sse">SSE Only</option>
+							<option value="upload">Upload Only</option>
+							<option value="error">Errors Only</option>
+						</select>
+						<button id="clearLogs" style="background: #6b7280; padding: 4px 8px; font-size: 12px;">Clear</button>
+					</div>
 				</div>
 				<div id="consoleLogs" style="background: #0f172a; color: #e2e8f0; padding: 12px; border-radius: 8px; height: 300px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4;"></div>
 			</div>
@@ -40,12 +48,17 @@
 		const result = document.getElementById('result');
 		const consoleLogs = document.getElementById('consoleLogs');
 		const clearLogsBtn = document.getElementById('clearLogs');
+		const logFilter = document.getElementById('logFilter');
 		
 		// Console log yakalama
-		function addLog(message, type = 'info') {
+		const MAX_LOGS = 100; // Maksimum log sayısı
+		const LOG_CLEANUP_THRESHOLD = 50; // Temizleme eşiği
+		
+		function addLog(message, type = 'info', category = 'upload') {
 			const timestamp = new Date().toLocaleTimeString();
 			const logEntry = document.createElement('div');
 			logEntry.style.marginBottom = '4px';
+			logEntry.setAttribute('data-category', category);
 			
 			let color = '#e2e8f0'; // default
 			if (type === 'error') color = '#fca5a5';
@@ -54,7 +67,29 @@
 			
 			logEntry.innerHTML = `<span style="color: #94a3b8;">[${timestamp}]</span> <span style="color: ${color};">${message}</span>`;
 			consoleLogs.appendChild(logEntry);
+			
+			// Performans optimizasyonu: Eski logları temizle
+			if (consoleLogs.children.length > MAX_LOGS) {
+				cleanupOldLogs();
+			}
+			
 			consoleLogs.scrollTop = consoleLogs.scrollHeight;
+			
+			// Browser console'a da log ekle
+			const consoleMessage = `[SmartRAG] ${message}`;
+			if (type === 'error') console.error(consoleMessage);
+			else if (type === 'warning') console.warn(consoleMessage);
+			else console.log(consoleMessage);
+		}
+		
+		// Eski logları temizle
+		function cleanupOldLogs() {
+			const logsToRemove = consoleLogs.children.length - LOG_CLEANUP_THRESHOLD;
+			for (let i = 0; i < logsToRemove; i++) {
+				if (consoleLogs.firstChild) {
+					consoleLogs.removeChild(consoleLogs.firstChild);
+				}
+			}
 		}
 		
 		// Clear logs
@@ -62,6 +97,93 @@
 			consoleLogs.innerHTML = '';
 			addLog('Logs cleared', 'info');
 		};
+		
+		// Log filtreleme
+		logFilter.onchange = () => {
+			applyLogFilter();
+		};
+		
+		function applyLogFilter() {
+			const filterValue = logFilter.value;
+			const logEntries = consoleLogs.children;
+			
+			for (let i = 0; i < logEntries.length; i++) {
+				const entry = logEntries[i];
+				const category = entry.getAttribute('data-category') || 'upload';
+				
+				let shouldShow = true;
+				
+				switch (filterValue) {
+					case 'sse':
+						shouldShow = category === 'sse';
+						break;
+					case 'upload':
+						shouldShow = category === 'upload';
+						break;
+					case 'error':
+						shouldShow = entry.textContent.includes('❌') || entry.textContent.includes('error');
+						break;
+					case 'all':
+					default:
+						shouldShow = true;
+						break;
+				}
+				
+				entry.style.display = shouldShow ? 'block' : 'none';
+			}
+		}
+		
+		// SSE Log Stream bağlantısı
+		let eventSource;
+		
+		function connectToLogStream() {
+			try {
+				addLog('Connecting to SSE log stream...', 'info');
+				eventSource = new EventSource('/api/logs/stream');
+				
+				eventSource.onmessage = function(event) {
+					try {
+						const logData = JSON.parse(event.data);
+						const level = logData.level?.toLowerCase() || 'info';
+						const message = logData.message || event.data;
+						
+						// Log seviyesine göre renk belirle
+						let color = '#e2e8f0'; // default
+						if (level === 'error') color = '#fca5a5';
+						else if (level === 'warning') color = '#fcd34d';
+						else if (level === 'success') color = '#86efac';
+						else if (level === 'debug') color = '#94a3b8';
+						
+						addLog(`[SSE] ${message}`, level, 'sse');
+					} catch (parseError) {
+						addLog(`[SSE] Parse error: ${parseError.message}`, 'error');
+					}
+				};
+				
+				eventSource.onerror = function(error) {
+					addLog(`SSE connection error: ${error.type}`, 'error');
+					// Reconnect after 5 seconds
+					setTimeout(connectToLogStream, 5000);
+				};
+				
+				eventSource.onopen = function() {
+					addLog('SSE log stream connected successfully!', 'success');
+				};
+				
+			} catch (error) {
+				addLog(`Failed to connect to SSE: ${error.message}`, 'error');
+			}
+		}
+		
+		// SSE bağlantısını başlat
+		connectToLogStream();
+		
+		// Sayfa kapatıldığında SSE bağlantısını temizle
+		window.addEventListener('beforeunload', function() {
+			if (eventSource) {
+				eventSource.close();
+			}
+		});
 		
 		// Initial log
 		addLog('Upload page ready', 'success');

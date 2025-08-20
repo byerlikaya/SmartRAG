@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
@@ -18,43 +19,45 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
     private readonly string _documentPrefix;
     private bool _disposed;
 
-    public RedisDocumentRepository(RedisConfig config)
+    public RedisDocumentRepository(IOptions<RedisConfig> config)
     {
+        var redisConfig = config.Value;
+        
         // Configure connection options
         var options = new ConfigurationOptions
         {
-            EndPoints = { config.ConnectionString },
-            ConnectTimeout = config.ConnectionTimeout * 1000,
-            SyncTimeout = config.ConnectionTimeout * 1000,
-            ConnectRetry = config.RetryCount,
-            ReconnectRetryPolicy = new ExponentialRetry(config.RetryDelay),
+            EndPoints = { redisConfig.ConnectionString },
+            ConnectTimeout = redisConfig.ConnectionTimeout * 1000,
+            SyncTimeout = redisConfig.ConnectionTimeout * 1000,
+            ConnectRetry = redisConfig.RetryCount,
+            ReconnectRetryPolicy = new ExponentialRetry(redisConfig.RetryDelay),
             AllowAdmin = true,
             AbortOnConnectFail = false,
             KeepAlive = 180
         };
 
         // Add authentication if provided
-        if (!string.IsNullOrEmpty(config.Username))
+        if (!string.IsNullOrEmpty(redisConfig.Username))
         {
-            options.User = config.Username;
+            options.User = redisConfig.Username;
         }
 
-        if (!string.IsNullOrEmpty(config.Password))
+        if (!string.IsNullOrEmpty(redisConfig.Password))
         {
-            options.Password = config.Password;
+            options.Password = redisConfig.Password;
         }
 
         // Enable SSL if configured
-        if (config.EnableSsl)
+        if (redisConfig.EnableSsl)
         {
             options.Ssl = true;
             options.SslProtocols = System.Security.Authentication.SslProtocols.Tls12;
         }
 
         _redis = ConnectionMultiplexer.Connect(options);
-        _database = _redis.GetDatabase(config.Database);
-        _documentsKey = $"{config.KeyPrefix}list";
-        _documentPrefix = config.KeyPrefix;
+        _database = _redis.GetDatabase(redisConfig.Database);
+        _documentsKey = $"{redisConfig.KeyPrefix}list";
+        _documentPrefix = redisConfig.KeyPrefix;
 
         // Test connection
         if (!_redis.IsConnected)
