@@ -4,6 +4,7 @@ using DocumentFormat.OpenXml.Wordprocessing;
 using iText.Kernel.Pdf;
 using iText.Kernel.Pdf.Canvas.Parser;
 using iText.Kernel.Pdf.Canvas.Parser.Listener;
+using Microsoft.Extensions.Options;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
@@ -15,8 +16,9 @@ namespace SmartRAG.Services;
 /// <summary>
 /// Service for parsing different document formats and extracting text content
 /// </summary>
-public class DocumentParserService(SmartRagOptions options) : IDocumentParserService
+public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumentParserService
 {
+    private readonly SmartRagOptions _options = options.Value;
     /// <summary>
     /// Parses document content based on file type
     /// </summary>
@@ -51,13 +53,10 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
                 ["ChunkCount"] = document.Chunks?.Count ?? 0
             };
 
-
-
             return document;
         }
         catch (Exception)
         {
-
             throw;
         }
     }
@@ -125,7 +124,6 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
         }
         catch (Exception)
         {
-
             return string.Empty;
         }
     }
@@ -193,7 +191,6 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
         }
         catch (Exception)
         {
-
             return string.Empty;
         }
     }
@@ -211,7 +208,6 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
         }
         catch (Exception)
         {
-
             return string.Empty;
         }
     }
@@ -239,7 +235,6 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
         // Validate content length and quality
         if (cleaned.Length < 10)
         {
-
             return string.Empty;
         }
 
@@ -247,7 +242,6 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
         var meaningfulTextRatio = cleaned.Count(c => char.IsLetterOrDigit(c)) / (double)cleaned.Length;
         if (meaningfulTextRatio < 0.3) // Less than 30% meaningful text
         {
-
             return string.Empty;
         }
 
@@ -288,7 +282,6 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
         }
         else
         {
-
             return string.Empty;
         }
     }
@@ -296,9 +289,9 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
     private List<DocumentChunk> CreateChunks(string content, Guid documentId)
     {
         var chunks = new List<DocumentChunk>();
-        var maxChunkSize = Math.Max(1, options.MaxChunkSize);
-        var chunkOverlap = Math.Max(0, options.ChunkOverlap);
-        var minChunkSize = Math.Max(1, options.MinChunkSize);
+        var maxChunkSize = Math.Max(1, _options.MaxChunkSize);
+        var chunkOverlap = Math.Max(0, _options.ChunkOverlap);
+        var minChunkSize = Math.Max(1, _options.MinChunkSize);
 
         if (content.Length <= maxChunkSize)
         {
@@ -312,6 +305,7 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
                 EndPosition = content.Length,
                 CreatedAt = DateTime.UtcNow,
                 RelevanceScore = 0.0
+                // Embedding will be set by DocumentService after AI processing
             });
             return chunks;
         }
@@ -323,24 +317,15 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
         {
             var endIndex = Math.Min(startIndex + maxChunkSize, content.Length);
 
-            // Try to find a good break point (end of sentence, word boundary)
+            // Smart boundary detection to avoid cutting words in the middle
             if (endIndex < content.Length)
             {
-                var searchStart = Math.Max(startIndex + minChunkSize, endIndex - 50);
-                var periodIndex = content.LastIndexOf('.', searchStart, endIndex - searchStart);
-                var spaceIndex = content.LastIndexOf(' ', searchStart, endIndex - searchStart);
-
-                if (periodIndex > searchStart)
-                {
-                    endIndex = periodIndex + 1;
-                }
-                else if (spaceIndex > searchStart)
-                {
-                    endIndex = spaceIndex;
-                }
+                endIndex = FindOptimalBreakPoint(content, startIndex, endIndex, minChunkSize);
             }
 
-            var chunkContent = content.Substring(startIndex, endIndex - startIndex).Trim();
+            // Validate both start and end boundaries to ensure complete words
+            var (validatedStart, validatedEnd) = ValidateChunkBoundaries(content, startIndex, endIndex);
+            var chunkContent = content.Substring(validatedStart, validatedEnd - validatedStart).Trim();
 
             if (!string.IsNullOrWhiteSpace(chunkContent))
             {
@@ -350,18 +335,353 @@ public class DocumentParserService(SmartRagOptions options) : IDocumentParserSer
                     DocumentId = documentId,
                     Content = chunkContent,
                     ChunkIndex = chunkIndex,
-                    StartPosition = startIndex,
-                    EndPosition = endIndex,
+                    StartPosition = validatedStart,
+                    EndPosition = validatedEnd,
                     CreatedAt = DateTime.UtcNow,
                     RelevanceScore = 0.0
+                    // Embedding will be set by DocumentService after AI processing
                 });
                 chunkIndex++;
             }
 
-            // Calculate next start position with overlap
-            startIndex = Math.Max(startIndex + 1, endIndex - chunkOverlap);
+            // Smart overlap calculation to ensure meaningful context
+            var nextStartIndex = CalculateNextStartPosition(content, startIndex, endIndex, chunkOverlap);
+
+            // Safety check to prevent infinite loops
+            if (nextStartIndex <= startIndex)
+            {
+                startIndex = endIndex; // Force progression
+            }
+            else
+            {
+                startIndex = nextStartIndex;
+            }
+
+            // Additional safety check
+            if (startIndex >= content.Length)
+            {
+                break;
+            }
         }
 
         return chunks;
+    }
+
+    /// <summary>
+    /// Finds the optimal break point to avoid cutting words in the middle
+    /// </summary>
+    private static int FindOptimalBreakPoint(string content, int startIndex, int currentEndIndex, int minChunkSize)
+    {
+        // DYNAMIC CHUNK CREATION: Search from both ends intelligently
+        var searchStartFromStart = startIndex + minChunkSize;
+        var searchEndFromEnd = currentEndIndex;
+
+        // Calculate dynamic search range based on content length
+        var contentLength = content.Length;
+        var dynamicSearchRange = Math.Min(500, contentLength / 10); // Dynamic range: 500 chars or 10% of content
+
+        // Priority 1: End of sentence (period, exclamation, question mark) - Search from both ends
+        var sentenceEndIndex = FindLastSentenceEnd(content, searchStartFromStart, searchEndFromEnd);
+        if (sentenceEndIndex > searchStartFromStart)
+        {
+            // Additional check: Ensure we don't cut words in the middle
+            var validatedIndex = ValidateWordBoundary(content, sentenceEndIndex);
+            return validatedIndex + 1;
+        }
+
+        // Priority 2: End of paragraph (double newline) - Search from both ends
+        var paragraphEndIndex = FindLastParagraphEnd(content, searchStartFromStart, searchEndFromEnd);
+        if (paragraphEndIndex > searchStartFromStart)
+        {
+            var validatedIndex = ValidateWordBoundary(content, paragraphEndIndex);
+            return validatedIndex;
+        }
+
+        // Priority 3: Word boundary (space, tab, newline) - Search from both ends
+        var wordBoundaryIndex = FindLastWordBoundary(content, searchStartFromStart, searchEndFromEnd);
+        if (wordBoundaryIndex > searchStartFromStart)
+        {
+            var validatedIndex = ValidateWordBoundary(content, wordBoundaryIndex);
+            return validatedIndex;
+        }
+
+        // Priority 4: Punctuation boundary (comma, semicolon, colon) - Search from both ends
+        var punctuationIndex = FindLastPunctuationBoundary(content, searchStartFromStart, searchEndFromEnd);
+        if (punctuationIndex > searchStartFromStart)
+        {
+            return punctuationIndex + 1;
+        }
+
+        // Priority 5: DYNAMIC SEARCH - Find any word boundary in intelligent range
+        var intelligentSearchStart = Math.Max(startIndex, currentEndIndex - dynamicSearchRange);
+        var intelligentSearchEnd = Math.Min(contentLength, currentEndIndex + dynamicSearchRange);
+
+        var anyWordBoundary = FindAnyWordBoundary(content, intelligentSearchStart, intelligentSearchEnd);
+        if (anyWordBoundary > intelligentSearchStart)
+        {
+            return anyWordBoundary;
+        }
+
+        // Priority 6: ULTIMATE FALLBACK - Search entire remaining content intelligently
+        var ultimateSearchStart = Math.Max(startIndex, currentEndIndex - 1000);
+        var ultimateWordBoundary = FindUltimateWordBoundary(content, ultimateSearchStart, currentEndIndex);
+        if (ultimateWordBoundary > ultimateSearchStart)
+        {
+            return ultimateWordBoundary;
+        }
+
+        // Final fallback: Use current end index
+        return currentEndIndex;
+    }
+
+    /// <summary>
+    /// Validates that the break point doesn't cut words in the middle
+    /// </summary>
+    private static int ValidateWordBoundary(string content, int breakPoint)
+    {
+        // Check if we're in the middle of a word
+        if (breakPoint > 0 && breakPoint < content.Length)
+        {
+            var currentChar = content[breakPoint];
+            var previousChar = content[breakPoint - 1];
+
+            // If we're in the middle of a word, find the previous word boundary
+            if (char.IsLetterOrDigit(currentChar) && char.IsLetterOrDigit(previousChar))
+            {
+                // Look backwards for the last word boundary
+                for (int i = breakPoint - 1; i >= 0; i--)
+                {
+                    if (char.IsWhiteSpace(content[i]) || char.IsPunctuation(content[i]))
+                    {
+                        // Found a word boundary
+                        return i;
+                    }
+                }
+                // If no boundary found, return start of content
+                return 0;
+            }
+        }
+
+        return breakPoint;
+    }
+
+    /// <summary>
+    /// Validates both start and end boundaries to ensure complete words
+    /// </summary>
+    private static (int start, int end) ValidateChunkBoundaries(string content, int startIndex, int endIndex)
+    {
+        var validatedStart = ValidateWordBoundary(content, startIndex);
+        var validatedEnd = ValidateWordBoundary(content, endIndex);
+
+        // Additional check: Ensure end boundary doesn't cut words
+        if (validatedEnd < content.Length)
+        {
+            var nextChar = content[validatedEnd];
+            if (char.IsLetterOrDigit(nextChar))
+            {
+                // Find the next word boundary
+                for (int i = validatedEnd; i < content.Length; i++)
+                {
+                    if (char.IsWhiteSpace(content[i]) || char.IsPunctuation(content[i]))
+                    {
+                        validatedEnd = i;
+                        break;
+                    }
+                }
+                // If no boundary found, use content length
+                if (validatedEnd == endIndex)
+                {
+                    validatedEnd = content.Length;
+                }
+            }
+        }
+
+        return (validatedStart, validatedEnd);
+    }
+
+    /// <summary>
+    /// Finds the last sentence end within the search range
+    /// </summary>
+    private static int FindLastSentenceEnd(string content, int searchStart, int searchEnd)
+    {
+        var sentenceEndings = new[] { '.', '!', '?', ';' };
+        var maxIndex = -1;
+
+        foreach (var ending in sentenceEndings)
+        {
+            var index = content.LastIndexOf(ending, searchEnd - 1, searchEnd - searchStart);
+            if (index > maxIndex)
+            {
+                maxIndex = index;
+            }
+        }
+
+        return maxIndex;
+    }
+
+    /// <summary>
+    /// Finds the last paragraph end within the search range
+    /// </summary>
+    private static int FindLastParagraphEnd(string content, int searchStart, int searchEnd)
+    {
+        var paragraphEndings = new[] { "\n\n", "\r\n\r\n" };
+        var maxIndex = -1;
+
+        foreach (var ending in paragraphEndings)
+        {
+            var index = content.LastIndexOf(ending, searchEnd - ending.Length, searchEnd - searchStart, StringComparison.Ordinal);
+            if (index > maxIndex)
+            {
+                maxIndex = index + ending.Length;
+            }
+        }
+
+        return maxIndex;
+    }
+
+    /// <summary>
+    /// Finds the last word boundary within the search range
+    /// </summary>
+    private static int FindLastWordBoundary(string content, int searchStart, int searchEnd)
+    {
+        var wordBoundaries = new[] { ' ', '\t', '\n', '\r' };
+        var maxIndex = -1;
+
+        foreach (var boundary in wordBoundaries)
+        {
+            var index = content.LastIndexOf(boundary, searchEnd - 1, searchEnd - searchStart);
+            if (index > maxIndex)
+            {
+                maxIndex = index;
+            }
+        }
+
+        // Additional check: Ensure we don't cut words in the middle
+        if (maxIndex > searchStart)
+        {
+            // Look ahead to see if the next character is a letter (indicating word continuation)
+            if (maxIndex + 1 < content.Length && char.IsLetter(content[maxIndex + 1]))
+            {
+                // Find the previous complete word boundary
+                var prevBoundary = FindPreviousCompleteWordBoundary(content, searchStart, maxIndex);
+                if (prevBoundary > searchStart)
+                {
+                    maxIndex = prevBoundary;
+                }
+            }
+        }
+
+        return maxIndex;
+    }
+
+    /// <summary>
+    /// Finds the previous complete word boundary to avoid cutting words
+    /// </summary>
+    private static int FindPreviousCompleteWordBoundary(string content, int searchStart, int currentBoundary)
+    {
+        // Look for the previous space or punctuation that ends a complete word
+        for (int i = currentBoundary - 1; i >= searchStart; i--)
+        {
+            if (char.IsWhiteSpace(content[i]) || char.IsPunctuation(content[i]))
+            {
+                // Check if this creates a complete word
+                if (i + 1 < content.Length && char.IsLetterOrDigit(content[i + 1]))
+                {
+                    return i;
+                }
+            }
+        }
+        return searchStart;
+    }
+
+    /// <summary>
+    /// Finds the last punctuation boundary within the search range
+    /// </summary>
+    private static int FindLastPunctuationBoundary(string content, int searchStart, int searchEnd)
+    {
+        var punctuationBoundaries = new[] { ',', ':', ';', '-', '–', '—' };
+        var maxIndex = -1;
+
+        foreach (var boundary in punctuationBoundaries)
+        {
+            var index = content.LastIndexOf(boundary, searchEnd - 1, searchEnd - searchStart);
+            if (index > maxIndex)
+            {
+                maxIndex = index;
+            }
+        }
+
+        return maxIndex;
+    }
+
+    /// <summary>
+    /// Finds any word boundary in a wider search range
+    /// </summary>
+    private static int FindAnyWordBoundary(string content, int searchStart, int searchEnd)
+    {
+        var wordBoundaries = new[] { ' ', '\t', '\n', '\r', '.', '!', '?', ';', ',', ':', '-', '–', '—' };
+        var maxIndex = -1;
+
+        // Search from end to start to find the closest boundary
+        for (int i = searchEnd - 1; i >= searchStart; i--)
+        {
+            if (wordBoundaries.Contains(content[i]))
+            {
+                maxIndex = i;
+                break;
+            }
+        }
+
+        return maxIndex;
+    }
+
+    /// <summary>
+    /// ULTIMATE FALLBACK - Search entire remaining content intelligently
+    /// </summary>
+    private static int FindUltimateWordBoundary(string content, int searchStart, int searchEnd)
+    {
+        var wordBoundaries = new[] { ' ', '\t', '\n', '\r', '.', '!', '?', ';', ',', ':', '-', '–', '—', '(', ')', '[', ']', '{', '}' };
+        var maxIndex = -1;
+
+        // Search from end to start to find ANY boundary
+        for (int i = searchEnd - 1; i >= searchStart; i--)
+        {
+            if (wordBoundaries.Contains(content[i]))
+            {
+                maxIndex = i;
+                break;
+            }
+        }
+
+        return maxIndex;
+    }
+
+    /// <summary>
+    /// Calculates the next start position with smart overlap
+    /// </summary>
+    private static int CalculateNextStartPosition(string content, int currentStart, int currentEnd, int overlap)
+    {
+        if (overlap <= 0)
+        {
+            return currentEnd;
+        }
+
+        // Calculate next start position with overlap
+        var nextStart = currentEnd - overlap;
+
+        // Ensure we don't go backwards or create infinite loops
+        if (nextStart <= currentStart)
+        {
+            // Force progression to avoid infinite loops
+            nextStart = currentStart + 1;
+        }
+
+        // Ensure we don't exceed content length
+        if (nextStart >= content.Length)
+        {
+            return content.Length; // End the loop
+        }
+
+        return nextStart;
     }
 }

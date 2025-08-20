@@ -1,14 +1,19 @@
 using SmartRAG.Enums;
 using SmartRAG.Models;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 
 namespace SmartRAG.Providers;
 
 /// <summary>
-/// Anthropic Claude AI provider implementation
+/// Anthropic Claude provider implementation
 /// </summary>
 public class AnthropicProvider : BaseAIProvider
 {
+    public AnthropicProvider(ILogger<AnthropicProvider> logger) : base(logger)
+    {
+    }
+
     public override AIProvider ProviderType => AIProvider.Anthropic;
 
     public override async Task<string> GenerateTextAsync(string prompt, AIProviderConfig config)
@@ -103,6 +108,80 @@ public class AnthropicProvider : BaseAIProvider
             return [];
 
         return ParseVoyageEmbeddingResponse(response);
+    }
+
+    public override async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config)
+    {
+        // Anthropic uses Voyage AI for batch embeddings
+        var voyageApiKey = config.EmbeddingApiKey ?? config.ApiKey;
+        var voyageEndpoint = "https://api.voyageai.com";
+        var voyageModel = config.EmbeddingModel ?? "voyage-3.5";
+
+        if (string.IsNullOrEmpty(voyageApiKey))
+            return [];
+
+        var additionalHeaders = new Dictionary<string, string>
+        {
+            { "Authorization", $"Bearer {voyageApiKey}" }
+        };
+
+        using var client = CreateHttpClientWithoutAuth(additionalHeaders);
+
+        var payload = new
+        {
+            input = texts.ToArray(),
+            model = voyageModel,
+            input_type = "document"
+        };
+
+        var embeddingEndpoint = $"{voyageEndpoint}/v1/embeddings";
+
+        var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload, "Voyage (Anthropic) Batch");
+
+        if (!success)
+            return [];
+
+        return ParseVoyageBatchEmbeddingResponse(response, texts.Count());
+    }
+
+    private static List<List<float>> ParseVoyageBatchEmbeddingResponse(string response, int expectedCount)
+    {
+        var results = new List<List<float>>();
+
+        try
+        {
+            using var doc = JsonDocument.Parse(response);
+
+            if (doc.RootElement.TryGetProperty("data", out var dataArray) && dataArray.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in dataArray.EnumerateArray())
+                {
+                    if (item.TryGetProperty("embedding", out var embeddingArray) && embeddingArray.ValueKind == JsonValueKind.Array)
+                    {
+                        var embedding = embeddingArray.EnumerateArray()
+                            .Select(x => x.GetSingle())
+                            .ToList();
+                        results.Add(embedding);
+                    }
+                    else
+                    {
+                        results.Add(new List<float>());
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Return empty embeddings on parse error
+        }
+
+        // Ensure we return the expected number of embeddings
+        while (results.Count < expectedCount)
+        {
+            results.Add(new List<float>());
+        }
+
+        return results.Take(expectedCount).ToList();
     }
 
     private static List<float> ParseVoyageEmbeddingResponse(string response)

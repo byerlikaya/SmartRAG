@@ -1,8 +1,8 @@
-using Scalar.AspNetCore;
-using SmartRAG.Enums;
-using SmartRAG.Extensions;
 using Microsoft.OpenApi.Models;
 using SmartRAG.API.Filters;
+using SmartRAG.Diagnostics.Extensions;
+using SmartRAG.Enums;
+using SmartRAG.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,17 +30,20 @@ static void RegisterServices(IServiceCollection services, IConfiguration configu
         builder.SetMinimumLevel(LogLevel.Debug);
     });
 
+    // Add SSE logging capabilities (ILogStream + ILoggerProvider DI kayıtları)
+    services.AddSmartRagSseLogging();
+
     services.AddControllers();
     services.AddEndpointsApiExplorer();
     services.AddOpenApi();
     services.AddSwaggerGen(c =>
     {
         c.SwaggerDoc("v1", new OpenApiInfo { Title = "SmartRAG API", Version = "v1" });
-        
+
         // Configure multipart file upload for multiple files
         c.OperationFilter<MultipartFileUploadFilter>();
     });
-    
+
     // Configure form options for file uploads
     services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
     {
@@ -52,9 +55,11 @@ static void RegisterServices(IServiceCollection services, IConfiguration configu
 
     // Add SmartRag services with minimal configuration
     services.UseSmartRag(configuration,
-        storageProvider: StorageProvider.InMemory,  // Default: InMemory
-        aiProvider: AIProvider.Gemini               // Use OpenAI provider
+        storageProvider: StorageProvider.InMemory,  // Use Redis as requested
+        aiProvider: AIProvider.Gemini               // Use Gemini provider
     );
+
+
 
     services.AddCors(options =>
     {
@@ -84,4 +89,7 @@ static void ConfigureMiddleware(WebApplication app, IWebHostEnvironment environm
     app.UseCors("AllowAll");
     app.UseAuthorization();
     app.MapControllers();
+
+    // SSE log stream endpoint
+    app.MapSmartRagLogStream("/api/logs/stream");
 }

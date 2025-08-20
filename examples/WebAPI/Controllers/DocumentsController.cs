@@ -52,7 +52,14 @@ public class DocumentsController(
                 file.ContentType,
                 "system");
 
-            return CreatedAtAction(nameof(GetDocument), new { id = document.Id }, document);
+            // Return simple success response
+            return Ok(new
+            {
+                message = "Document uploaded successfully",
+                documentId = document.Id,
+                fileName = document.FileName,
+                chunkCount = document.Chunks?.Count ?? 0
+            });
         }
         catch (Exception ex)
         {
@@ -139,19 +146,21 @@ public class DocumentsController(
         try
         {
             Console.WriteLine("[API] Embedding regeneration requested");
-            
+
             var success = await documentService.RegenerateAllEmbeddingsAsync();
-            
+
             if (success)
             {
-                return Ok(new { 
+                return Ok(new
+                {
                     message = "Embedding regeneration completed successfully",
                     timestamp = DateTime.UtcNow
                 });
             }
             else
             {
-                return StatusCode(500, new { 
+                return StatusCode(500, new
+                {
                     message = "Embedding regeneration failed",
                     timestamp = DateTime.UtcNow
                 });
@@ -160,7 +169,88 @@ public class DocumentsController(
         catch (Exception ex)
         {
             Console.WriteLine($"[API ERROR] Embedding regeneration failed: {ex.Message}");
-            return StatusCode(500, new { 
+            return StatusCode(500, new
+            {
+                message = $"Internal server error: {ex.Message}",
+                timestamp = DateTime.UtcNow
+            });
+        }
+    }
+
+    /// <summary>
+    /// Clear all embeddings from all documents
+    /// </summary>
+    [HttpPost("clear-embeddings")]
+    public async Task<ActionResult> ClearAllEmbeddings()
+    {
+        try
+        {
+            Console.WriteLine("[API] Clear all embeddings requested");
+
+            var success = await documentService.ClearAllEmbeddingsAsync();
+
+            if (success)
+            {
+                return Ok(new
+                {
+                    message = "All embeddings cleared successfully",
+                    timestamp = DateTime.UtcNow
+                });
+            }
+            else
+            {
+                return StatusCode(500, new
+                {
+                    message = "Failed to clear embeddings",
+                    timestamp = DateTime.UtcNow
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[API ERROR] Clear embeddings failed: {ex.Message}");
+            return StatusCode(500, new
+            {
+                message = $"Internal server error: {ex.Message}",
+                timestamp = DateTime.UtcNow
+            });
+        }
+    }
+
+    /// <summary>
+    /// Clear all documents and their embeddings
+    /// </summary>
+    [HttpPost("clear-documents")]
+    public async Task<ActionResult> ClearAllDocuments()
+    {
+        try
+        {
+            Console.WriteLine("[API] Clear all documents requested");
+
+            var success = await documentService.ClearAllDocumentsAsync();
+
+            if (success)
+            {
+                return Ok(new
+                {
+                    message = "All documents and embeddings cleared successfully",
+                    timestamp = DateTime.UtcNow
+                });
+            }
+            else
+            {
+                return StatusCode(500, new
+                {
+                    message = "Failed to clear documents",
+                    timestamp = DateTime.UtcNow
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[API ERROR] Clear documents failed: {ex.Message}");
+            return StatusCode(500, new
+            {
                 message = $"Internal server error: {ex.Message}",
                 timestamp = DateTime.UtcNow
             });

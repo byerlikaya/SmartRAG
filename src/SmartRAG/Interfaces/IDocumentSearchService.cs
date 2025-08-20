@@ -1,5 +1,3 @@
-using System.Collections.Generic;
-using System.Threading.Tasks;
 using SmartRAG.Entities;
 using SmartRAG.Models;
 
@@ -19,14 +17,4 @@ public interface IDocumentSearchService
     /// Generate RAG answer
     /// </summary>
     Task<RagResponse> GenerateRagAnswerAsync(string query, int maxResults = 5);
-
-    /// <summary>
-    /// Generate embedding with fallback
-    /// </summary>
-    Task<List<float>?> GenerateEmbeddingWithFallbackAsync(string text);
-
-    /// <summary>
-    /// Generate batch embeddings
-    /// </summary>
-    Task<List<List<float>>?> GenerateEmbeddingsBatchAsync(List<string> texts);
 }
