@@ -41,7 +41,7 @@ SmartRAG uses a secure configuration system that keeps your secrets safe.
 ### **1. Copy the template**
 ```bash
 # Create your development config
-cp src/SmartRAG.API/appsettings.json src/SmartRAG.API/appsettings.Development.json
+cp examples/WebAPI/appsettings.json examples/WebAPI/appsettings.Development.json
 ```
 
 ### **2. Add your real API keys**
@@ -58,7 +58,9 @@ Edit `appsettings.Development.json` with your actual keys:
     },
     "Anthropic": {
       "ApiKey": "sk-ant-YOUR_REAL_ANTHROPIC_KEY",
-      "Model": "claude-3.5-sonnet"
+      "Model": "claude-3.5-sonnet",
+      "EmbeddingApiKey": "voyage-YOUR_REAL_VOYAGEAI_KEY",
+      "EmbeddingModel": "voyage-large-2"
     },
     "Gemini": {
       "ApiKey": "YOUR_REAL_GEMINI_KEY",
@@ -80,7 +82,7 @@ Edit `appsettings.Development.json` with your actual keys:
 
 ### **3. Run the application**
 ```bash
-cd src/SmartRAG.API
+cd examples/WebAPI
 dotnet run
 ```
 
@@ -113,6 +115,7 @@ export AI__OpenAI__Model="gpt-4"
 
 # Anthropic  
 export AI__Anthropic__ApiKey="sk-ant-YOUR_KEY"
+export AI__Anthropic__EmbeddingApiKey="voyage-YOUR_KEY"
 
 # Qdrant
 export Storage__Qdrant__Host="your-cluster.qdrant.io"
@@ -142,6 +145,7 @@ For GitHub Actions, use repository secrets:
 env:
   AI__OpenAI__ApiKey: ${{ secrets.OPENAI_API_KEY }}
   AI__Anthropic__ApiKey: ${{ secrets.ANTHROPIC_API_KEY }}
+  AI__Anthropic__EmbeddingApiKey: ${{ secrets.VOYAGEAI_API_KEY }}
   Storage__Qdrant__ApiKey: ${{ secrets.QDRANT_API_KEY }}
 ```
 
@@ -155,7 +159,7 @@ env:
 ```bash
 # Remove file from Git history (if needed)
 git filter-branch --force --index-filter \
-  'git rm --cached --ignore-unmatch src/SmartRAG.API/appsettings.Development.json' \
+  'git rm --cached --ignore-unmatch examples/WebAPI/appsettings.Development.json' \
   --prune-empty --tag-name-filter cat -- --all
 ```
 
@@ -179,7 +183,7 @@ git filter-branch --force --index-filter \
 }
 ```
 
-#### Anthropic
+#### Anthropic (with VoyageAI embeddings)
 ```json
 {
   "AI": {
@@ -188,11 +192,19 @@ git filter-branch --force --index-filter \
       "Endpoint": "https://api.anthropic.com",
       "Model": "claude-3.5-sonnet",
       "MaxTokens": 4096,
-      "Temperature": 0.3
+      "Temperature": 0.3,
+      "EmbeddingApiKey": "voyage-...",
+      "EmbeddingModel": "voyage-large-2"
     }
   }
 }
 ```
+
+**⚠️ Important for Anthropic users:**
+- **Claude models don't provide embeddings**
+- **VoyageAI API key is required** for document embeddings
+- **Get VoyageAI key:** [console.voyageai.com](https://console.voyageai.com/)
+- **Recommended models:** `voyage-large-2`, `voyage-code-2`, `voyage-01`
 
 #### Google Gemini
 ```json
@@ -205,6 +217,22 @@ git filter-branch --force --index-filter \
       "EmbeddingModel": "embedding-001",
       "MaxTokens": 4096,
       "Temperature": 0.3
+    }
+  }
+}
+```
+
+#### Azure OpenAI
+```json
+{
+  "AI": {
+    "AzureOpenAI": {
+      "ApiKey": "sk-...",
+      "Endpoint": "https://your-resource.openai.azure.com/",
+      "Model": "gpt-4",
+      "EmbeddingModel": "text-embedding-ada-002",
+      "MaxTokens": 4096,
+      "Temperature": 0.7
     }
   }
 }
@@ -239,6 +267,154 @@ git filter-branch --force --index-filter \
       "KeyPrefix": "smartrag:",
       "EnableSsl": false
     }
+  }
+}
+```
+
+### **SmartRAG Core Options**
+
+#### Enhanced Chunking & Search
+```json
+{
+  "SmartRAG": {
+    "MaxChunkSize": 1000,
+    "MinChunkSize": 100,
+    "ChunkOverlap": 200,
+    "SemanticSearchThreshold": 0.3,
+    "EnableWordBoundaryValidation": true,
+    "HybridScoringWeights": {
+      "SemanticWeight": 0.8,
+      "KeywordWeight": 0.2
+    }
+  }
+}
+```
+
+#### Semantic Search Service
+```json
+{
+  "SemanticSearch": {
+    "EnableEnhancedScoring": true,
+    "ContextualKeywordDetection": true,
+    "SemanticCoherenceAnalysis": true,
+    "MaxTokenChunkSize": 100
+  }
+}
+```
+
+## 🎯 Advanced Configuration Examples
+
+### **Complete Production Configuration**
+```json
+{
+  "AI": {
+    "Anthropic": {
+      "ApiKey": "sk-ant-...",
+      "Model": "claude-3.5-sonnet",
+      "MaxTokens": 4096,
+      "Temperature": 0.3,
+      "EmbeddingApiKey": "voyage-...",
+      "EmbeddingModel": "voyage-large-2"
+    }
+  },
+  "Storage": {
+    "Qdrant": {
+      "Host": "your-cluster.qdrant.io",
+      "UseHttps": true,
+      "ApiKey": "your-api-key",
+      "CollectionName": "smartrag_production",
+      "VectorSize": 1536,
+      "DistanceMetric": "Cosine"
+    }
+  },
+  "SmartRAG": {
+    "MaxChunkSize": 1200,
+    "MinChunkSize": 150,
+    "ChunkOverlap": 250,
+    "SemanticSearchThreshold": 0.25,
+    "EnableWordBoundaryValidation": true
+  }
+}
+```
+
+### **Development with Fallback Providers**
+```json
+{
+  "AI": {
+    "OpenAI": {
+      "ApiKey": "sk-...",
+      "Model": "gpt-4",
+      "EmbeddingModel": "text-embedding-ada-002"
+    },
+    "Anthropic": {
+      "ApiKey": "sk-ant-...",
+      "Model": "claude-3.5-sonnet",
+      "EmbeddingApiKey": "voyage-...",
+      "EmbeddingModel": "voyage-large-2"
+    }
+  },
+  "Storage": {
+    "Redis": {
+      "ConnectionString": "localhost:6379",
+      "Database": 0,
+      "KeyPrefix": "smartrag_dev:"
+    }
+  },
+  "SmartRAG": {
+    "EnableFallbackProviders": true,
+    "FallbackProviders": ["Anthropic", "OpenAI"]
+  }
+}
+```
+
+## 🔧 Configuration Binding Priority
+
+SmartRAG uses a **user-first configuration system**:
+
+### **Priority Order (Highest to Lowest)**
+1. **User Configuration** (Program.cs) - **Absolute Priority**
+2. **Environment Variables** - Override defaults
+3. **appsettings.{Environment}.json** - Environment-specific
+4. **appsettings.json** - Base template (safe for Git)
+
+### **Example: User Configuration Takes Priority**
+```csharp
+// Program.cs - This will ALWAYS be used
+services.UseSmartRag(configuration,
+    storageProvider: StorageProvider.Qdrant,  // ✅ Takes priority
+    aiProvider: AIProvider.AzureOpenAI        // ✅ Takes priority
+);
+
+// appsettings.json - This will NOT override user settings
+{
+  "SmartRAG": {
+    "AIProvider": "OpenAI",      // ❌ Ignored
+    "StorageProvider": "Redis"    // ❌ Ignored
+  }
+}
+```
+
+## 🚀 Performance Tuning
+
+### **Chunking Optimization**
+```json
+{
+  "SmartRAG": {
+    "MaxChunkSize": 1000,        // Larger chunks = more context
+    "MinChunkSize": 100,         // Smaller chunks = faster search
+    "ChunkOverlap": 200,         // Higher overlap = better context
+    "SemanticSearchThreshold": 0.3  // Lower threshold = more results
+  }
+}
+```
+
+### **Search Performance**
+```json
+{
+  "SemanticSearch": {
+    "MaxTokenChunkSize": 100,    // Smaller token chunks = faster processing
+    "EnableCaching": true,       // Cache semantic scores
+    "CacheExpirationMinutes": 60
   }
 }
 ```
