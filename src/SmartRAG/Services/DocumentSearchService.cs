@@ -206,17 +206,27 @@ public class DocumentSearchService(
         if (texts == null || texts.Count == 0)
             return null;
 
+        // Delegate to aiService - let the provider handle rate limiting
         try
         {
-            // Try batch embedding generation first
+            ServiceLogMessages.LogBatchEmbeddingAttempt(logger, texts.Count, null);
             var batchEmbeddings = await aiService.GenerateEmbeddingsBatchAsync(texts);
+            
             if (batchEmbeddings != null && batchEmbeddings.Count == texts.Count)
+            {
+                ServiceLogMessages.LogBatchEmbeddingSuccess(logger, texts.Count, null);
                 return batchEmbeddings;
+            }
+            
+            ServiceLogMessages.LogBatchEmbeddingIncomplete(logger, batchEmbeddings?.Count ?? 0, texts.Count, null);
+            return batchEmbeddings ?? new List<List<float>>();
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            // Fallback to individual generation if batch fails
+            ServiceLogMessages.LogBatchEmbeddingFailed(logger, ex.Message, null);
+            throw; // Let the caller handle the error
         }
+<<<<<<< HEAD
 
         // Special handling for VoyageAI: Only when AIProvider is Anthropic
         if (_options.AIProvider == AIProvider.Anthropic)
@@ -293,7 +303,11 @@ public class DocumentSearchService(
         var embeddings = await Task.WhenAll(embeddingTasks);
 
         return embeddings.Where(e => e != null).Select(e => e!).ToList();
+=======
+>>>>>>> cc4982e (Add missing document and embedding management methods)
     }
+
+
 
     #region Private Helper Methods
 
