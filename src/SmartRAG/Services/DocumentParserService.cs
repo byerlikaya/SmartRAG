@@ -344,7 +344,7 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
 
             // Smart overlap calculation to ensure meaningful context
             var nextStartIndex = CalculateNextStartPosition(content, startIndex, endIndex, chunkOverlap);
-            
+
             // Safety check to prevent infinite loops
             if (nextStartIndex <= startIndex)
             {
@@ -354,7 +354,7 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
             {
                 startIndex = nextStartIndex;
             }
-            
+
             // Additional safety check
             if (startIndex >= content.Length)
             {
@@ -485,7 +485,42 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
             }
         }
 
+        // Additional check: Ensure we don't cut words in the middle
+        if (maxIndex > searchStart)
+        {
+            // Look ahead to see if the next character is a letter (indicating word continuation)
+            if (maxIndex + 1 < content.Length && char.IsLetter(content[maxIndex + 1]))
+            {
+                // Find the previous complete word boundary
+                var prevBoundary = FindPreviousCompleteWordBoundary(content, searchStart, maxIndex);
+                if (prevBoundary > searchStart)
+                {
+                    maxIndex = prevBoundary;
+                }
+            }
+        }
+
         return maxIndex;
+    }
+
+    /// <summary>
+    /// Finds the previous complete word boundary to avoid cutting words
+    /// </summary>
+    private static int FindPreviousCompleteWordBoundary(string content, int searchStart, int currentBoundary)
+    {
+        // Look for the previous space or punctuation that ends a complete word
+        for (int i = currentBoundary - 1; i >= searchStart; i--)
+        {
+            if (char.IsWhiteSpace(content[i]) || char.IsPunctuation(content[i]))
+            {
+                // Check if this creates a complete word
+                if (i + 1 < content.Length && char.IsLetterOrDigit(content[i + 1]))
+                {
+                    return i;
+                }
+            }
+        }
+        return searchStart;
     }
 
     /// <summary>
