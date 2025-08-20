@@ -29,11 +29,13 @@ public static class ServiceCollectionExtensions
         // Configure SmartRagOptions using Options Pattern for non-provider settings
         services.Configure<SmartRagOptions>(options =>
         {
-            // Bind non-provider settings from configuration
-            configuration.GetSection("SmartRAG").Bind(options);
-            
-            // Apply user configuration (including provider selection)
+            // Apply user configuration FIRST and ONLY (including provider selection)
             configureOptions(options);
+            
+            // DO NOT bind from configuration to avoid overriding user settings
+            // configuration.GetSection("SmartRAG").Bind(options); // ❌ Commented out
+            
+            // User configuration takes absolute priority
         });
 
         // Also register as legacy singleton for backward compatibility during transition
