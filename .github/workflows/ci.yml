@@ -33,10 +33,10 @@ jobs:
       run: dotnet restore
       
     - name: Build
-      run: dotnet build --no-restore --configuration Release
+      run: dotnet build --configuration Release
       
     - name: Run tests
-      run: dotnet test --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --logger trx --results-directory ./TestResults
+      run: dotnet test --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --logger trx --results-directory ./TestResults
       
     - name: Upload coverage reports to Codecov
       uses: codecov/codecov-action@v5
@@ -74,11 +74,11 @@ jobs:
       run: dotnet restore
       
     - name: Build
-      run: dotnet build --no-restore --configuration Release
+      run: dotnet build --configuration Release
       
     - name: Pack NuGet packages
       run: |
-        dotnet pack src/SmartRAG/SmartRAG.csproj --no-build --configuration Release --output ./nupkgs
+        dotnet pack src/SmartRAG/SmartRAG.csproj --configuration Release --output ./nupkgs
       
     - name: Upload artifacts
       uses: actions/upload-artifact@v4
