@@ -12,11 +12,13 @@ public class DocumentSearchService(
     IDocumentRepository documentRepository,
     IAIService aiService,
     IAIProviderFactory aiProviderFactory,
+    SemanticSearchService semanticSearchService,
     IConfiguration configuration,
     IOptions<SmartRagOptions> options,
     ILogger<DocumentSearchService> logger) : IDocumentSearchService
 {
     private readonly SmartRagOptions _options = options.Value;
+    private readonly SemanticSearchService _semanticSearchService = semanticSearchService;
 
     /// <summary>
     /// Sanitizes user input for safe logging by removing newlines and carriage returns.
@@ -274,20 +276,21 @@ Answer:";
             }
 
             // Enhanced semantic search with hybrid scoring
-            var scoredChunks = chunksWithEmbeddings.Select(chunk =>
+            var scoredChunks = await Task.WhenAll(chunksWithEmbeddings.Select(async chunk =>
             {
                 var semanticSimilarity = CalculateCosineSimilarity(queryEmbedding, chunk.Embedding);
+                var enhancedSemanticScore = await _semanticSearchService.CalculateEnhancedSemanticSimilarityAsync(query, chunk.Content);
                 
-                // Hybrid scoring: Combine semantic similarity with keyword matching
+                // Hybrid scoring: Combine enhanced semantic similarity with keyword matching
                 var keywordScore = CalculateKeywordRelevanceScore(query, chunk.Content);
-                var hybridScore = (semanticSimilarity * 0.8) + (keywordScore * 0.2);
+                var hybridScore = (enhancedSemanticScore * 0.8) + (keywordScore * 0.2);
                 
                 chunk.RelevanceScore = hybridScore;
                 return chunk;
-            }).ToList();
+            }));
 
             // Get top chunks based on hybrid scoring
-            var relevantChunks = scoredChunks
+            var relevantChunks = scoredChunks.ToList()
                 .Where(c => c.RelevanceScore > 0.1) // Higher threshold for better quality
                 .OrderByDescending(c => c.RelevanceScore)
                 .Take(Math.Max(maxResults * 3, 30)) // Get more candidates for better selection

@@ -42,6 +42,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IAIProviderFactory, AIProviderFactory>();
         services.AddSingleton<IAIService, AIService>();
         services.AddSingleton<IStorageFactory, StorageFactory>();
+        services.AddScoped<SemanticSearchService>();  // Add SemanticSearchService
         services.AddScoped<IDocumentService, DocumentService>();
         services.AddScoped<IDocumentParserService, DocumentParserService>();
         services.AddScoped<IDocumentSearchService, DocumentSearchService>();
