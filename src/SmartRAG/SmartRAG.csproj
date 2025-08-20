@@ -7,7 +7,7 @@
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
-    <PackageVersion>1.0.2</PackageVersion>
+    <PackageVersion>1.0.3</PackageVersion>
     <Authors>Barış Yerlikaya</Authors>
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
@@ -19,7 +19,7 @@
     <RepositoryUrl>https://github.com/byerlikaya/SmartRAG</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageReleaseNotes>v1.0.2: Revolutionary hybrid search algorithm (semantic + keyword boost), Gemini RAG optimization with native embeddings, smart document chunking with context preservation, enhanced AzureOpenAI batch processing, production-ready performance improvements, and comprehensive documentation updates</PackageReleaseNotes>
+    <PackageReleaseNotes>v1.0.3: Enhanced semantic search with hybrid scoring (80% semantic + 20% keyword), smart document chunking with word boundary validation, SemanticSearchService integration, configuration binding priority fix, and comprehensive documentation updates</PackageReleaseNotes>
     <Copyright>Copyright © Barış Yerlikaya 2025</Copyright>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <IncludeSymbols>true</IncludeSymbols>
