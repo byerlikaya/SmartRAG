@@ -1,0 +1,18 @@
+name: "CodeQL Config"
+
+disable-default-path-filters: false
+
+paths-ignore:
+  - "**/bin/**"
+  - "**/obj/**"
+  - "**/packages/**"
+  - "**/node_modules/**"
+  - "**/*.min.js"
+  - "**/*.Designer.cs"
+  - "**/*.generated.cs"
+
+queries:
+  - uses: security-and-quality
+
+packs:
+  - codeql/csharp-queries

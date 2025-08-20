@@ -189,8 +189,8 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
-        tag_name: v${{ steps.get_version.outputs.version }}
-        release_name: SmartRAG v${{ steps.get_version.outputs.version }}
+        tag_name: v${{ steps.get_version.outputs.version }}-build-${{ github.run_number }}
+        release_name: SmartRAG v${{ steps.get_version.outputs.version }} Build ${{ github.run_number }}
         body: |
           ## 🚀 What's New in v${{ steps.get_version.outputs.version }}
           
@@ -281,14 +281,21 @@ jobs:
         dotnet tool install --global dotnet-outdated-tool || echo "dotnet-outdated already installed"
         dotnet outdated --upgrade || echo "No outdated packages or tool unavailable"
         
-    - name: Run CodeQL Analysis
-      continue-on-error: true
+    - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
       with:
         languages: csharp
+        config-file: ./.github/codeql/codeql-config.yml
+      continue-on-error: true
+        
+    - name: Autobuild
+      uses: github/codeql-action/autobuild@v3
+      continue-on-error: true
         
     - name: Perform CodeQL Analysis
-      continue-on-error: true
       uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:csharp"
+      continue-on-error: true
 
 
