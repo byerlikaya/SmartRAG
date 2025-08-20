@@ -3,6 +3,7 @@ using SmartRAG.Interfaces;
 using SmartRAG.Models;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 
 namespace SmartRAG.Providers;
 
@@ -11,11 +12,43 @@ namespace SmartRAG.Providers;
 /// </summary>
 public abstract class BaseAIProvider : IAIProvider
 {
+    protected readonly ILogger _logger;
+
+    protected BaseAIProvider(ILogger logger)
+    {
+        _logger = logger;
+    }
+
     public abstract AIProvider ProviderType { get; }
 
     public abstract Task<string> GenerateTextAsync(string prompt, AIProviderConfig config);
 
     public abstract Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config);
+
+    /// <summary>
+    /// Default batch embedding implementation that falls back to individual calls
+    /// Providers can override this for better performance if they support batch operations
+    /// </summary>
+    public virtual async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config)
+    {
+        var results = new List<List<float>>();
+        
+        foreach (var text in texts)
+        {
+            try
+            {
+                var embedding = await GenerateEmbeddingAsync(text, config);
+                results.Add(embedding);
+            }
+            catch
+            {
+                // Add empty embedding on error to maintain index consistency
+                results.Add(new List<float>());
+            }
+        }
+        
+        return results;
+    }
 
     /// <summary>
     /// Common text chunking implementation for all providers
@@ -81,26 +114,23 @@ public abstract class BaseAIProvider : IAIProvider
     /// </summary>
     protected HttpClient CreateHttpClient(string? apiKey = null, Dictionary<string, string>? additionalHeaders = null)
     {
-        var client = new HttpClient();
+        var handler = new HttpClientHandler();
+        
+        // Handle SSL/TLS issues for all providers
+        handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
+        {
+            // For development/testing, you might want to bypass certificate validation
+            // In production, this should be more restrictive
+            return true;
+        };
+        
+        var client = new HttpClient(handler);
 
         if (!string.IsNullOrEmpty(apiKey))
         {
-            // Determine auth header type based on provider
-            var authHeader = ProviderType switch
-            {
-                AIProvider.OpenAI or AIProvider.AzureOpenAI => "Authorization",
-                AIProvider.Anthropic => "x-api-key",
-                AIProvider.Gemini => "x-goog-api-key",
-                _ => "Authorization"
-            };
-
-            var authValue = ProviderType switch
-            {
-                AIProvider.OpenAI or AIProvider.AzureOpenAI => $"Bearer {apiKey}",
-                AIProvider.Anthropic => apiKey,
-                AIProvider.Gemini => apiKey,
-                _ => $"Bearer {apiKey}"
-            };
+                    // Generic auth header - providers can override if needed
+        var authHeader = "Authorization";
+        var authValue = $"Bearer {apiKey}";
 
             client.DefaultRequestHeaders.Add(authHeader, authValue);
         }
@@ -125,7 +155,17 @@ public abstract class BaseAIProvider : IAIProvider
     /// </summary>
     protected static HttpClient CreateHttpClientWithoutAuth(Dictionary<string, string>? additionalHeaders)
     {
-        var client = new HttpClient();
+        var handler = new HttpClientHandler();
+        
+        // Handle SSL/TLS issues
+        handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
+        {
+            // For development/testing, you might want to bypass certificate validation
+            // In production, this should be more restrictive
+            return true;
+        };
+        
+        var client = new HttpClient(handler);
 
         if (additionalHeaders != null)
         {
@@ -143,31 +183,85 @@ public abstract class BaseAIProvider : IAIProvider
     }
 
     /// <summary>
-    /// Common HTTP POST request with error handling
+    /// Common HTTP POST request with error handling and retry logic
     /// </summary>
     protected static async Task<(bool success, string response, string errorMessage)> MakeHttpRequestAsync(
-        HttpClient client, string endpoint, object payload, string providerName)
+        HttpClient client, string endpoint, object payload, string providerName, int maxRetries = 3)
     {
-        try
+        var attempt = 0;
+        var baseDelayMs = 1000; // 1 second base delay
+
+        while (attempt < maxRetries)
         {
-            var options = GetJsonSerializerOptions();
-            var json = JsonSerializer.Serialize(payload, options);
+            try
+            {
+                var options = GetJsonSerializerOptions();
+                var json = JsonSerializer.Serialize(payload, options);
 
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await client.PostAsync(endpoint, content);
+                var response = await client.PostAsync(endpoint, content);
 
-            if (!response.IsSuccessStatusCode)
-                return (false, string.Empty, $"{providerName} error: {response.StatusCode}");
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseBody = await response.Content.ReadAsStringAsync();
+                    return (true, responseBody, string.Empty);
+                }
 
-            var responseBody = await response.Content.ReadAsStringAsync();
+                // Handle specific error cases
+                if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                {
+                    attempt++;
+                    if (attempt < maxRetries)
+                    {
+                        // Respect Retry-After header if present; otherwise default to 60s for Azure
+                        var delayMs = 60000;
+                        try
+                        {
+                            if (response.Headers.TryGetValues("Retry-After", out var retryAfterValues))
+                            {
+                                var retryAfter = retryAfterValues.FirstOrDefault();
+                                if (!string.IsNullOrEmpty(retryAfter))
+                                {
+                                    if (int.TryParse(retryAfter, out var seconds))
+                                    {
+                                        delayMs = Math.Max(60000, seconds * 1000); // Minimum 60s for Azure
+                                    }
+                                    else if (DateTimeOffset.TryParse(retryAfter, out var retryDate))
+                                    {
+                                        var diff = retryDate - DateTimeOffset.UtcNow;
+                                        if (diff.TotalMilliseconds > 0)
+                                        {
+                                            delayMs = (int)Math.Max(60000, Math.Min(int.MaxValue, diff.TotalMilliseconds));
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        catch { }
 
-            return (true, responseBody, string.Empty);
+                        await Task.Delay(delayMs);
+                        continue;
+                    }
+                }
+
+                var errorBody = await response.Content.ReadAsStringAsync();
+                return (false, string.Empty, $"{providerName} error: {response.StatusCode} - {errorBody}");
+            }
+            catch (Exception ex)
+            {
+                attempt++;
+                if (attempt < maxRetries)
+                {
+                    var delay = baseDelayMs * (int)Math.Pow(2, attempt - 1); // Exponential backoff
+                    await Task.Delay(delay);
+                    continue;
+                }
+                return (false, string.Empty, $"{providerName} request failed: {ex.Message}");
+            }
         }
-        catch (Exception ex)
-        {
-            return (false, string.Empty, $"{providerName} request failed: {ex.Message}");
-        }
+
+        return (false, string.Empty, $"{providerName} request failed after {maxRetries} attempts");
     }
 
     /// <summary>

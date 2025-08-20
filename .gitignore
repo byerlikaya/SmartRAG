@@ -267,3 +267,45 @@ TestResults/
 
 # Benchmark results
 BenchmarkDotNet.Artifacts/
+
+# Document files - Prevent document types from being committed to Git
+*.txt
+*.pdf
+*.doc
+*.docx
+*.rtf
+*.odt
+*.pages
+*.md
+*.html
+*.htm
+*.xml
+*.json
+*.csv
+*.xlsx
+*.xls
+*.ppt
+*.pptx
+*.odp
+*.key
+*.odf
+*.ods
+*.odg
+*.odc
+*.odb
+*.odm
+*.ott
+*.ots
+*.otp
+*.otg
+*.otc
+*.oti
+*.otf
+*.otm
+
+# Document upload directories
+uploads/
+documents/
+files/
+temp/
+temp-files/

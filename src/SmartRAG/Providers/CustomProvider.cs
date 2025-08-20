@@ -1,6 +1,7 @@
 using SmartRAG.Enums;
 using SmartRAG.Models;
 using System.Text.Json;
+using Microsoft.Extensions.Logging;
 
 namespace SmartRAG.Providers;
 
@@ -9,6 +10,10 @@ namespace SmartRAG.Providers;
 /// </summary>
 public class CustomProvider : BaseAIProvider
 {
+    public CustomProvider(ILogger<CustomProvider> logger) : base(logger)
+    {
+    }
+
     public override AIProvider ProviderType => AIProvider.Custom;
 
     public override async Task<string> GenerateTextAsync(string prompt, AIProviderConfig config)

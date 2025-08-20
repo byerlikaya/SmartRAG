@@ -10,12 +10,12 @@ public class SmartRagOptions
     /// <summary>
     /// AI provider to use for text generation and embeddings
     /// </summary>
-    public AIProvider AIProvider { get; set; } = AIProvider.Gemini;
+    public AIProvider AIProvider { get; set; }
 
     /// <summary>
     /// Storage provider to use for document storage
     /// </summary>
-    public StorageProvider StorageProvider { get; set; } = StorageProvider.InMemory;
+    public StorageProvider StorageProvider { get; set; }
 
     /// <summary>
     /// Maximum size of each document chunk in characters

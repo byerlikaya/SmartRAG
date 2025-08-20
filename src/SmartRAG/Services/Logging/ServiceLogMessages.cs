@@ -319,6 +319,28 @@ public static class ServiceLogMessages
         new EventId(6005, "IndividualEmbeddingGeneration"),
         "Generating individual embeddings for {TextCount} texts");
 
+    public static readonly Action<ILogger, int, Exception?> LogBatchEmbeddingAttempt = LoggerMessage.Define<int>(
+        LogLevel.Debug,
+        new EventId(6006, "BatchEmbeddingAttempt"),
+        "Attempting batch embedding generation for {Count} texts");
+
+    public static readonly Action<ILogger, int, Exception?> LogBatchEmbeddingSuccess = LoggerMessage.Define<int>(
+        LogLevel.Debug,
+        new EventId(6007, "BatchEmbeddingSuccess"),
+        "Batch embedding successful for {Count} texts");
+
+    public static readonly Action<ILogger, int, int, Exception?> LogBatchEmbeddingIncomplete = LoggerMessage.Define<int, int>(
+        LogLevel.Warning,
+        new EventId(6008, "BatchEmbeddingIncomplete"),
+        "Batch embedding incomplete: got {ActualCount}/{ExpectedCount} embeddings");
+
+    public static readonly Action<ILogger, string, Exception?> LogBatchEmbeddingFailed = LoggerMessage.Define<string>(
+        LogLevel.Warning,
+        new EventId(6009, "BatchEmbeddingFailed"),
+        "Batch embedding failed: {ErrorMessage}");
+
+
+
     public static readonly Action<ILogger, string, int, Exception?> LogDocumentProcessing = LoggerMessage.Define<string, int>(
         LogLevel.Information,
         new EventId(6006, "DocumentProcessing"),
@@ -355,6 +377,36 @@ public static class ServiceLogMessages
         LogLevel.Error,
         new EventId(6013, "ChunkEmbeddingRegenerationFailed"),
         "Chunk {ChunkId}: Failed to regenerate embedding");
+
+    public static readonly Action<ILogger, Exception?> LogDocumentDeletionStarted = LoggerMessage.Define(
+        LogLevel.Information,
+        new EventId(6014, "DocumentDeletionStarted"),
+        "Starting deletion of all documents");
+
+    public static readonly Action<ILogger, int, int, Exception?> LogDocumentDeletionCompleted = LoggerMessage.Define<int, int>(
+        LogLevel.Information,
+        new EventId(6015, "DocumentDeletionCompleted"),
+        "Document deletion completed: {DeletedCount}/{TotalCount} documents deleted");
+
+    public static readonly Action<ILogger, Exception?> LogDocumentDeletionFailed = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(6016, "DocumentDeletionFailed"),
+        "Failed to delete documents");
+
+    public static readonly Action<ILogger, Exception?> LogEmbeddingClearingStarted = LoggerMessage.Define(
+        LogLevel.Information,
+        new EventId(6017, "EmbeddingClearingStarted"),
+        "Starting clearing of all embeddings");
+
+    public static readonly Action<ILogger, int, Exception?> LogEmbeddingClearingCompleted = LoggerMessage.Define<int>(
+        LogLevel.Information,
+        new EventId(6018, "EmbeddingClearingCompleted"),
+        "Embedding clearing completed: {ProcessedCount} documents processed");
+
+    public static readonly Action<ILogger, Exception?> LogEmbeddingClearingFailed = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(6019, "EmbeddingClearingFailed"),
+        "Failed to clear embeddings");
 
     #endregion
 }

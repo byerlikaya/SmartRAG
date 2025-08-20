@@ -1,4 +1,5 @@
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Options;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
@@ -17,10 +18,10 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
     private readonly SqliteConfig _config;
     private readonly SqliteConnection _connection;
 
-    public SqliteDocumentRepository(SqliteConfig config)
+    public SqliteDocumentRepository(IOptions<SqliteConfig> config)
     {
-        _config = config;
-        _connectionString = $"Data Source={config.DatabasePath};Foreign Keys={config.EnableForeignKeys};";
+        _config = config.Value;
+        _connectionString = $"Data Source={_config.DatabasePath};Foreign Keys={_config.EnableForeignKeys};";
         _connection = new SqliteConnection(_connectionString);
 
         try
