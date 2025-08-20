@@ -157,9 +157,7 @@ jobs:
         
         ---
         
-        **Built with ❤️ by Barış Yerlikaya** | Made in Turkey 🇹🇷" \
-          --draft false \
-          --prerelease false
+        **Built with ❤️ by Barış Yerlikaya** | Made in Turkey 🇹🇷"
         
         echo "release_id=$(gh release view "$TAG_NAME" --json id --jq '.id')" >> $GITHUB_OUTPUT
         echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
