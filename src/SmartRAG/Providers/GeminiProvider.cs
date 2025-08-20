@@ -209,32 +209,48 @@ public class GeminiProvider : BaseAIProvider
 
         try
         {
+            Console.WriteLine($"[DEBUG] Gemini Response: {response}");
+            
             using var doc = JsonDocument.Parse(response);
 
             if (doc.RootElement.TryGetProperty("embeddings", out var embeddings) &&
                 embeddings.ValueKind == JsonValueKind.Array)
             {
+                Console.WriteLine($"[DEBUG] Found embeddings array with {embeddings.GetArrayLength()} items");
+                
                 foreach (var embedding in embeddings.EnumerateArray())
                 {
-                    if (embedding.TryGetProperty("embedding", out var embeddingProp) &&
-                        embeddingProp.TryGetProperty("values", out var values) &&
+                    Console.WriteLine($"[DEBUG] Processing embedding: {embedding}");
+                    
+                    // Gemini response format: {"embeddings": [{"values": [0.1, 0.2, ...]}]}
+                    if (embedding.TryGetProperty("values", out var values) &&
                         values.ValueKind == JsonValueKind.Array)
                     {
+                        Console.WriteLine($"[DEBUG] Found values array with {values.GetArrayLength()} items");
+                        
                         var floats = new List<float>();
                         foreach (var value in values.EnumerateArray())
                         {
                             if (value.TryGetSingle(out var f))
                                 floats.Add(f);
                         }
+                        
+                        Console.WriteLine($"[DEBUG] Parsed {floats.Count} float values");
                         results.Add(floats);
                     }
                     else
                     {
+                        Console.WriteLine("[DEBUG] Missing values property, adding empty list");
                         results.Add(new List<float>());
                     }
                 }
             }
+            else
+            {
+                Console.WriteLine("[DEBUG] No embeddings property found in response");
+            }
 
+            Console.WriteLine($"[DEBUG] Returning {results.Count} embedding results");
             return results;
         }
         catch (Exception ex)

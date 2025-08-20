@@ -49,7 +49,7 @@ public class DocumentSearchService(
             return diverseResults;
         }
 
-        return searchResults;
+            return searchResults;
     }
 
     public async Task<RagResponse> GenerateRagAnswerAsync(string query, int maxResults = 5)
@@ -77,237 +77,6 @@ public class DocumentSearchService(
         // Document search query - use our integrated RAG implementation
         return await GenerateBasicRagAnswerAsync(query, maxResults);
     }
-
-    public async Task<List<float>?> GenerateEmbeddingWithFallbackAsync(string text)
-    {
-        try
-        {
-            ServiceLogMessages.LogPrimaryAIServiceAttempt(logger, null);
-            var result = await aiService.GenerateEmbeddingsAsync(text);
-            if (result != null && result.Count > 0)
-            {
-                ServiceLogMessages.LogPrimaryAIServiceSuccess(logger, result.Count, null);
-                return result;
-            }
-            ServiceLogMessages.LogPrimaryAIServiceNull(logger, null);
-        }
-        catch (Exception ex)
-        {
-            ServiceLogMessages.LogPrimaryAIServiceFailed(logger, ex);
-        }
-
-        var embeddingProviders = new[]
-        {
-            "Anthropic",
-            "OpenAI",
-            "Gemini"
-        };
-
-        foreach (var provider in embeddingProviders)
-        {
-            try
-            {
-                ServiceLogMessages.LogProviderAttempt(logger, provider, null);
-                var providerEnum = Enum.Parse<AIProvider>(provider);
-                var aiProvider = ((AIProviderFactory)aiProviderFactory).CreateProvider(providerEnum);
-                var providerConfig = configuration.GetSection($"AI:{provider}").Get<AIProviderConfig>();
-
-                if (providerConfig != null && !string.IsNullOrEmpty(providerConfig.ApiKey))
-                {
-                    ServiceLogMessages.LogProviderConfigFound(logger, provider, providerConfig.ApiKey.Substring(0, 8), null);
-                    var embedding = await aiProvider.GenerateEmbeddingAsync(text, providerConfig);
-                    if (embedding != null && embedding.Count > 0)
-                    {
-                        ServiceLogMessages.LogProviderSuccessful(logger, provider, embedding.Count, null);
-                        return embedding;
-                    }
-                    else
-                    {
-                        ServiceLogMessages.LogProviderReturnedNull(logger, provider, null);
-                    }
-                }
-                else
-                {
-                    ServiceLogMessages.LogProviderConfigNotFound(logger, provider, null);
-                }
-            }
-            catch (Exception)
-            {
-                ServiceLogMessages.LogProviderFailed(logger, provider, null);
-                continue;
-            }
-        }
-
-        ServiceLogMessages.LogAllProvidersFailedText(logger, text.Substring(0, Math.Min(50, text.Length)), null);
-
-        // Special test for VoyageAI if Anthropic is configured
-        try
-        {
-            var anthropicConfig = configuration.GetSection("AI:Anthropic").Get<AIProviderConfig>();
-            if (anthropicConfig != null && !string.IsNullOrEmpty(anthropicConfig.EmbeddingApiKey))
-            {
-                ServiceLogMessages.LogTestingVoyageAI(logger, anthropicConfig.EmbeddingApiKey.Substring(0, 8), null);
-
-                using var client = new HttpClient();
-                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {anthropicConfig.EmbeddingApiKey}");
-
-                var testPayload = new
-                {
-                    input = new[] { text },
-                    model = anthropicConfig.EmbeddingModel ?? "voyage-3.5",
-                    input_type = "document"
-                };
-
-                var jsonContent = System.Text.Json.JsonSerializer.Serialize(testPayload);
-                var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
-
-                var response = await client.PostAsync("https://api.voyageai.com/v1/embeddings", content);
-                var responseContent = await response.Content.ReadAsStringAsync();
-
-                ServiceLogMessages.LogVoyageAITestResponse(logger, (int)response.StatusCode, responseContent, null);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    ServiceLogMessages.LogVoyageAIWorking(logger, null);
-                    // Parse the response and return a test embedding
-                    try
-                    {
-                        using var doc = System.Text.Json.JsonDocument.Parse(responseContent);
-                        if (doc.RootElement.TryGetProperty("data", out var dataArray) && dataArray.ValueKind == JsonValueKind.Array)
-                        {
-                            var firstEmbedding = dataArray.EnumerateArray().FirstOrDefault();
-                            if (firstEmbedding.TryGetProperty("embedding", out var embeddingArray) && embeddingArray.ValueKind == JsonValueKind.Array)
-                            {
-                                var testEmbedding = embeddingArray.EnumerateArray()
-                                    .Select(x => x.GetSingle())
-                                    .ToList();
-                                ServiceLogMessages.LogVoyageAITestEmbedding(logger, testEmbedding.Count, null);
-                                return testEmbedding;
-                            }
-                        }
-                    }
-                    catch (Exception)
-                    {
-                        ServiceLogMessages.LogFailedParseVoyageAI(logger, null);
-                    }
-                }
-            }
-        }
-        catch (Exception)
-        {
-            ServiceLogMessages.LogVoyageAIDirectTestFailed(logger, null);
-        }
-
-        return null;
-    }
-
-    public async Task<List<List<float>>?> GenerateEmbeddingsBatchAsync(List<string> texts)
-    {
-        if (texts == null || texts.Count == 0)
-            return null;
-
-        // Delegate to aiService - let the provider handle rate limiting
-        try
-        {
-            ServiceLogMessages.LogBatchEmbeddingAttempt(logger, texts.Count, null);
-            var batchEmbeddings = await aiService.GenerateEmbeddingsBatchAsync(texts);
-            
-            if (batchEmbeddings != null && batchEmbeddings.Count == texts.Count)
-            {
-                ServiceLogMessages.LogBatchEmbeddingSuccess(logger, texts.Count, null);
-                return batchEmbeddings;
-            }
-            
-            ServiceLogMessages.LogBatchEmbeddingIncomplete(logger, batchEmbeddings?.Count ?? 0, texts.Count, null);
-            return batchEmbeddings ?? new List<List<float>>();
-        }
-        catch (Exception ex)
-        {
-            ServiceLogMessages.LogBatchEmbeddingFailed(logger, ex.Message, null);
-            throw; // Let the caller handle the error
-        }
-<<<<<<< HEAD
-
-        // Special handling for VoyageAI: Only when AIProvider is Anthropic
-        if (_options.AIProvider == AIProvider.Anthropic)
-        {
-            try
-            {
-                var anthropicConfig = configuration.GetSection("AI:Anthropic").Get<AIProviderConfig>();
-                if (anthropicConfig != null && !string.IsNullOrEmpty(anthropicConfig.EmbeddingApiKey))
-                {
-                    Console.WriteLine($"[DEBUG] Trying VoyageAI batch processing with rate limiting...");
-
-                    // Process in smaller batches (3 chunks per minute = 20 seconds between batches)
-                    const int rateLimitBatchSize = 3;
-                    var allEmbeddings = new List<List<float>>();
-
-                    for (int i = 0; i < texts.Count; i += rateLimitBatchSize)
-                    {
-                        var currentBatch = texts.Skip(i).Take(rateLimitBatchSize).ToList();
-                        Console.WriteLine($"[DEBUG] Processing VoyageAI batch {i / rateLimitBatchSize + 1}: chunks {i + 1}-{Math.Min(i + rateLimitBatchSize, texts.Count)}");
-
-                        // Generate embeddings for current batch using VoyageAI
-                        var batchEmbeddings = await GenerateVoyageAIBatchAsync(currentBatch, anthropicConfig);
-
-                        if (batchEmbeddings != null && batchEmbeddings.Count == currentBatch.Count)
-                        {
-                            allEmbeddings.AddRange(batchEmbeddings);
-                            Console.WriteLine($"[DEBUG] VoyageAI batch {i / rateLimitBatchSize + 1} successful: {batchEmbeddings.Count} embeddings");
-                        }
-                        else
-                        {
-                            Console.WriteLine($"[WARNING] VoyageAI batch {i / rateLimitBatchSize + 1} failed, using individual fallback");
-                            // Fallback to individual generation for this batch
-                            var individualEmbeddings = await GenerateIndividualEmbeddingsAsync(currentBatch);
-                            allEmbeddings.AddRange(individualEmbeddings);
-                        }
-
-                        // Smart rate limiting: Detect if we hit rate limits and adjust
-                        if (i + rateLimitBatchSize < texts.Count)
-                        {
-                            // Check if we got rate limited in the last batch
-                            var lastBatchSuccess = batchEmbeddings != null && batchEmbeddings.Count > 0;
-
-                            if (!lastBatchSuccess)
-                            {
-                                // Rate limited - wait 20 seconds for 3 RPM
-                                Console.WriteLine($"[INFO] Rate limit detected, waiting 20 seconds for 3 RPM limit...");
-                                await Task.Delay(20000);
-                            }
-                            else
-                            {
-                                // No rate limit - continue at full speed (2000 RPM)
-                                Console.WriteLine($"[INFO] No rate limit detected, continuing at full speed (2000 RPM)");
-                                // No delay needed for 2000 RPM
-                            }
-                        }
-                    }
-
-                    if (allEmbeddings.Count == texts.Count)
-                    {
-                        Console.WriteLine($"[DEBUG] VoyageAI batch processing completed: {allEmbeddings.Count} embeddings");
-                        return allEmbeddings;
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[DEBUG] VoyageAI batch processing failed: {ex.Message}");
-            }
-        }
-
-        // Final fallback: generate embeddings individually (but still in parallel)
-        ServiceLogMessages.LogIndividualEmbeddingGeneration(logger, texts.Count, null);
-        var embeddingTasks = texts.Select(async text => await GenerateEmbeddingWithFallbackAsync(text)).ToList();
-        var embeddings = await Task.WhenAll(embeddingTasks);
-
-        return embeddings.Where(e => e != null).Select(e => e!).ToList();
-=======
->>>>>>> cc4982e (Add missing document and embedding management methods)
-    }
-
-
 
     #region Private Helper Methods
 
@@ -422,7 +191,7 @@ public class DocumentSearchService(
     {
         var chunks = await SearchDocumentsAsync(query, maxResults);
         var context = string.Join("\n\n", chunks.Select(c => c.Content));
-        
+
         // Enhanced prompt for better AI understanding
         var enhancedPrompt = $@"You are a helpful document analysis assistant. Answer questions based on the provided document context.
 
@@ -462,83 +231,9 @@ Answer:";
         return chunks.Take(maxResults).ToList();
     }
 
-    private async Task<List<List<float>>?> GenerateVoyageAIBatchAsync(List<string> texts, AIProviderConfig config)
-    {
-        try
-        {
-            // VoyageAI batch API kullan
-            using var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("Authorization", $"Bearer {config.EmbeddingApiKey}");
 
-            var payload = new
-            {
-                input = texts.ToArray(),
-                model = config.EmbeddingModel ?? "voyage-3.5",
-                input_type = "document"
-            };
 
-            var jsonContent = JsonSerializer.Serialize(payload);
-            var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
 
-            var response = await client.PostAsync("https://api.voyageai.com/v1/embeddings", content);
-            var responseContent = await response.Content.ReadAsStringAsync();
-
-            if (response.IsSuccessStatusCode)
-            {
-                try
-                {
-                    using var doc = JsonDocument.Parse(responseContent);
-                    if (doc.RootElement.TryGetProperty("data", out var dataArray) && dataArray.ValueKind == JsonValueKind.Array)
-                    {
-                        var results = new List<List<float>>();
-                        foreach (var item in dataArray.EnumerateArray())
-                        {
-                            if (item.TryGetProperty("embedding", out var embeddingArray) && embeddingArray.ValueKind == JsonValueKind.Array)
-                            {
-                                var embedding = embeddingArray.EnumerateArray()
-                                    .Select(x => x.GetSingle())
-                                    .ToList();
-                                results.Add(embedding);
-                            }
-                            else
-                            {
-                                results.Add(new List<float>());
-                            }
-                        }
-                        return results.Count == texts.Count ? results : null;
-                    }
-                }
-                catch (Exception)
-                {
-                    ServiceLogMessages.LogFailedParseVoyageAI(logger, null);
-                    return null;
-                }
-            }
-            else
-            {
-                ServiceLogMessages.LogVoyageAITestResponse(logger, (int)response.StatusCode, responseContent, null);
-                return null;
-            }
-        }
-        catch (Exception)
-        {
-            ServiceLogMessages.LogVoyageAIDirectTestFailed(logger, null);
-            return null;
-        }
-
-        return null;
-    }
-
-    private async Task<List<List<float>>> GenerateIndividualEmbeddingsAsync(List<string> texts)
-    {
-        var results = new List<List<float>>();
-        foreach (var text in texts)
-        {
-            var embedding = await GenerateEmbeddingWithFallbackAsync(text);
-            results.Add(embedding ?? new List<float>());
-        }
-        return results;
-    }
 
     private RagConfiguration GetRagConfiguration()
     {
@@ -551,89 +246,59 @@ Answer:";
     }
 
     /// <summary>
-    /// Try embedding-based search using VoyageAI with intelligent filtering
-    /// Only when AIProvider is Anthropic
+    /// Try embedding-based search using configured AI provider
     /// </summary>
     private async Task<List<DocumentChunk>> TryEmbeddingBasedSearchAsync(string query, List<DocumentChunk> allChunks, int maxResults)
     {
-        // Only use VoyageAI when AIProvider is Anthropic
-        if (_options.AIProvider != AIProvider.Anthropic)
-        {
-            return new List<DocumentChunk>();
-        }
-
         try
         {
-            var anthropicConfig = configuration.GetSection("AI:Anthropic").Get<AIProviderConfig>();
-            if (anthropicConfig == null || string.IsNullOrEmpty(anthropicConfig.EmbeddingApiKey))
+            var aiProvider = aiProviderFactory.CreateProvider(_options.AIProvider);
+            var providerKey = _options.AIProvider.ToString();
+            var providerConfig = configuration.GetSection($"AI:{providerKey}").Get<AIProviderConfig>();
+
+            if (providerConfig == null || string.IsNullOrEmpty(providerConfig.ApiKey))
             {
-                ServiceLogMessages.LogNoVoyageAIKey(logger, null);
                 return new List<DocumentChunk>();
             }
 
-            var aiProvider = ((AIProviderFactory)aiProviderFactory).CreateProvider(AIProvider.Anthropic);
-
-            // Generate embedding for query with retry logic
-            var queryEmbedding = await GenerateEmbeddingWithRetryAsync(query, anthropicConfig);
+            // Generate embedding for query
+            var queryEmbedding = await aiProvider.GenerateEmbeddingAsync(query, providerConfig);
             if (queryEmbedding == null || queryEmbedding.Count == 0)
             {
-                ServiceLogMessages.LogFailedQueryEmbedding(logger, null);
                 return new List<DocumentChunk>();
             }
 
-            // Calculate similarity for all chunks
-            var scoredChunks = allChunks.Select(chunk =>
+            // Calculate similarity for all chunks that have embeddings
+            var chunksWithEmbeddings = allChunks.Where(c => c.Embedding != null && c.Embedding.Count > 0).ToList();
+            
+            if (chunksWithEmbeddings.Count == 0)
             {
-                var similarity = 0.0;
-                if (chunk.Embedding != null && chunk.Embedding.Count > 0)
-                {
-                    similarity = CalculateCosineSimilarity(queryEmbedding, chunk.Embedding);
-                }
+                return new List<DocumentChunk>();
+            }
 
+            var scoredChunks = chunksWithEmbeddings.Select(chunk =>
+            {
+                var similarity = CalculateCosineSimilarity(queryEmbedding, chunk.Embedding);
                 chunk.RelevanceScore = similarity;
                 return chunk;
             }).ToList();
 
-            // INTELLIGENT FILTERING: Focus on chunks that actually contain the query terms
+            // Filter chunks that contain query terms
             var queryWords = query.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries)
                 .Where(w => w.Length > 2)
                 .ToList();
 
-            // Extract potential names from ORIGINAL query (not lowercase) - language agnostic
-            var potentialNames = query.Split(' ', StringSplitOptions.RemoveEmptyEntries)
-                .Where(w => w.Length > 2 && char.IsUpper(w[0]))
-                .ToList();
-
-            // Filter chunks that actually contain query terms
             var relevantChunks = scoredChunks.Where(chunk =>
             {
                 var content = chunk.Content.ToLowerInvariant();
-
-                // Must contain at least one query word
-                var hasQueryWord = queryWords.Any(word => content.Contains(word, StringComparison.OrdinalIgnoreCase));
-
-                // If query has names, prioritize chunks with names
-                if (potentialNames.Count >= 2)
-                {
-                    var fullName = string.Join(" ", potentialNames);
-                    var hasFullName = ContainsNormalizedName(content, fullName);
-                    var hasPartialName = potentialNames.Any(name => ContainsNormalizedName(content, name));
-
-                    return hasQueryWord && (hasFullName || hasPartialName);
-                }
-
-                return hasQueryWord;
+                return queryWords.Any(word => content.Contains(word, StringComparison.OrdinalIgnoreCase));
             }).ToList();
-
-            ServiceLogMessages.LogChunksContainingQueryTerms(logger, relevantChunks.Count, null);
 
             if (relevantChunks.Count == 0)
             {
-                ServiceLogMessages.LogNoChunksContainQueryTerms(logger, null);
                 relevantChunks = scoredChunks.Where(c => c.RelevanceScore > 0.01).ToList();
             }
 
-            // Sort by relevance score and take top results
             return relevantChunks
                 .OrderByDescending(c => c.RelevanceScore)
                 .Take(Math.Max(maxResults * 2, 20))
@@ -646,44 +311,12 @@ Answer:";
         }
     }
 
-    /// <summary>
-    /// Generate embedding with retry logic for rate limiting
-    /// </summary>
-    private async Task<List<float>?> GenerateEmbeddingWithRetryAsync(string text, AIProviderConfig config)
-    {
-        var maxRetries = 3;
-        var retryDelayMs = 2000;
 
-        for (int attempt = 0; attempt < maxRetries; attempt++)
-        {
-            try
-            {
-                var aiProvider = ((AIProviderFactory)aiProviderFactory).CreateProvider(AIProvider.Anthropic);
-                return await aiProvider.GenerateEmbeddingAsync(text, config);
-            }
-            catch (Exception ex) when (ex.Message.Contains("TooManyRequests") || ex.Message.Contains("rate limit"))
-            {
-                if (attempt < maxRetries - 1)
-                {
-                    var delay = retryDelayMs * (int)Math.Pow(2, attempt);
-                    ServiceLogMessages.LogRateLimitedRetry(logger, delay, attempt + 1, maxRetries, null);
-                    await Task.Delay(delay);
-                }
-                else
-                {
-                    ServiceLogMessages.LogRateLimitedAfterAttempts(logger, maxRetries, null);
-                    throw;
-                }
-            }
-        }
-
-        return null;
-    }
 
     /// <summary>
     /// Calculate cosine similarity between two vectors
     /// </summary>
-    private static double CalculateCosineSimilarity(List<float> a, List<float> b)
+    private static double CalculateCosineSimilarity(List<float>? a, List<float>? b)
     {
         if (a == null || b == null || a.Count == 0 || b.Count == 0) return 0.0;
 

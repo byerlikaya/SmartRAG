@@ -172,4 +172,78 @@ public class DocumentsController(
             });
         }
     }
+
+    /// <summary>
+    /// Clear all embeddings from all documents
+    /// </summary>
+    [HttpPost("clear-embeddings")]
+    public async Task<ActionResult> ClearAllEmbeddings()
+    {
+        try
+        {
+            Console.WriteLine("[API] Clear all embeddings requested");
+            
+            var success = await documentService.ClearAllEmbeddingsAsync();
+            
+            if (success)
+            {
+                return Ok(new { 
+                    message = "All embeddings cleared successfully",
+                    timestamp = DateTime.UtcNow
+                });
+            }
+            else
+            {
+                return StatusCode(500, new { 
+                    message = "Failed to clear embeddings",
+                    timestamp = DateTime.UtcNow
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[API ERROR] Clear embeddings failed: {ex.Message}");
+            return StatusCode(500, new { 
+                message = $"Internal server error: {ex.Message}",
+                timestamp = DateTime.UtcNow
+            });
+        }
+    }
+
+    /// <summary>
+    /// Clear all documents and their embeddings
+    /// </summary>
+    [HttpPost("clear-documents")]
+    public async Task<ActionResult> ClearAllDocuments()
+    {
+        try
+        {
+            Console.WriteLine("[API] Clear all documents requested");
+            
+            var success = await documentService.ClearAllDocumentsAsync();
+            
+            if (success)
+            {
+                return Ok(new { 
+                    message = "All documents and embeddings cleared successfully",
+                    timestamp = DateTime.UtcNow
+                });
+            }
+            else
+            {
+                return StatusCode(500, new { 
+                    message = "Failed to clear documents",
+                    timestamp = DateTime.UtcNow
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[API ERROR] Clear documents failed: {ex.Message}");
+            return StatusCode(500, new { 
+                message = $"Internal server error: {ex.Message}",
+                timestamp = DateTime.UtcNow
+            });
+        }
+    }
 }
