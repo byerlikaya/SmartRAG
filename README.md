@@ -1,7 +1,6 @@
 # 🚀 SmartRAG - Enterprise-Grade RAG Solution
 
 [![Build Status](https://github.com/byerlikaya/SmartRAG/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/byerlikaya/SmartRAG/actions)
-[![CodeQL](https://github.com/byerlikaya/SmartRAG/workflows/CodeQL%20Analysis/badge.svg)](https://github.com/byerlikaya/SmartRAG/actions)
 [![NuGet Version](https://img.shields.io/nuget/v/SmartRAG.svg)](https://www.nuget.org/packages/SmartRAG)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/SmartRAG.svg)](https://www.nuget.org/packages/SmartRAG)
 [![.NET](https://img.shields.io/badge/.NET-9.0-blue.svg)](https://dotnet.microsoft.com/download/dotnet/9.0)
