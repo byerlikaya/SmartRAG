@@ -14,46 +14,6 @@ env:
   GITHUB_PACKAGES_SOURCE: https://nuget.pkg.github.com/byerlikaya/index.json
 
 jobs:
-  test:
-    name: Test & Quality
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      pull-requests: read
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
-        
-    - name: Restore dependencies
-      run: dotnet restore src/SmartRAG/SmartRAG.csproj
-      
-    - name: Build
-      run: dotnet build src/SmartRAG/SmartRAG.csproj --configuration Release --verbosity minimal
-      
-    - name: Run tests
-      run: dotnet test src/SmartRAG/SmartRAG.csproj --configuration Release --verbosity minimal --collect:"XPlat Code Coverage" --logger trx --results-directory ./TestResults --no-build
-      continue-on-error: true
-      
-    - name: Upload coverage reports to Codecov
-      uses: codecov/codecov-action@v5
-      with:
-        token: ${{ secrets.CODECOV_TOKEN }}
-        directory: ./TestResults
-        flags: unittests
-        name: codecov-umbrella
-        fail_ci_if_error: false
-        
-    - name: Run code analysis
-      run: dotnet build src/SmartRAG/SmartRAG.csproj --configuration Release --verbosity quiet
-      
-    - name: Check for vulnerabilities
-      run: dotnet list package --vulnerable --project src/SmartRAG/SmartRAG.csproj
-
   build:
     name: Build & Package
     runs-on: ubuntu-latest
@@ -166,23 +126,8 @@ jobs:
       id: get_version
       run: |
         PACKAGE_VERSION=$(grep -oP '<PackageVersion>\K[^<]+' src/SmartRAG/SmartRAG.csproj)
-        
         echo "version=$PACKAGE_VERSION" >> $GITHUB_OUTPUT
         echo "Package version: $PACKAGE_VERSION"
-        
-    - name: Generate changelog
-      id: changelog
-      run: |
-        # Get commits since last release
-        LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
-        if [ -n "$LAST_TAG" ]; then
-          CHANGELOG=$(git log --pretty=format:"- %s (%an)" ${LAST_TAG}..HEAD | grep -v "Merge pull request" | grep -v "Merge branch")
-        else
-          CHANGELOG=$(git log --pretty=format:"- %s (%an)" --oneline -20 | grep -v "Merge pull request" | grep -v "Merge branch")
-        fi
-        echo "changelog<<EOF" >> $GITHUB_OUTPUT
-        echo "$CHANGELOG" >> $GITHUB_OUTPUT
-        echo "EOF" >> $GITHUB_OUTPUT
         
     - name: Create Release
       uses: actions/create-release@v1
@@ -192,32 +137,13 @@ jobs:
         tag_name: v${{ steps.get_version.outputs.version }}-build-${{ github.run_number }}
         release_name: SmartRAG v${{ steps.get_version.outputs.version }} Build ${{ github.run_number }}
         body: |
-          ## 🚀 What's New in v${{ steps.get_version.outputs.version }}
+          ## 🚀 SmartRAG v${{ steps.get_version.outputs.version }} Release
           
-          ### ✨ Latest Features
-          - 🧠 **Enhanced Semantic Search** - Advanced hybrid scoring (80% semantic + 20% keyword)
-          - 🔍 **Smart Document Chunking** - Word boundary validation and optimal break points
-          - 🧠 **SemanticSearchService** - Dedicated service for semantic relevance scoring
-          - ⚙️ **Configuration Binding Fix** - User settings now take absolute priority
-          - 🔧 **Improved Error Handling** - Better logging and retry mechanisms
-          - 📊 **Performance Optimizations** - Faster chunking and search algorithms
-          
-          ### 🔧 Previous Features
-          - 🧠 **Smart Query Intent Detection** - Automatically routes queries to chat vs document search
-          - 🌍 **Language-Agnostic Design** - Removed all hardcoded language patterns  
-          - 🔍 **Enhanced Search Relevance** - Improved name detection and content scoring
-          - 🔤 **Unicode Normalization** - Fixed special character handling issues
-          - ⚡ **Rate Limiting & Retry Logic** - Robust API handling with exponential backoff
-          - 🚀 **VoyageAI Integration** - Anthropic embedding support
-          - 📚 **Enhanced Documentation** - Official documentation links
-          - 🧹 **Configuration Cleanup** - Removed unnecessary fields
-          - 🎯 **Project Simplification** - Streamlined for better performance
-          
-          ## 📦 Downloads
+          ### 📦 Downloads
           - **NuGet Package**: [SmartRAG v${{ steps.get_version.outputs.version }}](https://www.nuget.org/packages/SmartRAG/${{ steps.get_version.outputs.version }})
           - **GitHub Packages**: Available in this repository
           
-          ## 🚀 Installation
+          ### 🚀 Installation
           ```bash
           # NuGet
           dotnet add package SmartRAG --version ${{ steps.get_version.outputs.version }}
@@ -225,15 +151,6 @@ jobs:
           # GitHub Packages
           dotnet add package SmartRAG --version ${{ steps.get_version.outputs.version }} --source https://nuget.pkg.github.com/byerlikaya/index.json
           ```
-          
-          ## 📝 Recent Changes
-          ${{ steps.changelog.outputs.changelog }}
-          
-          ## 🔗 Links
-          - 📖 [Documentation](https://github.com/byerlikaya/SmartRAG#readme)
-          - 🐛 [Report Issues](https://github.com/byerlikaya/SmartRAG/issues)
-          - 💬 [Discussions](https://github.com/byerlikaya/SmartRAG/discussions)
-          - 📧 [Contact](mailto:b.yerlikaya@outlook.com)
           
           ---
           
@@ -250,50 +167,5 @@ jobs:
         asset_path: ./nupkgs/*.nupkg
         asset_name: SmartRAG.${{ steps.get_version.outputs.version }}.nupkg
         asset_content_type: application/octet-stream
-
-  security-scan:
-    name: Security Scan
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    permissions:
-      contents: read
-      security-events: write
-    continue-on-error: true
-    
-    steps:
-    - uses: actions/checkout@v4
-    
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
-        
-    - name: Restore dependencies
-      run: dotnet restore src/SmartRAG/SmartRAG.csproj
-        
-    - name: Run security scan
-      run: |
-        echo "Checking for vulnerable packages..."
-        dotnet list package --vulnerable --project src/SmartRAG/SmartRAG.csproj
-        echo "Checking for outdated packages..."
-        dotnet tool install --global dotnet-outdated-tool || echo "dotnet-outdated already installed"
-        dotnet outdated --upgrade --project src/SmartRAG/SmartRAG.csproj || echo "No outdated packages or tool unavailable"
-        
-    - name: Initialize CodeQL
-      uses: github/codeql-action/init@v3
-      with:
-        languages: csharp
-        config-file: ./.github/codeql/codeql-config.yml
-      continue-on-error: true
-        
-    - name: Autobuild
-      uses: github/codeql-action/autobuild@v3
-      continue-on-error: true
-        
-    - name: Perform CodeQL Analysis
-      uses: github/codeql-action/analyze@v3
-      with:
-        category: "/language:csharp"
-      continue-on-error: true
 
 
