@@ -131,6 +131,8 @@ jobs:
         
     - name: Create Release
       id: create_release
+      env:
+        GH_TOKEN: ${{ github.token }}
       run: |
         TAG_NAME="v${{ steps.get_version.outputs.version }}-build-${{ github.run_number }}"
         RELEASE_NAME="SmartRAG v${{ steps.get_version.outputs.version }} Build ${{ github.run_number }}"
