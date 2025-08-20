@@ -13,7 +13,7 @@ namespace SmartRAG.Services;
 public class DocumentService(
     IDocumentRepository documentRepository,
     IDocumentParserService documentParserService,
-    IDocumentSearchService documentSearchService,
+    IAIService aiService,
     IOptions<SmartRagOptions> options,
     ILogger<DocumentService> logger) : IDocumentService
 {
@@ -40,117 +40,77 @@ public class DocumentService(
 
         var document = await documentParserService.ParseDocumentAsync(fileStream, fileName, contentType, uploadedBy);
 
-        logger.LogInformation("Document parsed successfully. Chunks: {ChunkCount}, Total size: {TotalSize} bytes", 
+        logger.LogInformation("Document parsed successfully. Chunks: {ChunkCount}, Total size: {TotalSize} bytes",
             document.Chunks.Count, document.Chunks.Sum(c => c.Content.Length));
 
-        // Generate embeddings for all chunks in batch for better performance
+        // Generate embeddings for all chunks in batch using AI Service
         var allChunkContents = document.Chunks.Select(c => c.Content).ToList();
-        
+
         logger.LogInformation("Starting batch embedding generation for {ChunkCount} chunks...", allChunkContents.Count);
-        
-        // Add timeout for large documents
-        var embeddingTask = documentSearchService.GenerateEmbeddingsBatchAsync(allChunkContents);
-        var timeoutTask = Task.Delay(TimeSpan.FromMinutes(10));
-        
-        var completedTask = await Task.WhenAny(embeddingTask, timeoutTask);
-        List<List<float>>? allEmbeddings = null;
 
-        if (completedTask == embeddingTask)
+        try
         {
-            allEmbeddings = await embeddingTask;
-            logger.LogInformation("Batch embedding generation completed successfully.");
-        }
-        else
-        {
-            logger.LogWarning("Embedding generation timed out after 10 minutes. Proceeding with partial embeddings.");
-        }
+            // Delegate embedding generation to AI Service (which will use the appropriate provider)
+            var allEmbeddings = await aiService.GenerateEmbeddingsBatchAsync(allChunkContents);
 
-        // Apply embeddings to chunks with progress tracking
-        var processedChunks = 0;
-        var totalChunks = document.Chunks.Count;
-        
-        for (int i = 0; i < document.Chunks.Count; i++)
-        {
-            try
+            if (allEmbeddings != null && allEmbeddings.Count == document.Chunks.Count)
             {
-                var chunk = document.Chunks[i];
-                chunk.DocumentId = document.Id;
-
-                // Check if embedding was generated successfully
-                if (allEmbeddings != null && i < allEmbeddings.Count && allEmbeddings[i] != null && allEmbeddings[i].Count > 0)
+                // Apply embeddings to chunks
+                for (int i = 0; i < document.Chunks.Count; i++)
                 {
-                    chunk.Embedding = allEmbeddings[i];
-                    ServiceLogMessages.LogChunkEmbeddingSuccess(logger, i, allEmbeddings[i].Count, null);
-                }
-                else
-                {
-                    // Retry individual embedding generation for this chunk with timeout
-                    ServiceLogMessages.LogChunkBatchEmbeddingFailed(logger, i, null);
-                    
-                    var individualTask = documentSearchService.GenerateEmbeddingWithFallbackAsync(chunk.Content);
-                    var individualTimeoutTask = Task.Delay(TimeSpan.FromSeconds(30));
-                    
-                    var individualCompletedTask = await Task.WhenAny(individualTask, individualTimeoutTask);
-                    List<float>? individualEmbedding = null;
+                    var chunk = document.Chunks[i];
+                    chunk.DocumentId = document.Id;
 
-                    if (individualCompletedTask == individualTask)
+                    if (allEmbeddings[i] != null && allEmbeddings[i].Count > 0)
                     {
-                        individualEmbedding = await individualTask;
-                        if (individualEmbedding != null && individualEmbedding.Count > 0)
-                        {
-                            chunk.Embedding = individualEmbedding;
-                            ServiceLogMessages.LogChunkIndividualEmbeddingSuccess(logger, i, individualEmbedding.Count, null);
-                        }
-                        else
-                        {
-                            ServiceLogMessages.LogChunkEmbeddingFailed(logger, i, null);
-                            chunk.Embedding = []; // Empty but not null
-                        }
+                        chunk.Embedding = allEmbeddings[i];
+                        ServiceLogMessages.LogChunkEmbeddingSuccess(logger, i, allEmbeddings[i].Count, null);
                     }
                     else
                     {
-                        logger.LogWarning("Individual embedding generation timed out for chunk {ChunkIndex}", i);
-                        chunk.Embedding = []; // Empty but not null
+                        chunk.Embedding = new List<float>(); // Create empty list
+                        ServiceLogMessages.LogChunkEmbeddingFailed(logger, i, null);
                     }
+
+                    if (chunk.CreatedAt == default)
+                        chunk.CreatedAt = DateTime.UtcNow;
                 }
 
-                if (chunk.CreatedAt == default)
-                    chunk.CreatedAt = DateTime.UtcNow;
+                logger.LogInformation("Batch embedding generation completed successfully for all chunks.");
+            }
+            else
+            {
+                logger.LogWarning("Batch embedding generation failed or incomplete. Proceeding without embeddings.");
 
-                processedChunks++;
-                if (processedChunks % 10 == 0 || processedChunks == totalChunks)
+                // Set empty embeddings for all chunks
+                foreach (var chunk in document.Chunks)
                 {
-                    logger.LogInformation("Progress: {Processed}/{Total} chunks processed ({Percentage:F1}%)", 
-                        processedChunks, totalChunks, (processedChunks * 100.0) / totalChunks);
+                    chunk.DocumentId = document.Id;
+                    chunk.Embedding = []; // Empty but not null
+                    if (chunk.CreatedAt == default)
+                        chunk.CreatedAt = DateTime.UtcNow;
                 }
             }
-            catch (Exception ex)
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to generate embeddings during document upload. Proceeding without embeddings.");
+
+            // Set empty embeddings for all chunks on error
+            foreach (var chunk in document.Chunks)
             {
-                ServiceLogMessages.LogChunkProcessingFailed(logger, i, ex);
-                document.Chunks[i].Embedding = []; // Empty but not null
-                processedChunks++;
+                chunk.DocumentId = document.Id;
+                chunk.Embedding = []; // Empty but not null
+                if (chunk.CreatedAt == default)
+                    chunk.CreatedAt = DateTime.UtcNow;
             }
         }
 
         logger.LogInformation("Starting document save to repository...");
-        
-        // Add timeout for repository save operation
-        var saveTask = documentRepository.AddAsync(document);
-        var saveTimeoutTask = Task.Delay(TimeSpan.FromMinutes(5));
-        
-        var saveCompletedTask = await Task.WhenAny(saveTask, saveTimeoutTask);
-        Document savedDocument;
 
-        if (saveCompletedTask == saveTask)
-        {
-            savedDocument = await saveTask;
-        }
-        else
-        {
-            logger.LogError("Document save operation timed out after 5 minutes!");
-            throw new TimeoutException("Document save operation timed out. The document may be too large.");
-        }
-        logger.LogInformation("Document uploaded successfully. ID: {DocumentId}, Chunks: {ChunkCount}", 
+        // Save document to repository
+        var savedDocument = await documentRepository.AddAsync(document);
+        logger.LogInformation("Document uploaded successfully. ID: {DocumentId}, Chunks: {ChunkCount}",
             savedDocument.Id, savedDocument.Chunks.Count);
 
         return savedDocument;
@@ -191,6 +151,7 @@ public class DocumentService(
         });
 
         var uploadResults = await Task.WhenAll(uploadTasks);
+
         uploadedDocuments.AddRange(uploadResults.Where(doc => doc != null)!);
 
         return uploadedDocuments;
@@ -273,7 +234,7 @@ public class DocumentService(
 
                 // Generate embeddings for current batch
                 var batchContents = currentBatch.Select(c => c.Content).ToList();
-                var batchEmbeddings = await documentSearchService.GenerateEmbeddingsBatchAsync(batchContents);
+                var batchEmbeddings = await aiService.GenerateEmbeddingsBatchAsync(batchContents);
 
                 if (batchEmbeddings != null && batchEmbeddings.Count == currentBatch.Count)
                 {
@@ -294,7 +255,7 @@ public class DocumentService(
                             ServiceLogMessages.LogChunkBatchEmbeddingFailedRetry(logger, chunk.Id, null);
 
                             // Fallback to individual generation
-                            var individualEmbedding = await documentSearchService.GenerateEmbeddingWithFallbackAsync(chunk.Content);
+                            var individualEmbedding = await aiService.GenerateEmbeddingsAsync(chunk.Content);
                             if (individualEmbedding != null && individualEmbedding.Count > 0)
                             {
                                 chunk.Embedding = individualEmbedding;
@@ -319,7 +280,7 @@ public class DocumentService(
                     {
                         try
                         {
-                            var newEmbedding = await documentSearchService.GenerateEmbeddingWithFallbackAsync(chunk.Content);
+                            var newEmbedding = await aiService.GenerateEmbeddingsAsync(chunk.Content);
 
                             if (newEmbedding != null && newEmbedding.Count > 0)
                             {
@@ -379,16 +340,16 @@ public class DocumentService(
     {
         try
         {
-            ServiceLogMessages.LogEmbeddingClearStarted(logger, null);
-            
+            ServiceLogMessages.LogEmbeddingClearingStarted(logger, null);
+
             var allDocuments = await documentRepository.GetAllAsync();
             var totalChunks = allDocuments.Sum(d => d.Chunks.Count);
             var clearedChunks = 0;
-            
+
             foreach (var document in allDocuments)
             {
                 ServiceLogMessages.LogDocumentProcessing(logger, document.FileName, document.Chunks.Count, null);
-                
+
                 foreach (var chunk in document.Chunks)
                 {
                     if (chunk.Embedding != null && chunk.Embedding.Count > 0)
@@ -397,18 +358,18 @@ public class DocumentService(
                         clearedChunks++;
                     }
                 }
-                
+
                 // Save document with cleared embeddings
                 await documentRepository.DeleteAsync(document.Id);
                 await documentRepository.AddAsync(document);
             }
-            
-            ServiceLogMessages.LogEmbeddingClearCompleted(logger, clearedChunks, totalChunks, null);
+
+            ServiceLogMessages.LogEmbeddingClearingCompleted(logger, clearedChunks, null);
             return true;
         }
         catch (Exception ex)
         {
-            ServiceLogMessages.LogEmbeddingClearFailed(logger, ex);
+            ServiceLogMessages.LogEmbeddingClearingFailed(logger, ex);
             return false;
         }
     }
@@ -420,24 +381,24 @@ public class DocumentService(
     {
         try
         {
-            ServiceLogMessages.LogDocumentClearStarted(logger, null);
-            
+            ServiceLogMessages.LogDocumentDeletionStarted(logger, null);
+
             var allDocuments = await documentRepository.GetAllAsync();
             var totalDocuments = allDocuments.Count;
             var totalChunks = allDocuments.Sum(d => d.Chunks.Count);
-            
+
             // Delete all documents (this will also clear their embeddings)
             foreach (var document in allDocuments)
             {
                 await documentRepository.DeleteAsync(document.Id);
             }
-            
-            ServiceLogMessages.LogDocumentClearCompleted(logger, totalDocuments, totalChunks, null);
+
+            ServiceLogMessages.LogDocumentDeletionCompleted(logger, totalDocuments, totalChunks, null);
             return true;
         }
         catch (Exception ex)
         {
-            ServiceLogMessages.LogDocumentClearFailed(logger, ex);
+            ServiceLogMessages.LogDocumentDeletionFailed(logger, ex);
             return false;
         }
     }
