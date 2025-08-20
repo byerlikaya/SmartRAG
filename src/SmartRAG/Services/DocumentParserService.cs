@@ -323,7 +323,9 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
                 endIndex = FindOptimalBreakPoint(content, startIndex, endIndex, minChunkSize);
             }
 
-            var chunkContent = content.Substring(startIndex, endIndex - startIndex).Trim();
+            // Validate both start and end boundaries to ensure complete words
+            var (validatedStart, validatedEnd) = ValidateChunkBoundaries(content, startIndex, endIndex);
+            var chunkContent = content.Substring(validatedStart, validatedEnd - validatedStart).Trim();
 
             if (!string.IsNullOrWhiteSpace(chunkContent))
             {
@@ -333,8 +335,8 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
                     DocumentId = documentId,
                     Content = chunkContent,
                     ChunkIndex = chunkIndex,
-                    StartPosition = startIndex,
-                    EndPosition = endIndex,
+                    StartPosition = validatedStart,
+                    EndPosition = validatedEnd,
                     CreatedAt = DateTime.UtcNow,
                     RelevanceScore = 0.0
                     // Embedding will be set by DocumentService after AI processing
@@ -382,21 +384,25 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
         var sentenceEndIndex = FindLastSentenceEnd(content, searchStartFromStart, searchEndFromEnd);
         if (sentenceEndIndex > searchStartFromStart)
         {
-            return sentenceEndIndex + 1;
+            // Additional check: Ensure we don't cut words in the middle
+            var validatedIndex = ValidateWordBoundary(content, sentenceEndIndex);
+            return validatedIndex + 1;
         }
 
         // Priority 2: End of paragraph (double newline) - Search from both ends
         var paragraphEndIndex = FindLastParagraphEnd(content, searchStartFromStart, searchEndFromEnd);
         if (paragraphEndIndex > searchStartFromStart)
         {
-            return paragraphEndIndex;
+            var validatedIndex = ValidateWordBoundary(content, paragraphEndIndex);
+            return validatedIndex;
         }
 
         // Priority 3: Word boundary (space, tab, newline) - Search from both ends
         var wordBoundaryIndex = FindLastWordBoundary(content, searchStartFromStart, searchEndFromEnd);
         if (wordBoundaryIndex > searchStartFromStart)
         {
-            return wordBoundaryIndex;
+            var validatedIndex = ValidateWordBoundary(content, wordBoundaryIndex);
+            return validatedIndex;
         }
 
         // Priority 4: Punctuation boundary (comma, semicolon, colon) - Search from both ends
@@ -426,6 +432,71 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
 
         // Final fallback: Use current end index
         return currentEndIndex;
+    }
+
+    /// <summary>
+    /// Validates that the break point doesn't cut words in the middle
+    /// </summary>
+    private static int ValidateWordBoundary(string content, int breakPoint)
+    {
+        // Check if we're in the middle of a word
+        if (breakPoint > 0 && breakPoint < content.Length)
+        {
+            var currentChar = content[breakPoint];
+            var previousChar = content[breakPoint - 1];
+
+            // If we're in the middle of a word, find the previous word boundary
+            if (char.IsLetterOrDigit(currentChar) && char.IsLetterOrDigit(previousChar))
+            {
+                // Look backwards for the last word boundary
+                for (int i = breakPoint - 1; i >= 0; i--)
+                {
+                    if (char.IsWhiteSpace(content[i]) || char.IsPunctuation(content[i]))
+                    {
+                        // Found a word boundary
+                        return i;
+                    }
+                }
+                // If no boundary found, return start of content
+                return 0;
+            }
+        }
+
+        return breakPoint;
+    }
+
+    /// <summary>
+    /// Validates both start and end boundaries to ensure complete words
+    /// </summary>
+    private static (int start, int end) ValidateChunkBoundaries(string content, int startIndex, int endIndex)
+    {
+        var validatedStart = ValidateWordBoundary(content, startIndex);
+        var validatedEnd = ValidateWordBoundary(content, endIndex);
+
+        // Additional check: Ensure end boundary doesn't cut words
+        if (validatedEnd < content.Length)
+        {
+            var nextChar = content[validatedEnd];
+            if (char.IsLetterOrDigit(nextChar))
+            {
+                // Find the next word boundary
+                for (int i = validatedEnd; i < content.Length; i++)
+                {
+                    if (char.IsWhiteSpace(content[i]) || char.IsPunctuation(content[i]))
+                    {
+                        validatedEnd = i;
+                        break;
+                    }
+                }
+                // If no boundary found, use content length
+                if (validatedEnd == endIndex)
+                {
+                    validatedEnd = content.Length;
+                }
+            }
+        }
+
+        return (validatedStart, validatedEnd);
     }
 
     /// <summary>
