@@ -45,4 +45,14 @@ public interface IDocumentService
     /// Regenerate all embeddings
     /// </summary>
     Task<bool> RegenerateAllEmbeddingsAsync();
+
+    /// <summary>
+    /// Clear all embeddings from all documents
+    /// </summary>
+    Task<bool> ClearAllEmbeddingsAsync();
+
+    /// <summary>
+    /// Clear all documents and their embeddings
+    /// </summary>
+    Task<bool> ClearAllDocumentsAsync();
 }

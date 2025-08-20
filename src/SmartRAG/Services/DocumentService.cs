@@ -371,4 +371,74 @@ public class DocumentService(
             return false;
         }
     }
+
+    /// <summary>
+    /// Clear all embeddings from all documents
+    /// </summary>
+    public async Task<bool> ClearAllEmbeddingsAsync()
+    {
+        try
+        {
+            ServiceLogMessages.LogEmbeddingClearStarted(logger, null);
+            
+            var allDocuments = await documentRepository.GetAllAsync();
+            var totalChunks = allDocuments.Sum(d => d.Chunks.Count);
+            var clearedChunks = 0;
+            
+            foreach (var document in allDocuments)
+            {
+                ServiceLogMessages.LogDocumentProcessing(logger, document.FileName, document.Chunks.Count, null);
+                
+                foreach (var chunk in document.Chunks)
+                {
+                    if (chunk.Embedding != null && chunk.Embedding.Count > 0)
+                    {
+                        chunk.Embedding.Clear();
+                        clearedChunks++;
+                    }
+                }
+                
+                // Save document with cleared embeddings
+                await documentRepository.DeleteAsync(document.Id);
+                await documentRepository.AddAsync(document);
+            }
+            
+            ServiceLogMessages.LogEmbeddingClearCompleted(logger, clearedChunks, totalChunks, null);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            ServiceLogMessages.LogEmbeddingClearFailed(logger, ex);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Clear all documents and their embeddings
+    /// </summary>
+    public async Task<bool> ClearAllDocumentsAsync()
+    {
+        try
+        {
+            ServiceLogMessages.LogDocumentClearStarted(logger, null);
+            
+            var allDocuments = await documentRepository.GetAllAsync();
+            var totalDocuments = allDocuments.Count;
+            var totalChunks = allDocuments.Sum(d => d.Chunks.Count);
+            
+            // Delete all documents (this will also clear their embeddings)
+            foreach (var document in allDocuments)
+            {
+                await documentRepository.DeleteAsync(document.Id);
+            }
+            
+            ServiceLogMessages.LogDocumentClearCompleted(logger, totalDocuments, totalChunks, null);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            ServiceLogMessages.LogDocumentClearFailed(logger, ex);
+            return false;
+        }
+    }
 }
