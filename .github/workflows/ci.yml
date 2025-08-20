@@ -52,7 +52,7 @@ jobs:
       run: dotnet build src/SmartRAG/SmartRAG.csproj --configuration Release --verbosity quiet
       
     - name: Check for vulnerabilities
-      run: dotnet list package src/SmartRAG/SmartRAG.csproj --vulnerable
+      run: dotnet list package --vulnerable --project src/SmartRAG/SmartRAG.csproj
 
   build:
     name: Build & Package
@@ -274,10 +274,10 @@ jobs:
     - name: Run security scan
       run: |
         echo "Checking for vulnerable packages..."
-        dotnet list package src/SmartRAG/SmartRAG.csproj --vulnerable
+        dotnet list package --vulnerable --project src/SmartRAG/SmartRAG.csproj
         echo "Checking for outdated packages..."
         dotnet tool install --global dotnet-outdated-tool || echo "dotnet-outdated already installed"
-        dotnet outdated src/SmartRAG/SmartRAG.csproj --upgrade || echo "No outdated packages or tool unavailable"
+        dotnet outdated --upgrade --project src/SmartRAG/SmartRAG.csproj || echo "No outdated packages or tool unavailable"
         
     - name: Initialize CodeQL
       uses: github/codeql-action/init@v3
