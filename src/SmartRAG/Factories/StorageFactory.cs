@@ -47,7 +47,7 @@ public class StorageFactory : IStorageFactory
     public IDocumentRepository CreateRepository(StorageConfig config)
         => config.Provider switch
         {
-            StorageProvider.InMemory => new InMemoryDocumentRepository(config.InMemory),
+            StorageProvider.InMemory => new InMemoryDocumentRepository(config.InMemory, _loggerFactory.CreateLogger<InMemoryDocumentRepository>()),
             StorageProvider.FileSystem => new FileSystemDocumentRepository(config.FileSystemPath, _loggerFactory.CreateLogger<FileSystemDocumentRepository>()),
             StorageProvider.Redis => new RedisDocumentRepository(Options.Create(config.Redis)),
             StorageProvider.Sqlite => new SqliteDocumentRepository(Options.Create(config.Sqlite)),
