@@ -357,6 +357,27 @@ public static class RepositoryLogMessages
 
     #endregion
 
+    #region SQLite Operations (EventId: 36001-36999)
+    public static readonly Action<ILogger, string, Exception?> LogSqliteRepositoryInitialized = LoggerMessage.Define<string>(LogLevel.Information, new EventId(36001, "SqliteRepositoryInitialized"), "SQLite repository initialized successfully with database: {DatabasePath}");
+    public static readonly Action<ILogger, string, Exception?> LogSqliteRepositoryInitFailed = LoggerMessage.Define<string>(LogLevel.Error, new EventId(36002, "SqliteRepositoryInitFailed"), "Failed to initialize SQLite repository with database: {DatabasePath}");
+    public static readonly Action<ILogger, Exception?> LogSqliteDatabaseInitFailed = LoggerMessage.Define(LogLevel.Error, new EventId(36003, "SqliteDatabaseInitFailed"), "Failed to initialize SQLite database");
+    public static readonly Action<ILogger, string, Guid, Exception?> LogSqliteDocumentAdded = LoggerMessage.Define<string, Guid>(LogLevel.Information, new EventId(36004, "SqliteDocumentAdded"), "Document added successfully to SQLite: {FileName} (ID: {DocumentId})");
+    public static readonly Action<ILogger, string, Exception?> LogSqliteDocumentAddFailed = LoggerMessage.Define<string>(LogLevel.Error, new EventId(36005, "SqliteDocumentAddFailed"), "Failed to add document to SQLite: {FileName}");
+    public static readonly Action<ILogger, Guid, Exception?> LogSqliteDocumentNotFound = LoggerMessage.Define<Guid>(LogLevel.Warning, new EventId(36006, "SqliteDocumentNotFound"), "Document not found in SQLite: {DocumentId}");
+    public static readonly Action<ILogger, Guid, Exception?> LogSqliteDocumentRetrieved = LoggerMessage.Define<Guid>(LogLevel.Information, new EventId(36007, "SqliteDocumentRetrieved"), "Document retrieved from SQLite: {DocumentId}");
+    public static readonly Action<ILogger, Guid, Exception?> LogSqliteDocumentRetrievalFailed = LoggerMessage.Define<Guid>(LogLevel.Error, new EventId(36008, "SqliteDocumentRetrievalFailed"), "Failed to retrieve document from SQLite: {DocumentId}");
+    public static readonly Action<ILogger, int, Exception?> LogSqliteDocumentsRetrieved = LoggerMessage.Define<int>(LogLevel.Information, new EventId(36009, "SqliteDocumentsRetrieved"), "Retrieved {Count} documents from SQLite");
+    public static readonly Action<ILogger, Exception?> LogSqliteDocumentsRetrievalFailed = LoggerMessage.Define(LogLevel.Error, new EventId(36010, "SqliteDocumentsRetrievalFailed"), "Failed to retrieve documents from SQLite");
+    public static readonly Action<ILogger, Guid, Exception?> LogSqliteDocumentDeleted = LoggerMessage.Define<Guid>(LogLevel.Information, new EventId(36011, "SqliteDocumentDeleted"), "Document deleted from SQLite: {DocumentId}");
+    public static readonly Action<ILogger, Guid, Exception?> LogSqliteDocumentDeleteFailed = LoggerMessage.Define<Guid>(LogLevel.Error, new EventId(36012, "SqliteDocumentDeleteFailed"), "Failed to delete document from SQLite: {DocumentId}");
+    public static readonly Action<ILogger, int, Exception?> LogSqliteDocumentCountRetrieved = LoggerMessage.Define<int>(LogLevel.Information, new EventId(36013, "SqliteDocumentCountRetrieved"), "Document count retrieved from SQLite: {Count}");
+    public static readonly Action<ILogger, Exception?> LogSqliteDocumentCountRetrievalFailed = LoggerMessage.Define(LogLevel.Error, new EventId(36014, "SqliteDocumentCountRetrievalFailed"), "Failed to retrieve document count from SQLite");
+    public static readonly Action<ILogger, string, int, int, Exception?> LogSqliteSearchCompleted = LoggerMessage.Define<string, int, int>(LogLevel.Information, new EventId(36015, "SqliteSearchCompleted"), "Search completed in SQLite for query '{Query}': {ResultCount}/{MaxResults} results");
+    public static readonly Action<ILogger, string, Exception?> LogSqliteSearchFailed = LoggerMessage.Define<string>(LogLevel.Error, new EventId(36016, "SqliteSearchFailed"), "Search failed in SQLite for query '{Query}'");
+    public static readonly Action<ILogger, Exception?> LogSqliteStatisticsRetrieved = LoggerMessage.Define(LogLevel.Information, new EventId(36017, "SqliteStatisticsRetrieved"), "Statistics retrieved successfully from SQLite");
+    public static readonly Action<ILogger, Exception?> LogSqliteStatisticsRetrievalFailed = LoggerMessage.Define(LogLevel.Error, new EventId(36018, "SqliteStatisticsRetrievalFailed"), "Failed to retrieve statistics from SQLite");
+    #endregion
+
     #region InMemory Operations (EventId: 33001-33999)
 
     public static readonly Action<ILogger, int, int, Exception?> LogOldDocumentsRemoved = LoggerMessage.Define<int, int>(
