@@ -293,6 +293,49 @@ public abstract class BaseAIProvider : IAIProvider
     }
 
     /// <summary>
+    /// Common batch embedding response parsing for OpenAI-like APIs
+    /// </summary>
+    protected static List<List<float>> ParseBatchEmbeddingResponse(string responseBody, int expectedCount, string dataProperty = "data", string embeddingProperty = "embedding")
+    {
+        var results = new List<List<float>>();
+
+        try
+        {
+            using var doc = JsonDocument.Parse(responseBody);
+
+            if (doc.RootElement.TryGetProperty(dataProperty, out var data) && data.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var item in data.EnumerateArray())
+                {
+                    if (item.TryGetProperty(embeddingProperty, out var embedding) && embedding.ValueKind == JsonValueKind.Array)
+                    {
+                        var floats = new List<float>(embedding.GetArrayLength());
+                        foreach (var value in embedding.EnumerateArray())
+                        {
+                            if (value.TryGetSingle(out var f))
+                                floats.Add(f);
+                        }
+                        results.Add(floats);
+                    }
+                    else
+                    {
+                        results.Add([]);
+                    }
+                }
+            }
+        }
+        catch
+        {
+            // Return partial results on error
+        }
+
+        // Ensure we return the expected number of embeddings
+        return Enumerable.Range(0, expectedCount)
+            .Select(i => i < results.Count ? results[i] : new List<float>())
+            .ToList();
+    }
+
+    /// <summary>
     /// Common text generation response parsing for OpenAI-like APIs
     /// </summary>
     protected static string ParseTextResponse(string responseBody, string choicesProperty = "choices", string messageProperty = "message", string contentProperty = "content")
