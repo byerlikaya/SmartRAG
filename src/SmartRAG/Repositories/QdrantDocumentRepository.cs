@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
@@ -5,22 +6,73 @@ using SmartRAG.Entities;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
 using System.Globalization;
-using Document = SmartRAG.Entities.Document;
-using QdrantDocument = Qdrant.Client.Grpc.Document;
+
 
 namespace SmartRAG.Repositories;
+
+/// <summary>
+/// Qdrant vector database document repository implementation
+/// </summary>
 public class QdrantDocumentRepository : IDocumentRepository, IDisposable
 {
+    #region Constants
+
+    // Search and batch constants
+    private const int DefaultMaxSearchResults = 5;
+    private const int DefaultBatchSize = 200;
+    private const int DefaultScrollBatchSize = 25;
+    private const int DefaultMaxBatches = 50;
+    private const int DefaultMaxDocuments = 1000;
+    private const int DefaultMaxResultsMultiplier = 4;
+    private const int DefaultPerDocumentTopK = 3;
+    private const int DefaultGlobalResultsMultiplier = 3;
+
+    // Cache constants
+    private const int CacheExpiryMinutes = 5;
+    private const int DefaultScrollLimit = 1000;
+
+    // Vector dimension constants
+    private const int DefaultVectorDimension = 768;
+    private const int OpenAIVectorDimension = 1536;
+    private const int OpenAILargeVectorDimension = 3072;
+    private const int SentenceTransformersDimension = 384;
+    private const int MPNetDimension = 768;
+
+    // Timeout constants
+    private const int DefaultGrpcTimeoutMinutes = 5;
+    private const int DefaultDelayMs = 100;
+
+    // Scoring constants
+    private const double DefaultTextSearchScore = 0.5;
+    private const double MinKeywordMatchScore = 0.1;
+    private const int MinWordLength = 2;
+
+    #endregion
+
+    #region Fields
+
     private readonly QdrantClient _client;
     private readonly QdrantConfig _config;
     private readonly string _collectionName;
+    private readonly ILogger<QdrantDocumentRepository> _logger;
     private static readonly SemaphoreSlim _collectionInitLock = new(1, 1);
     private bool _collectionReady;
 
-    public QdrantDocumentRepository(IOptions<QdrantConfig> config)
+    #endregion
+
+    #region Properties
+
+    protected ILogger Logger => _logger;
+
+    #endregion
+
+    #region Constructor
+
+    public QdrantDocumentRepository(IOptions<QdrantConfig> config, ILogger<QdrantDocumentRepository> logger)
     {
         _config = config.Value;
         _collectionName = _config.CollectionName;
+        _logger = logger;
 
 
         string host;
@@ -42,7 +94,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
             host,
             https: useHttps,
             apiKey: config.Value.ApiKey,
-            grpcTimeout: TimeSpan.FromMinutes(5)
+            grpcTimeout: TimeSpan.FromMinutes(DefaultGrpcTimeoutMinutes)
         );
 
 
@@ -52,12 +104,16 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
                 {
                     await InitializeCollectionAsync();
                 }
-                catch (Exception)
+                catch (Exception ex)
                 {
-
+                    RepositoryLogMessages.LogQdrantCollectionInitFailed(Logger, ex);
                 }
             });
     }
+
+    #endregion
+
+    #region Public Methods
 
     private async Task InitializeCollectionAsync()
     {
@@ -111,19 +167,19 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
                 Distance = GetDistanceMetric(_config.DistanceMetric)
             };
 
-            Console.WriteLine($"[INFO] Creating main collection {_collectionName} with vector dimension: {vectorDimension}");
+            RepositoryLogMessages.LogQdrantCollectionCreated(Logger, _collectionName, vectorDimension, null);
 
             // Create collection with proper configuration - use correct Qdrant API
             await _client.CreateCollectionAsync(_collectionName, vectorParams);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[ERROR] Failed to create collection: {ex.Message}");
+            RepositoryLogMessages.LogQdrantCollectionCreationFailed(Logger, _collectionName, ex);
             throw;
         }
     }
 
-    private async Task EnsureDocumentCollectionExistsAsync(string collectionName, Document document)
+    private async Task EnsureDocumentCollectionExistsAsync(string collectionName, SmartRAG.Entities.Document document)
     {
         try
         {
@@ -145,14 +201,14 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
                 Distance = GetDistanceMetric(_config.DistanceMetric)
             };
 
-            Console.WriteLine($"[INFO] Creating collection {collectionName} with vector dimension: {vectorDimension}");
+            RepositoryLogMessages.LogQdrantCollectionCreated(Logger, collectionName, vectorDimension, null);
 
             // Create collection with proper configuration - use correct Qdrant API
             await _client.CreateCollectionAsync(collectionName, vectorParams);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[ERROR] Failed to create document collection {collectionName}: {ex.Message}");
+            RepositoryLogMessages.LogQdrantCollectionCreationFailed(Logger, collectionName, ex);
             throw;
         }
     }
@@ -221,8 +277,8 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
     /// <summary>
     /// Create Document from metadata
     /// </summary>
-    private static Document CreateDocumentFromMetadata(DocumentMetadata metadata)
-        => new Document()
+    private static SmartRAG.Entities.Document CreateDocumentFromMetadata(DocumentMetadata metadata)
+        => new SmartRAG.Entities.Document()
         {
             Id = metadata.Id,
             FileName = metadata.FileName,
@@ -269,7 +325,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
         public string Content { get; set; } = string.Empty;
     }
 
-    public async Task<Document> AddAsync(Document document)
+    public async Task<SmartRAG.Entities.Document> AddAsync(SmartRAG.Entities.Document document)
     {
         try
         {
@@ -277,14 +333,12 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
 
             // Create unique collection name for each document - Qdrant naming rules
             var documentCollectionName = $"{_collectionName}_doc_{document.Id:N}".Replace("-", ""); // Remove hyphens for Qdrant
-            Console.WriteLine($"[DEBUG] Creating document collection: {documentCollectionName}");
-            Console.WriteLine($"[DEBUG] Base collection name: {_collectionName}");
-            Console.WriteLine($"[DEBUG] Document ID: {document.Id}");
+            RepositoryLogMessages.LogQdrantDocumentCollectionCreating(Logger, documentCollectionName, _collectionName, document.Id, null);
 
             await EnsureDocumentCollectionExistsAsync(documentCollectionName, document);
 
             // Generate embeddings for all chunks in parallel with progress tracking
-            Console.WriteLine($"[INFO] Generating embeddings for {document.Chunks.Count} chunks...");
+            RepositoryLogMessages.LogQdrantEmbeddingsGenerationStarted(Logger, document.Chunks.Count, null);
             var embeddingTasks = document.Chunks.Select(async (chunk, index) =>
             {
                 if (chunk.Embedding == null || chunk.Embedding.Count == 0)
@@ -292,20 +346,19 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
                     chunk.Embedding = await GenerateEmbeddingAsync(chunk.Content) ?? new List<float>();
                     if (index % 10 == 0) // Progress every 10 chunks
                     {
-                        Console.WriteLine($"[INFO] Generated embeddings for {index + 1}/{document.Chunks.Count} chunks");
+                        RepositoryLogMessages.LogQdrantEmbeddingsProgress(Logger, index + 1, document.Chunks.Count, null);
                     }
                 }
                 return chunk;
             }).ToList();
 
             await Task.WhenAll(embeddingTasks);
-            Console.WriteLine($"[INFO] All embeddings generated successfully!");
+            RepositoryLogMessages.LogQdrantEmbeddingsGenerationCompleted(Logger, document.Chunks.Count, null);
 
             // Batch process all chunks with larger batch size
-            const int batchSize = 200; // Increased batch size for better performance
             var allPoints = new List<PointStruct>();
 
-            Console.WriteLine($"[INFO] Creating {document.Chunks.Count} Qdrant points...");
+            RepositoryLogMessages.LogQdrantPointsCreationStarted(Logger, document.Chunks.Count, null);
             foreach (var chunk in document.Chunks)
             {
                 var point = new PointStruct
@@ -331,32 +384,30 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
                 point.Payload.Add("uploadedAt", document.UploadedAt.ToString("O"));
                 point.Payload.Add("uploadedBy", document.UploadedBy);
 
-                // Debug: Log payload creation
-                Console.WriteLine($"[DEBUG] Created payload for chunk {chunk.ChunkIndex}: chunkIndex={chunk.ChunkIndex}, documentId={document.Id}, contentLength={chunk.Content.Length}");
-
                 allPoints.Add(point);
             }
 
             // Process in batches for better performance
-            Console.WriteLine($"[INFO] Uploading {allPoints.Count} points in batches of {batchSize}...");
-            for (int i = 0; i < allPoints.Count; i += batchSize)
+            for (int i = 0; i < allPoints.Count; i += DefaultBatchSize)
             {
-                var batch = allPoints.Skip(i).Take(batchSize).ToList();
+                var batch = allPoints.Skip(i).Take(DefaultBatchSize).ToList();
                 await _client.UpsertAsync(documentCollectionName, batch);
-                Console.WriteLine($"[INFO] Uploaded batch {i / batchSize + 1}/{(allPoints.Count + batchSize - 1) / batchSize}");
+                var batchNumber = i / DefaultBatchSize + 1;
+                var totalBatches = (allPoints.Count + DefaultBatchSize - 1) / DefaultBatchSize;
+                RepositoryLogMessages.LogQdrantBatchUploadProgress(Logger, batchNumber, totalBatches, batch.Count, null);
             }
 
-            Console.WriteLine($"[INFO] Document '{document.FileName}' uploaded successfully to Qdrant collection: {documentCollectionName}!");
+            RepositoryLogMessages.LogQdrantDocumentUploadSuccess(Logger, document.FileName, documentCollectionName, null);
             return document;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[ERROR] Failed to upload document: {ex.Message}");
+            RepositoryLogMessages.LogQdrantDocumentUploadFailed(Logger, document.FileName, ex);
             throw;
         }
     }
 
-    public async Task<Document?> GetByIdAsync(Guid id)
+    public async Task<SmartRAG.Entities.Document?> GetByIdAsync(Guid id)
     {
         try
         {
@@ -377,7 +428,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
                 }
             };
 
-            var result = await _client.ScrollAsync(_collectionName, filter, limit: 50);
+            var result = await _client.ScrollAsync(_collectionName, filter, limit: DefaultMaxSearchResults * 10);
 
             if (result.Result.Count == 0)
                 return null;
@@ -406,24 +457,22 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
         }
     }
 
-    public async Task<List<Document>> GetAllAsync()
+    public async Task<List<SmartRAG.Entities.Document>> GetAllAsync()
     {
         try
         {
-            var documents = new List<Document>();
+            var documents = new List<SmartRAG.Entities.Document>();
             var processedIds = new HashSet<string>();
             var lastPointId = (PointId?)null;
-            const int batchSize = 25;
             var batchCount = 0;
-            const int maxBatches = 50;
 
-            while (batchCount < maxBatches)
+            while (batchCount < DefaultMaxBatches)
             {
                 try
                 {
                     var result = await _client.ScrollAsync(
                         _collectionName,
-                        limit: batchSize,
+                        limit: DefaultScrollBatchSize,
                         offset: lastPointId);
 
                     if (result.Result.Count == 0)
@@ -462,14 +511,14 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
 
                     lastPointId = result.Result.Last().Id;
 
-                    if (documents.Count > 1000)
+                    if (documents.Count > DefaultMaxDocuments)
                     {
                         break;
                     }
 
                     batchCount++;
 
-                    await Task.Delay(100);
+                    await Task.Delay(DefaultDelayMs);
                 }
                 catch (Exception ex) when (ex.Message.Contains("ResourceExhausted") || ex.Message.Contains("message size"))
                 {
@@ -487,7 +536,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
         }
         catch (Exception)
         {
-            return new List<Document>();
+            return new List<SmartRAG.Entities.Document>();
         }
     }
 
@@ -539,9 +588,8 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
     // Cache for duplicate request prevention
     private static readonly Dictionary<string, (List<DocumentChunk> Chunks, DateTime Expiry)> _searchCache = new();
     private static readonly object _cacheLock = new object();
-    private const int CACHE_EXPIRY_MINUTES = 5;
 
-    public async Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = 5)
+    public async Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = DefaultMaxSearchResults)
     {
         try
         {
@@ -549,20 +597,18 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
             var queryHash = $"{query}_{maxResults}";
             lock (_cacheLock)
             {
-                if (_searchCache.TryGetValue(queryHash, out var cached) && cached.Expiry > DateTime.UtcNow)
-                {
-                    Console.WriteLine($"[INFO] Returning cached results for query: {query.Substring(0, Math.Min(50, query.Length))}...");
-                    return cached.Chunks.ToList(); // Return copy to avoid modification
-                }
+                            if (_searchCache.TryGetValue(queryHash, out var cached) && cached.Expiry > DateTime.UtcNow)
+            {
+                return cached.Chunks.ToList(); // Return copy to avoid modification
+            }
             }
 
             await EnsureCollectionExistsAsync();
 
             // Log that we're processing a new search
-            Console.WriteLine($"[INFO] Processing new search query: {query.Substring(0, Math.Min(50, query.Length))}...");
+            RepositoryLogMessages.LogQdrantSearchStarted(Logger, query, null);
 
             // Enable combined vector + keyword-assisted (hybrid) search
-            Console.WriteLine("[INFO] Using vector + keyword-assisted (hybrid) search");
 
             // FALLBACK: Generate embedding for semantic search
             var queryEmbedding = await GenerateEmbeddingAsync(query);
@@ -576,24 +622,15 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
             var allChunks = new List<DocumentChunk>();
             var collections = await _client.ListCollectionsAsync();
 
-            Console.WriteLine($"[INFO] Processing new search query: {query.Substring(0, Math.Min(50, query.Length))}...");
-            Console.WriteLine($"[DEBUG] All available collections: {string.Join(", ", collections)}");
-            Console.WriteLine($"[DEBUG] Base collection name: {_collectionName}");
-            Console.WriteLine($"[DEBUG] Looking for collections starting with: {_collectionName}_doc_");
-
             // Look for collections that match our document collection pattern
             var documentCollections = collections.Where(c => c.StartsWith(_collectionName + "_doc_", StringComparison.OrdinalIgnoreCase)).ToList();
-
-            Console.WriteLine($"[INFO] Found {documentCollections.Count} document collections: {string.Join(", ", documentCollections)}");
 
             // If no document collections found, check main collection
             if (documentCollections.Count == 0)
             {
-                Console.WriteLine($"[WARNING] No document collections found, checking main collection: {_collectionName}");
                 if (collections.Contains(_collectionName))
                 {
                     documentCollections.Add(_collectionName);
-                    Console.WriteLine($"[INFO] Using main collection: {_collectionName}");
                 }
             }
 
@@ -601,20 +638,18 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
             {
                 try
                 {
-                    Console.WriteLine($"[INFO] Searching in collection: {collectionName}");
                     var searchResults = await _client.SearchAsync(
                         collectionName: collectionName,
                         vector: queryEmbedding.ToArray(),
-                        limit: (ulong)Math.Max(20, maxResults * 4) // Daha fazla sonuç al!
+                        limit: (ulong)Math.Max(20, maxResults * DefaultMaxResultsMultiplier)
                     );
 
-                    Console.WriteLine($"[INFO] Found {searchResults.Count} results in collection {collectionName}");
+                    RepositoryLogMessages.LogQdrantSearchResultsFound(Logger, collectionName, searchResults.Count, null);
 
                     // Convert to DocumentChunk objects
                     foreach (var result in searchResults)
                     {
                         var payload = result.Payload;
-                        Console.WriteLine($"[DEBUG] Processing search result with score {result.Score}, Payload keys: {string.Join(", ", payload?.Keys ?? new List<string>())}");
 
                         if (payload != null)
                         {
@@ -623,11 +658,8 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
                             var docId = GetPayloadString(payload, "documentId");
                             var chunkIndex = GetPayloadString(payload, "chunkIndex");
 
-                            Console.WriteLine($"[DEBUG] Parsed payload - Content: {(string.IsNullOrEmpty(content) ? "NO" : "YES")}, DocId: {(string.IsNullOrEmpty(docId) ? "NO" : "YES")}, ChunkIndex: {(string.IsNullOrEmpty(chunkIndex) ? "NO" : "YES")}");
-
                             if (!string.IsNullOrEmpty(content) && !string.IsNullOrEmpty(docId) && !string.IsNullOrEmpty(chunkIndex))
                             {
-                                Console.WriteLine($"[DEBUG] Successfully created chunk from search result: {chunkIndex}");
                                 var chunk = new DocumentChunk
                                 {
                                     Id = Guid.NewGuid(), // Generate new ID since we can't parse PointId
@@ -638,34 +670,24 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
                                 };
                                 allChunks.Add(chunk);
                             }
-                            else
-                            {
-                                Console.WriteLine($"[DEBUG] Payload parsing failed for search result. Content: {(string.IsNullOrEmpty(content) ? "NO" : "YES")}, DocId: {(string.IsNullOrEmpty(docId) ? "NO" : "YES")}, ChunkIndex: {(string.IsNullOrEmpty(chunkIndex) ? "NO" : "YES")}");
-
-                                // Show actual payload content for debugging
-                                foreach (var kvp in payload)
-                                {
-                                    Console.WriteLine($"[DEBUG] Payload field: {kvp.Key} = {kvp.Value}");
-                                }
-                            }
                         }
                     }
                 }
                 catch (Exception ex)
                 {
                     // Log error but continue with other collections
-                    Console.WriteLine($"[WARNING] Search failed in collection {collectionName}: {ex.Message}");
+                    RepositoryLogMessages.LogQdrantSearchFailed(Logger, collectionName, ex);
 
                     // If vector search fails, try fallback immediately for this collection
                     try
                     {
-                        Console.WriteLine($"[INFO] Trying fallback text search for collection {collectionName}");
+                        RepositoryLogMessages.LogQdrantFallbackSearchStarted(Logger, collectionName, null);
                         var fallbackChunks = await FallbackTextSearchForCollectionAsync(collectionName, query, maxResults);
                         allChunks.AddRange(fallbackChunks);
                     }
                     catch (Exception fallbackEx)
                     {
-                        Console.WriteLine($"[WARNING] Fallback also failed for collection {collectionName}: {fallbackEx.Message}");
+                        RepositoryLogMessages.LogQdrantFallbackSearchFailed(Logger, collectionName, fallbackEx);
                     }
                 }
             }
@@ -673,12 +695,12 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
             // Also gather keyword-based matches via hybrid path
             try
             {
-                var hybridResults = await HybridSearchAsync(query, maxResults * 2);
+                var hybridResults = await HybridSearchAsync(query, maxResults * DefaultMaxResultsMultiplier);
                 allChunks.AddRange(hybridResults);
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[WARNING] Hybrid search failed: {ex.Message}");
+                RepositoryLogMessages.LogQdrantHybridSearchFailed(Logger, "global", ex);
             }
 
             // Deduplicate by (DocumentId, ChunkIndex)
@@ -688,15 +710,15 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
                 .ToList();
 
             // Ensure we don't lose underrepresented documents before higher-level diversity
-            Console.WriteLine($"[INFO] Total chunks found across all collections: {deduped.Count}");
+            RepositoryLogMessages.LogQdrantTotalChunksFound(Logger, deduped.Count, null);
             // Take top K per document to improve coverage of key fields
-            var perDocTopK = Math.Max(1, Math.Min(3, maxResults));
+            var perDocTopK = Math.Max(1, Math.Min(DefaultPerDocumentTopK, maxResults));
             var topPerDocument = deduped
                 .GroupBy(c => c.DocumentId)
                 .SelectMany(g => g.OrderByDescending(c => c.RelevanceScore ?? 0.0).Take(perDocTopK))
                 .ToList();
 
-            var remainingSlots = Math.Max(0, (maxResults * 3) - topPerDocument.Count);
+            var remainingSlots = Math.Max(0, (maxResults * DefaultGlobalResultsMultiplier) - topPerDocument.Count);
             var topGlobal = deduped
                 .Except(topPerDocument)
                 .OrderByDescending(c => c.RelevanceScore ?? 0.0)
@@ -709,13 +731,13 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
                 .OrderByDescending(c => c.RelevanceScore ?? 0.0)
                 .ToList();
 
-            Console.WriteLine($"[INFO] Returning {finalResults.Count} chunks to DocumentService for final selection");
-            Console.WriteLine($"[DEBUG] Repository final unique documents: {finalResults.Select(c => c.DocumentId).Distinct().Count()}");
+            RepositoryLogMessages.LogQdrantFinalResultsReturned(Logger, finalResults.Count, null);
+            RepositoryLogMessages.LogQdrantUniqueDocumentsFound(Logger, finalResults.Select(c => c.DocumentId).Distinct().Count(), null);
 
             // Cache the results to prevent duplicate processing
             lock (_cacheLock)
             {
-                _searchCache[queryHash] = (finalResults.ToList(), DateTime.UtcNow.AddMinutes(CACHE_EXPIRY_MINUTES));
+                _searchCache[queryHash] = (finalResults.ToList(), DateTime.UtcNow.AddMinutes(CacheExpiryMinutes));
 
                 // Clean up expired cache entries
                 var expiredKeys = _searchCache.Where(kvp => kvp.Value.Expiry <= DateTime.UtcNow).Select(kvp => kvp.Key).ToList();
@@ -724,7 +746,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
                     _searchCache.Remove(key);
                 }
 
-                Console.WriteLine($"[INFO] Cached search results for query: {query.Substring(0, Math.Min(50, query.Length))}... (Cache size: {_searchCache.Count})");
+                RepositoryLogMessages.LogQdrantSearchResultsCached(Logger, query, _searchCache.Count, null);
             }
 
             return finalResults;
@@ -732,7 +754,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
         catch (Exception ex)
         {
             // Log error and fallback to text search
-            Console.WriteLine($"[WARNING] Vector search failed: {ex.Message}, falling back to text search");
+            RepositoryLogMessages.LogQdrantVectorSearchFailed(Logger, ex.Message, null);
             return await FallbackTextSearchAsync(query, maxResults);
         }
     }
@@ -741,24 +763,18 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
     {
         try
         {
-            Console.WriteLine($"[INFO] Using global fallback text search for query: {query}");
+            RepositoryLogMessages.LogQdrantGlobalFallbackStarted(Logger, query, null);
             var queryLower = query.ToLowerInvariant();
             var relevantChunk = new List<DocumentChunk>();
 
             // Get all collections to search in
             var collections = await _client.ListCollectionsAsync();
-            Console.WriteLine($"[DEBUG] All collections for fallback search: {string.Join(", ", collections)}");
 
             // Look for collections that match our document collection pattern
             var documentCollections = collections.Where(c => c.StartsWith(_collectionName + "_doc_", StringComparison.OrdinalIgnoreCase)).ToList();
 
-            Console.WriteLine($"[INFO] Found {documentCollections.Count} document collections for fallback search: {string.Join(", ", documentCollections)}");
-            Console.WriteLine($"[DEBUG] Looking for collections starting with: {_collectionName}_doc_");
-
             if (documentCollections.Count == 0)
             {
-                Console.WriteLine($"[WARNING] No document collections found for fallback search");
-                Console.WriteLine($"[DEBUG] Available collections that might match: {string.Join(", ", collections.Where(c => c.Contains("doc_")))}");
                 return new List<DocumentChunk>();
             }
 
@@ -766,11 +782,8 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
             {
                 try
                 {
-                    Console.WriteLine($"[INFO] Searching in collection: {collectionName} for global fallback");
-
                     // Get all points from collection
-                    var scrollResult = await _client.ScrollAsync(collectionName, limit: 1000);
-                    Console.WriteLine($"[DEBUG] ScrollAsync returned {scrollResult.Result.Count} points in collection {collectionName}");
+                    var scrollResult = await _client.ScrollAsync(collectionName, limit: DefaultScrollLimit);
 
                     foreach (var point in scrollResult.Result)
                     {
@@ -795,7 +808,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
                                         DocumentId = Guid.Parse(docId),
                                         Content = content,
                                         ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
-                                        RelevanceScore = 0.5 // Default score for text search
+                                        RelevanceScore = DefaultTextSearchScore
                                     };
                                     relevantChunk.Add(chunk);
 
@@ -803,13 +816,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
                                         break;
                                 }
                             }
-                            else
-                            {
-                                var hasContent = !string.IsNullOrEmpty(content);
-                                var hasDocId = !string.IsNullOrEmpty(docId);
-                                var hasChunkIndex = !string.IsNullOrEmpty(chunkIndex);
-                                Console.WriteLine($"[DEBUG] Payload parsing failed for point in collection {collectionName}. Content: {(hasContent ? "YES" : "NO")}, DocId: {(hasDocId ? "YES" : "NO")}, ChunkIndex: {(hasChunkIndex ? "YES" : "NO")}");
-                            }
+
                         }
                     }
 
@@ -818,16 +825,16 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[WARNING] Global fallback search failed in collection {collectionName}: {ex.Message}");
+                    RepositoryLogMessages.LogQdrantFallbackSearchFailed(Logger, collectionName, ex);
                 }
             }
 
-            Console.WriteLine($"[INFO] Global fallback text search found {relevantChunk.Count} chunks");
+            RepositoryLogMessages.LogQdrantGlobalFallbackResults(Logger, relevantChunk.Count, null);
             return relevantChunk.Take(maxResults).ToList();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[ERROR] Global fallback text search failed: {ex.Message}");
+            RepositoryLogMessages.LogQdrantGlobalFallbackFailed(Logger, ex);
             return new List<DocumentChunk>();
         }
     }
@@ -836,18 +843,16 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
     {
         try
         {
-            Console.WriteLine($"[INFO] Using fallback text search for collection: {collectionName}");
+            RepositoryLogMessages.LogQdrantFallbackSearchStarted(Logger, collectionName, null);
             var queryLower = query.ToLowerInvariant();
             var relevantChunks = new List<DocumentChunk>();
 
             // Get all points from collection
-            var scrollResult = await _client.ScrollAsync(collectionName, limit: 1000);
-            Console.WriteLine($"[DEBUG] ScrollAsync returned {scrollResult.Result.Count} points");
+            var scrollResult = await _client.ScrollAsync(collectionName, limit: DefaultScrollLimit);
 
             foreach (var point in scrollResult.Result)
             {
                 var payload = point.Payload;
-                Console.WriteLine($"[DEBUG] Processing point {point.Id}, Payload keys: {string.Join(", ", payload?.Keys ?? new List<string>())}");
 
                 if (payload != null)
                 {
@@ -859,19 +864,17 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
                     if (!string.IsNullOrEmpty(content) && !string.IsNullOrEmpty(docId) && !string.IsNullOrEmpty(chunkIndex))
                     {
                         var contentStr = content.ToLowerInvariant();
-                        Console.WriteLine($"[DEBUG] Processing chunk {chunkIndex}: {contentStr.Substring(0, Math.Min(100, contentStr.Length))}...");
 
                         // Simple text matching
                         if (contentStr.Contains(queryLower))
                         {
-                            Console.WriteLine($"[DEBUG] Found matching chunk: {chunkIndex}");
                             var chunk = new DocumentChunk
                             {
                                 Id = Guid.NewGuid(),
                                 DocumentId = Guid.Parse(docId),
                                 Content = content,
                                 ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
-                                RelevanceScore = 0.5 // Default score for text search
+                                RelevanceScore = DefaultTextSearchScore
                             };
                             relevantChunks.Add(chunk);
 
@@ -879,25 +882,15 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
                                 break;
                         }
                     }
-                    else
-                    {
-                        Console.WriteLine($"[DEBUG] Payload parsing failed for point. Content: {(string.IsNullOrEmpty(content) ? "NO" : "YES")}, DocId: {(string.IsNullOrEmpty(docId) ? "NO" : "YES")}, ChunkIndex: {(string.IsNullOrEmpty(chunkIndex) ? "NO" : "YES")}");
-
-                        // Show actual payload content for debugging
-                        foreach (var kvp in payload)
-                        {
-                            Console.WriteLine($"[DEBUG] Payload field: {kvp.Key} = {kvp.Value}");
-                        }
-                    }
                 }
             }
 
-            Console.WriteLine($"[INFO] Fallback text search found {relevantChunks.Count} chunks in collection {collectionName}");
+            RepositoryLogMessages.LogQdrantFallbackSearchResults(Logger, relevantChunks.Count, null);
             return relevantChunks.Take(maxResults).ToList();
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[ERROR] Fallback text search failed for collection {collectionName}: {ex.Message}");
+            RepositoryLogMessages.LogQdrantFallbackSearchFailed(Logger, collectionName, ex);
             return new List<DocumentChunk>();
         }
     }
@@ -986,7 +979,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
                         var sizeValue = sizeProperty.GetValue(config);
                         if (sizeValue is ulong size)
                         {
-                            Console.WriteLine($"[INFO] Detected vector dimension: {size} from collection {firstCollection}");
+                            RepositoryLogMessages.LogQdrantVectorDimensionDetected(Logger, (int)size, null);
                             return (int)size;
                         }
                     }
@@ -1007,13 +1000,13 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
 
             // Try to guess based on collection name or other hints
             // For now, use the most common dimension
-            Console.WriteLine($"[INFO] Using default vector dimension: 768");
-            return 768;
+            RepositoryLogMessages.LogQdrantDefaultVectorDimensionUsed(Logger, DefaultVectorDimension, null);
+            return DefaultVectorDimension;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[WARNING] Failed to detect vector dimension: {ex.Message}, using default: 768");
-            return 768;
+            RepositoryLogMessages.LogQdrantVectorDimensionDetectionFailed(Logger, ex);
+            return DefaultVectorDimension;
         }
     }
 
@@ -1029,11 +1022,10 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
         {
             // Extract meaningful keywords from query
             var keywords = ExtractImportantKeywords(query);
-            Console.WriteLine($"[DEBUG] Extracted keywords: {string.Join(", ", keywords)}");
+            RepositoryLogMessages.LogQdrantHybridSearchStarted(Logger, query, null);
 
             if (keywords.Count == 0)
             {
-                Console.WriteLine("[DEBUG] No meaningful keywords found, skipping hybrid search");
                 return hybridResults;
             }
 
@@ -1051,17 +1043,17 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
                     foreach (var chunk in chunks)
                     {
                         var score = CalculateKeywordMatchScore(chunk.Content, keywords);
-                        if (score > 0.1) // Lower threshold for keyword matches
+                        if (score > MinKeywordMatchScore)
                         {
                             chunk.RelevanceScore = score;
                             hybridResults.Add(chunk);
-                            Console.WriteLine($"[DEBUG] Hybrid match found in {collectionName} with score {score:F3}");
+                            RepositoryLogMessages.LogQdrantHybridMatchFound(Logger, collectionName, score, null);
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"[WARNING] Hybrid search failed for collection {collectionName}: {ex.Message}");
+                    RepositoryLogMessages.LogQdrantHybridSearchFailed(Logger, collectionName, ex);
                 }
             }
 
@@ -1073,7 +1065,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[ERROR] Hybrid search failed: {ex.Message}");
+            RepositoryLogMessages.LogQdrantHybridSearchFailed(Logger, "global", ex);
             return new List<DocumentChunk>();
         }
     }
@@ -1088,8 +1080,8 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
 
         foreach (var word in words)
         {
-            // Skip stop words and very short words
-            if (word.Length > 2 && !IsStopWord(word))
+            // Skip very short words only - no domain-specific stop words
+            if (word.Length > MinWordLength)
             {
                 keywords.Add(word);
             }
@@ -1124,19 +1116,9 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
         return totalScore / keywords.Count;
     }
 
-    /// <summary>
-    /// Simple stop word check for Turkish and English
-    /// </summary>
-    private static bool IsStopWord(string word)
-    {
-        var stopWords = new HashSet<string>
-        {
-            "ve", "bir", "bu", "da", "de", "için", "ile", "var", "olan", "gibi", "daha", "çok",
-            "and", "the", "a", "an", "is", "are", "was", "were", "be", "been", "being", "have", "has", "had",
-            "nedir", "midir", "ne", "kaç", "adı", "olarak", "için", "ile", "mi", "mı"
-        };
-        return stopWords.Contains(word);
-    }
+
+
+    #endregion
 
     public void Dispose()
     {
