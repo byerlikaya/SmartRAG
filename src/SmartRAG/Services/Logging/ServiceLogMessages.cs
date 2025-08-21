@@ -409,4 +409,58 @@ public static class ServiceLogMessages
         "Failed to clear embeddings");
 
     #endregion
+
+    #region AI Service (EventId: 20001-20999)
+
+    public static readonly Action<ILogger, string, Exception?> LogAIServiceGenerateResponseError = LoggerMessage.Define<string>(
+        LogLevel.Error,
+        new EventId(20001, "AIServiceGenerateResponseError"),
+        "Error in GenerateResponseAsync for provider {Provider}");
+
+    public static readonly Action<ILogger, string, Exception?> LogAIServiceFallbackError = LoggerMessage.Define<string>(
+        LogLevel.Error,
+        new EventId(20002, "AIServiceFallbackError"),
+        "Fallback providers also failed for query: {Query}");
+
+    public static readonly Action<ILogger, string, Exception?> LogAIServiceProviderConfigNotFound = LoggerMessage.Define<string>(
+        LogLevel.Warning,
+        new EventId(20003, "AIServiceProviderConfigNotFound"),
+        "Provider config not found for {Provider}");
+
+    public static readonly Action<ILogger, string, Exception?> LogAIServiceEmbeddingError = LoggerMessage.Define<string>(
+        LogLevel.Error,
+        new EventId(20004, "AIServiceEmbeddingError"),
+        "Error generating embeddings for text: {Text}");
+
+    public static readonly Action<ILogger, int, string, Exception?> LogAIServiceBatchEmbeddingsGenerated = LoggerMessage.Define<int, string>(
+        LogLevel.Information,
+        new EventId(20005, "AIServiceBatchEmbeddingsGenerated"),
+        "Generated {Count} valid embeddings from {Provider}");
+
+    public static readonly Action<ILogger, string, Exception?> LogAIServiceBatchEmbeddingError = LoggerMessage.Define<string>(
+        LogLevel.Error,
+        new EventId(20006, "AIServiceBatchEmbeddingError"),
+        "Error generating batch embeddings from {Provider}");
+
+    public static readonly Action<ILogger, int, string, int, Exception?> LogAIServiceRetryAttempt = LoggerMessage.Define<int, string, int>(
+        LogLevel.Warning,
+        new EventId(20007, "AIServiceRetryAttempt"),
+        "Attempt {Attempt} failed for provider {Provider}, retrying in {Delay}ms");
+
+    public static readonly Action<ILogger, string, Exception?> LogAIServiceFallbackSuccess = LoggerMessage.Define<string>(
+        LogLevel.Information,
+        new EventId(20008, "AIServiceFallbackSuccess"),
+        "Fallback provider {Provider} succeeded");
+
+    public static readonly Action<ILogger, string, Exception?> LogAIServiceFallbackFailed = LoggerMessage.Define<string>(
+        LogLevel.Warning,
+        new EventId(20009, "AIServiceFallbackFailed"),
+        "Fallback provider {Provider} failed");
+
+    public static readonly Action<ILogger, string, Exception?> LogAIServiceAllFallbacksFailed = LoggerMessage.Define<string>(
+        LogLevel.Warning,
+        new EventId(20010, "AIServiceAllFallbacksFailed"),
+        "All fallback providers failed for query: {Query}");
+
+    #endregion
 }
