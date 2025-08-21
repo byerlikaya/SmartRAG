@@ -49,7 +49,7 @@ public class StorageFactory : IStorageFactory
         {
             StorageProvider.InMemory => new InMemoryDocumentRepository(config.InMemory, _loggerFactory.CreateLogger<InMemoryDocumentRepository>()),
             StorageProvider.FileSystem => new FileSystemDocumentRepository(config.FileSystemPath, _loggerFactory.CreateLogger<FileSystemDocumentRepository>()),
-            StorageProvider.Redis => new RedisDocumentRepository(Options.Create(config.Redis)),
+            StorageProvider.Redis => new RedisDocumentRepository(Options.Create(config.Redis), _loggerFactory.CreateLogger<RedisDocumentRepository>()),
             StorageProvider.Sqlite => new SqliteDocumentRepository(Options.Create(config.Sqlite)),
             StorageProvider.Qdrant => new QdrantDocumentRepository(Options.Create(config.Qdrant), _loggerFactory.CreateLogger<QdrantDocumentRepository>()),
             _ => throw new ArgumentException($"Unsupported storage provider: {config.Provider}")
