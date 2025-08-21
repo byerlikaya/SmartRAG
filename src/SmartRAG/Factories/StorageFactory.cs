@@ -51,7 +51,7 @@ public class StorageFactory : IStorageFactory
             StorageProvider.FileSystem => new FileSystemDocumentRepository(config.FileSystemPath, _loggerFactory.CreateLogger<FileSystemDocumentRepository>()),
             StorageProvider.Redis => new RedisDocumentRepository(Options.Create(config.Redis)),
             StorageProvider.Sqlite => new SqliteDocumentRepository(Options.Create(config.Sqlite)),
-            StorageProvider.Qdrant => new QdrantDocumentRepository(Options.Create(config.Qdrant)),
+            StorageProvider.Qdrant => new QdrantDocumentRepository(Options.Create(config.Qdrant), _loggerFactory.CreateLogger<QdrantDocumentRepository>()),
             _ => throw new ArgumentException($"Unsupported storage provider: {config.Provider}")
         };
 
