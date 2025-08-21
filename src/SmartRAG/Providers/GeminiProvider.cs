@@ -8,13 +8,24 @@ namespace SmartRAG.Providers;
 /// <summary>
 /// Google Gemini AI provider implementation
 /// </summary>
-public class GeminiProvider : BaseAIProvider
+public class GeminiProvider(ILogger<GeminiProvider> logger) : BaseAIProvider(logger)
 {
-    public GeminiProvider(ILogger<GeminiProvider> logger) : base(logger)
-    {
-    }
+    #region Constants
+
+    // Gemini API constants
+    private const string GeminiApiKeyHeader = "x-goog-api-key";
+    private const int DefaultMaxBatchSize = 50;
+    private const int DefaultDelayBetweenBatchesMs = 1000;
+
+    #endregion
+
+    #region Properties
 
     public override AIProvider ProviderType => AIProvider.Gemini;
+
+    #endregion
+
+    #region Public Methods
 
     public override async Task<string> GenerateTextAsync(string prompt, AIProviderConfig config)
     {
@@ -23,34 +34,188 @@ public class GeminiProvider : BaseAIProvider
         if (!isValid)
             return errorMessage;
 
-        using var client = CreateHttpClient(config.ApiKey);
-        // Override auth header for Gemini
-        client.DefaultRequestHeaders.Remove("Authorization");
-        client.DefaultRequestHeaders.Add("x-goog-api-key", config.ApiKey);
+        using var client = CreateGeminiHttpClient(config.ApiKey);
 
-        var payload = new
-        {
-            contents = new[]
-            {
-                new
-                {
-                    parts = new[]
-                    {
-                        new { text = prompt }
-                    }
-                }
-            }
-        };
+        var payload = CreateGeminiTextPayload(prompt, config);
 
-        var modelEndpoint = $"{config.Endpoint!.TrimEnd('/')}/models/{config.Model}:generateContent";
+        var modelEndpoint = BuildGeminiUrl(config.Endpoint!, config.Model!, "generateContent");
 
-        var (success, response, error) = await MakeHttpRequestAsync(client, modelEndpoint!, payload, "Gemini");
+        var (success, response, error) = await MakeHttpRequestAsync(client, modelEndpoint, payload);
 
         if (!success)
             return error;
 
-        // Gemini has different response format
+        try
+        {
+            return ParseGeminiTextResponse(response);
+        }
+        catch (Exception ex)
+        {
+            ProviderLogMessages.LogGeminiTextParsingError(Logger, ex);
+            return $"Error parsing Gemini response: {ex.Message}";
+        }
+    }
+
+    public override async Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config)
+    {
+        var (isValid, errorMessage) = ValidateConfig(config, requireApiKey: true, requireEndpoint: true, requireModel: false);
+
+        if (!isValid)
+        {
+            ProviderLogMessages.LogGeminiEmbeddingValidationError(Logger, errorMessage, null);
+            return [];
+        }
+
+        if (string.IsNullOrEmpty(config.EmbeddingModel))
+        {
+            ProviderLogMessages.LogGeminiEmbeddingModelMissing(Logger, null);
+            return [];
+        }
+
+        using var client = CreateGeminiHttpClient(config.ApiKey);
+
+        var payload = CreateGeminiEmbeddingPayload(text, config.EmbeddingModel);
+
+        var embeddingEndpoint = BuildGeminiUrl(config.Endpoint!, config.EmbeddingModel, "embedContent");
+
+        var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
+
+        if (!success)
+        {
+            ProviderLogMessages.LogGeminiEmbeddingRequestError(Logger, error, null);
+            return [];
+        }
+
+        try
+        {
+            return ParseGeminiEmbeddingResponse(response);
+        }
+        catch (Exception ex)
+        {
+            ProviderLogMessages.LogGeminiEmbeddingParsingError(Logger, ex);
+            return [];
+        }
+    }
+
+    public override async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config)
+    {
+        var (isValid, errorMessage) = ValidateConfig(config, requireApiKey: true, requireEndpoint: true, requireModel: false);
+
+        if (!isValid)
+        {
+            ProviderLogMessages.LogGeminiEmbeddingValidationError(Logger, errorMessage, null);
+            return [];
+        }
+
+        if (string.IsNullOrEmpty(config.EmbeddingModel))
+        {
+            ProviderLogMessages.LogGeminiEmbeddingModelMissing(Logger, null);
+            return [];
+        }
+
+        var textList = texts?.ToList() ?? new List<string>();
+        if (textList.Count == 0)
+            return [];
+
+        var results = new List<List<float>>();
+        
+        // Process texts in batches
+        for (int i = 0; i < textList.Count; i += DefaultMaxBatchSize)
+        {
+            var batchTexts = textList.Skip(i).Take(DefaultMaxBatchSize).ToList();
+            
+            try
+            {
+                var batchResults = await ProcessGeminiBatchAsync(batchTexts, config);
+                results.AddRange(batchResults);
+                
+                // Add delay between batches to respect rate limits
+                if (i + DefaultMaxBatchSize < textList.Count)
+                {
+                    await Task.Delay(DefaultDelayBetweenBatchesMs);
+                }
+            }
+            catch (Exception ex)
+            {
+                ProviderLogMessages.LogGeminiBatchFailedFallback(Logger, i / DefaultMaxBatchSize, ex.Message, ex);
+                
+                // Fallback to individual requests for this batch
+                var fallbackResults = await base.GenerateEmbeddingsBatchAsync(batchTexts, config);
+                results.AddRange(fallbackResults);
+            }
+        }
+
+        return results;
+    }
+
+    #endregion
+
+    #region Private Methods
+
+    /// <summary>
+    /// Create Gemini HTTP client with proper authentication
+    /// </summary>
+    private static HttpClient CreateGeminiHttpClient(string apiKey)
+    {
+        var client = CreateHttpClient(apiKey);
+        client.DefaultRequestHeaders.Remove("Authorization");
+        client.DefaultRequestHeaders.Add(GeminiApiKeyHeader, apiKey);
+        return client;
+    }
+
+    /// <summary>
+    /// Build Gemini API URL
+    /// </summary>
+    private static string BuildGeminiUrl(string endpoint, string model, string operation)
+    {
+        return $"{endpoint.TrimEnd('/')}/models/{model}:{operation}";
+    }
+
+    /// <summary>
+    /// Create Gemini text generation payload
+    /// </summary>
+    private static object CreateGeminiTextPayload(string prompt, AIProviderConfig config)
+    {
+        var contents = new List<object>();
+        
+        if (!string.IsNullOrEmpty(config.SystemMessage))
+        {
+            contents.Add(new
+            {
+                parts = new[] { new { text = config.SystemMessage } }
+            });
+        }
+        
+        contents.Add(new
+        {
+            parts = new[] { new { text = prompt } }
+        });
+
+        return new { contents = contents.ToArray() };
+    }
+
+    /// <summary>
+    /// Create Gemini embedding payload
+    /// </summary>
+    private static object CreateGeminiEmbeddingPayload(string text, string model)
+    {
+        return new
+        {
+            model = $"models/{model}",
+            content = new
+            {
+                parts = new[] { new { text = text } }
+            }
+        };
+    }
+
+    /// <summary>
+    /// Parse Gemini text response
+    /// </summary>
+    private static string ParseGeminiTextResponse(string response)
+    {
         using var doc = JsonDocument.Parse(response);
+        
         if (doc.RootElement.TryGetProperty("candidates", out var candidates) &&
             candidates.ValueKind == JsonValueKind.Array)
         {
@@ -69,44 +234,11 @@ public class GeminiProvider : BaseAIProvider
         return "No response generated";
     }
 
-    public override async Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config)
+    /// <summary>
+    /// Parse Gemini embedding response
+    /// </summary>
+    private static List<float> ParseGeminiEmbeddingResponse(string response)
     {
-        var (isValid, errorMessage) = ValidateConfig(config, requireApiKey: true, requireEndpoint: true, requireModel: false);
-
-        if (!isValid) return [];
-
-        if (string.IsNullOrEmpty(config.EmbeddingModel))
-            return [];
-
-        using var client = CreateHttpClient(config.ApiKey);
-        // Override auth header for Gemini
-        client.DefaultRequestHeaders.Remove("Authorization");
-        client.DefaultRequestHeaders.Add("x-goog-api-key", config.ApiKey);
-
-        var payload = new
-        {
-            model = $"models/{config.EmbeddingModel}",
-            content = new
-            {
-                parts = new[]
-                {
-                    new { text = text }
-                }
-            }
-        };
-
-        var embeddingEndpoint = $"{config.Endpoint!.TrimEnd('/')}/models/{config.EmbeddingModel}:embedContent";
-
-        var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint!, payload, "Gemini");
-
-        if (!success)
-        {
-            // Log detailed error for debugging
-            ProviderLogMessages.LogGeminiEmbeddingError(_logger, error, null);
-            return [];
-        }
-
-        // Gemini has different embedding response format
         using var doc = JsonDocument.Parse(response);
 
         if (doc.RootElement.TryGetProperty("embedding", out var embedding) &&
@@ -114,70 +246,23 @@ public class GeminiProvider : BaseAIProvider
             values.ValueKind == JsonValueKind.Array)
         {
             var floats = new List<float>();
-
             foreach (var value in values.EnumerateArray())
             {
                 if (value.TryGetSingle(out var f))
                     floats.Add(f);
             }
-
             return floats;
         }
 
         return [];
     }
 
-    public override async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config)
+    /// <summary>
+    /// Process batch embedding requests
+    /// </summary>
+    private async Task<List<List<float>>> ProcessGeminiBatchAsync(List<string> batchTexts, AIProviderConfig config)
     {
-        var (isValid, errorMessage) = ValidateConfig(config, requireApiKey: true, requireEndpoint: true, requireModel: false);
-
-        if (!isValid) return [];
-
-        if (string.IsNullOrEmpty(config.EmbeddingModel))
-            return [];
-
-        var textList = texts.ToList();
-        var results = new List<List<float>>();
-
-        // Generic batch processing with configurable limits
-        const int maxBatchSize = 50; // Configurable batch size
-        const int delayBetweenBatchesMs = 1000; // Configurable delay between batches
-        
-        // Process texts in batches of maxBatchSize
-        for (int i = 0; i < textList.Count; i += maxBatchSize)
-        {
-            var batchTexts = textList.Skip(i).Take(maxBatchSize).ToList();
-            
-            try
-            {
-                var batchResults = await ProcessBatchAsync(batchTexts, config);
-                results.AddRange(batchResults);
-                
-                // Add delay between batches to respect rate limits
-                if (i + maxBatchSize < textList.Count)
-                {
-                    await Task.Delay(delayBetweenBatchesMs);
-                }
-            }
-            catch (Exception ex)
-            {
-                ProviderLogMessages.LogGeminiBatchFailedFallback(_logger, i / maxBatchSize, ex.Message, ex);
-                
-                // Fallback to individual requests for this batch
-                var fallbackResults = await base.GenerateEmbeddingsBatchAsync(batchTexts, config);
-                results.AddRange(fallbackResults);
-            }
-        }
-
-        return results;
-    }
-
-    private async Task<List<List<float>>> ProcessBatchAsync(List<string> batchTexts, AIProviderConfig config)
-    {
-        using var client = CreateHttpClient(config.ApiKey);
-        // Override auth header for Gemini
-        client.DefaultRequestHeaders.Remove("Authorization");
-        client.DefaultRequestHeaders.Add("x-goog-api-key", config.ApiKey);
+        using var client = CreateGeminiHttpClient(config.ApiKey);
 
         var payload = new
         {
@@ -186,77 +271,66 @@ public class GeminiProvider : BaseAIProvider
                 model = $"models/{config.EmbeddingModel}",
                 content = new
                 {
-                    parts = new[]
-                    {
-                        new { text = text }
-                    }
+                    parts = new[] { new { text = text } }
                 }
             }).ToArray()
         };
 
-        var batchEndpoint = $"{config.Endpoint!.TrimEnd('/')}/models/{config.EmbeddingModel}:batchEmbedContents";
+        var batchEndpoint = BuildGeminiUrl(config.Endpoint!, config.EmbeddingModel!, "batchEmbedContents");
 
-        var (success, response, error) = await MakeHttpRequestAsync(client, batchEndpoint, payload, "Gemini");
+        var (success, response, error) = await MakeHttpRequestAsync(client, batchEndpoint, payload);
 
         if (!success)
         {
-            // Log detailed error for debugging
-            ProviderLogMessages.LogGeminiBatchEmbeddingError(_logger, error, null);
+            ProviderLogMessages.LogGeminiBatchEmbeddingRequestError(Logger, error, null);
             throw new InvalidOperationException($"Batch embedding failed: {error}");
         }
 
-        var results = new List<List<float>>();
-
         try
         {
-            Console.WriteLine($"[DEBUG] Gemini Response: {response}");
-            
-            using var doc = JsonDocument.Parse(response);
-
-            if (doc.RootElement.TryGetProperty("embeddings", out var embeddings) &&
-                embeddings.ValueKind == JsonValueKind.Array)
-            {
-                Console.WriteLine($"[DEBUG] Found embeddings array with {embeddings.GetArrayLength()} items");
-                
-                foreach (var embedding in embeddings.EnumerateArray())
-                {
-                    Console.WriteLine($"[DEBUG] Processing embedding: {embedding}");
-                    
-                    // Gemini response format: {"embeddings": [{"values": [0.1, 0.2, ...]}]}
-                    if (embedding.TryGetProperty("values", out var values) &&
-                        values.ValueKind == JsonValueKind.Array)
-                    {
-                        Console.WriteLine($"[DEBUG] Found values array with {values.GetArrayLength()} items");
-                        
-                        var floats = new List<float>();
-                        foreach (var value in values.EnumerateArray())
-                        {
-                            if (value.TryGetSingle(out var f))
-                                floats.Add(f);
-                        }
-                        
-                        Console.WriteLine($"[DEBUG] Parsed {floats.Count} float values");
-                        results.Add(floats);
-                    }
-                    else
-                    {
-                        Console.WriteLine("[DEBUG] Missing values property, adding empty list");
-                        results.Add(new List<float>());
-                    }
-                }
-            }
-            else
-            {
-                Console.WriteLine("[DEBUG] No embeddings property found in response");
-            }
-
-            Console.WriteLine($"[DEBUG] Returning {results.Count} embedding results");
-            return results;
+            return ParseGeminiBatchEmbeddingResponse(response);
         }
         catch (Exception ex)
         {
-            ProviderLogMessages.LogGeminiBatchParsingError(_logger, ex.Message, ex);
+            ProviderLogMessages.LogGeminiBatchEmbeddingParsingError(Logger, ex);
             throw;
         }
     }
+
+    /// <summary>
+    /// Parse Gemini batch embedding response
+    /// </summary>
+    private static List<List<float>> ParseGeminiBatchEmbeddingResponse(string response)
+    {
+        var results = new List<List<float>>();
+        
+        using var doc = JsonDocument.Parse(response);
+
+        if (doc.RootElement.TryGetProperty("embeddings", out var embeddings) &&
+            embeddings.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var embedding in embeddings.EnumerateArray())
+            {
+                if (embedding.TryGetProperty("values", out var values) &&
+                    values.ValueKind == JsonValueKind.Array)
+                {
+                    var floats = new List<float>();
+                    foreach (var value in values.EnumerateArray())
+                    {
+                        if (value.TryGetSingle(out var f))
+                            floats.Add(f);
+                    }
+                    results.Add(floats);
+                }
+                else
+                {
+                    results.Add([]);
+                }
+            }
+        }
+
+        return results;
+    }
+
+    #endregion
 }

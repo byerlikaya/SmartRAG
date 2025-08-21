@@ -1,8 +1,10 @@
 using Microsoft.Data.Sqlite;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
+using SmartRAG.Repositories;
 using System.Data;
 using System.Globalization;
 using System.Text.Json;
@@ -14,27 +16,58 @@ namespace SmartRAG.Repositories;
 /// </summary>
 public class SqliteDocumentRepository : IDocumentRepository, IDisposable
 {
+    #region Constants
+    private const int MaxChunkContentLength = 1000000; // 1MB limit for chunk content
+    private const int MaxChunkIndex = 10000; // Reasonable limit for chunk index
+    private const int MinRelevanceScore = -1;
+    private const int MaxRelevanceScore = 1;
+    private const int MaxEmbeddingVectorSize = 10000; // Reasonable limit for embedding vector size
+    private const int MinEmbeddingValue = -1000;
+    private const int MaxEmbeddingValue = 1000;
+    private const int MinSubnormalThreshold = 0;
+    private const int MaxAbsoluteValue = 100;
+    private const int MinValueThreshold = 0;
+    private const int DefaultMaxSearchResults = 5;
+    private const int OpenAIVectorDimension = 1536;
+    private const int SentenceTransformersDimension = 768;
+    private const string DateTimeFormat = "O";
+    private const string ForeignKeysEnabled = "Foreign Keys=True";
+    #endregion
+
+    #region Fields
     private readonly string _connectionString;
     private readonly SqliteConfig _config;
     private readonly SqliteConnection _connection;
+    private readonly ILogger<SqliteDocumentRepository> _logger;
+    #endregion
 
-    public SqliteDocumentRepository(IOptions<SqliteConfig> config)
+    #region Properties
+    protected ILogger Logger => _logger;
+    public string DatabasePath => _config.DatabasePath;
+    #endregion
+
+    #region Constructor
+    public SqliteDocumentRepository(IOptions<SqliteConfig> config, ILogger<SqliteDocumentRepository> logger)
     {
         _config = config.Value;
-        _connectionString = $"Data Source={_config.DatabasePath};Foreign Keys={_config.EnableForeignKeys};";
+        _logger = logger;
+        _connectionString = $"Data Source={_config.DatabasePath};{(_config.EnableForeignKeys ? ForeignKeysEnabled : "")};";
         _connection = new SqliteConnection(_connectionString);
 
         try
         {
             InitializeDatabase();
+            RepositoryLogMessages.LogSqliteRepositoryInitialized(Logger, _config.DatabasePath, null);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"SQLite Repository Initialization Error: {ex.Message}");
+            RepositoryLogMessages.LogSqliteRepositoryInitFailed(Logger, _config.DatabasePath, ex);
             throw;
         }
     }
+    #endregion
 
+    #region Private Helper Methods
     private void InitializeDatabase()
     {
         if (_connection.State != System.Data.ConnectionState.Open)
@@ -43,33 +76,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
         }
 
         using var command = _connection.CreateCommand();
-        command.CommandText = @"
-            CREATE TABLE IF NOT EXISTS Documents (
-                Id TEXT PRIMARY KEY,
-                FileName TEXT NOT NULL,
-                Content TEXT NOT NULL,
-                ContentType TEXT NOT NULL,
-                FileSize BIGINT NOT NULL,
-                UploadedAt TEXT NOT NULL,
-                UploadedBy TEXT NOT NULL
-            );
-            
-            CREATE TABLE IF NOT EXISTS DocumentChunks (
-                Id TEXT PRIMARY KEY,
-                DocumentId TEXT NOT NULL,
-                Content TEXT NOT NULL,
-                ChunkIndex INTEGER NOT NULL,
-                CreatedAt TEXT NOT NULL,
-                RelevanceScore REAL NOT NULL DEFAULT 0.0,
-                Embedding TEXT,
-                FOREIGN KEY (DocumentId) REFERENCES Documents(Id) ON DELETE CASCADE
-            );
-            
-            CREATE INDEX IF NOT EXISTS IX_Documents_UploadedBy ON Documents(UploadedBy);
-            CREATE INDEX IF NOT EXISTS IX_Documents_ContentType ON Documents(ContentType);
-            CREATE INDEX IF NOT EXISTS IX_Documents_UploadedAt ON Documents(UploadedAt);
-            CREATE INDEX IF NOT EXISTS IX_Chunks_DocumentId ON DocumentChunks(DocumentId);
-        ";
+        command.CommandText = GetCreateTablesSql();
 
         try
         {
@@ -77,15 +84,79 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"SQLite InitializeDatabase Error: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            RepositoryLogMessages.LogSqliteDatabaseInitFailed(Logger, ex);
             throw;
         }
     }
 
+    private static string GetCreateTablesSql() => @"
+        CREATE TABLE IF NOT EXISTS Documents (
+            Id TEXT PRIMARY KEY,
+            FileName TEXT NOT NULL,
+            Content TEXT NOT NULL,
+            ContentType TEXT NOT NULL,
+            FileSize BIGINT NOT NULL,
+            UploadedAt TEXT NOT NULL,
+            UploadedBy TEXT NOT NULL
+        );
+        
+        CREATE TABLE IF NOT EXISTS DocumentChunks (
+            Id TEXT PRIMARY KEY,
+            DocumentId TEXT NOT NULL,
+            Content TEXT NOT NULL,
+            ChunkIndex INTEGER NOT NULL,
+            CreatedAt TEXT NOT NULL,
+            RelevanceScore REAL NOT NULL DEFAULT 0.0,
+            Embedding TEXT,
+            FOREIGN KEY (DocumentId) REFERENCES Documents(Id) ON DELETE CASCADE
+        );
+        
+        CREATE INDEX IF NOT EXISTS IX_Documents_UploadedBy ON Documents(UploadedBy);
+        CREATE INDEX IF NOT EXISTS IX_Documents_ContentType ON Documents(ContentType);
+        CREATE INDEX IF NOT EXISTS IX_Documents_UploadedAt ON Documents(UploadedAt);
+        CREATE INDEX IF NOT EXISTS IX_Chunks_DocumentId ON DocumentChunks(DocumentId);
+    ";
+
+    #region Public Methods
     public Task<Document> AddAsync(Document document)
     {
-        // Basic validation
+        try
+        {
+            ValidateDocument(document);
+            ValidateChunks(document);
+
+            if (_connection.State != System.Data.ConnectionState.Open)
+            {
+                _connection.Open();
+            }
+
+            using var transaction = _connection.BeginTransaction();
+
+            try
+            {
+                InsertDocument(document);
+                InsertChunks(document);
+
+                transaction.Commit();
+                RepositoryLogMessages.LogSqliteDocumentAdded(Logger, document.FileName, document.Id, null);
+                return Task.FromResult(document);
+            }
+            catch (Exception ex)
+            {
+                transaction.Rollback();
+                RepositoryLogMessages.LogSqliteDocumentAddFailed(Logger, document.FileName, ex);
+                throw new InvalidOperationException($"Failed to add document '{document.FileName}': {ex.Message}", ex);
+            }
+        }
+        catch (Exception ex)
+        {
+            RepositoryLogMessages.LogSqliteDocumentAddFailed(Logger, document?.FileName ?? "Unknown", ex);
+            throw;
+        }
+    }
+
+    private static void ValidateDocument(Document document)
+    {
         ArgumentNullException.ThrowIfNull(document);
 
         if (string.IsNullOrEmpty(document.FileName))
@@ -96,137 +167,192 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
 
         if (document.Chunks == null || document.Chunks.Count == 0)
             throw new ArgumentException("Document must have at least one chunk", nameof(document));
+    }
 
-        if (_connection.State != System.Data.ConnectionState.Open)
+    private static void ValidateChunks(Document document)
+    {
+        foreach (var chunk in document.Chunks)
         {
-            _connection.Open();
-        }
+            if (chunk == null)
+                throw new ArgumentException($"Chunk cannot be null for document {document.FileName} (ID: {document.Id})");
 
-        using var transaction = _connection.BeginTransaction();
+            if (string.IsNullOrEmpty(chunk.Content))
+                throw new ArgumentException($"Chunk content cannot be null or empty for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
 
-        try
-        {
-            using var docCommand = _connection.CreateCommand();
+            if (chunk.ChunkIndex < 0)
+                throw new ArgumentException($"Chunk index cannot be negative for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
 
-            docCommand.CommandText = @"
-                        INSERT INTO Documents (Id, FileName, Content, ContentType, FileSize, UploadedAt, UploadedBy)
-        VALUES (@Id, @FileName, @Content, @ContentType, @FileSize, @UploadedAt, @UploadedBy)
-            ";
+            if (chunk.Id == Guid.Empty)
+                throw new ArgumentException($"Chunk ID cannot be empty for chunk in document {document.FileName} (ID: {document.Id})");
 
-            docCommand.Parameters.AddWithValue("@Id", document.Id.ToString());
-            docCommand.Parameters.AddWithValue("@FileName", document.FileName ?? string.Empty);
-            docCommand.Parameters.AddWithValue("@Content", document.Content ?? string.Empty);
-            docCommand.Parameters.AddWithValue("@ContentType", document.ContentType ?? string.Empty);
-            docCommand.Parameters.AddWithValue("@FileSize", document.FileSize);
-            docCommand.Parameters.AddWithValue("@UploadedAt", document.UploadedAt.ToString("O"));
-            docCommand.Parameters.AddWithValue("@UploadedBy", document.UploadedBy ?? string.Empty);
+            if (chunk.DocumentId != document.Id)
+                throw new ArgumentException($"Chunk DocumentId mismatch: chunk has {chunk.DocumentId}, document has {document.Id}");
 
-            docCommand.ExecuteNonQuery();
+            if (chunk.CreatedAt == default)
+                throw new ArgumentException($"Chunk CreatedAt cannot be default for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
 
-            foreach (var chunk in document.Chunks)
-            {
-                // Validate chunk
-                if (chunk == null)
-                    throw new ArgumentException($"Chunk cannot be null for document {document.FileName} (ID: {document.Id})");
+            if (chunk.Content.Length > MaxChunkContentLength)
+                throw new ArgumentException($"Chunk content too large ({chunk.Content.Length} characters) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
 
-                if (string.IsNullOrEmpty(chunk.Content))
-                    throw new ArgumentException($"Chunk content cannot be null or empty for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+            if (chunk.ChunkIndex > MaxChunkIndex)
+                throw new ArgumentException($"Chunk index too large ({chunk.ChunkIndex}) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
 
-                if (chunk.ChunkIndex < 0)
-                    throw new ArgumentException($"Chunk index cannot be negative for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+            if (chunk.RelevanceScore < MinRelevanceScore || chunk.RelevanceScore > MaxRelevanceScore)
+                throw new ArgumentException($"Chunk RelevanceScore must be between {MinRelevanceScore} and {MaxRelevanceScore} for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
 
-                if (chunk.Id == Guid.Empty)
-                    throw new ArgumentException($"Chunk ID cannot be empty for chunk in document {document.FileName} (ID: {document.Id})");
-
-                if (chunk.DocumentId != document.Id)
-                    throw new ArgumentException($"Chunk DocumentId mismatch: chunk has {chunk.DocumentId}, document has {document.Id}");
-
-                if (chunk.CreatedAt == default)
-                    throw new ArgumentException($"Chunk CreatedAt cannot be default for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-                if (chunk.Content.Length > 1000000) // 1MB limit for chunk content
-                    throw new ArgumentException($"Chunk content too large ({chunk.Content.Length} characters) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-                if (chunk.ChunkIndex > 10000) // Reasonable limit for chunk index
-                    throw new ArgumentException($"Chunk index too large ({chunk.ChunkIndex}) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-                if (chunk.RelevanceScore < -1.0 || chunk.RelevanceScore > 1.0)
-                    throw new ArgumentException($"Chunk RelevanceScore must be between -1.0 and 1.0 for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-                if (chunk.Embedding != null && chunk.Embedding.Count > 10000) // Reasonable limit for embedding vector size
-                    throw new ArgumentException($"Chunk embedding vector too large ({chunk.Embedding.Count} dimensions) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-                if (chunk.Embedding != null && chunk.Embedding.Any(f => float.IsNaN(f) || float.IsInfinity(f)))
-                    throw new ArgumentException($"Chunk embedding contains invalid values (NaN or Infinity) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-                if (chunk.Embedding != null && chunk.Embedding.Any(f => f < -1000 || f > 1000))
-                    throw new ArgumentException($"Chunk embedding contains values outside reasonable range [-1000, 1000] for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-                if (chunk.Embedding != null && chunk.Embedding.Count != 0 && chunk.Embedding.Count != 768 && chunk.Embedding.Count != 1536)
-                    throw new ArgumentException($"Chunk embedding vector size must be 0, 768, or 1536 dimensions, got {chunk.Embedding.Count} for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-                if (chunk.Embedding != null && chunk.Embedding.Count > 0 && chunk.Embedding.All(f => f == 0))
-                    throw new ArgumentException($"Chunk embedding vector contains only zeros for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-                if (chunk.Embedding != null && chunk.Embedding.Count > 0 && chunk.Embedding.All(f => Math.Abs(f) < 0.0001))
-                    throw new ArgumentException($"Chunk embedding vector contains only very small values (< 0.0001) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-                if (chunk.Embedding != null && chunk.Embedding.Count > 0 && chunk.Embedding.Any(f => Math.Abs(f) > 100))
-                    throw new ArgumentException($"Chunk embedding vector contains values with absolute value > 100 for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-                if (chunk.Embedding != null && chunk.Embedding.Count > 0 && chunk.Embedding.Any(f => float.IsSubnormal(f)))
-                    throw new ArgumentException($"Chunk embedding vector contains subnormal values for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-                if (chunk.Embedding != null && chunk.Embedding.Count > 0 && chunk.Embedding.Any(f => float.IsNegativeInfinity(f) || float.IsPositiveInfinity(f)))
-                    throw new ArgumentException($"Chunk embedding vector contains infinity values for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-                if (chunk.Embedding != null && chunk.Embedding.Count > 0 && chunk.Embedding.Any(f => float.IsNaN(f)))
-                    throw new ArgumentException($"Chunk embedding vector contains NaN values for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-                if (chunk.Embedding != null && chunk.Embedding.Count > 0 && chunk.Embedding.Any(f => float.IsInfinity(f)))
-                    throw new ArgumentException($"Chunk embedding vector contains infinity values for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-                if (chunk.Embedding != null && chunk.Embedding.Count > 0 && chunk.Embedding.Any(f => float.IsSubnormal(f)))
-                    throw new ArgumentException($"Chunk embedding vector contains subnormal values for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-                using var chunkCommand = _connection.CreateCommand();
-                chunkCommand.CommandText = @"
-                    INSERT INTO DocumentChunks (Id, DocumentId, Content, ChunkIndex, CreatedAt, RelevanceScore, Embedding)
-                    VALUES (@Id, @DocumentId, @Content, @ChunkIndex, @CreatedAt, @RelevanceScore, @Embedding)
-                ";
-
-                chunkCommand.Parameters.AddWithValue("@Id", chunk.Id.ToString());
-                chunkCommand.Parameters.AddWithValue("@DocumentId", document.Id.ToString());
-                chunkCommand.Parameters.AddWithValue("@Content", chunk.Content ?? string.Empty);
-                chunkCommand.Parameters.AddWithValue("@ChunkIndex", chunk.ChunkIndex);
-                chunkCommand.Parameters.AddWithValue("@CreatedAt", chunk.CreatedAt.ToString("O"));
-                chunkCommand.Parameters.AddWithValue("@RelevanceScore", chunk.RelevanceScore ?? 0.0);
-                chunkCommand.Parameters.AddWithValue("@Embedding", (chunk.Embedding?.Count ?? 0) > 0 ? JsonSerializer.Serialize(chunk.Embedding) : DBNull.Value);
-
-                chunkCommand.ExecuteNonQuery();
-            }
-
-            transaction.Commit();
-
-            return Task.FromResult(document);
-        }
-        catch (Exception ex)
-        {
-            transaction.Rollback();
-            Console.WriteLine($"SQLite AddAsync Error: {ex.Message}");
-            Console.WriteLine($"Document ID: {document.Id}, FileName: {document.FileName}");
-            Console.WriteLine($"Chunks count: {document.Chunks?.Count ?? 0}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
-            throw new InvalidOperationException($"Failed to add document '{document.FileName}': {ex.Message}", ex);
+            ValidateChunkEmbedding(chunk, document);
         }
     }
+
+    private static void ValidateChunkEmbedding(DocumentChunk chunk, Document document)
+    {
+        if (chunk.Embedding == null) return;
+
+        if (chunk.Embedding.Count > MaxEmbeddingVectorSize)
+            throw new ArgumentException($"Chunk embedding vector too large ({chunk.Embedding.Count} dimensions) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+
+        if (chunk.Embedding.Any(f => float.IsNaN(f) || float.IsInfinity(f)))
+            throw new ArgumentException($"Chunk embedding contains invalid values (NaN or Infinity) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+
+        if (chunk.Embedding.Any(f => f < MinEmbeddingValue || f > MaxEmbeddingValue))
+            throw new ArgumentException($"Chunk embedding contains values outside reasonable range [{MinEmbeddingValue}, {MaxEmbeddingValue}] for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+
+        if (chunk.Embedding.Count != 0 && chunk.Embedding.Count != SentenceTransformersDimension && chunk.Embedding.Count != OpenAIVectorDimension)
+            throw new ArgumentException($"Chunk embedding vector size must be 0, {SentenceTransformersDimension}, or {OpenAIVectorDimension} dimensions, got {chunk.Embedding.Count} for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+
+        if (chunk.Embedding.Count > 0 && chunk.Embedding.All(f => f == 0))
+            throw new ArgumentException($"Chunk embedding vector contains only zeros for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+
+        if (chunk.Embedding.Count > 0 && chunk.Embedding.All(f => Math.Abs(f) < MinValueThreshold))
+            throw new ArgumentException($"Chunk embedding vector contains only very small values (< {MinValueThreshold}) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+
+        if (chunk.Embedding.Count > 0 && chunk.Embedding.Any(f => Math.Abs(f) > MaxAbsoluteValue))
+            throw new ArgumentException($"Chunk embedding vector contains values with absolute value > {MaxAbsoluteValue} for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+
+        if (chunk.Embedding.Count > 0 && chunk.Embedding.Any(f => float.IsSubnormal(f)))
+            throw new ArgumentException($"Chunk embedding vector contains subnormal values for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+
+        if (chunk.Embedding.Count > 0 && chunk.Embedding.Any(f => float.IsNegativeInfinity(f) || float.IsPositiveInfinity(f)))
+            throw new ArgumentException($"Chunk embedding vector contains infinity values for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+    }
+
+    private void InsertDocument(Document document)
+    {
+        using var docCommand = _connection.CreateCommand();
+        docCommand.CommandText = @"
+            INSERT INTO Documents (Id, FileName, Content, ContentType, FileSize, UploadedAt, UploadedBy)
+            VALUES (@Id, @FileName, @Content, @ContentType, @FileSize, @UploadedAt, @UploadedBy)
+        ";
+
+        docCommand.Parameters.AddWithValue("@Id", document.Id.ToString());
+        docCommand.Parameters.AddWithValue("@FileName", document.FileName ?? string.Empty);
+        docCommand.Parameters.AddWithValue("@Content", document.Content ?? string.Empty);
+        docCommand.Parameters.AddWithValue("@ContentType", document.ContentType ?? string.Empty);
+        docCommand.Parameters.AddWithValue("@FileSize", document.FileSize);
+        docCommand.Parameters.AddWithValue("@UploadedAt", document.UploadedAt.ToString(DateTimeFormat));
+        docCommand.Parameters.AddWithValue("@UploadedBy", document.UploadedBy ?? string.Empty);
+
+        docCommand.ExecuteNonQuery();
+    }
+
+    private void InsertChunks(Document document)
+    {
+        foreach (var chunk in document.Chunks)
+        {
+            using var chunkCommand = _connection.CreateCommand();
+            chunkCommand.CommandText = @"
+                INSERT INTO DocumentChunks (Id, DocumentId, Content, ChunkIndex, CreatedAt, RelevanceScore, Embedding)
+                VALUES (@Id, @DocumentId, @Content, @ChunkIndex, @CreatedAt, @RelevanceScore, @Embedding)
+            ";
+
+            chunkCommand.Parameters.AddWithValue("@Id", chunk.Id.ToString());
+            chunkCommand.Parameters.AddWithValue("@DocumentId", document.Id.ToString());
+            chunkCommand.Parameters.AddWithValue("@Content", chunk.Content ?? string.Empty);
+            chunkCommand.Parameters.AddWithValue("@ChunkIndex", chunk.ChunkIndex);
+            chunkCommand.Parameters.AddWithValue("@CreatedAt", chunk.CreatedAt.ToString(DateTimeFormat));
+            chunkCommand.Parameters.AddWithValue("@RelevanceScore", chunk.RelevanceScore ?? 0.0);
+            chunkCommand.Parameters.AddWithValue("@Embedding", (chunk.Embedding?.Count ?? 0) > 0 ? JsonSerializer.Serialize(chunk.Embedding) : DBNull.Value);
+
+            chunkCommand.ExecuteNonQuery();
+        }
+    }
+
+    private static string GetDocumentByIdSql() => @"
+        SELECT d.Id, d.FileName, d.Content, d.ContentType, d.FileSize, d.UploadedAt, d.UploadedBy,
+               c.Id as ChunkId, c.Content as ChunkContent, c.ChunkIndex, c.CreatedAt, c.RelevanceScore, c.Embedding
+        FROM Documents d
+        LEFT JOIN DocumentChunks c ON d.Id = c.DocumentId
+        WHERE d.Id = @Id
+        ORDER BY c.ChunkIndex
+    ";
+
+    private static Document CreateDocumentFromReader(SqliteDataReader reader) => new()
+    {
+        Id = Guid.Parse(reader.GetString("Id")),
+        FileName = reader.GetString("FileName"),
+        Content = reader.GetString("Content"),
+        ContentType = reader.GetString("ContentType"),
+        FileSize = reader.GetInt64("FileSize"),
+        UploadedAt = DateTime.Parse(reader.GetString("UploadedAt"), CultureInfo.InvariantCulture),
+        UploadedBy = reader.GetString("UploadedBy"),
+        Chunks = []
+    };
+
+    private static DocumentChunk CreateChunkFromReader(SqliteDataReader reader, Guid documentId) => new()
+    {
+        Id = Guid.Parse(reader.GetString("ChunkId")),
+        DocumentId = documentId,
+        Content = reader.GetString("ChunkContent"),
+        ChunkIndex = reader.GetInt32("ChunkIndex"),
+        CreatedAt = DateTime.Parse(reader.GetString("CreatedAt"), CultureInfo.InvariantCulture),
+        RelevanceScore = reader.IsDBNull("RelevanceScore") ? 0.0 : reader.GetDouble("RelevanceScore"),
+        Embedding = reader.IsDBNull("Embedding")
+            ? []
+            : JsonSerializer.Deserialize<List<float>>(reader.GetString("Embedding")) ?? []
+    };
+
+    private static string GetDocumentsWithChunksSql() => @"
+        SELECT d.Id, d.FileName, d.Content, d.ContentType, d.FileSize, d.UploadedAt, d.UploadedBy,
+               c.Id as ChunkId, c.Content as ChunkContent, c.ChunkIndex, c.CreatedAt, c.RelevanceScore, c.Embedding
+        FROM Documents d
+        LEFT JOIN DocumentChunks c ON d.Id = c.DocumentId
+        ORDER BY d.UploadedAt DESC, c.ChunkIndex
+    ";
+
+    private void DeleteChunks(Guid documentId)
+    {
+        using var deleteChunksCommand = _connection.CreateCommand();
+        deleteChunksCommand.CommandText = "DELETE FROM DocumentChunks WHERE DocumentId = @DocumentId";
+        deleteChunksCommand.Parameters.AddWithValue("@DocumentId", documentId.ToString());
+        deleteChunksCommand.ExecuteNonQuery();
+    }
+
+    private int DeleteDocument(Guid id)
+    {
+        using var command = _connection.CreateCommand();
+        command.CommandText = "DELETE FROM Documents WHERE Id = @Id";
+        command.Parameters.AddWithValue("@Id", id.ToString());
+        return command.ExecuteNonQuery();
+    }
+
+    private static string GetSearchSql() => @"
+        SELECT c.Id, c.DocumentId, c.Content, c.ChunkIndex, c.CreatedAt, c.RelevanceScore, c.Embedding
+        FROM DocumentChunks c
+        INNER JOIN Documents d ON c.DocumentId = d.Id
+        WHERE REPLACE(REPLACE(REPLACE(LOWER(c.Content), '.', ' '), ',', ' '), ';', ' ') LIKE @Query
+        ORDER BY c.RelevanceScore DESC, c.CreatedAt DESC
+        LIMIT @MaxResults
+    ";
 
     public async Task<Document?> GetByIdAsync(Guid id)
     {
         try
         {
             if (id == Guid.Empty)
+            {
+                RepositoryLogMessages.LogSqliteDocumentNotFound(Logger, id, null);
                 return null;
+            }
 
             if (_connection.State != System.Data.ConnectionState.Open)
             {
@@ -234,14 +360,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
             }
 
             using var command = _connection.CreateCommand();
-            command.CommandText = @"
-                SELECT d.Id, d.FileName, d.Content, d.ContentType, d.FileSize, d.UploadedAt, d.UploadedBy,
-                       c.Id as ChunkId, c.Content as ChunkContent, c.ChunkIndex, c.CreatedAt, c.RelevanceScore, c.Embedding
-                FROM Documents d
-                LEFT JOIN DocumentChunks c ON d.Id = c.DocumentId
-                WHERE d.Id = @Id
-                ORDER BY c.ChunkIndex
-            ";
+            command.CommandText = GetDocumentByIdSql();
 
             command.Parameters.AddWithValue("@Id", id.ToString());
 
@@ -253,33 +372,12 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
             {
                 if (document == null)
                 {
-                    document = new Document
-                    {
-                        Id = Guid.Parse(reader.GetString("Id")),
-                        FileName = reader.GetString("FileName"),
-                        Content = reader.GetString("Content"),
-                        ContentType = reader.GetString("ContentType"),
-                        FileSize = reader.GetInt64("FileSize"),
-                        UploadedAt = DateTime.Parse(reader.GetString("UploadedAt"), CultureInfo.InvariantCulture),
-                        UploadedBy = reader.GetString("UploadedBy"),
-                        Chunks = []
-                    };
+                    document = CreateDocumentFromReader(reader);
                 }
 
                 if (!reader.IsDBNull("ChunkId"))
                 {
-                    var chunk = new DocumentChunk
-                    {
-                        Id = Guid.Parse(reader.GetString("ChunkId")),
-                        DocumentId = id,
-                        Content = reader.GetString("ChunkContent"),
-                        ChunkIndex = reader.GetInt32("ChunkIndex"),
-                        CreatedAt = DateTime.Parse(reader.GetString("CreatedAt"), CultureInfo.InvariantCulture),
-                        RelevanceScore = reader.IsDBNull("RelevanceScore") ? 0.0 : reader.GetDouble("RelevanceScore"),
-                        Embedding = reader.IsDBNull("Embedding")
-                        ? []
-                        : JsonSerializer.Deserialize<List<float>>(reader.GetString("Embedding")) ?? new List<float>()
-                    };
+                    var chunk = CreateChunkFromReader(reader, id);
                     chunks.Add(chunk);
                 }
             }
@@ -287,14 +385,14 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
             if (document != null)
             {
                 document.Chunks = chunks;
+                RepositoryLogMessages.LogSqliteDocumentRetrieved(Logger, id, null);
             }
 
             return document;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"SQLite GetByIdAsync Error: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            RepositoryLogMessages.LogSqliteDocumentRetrievalFailed(Logger, id, ex);
             return null;
         }
     }
@@ -311,13 +409,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
             var documents = new List<Document>();
 
             using var command = _connection.CreateCommand();
-            command.CommandText = @"
-                SELECT d.Id, d.FileName, d.Content, d.ContentType, d.FileSize, d.UploadedAt, d.UploadedBy,
-                       c.Id as ChunkId, c.Content as ChunkContent, c.ChunkIndex, c.CreatedAt, c.RelevanceScore, c.Embedding
-                FROM Documents d
-                LEFT JOIN DocumentChunks c ON d.Id = c.DocumentId
-                ORDER BY d.UploadedAt DESC, c.ChunkIndex
-            ";
+            command.CommandText = GetDocumentsWithChunksSql();
 
             using var reader = command.ExecuteReader();
             Document? currentDocument = null;
@@ -335,34 +427,13 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
                         documents.Add(currentDocument);
                     }
 
-                    currentDocument = new Document
-                    {
-                        Id = documentId,
-                        FileName = reader.GetString("FileName"),
-                        Content = reader.GetString("Content"),
-                        ContentType = reader.GetString("ContentType"),
-                        FileSize = reader.GetInt64("FileSize"),
-                        UploadedAt = DateTime.Parse(reader.GetString("UploadedAt"), CultureInfo.InvariantCulture),
-                        UploadedBy = reader.GetString("UploadedBy"),
-                        Chunks = []
-                    };
+                    currentDocument = CreateDocumentFromReader(reader);
                     chunks = new List<DocumentChunk>();
                 }
 
                 if (!reader.IsDBNull("ChunkId"))
                 {
-                    var chunk = new DocumentChunk
-                    {
-                        Id = Guid.Parse(reader.GetString("ChunkId")),
-                        DocumentId = documentId,
-                        Content = reader.GetString("ChunkContent"),
-                        ChunkIndex = reader.GetInt32("ChunkIndex"),
-                        CreatedAt = DateTime.Parse(reader.GetString("CreatedAt"), CultureInfo.InvariantCulture),
-                        RelevanceScore = reader.IsDBNull("RelevanceScore") ? 0.0 : reader.GetDouble("RelevanceScore"),
-                        Embedding = reader.IsDBNull("Embedding")
-                        ? []
-                        : JsonSerializer.Deserialize<List<float>>(reader.GetString("Embedding")) ?? []
-                    };
+                    var chunk = CreateChunkFromReader(reader, documentId);
                     chunks.Add(chunk);
                 }
             }
@@ -373,51 +444,55 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
                 documents.Add(currentDocument);
             }
 
+            RepositoryLogMessages.LogSqliteDocumentsRetrieved(Logger, documents.Count, null);
             return documents;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"SQLite GetAllAsync Error: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            RepositoryLogMessages.LogSqliteDocumentsRetrievalFailed(Logger, ex);
             return new List<Document>();
         }
     }
 
     public Task<bool> DeleteAsync(Guid id)
     {
-        if (id == Guid.Empty)
-            return Task.FromResult(false);
-
-        if (_connection.State != System.Data.ConnectionState.Open)
-        {
-            _connection.Open();
-        }
-
-        using var transaction = _connection.BeginTransaction();
-
         try
         {
-            // Delete chunks first (foreign key constraint will handle this automatically)
-            using var deleteChunksCommand = _connection.CreateCommand();
-            deleteChunksCommand.CommandText = "DELETE FROM DocumentChunks WHERE DocumentId = @DocumentId";
-            deleteChunksCommand.Parameters.AddWithValue("@DocumentId", id.ToString());
-            deleteChunksCommand.ExecuteNonQuery();
+            if (id == Guid.Empty)
+                return Task.FromResult(false);
 
-            // Delete document
-            using var command = _connection.CreateCommand();
-            command.CommandText = "DELETE FROM Documents WHERE Id = @Id";
-            command.Parameters.AddWithValue("@Id", id.ToString());
+            if (_connection.State != System.Data.ConnectionState.Open)
+            {
+                _connection.Open();
+            }
 
-            var rowsAffected = command.ExecuteNonQuery();
+            using var transaction = _connection.BeginTransaction();
 
-            transaction.Commit();
-            return Task.FromResult(rowsAffected > 0);
+            try
+            {
+                DeleteChunks(id);
+                var rowsAffected = DeleteDocument(id);
+
+                transaction.Commit();
+                
+                if (rowsAffected > 0)
+                {
+                    RepositoryLogMessages.LogSqliteDocumentDeleted(Logger, id, null);
+                    return Task.FromResult(true);
+                }
+                
+                return Task.FromResult(false);
+            }
+            catch (Exception ex)
+            {
+                transaction.Rollback();
+                RepositoryLogMessages.LogSqliteDocumentDeleteFailed(Logger, id, ex);
+                return Task.FromResult(false);
+            }
         }
         catch (Exception ex)
         {
-            transaction.Rollback();
-            Console.WriteLine($"SQLite DeleteAsync Error: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            RepositoryLogMessages.LogSqliteDocumentDeleteFailed(Logger, id, ex);
             return Task.FromResult(false);
         }
     }
@@ -435,17 +510,17 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
             command.CommandText = "SELECT COUNT(*) FROM Documents";
 
             var result = command.ExecuteScalar();
-            return Task.FromResult(Convert.ToInt32(result, CultureInfo.InvariantCulture));
+            var count = Convert.ToInt32(result, CultureInfo.InvariantCulture);
+            
+            RepositoryLogMessages.LogSqliteDocumentCountRetrieved(Logger, count, null);
+            return Task.FromResult(count);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"SQLite GetCountAsync Error: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            RepositoryLogMessages.LogSqliteDocumentCountRetrievalFailed(Logger, ex);
             return Task.FromResult(0);
         }
     }
-
-    public string DatabasePath => _config.DatabasePath;
 
     public long GetDatabaseSize()
     {
@@ -482,12 +557,12 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
                 stats["TotalSize"] = reader.IsDBNull("TotalSize") ? 0L : reader.GetInt64("TotalSize");
             }
 
+            RepositoryLogMessages.LogSqliteStatisticsRetrieved(Logger, null);
             return stats;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"SQLite GetStatisticsAsync Error: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            RepositoryLogMessages.LogSqliteStatisticsRetrievalFailed(Logger, ex);
             return new Dictionary<string, object>
             {
                 ["DocumentCount"] = 0,
@@ -498,7 +573,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
         }
     }
 
-    public Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = 5)
+    public Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = DefaultMaxSearchResults)
     {
         try
         {
@@ -507,7 +582,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
                 return Task.FromResult(new List<DocumentChunk>());
 
             if (maxResults <= 0)
-                maxResults = 5;
+                maxResults = DefaultMaxSearchResults;
 
             if (_connection.State != System.Data.ConnectionState.Open)
             {
@@ -518,15 +593,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
             var relevantChunks = new List<DocumentChunk>();
 
             using var command = _connection.CreateCommand();
-            // Simple LIKE search on normalized content
-            command.CommandText = @"
-                    SELECT c.Id, c.DocumentId, c.Content, c.ChunkIndex, c.CreatedAt, c.RelevanceScore, c.Embedding
-                    FROM DocumentChunks c
-                    INNER JOIN Documents d ON c.DocumentId = d.Id
-                    WHERE REPLACE(REPLACE(REPLACE(LOWER(c.Content), '.', ' '), ',', ' '), ';', ' ') LIKE @Query
-                    ORDER BY c.RelevanceScore DESC, c.CreatedAt DESC
-                    LIMIT @MaxResults
-                ";
+            command.CommandText = GetSearchSql();
 
             command.Parameters.AddWithValue("@Query", $"%{normalizedQuery}%");
             command.Parameters.AddWithValue("@MaxResults", maxResults);
@@ -534,29 +601,24 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
             using var reader = command.ExecuteReader();
             while (reader.Read())
             {
-                var chunk = new DocumentChunk
-                {
-                    Id = Guid.Parse(reader.GetString("Id")),
-                    DocumentId = Guid.Parse(reader.GetString("DocumentId")),
-                    Content = reader.GetString("Content"),
-                    ChunkIndex = reader.GetInt32("ChunkIndex"),
-                    CreatedAt = DateTime.Parse(reader.GetString("CreatedAt"), CultureInfo.InvariantCulture),
-                    RelevanceScore = reader.IsDBNull("RelevanceScore") ? 0.0 : reader.GetDouble("RelevanceScore"),
-                    Embedding = reader.IsDBNull("Embedding") ? new List<float>() : JsonSerializer.Deserialize<List<float>>(reader.GetString("Embedding")) ?? new List<float>()
-                };
+                var chunk = CreateChunkFromReader(reader, Guid.Parse(reader.GetString("DocumentId")));
                 relevantChunks.Add(chunk);
             }
 
+            RepositoryLogMessages.LogSqliteSearchCompleted(Logger, query, relevantChunks.Count, maxResults, null);
             return Task.FromResult(relevantChunks);
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"SQLite SearchAsync Error: {ex.Message}");
-            Console.WriteLine($"Stack trace: {ex.StackTrace}");
+            RepositoryLogMessages.LogSqliteSearchFailed(Logger, query, ex);
             return Task.FromResult(new List<DocumentChunk>());
         }
     }
+    #endregion
 
+    #endregion
+
+    #region IDisposable Implementation
     public void Dispose()
     {
         if (_connection.State == ConnectionState.Open)
@@ -566,4 +628,5 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
         _connection.Dispose();
         GC.SuppressFinalize(this);
     }
+    #endregion
 }

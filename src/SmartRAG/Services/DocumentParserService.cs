@@ -4,10 +4,12 @@ using DocumentFormat.OpenXml.Wordprocessing;
 using iText.Kernel.Pdf;
 using iText.Kernel.Pdf.Canvas.Parser;
 using iText.Kernel.Pdf.Canvas.Parser.Listener;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
+using SmartRAG.Services;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -16,9 +18,53 @@ namespace SmartRAG.Services;
 /// <summary>
 /// Service for parsing different document formats and extracting text content
 /// </summary>
-public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumentParserService
+public class DocumentParserService(
+    IOptions<SmartRagOptions> options,
+    ILogger<DocumentParserService> logger) : IDocumentParserService
 {
+    #region Constants
+
+    // Content validation constants
+    private const int MinContentLength = 10;
+    private const double MinMeaningfulTextRatio = 0.3;
+    
+    // Chunk boundary search constants
+    private const int DefaultDynamicSearchRange = 500;
+    private const int DynamicSearchRangeDivisor = 10;
+    private const int UltimateSearchRange = 1000;
+    
+    // File extension constants
+    private static readonly string[] WordExtensions = [".docx", ".doc"];
+    private static readonly string[] PdfExtensions = [".pdf"];
+    private static readonly string[] TextExtensions = [".txt", ".md", ".json", ".xml", ".csv", ".html", ".htm"];
+    
+    // Content type constants
+    private static readonly string[] WordContentTypes = [
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/msword",
+        "application/vnd.ms-word"
+    ];
+    
+    private static readonly string[] TextContentTypes = ["text/", "application/json", "application/xml", "application/csv"];
+    
+    // Sentence ending constants
+    private static readonly char[] SentenceEndings = ['.', '!', '?', ';'];
+    private static readonly string[] ParagraphEndings = ["\n\n", "\r\n\r\n"];
+    private static readonly char[] WordBoundaries = [' ', '\t', '\n', '\r'];
+    private static readonly char[] PunctuationBoundaries = [',', ':', ';', '-', '–', '—'];
+    private static readonly char[] ExtendedWordBoundaries = [' ', '\t', '\n', '\r', '.', '!', '?', ';', ',', ':', '-', '–', '—'];
+    private static readonly char[] UltimateBoundaries = [' ', '\t', '\n', '\r', '.', '!', '?', ';', ',', ':', '-', '–', '—', '(', ')', '[', ']', '{', '}'];
+
+    #endregion
+
+    #region Fields
+
     private readonly SmartRagOptions _options = options.Value;
+
+    #endregion
+
+    #region Public Methods
+
     /// <summary>
     /// Parses document content based on file type
     /// </summary>
@@ -26,39 +72,67 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
     {
         try
         {
-            var content = await DocumentParserService.ExtractTextAsync(fileStream, fileName, contentType);
-
+            var content = await ExtractTextAsync(fileStream, fileName, contentType);
             var documentId = Guid.NewGuid();
             var chunks = CreateChunks(content, documentId);
 
-            var document = new SmartRAG.Entities.Document
-            {
-                Id = documentId,
-                FileName = fileName,
-                ContentType = contentType,
-                Content = content,
-                UploadedBy = uploadedBy,
-                UploadedAt = DateTime.UtcNow,
-                Chunks = chunks
-            };
-
-            // Populate metadata
-            document.Metadata = new Dictionary<string, object>
-            {
-                ["FileName"] = document.FileName,
-                ["ContentType"] = document.ContentType,
-                ["UploadedBy"] = document.UploadedBy,
-                ["UploadedAt"] = document.UploadedAt,
-                ["ContentLength"] = document.Content?.Length ?? 0,
-                ["ChunkCount"] = document.Chunks?.Count ?? 0
-            };
+            var document = CreateDocument(documentId, fileName, contentType, content, uploadedBy, chunks);
+            PopulateMetadata(document);
 
             return document;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            ServiceLogMessages.LogDocumentUploadFailed(logger, fileName, ex);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Gets supported file types
+    /// </summary>
+    public IEnumerable<string> GetSupportedFileTypes() => TextExtensions.Concat(WordExtensions).Concat(PdfExtensions);
+
+    /// <summary>
+    /// Gets supported content types
+    /// </summary>
+    public IEnumerable<string> GetSupportedContentTypes() => TextContentTypes.Concat(WordContentTypes).Append("application/pdf");
+
+    #endregion
+
+    #region Private Methods
+
+    /// <summary>
+    /// Creates document object with basic properties
+    /// </summary>
+    private static Entities.Document CreateDocument(Guid documentId, string fileName, string contentType, string content, string uploadedBy, List<DocumentChunk> chunks)
+    {
+        return new Entities.Document
+        {
+            Id = documentId,
+            FileName = fileName,
+            ContentType = contentType,
+            Content = content,
+            UploadedBy = uploadedBy,
+            UploadedAt = DateTime.UtcNow,
+            Chunks = chunks
+        };
+    }
+
+    /// <summary>
+    /// Populates document metadata
+    /// </summary>
+    private static void PopulateMetadata(Entities.Document document)
+    {
+        document.Metadata = new Dictionary<string, object>
+        {
+            ["FileName"] = document.FileName,
+            ["ContentType"] = document.ContentType,
+            ["UploadedBy"] = document.UploadedBy,
+            ["UploadedAt"] = document.UploadedAt,
+            ["ContentLength"] = document.Content?.Length ?? 0,
+            ["ChunkCount"] = document.Chunks?.Count ?? 0
+        };
     }
 
     /// <summary>
@@ -66,14 +140,8 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
     /// </summary>
     private static bool IsWordDocument(string fileName, string contentType)
     {
-        var wordExtensions = new[] { ".docx", ".doc" };
-        var wordContentTypes = new[] {
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "application/msword",
-            "application/vnd.ms-word"
-        };
-
-        return wordExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) || wordContentTypes.Any(ct => contentType.Contains(ct));
+        return WordExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) || 
+               WordContentTypes.Any(ct => contentType.Contains(ct));
     }
 
     /// <summary>
@@ -81,7 +149,8 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
     /// </summary>
     private static bool IsPdfDocument(string fileName, string contentType)
     {
-        return fileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase) || contentType == "application/pdf";
+        return PdfExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) || 
+               contentType == "application/pdf";
     }
 
     /// <summary>
@@ -89,11 +158,31 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
     /// </summary>
     private static bool IsTextBasedFile(string fileName, string contentType)
     {
-        var textExtensions = new[] { ".txt", ".md", ".json", ".xml", ".csv", ".html", ".htm" };
-        var textContentTypes = new[] { "text/", "application/json", "application/xml", "application/csv" };
+        return TextExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) ||
+               TextContentTypes.Any(contentType.StartsWith);
+    }
 
-        return textExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) ||
-               textContentTypes.Any(contentType.StartsWith);
+    /// <summary>
+    /// Extracts text based on file type
+    /// </summary>
+    private static async Task<string> ExtractTextAsync(Stream fileStream, string fileName, string contentType)
+    {
+        if (IsWordDocument(fileName, contentType))
+        {
+            return await ParseWordDocumentAsync(fileStream);
+        }
+        else if (IsPdfDocument(fileName, contentType))
+        {
+            return await ParsePdfDocumentAsync(fileStream);
+        }
+        else if (IsTextBasedFile(fileName, contentType))
+        {
+            return await ParseTextDocumentAsync(fileStream);
+        }
+        else
+        {
+            return string.Empty;
+        }
     }
 
     /// <summary>
@@ -103,11 +192,7 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
     {
         try
         {
-            // Create a copy of the stream for OpenXML
-            var memoryStream = new MemoryStream();
-            await fileStream.CopyToAsync(memoryStream);
-            memoryStream.Position = 0;
-
+            var memoryStream = await CreateMemoryStreamCopy(fileStream);
             using var document = WordprocessingDocument.Open(memoryStream, false);
             var body = document.MainDocumentPart?.Document?.Body;
 
@@ -129,6 +214,17 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
     }
 
     /// <summary>
+    /// Creates a memory stream copy for processing
+    /// </summary>
+    private static async Task<MemoryStream> CreateMemoryStreamCopy(Stream fileStream)
+    {
+        var memoryStream = new MemoryStream();
+        await fileStream.CopyToAsync(memoryStream);
+        memoryStream.Position = 0;
+        return memoryStream;
+    }
+
+    /// <summary>
     /// Recursively extracts text from Word document elements
     /// </summary>
     private static void ExtractTextFromElement(OpenXmlElement element, StringBuilder textBuilder)
@@ -142,12 +238,12 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
             else if (child is Paragraph paragraph)
             {
                 ExtractTextFromElement(paragraph, textBuilder);
-                textBuilder.AppendLine(); // Add line break after paragraphs
+                textBuilder.AppendLine();
             }
             else if (child is Table table)
             {
                 ExtractTextFromElement(table, textBuilder);
-                textBuilder.AppendLine(); // Add line break after tables
+                textBuilder.AppendLine();
             }
             else
             {
@@ -163,28 +259,14 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
     {
         try
         {
-            // Create a copy of the stream for iText
-            var memoryStream = new MemoryStream();
-            await fileStream.CopyToAsync(memoryStream);
-            memoryStream.Position = 0;
-
+            var memoryStream = await CreateMemoryStreamCopy(fileStream);
             var bytes = memoryStream.ToArray();
+            
             using var pdfReader = new PdfReader(new MemoryStream(bytes));
             using var pdfDocument = new PdfDocument(pdfReader);
 
             var textBuilder = new StringBuilder();
-
-            for (int i = 1; i <= pdfDocument.GetNumberOfPages(); i++)
-            {
-                var page = pdfDocument.GetPage(i);
-                var strategy = new LocationTextExtractionStrategy();
-                var text = PdfTextExtractor.GetTextFromPage(page, strategy);
-
-                if (!string.IsNullOrWhiteSpace(text))
-                {
-                    textBuilder.AppendLine(text);
-                }
-            }
+            ExtractTextFromPdfPages(pdfDocument, textBuilder);
 
             var content = textBuilder.ToString();
             return CleanContent(content);
@@ -192,6 +274,26 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
         catch (Exception)
         {
             return string.Empty;
+        }
+    }
+
+    /// <summary>
+    /// Extracts text from all PDF pages
+    /// </summary>
+    private static void ExtractTextFromPdfPages(PdfDocument pdfDocument, StringBuilder textBuilder)
+    {
+        var pageCount = pdfDocument.GetNumberOfPages();
+        
+        for (int i = 1; i <= pageCount; i++)
+        {
+            var page = pdfDocument.GetPage(i);
+            var strategy = new LocationTextExtractionStrategy();
+            var text = PdfTextExtractor.GetTextFromPage(page, strategy);
+
+            if (!string.IsNullOrWhiteSpace(text))
+            {
+                textBuilder.AppendLine(text);
+            }
         }
     }
 
@@ -220,27 +322,12 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
         if (string.IsNullOrWhiteSpace(content))
             return string.Empty;
 
-        // Remove binary characters and control characters
-        var cleaned = Regex.Replace(content, @"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]", "");
-
-        // Remove excessive whitespace
-        cleaned = Regex.Replace(cleaned, @"\s+", " ");
-
-        // Remove excessive line breaks
-        cleaned = Regex.Replace(cleaned, @"\n\s*\n", "\n\n");
-
-        // Trim whitespace
+        var cleaned = RemoveBinaryCharacters(content);
+        cleaned = RemoveExcessiveWhitespace(cleaned);
+        cleaned = RemoveExcessiveLineBreaks(cleaned);
         cleaned = cleaned.Trim();
 
-        // Validate content length and quality
-        if (cleaned.Length < 10)
-        {
-            return string.Empty;
-        }
-
-        // Check if content contains meaningful text (not just binary data)
-        var meaningfulTextRatio = cleaned.Count(c => char.IsLetterOrDigit(c)) / (double)cleaned.Length;
-        if (meaningfulTextRatio < 0.3) // Less than 30% meaningful text
+        if (!IsContentValid(cleaned))
         {
             return string.Empty;
         }
@@ -249,43 +336,46 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
     }
 
     /// <summary>
-    /// Gets supported file types
+    /// Removes binary and control characters
     /// </summary>
-    public IEnumerable<string> GetSupportedFileTypes() => [
-            ".txt", ".md", ".json", ".xml", ".csv", ".html", ".htm",
-            ".docx", ".doc", ".pdf"
-        ];
-
-    /// <summary>
-    /// Gets supported content types
-    /// </summary>
-    public IEnumerable<string> GetSupportedContentTypes() => [
-            "text/plain", "text/markdown", "text/html",
-            "application/json", "application/xml", "application/csv",
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            "application/msword", "application/pdf"
-        ];
-
-    private static async Task<string> ExtractTextAsync(Stream fileStream, string fileName, string contentType)
+    private static string RemoveBinaryCharacters(string content)
     {
-        if (IsWordDocument(fileName, contentType))
-        {
-            return await DocumentParserService.ParseWordDocumentAsync(fileStream);
-        }
-        else if (IsPdfDocument(fileName, contentType))
-        {
-            return await DocumentParserService.ParsePdfDocumentAsync(fileStream);
-        }
-        else if (IsTextBasedFile(fileName, contentType))
-        {
-            return await DocumentParserService.ParseTextDocumentAsync(fileStream);
-        }
-        else
-        {
-            return string.Empty;
-        }
+        return Regex.Replace(content, @"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]", "");
     }
 
+    /// <summary>
+    /// Removes excessive whitespace
+    /// </summary>
+    private static string RemoveExcessiveWhitespace(string content)
+    {
+        return Regex.Replace(content, @"\s+", " ");
+    }
+
+    /// <summary>
+    /// Removes excessive line breaks
+    /// </summary>
+    private static string RemoveExcessiveLineBreaks(string content)
+    {
+        return Regex.Replace(content, @"\n\s*\n", "\n\n");
+    }
+
+    /// <summary>
+    /// Validates content length and quality
+    /// </summary>
+    private static bool IsContentValid(string content)
+    {
+        if (content.Length < MinContentLength)
+        {
+            return false;
+        }
+
+        var meaningfulTextRatio = content.Count(c => char.IsLetterOrDigit(c)) / (double)content.Length;
+        return meaningfulTextRatio >= MinMeaningfulTextRatio;
+    }
+
+    /// <summary>
+    /// Creates document chunks with smart boundary detection
+    /// </summary>
     private List<DocumentChunk> CreateChunks(string content, Guid documentId)
     {
         var chunks = new List<DocumentChunk>();
@@ -295,21 +385,37 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
 
         if (content.Length <= maxChunkSize)
         {
-            chunks.Add(new DocumentChunk
-            {
-                Id = Guid.NewGuid(),
-                DocumentId = documentId,
-                Content = content,
-                ChunkIndex = 0,
-                StartPosition = 0,
-                EndPosition = content.Length,
-                CreatedAt = DateTime.UtcNow,
-                RelevanceScore = 0.0
-                // Embedding will be set by DocumentService after AI processing
-            });
+            chunks.Add(CreateSingleChunk(content, documentId, 0, 0, content.Length));
             return chunks;
         }
 
+        return CreateMultipleChunks(content, documentId, maxChunkSize, chunkOverlap, minChunkSize);
+    }
+
+    /// <summary>
+    /// Creates a single chunk for small content
+    /// </summary>
+    private static DocumentChunk CreateSingleChunk(string content, Guid documentId, int chunkIndex, int startPosition, int endPosition)
+    {
+        return new Entities.DocumentChunk
+        {
+            Id = Guid.NewGuid(),
+            DocumentId = documentId,
+            Content = content,
+            ChunkIndex = chunkIndex,
+            StartPosition = startPosition,
+            EndPosition = endPosition,
+            CreatedAt = DateTime.UtcNow,
+            RelevanceScore = 0.0
+        };
+    }
+
+    /// <summary>
+    /// Creates multiple chunks with smart boundary detection
+    /// </summary>
+    private static List<DocumentChunk> CreateMultipleChunks(string content, Guid documentId, int maxChunkSize, int chunkOverlap, int minChunkSize)
+    {
+        var chunks = new List<DocumentChunk>();
         var startIndex = 0;
         var chunkIndex = 0;
 
@@ -317,47 +423,31 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
         {
             var endIndex = Math.Min(startIndex + maxChunkSize, content.Length);
 
-            // Smart boundary detection to avoid cutting words in the middle
             if (endIndex < content.Length)
             {
                 endIndex = FindOptimalBreakPoint(content, startIndex, endIndex, minChunkSize);
             }
 
-            // Validate both start and end boundaries to ensure complete words
             var (validatedStart, validatedEnd) = ValidateChunkBoundaries(content, startIndex, endIndex);
             var chunkContent = content.Substring(validatedStart, validatedEnd - validatedStart).Trim();
 
             if (!string.IsNullOrWhiteSpace(chunkContent))
             {
-                chunks.Add(new DocumentChunk
-                {
-                    Id = Guid.NewGuid(),
-                    DocumentId = documentId,
-                    Content = chunkContent,
-                    ChunkIndex = chunkIndex,
-                    StartPosition = validatedStart,
-                    EndPosition = validatedEnd,
-                    CreatedAt = DateTime.UtcNow,
-                    RelevanceScore = 0.0
-                    // Embedding will be set by DocumentService after AI processing
-                });
+                chunks.Add(CreateSingleChunk(chunkContent, documentId, chunkIndex, validatedStart, validatedEnd));
                 chunkIndex++;
             }
 
-            // Smart overlap calculation to ensure meaningful context
             var nextStartIndex = CalculateNextStartPosition(content, startIndex, endIndex, chunkOverlap);
 
-            // Safety check to prevent infinite loops
             if (nextStartIndex <= startIndex)
             {
-                startIndex = endIndex; // Force progression
+                startIndex = endIndex;
             }
             else
             {
                 startIndex = nextStartIndex;
             }
 
-            // Additional safety check
             if (startIndex >= content.Length)
             {
                 break;
@@ -372,24 +462,20 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
     /// </summary>
     private static int FindOptimalBreakPoint(string content, int startIndex, int currentEndIndex, int minChunkSize)
     {
-        // DYNAMIC CHUNK CREATION: Search from both ends intelligently
         var searchStartFromStart = startIndex + minChunkSize;
         var searchEndFromEnd = currentEndIndex;
-
-        // Calculate dynamic search range based on content length
         var contentLength = content.Length;
-        var dynamicSearchRange = Math.Min(500, contentLength / 10); // Dynamic range: 500 chars or 10% of content
+        var dynamicSearchRange = Math.Min(DefaultDynamicSearchRange, contentLength / DynamicSearchRangeDivisor);
 
-        // Priority 1: End of sentence (period, exclamation, question mark) - Search from both ends
+        // Priority 1: End of sentence
         var sentenceEndIndex = FindLastSentenceEnd(content, searchStartFromStart, searchEndFromEnd);
         if (sentenceEndIndex > searchStartFromStart)
         {
-            // Additional check: Ensure we don't cut words in the middle
             var validatedIndex = ValidateWordBoundary(content, sentenceEndIndex);
             return validatedIndex + 1;
         }
 
-        // Priority 2: End of paragraph (double newline) - Search from both ends
+        // Priority 2: End of paragraph
         var paragraphEndIndex = FindLastParagraphEnd(content, searchStartFromStart, searchEndFromEnd);
         if (paragraphEndIndex > searchStartFromStart)
         {
@@ -397,7 +483,7 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
             return validatedIndex;
         }
 
-        // Priority 3: Word boundary (space, tab, newline) - Search from both ends
+        // Priority 3: Word boundary
         var wordBoundaryIndex = FindLastWordBoundary(content, searchStartFromStart, searchEndFromEnd);
         if (wordBoundaryIndex > searchStartFromStart)
         {
@@ -405,14 +491,14 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
             return validatedIndex;
         }
 
-        // Priority 4: Punctuation boundary (comma, semicolon, colon) - Search from both ends
+        // Priority 4: Punctuation boundary
         var punctuationIndex = FindLastPunctuationBoundary(content, searchStartFromStart, searchEndFromEnd);
         if (punctuationIndex > searchStartFromStart)
         {
             return punctuationIndex + 1;
         }
 
-        // Priority 5: DYNAMIC SEARCH - Find any word boundary in intelligent range
+        // Priority 5: Dynamic search
         var intelligentSearchStart = Math.Max(startIndex, currentEndIndex - dynamicSearchRange);
         var intelligentSearchEnd = Math.Min(contentLength, currentEndIndex + dynamicSearchRange);
 
@@ -422,15 +508,14 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
             return anyWordBoundary;
         }
 
-        // Priority 6: ULTIMATE FALLBACK - Search entire remaining content intelligently
-        var ultimateSearchStart = Math.Max(startIndex, currentEndIndex - 1000);
+        // Priority 6: Ultimate fallback
+        var ultimateSearchStart = Math.Max(startIndex, currentEndIndex - UltimateSearchRange);
         var ultimateWordBoundary = FindUltimateWordBoundary(content, ultimateSearchStart, currentEndIndex);
         if (ultimateWordBoundary > ultimateSearchStart)
         {
             return ultimateWordBoundary;
         }
 
-        // Final fallback: Use current end index
         return currentEndIndex;
     }
 
@@ -439,25 +524,20 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
     /// </summary>
     private static int ValidateWordBoundary(string content, int breakPoint)
     {
-        // Check if we're in the middle of a word
         if (breakPoint > 0 && breakPoint < content.Length)
         {
             var currentChar = content[breakPoint];
             var previousChar = content[breakPoint - 1];
 
-            // If we're in the middle of a word, find the previous word boundary
             if (char.IsLetterOrDigit(currentChar) && char.IsLetterOrDigit(previousChar))
             {
-                // Look backwards for the last word boundary
                 for (int i = breakPoint - 1; i >= 0; i--)
                 {
                     if (char.IsWhiteSpace(content[i]) || char.IsPunctuation(content[i]))
                     {
-                        // Found a word boundary
                         return i;
                     }
                 }
-                // If no boundary found, return start of content
                 return 0;
             }
         }
@@ -473,13 +553,11 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
         var validatedStart = ValidateWordBoundary(content, startIndex);
         var validatedEnd = ValidateWordBoundary(content, endIndex);
 
-        // Additional check: Ensure end boundary doesn't cut words
         if (validatedEnd < content.Length)
         {
             var nextChar = content[validatedEnd];
             if (char.IsLetterOrDigit(nextChar))
             {
-                // Find the next word boundary
                 for (int i = validatedEnd; i < content.Length; i++)
                 {
                     if (char.IsWhiteSpace(content[i]) || char.IsPunctuation(content[i]))
@@ -488,7 +566,6 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
                         break;
                     }
                 }
-                // If no boundary found, use content length
                 if (validatedEnd == endIndex)
                 {
                     validatedEnd = content.Length;
@@ -504,10 +581,9 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
     /// </summary>
     private static int FindLastSentenceEnd(string content, int searchStart, int searchEnd)
     {
-        var sentenceEndings = new[] { '.', '!', '?', ';' };
         var maxIndex = -1;
 
-        foreach (var ending in sentenceEndings)
+        foreach (var ending in SentenceEndings)
         {
             var index = content.LastIndexOf(ending, searchEnd - 1, searchEnd - searchStart);
             if (index > maxIndex)
@@ -524,10 +600,9 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
     /// </summary>
     private static int FindLastParagraphEnd(string content, int searchStart, int searchEnd)
     {
-        var paragraphEndings = new[] { "\n\n", "\r\n\r\n" };
         var maxIndex = -1;
 
-        foreach (var ending in paragraphEndings)
+        foreach (var ending in ParagraphEndings)
         {
             var index = content.LastIndexOf(ending, searchEnd - ending.Length, searchEnd - searchStart, StringComparison.Ordinal);
             if (index > maxIndex)
@@ -544,10 +619,9 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
     /// </summary>
     private static int FindLastWordBoundary(string content, int searchStart, int searchEnd)
     {
-        var wordBoundaries = new[] { ' ', '\t', '\n', '\r' };
         var maxIndex = -1;
 
-        foreach (var boundary in wordBoundaries)
+        foreach (var boundary in WordBoundaries)
         {
             var index = content.LastIndexOf(boundary, searchEnd - 1, searchEnd - searchStart);
             if (index > maxIndex)
@@ -556,13 +630,10 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
             }
         }
 
-        // Additional check: Ensure we don't cut words in the middle
         if (maxIndex > searchStart)
         {
-            // Look ahead to see if the next character is a letter (indicating word continuation)
             if (maxIndex + 1 < content.Length && char.IsLetter(content[maxIndex + 1]))
             {
-                // Find the previous complete word boundary
                 var prevBoundary = FindPreviousCompleteWordBoundary(content, searchStart, maxIndex);
                 if (prevBoundary > searchStart)
                 {
@@ -579,12 +650,10 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
     /// </summary>
     private static int FindPreviousCompleteWordBoundary(string content, int searchStart, int currentBoundary)
     {
-        // Look for the previous space or punctuation that ends a complete word
         for (int i = currentBoundary - 1; i >= searchStart; i--)
         {
             if (char.IsWhiteSpace(content[i]) || char.IsPunctuation(content[i]))
             {
-                // Check if this creates a complete word
                 if (i + 1 < content.Length && char.IsLetterOrDigit(content[i + 1]))
                 {
                     return i;
@@ -599,10 +668,9 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
     /// </summary>
     private static int FindLastPunctuationBoundary(string content, int searchStart, int searchEnd)
     {
-        var punctuationBoundaries = new[] { ',', ':', ';', '-', '–', '—' };
         var maxIndex = -1;
 
-        foreach (var boundary in punctuationBoundaries)
+        foreach (var boundary in PunctuationBoundaries)
         {
             var index = content.LastIndexOf(boundary, searchEnd - 1, searchEnd - searchStart);
             if (index > maxIndex)
@@ -619,13 +687,11 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
     /// </summary>
     private static int FindAnyWordBoundary(string content, int searchStart, int searchEnd)
     {
-        var wordBoundaries = new[] { ' ', '\t', '\n', '\r', '.', '!', '?', ';', ',', ':', '-', '–', '—' };
         var maxIndex = -1;
 
-        // Search from end to start to find the closest boundary
         for (int i = searchEnd - 1; i >= searchStart; i--)
         {
-            if (wordBoundaries.Contains(content[i]))
+            if (ExtendedWordBoundaries.Contains(content[i]))
             {
                 maxIndex = i;
                 break;
@@ -636,17 +702,15 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
     }
 
     /// <summary>
-    /// ULTIMATE FALLBACK - Search entire remaining content intelligently
+    /// Ultimate fallback - Search entire remaining content intelligently
     /// </summary>
     private static int FindUltimateWordBoundary(string content, int searchStart, int searchEnd)
     {
-        var wordBoundaries = new[] { ' ', '\t', '\n', '\r', '.', '!', '?', ';', ',', ':', '-', '–', '—', '(', ')', '[', ']', '{', '}' };
         var maxIndex = -1;
 
-        // Search from end to start to find ANY boundary
         for (int i = searchEnd - 1; i >= searchStart; i--)
         {
-            if (wordBoundaries.Contains(content[i]))
+            if (UltimateBoundaries.Contains(content[i]))
             {
                 maxIndex = i;
                 break;
@@ -666,22 +730,20 @@ public class DocumentParserService(IOptions<SmartRagOptions> options) : IDocumen
             return currentEnd;
         }
 
-        // Calculate next start position with overlap
         var nextStart = currentEnd - overlap;
 
-        // Ensure we don't go backwards or create infinite loops
         if (nextStart <= currentStart)
         {
-            // Force progression to avoid infinite loops
             nextStart = currentStart + 1;
         }
 
-        // Ensure we don't exceed content length
         if (nextStart >= content.Length)
         {
-            return content.Length; // End the loop
+            return content.Length;
         }
 
         return nextStart;
     }
+
+    #endregion
 }

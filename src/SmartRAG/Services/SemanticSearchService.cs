@@ -1,18 +1,41 @@
 using Microsoft.Extensions.Logging;
+using SmartRAG.Services;
 
 namespace SmartRAG.Services;
 
 /// <summary>
 /// Enhanced semantic search service for improved search relevance
 /// </summary>
-public class SemanticSearchService
+public class SemanticSearchService(ILogger<SemanticSearchService> logger)
 {
-    private readonly ILogger<SemanticSearchService> _logger;
+    #region Constants
 
-    public SemanticSearchService(ILogger<SemanticSearchService> logger)
-    {
-        _logger = logger;
-    }
+    // Text processing constants
+    private const int DefaultMaxChunkSize = 100;
+    private const double ContextRelevanceMultiplier = 1.2;
+    private const double SemanticCoherenceMultiplier = 1.15;
+    private const int MinContextWordLength = 3;
+    private const int MinThemeWordLength = 4;
+    private const int MaxThemeWords = 3;
+
+    // Array constants for sentence splitting
+    private static readonly char[] SentenceEndings = ['.', '!', '?'];
+
+    #endregion
+
+    #region Fields
+
+    private readonly ILogger<SemanticSearchService> _logger = logger;
+
+    #endregion
+
+    #region Properties
+
+    protected ILogger Logger => _logger;
+
+    #endregion
+
+    #region Public Methods
 
     /// <summary>
     /// Calculate enhanced semantic similarity using advanced text analysis
@@ -22,8 +45,8 @@ public class SemanticSearchService
         try
         {
             // Use simple text chunking instead of deprecated TextChunker
-            var queryTokens = SplitIntoChunks(query, 100);
-            var contentTokens = SplitIntoChunks(content, 100);
+            var queryTokens = SplitIntoChunks(query, DefaultMaxChunkSize);
+            var contentTokens = SplitIntoChunks(content, DefaultMaxChunkSize);
 
             if (queryTokens.Count == 0 || contentTokens.Count == 0)
                 return 0.0;
@@ -38,10 +61,14 @@ public class SemanticSearchService
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Failed to calculate enhanced semantic similarity");
+            ServiceLogMessages.LogSemanticSimilarityCalculationError(Logger, ex);
             return 0.0;
         }
     }
+
+    #endregion
+
+    #region Private Helper Methods
 
     /// <summary>
     /// Simple text chunking method
@@ -52,7 +79,7 @@ public class SemanticSearchService
             return new List<string>();
 
         var chunks = new List<string>();
-        var sentences = text.Split(new[] { '.', '!', '?' }, StringSplitOptions.RemoveEmptyEntries);
+        var sentences = text.Split(SentenceEndings, StringSplitOptions.RemoveEmptyEntries);
         
         foreach (var sentence in sentences)
         {
@@ -106,11 +133,11 @@ public class SemanticSearchService
 
         // Context relevance enhancement
         if (ContainsContextualKeywords(query, content))
-            enhancement *= 1.2;
+            enhancement *= ContextRelevanceMultiplier;
 
         // Semantic coherence enhancement
         if (HasSemanticCoherence(query, content))
-            enhancement *= 1.15;
+            enhancement *= SemanticCoherenceMultiplier;
 
         // Domain-specific enhancement removed for SOLID and Generic principles
         // Enhancement factors are now domain-independent and language-agnostic
@@ -126,7 +153,7 @@ public class SemanticSearchService
         var queryWords = query.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries);
         var contentLower = content.ToLowerInvariant();
 
-        return queryWords.Any(word => word.Length > 3 && contentLower.Contains(word));
+        return queryWords.Any(word => word.Length > MinContextWordLength && contentLower.Contains(word));
     }
 
     /// <summary>
@@ -152,10 +179,12 @@ public class SemanticSearchService
     {
         var words = text.ToLowerInvariant()
             .Split(' ', StringSplitOptions.RemoveEmptyEntries)
-            .Where(w => w.Length > 4)
-            .Take(3)
+            .Where(w => w.Length > MinThemeWordLength)
+            .Take(MaxThemeWords)
             .ToArray();
 
         return string.Join(" ", words);
     }
+
+    #endregion
 }
