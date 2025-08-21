@@ -131,42 +131,40 @@ jobs:
         
     - name: Create Release
       id: create_release
+      uses: actions/create-release@v1
       env:
-        GH_TOKEN: ${{ github.token }}
-      run: |
-        TAG_NAME="v${{ steps.get_version.outputs.version }}-build-${{ github.run_number }}"
-        RELEASE_NAME="SmartRAG v${{ steps.get_version.outputs.version }} Build ${{ github.run_number }}"
-        
-        # Create release using GitHub CLI
-        gh release create "$TAG_NAME" \
-          --title "$RELEASE_NAME" \
-          --notes "## 🚀 SmartRAG v${{ steps.get_version.outputs.version }} Release
-        
-        ### 📦 Downloads
-        - **NuGet Package**: [SmartRAG v${{ steps.get_version.outputs.version }}](https://www.nuget.org/packages/SmartRAG/${{ steps.get_version.outputs.version }})
-        - **GitHub Packages**: Available in this repository
-        
-        ### 🚀 Installation
-        \`\`\`bash
-        # NuGet
-        dotnet add package SmartRAG --version ${{ steps.get_version.outputs.version }}
-        
-        # GitHub Packages
-        dotnet add package SmartRAG --version ${{ steps.get_version.outputs.version }} --source https://nuget.pkg.github.com/byerlikaya/index.json
-        \`\`\`
-        
-        ---
-        
-        **Built with ❤️ by Barış Yerlikaya** | Made in Turkey 🇹🇷"
-        
-        echo "release_id=$(gh release view "$TAG_NAME" --json id --jq '.id')" >> $GITHUB_OUTPUT
-        echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v${{ steps.get_version.outputs.version }}-build-${{ github.run_number }}
+        release_name: SmartRAG v${{ steps.get_version.outputs.version }} Build ${{ github.run_number }}
+        body: |
+          ## 🚀 SmartRAG v${{ steps.get_version.outputs.version }} Release
+          
+          ### 📦 Downloads
+          - **NuGet Package**: [SmartRAG v${{ steps.get_version.outputs.version }}](https://www.nuget.org/packages/SmartRAG/${{ steps.get_version.outputs.version }})
+          - **GitHub Packages**: Available in this repository
+          
+          ### 🚀 Installation
+          ```bash
+          # NuGet
+          dotnet add package SmartRAG --version ${{ steps.get_version.outputs.version }}
+          
+          # GitHub Packages
+          dotnet add package SmartRAG --version ${{ steps.get_version.outputs.version }} --source https://nuget.pkg.github.com/byerlikaya/index.json
+          ```
+          
+          ---
+          
+          **Built with ❤️ by Barış Yerlikaya** | Made in Turkey 🇹🇷
+        draft: false
+        prerelease: false
         
     - name: Upload Release Assets
-      run: |
-        for package in ./nupkgs/*.nupkg; do
-          echo "Uploading $package to release..."
-          gh release upload "${{ steps.create_release.outputs.tag_name }}" "$package" --clobber
-        done
-
-
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: ./nupkgs/*.nupkg
+        asset_name: SmartRAG.${{ steps.get_version.outputs.version }}.nupkg
+        asset_content_type: application/octet-stream
