@@ -40,7 +40,7 @@ public class AzureOpenAIProvider : BaseAIProvider
 
         var url = $"{config.Endpoint!.TrimEnd('/')}/openai/deployments/{config.Model}/chat/completions?api-version={config.ApiVersion}";
 
-        var (success, response, error) = await MakeHttpRequestAsync(client, url, payload, "Azure OpenAI");
+        var (success, response, error) = await MakeHttpRequestAsync(client, url, payload);
 
         if (!success)
             return error;
@@ -68,7 +68,7 @@ public class AzureOpenAIProvider : BaseAIProvider
         var url = $"{config.Endpoint!.TrimEnd('/')}/openai/deployments/{config.EmbeddingModel}/embeddings?api-version={config.ApiVersion}";
 
         // Azure OpenAI S0 tier için özel rate limiting (3 RPM)
-        var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, "Azure OpenAI", config);
+        var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, config);
 
         if (!success)
             return [];
@@ -100,7 +100,7 @@ public class AzureOpenAIProvider : BaseAIProvider
         var url = $"{config.Endpoint!.TrimEnd('/')}/openai/deployments/{config.EmbeddingModel}/embeddings?api-version={config.ApiVersion}";
 
         // Azure OpenAI S0 tier için özel rate limiting (3 RPM)
-        var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, "Azure OpenAI", config);
+        var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, config);
 
         if (!success)
         {
@@ -147,7 +147,7 @@ public class AzureOpenAIProvider : BaseAIProvider
     /// Azure OpenAI S0 tier için özel rate limiting (3 RPM)
     /// </summary>
     private async Task<(bool success, string response, string error)> MakeHttpRequestAsyncWithRateLimit(
-        HttpClient client, string endpoint, object payload, string providerName, AIProviderConfig config)
+        HttpClient client, string endpoint, object payload, AIProviderConfig config)
     {
         // S0 tier: 3 RPM - configurable minimum interval (default 60s)
         var minIntervalMs = Math.Max(0, config.EmbeddingMinIntervalMs ?? 60000);
@@ -168,7 +168,7 @@ public class AzureOpenAIProvider : BaseAIProvider
             _lastRequestTime = DateTime.UtcNow;
             
             // Normal request with retry logic
-            return await MakeHttpRequestAsync(client, endpoint, payload, providerName, maxRetries: 5);
+            return await MakeHttpRequestAsync(client, endpoint, payload, maxRetries: 5);
         }
         finally
         {
