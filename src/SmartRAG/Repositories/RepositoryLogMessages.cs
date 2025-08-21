@@ -118,4 +118,13 @@ public static class RepositoryLogMessages
         "Failed to save metadata");
 
     #endregion
+
+    #region InMemory Operations (EventId: 33001-33999)
+
+    public static readonly Action<ILogger, int, int, Exception?> LogOldDocumentsRemoved = LoggerMessage.Define<int, int>(
+        LogLevel.Information,
+        new EventId(33001, "OldDocumentsRemoved"),
+        "Removed {RemovedCount} old documents to maintain capacity limit of {MaxDocuments}");
+
+    #endregion
 }
