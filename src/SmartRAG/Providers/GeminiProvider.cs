@@ -51,7 +51,7 @@ public class GeminiProvider(ILogger<GeminiProvider> logger) : BaseAIProvider(log
         }
         catch (Exception ex)
         {
-            ProviderLogMessages.LogGeminiTextParsingError(_logger, ex);
+            ProviderLogMessages.LogGeminiTextParsingError(Logger, ex);
             return $"Error parsing Gemini response: {ex.Message}";
         }
     }
@@ -62,13 +62,13 @@ public class GeminiProvider(ILogger<GeminiProvider> logger) : BaseAIProvider(log
 
         if (!isValid)
         {
-            ProviderLogMessages.LogGeminiEmbeddingValidationError(_logger, errorMessage, null);
+            ProviderLogMessages.LogGeminiEmbeddingValidationError(Logger, errorMessage, null);
             return [];
         }
 
         if (string.IsNullOrEmpty(config.EmbeddingModel))
         {
-            ProviderLogMessages.LogGeminiEmbeddingModelMissing(_logger, null);
+            ProviderLogMessages.LogGeminiEmbeddingModelMissing(Logger, null);
             return [];
         }
 
@@ -82,7 +82,7 @@ public class GeminiProvider(ILogger<GeminiProvider> logger) : BaseAIProvider(log
 
         if (!success)
         {
-            ProviderLogMessages.LogGeminiEmbeddingRequestError(_logger, error, null);
+            ProviderLogMessages.LogGeminiEmbeddingRequestError(Logger, error, null);
             return [];
         }
 
@@ -92,7 +92,7 @@ public class GeminiProvider(ILogger<GeminiProvider> logger) : BaseAIProvider(log
         }
         catch (Exception ex)
         {
-            ProviderLogMessages.LogGeminiEmbeddingParsingError(_logger, ex);
+            ProviderLogMessages.LogGeminiEmbeddingParsingError(Logger, ex);
             return [];
         }
     }
@@ -103,13 +103,13 @@ public class GeminiProvider(ILogger<GeminiProvider> logger) : BaseAIProvider(log
 
         if (!isValid)
         {
-            ProviderLogMessages.LogGeminiEmbeddingValidationError(_logger, errorMessage, null);
+            ProviderLogMessages.LogGeminiEmbeddingValidationError(Logger, errorMessage, null);
             return [];
         }
 
         if (string.IsNullOrEmpty(config.EmbeddingModel))
         {
-            ProviderLogMessages.LogGeminiEmbeddingModelMissing(_logger, null);
+            ProviderLogMessages.LogGeminiEmbeddingModelMissing(Logger, null);
             return [];
         }
 
@@ -137,7 +137,7 @@ public class GeminiProvider(ILogger<GeminiProvider> logger) : BaseAIProvider(log
             }
             catch (Exception ex)
             {
-                ProviderLogMessages.LogGeminiBatchFailedFallback(_logger, i / DefaultMaxBatchSize, ex.Message, ex);
+                ProviderLogMessages.LogGeminiBatchFailedFallback(Logger, i / DefaultMaxBatchSize, ex.Message, ex);
                 
                 // Fallback to individual requests for this batch
                 var fallbackResults = await base.GenerateEmbeddingsBatchAsync(batchTexts, config);
@@ -155,7 +155,7 @@ public class GeminiProvider(ILogger<GeminiProvider> logger) : BaseAIProvider(log
     /// <summary>
     /// Create Gemini HTTP client with proper authentication
     /// </summary>
-    private HttpClient CreateGeminiHttpClient(string apiKey)
+    private static HttpClient CreateGeminiHttpClient(string apiKey)
     {
         var client = CreateHttpClient(apiKey);
         client.DefaultRequestHeaders.Remove("Authorization");
@@ -282,7 +282,7 @@ public class GeminiProvider(ILogger<GeminiProvider> logger) : BaseAIProvider(log
 
         if (!success)
         {
-            ProviderLogMessages.LogGeminiBatchEmbeddingRequestError(_logger, error, null);
+            ProviderLogMessages.LogGeminiBatchEmbeddingRequestError(Logger, error, null);
             throw new InvalidOperationException($"Batch embedding failed: {error}");
         }
 
@@ -292,7 +292,7 @@ public class GeminiProvider(ILogger<GeminiProvider> logger) : BaseAIProvider(log
         }
         catch (Exception ex)
         {
-            ProviderLogMessages.LogGeminiBatchEmbeddingParsingError(_logger, ex);
+            ProviderLogMessages.LogGeminiBatchEmbeddingParsingError(Logger, ex);
             throw;
         }
     }

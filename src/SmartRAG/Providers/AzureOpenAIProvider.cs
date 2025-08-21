@@ -73,7 +73,7 @@ public class AzureOpenAIProvider(ILogger<AzureOpenAIProvider> logger) : BaseAIPr
         }
         catch (Exception ex)
         {
-            ProviderLogMessages.LogAzureOpenAITextParsingError(_logger, ex);
+            ProviderLogMessages.LogAzureOpenAITextParsingError(Logger, ex);
             return $"Error parsing Azure OpenAI response: {ex.Message}";
         }
     }
@@ -84,13 +84,13 @@ public class AzureOpenAIProvider(ILogger<AzureOpenAIProvider> logger) : BaseAIPr
 
         if (!isValid)
         {
-            ProviderLogMessages.LogAzureOpenAIEmbeddingValidationError(_logger, errorMessage, null);
+            ProviderLogMessages.LogAzureOpenAIEmbeddingValidationError(Logger, errorMessage, null);
             return [];
         }
 
         if (string.IsNullOrEmpty(config.EmbeddingModel))
         {
-            ProviderLogMessages.LogAzureOpenAIEmbeddingModelMissing(_logger, null);
+            ProviderLogMessages.LogAzureOpenAIEmbeddingModelMissing(Logger, null);
             return [];
         }
 
@@ -107,7 +107,7 @@ public class AzureOpenAIProvider(ILogger<AzureOpenAIProvider> logger) : BaseAIPr
 
         if (!success)
         {
-            ProviderLogMessages.LogAzureOpenAIEmbeddingRequestError(_logger, error, null);
+            ProviderLogMessages.LogAzureOpenAIEmbeddingRequestError(Logger, error, null);
             return [];
         }
 
@@ -117,7 +117,7 @@ public class AzureOpenAIProvider(ILogger<AzureOpenAIProvider> logger) : BaseAIPr
         }
         catch (Exception ex)
         {
-            ProviderLogMessages.LogAzureOpenAIEmbeddingParsingError(_logger, ex);
+            ProviderLogMessages.LogAzureOpenAIEmbeddingParsingError(Logger, ex);
             return [];
         }
     }
@@ -128,13 +128,13 @@ public class AzureOpenAIProvider(ILogger<AzureOpenAIProvider> logger) : BaseAIPr
 
         if (!isValid)
         {
-            ProviderLogMessages.LogAzureOpenAIEmbeddingValidationError(_logger, errorMessage, null);
+            ProviderLogMessages.LogAzureOpenAIEmbeddingValidationError(Logger, errorMessage, null);
             return [];
         }
 
         if (string.IsNullOrEmpty(config.EmbeddingModel))
         {
-            ProviderLogMessages.LogAzureOpenAIEmbeddingModelMissing(_logger, null);
+            ProviderLogMessages.LogAzureOpenAIEmbeddingModelMissing(Logger, null);
             return [];
         }
 
@@ -155,7 +155,7 @@ public class AzureOpenAIProvider(ILogger<AzureOpenAIProvider> logger) : BaseAIPr
 
         if (!success)
         {
-            ProviderLogMessages.LogAzureOpenAIBatchEmbeddingRequestError(_logger, error, null);
+            ProviderLogMessages.LogAzureOpenAIBatchEmbeddingRequestError(Logger, error, null);
             return ParseBatchEmbeddingResponse("", inputList.Count);
         }
 
@@ -165,7 +165,7 @@ public class AzureOpenAIProvider(ILogger<AzureOpenAIProvider> logger) : BaseAIPr
         }
         catch (Exception ex)
         {
-            ProviderLogMessages.LogAzureOpenAIBatchEmbeddingParsingError(_logger, ex);
+            ProviderLogMessages.LogAzureOpenAIBatchEmbeddingParsingError(Logger, ex);
             return ParseBatchEmbeddingResponse("", inputList.Count);
         }
     }
@@ -223,7 +223,7 @@ public class AzureOpenAIProvider(ILogger<AzureOpenAIProvider> logger) : BaseAIPr
         if (timeSinceLastRequest.TotalMilliseconds < minIntervalMs)
         {
             var waitTime = minIntervalMs - (int)timeSinceLastRequest.TotalMilliseconds;
-            ProviderLogMessages.LogAzureOpenAIRateLimit(_logger, waitTime, null);
+            ProviderLogMessages.LogAzureOpenAIRateLimit(Logger, waitTime, null);
             await Task.Delay(waitTime);
         }
     }

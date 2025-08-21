@@ -1,9 +1,9 @@
+using Microsoft.Extensions.Logging;
 using SmartRAG.Enums;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
 using System.Text;
 using System.Text.Json;
-using Microsoft.Extensions.Logging;
 
 namespace SmartRAG.Providers;
 
@@ -12,18 +12,62 @@ namespace SmartRAG.Providers;
 /// </summary>
 public abstract class BaseAIProvider : IAIProvider
 {
-    protected readonly ILogger _logger;
+    #region Constants
+
+    // HTTP request constants
+    private const int DefaultMaxRetries = 3;
+    private const int BaseDelayMs = 1000;
+    private const int MinRetryDelayMs = 60000;
+    private const int MaxRetryDelayMs = int.MaxValue;
+
+    // JSON parsing constants
+    private const string DefaultDataProperty = "data";
+    private const string DefaultEmbeddingProperty = "embedding";
+    private const string DefaultChoicesProperty = "choices";
+    private const string DefaultMessageProperty = "message";
+    private const string DefaultContentProperty = "content";
+
+    #endregion
+
+    #region Fields
+
+    private readonly ILogger _logger;
+
+    #endregion
+
+    #region Protected Properties
+
+    /// <summary>
+    /// Logger instance for derived classes
+    /// </summary>
+    protected ILogger Logger => _logger;
+
+    #endregion
+
+    #region Constructor
 
     protected BaseAIProvider(ILogger logger)
     {
         _logger = logger;
     }
 
+    #endregion
+
+    #region Abstract Properties
+
     public abstract AIProvider ProviderType { get; }
+
+    #endregion
+
+    #region Abstract Methods
 
     public abstract Task<string> GenerateTextAsync(string prompt, AIProviderConfig config);
 
     public abstract Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config);
+
+    #endregion
+
+    #region Virtual Methods
 
     /// <summary>
     /// Default batch embedding implementation that falls back to individual calls
@@ -32,7 +76,7 @@ public abstract class BaseAIProvider : IAIProvider
     public virtual async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config)
     {
         var results = new List<List<float>>();
-        
+
         foreach (var text in texts)
         {
             try
@@ -46,7 +90,7 @@ public abstract class BaseAIProvider : IAIProvider
                 results.Add(new List<float>());
             }
         }
-        
+
         return results;
     }
 
@@ -60,9 +104,7 @@ public abstract class BaseAIProvider : IAIProvider
             return Task.FromResult(new List<string>());
 
         var chunks = new List<string>();
-
         var sentences = text.Split(['.', '!', '?'], StringSplitOptions.RemoveEmptyEntries);
-
         var current = new StringBuilder();
 
         foreach (var sentence in sentences)
@@ -90,7 +132,9 @@ public abstract class BaseAIProvider : IAIProvider
         return Task.FromResult(chunks);
     }
 
-    #region Common Helper Methods
+    #endregion
+
+    #region Protected Helper Methods
 
     /// <summary>
     /// Validates common configuration requirements
@@ -112,39 +156,22 @@ public abstract class BaseAIProvider : IAIProvider
     /// <summary>
     /// Creates HttpClient with common headers
     /// </summary>
-    protected HttpClient CreateHttpClient(string? apiKey = null, Dictionary<string, string>? additionalHeaders = null)
+    protected static HttpClient CreateHttpClient(string? apiKey = null, Dictionary<string, string>? additionalHeaders = null)
     {
-        var handler = new HttpClientHandler();
-        
-        // Handle SSL/TLS issues for all providers
-        handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
-        {
-            // For development/testing, you might want to bypass certificate validation
-            // In production, this should be more restrictive
-            return true;
-        };
-        
+        var handler = CreateHttpClientHandler();
         var client = new HttpClient(handler);
 
         if (!string.IsNullOrEmpty(apiKey))
         {
-                    // Generic auth header - providers can override if needed
-        var authHeader = "Authorization";
-        var authValue = $"Bearer {apiKey}";
-
+            // Generic auth header - providers can override if needed
+            var authHeader = "Authorization";
+            var authValue = $"Bearer {apiKey}";
             client.DefaultRequestHeaders.Add(authHeader, authValue);
         }
 
         if (additionalHeaders != null)
         {
-            foreach (var header in additionalHeaders)
-            {
-                if (string.Equals(header.Key, "Content-Type", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-                client.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, header.Value);
-            }
+            AddAdditionalHeaders(client, additionalHeaders);
         }
 
         return client;
@@ -155,28 +182,12 @@ public abstract class BaseAIProvider : IAIProvider
     /// </summary>
     protected static HttpClient CreateHttpClientWithoutAuth(Dictionary<string, string>? additionalHeaders)
     {
-        var handler = new HttpClientHandler();
-        
-        // Handle SSL/TLS issues
-        handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
-        {
-            // For development/testing, you might want to bypass certificate validation
-            // In production, this should be more restrictive
-            return true;
-        };
-        
+        var handler = CreateHttpClientHandler();
         var client = new HttpClient(handler);
 
         if (additionalHeaders != null)
         {
-            foreach (var header in additionalHeaders)
-            {
-                if (string.Equals(header.Key, "Content-Type", StringComparison.OrdinalIgnoreCase))
-                {
-                    continue;
-                }
-                client.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, header.Value);
-            }
+            AddAdditionalHeaders(client, additionalHeaders);
         }
 
         return client;
@@ -186,74 +197,39 @@ public abstract class BaseAIProvider : IAIProvider
     /// Common HTTP POST request with error handling and retry logic
     /// </summary>
     protected async Task<(bool success, string response, string errorMessage)> MakeHttpRequestAsync(
-        HttpClient client, string endpoint, object payload, int maxRetries = 3)
+        HttpClient client, string endpoint, object payload, int maxRetries = DefaultMaxRetries)
     {
         var attempt = 0;
-        var baseDelayMs = 1000; // 1 second base delay
 
         while (attempt < maxRetries)
         {
             try
             {
-                var options = GetJsonSerializerOptions();
-                var json = JsonSerializer.Serialize(payload, options);
+                var (success, response, error) = await ExecuteHttpRequestAsync(client, endpoint, payload);
 
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                if (success)
+                    return (true, response, string.Empty);
 
-                var response = await client.PostAsync(endpoint, content);
-
-                if (response.IsSuccessStatusCode)
-                {
-                    var responseBody = await response.Content.ReadAsStringAsync();
-                    return (true, responseBody, string.Empty);
-                }
-
-                // Handle specific error cases
-                if (response.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+                // Handle rate limiting
+                if (error.Contains("429") || error.Contains("TooManyRequests"))
                 {
                     attempt++;
                     if (attempt < maxRetries)
                     {
-                        // Respect Retry-After header if present; otherwise default to 60s for Azure
-                        var delayMs = 60000;
-                        try
-                        {
-                            if (response.Headers.TryGetValues("Retry-After", out var retryAfterValues))
-                            {
-                                var retryAfter = retryAfterValues.FirstOrDefault();
-                                if (!string.IsNullOrEmpty(retryAfter))
-                                {
-                                    if (int.TryParse(retryAfter, out var seconds))
-                                    {
-                                        delayMs = Math.Max(60000, seconds * 1000); // Minimum 60s for Azure
-                                    }
-                                    else if (DateTimeOffset.TryParse(retryAfter, out var retryDate))
-                                    {
-                                        var diff = retryDate - DateTimeOffset.UtcNow;
-                                        if (diff.TotalMilliseconds > 0)
-                                        {
-                                            delayMs = (int)Math.Max(60000, Math.Min(int.MaxValue, diff.TotalMilliseconds));
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        catch { }
-
+                        var delayMs = CalculateRetryDelay(attempt);
                         await Task.Delay(delayMs);
                         continue;
                     }
                 }
 
-                var errorBody = await response.Content.ReadAsStringAsync();
-                return (false, string.Empty, $"{ProviderType} error: {response.StatusCode} - {errorBody}");
+                return (false, string.Empty, error);
             }
             catch (Exception ex)
             {
                 attempt++;
                 if (attempt < maxRetries)
                 {
-                    var delay = baseDelayMs * (int)Math.Pow(2, attempt - 1); // Exponential backoff
+                    var delay = CalculateExponentialBackoffDelay(attempt);
                     await Task.Delay(delay);
                     continue;
                 }
@@ -264,10 +240,88 @@ public abstract class BaseAIProvider : IAIProvider
         return (false, string.Empty, $"{ProviderType} request failed after {maxRetries} attempts");
     }
 
+    #endregion
+
+    #region Private Helper Methods
+
+    /// <summary>
+    /// Creates HttpClientHandler with SSL/TLS configuration
+    /// </summary>
+    private static HttpClientHandler CreateHttpClientHandler()
+    {
+        var handler = new HttpClientHandler();
+
+        // Handle SSL/TLS issues for all providers
+        handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
+        {
+            // For development/testing, you might want to bypass certificate validation
+            // In production, this should be more restrictive
+            return true;
+        };
+
+        return handler;
+    }
+
+    /// <summary>
+    /// Adds additional headers to HttpClient
+    /// </summary>
+    private static void AddAdditionalHeaders(HttpClient client, Dictionary<string, string> headers)
+    {
+        foreach (var header in headers)
+        {
+            if (string.Equals(header.Key, "Content-Type", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            client.DefaultRequestHeaders.TryAddWithoutValidation(header.Key, header.Value);
+        }
+    }
+
+    /// <summary>
+    /// Executes a single HTTP request
+    /// </summary>
+    private async Task<(bool success, string response, string error)> ExecuteHttpRequestAsync(
+        HttpClient client, string endpoint, object payload)
+    {
+        var options = GetJsonSerializerOptions();
+        var json = JsonSerializer.Serialize(payload, options);
+        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+        var response = await client.PostAsync(endpoint, content);
+
+        if (response.IsSuccessStatusCode)
+        {
+            var responseBody = await response.Content.ReadAsStringAsync();
+            return (true, responseBody, string.Empty);
+        }
+
+        var errorBody = await response.Content.ReadAsStringAsync();
+        return (false, string.Empty, $"{ProviderType} error: {response.StatusCode} - {errorBody}");
+    }
+
+    /// <summary>
+    /// Calculates retry delay for rate limiting
+    /// </summary>
+    private static int CalculateRetryDelay(int attempt)
+    {
+        return MinRetryDelayMs;
+    }
+
+    /// <summary>
+    /// Calculates exponential backoff delay for retries
+    /// </summary>
+    private static int CalculateExponentialBackoffDelay(int attempt)
+    {
+        return BaseDelayMs * (int)Math.Pow(2, attempt - 1);
+    }
+
+    #endregion
+
+    #region Static Helper Methods
+
     /// <summary>
     /// Common embedding response parsing
     /// </summary>
-    protected static List<float> ParseEmbeddingResponse(string responseBody, string dataProperty = "data", string embeddingProperty = "embedding")
+    protected static List<float> ParseEmbeddingResponse(string responseBody, string dataProperty = DefaultDataProperty, string embeddingProperty = DefaultEmbeddingProperty)
     {
         using var doc = JsonDocument.Parse(responseBody);
 
@@ -295,7 +349,7 @@ public abstract class BaseAIProvider : IAIProvider
     /// <summary>
     /// Common batch embedding response parsing for OpenAI-like APIs
     /// </summary>
-    protected static List<List<float>> ParseBatchEmbeddingResponse(string responseBody, int expectedCount, string dataProperty = "data", string embeddingProperty = "embedding")
+    protected static List<List<float>> ParseBatchEmbeddingResponse(string responseBody, int expectedCount, string dataProperty = DefaultDataProperty, string embeddingProperty = DefaultEmbeddingProperty)
     {
         var results = new List<List<float>>();
 
@@ -338,7 +392,7 @@ public abstract class BaseAIProvider : IAIProvider
     /// <summary>
     /// Common text generation response parsing for OpenAI-like APIs
     /// </summary>
-    protected static string ParseTextResponse(string responseBody, string choicesProperty = "choices", string messageProperty = "message", string contentProperty = "content")
+    protected static string ParseTextResponse(string responseBody, string choicesProperty = DefaultChoicesProperty, string messageProperty = DefaultMessageProperty, string contentProperty = DefaultContentProperty)
     {
         using var doc = JsonDocument.Parse(responseBody);
 
