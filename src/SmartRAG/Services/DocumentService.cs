@@ -17,7 +17,29 @@ public class DocumentService(
     IOptions<SmartRagOptions> options,
     ILogger<DocumentService> logger) : IDocumentService
 {
+    #region Constants
+
+    // Batch processing constants
+    private const int VoyageAIMaxBatchSize = 128;
+    private const int RateLimitDelayMs = 1000;
+
+    // Error messages
+    private const string NoFileStreamsMessage = "No file streams provided";
+    private const string NoFileNamesMessage = "No file names provided";
+    private const string NoContentTypesMessage = "No content types provided";
+    private const string MismatchedCountsMessage = "Number of file streams, names, and content types must match";
+    private const string UnsupportedFileTypeMessage = "Unsupported file type: {0}. Supported types: {1}";
+    private const string UnsupportedContentTypeMessage = "Unsupported content type: {0}. Supported types: {1}";
+
+    #endregion
+
+    #region Fields
+
     private readonly SmartRagOptions _options = options.Value;
+
+    #endregion
+
+    #region Public Methods
 
     public async Task<Document> UploadDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy)
     {
@@ -29,24 +51,23 @@ public class DocumentService(
         if (!string.IsNullOrWhiteSpace(ext) && !supportedExtensions.Contains(ext))
         {
             var list = string.Join(", ", supportedExtensions);
-            throw new ArgumentException($"Unsupported file type: {ext}. Supported types: {list}");
+            throw new ArgumentException(string.Format(UnsupportedFileTypeMessage, ext, list));
         }
 
         if (!string.IsNullOrWhiteSpace(contentType) && !supportedContentTypes.Any(ct => contentType.StartsWith(ct, StringComparison.OrdinalIgnoreCase)))
         {
             var list = string.Join(", ", supportedContentTypes);
-            throw new ArgumentException($"Unsupported content type: {contentType}. Supported types: {list}");
+            throw new ArgumentException(string.Format(UnsupportedContentTypeMessage, contentType, list));
         }
 
         var document = await documentParserService.ParseDocumentAsync(fileStream, fileName, contentType, uploadedBy);
 
-        logger.LogInformation("Document parsed successfully. Chunks: {ChunkCount}, Total size: {TotalSize} bytes",
-            document.Chunks.Count, document.Chunks.Sum(c => c.Content.Length));
+        ServiceLogMessages.LogDocumentUploaded(logger, fileName, null);
 
         // Generate embeddings for all chunks in batch using AI Service
         var allChunkContents = document.Chunks.Select(c => c.Content).ToList();
 
-        logger.LogInformation("Starting batch embedding generation for {ChunkCount} chunks...", allChunkContents.Count);
+        ServiceLogMessages.LogBatchEmbeddingAttempt(logger, allChunkContents.Count, null);
 
         try
         {
@@ -76,11 +97,11 @@ public class DocumentService(
                         chunk.CreatedAt = DateTime.UtcNow;
                 }
 
-                logger.LogInformation("Batch embedding generation completed successfully for all chunks.");
+                ServiceLogMessages.LogBatchEmbeddingSuccess(logger, allChunkContents.Count, null);
             }
             else
             {
-                logger.LogWarning("Batch embedding generation failed or incomplete. Proceeding without embeddings.");
+                ServiceLogMessages.LogBatchEmbeddingIncomplete(logger, allEmbeddings?.Count ?? 0, document.Chunks.Count, null);
 
                 // Set empty embeddings for all chunks
                 foreach (var chunk in document.Chunks)
@@ -94,7 +115,7 @@ public class DocumentService(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to generate embeddings during document upload. Proceeding without embeddings.");
+            ServiceLogMessages.LogBatchEmbeddingFailed(logger, ex.Message, ex);
 
             // Set empty embeddings for all chunks on error
             foreach (var chunk in document.Chunks)
@@ -106,12 +127,11 @@ public class DocumentService(
             }
         }
 
-        logger.LogInformation("Starting document save to repository...");
+        ServiceLogMessages.LogDocumentProcessing(logger, fileName, document.Chunks.Count, null);
 
         // Save document to repository
         var savedDocument = await documentRepository.AddAsync(document);
-        logger.LogInformation("Document uploaded successfully. ID: {DocumentId}, Chunks: {ChunkCount}",
-            savedDocument.Id, savedDocument.Chunks.Count);
+        ServiceLogMessages.LogDocumentUploaded(logger, fileName, null);
 
         return savedDocument;
     }
@@ -119,20 +139,20 @@ public class DocumentService(
     public async Task<List<Document>> UploadDocumentsAsync(IEnumerable<Stream> fileStreams, IEnumerable<string> fileNames, IEnumerable<string> contentTypes, string uploadedBy)
     {
         if (fileStreams == null || !fileStreams.Any())
-            throw new ArgumentException("No file streams provided", nameof(fileStreams));
+            throw new ArgumentException(NoFileStreamsMessage, nameof(fileStreams));
 
         if (fileNames == null || !fileNames.Any())
-            throw new ArgumentException("No file names provided", nameof(fileNames));
+            throw new ArgumentException(NoFileNamesMessage, nameof(fileNames));
 
         if (contentTypes == null || !contentTypes.Any())
-            throw new ArgumentException("No content types provided", nameof(contentTypes));
+            throw new ArgumentException(NoContentTypesMessage, nameof(contentTypes));
 
         var streamList = fileStreams.ToList();
         var nameList = fileNames.ToList();
         var typeList = contentTypes.ToList();
 
         if (streamList.Count != nameList.Count || streamList.Count != typeList.Count)
-            throw new ArgumentException("Number of file streams, names, and content types must match");
+            throw new ArgumentException(MismatchedCountsMessage);
 
         var uploadedDocuments = new List<Document>();
 
@@ -219,15 +239,14 @@ public class DocumentService(
             }
 
             // Process chunks in batches of 128 (VoyageAI max batch size)
-            const int batchSize = 128;
-            var totalBatches = (int)Math.Ceiling((double)chunksToProcess.Count / batchSize);
+            var totalBatches = (int)Math.Ceiling((double)chunksToProcess.Count / VoyageAIMaxBatchSize);
 
             ServiceLogMessages.LogBatchProcessing(logger, totalBatches, null);
 
             for (int batchIndex = 0; batchIndex < totalBatches; batchIndex++)
             {
-                var startIndex = batchIndex * batchSize;
-                var endIndex = Math.Min(startIndex + batchSize, chunksToProcess.Count);
+                var startIndex = batchIndex * VoyageAIMaxBatchSize;
+                var endIndex = Math.Min(startIndex + VoyageAIMaxBatchSize, chunksToProcess.Count);
                 var currentBatch = chunksToProcess.Skip(startIndex).Take(endIndex - startIndex).ToList();
 
                 ServiceLogMessages.LogBatchProgress(logger, batchIndex + 1, totalBatches, null);
@@ -309,7 +328,7 @@ public class DocumentService(
                 // Smart rate limiting
                 if (batchIndex < totalBatches - 1) // Don't wait after last batch
                 {
-                    await Task.Delay(1000); // Simple rate limiting
+                    await Task.Delay(RateLimitDelayMs);
                 }
             }
 
@@ -402,4 +421,6 @@ public class DocumentService(
             return false;
         }
     }
+
+    #endregion
 }
