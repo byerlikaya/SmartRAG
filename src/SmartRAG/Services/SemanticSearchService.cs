@@ -1,5 +1,5 @@
 using Microsoft.Extensions.Logging;
-using SmartRAG.Services.Logging;
+using SmartRAG.Services;
 
 namespace SmartRAG.Services;
 

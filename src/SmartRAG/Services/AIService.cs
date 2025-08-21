@@ -4,7 +4,7 @@ using Microsoft.Extensions.Logging;
 using SmartRAG.Enums;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
-using SmartRAG.Services.Logging;
+using SmartRAG.Services;
 
 namespace SmartRAG.Services;
 
