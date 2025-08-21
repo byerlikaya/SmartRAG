@@ -172,6 +172,11 @@ public static class ServiceLogMessages
         new EventId(3019, "RateLimitedAfterAttempts"),
         "Embedding generation rate limited after {MaxRetries} attempts");
 
+    public static readonly Action<ILogger, Exception?> LogCanAnswerFromDocumentsError = LoggerMessage.Define(
+        LogLevel.Warning,
+        new EventId(3020, "CanAnswerFromDocumentsError"),
+        "Error in CanAnswerFromDocumentsAsync, assuming document search for safety");
+
     #endregion
 
     #region AI Provider Operations
