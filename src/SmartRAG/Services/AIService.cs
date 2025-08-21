@@ -1,64 +1,59 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging;
 using SmartRAG.Enums;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
+using SmartRAG.Services.Logging;
 
 namespace SmartRAG.Services;
 
 /// <summary>
 /// AI Service that uses the configured AI provider
 /// </summary>
-public class AIService(IAIProviderFactory aiProviderFactory, IOptions<SmartRagOptions> options, IConfiguration configuration) : IAIService
+public class AIService(
+    IAIProviderFactory aiProviderFactory, 
+    IOptions<SmartRagOptions> options, 
+    IConfiguration configuration,
+    ILogger<AIService> logger) : IAIService
 {
+    #region Constants
+
+    // Retry and fallback constants
+    private const int MinRetryAttempts = 1;
+    private const int MinRetryDelayMs = 0;
+    private const string ContextPrefix = "Context:\n";
+    private const string QuestionPrefix = "\n\nQuestion: ";
+    private const string AnswerPrefix = "\n\nAnswer:";
+    private const string FallbackUnavailableMessage = "I'm sorry, all AI providers are currently unavailable.";
+    private const string NoResponseMessage = "I'm sorry, I couldn't generate a response at this time.";
+    private const string ErrorMessage = "I encountered an error while processing your request. Please try again later.";
+
+    #endregion
+
+    #region Fields
+
     private readonly SmartRagOptions _options = options.Value;
+
+    #endregion
+
+    #region Public Methods
 
     public async Task<string> GenerateResponseAsync(string query, IEnumerable<string> context)
     {
         try
         {
             var aiProvider = aiProviderFactory.CreateProvider(_options.AIProvider);
-
             var providerKey = _options.AIProvider.ToString();
-
             var providerConfig = configuration.GetSection($"AI:{providerKey}").Get<AIProviderConfig>();
 
             if (providerConfig == null)
                 return $"AI provider configuration not found for '{providerKey}'.";
 
-            string response;
-            var attempt = 0;
-            var maxAttempts = Math.Max(1, _options.MaxRetryAttempts);
-            var delayMs = Math.Max(0, _options.RetryDelayMs);
-
-            while (true)
-            {
-                try
-                {
-                    // Build prompt with context and query and use full provider config
-                    var contextText = string.Join("\n\n", context);
-                    var prompt = $"Context:\n{contextText}\n\nQuestion: {query}\n\nAnswer:";
-                    response = await aiProvider.GenerateTextAsync(prompt, providerConfig);
-                    break;
-                }
-                catch (Exception) when (_options.RetryPolicy != RetryPolicy.None && attempt < maxAttempts - 1)
-                {
-                    attempt++;
-                    var backoff = _options.RetryPolicy switch
-                    {
-                        RetryPolicy.FixedDelay => delayMs,
-                        RetryPolicy.LinearBackoff => delayMs * attempt,
-                        RetryPolicy.ExponentialBackoff => delayMs * (int)Math.Pow(2, attempt - 1),
-                        _ => delayMs
-                    };
-                    await Task.Delay(backoff);
-                }
-            }
+            var response = await GenerateResponseWithRetryAsync(aiProvider, query, context, providerConfig);
 
             if (!string.IsNullOrEmpty(response))
-            {
                 return response;
-            }
 
             // Try fallback providers if enabled
             if (_options.EnableFallbackProviders && _options.FallbackProviders.Count > 0)
@@ -66,10 +61,12 @@ public class AIService(IAIProviderFactory aiProviderFactory, IOptions<SmartRagOp
                 return await TryFallbackProvidersAsync(query, context);
             }
 
-            return "I'm sorry, I couldn't generate a response at this time.";
+            return NoResponseMessage;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            ServiceLogMessages.LogAIServiceGenerateResponseError(logger, _options.AIProvider.ToString(), ex);
+
             // Try fallback providers on error if enabled
             if (_options.EnableFallbackProviders && _options.FallbackProviders.Count > 0)
             {
@@ -77,13 +74,13 @@ public class AIService(IAIProviderFactory aiProviderFactory, IOptions<SmartRagOp
                 {
                     return await TryFallbackProvidersAsync(query, context);
                 }
-                catch (Exception)
+                catch (Exception fallbackEx)
                 {
-                    // ignore
+                    ServiceLogMessages.LogAIServiceFallbackError(logger, query, fallbackEx);
                 }
             }
 
-            return "I encountered an error while processing your request. Please try again later.";
+            return ErrorMessage;
         }
     }
 
@@ -95,14 +92,19 @@ public class AIService(IAIProviderFactory aiProviderFactory, IOptions<SmartRagOp
             var aiProvider = aiProviderFactory.CreateProvider(selectedProvider);
             var providerKey = selectedProvider.ToString();
             var providerConfig = configuration.GetSection($"AI:{providerKey}").Get<AIProviderConfig>();
+
             if (providerConfig == null)
+            {
+                ServiceLogMessages.LogAIServiceProviderConfigNotFound(logger, selectedProvider.ToString(), null);
                 return [];
+            }
 
             var embeddings = await aiProvider.GenerateEmbeddingAsync(text, providerConfig);
             return embeddings;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            ServiceLogMessages.LogAIServiceEmbeddingError(logger, text, ex);
             throw;
         }
     }
@@ -112,44 +114,89 @@ public class AIService(IAIProviderFactory aiProviderFactory, IOptions<SmartRagOp
         try
         {
             var selectedProvider = _options.AIProvider;
-            Console.WriteLine($"[DEBUG] Selected AI Provider: {selectedProvider}");
-
             var aiProvider = aiProviderFactory.CreateProvider(selectedProvider);
             var providerKey = selectedProvider.ToString();
-            Console.WriteLine($"[DEBUG] Provider Key: {providerKey}");
-
             var providerConfig = configuration.GetSection($"AI:{providerKey}").Get<AIProviderConfig>();
-            Console.WriteLine($"[DEBUG] Provider Config: {(providerConfig != null ? "Found" : "NULL")}");
 
             if (providerConfig == null)
             {
-                Console.WriteLine("[DEBUG] Provider config is NULL - returning empty list");
+                ServiceLogMessages.LogAIServiceProviderConfigNotFound(logger, selectedProvider.ToString(), null);
                 return [];
             }
 
-            Console.WriteLine($"[DEBUG] API Key: {(string.IsNullOrEmpty(providerConfig.ApiKey) ? "NULL/Empty" : "Found")}");
-            Console.WriteLine($"[DEBUG] Endpoint: {providerConfig.Endpoint}");
-            Console.WriteLine($"[DEBUG] Embedding Model: {providerConfig.EmbeddingModel}");
-
             // Use batch embedding if supported by the provider
-            Console.WriteLine("[DEBUG] Calling AI Provider GenerateEmbeddingsBatchAsync...");
             var embeddings = await aiProvider.GenerateEmbeddingsBatchAsync(texts, providerConfig);
-            Console.WriteLine($"[DEBUG] Got {embeddings?.Count ?? 0} embeddings from provider");
-
             var filteredEmbeddings = embeddings?.Where(e => e != null && e.Count > 0).ToList() ?? new List<List<float>>();
-            Console.WriteLine($"[DEBUG] Filtered to {filteredEmbeddings.Count} valid embeddings");
 
+            ServiceLogMessages.LogAIServiceBatchEmbeddingsGenerated(logger, filteredEmbeddings.Count, selectedProvider.ToString(), null);
             return filteredEmbeddings;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"[DEBUG] Exception in GenerateEmbeddingsBatchAsync: {ex.Message}");
-            Console.WriteLine($"[DEBUG] Stack trace: {ex.StackTrace}");
-            // Return empty list on error
+            ServiceLogMessages.LogAIServiceBatchEmbeddingError(logger, _options.AIProvider.ToString(), ex);
             return [];
         }
     }
 
+    #endregion
+
+    #region Private Methods
+
+    /// <summary>
+    /// Generate response with retry logic
+    /// </summary>
+    private async Task<string> GenerateResponseWithRetryAsync(IAIProvider aiProvider, string query, IEnumerable<string> context, AIProviderConfig providerConfig)
+    {
+        var attempt = 0;
+        var maxAttempts = Math.Max(MinRetryAttempts, _options.MaxRetryAttempts);
+        var delayMs = Math.Max(MinRetryDelayMs, _options.RetryDelayMs);
+
+        while (true)
+        {
+            try
+            {
+                var prompt = BuildPrompt(query, context);
+                var response = await aiProvider.GenerateTextAsync(prompt, providerConfig);
+                return response;
+            }
+            catch (Exception ex) when (_options.RetryPolicy != RetryPolicy.None && attempt < maxAttempts - 1)
+            {
+                attempt++;
+                var backoff = CalculateRetryDelay(attempt, delayMs);
+                
+                ServiceLogMessages.LogAIServiceRetryAttempt(logger, attempt, _options.AIProvider.ToString(), backoff, ex);
+                
+                await Task.Delay(backoff);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Build prompt with context and query
+    /// </summary>
+    private static string BuildPrompt(string query, IEnumerable<string> context)
+    {
+        var contextText = string.Join("\n\n", context);
+        return $"{ContextPrefix}{contextText}{QuestionPrefix}{query}{AnswerPrefix}";
+    }
+
+    /// <summary>
+    /// Calculate retry delay based on policy
+    /// </summary>
+    private int CalculateRetryDelay(int attempt, int baseDelayMs)
+    {
+        return _options.RetryPolicy switch
+        {
+            RetryPolicy.FixedDelay => baseDelayMs,
+            RetryPolicy.LinearBackoff => baseDelayMs * attempt,
+            RetryPolicy.ExponentialBackoff => baseDelayMs * (int)Math.Pow(2, attempt - 1),
+            _ => baseDelayMs
+        };
+    }
+
+    /// <summary>
+    /// Try fallback providers when primary provider fails
+    /// </summary>
     private async Task<string> TryFallbackProvidersAsync(string query, IEnumerable<string> context)
     {
         foreach (var fallbackProvider in _options.FallbackProviders)
@@ -159,22 +206,29 @@ public class AIService(IAIProviderFactory aiProviderFactory, IOptions<SmartRagOp
                 var aiProvider = aiProviderFactory.CreateProvider(fallbackProvider);
                 var key = fallbackProvider.ToString();
                 var config = configuration.GetSection($"AI:{key}").Get<AIProviderConfig>();
-                if (config == null) continue;
-                var contextText = string.Join("\n\n", context);
-                var prompt = $"Context:\n{contextText}\n\nQuestion: {query}\n\nAnswer:";
+                
+                if (config == null) 
+                    continue;
+
+                var prompt = BuildPrompt(query, context);
                 var response = await aiProvider.GenerateTextAsync(prompt, config);
 
                 if (!string.IsNullOrEmpty(response))
                 {
+                    ServiceLogMessages.LogAIServiceFallbackSuccess(logger, fallbackProvider.ToString(), null);
                     return response;
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                ServiceLogMessages.LogAIServiceFallbackFailed(logger, fallbackProvider.ToString(), ex);
                 continue;
             }
         }
 
-        return "I'm sorry, all AI providers are currently unavailable.";
+        ServiceLogMessages.LogAIServiceAllFallbacksFailed(logger, query, null);
+        return FallbackUnavailableMessage;
     }
+
+    #endregion
 }
