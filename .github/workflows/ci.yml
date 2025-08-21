@@ -165,6 +165,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: ./nupkgs/*.nupkg
+        asset_path: ./nupkgs/SmartRAG.${{ steps.get_version.outputs.version }}.nupkg
         asset_name: SmartRAG.${{ steps.get_version.outputs.version }}.nupkg
         asset_content_type: application/octet-stream
