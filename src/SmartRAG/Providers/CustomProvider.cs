@@ -51,7 +51,7 @@ public class CustomProvider(ILogger<CustomProvider> logger) : BaseAIProvider(log
         }
         catch (Exception ex)
         {
-            ProviderLogMessages.LogCustomTextParsingError(_logger, ex);
+            ProviderLogMessages.LogCustomTextParsingError(Logger, ex);
             return $"Error parsing custom response: {ex.Message}";
         }
     }
@@ -62,13 +62,13 @@ public class CustomProvider(ILogger<CustomProvider> logger) : BaseAIProvider(log
 
         if (!isValid)
         {
-            ProviderLogMessages.LogCustomEmbeddingValidationError(_logger, errorMessage, null);
+            ProviderLogMessages.LogCustomEmbeddingValidationError(Logger, errorMessage, null);
             return [];
         }
 
         if (string.IsNullOrEmpty(config.EmbeddingModel))
         {
-            ProviderLogMessages.LogCustomEmbeddingModelMissing(_logger, null);
+            ProviderLogMessages.LogCustomEmbeddingModelMissing(Logger, null);
             return [];
         }
 
@@ -84,7 +84,7 @@ public class CustomProvider(ILogger<CustomProvider> logger) : BaseAIProvider(log
 
         if (!success)
         {
-            ProviderLogMessages.LogCustomEmbeddingRequestError(_logger, error, null);
+            ProviderLogMessages.LogCustomEmbeddingRequestError(Logger, error, null);
             return [];
         }
 
@@ -94,7 +94,7 @@ public class CustomProvider(ILogger<CustomProvider> logger) : BaseAIProvider(log
         }
         catch (Exception ex)
         {
-            ProviderLogMessages.LogCustomEmbeddingParsingError(_logger, ex);
+            ProviderLogMessages.LogCustomEmbeddingParsingError(Logger, ex);
             return [];
         }
     }

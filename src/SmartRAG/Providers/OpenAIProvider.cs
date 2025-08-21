@@ -1,8 +1,7 @@
+using Microsoft.Extensions.Logging;
 using SmartRAG.Enums;
 using SmartRAG.Models;
-using Microsoft.Extensions.Logging;
 using System.Text.Json;
-using System.Linq;
 
 namespace SmartRAG.Providers;
 
@@ -53,7 +52,7 @@ public class OpenAIProvider(ILogger<OpenAIProvider> logger) : BaseAIProvider(log
         }
         catch (Exception ex)
         {
-            ProviderLogMessages.LogOpenAITextParsingError(_logger, ex);
+            ProviderLogMessages.LogOpenAITextParsingError(Logger, ex);
             return $"Error parsing OpenAI response: {ex.Message}";
         }
     }
@@ -64,13 +63,13 @@ public class OpenAIProvider(ILogger<OpenAIProvider> logger) : BaseAIProvider(log
 
         if (!isValid)
         {
-            ProviderLogMessages.LogOpenAIEmbeddingValidationError(_logger, errorMessage, null);
+            ProviderLogMessages.LogOpenAIEmbeddingValidationError(Logger, errorMessage, null);
             return [];
         }
 
         if (string.IsNullOrEmpty(config.EmbeddingModel))
         {
-            ProviderLogMessages.LogOpenAIEmbeddingModelMissing(_logger, null);
+            ProviderLogMessages.LogOpenAIEmbeddingModelMissing(Logger, null);
             return [];
         }
 
@@ -84,7 +83,7 @@ public class OpenAIProvider(ILogger<OpenAIProvider> logger) : BaseAIProvider(log
 
         if (!success)
         {
-            ProviderLogMessages.LogOpenAIEmbeddingRequestError(_logger, error, null);
+            ProviderLogMessages.LogOpenAIEmbeddingRequestError(Logger, error, null);
             return [];
         }
 
@@ -94,7 +93,7 @@ public class OpenAIProvider(ILogger<OpenAIProvider> logger) : BaseAIProvider(log
         }
         catch (Exception ex)
         {
-            ProviderLogMessages.LogOpenAIEmbeddingParsingError(_logger, ex);
+            ProviderLogMessages.LogOpenAIEmbeddingParsingError(Logger, ex);
             return [];
         }
     }
@@ -105,13 +104,13 @@ public class OpenAIProvider(ILogger<OpenAIProvider> logger) : BaseAIProvider(log
 
         if (!isValid)
         {
-            ProviderLogMessages.LogOpenAIEmbeddingValidationError(_logger, errorMessage, null);
+            ProviderLogMessages.LogOpenAIEmbeddingValidationError(Logger, errorMessage, null);
             return [];
         }
 
         if (string.IsNullOrEmpty(config.EmbeddingModel))
         {
-            ProviderLogMessages.LogOpenAIEmbeddingModelMissing(_logger, null);
+            ProviderLogMessages.LogOpenAIEmbeddingModelMissing(Logger, null);
             return [];
         }
 
@@ -129,7 +128,7 @@ public class OpenAIProvider(ILogger<OpenAIProvider> logger) : BaseAIProvider(log
 
         if (!success)
         {
-            ProviderLogMessages.LogOpenAIBatchEmbeddingRequestError(_logger, error, null);
+            ProviderLogMessages.LogOpenAIBatchEmbeddingRequestError(Logger, error, null);
             return ParseBatchEmbeddingResponse("", inputList.Count);
         }
 
@@ -139,7 +138,7 @@ public class OpenAIProvider(ILogger<OpenAIProvider> logger) : BaseAIProvider(log
         }
         catch (Exception ex)
         {
-            ProviderLogMessages.LogOpenAIBatchEmbeddingParsingError(_logger, ex);
+            ProviderLogMessages.LogOpenAIBatchEmbeddingParsingError(Logger, ex);
             return ParseBatchEmbeddingResponse("", inputList.Count);
         }
     }
@@ -162,12 +161,12 @@ public class OpenAIProvider(ILogger<OpenAIProvider> logger) : BaseAIProvider(log
     private static object CreateOpenAITextPayload(string prompt, AIProviderConfig config)
     {
         var messages = new List<object>();
-        
+
         if (!string.IsNullOrEmpty(config.SystemMessage))
         {
             messages.Add(new { role = SystemRole, content = config.SystemMessage });
         }
-        
+
         messages.Add(new { role = UserRole, content = prompt });
 
         return new

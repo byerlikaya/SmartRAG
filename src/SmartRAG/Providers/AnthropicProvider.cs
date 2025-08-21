@@ -75,7 +75,7 @@ public class AnthropicProvider(ILogger<AnthropicProvider> logger) : BaseAIProvid
         }
         catch (Exception ex)
         {
-            ProviderLogMessages.LogAnthropicResponseParsingError(_logger, ex.Message, ex);
+            ProviderLogMessages.LogAnthropicResponseParsingError(Logger, ex.Message, ex);
             return $"Error parsing response: {ex.Message}";
         }
     }
@@ -88,7 +88,7 @@ public class AnthropicProvider(ILogger<AnthropicProvider> logger) : BaseAIProvid
         var (isValid, errorMessage) = ValidateEmbeddingConfig(config);
         if (!isValid)
         {
-            ProviderLogMessages.LogAnthropicEmbeddingValidationError(_logger, errorMessage, null);
+            ProviderLogMessages.LogAnthropicEmbeddingValidationError(Logger, errorMessage, null);
             return [];
         }
 
@@ -115,7 +115,7 @@ public class AnthropicProvider(ILogger<AnthropicProvider> logger) : BaseAIProvid
 
         if (!success)
         {
-            ProviderLogMessages.LogAnthropicEmbeddingRequestError(_logger, error, null);
+            ProviderLogMessages.LogAnthropicEmbeddingRequestError(Logger, error, null);
             return [];
         }
 
@@ -125,7 +125,7 @@ public class AnthropicProvider(ILogger<AnthropicProvider> logger) : BaseAIProvid
         }
         catch (Exception ex)
         {
-            ProviderLogMessages.LogVoyageParsingError(_logger, ex);
+            ProviderLogMessages.LogVoyageParsingError(Logger, ex);
             return [];
         }
     }
@@ -136,7 +136,7 @@ public class AnthropicProvider(ILogger<AnthropicProvider> logger) : BaseAIProvid
         var (isValid, errorMessage) = ValidateEmbeddingConfig(config);
         if (!isValid)
         {
-            ProviderLogMessages.LogAnthropicEmbeddingValidationError(_logger, errorMessage, null);
+            ProviderLogMessages.LogAnthropicEmbeddingValidationError(Logger, errorMessage, null);
             return [];
         }
 
@@ -167,7 +167,7 @@ public class AnthropicProvider(ILogger<AnthropicProvider> logger) : BaseAIProvid
 
         if (!success)
         {
-            ProviderLogMessages.LogAnthropicBatchEmbeddingRequestError(_logger, error, null);
+            ProviderLogMessages.LogAnthropicBatchEmbeddingRequestError(Logger, error, null);
             return ParseVoyageBatchEmbeddingResponse("", inputList.Count);
         }
 
@@ -177,7 +177,7 @@ public class AnthropicProvider(ILogger<AnthropicProvider> logger) : BaseAIProvid
         }
         catch (Exception ex)
         {
-            ProviderLogMessages.LogVoyageParsingError(_logger, ex);
+            ProviderLogMessages.LogVoyageParsingError(Logger, ex);
             return ParseVoyageBatchEmbeddingResponse("", inputList.Count);
         }
     }
