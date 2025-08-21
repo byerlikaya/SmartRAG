@@ -4,6 +4,8 @@ using SmartRAG.Entities;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
 using SmartRAG.Services.Logging;
+using System.Globalization;
+using System.Text;
 
 namespace SmartRAG.Services;
 
@@ -28,8 +30,10 @@ public class DocumentService(
     private const string NoFileNamesMessage = "No file names provided";
     private const string NoContentTypesMessage = "No content types provided";
     private const string MismatchedCountsMessage = "Number of file streams, names, and content types must match";
-    private const string UnsupportedFileTypeMessage = "Unsupported file type: {0}. Supported types: {1}";
-    private const string UnsupportedContentTypeMessage = "Unsupported content type: {0}. Supported types: {1}";
+    
+    // CompositeFormat for repeated formatting (CA1863)
+    private static readonly CompositeFormat UnsupportedFileTypeFormat = CompositeFormat.Parse("Unsupported file type: {0}. Supported types: {1}");
+    private static readonly CompositeFormat UnsupportedContentTypeFormat = CompositeFormat.Parse("Unsupported content type: {0}. Supported types: {1}");
 
     #endregion
 
@@ -51,13 +55,13 @@ public class DocumentService(
         if (!string.IsNullOrWhiteSpace(ext) && !supportedExtensions.Contains(ext))
         {
             var list = string.Join(", ", supportedExtensions);
-            throw new ArgumentException(string.Format(UnsupportedFileTypeMessage, ext, list));
+            throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, UnsupportedFileTypeFormat, ext, list));
         }
 
         if (!string.IsNullOrWhiteSpace(contentType) && !supportedContentTypes.Any(ct => contentType.StartsWith(ct, StringComparison.OrdinalIgnoreCase)))
         {
             var list = string.Join(", ", supportedContentTypes);
-            throw new ArgumentException(string.Format(UnsupportedContentTypeMessage, contentType, list));
+            throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, UnsupportedContentTypeFormat, contentType, list));
         }
 
         var document = await documentParserService.ParseDocumentAsync(fileStream, fileName, contentType, uploadedBy);
