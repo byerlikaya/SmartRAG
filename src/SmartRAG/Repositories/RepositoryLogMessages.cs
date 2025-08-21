@@ -278,6 +278,85 @@ public static class RepositoryLogMessages
 
     #endregion
 
+    #region Redis Operations (EventId: 35001-35999)
+
+    public static readonly Action<ILogger, string, Exception?> LogRedisConnectionEstablished = LoggerMessage.Define<string>(
+        LogLevel.Information,
+        new EventId(35001, "RedisConnectionEstablished"),
+        "Redis connection established to {ConnectionString}");
+
+    public static readonly Action<ILogger, string, Exception?> LogRedisConnectionFailed = LoggerMessage.Define<string>(
+        LogLevel.Error,
+        new EventId(35002, "RedisConnectionFailed"),
+        "Failed to connect to Redis server: {ConnectionString}");
+
+    public static readonly Action<ILogger, string, Guid, Exception?> LogRedisDocumentAdded = LoggerMessage.Define<string, Guid>(
+        LogLevel.Information,
+        new EventId(35003, "RedisDocumentAdded"),
+        "Document added to Redis: {FileName} (ID: {DocumentId})");
+
+    public static readonly Action<ILogger, string, Exception?> LogRedisDocumentAddFailed = LoggerMessage.Define<string>(
+        LogLevel.Error,
+        new EventId(35004, "RedisDocumentAddFailed"),
+        "Failed to add document to Redis: {FileName}");
+
+    public static readonly Action<ILogger, Guid, Exception?> LogRedisDocumentRetrieved = LoggerMessage.Define<Guid>(
+        LogLevel.Debug,
+        new EventId(35005, "RedisDocumentRetrieved"),
+        "Document retrieved from Redis: {DocumentId}");
+
+    public static readonly Action<ILogger, Guid, Exception?> LogRedisDocumentNotFound = LoggerMessage.Define<Guid>(
+        LogLevel.Debug,
+        new EventId(35006, "RedisDocumentNotFound"),
+        "Document not found in Redis: {DocumentId}");
+
+    public static readonly Action<ILogger, Guid, Exception?> LogRedisDocumentRetrievalFailed = LoggerMessage.Define<Guid>(
+        LogLevel.Error,
+        new EventId(35007, "RedisDocumentRetrievalFailed"),
+        "Failed to retrieve document from Redis: {DocumentId}");
+
+    public static readonly Action<ILogger, int, Exception?> LogRedisDocumentsRetrieved = LoggerMessage.Define<int>(
+        LogLevel.Information,
+        new EventId(35008, "RedisDocumentsRetrieved"),
+        "Retrieved {DocumentCount} documents from Redis");
+
+    public static readonly Action<ILogger, Exception?> LogRedisDocumentsRetrievalFailed = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(35009, "RedisDocumentsRetrievalFailed"),
+        "Failed to retrieve documents from Redis");
+
+    public static readonly Action<ILogger, Guid, Exception?> LogRedisDocumentDeleted = LoggerMessage.Define<Guid>(
+        LogLevel.Information,
+        new EventId(35010, "RedisDocumentDeleted"),
+        "Document deleted from Redis: {DocumentId}");
+
+    public static readonly Action<ILogger, Guid, Exception?> LogRedisDocumentDeleteFailed = LoggerMessage.Define<Guid>(
+        LogLevel.Error,
+        new EventId(35011, "RedisDocumentDeleteFailed"),
+        "Failed to delete document from Redis: {DocumentId}");
+
+    public static readonly Action<ILogger, int, Exception?> LogRedisDocumentCountRetrieved = LoggerMessage.Define<int>(
+        LogLevel.Debug,
+        new EventId(35012, "RedisDocumentCountRetrieved"),
+        "Redis document count retrieved: {Count}");
+
+    public static readonly Action<ILogger, Exception?> LogRedisDocumentCountRetrievalFailed = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(35013, "RedisDocumentCountRetrievalFailed"),
+        "Failed to retrieve document count from Redis");
+
+    public static readonly Action<ILogger, string, int, int, Exception?> LogRedisSearchCompleted = LoggerMessage.Define<string, int, int>(
+        LogLevel.Information,
+        new EventId(35014, "RedisSearchCompleted"),
+        "Redis search completed for query '{Query}': {ResultCount}/{MaxResults} results");
+
+    public static readonly Action<ILogger, string, Exception?> LogRedisSearchFailed = LoggerMessage.Define<string>(
+        LogLevel.Error,
+        new EventId(35015, "RedisSearchFailed"),
+        "Redis search failed for query '{Query}'");
+
+    #endregion
+
     #region InMemory Operations (EventId: 33001-33999)
 
     public static readonly Action<ILogger, int, int, Exception?> LogOldDocumentsRemoved = LoggerMessage.Define<int, int>(

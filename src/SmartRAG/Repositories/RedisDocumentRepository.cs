@@ -1,10 +1,11 @@
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
 using StackExchange.Redis;
-using System.Text.Json;
 using System.Globalization;
+using System.Text.Json;
 
 namespace SmartRAG.Repositories;
 
@@ -13,178 +14,304 @@ namespace SmartRAG.Repositories;
 /// </summary>
 public class RedisDocumentRepository : IDocumentRepository, IDisposable
 {
+    #region Constants
+
+    private const int DefaultConnectionTimeoutMs = 1000;
+    private const int DefaultKeepAliveSeconds = 180;
+    private const int DefaultMaxSearchResults = 5;
+    private const string DocumentsListSuffix = "list";
+    private const string MetadataKeySuffix = "meta:";
+    private const string DateTimeFormat = "O";
+
+    #endregion
+
+    #region Fields
+
     private readonly ConnectionMultiplexer _redis;
     private readonly IDatabase _database;
     private readonly string _documentsKey;
     private readonly string _documentPrefix;
+    private readonly ILogger<RedisDocumentRepository> _logger;
     private bool _disposed;
 
-    public RedisDocumentRepository(IOptions<RedisConfig> config)
+    #endregion
+
+    #region Properties
+
+    protected ILogger Logger => _logger;
+
+    #endregion
+
+    #region Constructor
+
+    public RedisDocumentRepository(IOptions<RedisConfig> config, ILogger<RedisDocumentRepository> logger)
     {
         var redisConfig = config.Value;
+        _logger = logger;
         
         // Configure connection options
-        var options = new ConfigurationOptions
-        {
-            EndPoints = { redisConfig.ConnectionString },
-            ConnectTimeout = redisConfig.ConnectionTimeout * 1000,
-            SyncTimeout = redisConfig.ConnectionTimeout * 1000,
-            ConnectRetry = redisConfig.RetryCount,
-            ReconnectRetryPolicy = new ExponentialRetry(redisConfig.RetryDelay),
-            AllowAdmin = true,
-            AbortOnConnectFail = false,
-            KeepAlive = 180
-        };
+        var options = CreateConnectionOptions(redisConfig);
 
-        // Add authentication if provided
-        if (!string.IsNullOrEmpty(redisConfig.Username))
+        ConfigureAuthentication(options, redisConfig);
+        ConfigureSsl(options, redisConfig);
+
+        try
         {
-            options.User = redisConfig.Username;
+            _redis = ConnectionMultiplexer.Connect(options);
+            _database = _redis.GetDatabase(redisConfig.Database);
+            _documentsKey = $"{redisConfig.KeyPrefix}{DocumentsListSuffix}";
+            _documentPrefix = redisConfig.KeyPrefix;
+
+            ValidateConnection();
+            RepositoryLogMessages.LogRedisConnectionEstablished(Logger, redisConfig.ConnectionString, null);
         }
-
-        if (!string.IsNullOrEmpty(redisConfig.Password))
+        catch (Exception ex)
         {
-            options.Password = redisConfig.Password;
-        }
-
-        // Enable SSL if configured
-        if (redisConfig.EnableSsl)
-        {
-            options.Ssl = true;
-            options.SslProtocols = System.Security.Authentication.SslProtocols.Tls12;
-        }
-
-        _redis = ConnectionMultiplexer.Connect(options);
-        _database = _redis.GetDatabase(redisConfig.Database);
-        _documentsKey = $"{redisConfig.KeyPrefix}list";
-        _documentPrefix = redisConfig.KeyPrefix;
-
-        // Test connection
-        if (!_redis.IsConnected)
-        {
-            throw new InvalidOperationException("Failed to connect to Redis server");
+            RepositoryLogMessages.LogRedisConnectionFailed(Logger, redisConfig.ConnectionString, ex);
+            throw;
         }
     }
 
+    #endregion
+
+    #region Public Methods
+
     public async Task<Document> AddAsync(Document document)
     {
-        var documentKey = $"{_documentPrefix}{document.Id}";
-        var documentJson = JsonSerializer.Serialize(document);
-        var metadataKey = $"{_documentPrefix}meta:{document.Id}";
-
-        var metadata = new HashEntry[]
+        try
         {
-            new("id", document.Id.ToString()),
-            new("fileName", document.FileName),
-            new("contentType", document.ContentType),
-            new("fileSize", document.FileSize.ToString(CultureInfo.InvariantCulture)),
-            new("uploadedAt", document.UploadedAt.ToString("O")),
-            new("uploadedBy", document.UploadedBy),
-            new("chunkCount", document.Chunks.Count.ToString(CultureInfo.InvariantCulture))
-        };
+            var documentKey = CreateDocumentKey(document.Id);
+            var metadataKey = CreateMetadataKey(document.Id);
+            var documentJson = JsonSerializer.Serialize(document);
+            var metadata = CreateDocumentMetadata(document);
 
-        // Use pipeline instead of transaction for better performance
-        var batch = _database.CreateBatch();
-        
-        var setTask = batch.StringSetAsync(documentKey, documentJson);
-        var pushTask = batch.ListRightPushAsync(_documentsKey, document.Id.ToString());
-        var hashTask = batch.HashSetAsync(metadataKey, metadata);
+            await ExecuteDocumentAddBatch(documentKey, metadataKey, documentJson, metadata, document.Id);
 
-        batch.Execute();
-
-        // Wait for all operations to complete
-        await Task.WhenAll(setTask, pushTask, hashTask);
-
-        return document;
+            RepositoryLogMessages.LogDocumentAdded(Logger, document.FileName, document.Id, null);
+            return document;
+        }
+        catch (Exception ex)
+        {
+            RepositoryLogMessages.LogDocumentAddFailed(Logger, document.FileName, ex);
+            throw;
+        }
     }
 
     public async Task<Document?> GetByIdAsync(Guid id)
     {
-        var documentKey = $"{_documentPrefix}{id}";
-        var documentJson = await _database.StringGetAsync(documentKey);
-
-        if (documentJson.IsNull)
-            return null;
-
         try
         {
-            return JsonSerializer.Deserialize<Document>(documentJson!);
+            var documentKey = CreateDocumentKey(id);
+            var documentJson = await _database.StringGetAsync(documentKey);
+
+            if (documentJson.IsNull)
+            {
+                RepositoryLogMessages.LogRedisDocumentNotFound(Logger, id, null);
+                return null;
+            }
+
+            var document = JsonSerializer.Deserialize<Document>(documentJson!);
+            RepositoryLogMessages.LogRedisDocumentRetrieved(Logger, id, null);
+            return document;
         }
-        catch
+        catch (Exception ex)
         {
+            RepositoryLogMessages.LogRedisDocumentRetrievalFailed(Logger, id, ex);
             return null;
         }
     }
 
     public async Task<List<Document>> GetAllAsync()
     {
-        var documentIds = await _database.ListRangeAsync(_documentsKey);
-        var documents = new List<Document>();
-
-        foreach (var idString in documentIds)
+        try
         {
-            if (Guid.TryParse(idString, out var id))
+            var documentIds = await _database.ListRangeAsync(_documentsKey);
+            var documents = new List<Document>();
+
+            foreach (var idString in documentIds)
             {
-                var document = await GetByIdAsync(id);
-                if (document != null)
+                if (Guid.TryParse(idString, out var id))
                 {
-                    documents.Add(document);
+                    var document = await GetByIdAsync(id);
+                    if (document != null)
+                    {
+                        documents.Add(document);
+                    }
                 }
             }
-        }
 
-        return documents;
+            RepositoryLogMessages.LogRedisDocumentsRetrieved(Logger, documents.Count, null);
+            return documents;
+        }
+        catch (Exception ex)
+        {
+            RepositoryLogMessages.LogRedisDocumentsRetrievalFailed(Logger, ex);
+            return new List<Document>();
+        }
     }
 
     public async Task<bool> DeleteAsync(Guid id)
     {
-        var documentKey = $"{_documentPrefix}{id}";
-        var metadataKey = $"{_documentPrefix}meta:{id}";
+        try
+        {
+            var documentKey = CreateDocumentKey(id);
+            var metadataKey = CreateMetadataKey(id);
 
-        var batch = _database.CreateBatch();
-        
-        var deleteDocTask = batch.KeyDeleteAsync(documentKey);
-        var removeFromListTask = batch.ListRemoveAsync(_documentsKey, id.ToString());
-        var deleteMetaTask = batch.KeyDeleteAsync(metadataKey);
+            await ExecuteDocumentDeleteBatch(documentKey, metadataKey, id);
 
-        batch.Execute();
-
-        await Task.WhenAll(deleteDocTask, removeFromListTask, deleteMetaTask);
-
-        return true;
+            RepositoryLogMessages.LogRedisDocumentDeleted(Logger, id, null);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            RepositoryLogMessages.LogRedisDocumentDeleteFailed(Logger, id, ex);
+            return false;
+        }
     }
 
     public async Task<int> GetCountAsync()
     {
-        var count = await _database.ListLengthAsync(_documentsKey);
-        return (int)count;
+        try
+        {
+            var count = await _database.ListLengthAsync(_documentsKey);
+            var result = (int)count;
+            RepositoryLogMessages.LogRedisDocumentCountRetrieved(Logger, result, null);
+            return result;
+        }
+        catch (Exception ex)
+        {
+            RepositoryLogMessages.LogRedisDocumentCountRetrievalFailed(Logger, ex);
+            return 0;
+        }
     }
 
-    public async Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = 5)
+    public async Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = DefaultMaxSearchResults)
     {
-        var normalizedQuery = Extensions.SearchTextExtensions.NormalizeForSearch(query);
-        var relevantChunks = new List<DocumentChunk>();
-
-        var documents = await GetAllAsync(); // Fixed: await instead of .Result
-        
-        foreach (var document in documents)
+        try
         {
-            foreach (var chunk in document.Chunks)
+            var normalizedQuery = Extensions.SearchTextExtensions.NormalizeForSearch(query);
+            var relevantChunks = new List<DocumentChunk>();
+
+            var documents = await GetAllAsync();
+            
+            foreach (var document in documents)
             {
-                var normalizedChunk = SmartRAG.Extensions.SearchTextExtensions.NormalizeForSearch(chunk.Content);
-                if (normalizedChunk.Contains(normalizedQuery))
+                foreach (var chunk in document.Chunks)
                 {
-                    relevantChunks.Add(chunk);
-                    if (relevantChunks.Count >= maxResults)
-                        break;
+                    var normalizedChunk = SmartRAG.Extensions.SearchTextExtensions.NormalizeForSearch(chunk.Content);
+                    if (normalizedChunk.Contains(normalizedQuery))
+                    {
+                        relevantChunks.Add(chunk);
+                        if (relevantChunks.Count >= maxResults)
+                            break;
+                    }
                 }
+                if (relevantChunks.Count >= maxResults)
+                    break;
             }
-            if (relevantChunks.Count >= maxResults)
-                break;
+
+            RepositoryLogMessages.LogRedisSearchCompleted(Logger, query, relevantChunks.Count, maxResults, null);
+            return relevantChunks;
+        }
+        catch (Exception ex)
+        {
+            RepositoryLogMessages.LogRedisSearchFailed(Logger, query, ex);
+            return new List<DocumentChunk>();
+        }
+    }
+
+    #endregion
+
+    #region Private Helper Methods
+
+    private static ConfigurationOptions CreateConnectionOptions(RedisConfig config)
+    {
+        return new ConfigurationOptions
+        {
+            EndPoints = { config.ConnectionString },
+            ConnectTimeout = config.ConnectionTimeout * DefaultConnectionTimeoutMs,
+            SyncTimeout = config.ConnectionTimeout * DefaultConnectionTimeoutMs,
+            ConnectRetry = config.RetryCount,
+            ReconnectRetryPolicy = new ExponentialRetry(config.RetryDelay),
+            AllowAdmin = true,
+            AbortOnConnectFail = false,
+            KeepAlive = DefaultKeepAliveSeconds
+        };
+    }
+
+    private static void ConfigureAuthentication(ConfigurationOptions options, RedisConfig config)
+    {
+        if (!string.IsNullOrEmpty(config.Username))
+        {
+            options.User = config.Username;
         }
 
-        return relevantChunks;
+        if (!string.IsNullOrEmpty(config.Password))
+        {
+            options.Password = config.Password;
+        }
     }
+
+    private static void ConfigureSsl(ConfigurationOptions options, RedisConfig config)
+    {
+        if (config.EnableSsl)
+        {
+            options.Ssl = true;
+            options.SslProtocols = System.Security.Authentication.SslProtocols.Tls12;
+        }
+    }
+
+    private void ValidateConnection()
+    {
+        if (!_redis.IsConnected)
+        {
+            throw new InvalidOperationException("Failed to connect to Redis server");
+        }
+    }
+
+    private string CreateDocumentKey(Guid id) => $"{_documentPrefix}{id}";
+
+    private string CreateMetadataKey(Guid id) => $"{_documentPrefix}{MetadataKeySuffix}{id}";
+
+    private static HashEntry[] CreateDocumentMetadata(Document document)
+    {
+        return new HashEntry[]
+        {
+            new("id", document.Id.ToString()),
+            new("fileName", document.FileName),
+            new("contentType", document.ContentType),
+            new("fileSize", document.FileSize.ToString(CultureInfo.InvariantCulture)),
+            new("uploadedAt", document.UploadedAt.ToString(DateTimeFormat)),
+            new("uploadedBy", document.UploadedBy),
+            new("chunkCount", document.Chunks.Count.ToString(CultureInfo.InvariantCulture))
+        };
+    }
+
+    private async Task ExecuteDocumentAddBatch(string documentKey, string metadataKey, string documentJson, HashEntry[] metadata, Guid documentId)
+    {
+        var batch = _database.CreateBatch();
+        
+        var setTask = batch.StringSetAsync(documentKey, documentJson);
+        var pushTask = batch.ListRightPushAsync(_documentsKey, documentId.ToString());
+        var hashTask = batch.HashSetAsync(metadataKey, metadata);
+
+        batch.Execute();
+        await Task.WhenAll(setTask, pushTask, hashTask);
+    }
+
+    private async Task ExecuteDocumentDeleteBatch(string documentKey, string metadataKey, Guid documentId)
+    {
+        var batch = _database.CreateBatch();
+        
+        var deleteDocTask = batch.KeyDeleteAsync(documentKey);
+        var removeFromListTask = batch.ListRemoveAsync(_documentsKey, documentId.ToString());
+        var deleteMetaTask = batch.KeyDeleteAsync(metadataKey);
+
+        batch.Execute();
+        await Task.WhenAll(deleteDocTask, removeFromListTask, deleteMetaTask);
+    }
+
+    #endregion
 
     public void Dispose()
     {
