@@ -11,5 +11,4 @@ public class DocumentChunk
     public DateTime CreatedAt { get; set; }
     public int StartPosition { get; set; }
     public int EndPosition { get; set; }
-    public Dictionary<string, object>? Metadata { get; set; }
 }

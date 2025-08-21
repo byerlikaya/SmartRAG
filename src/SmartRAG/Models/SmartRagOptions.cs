@@ -57,9 +57,4 @@ public class SmartRagOptions
     /// </summary>
     public List<AIProvider> FallbackProviders { get; set; } = [];
 
-    /// <summary>
-    /// Maximum number of search results to return
-    /// </summary>
-    public int MaxSearchResults { get; set; } = 10;
-
 }
