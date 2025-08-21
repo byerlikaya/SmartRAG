@@ -1,20 +1,32 @@
+using Microsoft.Extensions.Logging;
 using SmartRAG.Enums;
 using SmartRAG.Models;
 using System.Text.Json;
-using Microsoft.Extensions.Logging;
 
 namespace SmartRAG.Providers;
 
 /// <summary>
 /// Anthropic Claude provider implementation
 /// </summary>
-public class AnthropicProvider : BaseAIProvider
+public class AnthropicProvider(ILogger<AnthropicProvider> logger) : BaseAIProvider(logger)
 {
-    public AnthropicProvider(ILogger<AnthropicProvider> logger) : base(logger)
-    {
-    }
+    #region Constants
+
+    // Anthropic API constants
+    private const string AnthropicApiVersion = "2023-06-01";
+    private const string DefaultVoyageEndpoint = "https://api.voyageai.com";
+    private const string DefaultVoyageModel = "voyage-3.5";
+    private const string VoyageInputType = "document";
+
+    #endregion
+
+    #region Properties
 
     public override AIProvider ProviderType => AIProvider.Anthropic;
+
+    #endregion
+
+    #region Public Methods
 
     public override async Task<string> GenerateTextAsync(string prompt, AIProviderConfig config)
     {
@@ -26,52 +38,46 @@ public class AnthropicProvider : BaseAIProvider
         var additionalHeaders = new Dictionary<string, string>
         {
             { "x-api-key", config.ApiKey },
-            { "anthropic-version", "2023-06-01" }
+            { "anthropic-version", AnthropicApiVersion }
         };
 
         using var client = CreateHttpClientWithoutAuth(additionalHeaders);
+
+        var systemMessage = config.SystemMessage;
+
+        var messages = new List<object>();
+        
+        if (!string.IsNullOrEmpty(systemMessage))
+        {
+            messages.Add(new { role = "system", content = systemMessage });
+        }
+        
+        messages.Add(new { role = "user", content = prompt });
 
         var payload = new
         {
             model = config.Model,
             max_tokens = config.MaxTokens,
             temperature = config.Temperature,
-            system = "You are a helpful AI that answers strictly using the provided context. If the context is insufficient, say so.",
-            messages = new[]
-            {
-                new
-                {
-                    role = "user",
-                    content = prompt
-                }
-            }
+            messages = messages.ToArray()
         };
 
-        var chatEndpoint = $"{config.Endpoint!.TrimEnd('/')}/v1/messages";
+        var chatEndpoint = BuildAnthropicUrl(config.Endpoint!, "v1/messages");
 
-        var (success, response, error) = await MakeHttpRequestAsync(client, chatEndpoint, payload, "Anthropic");
+        var (success, response, error) = await MakeHttpRequestAsync(client, chatEndpoint, payload);
 
         if (!success)
             return error;
 
         try
         {
-            using var doc = JsonDocument.Parse(response);
-
-            if (doc.RootElement.TryGetProperty("content", out var contentArray) && contentArray.ValueKind == JsonValueKind.Array)
-            {
-                var firstContent = contentArray.EnumerateArray().FirstOrDefault();
-
-                if (firstContent.TryGetProperty("text", out var text))
-                    return text.GetString() ?? "No response generated";
-            }
+            return ParseAnthropicTextResponse(response);
         }
         catch (Exception ex)
         {
+            ProviderLogMessages.LogAnthropicResponseParsingError(Logger, ex.Message, ex);
             return $"Error parsing response: {ex.Message}";
         }
-
-        return "No response generated";
     }
 
     public override async Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config)
@@ -79,12 +85,15 @@ public class AnthropicProvider : BaseAIProvider
         // Anthropic uses Voyage AI for embeddings as per their documentation
         // https://docs.anthropic.com/en/docs/build-with-claude/embeddings#how-to-get-embeddings-with-anthropic
 
-        var voyageApiKey = config.EmbeddingApiKey ?? config.ApiKey; // Separate key for Voyage if needed
-        var voyageEndpoint = "https://api.voyageai.com"; // Voyage AI endpoint
-        var voyageModel = config.EmbeddingModel ?? "voyage-3.5"; // Default model
-
-        if (string.IsNullOrEmpty(voyageApiKey))
+        var (isValid, errorMessage) = ValidateEmbeddingConfig(config);
+        if (!isValid)
+        {
+            ProviderLogMessages.LogAnthropicEmbeddingValidationError(Logger, errorMessage, null);
             return [];
+        }
+
+        var voyageApiKey = config.EmbeddingApiKey ?? config.ApiKey;
+        var voyageModel = config.EmbeddingModel ?? DefaultVoyageModel;
 
         var additionalHeaders = new Dictionary<string, string>
         {
@@ -97,28 +106,46 @@ public class AnthropicProvider : BaseAIProvider
         {
             input = new[] { text },
             model = voyageModel,
-            input_type = "document" // For RAG documents
+            input_type = VoyageInputType
         };
 
-        var embeddingEndpoint = $"{voyageEndpoint}/v1/embeddings";
+        var embeddingEndpoint = BuildVoyageUrl("v1/embeddings");
 
-        var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload, "Voyage (Anthropic)");
+        var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
 
         if (!success)
+        {
+            ProviderLogMessages.LogAnthropicEmbeddingRequestError(Logger, error, null);
             return [];
+        }
 
-        return ParseVoyageEmbeddingResponse(response);
+        try
+        {
+            return ParseVoyageEmbeddingResponse(response);
+        }
+        catch (Exception ex)
+        {
+            ProviderLogMessages.LogVoyageParsingError(Logger, ex);
+            return [];
+        }
     }
 
     public override async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config)
     {
         // Anthropic uses Voyage AI for batch embeddings
-        var voyageApiKey = config.EmbeddingApiKey ?? config.ApiKey;
-        var voyageEndpoint = "https://api.voyageai.com";
-        var voyageModel = config.EmbeddingModel ?? "voyage-3.5";
-
-        if (string.IsNullOrEmpty(voyageApiKey))
+        var (isValid, errorMessage) = ValidateEmbeddingConfig(config);
+        if (!isValid)
+        {
+            ProviderLogMessages.LogAnthropicEmbeddingValidationError(Logger, errorMessage, null);
             return [];
+        }
+
+        var inputList = texts?.ToList() ?? new List<string>();
+        if (inputList.Count == 0)
+            return [];
+
+        var voyageApiKey = config.EmbeddingApiKey ?? config.ApiKey;
+        var voyageModel = config.EmbeddingModel ?? DefaultVoyageModel;
 
         var additionalHeaders = new Dictionary<string, string>
         {
@@ -129,21 +156,108 @@ public class AnthropicProvider : BaseAIProvider
 
         var payload = new
         {
-            input = texts.ToArray(),
+            input = inputList.ToArray(),
             model = voyageModel,
-            input_type = "document"
+            input_type = VoyageInputType
         };
 
-        var embeddingEndpoint = $"{voyageEndpoint}/v1/embeddings";
+        var embeddingEndpoint = BuildVoyageUrl("v1/embeddings");
 
-        var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload, "Voyage (Anthropic) Batch");
+        var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
 
         if (!success)
-            return [];
+        {
+            ProviderLogMessages.LogAnthropicBatchEmbeddingRequestError(Logger, error, null);
+            return ParseVoyageBatchEmbeddingResponse("", inputList.Count);
+        }
 
-        return ParseVoyageBatchEmbeddingResponse(response, texts.Count());
+        try
+        {
+            return ParseVoyageBatchEmbeddingResponse(response, inputList.Count);
+        }
+        catch (Exception ex)
+        {
+            ProviderLogMessages.LogVoyageParsingError(Logger, ex);
+            return ParseVoyageBatchEmbeddingResponse("", inputList.Count);
+        }
     }
 
+    #endregion
+
+    #region Private Methods
+
+    /// <summary>
+    /// Build Anthropic API URL
+    /// </summary>
+    private static string BuildAnthropicUrl(string endpoint, string path)
+    {
+        return $"{endpoint.TrimEnd('/')}/{path}";
+    }
+
+    /// <summary>
+    /// Build Voyage AI API URL
+    /// </summary>
+    private static string BuildVoyageUrl(string path)
+    {
+        return $"{DefaultVoyageEndpoint}/{path}";
+    }
+
+    /// <summary>
+    /// Validate embedding-specific configuration
+    /// </summary>
+    private static (bool isValid, string errorMessage) ValidateEmbeddingConfig(AIProviderConfig config)
+    {
+        var voyageApiKey = config.EmbeddingApiKey ?? config.ApiKey;
+        
+        if (string.IsNullOrEmpty(voyageApiKey))
+            return (false, "Voyage API key is required for embeddings");
+
+        return (true, string.Empty);
+    }
+
+    /// <summary>
+    /// Parse Anthropic text response
+    /// </summary>
+    private static string ParseAnthropicTextResponse(string response)
+    {
+        using var doc = JsonDocument.Parse(response);
+
+        if (doc.RootElement.TryGetProperty("content", out var contentArray) && contentArray.ValueKind == JsonValueKind.Array)
+        {
+            var firstContent = contentArray.EnumerateArray().FirstOrDefault();
+
+            if (firstContent.TryGetProperty("text", out var text))
+                return text.GetString() ?? "No response generated";
+        }
+
+        return "No response generated";
+    }
+
+    /// <summary>
+    /// Parse Voyage AI single embedding response
+    /// </summary>
+    private static List<float> ParseVoyageEmbeddingResponse(string response)
+    {
+        using var doc = JsonDocument.Parse(response);
+
+        if (doc.RootElement.TryGetProperty("data", out var dataArray) && dataArray.ValueKind == JsonValueKind.Array)
+        {
+            var firstEmbedding = dataArray.EnumerateArray().FirstOrDefault();
+
+            if (firstEmbedding.TryGetProperty("embedding", out var embeddingArray) && embeddingArray.ValueKind == JsonValueKind.Array)
+            {
+                return embeddingArray.EnumerateArray()
+                    .Select(x => x.GetSingle())
+                    .ToList();
+            }
+        }
+
+        return [];
+    }
+
+    /// <summary>
+    /// Parse Voyage AI batch embedding response
+    /// </summary>
     private static List<List<float>> ParseVoyageBatchEmbeddingResponse(string response, int expectedCount)
     {
         var results = new List<List<float>>();
@@ -165,41 +279,21 @@ public class AnthropicProvider : BaseAIProvider
                     }
                     else
                     {
-                        results.Add(new List<float>());
+                        results.Add([]);
                     }
                 }
             }
         }
         catch
         {
-            // Return empty embeddings on parse error
+            // Return partial results on error
         }
 
-        // Ensure we return the expected number of embeddings
-        while (results.Count < expectedCount)
-        {
-            results.Add(new List<float>());
-        }
-
-        return results.Take(expectedCount).ToList();
+        // Ensure we return exactly expectedCount embeddings
+        return Enumerable.Range(0, expectedCount)
+            .Select(i => i < results.Count ? results[i] : new List<float>())
+            .ToList();
     }
 
-    private static List<float> ParseVoyageEmbeddingResponse(string response)
-    {
-        using var doc = JsonDocument.Parse(response);
-
-        if (doc.RootElement.TryGetProperty("data", out var dataArray) && dataArray.ValueKind == JsonValueKind.Array)
-        {
-            var firstEmbedding = dataArray.EnumerateArray().FirstOrDefault();
-
-            if (firstEmbedding.TryGetProperty("embedding", out var embeddingArray) && embeddingArray.ValueKind == JsonValueKind.Array)
-            {
-                return embeddingArray.EnumerateArray()
-                    .Select(x => x.GetSingle())
-                    .ToList();
-            }
-        }
-
-        return [];
-    }
+    #endregion
 }
