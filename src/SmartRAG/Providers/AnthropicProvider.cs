@@ -43,22 +43,23 @@ public class AnthropicProvider(ILogger<AnthropicProvider> logger) : BaseAIProvid
 
         using var client = CreateHttpClientWithoutAuth(additionalHeaders);
 
-        var systemMessage = config.SystemMessage ?? "You are a helpful AI that answers strictly using the provided context. If the context is insufficient, say so.";
+        var systemMessage = config.SystemMessage;
+
+        var messages = new List<object>();
+        
+        if (!string.IsNullOrEmpty(systemMessage))
+        {
+            messages.Add(new { role = "system", content = systemMessage });
+        }
+        
+        messages.Add(new { role = "user", content = prompt });
 
         var payload = new
         {
             model = config.Model,
             max_tokens = config.MaxTokens,
             temperature = config.Temperature,
-            system = systemMessage,
-            messages = new[]
-            {
-                new
-                {
-                    role = "user",
-                    content = prompt
-                }
-            }
+            messages = messages.ToArray()
         };
 
         var chatEndpoint = BuildAnthropicUrl(config.Endpoint!, "v1/messages");
