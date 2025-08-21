@@ -185,8 +185,8 @@ public abstract class BaseAIProvider : IAIProvider
     /// <summary>
     /// Common HTTP POST request with error handling and retry logic
     /// </summary>
-    protected static async Task<(bool success, string response, string errorMessage)> MakeHttpRequestAsync(
-        HttpClient client, string endpoint, object payload, string providerName, int maxRetries = 3)
+    protected async Task<(bool success, string response, string errorMessage)> MakeHttpRequestAsync(
+        HttpClient client, string endpoint, object payload, int maxRetries = 3)
     {
         var attempt = 0;
         var baseDelayMs = 1000; // 1 second base delay
@@ -246,7 +246,7 @@ public abstract class BaseAIProvider : IAIProvider
                 }
 
                 var errorBody = await response.Content.ReadAsStringAsync();
-                return (false, string.Empty, $"{providerName} error: {response.StatusCode} - {errorBody}");
+                return (false, string.Empty, $"{ProviderType} error: {response.StatusCode} - {errorBody}");
             }
             catch (Exception ex)
             {
@@ -257,11 +257,11 @@ public abstract class BaseAIProvider : IAIProvider
                     await Task.Delay(delay);
                     continue;
                 }
-                return (false, string.Empty, $"{providerName} request failed: {ex.Message}");
+                return (false, string.Empty, $"{ProviderType} request failed: {ex.Message}");
             }
         }
 
-        return (false, string.Empty, $"{providerName} request failed after {maxRetries} attempts");
+        return (false, string.Empty, $"{ProviderType} request failed after {maxRetries} attempts");
     }
 
     /// <summary>

@@ -53,7 +53,7 @@ public class CustomProvider : BaseAIProvider
             };
         }
 
-        var (success, response, error) = await MakeHttpRequestAsync(client, config.Endpoint!, payload, "Custom AI");
+        var (success, response, error) = await MakeHttpRequestAsync(client, config.Endpoint!, payload);
 
         if (!success)
             return error;
@@ -122,7 +122,7 @@ public class CustomProvider : BaseAIProvider
             model = config.EmbeddingModel
         };
 
-        var (success, response, error) = await MakeHttpRequestAsync(client, config.Endpoint!, payload, "Custom AI");
+        var (success, response, error) = await MakeHttpRequestAsync(client, config.Endpoint!, payload);
 
         if (!success)
             return [];

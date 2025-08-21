@@ -44,7 +44,7 @@ public class GeminiProvider : BaseAIProvider
 
         var modelEndpoint = $"{config.Endpoint!.TrimEnd('/')}/models/{config.Model}:generateContent";
 
-        var (success, response, error) = await MakeHttpRequestAsync(client, modelEndpoint!, payload, "Gemini");
+        var (success, response, error) = await MakeHttpRequestAsync(client, modelEndpoint!, payload);
 
         if (!success)
             return error;
@@ -97,7 +97,7 @@ public class GeminiProvider : BaseAIProvider
 
         var embeddingEndpoint = $"{config.Endpoint!.TrimEnd('/')}/models/{config.EmbeddingModel}:embedContent";
 
-        var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint!, payload, "Gemini");
+        var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint!, payload);
 
         if (!success)
         {
@@ -196,7 +196,7 @@ public class GeminiProvider : BaseAIProvider
 
         var batchEndpoint = $"{config.Endpoint!.TrimEnd('/')}/models/{config.EmbeddingModel}:batchEmbedContents";
 
-        var (success, response, error) = await MakeHttpRequestAsync(client, batchEndpoint, payload, "Gemini");
+        var (success, response, error) = await MakeHttpRequestAsync(client, batchEndpoint, payload);
 
         if (!success)
         {

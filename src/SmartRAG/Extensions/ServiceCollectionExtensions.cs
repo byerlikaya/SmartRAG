@@ -5,7 +5,6 @@ using SmartRAG.Enums;
 using SmartRAG.Factories;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
-using SmartRAG.Repositories;
 using SmartRAG.Services;
 
 namespace SmartRAG.Extensions;
@@ -29,22 +28,16 @@ public static class ServiceCollectionExtensions
         // Configure SmartRagOptions using Options Pattern for non-provider settings
         services.Configure<SmartRagOptions>(options =>
         {
-            // Apply user configuration FIRST and ONLY (including provider selection)
             configureOptions(options);
-            
-            // DO NOT bind from configuration to avoid overriding user settings
-            // configuration.GetSection("SmartRAG").Bind(options); // ❌ Commented out
-            
-            // User configuration takes absolute priority
         });
 
         // Also register as legacy singleton for backward compatibility during transition
-        services.AddSingleton<SmartRagOptions>(sp => sp.GetRequiredService<IOptions<SmartRagOptions>>().Value);
+        services.AddSingleton(sp => sp.GetRequiredService<IOptions<SmartRagOptions>>().Value);
 
         services.AddSingleton<IAIProviderFactory, AIProviderFactory>();
         services.AddSingleton<IAIService, AIService>();
         services.AddSingleton<IStorageFactory, StorageFactory>();
-        services.AddScoped<SemanticSearchService>();  // Add SemanticSearchService
+        services.AddScoped<SemanticSearchService>();
         services.AddScoped<IDocumentService, DocumentService>();
         services.AddScoped<IDocumentParserService, DocumentParserService>();
         services.AddScoped<IDocumentSearchService, DocumentSearchService>();
@@ -73,16 +66,16 @@ public static class ServiceCollectionExtensions
     {
         // Configure Redis storage
         services.Configure<RedisConfig>(options => configuration.GetSection("Storage:Redis").Bind(options));
-        
+
         // Configure Qdrant storage
         services.Configure<QdrantConfig>(options => configuration.GetSection("Storage:Qdrant").Bind(options));
-        
+
         // Configure SQLite storage
         services.Configure<SqliteConfig>(options => configuration.GetSection("Storage:Sqlite").Bind(options));
-        
+
         // Configure InMemory storage
         services.Configure<InMemoryConfig>(options => configuration.GetSection("Storage:InMemory").Bind(options));
-        
+
         // Configure FileSystem storage
         services.Configure<StorageConfig>(options => configuration.GetSection("Storage:FileSystem").Bind(options));
     }

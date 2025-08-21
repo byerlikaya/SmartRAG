@@ -41,7 +41,7 @@ public class OpenAIProvider : BaseAIProvider
 
         var chatEndpoint = $"{config.Endpoint!.TrimEnd('/')}/chat/completions";
 
-        var (success, response, error) = await MakeHttpRequestAsync(client, chatEndpoint!, payload, "OpenAI");
+        var (success, response, error) = await MakeHttpRequestAsync(client, chatEndpoint!, payload);
 
         if (!success)
             return error;
@@ -69,7 +69,7 @@ public class OpenAIProvider : BaseAIProvider
 
         var embeddingEndpoint = $"{config.Endpoint!.TrimEnd('/')}/embeddings";
 
-        var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint!, payload, "OpenAI");
+        var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint!, payload);
 
         if (!success)
             return [];
@@ -101,7 +101,7 @@ public class OpenAIProvider : BaseAIProvider
 
         var embeddingEndpoint = $"{config.Endpoint!.TrimEnd('/')}/embeddings";
 
-        var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint!, payload, "OpenAI");
+        var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint!, payload);
 
         if (!success)
         {

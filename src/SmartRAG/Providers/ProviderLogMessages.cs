@@ -31,6 +31,20 @@ public static class ProviderLogMessages
 
     #endregion
 
+    #region Anthropic/Voyage Provider
+
+    public static readonly Action<ILogger, Exception?> LogVoyageParsingError = LoggerMessage.Define(
+        LogLevel.Warning,
+        new EventId(6001, "VoyageParsingError"),
+        "Failed to parse Voyage embedding response, returning partial results");
+
+    public static readonly Action<ILogger, string, Exception?> LogAnthropicResponseParsingError = LoggerMessage.Define<string>(
+        LogLevel.Warning,
+        new EventId(6002, "AnthropicResponseParsingError"),
+        "Failed to parse Anthropic response: {Error}");
+
+    #endregion
+
     #region General Provider Errors
 
     public static readonly Action<ILogger, string, Exception?> LogProviderRequestFailed = LoggerMessage.Define<string>(

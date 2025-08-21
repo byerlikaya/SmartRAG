@@ -1,19 +1,15 @@
+using Microsoft.Extensions.Logging;
 using SmartRAG.Enums;
 using SmartRAG.Models;
 using System.Text.Json;
-using Microsoft.Extensions.Logging;
 
 namespace SmartRAG.Providers;
 
 /// <summary>
 /// Anthropic Claude provider implementation
 /// </summary>
-public class AnthropicProvider : BaseAIProvider
+public class AnthropicProvider(ILogger<AnthropicProvider> logger) : BaseAIProvider(logger)
 {
-    public AnthropicProvider(ILogger<AnthropicProvider> logger) : base(logger)
-    {
-    }
-
     public override AIProvider ProviderType => AIProvider.Anthropic;
 
     public override async Task<string> GenerateTextAsync(string prompt, AIProviderConfig config)
@@ -49,7 +45,7 @@ public class AnthropicProvider : BaseAIProvider
 
         var chatEndpoint = $"{config.Endpoint!.TrimEnd('/')}/v1/messages";
 
-        var (success, response, error) = await MakeHttpRequestAsync(client, chatEndpoint, payload, "Anthropic");
+        var (success, response, error) = await MakeHttpRequestAsync(client, chatEndpoint, payload);
 
         if (!success)
             return error;
@@ -68,6 +64,7 @@ public class AnthropicProvider : BaseAIProvider
         }
         catch (Exception ex)
         {
+            ProviderLogMessages.LogAnthropicResponseParsingError(_logger, ex.Message, ex);
             return $"Error parsing response: {ex.Message}";
         }
 
@@ -102,7 +99,7 @@ public class AnthropicProvider : BaseAIProvider
 
         var embeddingEndpoint = $"{voyageEndpoint}/v1/embeddings";
 
-        var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload, "Voyage (Anthropic)");
+        var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
 
         if (!success)
             return [];
@@ -136,7 +133,7 @@ public class AnthropicProvider : BaseAIProvider
 
         var embeddingEndpoint = $"{voyageEndpoint}/v1/embeddings";
 
-        var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload, "Voyage (Anthropic) Batch");
+        var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
 
         if (!success)
             return [];
@@ -144,7 +141,7 @@ public class AnthropicProvider : BaseAIProvider
         return ParseVoyageBatchEmbeddingResponse(response, texts.Count());
     }
 
-    private static List<List<float>> ParseVoyageBatchEmbeddingResponse(string response, int expectedCount)
+    private List<List<float>> ParseVoyageBatchEmbeddingResponse(string response, int expectedCount)
     {
         var results = new List<List<float>>();
 
@@ -170,18 +167,17 @@ public class AnthropicProvider : BaseAIProvider
                 }
             }
         }
-        catch
+        catch (Exception ex)
         {
-            // Return empty embeddings on parse error
+            ProviderLogMessages.LogVoyageParsingError(_logger, ex);
         }
 
-        // Ensure we return the expected number of embeddings
-        while (results.Count < expectedCount)
-        {
-            results.Add(new List<float>());
-        }
-
-        return results.Take(expectedCount).ToList();
+        // Ensure we return exactly expectedCount embeddings
+        // If we have fewer results than expected, fill with empty embeddings
+        // If we have more results than expected, truncate to expected count
+        return Enumerable.Range(0, expectedCount)
+            .Select(i => i < results.Count ? results[i] : new List<float>())
+            .ToList();
     }
 
     private static List<float> ParseVoyageEmbeddingResponse(string response)
@@ -202,4 +198,6 @@ public class AnthropicProvider : BaseAIProvider
 
         return [];
     }
+
+
 }
