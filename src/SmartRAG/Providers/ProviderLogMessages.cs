@@ -43,6 +43,65 @@ public static class ProviderLogMessages
         new EventId(6002, "AnthropicResponseParsingError"),
         "Failed to parse Anthropic response: {Error}");
 
+    public static readonly Action<ILogger, string, Exception?> LogAnthropicEmbeddingValidationError = LoggerMessage.Define<string>(
+        LogLevel.Error,
+        new EventId(6003, "AnthropicEmbeddingValidationError"),
+        "Anthropic embedding validation failed: {ErrorMessage}");
+
+    public static readonly Action<ILogger, string, Exception?> LogAnthropicEmbeddingRequestError = LoggerMessage.Define<string>(
+        LogLevel.Error,
+        new EventId(6004, "AnthropicEmbeddingRequestError"),
+        "Voyage embedding request failed: {Error}");
+
+    public static readonly Action<ILogger, string, Exception?> LogAnthropicBatchEmbeddingRequestError = LoggerMessage.Define<string>(
+        LogLevel.Error,
+        new EventId(6005, "AnthropicBatchEmbeddingRequestError"),
+        "Voyage batch embedding request failed: {Error}");
+
+    #endregion
+
+    #region Azure OpenAI Provider
+
+    public static readonly Action<ILogger, int, Exception?> LogAzureOpenAIRateLimit = LoggerMessage.Define<int>(
+        LogLevel.Warning,
+        new EventId(7001, "AzureOpenAIRateLimit"),
+        "Azure OpenAI rate limit: waiting {WaitTime}ms");
+
+    public static readonly Action<ILogger, Exception?> LogAzureOpenAITextParsingError = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(7002, "AzureOpenAITextParsingError"),
+        "Azure OpenAI text response parsing failed");
+
+    public static readonly Action<ILogger, string, Exception?> LogAzureOpenAIEmbeddingValidationError = LoggerMessage.Define<string>(
+        LogLevel.Error,
+        new EventId(7003, "AzureOpenAIEmbeddingValidationError"),
+        "Azure OpenAI embedding validation failed: {ErrorMessage}");
+
+    public static readonly Action<ILogger, Exception?> LogAzureOpenAIEmbeddingModelMissing = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(7004, "AzureOpenAIEmbeddingModelMissing"),
+        "Azure OpenAI embedding model is required but not provided");
+
+    public static readonly Action<ILogger, string, Exception?> LogAzureOpenAIEmbeddingRequestError = LoggerMessage.Define<string>(
+        LogLevel.Error,
+        new EventId(7005, "AzureOpenAIEmbeddingRequestError"),
+        "Azure OpenAI embedding request failed: {Error}");
+
+    public static readonly Action<ILogger, Exception?> LogAzureOpenAIEmbeddingParsingError = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(7006, "AzureOpenAIEmbeddingParsingError"),
+        "Azure OpenAI embedding response parsing failed");
+
+    public static readonly Action<ILogger, string, Exception?> LogAzureOpenAIBatchEmbeddingRequestError = LoggerMessage.Define<string>(
+        LogLevel.Error,
+        new EventId(7007, "AzureOpenAIBatchEmbeddingRequestError"),
+        "Azure OpenAI batch embedding request failed: {Error}");
+
+    public static readonly Action<ILogger, Exception?> LogAzureOpenAIBatchEmbeddingParsingError = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(7008, "AzureOpenAIBatchEmbeddingParsingError"),
+        "Azure OpenAI batch embedding response parsing failed");
+
     #endregion
 
     #region General Provider Errors

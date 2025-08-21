@@ -22,6 +22,12 @@ public class AIProviderConfig
     public string? ApiVersion { get; set; }
 
     /// <summary>
+    /// Optional system message for chat completions.
+    /// If null, provider defaults will be used.
+    /// </summary>
+    public string? SystemMessage { get; set; }
+
+    /// <summary>
     /// Optional minimum interval between embedding requests in milliseconds.
     /// If null, provider defaults will be used (e.g., 60000 ms for Azure S0).
     /// </summary>
