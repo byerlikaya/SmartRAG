@@ -58,6 +58,31 @@ public static class ProviderLogMessages
         new EventId(6005, "AnthropicBatchEmbeddingRequestError"),
         "Voyage batch embedding request failed: {Error}");
 
+    public static readonly Action<ILogger, Exception?> LogCustomTextParsingError = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(6006, "CustomTextParsingError"),
+        "Custom provider text response parsing failed");
+
+    public static readonly Action<ILogger, string, Exception?> LogCustomEmbeddingValidationError = LoggerMessage.Define<string>(
+        LogLevel.Error,
+        new EventId(6007, "CustomEmbeddingValidationError"),
+        "Custom provider embedding validation failed: {ErrorMessage}");
+
+    public static readonly Action<ILogger, Exception?> LogCustomEmbeddingModelMissing = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(6008, "CustomEmbeddingModelMissing"),
+        "Custom provider embedding model is required but not provided");
+
+    public static readonly Action<ILogger, string, Exception?> LogCustomEmbeddingRequestError = LoggerMessage.Define<string>(
+        LogLevel.Error,
+        new EventId(6009, "CustomEmbeddingRequestError"),
+        "Custom provider embedding request failed: {Error}");
+
+    public static readonly Action<ILogger, Exception?> LogCustomEmbeddingParsingError = LoggerMessage.Define(
+        LogLevel.Error,
+        new EventId(6010, "CustomEmbeddingParsingError"),
+        "Custom provider embedding response parsing failed");
+
     #endregion
 
     #region Azure OpenAI Provider
