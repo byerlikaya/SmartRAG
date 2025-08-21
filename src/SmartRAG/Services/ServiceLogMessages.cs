@@ -468,4 +468,13 @@ public static class ServiceLogMessages
         "All fallback providers failed for query: {Query}");
 
     #endregion
+
+    #region Semantic Search Service (EventId: 21001-21999)
+
+    public static readonly Action<ILogger, Exception?> LogSemanticSimilarityCalculationError = LoggerMessage.Define(
+        LogLevel.Warning,
+        new EventId(21001, "SemanticSimilarityCalculationError"),
+        "Failed to calculate enhanced semantic similarity");
+
+    #endregion
 }
