@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces;
-using SmartRAG.Services.Logging;
+using SmartRAG.Services;
 using System.Text.Json;
 
 namespace SmartRAG.Repositories;

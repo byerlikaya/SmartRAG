@@ -9,7 +9,7 @@ using Microsoft.Extensions.Options;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
-using SmartRAG.Services.Logging;
+using SmartRAG.Services;
 using System.Text;
 using System.Text.RegularExpressions;
 

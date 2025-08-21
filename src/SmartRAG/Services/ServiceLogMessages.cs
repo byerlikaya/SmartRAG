@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace SmartRAG.Services.Logging;
+namespace SmartRAG.Services;
 
 /// <summary>
 /// Centralized LoggerMessage delegates for performance optimization
