@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartRAG.Enums;
 using SmartRAG.Interfaces;
@@ -15,12 +16,14 @@ public class StorageFactory : IStorageFactory
     private readonly IConfiguration _configuration;
     private readonly StorageProvider _currentProvider;
     private readonly SmartRagOptions _options;
+    private readonly ILoggerFactory _loggerFactory;
     private IDocumentRepository? _currentRepository;
 
-    public StorageFactory(IConfiguration configuration, IOptions<SmartRagOptions> options)
+    public StorageFactory(IConfiguration configuration, IOptions<SmartRagOptions> options, ILoggerFactory loggerFactory)
     {
         _configuration = configuration;
         _options = options.Value;
+        _loggerFactory = loggerFactory;
 
         if (Enum.IsDefined(_options.StorageProvider))
         {
@@ -45,7 +48,7 @@ public class StorageFactory : IStorageFactory
         => config.Provider switch
         {
             StorageProvider.InMemory => new InMemoryDocumentRepository(config.InMemory),
-            StorageProvider.FileSystem => new FileSystemDocumentRepository(config.FileSystemPath),
+            StorageProvider.FileSystem => new FileSystemDocumentRepository(config.FileSystemPath, _loggerFactory.CreateLogger<FileSystemDocumentRepository>()),
             StorageProvider.Redis => new RedisDocumentRepository(Options.Create(config.Redis)),
             StorageProvider.Sqlite => new SqliteDocumentRepository(Options.Create(config.Sqlite)),
             StorageProvider.Qdrant => new QdrantDocumentRepository(Options.Create(config.Qdrant)),
