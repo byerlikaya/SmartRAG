@@ -4,7 +4,7 @@ using Microsoft.Extensions.Options;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
-using SmartRAG.Services.Logging;
+using SmartRAG.Services;
 
 namespace SmartRAG.Services;
 
@@ -17,24 +17,56 @@ public class DocumentSearchService(
     IOptions<SmartRagOptions> options,
     ILogger<DocumentSearchService> logger) : IDocumentSearchService
 {
+    #region Constants
+
+    // Scoring weights
+    private const double FullNameMatchScoreBoost = 200.0;
+    private const double PartialNameMatchScoreBoost = 100.0;
+    private const double WordMatchScore = 2.0;
+    private const double WordCountScoreBoost = 5.0;
+    private const double PunctuationScoreBoost = 2.0;
+    private const double NumberScoreBoost = 2.0;
+
+    // Thresholds
+    private const int WordCountMin = 10;
+    private const int WordCountMax = 100;
+    private const int PunctuationCountThreshold = 3;
+    private const int NumberCountThreshold = 2;
+    private const double RelevanceThreshold = 0.1;
+    private const int ChunkPreviewLength = 100;
+
+    // Selection multipliers and minimums
+    private const int InitialSearchMultiplier = 2;
+    private const int CandidateMultiplier = 3;
+    private const int CandidateMinCount = 30;
+    private const int FinalTakeMultiplier = 2;
+    private const int FinalMinCount = 20;
+
+    // Fallback search and content
+    private const int FallbackSearchMaxResults = 5;
+    private const int MinSubstantialContentLength = 50;
+
+    // Generic messages
+    private const string ChatUnavailableMessage = "Sorry, I cannot chat right now. Please try again later.";
+
+    #endregion
+
+    #region Fields
+
     private readonly SmartRagOptions _options = options.Value;
     private readonly SemanticSearchService _semanticSearchService = semanticSearchService;
 
-    /// <summary>
-    /// Sanitizes user input for safe logging by removing newlines and carriage returns.
-    /// </summary>
-    private static string SanitizeForLog(string input)
-    {
-        if (input == null) return string.Empty;
-        return input.Replace("\r", "").Replace("\n", "");
-    }
+    #endregion
+
+    #region Public Methods
+
     public async Task<List<DocumentChunk>> SearchDocumentsAsync(string query, int maxResults = 5)
     {
         if (string.IsNullOrWhiteSpace(query))
             throw new ArgumentException("Query cannot be empty", nameof(query));
 
         // Use our integrated search algorithm with diversity selection
-        var searchResults = await PerformBasicSearchAsync(query, maxResults * 2);
+        var searchResults = await PerformBasicSearchAsync(query, maxResults * InitialSearchMultiplier);
 
         if (searchResults.Count > 0)
         {
@@ -77,7 +109,18 @@ public class DocumentSearchService(
         return await GenerateBasicRagAnswerAsync(query, maxResults);
     }
 
+    #endregion
+
     #region Private Helper Methods
+
+    /// <summary>
+    /// Sanitizes user input for safe logging by removing newlines and carriage returns.
+    /// </summary>
+    private static string SanitizeForLog(string input)
+    {
+        if (input == null) return string.Empty;
+        return input.Replace("\r", "").Replace("\n", "");
+    }
 
     /// <summary>
     /// Enhanced search with intelligent filtering and name detection
@@ -128,14 +171,14 @@ public class DocumentSearchService(
                 var fullName = string.Join(" ", potentialNames);
                 if (ContainsNormalizedName(content, fullName))
                 {
-                    score += 200.0; // Very high weight for full name matches
-                    ServiceLogMessages.LogFullNameMatch(logger, SanitizeForLog(fullName), chunk.Content.Substring(0, Math.Min(100, chunk.Content.Length)), null);
+                    score += FullNameMatchScoreBoost;
+                    ServiceLogMessages.LogFullNameMatch(logger, SanitizeForLog(fullName), chunk.Content.Substring(0, Math.Min(ChunkPreviewLength, chunk.Content.Length)), null);
                 }
                 else if (potentialNames.Any(name => ContainsNormalizedName(content, name)))
                 {
-                    score += 100.0; // High weight for partial name matches
+                    score += PartialNameMatchScoreBoost;
                     var foundNames = potentialNames.Where(name => ContainsNormalizedName(content, name)).ToList();
-                    ServiceLogMessages.LogPartialNameMatches(logger, string.Join(", ", foundNames.Select(SanitizeForLog)), chunk.Content.Substring(0, Math.Min(100, chunk.Content.Length)), null);
+                    ServiceLogMessages.LogPartialNameMatches(logger, string.Join(", ", foundNames.Select(SanitizeForLog)), chunk.Content.Substring(0, Math.Min(ChunkPreviewLength, chunk.Content.Length)), null);
                 }
             }
 
@@ -143,20 +186,20 @@ public class DocumentSearchService(
             foreach (var word in queryWords)
             {
                 if (content.Contains(word, StringComparison.OrdinalIgnoreCase))
-                    score += 2.0; // Higher weight for word matches
+                    score += WordMatchScore;
             }
 
             // Generic content quality scoring (language and content agnostic)
             var wordCount = content.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
-            if (wordCount >= 10 && wordCount <= 100) score += 5.0;
+            if (wordCount >= WordCountMin && wordCount <= WordCountMax) score += WordCountScoreBoost;
 
             // Bonus for chunks with punctuation (indicates structured content)
             var punctuationCount = content.Count(c => ".,;:!?()[]{}".Contains(c));
-            if (punctuationCount >= 3) score += 2.0;
+            if (punctuationCount >= PunctuationCountThreshold) score += PunctuationScoreBoost;
 
             // Bonus for chunks with numbers (often indicates factual information)
             var numberCount = content.Count(c => char.IsDigit(c));
-            if (numberCount >= 2) score += 2.0;
+            if (numberCount >= NumberCountThreshold) score += NumberScoreBoost;
 
             chunk.RelevanceScore = score;
             return chunk;
@@ -165,7 +208,7 @@ public class DocumentSearchService(
         var relevantChunks = scoredChunks
             .Where(c => c.RelevanceScore > 0)
             .OrderByDescending(c => c.RelevanceScore)
-            .Take(Math.Max(maxResults * 3, 30))
+            .Take(Math.Max(maxResults * CandidateMultiplier, CandidateMinCount))
             .ToList();
 
         ServiceLogMessages.LogRelevantChunksFound(logger, relevantChunks.Count, null);
@@ -230,10 +273,6 @@ Answer:";
         return chunks.Take(maxResults).ToList();
     }
 
-
-
-
-
     private RagConfiguration GetRagConfiguration()
     {
         return new RagConfiguration
@@ -267,7 +306,7 @@ Answer:";
                 return new List<DocumentChunk>();
             }
 
-                        // Calculate similarity for all chunks that have embeddings
+            // Calculate similarity for all chunks that have embeddings
             var chunksWithEmbeddings = allChunks.Where(c => c.Embedding != null && c.Embedding.Count > 0).ToList();
             
             if (chunksWithEmbeddings.Count == 0)
@@ -291,14 +330,14 @@ Answer:";
 
             // Get top chunks based on hybrid scoring
             var relevantChunks = scoredChunks.ToList()
-                .Where(c => c.RelevanceScore > 0.1) // Higher threshold for better quality
+                .Where(c => c.RelevanceScore > RelevanceThreshold)
                 .OrderByDescending(c => c.RelevanceScore)
-                .Take(Math.Max(maxResults * 3, 30)) // Get more candidates for better selection
+                .Take(Math.Max(maxResults * CandidateMultiplier, CandidateMinCount))
                 .ToList();
 
             return relevantChunks
                 .OrderByDescending(c => c.RelevanceScore)
-                .Take(Math.Max(maxResults * 2, 20))
+                .Take(Math.Max(maxResults * FinalTakeMultiplier, FinalMinCount))
                 .ToList();
         }
         catch (Exception ex)
@@ -307,8 +346,6 @@ Answer:";
             return new List<DocumentChunk>();
         }
     }
-
-
 
     /// <summary>
     /// Calculate keyword relevance score for better hybrid search
@@ -435,7 +472,7 @@ Answer:";
         {
             // Step 1: Search documents for any content related to the query
             // This works regardless of the language of the query
-            var searchResults = await PerformBasicSearchAsync(query, 5);
+            var searchResults = await PerformBasicSearchAsync(query, FallbackSearchMaxResults);
 
             if (searchResults.Count == 0)
             {
@@ -445,7 +482,7 @@ Answer:";
 
             // Step 2: Check if we found meaningful content with decent relevance
             var hasRelevantContent = searchResults.Any(chunk =>
-                chunk.RelevanceScore > 0.1); // Reasonable threshold
+                chunk.RelevanceScore > RelevanceThreshold);
 
             if (!hasRelevantContent)
             {
@@ -455,10 +492,10 @@ Answer:";
 
             // Step 3: Check if the total content is substantial enough to potentially answer
             var totalContentLength = searchResults
-                .Where(c => c.RelevanceScore > 0.1)
+                .Where(c => c.RelevanceScore > RelevanceThreshold)
                 .Sum(c => c.Content.Length);
 
-            var hasSubstantialContent = totalContentLength > 50; // Minimum content threshold
+            var hasSubstantialContent = totalContentLength > MinSubstantialContentLength;
 
             // Final decision: If we have relevant and substantial content, use document search
             // No other checks - let the content decide!
@@ -467,7 +504,7 @@ Answer:";
         catch (Exception ex)
         {
             // If there's an error, be conservative and assume it's document search
-            logger.LogWarning(ex, "Error in CanAnswerFromDocumentsAsync, assuming document search for safety");
+            ServiceLogMessages.LogCanAnswerFromDocumentsError(logger, ex);
             return true;
         }
     }
@@ -486,7 +523,7 @@ Answer:";
 
             if (providerConfig == null || string.IsNullOrEmpty(providerConfig.ApiKey))
             {
-                return "Sorry, I cannot chat right now. Please try again later.";
+                return ChatUnavailableMessage;
             }
 
             var prompt = $@"You are a helpful AI assistant. Answer the user's question naturally and friendly.
@@ -500,7 +537,7 @@ Answer:";
         catch (Exception)
         {
             // Log error using structured logging
-            return "Sorry, I cannot chat right now. Please try again later.";
+            return ChatUnavailableMessage;
         }
     }
 
