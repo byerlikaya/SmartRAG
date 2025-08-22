@@ -56,10 +56,4 @@ public class SmartRagOptions
     /// List of fallback AI providers to try when primary provider fails
     /// </summary>
     public List<AIProvider> FallbackProviders { get; set; } = [];
-
-    /// <summary>
-    /// Maximum number of search results to return
-    /// </summary>
-    public int MaxSearchResults { get; set; } = 10;
-
 }

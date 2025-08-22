@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
@@ -7,30 +8,62 @@ namespace SmartRAG.Repositories;
 /// <summary>
 /// In-memory document repository implementation
 /// </summary>
-public class InMemoryDocumentRepository(InMemoryConfig config) : IDocumentRepository
+public class InMemoryDocumentRepository(
+    InMemoryConfig config,
+    ILogger<InMemoryDocumentRepository> logger) : IDocumentRepository
 {
+    #region Constants
+
+    // Search constants  
+    private const int DefaultMaxSearchResults = 5;
+    
+    // Collection constants
+    private const int MinDocumentCapacity = 1;
+
+    #endregion
+
+    #region Fields
+
     private readonly List<Document> _documents = [];
     private readonly Lock _lock = new();
+    private readonly InMemoryConfig _config = config;
+    private readonly ILogger<InMemoryDocumentRepository> _logger = logger;
+
+    #endregion
+
+    #region Properties
+
+    protected ILogger Logger => _logger;
+
+    public int CurrentCount => _documents.Count;
+
+    public int MaxDocuments => _config.MaxDocuments;
+
+    #endregion
+
+    #region Public Methods
 
     public Task<Document> AddAsync(Document document)
     {
         lock (_lock)
         {
-            if (_documents.Count >= config.MaxDocuments)
+            try
             {
-                var oldestDocuments = _documents
-                    .OrderBy(d => d.UploadedAt)
-                    .Take(_documents.Count - config.MaxDocuments + 1)
-                    .ToList();
-
-                foreach (var oldDoc in oldestDocuments)
+                if (_documents.Count >= _config.MaxDocuments)
                 {
-                    _documents.Remove(oldDoc);
+                    var removedCount = RemoveOldestDocuments();
+                    RepositoryLogMessages.LogOldDocumentsRemoved(Logger, removedCount, _config.MaxDocuments, null);
                 }
-            }
 
-            _documents.Add(document);
-            return Task.FromResult(document);
+                _documents.Add(document);
+                RepositoryLogMessages.LogDocumentAdded(Logger, document.FileName, document.Id, null);
+                return Task.FromResult(document);
+            }
+            catch (Exception ex)
+            {
+                RepositoryLogMessages.LogDocumentAddFailed(Logger, document.FileName, ex);
+                throw;
+            }
         }
     }
 
@@ -38,8 +71,26 @@ public class InMemoryDocumentRepository(InMemoryConfig config) : IDocumentReposi
     {
         lock (_lock)
         {
-            var document = _documents.FirstOrDefault(d => d.Id == id);
-            return Task.FromResult(document);
+            try
+            {
+                var document = _documents.FirstOrDefault(d => d.Id == id);
+                
+                if (document != null)
+                {
+                    RepositoryLogMessages.LogDocumentRetrieved(Logger, document.FileName, id, null);
+                }
+                else
+                {
+                    RepositoryLogMessages.LogDocumentNotFound(Logger, id, null);
+                }
+                
+                return Task.FromResult(document);
+            }
+            catch (Exception ex)
+            {
+                RepositoryLogMessages.LogDocumentRetrievalFailed(Logger, id, ex);
+                throw;
+            }
         }
     }
 
@@ -47,7 +98,17 @@ public class InMemoryDocumentRepository(InMemoryConfig config) : IDocumentReposi
     {
         lock (_lock)
         {
-            return Task.FromResult(_documents.ToList());
+            try
+            {
+                var documents = _documents.ToList();
+                RepositoryLogMessages.LogDocumentsRetrieved(Logger, documents.Count, null);
+                return Task.FromResult(documents);
+            }
+            catch (Exception ex)
+            {
+                RepositoryLogMessages.LogDocumentsRetrievalFailed(Logger, ex);
+                throw;
+            }
         }
     }
 
@@ -55,11 +116,29 @@ public class InMemoryDocumentRepository(InMemoryConfig config) : IDocumentReposi
     {
         lock (_lock)
         {
-            var document = _documents.FirstOrDefault(d => d.Id == id);
-            if (document == null)
-                return Task.FromResult(false);
+            try
+            {
+                var document = _documents.FirstOrDefault(d => d.Id == id);
+                
+                if (document == null)
+                {
+                    RepositoryLogMessages.LogDocumentDeleteNotFound(Logger, id, null);
+                    return Task.FromResult(false);
+                }
 
-            return Task.FromResult(_documents.Remove(document));
+                var removed = _documents.Remove(document);
+                if (removed)
+                {
+                    RepositoryLogMessages.LogDocumentDeleted(Logger, document.FileName, id, null);
+                }
+                
+                return Task.FromResult(removed);
+            }
+            catch (Exception ex)
+            {
+                RepositoryLogMessages.LogDocumentDeleteFailed(Logger, id, ex);
+                throw;
+            }
         }
     }
 
@@ -67,38 +146,88 @@ public class InMemoryDocumentRepository(InMemoryConfig config) : IDocumentReposi
     {
         lock (_lock)
         {
-            return Task.FromResult(_documents.Count);
+            try
+            {
+                var count = _documents.Count;
+                RepositoryLogMessages.LogDocumentCountRetrieved(Logger, count, null);
+                return Task.FromResult(count);
+            }
+            catch (Exception ex)
+            {
+                RepositoryLogMessages.LogDocumentCountRetrievalFailed(Logger, ex);
+                throw;
+            }
         }
     }
 
-    public int CurrentCount => _documents.Count;
-
-    public int MaxDocuments => config.MaxDocuments;
-
-    public Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = 5)
+    public Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = DefaultMaxSearchResults)
     {
         lock (_lock)
         {
-            var normalizedQuery = SmartRAG.Extensions.SearchTextExtensions.NormalizeForSearch(query);
-            var relevantChunks = new List<DocumentChunk>();
-
-            foreach (var document in _documents)
+            try
             {
-                foreach (var chunk in document.Chunks)
-                {
-                    var normalizedChunk = SmartRAG.Extensions.SearchTextExtensions.NormalizeForSearch(chunk.Content);
-                    if (normalizedChunk.Contains(normalizedQuery))
-                    {
-                        relevantChunks.Add(chunk);
-                        if (relevantChunks.Count >= maxResults)
-                            break;
-                    }
-                }
-                if (relevantChunks.Count >= maxResults)
-                    break;
-            }
+                var normalizedQuery = SmartRAG.Extensions.SearchTextExtensions.NormalizeForSearch(query);
+                var relevantChunks = PerformSearch(normalizedQuery, maxResults);
 
-            return Task.FromResult(relevantChunks);
+                RepositoryLogMessages.LogSearchCompleted(Logger, query, relevantChunks.Count, maxResults, null);
+                return Task.FromResult(relevantChunks);
+            }
+            catch (Exception ex)
+            {
+                RepositoryLogMessages.LogSearchFailed(Logger, query, ex);
+                throw;
+            }
         }
     }
+
+    #endregion
+
+    #region Private Helper Methods
+
+    /// <summary>
+    /// Removes oldest documents when capacity is exceeded
+    /// </summary>
+    private int RemoveOldestDocuments()
+    {
+        var documentsToRemove = _documents.Count - _config.MaxDocuments + MinDocumentCapacity;
+        var oldestDocuments = _documents
+            .OrderBy(d => d.UploadedAt)
+            .Take(documentsToRemove)
+            .ToList();
+
+        foreach (var oldDoc in oldestDocuments)
+        {
+            _documents.Remove(oldDoc);
+        }
+
+        return oldestDocuments.Count;
+    }
+
+    /// <summary>
+    /// Performs search operation on documents
+    /// </summary>
+    private List<DocumentChunk> PerformSearch(string normalizedQuery, int maxResults)
+    {
+        var relevantChunks = new List<DocumentChunk>();
+
+        foreach (var document in _documents)
+        {
+            foreach (var chunk in document.Chunks)
+            {
+                var normalizedChunk = SmartRAG.Extensions.SearchTextExtensions.NormalizeForSearch(chunk.Content);
+                if (normalizedChunk.Contains(normalizedQuery))
+                {
+                    relevantChunks.Add(chunk);
+                    if (relevantChunks.Count >= maxResults)
+                        break;
+                }
+            }
+            if (relevantChunks.Count >= maxResults)
+                break;
+        }
+
+        return relevantChunks;
+    }
+
+    #endregion
 }
