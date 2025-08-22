@@ -66,7 +66,7 @@ public static class ProviderLogMessages
 
     #region Batch Processing
 
-    public static readonly Action<ILogger, int, int, Exception?> LogBatchProcessingStarted = LoggerMessage.Define<int, int>(
+    public static readonly Action<ILogger, int, int, int, Exception?> LogBatchProcessingStarted = LoggerMessage.Define<int, int, int>(
         LogLevel.Information,
         new EventId(7301, "BatchProcessingStarted"),
         "Processing batch {BatchNumber}/{TotalBatches} with {BatchSize} items");
