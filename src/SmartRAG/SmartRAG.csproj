@@ -7,7 +7,7 @@
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
-    <PackageVersion>1.0.3</PackageVersion>
+    <PackageVersion>1.1.0</PackageVersion>
     <Authors>Barış Yerlikaya</Authors>
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
@@ -19,7 +19,7 @@
     <RepositoryUrl>https://github.com/byerlikaya/SmartRAG</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-    <PackageReleaseNotes>v1.0.3: Enhanced semantic search with hybrid scoring (80% semantic + 20% keyword), smart document chunking with word boundary validation, SemanticSearchService integration, configuration binding priority fix, and comprehensive documentation updates</PackageReleaseNotes>
+         <PackageReleaseNotes>v1.1.0: Added Excel file parsing (.xlsx, .xls) with EPPlus 8.1.0 integration, enhanced Anthropic API retry mechanism for HTTP 529 (Overloaded) errors, improved document content validation, and comprehensive Excel format documentation</PackageReleaseNotes>
     <Copyright>Copyright © Barış Yerlikaya 2025</Copyright>
     <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
     <IncludeSymbols>true</IncludeSymbols>
