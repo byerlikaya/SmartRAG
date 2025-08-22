@@ -3,7 +3,6 @@ using Microsoft.Extensions.Options;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
-using SmartRAG.Services;
 using System.Globalization;
 using System.Text;
 
@@ -30,7 +29,7 @@ public class DocumentService(
     private const string NoFileNamesMessage = "No file names provided";
     private const string NoContentTypesMessage = "No content types provided";
     private const string MismatchedCountsMessage = "Number of file streams, names, and content types must match";
-    
+
     // CompositeFormat for repeated formatting (CA1863)
     private static readonly CompositeFormat UnsupportedFileTypeFormat = CompositeFormat.Parse("Unsupported file type: {0}. Supported types: {1}");
     private static readonly CompositeFormat UnsupportedContentTypeFormat = CompositeFormat.Parse("Unsupported content type: {0}. Supported types: {1}");

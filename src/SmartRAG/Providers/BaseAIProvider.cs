@@ -210,8 +210,9 @@ public abstract class BaseAIProvider : IAIProvider
                 if (success)
                     return (true, response, string.Empty);
 
-                // Handle rate limiting
-                if (error.Contains("429") || error.Contains("TooManyRequests"))
+                // Handle rate limiting and server overload
+                if (error.Contains("429") || error.Contains("TooManyRequests") || 
+                    error.Contains("529") || error.Contains("Overloaded"))
                 {
                     attempt++;
                     if (attempt < maxRetries)
@@ -299,11 +300,12 @@ public abstract class BaseAIProvider : IAIProvider
     }
 
     /// <summary>
-    /// Calculates retry delay for rate limiting
+    /// Calculates retry delay for rate limiting and server overload
     /// </summary>
     private static int CalculateRetryDelay(int attempt)
     {
-        return MinRetryDelayMs;
+        // For server overload (529), use exponential backoff starting from 60 seconds
+        return MinRetryDelayMs * attempt;
     }
 
     /// <summary>
