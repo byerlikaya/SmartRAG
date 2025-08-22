@@ -144,6 +144,15 @@ public class AnthropicProvider(ILogger<AnthropicProvider> logger) : BaseAIProvid
         if (inputList.Count == 0)
             return [];
 
+        // Filter out empty or null strings to prevent Voyage AI API errors
+        var validInputs = inputList.Where(text => !string.IsNullOrWhiteSpace(text)).ToList();
+        
+        if (validInputs.Count == 0)
+        {
+            ProviderLogMessages.LogAnthropicEmbeddingValidationError(Logger, "All input texts are empty or null", null);
+            return Enumerable.Range(0, inputList.Count).Select(_ => new List<float>()).ToList();
+        }
+
         var voyageApiKey = config.EmbeddingApiKey ?? config.ApiKey;
         var voyageModel = config.EmbeddingModel ?? DefaultVoyageModel;
 
@@ -156,7 +165,7 @@ public class AnthropicProvider(ILogger<AnthropicProvider> logger) : BaseAIProvid
 
         var payload = new
         {
-            input = inputList.ToArray(),
+            input = validInputs.ToArray(),
             model = voyageModel,
             input_type = VoyageInputType
         };
@@ -173,7 +182,8 @@ public class AnthropicProvider(ILogger<AnthropicProvider> logger) : BaseAIProvid
 
         try
         {
-            return ParseVoyageBatchEmbeddingResponse(response, inputList.Count);
+            var validEmbeddings = ParseVoyageBatchEmbeddingResponse(response, validInputs.Count);
+            return MapEmbeddingsToOriginalInputs(validEmbeddings, inputList, validInputs);
         }
         catch (Exception ex)
         {
@@ -293,6 +303,40 @@ public class AnthropicProvider(ILogger<AnthropicProvider> logger) : BaseAIProvid
         return Enumerable.Range(0, expectedCount)
             .Select(i => i < results.Count ? results[i] : new List<float>())
             .ToList();
+    }
+
+    /// <summary>
+    /// Maps valid embeddings back to original input positions, filling empty positions with empty embeddings
+    /// </summary>
+    private static List<List<float>> MapEmbeddingsToOriginalInputs(List<List<float>> validEmbeddings, List<string> originalInputs, List<string> validInputs)
+    {
+        var result = new List<List<float>>();
+        var validIndex = 0;
+
+        for (int i = 0; i < originalInputs.Count; i++)
+        {
+            if (string.IsNullOrWhiteSpace(originalInputs[i]))
+            {
+                // Empty input gets empty embedding
+                result.Add(new List<float>());
+            }
+            else
+            {
+                // Valid input gets corresponding embedding
+                if (validIndex < validEmbeddings.Count)
+                {
+                    result.Add(validEmbeddings[validIndex]);
+                    validIndex++;
+                }
+                else
+                {
+                    // Fallback: empty embedding if something goes wrong
+                    result.Add(new List<float>());
+                }
+            }
+        }
+
+        return result;
     }
 
     #endregion
