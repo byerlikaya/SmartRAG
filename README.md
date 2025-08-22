@@ -18,7 +18,7 @@ SmartRAG is a **production-ready** .NET 9.0 library that provides a complete **R
 - 🧠 **Advanced RAG Pipeline**: Smart chunking, semantic retrieval, AI-powered answer generation
 - ⚡ **Lightning Fast**: Optimized vector search with context-aware answer synthesis
 - 🔌 **Plug & Play**: Single-line integration with dependency injection
-- 📄 **Multi-Format**: PDF, Word, text files with intelligent parsing
+- 📄 **Multi-Format**: PDF, Word, Excel, text files with intelligent parsing
 - 🎯 **Enhanced Semantic Search**: Advanced hybrid scoring with 80% semantic + 20% keyword relevance
 - 🔍 **Smart Document Chunking**: Word boundary validation and optimal break points for context preservation
 - ✅ **Enterprise Grade**: Zero Warnings Policy, SOLID principles, comprehensive logging, XML documentation
@@ -38,7 +38,7 @@ SmartRAG is a **production-ready** .NET 9.0 library that provides a complete **R
 - **Language-Agnostic Design**: No hardcoded language patterns - works globally with any language
 - **Multiple Storage Options**: From in-memory to enterprise vector databases
 - **AI Provider Flexibility**: Switch between providers without code changes
-- **Document Intelligence**: Advanced parsing for PDF, Word, and text formats
+- **Document Intelligence**: Advanced parsing for PDF, Word, Excel, and text formats
 - **Configuration-First**: Environment-based configuration with sensible defaults
 - **Dependency Injection**: Full DI container integration
 - **Enhanced Semantic Search**: Advanced hybrid scoring combining semantic similarity and keyword relevance
@@ -133,6 +133,42 @@ dotnet add package SmartRAG
 ```xml
 <PackageReference Include="SmartRAG" Version="1.1.0" />
 ```
+
+## 📄 Supported Document Formats
+
+SmartRAG supports a wide range of document formats with intelligent parsing and text extraction:
+
+### **📊 Excel Files (.xlsx, .xls)**
+- **Advanced Parsing**: Extracts text from all worksheets and cells
+- **Structured Data**: Preserves table structure with tab-separated values
+- **Worksheet Names**: Includes worksheet names for context
+- **Cell Content**: Extracts all non-empty cell values
+- **Format Preservation**: Maintains data organization for better context
+
+### **📝 Word Documents (.docx, .doc)**
+- **Rich Text Extraction**: Preserves formatting and structure
+- **Table Support**: Extracts content from tables and lists
+- **Paragraph Handling**: Maintains paragraph breaks and flow
+- **Metadata Preservation**: Keeps document structure intact
+
+### **📋 PDF Documents (.pdf)**
+- **Multi-Page Support**: Processes all pages with text extraction
+- **Layout Preservation**: Maintains document structure and flow
+- **Text Quality**: High-quality text extraction for analysis
+- **Page Separation**: Clear page boundaries for context
+
+### **📄 Text Files (.txt, .md, .json, .xml, .csv, .html, .htm)**
+- **Universal Support**: Handles all text-based formats
+- **Encoding Detection**: Automatic UTF-8 and encoding detection
+- **Structure Preservation**: Maintains original formatting
+- **Fast Processing**: Optimized for text-based content
+
+### **🔍 Content Type Support**
+SmartRAG automatically detects file types using both file extensions and MIME content types:
+- **Excel**: `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, `application/vnd.ms-excel`
+- **Word**: `application/vnd.openxmlformats-officedocument.wordprocessingml.document`, `application/msword`
+- **PDF**: `application/pdf`
+- **Text**: `text/*`, `application/json`, `application/xml`, `application/csv`
 
 ## 🚀 Quick Start
 
