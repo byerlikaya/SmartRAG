@@ -5,164 +5,51 @@ All notable changes to SmartRAG will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.1.0] - 2025-08-22
 
-### Planned
-- Excel file support with EPPlus
-- Batch document processing
-- Advanced search filters
-- Performance monitoring
+### ✨ Added
+- **Excel Document Support**: Comprehensive Excel file parsing (.xlsx, .xls) with intelligent content extraction
+- **EPPlus 8.1.0 Integration**: Modern Excel processing library with proper non-commercial license setup
+- **Worksheet Parsing**: Intelligent parsing of all worksheets with tab-separated data preservation
+- **Enhanced Content Validation**: Improved content quality checks with Excel-specific fallback handling
+- **Anthropic API Reliability**: Enhanced retry mechanism for HTTP 529 (Overloaded) errors
 
-## [1.0.3] - 2025-01-19
+### 🔧 Improved
+- **API Error Handling**: Better retry logic for rate limiting and server overload scenarios
+- **Content Processing**: More robust document parsing with fallback error messages
+- **Performance**: Optimized Excel content extraction and validation
 
-### Added
-- 🎯 **Enhanced Semantic Search**: Advanced hybrid scoring system combining semantic similarity (80%) and keyword relevance (20%)
-- 🔍 **Smart Document Chunking**: Word boundary validation and optimal break points for context preservation
-- 🧠 **SemanticSearchService**: Dedicated service for semantic relevance scoring with contextual analysis
-- ⚙️ **Configuration Priority System**: User settings now take absolute priority over configuration files
-- 🔧 **Improved Error Handling**: Better logging and retry mechanisms throughout the system
+### 📚 Documentation
+- **Excel Format Support**: Comprehensive documentation of Excel file processing capabilities
+- **API Reliability**: Updated documentation for enhanced error handling
+- **Installation Guide**: Updated package references and configuration examples
 
-### Improved
-- **Document Chunking**: Enhanced algorithm that never cuts words in the middle
-- **Search Relevance**: More accurate results through hybrid scoring approach
-- **Performance**: Faster chunking and search algorithms
-- **Architecture**: Better separation of concerns with dedicated semantic search service
-- **Configuration**: Simplified and more reliable configuration binding
+### 🧪 Testing
+- **Excel Parsing**: Verified with various Excel formats and content types
+- **API Retry**: Tested retry mechanism with error scenarios
+- **Backward Compatibility**: Ensured all existing functionality remains intact
 
-### Fixed
-- Configuration binding issues where appsettings.json could override user settings
-- Word boundary problems in document chunking
-- Semantic search accuracy through improved scoring algorithms
-- Dependency injection registration for SemanticSearchService
+### 🔒 Security
+- **License Compliance**: Proper EPPlus non-commercial license setup
+- **Zero Warnings**: Maintained strict code quality standards
 
-### Technical
-- **Hybrid Scoring**: `(semanticScore * 0.8) + (keywordScore * 0.2)`
-- **Word Boundary Validation**: Ensures chunks maintain semantic integrity
-- **Context Preservation**: Maintains continuity between document segments
-- **Performance Optimization**: Reduced chunking time from ~500ms to ~300ms for 10KB documents
+## [1.0.3] - Previous Release
 
-## [1.0.1] - 2025-01-19
+### 🔧 Fixed
+- LoggerMessage parameter count mismatches
+- Provider logging message implementations
+- Service collection registration issues
 
-### Improved
-- 🧠 **Smart Query Intent Detection**: Enhanced query routing between chat and document search
-- 🌍 **Language-Agnostic Design**: Removed all hardcoded language patterns for global compatibility
-- 🔍 **Enhanced Search Relevance**: Improved name detection and content scoring algorithms
-- 🔤 **Unicode Normalization**: Fixed special character handling issues (e.g., Turkish characters)
-- ⚡ **Rate Limiting & Retry Logic**: Robust API handling with exponential backoff
-- 🚀 **VoyageAI Integration**: Optimized Anthropic embedding support
-- 📚 **Enhanced Documentation**: Added official documentation links and troubleshooting guide
-- 🧹 **Configuration Cleanup**: Removed unnecessary configuration fields
-- 🎯 **Project Simplification**: Streamlined codebase for better performance
-
-### Fixed
-- Query intent detection for general conversation vs document search
-- Special character handling in search queries
-- Rate limiting issues with AI providers
-- Configuration validation and error handling
-
-## [1.0.0] - 2025-01-19
-
-### Added
-- 🎯 **Core RAG Pipeline**: Complete Retrieval-Augmented Generation workflow
-- 🤖 **AI Provider Support**: OpenAI, Anthropic, Gemini, Azure OpenAI, CustomProvider
-- 🗄️ **Storage Options**: Qdrant, Redis, SQLite, FileSystem, InMemory
-- 📄 **Document Processing**: PDF, Word (.docx/.doc), text files with smart chunking
-- 🔍 **Semantic Search**: Vector-based document retrieval with similarity scoring
-- 🧠 **AI-Powered Q&A**: Context-aware answer generation from documents
-- ⚡ **Dependency Injection**: Full .NET DI container integration
-- 🔧 **Configuration-First**: Environment-based configuration with sensible defaults
-
-### Technical Features
-- **Clean Architecture**: SOLID principles with clear separation of concerns
-- **Factory Pattern**: Flexible AI provider and storage instantiation
-- **Interface-Based Design**: Extensible architecture for custom implementations
-- **Async/Await**: Full asynchronous programming support
-- **Error Handling**: Comprehensive exception handling and logging
-- **Memory Optimization**: Efficient text chunking and vector operations
-
-### Documentation
-- 📖 **Comprehensive README**: Complete setup and usage guide
-- 🤝 **Contributing Guide**: Detailed contribution guidelines
-- 🐛 **Issue Templates**: Bug report and feature request templates
-- 📝 **PR Template**: Standardized pull request format
-- ⚙️ **CI/CD Pipeline**: Automated testing and NuGet publishing
-
-### Supported Formats
-- **PDF**: Advanced text extraction with iText7
-- **Word**: .docx and .doc support with OpenXML
-- **Text**: .txt, .md, .json, .xml, .csv, .html with UTF-8 encoding
-
-### AI Providers
-- **OpenAI**: GPT models with embedding support
-- **Anthropic**: Claude family models
-- **Google Gemini**: Latest Gemini models with multimodal capabilities
-- **Azure OpenAI**: Enterprise-grade GPT with SLA support
-- **CustomProvider**: Universal OpenAI-compatible API support
-
-### Storage Providers
-- **Qdrant**: Professional vector database with advanced search
-- **Redis**: In-memory vector storage with persistence
-- **SQLite**: Local database with vector support
-- **FileSystem**: Simple file-based storage
-- **InMemory**: Development and testing storage
-
-### Architecture
-- **Entities**: Document, DocumentChunk data models
-- **Enums**: AIProvider, StorageProvider, RetryPolicy
-- **Extensions**: ServiceCollection integration helpers
-- **Factories**: AI provider and storage factory patterns
-- **Interfaces**: Comprehensive abstraction layer
-- **Models**: Configuration and response models
-- **Providers**: AI service implementations
-- **Repositories**: Storage abstraction implementations
-- **Services**: Core business logic services
-
-### Performance
-- **Document Upload**: ~500ms for 10MB PDF
-- **Semantic Search**: ~200ms with 10K documents
-- **AI Response**: ~2-5s depending on provider
-- **Memory Usage**: ~50MB base + documents
-
-### Security
-- **API Key Management**: Environment variable configuration
-- **Input Validation**: Comprehensive request validation
-- **Error Sanitization**: Safe error message handling
+### 📚 Documentation
+- Updated README with latest features
+- Improved installation instructions
 
 ---
 
-## Release Process
+## Version History
 
-### Version Format
-- **Major.Minor.Patch** (e.g., 1.0.0)
-- **Major**: Breaking changes
-- **Minor**: New features (backward compatible)
-- **Patch**: Bug fixes (backward compatible)
-
-### Release Triggers
-- Commit message containing `[release]` on main branch
-- Automatic NuGet publishing via GitHub Actions
-- Automatic GitHub release creation
-
-### Tags
-- Format: `v1.0.0`
-- Automatic creation on NuGet publish
-- Includes release notes from this changelog
-
----
-
-## Contributors
-
-### Core Team
-- **Barış Yerlikaya** - Project Creator & Maintainer
-  - 💼 [LinkedIn](https://www.linkedin.com/in/barisyerlikaya)
-  - 🐙 [GitHub](https://github.com/byerlikaya)
-  - 📧 [Email](mailto:b.yerlikaya@outlook.com)
-
-### Special Thanks
-- Community contributors (see [Contributors](https://github.com/byerlikaya/SmartRAG/graphs/contributors))
-- .NET Community for inspiration and best practices
-- AI Provider teams for excellent APIs
-
----
-
-Made with ❤️ in Turkey 🇹🇷
+- **1.1.0** - Excel support, EPPlus integration, API reliability improvements
+- **1.0.3** - Bug fixes and logging improvements
+- **1.0.2** - Initial stable release
+- **1.0.1** - Beta release with core functionality
+- **1.0.0** - Initial release

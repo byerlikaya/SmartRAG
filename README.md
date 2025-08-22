@@ -131,7 +131,7 @@ dotnet add package SmartRAG
 
 ### PackageReference
 ```xml
-<PackageReference Include="SmartRAG" Version="1.0.3" />
+<PackageReference Include="SmartRAG" Version="1.1.0" />
 ```
 
 ## 🚀 Quick Start
