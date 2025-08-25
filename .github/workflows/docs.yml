@@ -37,19 +37,33 @@ jobs:
           ruby-version: '3.2'
           bundler-cache: true
           
+      - name: Debug Ruby Environment
+        run: |
+          echo "Ruby version: $(ruby --version)"
+          echo "Gem version: $(gem --version)"
+          echo "Bundler version: $(bundle --version)"
+          echo "Current directory: $(pwd)"
+          ls -la
+          
       - name: Install Jekyll
         run: |
           gem install jekyll bundler
           
-      - name: Install dependencies
+      - name: Navigate to docs
         run: |
           cd docs
-          bundle install
+          pwd
+          ls -la
+          
+      - name: Install dependencies with verbose output
+        run: |
+          cd docs
+          bundle install --verbose
           
       - name: Build documentation
         run: |
           cd docs
-          bundle exec jekyll build
+          bundle exec jekyll build --verbose
           
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
