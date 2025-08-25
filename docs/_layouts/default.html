@@ -1,13 +1,22 @@
 <!DOCTYPE html>
-<html lang="{{ site.lang | default: 'en' }}">
+<html lang="en">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% if page.title %}{{ page.title }} - {% endif %}{{ site.title }}</title>
     <meta name="description" content="{{ page.description | default: site.description }}">
     
-    <!-- Just the Docs CSS -->
-    <link rel="stylesheet" href="https://unpkg.com/just-the-docs@0.7.3/dist/just-the-docs.min.css">
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ site.baseurl }}/assets/css/style.css">
     
     <!-- Favicon -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
@@ -17,60 +26,142 @@
     <meta property="og:description" content="{{ page.description | default: site.description }}">
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ site.url }}{{ page.url }}">
-    
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary">
-    <meta name="twitter:title" content="{% if page.title %}{{ page.title }}{% else %}{{ site.title }}{% endif %}">
-    <meta name="twitter:description" content="{{ page.description | default: site.description }}">
 </head>
 <body>
-    <div class="page-wrap">
-        <div class="side-bar">
-            <div class="site-header">
-                <a href="{{ site.baseurl }}/" class="site-title lh-tight">
-                    {{ site.title }}
-                </a>
-            </div>
-            <nav class="site-nav">
-                <ul class="nav-list">
-                    <li class="nav-list-item">
-                        <a href="{{ site.baseurl }}/" class="nav-list-link">Home</a>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="{{ site.baseurl }}/">
+                <i class="fas fa-brain me-2"></i>
+                <span class="brand-text">SmartRAG</span>
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ site.baseurl }}/"><i class="fas fa-home me-1"></i>Home</a>
                     </li>
-                    <li class="nav-list-item">
-                        <a href="{{ site.baseurl }}/getting-started" class="nav-list-link">Getting Started</a>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ site.baseurl }}/getting-started"><i class="fas fa-rocket me-1"></i>Getting Started</a>
                     </li>
-                    <li class="nav-list-item">
-                        <a href="{{ site.baseurl }}/configuration" class="nav-list-link">Configuration</a>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ site.baseurl }}/configuration"><i class="fas fa-cog me-1"></i>Configuration</a>
                     </li>
-                    <li class="nav-list-item">
-                        <a href="{{ site.baseurl }}/api-reference" class="nav-list-link">API Reference</a>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ site.baseurl }}/api-reference"><i class="fas fa-code me-1"></i>API Reference</a>
                     </li>
-                    <li class="nav-list-item">
-                        <a href="{{ site.baseurl }}/troubleshooting" class="nav-list-link">Troubleshooting</a>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ site.baseurl }}/examples"><i class="fas fa-lightbulb me-1"></i>Examples</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ site.baseurl }}/troubleshooting"><i class="fas fa-tools me-1"></i>Troubleshooting</a>
                     </li>
                 </ul>
-            </nav>
+            </div>
         </div>
-        
-        <main class="main-content" id="main-content" role="main">
-            <div class="page">
-                <header class="page-header">
-                    <div class="page-header-content">
-                        <h1 class="page-title">{{ page.title }}</h1>
-                        {% if page.description %}
-                        <p class="page-description">{{ page.description }}</p>
-                        {% endif %}
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid">
+            <div class="row">
+                <!-- Sidebar -->
+                <div class="col-lg-3 col-xl-2 sidebar">
+                    <div class="sidebar-content">
+                        <div class="sidebar-header">
+                            <h5><i class="fas fa-book me-2"></i>Documentation</h5>
+                        </div>
+                        <nav class="sidebar-nav">
+                            <ul class="nav flex-column">
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ site.baseurl }}/">
+                                        <i class="fas fa-home me-2"></i>Home
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ site.baseurl }}/getting-started">
+                                        <i class="fas fa-rocket me-2"></i>Getting Started
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ site.baseurl }}/configuration">
+                                        <i class="fas fa-cog me-2"></i>Configuration
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ site.baseurl }}/api-reference">
+                                        <i class="fas fa-code me-2"></i>API Reference
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ site.baseurl }}/examples">
+                                        <i class="fas fa-lightbulb me-2"></i>Examples
+                                    </a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" href="{{ site.baseurl }}/troubleshooting">
+                                        <i class="fas fa-tools me-2"></i>Troubleshooting
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
                     </div>
-                </header>
+                </div>
                 
-                <div class="page-content">
-                    {{ content }}
+                <!-- Content Area -->
+                <div class="col-lg-9 col-xl-10 content-area">
+                    <div class="content-wrapper">
+                        <div class="page-header">
+                            <h1 class="page-title">{{ page.title }}</h1>
+                            {% if page.description %}
+                            <p class="page-description">{{ page.description }}</p>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="page-content">
+                            {{ content }}
+                        </div>
+                    </div>
                 </div>
             </div>
-        </main>
-    </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="mb-0">&copy; 2025 SmartRAG. Built with ❤️ by Barış Yerlikaya</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <a href="https://github.com/byerlikaya/SmartRAG" class="text-decoration-none me-3">
+                        <i class="fab fa-github"></i> GitHub
+                    </a>
+                    <a href="https://www.nuget.org/packages/SmartRAG" class="text-decoration-none me-3">
+                        <i class="fas fa-box"></i> NuGet
+                    </a>
+                    <a href="mailto:b.yerlikaya@outlook.com" class="text-decoration-none">
+                        <i class="fas fa-envelope"></i> Contact
+                    </a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Back to Top Button -->
+    <button id="backToTop" class="btn btn-primary back-to-top">
+        <i class="fas fa-arrow-up"></i>
+    </button>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
-    <!-- Just the Docs JS -->
-    <script src="https://unpkg.com/just-the-docs@0.7.3/dist/just-the-docs.min.js"></script>
+    <!-- Custom JS -->
+    <script src="{{ site.baseurl }}/assets/js/main.js"></script>
 </body>
 </html>
