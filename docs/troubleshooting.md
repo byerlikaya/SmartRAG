@@ -1,6 +1,7 @@
 ---
 layout: default
 title: Troubleshooting
+description: Common issues, solutions, and debugging guide for SmartRAG
 nav_order: 6
 ---
 
