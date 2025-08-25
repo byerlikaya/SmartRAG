@@ -22,6 +22,19 @@ plugins:
   - jekyll-feed
   - jekyll-seo-tag
   - jekyll-sitemap
+  - jekyll-multiple-languages-plugin
+
+# Multi-language configuration
+languages: ["en", "tr", "de", "ru"]
+languages_default: "en"
+languages_names:
+  en: "English"
+  tr: "Türkçe"
+  de: "Deutsch"
+  ru: "Русский"
+
+# Data files
+data_dir: _data
 
 # Build settings
 markdown: kramdown
