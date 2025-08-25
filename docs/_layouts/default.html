@@ -118,7 +118,7 @@
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" id="languageDropdown" role="button" data-bs-toggle="dropdown">
-                            <i class="fas fa-globe me-1"></i>{{ site.languages_names[site.lang] | default: "English" }}
+                            <i class="fas fa-globe me-1"></i>{% if page.lang == "tr" %}Türkçe{% elsif page.lang == "de" %}Deutsch{% elsif page.lang == "ru" %}Русский{% else %}English{% endif %}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="{{ site.baseurl }}/en/"><i class="fas fa-flag me-2"></i>English</a></li>
