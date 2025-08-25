@@ -221,7 +221,6 @@ var document = await documentService.UploadDocumentAsync(file);
     </div>
     <div class="col-md-2 mb-3">
         <div class="provider-card text-center p-4">
-            <div class="provider-card text-center p-4">
             <div class="provider-icon">
                 <i class="fas fa-microchip"></i>
             </div>
