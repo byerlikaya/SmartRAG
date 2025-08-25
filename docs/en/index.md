@@ -211,7 +211,7 @@ SmartRAG integrates with leading AI providers and storage solutions to give you 
                 <i class="fas fa-cogs fa-3x text-dark"></i>
             </div>
             <h6 class="mb-1">Custom</h6>
-            <small class="text-muted">Extensible Storage</small>
+            <small class="text-muted">Universal API Support</small>
         </div>
     </div>
 </div>

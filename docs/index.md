@@ -243,7 +243,7 @@ var document = await documentService.UploadDocumentAsync(file);
                 <i class="fas fa-cogs"></i>
             </div>
             <h6>Custom</h6>
-            <small>Extensible Storage</small>
+            <small>Any OpenAI-compatible API</small>
         </div>
     </div>
 </div>
