@@ -6,6 +6,38 @@
     <title>{% if page.title %}{{ page.title }} - {% endif %}{{ site.title }}</title>
     <meta name="description" content="{{ page.description | default: site.description }}">
     
+    <!-- SEO Meta Tags -->
+    <meta name="author" content="{{ site.author }}">
+    <meta name="keywords" content="{{ site.keywords }}">
+    <meta name="robots" content="{{ site.robots }}">
+    <meta name="language" content="{{ site.language }}">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ site.url }}{{ page.url }}">
+    <meta property="og:title" content="{% if page.title %}{{ page.title }}{% else %}{{ site.title }}{% endif %}">
+    <meta property="og:description" content="{{ page.description | default: site.description }}">
+    <meta property="og:image" content="{{ site.url }}{{ page.image | default: site.image | default: '/assets/images/logo.svg' }}">
+    <meta property="og:site_name" content="{{ site.title }}">
+    <meta property="og:locale" content="en_US">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="{{ site.url }}{{ page.url }}">
+    <meta property="twitter:title" content="{% if page.title %}{{ page.title }}{% else %}{{ site.title }}{% endif %}">
+    <meta property="twitter:description" content="{{ page.description | default: site.description }}">
+    <meta property="twitter:image" content="{{ site.url }}{{ page.image | default: site.image | default: '/assets/images/logo.svg' }}">
+    <meta property="twitter:creator" content="@{{ site.twitter.username }}">
+    
+    <!-- Canonical URL -->
+    <link rel="canonical" href="{{ site.url }}{{ page.url }}">
+    
+    <!-- Favicon and Icons -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="/assets/images/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/images/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/images/favicon-16x16.png">
+    
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     
@@ -18,14 +50,34 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ site.baseurl }}/assets/css/style.css">
     
-    <!-- Favicon -->
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <!-- Jekyll SEO Tag -->
+    {% seo %}
     
-    <!-- Open Graph -->
-    <meta property="og:title" content="{% if page.title %}{{ page.title }}{% else %}{{ site.title }}{% endif %}">
-    <meta property="og:description" content="{{ page.description | default: site.description }}">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="{{ site.url }}{{ page.url }}">
+    <!-- Structured Data for Rich Snippets -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "SmartRAG",
+        "description": "{{ site.description }}",
+        "url": "{{ site.url }}",
+        "applicationCategory": "DeveloperApplication",
+        "operatingSystem": ".NET",
+        "programmingLanguage": "C#",
+        "author": {
+            "@type": "Person",
+            "name": "{{ site.author }}",
+            "url": "https://github.com/byerlikaya"
+        },
+        "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+        },
+        "downloadUrl": "https://www.nuget.org/packages/SmartRAG",
+        "softwareVersion": "1.0.3"
+    }
+    </script>
 </head>
 <body>
     <!-- Navigation -->

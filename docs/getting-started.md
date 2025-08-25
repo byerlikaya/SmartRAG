@@ -1,6 +1,7 @@
 ---
 layout: default
 title: Getting Started
+description: Quick start guide for SmartRAG - Installation, configuration, and first steps
 nav_order: 2
 ---
 
