@@ -291,9 +291,9 @@ public class DocumentServiceIntegrationTests : IClassFixture<TestWebApplicationF
 
 ## Next Steps
 
-- [Getting Started Guide](getting-started.md) - Learn the basics
-- [Configuration](configuration.md) - Configure your setup
-- [API Reference](api-reference.md) - Detailed API documentation
-- [Troubleshooting](troubleshooting.md) - Solve common issues
+- [Getting Started Guide]({{ site.baseurl }}/getting-started) - Learn the basics
+- [Configuration]({{ site.baseurl }}/configuration) - Configure your setup
+- [API Reference]({{ site.baseurl }}/api-reference) - Detailed API documentation
+- [Troubleshooting]({{ site.baseurl }}/troubleshooting) - Solve common issues
 
-For more examples and community contributions, visit our [GitHub repository](https://github.com/yourusername/SmartRAG).
+For more examples and community contributions, visit our [GitHub repository](https://github.com/byerlikaya/SmartRAG).
