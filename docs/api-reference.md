@@ -2,7 +2,6 @@
 layout: default
 title: API Reference
 description: Complete API documentation for SmartRAG - Services, interfaces, and usage examples
-nav_order: 4
 ---
 
 # API Reference

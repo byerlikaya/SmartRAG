@@ -1,7 +1,7 @@
 ---
 layout: default
 title: SmartRAG Documentation
-nav_order: 1
+description: Enterprise-grade RAG library for .NET applications
 ---
 
 # SmartRAG Documentation
