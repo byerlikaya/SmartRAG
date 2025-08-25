@@ -3,10 +3,10 @@ description: A powerful and intelligent RAG library for .NET applications
 baseurl: ""
 url: "https://byerlikaya.github.io"
 
-# GitHub Pages settings
-remote_theme: just-the-docs/just-the-docs
+# Jekyll settings
+theme: minima
 plugins:
-  - jekyll-remote-theme
+  - jekyll-feed
 
 # Build settings
 markdown: kramdown
