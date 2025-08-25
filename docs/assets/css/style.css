@@ -80,6 +80,65 @@
     color: white;
 }
 
+/* Dark Theme Text Readability */
+[data-theme="dark"] .page-title {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .page-description {
+    color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .page-content h1,
+[data-theme="dark"] .page-content h2,
+[data-theme="dark"] .page-content h3 {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .page-content p {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .page-content li {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .page-content code {
+    background: var(--darker-bg);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .page-content pre {
+    background: var(--darker-bg);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .hero-title {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .hero-subtitle {
+    color: var(--text-secondary) !important;
+}
+
+[data-theme="dark"] .hero-description {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .card-body {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .card-title {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .card-text {
+    color: var(--text-primary) !important;
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -297,6 +356,8 @@ body[data-theme="dark"] {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    white-space: nowrap;
+    min-width: max-content;
 }
 
 .navbar-nav .nav-link:hover {
@@ -323,8 +384,8 @@ body[data-theme="dark"] {
 
 /* Main Content */
 .main-content {
-    margin-top: 120px;
-    min-height: calc(100vh - 120px);
+    margin-top: 160px;
+    min-height: calc(100vh - 160px);
 }
 
 /* Content Area - Full Width */
@@ -346,8 +407,8 @@ body[data-theme="dark"] {
 }
 
 .main-content {
-    margin-top: 120px;
-    min-height: calc(100vh - 120px);
+    margin-top: 160px;
+    min-height: calc(100vh - 160px);
     width: 100%;
     max-width: 100%;
 }
