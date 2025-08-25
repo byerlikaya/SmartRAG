@@ -40,13 +40,16 @@ jobs:
       - name: Install Jekyll
         run: |
           gem install jekyll bundler
+          
+      - name: Install dependencies
+        run: |
           cd docs
           bundle install
           
       - name: Build documentation
         run: |
           cd docs
-          jekyll build --baseurl "${{ github.event.repository.name }}"
+          bundle exec jekyll build
           
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
