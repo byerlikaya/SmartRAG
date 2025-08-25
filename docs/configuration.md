@@ -2,7 +2,6 @@
 layout: default
 title: Configuration
 description: Complete configuration guide for SmartRAG - AI providers, storage backends, and advanced settings
-nav_order: 3
 ---
 
 # Configuration Guide
