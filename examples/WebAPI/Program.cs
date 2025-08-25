@@ -1,9 +1,3 @@
-using Microsoft.OpenApi.Models;
-using SmartRAG.API.Filters;
-using SmartRAG.Diagnostics.Extensions;
-using SmartRAG.Enums;
-using SmartRAG.Extensions;
-
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure Kestrel server options for file uploads
