@@ -1,9 +1,3 @@
-using Microsoft.Extensions.Logging;
-using SmartRAG.Entities;
-using SmartRAG.Interfaces;
-using SmartRAG.Services;
-using System.Text.Json;
-
 namespace SmartRAG.Repositories;
 
 /// <summary>
@@ -16,10 +10,10 @@ public class FileSystemDocumentRepository : IDocumentRepository
     // File and path constants
     private const string MetadataFileName = "metadata.json";
     private const string DocumentFileExtension = ".json";
-    
+
     // Search constants
     private const int DefaultMaxSearchResults = 5;
-    
+
     // JSON serialization constants
     private const bool WriteIndented = true;
 
@@ -29,7 +23,7 @@ public class FileSystemDocumentRepository : IDocumentRepository
 
     private readonly string _basePath;
     private readonly string _metadataFile;
-    private readonly Lock _lock = new();
+    private readonly System.Threading.Lock _lock = new();
     private readonly ILogger<FileSystemDocumentRepository> _logger;
 
     #endregion
@@ -79,7 +73,7 @@ public class FileSystemDocumentRepository : IDocumentRepository
 
     #region Public Methods
 
-    public Task<Document> AddAsync(Document document)
+    public Task<SmartRAG.Entities.Document> AddAsync(SmartRAG.Entities.Document document)
     {
         lock (_lock)
         {
@@ -112,7 +106,7 @@ public class FileSystemDocumentRepository : IDocumentRepository
         }
     }
 
-    public Task<Document?> GetByIdAsync(Guid id)
+    public Task<SmartRAG.Entities.Document?> GetByIdAsync(Guid id)
     {
         lock (_lock)
         {
@@ -120,7 +114,7 @@ public class FileSystemDocumentRepository : IDocumentRepository
             {
                 var documents = LoadMetadata();
                 var document = documents.FirstOrDefault(d => d.Id == id);
-                
+
                 if (document != null)
                 {
                     RepositoryLogMessages.LogDocumentRetrieved(Logger, document.FileName, id, null);
@@ -129,7 +123,7 @@ public class FileSystemDocumentRepository : IDocumentRepository
                 {
                     RepositoryLogMessages.LogDocumentNotFound(Logger, id, null);
                 }
-                
+
                 return Task.FromResult(document);
             }
             catch (Exception ex)
@@ -140,7 +134,7 @@ public class FileSystemDocumentRepository : IDocumentRepository
         }
     }
 
-    public Task<List<Document>> GetAllAsync()
+    public Task<List<SmartRAG.Entities.Document>> GetAllAsync()
     {
         lock (_lock)
         {
@@ -216,7 +210,7 @@ public class FileSystemDocumentRepository : IDocumentRepository
     /// <summary>
     /// Loads metadata from file
     /// </summary>
-    private List<Document> LoadMetadata()
+    private List<SmartRAG.Entities.Document> LoadMetadata()
     {
         try
         {
@@ -224,7 +218,7 @@ public class FileSystemDocumentRepository : IDocumentRepository
                 return [];
 
             var json = File.ReadAllText(_metadataFile);
-            var documents = JsonSerializer.Deserialize<List<Document>>(json, _jsonDeserializeOptions);
+            var documents = JsonSerializer.Deserialize<List<SmartRAG.Entities.Document>>(json, _jsonDeserializeOptions);
 
             return documents ?? [];
         }
@@ -239,7 +233,7 @@ public class FileSystemDocumentRepository : IDocumentRepository
     /// <summary>
     /// Saves metadata to file
     /// </summary>
-    private void SaveMetadata(List<Document> documents)
+    private void SaveMetadata(List<SmartRAG.Entities.Document> documents)
     {
         try
         {
@@ -309,7 +303,7 @@ public class FileSystemDocumentRepository : IDocumentRepository
     /// <summary>
     /// Creates document data object for serialization
     /// </summary>
-    private static object CreateDocumentData(Document document)
+    private static object CreateDocumentData(SmartRAG.Entities.Document document)
     {
         return new
         {
@@ -326,7 +320,7 @@ public class FileSystemDocumentRepository : IDocumentRepository
     /// <summary>
     /// Performs search operation on documents
     /// </summary>
-    private static List<DocumentChunk> PerformSearch(List<Document> documents, string normalizedQuery, int maxResults)
+    private static List<DocumentChunk> PerformSearch(List<SmartRAG.Entities.Document> documents, string normalizedQuery, int maxResults)
     {
         var relevantChunks = new List<DocumentChunk>();
 

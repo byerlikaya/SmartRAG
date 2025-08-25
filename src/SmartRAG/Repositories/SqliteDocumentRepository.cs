@@ -1,14 +1,3 @@
-using Microsoft.Data.Sqlite;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using SmartRAG.Entities;
-using SmartRAG.Interfaces;
-using SmartRAG.Models;
-using SmartRAG.Repositories;
-using System.Data;
-using System.Globalization;
-using System.Text.Json;
-
 namespace SmartRAG.Repositories;
 
 /// <summary>
@@ -118,7 +107,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
     ";
 
     #region Public Methods
-    public Task<Document> AddAsync(Document document)
+    public Task<SmartRAG.Entities.Document> AddAsync(SmartRAG.Entities.Document document)
     {
         try
         {
@@ -155,7 +144,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
         }
     }
 
-    private static void ValidateDocument(Document document)
+    private static void ValidateDocument(SmartRAG.Entities.Document document)
     {
         ArgumentNullException.ThrowIfNull(document);
 
@@ -169,7 +158,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
             throw new ArgumentException("Document must have at least one chunk", nameof(document));
     }
 
-    private static void ValidateChunks(Document document)
+    private static void ValidateChunks(SmartRAG.Entities.Document document)
     {
         foreach (var chunk in document.Chunks)
         {
@@ -204,7 +193,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
         }
     }
 
-    private static void ValidateChunkEmbedding(DocumentChunk chunk, Document document)
+    private static void ValidateChunkEmbedding(DocumentChunk chunk, SmartRAG.Entities.Document document)
     {
         if (chunk.Embedding == null) return;
 
@@ -236,7 +225,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
             throw new ArgumentException($"Chunk embedding vector contains infinity values for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
     }
 
-    private void InsertDocument(Document document)
+    private void InsertDocument(SmartRAG.Entities.Document document)
     {
         using var docCommand = _connection.CreateCommand();
         docCommand.CommandText = @"
@@ -255,7 +244,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
         docCommand.ExecuteNonQuery();
     }
 
-    private void InsertChunks(Document document)
+    private void InsertChunks(SmartRAG.Entities.Document document)
     {
         foreach (var chunk in document.Chunks)
         {
@@ -286,7 +275,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
         ORDER BY c.ChunkIndex
     ";
 
-    private static Document CreateDocumentFromReader(SqliteDataReader reader) => new()
+    private static SmartRAG.Entities.Document CreateDocumentFromReader(SqliteDataReader reader) => new()
     {
         Id = Guid.Parse(reader.GetString("Id")),
         FileName = reader.GetString("FileName"),
@@ -344,7 +333,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
         LIMIT @MaxResults
     ";
 
-    public async Task<Document?> GetByIdAsync(Guid id)
+    public async Task<SmartRAG.Entities.Document?> GetByIdAsync(Guid id)
     {
         try
         {
@@ -365,7 +354,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
             command.Parameters.AddWithValue("@Id", id.ToString());
 
             using var reader = command.ExecuteReader();
-            Document? document = null;
+            SmartRAG.Entities.Document? document = null;
             var chunks = new List<DocumentChunk>();
 
             while (await reader.ReadAsync())
@@ -397,7 +386,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
         }
     }
 
-    public async Task<List<Document>> GetAllAsync()
+    public async Task<List<SmartRAG.Entities.Document>> GetAllAsync()
     {
         try
         {
@@ -406,13 +395,13 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
                 _connection.Open();
             }
 
-            var documents = new List<Document>();
+            var documents = new List<SmartRAG.Entities.Document>();
 
             using var command = _connection.CreateCommand();
             command.CommandText = GetDocumentsWithChunksSql();
 
             using var reader = command.ExecuteReader();
-            Document? currentDocument = null;
+            SmartRAG.Entities.Document? currentDocument = null;
             var chunks = new List<DocumentChunk>();
 
             while (await reader.ReadAsync())
@@ -450,7 +439,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
         catch (Exception ex)
         {
             RepositoryLogMessages.LogSqliteDocumentsRetrievalFailed(Logger, ex);
-            return new List<Document>();
+            return new List<SmartRAG.Entities.Document>();
         }
     }
 
@@ -474,13 +463,13 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
                 var rowsAffected = DeleteDocument(id);
 
                 transaction.Commit();
-                
+
                 if (rowsAffected > 0)
                 {
                     RepositoryLogMessages.LogSqliteDocumentDeleted(Logger, id, null);
                     return Task.FromResult(true);
                 }
-                
+
                 return Task.FromResult(false);
             }
             catch (Exception ex)
@@ -511,7 +500,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
 
             var result = command.ExecuteScalar();
             var count = Convert.ToInt32(result, CultureInfo.InvariantCulture);
-            
+
             RepositoryLogMessages.LogSqliteDocumentCountRetrieved(Logger, count, null);
             return Task.FromResult(count);
         }

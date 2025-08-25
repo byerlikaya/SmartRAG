@@ -1,11 +1,3 @@
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using SmartRAG.Entities;
-using SmartRAG.Interfaces;
-using SmartRAG.Models;
-using SmartRAG.Services;
-
 namespace SmartRAG.Services;
 
 public class DocumentSearchService(
@@ -308,7 +300,7 @@ Answer:";
 
             // Calculate similarity for all chunks that have embeddings
             var chunksWithEmbeddings = allChunks.Where(c => c.Embedding != null && c.Embedding.Count > 0).ToList();
-            
+
             if (chunksWithEmbeddings.Count == 0)
             {
                 return new List<DocumentChunk>();
@@ -319,11 +311,11 @@ Answer:";
             {
                 var semanticSimilarity = CalculateCosineSimilarity(queryEmbedding, chunk.Embedding);
                 var enhancedSemanticScore = await _semanticSearchService.CalculateEnhancedSemanticSimilarityAsync(query, chunk.Content);
-                
+
                 // Hybrid scoring: Combine enhanced semantic similarity with keyword matching
                 var keywordScore = CalculateKeywordRelevanceScore(query, chunk.Content);
                 var hybridScore = (enhancedSemanticScore * 0.8) + (keywordScore * 0.2);
-                
+
                 chunk.RelevanceScore = hybridScore;
                 return chunk;
             }));

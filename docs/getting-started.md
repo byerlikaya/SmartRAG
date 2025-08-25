@@ -1,4 +1,10 @@
-# 🚀 Getting Started with SmartRAG
+---
+layout: default
+title: Getting Started
+nav_order: 2
+---
+
+# Getting Started with SmartRAG
 
 Welcome to SmartRAG! This guide will help you get up and running quickly with our enterprise-grade RAG solution.
 

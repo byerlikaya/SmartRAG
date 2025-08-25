@@ -1,5 +1,3 @@
-using SmartRAG.Models;
-
 namespace SmartRAG.Interfaces;
 
 /// <summary>
@@ -11,17 +9,17 @@ public interface IAIProvider
     /// Generates text response using the AI provider
     /// </summary>
     Task<string> GenerateTextAsync(string prompt, AIProviderConfig config);
-    
+
     /// <summary>
     /// Generates embedding vector for the given text
     /// </summary>
     Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config);
-    
+
     /// <summary>
     /// Generates embeddings for multiple texts in a single request (if supported)
     /// </summary>
     Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config);
-    
+
     /// <summary>
     /// Chunks text into smaller segments for processing
     /// </summary>

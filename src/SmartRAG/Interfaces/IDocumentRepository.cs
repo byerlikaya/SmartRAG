@@ -1,5 +1,3 @@
-using SmartRAG.Entities;
-
 namespace SmartRAG.Interfaces;
 
 /// <summary>
@@ -10,17 +8,17 @@ public interface IDocumentRepository
     /// <summary>
     /// Adds a new document to storage
     /// </summary>
-    Task<Document> AddAsync(Document document);
+    Task<SmartRAG.Entities.Document> AddAsync(SmartRAG.Entities.Document document);
     
     /// <summary>
     /// Retrieves document by unique identifier
     /// </summary>
-    Task<Document?> GetByIdAsync(Guid id);
+    Task<SmartRAG.Entities.Document?> GetByIdAsync(Guid id);
     
     /// <summary>
     /// Retrieves all documents from storage
     /// </summary>
-    Task<List<Document>> GetAllAsync();
+    Task<List<SmartRAG.Entities.Document>> GetAllAsync();
     
     /// <summary>
     /// Removes document from storage by ID

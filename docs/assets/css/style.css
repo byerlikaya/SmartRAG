@@ -1,0 +1,120 @@
+/* Custom styles for SmartRAG documentation */
+
+/* Code blocks */
+.highlight {
+    background-color: #f6f8fa;
+    border-radius: 6px;
+    padding: 16px;
+    margin: 16px 0;
+}
+
+/* Inline code */
+code {
+    background-color: #f6f8fa;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+
+/* Tables */
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 16px 0;
+}
+
+th, td {
+    border: 1px solid #e1e4e8;
+    padding: 8px 12px;
+    text-align: left;
+}
+
+th {
+    background-color: #f6f8fa;
+    font-weight: 600;
+}
+
+/* Buttons */
+.btn {
+    display: inline-block;
+    padding: 8px 16px;
+    background-color: #0366d6;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    font-weight: 500;
+    transition: background-color 0.2s;
+}
+
+.btn:hover {
+    background-color: #0256cc;
+    color: white;
+    text-decoration: none;
+}
+
+/* Feature cards */
+.feature-card {
+    border: 1px solid #e1e4e8;
+    border-radius: 6px;
+    padding: 20px;
+    margin: 16px 0;
+    background-color: white;
+}
+
+.feature-card h3 {
+    margin-top: 0;
+    color: #24292e;
+}
+
+/* Alert boxes */
+.alert {
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin: 16px 0;
+}
+
+.alert-info {
+    background-color: #f1f8ff;
+    border: 1px solid #c8e1ff;
+    color: #0366d6;
+}
+
+.alert-warning {
+    background-color: #fffbf0;
+    border: 1px solid #fae17d;
+    color: #735c0f;
+}
+
+.alert-success {
+    background-color: #f0fff4;
+    border: 1px solid #85e89d;
+    color: #28a745;
+}
+
+/* Navigation improvements */
+.nav-list-link {
+    color: #586069;
+    transition: color 0.2s;
+}
+
+.nav-list-link:hover {
+    color: #0366d6;
+}
+
+/* Page header */
+.page-header {
+    border-bottom: 1px solid #e1e4e8;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+}
+
+.page-title {
+    margin: 0;
+    color: #24292e;
+}
+
+.page-description {
+    margin: 8px 0 0 0;
+    color: #586069;
+    font-size: 1.1em;
+}

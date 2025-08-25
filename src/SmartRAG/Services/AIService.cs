@@ -1,19 +1,11 @@
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Logging;
-using SmartRAG.Enums;
-using SmartRAG.Interfaces;
-using SmartRAG.Models;
-using SmartRAG.Services;
-
 namespace SmartRAG.Services;
 
 /// <summary>
 /// AI Service that uses the configured AI provider
 /// </summary>
 public class AIService(
-    IAIProviderFactory aiProviderFactory, 
-    IOptions<SmartRagOptions> options, 
+    IAIProviderFactory aiProviderFactory,
+    IOptions<SmartRagOptions> options,
     IConfiguration configuration,
     ILogger<AIService> logger) : IAIService
 {
@@ -163,9 +155,9 @@ public class AIService(
             {
                 attempt++;
                 var backoff = CalculateRetryDelay(attempt, delayMs);
-                
+
                 ServiceLogMessages.LogAIServiceRetryAttempt(logger, attempt, _options.AIProvider.ToString(), backoff, ex);
-                
+
                 await Task.Delay(backoff);
             }
         }
@@ -206,8 +198,8 @@ public class AIService(
                 var aiProvider = aiProviderFactory.CreateProvider(fallbackProvider);
                 var key = fallbackProvider.ToString();
                 var config = configuration.GetSection($"AI:{key}").Get<AIProviderConfig>();
-                
-                if (config == null) 
+
+                if (config == null)
                     continue;
 
                 var prompt = BuildPrompt(query, context);

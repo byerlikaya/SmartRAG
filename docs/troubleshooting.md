@@ -1,6 +1,12 @@
-# 🔧 SmartRAG Troubleshooting Guide
+---
+layout: default
+title: Troubleshooting
+nav_order: 6
+---
 
-This guide helps you resolve common issues and errors when using SmartRAG. If you encounter a problem not covered here, please [create an issue](https://github.com/byerlikaya/SmartRAG/issues) or [contact support](mailto:b.yerlikaya@outlook.com).
+# SmartRAG Troubleshooting Guide
+
+This guide helps you resolve common issues and errors when using SmartRAG. If you encounter a problem not covered here, please [create an issue](https://github.com/byerlikaya/SmartRAG/issues) or [contact support](mailto:b.yerlikaya@examples.com).
 
 ## 🚨 Common Error Messages & Solutions
 
