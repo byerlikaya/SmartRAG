@@ -1,0 +1,160 @@
+# Getting Started translations
+en:
+  title: "Getting Started"
+  description: "Quick installation and setup guide to get you up and running with SmartRAG"
+  
+  installation:
+    title: "Installation"
+    description: "SmartRAG is available as a NuGet package and can be installed in several ways."
+    nuget_command: "Using .NET CLI:"
+    package_manager: "Using Package Manager:"
+    direct_reference: "Direct package reference:"
+    
+  setup:
+    title: "Basic Setup"
+    description: "Once installed, you can configure SmartRAG in your application."
+    basic_config: "Basic Configuration:"
+    advanced_config: "Advanced Configuration:"
+    
+  quick_start:
+    title: "Quick Start Example"
+    description: "Here's a simple example to get you started:"
+    code_comment: "// Add SmartRAG services to your DI container"
+    code_comment2: "// Use the document service"
+    
+  next_steps:
+    title: "Next Steps"
+    description: "Now that you have SmartRAG installed and configured, you can:"
+    steps:
+      - "Upload and process documents"
+      - "Generate embeddings using AI providers"
+      - "Perform semantic search queries"
+      - "Explore advanced features"
+    
+  need_help:
+    title: "Need Help?"
+    description: "If you encounter any issues or need assistance:"
+    links:
+      - "Check the main documentation"
+      - "Open an issue on GitHub"
+      - "Join our discussions"
+
+tr:
+  title: "Başlangıç"
+  description: "SmartRAG ile hızlı kurulum ve kurulum rehberi"
+  
+  installation:
+    title: "Kurulum"
+    description: "SmartRAG, NuGet paketi olarak mevcuttur ve birkaç farklı şekilde kurulabilir."
+    nuget_command: ".NET CLI kullanarak:"
+    package_manager: "Package Manager kullanarak:"
+    direct_reference: "Doğrudan paket referansı:"
+    
+  setup:
+    title: "Temel Kurulum"
+    description: "Kurulduktan sonra, SmartRAG'ı uygulamanızda yapılandırabilirsiniz."
+    basic_config: "Temel Yapılandırma:"
+    advanced_config: "Gelişmiş Yapılandırma:"
+    
+  quick_start:
+    title: "Hızlı Başlangıç Örneği"
+    description: "İşte başlamanız için basit bir örnek:"
+    code_comment: "// SmartRAG servislerini DI container'ınıza ekleyin"
+    code_comment2: "// Belge servisini kullanın"
+    
+  next_steps:
+    title: "Sonraki Adımlar"
+    description: "Artık SmartRAG kuruldu ve yapılandırıldı, şunları yapabilirsiniz:"
+    steps:
+      - "Belgeleri yükleyin ve işleyin"
+      - "AI provider'lar kullanarak embedding'ler oluşturun"
+      - "Anlamsal arama sorguları gerçekleştirin"
+      - "Gelişmiş özellikleri keşfedin"
+    
+  need_help:
+    title: "Yardıma mı ihtiyacınız var?"
+    description: "Herhangi bir sorunla karşılaşırsanız veya yardıma ihtiyacınız olursa:"
+    links:
+      - "Ana dokümantasyonu kontrol edin"
+      - "GitHub'da issue açın"
+      - "Tartışmalarımıza katılın"
+
+de:
+  title: "Erste Schritte"
+  description: "Schnellinstallations- und Einrichtungsanleitung, um Sie mit SmartRAG zum Laufen zu bringen"
+  
+  installation:
+    title: "Installation"
+    description: "SmartRAG ist als NuGet-Paket verfügbar und kann auf verschiedene Weise installiert werden."
+    nuget_command: "Mit .NET CLI:"
+    package_manager: "Mit Package Manager:"
+    direct_reference: "Direkte Paketreferenz:"
+    
+  setup:
+    title: "Grundkonfiguration"
+    description: "Nach der Installation können Sie SmartRAG in Ihrer Anwendung konfigurieren."
+    basic_config: "Grundkonfiguration:"
+    advanced_config: "Erweiterte Konfiguration:"
+    
+  quick_start:
+    title: "Schnellstart-Beispiel"
+    description: "Hier ist ein einfaches Beispiel, um Sie zu starten:"
+    code_comment: "// SmartRAG-Dienste zu Ihrem DI-Container hinzufügen"
+    code_comment2: "// Verwenden Sie den Dokumentdienst"
+    
+  next_steps:
+    title: "Nächste Schritte"
+    description: "Jetzt, da Sie SmartRAG installiert und konfiguriert haben, können Sie:"
+    steps:
+      - "Dokumente hochladen und verarbeiten"
+      - "Embeddings mit KI-Providern generieren"
+      - "Semantische Suchanfragen durchführen"
+      - "Erweiterte Funktionen erkunden"
+    
+  need_help:
+    title: "Brauchen Sie Hilfe?"
+    description: "Wenn Sie auf Probleme stoßen oder Hilfe benötigen:"
+    links:
+      - "Überprüfen Sie die Hauptdokumentation"
+      - "Öffnen Sie ein Issue auf GitHub"
+      - "Treten Sie unseren Diskussionen bei"
+
+ru:
+  title: "Начало работы"
+  description: "Быстрое руководство по установке и настройке SmartRAG"
+  
+  installation:
+    title: "Установка"
+    description: "SmartRAG доступен как пакет NuGet и может быть установлен несколькими способами."
+    nuget_command: "Используя .NET CLI:"
+    package_manager: "Используя Package Manager:"
+    direct_reference: "Прямая ссылка на пакет:"
+    
+  setup:
+    title: "Базовая настройка"
+    description: "После установки вы можете настроить SmartRAG в вашем приложении."
+    basic_config: "Базовая конфигурация:"
+    advanced_config: "Расширенная конфигурация:"
+    
+  quick_start:
+    title: "Пример быстрого старта"
+    description: "Вот простой пример для начала работы:"
+    code_comment: "// Добавьте сервисы SmartRAG в ваш DI контейнер"
+    code_comment2: "// Используйте сервис документов"
+    
+  next_steps:
+    title: "Следующие шаги"
+    description: "Теперь, когда SmartRAG установлен и настроен, вы можете:"
+    steps:
+      - "Загружать и обрабатывать документы"
+      - "Генерировать эмбеддинги с помощью AI провайдеров"
+      - "Выполнять семантические поисковые запросы"
+      - "Изучать расширенные функции"
+    
+  need_help:
+    title: "Нужна помощь?"
+    description: "Если у вас возникли проблемы или нужна помощь:"
+    links:
+      - "Проверьте основную документацию"
+      - "Откройте issue на GitHub"
+      - "Присоединяйтесь к нашим обсуждениям"

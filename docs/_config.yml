@@ -22,7 +22,6 @@ plugins:
   - jekyll-feed
   - jekyll-seo-tag
   - jekyll-sitemap
-  - jekyll-multiple-languages-plugin
 
 # Multi-language configuration
 languages: ["en", "tr", "de", "ru"]
