@@ -1,7 +1,3 @@
-using Microsoft.AspNetCore.Mvc;
-using SmartRAG.Enums;
-using SmartRAG.Interfaces;
-
 /// <summary>
 /// Storage management controller
 /// </summary>

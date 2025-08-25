@@ -1,3 +1,4 @@
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -6,7 +7,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartRAG", "src\SmartRAG\Sm
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartRAG.Diagnostics", "src\SmartRAG.Diagnostics\SmartRAG.Diagnostics.csproj", "{F8B7A123-4567-89AB-CDEF-0123456789AB}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "examples", "examples", "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
+EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartRAG.API", "examples\WebAPI\SmartRAG.API.csproj", "{E7606EAF-F26D-441F-B5A4-34A72A70DD6C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmartRAG.Tests", "tests\SmartRAG.Tests\SmartRAG.Tests.csproj", "{3080D267-C4FC-4E79-9024-BD36D337F91C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -53,8 +60,24 @@ Global
 		{E7606EAF-F26D-441F-B5A4-34A72A70DD6C}.Release|x64.Build.0 = Debug|Any CPU
 		{E7606EAF-F26D-441F-B5A4-34A72A70DD6C}.Release|x86.ActiveCfg = Release|Any CPU
 		{E7606EAF-F26D-441F-B5A4-34A72A70DD6C}.Release|x86.Build.0 = Release|Any CPU
+		{3080D267-C4FC-4E79-9024-BD36D337F91C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3080D267-C4FC-4E79-9024-BD36D337F91C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3080D267-C4FC-4E79-9024-BD36D337F91C}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3080D267-C4FC-4E79-9024-BD36D337F91C}.Debug|x64.Build.0 = Debug|Any CPU
+		{3080D267-C4FC-4E79-9024-BD36D337F91C}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{3080D267-C4FC-4E79-9024-BD36D337F91C}.Debug|x86.Build.0 = Debug|Any CPU
+		{3080D267-C4FC-4E79-9024-BD36D337F91C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3080D267-C4FC-4E79-9024-BD36D337F91C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3080D267-C4FC-4E79-9024-BD36D337F91C}.Release|x64.ActiveCfg = Release|Any CPU
+		{3080D267-C4FC-4E79-9024-BD36D337F91C}.Release|x64.Build.0 = Release|Any CPU
+		{3080D267-C4FC-4E79-9024-BD36D337F91C}.Release|x86.ActiveCfg = Release|Any CPU
+		{3080D267-C4FC-4E79-9024-BD36D337F91C}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{E7606EAF-F26D-441F-B5A4-34A72A70DD6C} = {A1B2C3D4-E5F6-7890-ABCD-EF1234567890}
+		{3080D267-C4FC-4E79-9024-BD36D337F91C} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal
