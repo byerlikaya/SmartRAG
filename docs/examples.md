@@ -2,7 +2,6 @@
 layout: default
 title: Examples
 description: Real-world examples and sample applications for SmartRAG implementation
-nav_order: 5
 ---
 
 # SmartRAG Examples

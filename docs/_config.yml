@@ -27,17 +27,11 @@ plugins:
 markdown: kramdown
 highlighter: rouge
 
-# Collections
-collections:
-  docs:
-    output: true
-    permalink: /:collection/:name/
-
 # Defaults
 defaults:
   - scope:
       path: ""
-      type: "docs"
+      type: "pages"
     values:
       layout: "default"
       search: true
