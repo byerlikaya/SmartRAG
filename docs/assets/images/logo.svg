@@ -1,0 +1,22 @@
+<svg width="200" height="60" viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#0366d6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#28a745;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background rectangle -->
+  <rect x="10" y="10" width="180" height="40" rx="8" fill="url(#grad1)" opacity="0.1"/>
+  
+  <!-- SmartRAG Text -->
+  <text x="20" y="35" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#0366d6">
+    SmartRAG
+  </text>
+  
+  <!-- AI Brain Icon -->
+  <circle cx="160" cy="30" r="15" fill="none" stroke="#28a745" stroke-width="2"/>
+  <path d="M 150 25 Q 155 20 160 25 Q 165 30 160 35 Q 155 40 150 35 Q 155 30 150 25" 
+        fill="none" stroke="#28a745" stroke-width="1.5"/>
+  <circle cx="160" cy="30" r="3" fill="#28a745"/>
+</svg>

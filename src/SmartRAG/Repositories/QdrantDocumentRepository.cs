@@ -1,13 +1,3 @@
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Qdrant.Client;
-using Qdrant.Client.Grpc;
-using SmartRAG.Entities;
-using SmartRAG.Interfaces;
-using SmartRAG.Models;
-using System.Globalization;
-
-
 namespace SmartRAG.Repositories;
 
 /// <summary>
@@ -411,15 +401,15 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
     {
         try
         {
-            var filter = new Filter
+            var filter = new Qdrant.Client.Grpc.Filter
             {
                 Must = {
-                    new Condition
+                    new Qdrant.Client.Grpc.Condition
                     {
                         Field = new FieldCondition
                         {
                             Key = "id",
-                            Match = new Match
+                            Match = new Qdrant.Client.Grpc.Match
                             {
                                 Keyword = id.ToString()
                             }
@@ -544,16 +534,16 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
     {
         try
         {
-            var filter = new Filter
+            var filter = new Qdrant.Client.Grpc.Filter
             {
                 Must =
                 {
-                    new Condition
+                    new Qdrant.Client.Grpc.Condition
                     {
                         Field = new FieldCondition
                         {
                             Key = "id",
-                            Match = new Match
+                            Match = new Qdrant.Client.Grpc.Match
                             {
                                 Keyword = id.ToString()
                             }
@@ -597,10 +587,10 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
             var queryHash = $"{query}_{maxResults}";
             lock (_cacheLock)
             {
-                            if (_searchCache.TryGetValue(queryHash, out var cached) && cached.Expiry > DateTime.UtcNow)
-            {
-                return cached.Chunks.ToList(); // Return copy to avoid modification
-            }
+                if (_searchCache.TryGetValue(queryHash, out var cached) && cached.Expiry > DateTime.UtcNow)
+                {
+                    return cached.Chunks.ToList(); // Return copy to avoid modification
+                }
             }
 
             await EnsureCollectionExistsAsync();

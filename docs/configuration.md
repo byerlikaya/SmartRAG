@@ -1,4 +1,10 @@
-# 🔧 Configuration Guide
+---
+layout: default
+title: Configuration
+nav_order: 3
+---
+
+# Configuration Guide
 
 This guide explains how to configure SmartRAG securely for different environments.
 

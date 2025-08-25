@@ -1,4 +1,10 @@
-# 📚 API Reference
+---
+layout: default
+title: API Reference
+nav_order: 4
+---
+
+# API Reference
 
 Complete reference for SmartRAG API interfaces and services.
 

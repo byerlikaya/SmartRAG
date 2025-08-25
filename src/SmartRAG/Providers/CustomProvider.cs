@@ -1,8 +1,3 @@
-using SmartRAG.Enums;
-using SmartRAG.Models;
-using System.Text.Json;
-using Microsoft.Extensions.Logging;
-
 namespace SmartRAG.Providers;
 
 /// <summary>
@@ -158,12 +153,12 @@ public class CustomProvider(ILogger<CustomProvider> logger) : BaseAIProvider(log
         if (useMessagesFormat)
         {
             var messages = new List<object>();
-            
+
             if (!string.IsNullOrEmpty(config.SystemMessage))
             {
                 messages.Add(new { role = SystemRole, content = config.SystemMessage });
             }
-            
+
             messages.Add(new { role = UserRole, content = prompt });
 
             return new

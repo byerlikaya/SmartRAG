@@ -1,8 +1,3 @@
-using Microsoft.Extensions.Logging;
-using SmartRAG.Entities;
-using SmartRAG.Interfaces;
-using SmartRAG.Models;
-
 namespace SmartRAG.Repositories;
 
 /// <summary>
@@ -16,7 +11,7 @@ public class InMemoryDocumentRepository(
 
     // Search constants  
     private const int DefaultMaxSearchResults = 5;
-    
+
     // Collection constants
     private const int MinDocumentCapacity = 1;
 
@@ -24,8 +19,8 @@ public class InMemoryDocumentRepository(
 
     #region Fields
 
-    private readonly List<Document> _documents = [];
-    private readonly Lock _lock = new();
+    private readonly List<SmartRAG.Entities.Document> _documents = [];
+    private readonly System.Threading.Lock _lock = new();
     private readonly InMemoryConfig _config = config;
     private readonly ILogger<InMemoryDocumentRepository> _logger = logger;
 
@@ -43,7 +38,7 @@ public class InMemoryDocumentRepository(
 
     #region Public Methods
 
-    public Task<Document> AddAsync(Document document)
+    public Task<SmartRAG.Entities.Document> AddAsync(SmartRAG.Entities.Document document)
     {
         lock (_lock)
         {
@@ -67,14 +62,14 @@ public class InMemoryDocumentRepository(
         }
     }
 
-    public Task<Document?> GetByIdAsync(Guid id)
+    public Task<SmartRAG.Entities.Document?> GetByIdAsync(Guid id)
     {
         lock (_lock)
         {
             try
             {
                 var document = _documents.FirstOrDefault(d => d.Id == id);
-                
+
                 if (document != null)
                 {
                     RepositoryLogMessages.LogDocumentRetrieved(Logger, document.FileName, id, null);
@@ -83,7 +78,7 @@ public class InMemoryDocumentRepository(
                 {
                     RepositoryLogMessages.LogDocumentNotFound(Logger, id, null);
                 }
-                
+
                 return Task.FromResult(document);
             }
             catch (Exception ex)
@@ -94,7 +89,7 @@ public class InMemoryDocumentRepository(
         }
     }
 
-    public Task<List<Document>> GetAllAsync()
+    public Task<List<SmartRAG.Entities.Document>> GetAllAsync()
     {
         lock (_lock)
         {
@@ -119,7 +114,7 @@ public class InMemoryDocumentRepository(
             try
             {
                 var document = _documents.FirstOrDefault(d => d.Id == id);
-                
+
                 if (document == null)
                 {
                     RepositoryLogMessages.LogDocumentDeleteNotFound(Logger, id, null);
@@ -131,7 +126,7 @@ public class InMemoryDocumentRepository(
                 {
                     RepositoryLogMessages.LogDocumentDeleted(Logger, document.FileName, id, null);
                 }
-                
+
                 return Task.FromResult(removed);
             }
             catch (Exception ex)

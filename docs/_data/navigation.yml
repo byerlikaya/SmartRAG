@@ -1,0 +1,53 @@
+# Navigation structure for SmartRAG documentation
+
+- title: Getting Started
+  url: /getting-started
+  children:
+    - title: Installation
+      url: /getting-started#installation
+    - title: Quick Start
+      url: /getting-started#quick-start
+    - title: Basic Configuration
+      url: /getting-started#basic-configuration
+
+- title: Configuration
+  url: /configuration
+  children:
+    - title: AI Providers
+      url: /configuration#ai-providers
+    - title: Storage Providers
+      url: /configuration#storage-providers
+    - title: Advanced Settings
+      url: /configuration#advanced-settings
+
+- title: API Reference
+  url: /api-reference
+  children:
+    - title: Services
+      url: /api-reference#services
+    - title: Interfaces
+      url: /api-reference#interfaces
+    - title: Models
+      url: /api-reference#models
+    - title: Extensions
+      url: /api-reference#extensions
+
+- title: Examples
+  url: /examples
+  children:
+    - title: Web API
+      url: /examples#web-api
+    - title: Console Application
+      url: /examples#console-application
+    - title: Custom Implementation
+      url: /examples#custom-implementation
+
+- title: Troubleshooting
+  url: /troubleshooting
+  children:
+    - title: Common Issues
+      url: /troubleshooting#common-issues
+    - title: Error Messages
+      url: /troubleshooting#error-messages
+    - title: Performance Tips
+      url: /troubleshooting#performance-tips

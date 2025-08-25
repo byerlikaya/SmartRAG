@@ -1,11 +1,3 @@
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using SmartRAG.Entities;
-using SmartRAG.Interfaces;
-using SmartRAG.Models;
-using System.Globalization;
-using System.Text;
-
 namespace SmartRAG.Services;
 
 /// <summary>
@@ -44,7 +36,7 @@ public class DocumentService(
 
     #region Public Methods
 
-    public async Task<Document> UploadDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy)
+    public async Task<SmartRAG.Entities.Document> UploadDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy)
     {
         var supportedExtensions = documentParserService.GetSupportedFileTypes();
         var supportedContentTypes = documentParserService.GetSupportedContentTypes();
@@ -139,7 +131,7 @@ public class DocumentService(
         return savedDocument;
     }
 
-    public async Task<List<Document>> UploadDocumentsAsync(IEnumerable<Stream> fileStreams, IEnumerable<string> fileNames, IEnumerable<string> contentTypes, string uploadedBy)
+    public async Task<List<SmartRAG.Entities.Document>> UploadDocumentsAsync(IEnumerable<Stream> fileStreams, IEnumerable<string> fileNames, IEnumerable<string> contentTypes, string uploadedBy)
     {
         if (fileStreams == null || !fileStreams.Any())
             throw new ArgumentException(NoFileStreamsMessage, nameof(fileStreams));
@@ -157,7 +149,7 @@ public class DocumentService(
         if (streamList.Count != nameList.Count || streamList.Count != typeList.Count)
             throw new ArgumentException(MismatchedCountsMessage);
 
-        var uploadedDocuments = new List<Document>();
+        var uploadedDocuments = new List<SmartRAG.Entities.Document>();
 
         // Parallel document upload for better performance
         var uploadTasks = streamList.Select(async (stream, index) =>
@@ -180,9 +172,9 @@ public class DocumentService(
         return uploadedDocuments;
     }
 
-    public async Task<Document?> GetDocumentAsync(Guid id) => await documentRepository.GetByIdAsync(id);
+    public async Task<SmartRAG.Entities.Document?> GetDocumentAsync(Guid id) => await documentRepository.GetByIdAsync(id);
 
-    public async Task<List<Document>> GetAllDocumentsAsync() => await documentRepository.GetAllAsync();
+    public async Task<List<SmartRAG.Entities.Document>> GetAllDocumentsAsync() => await documentRepository.GetAllAsync();
 
     public async Task<bool> DeleteDocumentAsync(Guid id) => await documentRepository.DeleteAsync(id);
 
@@ -213,7 +205,7 @@ public class DocumentService(
 
             // Collect all chunks that need embedding regeneration
             var chunksToProcess = new List<DocumentChunk>();
-            var documentChunkMap = new Dictionary<DocumentChunk, Document>();
+            var documentChunkMap = new Dictionary<DocumentChunk, SmartRAG.Entities.Document>();
 
             foreach (var document in allDocuments)
             {

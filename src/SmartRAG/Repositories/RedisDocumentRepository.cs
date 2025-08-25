@@ -1,12 +1,3 @@
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using SmartRAG.Entities;
-using SmartRAG.Interfaces;
-using SmartRAG.Models;
-using StackExchange.Redis;
-using System.Globalization;
-using System.Text.Json;
-
 namespace SmartRAG.Repositories;
 
 /// <summary>
@@ -76,7 +67,7 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
 
     #region Public Methods
 
-    public async Task<Document> AddAsync(Document document)
+    public async Task<SmartRAG.Entities.Document> AddAsync(SmartRAG.Entities.Document document)
     {
         try
         {
@@ -97,7 +88,7 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
         }
     }
 
-    public async Task<Document?> GetByIdAsync(Guid id)
+    public async Task<SmartRAG.Entities.Document?> GetByIdAsync(Guid id)
     {
         try
         {
@@ -110,7 +101,7 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
                 return null;
             }
 
-            var document = JsonSerializer.Deserialize<Document>(documentJson!);
+            var document = JsonSerializer.Deserialize<SmartRAG.Entities.Document>(documentJson!);
             RepositoryLogMessages.LogRedisDocumentRetrieved(Logger, id, null);
             return document;
         }
@@ -121,12 +112,12 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
         }
     }
 
-    public async Task<List<Document>> GetAllAsync()
+    public async Task<List<SmartRAG.Entities.Document>> GetAllAsync()
     {
         try
         {
             var documentIds = await _database.ListRangeAsync(_documentsKey);
-            var documents = new List<Document>();
+            var documents = new List<SmartRAG.Entities.Document>();
 
             foreach (var idString in documentIds)
             {
@@ -146,7 +137,7 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
         catch (Exception ex)
         {
             RepositoryLogMessages.LogRedisDocumentsRetrievalFailed(Logger, ex);
-            return new List<Document>();
+            return new List<SmartRAG.Entities.Document>();
         }
     }
 
@@ -273,7 +264,7 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
 
     private string CreateMetadataKey(Guid id) => $"{_documentPrefix}{MetadataKeySuffix}{id}";
 
-    private static HashEntry[] CreateDocumentMetadata(Document document)
+    private static HashEntry[] CreateDocumentMetadata(SmartRAG.Entities.Document document)
     {
         return new HashEntry[]
         {
