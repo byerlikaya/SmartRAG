@@ -98,6 +98,49 @@ body {
 .feature-icon {
     width: 80px;
     height: 80px;
+}
+
+/* Technology Logo Cards */
+.tech-logo-card {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s ease;
+    border: 1px solid var(--border-color);
+    height: 100%;
+}
+
+.tech-logo-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    border-color: var(--primary-color);
+}
+
+.tech-logo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.tech-logo i {
+    transition: all 0.3s ease;
+}
+
+.tech-logo-card:hover .tech-logo i {
+    transform: scale(1.1);
+}
+
+.tech-logo-card h6 {
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.tech-logo-card small {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
     margin: 0 auto;
     display: flex;
     align-items: center;

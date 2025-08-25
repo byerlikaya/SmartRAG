@@ -34,19 +34,9 @@ defaults:
       type: "pages"
     values:
       layout: "default"
-      search: true
       top_level: true
       author: "Barış Yerlikaya"
       image: "/assets/images/logo.svg"
-
-# Search
-search_enabled: true
-search:
-  heading_level: 2
-  previews: 3
-  preview_words_before: 5
-  preview_words_after: 10
-  tokenizer_separator: /[\s/]+/
 
 # UI
 color_scheme: light
