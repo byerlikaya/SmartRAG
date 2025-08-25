@@ -86,7 +86,7 @@ SmartRAG is a comprehensive .NET library that provides intelligent document proc
                     <i class="fas fa-robot fa-3x text-success"></i>
                 </div>
                                             <h5 class="card-title">{{ site.data[site.lang].home.features.ai_integration | default: "AI Provider Integration" }}</h5>
-                            <p class="card-text">{{ site.data[site.lang].home.features.ai_integration_desc | default: "Seamlessly integrate with OpenAI, Anthropic, and other leading AI providers for powerful embedding generation." }}</p>
+                            <p class="card-text">{{ site.data[site.lang].home.features.ai_integration_desc | default: "Seamlessly integrate with OpenAI, Anthropic, Azure OpenAI, Gemini, and custom AI providers for powerful embedding generation." }}</p>
             </div>
         </div>
     </div>
@@ -100,7 +100,7 @@ SmartRAG is a comprehensive .NET library that provides intelligent document proc
                     <i class="fas fa-database fa-3x text-warning"></i>
                 </div>
                                             <h5 class="card-title">{{ site.data[site.lang].home.features.vector_storage | default: "Vector Storage" }}</h5>
-                            <p class="card-text">{{ site.data[site.lang].home.features.vector_storage_desc | default: "Multiple storage backends including Qdrant, Redis, SQLite, and in-memory storage for flexible deployment." }}</p>
+                            <p class="card-text">{{ site.data[site.lang].home.features.vector_storage_desc | default: "Multiple storage backends including Qdrant, Redis, SQLite, In-Memory, File System, and custom storage for flexible deployment." }}</p>
             </div>
         </div>
     </div>
