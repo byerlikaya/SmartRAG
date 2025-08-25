@@ -1,8 +1,3 @@
-using Microsoft.Extensions.Logging;
-using SmartRAG.Enums;
-using SmartRAG.Models;
-using System.Text.Json;
-
 namespace SmartRAG.Providers;
 
 /// <summary>
@@ -44,14 +39,14 @@ public class AzureOpenAIProvider(ILogger<AzureOpenAIProvider> logger) : BaseAIPr
         using var client = CreateHttpClient(config.ApiKey);
 
         var messages = new List<object>();
-        
+
         if (!string.IsNullOrEmpty(config.SystemMessage))
         {
             messages.Add(new { role = "system", content = config.SystemMessage });
         }
-        
+
         messages.Add(new { role = "user", content = prompt });
-        
+
         var payload = new
         {
             messages = messages.ToArray(),

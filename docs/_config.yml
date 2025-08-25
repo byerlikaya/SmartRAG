@@ -1,0 +1,47 @@
+title: SmartRAG Documentation
+description: A powerful and intelligent RAG library for .NET applications
+baseurl: ""
+url: "https://byerlikaya.github.io"
+
+# GitHub Pages settings
+remote_theme: just-the-docs/just-the-docs
+plugins:
+  - jekyll-remote-theme
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+
+# Collections
+collections:
+  docs:
+    output: true
+    permalink: /:collection/:name/
+
+# Defaults
+defaults:
+  - scope:
+      path: ""
+      type: "docs"
+    values:
+      layout: "default"
+      search: true
+      top_level: true
+
+# Search
+search_enabled: true
+search:
+  heading_level: 2
+  previews: 3
+  preview_words_before: 5
+  preview_words_after: 10
+  tokenizer_separator: /[\s/]+/
+
+# UI
+color_scheme: light
+back_to_top: true
+back_to_top_text: "Back to top"
+scroll_to_top: true
+
+# Footer
+footer_content: "Copyright &copy; 2024 SmartRAG. Distributed by an <a href=\"https://github.com/just-the-docs/just-the-docs/tree/main/LICENSE.txt\">MIT license.</a>"

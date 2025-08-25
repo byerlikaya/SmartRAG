@@ -1,8 +1,3 @@
-using SmartRAG.Enums;
-using SmartRAG.Models;
-using System.Text.Json;
-using Microsoft.Extensions.Logging;
-
 namespace SmartRAG.Providers;
 
 /// <summary>
@@ -118,17 +113,17 @@ public class GeminiProvider(ILogger<GeminiProvider> logger) : BaseAIProvider(log
             return [];
 
         var results = new List<List<float>>();
-        
+
         // Process texts in batches
         for (int i = 0; i < textList.Count; i += DefaultMaxBatchSize)
         {
             var batchTexts = textList.Skip(i).Take(DefaultMaxBatchSize).ToList();
-            
+
             try
             {
                 var batchResults = await ProcessGeminiBatchAsync(batchTexts, config);
                 results.AddRange(batchResults);
-                
+
                 // Add delay between batches to respect rate limits
                 if (i + DefaultMaxBatchSize < textList.Count)
                 {
@@ -138,7 +133,7 @@ public class GeminiProvider(ILogger<GeminiProvider> logger) : BaseAIProvider(log
             catch (Exception ex)
             {
                 ProviderLogMessages.LogGeminiBatchFailedFallback(Logger, i / DefaultMaxBatchSize, ex.Message, ex);
-                
+
                 // Fallback to individual requests for this batch
                 var fallbackResults = await base.GenerateEmbeddingsBatchAsync(batchTexts, config);
                 results.AddRange(fallbackResults);
@@ -177,7 +172,7 @@ public class GeminiProvider(ILogger<GeminiProvider> logger) : BaseAIProvider(log
     private static object CreateGeminiTextPayload(string prompt, AIProviderConfig config)
     {
         var contents = new List<object>();
-        
+
         if (!string.IsNullOrEmpty(config.SystemMessage))
         {
             contents.Add(new
@@ -185,7 +180,7 @@ public class GeminiProvider(ILogger<GeminiProvider> logger) : BaseAIProvider(log
                 parts = new[] { new { text = config.SystemMessage } }
             });
         }
-        
+
         contents.Add(new
         {
             parts = new[] { new { text = prompt } }
@@ -215,7 +210,7 @@ public class GeminiProvider(ILogger<GeminiProvider> logger) : BaseAIProvider(log
     private static string ParseGeminiTextResponse(string response)
     {
         using var doc = JsonDocument.Parse(response);
-        
+
         if (doc.RootElement.TryGetProperty("candidates", out var candidates) &&
             candidates.ValueKind == JsonValueKind.Array)
         {
@@ -303,7 +298,7 @@ public class GeminiProvider(ILogger<GeminiProvider> logger) : BaseAIProvider(log
     private static List<List<float>> ParseGeminiBatchEmbeddingResponse(string response)
     {
         var results = new List<List<float>>();
-        
+
         using var doc = JsonDocument.Parse(response);
 
         if (doc.RootElement.TryGetProperty("embeddings", out var embeddings) &&

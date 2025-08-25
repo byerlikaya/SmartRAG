@@ -1,19 +1,3 @@
-using DocumentFormat.OpenXml;
-using DocumentFormat.OpenXml.Packaging;
-using DocumentFormat.OpenXml.Wordprocessing;
-using iText.Kernel.Pdf;
-using iText.Kernel.Pdf.Canvas.Parser;
-using iText.Kernel.Pdf.Canvas.Parser.Listener;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using SmartRAG.Entities;
-using SmartRAG.Interfaces;
-using SmartRAG.Models;
-using SmartRAG.Services;
-using System.Text;
-using System.Text.RegularExpressions;
-using OfficeOpenXml;
-
 namespace SmartRAG.Services;
 
 /// <summary>
@@ -84,7 +68,7 @@ public class DocumentParserService(
     /// <summary>
     /// Parses document content based on file type
     /// </summary>
-    public async Task<Entities.Document> ParseDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy)
+    public async Task<SmartRAG.Entities.Document> ParseDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy)
     {
         try
         {
@@ -121,9 +105,9 @@ public class DocumentParserService(
     /// <summary>
     /// Creates document object with basic properties
     /// </summary>
-    private static Entities.Document CreateDocument(Guid documentId, string fileName, string contentType, string content, string uploadedBy, List<DocumentChunk> chunks)
+    private static SmartRAG.Entities.Document CreateDocument(Guid documentId, string fileName, string contentType, string content, string uploadedBy, List<DocumentChunk> chunks)
     {
-        return new Entities.Document
+        return new SmartRAG.Entities.Document
         {
             Id = documentId,
             FileName = fileName,
@@ -138,7 +122,7 @@ public class DocumentParserService(
     /// <summary>
     /// Populates document metadata
     /// </summary>
-    private static void PopulateMetadata(Entities.Document document)
+    private static void PopulateMetadata(SmartRAG.Entities.Document document)
     {
         document.Metadata = new Dictionary<string, object>
         {
@@ -532,7 +516,7 @@ public class DocumentParserService(
     /// </summary>
     private static DocumentChunk CreateSingleChunk(string content, Guid documentId, int chunkIndex, int startPosition, int endPosition)
     {
-        return new Entities.DocumentChunk
+        return new SmartRAG.Entities.DocumentChunk
         {
             Id = Guid.NewGuid(),
             DocumentId = documentId,

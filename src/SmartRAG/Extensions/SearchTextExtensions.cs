@@ -1,6 +1,3 @@
-using System.Text;
-using System.Text.RegularExpressions;
-
 namespace SmartRAG.Extensions;
 
 public static class SearchTextExtensions

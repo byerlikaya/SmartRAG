@@ -23,6 +23,7 @@ SmartRAG is a **production-ready** .NET 9.0 library that provides a complete **R
 - 🔍 **Smart Document Chunking**: Word boundary validation and optimal break points for context preservation
 - ✅ **Enterprise Grade**: Zero Warnings Policy, SOLID principles, comprehensive logging, XML documentation
 - 🧹 **GlobalUsings Support**: Clean code with centralized using directives for both API and Test projects
+- 📚 **Documentation**: Comprehensive documentation with GitHub Pages support
 
 ## 🎯 What Makes SmartRAG Special
 
@@ -47,6 +48,7 @@ SmartRAG is a **production-ready** .NET 9.0 library that provides a complete **R
 - **GlobalUsings Support**: Centralized using directives for clean, maintainable code
 - **Enterprise Architecture**: Zero Warnings Policy, SOLID/DRY principles, comprehensive XML documentation
 - **Production Ready**: Thread-safe operations, centralized logging, proper error handling
+- **Documentation**: Professional documentation site with GitHub Pages integration
 
 ## 🧠 Smart Query Intent Detection
 
@@ -703,6 +705,7 @@ We welcome contributions!
 - **💼 [LinkedIn](https://www.linkedin.com/in/barisyerlikaya)**
 - **🐙 [GitHub Profile](https://github.com/byerlikaya)**
 - **📦 [NuGet Packages](https://www.nuget.org/profiles/barisyerlikaya)**
+- **📖 [Documentation](https://yourusername.github.io/SmartRAG)** - Comprehensive guides and API reference
 
 ## 📄 License
 

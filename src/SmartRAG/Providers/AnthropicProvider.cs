@@ -1,8 +1,3 @@
-using Microsoft.Extensions.Logging;
-using SmartRAG.Enums;
-using SmartRAG.Models;
-using System.Text.Json;
-
 namespace SmartRAG.Providers;
 
 /// <summary>
@@ -46,12 +41,12 @@ public class AnthropicProvider(ILogger<AnthropicProvider> logger) : BaseAIProvid
         var systemMessage = config.SystemMessage;
 
         var messages = new List<object>();
-        
+
         if (!string.IsNullOrEmpty(systemMessage))
         {
             messages.Add(new { role = "system", content = systemMessage });
         }
-        
+
         messages.Add(new { role = "user", content = prompt });
 
         var payload = new
@@ -146,7 +141,7 @@ public class AnthropicProvider(ILogger<AnthropicProvider> logger) : BaseAIProvid
 
         // Filter out empty or null strings to prevent Voyage AI API errors
         var validInputs = inputList.Where(text => !string.IsNullOrWhiteSpace(text)).ToList();
-        
+
         if (validInputs.Count == 0)
         {
             ProviderLogMessages.LogAnthropicEmbeddingValidationError(Logger, "All input texts are empty or null", null);
@@ -218,7 +213,7 @@ public class AnthropicProvider(ILogger<AnthropicProvider> logger) : BaseAIProvid
     private static (bool isValid, string errorMessage) ValidateEmbeddingConfig(AIProviderConfig config)
     {
         var voyageApiKey = config.EmbeddingApiKey ?? config.ApiKey;
-        
+
         if (string.IsNullOrEmpty(voyageApiKey))
             return (false, "Voyage API key is required for embeddings");
 

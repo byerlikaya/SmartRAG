@@ -1,6 +1,3 @@
-using Microsoft.Extensions.Logging;
-using SmartRAG.Services;
-
 namespace SmartRAG.Services;
 
 /// <summary>
@@ -53,10 +50,10 @@ public class SemanticSearchService(ILogger<SemanticSearchService> logger)
 
             // Calculate semantic similarity using token overlap and semantic analysis
             var similarity = await CalculateTokenBasedSimilarityAsync(queryTokens, contentTokens);
-            
+
             // Apply semantic enhancement factors
             var enhancedScore = ApplySemanticEnhancement(similarity, query, content);
-            
+
             return Math.Min(enhancedScore, 1.0); // Ensure score is between 0-1
         }
         catch (Exception ex)
@@ -80,7 +77,7 @@ public class SemanticSearchService(ILogger<SemanticSearchService> logger)
 
         var chunks = new List<string>();
         var sentences = text.Split(SentenceEndings, StringSplitOptions.RemoveEmptyEntries);
-        
+
         foreach (var sentence in sentences)
         {
             var trimmed = sentence.Trim();
@@ -165,8 +162,8 @@ public class SemanticSearchService(ILogger<SemanticSearchService> logger)
         var queryTheme = ExtractTheme(query);
         var contentTheme = ExtractTheme(content);
 
-        return !string.IsNullOrEmpty(queryTheme) && 
-               !string.IsNullOrEmpty(contentTheme) && 
+        return !string.IsNullOrEmpty(queryTheme) &&
+               !string.IsNullOrEmpty(contentTheme) &&
                queryTheme.Equals(contentTheme, StringComparison.OrdinalIgnoreCase);
     }
 
