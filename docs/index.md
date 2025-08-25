@@ -143,48 +143,48 @@ var document = await documentService.UploadDocumentAsync(file);
 
 <div class="row mt-4 mb-5">
     <div class="col-md-2 mb-3">
-        <div class="tech-logo-card text-center p-3">
-            <div class="tech-logo mb-2">
-                <i class="fab fa-google fa-3x text-warning"></i>
+        <div class="provider-card text-center p-4">
+            <div class="provider-icon">
+                <i class="fab fa-google"></i>
             </div>
-            <h6 class="mb-1">Gemini</h6>
-            <small class="text-muted">Google AI</small>
+            <h6>Gemini</h6>
+            <small>Google AI</small>
         </div>
     </div>
     <div class="col-md-2 mb-3">
-        <div class="tech-logo-card text-center p-3">
-            <div class="tech-logo mb-2">
-                <i class="fab fa-openai fa-3x text-primary"></i>
+        <div class="provider-card text-center p-4">
+            <div class="provider-icon">
+                <i class="fas fa-brain"></i>
             </div>
-            <h6 class="mb-1">OpenAI</h6>
-            <small class="text-muted">GPT Models</small>
+            <h6>OpenAI</h6>
+            <small>GPT Models</small>
         </div>
     </div>
     <div class="col-md-2 mb-3">
-        <div class="tech-logo-card text-center p-3">
-            <div class="tech-logo mb-2">
-                <i class="fas fa-cloud fa-3x text-secondary"></i>
+        <div class="provider-card text-center p-4">
+            <div class="provider-icon">
+                <i class="fas fa-cloud"></i>
             </div>
-            <h6 class="mb-1">Azure OpenAI</h6>
-            <small class="text-muted">Enterprise</small>
+            <h6>Azure OpenAI</h6>
+            <small>Enterprise</small>
         </div>
     </div>
     <div class="col-md-2 mb-3">
-        <div class="tech-logo-card text-center p-3">
-            <div class="tech-logo mb-2">
-                <i class="fas fa-robot fa-3x text-success"></i>
+        <div class="provider-card text-center p-4">
+            <div class="provider-icon">
+                <i class="fas fa-robot"></i>
             </div>
-            <h6 class="mb-1">Anthropic</h6>
-            <small class="text-muted">Claude Models</small>
+            <h6>Anthropic</h6>
+            <small>Claude Models</small>
         </div>
     </div>
     <div class="col-md-2 mb-3">
-        <div class="tech-logo-card text-center p-3">
-            <div class="tech-logo mb-2">
-                <i class="fas fa-cogs fa-3x text-dark"></i>
+        <div class="provider-card text-center p-4">
+            <div class="provider-icon">
+                <i class="fas fa-cogs"></i>
             </div>
-            <h6 class="mb-1">Custom</h6>
-            <small class="text-muted">Extensible</small>
+            <h6>Custom</h6>
+            <small>Extensible</small>
         </div>
     </div>
 </div>
@@ -193,57 +193,58 @@ var document = await documentService.UploadDocumentAsync(file);
 
 <div class="row mt-4 mb-5">
     <div class="col-md-2 mb-3">
-        <div class="tech-logo-card text-center p-3">
-            <div class="tech-logo mb-2">
-                <i class="fas fa-cube fa-3x text-primary"></i>
+        <div class="provider-card text-center p-4">
+            <div class="provider-icon">
+                <i class="fas fa-cube"></i>
             </div>
-            <h6 class="mb-1">Qdrant</h6>
-            <small class="text-muted">Vector Database</small>
+            <h6>Qdrant</h6>
+            <small>Vector Database</small>
         </div>
     </div>
     <div class="col-md-2 mb-3">
-        <div class="tech-logo-card text-center p-3">
-            <div class="tech-logo mb-2">
-                <i class="fab fa-redis fa-3x text-success"></i>
+        <div class="provider-card text-center p-4">
+            <div class="provider-icon">
+                <i class="fas fa-database"></i>
             </div>
-            <h6 class="mb-1">Redis</h6>
-            <small class="text-muted">In-Memory Cache</small>
+            <h6>Redis</h6>
+            <small>In-Memory Cache</small>
         </div>
     </div>
     <div class="col-md-2 mb-3">
-        <div class="tech-logo-card text-center p-3">
-            <div class="tech-logo mb-2">
-                <i class="fas fa-hdd fa-3x text-info"></i>
+        <div class="provider-card text-center p-4">
+            <div class="provider-icon">
+                <i class="fas fa-hdd"></i>
             </div>
-            <h6 class="mb-1">SQLite</h6>
-            <small class="text-muted">Local Database</small>
+            <h6>SQLite</h6>
+            <small>Local Database</small>
         </div>
     </div>
     <div class="col-md-2 mb-3">
-        <div class="tech-logo-card text-center p-3">
-            <div class="tech-logo mb-2">
-                <i class="fas fa-microchip fa-3x text-warning"></i>
+        <div class="provider-card text-center p-4">
+            <div class="provider-card text-center p-4">
+            <div class="provider-icon">
+                <i class="fas fa-microchip"></i>
             </div>
-            <h6 class="mb-1">In-Memory</h6>
-            <small class="text-muted">Fast Development</small>
+            <h6>In-Memory</h6>
+            <small>Fast Development</small>
         </div>
     </div>
     <div class="col-md-2 mb-3">
-        <div class="tech-logo-card text-center p-3">
-            <div class="tech-logo mb-2">
-                <i class="fas fa-folder-open fa-3x text-secondary"></i>
+        <div class="provider-card text-center p-4">
+            <div class="provider-icon">
+                <i class="fas fa-folder-open"></i>
             </div>
-            <h6 class="mb-1">File System</h6>
-            <small class="text-muted">Local Storage</small>
+            <h6>File System</h6>
+            <small>Local Storage</small>
         </div>
     </div>
     <div class="col-md-2 mb-3">
-        <div class="tech-logo-card text-center p-3">
-            <div class="tech-logo mb-2">
-                <i class="fas fa-cogs fa-3x text-dark"></i>
+        <div class="provider-card text-center p-4">
+            <div class="provider-icon">
+                <i class="fas fa-cogs"></i>
             </div>
-            <h6 class="mb-1">Custom</h6>
-            <small class="text-muted">Extensible Storage</small>
+            <h6>Custom</h6>
+            <small>Extensible Storage</small>
         </div>
     </div>
 </div>

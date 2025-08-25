@@ -111,48 +111,48 @@ SmartRAG, size en iyi deneyimi sunmak için önde gelen AI sağlayıcıları ve 
 
 <div class="row mt-4 mb-5">
     <div class="col-md-2 mb-3">
-        <div class="tech-logo-card text-center p-3">
-            <div class="tech-logo mb-2">
-                <i class="fab fa-google fa-3x text-warning"></i>
+        <div class="provider-card text-center p-4">
+            <div class="provider-icon">
+                <i class="fab fa-google"></i>
             </div>
-            <h6 class="mb-1">Gemini</h6>
-            <small class="text-muted">Google AI</small>
+            <h6>Gemini</h6>
+            <small>Google AI</small>
         </div>
     </div>
     <div class="col-md-2 mb-3">
-        <div class="tech-logo-card text-center p-3">
-            <div class="tech-logo mb-2">
-                <i class="fab fa-openai fa-3x text-primary"></i>
+        <div class="provider-card text-center p-4">
+            <div class="provider-icon">
+                <i class="fas fa-brain"></i>
             </div>
-            <h6 class="mb-1">OpenAI</h6>
-            <small class="text-muted">GPT Modelleri</small>
+            <h6>OpenAI</h6>
+            <small>GPT Modelleri</small>
         </div>
     </div>
     <div class="col-md-2 mb-3">
-        <div class="tech-logo-card text-center p-3">
-            <div class="tech-logo mb-2">
-                <i class="fas fa-cloud fa-3x text-secondary"></i>
+        <div class="provider-card text-center p-4">
+            <div class="provider-icon">
+                <i class="fas fa-cloud"></i>
             </div>
-            <h6 class="mb-1">Azure OpenAI</h6>
-            <small class="text-muted">Kurumsal</small>
+            <h6>Azure OpenAI</h6>
+            <small>Kurumsal</small>
         </div>
     </div>
     <div class="col-md-2 mb-3">
-        <div class="tech-logo-card text-center p-3">
-            <div class="tech-logo mb-2">
-                <i class="fas fa-robot fa-3x text-success"></i>
+        <div class="provider-card text-center p-4">
+            <div class="provider-icon">
+                <i class="fas fa-robot"></i>
             </div>
-            <h6 class="mb-1">Anthropic</h6>
-            <small class="text-muted">Claude Modelleri</small>
+            <h6>Anthropic</h6>
+            <small>Claude Modelleri</small>
         </div>
     </div>
     <div class="col-md-2 mb-3">
-        <div class="tech-logo-card text-center p-3">
-            <div class="tech-logo mb-2">
-                <i class="fas fa-cogs fa-3x text-dark"></i>
+        <div class="provider-card text-center p-4">
+            <div class="provider-icon">
+                <i class="fas fa-cogs"></i>
             </div>
-            <h6 class="mb-1">Özel</h6>
-            <small class="text-muted">Genişletilebilir</small>
+            <h6>Özel</h6>
+            <small>Genişletilebilir</small>
         </div>
     </div>
 </div>
