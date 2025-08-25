@@ -9,7 +9,15 @@ lang: tr
 
 SmartRAG projesinde yapılan tüm önemli değişiklikler bu sayfada takip edilir.
 
-## 🚀 [1.0.3] - 2025-01-XX
+## 🚀 [1.1.0] - 2025-08-22
+
+### ✨ Yeni Özellikler
+- **Excel Dosya Desteği**: Excel dosya işleme (.xlsx, .xls) EPPlus 8.1.0 entegrasyonu ile
+- **Gelişmiş Retry Mantığı**: HTTP 529 (Overloaded) hataları için Anthropic API retry mekanizması
+- **İçerik Doğrulama**: Gelişmiş belge içerik doğrulama
+- **Excel Dokümantasyonu**: Kapsamlı Excel format dokümantasyonu
+
+## 🚀 [1.0.3] - 2025-08-20
 
 ### ✨ Yeni Özellikler
 - **Çoklu Dil Desteği**: Türkçe, Almanca, Rusça dil desteği eklendi
@@ -27,7 +35,7 @@ SmartRAG projesinde yapılan tüm önemli değişiklikler bu sayfada takip edili
 - **Link Sorunları**: İç sayfa linklerinin düzeltilmesi
 - **Build Hataları**: Jekyll build sorunlarının çözülmesi
 
-## 🚀 [1.0.2] - 2024-12-XX
+## 🚀 [1.0.2] - 2025-08-19
 
 ### ✨ Yeni Özellikler
 - **GlobalUsings Desteği**: C# 10 GlobalUsings özelliği
@@ -43,7 +51,7 @@ SmartRAG projesinde yapılan tüm önemli değişiklikler bu sayfada takip edili
 - **Type Conflicts**: Document tipi çakışmalarının çözülmesi
 - **Dependency Issues**: NuGet paket bağımlılık sorunları
 
-## 🚀 [1.0.1] - 2024-11-XX
+## 🚀 [1.0.1] - 2025-08-17
 
 ### ✨ Yeni Özellikler
 - **AI Provider Entegrasyonu**: OpenAI, Anthropic, Azure OpenAI, Gemini
@@ -55,7 +63,7 @@ SmartRAG projesinde yapılan tüm önemli değişiklikler bu sayfada takip edili
 - **Scalability**: Çoklu thread desteği
 - **Reliability**: Hata toleransı ve retry mekanizmaları
 
-## 🚀 [1.0.0] - 2024-10-XX
+## 🚀 [1.0.0] - 2025-08-15
 
 ### ✨ İlk Sürüm
 - **Core Library**: SmartRAG temel kütüphanesi

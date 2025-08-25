@@ -9,7 +9,15 @@ lang: en
 
 Track new features, improvements, and bug fixes across SmartRAG versions.
 
-## [1.0.3] - 2025-01-XX
+## [1.1.0] - 2025-08-22
+
+### Added
+- **Excel File Support**: Added Excel file parsing (.xlsx, .xls) with EPPlus 8.1.0 integration
+- **Enhanced Retry Logic**: Improved Anthropic API retry mechanism for HTTP 529 (Overloaded) errors
+- **Content Validation**: Enhanced document content validation
+- **Excel Documentation**: Comprehensive Excel format documentation
+
+## [1.0.3] - 2025-08-20
 
 ### Added
 - **Multi-language Support**: Added comprehensive documentation in English, Turkish, German, and Russian
@@ -29,7 +37,7 @@ Track new features, improvements, and bug fixes across SmartRAG versions.
 - **Global Usings**: Implemented GlobalUsings for all projects to reduce code duplication
 - **Build Issues**: Fixed various compilation and build warnings
 
-## [1.0.2] - 2024-12-XX
+## [1.0.2] - 2025-08-19
 
 ### Added
 - **Global Usings**: Implemented GlobalUsings for SmartRAG core library
@@ -46,7 +54,7 @@ Track new features, improvements, and bug fixes across SmartRAG versions.
 - **Type Conflicts**: Fixed conflicts between external library types
 - **Memory Leaks**: Improved resource disposal and memory management
 
-## [1.0.1] - 2024-11-XX
+## [1.0.1] - 2025-08-17
 
 ### Added
 - **Test Project**: Added comprehensive xUnit test suite
@@ -63,7 +71,7 @@ Track new features, improvements, and bug fixes across SmartRAG versions.
 - **Performance**: Optimized document processing
 - **Security**: Enhanced input validation and sanitization
 
-## [1.0.0] - 2024-10-XX
+## [1.0.0] - 2025-08-15
 
 ### Initial Release
 - **Core RAG Functionality**: Document processing, embedding generation, and semantic search

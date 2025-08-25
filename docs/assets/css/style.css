@@ -15,6 +15,22 @@
     --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
 }
 
+/* Dark Theme Variables */
+[data-theme="dark"] {
+    --primary-color: #818cf8;
+    --primary-dark: #6366f1;
+    --secondary-color: #34d399;
+    --accent-color: #fbbf24;
+    --dark-bg: #0f172a;
+    --darker-bg: #020617;
+    --light-bg: #1e293b;
+    --text-primary: #f1f5f9;
+    --text-secondary: #cbd5e1;
+    --border-color: #334155;
+    --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -100,46 +116,75 @@ body {
     height: 80px;
 }
 
-/* Technology Logo Cards */
-.tech-logo-card {
-    background: white;
-    border-radius: 16px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-    transition: all 0.3s ease;
-    border: 1px solid var(--border-color);
+/* Modern Provider Cards */
+.provider-card {
+    background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+    border-radius: 20px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 2px solid transparent;
     height: 100%;
+    position: relative;
+    overflow: hidden;
 }
 
-.tech-logo-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+.provider-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary-color), var(--secondary-color), var(--accent-color));
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.provider-card:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
     border-color: var(--primary-color);
 }
 
-.tech-logo {
+.provider-card:hover::before {
+    transform: scaleX(1);
+}
+
+.provider-icon {
     display: flex;
     justify-content: center;
     align-items: center;
-    margin-bottom: 1rem;
+    margin-bottom: 1.5rem;
+    height: 60px;
 }
 
-.tech-logo i {
+.provider-icon i {
+    font-size: 2.5rem;
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
     transition: all 0.3s ease;
 }
 
-.tech-logo-card:hover .tech-logo i {
-    transform: scale(1.1);
+.provider-card:hover .provider-icon i {
+    transform: scale(1.1) rotate(5deg);
 }
 
-.tech-logo-card h6 {
-    font-weight: 600;
+.provider-card h6 {
+    font-weight: 700;
     color: var(--text-primary);
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.75rem;
+    font-size: 1.1rem;
+    text-align: center;
 }
 
-.tech-logo-card small {
+.provider-card small {
     color: var(--text-secondary);
-    font-size: 0.85rem;
+    font-size: 0.9rem;
+    text-align: center;
+    display: block;
+    line-height: 1.4;
 }
     margin: 0 auto;
     display: flex;
@@ -222,61 +267,19 @@ body {
     min-height: calc(100vh - 80px);
 }
 
-/* Sidebar */
-.sidebar {
-    background: white;
-    border-right: 1px solid var(--border-color);
-    min-height: calc(100vh - 80px);
-    position: sticky;
-    top: 80px;
-    box-shadow: var(--shadow);
-}
-
-.sidebar-content {
-    padding: 2rem 1.5rem;
-}
-
-.sidebar-header h5 {
-    color: var(--primary-color);
-    font-weight: 600;
-    margin-bottom: 1.5rem;
-    padding-bottom: 1rem;
-    border-bottom: 2px solid var(--border-color);
-}
-
-.sidebar-nav .nav-link {
-    color: var(--text-secondary);
-    padding: 0.75rem 1rem;
-    margin: 0.25rem 0;
-    border-radius: 8px;
-    transition: all 0.3s ease;
-    font-weight: 500;
-    text-decoration: none;
-}
-
-.sidebar-nav .nav-link:hover {
-    color: var(--primary-color);
-    background: linear-gradient(135deg, rgba(99, 102, 241, 0.1), rgba(16, 185, 129, 0.1));
-    transform: translateX(5px);
-}
-
-.sidebar-nav .nav-link i {
-    width: 20px;
-    text-align: center;
-    margin-right: 0.5rem;
-}
-
-/* Content Area */
-.content-area {
-    padding: 2rem;
-}
-
+/* Content Area - Full Width */
 .content-wrapper {
     background: white;
     border-radius: 16px;
     padding: 2rem;
     box-shadow: var(--shadow);
     border: 1px solid var(--border-color);
+    margin-top: 2rem;
+}
+
+/* Content Area - Full Width */
+.content-area {
+    padding: 2rem;
 }
 
 .page-header {
@@ -420,13 +423,6 @@ body {
 
 /* Responsive Design */
 @media (max-width: 991.98px) {
-    .sidebar {
-        position: static;
-        min-height: auto;
-        border-right: none;
-        border-bottom: 1px solid var(--border-color);
-    }
-    
     .content-area {
         padding: 1rem;
     }
