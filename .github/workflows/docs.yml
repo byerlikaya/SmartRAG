@@ -37,15 +37,10 @@ jobs:
           ruby-version: '3.2'
           bundler-cache: true
           
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-          
       - name: Install Jekyll
         run: |
           gem install jekyll bundler
+          cd docs
           bundle install
           
       - name: Build documentation
