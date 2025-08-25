@@ -282,10 +282,10 @@ services.AddSmartRAG(configuration, options =>
 
 ## 🆘 Need Help?
 
-- 📖 **[Full Documentation](../README.md)**
-- 🐛 **[Report Issues](https://github.com/byerlikaya/SmartRAG/issues)**
-- 💬 **[Discussions](https://github.com/byerlikaya/SmartRAG/discussions)**
-- 📧 **[Contact](mailto:b.yerlikaya@outlook.com)**
+- 📖 **[Documentation]({{ site.baseurl }}/)** - Back to main documentation
+- 🐛 **[Report Issues](https://github.com/byerlikaya/SmartRAG/issues)** - GitHub Issues
+- 💬 **[GitHub Discussions](https://github.com/byerlikaya/SmartRAG/discussions)** - Community discussions
+- 📧 **[Contact](mailto:b.yerlikaya@outlook.com)** - Email support
 
 ## 🎉 What's New in v1.0.3
 

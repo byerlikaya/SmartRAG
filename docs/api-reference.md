@@ -483,6 +483,6 @@ See [Getting Started]({{ site.baseurl }}/getting-started) for complete usage exa
 ## 🆘 Support
 
 For questions about the API, please:
-- 📖 Check the [main documentation](../README.md)
-- 🐛 [Open an issue](https://github.com/byerlikaya/SmartRAG/issues)
-- 📧 [Contact support](mailto:b.yerlikaya@outlook.com)
+- 📖 [Back to Documentation]({{ site.baseurl }}/) - Main documentation
+- 🐛 [Open an issue](https://github.com/byerlikaya/SmartRAG/issues) - GitHub Issues
+- 📧 [Contact support](mailto:b.yerlikaya@outlook.com) - Email support

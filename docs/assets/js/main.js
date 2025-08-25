@@ -7,7 +7,6 @@ document.addEventListener('DOMContentLoaded', function() {
     initNavbarEffects();
     initSidebarEffects();
     initCodeHighlighting();
-    initSearchFunctionality();
     initAnimations();
 });
 
@@ -115,35 +114,6 @@ function initCodeHighlighting() {
         
         block.parentElement.style.position = 'relative';
         block.parentElement.appendChild(copyBtn);
-    });
-}
-
-// Search Functionality
-function initSearchFunctionality() {
-    const searchInput = document.createElement('input');
-    searchInput.type = 'text';
-    searchInput.className = 'form-control';
-    searchInput.placeholder = 'Search documentation...';
-    searchInput.style.marginBottom = '1rem';
-    
-    const sidebarHeader = document.querySelector('.sidebar-header');
-    if (sidebarHeader) {
-        sidebarHeader.appendChild(searchInput);
-    }
-    
-    searchInput.addEventListener('input', function() {
-        const query = this.value.toLowerCase();
-        const sidebarLinks = document.querySelectorAll('.sidebar-nav .nav-link');
-        
-        sidebarLinks.forEach(link => {
-            const text = link.textContent.toLowerCase();
-            if (text.includes(query)) {
-                link.style.display = 'block';
-                link.style.opacity = '1';
-            } else {
-                link.style.opacity = '0.3';
-            }
-        });
     });
 }
 

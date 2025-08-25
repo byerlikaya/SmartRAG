@@ -22,10 +22,10 @@ description: Enterprise-grade RAG library for .NET applications
             <a href="{{ site.baseurl }}/getting-started" class="btn btn-primary btn-lg me-3">
                 <i class="fas fa-rocket me-2"></i>Get Started
             </a>
-            <a href="https://github.com/byerlikaya/SmartRAG" class="btn btn-outline-primary btn-lg me-3">
+            <a href="https://github.com/byerlikaya/SmartRAG" class="btn btn-outline-primary btn-lg me-3" target="_blank" rel="noopener noreferrer">
                 <i class="fab fa-github me-2"></i>View on GitHub
             </a>
-            <a href="https://www.nuget.org/packages/SmartRAG" class="btn btn-outline-success btn-lg">
+            <a href="https://www.nuget.org/packages/SmartRAG" class="btn btn-outline-success btn-lg" target="_blank" rel="noopener noreferrer">
                 <i class="fas fa-box me-2"></i>NuGet Package
             </a>
         </div>
@@ -104,6 +104,110 @@ var documentService = serviceProvider.GetRequiredService<IDocumentService>();
 var document = await documentService.UploadDocumentAsync(file);
 ```
 
+## 🚀 Supported Technologies
+
+SmartRAG integrates with leading AI providers and storage solutions to give you the best possible experience.
+
+### 🤖 AI Providers
+
+<div class="row mt-4 mb-5">
+    <div class="col-md-3 mb-3">
+        <div class="tech-logo-card text-center p-3">
+            <div class="tech-logo mb-2">
+                <i class="fab fa-openai fa-3x text-primary"></i>
+            </div>
+            <h6 class="mb-1">OpenAI</h6>
+            <small class="text-muted">GPT Models & Embeddings</small>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="tech-logo-card text-center p-3">
+            <div class="tech-logo mb-2">
+                <i class="fas fa-robot fa-3x text-success"></i>
+            </div>
+            <h6 class="mb-1">Anthropic</h6>
+            <small class="text-muted">Claude Models</small>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="tech-logo-card text-center p-3">
+            <div class="tech-logo mb-2">
+                <i class="fas fa-brain fa-3x text-info"></i>
+            </div>
+            <h6 class="mb-1">VoyageAI</h6>
+            <small class="text-muted">High-Quality Embeddings</small>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="tech-logo-card text-center p-3">
+            <div class="tech-logo mb-2">
+                <i class="fas fa-cogs fa-3x text-warning"></i>
+            </div>
+            <h6 class="mb-1">Custom</h6>
+            <small class="text-muted">Extensible Provider</small>
+        </div>
+    </div>
+</div>
+
+### 🗄️ Storage Providers
+
+<div class="row mt-4 mb-5">
+    <div class="col-md-2 mb-3">
+        <div class="tech-logo-card text-center p-3">
+            <div class="tech-logo mb-2">
+                <i class="fas fa-database fa-3x text-primary"></i>
+            </div>
+            <h6 class="mb-1">Qdrant</h6>
+            <small class="text-muted">Vector Database</small>
+        </div>
+    </div>
+    <div class="col-md-2 mb-3">
+        <div class="tech-logo-card text-center p-3">
+            <div class="tech-logo mb-2">
+                <i class="fas fa-memory fa-3x text-success"></i>
+            </div>
+            <h6 class="mb-1">Redis</h6>
+            <small class="text-muted">In-Memory Cache</small>
+        </div>
+    </div>
+    <div class="col-md-2 mb-3">
+        <div class="tech-logo-card text-center p-3">
+            <div class="tech-logo mb-2">
+                <i class="fas fa-hdd fa-3x text-info"></i>
+            </div>
+            <h6 class="mb-1">SQLite</h6>
+            <small class="text-muted">Local Database</small>
+        </div>
+    </div>
+    <div class="col-md-2 mb-3">
+        <div class="tech-logo-card text-center p-3">
+            <div class="tech-logo mb-2">
+                <i class="fas fa-ramp-loading fa-3x text-warning"></i>
+            </div>
+            <h6 class="mb-1">In-Memory</h6>
+            <small class="text-muted">Fast Development</small>
+        </div>
+    </div>
+    <div class="col-md-2 mb-3">
+        <div class="tech-logo-card text-center p-3">
+            <div class="tech-logo mb-2">
+                <i class="fas fa-folder-open fa-3x text-secondary"></i>
+            </div>
+            <h6 class="mb-1">File System</h6>
+            <small class="text-muted">Local Storage</small>
+        </div>
+    </div>
+    <div class="col-md-2 mb-3">
+        <div class="tech-logo-card text-center p-3">
+            <div class="tech-logo mb-2">
+                <i class="fas fa-cogs fa-3x text-dark"></i>
+            </div>
+            <h6 class="mb-1">Custom</h6>
+            <small class="text-muted">Extensible Storage</small>
+        </div>
+    </div>
+</div>
+
 ## 📚 Documentation
 
 <div class="row mt-4">
@@ -134,6 +238,49 @@ var document = await documentService.UploadDocumentAsync(file);
                 <h5 class="card-title">API Reference</h5>
                 <p class="card-text">Complete API documentation with examples and usage patterns.</p>
                 <a href="{{ site.baseurl }}/api-reference" class="btn btn-warning">View API</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-md-3 mb-3">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body text-center p-4">
+                <i class="fas fa-lightbulb fa-2x text-info mb-3"></i>
+                <h5 class="card-title">Examples</h5>
+                <p class="card-text">Real-world examples and sample applications to learn from.</p>
+                <a href="{{ site.baseurl }}/examples" class="btn btn-info">View Examples</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body text-center p-4">
+                <i class="fas fa-tools fa-2x text-danger mb-3"></i>
+                <h5 class="card-title">Troubleshooting</h5>
+                <p class="card-text">Common issues and solutions to help you resolve problems.</p>
+                <a href="{{ site.baseurl }}/troubleshooting" class="btn btn-danger">Get Help</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body text-center p-4">
+                <i class="fas fa-history fa-2x text-secondary mb-3"></i>
+                <h5 class="card-title">Changelog</h5>
+                <p class="card-text">Track new features, improvements, and bug fixes across versions.</p>
+                <a href="{{ site.baseurl }}/changelog" class="btn btn-secondary">View Changes</a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card h-100 border-0 shadow-sm">
+            <div class="card-body text-center p-4">
+                <i class="fas fa-hands-helping fa-2x text-dark mb-3"></i>
+                <h5 class="card-title">Contributing</h5>
+                <p class="card-text">Learn how to contribute to SmartRAG development.</p>
+                <a href="{{ site.baseurl }}/contributing" class="btn btn-dark">Contribute</a>
             </div>
         </div>
     </div>
@@ -177,8 +324,8 @@ var document = await documentService.UploadDocumentAsync(file);
 </div>
 
 <div class="alert alert-warning">
-    <h5><i class="fas fa-users me-2"></i>Community Driven</h5>
-    <p class="mb-0">Open source project with active community support and regular updates.</p>
+    <h5><i class="fas fa-code me-2"></i>Open Source</h5>
+    <p class="mb-0">MIT licensed open source project with transparent development and regular updates.</p>
 </div>
 
 ## 📦 Installation
@@ -207,6 +354,6 @@ This project is licensed under the MIT License - see the [LICENSE](https://githu
 
 <div class="text-center mt-5">
     <p class="text-muted">
-        <i class="fas fa-heart text-danger"></i> Built with love by the SmartRAG community
+        <i class="fas fa-heart text-danger"></i> Built with love by Barış Yerlikaya
     </p>
 </div>
