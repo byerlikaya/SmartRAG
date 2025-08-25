@@ -705,7 +705,7 @@ We welcome contributions!
 - **💼 [LinkedIn](https://www.linkedin.com/in/barisyerlikaya)**
 - **🐙 [GitHub Profile](https://github.com/byerlikaya)**
 - **📦 [NuGet Packages](https://www.nuget.org/profiles/barisyerlikaya)**
-- **📖 [Documentation](https://yourusername.github.io/SmartRAG)** - Comprehensive guides and API reference
+- **📖 [Documentation](https://byerlikaya.github.io/SmartRAG)** - Comprehensive guides and API reference
 
 ## 📄 License
 
