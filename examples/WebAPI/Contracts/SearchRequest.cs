@@ -1,6 +1,3 @@
-using System.ComponentModel.DataAnnotations;
-using System.ComponentModel;
-
 namespace SmartRAG.API.Contracts;
 
 public class SearchRequest

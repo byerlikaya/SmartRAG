@@ -1,6 +1,3 @@
-using Microsoft.AspNetCore.Mvc;
-using SmartRAG.Interfaces;
-
 namespace SmartRAG.API.Controllers;
 
 /// <summary>
