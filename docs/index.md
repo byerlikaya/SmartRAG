@@ -19,7 +19,7 @@ nav_order: 1
             Build intelligent applications with advanced document processing, AI-powered embeddings, and semantic search capabilities.
         </p>
         <div class="hero-buttons">
-            <a href="getting-started" class="btn btn-primary btn-lg me-3">
+            <a href="{{ site.baseurl }}/getting-started" class="btn btn-primary btn-lg me-3">
                 <i class="fas fa-rocket me-2"></i>Get Started
             </a>
             <a href="https://github.com/byerlikaya/SmartRAG" class="btn btn-outline-primary btn-lg me-3">
@@ -113,7 +113,7 @@ var document = await documentService.UploadDocumentAsync(file);
                 <i class="fas fa-rocket fa-2x text-primary mb-3"></i>
                 <h5 class="card-title">Getting Started</h5>
                 <p class="card-text">Quick installation and setup guide to get you up and running.</p>
-                <a href="getting-started" class="btn btn-primary">Get Started</a>
+                <a href="{{ site.baseurl }}/getting-started" class="btn btn-primary">Get Started</a>
             </div>
         </div>
     </div>
@@ -123,7 +123,7 @@ var document = await documentService.UploadDocumentAsync(file);
                 <i class="fas fa-cog fa-2x text-success mb-3"></i>
                 <h5 class="card-title">Configuration</h5>
                 <p class="card-text">Detailed configuration options and best practices.</p>
-                <a href="configuration" class="btn btn-success">Configure</a>
+                <a href="{{ site.baseurl }}/configuration" class="btn btn-success">Configure</a>
             </div>
         </div>
     </div>
@@ -133,7 +133,7 @@ var document = await documentService.UploadDocumentAsync(file);
                 <i class="fas fa-code fa-2x text-warning mb-3"></i>
                 <h5 class="card-title">API Reference</h5>
                 <p class="card-text">Complete API documentation with examples and usage patterns.</p>
-                <a href="api-reference" class="btn btn-warning">View API</a>
+                <a href="{{ site.baseurl }}/api-reference" class="btn btn-warning">View API</a>
             </div>
         </div>
     </div>
@@ -148,7 +148,7 @@ var document = await documentService.UploadDocumentAsync(file);
                 <i class="fas fa-lightbulb fa-2x text-info mb-3"></i>
                 <h5 class="card-title">Examples</h5>
                 <p class="card-text">Real-world examples and sample applications to learn from.</p>
-                <a href="examples" class="btn btn-info">View Examples</a>
+                <a href="{{ site.baseurl }}/examples" class="btn btn-info">View Examples</a>
             </div>
         </div>
     </div>
@@ -158,7 +158,7 @@ var document = await documentService.UploadDocumentAsync(file);
                 <i class="fas fa-tools fa-2x text-danger mb-3"></i>
                 <h5 class="card-title">Troubleshooting</h5>
                 <p class="card-text">Common issues and solutions to help you resolve problems.</p>
-                <a href="troubleshooting" class="btn btn-danger">Get Help</a>
+                <a href="{{ site.baseurl }}/troubleshooting" class="btn btn-danger">Get Help</a>
             </div>
         </div>
     </div>

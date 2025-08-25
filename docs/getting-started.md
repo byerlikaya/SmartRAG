@@ -247,12 +247,12 @@ services.AddSmartRAG(configuration, options =>
 
 ## 🚀 Next Steps
 
-1. **[Choose Your AI Provider](configuration.md#ai-providers)** - Configure OpenAI, Anthropic, Gemini, etc.
-2. **[Select Storage Backend](configuration.md#storage-providers)** - Set up Qdrant, Redis, SQLite, etc.
-3. **[Upload Documents](api-reference.md#document-management)** - Learn about supported formats
-4. **[Ask Questions](api-reference.md#ai-question-answering--chat)** - Master the RAG pipeline
-5. **[Advanced Configuration](configuration.md)** - Fine-tune your setup
-6. **[Performance Tuning](configuration.md#performance-tuning)** - Optimize for your use case
+1. **[Choose Your AI Provider]({{ site.baseurl }}/configuration#ai-providers)** - Configure OpenAI, Anthropic, Gemini, etc.
+2. **[Select Storage Backend]({{ site.baseurl }}/configuration#storage-providers)** - Set up Qdrant, Redis, SQLite, etc.
+3. **[Upload Documents]({{ site.baseurl }}/api-reference#document-management)** - Learn about supported formats
+4. **[Ask Questions]({{ site.baseurl }}/api-reference#ai-question-answering--chat)** - Master the RAG pipeline
+5. **[Advanced Configuration]({{ site.baseurl }}/configuration)** - Fine-tune your setup
+6. **[Performance Tuning]({{ site.baseurl }}/configuration#performance-tuning)** - Optimize for your use case
 
 ## 🔍 Understanding the RAG Pipeline
 

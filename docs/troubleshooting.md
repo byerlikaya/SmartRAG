@@ -358,4 +358,4 @@ Include:
 
 ---
 
-**Need more help?** Check our [Getting Started Guide](getting-started.md) or [Configuration Guide](configuration.md).
+**Need more help?** Check our [Getting Started Guide]({{ site.baseurl }}/getting-started) or [Configuration Guide]({{ site.baseurl }}/configuration).

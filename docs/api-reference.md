@@ -479,7 +479,7 @@ var chunkContent = content.Substring(validatedStart, validatedEnd - validatedSta
 
 ## 📝 Usage Examples
 
-See [Getting Started](getting-started.md) for complete usage examples and configuration.
+See [Getting Started]({{ site.baseurl }}/getting-started) for complete usage examples and configuration.
 
 ## 🆘 Support
 
