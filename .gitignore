@@ -276,9 +276,9 @@ BenchmarkDotNet.Artifacts/
 *.rtf
 *.odt
 *.pages
-*.md
-*.html
-*.htm
+# *.md
+# *.html
+# *.htm
 *.xml
 *.json
 *.csv
@@ -302,6 +302,12 @@ BenchmarkDotNet.Artifacts/
 *.oti
 *.otf
 *.otm
+
+# Exception for documentation site
+!docs/_site/
+!docs/_site/**/*
+!docs/**/*.md
+!docs/**/*.html
 
 # Document upload directories
 uploads/
