@@ -22,6 +22,7 @@ SmartRAG is a **production-ready** .NET 9.0 library that provides a complete **R
 - 🎯 **Enhanced Semantic Search**: Advanced hybrid scoring with 80% semantic + 20% keyword relevance
 - 🔍 **Smart Document Chunking**: Word boundary validation and optimal break points for context preservation
 - ✅ **Enterprise Grade**: Zero Warnings Policy, SOLID principles, comprehensive logging, XML documentation
+- 🧹 **GlobalUsings Support**: Clean code with centralized using directives for both API and Test projects
 
 ## 🎯 What Makes SmartRAG Special
 
@@ -43,6 +44,7 @@ SmartRAG is a **production-ready** .NET 9.0 library that provides a complete **R
 - **Dependency Injection**: Full DI container integration
 - **Enhanced Semantic Search**: Advanced hybrid scoring combining semantic similarity and keyword relevance
 - **VoyageAI Integration**: High-quality embeddings for Anthropic Claude models
+- **GlobalUsings Support**: Centralized using directives for clean, maintainable code
 - **Enterprise Architecture**: Zero Warnings Policy, SOLID/DRY principles, comprehensive XML documentation
 - **Production Ready**: Thread-safe operations, centralized logging, proper error handling
 
@@ -599,6 +601,38 @@ curl -X POST "http://localhost:5000/api/search/search" \
 - Optimize **chunk sizes** based on your content type
 - Use **semantic search threshold** to filter low-relevance results
 
+## 🧪 Testing
+
+SmartRAG includes comprehensive testing with xUnit and follows best practices:
+
+### **Test Project Structure**
+```
+tests/
+└── SmartRAG.Tests/
+    ├── FileUploadTests.cs          # File upload functionality tests
+    ├── GlobalUsings.cs             # Centralized using directives
+    └── SmartRAG.Tests.csproj      # Test project configuration
+```
+
+### **Test Features**
+- ✅ **xUnit Framework**: Modern, extensible testing framework
+- ✅ **GlobalUsings**: Clean, maintainable test code
+- ✅ **File Upload Tests**: Comprehensive document upload testing
+- ✅ **Mock Support**: Moq integration for dependency mocking
+- ✅ **Async Testing**: Full async/await support
+
+### **Running Tests**
+```bash
+# Run all tests
+dotnet test
+
+# Run specific test project
+dotnet test tests/SmartRAG.Tests/
+
+# Run tests with coverage
+dotnet test --collect:"XPlat Code Coverage"
+```
+
 ## 🛠️ Development
 
 ### **Building from Source**
@@ -608,6 +642,18 @@ cd SmartRAG
 dotnet restore
 dotnet build
 dotnet test
+```
+
+### **Running Tests**
+```bash
+# Run all tests
+dotnet test
+
+# Run specific test project
+dotnet test tests/SmartRAG.Tests/
+
+# Run tests with coverage
+dotnet test --collect:"XPlat Code Coverage"
 ```
 
 ### **Running the Sample API**
