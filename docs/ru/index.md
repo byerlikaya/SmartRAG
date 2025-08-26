@@ -6,113 +6,64 @@ lang: ru
 hide_title: true
 ---
 
-<div class="hero-section text-center py-5 mb-5">
-    <div class="hero-content">
-        <div class="hero-icon mb-4">
-            <i class="fas fa-brain fa-4x text-primary"></i>
-        </div>
-        <p class="hero-description lead mb-5">
-            Создавайте интеллектуальные приложения с продвинутой обработкой документов, ИИ-эмбеддингами и семантическим поиском.
-        </p>
-        <div class="hero-buttons">
-            <a href="{{ site.baseurl }}/ru/getting-started" class="btn btn-primary btn-lg me-3">
-                <i class="fas fa-rocket me-2"></i>Начать
-            </a>
-            <a href="https://github.com/byerlikaya/SmartRAG" class="btn btn-outline-primary btn-lg me-3" target="_blank" rel="noopener noreferrer">
-                <i class="fab fa-github me-2"></i>Посмотреть на GitHub
-            </a>
-            <a href="https://www.nuget.org/packages/SmartRAG" class="btn btn-outline-success btn-lg" target="_blank" rel="noopener noreferrer">
-                <i class="fas fa-box me-2"></i>NuGet пакет
-            </a>
-        </div>
-    </div>
-</div>
-
-## 🚀 Что такое SmartRAG?
-
-SmartRAG — это комплексная .NET библиотека, которая предоставляет интеллектуальную обработку документов, генерацию эмбеддингов и семантический поиск. Она разработана для простоты использования, предлагая мощные функции для создания ИИ-приложений.
-
-<div class="row mt-5 mb-5">
-    <div class="col-md-6">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body p-4">
-                <h5 class="card-title">
-                    <div class="feature-icon">
-                        <i class="fas fa-file-alt text-primary"></i>
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="hero-background"></div>
+    <div class="container">
+        <div class="row align-items-center min-vh-100">
+            <div class="col-lg-6">
+                <div class="hero-content">
+                    <div class="hero-badge">
+                        <i class="fas fa-star"></i>
+                        <span>Готово для предприятий</span>
                     </div>
-                    Поддержка множественных форматов
-                </h5>
-                <p class="card-text">Легко обрабатывайте документы Word, PDF, Excel и текстовые файлы. Наша библиотека автоматически обрабатывает все основные форматы документов.</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body p-4">
-                <h5 class="card-title">
-                    <div class="feature-icon">
-                        <i class="fas fa-robot text-success"></i>
+                    <h1 class="hero-title">
+                        Создавайте интеллектуальные приложения с 
+                        <span class="text-gradient">SmartRAG</span>
+                    </h1>
+                    <p class="hero-description">
+                        Самая мощная .NET библиотека для обработки документов, ИИ-эмбеддингов и семантического поиска. 
+                        Преобразуйте ваши приложения с корпоративными возможностями RAG.
+                    </p>
+                    <div class="hero-stats">
+                        <div class="stat-item">
+                            <div class="stat-number">5+</div>
+                            <div class="stat-label">ИИ-провайдеры</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number">5+</div>
+                            <div class="stat-label">Варианты хранения</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number">100%</div>
+                            <div class="stat-label">Открытый код</div>
+                        </div>
                     </div>
-                    Интеграция с ИИ-провайдерами
-                </h5>
-                <p class="card-text">Бесшовная интеграция с OpenAI, Anthropic, Azure OpenAI, Gemini и пользовательскими ИИ-провайдерами для мощной генерации эмбеддингов.</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row mb-5">
-    <div class="col-md-6">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body p-4">
-                <h5 class="card-title">
-                    <div class="feature-icon">
-                        <i class="fas fa-database text-warning"></i>
+                    <div class="hero-buttons">
+                        <a href="{{ site.baseurl }}/ru/getting-started" class="btn btn-primary btn-lg">
+                            <i class="fas fa-rocket"></i>
+                            Начать
+                        </a>
+                        <a href="https://github.com/byerlikaya/SmartRAG" class="btn btn-outline-light btn-lg" target="_blank">
+                            <i class="fab fa-github"></i>
+                            Посмотреть на GitHub
+                        </a>
                     </div>
-                    Векторное хранилище
-                </h5>
-                <p class="card-text">Множественные бэкенды хранения, включая Qdrant, Redis, SQLite, In-Memory и файловую систему для гибкого развертывания.</p>
+                </div>
             </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body p-4">
-                <h5 class="card-title">
-                    <div class="feature-icon">
-                        <i class="fas fa-search text-info"></i>
-                    </div>
-                    Семантический поиск
-                </h5>
-                <p class="card-text">Продвинутые возможности поиска с оценкой схожести и интеллектуальным ранжированием результатов для лучшего пользовательского опыта.</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-## 🌟 Почему SmartRAG?
-
-<div class="alert alert-info">
-    <h5><i class="fas fa-star me-2"></i>Готово для предприятий</h5>
-    <p class="mb-0">Создано для производственных сред с учетом производительности, масштабируемости и надежности.</p>
-</div>
-
-<div class="alert alert-success">
-    <h5><i class="fas fa-shield-alt me-2"></i>Протестировано в продакшене</h5>
-    <p class="mb-0">Используется в реальных приложениях с проверенной репутацией и активной поддержкой.</p>
-</div>
-
-<div class="alert alert-warning">
-    <h5><i class="fas fa-code me-2"></i>Открытый исходный код</h5>
-    <p class="mb-0">Проект с открытым исходным кодом под лицензией MIT с прозрачной разработкой и регулярными обновлениями.</p>
-</div>
-
-## ⚡ Быстрый старт
-
-Начните работу за считанные минуты с нашим простым процессом настройки:
-
-```csharp
-// Добавьте SmartRAG в ваш проект
+            <div class="col-lg-6">
+                <div class="hero-visual">
+                    <div class="code-window">
+                        <div class="code-header">
+                            <div class="code-dots">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                            <div class="code-title">SmartRAG.cs</div>
+                        </div>
+                        <div class="code-content">
+                            <pre><code class="language-csharp">// Добавьте SmartRAG в ваш проект
 services.AddSmartRAG(options =>
 {
     options.AIProvider = AIProvider.Anthropic;
@@ -120,197 +71,315 @@ services.AddSmartRAG(options =>
     options.ApiKey = "your-api-key";
 });
 
-// Используйте сервис документов
-var documentService = serviceProvider.GetRequiredService<IDocumentService>();
-var document = await documentService.UploadDocumentAsync(file);
-```
+// Загрузите и обработайте документ
+var document = await documentService
+    .UploadDocumentAsync(file);
 
-## 🚀 Поддерживаемые технологии
+// Выполните семантический поиск
+var results = await documentService
+    .SearchAsync("your query");</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 
-SmartRAG интегрируется с ведущими ИИ-провайдерами и решениями для хранения, чтобы предоставить вам наилучший опыт.
+<!-- Features Section -->
+<section class="features-section">
+    <div class="container">
+        <div class="section-header text-center">
+            <h2 class="section-title">Ключевые функции</h2>
+            <p class="section-description">
+                Мощные возможности для создания интеллектуальных приложений
+            </p>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-lg-4 col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h3>ИИ-поддержка</h3>
+                    <p>Интеграция с ведущими ИИ-провайдерами для мощных эмбеддингов и интеллектуальной обработки.</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <h3>Поддержка множественных форматов</h3>
+                    <p>Обрабатывайте документы Word, PDF, Excel и текстовые файлы с автоматическим определением формата.</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <h3>Семантический поиск</h3>
+                    <p>Продвинутый поиск с оценкой схожести и интеллектуальным ранжированием результатов.</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <h3>Гибкое хранение</h3>
+                    <p>Множественные бэкенды хранения для гибких вариантов развертывания.</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-rocket"></i>
+                    </div>
+                    <h3>Простая интеграция</h3>
+                    <p>Простая настройка с внедрением зависимостей. Начните за считанные минуты.</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3>Готово к продакшену</h3>
+                    <p>Создано для корпоративных сред с производительностью и надежностью.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 
-### 🤖 ИИ-провайдеры
+<!-- Providers Section -->
+<section class="providers-section">
+    <div class="container">
+        <div class="section-header text-center">
+            <h2 class="section-title">Поддерживаемые технологии</h2>
+            <p class="section-description">
+                Выберите из ведущих ИИ-провайдеров и решений для хранения
+            </p>
+        </div>
+        
+        <div class="providers-grid">
+            <div class="provider-category">
+                <h3>ИИ-провайдеры</h3>
+                <div class="provider-cards">
+                    <div class="provider-card">
+                        <div class="provider-logo">
+                            <i class="fab fa-google"></i>
+                        </div>
+                        <h4>Gemini</h4>
+                    </div>
+                    <div class="provider-card">
+                        <div class="provider-logo">
+                            <i class="fas fa-brain"></i>
+                        </div>
+                        <h4>OpenAI</h4>
+                    </div>
+                    <div class="provider-card">
+                        <div class="provider-logo">
+                            <i class="fas fa-cloud"></i>
+                        </div>
+                        <h4>Azure OpenAI</h4>
+                    </div>
+                    <div class="provider-card">
+                        <div class="provider-logo">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <h4>Anthropic</h4>
+                    </div>
+                    <div class="provider-card">
+                        <div class="provider-logo">
+                            <i class="fas fa-cogs"></i>
+                        </div>
+                        <h4>Пользовательский</h4>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="provider-category">
+                <h3>Провайдеры хранения</h3>
+                <div class="provider-cards">
+                    <div class="provider-card">
+                        <div class="provider-logo">
+                            <i class="fas fa-cube"></i>
+                        </div>
+                        <h4>Qdrant</h4>
+                    </div>
+                    <div class="provider-card">
+                        <div class="provider-logo">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <h4>Redis</h4>
+                    </div>
+                    <div class="provider-card">
+                        <div class="provider-logo">
+                            <i class="fas fa-hdd"></i>
+                        </div>
+                        <h4>SQLite</h4>
+                    </div>
+                    <div class="provider-card">
+                        <div class="provider-logo">
+                            <i class="fas fa-microchip"></i>
+                        </div>
+                        <h4>In-Memory</h4>
+                    </div>
+                    <div class="provider-card">
+                        <div class="provider-logo">
+                            <i class="fas fa-folder-open"></i>
+                        </div>
+                        <h4>Файловая система</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 
-<div class="row mt-4 mb-5">
-    <div class="col-md-2 mb-3">
-        <div class="provider-card text-center p-4">
-            <div class="provider-icon">
-                <i class="fab fa-google"></i>
+<!-- Quick Start Section -->
+<section class="quick-start-section">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <div class="quick-start-content">
+                    <h2>Начните за считанные минуты</h2>
+                    <p>Простая и мощная интеграция для ваших .NET приложений.</p>
+                    
+                    <div class="steps">
+                        <div class="step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h4>Установить пакет</h4>
+                                <p>Добавьте SmartRAG через NuGet</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h4>Настроить сервисы</h4>
+                                <p>Настройте ИИ и провайдеры хранения</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h4>Начать разработку</h4>
+                                <p>Загружайте документы и выполняйте поиск</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <a href="{{ site.baseurl }}/ru/getting-started" class="btn btn-primary btn-lg">
+                        <i class="fas fa-play"></i>
+                        Начать разработку
+                    </a>
+                </div>
             </div>
-            <h6>Gemini</h6>
-            <small>Google AI</small>
-        </div>
-    </div>
-    <div class="col-md-2 mb-3">
-        <div class="provider-card text-center p-4">
-            <div class="provider-icon">
-                <i class="fas fa-brain"></i>
-            </div>
-            <h6>OpenAI</h6>
-            <small>GPT модели</small>
-        </div>
-    </div>
-    <div class="col-md-2 mb-3">
-        <div class="provider-card text-center p-4">
-            <div class="provider-icon">
-                <i class="fas fa-cloud"></i>
-            </div>
-            <h6>Azure OpenAI</h6>
-            <small>Корпоративный</small>
-        </div>
-    </div>
-    <div class="col-md-2 mb-3">
-        <div class="provider-card text-center p-4">
-            <div class="provider-icon">
-                <i class="fas fa-robot"></i>
-            </div>
-            <h6>Anthropic</h6>
-            <small>Claude модели</small>
-        </div>
-    </div>
-    <div class="col-md-2 mb-3">
-        <div class="provider-card text-center p-4">
-            <div class="provider-icon">
-                <i class="fas fa-cogs"></i>
-            </div>
-            <h6>Пользовательский</h6>
-            <small>Расширяемый</small>
-        </div>
-    </div>
-</div>
+            <div class="col-lg-6">
+                <div class="code-example">
+                    <div class="code-tabs">
+                        <button class="code-tab active" data-tab="install">Установить</button>
+                        <button class="code-tab" data-tab="configure">Настроить</button>
+                        <button class="code-tab" data-tab="use">Использовать</button>
+                    </div>
+                    <div class="code-content">
+                        <div class="code-panel active" id="install">
+                            <pre><code class="language-bash">dotnet add package SmartRAG</code></pre>
+                        </div>
+                        <div class="code-panel" id="configure">
+                            <pre><code class="language-csharp">services.AddSmartRAG(options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.ApiKey = "your-api-key";
+});</code></pre>
+                        </div>
+                        <div class="code-panel" id="use">
+                            <pre><code class="language-csharp">var documentService = serviceProvider
+    .GetRequiredService&lt;IDocumentService&gt;();
 
-### 🗄️ Провайдеры хранения
+var results = await documentService
+    .SearchAsync("your query");</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 
-<div class="row mt-4 mb-5">
-    <div class="col-md-2 mb-3">
-        <div class="provider-card text-center p-4">
-            <div class="provider-icon">
-                <i class="fas fa-cube"></i>
+<!-- Documentation Section -->
+<section class="documentation-section">
+    <div class="container">
+        <div class="section-header text-center">
+            <h2 class="section-title">Документация</h2>
+            <p class="section-description">
+                Все что вам нужно для разработки с SmartRAG
+            </p>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-lg-3 col-md-6">
+                <a href="{{ site.baseurl }}/ru/getting-started" class="doc-card">
+                    <div class="doc-icon">
+                        <i class="fas fa-rocket"></i>
+                    </div>
+                    <h3>Начало работы</h3>
+                    <p>Быстрое руководство по установке и настройке</p>
+                </a>
             </div>
-            <h6>Qdrant</h6>
-            <small>Векторная база данных</small>
+            <div class="col-lg-3 col-md-6">
+                <a href="{{ site.baseurl }}/ru/configuration" class="doc-card">
+                    <div class="doc-icon">
+                        <i class="fas fa-cog"></i>
+                    </div>
+                    <h3>Конфигурация</h3>
+                    <p>Подробные опции конфигурации</p>
+                </a>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <a href="{{ site.baseurl }}/ru/api-reference" class="doc-card">
+                    <div class="doc-icon">
+                        <i class="fas fa-code"></i>
+                    </div>
+                    <h3>Справочник API</h3>
+                    <p>Полная документация API</p>
+                </a>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <a href="{{ site.baseurl }}/ru/examples" class="doc-card">
+                    <div class="doc-icon">
+                        <i class="fas fa-lightbulb"></i>
+                    </div>
+                    <h3>Примеры</h3>
+                    <p>Реальные примеры и примеры приложений</p>
+                </a>
+            </div>
         </div>
     </div>
-    <div class="col-md-2 mb-3">
-        <div class="provider-card text-center p-4">
-            <div class="provider-icon">
-                <i class="fas fa-database"></i>
-            </div>
-            <h6>Redis</h6>
-            <small>Кэш в памяти</small>
-        </div>
-    </div>
-    <div class="col-md-2 mb-3">
-        <div class="provider-card text-center p-4">
-            <div class="provider-icon">
-                <i class="fas fa-hdd"></i>
-            </div>
-            <h6>SQLite</h6>
-            <small>Локальная база данных</small>
-        </div>
-    </div>
-    <div class="col-md-2 mb-3">
-        <div class="provider-card text-center p-4">
-            <div class="provider-icon">
-                <i class="fas fa-microchip"></i>
-            </div>
-            <h6>In-Memory</h6>
-            <small>Быстрая разработка</small>
-        </div>
-    </div>
-    <div class="col-md-2 mb-3">
-        <div class="provider-card text-center p-4">
-            <div class="provider-icon">
-                <i class="fas fa-folder-open"></i>
-            </div>
-            <h6>Файловая система</h6>
-            <small>Локальное хранилище</small>
-        </div>
-    </div>
-</div>
+</section>
 
-## 📚 Документация
-
-<div class="row mt-4">
-    <div class="col-md-4 mb-3">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center p-4">
-                <i class="fas fa-rocket fa-2x text-primary mb-3"></i>
-                <h5 class="card-title">Начало работы</h5>
-                <p class="card-text">Быстрое руководство по установке и настройке для начала работы.</p>
-                <a href="{{ site.baseurl }}/ru/getting-started" class="btn btn-primary">Начать</a>
+<!-- CTA Section -->
+<section class="cta-section">
+    <div class="container">
+        <div class="cta-content text-center">
+            <h2>Готовы создать что-то удивительное?</h2>
+            <p>Присоединяйтесь к тысячам разработчиков, использующих SmartRAG для создания интеллектуальных приложений</p>
+            <div class="cta-buttons">
+                <a href="{{ site.baseurl }}/ru/getting-started" class="btn btn-primary btn-lg">
+                    <i class="fas fa-rocket"></i>
+                    Начать сейчас
+                </a>
+                <a href="https://github.com/byerlikaya/SmartRAG" class="btn btn-outline-light btn-lg" target="_blank">
+                    <i class="fab fa-github"></i>
+                    Оценить на GitHub
+                </a>
             </div>
         </div>
     </div>
-    <div class="col-md-4 mb-3">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center p-4">
-                <i class="fas fa-cog fa-2x text-success mb-3"></i>
-                <h5 class="card-title">Конфигурация</h5>
-                <p class="card-text">Подробные опции конфигурации и лучшие практики.</p>
-                <a href="{{ site.baseurl }}/ru/configuration" class="btn btn-success">Настроить</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 mb-3">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center p-4">
-                <i class="fas fa-code fa-2x text-warning mb-3"></i>
-                <h5 class="card-title">Справочник API</h5>
-                <p class="card-text">Полная документация API с примерами и шаблонами использования.</p>
-                <a href="{{ site.baseurl }}/ru/api-reference" class="btn btn-warning">Посмотреть API</a>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row mt-4">
-    <div class="col-md-3 mb-3">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center p-4">
-                <i class="fas fa-lightbulb fa-2x text-info mb-3"></i>
-                <h5 class="card-title">Примеры</h5>
-                <p class="card-text">Реальные примеры и примеры приложений для изучения.</p>
-                <a href="{{ site.baseurl }}/ru/examples" class="btn btn-info">Посмотреть примеры</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3 mb-3">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center p-4">
-                <i class="fas fa-tools fa-2x text-danger mb-3"></i>
-                <h5 class="card-title">Устранение неполадок</h5>
-                <p class="card-text">Распространенные проблемы и решения для решения проблем.</p>
-                <a href="{{ site.baseurl }}/ru/troubleshooting" class="btn btn-danger">Получить помощь</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3 mb-3">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center p-4">
-                <i class="fas fa-history fa-2x text-secondary mb-3"></i>
-                <h5 class="card-title">Журнал изменений</h5>
-                <p class="card-text">Отслеживайте новые функции, улучшения и исправления ошибок в версиях.</p>
-                <a href="{{ site.baseurl }}/ru/changelog" class="btn btn-secondary">Посмотреть изменения</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3 mb-3">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center p-4">
-                <i class="fas fa-hands-helping fa-2x text-dark mb-3"></i>
-                <h5 class="card-title">Вклад в проект</h5>
-                <p class="card-text">Узнайте, как внести вклад в разработку SmartRAG.</p>
-                <a href="{{ site.baseurl }}/ru/contributing" class="btn btn-dark">Внести вклад</a>
-            </div>
-        </div>
-    </div>
-</div>
-
----
-
-<div class="text-center mt-5">
-    <p class="text-muted">
-        <i class="fas fa-heart text-danger"></i> Создано с любовью Барьш Йерликая
-    </p>
-</div>
+</section>
