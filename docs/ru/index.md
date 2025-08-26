@@ -3,6 +3,7 @@ layout: default
 title: Документация SmartRAG
 description: Корпоративная RAG-библиотека для .NET приложений
 lang: ru
+hide_title: true
 ---
 
 <div class="hero-section text-center py-5 mb-5">

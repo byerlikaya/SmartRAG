@@ -84,6 +84,32 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Language Selection Functionality
+    document.querySelectorAll('.language-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            try {
+                e.preventDefault();
+                const targetLang = this.getAttribute('data-lang');
+                const currentPath = window.location.pathname;
+                
+                // Remove current language prefix if exists
+                let newPath = currentPath.replace(/^\/(en|tr|de|ru)/, '');
+                
+                // Add new language prefix
+                if (newPath === '/' || newPath === '') {
+                    newPath = `/${targetLang}/`;
+                } else {
+                    newPath = `/${targetLang}${newPath}`;
+                }
+                
+                // Navigate to new language version
+                window.location.href = newPath;
+            } catch (error) {
+                console.warn('Language switch error:', error);
+            }
+        });
+    });
+    
     // Smooth scrolling for anchor links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {
