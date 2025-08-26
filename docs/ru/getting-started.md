@@ -1,97 +1,164 @@
 ---
 layout: default
-title: Getting Started
-description: Quick installation and setup guide to get you up and running with SmartRAG
-lang: en
+title: Начало работы
+description: Быстрое руководство по установке и настройке SmartRAG
+lang: ru
 ---
 
-# Getting Started
+<div class="page-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center">
+                <h1 class="page-title">Начало работы с SmartRAG</h1>
+                <p class="page-description">
+                    Установите и настройте SmartRAG в вашем .NET приложении всего за несколько минут
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
 
-Quick installation and setup guide to get you up and running with SmartRAG.
+<div class="page-content">
+    <div class="container">
+        <!-- Installation Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Установка</h2>
+                    <p>SmartRAG доступен как пакет NuGet. Выберите предпочитаемый способ установки:</p>
+                    
+                    <div class="code-tabs">
+                        <div class="code-tab active" data-tab="cli">.NET CLI</div>
+                        <div class="code-tab" data-tab="pm">Package Manager</div>
+                        <div class="code-tab" data-tab="xml">Package Reference</div>
+                    </div>
+                    
+                    <div class="code-content">
+                        <div class="code-panel active" id="cli">
+                            <pre><code class="language-bash">dotnet add package SmartRAG</code></pre>
+                        </div>
+                        <div class="code-panel" id="pm">
+                            <pre><code class="language-bash">Install-Package SmartRAG</code></pre>
+                        </div>
+                        <div class="code-panel" id="xml">
+                            <pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="1.0.3" /&gt;</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-## Installation
+        <!-- Configuration Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Базовая конфигурация</h2>
+                    <p>Настройте SmartRAG в вашем <code>Program.cs</code> или <code>Startup.cs</code>:</p>
+                    
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Program.cs
+using SmartRAG;
 
-SmartRAG is available as a NuGet package and can be installed in several ways.
+var builder = WebApplication.CreateBuilder(args);
 
-### Using .NET CLI:
-
-```bash
-dotnet add package SmartRAG
-```
-
-### Using Package Manager:
-
-```bash
-Install-Package SmartRAG
-```
-
-### Direct package reference:
-
-```xml
-<PackageReference Include="SmartRAG" Version="1.0.3" />
-```
-
-## Basic Setup
-
-Once installed, you can configure SmartRAG in your application.
-
-### Basic Configuration:
-
-```csharp
-// Add SmartRAG to your project
-services.AddSmartRAG(options =>
+// Добавить сервисы SmartRAG
+builder.Services.AddSmartRAG(options =>
 {
     options.AIProvider = AIProvider.Anthropic;
     options.StorageProvider = StorageProvider.Qdrant;
     options.ApiKey = "your-api-key";
 });
-```
 
-### Advanced Configuration:
+var app = builder.Build();</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-```csharp
-services.AddSmartRAG(options =>
+        <!-- Quick Example Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Быстрый пример</h2>
+                    <p>Вот простой пример для начала:</p>
+                    
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Внедрить сервис документов
+public class DocumentController : ControllerBase
 {
-    options.AIProvider = AIProvider.OpenAI;
-    options.StorageProvider = StorageProvider.Redis;
-    options.ApiKey = "your-openai-key";
-    options.ModelName = "text-embedding-ada-002";
-    options.ChunkSize = 1000;
-    options.ChunkOverlap = 200;
-});
-```
+    private readonly IDocumentService _documentService;
+    
+    public DocumentController(IDocumentService documentService)
+    {
+        _documentService = documentService;
+    }
+    
+    [HttpPost("upload")]
+    public async Task&lt;IActionResult&gt; UploadDocument(IFormFile file)
+    {
+        var document = await _documentService.UploadDocumentAsync(file);
+        return Ok(document);
+    }
+    
+    [HttpPost("search")]
+    public async Task&lt;IActionResult&gt; Search([FromBody] string query)
+    {
+        var results = await _documentService.SearchAsync(query);
+        return Ok(results);
+    }
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-## Quick Start Example
+        <!-- Next Steps Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Следующие шаги</h2>
+                    <p>Теперь, когда вы установили и настроили SmartRAG, изучите эти функции:</p>
+                    
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="feature-card">
+                                <div class="feature-icon">
+                                    <i class="fas fa-cog"></i>
+                                </div>
+                                <h3>Конфигурация</h3>
+                                <p>Узнайте о расширенных опциях конфигурации и лучших практиках.</p>
+                                <a href="{{ site.baseurl }}/ru/configuration" class="btn btn-outline-primary btn-sm">Настроить</a>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="feature-card">
+                                <div class="feature-icon">
+                                    <i class="fas fa-code"></i>
+                                </div>
+                                <h3>Справочник API</h3>
+                                <p>Изучите полную документацию API с примерами.</p>
+                                <a href="{{ site.baseurl }}/ru/api-reference" class="btn btn-outline-primary btn-sm">Посмотреть API</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-Here's a simple example to get you started:
-
-```csharp
-// Add SmartRAG services to your DI container
-services.AddSmartRAG(options =>
-{
-    options.AIProvider = AIProvider.Anthropic;
-    options.StorageProvider = StorageProvider.Qdrant;
-    options.ApiKey = "your-api-key";
-});
-
-// Use the document service
-var documentService = serviceProvider.GetRequiredService<IDocumentService>();
-var document = await documentService.UploadDocumentAsync(file);
-```
-
-## Next Steps
-
-Now that you have SmartRAG installed and configured, you can:
-
-- Upload and process documents
-- Generate embeddings using AI providers
-- Perform semantic search queries
-- Explore advanced features
-
-## Need Help?
-
-If you encounter any issues or need assistance:
-
-- [Back to Documentation]({{ site.baseurl }}/en/) - Main documentation
-- [Open an issue](https://github.com/byerlikaya/SmartRAG/issues) - GitHub Issues
-- [Contact support](mailto:b.yerlikaya@outlook.com) - Email support
+        <!-- Help Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <div class="alert alert-info">
+                        <h4><i class="fas fa-question-circle me-2"></i>Нужна помощь?</h4>
+                        <p class="mb-0">Если вы столкнулись с проблемами или нуждаетесь в поддержке:</p>
+                        <ul class="mb-0 mt-2">
+                            <li><a href="https://github.com/byerlikaya/SmartRAG/issues" target="_blank">Откройте issue на GitHub</a></li>
+                            <li><a href="mailto:b.yerlikaya@outlook.com">Свяжитесь с поддержкой по электронной почте</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
