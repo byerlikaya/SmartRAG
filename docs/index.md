@@ -5,113 +5,64 @@ description: Enterprise-grade RAG library for .NET applications
 lang: en
 ---
 
-<div class="hero-section text-center py-5 mb-5">
-    <div class="hero-content">
-        <div class="hero-icon mb-4">
-            <i class="fas fa-brain fa-4x text-primary"></i>
-        </div>
-        <p class="hero-description lead mb-5">
-            {{ site.data[site.lang].home.hero.description | default: "Build intelligent applications with advanced document processing, AI-powered embeddings, and semantic search capabilities." }}
-        </p>
-        <div class="hero-buttons">
-            <a href="{{ site.baseurl }}/{{ site.lang }}/getting-started" class="btn btn-primary btn-lg me-3">
-                <i class="fas fa-rocket me-2"></i>{{ site.data[site.lang].home.hero.get_started | default: "Get Started" }}
-            </a>
-            <a href="https://github.com/byerlikaya/SmartRAG" class="btn btn-outline-primary btn-lg me-3" target="_blank" rel="noopener noreferrer">
-                <i class="fab fa-github me-2"></i>{{ site.data[site.lang].home.hero.view_github | default: "View on GitHub" }}
-            </a>
-            <a href="https://www.nuget.org/packages/SmartRAG" class="btn btn-outline-success btn-lg" target="_blank" rel="noopener noreferrer">
-                <i class="fas fa-box me-2"></i>{{ site.data[site.lang].home.hero.nuget_package | default: "NuGet Package" }}
-            </a>
-        </div>
-    </div>
-</div>
-
-## 🚀 {{ site.data[site.lang].home.features.title | default: "What is SmartRAG?" }}
-
-SmartRAG is a comprehensive .NET library that provides intelligent document processing, embedding generation, and semantic search capabilities. It's designed to be easy to use while offering powerful features for building AI-powered applications.
-
-<div class="row mt-5 mb-5">
-    <div class="col-md-6">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body p-4">
-                <h5 class="card-title">
-                    <div class="feature-icon">
-                        <i class="fas fa-file-alt text-primary"></i>
+<!-- Hero Section -->
+<section class="hero-section">
+    <div class="hero-background"></div>
+    <div class="container">
+        <div class="row align-items-center min-vh-100">
+            <div class="col-lg-6">
+                <div class="hero-content">
+                    <div class="hero-badge">
+                        <i class="fas fa-star"></i>
+                        <span>Enterprise Ready</span>
                     </div>
-                    {{ site.data[site.lang].home.features.multi_format | default: "Multi-Format Support" }}
-                </h5>
-                <p class="card-text">{{ site.data[site.lang].home.features.multi_format_desc | default: "Process Word, PDF, Excel, and text documents with ease. Our library handles all major document formats automatically." }}</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body p-4">
-                <h5 class="card-title">
-                    <div class="feature-icon">
-                        <i class="fas fa-robot text-success"></i>
+                    <h1 class="hero-title">
+                        Build Intelligent Applications with 
+                        <span class="text-gradient">SmartRAG</span>
+                    </h1>
+                    <p class="hero-description">
+                        The most powerful .NET library for document processing, AI embeddings, and semantic search. 
+                        Transform your applications with enterprise-grade RAG capabilities.
+                    </p>
+                    <div class="hero-stats">
+                        <div class="stat-item">
+                            <div class="stat-number">5+</div>
+                            <div class="stat-label">AI Providers</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number">5+</div>
+                            <div class="stat-label">Storage Options</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-number">100%</div>
+                            <div class="stat-label">Open Source</div>
+                        </div>
                     </div>
-                    {{ site.data[site.lang].home.features.ai_integration | default: "AI Provider Integration" }}
-                </h5>
-                <p class="card-text">{{ site.data[site.lang].home.features.ai_integration_desc | default: "Seamlessly integrate with OpenAI, Anthropic, Azure OpenAI, Gemini, and custom AI providers for powerful embedding generation." }}</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row mb-5">
-    <div class="col-md-6">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body p-4">
-                <h5 class="card-title">
-                    <div class="feature-icon">
-                        <i class="fas fa-database text-warning"></i>
+                    <div class="hero-buttons">
+                        <a href="{{ site.baseurl }}/en/getting-started" class="btn btn-primary btn-lg">
+                            <i class="fas fa-rocket"></i>
+                            Get Started
+                        </a>
+                        <a href="https://github.com/byerlikaya/SmartRAG" class="btn btn-outline-light btn-lg" target="_blank">
+                            <i class="fab fa-github"></i>
+                            View on GitHub
+                        </a>
                     </div>
-                    {{ site.data[site.lang].home.features.vector_storage | default: "Vector Storage" }}
-                </h5>
-                <p class="card-text">{{ site.data[site.lang].home.features.vector_storage_desc | default: "Multiple storage backends including Qdrant, Redis, SQLite, In-Memory, and File System for flexible deployment." }}</p>
+                </div>
             </div>
-        </div>
-    </div>
-    <div class="col-md-6">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body p-4">
-                <h5 class="card-title">
-                    <div class="feature-icon">
-                        <i class="fas fa-search text-info"></i>
-                    </div>
-                    {{ site.data[site.lang].home.features.semantic_search | default: "Semantic Search" }}
-                </h5>
-                <p class="card-text">{{ site.data[site.lang].home.features.semantic_search_desc | default: "Advanced search capabilities with similarity scoring and intelligent result ranking for better user experience." }}</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-## 🌟 {{ site.data[site.lang].home.why_choose.title | default: "Why Choose SmartRAG?" }}
-
-<div class="alert alert-info">
-    <h5><i class="fas fa-star me-2"></i>{{ site.data[site.lang].home.why_choose.enterprise_ready | default: "Enterprise Ready" }}</h5>
-    <p class="mb-0">{{ site.data[site.lang].home.why_choose.enterprise_ready_desc | default: "Built for production environments with performance, scalability, and reliability in mind." }}</p>
-</div>
-
-<div class="alert alert-success">
-    <h5><i class="fas fa-shield-alt me-2"></i>{{ site.data[site.lang].home.why_choose.production_tested | default: "Production Tested" }}</h5>
-    <p class="mb-0">{{ site.data[site.lang].home.why_choose.production_tested_desc | default: "Used in real-world applications with proven track record and active maintenance." }}</p>
-</div>
-
-<div class="alert alert-warning">
-    <h5><i class="fas fa-code me-2"></i>{{ site.data[site.lang].home.why_choose.open_source | default: "Open Source" }}</h5>
-    <p class="mb-0">{{ site.data[site.lang].home.why_choose.open_source_desc | default: "MIT licensed open source project with transparent development and regular updates." }}</p>
-</div>
-
-## ⚡ {{ site.data[site.lang].home.quick_start.title | default: "Quick Start" }}
-
-{{ site.data[site.lang].home.quick_start.description | default: "Get up and running in minutes with our simple setup process:" }}
-
-```csharp
-// Add SmartRAG to your project
+            <div class="col-lg-6">
+                <div class="hero-visual">
+                    <div class="code-window">
+                        <div class="code-header">
+                            <div class="code-dots">
+                                <span></span>
+                                <span></span>
+                                <span></span>
+                            </div>
+                            <div class="code-title">SmartRAG.cs</div>
+                        </div>
+                        <div class="code-content">
+                            <pre><code class="language-csharp">// Add SmartRAG to your project
 services.AddSmartRAG(options =>
 {
     options.AIProvider = AIProvider.Anthropic;
@@ -119,197 +70,334 @@ services.AddSmartRAG(options =>
     options.ApiKey = "your-api-key";
 });
 
-// Use the document service
-var documentService = serviceProvider.GetRequiredService<IDocumentService>();
-var document = await documentService.UploadDocumentAsync(file);
-```
+// Upload and process documents
+var document = await documentService
+    .UploadDocumentAsync(file);
 
-## 🚀 {{ site.data[site.lang].home.supported_tech.title | default: "Supported Technologies" }}
+// Perform semantic search
+var results = await documentService
+    .SearchAsync("your query");</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 
-{{ site.data[site.lang].home.supported_tech.description | default: "SmartRAG integrates with leading AI providers and storage solutions to give you the best possible experience." }}
+<!-- Features Section -->
+<section class="features-section">
+    <div class="container">
+        <div class="section-header text-center">
+            <h2 class="section-title">Why Choose SmartRAG?</h2>
+            <p class="section-description">
+                Everything you need to build intelligent applications with RAG capabilities
+            </p>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-lg-4 col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-brain"></i>
+                    </div>
+                    <h3>AI-Powered</h3>
+                    <p>Integrate with leading AI providers including OpenAI, Anthropic, Gemini, and Azure OpenAI for powerful embeddings.</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-file-alt"></i>
+                    </div>
+                    <h3>Multi-Format Support</h3>
+                    <p>Process Word, PDF, Excel, and text documents with ease. Automatic format detection and text extraction.</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-search"></i>
+                    </div>
+                    <h3>Semantic Search</h3>
+                    <p>Advanced search capabilities with similarity scoring and intelligent result ranking for better user experience.</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <h3>Flexible Storage</h3>
+                    <p>Multiple storage backends including Qdrant, Redis, SQLite, In-Memory, and File System for flexible deployment.</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-rocket"></i>
+                    </div>
+                    <h3>Easy Integration</h3>
+                    <p>Simple setup with dependency injection. Get started in minutes with our comprehensive documentation.</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3>Production Ready</h3>
+                    <p>Built for enterprise environments with performance, scalability, and reliability in mind.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 
-### 🤖 {{ site.data[site.lang].home.supported_tech.ai_providers | default: "AI Providers" }}
+<!-- Providers Section -->
+<section class="providers-section">
+    <div class="container">
+        <div class="section-header text-center">
+            <h2 class="section-title">Supported Technologies</h2>
+            <p class="section-description">
+                Integrate with leading AI providers and storage solutions
+            </p>
+        </div>
+        
+        <div class="providers-grid">
+            <div class="provider-category">
+                <h3>AI Providers</h3>
+                <div class="provider-cards">
+                    <div class="provider-card">
+                        <div class="provider-logo">
+                            <i class="fab fa-google"></i>
+                        </div>
+                        <h4>Gemini</h4>
+                        <p>Google AI</p>
+                    </div>
+                    <div class="provider-card">
+                        <div class="provider-logo">
+                            <i class="fas fa-brain"></i>
+                        </div>
+                        <h4>OpenAI</h4>
+                        <p>GPT Models</p>
+                    </div>
+                    <div class="provider-card">
+                        <div class="provider-logo">
+                            <i class="fas fa-cloud"></i>
+                        </div>
+                        <h4>Azure OpenAI</h4>
+                        <p>Enterprise</p>
+                    </div>
+                    <div class="provider-card">
+                        <div class="provider-logo">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <h4>Anthropic</h4>
+                        <p>Claude Models</p>
+                    </div>
+                    <div class="provider-card">
+                        <div class="provider-logo">
+                            <i class="fas fa-cogs"></i>
+                        </div>
+                        <h4>Custom</h4>
+                        <p>Extensible</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="provider-category">
+                <h3>Storage Providers</h3>
+                <div class="provider-cards">
+                    <div class="provider-card">
+                        <div class="provider-logo">
+                            <i class="fas fa-cube"></i>
+                        </div>
+                        <h4>Qdrant</h4>
+                        <p>Vector Database</p>
+                    </div>
+                    <div class="provider-card">
+                        <div class="provider-logo">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <h4>Redis</h4>
+                        <p>In-Memory Cache</p>
+                    </div>
+                    <div class="provider-card">
+                        <div class="provider-logo">
+                            <i class="fas fa-hdd"></i>
+                        </div>
+                        <h4>SQLite</h4>
+                        <p>Local Database</p>
+                    </div>
+                    <div class="provider-card">
+                        <div class="provider-logo">
+                            <i class="fas fa-microchip"></i>
+                        </div>
+                        <h4>In-Memory</h4>
+                        <p>Fast Development</p>
+                    </div>
+                    <div class="provider-card">
+                        <div class="provider-logo">
+                            <i class="fas fa-folder-open"></i>
+                        </div>
+                        <h4>File System</h4>
+                        <p>Local Storage</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 
-<div class="row mt-4 mb-5">
-    <div class="col-md-2 mb-3">
-        <div class="provider-card text-center p-4">
-            <div class="provider-icon">
-                <i class="fab fa-google"></i>
+<!-- Quick Start Section -->
+<section class="quick-start-section">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-lg-6">
+                <div class="quick-start-content">
+                    <h2>Get Started in Minutes</h2>
+                    <p>SmartRAG is designed to be simple and powerful. Follow these steps to integrate it into your .NET application.</p>
+                    
+                    <div class="steps">
+                        <div class="step">
+                            <div class="step-number">1</div>
+                            <div class="step-content">
+                                <h4>Install Package</h4>
+                                <p>Add SmartRAG to your project via NuGet</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">2</div>
+                            <div class="step-content">
+                                <h4>Configure Services</h4>
+                                <p>Set up your AI and storage providers</p>
+                            </div>
+                        </div>
+                        <div class="step">
+                            <div class="step-number">3</div>
+                            <div class="step-content">
+                                <h4>Start Building</h4>
+                                <p>Upload documents and perform searches</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <a href="{{ site.baseurl }}/en/getting-started" class="btn btn-primary btn-lg">
+                        <i class="fas fa-play"></i>
+                        Start Building
+                    </a>
+                </div>
             </div>
-            <h6>Gemini</h6>
-            <small>Google AI</small>
-        </div>
-    </div>
-    <div class="col-md-2 mb-3">
-        <div class="provider-card text-center p-4">
-            <div class="provider-icon">
-                <i class="fas fa-brain"></i>
-            </div>
-            <h6>OpenAI</h6>
-            <small>GPT Models</small>
-        </div>
-    </div>
-    <div class="col-md-2 mb-3">
-        <div class="provider-card text-center p-4">
-            <div class="provider-icon">
-                <i class="fas fa-cloud"></i>
-            </div>
-            <h6>Azure OpenAI</h6>
-            <small>Enterprise</small>
-        </div>
-    </div>
-    <div class="col-md-2 mb-3">
-        <div class="provider-card text-center p-4">
-            <div class="provider-icon">
-                <i class="fas fa-robot"></i>
-            </div>
-            <h6>Anthropic</h6>
-            <small>Claude Models</small>
-        </div>
-    </div>
-    <div class="col-md-2 mb-3">
-        <div class="provider-card text-center p-4">
-            <div class="provider-icon">
-                <i class="fas fa-cogs"></i>
-            </div>
-            <h6>Custom</h6>
-            <small>Extensible</small>
-        </div>
-    </div>
-</div>
+            <div class="col-lg-6">
+                <div class="code-example">
+                    <div class="code-tabs">
+                        <button class="code-tab active" data-tab="install">Install</button>
+                        <button class="code-tab" data-tab="configure">Configure</button>
+                        <button class="code-tab" data-tab="use">Use</button>
+                    </div>
+                    <div class="code-content">
+                        <div class="code-panel active" id="install">
+                            <pre><code class="language-bash"># Install via Package Manager
+Install-Package SmartRAG
 
-### 🗄️ {{ site.data[site.lang].home.supported_tech.storage_providers | default: "Storage Providers" }}
+# Or via .NET CLI
+dotnet add package SmartRAG</code></pre>
+                        </div>
+                        <div class="code-panel" id="configure">
+                            <pre><code class="language-csharp">// Program.cs
+services.AddSmartRAG(options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.ApiKey = "your-api-key";
+});</code></pre>
+                        </div>
+                        <div class="code-panel" id="use">
+                            <pre><code class="language-csharp">// Use the service
+var documentService = serviceProvider
+    .GetRequiredService&lt;IDocumentService&gt;();
 
-<div class="row mt-4 mb-5">
-    <div class="col-md-2 mb-3">
-        <div class="provider-card text-center p-4">
-            <div class="provider-icon">
-                <i class="fas fa-cube"></i>
-            </div>
-            <h6>Qdrant</h6>
-            <small>Vector Database</small>
-        </div>
-    </div>
-    <div class="col-md-2 mb-3">
-        <div class="provider-card text-center p-4">
-            <div class="provider-icon">
-                <i class="fas fa-database"></i>
-            </div>
-            <h6>Redis</h6>
-            <small>In-Memory Cache</small>
-        </div>
-    </div>
-    <div class="col-md-2 mb-3">
-        <div class="provider-card text-center p-4">
-            <div class="provider-icon">
-                <i class="fas fa-hdd"></i>
-            </div>
-            <h6>SQLite</h6>
-            <small>Local Database</small>
-        </div>
-    </div>
-    <div class="col-md-2 mb-3">
-        <div class="provider-card text-center p-4">
-            <div class="provider-icon">
-                <i class="fas fa-microchip"></i>
-            </div>
-            <h6>In-Memory</h6>
-            <small>Fast Development</small>
-        </div>
-    </div>
-    <div class="col-md-2 mb-3">
-        <div class="provider-card text-center p-4">
-            <div class="provider-icon">
-                <i class="fas fa-folder-open"></i>
-            </div>
-            <h6>File System</h6>
-            <small>Local Storage</small>
-        </div>
-    </div>
-</div>
+var document = await documentService
+    .UploadDocumentAsync(file);
 
-## 📚 {{ site.data[site.lang].home.documentation.title | default: "Documentation" }}
+var results = await documentService
+    .SearchAsync("your query");</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 
-<div class="row mt-4">
-    <div class="col-md-4 mb-3">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center p-4">
-                <i class="fas fa-rocket fa-2x text-primary mb-3"></i>
-                <h5 class="card-title">{{ site.data[site.lang].home.documentation.getting_started | default: "Getting Started" }}</h5>
-                <p class="card-text">{{ site.data[site.lang].home.documentation.getting_started_desc | default: "Quick installation and setup guide to get you up and running." }}</p>
-                <a href="{{ site.baseurl }}/{{ site.lang }}/getting-started" class="btn btn-primary">{{ site.data[site.lang].home.hero.get_started | default: "Get Started" }}</a>
+<!-- Documentation Section -->
+<section class="documentation-section">
+    <div class="container">
+        <div class="section-header text-center">
+            <h2 class="section-title">Documentation</h2>
+            <p class="section-description">
+                Everything you need to build with SmartRAG
+            </p>
+        </div>
+        
+        <div class="row g-4">
+            <div class="col-lg-3 col-md-6">
+                <a href="{{ site.baseurl }}/en/getting-started" class="doc-card">
+                    <div class="doc-icon">
+                        <i class="fas fa-rocket"></i>
+                    </div>
+                    <h3>Getting Started</h3>
+                    <p>Quick installation and setup guide</p>
+                </a>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <a href="{{ site.baseurl }}/en/configuration" class="doc-card">
+                    <div class="doc-icon">
+                        <i class="fas fa-cog"></i>
+                    </div>
+                    <h3>Configuration</h3>
+                    <p>Detailed configuration options</p>
+                </a>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <a href="{{ site.baseurl }}/en/api-reference" class="doc-card">
+                    <div class="doc-icon">
+                        <i class="fas fa-code"></i>
+                    </div>
+                    <h3>API Reference</h3>
+                    <p>Complete API documentation</p>
+                </a>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <a href="{{ site.baseurl }}/en/examples" class="doc-card">
+                    <div class="doc-icon">
+                        <i class="fas fa-lightbulb"></i>
+                    </div>
+                    <h3>Examples</h3>
+                    <p>Real-world examples and samples</p>
+                </a>
             </div>
         </div>
     </div>
-    <div class="col-md-4 mb-3">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center p-4">
-                <i class="fas fa-cog fa-2x text-success mb-3"></i>
-                <h5 class="card-title">{{ site.data[site.lang].home.documentation.configuration | default: "Configuration" }}</h5>
-                <p class="card-text">{{ site.data[site.lang].home.documentation.configuration_desc | default: "Detailed configuration options and best practices." }}</p>
-                <a href="{{ site.baseurl }}/{{ site.lang }}/configuration" class="btn btn-success">Configure</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4 mb-3">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center p-4">
-                <i class="fas fa-code fa-2x text-warning mb-3"></i>
-                <h5 class="card-title">{{ site.data[site.lang].home.documentation.api_reference | default: "API Reference" }}</h5>
-                <p class="card-text">{{ site.data[site.lang].home.documentation.api_reference_desc | default: "Complete API documentation with examples and usage patterns." }}</p>
-                <a href="{{ site.baseurl }}/{{ site.lang }}/api-reference" class="btn btn-warning">View API</a>
-            </div>
-        </div>
-    </div>
-</div>
+</section>
 
-<div class="row mt-4">
-    <div class="col-md-3 mb-3">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center p-4">
-                <i class="fas fa-lightbulb fa-2x text-info mb-3"></i>
-                <h5 class="card-title">{{ site.data[site.lang].home.documentation.examples | default: "Examples" }}</h5>
-                <p class="card-text">{{ site.data[site.lang].home.documentation.examples_desc | default: "Real-world examples and sample applications to learn from." }}</p>
-                <a href="{{ site.baseurl }}/{{ site.lang }}/examples" class="btn btn-info">View Examples</a>
+<!-- CTA Section -->
+<section class="cta-section">
+    <div class="container">
+        <div class="cta-content text-center">
+            <h2>Ready to Build Something Amazing?</h2>
+            <p>Join thousands of developers using SmartRAG to build intelligent applications</p>
+            <div class="cta-buttons">
+                <a href="{{ site.baseurl }}/en/getting-started" class="btn btn-primary btn-lg">
+                    <i class="fas fa-rocket"></i>
+                    Get Started Now
+                </a>
+                <a href="https://github.com/byerlikaya/SmartRAG" class="btn btn-outline-light btn-lg" target="_blank">
+                    <i class="fab fa-github"></i>
+                    Star on GitHub
+                </a>
             </div>
         </div>
     </div>
-    <div class="col-md-3 mb-3">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center p-4">
-                <i class="fas fa-tools fa-2x text-danger mb-3"></i>
-                <h5 class="card-title">{{ site.data[site.lang].home.documentation.troubleshooting | default: "Troubleshooting" }}</h5>
-                <p class="card-text">{{ site.data[site.lang].home.documentation.troubleshooting_desc | default: "Common issues and solutions to help you resolve problems." }}</p>
-                <a href="{{ site.baseurl }}/{{ site.lang }}/troubleshooting" class="btn btn-danger">Get Help</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3 mb-3">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center p-4">
-                <i class="fas fa-history fa-2x text-secondary mb-3"></i>
-                <h5 class="card-title">{{ site.data[site.lang].home.documentation.changelog | default: "Changelog" }}</h5>
-                <p class="card-text">{{ site.data[site.lang].home.documentation.changelog_desc | default: "Track new features, improvements, and bug fixes across versions." }}</p>
-                <a href="{{ site.baseurl }}/{{ site.lang }}/changelog" class="btn btn-secondary">View Changes</a>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3 mb-3">
-        <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center p-4">
-                <i class="fas fa-hands-helping fa-2x text-dark mb-3"></i>
-                <h5 class="card-title">{{ site.data[site.lang].home.documentation.contributing | default: "Contributing" }}</h5>
-                <p class="card-text">{{ site.data[site.lang].home.documentation.contributing_desc | default: "Learn how to contribute to SmartRAG development." }}</p>
-                <a href="{{ site.baseurl }}/{{ site.lang }}/contributing" class="btn btn-dark">Contribute</a>
-            </div>
-        </div>
-    </div>
-</div>
-
----
-
-<div class="text-center mt-5">
-    <p class="text-muted">
-        <i class="fas fa-heart text-danger"></i> {{ site.data[site.lang].home.footer.built_by | default: "Built with love by Barış Yerlikaya" }}
-    </p>
-</div>
+</section>
