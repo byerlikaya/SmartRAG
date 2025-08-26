@@ -15,7 +15,7 @@ lang: tr
             .NET uygulamaları için kurumsal düzeyde RAG kütüphanesi
         </p>
         <p class="hero-description mb-5">
-            Gelişmiş belge işleme, AI destekli embedding üretimi ve anlamsal arama yetenekleri ile akıllı uygulamalar geliştirin.
+            Gelişmiş belge işleme, AI destekli embedding'ler ve anlamsal arama yetenekleri ile akıllı uygulamalar oluşturun.
         </p>
         <div class="hero-buttons">
             <a href="{{ site.baseurl }}/tr/getting-started" class="btn btn-primary btn-lg me-3">
@@ -33,28 +33,32 @@ lang: tr
 
 ## 🚀 SmartRAG Nedir?
 
-SmartRAG, akıllı belge işleme, embedding üretimi ve anlamsal arama yetenekleri sağlayan kapsamlı bir .NET kütüphanesidir. AI destekli uygulamalar geliştirmek için güçlü özellikler sunarken kullanımı kolay olacak şekilde tasarlanmıştır.
+SmartRAG, akıllı belge işleme, embedding üretimi ve anlamsal arama yetenekleri sağlayan kapsamlı bir .NET kütüphanesidir. AI destekli uygulamalar oluşturmak için güçlü özellikler sunarken kullanımı kolay olacak şekilde tasarlanmıştır.
 
 <div class="row mt-5 mb-5">
     <div class="col-md-6">
         <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center p-4">
-                <div class="feature-icon mb-3">
-                    <i class="fas fa-file-alt fa-3x text-primary"></i>
-                </div>
-                <h5 class="card-title">Çoklu Format Desteği</h5>
-                <p class="card-text">Word, PDF, Excel ve metin belgelerini kolayca işleyin. Kütüphanemiz tüm ana belge formatlarını otomatik olarak ele alır.</p>
+            <div class="card-body p-4">
+                <h5 class="card-title">
+                    <div class="feature-icon">
+                        <i class="fas fa-file-alt text-primary"></i>
+                    </div>
+                    Çoklu Format Desteği
+                </h5>
+                <p class="card-text">Word, PDF, Excel ve metin belgelerini kolayca işleyin. Kütüphanemiz tüm büyük belge formatlarını otomatik olarak işler.</p>
             </div>
         </div>
     </div>
     <div class="col-md-6">
         <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center p-4">
-                <div class="feature-icon mb-3">
-                    <i class="fas fa-robot fa-3x text-success"></i>
-                </div>
-                <h5 class="card-title">AI Sağlayıcı Entegrasyonu</h5>
-                <p class="card-text">OpenAI, Anthropic, Azure OpenAI, Gemini ve özel AI sağlayıcıları ile güçlü embedding üretimi için sorunsuz entegrasyon.</p>
+            <div class="card-body p-4">
+                <h5 class="card-title">
+                    <div class="feature-icon">
+                        <i class="fas fa-robot text-success"></i>
+                    </div>
+                    AI Sağlayıcı Entegrasyonu
+                </h5>
+                <p class="card-text">Güçlü embedding üretimi için OpenAI, Anthropic, Azure OpenAI, Gemini ve özel AI sağlayıcıları ile sorunsuz entegrasyon.</p>
             </div>
         </div>
     </div>
@@ -63,34 +67,55 @@ SmartRAG, akıllı belge işleme, embedding üretimi ve anlamsal arama yetenekle
 <div class="row mb-5">
     <div class="col-md-6">
         <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center p-4">
-                <div class="feature-icon mb-3">
-                    <i class="fas fa-database fa-3x text-warning"></i>
-                </div>
-                <h5 class="card-title">Vektör Depolama</h5>
-                <p class="card-text">Qdrant, Redis, SQLite, Bellek İçi, Dosya Sistemi ve özel depolama dahil çoklu depolama backend'leri ile esnek dağıtım.</p>
+            <div class="card-body p-4">
+                <h5 class="card-title">
+                    <div class="feature-icon">
+                        <i class="fas fa-database text-warning"></i>
+                    </div>
+                    Vektör Depolama
+                </h5>
+                <p class="card-text">Esnek dağıtım için Qdrant, Redis, SQLite, In-Memory ve File System dahil olmak üzere çoklu depolama arka uçları.</p>
             </div>
         </div>
     </div>
     <div class="col-md-6">
         <div class="card h-100 border-0 shadow-sm">
-            <div class="card-body text-center p-4">
-                <div class="feature-icon mb-3">
-                    <i class="fas fa-search fa-3x text-info"></i>
-                </div>
-                <h5 class="card-title">Anlamsal Arama</h5>
+            <div class="card-body p-4">
+                <h5 class="card-title">
+                    <div class="feature-icon">
+                        <i class="fas fa-search text-info"></i>
+                    </div>
+                    Anlamsal Arama
+                </h5>
                 <p class="card-text">Daha iyi kullanıcı deneyimi için benzerlik puanlaması ve akıllı sonuç sıralaması ile gelişmiş arama yetenekleri.</p>
             </div>
         </div>
     </div>
 </div>
 
+## 🌟 Neden SmartRAG?
+
+<div class="alert alert-info">
+    <h5><i class="fas fa-star me-2"></i>Kurumsal Hazır</h5>
+    <p class="mb-0">Performans, ölçeklenebilirlik ve güvenilirlik göz önünde bulundurularak üretim ortamları için inşa edilmiştir.</p>
+</div>
+
+<div class="alert alert-success">
+    <h5><i class="fas fa-shield-alt me-2"></i>Üretimde Test Edilmiş</h5>
+    <p class="mb-0">Kanıtlanmış geçmişe sahip gerçek dünya uygulamalarında kullanılmış ve aktif bakım yapılmaktadır.</p>
+</div>
+
+<div class="alert alert-warning">
+    <h5><i class="fas fa-code me-2"></i>Açık Kaynak</h5>
+    <p class="mb-0">Şeffaf geliştirme ve düzenli güncellemeler ile MIT lisanslı açık kaynak projesi.</p>
+</div>
+
 ## ⚡ Hızlı Başlangıç
 
-Basit kurulum süreci ile dakikalar içinde çalışmaya başlayın:
+Basit kurulum sürecimizle dakikalar içinde çalışmaya başlayın:
 
 ```csharp
-// Projenize SmartRAG ekleyin
+// SmartRAG'ı projenize ekleyin
 services.AddSmartRAG(options =>
 {
     options.AIProvider = AIProvider.Anthropic;
@@ -161,57 +186,48 @@ SmartRAG, size en iyi deneyimi sunmak için önde gelen AI sağlayıcıları ve 
 
 <div class="row mt-4 mb-5">
     <div class="col-md-2 mb-3">
-        <div class="tech-logo-card text-center p-3">
-            <div class="tech-logo mb-2">
-                <i class="fas fa-cube fa-3x text-primary"></i>
+        <div class="provider-card text-center p-4">
+            <div class="provider-icon">
+                <i class="fas fa-cube"></i>
             </div>
-            <h6 class="mb-1">Qdrant</h6>
-            <small class="text-muted">Vektör Veritabanı</small>
+            <h6>Qdrant</h6>
+            <small>Vektör Veritabanı</small>
         </div>
     </div>
     <div class="col-md-2 mb-3">
-        <div class="tech-logo-card text-center p-3">
-            <div class="tech-logo mb-2">
-                <i class="fab fa-redis fa-3x text-success"></i>
+        <div class="provider-card text-center p-4">
+            <div class="provider-icon">
+                <i class="fas fa-database"></i>
             </div>
-            <h6 class="mb-1">Redis</h6>
-            <small class="text-muted">Bellek İçi Önbellek</small>
+            <h6>Redis</h6>
+            <small>Bellek İçi Önbellek</small>
         </div>
     </div>
     <div class="col-md-2 mb-3">
-        <div class="tech-logo-card text-center p-3">
-            <div class="tech-logo mb-2">
-                <i class="fas fa-hdd fa-3x text-info"></i>
+        <div class="provider-card text-center p-4">
+            <div class="provider-icon">
+                <i class="fas fa-hdd"></i>
             </div>
-            <h6 class="mb-1">SQLite</h6>
-            <small class="text-muted">Yerel Veritabanı</small>
+            <h6>SQLite</h6>
+            <small>Yerel Veritabanı</small>
         </div>
     </div>
     <div class="col-md-2 mb-3">
-        <div class="tech-logo-card text-center p-3">
-            <div class="tech-logo mb-2">
-                <i class="fas fa-microchip fa-3x text-warning"></i>
+        <div class="provider-card text-center p-4">
+            <div class="provider-icon">
+                <i class="fas fa-microchip"></i>
             </div>
-            <h6 class="mb-1">Bellek İçi</h6>
-            <small class="text-muted">Hızlı Geliştirme</small>
+            <h6>In-Memory</h6>
+            <small>Hızlı Geliştirme</small>
         </div>
     </div>
     <div class="col-md-2 mb-3">
-        <div class="tech-logo-card text-center p-3">
-            <div class="tech-logo mb-2">
-                <i class="fas fa-folder-open fa-3x text-secondary"></i>
+        <div class="provider-card text-center p-4">
+            <div class="provider-icon">
+                <i class="fas fa-folder-open"></i>
             </div>
-            <h6 class="mb-1">Dosya Sistemi</h6>
-            <small class="text-muted">Yerel Depolama</small>
-        </div>
-    </div>
-    <div class="col-md-2 mb-3">
-        <div class="tech-logo-card text-center p-3">
-            <div class="tech-logo mb-2">
-                <i class="fas fa-cogs fa-3x text-dark"></i>
-            </div>
-            <h6 class="mb-1">Özel</h6>
-            <small class="text-muted">Genişletilebilir Depolama</small>
+            <h6>File System</h6>
+            <small>Yerel Depolama</small>
         </div>
     </div>
 </div>
@@ -224,7 +240,7 @@ SmartRAG, size en iyi deneyimi sunmak için önde gelen AI sağlayıcıları ve 
             <div class="card-body text-center p-4">
                 <i class="fas fa-rocket fa-2x text-primary mb-3"></i>
                 <h5 class="card-title">Başlangıç</h5>
-                <p class="card-text">Sizi çalışır duruma getirmek için hızlı kurulum ve kurulum rehberi.</p>
+                <p class="card-text">Hızlı kurulum ve kurulum kılavuzu ile çalışmaya başlayın.</p>
                 <a href="{{ site.baseurl }}/tr/getting-started" class="btn btn-primary">Başlayın</a>
             </div>
         </div>
@@ -277,7 +293,7 @@ SmartRAG, size en iyi deneyimi sunmak için önde gelen AI sağlayıcıları ve 
             <div class="card-body text-center p-4">
                 <i class="fas fa-history fa-2x text-secondary mb-3"></i>
                 <h5 class="card-title">Değişiklik Günlüğü</h5>
-                <p class="card-text">Sürümler arasında yeni özellikleri, iyileştirmeleri ve hata düzeltmelerini takip edin.</p>
+                <p class="card-text">Sürümler arasında yeni özellikler, iyileştirmeler ve hata düzeltmelerini takip edin.</p>
                 <a href="{{ site.baseurl }}/tr/changelog" class="btn btn-secondary">Değişiklikleri Görüntüle</a>
             </div>
         </div>
@@ -294,49 +310,10 @@ SmartRAG, size en iyi deneyimi sunmak için önde gelen AI sağlayıcıları ve 
     </div>
 </div>
 
-## 🌟 Neden SmartRAG?
-
-<div class="alert alert-info">
-    <h5><i class="fas fa-star me-2"></i>Kurumsal Hazır</h5>
-    <p class="mb-0">Performans, ölçeklenebilirlik ve güvenilirlik göz önünde bulundurularak üretim ortamları için inşa edilmiştir.</p>
-</div>
-
-<div class="alert alert-success">
-    <h5><i class="fas fa-shield-alt me-2"></i>Üretimde Test Edildi</h5>
-    <p class="mb-0">Gerçek dünya uygulamalarında kullanılan, kanıtlanmış geçmişe ve aktif bakıma sahip.</p>
-</div>
-
-<div class="alert alert-warning">
-    <h5><i class="fas fa-code me-2"></i>Açık Kaynak</h5>
-    <p class="mb-0">MIT lisanslı açık kaynak proje, şeffaf geliştirme ve düzenli güncellemeler.</p>
-</div>
-
-## 📦 Kurulum
-
-SmartRAG'ı NuGet üzerinden kurun:
-
-```bash
-dotnet add package SmartRAG
-```
-
-Veya Package Manager kullanarak:
-
-```bash
-Install-Package SmartRAG
-```
-
-## 🤝 Katkıda Bulunma
-
-Katkılarınızı bekliyoruz! Detaylar için [Katkıda Bulunma Rehberi]({{ site.baseurl }}/tr/contributing) sayfamıza bakın.
-
-## 📄 Lisans
-
-Bu proje MIT Lisansı altında lisanslanmıştır - detaylar için [LICENSE](https://github.com/byerlikaya/SmartRAG/blob/main/LICENSE) dosyasına bakın.
-
 ---
 
 <div class="text-center mt-5">
     <p class="text-muted">
-        <i class="fas fa-heart text-danger"></i> Barış Yerlikaya tarafından sevgiyle inşa edildi
+        <i class="fas fa-heart text-danger"></i> Barış Yerlikaya tarafından sevgiyle yapılmıştır
     </p>
 </div>
