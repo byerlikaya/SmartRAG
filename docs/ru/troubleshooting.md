@@ -1,381 +1,471 @@
 ---
 layout: default
-title: Troubleshooting
-description: Common issues and solutions to help you resolve problems with SmartRAG
-lang: en
+title: Устранение неполадок
+description: Частые проблемы и решения для SmartRAG
+lang: ru
 ---
 
-# Troubleshooting
+<div class="page-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center">
+                <h1 class="page-title">Устранение неполадок</h1>
+                <p class="page-description">
+                    Частые проблемы и решения для SmartRAG
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
 
-Common issues and solutions to help you resolve problems with SmartRAG.
+<div class="page-content">
+    <div class="container">
+        <!-- Common Issues Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Частые проблемы</h2>
+                    <p>Частые проблемы и решения, с которыми вы можете столкнуться при использовании SmartRAG.</p>
 
-## Common Issues
+                    <h3>Проблемы компиляции</h3>
+                    <div class="alert alert-warning">
+                        <h4><i class="fas fa-exclamation-triangle me-2"></i>Внимание</h4>
+                        <p class="mb-0">Сначала создайте чистое решение для устранения ошибок компиляции.</p>
+                    </div>
 
-### Build Errors
+                    <h4>Ошибка пакета NuGet</h4>
+                    <div class="code-example">
+                        <pre><code class="language-bash"># Чистое решение
+dotnet clean
+dotnet restore
+dotnet build</code></pre>
+                    </div>
 
-#### CS0246: The type or namespace name 'SmartRAG' could not be found
+                    <h4>Конфликт зависимостей</h4>
+                    <div class="code-example">
+                        <pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="1.1.0" /&gt;
+&lt;PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" /&gt;
+&lt;PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" /&gt;</code></pre>
+                    </div>
 
-**Problem**: The SmartRAG package is not properly referenced.
+                    <h3>Проблемы времени выполнения</h3>
+                    
+                    <h4>Ошибка API ключа</h4>
+                    <div class="alert alert-danger">
+                        <h4><i class="fas fa-times-circle me-2"></i>Ошибка</h4>
+                        <p class="mb-0">UnauthorizedAccessException: API ключ недействителен или отсутствует.</p>
+                    </div>
 
-**Solution**: 
-1. Ensure the package is installed:
-   ```bash
-   dotnet add package SmartRAG
-   ```
-2. Check your `.csproj` file includes the reference:
-   ```xml
-   <PackageReference Include="SmartRAG" Version="1.0.3" />
-   ```
-3. Restore packages:
-   ```bash
-   dotnet restore
-   ```
-
-#### CS1061: 'IServiceCollection' does not contain a definition for 'AddSmartRAG'
-
-**Problem**: The SmartRAG extension method is not available.
-
-**Solution**:
-1. Add the using statement:
-   ```csharp
-   using SmartRAG.Extensions;
-   ```
-2. Ensure the package is properly installed and referenced.
-
-### Runtime Errors
-
-#### InvalidOperationException: No AI provider configured
-
-**Problem**: SmartRAG is not properly configured with an AI provider.
-
-**Solution**:
-```csharp
-services.AddSmartRAG(options =>
+                    <div class="code-example">
+                        <pre><code class="language-json">// appsettings.json
 {
-    options.AIProvider = AIProvider.Anthropic; // or OpenAI, AzureOpenAI, etc.
-    options.ApiKey = "your-api-key";
-    options.StorageProvider = StorageProvider.Qdrant; // or Redis, SQLite, etc.
+  "SmartRAG": {
+    "AIProvider": "Anthropic",
+    "Anthropic": {
+      "ApiKey": "your-api-key-here",
+      "Model": "claude-3-sonnet-20240229"
+    }
+  }
+}</code></pre>
+                    </div>
+
+                    <h4>Таймаут соединения</h4>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">services.AddSmartRAG(configuration, options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.MaxRetryAttempts = 5;
+    options.RetryDelayMs = 2000;
+    options.RetryPolicy = RetryPolicy.ExponentialBackoff;
+});</code></pre>
+                    </div>
+
+                    <h3>Проблемы производительности</h3>
+                    
+                    <h4>Медленный поиск</h4>
+                    <div class="alert alert-info">
+                        <h4><i class="fas fa-info-circle me-2"></i>Совет</h4>
+                        <p class="mb-0">Оптимизируйте размеры чанков для улучшения производительности.</p>
+                    </div>
+
+                    <div class="code-example">
+                        <pre><code class="language-csharp">services.AddSmartRAG(configuration, options =>
+{
+    options.MaxChunkSize = 1000;  // Рекомендуется 1000-1500
+    options.ChunkOverlap = 200;   // Рекомендуется 200-300
+    options.MaxRetryAttempts = 3;
+});</code></pre>
+                    </div>
+
+                    <h4>Использование памяти</h4>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Используйте потоковую передачу для больших файлов
+public async Task&lt;Document&gt; UploadLargeDocumentAsync(IFormFile file)
+{
+    using var stream = file.OpenReadStream();
+    var chunks = await _documentParserService.ChunkTextAsync(stream, 1000, 200);
+    
+    var document = new Document
+    {
+        Id = Guid.NewGuid().ToString(),
+        FileName = file.FileName,
+        Content = await _documentParserService.ParseDocumentAsync(file),
+        ContentType = file.ContentType,
+        FileSize = file.Length,
+        UploadedAt = DateTime.UtcNow
+    };
+    
+    return document;
+}</code></pre>
+                    </div>
+
+                    <h3>Проблемы конфигурации</h3>
+                    
+                    <h4>Неправильный выбор провайдера</h4>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Правильная конфигурация
+services.AddSmartRAG(configuration, options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    
+    // Необходимые настройки для Qdrant
+    options.Qdrant = new QdrantOptions
+    {
+        Host = "localhost",
+        Port = 6333,
+        CollectionName = "smartrag_documents"
+    };
+});</code></pre>
+                    </div>
+
+                    <h4>Отсутствующие зависимости</h4>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Program.cs
+var builder = WebApplication.CreateBuilder(args);
+
+// Необходимые сервисы
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+// SmartRAG сервисы
+builder.Services.AddSmartRAG(builder.Configuration, options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
 });
-```
 
-#### UnauthorizedAccessException: Invalid API key
+var app = builder.Build();
 
-**Problem**: The API key is invalid or expired.
-
-**Solution**:
-1. Verify your API key is correct
-2. Check if the API key has expired
-3. Ensure the API key has the necessary permissions
-4. For OpenAI, verify the key is from the correct organization
-
-#### ConnectionException: Unable to connect to storage provider
-
-**Problem**: Cannot connect to the configured storage provider.
-
-**Solution**:
-1. **Qdrant**: Check if Qdrant is running and accessible
-   ```bash
-   curl http://localhost:6333/collections
-   ```
-2. **Redis**: Verify Redis connection
-   ```bash
-   redis-cli ping
-   ```
-3. **SQLite**: Check file permissions and path
-4. **Network**: Verify firewall settings and network connectivity
-
-### Performance Issues
-
-#### Slow Document Processing
-
-**Problem**: Document processing is taking too long.
-
-**Solution**:
-1. Reduce chunk size:
-   ```csharp
-   options.ChunkSize = 500; // Default is 1000
-   ```
-2. Use smaller overlap:
-   ```csharp
-   options.ChunkOverlap = 100; // Default is 200
-   ```
-3. Consider using faster storage providers (Redis over SQLite)
-4. Implement caching for frequently accessed documents
-
-#### High Memory Usage
-
-**Problem**: Application is consuming too much memory.
-
-**Solution**:
-1. Process documents in smaller batches
-2. Implement streaming for large files
-3. Use memory-efficient storage providers
-4. Monitor and dispose of resources properly
-
-### Configuration Issues
-
-#### Missing Configuration Values
-
-**Problem**: Required configuration values are missing.
-
-**Solution**:
-1. Check `appsettings.json`:
-   ```json
-   {
-     "SmartRAG": {
-       "AIProvider": "Anthropic",
-       "StorageProvider": "Qdrant",
-       "ApiKey": "your-api-key"
-     }
-   }
-   ```
-2. Use environment variables:
-   ```bash
-   export SMARTRAG_API_KEY="your-api-key"
-   export SMARTRAG_AI_PROVIDER="Anthropic"
-   ```
-
-#### Incorrect Provider Configuration
-
-**Problem**: Provider-specific configuration is incorrect.
-
-**Solution**:
-1. **Qdrant**:
-   ```csharp
-   options.QdrantUrl = "http://localhost:6333";
-   options.CollectionName = "smartrag_documents";
-   ```
-2. **Redis**:
-   ```csharp
-   options.RedisConnectionString = "localhost:6379";
-   options.DatabaseId = 0;
-   ```
-3. **SQLite**:
-   ```csharp
-   options.ConnectionString = "Data Source=smartrag.db";
-   ```
-
-## Debugging
-
-### Enable Logging
-
-```csharp
-services.AddLogging(builder =>
+// Пайплайн middleware
+if (app.Environment.IsDevelopment())
 {
-    builder.AddConsole();
-    builder.AddDebug();
-    builder.SetMinimumLevel(LogLevel.Debug);
-});
-```
-
-### Check Service Registration
-
-```csharp
-// In Program.cs or Startup.cs
-var serviceProvider = services.BuildServiceProvider();
-
-// Check if services are registered
-var documentService = serviceProvider.GetService<IDocumentService>();
-if (documentService == null)
-{
-    Console.WriteLine("IDocumentService is not registered!");
+    app.UseSwagger();
+    app.UseSwaggerUI();
 }
 
-var aiService = serviceProvider.GetService<IAIService>();
-if (aiService == null)
-{
-    Console.WriteLine("IAIService is not registered!");
-}
-```
+app.UseHttpsRedirection();
+app.UseAuthorization();
+app.MapControllers();
 
-### Validate Configuration
+app.Run();</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-```csharp
-public class ConfigurationValidator
+        <!-- Debugging Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Отладка</h2>
+                    <p>Техники отладки для вашего SmartRAG приложения.</p>
+                    
+                    <h3>Конфигурация логирования</h3>
+                    <div class="code-example">
+                        <pre><code class="language-json">// appsettings.json
 {
-    public static bool ValidateSmartRagOptions(SmartRagOptions options)
-    {
-        if (string.IsNullOrEmpty(options.ApiKey))
-        {
-            throw new ArgumentException("API key is required");
-        }
-        
-        if (options.ChunkSize <= 0)
-        {
-            throw new ArgumentException("Chunk size must be positive");
-        }
-        
-        if (options.ChunkOverlap < 0)
-        {
-            throw new ArgumentException("Chunk overlap cannot be negative");
-        }
-        
-        return true;
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "SmartRAG": "Debug",
+      "Microsoft": "Warning",
+      "Microsoft.Hosting.Lifetime": "Information"
     }
-}
-```
+  }
+}</code></pre>
+                    </div>
 
-## Testing
-
-### Unit Test Setup
-
-```csharp
-[TestFixture]
-public class SmartRAGTests
+                    <h3>Детальная отладка</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public class DocumentController : ControllerBase
 {
-    private ServiceCollection _services;
-    private ServiceProvider _serviceProvider;
-    
-    [SetUp]
-    public void Setup()
+    private readonly IDocumentService _documentService;
+    private readonly ILogger&lt;DocumentController&gt; _logger;
+
+    public DocumentController(IDocumentService documentService, ILogger&lt;DocumentController&gt; logger)
     {
-        _services = new ServiceCollection();
-        
-        // Add test configuration
-        _services.AddSmartRAG(options =>
+        _documentService = documentService;
+        _logger = logger;
+    }
+
+    [HttpPost("upload")]
+    public async Task&lt;ActionResult&lt;Document&gt;&gt; UploadDocument(IFormFile file)
+    {
+        _logger.LogInformation("Загрузка документа начата: {FileName}, Размер: {Size}", 
+            file?.FileName, file?.Length);
+
+        try
         {
-            options.AIProvider = AIProvider.InMemory; // Use in-memory for testing
-            options.StorageProvider = StorageProvider.InMemory;
-            options.ApiKey = "test-key";
-        });
-        
-        _serviceProvider = _services.BuildServiceProvider();
-    }
-    
-    [Test]
-    public async Task UploadDocument_ValidFile_ReturnsDocument()
-    {
-        // Arrange
-        var documentService = _serviceProvider.GetRequiredService<IDocumentService>();
-        var file = CreateTestFile();
-        
-        // Act
-        var result = await documentService.UploadDocumentAsync(file);
-        
-        // Assert
-        Assert.IsNotNull(result);
-        Assert.IsNotEmpty(result.Id);
-    }
-}
-```
-
-### Integration Test Setup
-
-```csharp
-[TestFixture]
-public class SmartRAGIntegrationTests
-{
-    private WebApplicationFactory<Program> _factory;
-    
-    [SetUp]
-    public void Setup()
-    {
-        _factory = new WebApplicationFactory<Program>()
-            .WithWebHostBuilder(builder =>
+            if (file == null || file.Length == 0)
             {
-                builder.ConfigureAppConfiguration((context, config) =>
-                {
-                    config.AddInMemoryCollection(new Dictionary<string, string>
-                    {
-                        ["SmartRAG:AIProvider"] = "InMemory",
-                        ["SmartRAG:StorageProvider"] = "InMemory",
-                        ["SmartRAG:ApiKey"] = "test-key"
-                    });
-                });
-            });
-    }
-    
-    [Test]
-    public async Task UploadEndpoint_ValidFile_ReturnsSuccess()
-    {
-        // Arrange
-        var client = _factory.CreateClient();
-        var file = CreateTestFile();
-        var content = new MultipartFormDataContent();
-        content.Add(new StreamContent(file.OpenReadStream()), "file", file.FileName);
-        
-        // Act
-        var response = await client.PostAsync("/api/documents/upload", content);
-        
-        // Assert
-        Assert.IsTrue(response.IsSuccessStatusCode);
-    }
-}
-```
+                _logger.LogWarning("Файл null или пустой");
+                return BadRequest("Файл не выбран");
+            }
 
-## Getting Help
-
-### Check Documentation
-
-- [Getting Started]({{ site.baseurl }}/en/getting-started) - Basic setup guide
-- [Configuration]({{ site.baseurl }}/en/configuration) - Configuration options
-- [API Reference]({{ site.baseurl }}/en/api-reference) - API documentation
-
-### Community Support
-
-- [GitHub Issues](https://github.com/byerlikaya/SmartRAG/issues) - Report bugs and request features
-- [GitHub Discussions](https://github.com/byerlikaya/SmartRAG/discussions) - Ask questions and share solutions
-
-### Contact Support
-
-- **Email**: [b.yerlikaya@outlook.com](mailto:b.yerlikaya@outlook.com)
-- **Response Time**: Usually within 24 hours
-
-### Provide Information
-
-When reporting an issue, please include:
-
-1. **Environment**: .NET version, OS, SmartRAG version
-2. **Configuration**: Your SmartRAG configuration
-3. **Error Details**: Full error message and stack trace
-4. **Steps to Reproduce**: Clear steps to reproduce the issue
-5. **Expected vs Actual**: What you expected vs what happened
-
-## Prevention
-
-### Best Practices
-
-1. **Always validate configuration** before starting the application
-2. **Use environment-specific settings** for different deployment environments
-3. **Implement proper error handling** and logging
-4. **Test with small documents first** before processing large files
-5. **Monitor performance metrics** in production
-6. **Keep dependencies updated** to the latest stable versions
-
-### Configuration Validation
-
-```csharp
-public static class SmartRAGConfigurationValidator
-{
-    public static void ValidateConfiguration(SmartRagOptions options)
-    {
-        var errors = new List<string>();
-        
-        if (string.IsNullOrEmpty(options.ApiKey))
-            errors.Add("API key is required");
+            _logger.LogDebug("Файл проверен, начинается обработка");
+            var document = await _documentService.UploadDocumentAsync(file);
             
-        if (options.ChunkSize <= 0)
-            errors.Add("Chunk size must be positive");
-            
-        if (options.ChunkOverlap < 0)
-            errors.Add("Chunk overlap cannot be negative");
-            
-        if (options.ChunkOverlap >= options.ChunkSize)
-            errors.Add("Chunk overlap must be less than chunk size");
-        
-        if (errors.Any())
+            _logger.LogInformation("Документ успешно загружен: {DocumentId}", document.Id);
+            return Ok(document);
+        }
+        catch (ArgumentException ex)
         {
-            throw new InvalidOperationException(
-                $"SmartRAG configuration validation failed: {string.Join(", ", errors)}");
+            _logger.LogError(ex, "Неверный формат файла: {FileName}", file?.FileName);
+            return BadRequest($"Неверный формат файла: {ex.Message}");
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogError(ex, "Ошибка API ключа");
+            return Unauthorized("Неверный API ключ");
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogError(ex, "Ошибка сетевого подключения");
+            return StatusCode(503, "Сервис временно недоступен");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Произошла неожиданная ошибка");
+            return StatusCode(500, "Внутренняя ошибка сервера");
         }
     }
+}</code></pre>
+                    </div>
+
+                    <h3>Мониторинг производительности</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[HttpPost("search")]
+public async Task&lt;ActionResult&lt;IEnumerable&lt;DocumentChunk&gt;&gt;&gt; SearchDocuments(
+    [FromQuery] string query, 
+    [FromQuery] int maxResults = 10)
+{
+    var stopwatch = Stopwatch.StartNew();
+    _logger.LogInformation("Поиск начат: {Query}", query);
+
+    try
+    {
+        var results = await _documentService.SearchDocumentsAsync(query, maxResults);
+        stopwatch.Stop();
+        
+        _logger.LogInformation("Поиск завершен: {Query}, Результаты: {Count}, Время: {Duration}ms", 
+            query, results.Count(), stopwatch.ElapsedMilliseconds);
+        
+        return Ok(results);
+    }
+    catch (Exception ex)
+    {
+        stopwatch.Stop();
+        _logger.LogError(ex, "Ошибка поиска: {Query}, Время: {Duration}ms", 
+            query, stopwatch.ElapsedMilliseconds);
+        throw;
+    }
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Testing Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Тестирование</h2>
+                    <p>Методы тестирования вашего SmartRAG приложения.</p>
+                    
+                    <h3>Модульные тесты</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[Test]
+public async Task UploadDocument_ValidFile_ReturnsDocument()
+{
+    // Arrange
+    var mockFile = new Mock&lt;IFormFile&gt;();
+    mockFile.Setup(f => f.FileName).Returns("test.pdf");
+    mockFile.Setup(f => f.Length).Returns(1024);
+    mockFile.Setup(f => f.ContentType).Returns("application/pdf");
+    
+    var mockDocumentService = new Mock&lt;IDocumentService&gt;();
+    var expectedDocument = new Document { Id = "test-id", FileName = "test.pdf" };
+    mockDocumentService.Setup(s => s.UploadDocumentAsync(It.IsAny&lt;IFormFile&gt;()))
+                      .ReturnsAsync(expectedDocument);
+    
+    var controller = new DocumentController(mockDocumentService.Object, Mock.Of&lt;ILogger&lt;DocumentController&gt;&gt;());
+    
+    // Act
+    var result = await controller.UploadDocument(mockFile.Object);
+    
+    // Assert
+    Assert.IsInstanceOf&lt;OkObjectResult&gt;(result);
+    var okResult = result as OkObjectResult;
+    Assert.AreEqual(expectedDocument, okResult.Value);
+}</code></pre>
+                    </div>
+
+                    <h3>Интеграционные тесты</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[Test]
+public async Task SearchDocuments_IntegrationTest()
+{
+    // Arrange
+    var host = CreateTestHost();
+    using var scope = host.Services.CreateScope();
+    var documentService = scope.ServiceProvider.GetRequiredService&lt;IDocumentService&gt;();
+    
+    // Загрузить тестовые данные
+    var testFile = CreateTestFile("test-document.txt", "Это тестовый документ.");
+    await documentService.UploadDocumentAsync(testFile);
+    
+    // Act
+    var results = await documentService.SearchDocumentsAsync("test", 5);
+    
+    // Assert
+    Assert.IsNotNull(results);
+    Assert.IsTrue(results.Any());
+    Assert.IsTrue(results.First().Content.Contains("test"));
 }
-```
 
-## Need Help?
+private IHost CreateTestHost()
+{
+    return Host.CreateDefaultBuilder()
+        .ConfigureServices((context, services) =>
+        {
+            services.AddSmartRAG(context.Configuration, options =>
+            {
+                options.AIProvider = AIProvider.Anthropic;
+                options.StorageProvider = StorageProvider.InMemory; // Использовать InMemory для тестов
+            });
+        })
+        .Build();
+}</code></pre>
+                    </div>
 
-If you're still experiencing issues:
+                    <h3>API тесты</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[Test]
+public async Task UploadDocument_ApiTest()
+{
+    // Arrange
+    var client = _factory.CreateClient();
+    var content = new MultipartFormDataContent();
+    var fileContent = new ByteArrayContent(File.ReadAllBytes("test-file.pdf"));
+    fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("application/pdf");
+    content.Add(fileContent, "file", "test-file.pdf");
+    
+    // Act
+    var response = await client.PostAsync("/api/document/upload", content);
+    
+    // Assert
+    response.EnsureSuccessStatusCode();
+    var responseContent = await response.Content.ReadAsStringAsync();
+    var document = JsonSerializer.Deserialize&lt;Document&gt;(responseContent);
+    Assert.IsNotNull(document);
+    Assert.AreEqual("test-file.pdf", document.FileName);
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-- [Back to Documentation]({{ site.baseurl }}/en/) - Main documentation
-- [Open an issue](https://github.com/byerlikaya/SmartRAG/issues) - GitHub Issues
-- [Contact support](mailto:b.yerlikaya@outlook.com) - Email support
+        <!-- Getting Help Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Получение помощи</h2>
+                    <p>Методы получения помощи с проблемами SmartRAG.</p>
+                    
+                    <h3>GitHub Issues</h3>
+                    <div class="alert alert-info">
+                        <h4><i class="fas fa-github me-2"></i>GitHub</h4>
+                        <p class="mb-0">Сообщайте о проблемах на GitHub и получайте поддержку сообщества.</p>
+                    </div>
+
+                    <h3>Поддержка по email</h3>
+                    <div class="alert alert-success">
+                        <h4><i class="fas fa-envelope me-2"></i>Email</h4>
+                        <p class="mb-0">Получайте прямую поддержку по email: <a href="mailto:b.yerlikaya@outlook.com">b.yerlikaya@outlook.com</a></p>
+                    </div>
+
+                    <h3>Документация</h3>
+                    <ul>
+                        <li><a href="{{ site.baseurl }}/ru/getting-started">Начало работы</a></li>
+                        <li><a href="{{ site.baseurl }}/ru/configuration">Конфигурация</a></li>
+                        <li><a href="{{ site.baseurl }}/ru/api-reference">Справочник API</a></li>
+                        <li><a href="{{ site.baseurl }}/ru/examples">Примеры</a></li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Prevention Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Профилактика</h2>
+                    <p>Методы предотвращения проблем в вашем SmartRAG приложении.</p>
+                    
+                    <h3>Лучшие практики</h3>
+                    <ul>
+                        <li><strong>Обработка ошибок</strong>: Оберните все API вызовы в try-catch блоки</li>
+                        <li><strong>Логирование</strong>: Выполняйте детальное логирование и настройте уровни логов соответствующим образом</li>
+                        <li><strong>Производительность</strong>: Оптимизируйте размеры чанков и используйте потоковую передачу для больших файлов</li>
+                        <li><strong>Безопасность</strong>: Безопасно храните API ключи</li>
+                        <li><strong>Тестирование</strong>: Напишите комплексные тесты и запускайте их в CI/CD пайплайнах</li>
+                    </ul>
+
+                    <h3>Проверка конфигурации</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public class SmartRAGHealthCheck : IHealthCheck
+{
+    private readonly IDocumentService _documentService;
+    private readonly ILogger&lt;SmartRAGHealthCheck&gt; _logger;
+
+    public SmartRAGHealthCheck(IDocumentService documentService, ILogger&lt;SmartRAGHealthCheck&gt; logger)
+    {
+        _documentService = documentService;
+        _logger = logger;
+    }
+
+    public async Task&lt;HealthCheckResult&gt; CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            // Простой тестовый запрос
+            var results = await _documentService.SearchDocumentsAsync("health check", 1);
+            
+            return HealthCheckResult.Healthy("SmartRAG сервис работает");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Проверка здоровья SmartRAG не удалась");
+            return HealthCheckResult.Unhealthy("SmartRAG сервис не работает", ex);
+        }
+    }
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>

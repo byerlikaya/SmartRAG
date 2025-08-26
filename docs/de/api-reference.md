@@ -1,195 +1,243 @@
 ---
 layout: default
-title: API Reference
-description: Complete API documentation with examples and usage patterns for SmartRAG
-lang: en
+title: API-Referenz
+description: Vollständige API-Dokumentation für SmartRAG mit Beispielen und Verwendungsmustern
+lang: de
 ---
 
-# API Reference
+<div class="page-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center">
+                <h1 class="page-title">API-Referenz</h1>
+                <p class="page-description">
+                    Vollständige API-Dokumentation für SmartRAG mit Beispielen und Verwendungsmustern
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
 
-Complete API documentation with examples and usage patterns for SmartRAG.
-
-## Core Interfaces
-
-### IDocumentService
-
-The main service for document operations.
-
-```csharp
-public interface IDocumentService
+<div class="page-content">
+    <div class="container">
+        <!-- Core Interfaces Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Kern-Interfaces</h2>
+                    <p>Die grundlegenden Interfaces und Services von SmartRAG.</p>
+                    
+                    <h3>IDocumentService</h3>
+                    <p>Hauptservice-Interface für Dokumentoperationen.</p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public interface IDocumentService
 {
-    Task<Document> UploadDocumentAsync(IFormFile file);
-    Task<IEnumerable<Document>> GetAllDocumentsAsync();
-    Task<Document> GetDocumentByIdAsync(string id);
-    Task<bool> DeleteDocumentAsync(string id);
-    Task<IEnumerable<DocumentChunk>> SearchDocumentsAsync(string query, int maxResults = 10);
-}
-```
+    Task&lt;Document&gt; UploadDocumentAsync(IFormFile file);
+    Task&lt;Document&gt; GetDocumentByIdAsync(string id);
+    Task&lt;IEnumerable&lt;Document&gt;&gt; GetAllDocumentsAsync();
+    Task&lt;bool&gt; DeleteDocumentAsync(string id);
+    Task&lt;IEnumerable&lt;DocumentChunk&gt;&gt; SearchDocumentsAsync(string query, int maxResults = 5);
+    Task&lt;RagResponse&gt; GenerateRagAnswerAsync(string query, int maxResults = 5);
+}</code></pre>
+                    </div>
 
-### IDocumentParserService
-
-Service for parsing and processing documents.
-
-```csharp
-public interface IDocumentParserService
+                    <h3>IDocumentParserService</h3>
+                    <p>Service zum Parsen verschiedener Dateiformate.</p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public interface IDocumentParserService
 {
-    Task<string> ExtractTextAsync(IFormFile file);
-    Task<IEnumerable<DocumentChunk>> ParseDocumentAsync(string text, string documentId);
-    Task<IEnumerable<DocumentChunk>> ParseDocumentAsync(Stream stream, string fileName, string documentId);
-}
-```
+    Task&lt;string&gt; ParseDocumentAsync(IFormFile file);
+    bool CanParse(string fileName);
+    Task&lt;IEnumerable&lt;string&gt;&gt; ChunkTextAsync(string text, int chunkSize = 1000, int overlap = 200);
+}</code></pre>
+                    </div>
 
-### IDocumentRepository
-
-Repository for document storage operations.
-
-```csharp
-public interface IDocumentRepository
+                    <h3>IDocumentSearchService</h3>
+                    <p>Service für Dokumentensuche und RAG-Operationen.</p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public interface IDocumentSearchService
 {
-    Task<Document> AddAsync(Document document);
-    Task<Document> GetByIdAsync(string id);
-    Task<IEnumerable<Document>> GetAllAsync();
-    Task<bool> DeleteAsync(string id);
-    Task<IEnumerable<DocumentChunk>> SearchAsync(string query, int maxResults = 10);
-}
-```
+    Task&lt;List&lt;DocumentChunk&gt;&gt; SearchDocumentsAsync(string query, int maxResults = 5);
+    Task&lt;RagResponse&gt; GenerateRagAnswerAsync(string query, int maxResults = 5);
+}</code></pre>
+                    </div>
 
-## Models
+                    <h3>IAIService</h3>
+                    <p>Service für die Interaktion mit AI-Providern.</p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public interface IAIService
+{
+    Task&lt;float[]&gt; GenerateEmbeddingAsync(string text);
+    Task&lt;string&gt; GenerateTextAsync(string prompt);
+    Task&lt;string&gt; GenerateTextAsync(string prompt, string context);
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-### Document
-
-Represents a document in the system.
-
-```csharp
-public class Document
+        <!-- Models Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Modelle</h2>
+                    <p>Die grundlegenden Datenmodelle, die in SmartRAG verwendet werden.</p>
+                    
+                    <h3>Document</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public class Document
 {
     public string Id { get; set; }
     public string FileName { get; set; }
-    public string FileType { get; set; }
-    public long FileSize { get; set; }
-    public DateTime UploadDate { get; set; }
     public string Content { get; set; }
-    public IEnumerable<DocumentChunk> Chunks { get; set; }
-    public Dictionary<string, object> Metadata { get; set; }
-}
-```
+    public string ContentType { get; set; }
+    public long FileSize { get; set; }
+    public DateTime UploadedAt { get; set; }
+    public List&lt;DocumentChunk&gt; Chunks { get; set; }
+}</code></pre>
+                    </div>
 
-### DocumentChunk
-
-Represents a chunk of a document.
-
-```csharp
-public class DocumentChunk
+                    <h3>DocumentChunk</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public class DocumentChunk
 {
     public string Id { get; set; }
     public string DocumentId { get; set; }
     public string Content { get; set; }
-    public int ChunkIndex { get; set; }
     public float[] Embedding { get; set; }
-    public Dictionary<string, object> Metadata { get; set; }
-}
-```
+    public int ChunkIndex { get; set; }
+    public DateTime CreatedAt { get; set; }
+}</code></pre>
+                    </div>
 
-### SmartRagOptions
-
-Configuration options for SmartRAG.
-
-```csharp
-public class SmartRagOptions
+                    <h3>RagResponse</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public class RagResponse
 {
-    public AIProvider AIProvider { get; set; }
-    public StorageProvider StorageProvider { get; set; }
-    public string ApiKey { get; set; }
-    public string ModelName { get; set; }
-    public int ChunkSize { get; set; } = 1000;
-    public int ChunkOverlap { get; set; } = 200;
-    public string QdrantUrl { get; set; }
-    public string CollectionName { get; set; }
-    public string RedisConnectionString { get; set; }
-    public int DatabaseId { get; set; }
-    public string ConnectionString { get; set; }
-}
-```
+    public string Answer { get; set; }
+    public List&lt;SearchSource&gt; Sources { get; set; }
+    public DateTime SearchedAt { get; set; }
+    public RagConfiguration Configuration { get; set; }
+}</code></pre>
+                    </div>
 
-## Enums
-
-### AIProvider
-
-```csharp
-public enum AIProvider
+                    <h3>SearchSource</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public class SearchSource
 {
-    Anthropic,
+    public string DocumentId { get; set; }
+    public string DocumentName { get; set; }
+    public string Content { get; set; }
+    public float SimilarityScore { get; set; }
+    public int ChunkIndex { get; set; }
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Enums Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Enums</h2>
+                    <p>Die in SmartRAG verwendeten Enum-Werte.</p>
+                    
+                    <h3>AIProvider</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public enum AIProvider
+{
     OpenAI,
-    AzureOpenAI,
+    Anthropic,
     Gemini,
+    AzureOpenAI,
     Custom
-}
-```
+}</code></pre>
+                    </div>
 
-### StorageProvider
-
-```csharp
-public enum StorageProvider
+                    <h3>StorageProvider</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public enum StorageProvider
 {
     Qdrant,
     Redis,
-    Sqlite,
+    SQLite,
     InMemory,
-    FileSystem,
-    Custom
-}
-```
+    FileSystem
+}</code></pre>
+                    </div>
 
-## Service Registration
-
-### AddSmartRAG Extension
-
-```csharp
-public static class ServiceCollectionExtensions
+                    <h3>RetryPolicy</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public enum RetryPolicy
 {
-    public static IServiceCollection AddSmartRAG(
-        this IServiceCollection services,
-        Action<SmartRagOptions> configureOptions)
-    {
-        var options = new SmartRagOptions();
-        configureOptions(options);
-        
-        services.Configure<SmartRagOptions>(opt => 
-        {
-            opt.AIProvider = options.AIProvider;
-            opt.StorageProvider = options.StorageProvider;
-            opt.ApiKey = options.ApiKey;
-            // ... other options
-        });
-        
-        // Register services based on configuration
-        services.AddScoped<IDocumentService, DocumentService>();
-        services.AddScoped<IDocumentParserService, DocumentParserService>();
-        
-        // Register appropriate repository
-        switch (options.StorageProvider)
-        {
-            case StorageProvider.Qdrant:
-                services.AddScoped<IDocumentRepository, QdrantDocumentRepository>();
-                break;
-            case StorageProvider.Redis:
-                services.AddScoped<IDocumentRepository, RedisDocumentRepository>();
-                break;
-            // ... other cases
-        }
-        
-        return services;
-    }
-}
-```
+    None,
+    FixedDelay,
+    ExponentialBackoff,
+    LinearBackoff
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-## Usage Examples
+        <!-- Service Registration Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Service-Registrierung</h2>
+                    <p>Wie Sie SmartRAG-Services in Ihrer Anwendung registrieren.</p>
+                    
+                    <h3>Grundlegende Registrierung</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Program.cs oder Startup.cs
+services.AddSmartRAG(configuration, options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.MaxChunkSize = 1000;
+    options.ChunkOverlap = 200;
+    options.MaxRetryAttempts = 3;
+    options.RetryDelayMs = 1000;
+    options.RetryPolicy = RetryPolicy.ExponentialBackoff;
+});</code></pre>
+                    </div>
 
-### Basic Document Upload
+                    <h3>Erweiterte Konfiguration</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">services.AddSmartRAG(configuration, options =>
+{
+    options.AIProvider = AIProvider.OpenAI;
+    options.StorageProvider = StorageProvider.Redis;
+    options.MaxChunkSize = 1500;
+    options.MinChunkSize = 100;
+    options.ChunkOverlap = 300;
+    options.MaxRetryAttempts = 5;
+    options.RetryDelayMs = 2000;
+    options.RetryPolicy = RetryPolicy.ExponentialBackoff;
+    options.EnableFallbackProviders = true;
+    options.FallbackProviders = new List&lt;AIProvider&gt; 
+    { 
+        AIProvider.Anthropic, 
+        AIProvider.Gemini 
+    };
+});</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-```csharp
-[HttpPost("upload")]
-public async Task<ActionResult<Document>> UploadDocument(IFormFile file)
+        <!-- Usage Examples Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Verwendungsbeispiele</h2>
+                    <p>Wie Sie die SmartRAG-API verwenden.</p>
+                    
+                    <h3>Dokument hochladen</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[HttpPost("upload")]
+public async Task&lt;ActionResult&lt;Document&gt;&gt; UploadDocument(IFormFile file)
 {
     try
     {
@@ -200,14 +248,13 @@ public async Task<ActionResult<Document>> UploadDocument(IFormFile file)
     {
         return BadRequest(ex.Message);
     }
-}
-```
+}</code></pre>
+                    </div>
 
-### Document Search
-
-```csharp
-[HttpGet("search")]
-public async Task<ActionResult<IEnumerable<DocumentChunk>>> SearchDocuments(
+                    <h3>Dokumente suchen</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[HttpGet("search")]
+public async Task&lt;ActionResult&lt;IEnumerable&lt;DocumentChunk&gt;&gt;&gt; SearchDocuments(
     [FromQuery] string query, 
     [FromQuery] int maxResults = 10)
 {
@@ -220,100 +267,157 @@ public async Task<ActionResult<IEnumerable<DocumentChunk>>> SearchDocuments(
     {
         return BadRequest(ex.Message);
     }
-}
-```
+}</code></pre>
+                    </div>
 
-### Custom Configuration
-
-```csharp
-services.AddSmartRAG(options =>
+                    <h3>RAG-Antwort generieren</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[HttpPost("ask")]
+public async Task&lt;ActionResult&lt;RagResponse&gt;&gt; AskQuestion([FromBody] string question)
 {
-    options.AIProvider = AIProvider.Anthropic;
-    options.StorageProvider = StorageProvider.Qdrant;
-    options.ApiKey = Configuration["SmartRAG:ApiKey"];
-    options.ChunkSize = 800;
-    options.ChunkOverlap = 150;
-    options.QdrantUrl = "http://localhost:6333";
-    options.CollectionName = "my_documents";
-});
-```
+    try
+    {
+        var response = await _documentService.GenerateRagAnswerAsync(question, 5);
+        return Ok(response);
+    }
+    catch (Exception ex)
+    {
+        return BadRequest(ex.Message);
+    }
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-## Error Handling
+        <!-- Error Handling Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Fehlerbehandlung</h2>
+                    <p>Fehlerbehandlung und Ausnahmetypen in SmartRAG.</p>
+                    
+                    <div class="alert alert-warning">
+                        <h4><i class="fas fa-exclamation-triangle me-2"></i>Wichtig</h4>
+                        <p class="mb-0">Alle SmartRAG-Services sind mit angemessener Fehlerbehandlung entworfen. Wickeln Sie Ihre API-Aufrufe in try-catch-Blöcke ein.</p>
+                    </div>
 
-### Common Exceptions
+                    <h3>Häufige Fehler</h3>
+                    <ul>
+                        <li><strong>ArgumentException</strong>: Ungültige Parameter</li>
+                        <li><strong>FileNotFoundException</strong>: Datei nicht gefunden</li>
+                        <li><strong>UnauthorizedAccessException</strong>: Ungültiger API-Schlüssel</li>
+                        <li><strong>HttpRequestException</strong>: Netzwerkverbindungsprobleme</li>
+                        <li><strong>TimeoutException</strong>: Anforderungs-Timeout</li>
+                    </ul>
 
-```csharp
-public class SmartRagException : Exception
+                    <h3>Fehlerbehandlungsbeispiel</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">try
 {
-    public SmartRagException(string message) : base(message) { }
-    public SmartRagException(string message, Exception innerException) 
-        : base(message, innerException) { }
+    var document = await _documentService.UploadDocumentAsync(file);
+    return Ok(document);
 }
-
-public class DocumentProcessingException : SmartRagException
+catch (ArgumentException ex)
 {
-    public DocumentProcessingException(string message) : base(message) { }
+    _logger.LogWarning("Invalid argument: {Message}", ex.Message);
+    return BadRequest("Invalid file or parameters");
 }
-
-public class StorageException : SmartRagException
+catch (UnauthorizedAccessException ex)
 {
-    public StorageException(string message) : base(message) { }
+    _logger.LogError("Authentication failed: {Message}", ex.Message);
+    return Unauthorized("Invalid API key");
 }
-```
-
-### Error Response Model
-
-```csharp
-public class ErrorResponse
+catch (HttpRequestException ex)
 {
-    public string Message { get; set; }
-    public string ErrorCode { get; set; }
-    public DateTime Timestamp { get; set; }
-    public string RequestId { get; set; }
+    _logger.LogError("Network error: {Message}", ex.Message);
+    return StatusCode(503, "Service temporarily unavailable");
 }
-```
-
-## Logging
-
-### Logger Messages
-
-```csharp
-public static class ServiceLogMessages
+catch (Exception ex)
 {
-    public static readonly Action<ILogger, string, Exception> DocumentUploadStarted = 
-        LoggerMessage.Define<string>(LogLevel.Information, 
-            new EventId(1001, nameof(DocumentUploadStarted)), 
-            "Document upload started for file: {FileName}");
-            
-    public static readonly Action<ILogger, string, Exception> DocumentUploadCompleted = 
-        LoggerMessage.Define<string>(LogLevel.Information, 
-            new EventId(1002, nameof(DocumentUploadCompleted)), 
-            "Document upload completed for file: {FileName}");
-}
-```
+    _logger.LogError(ex, "Unexpected error occurred");
+    return StatusCode(500, "Internal server error");
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-## Performance Considerations
+        <!-- Logging Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Protokollierung</h2>
+                    <p>Protokollierung und Überwachung in SmartRAG.</p>
+                    
+                    <h3>Protokollstufen</h3>
+                    <ul>
+                        <li><strong>Information</strong>: Normale Operationen</li>
+                        <li><strong>Warning</strong>: Warnungen und unerwartete Situationen</li>
+                        <li><strong>Error</strong>: Fehler und Ausnahmen</li>
+                        <li><strong>Debug</strong>: Detaillierte Debugging-Informationen</li>
+                    </ul>
 
-### Chunking Strategy
-
-- **Small chunks**: Better for precise search, more API calls
-- **Large chunks**: Better context, fewer API calls
-- **Overlap**: Ensures important information isn't split
-
-### Batch Operations
-
-```csharp
-public async Task<IEnumerable<Document>> UploadDocumentsAsync(IEnumerable<IFormFile> files)
+                    <h3>Protokollierungskonfiguration</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// appsettings.json
 {
-    var tasks = files.Select(file => UploadDocumentAsync(file));
-    return await Task.WhenAll(tasks);
-}
-```
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "SmartRAG": "Debug",
+      "Microsoft": "Warning"
+    }
+  }
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-## Need Help?
+        <!-- Performance Considerations Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Leistungsüberlegungen</h2>
+                    <p>Leistungsoptimierung in SmartRAG.</p>
+                    
+                    <h3>Empfohlene Einstellungen</h3>
+                    <ul>
+                        <li><strong>Chunk Size</strong>: 1000-1500 Zeichen</li>
+                        <li><strong>Chunk Overlap</strong>: 200-300 Zeichen</li>
+                        <li><strong>Max Results</strong>: 5-10 Ergebnisse</li>
+                        <li><strong>Retry Attempts</strong>: 3-5 Versuche</li>
+                    </ul>
 
-If you need assistance with the API:
+                    <h3>Leistungstipps</h3>
+                    <ul>
+                        <li>Verarbeiten Sie große Dateien im Voraus</li>
+                        <li>Verwenden Sie angemessene Chunk-Größen</li>
+                        <li>Aktivieren Sie Cache-Mechanismen</li>
+                        <li>Bevorzugen Sie asynchrone Operationen</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
 
-- [Back to Documentation]({{ site.baseurl }}/en/) - Main documentation
-- [Open an issue](https://github.com/byerlikaya/SmartRAG/issues) - GitHub Issues
-- [Contact support](mailto:b.yerlikaya@outlook.com) - Email support
+        <!-- Help Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <div class="alert alert-info">
+                        <h4><i class="fas fa-question-circle me-2"></i>Benötigen Sie Hilfe?</h4>
+                        <p class="mb-0">Für Fragen zur API:</p>
+                        <ul class="mb-0 mt-2">
+                            <li><a href="{{ site.baseurl }}/de/getting-started">Erste Schritte</a></li>
+                            <li><a href="{{ site.baseurl }}/de/examples">Beispiele</a></li>
+                            <li><a href="{{ site.baseurl }}/de/configuration">Konfiguration</a></li>
+                            <li><a href="https://github.com/byerlikaya/SmartRAG/issues" target="_blank">GitHub Issue erstellen</a></li>
+                            <li><a href="mailto:b.yerlikaya@outlook.com">E-Mail-Support</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>

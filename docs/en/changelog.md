@@ -5,174 +5,263 @@ description: Track new features, improvements, and bug fixes across SmartRAG ver
 lang: en
 ---
 
-# Changelog
+<div class="page-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center">
+                <h1 class="page-title">Changelog</h1>
+                <p class="page-description">
+                    Track new features, improvements, and bug fixes across SmartRAG versions
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
 
-Track new features, improvements, and bug fixes across SmartRAG versions.
+<div class="page-content">
+    <div class="container">
+        <!-- Version History Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Version History</h2>
+                    <p>Complete history of SmartRAG releases with detailed change information.</p>
 
-## [1.1.0] - 2025-08-22
+                    <h3>Version 1.1.0 - 2025-08-22</h3>
+                    <div class="alert alert-success">
+                        <h4><i class="fas fa-star me-2"></i>Latest Release</h4>
+                        <p class="mb-0">This is the current stable release with new features and improvements.</p>
+                    </div>
 
-### Added
-- **Excel File Support**: Added Excel file parsing (.xlsx, .xls) with EPPlus 8.1.0 integration
-- **Enhanced Retry Logic**: Improved Anthropic API retry mechanism for HTTP 529 (Overloaded) errors
-- **Content Validation**: Enhanced document content validation
-- **Excel Documentation**: Comprehensive Excel format documentation
+                    <h4>Added</h4>
+                    <ul>
+                        <li><strong>Excel File Support</strong>: Added Excel file parsing (.xlsx, .xls) with EPPlus 8.1.0 integration</li>
+                        <li><strong>Enhanced Retry Logic</strong>: Improved Anthropic API retry mechanism for HTTP 529 (Overloaded) errors</li>
+                        <li><strong>Content Validation</strong>: Enhanced document content validation</li>
+                        <li><strong>Excel Documentation</strong>: Comprehensive Excel format documentation</li>
+                    </ul>
 
-## [1.0.3] - 2025-08-20
+                    <h3>Version 1.0.3 - 2025-08-20</h3>
+                    
+                    <h4>Added</h4>
+                    <ul>
+                        <li><strong>Multi-language Support</strong>: Added comprehensive documentation in English, Turkish, German, and Russian</li>
+                        <li><strong>GitHub Pages</strong>: Complete documentation site with modern Bootstrap design</li>
+                        <li><strong>Enhanced Examples</strong>: Added comprehensive code examples and tutorials</li>
+                        <li><strong>Troubleshooting Guide</strong>: Detailed troubleshooting and debugging information</li>
+                        <li><strong>Contributing Guidelines</strong>: Complete contribution guide with coding standards</li>
+                    </ul>
 
-### Added
-- **Multi-language Support**: Added comprehensive documentation in English, Turkish, German, and Russian
-- **GitHub Pages**: Complete documentation site with modern Bootstrap design
-- **Enhanced Examples**: Added comprehensive code examples and tutorials
-- **Troubleshooting Guide**: Detailed troubleshooting and debugging information
-- **Contributing Guidelines**: Complete contribution guide with coding standards
+                    <h4>Improved</h4>
+                    <ul>
+                        <li><strong>Documentation</strong>: Complete rewrite with modern design and better organization</li>
+                        <li><strong>Code Examples</strong>: More realistic and comprehensive examples</li>
+                        <li><strong>API Reference</strong>: Detailed API documentation with usage patterns</li>
+                        <li><strong>Configuration Guide</strong>: Enhanced configuration options and best practices</li>
+                    </ul>
 
-### Improved
-- **Documentation**: Complete rewrite with modern design and better organization
-- **Code Examples**: More realistic and comprehensive examples
-- **API Reference**: Detailed API documentation with usage patterns
-- **Configuration Guide**: Enhanced configuration options and best practices
+                    <h4>Fixed</h4>
+                    <ul>
+                        <li><strong>Type Conflicts</strong>: Resolved conflicts between Qdrant, OpenXML, and other libraries</li>
+                        <li><strong>Global Usings</strong>: Implemented GlobalUsings for all projects to reduce code duplication</li>
+                        <li><strong>Build Issues</strong>: Fixed various compilation and build warnings</li>
+                    </ul>
 
-### Fixed
-- **Type Conflicts**: Resolved conflicts between Qdrant, OpenXML, and other libraries
-- **Global Usings**: Implemented GlobalUsings for all projects to reduce code duplication
-- **Build Issues**: Fixed various compilation and build warnings
+                    <h3>Version 1.0.2 - 2025-08-19</h3>
+                    
+                    <h4>Added</h4>
+                    <ul>
+                        <li><strong>Global Usings</strong>: Implemented GlobalUsings for SmartRAG core library</li>
+                        <li><strong>Type Resolution</strong>: Added explicit type resolution for conflicting types</li>
+                        <li><strong>Enhanced Logging</strong>: Improved logging with LoggerMessage delegates</li>
+                    </ul>
 
-## [1.0.2] - 2025-08-19
+                    <h4>Improved</h4>
+                    <ul>
+                        <li><strong>Code Organization</strong>: Better #region organization and SOLID principles</li>
+                        <li><strong>Performance</strong>: Optimized document processing and storage operations</li>
+                        <li><strong>Error Handling</strong>: Enhanced error handling and exception management</li>
+                    </ul>
 
-### Added
-- **Global Usings**: Implemented GlobalUsings for SmartRAG core library
-- **Type Resolution**: Added explicit type resolution for conflicting types
-- **Enhanced Logging**: Improved logging with LoggerMessage delegates
+                    <h4>Fixed</h4>
+                    <ul>
+                        <li><strong>Build Warnings</strong>: Resolved all compiler warnings and messages</li>
+                        <li><strong>Type Conflicts</strong>: Fixed conflicts between external library types</li>
+                        <li><strong>Memory Leaks</strong>: Improved resource disposal and memory management</li>
+                    </ul>
 
-### Improved
-- **Code Organization**: Better #region organization and SOLID principles
-- **Performance**: Optimized document processing and storage operations
-- **Error Handling**: Enhanced error handling and exception management
+                    <h3>Version 1.0.1 - 2025-08-17</h3>
+                    
+                    <h4>Added</h4>
+                    <ul>
+                        <li><strong>Test Project</strong>: Added comprehensive xUnit test suite</li>
+                        <li><strong>Example Web API</strong>: Complete example web application</li>
+                        <li><strong>Documentation</strong>: Initial documentation structure</li>
+                    </ul>
 
-### Fixed
-- **Build Warnings**: Resolved all compiler warnings and messages
-- **Type Conflicts**: Fixed conflicts between external library types
-- **Memory Leaks**: Improved resource disposal and memory management
+                    <h4>Improved</h4>
+                    <ul>
+                        <li><strong>Code Quality</strong>: Applied SOLID and DRY principles</li>
+                        <li><strong>Error Handling</strong>: Better exception handling and validation</li>
+                        <li><strong>Logging</strong>: Structured logging throughout the application</li>
+                    </ul>
 
-## [1.0.1] - 2025-08-17
+                    <h4>Fixed</h4>
+                    <ul>
+                        <li><strong>Minor Bugs</strong>: Various bug fixes and improvements</li>
+                        <li><strong>Performance</strong>: Optimized document processing</li>
+                        <li><strong>Security</strong>: Enhanced input validation and sanitization</li>
+                    </ul>
 
-### Added
-- **Test Project**: Added comprehensive xUnit test suite
-- **Example Web API**: Complete example web application
-- **Documentation**: Initial documentation structure
+                    <h3>Version 1.0.0 - 2025-08-15</h3>
+                    
+                    <h4>Initial Release</h4>
+                    <ul>
+                        <li><strong>Core RAG Functionality</strong>: Document processing, embedding generation, and semantic search</li>
+                        <li><strong>AI Provider Support</strong>: OpenAI, Anthropic, Azure OpenAI, and Gemini integration</li>
+                        <li><strong>Storage Providers</strong>: Qdrant, Redis, SQLite, In-Memory, and File System support</li>
+                        <li><strong>Document Formats</strong>: PDF, Word, Excel, and text document processing</li>
+                        <li><strong>.NET 8 Support</strong>: Full compatibility with .NET 8 LTS</li>
+                        <li><strong>Dependency Injection</strong>: Native .NET dependency injection support</li>
+                        <li><strong>Async/Await</strong>: Full asynchronous operation support</li>
+                        <li><strong>Extensible Architecture</strong>: Plugin-based provider system</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
 
-### Improved
-- **Code Quality**: Applied SOLID and DRY principles
-- **Error Handling**: Better exception handling and validation
-- **Logging**: Structured logging throughout the application
+        <!-- Versioning Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Versioning</h2>
+                    <p>SmartRAG follows <a href="https://semver.org/" target="_blank">Semantic Versioning</a> (SemVer):</p>
+                    
+                    <ul>
+                        <li><strong>MAJOR</strong>: Incompatible API changes</li>
+                        <li><strong>MINOR</strong>: New functionality in a backwards compatible manner</li>
+                        <li><strong>PATCH</strong>: Backwards compatible bug fixes</li>
+                    </ul>
 
-### Fixed
-- **Minor Bugs**: Various bug fixes and improvements
-- **Performance**: Optimized document processing
-- **Security**: Enhanced input validation and sanitization
+                    <h3>Release Schedule</h3>
+                    <ul>
+                        <li><strong>Major Releases</strong>: Every 6-12 months with significant new features</li>
+                        <li><strong>Minor Releases</strong>: Every 2-3 months with new functionality</li>
+                        <li><strong>Patch Releases</strong>: As needed for critical bug fixes</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
 
-## [1.0.0] - 2025-08-15
+        <!-- Breaking Changes Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Breaking Changes</h2>
+                    <p>Important breaking changes between versions.</p>
+                    
+                    <div class="alert alert-info">
+                        <h4><i class="fas fa-info-circle me-2"></i>Good News</h4>
+                        <p class="mb-0">No breaking changes between versions 1.0.0 and 1.1.0. All updates are backward compatible.</p>
+                    </div>
 
-### Initial Release
-- **Core RAG Functionality**: Document processing, embedding generation, and semantic search
-- **AI Provider Support**: OpenAI, Anthropic, Azure OpenAI, and Gemini integration
-- **Storage Providers**: Qdrant, Redis, SQLite, In-Memory, and File System support
-- **Document Formats**: PDF, Word, Excel, and text document processing
-- **.NET 8 Support**: Full compatibility with .NET 8 LTS
-- **Dependency Injection**: Native .NET dependency injection support
-- **Async/Await**: Full asynchronous operation support
-- **Extensible Architecture**: Plugin-based provider system
+                    <h3>Migration Guides</h3>
+                    <p>All version updates from 1.0.0 to 1.1.0 are fully backward compatible. No migration is required.</p>
+                </div>
+            </div>
+        </section>
 
-## Versioning
+        <!-- Support Policy Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Support Policy</h2>
+                    <p>Our commitment to supporting different versions of SmartRAG.</p>
+                    
+                    <ul>
+                        <li><strong>Current Version</strong>: Full support and bug fixes</li>
+                        <li><strong>Previous Version</strong>: Security updates and critical bug fixes only</li>
+                        <li><strong>Older Versions</strong>: No support</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
 
-SmartRAG follows [Semantic Versioning](https://semver.org/) (SemVer):
+        <!-- Roadmap Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Roadmap</h2>
+                    <p>Upcoming features and future plans for SmartRAG.</p>
+                    
+                    <h3>Upcoming Features (1.2.0)</h3>
+                    <ul>
+                        <li><strong>Advanced Chunking</strong>: Intelligent document chunking strategies</li>
+                        <li><strong>Custom Embeddings</strong>: Support for custom embedding models</li>
+                        <li><strong>Batch Processing</strong>: Improved batch document processing</li>
+                        <li><strong>Performance Monitoring</strong>: Built-in performance metrics and monitoring</li>
+                        <li><strong>Cloud Integration</strong>: Enhanced cloud provider support</li>
+                    </ul>
 
-- **MAJOR**: Incompatible API changes
-- **MINOR**: New functionality in a backwards compatible manner
-- **PATCH**: Backwards compatible bug fixes
+                    <h3>Future Plans (2.0.0)</h3>
+                    <ul>
+                        <li><strong>Multi-modal Support</strong>: Image and audio document processing</li>
+                        <li><strong>Advanced Search</strong>: Semantic search with context awareness</li>
+                        <li><strong>Real-time Updates</strong>: Live document indexing and search</li>
+                        <li><strong>Distributed Processing</strong>: Support for distributed deployments</li>
+                        <li><strong>Advanced Analytics</strong>: Document usage and search analytics</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
 
-## Release Schedule
+        <!-- Contributing Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Contributing to Changelog</h2>
+                    <p>When contributing to SmartRAG, please update the changelog:</p>
+                    
+                    <ol>
+                        <li><strong>Add your changes</strong> to the appropriate section</li>
+                        <li><strong>Use consistent formatting</strong> following the existing style</li>
+                        <li><strong>Group changes</strong> by type (Added, Improved, Fixed, etc.)</li>
+                        <li><strong>Provide clear descriptions</strong> of what changed</li>
+                        <li><strong>Include breaking changes</strong> in a separate section</li>
+                    </ol>
 
-- **Major Releases**: Every 6-12 months with significant new features
-- **Minor Releases**: Every 2-3 months with new functionality
-- **Patch Releases**: As needed for critical bug fixes
-
-## Breaking Changes
-
-### 1.0.0 to 1.0.1
-- No breaking changes
-
-### 1.0.1 to 1.0.2
-- No breaking changes
-
-### 1.0.2 to 1.0.3
-- No breaking changes
-
-## Migration Guides
-
-### Upgrading from 1.0.2 to 1.0.3
-
-No migration required. This is a fully backward-compatible release.
-
-### Upgrading from 1.0.1 to 1.0.2
-
-No migration required. This is a fully backward-compatible release.
-
-### Upgrading from 1.0.0 to 1.0.1
-
-No migration required. This is a fully backward-compatible release.
-
-## Support Policy
-
-- **Current Version**: Full support and bug fixes
-- **Previous Version**: Security updates and critical bug fixes only
-- **Older Versions**: No support
-
-## Roadmap
-
-### Upcoming Features (1.1.0)
-
-- **Advanced Chunking**: Intelligent document chunking strategies
-- **Custom Embeddings**: Support for custom embedding models
-- **Batch Processing**: Improved batch document processing
-- **Performance Monitoring**: Built-in performance metrics and monitoring
-- **Cloud Integration**: Enhanced cloud provider support
-
-### Future Plans (2.0.0)
-
-- **Multi-modal Support**: Image and audio document processing
-- **Advanced Search**: Semantic search with context awareness
-- **Real-time Updates**: Live document indexing and search
-- **Distributed Processing**: Support for distributed deployments
-- **Advanced Analytics**: Document usage and search analytics
-
-## Contributing to Changelog
-
-When contributing to SmartRAG, please update the changelog:
-
-1. **Add your changes** to the appropriate section
-2. **Use consistent formatting** following the existing style
-3. **Group changes** by type (Added, Improved, Fixed, etc.)
-4. **Provide clear descriptions** of what changed
-5. **Include breaking changes** in a separate section
-
-### Changelog Entry Format
-
-```markdown
-### Added
+                    <h3>Changelog Entry Format</h3>
+                    <div class="code-example">
+                        <pre><code class="language-markdown">### Added
 - **Feature Name**: Brief description of the new feature
 
 ### Improved
 - **Component Name**: Description of improvements made
 
 ### Fixed
-- **Issue Description**: Description of the bug fix
-```
+- **Issue Description**: Description of the bug fix</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-## Need Help?
-
-If you need assistance with version updates:
-
-- [Back to Documentation]({{ site.baseurl }}/en/) - Main documentation
-- [Open an issue](https://github.com/byerlikaya/SmartRAG/issues) - GitHub Issues
-- [Contact support](mailto:b.yerlikaya@outlook.com) - Email support
+        <!-- Help Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <div class="alert alert-info">
+                        <h4><i class="fas fa-question-circle me-2"></i>Need Help?</h4>
+                        <p class="mb-0">If you need assistance with version updates:</p>
+                        <ul class="mb-0 mt-2">
+                            <li><a href="{{ site.baseurl }}/en/getting-started">Getting Started</a></li>
+                            <li><a href="{{ site.baseurl }}/en/configuration">Configuration</a></li>
+                            <li><a href="{{ site.baseurl }}/en/api-reference">API Reference</a></li>
+                            <li><a href="https://github.com/byerlikaya/SmartRAG/issues" target="_blank">GitHub Issues</a></li>
+                            <li><a href="mailto:b.yerlikaya@outlook.com">Email Support</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>

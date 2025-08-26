@@ -29,7 +29,7 @@ lang: tr
 
 ## 🚀 SmartRAG Nedir?
 
-SmartRAG, akıllı belge işleme, embedding üretimi ve anlamsal arama yetenekleri sağlayan kapsamlı bir .NET kütüphanesidir. AI destekli uygulamalar oluşturmak için güçlü özellikler sunarken kullanımı kolay olacak şekilde tasarlanmıştır.
+SmartRAG, akıllı belge işleme, embedding üretimi ve anlamsal arama yetenekleri sağlayan kapsamlı bir .NET kütüphanesidir. AI destekli uygulamalar oluşturmak için güçlü özellikler sunarken kullanım kolaylığı sağlayacak şekilde tasarlanmıştır.
 
 <div class="row mt-5 mb-5">
     <div class="col-md-6">
@@ -41,7 +41,7 @@ SmartRAG, akıllı belge işleme, embedding üretimi ve anlamsal arama yetenekle
                     </div>
                     Çoklu Format Desteği
                 </h5>
-                <p class="card-text">Word, PDF, Excel ve metin belgelerini kolayca işleyin. Kütüphanemiz tüm büyük belge formatlarını otomatik olarak işler.</p>
+                <p class="card-text">Word, PDF, Excel ve metin belgelerini kolayca işleyin. Kütüphanemiz tüm önemli belge formatlarını otomatik olarak işler.</p>
             </div>
         </div>
     </div>
@@ -52,9 +52,9 @@ SmartRAG, akıllı belge işleme, embedding üretimi ve anlamsal arama yetenekle
                     <div class="feature-icon">
                         <i class="fas fa-robot text-success"></i>
                     </div>
-                    AI Sağlayıcı Entegrasyonu
+                    AI Provider Entegrasyonu
                 </h5>
-                <p class="card-text">Güçlü embedding üretimi için OpenAI, Anthropic, Azure OpenAI, Gemini ve özel AI sağlayıcıları ile sorunsuz entegrasyon.</p>
+                <p class="card-text">Güçlü embedding üretimi için OpenAI, Anthropic, Azure OpenAI, Gemini ve özel AI provider'ları ile sorunsuz entegrasyon.</p>
             </div>
         </div>
     </div>
@@ -70,7 +70,7 @@ SmartRAG, akıllı belge işleme, embedding üretimi ve anlamsal arama yetenekle
                     </div>
                     Vektör Depolama
                 </h5>
-                <p class="card-text">Esnek dağıtım için Qdrant, Redis, SQLite, In-Memory ve File System dahil olmak üzere çoklu depolama arka uçları.</p>
+                <p class="card-text">Esnek dağıtım için Qdrant, Redis, SQLite, In-Memory ve Dosya Sistemi dahil çoklu depolama backend'leri.</p>
             </div>
         </div>
     </div>
@@ -93,22 +93,22 @@ SmartRAG, akıllı belge işleme, embedding üretimi ve anlamsal arama yetenekle
 
 <div class="alert alert-info">
     <h5><i class="fas fa-star me-2"></i>Kurumsal Hazır</h5>
-    <p class="mb-0">Performans, ölçeklenebilirlik ve güvenilirlik göz önünde bulundurularak üretim ortamları için inşa edilmiştir.</p>
+    <p class="mb-0">Performans, ölçeklenebilirlik ve güvenilirlik odaklı üretim ortamları için inşa edilmiştir.</p>
 </div>
 
 <div class="alert alert-success">
-    <h5><i class="fas fa-shield-alt me-2"></i>Üretimde Test Edilmiş</h5>
-    <p class="mb-0">Kanıtlanmış geçmişe sahip gerçek dünya uygulamalarında kullanılmış ve aktif bakım yapılmaktadır.</p>
+    <h5><i class="fas fa-shield-alt me-2"></i>Üretim Testli</h5>
+    <p class="mb-0">Kanıtlanmış başarı geçmişi ve aktif bakım ile gerçek dünya uygulamalarında kullanılmaktadır.</p>
 </div>
 
 <div class="alert alert-warning">
     <h5><i class="fas fa-code me-2"></i>Açık Kaynak</h5>
-    <p class="mb-0">Şeffaf geliştirme ve düzenli güncellemeler ile MIT lisanslı açık kaynak projesi.</p>
+    <p class="mb-0">Şeffaf geliştirme ve düzenli güncellemeler ile MIT lisanslı açık kaynak proje.</p>
 </div>
 
 ## ⚡ Hızlı Başlangıç
 
-Basit kurulum sürecimizle dakikalar içinde çalışmaya başlayın:
+Basit kurulum sürecimizle dakikalar içinde başlayın:
 
 ```csharp
 // SmartRAG'ı projenize ekleyin
@@ -126,9 +126,9 @@ var document = await documentService.UploadDocumentAsync(file);
 
 ## 🚀 Desteklenen Teknolojiler
 
-SmartRAG, size en iyi deneyimi sunmak için önde gelen AI sağlayıcıları ve depolama çözümleri ile entegre olur.
+SmartRAG, size en iyi deneyimi sunmak için önde gelen AI provider'ları ve depolama çözümleri ile entegre olur.
 
-### 🤖 AI Sağlayıcıları
+### 🤖 AI Provider'ları
 
 <div class="row mt-4 mb-5">
     <div class="col-md-2 mb-3">
@@ -178,7 +178,7 @@ SmartRAG, size en iyi deneyimi sunmak için önde gelen AI sağlayıcıları ve 
     </div>
 </div>
 
-### 🗄️ Depolama Sağlayıcıları
+### 🗄️ Depolama Provider'ları
 
 <div class="row mt-4 mb-5">
     <div class="col-md-2 mb-3">
@@ -222,7 +222,7 @@ SmartRAG, size en iyi deneyimi sunmak için önde gelen AI sağlayıcıları ve 
             <div class="provider-icon">
                 <i class="fas fa-folder-open"></i>
             </div>
-            <h6>File System</h6>
+            <h6>Dosya Sistemi</h6>
             <small>Yerel Depolama</small>
         </div>
     </div>
@@ -236,7 +236,7 @@ SmartRAG, size en iyi deneyimi sunmak için önde gelen AI sağlayıcıları ve 
             <div class="card-body text-center p-4">
                 <i class="fas fa-rocket fa-2x text-primary mb-3"></i>
                 <h5 class="card-title">Başlangıç</h5>
-                <p class="card-text">Hızlı kurulum ve kurulum kılavuzu ile çalışmaya başlayın.</p>
+                <p class="card-text">Sizi çalışır hale getirmek için hızlı kurulum ve kurulum kılavuzu.</p>
                 <a href="{{ site.baseurl }}/tr/getting-started" class="btn btn-primary">Başlayın</a>
             </div>
         </div>
@@ -288,8 +288,8 @@ SmartRAG, size en iyi deneyimi sunmak için önde gelen AI sağlayıcıları ve 
         <div class="card h-100 border-0 shadow-sm">
             <div class="card-body text-center p-4">
                 <i class="fas fa-history fa-2x text-secondary mb-3"></i>
-                <h5 class="card-title">Değişiklik Günlüğü</h5>
-                <p class="card-text">Sürümler arasında yeni özellikler, iyileştirmeler ve hata düzeltmelerini takip edin.</p>
+                <h5 class="card-title">Değişiklik Geçmişi</h5>
+                <p class="card-text">Sürümler arası yeni özellikler, iyileştirmeler ve hata düzeltmelerini takip edin.</p>
                 <a href="{{ site.baseurl }}/tr/changelog" class="btn btn-secondary">Değişiklikleri Görüntüle</a>
             </div>
         </div>
