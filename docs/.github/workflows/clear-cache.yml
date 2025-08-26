@@ -1,0 +1,17 @@
+name: Clear GitHub Pages Cache
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'docs/**'
+
+jobs:
+  clear-cache:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clear GitHub Pages cache
+        uses: actions/clear-cache@v1
+        with:
+          cache-name: 'github-pages'
