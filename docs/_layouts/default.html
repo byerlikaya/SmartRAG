@@ -129,10 +129,10 @@
                             <i class="fas fa-globe me-1"></i>{% if page.lang == "tr" %}Türkçe{% elsif page.lang == "de" %}Deutsch{% elsif page.lang == "ru" %}Русский{% else %}English{% endif %}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item" href="{{ site.baseurl }}/en/"><i class="fas fa-flag me-2"></i>English</a></li>
-                            <li><a class="dropdown-item" href="{{ site.baseurl }}/tr/"><i class="fas fa-flag me-2"></i>Türkçe</a></li>
-                            <li><a class="dropdown-item" href="{{ site.baseurl }}/de/"><i class="fas fa-flag me-2"></i>Deutsch</a></li>
-                            <li><a class="dropdown-item" href="{{ site.baseurl }}/ru/"><i class="fas fa-flag me-2"></i>Русский</a></li>
+                            <li><a class="dropdown-item language-link" href="#" data-lang="en"><i class="fas fa-flag me-2"></i>English</a></li>
+                            <li><a class="dropdown-item language-link" href="#" data-lang="tr"><i class="fas fa-flag me-2"></i>Türkçe</a></li>
+                            <li><a class="dropdown-item language-link" href="#" data-lang="de"><i class="fas fa-flag me-2"></i>Deutsch</a></li>
+                            <li><a class="dropdown-item language-link" href="#" data-lang="ru"><i class="fas fa-flag me-2"></i>Русский</a></li>
                         </ul>
                     </li>
                 </ul>
@@ -144,12 +144,14 @@
         <main class="main-content">
             <div class="container-fluid">
                 <div class="content-wrapper">
+                    {% unless page.hide_title %}
                     <div class="page-header">
                         <h1 class="page-title">{{ page.title }}</h1>
                         {% if page.description %}
                         <p class="page-description">{{ page.description }}</p>
                         {% endif %}
                     </div>
+                    {% endunless %}
                     
                     <div class="page-content">
                         {{ content }}

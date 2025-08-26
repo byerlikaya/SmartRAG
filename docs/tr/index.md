@@ -3,6 +3,7 @@ layout: default
 title: SmartRAG Dokümantasyonu
 description: .NET uygulamaları için kurumsal düzeyde RAG kütüphanesi
 lang: tr
+hide_title: true
 ---
 
 <div class="hero-section text-center py-5 mb-5">
