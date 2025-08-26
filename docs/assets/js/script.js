@@ -192,15 +192,9 @@ document.addEventListener('DOMContentLoaded', function() {
     // Language switching enhancement
     const languageDropdown = document.getElementById('languageDropdown');
     if (languageDropdown) {
-        // Add click handler to prevent default behavior
-        languageDropdown.addEventListener('click', function(e) {
-            e.preventDefault();
-        });
-        
         // Add click handlers to dropdown items
         document.querySelectorAll('.dropdown-item').forEach(item => {
             item.addEventListener('click', function(e) {
-                e.preventDefault();
                 const href = this.getAttribute('href');
                 if (href) {
                     // Add smooth transition

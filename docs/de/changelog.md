@@ -1,15 +1,41 @@
 ---
 layout: default
 title: Changelog
-description: Track new features, improvements, and bug fixes across SmartRAG versions
-lang: en
+description: Verfolgen Sie neue Funktionen, Verbesserungen und Fehlerbehebungen in SmartRAG-Versionen
+lang: de
 ---
 
-# Changelog
+<div class="page-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center">
+                <h1 class="page-title">Changelog</h1>
+                <p class="page-description">
+                    Verfolgen Sie neue Funktionen, Verbesserungen und Fehlerbehebungen in SmartRAG-Versionen
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
 
-Track new features, improvements, and bug fixes across SmartRAG versions.
+<div class="page-content">
+    <div class="container">
+        <!-- Version History Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Versionsverlauf</h2>
+                    <p>Vollständige Geschichte der SmartRAG-Releases mit detaillierten Änderungsinformationen.</p>
 
-## [1.0.3] - 2025-01-XX
+## [1.1.0] - 2025-08-22
+
+### Added
+- **Excel File Support**: Added Excel file parsing (.xlsx, .xls) with EPPlus 8.1.0 integration
+- **Enhanced Retry Logic**: Improved Anthropic API retry mechanism for HTTP 529 (Overloaded) errors
+- **Content Validation**: Enhanced document content validation
+- **Excel Documentation**: Comprehensive Excel format documentation
+
+## [1.0.3] - 2025-08-20
 
 ### Added
 - **Multi-language Support**: Added comprehensive documentation in English, Turkish, German, and Russian

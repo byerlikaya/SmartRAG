@@ -1,384 +1,524 @@
 ---
 layout: default
-title: Examples
-description: Real-world examples and sample applications to learn from SmartRAG
-lang: en
+title: Beispiele
+description: Praktische Beispiele und Anwendungsfälle für SmartRAG
+lang: de
 ---
 
-# Examples
+<div class="page-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center">
+                <h1 class="page-title">Beispiele</h1>
+                <p class="page-description">
+                    Praktische Beispiele und Anwendungsfälle für SmartRAG
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
 
-Real-world examples and sample applications to learn from SmartRAG.
-
-## Basic Examples
-
-### Simple Document Upload
-
-```csharp
-[HttpPost("upload")]
-public async Task<ActionResult<Document>> UploadDocument(IFormFile file)
-{
-    try
-    {
-        var document = await _documentService.UploadDocumentAsync(file);
-        return Ok(document);
-    }
-    catch (Exception ex)
-    {
-        return BadRequest(ex.Message);
-    }
-}
-```
-
-### Document Search
-
-```csharp
-[HttpGet("search")]
-public async Task<ActionResult<IEnumerable<DocumentChunk>>> SearchDocuments(
-    [FromQuery] string query, 
-    [FromQuery] int maxResults = 10)
-{
-    try
-    {
-        var results = await _documentService.SearchDocumentsAsync(query, maxResults);
-        return Ok(results);
-    }
-    catch (Exception ex)
-    {
-        return BadRequest(ex.Message);
-    }
-}
-```
-
-## Advanced Examples
-
-### Batch Document Processing
-
-```csharp
-public async Task<IEnumerable<Document>> ProcessMultipleDocumentsAsync(
-    IEnumerable<IFormFile> files)
-{
-    var tasks = files.Select(async file =>
-    {
-        try
-        {
-            return await _documentService.UploadDocumentAsync(file);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to process file: {FileName}", file.FileName);
-            return null;
-        }
-    });
-
-    var results = await Task.WhenAll(tasks);
-    return results.Where(d => d != null);
-}
-```
-
-### Custom Chunking Strategy
-
-```csharp
-public class CustomChunkingStrategy : IChunkingStrategy
-{
-    public IEnumerable<string> ChunkText(string text, int chunkSize, int overlap)
-    {
-        var chunks = new List<string>();
-        var sentences = text.Split(new[] { '.', '!', '?' }, 
-            StringSplitOptions.RemoveEmptyEntries);
-        
-        var currentChunk = new StringBuilder();
-        
-        foreach (var sentence in sentences)
-        {
-            if (currentChunk.Length + sentence.Length > chunkSize)
-            {
-                if (currentChunk.Length > 0)
-                {
-                    chunks.Add(currentChunk.ToString().Trim());
-                    currentChunk.Clear();
-                }
-            }
-            currentChunk.AppendLine(sentence.Trim() + ".");
-        }
-        
-        if (currentChunk.Length > 0)
-        {
-            chunks.Add(currentChunk.ToString().Trim());
-        }
-        
-        return chunks;
-    }
-}
-```
-
-### Custom AI Provider
-
-```csharp
-public class CustomAIProvider : IAIProvider
-{
-    private readonly HttpClient _httpClient;
-    private readonly string _apiKey;
-    
-    public CustomAIProvider(HttpClient httpClient, IConfiguration configuration)
-    {
-        _httpClient = httpClient;
-        _apiKey = configuration["CustomAI:ApiKey"];
-    }
-    
-    public async Task<float[]> GenerateEmbeddingAsync(string text)
-    {
-        var request = new
-        {
-            text = text,
-            model = "custom-embedding-model"
-        };
-        
-        var response = await _httpClient.PostAsJsonAsync(
-            "https://api.customai.com/embeddings", request);
-        
-        response.EnsureSuccessStatusCode();
-        
-        var result = await response.Content.ReadFromJsonAsync<EmbeddingResponse>();
-        return result.Embedding;
-    }
-}
-```
-
-## Web API Examples
-
-### Complete Controller
-
-```csharp
-[ApiController]
+<div class="page-content">
+    <div class="container">
+        <!-- Basic Examples Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Grundlegende Beispiele</h2>
+                    <p>Einfache Beispiele für den Einstieg in SmartRAG.</p>
+                    
+                    <h3>Dokument hochladen und durchsuchen</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[ApiController]
 [Route("api/[controller]")]
-public class DocumentsController : ControllerBase
+public class DocumentController : ControllerBase
 {
     private readonly IDocumentService _documentService;
-    private readonly ILogger<DocumentsController> _logger;
-    
-    public DocumentsController(
-        IDocumentService documentService,
-        ILogger<DocumentsController> logger)
+    private readonly ILogger&lt;DocumentController&gt; _logger;
+
+    public DocumentController(IDocumentService documentService, ILogger&lt;DocumentController&gt; logger)
     {
         _documentService = documentService;
         _logger = logger;
     }
-    
+
     [HttpPost("upload")]
-    public async Task<ActionResult<Document>> UploadDocument(IFormFile file)
+    public async Task&lt;ActionResult&lt;Document&gt;&gt; UploadDocument(IFormFile file)
     {
-        if (file == null || file.Length == 0)
-            return BadRequest("No file provided");
-            
         try
         {
+            if (file == null || file.Length == 0)
+                return BadRequest("Keine Datei ausgewählt");
+
             var document = await _documentService.UploadDocumentAsync(file);
-            _logger.LogInformation("Document uploaded: {DocumentId}", document.Id);
+            _logger.LogInformation("Dokument {FileName} erfolgreich hochgeladen", file.FileName);
+            
             return Ok(document);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to upload document: {FileName}", file.FileName);
-            return BadRequest(ex.Message);
+            _logger.LogError(ex, "Fehler beim Hochladen des Dokuments");
+            return StatusCode(500, "Interner Serverfehler");
         }
     }
-    
+
     [HttpGet("search")]
-    public async Task<ActionResult<IEnumerable<DocumentChunk>>> SearchDocuments(
+    public async Task&lt;ActionResult&lt;IEnumerable&lt;DocumentChunk&gt;&gt;&gt; SearchDocuments(
         [FromQuery] string query, 
         [FromQuery] int maxResults = 10)
     {
-        if (string.IsNullOrWhiteSpace(query))
-            return BadRequest("Query parameter is required");
-            
         try
         {
+            if (string.IsNullOrWhiteSpace(query))
+                return BadRequest("Suchanfrage darf nicht leer sein");
+
             var results = await _documentService.SearchDocumentsAsync(query, maxResults);
+            _logger.LogInformation("Suche nach '{Query}' ergab {Count} Ergebnisse", query, results.Count());
+            
             return Ok(results);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Search failed for query: {Query}", query);
-            return BadRequest(ex.Message);
+            _logger.LogError(ex, "Fehler bei der Dokumentsuche");
+            return StatusCode(500, "Interner Serverfehler");
         }
     }
-    
+}</code></pre>
+                    </div>
+
+                    <h3>RAG-Antwort generieren</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[HttpPost("ask")]
+public async Task&lt;ActionResult&lt;RagResponse&gt;&gt; AskQuestion([FromBody] AskQuestionRequest request)
+{
+    try
+    {
+        if (string.IsNullOrWhiteSpace(request.Question))
+            return BadRequest("Frage darf nicht leer sein");
+
+        var response = await _documentService.GenerateRagAnswerAsync(request.Question, request.MaxResults ?? 5);
+        _logger.LogInformation("RAG-Antwort für Frage '{Question}' generiert", request.Question);
+        
+        return Ok(response);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Fehler bei der RAG-Antwortgenerierung");
+        return StatusCode(500, "Interner Serverfehler");
+    }
+}
+
+public class AskQuestionRequest
+{
+    public string Question { get; set; }
+    public int? MaxResults { get; set; }
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Advanced Examples Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Erweiterte Beispiele</h2>
+                    <p>Komplexere Anwendungsfälle und erweiterte Funktionen.</p>
+                    
+                    <h3>Batch-Dokumentenverarbeitung</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[HttpPost("upload-batch")]
+public async Task&lt;ActionResult&lt;BatchUploadResult&gt;&gt; UploadBatchDocuments(IFormFileCollection files)
+{
+    try
+    {
+        var results = new List&lt;Document&gt;();
+        var errors = new List&lt;string&gt;();
+
+        foreach (var file in files)
+        {
+            try
+            {
+                var document = await _documentService.UploadDocumentAsync(file);
+                results.Add(document);
+                _logger.LogInformation("Dokument {FileName} erfolgreich verarbeitet", file.FileName);
+            }
+            catch (Exception ex)
+            {
+                var error = $"Fehler bei {file.FileName}: {ex.Message}";
+                errors.Add(error);
+                _logger.LogWarning(ex, "Fehler beim Verarbeiten von {FileName}", file.FileName);
+            }
+        }
+
+        return Ok(new BatchUploadResult
+        {
+            SuccessfulUploads = results,
+            Errors = errors,
+            TotalFiles = files.Count,
+            SuccessCount = results.Count,
+            ErrorCount = errors.Count
+        });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Fehler bei der Batch-Verarbeitung");
+        return StatusCode(500, "Interner Serverfehler");
+    }
+}
+
+public class BatchUploadResult
+{
+    public List&lt;Document&gt; SuccessfulUploads { get; set; }
+    public List&lt;string&gt; Errors { get; set; }
+    public int TotalFiles { get; set; }
+    public int SuccessCount { get; set; }
+    public int ErrorCount { get; set; }
+}</code></pre>
+                    </div>
+
+                    <h3>Erweiterte Suche mit Filtern</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[HttpPost("advanced-search")]
+public async Task&lt;ActionResult&lt;AdvancedSearchResult&gt;&gt; AdvancedSearch([FromBody] AdvancedSearchRequest request)
+{
+    try
+    {
+        var searchResults = await _documentService.SearchDocumentsAsync(request.Query, request.MaxResults);
+        
+        // Zusätzliche Filter anwenden
+        var filteredResults = searchResults
+            .Where(r => request.MinSimilarityScore == null || r.SimilarityScore >= request.MinSimilarityScore)
+            .Where(r => request.ContentTypes == null || !request.ContentTypes.Any() || 
+                       request.ContentTypes.Contains(r.Document.ContentType))
+            .OrderByDescending(r => r.SimilarityScore)
+            .ToList();
+
+        var result = new AdvancedSearchResult
+        {
+            Query = request.Query,
+            Results = filteredResults,
+            TotalResults = filteredResults.Count,
+            SearchTime = DateTime.UtcNow,
+            AppliedFilters = new
+            {
+                MinSimilarityScore = request.MinSimilarityScore,
+                ContentTypes = request.ContentTypes
+            }
+        };
+
+        _logger.LogInformation("Erweiterte Suche nach '{Query}' ergab {Count} gefilterte Ergebnisse", 
+            request.Query, filteredResults.Count);
+        
+        return Ok(result);
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Fehler bei der erweiterten Suche");
+        return StatusCode(500, "Interner Serverfehler");
+    }
+}
+
+public class AdvancedSearchRequest
+{
+    public string Query { get; set; }
+    public int MaxResults { get; set; } = 10;
+    public float? MinSimilarityScore { get; set; }
+    public List&lt;string&gt; ContentTypes { get; set; }
+}
+
+public class AdvancedSearchResult
+{
+    public string Query { get; set; }
+    public List&lt;DocumentChunk&gt; Results { get; set; }
+    public int TotalResults { get; set; }
+    public DateTime SearchTime { get; set; }
+    public object AppliedFilters { get; set; }
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Web API Examples Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Web API Beispiele</h2>
+                    <p>Vollständige Web API Controller mit allen SmartRAG-Funktionen.</p>
+                    
+                    <h3>Vollständiger Document Controller</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[ApiController]
+[Route("api/[controller]")]
+[Produces("application/json")]
+public class DocumentController : ControllerBase
+{
+    private readonly IDocumentService _documentService;
+    private readonly ILogger&lt;DocumentController&gt; _logger;
+
+    public DocumentController(IDocumentService documentService, ILogger&lt;DocumentController&gt; logger)
+    {
+        _documentService = documentService;
+        _logger = logger;
+    }
+
+    /// <summary>
+    /// Lädt ein Dokument hoch
+    /// </summary>
+    [HttpPost("upload")]
+    [ProducesResponseType(typeof(Document), 200)]
+    [ProducesResponseType(400)]
+    [ProducesResponseType(500)]
+    public async Task&lt;ActionResult&lt;Document&gt;&gt; UploadDocument(IFormFile file)
+    {
+        // Implementation siehe oben
+    }
+
+    /// <summary>
+    /// Ruft ein Dokument anhand der ID ab
+    /// </summary>
     [HttpGet("{id}")]
-    public async Task<ActionResult<Document>> GetDocument(string id)
+    [ProducesResponseType(typeof(Document), 200)]
+    [ProducesResponseType(404)]
+    public async Task&lt;ActionResult&lt;Document&gt;&gt; GetDocument(string id)
     {
         try
         {
             var document = await _documentService.GetDocumentByIdAsync(id);
             if (document == null)
-                return NotFound();
-                
+                return NotFound($"Dokument mit ID {id} nicht gefunden");
+
             return Ok(document);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get document: {DocumentId}", id);
-            return BadRequest(ex.Message);
+            _logger.LogError(ex, "Fehler beim Abrufen des Dokuments {Id}", id);
+            return StatusCode(500, "Interner Serverfehler");
         }
     }
-    
+
+    /// <summary>
+    /// Ruft alle Dokumente ab
+    /// </summary>
+    [HttpGet]
+    [ProducesResponseType(typeof(IEnumerable&lt;Document&gt;), 200)]
+    public async Task&lt;ActionResult&lt;IEnumerable&lt;Document&gt;&gt;&gt; GetAllDocuments()
+    {
+        try
+        {
+            var documents = await _documentService.GetAllDocumentsAsync();
+            return Ok(documents);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Fehler beim Abrufen aller Dokumente");
+            return StatusCode(500, "Interner Serverfehler");
+        }
+    }
+
+    /// <summary>
+    /// Löscht ein Dokument
+    /// </summary>
     [HttpDelete("{id}")]
-    public async Task<ActionResult> DeleteDocument(string id)
+    [ProducesResponseType(200)]
+    [ProducesResponseType(404)]
+    public async Task&lt;ActionResult&gt; DeleteDocument(string id)
     {
         try
         {
             var success = await _documentService.DeleteDocumentAsync(id);
             if (!success)
-                return NotFound();
-                
-            _logger.LogInformation("Document deleted: {DocumentId}", id);
-            return NoContent();
+                return NotFound($"Dokument mit ID {id} nicht gefunden");
+
+            _logger.LogInformation("Dokument {Id} erfolgreich gelöscht", id);
+            return Ok();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to delete document: {DocumentId}", id);
-            return BadRequest(ex.Message);
+            _logger.LogError(ex, "Fehler beim Löschen des Dokuments {Id}", id);
+            return StatusCode(500, "Interner Serverfehler");
         }
     }
-}
-```
 
-## Console Application Example
-
-```csharp
-class Program
-{
-    static async Task Main(string[] args)
+    /// <summary>
+    /// Sucht in Dokumenten
+    /// </summary>
+    [HttpGet("search")]
+    [ProducesResponseType(typeof(IEnumerable&lt;DocumentChunk&gt;), 200)]
+    public async Task&lt;ActionResult&lt;IEnumerable&lt;DocumentChunk&gt;&gt;&gt; SearchDocuments(
+        [FromQuery] string query, 
+        [FromQuery] int maxResults = 10)
     {
-        var services = new ServiceCollection();
-        
-        // Configure services
-        services.AddSmartRAG(options =>
+        // Implementation siehe oben
+    }
+
+    /// <summary>
+    /// Generiert eine RAG-Antwort
+    /// </summary>
+    [HttpPost("ask")]
+    [ProducesResponseType(typeof(RagResponse), 200)]
+    public async Task&lt;ActionResult&lt;RagResponse&gt;&gt; AskQuestion([FromBody] AskQuestionRequest request)
+    {
+        // Implementation siehe oben
+    }
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Console Application Example Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Konsolenanwendung Beispiel</h2>
+                    <p>Einfache Konsolenanwendung mit SmartRAG-Integration.</p>
+                    
+                    <div class="code-example">
+                        <pre><code class="language-csharp">using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using SmartRAG.Interfaces;
+
+namespace SmartRAG.ConsoleApp
+{
+    class Program
+    {
+        static async Task Main(string[] args)
         {
-            options.AIProvider = AIProvider.Anthropic;
-            options.StorageProvider = StorageProvider.Qdrant;
-            options.ApiKey = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
-            options.ChunkSize = 1000;
-            options.ChunkOverlap = 200;
-        });
-        
-        var serviceProvider = services.BuildServiceProvider();
-        var documentService = serviceProvider.GetRequiredService<IDocumentService>();
-        
-        Console.WriteLine("SmartRAG Console Application");
-        Console.WriteLine("============================");
-        
-        while (true)
-        {
-            Console.WriteLine("\nOptions:");
-            Console.WriteLine("1. Upload document");
-            Console.WriteLine("2. Search documents");
-            Console.WriteLine("3. List all documents");
-            Console.WriteLine("4. Exit");
-            Console.Write("Choose an option: ");
+            var host = CreateHostBuilder(args).Build();
             
-            var choice = Console.ReadLine();
-            
-            switch (choice)
+            using var scope = host.Services.CreateScope();
+            var documentService = scope.ServiceProvider.GetRequiredService&lt;IDocumentService&gt;();
+            var logger = scope.ServiceProvider.GetRequiredService&lt;ILogger&lt;Program&gt;&gt;();
+
+            logger.LogInformation("SmartRAG Konsolenanwendung gestartet");
+
+            while (true)
             {
-                case "1":
-                    await UploadDocument(documentService);
-                    break;
-                case "2":
-                    await SearchDocuments(documentService);
-                    break;
-                case "3":
-                    await ListDocuments(documentService);
-                    break;
-                case "4":
-                    return;
-                default:
-                    Console.WriteLine("Invalid option. Please try again.");
-                    break;
+                Console.WriteLine("\n=== SmartRAG Konsolenanwendung ===");
+                Console.WriteLine("1. Dokument hochladen");
+                Console.WriteLine("2. Dokumente durchsuchen");
+                Console.WriteLine("3. Frage stellen");
+                Console.WriteLine("4. Beenden");
+                Console.Write("Wählen Sie eine Option (1-4): ");
+
+                var choice = Console.ReadLine();
+
+                try
+                {
+                    switch (choice)
+                    {
+                        case "1":
+                            await UploadDocument(documentService, logger);
+                            break;
+                        case "2":
+                            await SearchDocuments(documentService, logger);
+                            break;
+                        case "3":
+                            await AskQuestion(documentService, logger);
+                            break;
+                        case "4":
+                            logger.LogInformation("Anwendung wird beendet");
+                            return;
+                        default:
+                            Console.WriteLine("Ungültige Option. Bitte wählen Sie 1-4.");
+                            break;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Fehler bei der Ausführung");
+                    Console.WriteLine($"Fehler: {ex.Message}");
+                }
             }
         }
-    }
-    
-    static async Task UploadDocument(IDocumentService documentService)
-    {
-        Console.Write("Enter file path: ");
-        var filePath = Console.ReadLine();
-        
-        if (!File.Exists(filePath))
+
+        static async Task UploadDocument(IDocumentService documentService, ILogger logger)
         {
-            Console.WriteLine("File not found.");
-            return;
-        }
-        
-        try
-        {
+            Console.Write("Geben Sie den Pfad zur Datei ein: ");
+            var filePath = Console.ReadLine();
+
+            if (!File.Exists(filePath))
+            {
+                Console.WriteLine("Datei nicht gefunden!");
+                return;
+            }
+
             var fileInfo = new FileInfo(filePath);
-            var fileStream = File.OpenRead(filePath);
-            
-            // Create a mock IFormFile
-            var formFile = new FormFile(fileStream, 0, fileInfo.Length, 
-                fileInfo.Name, fileInfo.Name);
-            
+            var fileBytes = await File.ReadAllBytesAsync(filePath);
+            var fileStream = new MemoryStream(fileBytes);
+            var formFile = new FormFile(fileStream, 0, fileBytes.Length, "file", fileInfo.Name);
+
             var document = await documentService.UploadDocumentAsync(formFile);
-            Console.WriteLine($"Document uploaded successfully. ID: {document.Id}");
+            Console.WriteLine($"Dokument erfolgreich hochgeladen: {document.Id}");
         }
-        catch (Exception ex)
+
+        static async Task SearchDocuments(IDocumentService documentService, ILogger logger)
         {
-            Console.WriteLine($"Error uploading document: {ex.Message}");
-        }
-    }
-    
-    static async Task SearchDocuments(IDocumentService documentService)
-    {
-        Console.Write("Enter search query: ");
-        var query = Console.ReadLine();
-        
-        if (string.IsNullOrWhiteSpace(query))
-        {
-            Console.WriteLine("Query cannot be empty.");
-            return;
-        }
-        
-        try
-        {
+            Console.Write("Geben Sie Ihre Suchanfrage ein: ");
+            var query = Console.ReadLine();
+
             var results = await documentService.SearchDocumentsAsync(query, 5);
-            Console.WriteLine($"Found {results.Count()} results:");
             
+            Console.WriteLine($"\nGefundene Ergebnisse ({results.Count()}):");
             foreach (var result in results)
             {
-                Console.WriteLine($"- {result.Content.Substring(0, Math.Min(100, result.Content.Length))}...");
+                Console.WriteLine($"- {result.Document.FileName} (Ähnlichkeit: {result.SimilarityScore:P2})");
+                Console.WriteLine($"  {result.Content.Substring(0, Math.Min(100, result.Content.Length))}...");
             }
         }
-        catch (Exception ex)
+
+        static async Task AskQuestion(IDocumentService documentService, ILogger logger)
         {
-            Console.WriteLine($"Error searching documents: {ex.Message}");
-        }
-    }
-    
-    static async Task ListDocuments(IDocumentService documentService)
-    {
-        try
-        {
-            var documents = await documentService.GetAllDocumentsAsync();
-            Console.WriteLine($"Total documents: {documents.Count()}");
+            Console.Write("Stellen Sie Ihre Frage: ");
+            var question = Console.ReadLine();
+
+            var response = await documentService.GenerateRagAnswerAsync(question, 5);
             
-            foreach (var doc in documents)
+            Console.WriteLine($"\nAntwort: {response.Answer}");
+            Console.WriteLine($"\nQuellen ({response.Sources.Count}):");
+            foreach (var source in response.Sources)
             {
-                Console.WriteLine($"- {doc.FileName} (ID: {doc.Id})");
+                Console.WriteLine($"- {source.DocumentName} (Ähnlichkeit: {source.SimilarityScore:P2})");
             }
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"Error listing documents: {ex.Message}");
-        }
+
+        static IHostBuilder CreateHostBuilder(string[] args) =>
+            Host.CreateDefaultBuilder(args)
+                .ConfigureServices((context, services) =>
+                {
+                    services.AddSmartRAG(context.Configuration, options =>
+                    {
+                        options.AIProvider = AIProvider.Anthropic;
+                        options.StorageProvider = StorageProvider.Qdrant;
+                    });
+                });
     }
-}
-```
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-## Need Help?
-
-If you need assistance with examples:
-
-- [Back to Documentation]({{ site.baseurl }}/en/) - Main documentation
-- [Open an issue](https://github.com/byerlikaya/SmartRAG/issues) - GitHub Issues
-- [Contact support](mailto:b.yerlikaya@outlook.com) - Email support
-
+        <!-- Help Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <div class="alert alert-info">
+                        <h4><i class="fas fa-question-circle me-2"></i>Benötigen Sie Hilfe?</h4>
+                        <p class="mb-0">Für weitere Beispiele und Unterstützung:</p>
+                        <ul class="mb-0 mt-2">
+                            <li><a href="{{ site.baseurl }}/de/getting-started">Erste Schritte</a></li>
+                            <li><a href="{{ site.baseurl }}/de/configuration">Konfiguration</a></li>
+                            <li><a href="{{ site.baseurl }}/de/api-reference">API-Referenz</a></li>
+                            <li><a href="https://github.com/byerlikaya/SmartRAG" target="_blank">GitHub Repository</a></li>
+                            <li><a href="mailto:b.yerlikaya@outlook.com">E-Mail-Support</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>

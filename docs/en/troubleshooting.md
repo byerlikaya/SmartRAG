@@ -5,377 +5,278 @@ description: Common issues and solutions to help you resolve problems with Smart
 lang: en
 ---
 
-# Troubleshooting
+<div class="page-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center">
+                <h1 class="page-title">Troubleshooting</h1>
+                <p class="page-description">
+                    Common issues and solutions to help you resolve problems with SmartRAG
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
 
-Common issues and solutions to help you resolve problems with SmartRAG.
+<div class="page-content">
+    <div class="container">
+        <!-- Common Issues Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Common Issues</h2>
+                    <p>Common issues and solutions you may encounter when using SmartRAG.</p>
 
-## Common Issues
+                    <h3>Build Issues</h3>
+                    <div class="alert alert-warning">
+                        <h4><i class="fas fa-exclamation-triangle me-2"></i>Warning</h4>
+                        <p class="mb-0">Always run a clean solution first to resolve build errors.</p>
+                    </div>
 
-### Build Errors
+                    <h4>NuGet Package Error</h4>
+                    <div class="code-example">
+                        <pre><code class="language-bash"># Clean solution
+dotnet clean
+dotnet restore
+dotnet build</code></pre>
+                    </div>
 
-#### CS0246: The type or namespace name 'SmartRAG' could not be found
+                    <h4>Dependency Conflict</h4>
+                    <div class="code-example">
+                        <pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="1.1.0" /&gt;
+&lt;PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" /&gt;
+&lt;PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" /&gt;</code></pre>
+                    </div>
 
-**Problem**: The SmartRAG package is not properly referenced.
+                    <h3>Runtime Issues</h3>
+                    <div class="alert alert-info">
+                        <h4><i class="fas fa-info-circle me-2"></i>Configuration</h4>
+                        <p class="mb-0">Most runtime issues are related to configuration problems.</p>
+                    </div>
 
-**Solution**: 
-1. Ensure the package is installed:
-   ```bash
-   dotnet add package SmartRAG
-   ```
-2. Check your `.csproj` file includes the reference:
-   ```xml
-   <PackageReference Include="SmartRAG" Version="1.0.3" />
-   ```
-3. Restore packages:
-   ```bash
-   dotnet restore
-   ```
-
-#### CS1061: 'IServiceCollection' does not contain a definition for 'AddSmartRAG'
-
-**Problem**: The SmartRAG extension method is not available.
-
-**Solution**:
-1. Add the using statement:
-   ```csharp
-   using SmartRAG.Extensions;
-   ```
-2. Ensure the package is properly installed and referenced.
-
-### Runtime Errors
-
-#### InvalidOperationException: No AI provider configured
-
-**Problem**: SmartRAG is not properly configured with an AI provider.
-
-**Solution**:
-```csharp
+                    <h4>AI Provider Not Configured</h4>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Ensure proper configuration
 services.AddSmartRAG(options =>
 {
-    options.AIProvider = AIProvider.Anthropic; // or OpenAI, AzureOpenAI, etc.
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
     options.ApiKey = "your-api-key";
-    options.StorageProvider = StorageProvider.Qdrant; // or Redis, SQLite, etc.
-});
-```
+});</code></pre>
+                    </div>
 
-#### UnauthorizedAccessException: Invalid API key
+                    <h4>API Key Issues</h4>
+                    <div class="code-example">
+                        <pre><code class="language-bash"># Set environment variable
+export SMARTRAG_API_KEY=your-api-key
 
-**Problem**: The API key is invalid or expired.
-
-**Solution**:
-1. Verify your API key is correct
-2. Check if the API key has expired
-3. Ensure the API key has the necessary permissions
-4. For OpenAI, verify the key is from the correct organization
-
-#### ConnectionException: Unable to connect to storage provider
-
-**Problem**: Cannot connect to the configured storage provider.
-
-**Solution**:
-1. **Qdrant**: Check if Qdrant is running and accessible
-   ```bash
-   curl http://localhost:6333/collections
-   ```
-2. **Redis**: Verify Redis connection
-   ```bash
-   redis-cli ping
-   ```
-3. **SQLite**: Check file permissions and path
-4. **Network**: Verify firewall settings and network connectivity
-
-### Performance Issues
-
-#### Slow Document Processing
-
-**Problem**: Document processing is taking too long.
-
-**Solution**:
-1. Reduce chunk size:
-   ```csharp
-   options.ChunkSize = 500; // Default is 1000
-   ```
-2. Use smaller overlap:
-   ```csharp
-   options.ChunkOverlap = 100; // Default is 200
-   ```
-3. Consider using faster storage providers (Redis over SQLite)
-4. Implement caching for frequently accessed documents
-
-#### High Memory Usage
-
-**Problem**: Application is consuming too much memory.
-
-**Solution**:
-1. Process documents in smaller batches
-2. Implement streaming for large files
-3. Use memory-efficient storage providers
-4. Monitor and dispose of resources properly
-
-### Configuration Issues
-
-#### Missing Configuration Values
-
-**Problem**: Required configuration values are missing.
-
-**Solution**:
-1. Check `appsettings.json`:
-   ```json
-   {
-     "SmartRAG": {
-       "AIProvider": "Anthropic",
-       "StorageProvider": "Qdrant",
-       "ApiKey": "your-api-key"
-     }
-   }
-   ```
-2. Use environment variables:
-   ```bash
-   export SMARTRAG_API_KEY="your-api-key"
-   export SMARTRAG_AI_PROVIDER="Anthropic"
-   ```
-
-#### Incorrect Provider Configuration
-
-**Problem**: Provider-specific configuration is incorrect.
-
-**Solution**:
-1. **Qdrant**:
-   ```csharp
-   options.QdrantUrl = "http://localhost:6333";
-   options.CollectionName = "smartrag_documents";
-   ```
-2. **Redis**:
-   ```csharp
-   options.RedisConnectionString = "localhost:6379";
-   options.DatabaseId = 0;
-   ```
-3. **SQLite**:
-   ```csharp
-   options.ConnectionString = "Data Source=smartrag.db";
-   ```
-
-## Debugging
-
-### Enable Logging
-
-```csharp
-services.AddLogging(builder =>
+# Or use appsettings.json
 {
-    builder.AddConsole();
-    builder.AddDebug();
-    builder.SetMinimumLevel(LogLevel.Debug);
-});
-```
+  "SmartRAG": {
+    "ApiKey": "your-api-key"
+  }
+}</code></pre>
+                    </div>
 
-### Check Service Registration
+                    <h3>Performance Issues</h3>
+                    <div class="alert alert-success">
+                        <h4><i class="fas fa-tachometer-alt me-2"></i>Optimization</h4>
+                        <p class="mb-0">Performance can be improved with proper configuration.</p>
+                    </div>
 
-```csharp
-// In Program.cs or Startup.cs
-var serviceProvider = services.BuildServiceProvider();
-
-// Check if services are registered
-var documentService = serviceProvider.GetService<IDocumentService>();
-if (documentService == null)
+                    <h4>Slow Document Processing</h4>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Optimize chunk size
+services.AddSmartRAG(options =>
 {
-    Console.WriteLine("IDocumentService is not registered!");
+    options.ChunkSize = 500; // Smaller chunks for faster processing
+    options.ChunkOverlap = 100;
+});</code></pre>
+                    </div>
+
+                    <h4>Memory Usage</h4>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Use appropriate storage provider
+services.AddSmartRAG(options =>
+{
+    options.StorageProvider = StorageProvider.Redis; // For high memory usage
+    // or
+    options.StorageProvider = StorageProvider.Qdrant; // For large datasets
+});</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Debugging Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Debugging</h2>
+                    <p>Tools and techniques to help you debug SmartRAG applications.</p>
+
+                    <h3>Enable Logging</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Configure logging
+builder.Logging.AddConsole();
+builder.Logging.SetMinimumLevel(LogLevel.Debug);
+
+// In your service
+private readonly ILogger&lt;DocumentService&gt; _logger;
+
+public async Task&lt;Document&gt; UploadDocumentAsync(IFormFile file)
+{
+    _logger.LogInformation("Uploading document: {FileName}", file.FileName);
+    // ... implementation
+}</code></pre>
+                    </div>
+
+                    <h3>Exception Handling</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">try
+{
+    var document = await _documentService.UploadDocumentAsync(file);
+    return Ok(document);
 }
-
-var aiService = serviceProvider.GetService<IAIService>();
-if (aiService == null)
+catch (ArgumentException ex)
 {
-    Console.WriteLine("IAIService is not registered!");
+    _logger.LogError(ex, "Invalid file format");
+    return BadRequest("Invalid file format");
 }
-```
-
-### Validate Configuration
-
-```csharp
-public class ConfigurationValidator
+catch (HttpRequestException ex)
 {
-    public static bool ValidateSmartRagOptions(SmartRagOptions options)
-    {
-        if (string.IsNullOrEmpty(options.ApiKey))
-        {
-            throw new ArgumentException("API key is required");
-        }
-        
-        if (options.ChunkSize <= 0)
-        {
-            throw new ArgumentException("Chunk size must be positive");
-        }
-        
-        if (options.ChunkOverlap < 0)
-        {
-            throw new ArgumentException("Chunk overlap cannot be negative");
-        }
-        
-        return true;
-    }
+    _logger.LogError(ex, "AI provider error");
+    return StatusCode(503, "Service temporarily unavailable");
 }
-```
-
-## Testing
-
-### Unit Test Setup
-
-```csharp
-[TestFixture]
-public class SmartRAGTests
+catch (Exception ex)
 {
-    private ServiceCollection _services;
-    private ServiceProvider _serviceProvider;
+    _logger.LogError(ex, "Unexpected error");
+    return StatusCode(500, "Internal server error");
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Testing Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Testing</h2>
+                    <p>How to test your SmartRAG implementation.</p>
+
+                    <h3>Unit Testing</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[Test]
+public async Task UploadDocument_ValidFile_ReturnsDocument()
+{
+    // Arrange
+    var mockFile = new Mock&lt;IFormFile&gt;();
+    var service = new DocumentService(mockLogger.Object);
     
-    [SetUp]
-    public void Setup()
-    {
-        _services = new ServiceCollection();
-        
-        // Add test configuration
-        _services.AddSmartRAG(options =>
-        {
-            options.AIProvider = AIProvider.InMemory; // Use in-memory for testing
-            options.StorageProvider = StorageProvider.InMemory;
-            options.ApiKey = "test-key";
-        });
-        
-        _serviceProvider = _services.BuildServiceProvider();
-    }
+    // Act
+    var result = await service.UploadDocumentAsync(mockFile.Object);
     
-    [Test]
-    public async Task UploadDocument_ValidFile_ReturnsDocument()
-    {
-        // Arrange
-        var documentService = _serviceProvider.GetRequiredService<IDocumentService>();
-        var file = CreateTestFile();
-        
-        // Act
-        var result = await documentService.UploadDocumentAsync(file);
-        
-        // Assert
-        Assert.IsNotNull(result);
-        Assert.IsNotEmpty(result.Id);
-    }
-}
-```
+    // Assert
+    Assert.IsNotNull(result);
+    Assert.IsNotEmpty(result.Id);
+}</code></pre>
+                    </div>
 
-### Integration Test Setup
-
-```csharp
-[TestFixture]
-public class SmartRAGIntegrationTests
+                    <h3>Integration Testing</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[Test]
+public async Task SearchDocuments_ReturnsRelevantResults()
 {
-    private WebApplicationFactory<Program> _factory;
+    // Arrange
+    var testQuery = "test query";
     
-    [SetUp]
-    public void Setup()
-    {
-        _factory = new WebApplicationFactory<Program>()
-            .WithWebHostBuilder(builder =>
-            {
-                builder.ConfigureAppConfiguration((context, config) =>
-                {
-                    config.AddInMemoryCollection(new Dictionary<string, string>
-                    {
-                        ["SmartRAG:AIProvider"] = "InMemory",
-                        ["SmartRAG:StorageProvider"] = "InMemory",
-                        ["SmartRAG:ApiKey"] = "test-key"
-                    });
-                });
-            });
-    }
+    // Act
+    var results = await _documentService.SearchDocumentsAsync(testQuery);
     
-    [Test]
-    public async Task UploadEndpoint_ValidFile_ReturnsSuccess()
-    {
-        // Arrange
-        var client = _factory.CreateClient();
-        var file = CreateTestFile();
-        var content = new MultipartFormDataContent();
-        content.Add(new StreamContent(file.OpenReadStream()), "file", file.FileName);
-        
-        // Act
-        var response = await client.PostAsync("/api/documents/upload", content);
-        
-        // Assert
-        Assert.IsTrue(response.IsSuccessStatusCode);
-    }
-}
-```
+    // Assert
+    Assert.IsNotNull(results);
+    Assert.IsTrue(results.Any());
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-## Getting Help
+        <!-- Getting Help Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Getting Help</h2>
+                    <p>If you're still having issues, here's how to get help.</p>
 
-### Check Documentation
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="alert alert-info">
+                                <h4><i class="fas fa-github me-2"></i>GitHub Issues</h4>
+                                <p class="mb-0">Report bugs and request features on GitHub.</p>
+                                <a href="https://github.com/byerlikaya/SmartRAG/issues" target="_blank" class="btn btn-sm btn-outline-info mt-2">Open Issue</a>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-success">
+                                <h4><i class="fas fa-envelope me-2"></i>Email Support</h4>
+                                <p class="mb-0">Get direct help via email.</p>
+                                <a href="mailto:b.yerlikaya@outlook.com" class="btn btn-sm btn-outline-success mt-2">Contact</a>
+                            </div>
+                        </div>
+                    </div>
 
-- [Getting Started]({{ site.baseurl }}/en/getting-started) - Basic setup guide
-- [Configuration]({{ site.baseurl }}/en/configuration) - Configuration options
-- [API Reference]({{ site.baseurl }}/en/api-reference) - API documentation
+                    <h3>Before Asking for Help</h3>
+                    <div class="alert alert-warning">
+                        <h4><i class="fas fa-list me-2"></i>Checklist</h4>
+                        <ul class="mb-0">
+                            <li>Check the <a href="{{ site.baseurl }}/en/getting-started">Getting Started</a> guide</li>
+                            <li>Review the <a href="{{ site.baseurl }}/en/configuration">Configuration</a> documentation</li>
+                            <li>Search existing <a href="https://github.com/byerlikaya/SmartRAG/issues" target="_blank">GitHub Issues</a></li>
+                            <li>Include error messages and configuration details</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-### Community Support
+        <!-- Prevention Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Prevention</h2>
+                    <p>Best practices to avoid common issues.</p>
 
-- [GitHub Issues](https://github.com/byerlikaya/SmartRAG/issues) - Report bugs and request features
-- [GitHub Discussions](https://github.com/byerlikaya/SmartRAG/discussions) - Ask questions and share solutions
-
-### Contact Support
-
-- **Email**: [b.yerlikaya@outlook.com](mailto:b.yerlikaya@outlook.com)
-- **Response Time**: Usually within 24 hours
-
-### Provide Information
-
-When reporting an issue, please include:
-
-1. **Environment**: .NET version, OS, SmartRAG version
-2. **Configuration**: Your SmartRAG configuration
-3. **Error Details**: Full error message and stack trace
-4. **Steps to Reproduce**: Clear steps to reproduce the issue
-5. **Expected vs Actual**: What you expected vs what happened
-
-## Prevention
-
-### Best Practices
-
-1. **Always validate configuration** before starting the application
-2. **Use environment-specific settings** for different deployment environments
-3. **Implement proper error handling** and logging
-4. **Test with small documents first** before processing large files
-5. **Monitor performance metrics** in production
-6. **Keep dependencies updated** to the latest stable versions
-
-### Configuration Validation
-
-```csharp
-public static class SmartRAGConfigurationValidator
-{
-    public static void ValidateConfiguration(SmartRagOptions options)
-    {
-        var errors = new List<string>();
-        
-        if (string.IsNullOrEmpty(options.ApiKey))
-            errors.Add("API key is required");
-            
-        if (options.ChunkSize <= 0)
-            errors.Add("Chunk size must be positive");
-            
-        if (options.ChunkOverlap < 0)
-            errors.Add("Chunk overlap cannot be negative");
-            
-        if (options.ChunkOverlap >= options.ChunkSize)
-            errors.Add("Chunk overlap must be less than chunk size");
-        
-        if (errors.Any())
-        {
-            throw new InvalidOperationException(
-                $"SmartRAG configuration validation failed: {string.Join(", ", errors)}");
-        }
-    }
-}
-```
-
-## Need Help?
-
-If you're still experiencing issues:
-
-- [Back to Documentation]({{ site.baseurl }}/en/) - Main documentation
-- [Open an issue](https://github.com/byerlikaya/SmartRAG/issues) - GitHub Issues
-- [Contact support](mailto:b.yerlikaya@outlook.com) - Email support
+                    <h3>Configuration Best Practices</h3>
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="alert alert-primary">
+                                <h4><i class="fas fa-key me-2"></i>API Keys</h4>
+                                <p class="mb-0">Never hardcode API keys. Use environment variables or secure configuration.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-info">
+                                <h4><i class="fas fa-database me-2"></i>Storage</h4>
+                                <p class="mb-0">Choose the right storage provider for your use case.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-success">
+                                <h4><i class="fas fa-shield-alt me-2"></i>Error Handling</h4>
+                                <p class="mb-0">Implement proper error handling and logging.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-warning">
+                                <h4><i class="fas fa-balance-scale me-2"></i>Performance</h4>
+                                <p class="mb-0">Monitor performance and optimize chunk sizes.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>

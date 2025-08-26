@@ -202,6 +202,45 @@ h1, h2, h3, h4, h5, h6 {
     background-color: var(--dark-surface);
 }
 
+/* Dropdown Styles */
+.navbar-nav .dropdown-menu {
+    background-color: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--border-radius);
+    box-shadow: var(--shadow-lg);
+    min-width: 160px;
+}
+
+[data-theme="dark"] .navbar-nav .dropdown-menu {
+    background-color: var(--dark-surface);
+    border-color: var(--gray-700);
+}
+
+.navbar-nav .dropdown-item {
+    color: var(--gray-700);
+    padding: var(--spacing-xs) var(--spacing-sm);
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+[data-theme="dark"] .navbar-nav .dropdown-item {
+    color: var(--gray-300);
+}
+
+.navbar-nav .dropdown-item:hover {
+    background-color: var(--gray-100);
+    color: var(--primary);
+}
+
+[data-theme="dark"] .navbar-nav .dropdown-item:hover {
+    background-color: var(--gray-700);
+    color: var(--primary-light);
+}
+
+.navbar-nav .dropdown-toggle::after {
+    margin-left: 0.5rem;
+}
+
 /* Main Content */
 .main-content {
     margin-top: 80px;

@@ -1,15 +1,23 @@
 ---
 layout: default
-title: Changelog
-description: Track new features, improvements, and bug fixes across SmartRAG versions
-lang: en
+title: Журнал изменений
+description: Отслеживание новых функций, улучшений и исправлений ошибок в версиях SmartRAG
+lang: ru
 ---
 
-# Changelog
+# Журнал изменений
 
-Track new features, improvements, and bug fixes across SmartRAG versions.
+Отслеживание новых функций, улучшений и исправлений ошибок в версиях SmartRAG.
 
-## [1.0.3] - 2025-01-XX
+## [1.1.0] - 2025-08-22
+
+### Добавлено
+- **Поддержка Excel файлов**: Добавлен парсинг Excel файлов (.xlsx, .xls) с интеграцией EPPlus 8.1.0
+- **Улучшенная логика повторов**: Улучшен механизм повторов Anthropic API для HTTP 529 (Overloaded) ошибок
+- **Валидация контента**: Улучшена валидация содержимого документов
+- **Документация Excel**: Комплексная документация по формату Excel
+
+## [1.0.3] - 2025-08-20
 
 ### Added
 - **Multi-language Support**: Added comprehensive documentation in English, Turkish, German, and Russian
