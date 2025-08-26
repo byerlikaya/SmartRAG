@@ -92,14 +92,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 const targetLang = this.getAttribute('data-lang');
                 const currentPath = window.location.pathname;
                 
-                // Remove current language prefix if exists
-                let newPath = currentPath.replace(/^\/(en|tr|de|ru)/, '');
+                // Remove baseurl and current language prefix if exists
+                let newPath = currentPath.replace(/^\/SmartRAG/, '').replace(/^\/(en|tr|de|ru)/, '');
                 
-                // Add new language prefix
+                // Add new language prefix with baseurl
                 if (newPath === '/' || newPath === '') {
-                    newPath = `/${targetLang}/`;
+                    newPath = `/SmartRAG/${targetLang}/`;
                 } else {
-                    newPath = `/${targetLang}${newPath}`;
+                    newPath = `/SmartRAG/${targetLang}${newPath}`;
                 }
                 
                 // Navigate to new language version
