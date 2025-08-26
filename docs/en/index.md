@@ -3,6 +3,7 @@ layout: default
 title: SmartRAG Documentation
 description: Enterprise-grade RAG library for .NET applications
 lang: en
+hide_title: true
 ---
 
 <div class="hero-section text-center py-5 mb-5">
