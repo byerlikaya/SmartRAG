@@ -5,93 +5,160 @@ description: SmartRAG ile hızlı kurulum ve kurulum rehberi
 lang: tr
 ---
 
-# Başlangıç
+<div class="page-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center">
+                <h1 class="page-title">SmartRAG ile Başlayın</h1>
+                <p class="page-description">
+                    SmartRAG'i .NET uygulamanızda sadece birkaç dakikada kurun ve yapılandırın
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
 
-SmartRAG ile hızlı kurulum ve kurulum rehberi.
+<div class="page-content">
+    <div class="container">
+        <!-- Installation Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Kurulum</h2>
+                    <p>SmartRAG NuGet paketi olarak mevcuttur. Tercih ettiğiniz kurulum yöntemini seçin:</p>
+                    
+                    <div class="code-tabs">
+                        <div class="code-tab active" data-tab="cli">.NET CLI</div>
+                        <div class="code-tab" data-tab="pm">Package Manager</div>
+                        <div class="code-tab" data-tab="xml">Package Reference</div>
+                    </div>
+                    
+                    <div class="code-content">
+                        <div class="code-panel active" id="cli">
+                            <pre><code class="language-bash">dotnet add package SmartRAG</code></pre>
+                        </div>
+                        <div class="code-panel" id="pm">
+                            <pre><code class="language-bash">Install-Package SmartRAG</code></pre>
+                        </div>
+                        <div class="code-panel" id="xml">
+                            <pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="1.0.3" /&gt;</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-## Kurulum
+        <!-- Configuration Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Temel Yapılandırma</h2>
+                    <p>SmartRAG'i <code>Program.cs</code> veya <code>Startup.cs</code> dosyanızda yapılandırın:</p>
+                    
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Program.cs
+using SmartRAG;
 
-SmartRAG, NuGet paketi olarak mevcuttur ve birkaç farklı şekilde kurulabilir.
+var builder = WebApplication.CreateBuilder(args);
 
-### .NET CLI kullanarak:
-
-```bash
-dotnet add package SmartRAG
-```
-
-### Package Manager kullanarak:
-
-```bash
-Install-Package SmartRAG
-```
-
-### Doğrudan paket referansı:
-
-```xml
-<PackageReference Include="SmartRAG" Version="1.0.3" />
-```
-
-## Temel Kurulum
-
-Kurulduktan sonra, SmartRAG'ı uygulamanızda yapılandırabilirsiniz.
-
-### Temel Yapılandırma:
-
-```csharp
-// SmartRAG'ı projenize ekleyin
-services.AddSmartRAG(options =>
+// SmartRAG servislerini ekle
+builder.Services.AddSmartRAG(options =>
 {
     options.AIProvider = AIProvider.Anthropic;
     options.StorageProvider = StorageProvider.Qdrant;
     options.ApiKey = "your-api-key";
 });
-```
 
-### Gelişmiş Yapılandırma:
+var app = builder.Build();</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-```csharp
-services.AddSmartRAG(options =>
+        <!-- Quick Example Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Hızlı Örnek</h2>
+                    <p>Başlamanız için basit bir örnek:</p>
+                    
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Document servisini enjekte et
+public class DocumentController : ControllerBase
 {
-    options.AIProvider = AIProvider.OpenAI;
-    options.StorageProvider = StorageProvider.Redis;
-    options.ApiKey = "your-openai-key";
-    options.ModelName = "text-embedding-ada-002";
-    options.ChunkSize = 1000;
-    options.ChunkOverlap = 200;
-});
-```
+    private readonly IDocumentService _documentService;
+    
+    public DocumentController(IDocumentService documentService)
+    {
+        _documentService = documentService;
+    }
+    
+    [HttpPost("upload")]
+    public async Task&lt;IActionResult&gt; UploadDocument(IFormFile file)
+    {
+        var document = await _documentService.UploadDocumentAsync(file);
+        return Ok(document);
+    }
+    
+    [HttpPost("search")]
+    public async Task&lt;IActionResult&gt; Search([FromBody] string query)
+    {
+        var results = await _documentService.SearchAsync(query);
+        return Ok(results);
+    }
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-## Hızlı Başlangıç Örneği
+        <!-- Next Steps Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Sonraki Adımlar</h2>
+                    <p>SmartRAG'i kurduğunuza ve yapılandırdığınıza göre, bu özellikleri keşfedebilirsiniz:</p>
+                    
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="feature-card">
+                                <div class="feature-icon">
+                                    <i class="fas fa-cog"></i>
+                                </div>
+                                <h3>Yapılandırma</h3>
+                                <p>Gelişmiş yapılandırma seçenekleri ve en iyi uygulamalar hakkında bilgi edinin.</p>
+                                <a href="{{ site.baseurl }}/tr/configuration" class="btn btn-outline-primary btn-sm">Yapılandır</a>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="feature-card">
+                                <div class="feature-icon">
+                                    <i class="fas fa-code"></i>
+                                </div>
+                                <h3>API Referansı</h3>
+                                <p>Örneklerle birlikte tam API dokümantasyonunu keşfedin.</p>
+                                <a href="{{ site.baseurl }}/tr/api-reference" class="btn btn-outline-primary btn-sm">API'yi Görüntüle</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-İşte başlamanız için basit bir örnek:
-
-```csharp
-// SmartRAG servislerini DI container'ınıza ekleyin
-services.AddSmartRAG(options =>
-{
-    options.AIProvider = AIProvider.Anthropic;
-    options.StorageProvider = StorageProvider.Qdrant;
-    options.ApiKey = "your-api-key";
-});
-
-// Belge servisini kullanın
-var documentService = serviceProvider.GetRequiredService<IDocumentService>();
-var document = await documentService.UploadDocumentAsync(file);
-```
-
-## Sonraki Adımlar
-
-Artık SmartRAG kuruldu ve yapılandırıldı, şunları yapabilirsiniz:
-
-- Belgeleri yükleyin ve işleyin
-- AI provider'lar kullanarak embedding'ler oluşturun
-- Anlamsal arama sorguları gerçekleştirin
-- Gelişmiş özellikleri keşfedin
-
-## Yardıma mı ihtiyacınız var?
-
-Herhangi bir sorunla karşılaşırsanız veya yardıma ihtiyacınız olursa:
-
-- [Ana Dokümantasyona Dön]({{ site.baseurl }}/tr/) - Ana dokümantasyon
-- [GitHub'da issue açın](https://github.com/byerlikaya/SmartRAG/issues) - GitHub Issues
-- [Destek için iletişime geçin](mailto:b.yerlikaya@outlook.com) - E-posta desteği
+        <!-- Help Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <div class="alert alert-info">
+                        <h4><i class="fas fa-question-circle me-2"></i>Yardıma mı ihtiyacınız var?</h4>
+                        <p class="mb-0">Herhangi bir sorunla karşılaşırsanız veya yardıma ihtiyacınız varsa:</p>
+                        <ul class="mb-0 mt-2">
+                            <li><a href="https://github.com/byerlikaya/SmartRAG/issues" target="_blank">GitHub'da issue açın</a></li>
+                            <li><a href="mailto:b.yerlikaya@outlook.com">E-posta ile destek alın</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
