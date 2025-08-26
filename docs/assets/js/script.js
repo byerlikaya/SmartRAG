@@ -123,6 +123,48 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+    // Provider Tabs Functionality
+    const providerTabs = document.querySelectorAll('.provider-tab');
+    const providerPanels = document.querySelectorAll('.provider-panel');
+    
+    providerTabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const targetTab = this.getAttribute('data-tab');
+            
+            // Remove active class from all tabs and panels
+            providerTabs.forEach(t => t.classList.remove('active'));
+            providerPanels.forEach(p => p.classList.remove('active'));
+            
+            // Add active class to clicked tab and corresponding panel
+            this.classList.add('active');
+            const targetPanel = document.getElementById(targetTab);
+            if (targetPanel) {
+                targetPanel.classList.add('active');
+            }
+        });
+    });
+    
+    // Storage Tabs Functionality
+    const storageTabs = document.querySelectorAll('.storage-tab');
+    const storagePanels = document.querySelectorAll('.storage-panel');
+    
+    storageTabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const targetTab = this.getAttribute('data-tab');
+            
+            // Remove active class from all tabs and panels
+            storageTabs.forEach(t => t.classList.remove('active'));
+            storagePanels.forEach(p => p.classList.remove('active'));
+            
+            // Add active class to clicked tab and corresponding panel
+            this.classList.add('active');
+            const targetPanel = document.getElementById(targetTab);
+            if (targetPanel) {
+                targetPanel.classList.add('active');
+            }
+        });
+    });
+    
     // Intersection Observer for animations
     const observerOptions = {
         threshold: 0.1,

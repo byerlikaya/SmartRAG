@@ -186,6 +186,202 @@ h1, h2, h3, h4, h5, h6 {
     min-height: calc(100vh - 80px);
 }
 
+/* Page Header */
+.page-header {
+    background: linear-gradient(135deg, var(--gray-50) 0%, var(--white) 100%);
+    padding: var(--spacing-2xl) 0;
+    border-bottom: 1px solid var(--gray-200);
+}
+
+[data-theme="dark"] .page-header {
+    background: linear-gradient(135deg, var(--dark-bg) 0%, var(--dark-surface) 100%);
+    border-bottom-color: var(--dark-border);
+}
+
+.page-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: var(--spacing-sm);
+}
+
+[data-theme="dark"] .page-title {
+    color: var(--gray-100);
+}
+
+.page-description {
+    font-size: 1.125rem;
+    color: var(--gray-600);
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+[data-theme="dark"] .page-description {
+    color: var(--gray-400);
+}
+
+/* Page Content */
+.page-content {
+    padding: var(--spacing-2xl) 0;
+}
+
+.content-section {
+    margin-bottom: var(--spacing-2xl);
+}
+
+.content-section h2 {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin-bottom: var(--spacing-lg);
+    border-bottom: 2px solid var(--primary);
+    padding-bottom: var(--spacing-sm);
+}
+
+[data-theme="dark"] .content-section h2 {
+    color: var(--gray-100);
+}
+
+.content-section h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--gray-800);
+    margin-bottom: var(--spacing-md);
+    margin-top: var(--spacing-lg);
+}
+
+[data-theme="dark"] .content-section h3 {
+    color: var(--gray-200);
+}
+
+.content-section p {
+    color: var(--gray-600);
+    margin-bottom: var(--spacing-md);
+    line-height: 1.7;
+}
+
+[data-theme="dark"] .content-section p {
+    color: var(--gray-400);
+}
+
+/* Code Examples */
+.code-example {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    margin: var(--spacing-lg) 0;
+}
+
+[data-theme="dark"] .code-example {
+    background: var(--dark-surface);
+    border-color: var(--dark-border);
+}
+
+.code-example pre {
+    margin: 0;
+    padding: var(--spacing-lg);
+    background: none;
+    color: var(--gray-700);
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    line-height: 1.6;
+    overflow-x: auto;
+}
+
+[data-theme="dark"] .code-example pre {
+    color: var(--gray-300);
+}
+
+/* Provider Tabs */
+.provider-tabs, .storage-tabs {
+    display: flex;
+    gap: var(--spacing-xs);
+    margin-bottom: var(--spacing-lg);
+    flex-wrap: wrap;
+}
+
+.provider-tab, .storage-tab {
+    background: var(--gray-100);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-md);
+    padding: var(--spacing-sm) var(--spacing-lg);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--gray-600);
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+[data-theme="dark"] .provider-tab,
+[data-theme="dark"] .storage-tab {
+    background: var(--dark-surface);
+    border-color: var(--dark-border);
+    color: var(--gray-400);
+}
+
+.provider-tab.active, .storage-tab.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.provider-content, .storage-content {
+    position: relative;
+}
+
+.provider-panel, .storage-panel {
+    display: none;
+}
+
+.provider-panel.active, .storage-panel.active {
+    display: block;
+}
+
+/* Tables */
+.table-responsive {
+    margin: var(--spacing-lg) 0;
+}
+
+.table {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+}
+
+[data-theme="dark"] .table {
+    background: var(--dark-surface);
+}
+
+.table thead th {
+    background: var(--primary);
+    color: white;
+    font-weight: 600;
+    border: none;
+    padding: var(--spacing-md);
+}
+
+.table tbody td {
+    border-color: var(--gray-200);
+    padding: var(--spacing-md);
+    color: var(--gray-700);
+}
+
+[data-theme="dark"] .table tbody td {
+    border-color: var(--dark-border);
+    color: var(--gray-300);
+}
+
+.table tbody tr:hover {
+    background: var(--gray-50);
+}
+
+[data-theme="dark"] .table tbody tr:hover {
+    background: var(--dark-bg);
+}
+
 /* Hero Section */
 .hero-section {
     position: relative;
