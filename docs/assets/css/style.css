@@ -199,6 +199,18 @@ body[data-theme="dark"] {
     z-index: 2;
 }
 
+.hero-icon {
+    margin-bottom: 2rem;
+}
+
+.hero-icon i {
+    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    filter: drop-shadow(0 4px 8px rgba(99, 102, 241, 0.3));
+}
+
 .hero-title {
     background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
     -webkit-background-clip: text;
