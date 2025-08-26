@@ -7,14 +7,10 @@ lang: en
 
 <div class="hero-section text-center py-5 mb-5">
     <div class="hero-content">
-        <h1 class="hero-title display-4 fw-bold mb-4">
-            <i class="fas fa-brain me-3"></i>
-            SmartRAG
-        </h1>
-        <p class="hero-subtitle lead mb-4">
-            Enterprise-grade RAG library for .NET applications
-        </p>
-        <p class="hero-description mb-5">
+        <div class="hero-icon mb-4">
+            <i class="fas fa-brain fa-4x text-primary"></i>
+        </div>
+        <p class="hero-description lead mb-5">
             Build intelligent applications with advanced document processing, AI-powered embeddings, and semantic search capabilities.
         </p>
         <div class="hero-buttons">
