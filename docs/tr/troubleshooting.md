@@ -5,377 +5,278 @@ description: SmartRAG ile ilgili yaygın sorunlar ve çözümler
 lang: tr
 ---
 
-# Sorun Giderme
+<div class="page-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center">
+                <h1 class="page-title">Sorun Giderme</h1>
+                <p class="page-description">
+                    SmartRAG ile ilgili yaygın sorunlar ve çözümler
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
 
-SmartRAG ile ilgili yaygın sorunlar ve çözümler.
+<div class="page-content">
+    <div class="container">
+        <!-- Common Issues Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Yaygın Sorunlar</h2>
+                    <p>SmartRAG kullanırken karşılaşabileceğiniz yaygın sorunlar ve çözümleri.</p>
 
-## Yaygın Sorunlar
+                    <h3>Derleme Sorunları</h3>
+                    <div class="alert alert-warning">
+                        <h4><i class="fas fa-exclamation-triangle me-2"></i>Uyarı</h4>
+                        <p class="mb-0">Derleme hatalarını çözmek için önce temiz bir çözüm çalıştırın.</p>
+                    </div>
 
-### Derleme Hataları
+                    <h4>NuGet Paket Hatası</h4>
+                    <div class="code-example">
+                        <pre><code class="language-bash"># Temiz çözüm
+dotnet clean
+dotnet restore
+dotnet build</code></pre>
+                    </div>
 
-#### CS0246: 'SmartRAG' türü veya namespace adı bulunamadı
+                    <h4>Bağımlılık Çakışması</h4>
+                    <div class="code-example">
+                        <pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="1.1.0" /&gt;
+&lt;PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" /&gt;
+&lt;PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" /&gt;</code></pre>
+                    </div>
 
-**Sorun**: SmartRAG paketi düzgün referans edilmemiş.
+                    <h3>Çalışma Zamanı Sorunları</h3>
+                    <div class="alert alert-info">
+                        <h4><i class="fas fa-info-circle me-2"></i>Yapılandırma</h4>
+                        <p class="mb-0">Çoğu çalışma zamanı sorunu yapılandırma problemleriyle ilgilidir.</p>
+                    </div>
 
-**Çözüm**: 
-1. Paketin kurulu olduğundan emin olun:
-   ```bash
-   dotnet add package SmartRAG
-   ```
-2. `.csproj` dosyanızda referansın olduğunu kontrol edin:
-   ```xml
-   <PackageReference Include="SmartRAG" Version="1.0.3" />
-   ```
-3. Paketleri geri yükleyin:
-   ```bash
-   dotnet restore
-   ```
-
-#### CS1061: 'IServiceCollection' 'AddSmartRAG' tanımını içermiyor
-
-**Sorun**: SmartRAG uzantı metodu mevcut değil.
-
-**Çözüm**:
-1. Using ifadesini ekleyin:
-   ```csharp
-   using SmartRAG.Extensions;
-   ```
-2. Paketin düzgün kurulu ve referans edildiğinden emin olun.
-
-### Çalışma Zamanı Hataları
-
-#### InvalidOperationException: AI provider yapılandırılmamış
-
-**Sorun**: SmartRAG bir AI provider ile düzgün yapılandırılmamış.
-
-**Çözüm**:
-```csharp
+                    <h4>AI Provider Yapılandırılmamış</h4>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Doğru yapılandırmayı sağlayın
 services.AddSmartRAG(options =>
 {
-    options.AIProvider = AIProvider.Anthropic; // veya OpenAI, AzureOpenAI, vb.
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
     options.ApiKey = "your-api-key";
-    options.StorageProvider = StorageProvider.Qdrant; // veya Redis, SQLite, vb.
-});
-```
+});</code></pre>
+                    </div>
 
-#### UnauthorizedAccessException: Geçersiz API anahtarı
+                    <h4>API Anahtarı Sorunları</h4>
+                    <div class="code-example">
+                        <pre><code class="language-bash"># Ortam değişkenini ayarlayın
+export SMARTRAG_API_KEY=your-api-key
 
-**Sorun**: API anahtarı geçersiz veya süresi dolmuş.
-
-**Çözüm**:
-1. API anahtarınızın doğru olduğunu doğrulayın
-2. API anahtarının süresi dolup dolmadığını kontrol edin
-3. API anahtarının gerekli izinlere sahip olduğundan emin olun
-4. OpenAI için anahtarın doğru organizasyondan geldiğini doğrulayın
-
-#### ConnectionException: Depolama provider'ına bağlanılamıyor
-
-**Sorun**: Yapılandırılan depolama provider'ına bağlanılamıyor.
-
-**Çözüm**:
-1. **Qdrant**: Qdrant'ın çalıştığını ve erişilebilir olduğunu kontrol edin
-   ```bash
-   curl http://localhost:6333/collections
-   ```
-2. **Redis**: Redis bağlantısını doğrulayın
-   ```bash
-   redis-cli ping
-   ```
-3. **SQLite**: Dosya izinlerini ve yolu kontrol edin
-4. **Ağ**: Güvenlik duvarı ayarlarını ve ağ bağlantısını doğrulayın
-
-### Performans Sorunları
-
-#### Yavaş Belge İşleme
-
-**Sorun**: Belge işleme çok uzun sürüyor.
-
-**Çözüm**:
-1. Parça boyutunu azaltın:
-   ```csharp
-   options.ChunkSize = 500; // Varsayılan 1000
-   ```
-2. Daha küçük örtüşme kullanın:
-   ```csharp
-   options.ChunkOverlap = 100; // Varsayılan 200
-   ```
-3. Daha hızlı depolama provider'ları kullanmayı düşünün (SQLite yerine Redis)
-4. Sık erişilen belgeler için önbellek uygulayın
-
-#### Yüksek Bellek Kullanımı
-
-**Sorun**: Uygulama çok fazla bellek tüketiyor.
-
-**Çözüm**:
-1. Belgeleri daha küçük gruplar halinde işleyin
-2. Büyük dosyalar için akış uygulayın
-3. Bellek verimli depolama provider'ları kullanın
-4. Kaynakları düzgün izleyin ve dispose edin
-
-### Yapılandırma Sorunları
-
-#### Eksik Yapılandırma Değerleri
-
-**Sorun**: Gerekli yapılandırma değerleri eksik.
-
-**Çözüm**:
-1. `appsettings.json`'u kontrol edin:
-   ```json
-   {
-     "SmartRAG": {
-       "AIProvider": "Anthropic",
-       "StorageProvider": "Qdrant",
-       "ApiKey": "your-api-key"
-     }
-   }
-   ```
-2. Ortam değişkenlerini kullanın:
-   ```bash
-   export SMARTRAG_API_KEY="your-api-key"
-   export SMARTRAG_AI_PROVIDER="Anthropic"
-   ```
-
-#### Yanlış Provider Yapılandırması
-
-**Sorun**: Provider'a özel yapılandırma yanlış.
-
-**Çözüm**:
-1. **Qdrant**:
-   ```csharp
-   options.QdrantUrl = "http://localhost:6333";
-   options.CollectionName = "smartrag_documents";
-   ```
-2. **Redis**:
-   ```csharp
-   options.RedisConnectionString = "localhost:6379";
-   options.DatabaseId = 0;
-   ```
-3. **SQLite**:
-   ```csharp
-   options.ConnectionString = "Data Source=smartrag.db";
-   ```
-
-## Hata Ayıklama
-
-### Günlük Kaydını Etkinleştirin
-
-```csharp
-services.AddLogging(builder =>
+# Veya appsettings.json kullanın
 {
-    builder.AddConsole();
-    builder.AddDebug();
-    builder.SetMinimumLevel(LogLevel.Debug);
-});
-```
+  "SmartRAG": {
+    "ApiKey": "your-api-key"
+  }
+}</code></pre>
+                    </div>
 
-### Servis Kaydını Kontrol Edin
+                    <h3>Performans Sorunları</h3>
+                    <div class="alert alert-success">
+                        <h4><i class="fas fa-tachometer-alt me-2"></i>Optimizasyon</h4>
+                        <p class="mb-0">Performans doğru yapılandırma ile iyileştirilebilir.</p>
+                    </div>
 
-```csharp
-// Program.cs veya Startup.cs'de
-var serviceProvider = services.BuildServiceProvider();
-
-// Servislerin kayıtlı olup olmadığını kontrol edin
-var documentService = serviceProvider.GetService<IDocumentService>();
-if (documentService == null)
+                    <h4>Yavaş Belge İşleme</h4>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Chunk boyutunu optimize edin
+services.AddSmartRAG(options =>
 {
-    Console.WriteLine("IDocumentService kayıtlı değil!");
+    options.ChunkSize = 500; // Daha hızlı işleme için küçük chunk'lar
+    options.ChunkOverlap = 100;
+});</code></pre>
+                    </div>
+
+                    <h4>Bellek Kullanımı</h4>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Uygun depolama provider'ını kullanın
+services.AddSmartRAG(options =>
+{
+    options.StorageProvider = StorageProvider.Redis; // Yüksek bellek kullanımı için
+    // veya
+    options.StorageProvider = StorageProvider.Qdrant; // Büyük veri setleri için
+});</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Debugging Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Hata Ayıklama</h2>
+                    <p>SmartRAG uygulamalarınızı hata ayıklamanıza yardımcı olacak araçlar ve teknikler.</p>
+
+                    <h3>Logging'i Etkinleştirin</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Logging'i yapılandırın
+builder.Logging.AddConsole();
+builder.Logging.SetMinimumLevel(LogLevel.Debug);
+
+// Servisinizde
+private readonly ILogger&lt;DocumentService&gt; _logger;
+
+public async Task&lt;Document&gt; UploadDocumentAsync(IFormFile file)
+{
+    _logger.LogInformation("Belge yükleniyor: {FileName}", file.FileName);
+    // ... implementasyon
+}</code></pre>
+                    </div>
+
+                    <h3>Hata Yönetimi</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">try
+{
+    var document = await _documentService.UploadDocumentAsync(file);
+    return Ok(document);
 }
-
-var aiService = serviceProvider.GetService<IAIService>();
-if (aiService == null)
+catch (ArgumentException ex)
 {
-    Console.WriteLine("IAIService kayıtlı değil!");
+    _logger.LogError(ex, "Geçersiz dosya formatı");
+    return BadRequest("Geçersiz dosya formatı");
 }
-```
-
-### Yapılandırmayı Doğrulayın
-
-```csharp
-public class ConfigurationValidator
+catch (HttpRequestException ex)
 {
-    public static bool ValidateSmartRagOptions(SmartRagOptions options)
-    {
-        if (string.IsNullOrEmpty(options.ApiKey))
-        {
-            throw new ArgumentException("API anahtarı gerekli");
-        }
-        
-        if (options.ChunkSize <= 0)
-        {
-            throw new ArgumentException("Parça boyutu pozitif olmalı");
-        }
-        
-        if (options.ChunkOverlap < 0)
-        {
-            throw new ArgumentException("Parça örtüşmesi negatif olamaz");
-        }
-        
-        return true;
-    }
+    _logger.LogError(ex, "AI provider hatası");
+    return StatusCode(503, "Servis geçici olarak kullanılamıyor");
 }
-```
-
-## Test Etme
-
-### Birim Test Kurulumu
-
-```csharp
-[TestFixture]
-public class SmartRAGTests
+catch (Exception ex)
 {
-    private ServiceCollection _services;
-    private ServiceProvider _serviceProvider;
+    _logger.LogError(ex, "Beklenmeyen hata");
+    return StatusCode(500, "İç sunucu hatası");
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Testing Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Test Etme</h2>
+                    <p>SmartRAG implementasyonunuzu nasıl test edeceğiniz.</p>
+
+                    <h3>Birim Testi</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[Test]
+public async Task UploadDocument_ValidFile_ReturnsDocument()
+{
+    // Arrange
+    var mockFile = new Mock&lt;IFormFile&gt;();
+    var service = new DocumentService(mockLogger.Object);
     
-    [SetUp]
-    public void Setup()
-    {
-        _services = new ServiceCollection();
-        
-        // Test yapılandırmasını ekleyin
-        _services.AddSmartRAG(options =>
-        {
-            options.AIProvider = AIProvider.InMemory; // Test için in-memory kullanın
-            options.StorageProvider = StorageProvider.InMemory;
-            options.ApiKey = "test-key";
-        });
-        
-        _serviceProvider = _services.BuildServiceProvider();
-    }
+    // Act
+    var result = await service.UploadDocumentAsync(mockFile.Object);
     
-    [Test]
-    public async Task UploadDocument_ValidFile_ReturnsDocument()
-    {
-        // Arrange
-        var documentService = _serviceProvider.GetRequiredService<IDocumentService>();
-        var file = CreateTestFile();
-        
-        // Act
-        var result = await documentService.UploadDocumentAsync(file);
-        
-        // Assert
-        Assert.IsNotNull(result);
-        Assert.IsNotEmpty(result.Id);
-    }
-}
-```
+    // Assert
+    Assert.IsNotNull(result);
+    Assert.IsNotEmpty(result.Id);
+}</code></pre>
+                    </div>
 
-### Entegrasyon Test Kurulumu
-
-```csharp
-[TestFixture]
-public class SmartRAGIntegrationTests
+                    <h3>Entegrasyon Testi</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[Test]
+public async Task SearchDocuments_ReturnsRelevantResults()
 {
-    private WebApplicationFactory<Program> _factory;
+    // Arrange
+    var testQuery = "test sorgusu";
     
-    [SetUp]
-    public void Setup()
-    {
-        _factory = new WebApplicationFactory<Program>()
-            .WithWebHostBuilder(builder =>
-            {
-                builder.ConfigureAppConfiguration((context, config) =>
-                {
-                    config.AddInMemoryCollection(new Dictionary<string, string>
-                    {
-                        ["SmartRAG:AIProvider"] = "InMemory",
-                        ["SmartRAG:StorageProvider"] = "InMemory",
-                        ["SmartRAG:ApiKey"] = "test-key"
-                    });
-                });
-            });
-    }
+    // Act
+    var results = await _documentService.SearchDocumentsAsync(testQuery);
     
-    [Test]
-    public async Task UploadEndpoint_ValidFile_ReturnsSuccess()
-    {
-        // Arrange
-        var client = _factory.CreateClient();
-        var file = CreateTestFile();
-        var content = new MultipartFormDataContent();
-        content.Add(new StreamContent(file.OpenReadStream()), "file", file.FileName);
-        
-        // Act
-        var response = await client.PostAsync("/api/documents/upload", content);
-        
-        // Assert
-        Assert.IsTrue(response.IsSuccessStatusCode);
-    }
-}
-```
+    // Assert
+    Assert.IsNotNull(results);
+    Assert.IsTrue(results.Any());
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-## Yardım Alma
+        <!-- Getting Help Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Yardım Alma</h2>
+                    <p>Hala sorun yaşıyorsanız, işte yardım almanın yolları.</p>
 
-### Dokümantasyonu Kontrol Edin
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="alert alert-info">
+                                <h4><i class="fas fa-github me-2"></i>GitHub Issues</h4>
+                                <p class="mb-0">GitHub'da hata raporlayın ve özellik isteyin.</p>
+                                <a href="https://github.com/byerlikaya/SmartRAG/issues" target="_blank" class="btn btn-sm btn-outline-info mt-2">Issue Aç</a>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-success">
+                                <h4><i class="fas fa-envelope me-2"></i>E-posta Desteği</h4>
+                                <p class="mb-0">E-posta ile doğrudan yardım alın.</p>
+                                <a href="mailto:b.yerlikaya@outlook.com" class="btn btn-sm btn-outline-success mt-2">İletişim</a>
+                            </div>
+                        </div>
+                    </div>
 
-- [Başlangıç]({{ site.baseurl }}/tr/getting-started) - Temel kurulum rehberi
-- [Yapılandırma]({{ site.baseurl }}/tr/configuration) - Yapılandırma seçenekleri
-- [API Referansı]({{ site.baseurl }}/tr/api-reference) - API dokümantasyonu
+                    <h3>Yardım İstemeden Önce</h3>
+                    <div class="alert alert-warning">
+                        <h4><i class="fas fa-list me-2"></i>Kontrol Listesi</h4>
+                        <ul class="mb-0">
+                            <li><a href="{{ site.baseurl }}/tr/getting-started">Başlangıç</a> kılavuzunu kontrol edin</li>
+                            <li><a href="{{ site.baseurl }}/tr/configuration">Yapılandırma</a> dokümantasyonunu inceleyin</li>
+                            <li>Mevcut <a href="https://github.com/byerlikaya/SmartRAG/issues" target="_blank">GitHub Issues</a>'ları arayın</li>
+                            <li>Hata mesajları ve yapılandırma detaylarını dahil edin</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-### Topluluk Desteği
+        <!-- Prevention Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Önleme</h2>
+                    <p>Yaygın sorunları önlemek için en iyi uygulamalar.</p>
 
-- [GitHub Issues](https://github.com/byerlikaya/SmartRAG/issues) - Hataları bildirin ve özellik isteyin
-- [GitHub Discussions](https://github.com/byerlikaya/SmartRAG/discussions) - Sorular sorun ve çözümleri paylaşın
-
-### Destek İletişimi
-
-- **E-posta**: [b.yerlikaya@outlook.com](mailto:b.yerlikaya@outlook.com)
-- **Yanıt Süresi**: Genellikle 24 saat içinde
-
-### Bilgi Sağlayın
-
-Bir sorun bildirirken lütfen şunları dahil edin:
-
-1. **Ortam**: .NET sürümü, İşletim Sistemi, SmartRAG sürümü
-2. **Yapılandırma**: SmartRAG yapılandırmanız
-3. **Hata Detayları**: Tam hata mesajı ve stack trace
-4. **Yeniden Üretme Adımları**: Sorunu yeniden üretmek için net adımlar
-5. **Beklenen vs Gerçek**: Ne beklediğiniz vs ne olduğu
-
-## Önleme
-
-### En İyi Uygulamalar
-
-1. **Yapılandırmayı her zaman doğrulayın** uygulamayı başlatmadan önce
-2. **Farklı dağıtım ortamları için ortam özel ayarları** kullanın
-3. **Uygun hata yönetimi ve günlük kaydı** uygulayın
-4. **Büyük dosyaları işlemeden önce küçük belgelerle test edin**
-5. **Üretimde performans metriklerini izleyin**
-6. **Bağımlılıkları en son kararlı sürümlere güncel tutun**
-
-### Yapılandırma Doğrulama
-
-```csharp
-public static class SmartRAGConfigurationValidator
-{
-    public static void ValidateConfiguration(SmartRagOptions options)
-    {
-        var errors = new List<string>();
-        
-        if (string.IsNullOrEmpty(options.ApiKey))
-            errors.Add("API anahtarı gerekli");
-            
-        if (options.ChunkSize <= 0)
-            errors.Add("Parça boyutu pozitif olmalı");
-            
-        if (options.ChunkOverlap < 0)
-            errors.Add("Parça örtüşmesi negatif olamaz");
-            
-        if (options.ChunkOverlap >= options.ChunkSize)
-            errors.Add("Parça örtüşmesi parça boyutundan küçük olmalı");
-        
-        if (errors.Any())
-        {
-            throw new InvalidOperationException(
-                $"SmartRAG yapılandırma doğrulaması başarısız: {string.Join(", ", errors)}");
-        }
-    }
-}
-```
-
-## Yardıma mı ihtiyacınız var?
-
-Hala sorun yaşıyorsanız:
-
-- [Ana Dokümantasyona Dön]({{ site.baseurl }}/tr/) - Ana dokümantasyon
-- [GitHub'da issue açın](https://github.com/byerlikaya/SmartRAG/issues) - GitHub Issues
-- [Destek için iletişime geçin](mailto:b.yerlikaya@outlook.com) - E-posta desteği
+                    <h3>Yapılandırma En İyi Uygulamaları</h3>
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="alert alert-primary">
+                                <h4><i class="fas fa-key me-2"></i>API Anahtarları</h4>
+                                <p class="mb-0">API anahtarlarını asla kod içinde sabit yazmayın. Ortam değişkenleri veya güvenli yapılandırma kullanın.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-info">
+                                <h4><i class="fas fa-database me-2"></i>Depolama</h4>
+                                <p class="mb-0">Kullanım durumunuz için doğru depolama provider'ını seçin.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-success">
+                                <h4><i class="fas fa-shield-alt me-2"></i>Hata Yönetimi</h4>
+                                <p class="mb-0">Uygun hata yönetimi ve logging implementasyonu yapın.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-warning">
+                                <h4><i class="fas fa-balance-scale me-2"></i>Performans</h4>
+                                <p class="mb-0">Performansı izleyin ve chunk boyutlarını optimize edin.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>

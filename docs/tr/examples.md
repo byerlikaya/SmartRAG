@@ -5,17 +5,32 @@ description: SmartRAG'dan öğrenmek için gerçek dünya örnekleri ve örnek u
 lang: tr
 ---
 
-# Örnekler
+<div class="page-header">
+    <div class="container">
+        <div class="row">
+            <div class="col-lg-8 mx-auto text-center">
+                <h1 class="page-title">Örnekler</h1>
+                <p class="page-description">
+                    SmartRAG'dan öğrenmek için gerçek dünya örnekleri ve örnek uygulamalar
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
 
-SmartRAG'dan öğrenmek için gerçek dünya örnekleri ve örnek uygulamalar.
-
-## Temel Örnekler
-
-### Basit Belge Yükleme
-
-```csharp
-[HttpPost("upload")]
-public async Task<ActionResult<Document>> UploadDocument(IFormFile file)
+<div class="page-content">
+    <div class="container">
+        <!-- Basic Examples Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Temel Örnekler</h2>
+                    <p>SmartRAG ile başlamanız için basit örnekler.</p>
+                    
+                    <h3>Basit Belge Yükleme</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[HttpPost("upload")]
+public async Task&lt;ActionResult&lt;Document&gt;&gt; UploadDocument(IFormFile file)
 {
     try
     {
@@ -26,14 +41,13 @@ public async Task<ActionResult<Document>> UploadDocument(IFormFile file)
     {
         return BadRequest(ex.Message);
     }
-}
-```
+}</code></pre>
+                    </div>
 
-### Belge Arama
-
-```csharp
-[HttpGet("search")]
-public async Task<ActionResult<IEnumerable<DocumentChunk>>> SearchDocuments(
+                    <h3>Belge Arama</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[HttpGet("search")]
+public async Task&lt;ActionResult&lt;IEnumerable&lt;DocumentChunk&gt;&gt;&gt; SearchDocuments(
     [FromQuery] string query, 
     [FromQuery] int maxResults = 10)
 {
@@ -46,16 +60,23 @@ public async Task<ActionResult<IEnumerable<DocumentChunk>>> SearchDocuments(
     {
         return BadRequest(ex.Message);
     }
-}
-```
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-## Gelişmiş Örnekler
-
-### Toplu Belge İşleme
-
-```csharp
-public async Task<IEnumerable<Document>> ProcessMultipleDocumentsAsync(
-    IEnumerable<IFormFile> files)
+        <!-- Advanced Examples Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Gelişmiş Örnekler</h2>
+                    <p>Gelişmiş kullanım durumları için daha karmaşık örnekler.</p>
+                    
+                    <h3>Toplu Belge İşleme</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public async Task&lt;IEnumerable&lt;Document&gt;&gt; ProcessMultipleDocumentsAsync(
+    IEnumerable&lt;IFormFile&gt; files)
 {
     var tasks = files.Select(async file =>
     {
@@ -72,17 +93,16 @@ public async Task<IEnumerable<Document>> ProcessMultipleDocumentsAsync(
 
     var results = await Task.WhenAll(tasks);
     return results.Where(d => d != null);
-}
-```
+}</code></pre>
+                    </div>
 
-### Özel Parçalama Stratejisi
-
-```csharp
-public class CustomChunkingStrategy : IChunkingStrategy
+                    <h3>Özel Parçalama Stratejisi</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public class CustomChunkingStrategy : IChunkingStrategy
 {
-    public IEnumerable<string> ChunkText(string text, int chunkSize, int overlap)
+    public IEnumerable&lt;string&gt; ChunkText(string text, int chunkSize, int overlap)
     {
-        var chunks = new List<string>();
+        var chunks = new List&lt;string&gt;();
         var sentences = text.Split(new[] { '.', '!', '?' }, 
             StringSplitOptions.RemoveEmptyEntries);
         
@@ -108,13 +128,12 @@ public class CustomChunkingStrategy : IChunkingStrategy
         
         return chunks;
     }
-}
-```
+}</code></pre>
+                    </div>
 
-### Özel AI Provider
-
-```csharp
-public class CustomAIProvider : IAIProvider
+                    <h3>Özel AI Provider</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public class CustomAIProvider : IAIProvider
 {
     private readonly HttpClient _httpClient;
     private readonly string _apiKey;
@@ -125,7 +144,7 @@ public class CustomAIProvider : IAIProvider
         _apiKey = configuration["CustomAI:ApiKey"];
     }
     
-    public async Task<float[]> GenerateEmbeddingAsync(string text)
+    public async Task&lt;float[]&gt; GenerateEmbeddingAsync(string text)
     {
         var request = new
         {
@@ -138,34 +157,41 @@ public class CustomAIProvider : IAIProvider
         
         response.EnsureSuccessStatusCode();
         
-        var result = await response.Content.ReadFromJsonAsync<EmbeddingResponse>();
+        var result = await response.Content.ReadFromJsonAsync&lt;EmbeddingResponse&gt;();
         return result.Embedding;
     }
-}
-```
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-## Web API Örnekleri
-
-### Tam Controller
-
-```csharp
-[ApiController]
+        <!-- Web API Examples Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Web API Örnekleri</h2>
+                    <p>Web uygulamaları için tam controller örnekleri.</p>
+                    
+                    <h3>Tam Controller</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[ApiController]
 [Route("api/[controller]")]
 public class DocumentsController : ControllerBase
 {
     private readonly IDocumentService _documentService;
-    private readonly ILogger<DocumentsController> _logger;
+    private readonly ILogger&lt;DocumentsController&gt; _logger;
     
     public DocumentsController(
         IDocumentService documentService,
-        ILogger<DocumentsController> logger)
+        ILogger&lt;DocumentsController&gt; logger)
     {
         _documentService = documentService;
         _logger = logger;
     }
     
     [HttpPost("upload")]
-    public async Task<ActionResult<Document>> UploadDocument(IFormFile file)
+    public async Task&lt;ActionResult&lt;Document&gt;&gt; UploadDocument(IFormFile file)
     {
         if (file == null || file.Length == 0)
             return BadRequest("No file provided");
@@ -184,7 +210,7 @@ public class DocumentsController : ControllerBase
     }
     
     [HttpGet("search")]
-    public async Task<ActionResult<IEnumerable<DocumentChunk>>> SearchDocuments(
+    public async Task&lt;ActionResult&lt;IEnumerable&lt;DocumentChunk&gt;&gt;&gt; SearchDocuments(
         [FromQuery] string query, 
         [FromQuery] int maxResults = 10)
     {
@@ -204,7 +230,7 @@ public class DocumentsController : ControllerBase
     }
     
     [HttpGet("{id}")]
-    public async Task<ActionResult<Document>> GetDocument(string id)
+    public async Task&lt;ActionResult&lt;Document&gt;&gt; GetDocument(string id)
     {
         try
         {
@@ -222,7 +248,7 @@ public class DocumentsController : ControllerBase
     }
     
     [HttpDelete("{id}")]
-    public async Task<ActionResult> DeleteDocument(string id)
+    public async Task&lt;ActionResult&gt; DeleteDocument(string id)
     {
         try
         {
@@ -239,13 +265,21 @@ public class DocumentsController : ControllerBase
             return BadRequest(ex.Message);
         }
     }
-}
-```
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-## Konsol Uygulaması Örneği
-
-```csharp
-class Program
+        <!-- Console Application Example Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Konsol Uygulaması Örneği</h2>
+                    <p>Tam bir konsol uygulaması örneği.</p>
+                    
+                    <div class="code-example">
+                        <pre><code class="language-csharp">class Program
 {
     static async Task Main(string[] args)
     {
@@ -262,7 +296,7 @@ class Program
         });
         
         var serviceProvider = services.BuildServiceProvider();
-        var documentService = serviceProvider.GetRequiredService<IDocumentService>();
+        var documentService = serviceProvider.GetRequiredService&lt;IDocumentService&gt;();
         
         Console.WriteLine("SmartRAG Konsol Uygulaması");
         Console.WriteLine("============================");
@@ -371,13 +405,28 @@ class Program
             Console.WriteLine($"Belge listeleme hatası: {ex.Message}");
         }
     }
-}
-```
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
 
-## Yardıma mı ihtiyacınız var?
-
-Örnekler konusunda yardıma ihtiyacınız varsa:
-
-- [Ana Dokümantasyona Dön]({{ site.baseurl }}/tr/) - Ana dokümantasyon
-- [GitHub'da issue açın](https://github.com/byerlikaya/SmartRAG/issues) - GitHub Issues
-- [Destek için iletişime geçin](mailto:b.yerlikaya@outlook.com) - E-posta desteği
+        <!-- Help Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <div class="alert alert-info">
+                        <h4><i class="fas fa-question-circle me-2"></i>Yardıma mı ihtiyacınız var?</h4>
+                        <p class="mb-0">Örnekler konusunda yardıma ihtiyacınız varsa:</p>
+                        <ul class="mb-0 mt-2">
+                            <li><a href="{{ site.baseurl }}/tr/getting-started">Başlangıç Kılavuzu</a></li>
+                            <li><a href="{{ site.baseurl }}/tr/api-reference">API Referansı</a></li>
+                            <li><a href="https://github.com/byerlikaya/SmartRAG/issues" target="_blank">GitHub'da issue açın</a></li>
+                            <li><a href="mailto:b.yerlikaya@outlook.com">E-posta ile destek alın</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+</div>
