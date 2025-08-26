@@ -89,9 +89,9 @@ var results = await documentService
 <section class="features-section">
     <div class="container">
         <div class="section-header text-center">
-            <h2 class="section-title">Why Choose SmartRAG?</h2>
+            <h2 class="section-title">Key Features</h2>
             <p class="section-description">
-                Everything you need to build intelligent applications with RAG capabilities
+                Powerful capabilities for building intelligent applications
             </p>
         </div>
         
@@ -102,7 +102,7 @@ var results = await documentService
                         <i class="fas fa-brain"></i>
                     </div>
                     <h3>AI-Powered</h3>
-                    <p>Integrate with leading AI providers including OpenAI, Anthropic, Gemini, and Azure OpenAI for powerful embeddings.</p>
+                    <p>Integrate with leading AI providers for powerful embeddings and intelligent processing.</p>
                 </div>
             </div>
             <div class="col-lg-4 col-md-6">
@@ -111,7 +111,7 @@ var results = await documentService
                         <i class="fas fa-file-alt"></i>
                     </div>
                     <h3>Multi-Format Support</h3>
-                    <p>Process Word, PDF, Excel, and text documents with ease. Automatic format detection and text extraction.</p>
+                    <p>Process Word, PDF, Excel, and text documents with automatic format detection.</p>
                 </div>
             </div>
             <div class="col-lg-4 col-md-6">
@@ -120,7 +120,7 @@ var results = await documentService
                         <i class="fas fa-search"></i>
                     </div>
                     <h3>Semantic Search</h3>
-                    <p>Advanced search capabilities with similarity scoring and intelligent result ranking for better user experience.</p>
+                    <p>Advanced search with similarity scoring and intelligent result ranking.</p>
                 </div>
             </div>
             <div class="col-lg-4 col-md-6">
@@ -129,7 +129,7 @@ var results = await documentService
                         <i class="fas fa-database"></i>
                     </div>
                     <h3>Flexible Storage</h3>
-                    <p>Multiple storage backends including Qdrant, Redis, SQLite, In-Memory, and File System for flexible deployment.</p>
+                    <p>Multiple storage backends for flexible deployment options.</p>
                 </div>
             </div>
             <div class="col-lg-4 col-md-6">
@@ -138,7 +138,7 @@ var results = await documentService
                         <i class="fas fa-rocket"></i>
                     </div>
                     <h3>Easy Integration</h3>
-                    <p>Simple setup with dependency injection. Get started in minutes with our comprehensive documentation.</p>
+                    <p>Simple setup with dependency injection. Get started in minutes.</p>
                 </div>
             </div>
             <div class="col-lg-4 col-md-6">
@@ -147,7 +147,7 @@ var results = await documentService
                         <i class="fas fa-shield-alt"></i>
                     </div>
                     <h3>Production Ready</h3>
-                    <p>Built for enterprise environments with performance, scalability, and reliability in mind.</p>
+                    <p>Built for enterprise environments with performance and reliability.</p>
                 </div>
             </div>
         </div>
@@ -160,7 +160,7 @@ var results = await documentService
         <div class="section-header text-center">
             <h2 class="section-title">Supported Technologies</h2>
             <p class="section-description">
-                Integrate with leading AI providers and storage solutions
+                Choose from leading AI providers and storage solutions
             </p>
         </div>
         
@@ -173,35 +173,30 @@ var results = await documentService
                             <i class="fab fa-google"></i>
                         </div>
                         <h4>Gemini</h4>
-                        <p>Google AI</p>
                     </div>
                     <div class="provider-card">
                         <div class="provider-logo">
                             <i class="fas fa-brain"></i>
                         </div>
                         <h4>OpenAI</h4>
-                        <p>GPT Models</p>
                     </div>
                     <div class="provider-card">
                         <div class="provider-logo">
                             <i class="fas fa-cloud"></i>
                         </div>
                         <h4>Azure OpenAI</h4>
-                        <p>Enterprise</p>
                     </div>
                     <div class="provider-card">
                         <div class="provider-logo">
                             <i class="fas fa-robot"></i>
                         </div>
                         <h4>Anthropic</h4>
-                        <p>Claude Models</p>
                     </div>
                     <div class="provider-card">
                         <div class="provider-logo">
                             <i class="fas fa-cogs"></i>
                         </div>
                         <h4>Custom</h4>
-                        <p>Extensible</p>
                     </div>
                 </div>
             </div>
@@ -214,35 +209,30 @@ var results = await documentService
                             <i class="fas fa-cube"></i>
                         </div>
                         <h4>Qdrant</h4>
-                        <p>Vector Database</p>
                     </div>
                     <div class="provider-card">
                         <div class="provider-logo">
                             <i class="fas fa-database"></i>
                         </div>
                         <h4>Redis</h4>
-                        <p>In-Memory Cache</p>
                     </div>
                     <div class="provider-card">
                         <div class="provider-logo">
                             <i class="fas fa-hdd"></i>
                         </div>
                         <h4>SQLite</h4>
-                        <p>Local Database</p>
                     </div>
                     <div class="provider-card">
                         <div class="provider-logo">
                             <i class="fas fa-microchip"></i>
                         </div>
                         <h4>In-Memory</h4>
-                        <p>Fast Development</p>
                     </div>
                     <div class="provider-card">
                         <div class="provider-logo">
                             <i class="fas fa-folder-open"></i>
                         </div>
                         <h4>File System</h4>
-                        <p>Local Storage</p>
                     </div>
                 </div>
             </div>
@@ -257,28 +247,28 @@ var results = await documentService
             <div class="col-lg-6">
                 <div class="quick-start-content">
                     <h2>Get Started in Minutes</h2>
-                    <p>SmartRAG is designed to be simple and powerful. Follow these steps to integrate it into your .NET application.</p>
+                    <p>Simple and powerful integration for your .NET applications.</p>
                     
                     <div class="steps">
                         <div class="step">
                             <div class="step-number">1</div>
                             <div class="step-content">
                                 <h4>Install Package</h4>
-                                <p>Add SmartRAG to your project via NuGet</p>
+                                <p>Add SmartRAG via NuGet</p>
                             </div>
                         </div>
                         <div class="step">
                             <div class="step-number">2</div>
                             <div class="step-content">
                                 <h4>Configure Services</h4>
-                                <p>Set up your AI and storage providers</p>
+                                <p>Set up AI and storage providers</p>
                             </div>
                         </div>
                         <div class="step">
                             <div class="step-number">3</div>
                             <div class="step-content">
                                 <h4>Start Building</h4>
-                                <p>Upload documents and perform searches</p>
+                                <p>Upload documents and search</p>
                             </div>
                         </div>
                     </div>
@@ -298,15 +288,10 @@ var results = await documentService
                     </div>
                     <div class="code-content">
                         <div class="code-panel active" id="install">
-                            <pre><code class="language-bash"># Install via Package Manager
-Install-Package SmartRAG
-
-# Or via .NET CLI
-dotnet add package SmartRAG</code></pre>
+                            <pre><code class="language-bash">dotnet add package SmartRAG</code></pre>
                         </div>
                         <div class="code-panel" id="configure">
-                            <pre><code class="language-csharp">// Program.cs
-services.AddSmartRAG(options =>
+                            <pre><code class="language-csharp">services.AddSmartRAG(options =>
 {
     options.AIProvider = AIProvider.Anthropic;
     options.StorageProvider = StorageProvider.Qdrant;
@@ -314,12 +299,8 @@ services.AddSmartRAG(options =>
 });</code></pre>
                         </div>
                         <div class="code-panel" id="use">
-                            <pre><code class="language-csharp">// Use the service
-var documentService = serviceProvider
+                            <pre><code class="language-csharp">var documentService = serviceProvider
     .GetRequiredService&lt;IDocumentService&gt;();
-
-var document = await documentService
-    .UploadDocumentAsync(file);
 
 var results = await documentService
     .SearchAsync("your query");</code></pre>
