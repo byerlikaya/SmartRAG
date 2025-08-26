@@ -1,13 +1,13 @@
 ---
 layout: default
-title: Configuration
-description: Detailed configuration options and best practices for SmartRAG
-lang: en
+title: Konfiguration
+description: Detaillierte Konfigurationsoptionen und Best Practices für SmartRAG
+lang: de
 ---
 
-# Configuration
+# Konfiguration
 
-Detailed configuration options and best practices for SmartRAG.
+Detaillierte Konfigurationsoptionen und Best Practices für SmartRAG.
 
 ## Basic Configuration
 

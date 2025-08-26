@@ -30,8 +30,14 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // Initialize theme
+    // Initialize theme immediately to prevent flash
     applyTheme(currentTheme);
+    
+    // Also apply theme on page load to ensure persistence
+    window.addEventListener('load', function() {
+        const savedTheme = localStorage.getItem('theme') || 'light';
+        applyTheme(savedTheme);
+    });
     
     // Theme toggle click handler
     if (themeToggle) {
@@ -118,4 +124,28 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Add fade-in animation after a short delay
     setTimeout(addFadeInAnimation, 100);
+    
+    // Language switching enhancement
+    const languageDropdown = document.getElementById('languageDropdown');
+    if (languageDropdown) {
+        // Add click handler to prevent default behavior
+        languageDropdown.addEventListener('click', function(e) {
+            e.preventDefault();
+        });
+        
+        // Add click handlers to dropdown items
+        document.querySelectorAll('.dropdown-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+                e.preventDefault();
+                const href = this.getAttribute('href');
+                if (href) {
+                    // Add smooth transition
+                    document.body.style.opacity = '0.8';
+                    setTimeout(() => {
+                        window.location.href = href;
+                    }, 150);
+                }
+            });
+        });
+    }
 });
