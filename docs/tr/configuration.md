@@ -71,6 +71,29 @@ services.AddSmartRAG(options =>
 });
 ```
 
+### Gemini
+
+```csharp
+services.AddSmartRAG(options =>
+{
+    options.AIProvider = AIProvider.Gemini;
+    options.ApiKey = "your-gemini-key";
+    options.ModelName = "embedding-001";
+});
+```
+
+### Özel AI Provider
+
+```csharp
+services.AddSmartRAG(options =>
+{
+    options.AIProvider = AIProvider.Custom;
+    options.CustomEndpoint = "https://your-custom-api.com/v1/embeddings";
+    options.ApiKey = "your-custom-key";
+    options.ModelName = "your-custom-model";
+});
+```
+
 ## Depolama Provider Yapılandırması
 
 ### Qdrant
@@ -102,6 +125,26 @@ services.AddSmartRAG(options =>
 {
     options.StorageProvider = StorageProvider.Sqlite;
     options.ConnectionString = "Data Source=smartrag.db";
+});
+```
+
+### Bellek İçi
+
+```csharp
+services.AddSmartRAG(options =>
+{
+    options.StorageProvider = StorageProvider.InMemory;
+    // Bellek içi depolama için ek yapılandırma gerekmez
+});
+```
+
+### Dosya Sistemi
+
+```csharp
+services.AddSmartRAG(options =>
+{
+    options.StorageProvider = StorageProvider.FileSystem;
+    options.StoragePath = "./data/smartrag";
 });
 ```
 

@@ -1,5 +1,23 @@
 /* SmartRAG Documentation - Modern Professional Design */
 
+/* Mobile-first responsive design */
+* {
+    box-sizing: border-box;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
 :root {
     --primary-color: #6366f1;
     --primary-dark: #4f46e5;
@@ -225,8 +243,15 @@ body[data-theme="dark"] {
 
 /* Feature Icons */
 .feature-icon {
-    width: 80px;
-    height: 80px;
+    width: 40px;
+    height: 40px;
+    display: inline-block;
+    margin-right: 15px;
+    vertical-align: middle;
+}
+
+.feature-icon i {
+    font-size: 1.5rem;
 }
 
 /* Modern Provider Cards */
