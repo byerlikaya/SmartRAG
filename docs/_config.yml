@@ -1,6 +1,6 @@
 title: SmartRAG Documentation
 description: A powerful and intelligent RAG library for .NET applications
-baseurl: "/SmartRAG"
+baseurl: ""
 url: "https://byerlikaya.github.io"
 
 # SEO and Search Engine Optimization
@@ -22,6 +22,9 @@ plugins:
   - jekyll-feed
   - jekyll-seo-tag
   - jekyll-sitemap
+
+# Force cache refresh
+cache_bust: "2025-01-27-01"
 
 # Multi-language configuration
 languages: ["en", "tr", "de", "ru"]
