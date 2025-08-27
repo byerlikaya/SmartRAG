@@ -2,16 +2,28 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
-using System.Threading;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
+using System.Threading;
+using Microsoft.Extensions.Logging;
+using SmartRAG.Enums;
+using SmartRAG.Models;
+using SmartRAG.Providers;
 
-namespace SmartRAG.Providers;
+namespace SmartRAG.Providers {
 
 /// <summary>
 /// Azure OpenAI provider implementation
 /// </summary>
-public class AzureOpenAIProvider(ILogger<AzureOpenAIProvider> logger) : BaseAIProvider(logger), IDisposable
+public class AzureOpenAIProvider : BaseAIProvider, IDisposable
 {
+    private readonly ILogger<AzureOpenAIProvider> _logger;
+
+    public AzureOpenAIProvider(ILogger<AzureOpenAIProvider> logger) : base(logger)
+    {
+        _logger = logger;
+    }
     #region Constants
 
     // Rate limiting constants
@@ -43,40 +55,41 @@ public class AzureOpenAIProvider(ILogger<AzureOpenAIProvider> logger) : BaseAIPr
         if (!isValid)
             return errorMessage;
 
-        using var client = CreateHttpClient(config.ApiKey);
-
-        var messages = new List<object>();
-
-        if (!string.IsNullOrEmpty(config.SystemMessage))
+        using (var client = CreateHttpClient(config.ApiKey))
         {
-            messages.Add(new { role = "system", content = config.SystemMessage });
-        }
+            var messages = new List<object>();
 
-        messages.Add(new { role = "user", content = prompt });
+            if (!string.IsNullOrEmpty(config.SystemMessage))
+            {
+                messages.Add(new { role = "system", content = config.SystemMessage });
+            }
 
-        var payload = new
-        {
-            messages = messages.ToArray(),
-            max_tokens = config.MaxTokens,
-            temperature = config.Temperature,
-            stream = false
-        };
+            messages.Add(new { role = "user", content = prompt });
 
-        var url = BuildAzureUrl(config.Endpoint!, config.Model!, "chat/completions", config.ApiVersion!);
+            var payload = new
+            {
+                messages = messages.ToArray(),
+                max_tokens = config.MaxTokens,
+                temperature = config.Temperature,
+                stream = false
+            };
 
-        var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, config);
+            var url = BuildAzureUrl(config.Endpoint, config.Model, "chat/completions", config.ApiVersion);
 
-        if (!success)
-            return error;
+            var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, config);
 
-        try
-        {
-            return ParseTextResponse(response);
-        }
-        catch (Exception ex)
-        {
-            ProviderLogMessages.LogAzureOpenAITextParsingError(Logger, ex);
-            return $"Error parsing Azure OpenAI response: {ex.Message}";
+            if (!success)
+                return error;
+
+            try
+            {
+                return ParseTextResponse(response);
+            }
+            catch (Exception ex)
+            {
+                ProviderLogMessages.LogAzureOpenAITextParsingError(Logger, ex);
+                return $"Error parsing Azure OpenAI response: {ex.Message}";
+            }
         }
     }
 
@@ -87,30 +100,30 @@ public class AzureOpenAIProvider(ILogger<AzureOpenAIProvider> logger) : BaseAIPr
         if (!isValid)
         {
             ProviderLogMessages.LogAzureOpenAIEmbeddingValidationError(Logger, errorMessage, null);
-            return [];
+            return new List<float>();
         }
 
         if (string.IsNullOrEmpty(config.EmbeddingModel))
         {
             ProviderLogMessages.LogAzureOpenAIEmbeddingModelMissing(Logger, null);
-            return [];
+            return new List<float>();
         }
 
-        using var client = CreateHttpClient(config.ApiKey);
-
-        var payload = new
+        using (var client = CreateHttpClient(config.ApiKey))
         {
-            input = text
-        };
+            var payload = new
+            {
+                input = text
+            };
 
-        var url = BuildAzureUrl(config.Endpoint!, config.EmbeddingModel!, "embeddings", config.ApiVersion!);
+            var url = BuildAzureUrl(config.Endpoint, config.EmbeddingModel, "embeddings", config.ApiVersion);
 
         var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, config);
 
         if (!success)
         {
             ProviderLogMessages.LogAzureOpenAIEmbeddingRequestError(Logger, error, null);
-            return [];
+            return new List<float>();
         }
 
         try
@@ -120,7 +133,8 @@ public class AzureOpenAIProvider(ILogger<AzureOpenAIProvider> logger) : BaseAIPr
         catch (Exception ex)
         {
             ProviderLogMessages.LogAzureOpenAIEmbeddingParsingError(Logger, ex);
-            return [];
+            return new List<float>();
+        }
         }
     }
 
@@ -131,44 +145,45 @@ public class AzureOpenAIProvider(ILogger<AzureOpenAIProvider> logger) : BaseAIPr
         if (!isValid)
         {
             ProviderLogMessages.LogAzureOpenAIEmbeddingValidationError(Logger, errorMessage, null);
-            return [];
+            return new List<List<float>>();
         }
 
         if (string.IsNullOrEmpty(config.EmbeddingModel))
         {
             ProviderLogMessages.LogAzureOpenAIEmbeddingModelMissing(Logger, null);
-            return [];
+            return new List<List<float>>();
         }
 
         var inputList = texts?.ToList() ?? new List<string>();
         if (inputList.Count == 0)
-            return [];
+            return new List<List<float>>();
 
-        using var client = CreateHttpClient(config.ApiKey);
-
-        var payload = new
+        using (var client = CreateHttpClient(config.ApiKey))
         {
-            input = inputList.ToArray()
-        };
+            var payload = new
+            {
+                input = inputList.ToArray()
+            };
 
-        var url = BuildAzureUrl(config.Endpoint!, config.EmbeddingModel!, "embeddings", config.ApiVersion!);
+            var url = BuildAzureUrl(config.Endpoint, config.EmbeddingModel, "embeddings", config.ApiVersion);
 
-        var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, config);
+            var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, config);
 
-        if (!success)
-        {
-            ProviderLogMessages.LogAzureOpenAIBatchEmbeddingRequestError(Logger, error, null);
-            return ParseBatchEmbeddingResponse("", inputList.Count);
-        }
+            if (!success)
+            {
+                ProviderLogMessages.LogAzureOpenAIBatchEmbeddingRequestError(Logger, error, null);
+                return ParseBatchEmbeddingResponse("", inputList.Count);
+            }
 
-        try
-        {
-            return ParseBatchEmbeddingResponse(response, inputList.Count);
-        }
-        catch (Exception ex)
-        {
-            ProviderLogMessages.LogAzureOpenAIBatchEmbeddingParsingError(Logger, ex);
-            return ParseBatchEmbeddingResponse("", inputList.Count);
+            try
+            {
+                return ParseBatchEmbeddingResponse(response, inputList.Count);
+            }
+            catch (Exception ex)
+            {
+                ProviderLogMessages.LogAzureOpenAIBatchEmbeddingParsingError(Logger, ex);
+                return ParseBatchEmbeddingResponse("", inputList.Count);
+            }
         }
     }
 
@@ -231,4 +246,5 @@ public class AzureOpenAIProvider(ILogger<AzureOpenAIProvider> logger) : BaseAIPr
     }
 
     #endregion
+}
 }

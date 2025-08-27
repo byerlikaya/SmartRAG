@@ -9,6 +9,9 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Text.RegularExpressions;
+using System.Net;
+using System.Globalization;
 
 namespace SmartRAG.Providers
 {
@@ -161,7 +164,7 @@ namespace SmartRAG.Providers
         /// <summary>
         /// Creates HttpClient with common headers
         /// </summary>
-        protected static HttpClient CreateHttpClient(string? apiKey = null, Dictionary<string, string>? additionalHeaders = null)
+        protected static HttpClient CreateHttpClient(string apiKey = null, Dictionary<string, string> additionalHeaders = null)
         {
             var handler = CreateHttpClientHandler();
             var client = new HttpClient(handler);
@@ -185,7 +188,7 @@ namespace SmartRAG.Providers
         /// <summary>
         /// Creates HTTP client without automatic Authorization header (for providers like Anthropic that use custom headers)
         /// </summary>
-        protected static HttpClient CreateHttpClientWithoutAuth(Dictionary<string, string>? additionalHeaders)
+        protected static HttpClient CreateHttpClientWithoutAuth(Dictionary<string, string> additionalHeaders)
         {
             var handler = CreateHttpClientHandler();
             var client = new HttpClient(handler);
@@ -330,27 +333,28 @@ namespace SmartRAG.Providers
         /// </summary>
         protected static List<float> ParseEmbeddingResponse(string responseBody, string dataProperty = DefaultDataProperty, string embeddingProperty = DefaultEmbeddingProperty)
         {
-            using var doc = JsonDocument.Parse(responseBody);
-
-            if (doc.RootElement.TryGetProperty(dataProperty, out var data) && data.ValueKind == JsonValueKind.Array)
+            using (var doc = JsonDocument.Parse(responseBody))
             {
-                var firstData = data.EnumerateArray().FirstOrDefault();
-
-                if (firstData.TryGetProperty(embeddingProperty, out var embedding) && embedding.ValueKind == JsonValueKind.Array)
+                if (doc.RootElement.TryGetProperty(dataProperty, out var data) && data.ValueKind == JsonValueKind.Array)
                 {
-                    var floats = new List<float>();
+                    var firstData = data.EnumerateArray().FirstOrDefault();
 
-                    foreach (var value in embedding.EnumerateArray())
+                    if (firstData.TryGetProperty(embeddingProperty, out var embedding) && embedding.ValueKind == JsonValueKind.Array)
                     {
-                        if (value.TryGetSingle(out var f))
-                            floats.Add(f);
+                        var floats = new List<float>();
+
+                        foreach (var value in embedding.EnumerateArray())
+                        {
+                            if (value.TryGetSingle(out var f))
+                                floats.Add(f);
+                        }
+
+                        return floats;
                     }
-
-                    return floats;
                 }
-            }
 
-            return new List<float>();
+                return new List<float>();
+            }
         }
 
         /// <summary>
@@ -362,25 +366,26 @@ namespace SmartRAG.Providers
 
             try
             {
-                using var doc = JsonDocument.Parse(responseBody);
-
-                if (doc.RootElement.TryGetProperty(dataProperty, out var data) && data.ValueKind == JsonValueKind.Array)
+                using (var doc = JsonDocument.Parse(responseBody))
                 {
-                    foreach (var item in data.EnumerateArray())
+                    if (doc.RootElement.TryGetProperty(dataProperty, out var data) && data.ValueKind == JsonValueKind.Array)
                     {
-                        if (item.TryGetProperty(embeddingProperty, out var embedding) && embedding.ValueKind == JsonValueKind.Array)
+                        foreach (var item in data.EnumerateArray())
                         {
-                            var floats = new List<float>(embedding.GetArrayLength());
-                            foreach (var value in embedding.EnumerateArray())
+                            if (item.TryGetProperty(embeddingProperty, out var embedding) && embedding.ValueKind == JsonValueKind.Array)
                             {
-                                if (value.TryGetSingle(out var f))
-                                    floats.Add(f);
+                                var floats = new List<float>(embedding.GetArrayLength());
+                                foreach (var value in embedding.EnumerateArray())
+                                {
+                                    if (value.TryGetSingle(out var f))
+                                        floats.Add(f);
+                                    }
+                                results.Add(floats);
                             }
-                            results.Add(floats);
-                        }
-                        else
-                        {
-                            results.Add(new List<float>());
+                            else
+                            {
+                                results.Add(new List<float>());
+                            }
                         }
                     }
                 }
@@ -401,23 +406,24 @@ namespace SmartRAG.Providers
         /// </summary>
         protected static string ParseTextResponse(string responseBody, string choicesProperty = DefaultChoicesProperty, string messageProperty = DefaultMessageProperty, string contentProperty = DefaultContentProperty)
         {
-            using var doc = JsonDocument.Parse(responseBody);
-
-            if (doc.RootElement.TryGetProperty(choicesProperty, out var choices) && choices.ValueKind == JsonValueKind.Array)
+            using (var doc = JsonDocument.Parse(responseBody))
             {
-                var firstChoice = choices.EnumerateArray().FirstOrDefault();
+                if (doc.RootElement.TryGetProperty(choicesProperty, out var choices) && choices.ValueKind == JsonValueKind.Array)
+                {
+                    var firstChoice = choices.EnumerateArray().FirstOrDefault();
 
-                if (firstChoice.TryGetProperty(messageProperty, out var message) && message.TryGetProperty(contentProperty, out var contentProp))
-                    return contentProp.GetString() ?? "No response generated";
+                    if (firstChoice.TryGetProperty(messageProperty, out var message) && message.TryGetProperty(contentProperty, out var contentProp))
+                        return contentProp.GetString() ?? "No response generated";
+                }
+
+                return "No response generated";
             }
-
-            return "No response generated";
         }
 
         /// <summary>
         /// Shared JsonSerializerOptions for consistent serialization
         /// </summary>
-        private static readonly JsonSerializerOptions _jsonOptions = new()
+        private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions()
         {
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
         };

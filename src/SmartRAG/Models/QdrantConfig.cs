@@ -1,4 +1,4 @@
-namespace SmartRAG.Models;
+namespace SmartRAG.Models {
 
 public class QdrantConfig
 {
@@ -9,4 +9,5 @@ public class QdrantConfig
     public int VectorSize { get; set; } = 768;
     public string DistanceMetric { get; set; } = "Cosine";
 
+}
 }
