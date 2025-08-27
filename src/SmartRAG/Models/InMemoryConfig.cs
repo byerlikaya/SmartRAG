@@ -1,4 +1,4 @@
-namespace SmartRAG.Models;
+namespace SmartRAG.Models {
 
 /// <summary>
 /// In-memory storage configuration
@@ -9,4 +9,5 @@ public class InMemoryConfig
     /// Maximum number of documents to keep in memory
     /// </summary>
     public int MaxDocuments { get; set; } = 1000;
+}
 }

@@ -1,4 +1,4 @@
-namespace SmartRAG.Enums;
+namespace SmartRAG.Enums {
 
 /// <summary>
 /// Supported AI providers
@@ -10,4 +10,5 @@ public enum AIProvider
     AzureOpenAI,
     Anthropic,
     Custom
+}
 }

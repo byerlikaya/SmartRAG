@@ -26,9 +26,6 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591</NoWarn>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <WarningsAsErrors />
-    <Nullable>enable</Nullable>
-    <LangVersion>latest</LangVersion>
     
     <!-- Assembly Information -->
     <AssemblyTitle>SmartRAG</AssemblyTitle>

@@ -3,7 +3,7 @@ using SmartRAG.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace SmartRAG.Interfaces;
+namespace SmartRAG.Interfaces {
 
 /// <summary>
 /// Service interface for AI-powered search and RAG operations
@@ -19,4 +19,5 @@ public interface IDocumentSearchService
     /// Generate RAG answer
     /// </summary>
     Task<RagResponse> GenerateRagAnswerAsync(string query, int maxResults = 5);
+}
 }

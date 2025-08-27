@@ -2,7 +2,7 @@ using SmartRAG.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace SmartRAG.Interfaces;
+namespace SmartRAG.Interfaces {
 
 /// <summary>
 /// Interface for AI providers
@@ -28,4 +28,5 @@ public interface IAIProvider
     /// Chunks text into smaller segments for processing
     /// </summary>
     Task<List<string>> ChunkTextAsync(string text, int maxChunkSize = 1000);
+}
 }

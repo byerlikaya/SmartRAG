@@ -1,4 +1,4 @@
-namespace SmartRAG.Enums;
+namespace SmartRAG.Enums {
 
 /// <summary>
 /// Retry policy options for AI provider requests
@@ -9,4 +9,5 @@ public enum RetryPolicy
     FixedDelay,
     LinearBackoff,
     ExponentialBackoff
+}
 }

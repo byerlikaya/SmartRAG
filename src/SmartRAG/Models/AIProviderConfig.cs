@@ -1,4 +1,4 @@
-namespace SmartRAG.Models;
+namespace SmartRAG.Models {
 
 /// <summary>
 /// Configuration for AI providers
@@ -15,7 +15,7 @@ public class AIProviderConfig
     /// <summary>
     /// Optional separate API key for embedding operations
     /// </summary>
-    public string? EmbeddingApiKey { get; set; }
+    public string EmbeddingApiKey { get; set; }
 
     #endregion
 
@@ -24,12 +24,12 @@ public class AIProviderConfig
     /// <summary>
     /// Optional custom endpoint URL for the AI provider
     /// </summary>
-    public string? Endpoint { get; set; }
+    public string Endpoint { get; set; }
 
     /// <summary>
     /// API version identifier for versioned APIs
     /// </summary>
-    public string? ApiVersion { get; set; }
+    public string ApiVersion { get; set; }
 
     #endregion
 
@@ -43,7 +43,7 @@ public class AIProviderConfig
     /// <summary>
     /// Optional separate model for embedding generation
     /// </summary>
-    public string? EmbeddingModel { get; set; }
+    public string EmbeddingModel { get; set; }
 
     #endregion
 
@@ -63,7 +63,7 @@ public class AIProviderConfig
     /// Optional system message for chat completions.
     /// If null, provider defaults will be used.
     /// </summary>
-    public string? SystemMessage { get; set; }
+    public string SystemMessage { get; set; }
 
     #endregion
 
@@ -76,4 +76,5 @@ public class AIProviderConfig
     public int? EmbeddingMinIntervalMs { get; set; }
 
     #endregion
+}
 }

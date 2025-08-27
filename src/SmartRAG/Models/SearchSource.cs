@@ -1,6 +1,6 @@
 using System;
 
-namespace SmartRAG.Models;
+namespace SmartRAG.Models {
 
 /// <summary>
 /// Represents a search result source with document information and relevance score
@@ -26,4 +26,5 @@ public class SearchSource
     /// Relevance score indicating how well this source matches the search query
     /// </summary>
     public double RelevanceScore { get; set; }
+}
 }
