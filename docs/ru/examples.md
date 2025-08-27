@@ -447,6 +447,236 @@ public async Task&lt;ActionResult&lt;MultilingualSearchResult&gt;&gt; SearchMult
 }</code></pre>
                     </div>
 
+                    <h4>Механизм повторных попыток Anthropic API</h4>
+                    <p>Расширенная логика повторных попыток для обработки ошибок HTTP 529 (Overloaded):</p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public async Task&lt;ChatResponse&gt; ProcessWithRetryAsync(string prompt, int maxRetries = 3)
+{
+    var retryPolicy = new ExponentialBackoffRetryPolicy
+    {
+        MaxRetries = maxRetries,
+        BaseDelay = TimeSpan.FromSeconds(2),
+        MaxDelay = TimeSpan.FromSeconds(30),
+        JitterFactor = 0.1
+    };
+
+    for (int attempt = 1; attempt <= maxRetries; attempt++)
+    {
+        try
+        {
+            var response = await _anthropicService.ChatAsync(new ChatRequest
+            {
+                Model = "claude-3-sonnet-20240229",
+                MaxTokens = 1000,
+                Messages = new[] { new Message { Role = "user", Content = prompt } }
+            });
+
+            return response;
+        }
+        catch (AnthropicApiException ex) when (ex.StatusCode == 529)
+        {
+            _logger.LogWarning("Anthropic API перегружен (HTTP 529), попытка {Attempt}/{MaxRetries}", 
+                attempt, maxRetries);
+
+            if (attempt == maxRetries)
+            {
+                throw new AnthropicServiceUnavailableException(
+                    "Anthropic API в настоящее время перегружен после нескольких попыток", ex);
+            }
+
+            var delay = retryPolicy.CalculateDelay(attempt);
+            await Task.Delay(delay);
+        }
+        catch (AnthropicApiException ex) when (ex.StatusCode == 429)
+        {
+            // Ограничение скорости - используйте экспоненциальную задержку
+            var delay = retryPolicy.CalculateDelay(attempt);
+            await Task.Delay(delay);
+        }
+    }
+
+    throw new InvalidOperationException("Неожиданный выход из цикла повторных попыток");
+}</code></pre>
+                    </div>
+
+                    <h4>Расширенная конфигурация повторных попыток</h4>
+                    <p>Настройте сложные политики повторных попыток для различных сценариев ошибок:</p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Настройка расширенных политик повторных попыток
+services.AddSmartRAG(options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.ApiKey = "your-anthropic-api-key";
+    
+    // Включить расширенный механизм повторных попыток
+    options.EnableAdvancedRetry = true;
+    options.RetryConfiguration = new AnthropicRetryConfiguration
+    {
+        MaxRetries = 5,
+        BaseDelay = TimeSpan.FromSeconds(1),
+        MaxDelay = TimeSpan.FromSeconds(60),
+        JitterFactor = 0.15,
+        EnableCircuitBreaker = true,
+        CircuitBreakerThreshold = 10,
+        CircuitBreakerTimeout = TimeSpan.FromMinutes(5),
+        
+        // Специальная обработка ошибок
+        RetryOnStatusCodes = new[] { 429, 529, 500, 502, 503, 504 },
+        ExponentialBackoff = true,
+        LinearBackoff = false,
+        
+        // Пользовательские условия повторных попыток
+        CustomRetryPredicate = async (exception, attempt) =>
+        {
+            if (exception is AnthropicApiException apiEx)
+            {
+                // Всегда повторять при 529 (Overloaded)
+                if (apiEx.StatusCode == 529) return true;
+                
+                // Повторять при 429 (Rate Limited) с задержкой
+                if (apiEx.StatusCode == 429) return attempt <= 3;
+                
+                // Повторять при ошибках сервера
+                if (apiEx.StatusCode >= 500) return attempt <= 2;
+            }
+            
+            return false;
+        }
+    };
+});
+
+// Используйте в вашем сервисе с обработкой повторных попыток
+public class AnthropicService
+{
+    private readonly IAnthropicClient _client;
+    private readonly IRetryPolicy _retryPolicy;
+    private readonly ILogger<AnthropicService> _logger;
+
+    public AnthropicService(IAnthropicClient client, IRetryPolicy retryPolicy, ILogger<AnthropicService> logger)
+    {
+        _client = client;
+        _retryPolicy = retryPolicy;
+        _logger = logger;
+    }
+
+    public async Task&lt;ChatResponse&gt; ChatWithRetryAsync(ChatRequest request)
+    {
+        return await _retryPolicy.ExecuteAsync(async () =>
+        {
+            try
+            {
+                return await _client.ChatAsync(request);
+            }
+            catch (AnthropicApiException ex)
+            {
+                _logger.LogError(ex, "Ошибка Anthropic API: {StatusCode} - {Message}", 
+                    ex.StatusCode, ex.Message);
+                
+                // Логировать специальные детали ошибок для мониторинга
+                if (ex.StatusCode == 529)
+                {
+                    _logger.LogWarning("Обнаружена перегрузка API - применяется стратегия задержки");
+                }
+                
+                throw;
+            }
+        });
+    }
+}</code></pre>
+                    </div>
+
+                    <h4>Шаблон Circuit Breaker</h4>
+                    <p>Реализуйте Circuit Breaker для защиты API:</p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Реализация Circuit Breaker
+public class AnthropicCircuitBreaker
+{
+    private readonly ILogger<AnthropicCircuitBreaker> _logger;
+    private readonly int _failureThreshold;
+    private readonly TimeSpan _resetTimeout;
+    
+    private int _failureCount;
+    private DateTime _lastFailureTime;
+    private CircuitBreakerState _state = CircuitBreakerState.Closed;
+
+    public AnthropicCircuitBreaker(ILogger<AnthropicCircuitBreaker> logger, 
+        int failureThreshold = 10, TimeSpan? resetTimeout = null)
+    {
+        _logger = logger;
+        _failureThreshold = failureThreshold;
+        _resetTimeout = resetTimeout ?? TimeSpan.FromMinutes(5);
+    }
+
+    public async Task&lt;T&gt; ExecuteAsync&lt;T&gt;(Func&lt;Task&lt;T&gt;&gt; action)
+    {
+        if (_state == CircuitBreakerState.Open)
+        {
+            if (DateTime.UtcNow - _lastFailureTime > _resetTimeout)
+            {
+                _logger.LogInformation("Достигнут таймаут Circuit Breaker, пытаемся закрыть");
+                _state = CircuitBreakerState.HalfOpen;
+            }
+            else
+            {
+                throw new CircuitBreakerOpenException("Circuit Breaker открыт");
+            }
+        }
+
+        try
+        {
+            var result = await action();
+            
+            if (_state == CircuitBreakerState.HalfOpen)
+            {
+                _logger.LogInformation("Circuit Breaker успешно закрыт");
+                _state = CircuitBreakerState.Closed;
+                _failureCount = 0;
+            }
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _failureCount++;
+            _lastFailureTime = DateTime.UtcNow;
+            
+            if (_failureCount >= _failureThreshold)
+            {
+                _logger.LogWarning("Circuit Breaker открыт после {FailureCount} сбоев", _failureCount);
+                _state = CircuitBreakerState.Open;
+            }
+            
+            throw;
+        }
+    }
+}
+
+// Реализация контроллера с Circuit Breaker
+[HttpPost("chat-with-retry")]
+public async Task&lt;ActionResult&lt;ChatResponse&gt;&gt; ChatWithRetry([FromBody] ChatRequest request)
+{
+    try
+    {
+        var response = await _anthropicService.ChatWithRetryAsync(request);
+        return Ok(response);
+    }
+    catch (CircuitBreakerOpenException)
+    {
+        return StatusCode(503, new { error = "Служба временно недоступна из-за высокой частоты ошибок" });
+    }
+    catch (AnthropicServiceUnavailableException ex)
+    {
+        return StatusCode(503, new { error = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Неожиданная ошибка в службе чата");
+        return StatusCode(500, new { error = "Внутренняя ошибка сервера" });
+    }
+}</code></pre>
+                    </div>
+
                     <h4>Конфигурация определения намерения</h4>
                     <div class="code-example">
                         <pre><code class="language-csharp">// Настроить определение намерения
