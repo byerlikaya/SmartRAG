@@ -96,6 +96,71 @@ public async Task&lt;ActionResult&lt;IEnumerable&lt;DocumentChunk&gt;&gt;&gt; Se
 }</code></pre>
                     </div>
 
+                    <h3>Akıllı Sorgu Niyet Algılama</h3>
+                    <p>Niyet analizine dayalı olarak sorguları otomatik olarak sohbet veya belge aramasına yönlendirin:</p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public async Task&lt;QueryResult&gt; ProcessQueryAsync(string query)
+{
+    // Sorgu niyetini analiz et
+    var intent = await _queryIntentService.AnalyzeIntentAsync(query);
+    
+    switch (intent.Type)
+    {
+        case QueryIntentType.Chat:
+            // Konuşma AI'ına yönlendir
+            return await _chatService.ProcessChatQueryAsync(query);
+            
+        case QueryIntentType.DocumentSearch:
+            // Belge aramasına yönlendir
+            var searchResults = await _documentService.SearchDocumentsAsync(query);
+            return new QueryResult 
+            { 
+                Type = QueryResultType.DocumentSearch,
+                Results = searchResults 
+            };
+            
+        case QueryIntentType.Mixed:
+            // Her iki yaklaşımı birleştir
+            var chatResponse = await _chatService.ProcessChatQueryAsync(query);
+            var docResults = await _documentService.SearchDocumentsAsync(query);
+            
+            return new QueryResult 
+            { 
+                Type = QueryResultType.Mixed,
+                ChatResponse = chatResponse,
+                DocumentResults = docResults 
+            };
+            
+        default:
+            throw new ArgumentException($"Bilinmeyen niyet türü: {intent.Type}");
+    }
+}</code></pre>
+                    </div>
+
+                    <h4>Niyet Analizi Yapılandırması</h4>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Niyet algılamayı yapılandır
+services.AddSmartRAG(options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.ApiKey = "your-api-key";
+    
+    // Akıllı sorgu niyet algılamayı etkinleştir
+    options.EnableQueryIntentDetection = true;
+    options.IntentDetectionThreshold = 0.7; // Güven eşiği
+    options.LanguageAgnostic = true; // Herhangi bir dilde çalışır
+});
+
+// Controller'ınızda kullanın
+[HttpPost("query")]
+public async Task&lt;ActionResult&lt;QueryResult&gt;&gt; ProcessQuery([FromBody] QueryRequest request)
+{
+    var result = await _queryProcessor.ProcessQueryAsync(request.Query);
+    return Ok(result);
+}</code></pre>
+                    </div>
+
                     <h3>Özel Parçalama Stratejisi</h3>
                     <div class="code-example">
                         <pre><code class="language-csharp">public class CustomChunkingStrategy : IChunkingStrategy

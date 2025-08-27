@@ -145,6 +145,15 @@ var results = await documentService
             <div class="col-lg-4 col-md-6">
                 <div class="feature-card">
                     <div class="feature-icon">
+                        <i class="fas fa-magic"></i>
+                    </div>
+                    <h3>Akıllı Sorgu Niyeti</h3>
+                    <p>Niyet algılamasına dayalı olarak sorguları otomatik olarak sohbet veya belge aramasına yönlendirir.</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
                         <i class="fas fa-shield-alt"></i>
                     </div>
                     <h3>Üretim Hazır</h3>

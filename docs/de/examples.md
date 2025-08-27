@@ -125,6 +125,71 @@ public class AskQuestionRequest
                     <h2>Erweiterte Beispiele</h2>
                     <p>Komplexere Anwendungsfälle und erweiterte Funktionen.</p>
                     
+                    <h3>Intelligente Abfrage-Absichtserkennung</h3>
+                    <p>Leiten Sie Abfragen automatisch zu Chat oder Dokumentsuche basierend auf Absichtsanalyse weiter:</p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public async Task&lt;QueryResult&gt; ProcessQueryAsync(string query)
+{
+    // Abfrage-Absicht analysieren
+    var intent = await _queryIntentService.AnalyzeIntentAsync(query);
+    
+    switch (intent.Type)
+    {
+        case QueryIntentType.Chat:
+            // Zu konversationeller KI weiterleiten
+            return await _chatService.ProcessChatQueryAsync(query);
+            
+        case QueryIntentType.DocumentSearch:
+            // Zu Dokumentsuche weiterleiten
+            var searchResults = await _documentService.SearchDocumentsAsync(query);
+            return new QueryResult 
+            { 
+                Type = QueryResultType.DocumentSearch,
+                Results = searchResults 
+            };
+            
+        case QueryIntentType.Mixed:
+            // Beide Ansätze kombinieren
+            var chatResponse = await _chatService.ProcessChatQueryAsync(query);
+            var docResults = await _documentService.SearchDocumentsAsync(query);
+            
+            return new QueryResult 
+            { 
+                Type = QueryResultType.Mixed,
+                ChatResponse = chatResponse,
+                DocumentResults = docResults 
+            };
+            
+        default:
+            throw new ArgumentException($"Unbekannter Absichtstyp: {intent.Type}");
+    }
+}</code></pre>
+                    </div>
+
+                    <h4>Absichtserkennungs-Konfiguration</h4>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Absichtserkennung konfigurieren
+services.AddSmartRAG(options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.ApiKey = "your-api-key";
+    
+    // Intelligente Abfrage-Absichtserkennung aktivieren
+    options.EnableQueryIntentDetection = true;
+    options.IntentDetectionThreshold = 0.7; // Vertrauensschwelle
+    options.LanguageAgnostic = true; // Funktioniert mit jeder Sprache
+});
+
+// In Ihrem Controller verwenden
+[HttpPost("query")]
+public async Task&lt;ActionResult&lt;QueryResult&gt;&gt; ProcessQuery([FromBody] QueryRequest request)
+{
+    var result = await _queryProcessor.ProcessQueryAsync(request.Query);
+    return Ok(result);
+}</code></pre>
+                    </div>
+
                     <h3>Batch-Dokumentenverarbeitung</h3>
                     <div class="code-example">
                         <pre><code class="language-csharp">[HttpPost("upload-batch")]
