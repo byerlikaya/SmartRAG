@@ -13,7 +13,7 @@
     <PackageTags>rag retrieval-augmented-generation ai llm document-qa vector-database openai anthropic gemini azure-openai qdrant redis sqlite</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageIcon>icon.png</PackageIcon>
+    <!-- <PackageIcon>icon.png</PackageIcon> -->
     <PackageProjectUrl>https://github.com/barisyerlikaya/SmartRAG</PackageProjectUrl>
     <RepositoryUrl>https://github.com/barisyerlikaya/SmartRAG.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -78,7 +78,7 @@
   <!-- Documentation Files -->
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="/" />
-    <None Include="icon.png" Pack="true" PackagePath="/" />
+    <!-- <None Include="icon.png" Pack="true" PackagePath="/" /> -->
   </ItemGroup>
 
 </Project>
