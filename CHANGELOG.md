@@ -39,8 +39,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.1.0] - 2025-08-22
 
-## [1.1.0] - 2025-08-22
-
 ### ✨ Added
 - **Excel Document Support**: Comprehensive Excel file parsing (.xlsx, .xls) with intelligent content extraction
 - **EPPlus 8.1.0 Integration**: Modern Excel processing library with proper non-commercial license setup
@@ -82,6 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## Version History
 
+- **2.0.0** - .NET Standard 2.0/2.1 migration, maximum framework compatibility
 - **1.1.0** - Excel support, EPPlus integration, API reliability improvements
 - **1.0.3** - Bug fixes and logging improvements
 - **1.0.2** - Initial stable release
