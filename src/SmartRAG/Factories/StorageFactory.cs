@@ -1,3 +1,5 @@
+using System;
+
 namespace SmartRAG.Factories;
 
 /// <summary>
@@ -17,7 +19,7 @@ public class StorageFactory : IStorageFactory
         _options = options.Value;
         _loggerFactory = loggerFactory;
 
-        if (Enum.IsDefined(_options.StorageProvider))
+        if (Enum.IsDefined(typeof(StorageProvider), _options.StorageProvider))
         {
             _currentProvider = _options.StorageProvider;
         }

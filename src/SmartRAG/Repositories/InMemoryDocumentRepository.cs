@@ -29,7 +29,7 @@ public class InMemoryDocumentRepository(
     #region Fields
 
     private readonly List<SmartRAG.Entities.Document> _documents = new List<SmartRAG.Entities.Document>();
-    private readonly System.Threading.Lock _lock = new();
+    private readonly object _lock = new object();
     private readonly InMemoryConfig _config = config;
     private readonly ILogger<InMemoryDocumentRepository> _logger = logger;
 

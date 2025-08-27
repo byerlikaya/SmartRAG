@@ -152,7 +152,8 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
 
     private static void ValidateDocument(SmartRAG.Entities.Document document)
     {
-        ArgumentNullException.ThrowIfNull(document);
+        if (document == null)
+            throw new ArgumentNullException(nameof(document));
 
         if (string.IsNullOrEmpty(document.FileName))
             throw new ArgumentException("FileName cannot be null or empty", nameof(document));
@@ -224,7 +225,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
         if (chunk.Embedding.Count > 0 && chunk.Embedding.Any(f => Math.Abs(f) > MaxAbsoluteValue))
             throw new ArgumentException($"Chunk embedding vector contains values with absolute value > {MaxAbsoluteValue} for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
 
-        if (chunk.Embedding.Count > 0 && chunk.Embedding.Any(f => float.IsSubnormal(f)))
+        if (chunk.Embedding.Count > 0 && chunk.Embedding.Any(f => f != 0 && Math.Abs(f) < float.Epsilon))
             throw new ArgumentException($"Chunk embedding vector contains subnormal values for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
 
         if (chunk.Embedding.Count > 0 && chunk.Embedding.Any(f => float.IsNegativeInfinity(f) || float.IsPositiveInfinity(f)))
@@ -283,28 +284,102 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
 
     private static SmartRAG.Entities.Document CreateDocumentFromReader(SqliteDataReader reader) => new()
     {
-        Id = Guid.Parse(reader.GetString("Id")),
-        FileName = reader.GetString("FileName"),
-        Content = reader.GetString("Content"),
-        ContentType = reader.GetString("ContentType"),
-        FileSize = reader.GetInt64("FileSize"),
-        UploadedAt = DateTime.Parse(reader.GetString("UploadedAt"), CultureInfo.InvariantCulture),
-        UploadedBy = reader.GetString("UploadedBy"),
+        Id = Guid.Parse(GetStringSafe(reader, "Id")),
+        FileName = GetStringSafe(reader, "FileName"),
+        Content = GetStringSafe(reader, "Content"),
+        ContentType = GetStringSafe(reader, "ContentType"),
+        FileSize = GetInt64Safe(reader, "FileSize"),
+        UploadedAt = DateTime.Parse(GetStringSafe(reader, "UploadedAt"), CultureInfo.InvariantCulture),
+        UploadedBy = GetStringSafe(reader, "UploadedBy"),
         Chunks = new List<DocumentChunk>()
     };
 
     private static DocumentChunk CreateChunkFromReader(SqliteDataReader reader, Guid documentId) => new()
     {
-        Id = Guid.Parse(reader.GetString("ChunkId")),
+        Id = Guid.Parse(GetStringSafe(reader, "ChunkId")),
         DocumentId = documentId,
-        Content = reader.GetString("ChunkContent"),
-        ChunkIndex = reader.GetInt32("ChunkIndex"),
-        CreatedAt = DateTime.Parse(reader.GetString("CreatedAt"), CultureInfo.InvariantCulture),
-        RelevanceScore = reader.IsDBNull("RelevanceScore") ? 0.0 : reader.GetDouble("RelevanceScore"),
-        Embedding = reader.IsDBNull("Embedding")
-            ? []
-            : JsonSerializer.Deserialize<List<float>>(reader.GetString("Embedding")) ?? []
+        Content = GetStringSafe(reader, "ChunkContent"),
+        ChunkIndex = GetInt32Safe(reader, "ChunkIndex"),
+        CreatedAt = DateTime.Parse(GetStringSafe(reader, "CreatedAt"), CultureInfo.InvariantCulture),
+        RelevanceScore = IsDBNullSafe(reader, "RelevanceScore") ? 0.0 : GetDoubleSafe(reader, "RelevanceScore"),
+        Embedding = IsDBNullSafe(reader, "Embedding")
+            ? new List<float>()
+            : JsonSerializer.Deserialize<List<float>>(GetStringSafe(reader, "Embedding")) ?? new List<float>()
     };
+
+    private static DocumentChunk CreateChunkFromSearchReader(SqliteDataReader reader) => new()
+    {
+        Id = Guid.Parse(GetStringSafe(reader, "Id")),
+        DocumentId = Guid.Parse(GetStringSafe(reader, "DocumentId")),
+        Content = GetStringSafe(reader, "Content"),
+        ChunkIndex = GetInt32Safe(reader, "ChunkIndex"),
+        CreatedAt = DateTime.Parse(GetStringSafe(reader, "CreatedAt"), CultureInfo.InvariantCulture),
+        RelevanceScore = IsDBNullSafe(reader, "RelevanceScore") ? 0.0 : GetDoubleSafe(reader, "RelevanceScore"),
+        Embedding = IsDBNullSafe(reader, "Embedding")
+            ? new List<float>()
+            : JsonSerializer.Deserialize<List<float>>(GetStringSafe(reader, "Embedding")) ?? new List<float>()
+    };
+
+    // Helper methods for safe reading from SQLite reader
+    private static string GetStringSafe(SqliteDataReader reader, string columnName)
+    {
+        try
+        {
+            return reader.GetString(reader.GetOrdinal(columnName));
+        }
+        catch
+        {
+            return string.Empty;
+        }
+    }
+
+    private static int GetInt32Safe(SqliteDataReader reader, string columnName)
+    {
+        try
+        {
+            return reader.GetInt32(reader.GetOrdinal(columnName));
+        }
+        catch
+        {
+            return 0;
+        }
+    }
+
+    private static long GetInt64Safe(SqliteDataReader reader, string columnName)
+    {
+        try
+        {
+            return reader.GetInt64(reader.GetOrdinal(columnName));
+        }
+        catch
+        {
+            return 0L;
+        }
+    }
+
+    private static double GetDoubleSafe(SqliteDataReader reader, string columnName)
+    {
+        try
+        {
+            return reader.GetDouble(reader.GetOrdinal(columnName));
+        }
+        catch
+        {
+            return 0.0;
+        }
+    }
+
+    private static bool IsDBNullSafe(SqliteDataReader reader, string columnName)
+    {
+        try
+        {
+            return reader.IsDBNull(reader.GetOrdinal(columnName));
+        }
+        catch
+        {
+            return true;
+        }
+    }
 
     private static string GetDocumentsWithChunksSql() => @"
         SELECT d.Id, d.FileName, d.Content, d.ContentType, d.FileSize, d.UploadedAt, d.UploadedBy,
@@ -370,7 +445,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
                     document = CreateDocumentFromReader(reader);
                 }
 
-                if (!reader.IsDBNull("ChunkId"))
+                if (!IsDBNullSafe(reader, "ChunkId"))
                 {
                     var chunk = CreateChunkFromReader(reader, id);
                     chunks.Add(chunk);
@@ -412,7 +487,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
 
             while (await reader.ReadAsync())
             {
-                var documentId = Guid.Parse(reader.GetString("Id"));
+                var documentId = Guid.Parse(GetStringSafe(reader, "Id"));
 
                 if (currentDocument == null || currentDocument.Id != documentId)
                 {
@@ -426,7 +501,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
                     chunks = new List<DocumentChunk>();
                 }
 
-                if (!reader.IsDBNull("ChunkId"))
+                if (!IsDBNullSafe(reader, "ChunkId"))
                 {
                     var chunk = CreateChunkFromReader(reader, documentId);
                     chunks.Add(chunk);
@@ -547,9 +622,9 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
             using var reader = command.ExecuteReader();
             if (await reader.ReadAsync())
             {
-                stats["DocumentCount"] = reader.GetInt32("DocumentCount");
-                stats["ChunkCount"] = reader.GetInt32("ChunkCount");
-                stats["TotalSize"] = reader.IsDBNull("TotalSize") ? 0L : reader.GetInt64("TotalSize");
+                stats["DocumentCount"] = GetInt32Safe(reader, "DocumentCount");
+                stats["ChunkCount"] = GetInt32Safe(reader, "ChunkCount");
+                stats["TotalSize"] = IsDBNullSafe(reader, "TotalSize") ? 0L : GetInt64Safe(reader, "TotalSize");
             }
 
             RepositoryLogMessages.LogSqliteStatisticsRetrieved(Logger, null);
@@ -596,7 +671,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
             using var reader = command.ExecuteReader();
             while (reader.Read())
             {
-                var chunk = CreateChunkFromReader(reader, Guid.Parse(reader.GetString("DocumentId")));
+                var chunk = CreateChunkFromSearchReader(reader);
                 relevantChunks.Add(chunk);
             }
 

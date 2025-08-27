@@ -1,8 +1,21 @@
+
+
+using OfficeOpenXml;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Globalization;
+using DocumentFormat.OpenXml;
+using DocumentFormat.OpenXml.Wordprocessing;
+using DocumentFormat.OpenXml.Spreadsheet;
+using iText.Kernel;
+using iText.Kernel.Pdf;
+using iText.Kernel.Pdf.Canvas.Parser;
+using iText.Kernel.Pdf.Canvas.Parser.Listener;
 
 namespace SmartRAG.Services;
 
@@ -18,8 +31,8 @@ public class DocumentParserService(
     /// </summary>
     static DocumentParserService()
     {
-        // Set EPPlus 8+ license for non-commercial organization use
-        ExcelPackage.License.SetNonCommercialOrganization("SmartRAG");
+        // EPPlus 6.x doesn't require explicit license setting for non-commercial use
+        // License is automatically set to NonCommercial
     }
     #region Constants
 
@@ -212,7 +225,7 @@ public class DocumentParserService(
         try
         {
             var memoryStream = await CreateMemoryStreamCopy(fileStream);
-            using var document = WordprocessingDocument.Open(memoryStream, false);
+            using var document = DocumentFormat.OpenXml.Packaging.WordprocessingDocument.Open(memoryStream, false);
             var body = document.MainDocumentPart?.Document?.Body;
 
             if (body == null)
@@ -348,16 +361,16 @@ public class DocumentParserService(
     {
         foreach (var child in element.Elements())
         {
-            if (child is Text text)
+            if (child is DocumentFormat.OpenXml.Wordprocessing.Text text)
             {
                 textBuilder.Append(text.Text);
             }
-            else if (child is Paragraph paragraph)
+            else if (child is DocumentFormat.OpenXml.Wordprocessing.Paragraph paragraph)
             {
                 ExtractTextFromElement(paragraph, textBuilder);
                 textBuilder.AppendLine();
             }
-            else if (child is Table table)
+            else if (child is DocumentFormat.OpenXml.Wordprocessing.Table table)
             {
                 ExtractTextFromElement(table, textBuilder);
                 textBuilder.AppendLine();
@@ -379,8 +392,8 @@ public class DocumentParserService(
             var memoryStream = await CreateMemoryStreamCopy(fileStream);
             var bytes = memoryStream.ToArray();
 
-            using var pdfReader = new PdfReader(new MemoryStream(bytes));
-            using var pdfDocument = new PdfDocument(pdfReader);
+            using var pdfReader = new iText.Kernel.Pdf.PdfReader(new MemoryStream(bytes));
+            using var pdfDocument = new iText.Kernel.Pdf.PdfDocument(pdfReader);
 
             var textBuilder = new StringBuilder();
             ExtractTextFromPdfPages(pdfDocument, textBuilder);
@@ -404,8 +417,8 @@ public class DocumentParserService(
         for (int i = 1; i <= pageCount; i++)
         {
             var page = pdfDocument.GetPage(i);
-            var strategy = new LocationTextExtractionStrategy();
-            var text = PdfTextExtractor.GetTextFromPage(page, strategy);
+            var strategy = new iText.Kernel.Pdf.Canvas.Parser.Listener.LocationTextExtractionStrategy();
+            var text = iText.Kernel.Pdf.Canvas.Parser.PdfTextExtractor.GetTextFromPage(page, strategy);
 
             if (!string.IsNullOrWhiteSpace(text))
             {

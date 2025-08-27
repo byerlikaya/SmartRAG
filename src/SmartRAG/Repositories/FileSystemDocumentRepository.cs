@@ -29,7 +29,7 @@ public class FileSystemDocumentRepository : IDocumentRepository
 
     private readonly string _basePath;
     private readonly string _metadataFile;
-    private readonly System.Threading.Lock _lock = new();
+    private readonly object _lock = new();
     private readonly ILogger<FileSystemDocumentRepository> _logger;
 
     #endregion
@@ -309,7 +309,7 @@ public class FileSystemDocumentRepository : IDocumentRepository
     /// <summary>
     /// Creates document data object for serialization
     /// </summary>
-    private static object CreateDocumentData(SmartRAG.Entities.Document document)
+    private static object CreateDocumentData(Entities.Document document)
     {
         return new
         {
@@ -326,7 +326,7 @@ public class FileSystemDocumentRepository : IDocumentRepository
     /// <summary>
     /// Performs search operation on documents
     /// </summary>
-    private static List<DocumentChunk> PerformSearch(List<SmartRAG.Entities.Document> documents, string normalizedQuery, int maxResults)
+    private static List<DocumentChunk> PerformSearch(List<Entities.Document> documents, string normalizedQuery, int maxResults)
     {
         var relevantChunks = new List<DocumentChunk>();
 
@@ -334,7 +334,7 @@ public class FileSystemDocumentRepository : IDocumentRepository
         {
             foreach (var chunk in document.Chunks)
             {
-                var normalizedChunk = SmartRAG.Extensions.SearchTextExtensions.NormalizeForSearch(chunk.Content);
+                var normalizedChunk = SearchTextExtensions.NormalizeForSearch(chunk.Content);
                 if (normalizedChunk.Contains(normalizedQuery))
                 {
                     relevantChunks.Add(chunk);
