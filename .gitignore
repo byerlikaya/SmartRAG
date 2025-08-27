@@ -317,6 +317,9 @@ BenchmarkDotNet.Artifacts/
 !docs/**/*.md
 !docs/**/*.html
 
+# Mükerrer README.md dosyası (ana README.md ile senkronize)
+src/SmartRAG/README.md
+
 # Document upload directories
 uploads/
 documents/
