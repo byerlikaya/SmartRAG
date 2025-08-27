@@ -1,15 +1,4 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Configuration;
-using Moq;
-using SmartRAG;
-using SmartRAG.Enums;
-using SmartRAG.Extensions;
-using SmartRAG.Interfaces;
-using SmartRAG.Models;
-using SmartRAG.Services;
-using System.Text;
+
 
 namespace SmartRAG.Tests;
 
@@ -29,10 +18,10 @@ public class AIProviderIntegrationTests : IDisposable
     public AIProviderIntegrationTests()
     {
         var services = new ServiceCollection();
-        
+
         // Test logger ekle
         services.AddLogging(builder => builder.AddConsole());
-        
+
         // Mock configuration oluştur
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string>
@@ -53,10 +42,10 @@ public class AIProviderIntegrationTests : IDisposable
                 {"Storage:InMemory:MaxDocuments", "1000"}
             })
             .Build();
-        
+
         // Configuration'ı DI container'a ekle
         services.AddSingleton<IConfiguration>(configuration);
-        
+
         // SmartRAG servislerini ekle
         services.AddSmartRag(configuration, options =>
         {
@@ -71,7 +60,7 @@ public class AIProviderIntegrationTests : IDisposable
 
         _serviceProvider = services.BuildServiceProvider();
         _scope = _serviceProvider.CreateScope();
-        
+
         _documentService = _scope.ServiceProvider.GetRequiredService<IDocumentService>();
         _documentSearchService = _scope.ServiceProvider.GetRequiredService<IDocumentSearchService>();
         _aiProviderFactory = _scope.ServiceProvider.GetRequiredService<IAIProviderFactory>();
@@ -120,7 +109,7 @@ public class AIProviderIntegrationTests : IDisposable
         Assert.True(searchResults.Count <= 5);
 
         // Verify that results contain relevant content
-        var hasRelevantContent = searchResults.Any(r => 
+        var hasRelevantContent = searchResults.Any(r =>
             r.Content.Contains("SmartRAG", StringComparison.OrdinalIgnoreCase) ||
             r.Content.Contains("AI", StringComparison.OrdinalIgnoreCase) ||
             r.Content.Contains("library", StringComparison.OrdinalIgnoreCase));
