@@ -39,7 +39,7 @@ What you expected to happen
 What actually happened
 
 ## Environment
-- .NET Version: [e.g., .NET 8.0]
+- .NET Version: [e.g., .NET 9.0]
 - OS: [e.g., Windows 11, macOS 14, Ubuntu 22.04]
 - SmartRAG Version: [e.g., 1.1.0]
 
@@ -60,7 +60,7 @@ We welcome feature suggestions! When suggesting a feature:
 
 #### Prerequisites
 
-- .NET 8.0 SDK or later
+- .NET 9.0 SDK or later
 - Git
 - A GitHub account
 - Basic knowledge of C# and .NET
