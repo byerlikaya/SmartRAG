@@ -1,4 +1,7 @@
-namespace SmartRAG.Interfaces;
+using SmartRAG.Enums;
+using SmartRAG.Models;
+
+namespace SmartRAG.Interfaces {
 
 /// <summary>
 /// Factory interface for creating document storage repositories
@@ -24,4 +27,5 @@ public interface IStorageFactory
     /// Gets the currently active repository instance
     /// </summary>
     IDocumentRepository GetCurrentRepository();
+}
 }

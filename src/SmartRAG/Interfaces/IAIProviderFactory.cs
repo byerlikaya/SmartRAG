@@ -1,4 +1,6 @@
-namespace SmartRAG.Interfaces;
+using SmartRAG.Enums;
+
+namespace SmartRAG.Interfaces {
 
 /// <summary>
 /// Factory interface for creating AI providers
@@ -9,4 +11,5 @@ public interface IAIProviderFactory
     /// Creates an AI provider instance of the specified type
     /// </summary>
     IAIProvider CreateProvider(AIProvider providerType);
+}
 }

@@ -21,8 +21,8 @@ lang: en
                         <span class="text-gradient">SmartRAG</span>
                     </h1>
                     <p class="hero-description">
-                        The most powerful .NET library for document processing, AI embeddings, and semantic search. 
-                        Transform your applications with enterprise-grade RAG capabilities.
+                        The most powerful .NET Standard 2.0/2.1 library for document processing, AI embeddings, and semantic search. 
+                        Transform your applications with enterprise-grade RAG capabilities. Compatible with .NET Framework 4.6.1+, .NET Core 2.0+, and .NET 5+.
                     </p>
                     <div class="hero-stats">
                         <div class="stat-item">

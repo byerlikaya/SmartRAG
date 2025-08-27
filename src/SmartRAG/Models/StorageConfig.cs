@@ -1,4 +1,7 @@
-namespace SmartRAG.Models;
+using System;
+using SmartRAG.Enums;
+
+namespace SmartRAG.Models {
 
 /// <summary>
 /// Storage configuration for different storage providers
@@ -9,11 +12,12 @@ public class StorageConfig
 
     public string FileSystemPath { get; set; } = "Documents";
 
-    public RedisConfig Redis { get; set; } = new();
+    public RedisConfig Redis { get; set; } = new RedisConfig();
 
-    public SqliteConfig Sqlite { get; set; } = new();
+    public SqliteConfig Sqlite { get; set; } = new SqliteConfig();
 
-    public InMemoryConfig InMemory { get; set; } = new();
+    public InMemoryConfig InMemory { get; set; } = new InMemoryConfig();
 
-    public QdrantConfig Qdrant { get; set; } = new();
+    public QdrantConfig Qdrant { get; set; } = new QdrantConfig();
+}
 }
