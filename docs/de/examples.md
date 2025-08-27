@@ -194,6 +194,93 @@ public class AskQuestionRequest
 }</code></pre>
                     </div>
 
+                    <h4>VoyageAI-Integration</h4>
+                    <p>Hochwertige Embeddings für Anthropic Claude-Modelle mit VoyageAI:</p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// VoyageAI-Integration konfigurieren
+services.AddSmartRAG(options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.ApiKey = "your-anthropic-api-key";
+    
+    // VoyageAI für hochwertige Embeddings aktivieren
+    options.EnableVoyageAI = true;
+    options.VoyageAI.ApiKey = "your-voyageai-api-key";
+    options.VoyageAI.Model = "voyage-large-2"; // Neuestes Modell
+    options.VoyageAI.Dimensions = 1536; // Embedding-Dimensionen
+    options.VoyageAI.BatchSize = 100; // Batch-Verarbeitung
+});
+
+// VoyageAI-Embeddings in Ihrem Service verwenden
+public async Task&lt;IEnumerable&lt;float[]&gt;&gt; GenerateEmbeddingsAsync(
+    IEnumerable&lt;string&gt; texts)
+{
+    var embeddingService = serviceProvider.GetRequiredService&lt;IVoyageAIEmbeddingService&gt;();
+    
+    // Hochwertige Embeddings generieren
+    var embeddings = await embeddingService.GenerateEmbeddingsAsync(texts);
+    
+    return embeddings;
+}</code></pre>
+                    </div>
+
+                    <h4>Erweiterte VoyageAI-Konfiguration</h4>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Erweiterte VoyageAI-Konfiguration mit benutzerdefinierten Einstellungen
+var voyageAIConfig = new VoyageAIConfiguration
+{
+    ApiKey = "your-voyageai-api-key",
+    Model = "voyage-large-2",
+    Dimensions = 1536,
+    BatchSize = 100,
+    MaxRetries = 3,
+    Timeout = TimeSpan.FromSeconds(30),
+    EnableCompression = true,
+    CustomHeaders = new Dictionary&lt;string, string&gt;
+    {
+        ["User-Agent"] = "SmartRAG/1.1.0"
+    }
+};
+
+services.AddSmartRAG(options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.ApiKey = "your-anthropic-api-key";
+    
+    // VoyageAI mit benutzerdefinierten Einstellungen konfigurieren
+    options.EnableVoyageAI = true;
+    options.VoyageAI = voyageAIConfig;
+});
+
+// Controller-Implementierung
+[HttpPost("generate-embeddings")]
+public async Task&lt;ActionResult&lt;EmbeddingResponse&gt;&gt; GenerateEmbeddings(
+    [FromBody] EmbeddingRequest request)
+{
+    try
+    {
+        var embeddingService = _serviceProvider.GetRequiredService&lt;IVoyageAIEmbeddingService&gt;();
+        
+        var embeddings = await embeddingService.GenerateEmbeddingsAsync(request.Texts);
+        
+        return Ok(new EmbeddingResponse
+        {
+            Embeddings = embeddings,
+            Model = "voyage-large-2",
+            Dimensions = embeddings.FirstOrDefault()?.Length ?? 0,
+            TotalTokens = request.Texts.Sum(t => t.Split(' ').Length)
+        });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Fehler beim Generieren von Embeddings mit VoyageAI");
+        return StatusCode(500, "Embeddings konnten nicht generiert werden");
+    }
+}</code></pre>
+                    </div>
+
                     <h4>Suchkonfiguration</h4>
                     <div class="code-example">
                         <pre><code class="language-csharp">// Erweiterte semantische Suche konfigurieren
