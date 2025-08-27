@@ -120,8 +120,8 @@ var results = await documentService
                     <div class="feature-icon">
                         <i class="fas fa-search"></i>
                     </div>
-                    <h3>Anlamsal Arama</h3>
-                    <p>Benzerlik puanlaması ve akıllı sonuç sıralaması ile gelişmiş arama.</p>
+                    <h3>Gelişmiş Anlamsal Arama</h3>
+                    <p>Hibrit puanlama (80% anlamsal + 20% anahtar kelime) ile bağlam farkındalığı ve akıllı sıralama.</p>
                 </div>
             </div>
             <div class="col-lg-4 col-md-6">

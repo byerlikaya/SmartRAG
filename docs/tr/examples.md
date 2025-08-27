@@ -137,6 +137,120 @@ public async Task&lt;ActionResult&lt;IEnumerable&lt;DocumentChunk&gt;&gt;&gt; Se
 }</code></pre>
                     </div>
 
+                    <h4>Gelişmiş Anlamsal Arama</h4>
+                    <p>Hibrit puanlama (80% anlamsal + 20% anahtar kelime) ve bağlam farkındalığı ile gelişmiş arama:</p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public async Task&lt;IEnumerable&lt;SearchResult&gt;&gt; EnhancedSearchAsync(
+    string query, 
+    SearchOptions options = null)
+{
+    // Hibrit puanlama ağırlıklarını yapılandır
+    var searchConfig = new EnhancedSearchConfiguration
+    {
+        SemanticWeight = 0.8,        // 80% anlamsal benzerlik
+        KeywordWeight = 0.2,          // 20% anahtar kelime eşleşmesi
+        ContextWindowSize = 512,      // Bağlam farkındalığı penceresi
+        MinSimilarityThreshold = 0.6, // Minimum benzerlik skoru
+        EnableFuzzyMatching = true,   // Bulanık anahtar kelime eşleşmesi
+        MaxResults = options?.MaxResults ?? 20
+    };
+
+    // Hibrit arama yap
+    var results = await _searchService.EnhancedSearchAsync(query, searchConfig);
+    
+    // Bağlam farkındalıklı sıralama uygula
+    var rankedResults = await _rankingService.RankByContextAsync(results, query);
+    
+    return rankedResults;
+}</code></pre>
+                    </div>
+
+                    <h4>Arama Yapılandırması</h4>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Gelişmiş anlamsal aramayı yapılandır
+services.AddSmartRAG(options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.ApiKey = "your-api-key";
+    
+    // Gelişmiş anlamsal aramayı etkinleştir
+    options.EnableEnhancedSearch = true;
+    options.SemanticWeight = 0.8;
+    options.KeywordWeight = 0.2;
+    options.ContextAwareness = true;
+    options.FuzzyMatching = true;
+});
+
+// Controller'ınızda kullanın
+[HttpGet("enhanced-search")]
+public async Task&lt;ActionResult&lt;IEnumerable&lt;SearchResult&gt;&gt;&gt; EnhancedSearch(
+    [FromQuery] string query,
+    [FromQuery] int maxResults = 20)
+{
+    var options = new SearchOptions { MaxResults = maxResults };
+    var results = await _searchService.EnhancedSearchAsync(query, options);
+    return Ok(results);
+}</code></pre>
+                    </div>
+
+                    <h4>Gelişmiş Anlamsal Arama</h4>
+                    <p>Hibrit puanlama (80% anlamsal + 20% anahtar kelime) ve bağlam farkındalığı ile gelişmiş arama:</p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public async Task&lt;IEnumerable&lt;SearchResult&gt;&gt; EnhancedSearchAsync(
+    string query, 
+    SearchOptions options = null)
+{
+    // Hibrit puanlama ağırlıklarını yapılandır
+    var searchConfig = new EnhancedSearchConfiguration
+    {
+        SemanticWeight = 0.8,        // 80% anlamsal benzerlik
+        KeywordWeight = 0.2,          // 20% anahtar kelime eşleşmesi
+        ContextWindowSize = 512,      // Bağlam farkındalığı penceresi
+        MinSimilarityThreshold = 0.6, // Minimum benzerlik skoru
+        EnableFuzzyMatching = true,   // Bulanık anahtar kelime eşleşmesi
+        MaxResults = options?.MaxResults ?? 20
+    };
+
+    // Hibrit arama yap
+    var results = await _searchService.EnhancedSearchAsync(query, searchConfig);
+    
+    // Bağlam farkındalıklı sıralama uygula
+    var rankedResults = await _rankingService.RankByContextAsync(results, query);
+    
+    return rankedResults;
+}</code></pre>
+                    </div>
+
+                    <h4>Arama Yapılandırması</h4>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Gelişmiş anlamsal aramayı yapılandır
+services.AddSmartRAG(options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.ApiKey = "your-api-key";
+    
+    // Gelişmiş anlamsal aramayı etkinleştir
+    options.EnableEnhancedSearch = true;
+    options.SemanticWeight = 0.8;
+    options.KeywordWeight = 0.2;
+    options.ContextAwareness = true;
+    options.FuzzyMatching = true;
+});
+
+// Controller'ınızda kullanın
+[HttpGet("enhanced-search")]
+public async Task&lt;ActionResult&lt;IEnumerable&lt;SearchResult&gt;&gt;&gt; EnhancedSearch(
+    [FromQuery] string query,
+    [FromQuery] int maxResults = 20)
+{
+    var options = new SearchOptions { MaxResults = maxResults };
+    var results = await _searchService.EnhancedSearchAsync(query, options);
+    return Ok(results);
+}</code></pre>
+                    </div>
+
                     <h4>Niyet Analizi Yapılandırması</h4>
                     <div class="code-example">
                         <pre><code class="language-csharp">// Niyet algılamayı yapılandır
