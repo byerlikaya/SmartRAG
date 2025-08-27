@@ -388,6 +388,236 @@ public async Task&lt;ActionResult&lt;MultilingualSearchResult&gt;&gt; SearchMult
 }</code></pre>
                     </div>
 
+                    <h4>Anthropic API Retry Mekanizması</h4>
+                    <p>HTTP 529 (Overloaded) hataları için gelişmiş retry logic:</p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public async Task&lt;ChatResponse&gt; ProcessWithRetryAsync(string prompt, int maxRetries = 3)
+{
+    var retryPolicy = new ExponentialBackoffRetryPolicy
+    {
+        MaxRetries = maxRetries,
+        BaseDelay = TimeSpan.FromSeconds(2),
+        MaxDelay = TimeSpan.FromSeconds(30),
+        JitterFactor = 0.1
+    };
+
+    for (int attempt = 1; attempt <= maxRetries; attempt++)
+    {
+        try
+        {
+            var response = await _anthropicService.ChatAsync(new ChatRequest
+            {
+                Model = "claude-3-sonnet-20240229",
+                MaxTokens = 1000,
+                Messages = new[] { new Message { Role = "user", Content = prompt } }
+            });
+
+            return response;
+        }
+        catch (AnthropicApiException ex) when (ex.StatusCode == 529)
+        {
+            _logger.LogWarning("Anthropic API aşırı yüklü (HTTP 529), deneme {Attempt}/{MaxRetries}", 
+                attempt, maxRetries);
+
+            if (attempt == maxRetries)
+            {
+                throw new AnthropicServiceUnavailableException(
+                    "Anthropic API şu anda birden fazla deneme sonrası aşırı yüklü", ex);
+            }
+
+            var delay = retryPolicy.CalculateDelay(attempt);
+            await Task.Delay(delay);
+        }
+        catch (AnthropicApiException ex) when (ex.StatusCode == 429)
+        {
+            // Rate limiting - exponential backoff kullan
+            var delay = retryPolicy.CalculateDelay(attempt);
+            await Task.Delay(delay);
+        }
+    }
+
+    throw new InvalidOperationException("Beklenmeyen retry loop çıkışı");
+}</code></pre>
+                    </div>
+
+                    <h4>Gelişmiş Retry Yapılandırması</h4>
+                    <p>Farklı hata senaryoları için sofistike retry politikaları yapılandırın:</p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Gelişmiş retry politikalarını yapılandırın
+services.AddSmartRAG(options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.ApiKey = "your-anthropic-api-key";
+    
+    // Gelişmiş retry mekanizmasını etkinleştir
+    options.EnableAdvancedRetry = true;
+    options.RetryConfiguration = new AnthropicRetryConfiguration
+    {
+        MaxRetries = 5,
+        BaseDelay = TimeSpan.FromSeconds(1),
+        MaxDelay = TimeSpan.FromSeconds(60),
+        JitterFactor = 0.15,
+        EnableCircuitBreaker = true,
+        CircuitBreakerThreshold = 10,
+        CircuitBreakerTimeout = TimeSpan.FromMinutes(5),
+        
+        // Özel hata işleme
+        RetryOnStatusCodes = new[] { 429, 529, 500, 502, 503, 504 },
+        ExponentialBackoff = true,
+        LinearBackoff = false,
+        
+        // Özel retry koşulları
+        CustomRetryPredicate = async (exception, attempt) =>
+        {
+            if (exception is AnthropicApiException apiEx)
+            {
+                // 529 (Overloaded) durumunda her zaman retry yap
+                if (apiEx.StatusCode == 529) return true;
+                
+                // 429 (Rate Limited) durumunda backoff ile retry yap
+                if (apiEx.StatusCode == 429) return attempt <= 3;
+                
+                // Sunucu hatalarında retry yap
+                if (apiEx.StatusCode >= 500) return attempt <= 2;
+            }
+            
+            return false;
+        }
+    };
+});
+
+// Retry handling ile servisinizde kullanın
+public class AnthropicService
+{
+    private readonly IAnthropicClient _client;
+    private readonly IRetryPolicy _retryPolicy;
+    private readonly ILogger<AnthropicService> _logger;
+
+    public AnthropicService(IAnthropicClient client, IRetryPolicy retryPolicy, ILogger<AnthropicService> logger)
+    {
+        _client = client;
+        _retryPolicy = retryPolicy;
+        _logger = logger;
+    }
+
+    public async Task&lt;ChatResponse&gt; ChatWithRetryAsync(ChatRequest request)
+    {
+        return await _retryPolicy.ExecuteAsync(async () =>
+        {
+            try
+            {
+                return await _client.ChatAsync(request);
+            }
+            catch (AnthropicApiException ex)
+            {
+                _logger.LogError(ex, "Anthropic API hatası: {StatusCode} - {Message}", 
+                    ex.StatusCode, ex.Message);
+                
+                // Monitoring için özel hata detaylarını logla
+                if (ex.StatusCode == 529)
+                {
+                    _logger.LogWarning("API aşırı yük tespit edildi - backoff stratejisi uygulanıyor");
+                }
+                
+                throw;
+            }
+        });
+    }
+}</code></pre>
+                    </div>
+
+                    <h4>Circuit Breaker Pattern</h4>
+                    <p>API koruması için circuit breaker uygulayın:</p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Circuit breaker implementasyonu
+public class AnthropicCircuitBreaker
+{
+    private readonly ILogger<AnthropicCircuitBreaker> _logger;
+    private readonly int _failureThreshold;
+    private readonly TimeSpan _resetTimeout;
+    
+    private int _failureCount;
+    private DateTime _lastFailureTime;
+    private CircuitBreakerState _state = CircuitBreakerState.Closed;
+
+    public AnthropicCircuitBreaker(ILogger<AnthropicCircuitBreaker> logger, 
+        int failureThreshold = 10, TimeSpan? resetTimeout = null)
+    {
+        _logger = logger;
+        _failureThreshold = failureThreshold;
+        _resetTimeout = resetTimeout ?? TimeSpan.FromMinutes(5);
+    }
+
+    public async Task&lt;T&gt; ExecuteAsync&lt;T&gt;(Func&lt;Task&lt;T&gt;&gt; action)
+    {
+        if (_state == CircuitBreakerState.Open)
+        {
+            if (DateTime.UtcNow - _lastFailureTime > _resetTimeout)
+            {
+                _logger.LogInformation("Circuit breaker timeout'a ulaştı, kapatmaya çalışılıyor");
+                _state = CircuitBreakerState.HalfOpen;
+            }
+            else
+            {
+                throw new CircuitBreakerOpenException("Circuit breaker açık");
+            }
+        }
+
+        try
+        {
+            var result = await action();
+            
+            if (_state == CircuitBreakerState.HalfOpen)
+            {
+                _logger.LogInformation("Circuit breaker başarıyla kapatıldı");
+                _state = CircuitBreakerState.Closed;
+                _failureCount = 0;
+            }
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _failureCount++;
+            _lastFailureTime = DateTime.UtcNow;
+            
+            if (_failureCount >= _failureThreshold)
+            {
+                _logger.LogWarning("Circuit breaker {FailureCount} başarısızlıktan sonra açıldı", _failureCount);
+                _state = CircuitBreakerState.Open;
+            }
+            
+            throw;
+        }
+    }
+}
+
+// Circuit breaker ile controller implementasyonu
+[HttpPost("chat-with-retry")]
+public async Task&lt;ActionResult&lt;ChatResponse&gt;&gt; ChatWithRetry([FromBody] ChatRequest request)
+{
+    try
+    {
+        var response = await _anthropicService.ChatWithRetryAsync(request);
+        return Ok(response);
+    }
+    catch (CircuitBreakerOpenException)
+    {
+        return StatusCode(503, new { error = "Yüksek hata oranı nedeniyle servis geçici olarak kullanılamıyor" });
+    }
+    catch (AnthropicServiceUnavailableException ex)
+    {
+        return StatusCode(503, new { error = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Chat servisinde beklenmeyen hata");
+        return StatusCode(500, new { error = "İç sunucu hatası" });
+    }
+}</code></pre>
+                    </div>
+
                     <h4>Niyet Analizi Yapılandırması</h4>
                     <div class="code-example">
                         <pre><code class="language-csharp">// Niyet algılamayı yapılandır
