@@ -166,6 +166,63 @@ public class AskQuestionRequest
 }</code></pre>
                     </div>
 
+                    <h4>Расширенный семантический поиск</h4>
+                    <p>Расширенный поиск с гибридной оценкой (80% семантическая + 20% ключевые слова) и осведомленностью о контексте:</p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public async Task&lt;IEnumerable&lt;SearchResult&gt;&gt; EnhancedSearchAsync(
+    string query, 
+    SearchOptions options = null)
+{
+    // Настроить веса гибридной оценки
+    var searchConfig = new EnhancedSearchConfiguration
+    {
+        SemanticWeight = 0.8,        // 80% семантическое сходство
+        KeywordWeight = 0.2,          // 20% соответствие ключевым словам
+        ContextWindowSize = 512,      // Окно осведомленности о контексте
+        MinSimilarityThreshold = 0.6, // Минимальный порог сходства
+        EnableFuzzyMatching = true,   // Нечеткое соответствие ключевым словам
+        MaxResults = options?.MaxResults ?? 20
+    };
+
+    // Выполнить гибридный поиск
+    var results = await _searchService.EnhancedSearchAsync(query, searchConfig);
+    
+    // Применить ранжирование с учетом контекста
+    var rankedResults = await _rankingService.RankByContextAsync(results, query);
+    
+    return rankedResults;
+}</code></pre>
+                    </div>
+
+                    <h4>Конфигурация поиска</h4>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Настроить расширенный семантический поиск
+services.AddSmartRAG(options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.ApiKey = "your-api-key";
+    
+    // Включить расширенный семантический поиск
+    options.EnableEnhancedSearch = true;
+    options.SemanticWeight = 0.8;
+    options.KeywordWeight = 0.2;
+    options.ContextAwareness = true;
+    options.FuzzyMatching = true;
+});
+
+// Использовать в вашем контроллере
+[HttpGet("enhanced-search")]
+public async Task&lt;ActionResult&lt;IEnumerable&lt;SearchResult&gt;&gt;&gt; EnhancedSearch(
+    [FromQuery] string query,
+    [FromQuery] int maxResults = 20)
+{
+    var options = new SearchOptions { MaxResults = maxResults };
+    var results = await _searchService.EnhancedSearchAsync(query, options);
+    return Ok(results);
+}</code></pre>
+                    </div>
+
                     <h4>Конфигурация определения намерения</h4>
                     <div class="code-example">
                         <pre><code class="language-csharp">// Настроить определение намерения

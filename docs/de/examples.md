@@ -166,6 +166,63 @@ public class AskQuestionRequest
 }</code></pre>
                     </div>
 
+                    <h4>Erweiterte Semantische Suche</h4>
+                    <p>Erweiterte Suche mit Hybrid-Bewertung (80% semantisch + 20% Schlüsselwort) und Kontextbewusstsein:</p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public async Task&lt;IEnumerable&lt;SearchResult&gt;&gt; EnhancedSearchAsync(
+    string query, 
+    SearchOptions options = null)
+{
+    // Hybrid-Bewertungsgewichte konfigurieren
+    var searchConfig = new EnhancedSearchConfiguration
+    {
+        SemanticWeight = 0.8,        // 80% semantische Ähnlichkeit
+        KeywordWeight = 0.2,          // 20% Schlüsselwort-Übereinstimmung
+        ContextWindowSize = 512,      // Kontextbewusstsein-Fenster
+        MinSimilarityThreshold = 0.6, // Mindestähnlichkeitsbewertung
+        EnableFuzzyMatching = true,   // Fuzzy-Schlüsselwort-Übereinstimmung
+        MaxResults = options?.MaxResults ?? 20
+    };
+
+    // Hybrid-Suche durchführen
+    var results = await _searchService.EnhancedSearchAsync(query, searchConfig);
+    
+    // Kontextbewusste Rangfolge anwenden
+    var rankedResults = await _rankingService.RankByContextAsync(results, query);
+    
+    return rankedResults;
+}</code></pre>
+                    </div>
+
+                    <h4>Suchkonfiguration</h4>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Erweiterte semantische Suche konfigurieren
+services.AddSmartRAG(options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.ApiKey = "your-api-key";
+    
+    // Erweiterte semantische Suche aktivieren
+    options.EnableEnhancedSearch = true;
+    options.SemanticWeight = 0.8;
+    options.KeywordWeight = 0.2;
+    options.ContextAwareness = true;
+    options.FuzzyMatching = true;
+});
+
+// In Ihrem Controller verwenden
+[HttpGet("enhanced-search")]
+public async Task&lt;ActionResult&lt;IEnumerable&lt;SearchResult&gt;&gt;&gt; EnhancedSearch(
+    [FromQuery] string query,
+    [FromQuery] int maxResults = 20)
+{
+    var options = new SearchOptions { MaxResults = maxResults };
+    var results = await _searchService.EnhancedSearchAsync(query, options);
+    return Ok(results);
+}</code></pre>
+                    </div>
+
                     <h4>Absichtserkennungs-Konfiguration</h4>
                     <div class="code-example">
                         <pre><code class="language-csharp">// Absichtserkennung konfigurieren
