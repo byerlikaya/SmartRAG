@@ -63,7 +63,7 @@ lang: de
                     
                     <h3>Erforderliche Tools</h3>
                     <ul>
-                        <li><strong>.NET 8.0 SDK</strong> oder höher</li>
+                        <li><strong>.NET 9.0 SDK</strong> oder höher</li>
                         <li><strong>Git</strong> für Versionskontrolle</li>
                         <li><strong>Visual Studio 2022</strong> oder <strong>VS Code</strong></li>
                         <li><strong>Docker</strong> (für Qdrant, Redis Tests)</li>
@@ -273,7 +273,7 @@ dotnet test --collect:"XPlat Code Coverage"</code></pre>
                     <h3>Erforderliche Informationen</h3>
                     <ul>
                         <li><strong>SmartRAG-Version</strong>: Welche Version verwenden Sie?</li>
-                        <li><strong>.NET-Version</strong>: .NET 8.0, 9.0?</li>
+                        <li><strong>.NET-Version</strong>: .NET 9.0</li>
                         <li><strong>Betriebssystem</strong>: Windows, Linux, macOS?</li>
                         <li><strong>Fehlermeldung</strong>: Vollständige Fehlermeldung und Stack-Trace</li>
                         <li><strong>Schritte</strong>: Schritte zur Reproduktion des Fehlers</li>
@@ -302,7 +302,7 @@ Fügen Sie Screenshots hinzu, falls vorhanden
 
 ## Umgebungsinformationen
 - SmartRAG-Version: 1.1.0
-- .NET-Version: 8.0
+- .NET-Version: 9.0
 - Betriebssystem: Windows 11
 - Browser: Chrome 120</code></pre>
                     </div>

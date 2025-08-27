@@ -63,7 +63,7 @@ lang: tr
                     
                     <h3>Gerekli Araçlar</h3>
                     <ul>
-                        <li><strong>.NET 8.0 SDK</strong> veya üzeri</li>
+                        <li><strong>.NET 9.0 SDK</strong> veya üzeri</li>
                         <li><strong>Git</strong> versiyon kontrolü için</li>
                         <li><strong>Visual Studio 2022</strong> veya <strong>VS Code</strong></li>
                         <li><strong>Docker</strong> (Qdrant, Redis testleri için)</li>
@@ -273,7 +273,7 @@ dotnet test --collect:"XPlat Code Coverage"</code></pre>
                     <h3>Gerekli Bilgiler</h3>
                     <ul>
                         <li><strong>SmartRAG Versiyonu</strong>: Hangi versiyonu kullanıyorsunuz?</li>
-                        <li><strong>.NET Versiyonu</strong>: .NET 8.0, 9.0?</li>
+                        <li><strong>.NET Versiyonu</strong>: .NET 9.0</li>
                         <li><strong>İşletim Sistemi</strong>: Windows, Linux, macOS?</li>
                         <li><strong>Hata Mesajı</strong>: Tam hata mesajı ve stack trace</li>
                         <li><strong>Adımlar</strong>: Hatayı yeniden üretme adımları</li>
@@ -302,7 +302,7 @@ Varsa ekran görüntüleri ekleyin
 
 ## Ortam Bilgileri
 - SmartRAG Versiyonu: 1.1.0
-- .NET Versiyonu: 8.0
+- .NET Versiyonu: 9.0
 - İşletim Sistemi: Windows 11
 - Tarayıcı: Chrome 120</code></pre>
                     </div>
