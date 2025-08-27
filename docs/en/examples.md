@@ -418,6 +418,236 @@ public async Task&lt;ActionResult&lt;MultilingualSearchResult&gt;&gt; SearchMult
 }</code></pre>
                     </div>
 
+                    <h4>Anthropic API Retry Mechanism</h4>
+                    <p>Advanced retry logic for handling HTTP 529 (Overloaded) errors:</p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public async Task&lt;ChatResponse&gt; ProcessWithRetryAsync(string prompt, int maxRetries = 3)
+{
+    var retryPolicy = new ExponentialBackoffRetryPolicy
+    {
+        MaxRetries = maxRetries,
+        BaseDelay = TimeSpan.FromSeconds(2),
+        MaxDelay = TimeSpan.FromSeconds(30),
+        JitterFactor = 0.1
+    };
+
+    for (int attempt = 1; attempt <= maxRetries; attempt++)
+    {
+        try
+        {
+            var response = await _anthropicService.ChatAsync(new ChatRequest
+            {
+                Model = "claude-3-sonnet-20240229",
+                MaxTokens = 1000,
+                Messages = new[] { new Message { Role = "user", Content = prompt } }
+            });
+
+            return response;
+        }
+        catch (AnthropicApiException ex) when (ex.StatusCode == 529)
+        {
+            _logger.LogWarning("Anthropic API overloaded (HTTP 529), attempt {Attempt}/{MaxRetries}", 
+                attempt, maxRetries);
+
+            if (attempt == maxRetries)
+            {
+                throw new AnthropicServiceUnavailableException(
+                    "Anthropic API is currently overloaded after multiple retry attempts", ex);
+            }
+
+            var delay = retryPolicy.CalculateDelay(attempt);
+            await Task.Delay(delay);
+        }
+        catch (AnthropicApiException ex) when (ex.StatusCode == 429)
+        {
+            // Rate limiting - use exponential backoff
+            var delay = retryPolicy.CalculateDelay(attempt);
+            await Task.Delay(delay);
+        }
+    }
+
+    throw new InvalidOperationException("Unexpected retry loop exit");
+}</code></pre>
+                    </div>
+
+                    <h4>Advanced Retry Configuration</h4>
+                    <p>Configure sophisticated retry policies for different error scenarios:</p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Configure advanced retry policies
+services.AddSmartRAG(options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.ApiKey = "your-anthropic-api-key";
+    
+    // Enable advanced retry mechanism
+    options.EnableAdvancedRetry = true;
+    options.RetryConfiguration = new AnthropicRetryConfiguration
+    {
+        MaxRetries = 5,
+        BaseDelay = TimeSpan.FromSeconds(1),
+        MaxDelay = TimeSpan.FromSeconds(60),
+        JitterFactor = 0.15,
+        EnableCircuitBreaker = true,
+        CircuitBreakerThreshold = 10,
+        CircuitBreakerTimeout = TimeSpan.FromMinutes(5),
+        
+        // Specific error handling
+        RetryOnStatusCodes = new[] { 429, 529, 500, 502, 503, 504 },
+        ExponentialBackoff = true,
+        LinearBackoff = false,
+        
+        // Custom retry conditions
+        CustomRetryPredicate = async (exception, attempt) =>
+        {
+            if (exception is AnthropicApiException apiEx)
+            {
+                // Always retry on 529 (Overloaded)
+                if (apiEx.StatusCode == 529) return true;
+                
+                // Retry on 429 (Rate Limited) with backoff
+                if (apiEx.StatusCode == 429) return attempt <= 3;
+                
+                // Retry on server errors
+                if (apiEx.StatusCode >= 500) return attempt <= 2;
+            }
+            
+            return false;
+        }
+    };
+});
+
+// Use in your service with retry handling
+public class AnthropicService
+{
+    private readonly IAnthropicClient _client;
+    private readonly IRetryPolicy _retryPolicy;
+    private readonly ILogger<AnthropicService> _logger;
+
+    public AnthropicService(IAnthropicClient client, IRetryPolicy retryPolicy, ILogger<AnthropicService> logger)
+    {
+        _client = client;
+        _retryPolicy = retryPolicy;
+        _logger = logger;
+    }
+
+    public async Task&lt;ChatResponse&gt; ChatWithRetryAsync(ChatRequest request)
+    {
+        return await _retryPolicy.ExecuteAsync(async () =>
+        {
+            try
+            {
+                return await _client.ChatAsync(request);
+            }
+            catch (AnthropicApiException ex)
+            {
+                _logger.LogError(ex, "Anthropic API error: {StatusCode} - {Message}", 
+                    ex.StatusCode, ex.Message);
+                
+                // Log specific error details for monitoring
+                if (ex.StatusCode == 529)
+                {
+                    _logger.LogWarning("API overload detected - implementing backoff strategy");
+                }
+                
+                throw;
+            }
+        });
+    }
+}</code></pre>
+                    </div>
+
+                    <h4>Circuit Breaker Pattern</h4>
+                    <p>Implement circuit breaker for API protection:</p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Circuit breaker implementation
+public class AnthropicCircuitBreaker
+{
+    private readonly ILogger<AnthropicCircuitBreaker> _logger;
+    private readonly int _failureThreshold;
+    private readonly TimeSpan _resetTimeout;
+    
+    private int _failureCount;
+    private DateTime _lastFailureTime;
+    private CircuitBreakerState _state = CircuitBreakerState.Closed;
+
+    public AnthropicCircuitBreaker(ILogger<AnthropicCircuitBreaker> logger, 
+        int failureThreshold = 10, TimeSpan? resetTimeout = null)
+    {
+        _logger = logger;
+        _failureThreshold = failureThreshold;
+        _resetTimeout = resetTimeout ?? TimeSpan.FromMinutes(5);
+    }
+
+    public async Task&lt;T&gt; ExecuteAsync&lt;T&gt;(Func&lt;Task&lt;T&gt;&gt; action)
+    {
+        if (_state == CircuitBreakerState.Open)
+        {
+            if (DateTime.UtcNow - _lastFailureTime > _resetTimeout)
+            {
+                _logger.LogInformation("Circuit breaker timeout reached, attempting to close");
+                _state = CircuitBreakerState.HalfOpen;
+            }
+            else
+            {
+                throw new CircuitBreakerOpenException("Circuit breaker is open");
+            }
+        }
+
+        try
+        {
+            var result = await action();
+            
+            if (_state == CircuitBreakerState.HalfOpen)
+            {
+                _logger.LogInformation("Circuit breaker closed successfully");
+                _state = CircuitBreakerState.Closed;
+                _failureCount = 0;
+            }
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _failureCount++;
+            _lastFailureTime = DateTime.UtcNow;
+            
+            if (_failureCount >= _failureThreshold)
+            {
+                _logger.LogWarning("Circuit breaker opened after {FailureCount} failures", _failureCount);
+                _state = CircuitBreakerState.Open;
+            }
+            
+            throw;
+        }
+    }
+}
+
+// Controller implementation with circuit breaker
+[HttpPost("chat-with-retry")]
+public async Task&lt;ActionResult&lt;ChatResponse&gt;&gt; ChatWithRetry([FromBody] ChatRequest request)
+{
+    try
+    {
+        var response = await _anthropicService.ChatWithRetryAsync(request);
+        return Ok(response);
+    }
+    catch (CircuitBreakerOpenException)
+    {
+        return StatusCode(503, new { error = "Service temporarily unavailable due to high failure rate" });
+    }
+    catch (AnthropicServiceUnavailableException ex)
+    {
+        return StatusCode(503, new { error = ex.Message });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Unexpected error in chat service");
+        return StatusCode(500, new { error = "Internal server error" });
+    }
+}</code></pre>
+                    </div>
+
                     <h4>Intent Analysis Configuration</h4>
                     <div class="code-example">
                         <pre><code class="language-csharp">// Configure intent detection
