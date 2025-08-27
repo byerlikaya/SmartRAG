@@ -281,6 +281,143 @@ public async Task&lt;ActionResult&lt;IEnumerable&lt;SearchResult&gt;&gt;&gt; Enh
 }</code></pre>
                     </div>
 
+                    <h4>Language-Agnostic Design</h4>
+                    <p>SmartRAG works with any language without hardcoded patterns or language-specific rules:</p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Language-agnostic configuration - works with any language
+services.AddSmartRAG(options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.ApiKey = "your-api-key";
+    
+    // Enable language-agnostic features
+    options.LanguageAgnostic = true;
+    options.AutoDetectLanguage = true;
+    options.SupportedLanguages = new[] { "en", "tr", "de", "ru", "fr", "es", "ja", "ko", "zh" };
+    
+    // No hardcoded language patterns
+    options.EnableMultilingualSupport = true;
+    options.FallbackLanguage = "en";
+});
+
+// Process queries in any language automatically
+public async Task&lt;QueryResult&gt; ProcessMultilingualQueryAsync(string query)
+{
+    // Language is automatically detected
+    var detectedLanguage = await _languageService.DetectLanguageAsync(query);
+    
+    // Process with language-agnostic algorithms
+    var result = await _queryProcessor.ProcessQueryAsync(query, new QueryOptions
+    {
+        Language = detectedLanguage,
+        UseLanguageAgnosticProcessing = true
+    });
+    
+    return result;
+}</code></pre>
+                    </div>
+
+                    <h4>Advanced Language-Agnostic Features</h4>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Advanced language-agnostic configuration
+var languageAgnosticConfig = new LanguageAgnosticConfiguration
+{
+    EnableLanguageDetection = true,
+    EnableMultilingualEmbeddings = true,
+    EnableCrossLanguageSearch = true,
+    LanguageDetectionThreshold = 0.8,
+    SupportedScripts = new[] { "Latin", "Cyrillic", "Arabic", "Chinese", "Japanese", "Korean" },
+    EnableScriptNormalization = true,
+    EnableUnicodeNormalization = true,
+    FallbackStrategies = new[] { "transliteration", "romanization", "english" }
+};
+
+services.AddSmartRAG(options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.ApiKey = "your-api-key";
+    
+    // Configure advanced language-agnostic features
+    options.LanguageAgnostic = true;
+    options.LanguageAgnosticConfig = languageAgnosticConfig;
+});
+
+// Controller for multilingual document processing
+[HttpPost("multilingual-upload")]
+public async Task&lt;ActionResult&lt;MultilingualUploadResult&gt;&gt; UploadMultilingualDocument(
+    [FromBody] MultilingualUploadRequest request)
+{
+    try
+    {
+        // Process document in any language
+        var document = await _documentService.UploadMultilingualDocumentAsync(
+            request.Content, 
+            request.FileName,
+            request.DetectedLanguage);
+        
+        // Generate embeddings using language-agnostic algorithms
+        var embeddings = await _embeddingService.GenerateMultilingualEmbeddingsAsync(
+            document.Chunks,
+            document.DetectedLanguage);
+        
+        // Store with language metadata
+        await _storageService.StoreMultilingualDocumentAsync(document, embeddings);
+        
+        return Ok(new MultilingualUploadResult
+        {
+            DocumentId = document.Id,
+            DetectedLanguage = document.DetectedLanguage,
+            LanguageConfidence = document.LanguageConfidence,
+            TotalChunks = document.Chunks.Count,
+            ProcessingTime = document.ProcessingTime
+        });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error processing multilingual document");
+        return StatusCode(500, "Failed to process multilingual document");
+    }
+}
+
+// Multilingual search across all languages
+[HttpGet("multilingual-search")]
+public async Task&lt;ActionResult&lt;MultilingualSearchResult&gt;&gt; SearchMultilingual(
+    [FromQuery] string query,
+    [FromQuery] string[] languages = null,
+    [FromQuery] int maxResults = 20)
+{
+    try
+    {
+        var searchOptions = new MultilingualSearchOptions
+        {
+            Query = query,
+            TargetLanguages = languages ?? new[] { "auto" },
+            MaxResults = maxResults,
+            EnableCrossLanguageSearch = true,
+            UseLanguageAgnosticScoring = true
+        };
+        
+        var results = await _searchService.SearchMultilingualAsync(searchOptions);
+        
+        return Ok(new MultilingualSearchResult
+        {
+            Query = query,
+            DetectedQueryLanguage = results.DetectedLanguage,
+            Results = results.Results,
+            CrossLanguageMatches = results.CrossLanguageMatches,
+            TotalResults = results.TotalResults
+        });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Error in multilingual search");
+        return StatusCode(500, "Failed to perform multilingual search");
+    }
+}</code></pre>
+                    </div>
+
                     <h4>Intent Analysis Configuration</h4>
                     <div class="code-example">
                         <pre><code class="language-csharp">// Configure intent detection

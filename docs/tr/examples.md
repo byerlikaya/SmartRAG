@@ -251,6 +251,143 @@ public async Task&lt;ActionResult&lt;IEnumerable&lt;SearchResult&gt;&gt;&gt; Enh
 }</code></pre>
                     </div>
 
+                    <h4>Dil-Agnostik Tasarım</h4>
+                    <p>SmartRAG, hardcoded dil kalıpları veya dil-spesifik kurallar olmadan herhangi bir dilde çalışır:</p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Dil-agnostik yapılandırma - herhangi bir dilde çalışır
+services.AddSmartRAG(options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.ApiKey = "your-api-key";
+    
+    // Dil-agnostik özellikleri etkinleştir
+    options.LanguageAgnostic = true;
+    options.AutoDetectLanguage = true;
+    options.SupportedLanguages = new[] { "en", "tr", "de", "ru", "fr", "es", "ja", "ko", "zh" };
+    
+    // Hardcoded dil kalıpları yok
+    options.EnableMultilingualSupport = true;
+    options.FallbackLanguage = "en";
+});
+
+// Herhangi bir dildeki sorguları otomatik olarak işle
+public async Task&lt;QueryResult&gt; ProcessMultilingualQueryAsync(string query)
+{
+    // Dil otomatik olarak algılanır
+    var detectedLanguage = await _languageService.DetectLanguageAsync(query);
+    
+    // Dil-agnostik algoritmalarla işle
+    var result = await _queryProcessor.ProcessQueryAsync(query, new QueryOptions
+    {
+        Language = detectedLanguage,
+        UseLanguageAgnosticProcessing = true
+    });
+    
+    return result;
+}</code></pre>
+                    </div>
+
+                    <h4>Gelişmiş Dil-Agnostik Özellikler</h4>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Gelişmiş dil-agnostik yapılandırma
+var languageAgnosticConfig = new LanguageAgnosticConfiguration
+{
+    EnableLanguageDetection = true,
+    EnableMultilingualEmbeddings = true,
+    EnableCrossLanguageSearch = true,
+    LanguageDetectionThreshold = 0.8,
+    SupportedScripts = new[] { "Latin", "Cyrillic", "Arabic", "Chinese", "Japanese", "Korean" },
+    EnableScriptNormalization = true,
+    EnableUnicodeNormalization = true,
+    FallbackStrategies = new[] { "transliteration", "romanization", "english" }
+};
+
+services.AddSmartRAG(options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.ApiKey = "your-api-key";
+    
+    // Gelişmiş dil-agnostik özellikleri yapılandır
+    options.LanguageAgnostic = true;
+    options.LanguageAgnosticConfig = languageAgnosticConfig;
+});
+
+// Çok dilli belge işleme için controller
+[HttpPost("multilingual-upload")]
+public async Task&lt;ActionResult&lt;MultilingualUploadResult&gt;&gt; UploadMultilingualDocument(
+    [FromBody] MultilingualUploadRequest request)
+{
+    try
+    {
+        // Belgeyi herhangi bir dilde işle
+        var document = await _documentService.UploadMultilingualDocumentAsync(
+            request.Content, 
+            request.FileName,
+            request.DetectedLanguage);
+        
+        // Dil-agnostik algoritmalar kullanarak embedding'ler oluştur
+        var embeddings = await _embeddingService.GenerateMultilingualEmbeddingsAsync(
+            document.Chunks,
+            document.DetectedLanguage);
+        
+        // Dil metadata'sı ile sakla
+        await _storageService.StoreMultilingualDocumentAsync(document, embeddings);
+        
+        return Ok(new MultilingualUploadResult
+        {
+            DocumentId = document.Id,
+            DetectedLanguage = document.DetectedLanguage,
+            LanguageConfidence = document.LanguageConfidence,
+            TotalChunks = document.Chunks.Count,
+            ProcessingTime = document.ProcessingTime
+        });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Çok dilli belge işlenirken hata");
+        return StatusCode(500, "Çok dilli belge işlenemedi");
+    }
+}
+
+// Tüm dillerde çok dilli arama
+[HttpGet("multilingual-search")]
+public async Task&lt;ActionResult&lt;MultilingualSearchResult&gt;&gt; SearchMultilingual(
+    [FromQuery] string query,
+    [FromQuery] string[] languages = null,
+    [FromQuery] int maxResults = 20)
+{
+    try
+    {
+        var searchOptions = new MultilingualSearchOptions
+        {
+            Query = query,
+            TargetLanguages = languages ?? new[] { "auto" },
+            MaxResults = maxResults,
+            EnableCrossLanguageSearch = true,
+            UseLanguageAgnosticScoring = true
+        };
+        
+        var results = await _searchService.SearchMultilingualAsync(searchOptions);
+        
+        return Ok(new MultilingualSearchResult
+        {
+            Query = query,
+            DetectedQueryLanguage = results.DetectedLanguage,
+            Results = results.Results,
+            CrossLanguageMatches = results.CrossLanguageMatches,
+            TotalResults = results.TotalResults
+        });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Çok dilli aramada hata");
+        return StatusCode(500, "Çok dilli arama yapılamadı");
+    }
+}</code></pre>
+                    </div>
+
                     <h4>Niyet Analizi Yapılandırması</h4>
                     <div class="code-example">
                         <pre><code class="language-csharp">// Niyet algılamayı yapılandır
