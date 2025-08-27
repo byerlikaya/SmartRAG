@@ -3,10 +3,10 @@
 [![Build Status](https://github.com/byerlikaya/SmartRAG/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/byerlikaya/SmartRAG/actions)
 [![NuGet Version](https://img.shields.io/nuget/v/SmartRAG.svg)](https://www.nuget.org/packages/SmartRAG)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/SmartRAG.svg)](https://www.nuget.org/packages/SmartRAG)
-[![.NET](https://img.shields.io/badge/.NET-9.0-blue.svg)](https://dotnet.microsoft.com/download/dotnet/9.0)
+[![.NET](https://img.shields.io/badge/.NET%20Standard-2.0%2F2.1-blue.svg)](https://docs.microsoft.com/en-us/dotnet/standard/net-standard)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-SmartRAG is a **production-ready** .NET 9.0 library that provides a complete **Retrieval-Augmented Generation (RAG)** solution for building **AI-powered question answering systems**. Upload your documents, ask questions in natural language, and get intelligent answers based on your content - all with enterprise-grade AI providers and storage options.
+SmartRAG is a **production-ready** .NET Standard 2.0/2.1 library that provides a complete **Retrieval-Augmented Generation (RAG)** solution for building **AI-powered question answering systems**. Upload your documents, ask questions in natural language, and get intelligent answers based on your content - all with enterprise-grade AI providers and storage options. Compatible with .NET Framework 4.6.1+, .NET Core 2.0+, and .NET 5+ applications.
 
 ## ✨ Key Highlights
 
@@ -22,7 +22,7 @@ SmartRAG is a **production-ready** .NET 9.0 library that provides a complete **R
 - 🎯 **Enhanced Semantic Search**: Advanced hybrid scoring with 80% semantic + 20% keyword relevance
 - 🔍 **Smart Document Chunking**: Word boundary validation and optimal break points for context preservation
 - ✅ **Enterprise Grade**: Zero Warnings Policy, SOLID principles, comprehensive logging, XML documentation
-- 🧹 **GlobalUsings Support**: Clean code with centralized using directives for both API and Test projects
+- 🔧 **Cross-Platform Compatibility**: .NET Standard 2.0/2.1 support for maximum framework compatibility
 - 📚 **Documentation**: Comprehensive documentation with GitHub Pages support
 
 ## 🎯 What Makes SmartRAG Special
@@ -45,7 +45,7 @@ SmartRAG is a **production-ready** .NET 9.0 library that provides a complete **R
 - **Dependency Injection**: Full DI container integration
 - **Enhanced Semantic Search**: Advanced hybrid scoring combining semantic similarity and keyword relevance
 - **VoyageAI Integration**: High-quality embeddings for Anthropic Claude models
-- **GlobalUsings Support**: Centralized using directives for clean, maintainable code
+- **Cross-Platform Compatibility**: .NET Standard 2.0/2.1 support for maximum framework compatibility
 - **Enterprise Architecture**: Zero Warnings Policy, SOLID/DRY principles, comprehensive XML documentation
 - **Production Ready**: Thread-safe operations, centralized logging, proper error handling
 - **Documentation**: Professional documentation site with GitHub Pages integration

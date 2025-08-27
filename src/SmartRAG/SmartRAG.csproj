@@ -5,11 +5,11 @@
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
-    <PackageVersion>1.1.0</PackageVersion>
+    <PackageVersion>2.0.0</PackageVersion>
     <Authors>Barış Yerlikaya</Authors>
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
-    <Description>High-performance RAG (Retrieval-Augmented Generation) library for .NET that enables AI-powered document question-answering with multiple provider support and enterprise-grade vector storage.</Description>
+    <Description>High-performance RAG (Retrieval-Augmented Generation) library for .NET Standard 2.0/2.1 that enables AI-powered document question-answering with multiple provider support and enterprise-grade vector storage. Compatible with .NET Framework 4.6.1+, .NET Core 2.0+, and .NET 5+ applications.</Description>
     <PackageTags>rag retrieval-augmented-generation ai llm document-qa vector-database openai anthropic gemini azure-openai qdrant redis sqlite</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -33,8 +33,8 @@
     <AssemblyTitle>SmartRAG</AssemblyTitle>
     <AssemblyDescription>High-performance RAG library for .NET</AssemblyDescription>
     <AssemblyCopyright>Copyright © 2024 Barış Yerlikaya</AssemblyCopyright>
-    <AssemblyVersion>1.1.0.0</AssemblyVersion>
-    <FileVersion>1.1.0.0</FileVersion>
+    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <FileVersion>2.0.0.0</FileVersion>
   </PropertyGroup>
 
   <!-- Package References -->
