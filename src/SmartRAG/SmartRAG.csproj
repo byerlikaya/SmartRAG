@@ -20,66 +20,7 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>🎉 Major Release 2.0.0: .NET Standard Migration
-
-🔄 BREAKING CHANGE: .NET Standard Migration
-• Migrated from .NET 9.0 to .NET Standard 2.0/2.1
-• Now supports .NET Framework 4.6.1+, .NET Core 2.0+, .NET 5+
-• Maximum compatibility with legacy and enterprise environments
-
-✨ New Features:
-• Cross-platform support for maximum framework compatibility
-• Legacy framework support for enterprise integration
-• Seamless integration with existing .NET solutions
-
-🔧 Improvements:
-• C# 7.3 syntax compatibility
-• Updated NuGet packages for .NET Standard
-• Maintained all existing functionality
-
-📚 Documentation:
-• Comprehensive migration guide
-• Updated framework requirements
-• Enhanced installation instructions
-
-🧪 Testing & Quality:
-• Verified .NET Standard compatibility
-• Zero warnings policy maintained
-• SOLID principles preserved
-
-🔒 Security:
-• Updated packages address security vulnerabilities
-• Enterprise-grade architecture maintained</PackageReleaseNotes>
-    <ReleaseNotes>🎉 Major Release 2.0.0: .NET Standard Migration
-
-🔄 BREAKING CHANGE: .NET Standard Migration
-• Migrated from .NET 9.0 to .NET Standard 2.0/2.1
-• Now supports .NET Framework 4.6.1+, .NET Core 2.0+, .NET 5+
-• Maximum compatibility with legacy and enterprise environments
-
-✨ New Features:
-• Cross-platform support for maximum framework compatibility
-• Legacy framework support for enterprise integration
-• Seamless integration with existing .NET solutions
-
-🔧 Improvements:
-• C# 7.3 syntax compatibility
-• Updated NuGet packages for .NET Standard
-• Maintained all existing functionality
-
-📚 Documentation:
-• Comprehensive migration guide
-• Updated framework requirements
-• Enhanced installation instructions
-
-🧪 Testing & Quality:
-• Verified .NET Standard compatibility
-• Zero warnings policy maintained
-• SOLID principles preserved
-
-🔒 Security:
-• Updated packages address security vulnerabilities
-• Enterprise-grade architecture maintained</ReleaseNotes>
+    <PackageReleaseNotes>Major Release 2.0.0: .NET Standard Migration - Migrated from .NET 9.0 to .NET Standard 2.0/2.1 - Now supports .NET Framework 4.6.1+, .NET Core 2.0+, .NET 5+ - Maximum compatibility with legacy and enterprise environments</PackageReleaseNotes>
     
     <!-- Build Configuration -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
