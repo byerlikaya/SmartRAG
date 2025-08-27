@@ -3,7 +3,7 @@ global using Microsoft.AspNetCore.Http;
 global using Microsoft.OpenApi.Models;
 global using Microsoft.AspNetCore.Http.Features;
 global using SmartRAG.API.Filters;
-global using SmartRAG.Diagnostics.Extensions;
+
 global using SmartRAG.Enums;
 global using SmartRAG.Extensions;
 global using SmartRAG.Interfaces;
