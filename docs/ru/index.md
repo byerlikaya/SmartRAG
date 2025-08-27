@@ -145,6 +145,15 @@ var results = await documentService
             <div class="col-lg-4 col-md-6">
                 <div class="feature-card">
                     <div class="feature-icon">
+                        <i class="fas fa-magic"></i>
+                    </div>
+                    <h3>Умное определение намерения</h3>
+                    <p>Автоматически направляет запросы в чат или поиск документов на основе определения намерения.</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
                         <i class="fas fa-shield-alt"></i>
                     </div>
                     <h3>Готово к продакшену</h3>

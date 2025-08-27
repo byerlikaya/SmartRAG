@@ -96,6 +96,71 @@ public async Task&lt;ActionResult&lt;IEnumerable&lt;DocumentChunk&gt;&gt;&gt; Se
 }</code></pre>
                     </div>
 
+                    <h3>Smart Query Intent Detection</h3>
+                    <p>Automatically route queries to chat or document search based on intent analysis:</p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public async Task&lt;QueryResult&gt; ProcessQueryAsync(string query)
+{
+    // Analyze query intent
+    var intent = await _queryIntentService.AnalyzeIntentAsync(query);
+    
+    switch (intent.Type)
+    {
+        case QueryIntentType.Chat:
+            // Route to conversational AI
+            return await _chatService.ProcessChatQueryAsync(query);
+            
+        case QueryIntentType.DocumentSearch:
+            // Route to document search
+            var searchResults = await _documentService.SearchDocumentsAsync(query);
+            return new QueryResult 
+            { 
+                Type = QueryResultType.DocumentSearch,
+                Results = searchResults 
+            };
+            
+        case QueryIntentType.Mixed:
+            // Combine both approaches
+            var chatResponse = await _chatService.ProcessChatQueryAsync(query);
+            var docResults = await _documentService.SearchDocumentsAsync(query);
+            
+            return new QueryResult 
+            { 
+                Type = QueryResultType.Mixed,
+                ChatResponse = chatResponse,
+                DocumentResults = docResults 
+            };
+            
+        default:
+            throw new ArgumentException($"Unknown intent type: {intent.Type}");
+    }
+}</code></pre>
+                    </div>
+
+                    <h4>Intent Analysis Configuration</h4>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Configure intent detection
+services.AddSmartRAG(options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.ApiKey = "your-api-key";
+    
+    // Enable smart query intent detection
+    options.EnableQueryIntentDetection = true;
+    options.IntentDetectionThreshold = 0.7; // Confidence threshold
+    options.LanguageAgnostic = true; // Works with any language
+});
+
+// Use in your controller
+[HttpPost("query")]
+public async Task&lt;ActionResult&lt;QueryResult&gt;&gt; ProcessQuery([FromBody] QueryRequest request)
+{
+    var result = await _queryProcessor.ProcessQueryAsync(request.Query);
+    return Ok(result);
+}</code></pre>
+                    </div>
+
                     <h3>Custom Chunking Strategy</h3>
                     <div class="code-example">
                         <pre><code class="language-csharp">public class CustomChunkingStrategy : IChunkingStrategy
