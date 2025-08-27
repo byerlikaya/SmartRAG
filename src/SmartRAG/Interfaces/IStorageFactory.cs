@@ -1,3 +1,6 @@
+using SmartRAG.Enums;
+using SmartRAG.Models;
+
 namespace SmartRAG.Interfaces;
 
 /// <summary>

@@ -1,3 +1,9 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+
 namespace SmartRAG.Services;
 
 /// <summary>
@@ -20,40 +26,40 @@ public class DocumentParserService(
     // Content validation constants
     private const int MinContentLength = 5; // Reduced for Excel files
     private const double MinMeaningfulTextRatio = 0.1; // Reduced for Excel files
-    
+
     // Chunk boundary search constants
     private const int DefaultDynamicSearchRange = 500;
     private const int DynamicSearchRangeDivisor = 10;
     private const int UltimateSearchRange = 1000;
-    
+
     // File extension constants
-    private static readonly string[] WordExtensions = [".docx", ".doc"];
-    private static readonly string[] PdfExtensions = [".pdf"];
-    private static readonly string[] ExcelExtensions = [".xlsx", ".xls"];
-    private static readonly string[] TextExtensions = [".txt", ".md", ".json", ".xml", ".csv", ".html", ".htm"];
-    
+    private static readonly string[] WordExtensions = new string[] { ".docx", ".doc" };
+    private static readonly string[] PdfExtensions = new string[] { ".pdf" };
+    private static readonly string[] ExcelExtensions = new string[] { ".xlsx", ".xls" };
+    private static readonly string[] TextExtensions = new string[] { ".txt", ".md", ".json", ".xml", ".csv", ".html", ".htm" };
+
     // Content type constants
-    private static readonly string[] WordContentTypes = [
+    private static readonly string[] WordContentTypes = new string[] {
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "application/msword",
         "application/vnd.ms-word"
-    ];
-    
-    private static readonly string[] ExcelContentTypes = [
+    };
+
+    private static readonly string[] ExcelContentTypes = new string[] {
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "application/vnd.ms-excel",
         "application/vnd.ms-excel.sheet.macroEnabled.12"
-    ];
-    
-    private static readonly string[] TextContentTypes = ["text/", "application/json", "application/xml", "application/csv"];
-    
+    };
+
+    private static readonly string[] TextContentTypes = new string[] { "text/", "application/json", "application/xml", "application/csv" };
+
     // Sentence ending constants
-    private static readonly char[] SentenceEndings = ['.', '!', '?', ';'];
-    private static readonly string[] ParagraphEndings = ["\n\n", "\r\n\r\n"];
-    private static readonly char[] WordBoundaries = [' ', '\t', '\n', '\r'];
-    private static readonly char[] PunctuationBoundaries = [',', ':', ';', '-', '–', '—'];
-    private static readonly char[] ExtendedWordBoundaries = [' ', '\t', '\n', '\r', '.', '!', '?', ';', ',', ':', '-', '–', '—'];
-    private static readonly char[] UltimateBoundaries = [' ', '\t', '\n', '\r', '.', '!', '?', ';', ',', ':', '-', '–', '—', '(', ')', '[', ']', '{', '}'];
+    private static readonly char[] SentenceEndings = new char[] { '.', '!', '?', ';' };
+    private static readonly string[] ParagraphEndings = new string[] { "\n\n", "\r\n\r\n" };
+    private static readonly char[] WordBoundaries = new char[] { ' ', '\t', '\n', '\r' };
+    private static readonly char[] PunctuationBoundaries = new char[] { ',', ':', ';', '-', '–', '—' };
+    private static readonly char[] ExtendedWordBoundaries = new char[] { ' ', '\t', '\n', '\r', '.', '!', '?', ';', ',', ':', '-', '–', '—' };
+    private static readonly char[] UltimateBoundaries = new char[] { ' ', '\t', '\n', '\r', '.', '!', '?', ';', ',', ':', '-', '–', '—', '(', ')', '[', ']', '{', '}' };
 
     #endregion
 
@@ -140,7 +146,7 @@ public class DocumentParserService(
     /// </summary>
     private static bool IsWordDocument(string fileName, string contentType)
     {
-        return WordExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) || 
+        return WordExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) ||
                WordContentTypes.Any(ct => contentType.Contains(ct));
     }
 
@@ -149,7 +155,7 @@ public class DocumentParserService(
     /// </summary>
     private static bool IsPdfDocument(string fileName, string contentType)
     {
-        return PdfExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) || 
+        return PdfExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) ||
                contentType == "application/pdf";
     }
 
@@ -158,7 +164,7 @@ public class DocumentParserService(
     /// </summary>
     private static bool IsExcelDocument(string fileName, string contentType)
     {
-        return ExcelExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) || 
+        return ExcelExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) ||
                ExcelContentTypes.Any(ct => contentType.Contains(ct));
     }
 
@@ -234,7 +240,7 @@ public class DocumentParserService(
         try
         {
             var memoryStream = await CreateMemoryStreamCopy(fileStream);
-            
+
             // EPPlus license already set in static constructor
             using var package = new ExcelPackage(memoryStream);
             var textBuilder = new StringBuilder();
@@ -250,7 +256,7 @@ public class DocumentParserService(
                 if (worksheet.Dimension != null)
                 {
                     textBuilder.AppendLine(string.Format(System.Globalization.CultureInfo.InvariantCulture, "Worksheet: {0}", worksheet.Name));
-                    
+
                     var rowCount = worksheet.Dimension.Rows;
                     var colCount = worksheet.Dimension.Columns;
 
@@ -260,7 +266,7 @@ public class DocumentParserService(
                     {
                         var rowBuilder = new StringBuilder();
                         var rowHasData = false;
-                        
+
                         for (int col = 1; col <= colCount; col++)
                         {
                             var cellValue = worksheet.Cells[row, col].Value;
@@ -285,19 +291,19 @@ public class DocumentParserService(
                                 if (col < colCount) rowBuilder.Append('\t');
                             }
                         }
-                        
+
                         if (rowHasData)
                         {
                             textBuilder.AppendLine(rowBuilder.ToString());
                             hasData = true;
                         }
                     }
-                    
+
                     if (!hasData)
                     {
                         textBuilder.AppendLine("Worksheet contains no data");
                     }
-                    
+
                     textBuilder.AppendLine();
                 }
                 else
@@ -308,13 +314,13 @@ public class DocumentParserService(
 
             var content = textBuilder.ToString();
             var cleanedContent = CleanContent(content);
-            
+
             // If content is still empty after cleaning, return a fallback message
             if (string.IsNullOrWhiteSpace(cleanedContent))
             {
                 return "Excel file processed but no text content extracted";
             }
-            
+
             return cleanedContent;
         }
         catch (Exception ex)
@@ -372,7 +378,7 @@ public class DocumentParserService(
         {
             var memoryStream = await CreateMemoryStreamCopy(fileStream);
             var bytes = memoryStream.ToArray();
-            
+
             using var pdfReader = new PdfReader(new MemoryStream(bytes));
             using var pdfDocument = new PdfDocument(pdfReader);
 
@@ -394,7 +400,7 @@ public class DocumentParserService(
     private static void ExtractTextFromPdfPages(PdfDocument pdfDocument, StringBuilder textBuilder)
     {
         var pageCount = pdfDocument.GetNumberOfPages();
-        
+
         for (int i = 1; i <= pageCount; i++)
         {
             var page = pdfDocument.GetPage(i);
@@ -482,13 +488,13 @@ public class DocumentParserService(
 
         // For Excel files, be more lenient with content validation
         var meaningfulTextRatio = content.Count(c => char.IsLetterOrDigit(c)) / (double)content.Length;
-        
+
         // If content contains worksheet markers, it's likely valid Excel content
         if (content.Contains("Worksheet:") || content.Contains("Excel file"))
         {
             return true;
         }
-        
+
         return meaningfulTextRatio >= MinMeaningfulTextRatio;
     }
 

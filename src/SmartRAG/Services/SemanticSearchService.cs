@@ -1,3 +1,8 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
 namespace SmartRAG.Services;
 
 /// <summary>
@@ -16,7 +21,7 @@ public class SemanticSearchService(ILogger<SemanticSearchService> logger)
     private const int MaxThemeWords = 3;
 
     // Array constants for sentence splitting
-    private static readonly char[] SentenceEndings = ['.', '!', '?'];
+    private static readonly char[] SentenceEndings = new char[] { '.', '!', '?' };
 
     #endregion
 

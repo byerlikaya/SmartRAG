@@ -1,3 +1,9 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+
 namespace SmartRAG.Services;
 
 /// <summary>
@@ -102,7 +108,7 @@ public class DocumentService(
                 foreach (var chunk in document.Chunks)
                 {
                     chunk.DocumentId = document.Id;
-                    chunk.Embedding = []; // Empty but not null
+                    chunk.Embedding = new List<float>(); // Empty but not null
                     if (chunk.CreatedAt == default)
                         chunk.CreatedAt = DateTime.UtcNow;
                 }
@@ -116,7 +122,7 @@ public class DocumentService(
             foreach (var chunk in document.Chunks)
             {
                 chunk.DocumentId = document.Id;
-                chunk.Embedding = []; // Empty but not null
+                chunk.Embedding = new List<float>(); // Empty but not null
                 if (chunk.CreatedAt == default)
                     chunk.CreatedAt = DateTime.UtcNow;
             }

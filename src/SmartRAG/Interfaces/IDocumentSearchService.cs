@@ -1,3 +1,8 @@
+using SmartRAG.Entities;
+using SmartRAG.Models;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
 namespace SmartRAG.Interfaces;
 
 /// <summary>

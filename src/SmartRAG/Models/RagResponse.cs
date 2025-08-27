@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 namespace SmartRAG.Models;
 
 /// <summary>
@@ -20,7 +23,7 @@ public class RagResponse
     /// <summary>
     /// Sources that were used to generate the answer
     /// </summary>
-    public List<SearchSource> Sources { get; set; } = [];
+    public List<SearchSource> Sources { get; set; } = new List<SearchSource>();
 
     #endregion
 

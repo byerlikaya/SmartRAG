@@ -1,3 +1,12 @@
+using Microsoft.Extensions.Logging;
+using SmartRAG.Entities;
+using SmartRAG.Interfaces;
+using SmartRAG.Models;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+
 namespace SmartRAG.Repositories;
 
 /// <summary>
@@ -19,7 +28,7 @@ public class InMemoryDocumentRepository(
 
     #region Fields
 
-    private readonly List<SmartRAG.Entities.Document> _documents = [];
+    private readonly List<SmartRAG.Entities.Document> _documents = new List<SmartRAG.Entities.Document>();
     private readonly System.Threading.Lock _lock = new();
     private readonly InMemoryConfig _config = config;
     private readonly ILogger<InMemoryDocumentRepository> _logger = logger;
@@ -89,7 +98,7 @@ public class InMemoryDocumentRepository(
         }
     }
 
-    public Task<List<SmartRAG.Entities.Document>> GetAllAsync()
+    public Task<List<Entities.Document>> GetAllAsync()
     {
         lock (_lock)
         {
