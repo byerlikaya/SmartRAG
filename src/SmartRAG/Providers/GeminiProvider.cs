@@ -170,7 +170,7 @@ public class GeminiProvider(ILogger<GeminiProvider> logger) : BaseAIProvider(log
     /// <summary>
     /// Build Gemini API URL
     /// </summary>
-    private static string BuildGeminiUrl(string endpoint, string model, string operation)
+    private static string BuildGeminiUrl(string endpoint, string? model, string operation)
     {
         return $"{endpoint.TrimEnd('/')}/models/{model}:{operation}";
     }
@@ -201,7 +201,7 @@ public class GeminiProvider(ILogger<GeminiProvider> logger) : BaseAIProvider(log
     /// <summary>
     /// Create Gemini embedding payload
     /// </summary>
-    private static object CreateGeminiEmbeddingPayload(string text, string model)
+    private static object CreateGeminiEmbeddingPayload(string text, string? model)
     {
         return new
         {
