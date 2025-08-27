@@ -24,8 +24,7 @@ static void RegisterServices(IServiceCollection services, IConfiguration configu
         builder.SetMinimumLevel(LogLevel.Debug);
     });
 
-    // Add SSE logging capabilities (ILogStream + ILoggerProvider DI kayıtları)
-    services.AddSmartRagSseLogging();
+
 
     services.AddControllers();
     services.AddEndpointsApiExplorer();
@@ -84,6 +83,5 @@ static void ConfigureMiddleware(WebApplication app, IWebHostEnvironment environm
     app.UseAuthorization();
     app.MapControllers();
 
-    // SSE log stream endpoint
-    app.MapSmartRagLogStream("/api/logs/stream");
+
 }

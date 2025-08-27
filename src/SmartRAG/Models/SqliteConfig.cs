@@ -1,4 +1,4 @@
-namespace SmartRAG.Models;
+namespace SmartRAG.Models {
 
 /// <summary>
 /// SQLite storage configuration
@@ -8,4 +8,5 @@ public class SqliteConfig
     public string DatabasePath { get; set; } = "SmartRag.db";
 
     public bool EnableForeignKeys { get; set; } = true;
+}
 }

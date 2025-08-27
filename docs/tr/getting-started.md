@@ -25,7 +25,7 @@ lang: tr
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Kurulum</h2>
-                    <p>SmartRAG NuGet paketi olarak mevcuttur. Tercih ettiğiniz kurulum yöntemini seçin:</p>
+                    <p>SmartRAG NuGet paketi olarak mevcuttur ve .NET Standard 2.0/2.1'i destekler, bu da .NET Framework 4.6.1+, .NET Core 2.0+ ve .NET 5+ uygulamalarıyla uyumlu olmasını sağlar. Tercih ettiğiniz kurulum yöntemini seçin:</p>
                     
                     <div class="code-tabs">
                         <div class="code-tab active" data-tab="cli">.NET CLI</div>
@@ -41,7 +41,7 @@ lang: tr
                             <pre><code class="language-bash">Install-Package SmartRAG</code></pre>
                         </div>
                         <div class="code-panel" id="xml">
-                            <pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="1.1.0" /&gt;</code></pre>
+                            <pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="2.0.0" /&gt;</code></pre>
                         </div>
                     </div>
                 </div>

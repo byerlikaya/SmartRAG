@@ -25,7 +25,7 @@ lang: en
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Installation</h2>
-                    <p>SmartRAG is available as a NuGet package. Choose your preferred installation method:</p>
+                    <p>SmartRAG is available as a NuGet package and supports .NET Standard 2.0/2.1, making it compatible with .NET Framework 4.6.1+, .NET Core 2.0+, and .NET 5+ applications. Choose your preferred installation method:</p>
                     
                     <div class="code-tabs">
                         <div class="code-tab active" data-tab="cli">.NET CLI</div>
@@ -41,7 +41,7 @@ lang: en
                             <pre><code class="language-bash">Install-Package SmartRAG</code></pre>
                         </div>
                         <div class="code-panel" id="xml">
-                            <pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="1.1.0" /&gt;</code></pre>
+                            <pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="2.0.0" /&gt;</code></pre>
                         </div>
                     </div>
                 </div>
