@@ -116,8 +116,8 @@ public class SemanticSearchService(ILogger<SemanticSearchService> logger)
         var contentText = string.Join(" ", contentTokens).ToLowerInvariant();
 
         // Calculate Jaccard similarity
-        var queryWords = queryText.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
-        var contentWords = contentText.Split(' ', StringSplitOptions.RemoveEmptyEntries).ToHashSet();
+        var queryWords = new HashSet<string>(queryText.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
+        var contentWords = new HashSet<string>(contentText.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
 
         var intersection = queryWords.Intersect(contentWords).Count();
         var union = queryWords.Union(contentWords).Count();
@@ -152,7 +152,7 @@ public class SemanticSearchService(ILogger<SemanticSearchService> logger)
     /// </summary>
     private static bool ContainsContextualKeywords(string query, string content)
     {
-        var queryWords = query.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var queryWords = query.ToLowerInvariant().Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
         var contentLower = content.ToLowerInvariant();
 
         return queryWords.Any(word => word.Length > MinContextWordLength && contentLower.Contains(word));
@@ -180,7 +180,7 @@ public class SemanticSearchService(ILogger<SemanticSearchService> logger)
     private static string ExtractTheme(string text)
     {
         var words = text.ToLowerInvariant()
-            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
             .Where(w => w.Length > MinThemeWordLength)
             .Take(MaxThemeWords)
             .ToArray();

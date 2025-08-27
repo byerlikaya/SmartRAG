@@ -145,12 +145,12 @@ public class DocumentSearchService(
         }
 
         // Enhanced keyword-based fallback for global content
-        var queryWords = query.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries)
+        var queryWords = query.ToLowerInvariant().Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
             .Where(w => w.Length > 2)
             .ToList();
 
         // Extract potential names from ORIGINAL query (not lowercase) - language agnostic
-        var potentialNames = query.Split(' ', StringSplitOptions.RemoveEmptyEntries)
+        var potentialNames = query.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
             .Where(w => w.Length > 2 && char.IsUpper(w[0]))
             .ToList();
 
@@ -182,12 +182,12 @@ public class DocumentSearchService(
             // Exact word matches
             foreach (var word in queryWords)
             {
-                if (content.Contains(word, StringComparison.OrdinalIgnoreCase))
+                if (content.ToLowerInvariant().Contains(word.ToLowerInvariant()))
                     score += WordMatchScore;
             }
 
             // Generic content quality scoring (language and content agnostic)
-            var wordCount = content.Split(' ', StringSplitOptions.RemoveEmptyEntries).Length;
+            var wordCount = content.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Length;
             if (wordCount >= WordCountMin && wordCount <= WordCountMax) score += WordCountScoreBoost;
 
             // Bonus for chunks with punctuation (indicates structured content)
@@ -214,7 +214,7 @@ public class DocumentSearchService(
         if (potentialNames.Count >= 2)
         {
             var nameChunks = relevantChunks.Where(c =>
-                potentialNames.Any(name => c.Content.Contains(name, StringComparison.OrdinalIgnoreCase))).ToList();
+                potentialNames.Any(name => c.Content.ToLowerInvariant().Contains(name.ToLowerInvariant()))).ToList();
 
             if (nameChunks.Count > 0)
             {
@@ -353,7 +353,7 @@ Answer:";
             return 0.0;
 
         var queryWords = query.ToLowerInvariant()
-            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
             .Where(w => w.Length > 2)
             .ToList();
 
@@ -445,17 +445,17 @@ Answer:";
         var normalizedSearchName = NormalizeText(searchName);
 
         // Try exact match first
-        if (normalizedContent.Contains(normalizedSearchName, StringComparison.OrdinalIgnoreCase))
+        if (normalizedContent.ToLowerInvariant().Contains(normalizedSearchName.ToLowerInvariant()))
             return true;
 
         // Try partial matches for each word
-        var searchWords = normalizedSearchName.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        var contentWords = normalizedContent.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var searchWords = normalizedSearchName.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+        var contentWords = normalizedContent.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
         // Check if all search words are present in content
         return searchWords.All(searchWord =>
             contentWords.Any(contentWord =>
-                contentWord.Contains(searchWord, StringComparison.OrdinalIgnoreCase)));
+                contentWord.ToLowerInvariant().Contains(searchWord.ToLowerInvariant())));
     }
 
     /// <summary>

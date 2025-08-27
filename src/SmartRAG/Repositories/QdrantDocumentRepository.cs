@@ -1072,7 +1072,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
     private static List<string> ExtractImportantKeywords(string query)
     {
         var keywords = new List<string>();
-        var words = query.ToLowerInvariant().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+        var words = query.ToLowerInvariant().Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
         foreach (var word in words)
         {
