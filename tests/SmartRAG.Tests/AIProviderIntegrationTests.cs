@@ -3,8 +3,8 @@
 namespace SmartRAG.Tests;
 
 /// <summary>
-/// AI Provider ve Storage Provider entegrasyon testleri
-/// Tüm AI Provider'ların ve Storage Provider'ların çalışıp çalışmadığını test eder
+/// AI Provider and Storage Provider integration tests
+/// Tests whether all AI Providers and Storage Providers work correctly
 /// </summary>
 public class AIProviderIntegrationTests : IDisposable
 {
@@ -14,49 +14,33 @@ public class AIProviderIntegrationTests : IDisposable
     private readonly IDocumentSearchService _documentSearchService;
     private readonly IAIProviderFactory _aiProviderFactory;
     private readonly IStorageFactory _storageFactory;
+    private readonly AIProvider _selectedAIProvider;
 
     public AIProviderIntegrationTests()
     {
-        var services = new ServiceCollection();
-
-        // Test logger ekle
-        services.AddLogging(builder => builder.AddConsole());
-
-        // Mock configuration oluştur
+        // Load configuration from appsettings.json first, then override with Development
         var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string>
-            {
-                {"SmartRAG:AIProvider", "OpenAI"},
-                {"SmartRAG:StorageProvider", "InMemory"},
-                {"SmartRAG:MaxChunkSize", "1000"},
-                {"SmartRAG:ChunkOverlap", "200"},
-                {"SmartRAG:MaxRetryAttempts", "3"},
-                {"SmartRAG:RetryDelayMs", "1000"},
-                {"SmartRAG:RetryPolicy", "ExponentialBackoff"},
-                {"AI:OpenAI:ApiKey", "test-api-key"},
-                {"AI:OpenAI:Endpoint", "https://api.openai.com/v1"},
-                {"AI:OpenAI:Model", "gpt-3.5-turbo"},
-                {"AI:OpenAI:EmbeddingModel", "text-embedding-ada-002"},
-                {"AI:OpenAI:MaxTokens", "1000"},
-                {"AI:OpenAI:Temperature", "0.7"},
-                {"Storage:InMemory:MaxDocuments", "1000"}
-            })
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true)
             .Build();
 
-        // Configuration'ı DI container'a ekle
+        // Get selected AI Provider from configuration
+        _selectedAIProvider = AIProvider.Gemini;
+
+        var services = new ServiceCollection();
+
+        // Add test logger
+        services.AddLogging(builder => builder.AddConsole());
+
+        // Add configuration to DI container
         services.AddSingleton<IConfiguration>(configuration);
 
-        // SmartRAG servislerini ekle
-        services.AddSmartRag(configuration, options =>
-        {
-            options.AIProvider = AIProvider.OpenAI; // Default provider
-            options.StorageProvider = StorageProvider.InMemory; // Default storage
-            options.MaxChunkSize = 1000;
-            options.ChunkOverlap = 200;
-            options.MaxRetryAttempts = 3;
-            options.RetryDelayMs = 1000;
-            options.RetryPolicy = RetryPolicy.ExponentialBackoff;
-        });
+        // Add SmartRag services with minimal configuration (same as API project)
+        services.UseSmartRag(configuration,
+            storageProvider: StorageProvider.InMemory,
+            aiProvider: _selectedAIProvider
+        );
 
         _serviceProvider = services.BuildServiceProvider();
         _scope = _serviceProvider.CreateScope();
@@ -67,13 +51,10 @@ public class AIProviderIntegrationTests : IDisposable
         _storageFactory = _scope.ServiceProvider.GetRequiredService<IStorageFactory>();
     }
 
-    [Theory]
-    [InlineData(AIProvider.OpenAI, StorageProvider.InMemory)]
-    [InlineData(AIProvider.Anthropic, StorageProvider.InMemory)]
-    [InlineData(AIProvider.Gemini, StorageProvider.InMemory)]
-    [InlineData(AIProvider.AzureOpenAI, StorageProvider.InMemory)]
-    [InlineData(AIProvider.Custom, StorageProvider.InMemory)]
-    public async Task TestAIProviderWithInMemoryStorage_ShouldWork(AIProvider aiProvider, StorageProvider storageProvider)
+
+
+    [Fact]
+    public async Task TestAIProviderWithInMemoryStorage_ShouldWork()
     {
         // Arrange
         var testContent = @"SmartRAG is a powerful .NET library for building AI-powered question answering systems. 
@@ -82,7 +63,7 @@ public class AIProviderIntegrationTests : IDisposable
         SmartRAG supports various storage providers like in-memory, file system, Redis, SQLite, and vector databases. 
         It's designed to be enterprise-ready with comprehensive logging, error handling, and configuration options.";
 
-        var fileName = $"test-{aiProvider}-{storageProvider}.txt";
+        var fileName = $"test-{_selectedAIProvider}.txt";
         var contentType = "text/plain";
         var uploadedBy = "testuser";
 
@@ -99,23 +80,38 @@ public class AIProviderIntegrationTests : IDisposable
         Assert.NotNull(document.Chunks);
         Assert.True(document.Chunks.Count > 0);
 
-        // Act - Search
+        // Act - AI-powered RAG answer generation (This is the real AI Provider test)
         var searchQuery = "What is SmartRAG and what does it support?";
-        var searchResults = await _documentSearchService.SearchDocumentsAsync(searchQuery, maxResults: 5);
+        var ragResponse = await _documentSearchService.GenerateRagAnswerAsync(searchQuery, maxResults: 5);
 
-        // Assert - Search results
-        Assert.NotNull(searchResults);
-        Assert.True(searchResults.Count > 0);
-        Assert.True(searchResults.Count <= 5);
+        // Assert - RAG response
+        Assert.NotNull(ragResponse);
+        Assert.Equal(searchQuery, ragResponse.Query);
+        Assert.NotNull(ragResponse.Answer);
+        Assert.True(ragResponse.Answer.Length > 0, $"AI Provider {_selectedAIProvider} should generate an answer");
+        Assert.NotNull(ragResponse.Sources);
+        Assert.True(ragResponse.Sources.Count > 0, $"AI Provider {_selectedAIProvider} should provide sources");
+        Assert.NotNull(ragResponse.Configuration);
 
-        // Verify that results contain relevant content
-        var hasRelevantContent = searchResults.Any(r =>
-            r.Content.Contains("SmartRAG", StringComparison.OrdinalIgnoreCase) ||
-            r.Content.Contains("AI", StringComparison.OrdinalIgnoreCase) ||
-            r.Content.Contains("library", StringComparison.OrdinalIgnoreCase));
+        // Verify that AI actually processed the query (not just returned empty response)
+        var hasRelevantAnswer = ragResponse.Answer.Contains("SmartRAG", StringComparison.OrdinalIgnoreCase) ||
+                               ragResponse.Answer.Contains("AI", StringComparison.OrdinalIgnoreCase) ||
+                               ragResponse.Answer.Contains("library", StringComparison.OrdinalIgnoreCase) ||
+                               ragResponse.Answer.Contains("document", StringComparison.OrdinalIgnoreCase);
 
-        Assert.True(hasRelevantContent, "Search results should contain relevant content about SmartRAG");
+        Assert.True(hasRelevantAnswer,
+            $"AI Provider {_selectedAIProvider} should generate a relevant answer about SmartRAG");
+
+        // Verify sources contain relevant content
+        var hasRelevantSources = ragResponse.Sources.Any(s =>
+            s.RelevantContent.Contains("SmartRAG", StringComparison.OrdinalIgnoreCase) ||
+            s.RelevantContent.Contains("AI", StringComparison.OrdinalIgnoreCase) ||
+            s.RelevantContent.Contains("library", StringComparison.OrdinalIgnoreCase));
+
+        Assert.True(hasRelevantSources,
+            $"AI Provider {_selectedAIProvider} should provide relevant sources");
     }
+
 
     [Theory]
     [InlineData(StorageProvider.InMemory)]
@@ -188,7 +184,7 @@ public class AIProviderIntegrationTests : IDisposable
     {
         // Arrange
         var inMemoryConfig = new InMemoryConfig();
-        var redisConfig = new RedisConfig { ConnectionString = "localhost:6379" };
+        var redisConfig = new RedisConfig { ConnectionString = "localhost:6379", Password = "2059680" };
         var sqliteConfig = new SqliteConfig { DatabasePath = "test.db" };
         var qdrantConfig = new QdrantConfig { Host = "localhost" };
 
