@@ -221,7 +221,15 @@ jspm_packages/
 appsettings.Development.json
 appsettings.Production.json
 appsettings.Local.json
-appsettings.*.json
+appsettings.Development.json
+appsettings.Production.json
+appsettings.Local.json
+appsettings.Staging.json
+appsettings.Test.json
+!appsettings.json
+
+# JSON files (but allow appsettings.json)
+*.json
 !appsettings.json
 
 # User secrets
@@ -280,7 +288,7 @@ BenchmarkDotNet.Artifacts/
 # *.html
 # *.htm
 *.xml
-*.json
+# *.json  # Commented out to allow appsettings.json
 *.csv
 *.xlsx
 *.xls
@@ -308,6 +316,9 @@ BenchmarkDotNet.Artifacts/
 !docs/_site/**/*
 !docs/**/*.md
 !docs/**/*.html
+
+# Mükerrer README.md dosyası (ana README.md ile senkronize)
+src/SmartRAG/README.md
 
 # Document upload directories
 uploads/

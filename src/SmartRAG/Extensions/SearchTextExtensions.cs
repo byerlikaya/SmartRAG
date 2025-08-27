@@ -1,25 +1,35 @@
-namespace SmartRAG.Extensions;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
+using System.Globalization;
 
-public static class SearchTextExtensions
+namespace SmartRAG.Extensions
 {
-    private static readonly Regex NonWordRegex = new(@"[^\p{L}\p{Nd}\s]", RegexOptions.Compiled);
-    private static readonly Regex MultiSpaceRegex = new(@"\s+", RegexOptions.Compiled);
 
-    /// <summary>
-    /// Culture-agnostic normalization for international text search
-    /// Uses Unicode normalization and invariant culture for consistent results
-    /// </summary>
-    public static string NormalizeForSearch(this string? input)
+    public static class SearchTextExtensions
     {
-        if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+        private static readonly Regex NonWordRegex = new Regex(@"[^\p{L}\p{Nd}\s]", RegexOptions.Compiled);
+        private static readonly Regex MultiSpaceRegex = new Regex(@"\s+", RegexOptions.Compiled);
 
-        // Normalize Unicode characters (é -> e, ñ -> n, etc.)
-        var normalized = input.Normalize(NormalizationForm.FormD);
+        /// <summary>
+        /// Culture-agnostic normalization for international text search
+        /// Uses Unicode normalization and invariant culture for consistent results
+        /// </summary>
+        public static string NormalizeForSearch(this string input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                return string.Empty;
 
-        // Use invariant culture for consistent international behavior
-        var lower = normalized.ToLowerInvariant();
-        var noPunct = NonWordRegex.Replace(lower, " ");
-        var collapsed = MultiSpaceRegex.Replace(noPunct, " ").Trim();
-        return collapsed;
+            // Normalize Unicode characters (é -> e, ñ -> n, etc.)
+            var normalized = input.Normalize(NormalizationForm.FormD);
+
+            // Use invariant culture for consistent international behavior
+            var lower = normalized.ToLowerInvariant();
+            var noPunct = NonWordRegex.Replace(lower, " ");
+            var collapsed = MultiSpaceRegex.Replace(noPunct, " ").Trim();
+            return collapsed;
+        }
     }
 }

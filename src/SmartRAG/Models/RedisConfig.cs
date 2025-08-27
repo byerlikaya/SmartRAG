@@ -1,4 +1,4 @@
-namespace SmartRAG.Models;
+namespace SmartRAG.Models {
 
 /// <summary>
 /// Redis storage configuration
@@ -7,9 +7,9 @@ public class RedisConfig
 {
     public string ConnectionString { get; set; } = "localhost:6379";
 
-    public string? Password { get; set; }
+    public string Password { get; set; }
 
-    public string? Username { get; set; }
+    public string Username { get; set; }
 
     public int Database { get; set; }
 
@@ -22,4 +22,5 @@ public class RedisConfig
     public int RetryCount { get; set; } = 3;
 
     public int RetryDelay { get; set; } = 1000;
+}
 }
