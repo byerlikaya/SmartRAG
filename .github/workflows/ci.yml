@@ -9,7 +9,7 @@ on:
     types: [published]
 
 env:
-  DOTNET_VERSION: '9.0.x'
+  DOTNET_VERSION: '8.0.x'
   NUGET_SOURCE: https://api.nuget.org/v3/index.json
   GITHUB_PACKAGES_SOURCE: https://nuget.pkg.github.com/byerlikaya/index.json
 
