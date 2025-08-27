@@ -1,3 +1,5 @@
+using SmartRAG.Enums;
+
 namespace SmartRAG.Interfaces;
 
 /// <summary>

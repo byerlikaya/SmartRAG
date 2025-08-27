@@ -1,3 +1,9 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
+
 namespace SmartRAG.Repositories;
 
 /// <summary>
@@ -277,7 +283,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
             UploadedAt = metadata.UploadedAt,
             UploadedBy = metadata.UploadedBy,
             Content = metadata.Content,
-            Chunks = []
+            Chunks = new List<DocumentChunk>()
         };
 
     /// <summary>

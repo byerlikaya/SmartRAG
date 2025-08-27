@@ -1,3 +1,7 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
 namespace SmartRAG.Repositories;
 
 /// <summary>
@@ -39,7 +43,7 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
     {
         var redisConfig = config.Value;
         _logger = logger;
-        
+
         // Configure connection options
         var options = CreateConnectionOptions(redisConfig);
 
@@ -184,7 +188,7 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
             var relevantChunks = new List<DocumentChunk>();
 
             var documents = await GetAllAsync();
-            
+
             foreach (var document in documents)
             {
                 foreach (var chunk in document.Chunks)
@@ -281,7 +285,7 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
     private async Task ExecuteDocumentAddBatch(string documentKey, string metadataKey, string documentJson, HashEntry[] metadata, Guid documentId)
     {
         var batch = _database.CreateBatch();
-        
+
         var setTask = batch.StringSetAsync(documentKey, documentJson);
         var pushTask = batch.ListRightPushAsync(_documentsKey, documentId.ToString());
         var hashTask = batch.HashSetAsync(metadataKey, metadata);
@@ -293,7 +297,7 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
     private async Task ExecuteDocumentDeleteBatch(string documentKey, string metadataKey, Guid documentId)
     {
         var batch = _database.CreateBatch();
-        
+
         var deleteDocTask = batch.KeyDeleteAsync(documentKey);
         var removeFromListTask = batch.ListRemoveAsync(_documentsKey, documentId.ToString());
         var deleteMetaTask = batch.KeyDeleteAsync(metadataKey);

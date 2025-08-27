@@ -1,3 +1,9 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+
 namespace SmartRAG.Repositories;
 
 /// <summary>
@@ -284,7 +290,7 @@ public class SqliteDocumentRepository : IDocumentRepository, IDisposable
         FileSize = reader.GetInt64("FileSize"),
         UploadedAt = DateTime.Parse(reader.GetString("UploadedAt"), CultureInfo.InvariantCulture),
         UploadedBy = reader.GetString("UploadedBy"),
-        Chunks = []
+        Chunks = new List<DocumentChunk>()
     };
 
     private static DocumentChunk CreateChunkFromReader(SqliteDataReader reader, Guid documentId) => new()

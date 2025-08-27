@@ -1,9 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
+    <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
@@ -12,73 +10,71 @@
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
     <Description>High-performance RAG (Retrieval-Augmented Generation) library for .NET that enables AI-powered document question-answering with multiple provider support and enterprise-grade vector storage.</Description>
-    <PackageTags>rag retrieval-augmented-generation ai llm document-qa vector-database openai anthropic gemini qdrant redis dotnet</PackageTags>
+    <PackageTags>rag retrieval-augmented-generation ai llm document-qa vector-database openai anthropic gemini azure-openai qdrant redis sqlite</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
-    <PackageProjectUrl>https://github.com/byerlikaya/SmartRAG</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/byerlikaya/SmartRAG</RepositoryUrl>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageProjectUrl>https://github.com/barisyerlikaya/SmartRAG</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/barisyerlikaya/SmartRAG.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
-         <PackageReleaseNotes>v1.1.0: Added Excel file parsing (.xlsx, .xls) with EPPlus 8.1.0 integration, enhanced Anthropic API retry mechanism for HTTP 529 (Overloaded) errors, improved document content validation, and comprehensive Excel format documentation</PackageReleaseNotes>
-    <Copyright>Copyright © Barış Yerlikaya 2025</Copyright>
-    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    
+    <!-- Build Configuration -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
-    
-    <!-- GitHub Packages Configuration -->
-    <RepositoryBranch>main</RepositoryBranch>
-    <RepositoryCommit>$(SourceRevisionId)</RepositoryCommit>
-    <EmbedUntrackedSources>true</EmbedUntrackedSources>
-    <PublishRepositoryUrl>true</PublishRepositoryUrl>
-    
-    <!-- Package Quality & Performance -->
-    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <NoWarn>$(NoWarn);1591</NoWarn>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <WarningsAsErrors />
-    <PackageValidationBaselineVersion>1.0.0</PackageValidationBaselineVersion>
-    <EnableNETAnalyzers>true</EnableNETAnalyzers>
-    <AnalysisLevel>latest-recommended</AnalysisLevel>
-    <Deterministic>true</Deterministic>
-    <PathMap>$(MSBuildProjectDirectory)=.</PathMap>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
     
-    <!-- NuGet Package Analyzer -->
-    <PackageOutputPath>$(MSBuildProjectDirectory)\nupkg</PackageOutputPath>
+    <!-- Assembly Information -->
+    <AssemblyTitle>SmartRAG</AssemblyTitle>
+    <AssemblyDescription>High-performance RAG library for .NET</AssemblyDescription>
+    <AssemblyCopyright>Copyright © 2024 Barış Yerlikaya</AssemblyCopyright>
+    <AssemblyVersion>1.1.0.0</AssemblyVersion>
+    <FileVersion>1.1.0.0</FileVersion>
   </PropertyGroup>
 
+  <!-- Package References -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.SemanticKernel" Version="1.63.0" />
-    <PackageReference Include="Qdrant.Client" Version="1.15.1" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.8" />
+    <!-- Microsoft Extensions -->
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.8" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.8" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.8" />
-
-    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="9.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.8" />
+    
+    <!-- HTTP Client -->
+    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.8" />
+    
+    <!-- JSON Processing -->
+    <PackageReference Include="System.Text.Json" Version="9.0.8" />
+    
+    <!-- Vector Database Support -->
+    <PackageReference Include="Qdrant.Client" Version="1.15.1" />
     <PackageReference Include="StackExchange.Redis" Version="2.9.11" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.8" />
-    <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
-    <PackageReference Include="itext" Version="9.2.0" />
-    <PackageReference Include="EPPlus" Version="8.1.0" />
     
-    <!-- SourceLink for debugging -->
-    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
-    
-    <!-- Package validation and analysis -->
-    <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="4.14.0" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="9.0.0" PrivateAssets="all" />
-    
-    <!-- Modern package tooling -->
-    <PackageReference Include="DotNet.ReproducibleBuilds" Version="1.2.25" PrivateAssets="All" />
-    <PackageReference Include="coverlet.collector" Version="6.0.4">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
+    <!-- Validation -->
+    <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
   </ItemGroup>
 
+  <!-- Conditional Package References for .NET Standard 2.1 -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
+    <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" />
+  </ItemGroup>
+
+  <!-- Conditional Package References for .NET Standard 2.0 -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+    <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="9.0.8" />
+  </ItemGroup>
+
+  <!-- Documentation Files -->
   <ItemGroup>
-    <None Include="..\..\README.md" Pack="true" PackagePath="\" />
-    <None Include="..\..\LICENSE" Pack="true" PackagePath="\" />
+    <None Include="README.md" Pack="true" PackagePath="/" />
+    <None Include="icon.png" Pack="true" PackagePath="/" />
   </ItemGroup>
 
 </Project>
