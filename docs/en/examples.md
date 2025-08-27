@@ -137,6 +137,63 @@ public async Task&lt;ActionResult&lt;IEnumerable&lt;DocumentChunk&gt;&gt;&gt; Se
 }</code></pre>
                     </div>
 
+                    <h4>Enhanced Semantic Search</h4>
+                    <p>Advanced search with hybrid scoring (80% semantic + 20% keyword) and context awareness:</p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public async Task&lt;IEnumerable&lt;SearchResult&gt;&gt; EnhancedSearchAsync(
+    string query, 
+    SearchOptions options = null)
+{
+    // Configure hybrid scoring weights
+    var searchConfig = new EnhancedSearchConfiguration
+    {
+        SemanticWeight = 0.8,        // 80% semantic similarity
+        KeywordWeight = 0.2,          // 20% keyword matching
+        ContextWindowSize = 512,      // Context awareness window
+        MinSimilarityThreshold = 0.6, // Minimum similarity score
+        EnableFuzzyMatching = true,   // Fuzzy keyword matching
+        MaxResults = options?.MaxResults ?? 20
+    };
+
+    // Perform hybrid search
+    var results = await _searchService.EnhancedSearchAsync(query, searchConfig);
+    
+    // Apply context-aware ranking
+    var rankedResults = await _rankingService.RankByContextAsync(results, query);
+    
+    return rankedResults;
+}</code></pre>
+                    </div>
+
+                    <h4>Search Configuration</h4>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Configure enhanced semantic search
+services.AddSmartRAG(options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.ApiKey = "your-api-key";
+    
+    // Enable enhanced semantic search
+    options.EnableEnhancedSearch = true;
+    options.SemanticWeight = 0.8;
+    options.KeywordWeight = 0.2;
+    options.ContextAwareness = true;
+    options.FuzzyMatching = true;
+});
+
+// Use in your controller
+[HttpGet("enhanced-search")]
+public async Task&lt;ActionResult&lt;IEnumerable&lt;SearchResult&gt;&gt;&gt; EnhancedSearch(
+    [FromQuery] string query,
+    [FromQuery] int maxResults = 20)
+{
+    var options = new SearchOptions { MaxResults = maxResults };
+    var results = await _searchService.EnhancedSearchAsync(query, options);
+    return Ok(results);
+}</code></pre>
+                    </div>
+
                     <h4>Intent Analysis Configuration</h4>
                     <div class="code-example">
                         <pre><code class="language-csharp">// Configure intent detection

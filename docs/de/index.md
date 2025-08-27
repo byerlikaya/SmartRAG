@@ -120,8 +120,8 @@ var results = await documentService
                     <div class="feature-icon">
                         <i class="fas fa-search"></i>
                     </div>
-                    <h3>Semantische Suche</h3>
-                    <p>Erweiterte Suche mit Ähnlichkeitsbewertung und intelligenter Ergebnisrangfolge.</p>
+                    <h3>Erweiterte Semantische Suche</h3>
+                    <p>Hybrid-Bewertung (80% semantisch + 20% Schlüsselwort) mit Kontextbewusstsein und intelligenter Rangfolge.</p>
                 </div>
             </div>
             <div class="col-lg-4 col-md-6">
