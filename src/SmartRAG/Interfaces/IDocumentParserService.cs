@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 
-namespace SmartRAG.Interfaces;
+namespace SmartRAG.Interfaces {
 
 /// <summary>
 /// Service for parsing different document formats and extracting text content
@@ -23,4 +23,5 @@ public interface IDocumentParserService
     /// Gets list of supported MIME content types
     /// </summary>
     IEnumerable<string> GetSupportedContentTypes();
+}
 }

@@ -1,15 +1,28 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using SmartRAG.Enums;
+using SmartRAG.Models;
+using SmartRAG.Providers;
 
-namespace SmartRAG.Providers;
+namespace SmartRAG.Providers {
 
 /// <summary>
 /// Custom AI provider implementation for custom endpoints
 /// </summary>
-public class CustomProvider(ILogger<CustomProvider> logger) : BaseAIProvider(logger)
+public class CustomProvider : BaseAIProvider
 {
+    private readonly ILogger<CustomProvider> _logger;
+
+    public CustomProvider(ILogger<CustomProvider> logger) : base(logger)
+    {
+        _logger = logger;
+    }
     #region Constants
 
     // Custom provider constants
@@ -34,25 +47,26 @@ public class CustomProvider(ILogger<CustomProvider> logger) : BaseAIProvider(log
         if (!isValid)
             return errorMessage;
 
-        using var client = CreateHttpClient(config.ApiKey);
-
-        bool useMessagesFormat = IsMessagesFormat(config.Endpoint!);
-
-        object payload = CreatePayload(prompt, config, useMessagesFormat);
-
-        var (success, response, error) = await MakeHttpRequestAsync(client, config.Endpoint!, payload);
-
-        if (!success)
-            return error;
-
-        try
+        using (var client = CreateHttpClient(config.ApiKey))
         {
-            return ParseCustomTextResponse(response);
-        }
-        catch (Exception ex)
-        {
-            ProviderLogMessages.LogCustomTextParsingError(Logger, ex);
-            return $"Error parsing custom response: {ex.Message}";
+            bool useMessagesFormat = IsMessagesFormat(config.Endpoint);
+
+            object payload = CreatePayload(prompt, config, useMessagesFormat);
+
+            var (success, response, error) = await MakeHttpRequestAsync(client, config.Endpoint, payload);
+
+            if (!success)
+                return error;
+
+            try
+            {
+                return ParseCustomTextResponse(response);
+            }
+            catch (Exception ex)
+            {
+                ProviderLogMessages.LogCustomTextParsingError(Logger, ex);
+                return $"Error parsing custom response: {ex.Message}";
+            }
         }
     }
 
@@ -63,39 +77,40 @@ public class CustomProvider(ILogger<CustomProvider> logger) : BaseAIProvider(log
         if (!isValid)
         {
             ProviderLogMessages.LogCustomEmbeddingValidationError(Logger, errorMessage, null);
-            return [];
+            return new List<float>();
         }
 
         if (string.IsNullOrEmpty(config.EmbeddingModel))
         {
             ProviderLogMessages.LogCustomEmbeddingModelMissing(Logger, null);
-            return [];
+            return new List<float>();
         }
 
-        using var client = CreateHttpClient(config.ApiKey);
-
-        var payload = new
+        using (var client = CreateHttpClient(config.ApiKey))
         {
-            text = text,
-            model = config.EmbeddingModel
-        };
+            var payload = new
+            {
+                text = text,
+                model = config.EmbeddingModel
+            };
 
-        var (success, response, error) = await MakeHttpRequestAsync(client, config.Endpoint!, payload);
+            var (success, response, error) = await MakeHttpRequestAsync(client, config.Endpoint, payload);
 
-        if (!success)
-        {
-            ProviderLogMessages.LogCustomEmbeddingRequestError(Logger, error, null);
-            return [];
-        }
+            if (!success)
+            {
+                ProviderLogMessages.LogCustomEmbeddingRequestError(Logger, error, null);
+                return new List<float>();
+            }
 
-        try
-        {
-            return ParseCustomEmbeddingResponse(response);
-        }
-        catch (Exception ex)
-        {
-            ProviderLogMessages.LogCustomEmbeddingParsingError(Logger, ex);
-            return [];
+            try
+            {
+                return ParseCustomEmbeddingResponse(response);
+            }
+            catch (Exception ex)
+            {
+                ProviderLogMessages.LogCustomEmbeddingParsingError(Logger, ex);
+                return new List<float>();
+            }
         }
     }
 
@@ -109,7 +124,7 @@ public class CustomProvider(ILogger<CustomProvider> logger) : BaseAIProvider(log
             return Task.FromResult(new List<string>());
 
         var chunks = new List<string>();
-        var sentences = text.Split(['.', '!', '?'], StringSplitOptions.RemoveEmptyEntries);
+        var sentences = text.Split(new char[] { '.', '!', '?' }, StringSplitOptions.RemoveEmptyEntries);
         var currentChunk = "";
 
         foreach (var sentence in sentences)
@@ -264,8 +279,9 @@ public class CustomProvider(ILogger<CustomProvider> logger) : BaseAIProvider(log
             }
         }
 
-        return [];
+        return new List<float>();
     }
 
     #endregion
+}
 }

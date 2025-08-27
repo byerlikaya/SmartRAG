@@ -1,7 +1,7 @@
 using SmartRAG.Enums;
 using System.Collections.Generic;
 
-namespace SmartRAG.Models;
+namespace SmartRAG.Models {
 
 /// <summary>
 /// Configuration options for SmartRag library
@@ -57,4 +57,5 @@ public class SmartRagOptions
     /// List of fallback AI providers to try when primary provider fails
     /// </summary>
     public List<AIProvider> FallbackProviders { get; set; } = new List<AIProvider>();
+}
 }

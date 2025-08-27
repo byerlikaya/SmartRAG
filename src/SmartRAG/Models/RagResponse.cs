@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
+using SmartRAG.Entities;
 
-namespace SmartRAG.Models;
+namespace SmartRAG.Models {
 
 /// <summary>
 /// RAG (Retrieval-Augmented Generation) response with metadata
@@ -37,7 +38,7 @@ public class RagResponse
     /// <summary>
     /// Configuration information for this RAG response
     /// </summary>
-    public RagConfiguration Configuration { get; set; } = new();
+    public RagConfiguration Configuration { get; set; } = new RagConfiguration();
 
     #endregion
 }
@@ -65,4 +66,5 @@ public class RagConfiguration
     public string Model { get; set; } = string.Empty;
 
     #endregion
+}
 }
