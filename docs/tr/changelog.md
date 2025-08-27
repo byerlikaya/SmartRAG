@@ -38,6 +38,17 @@ lang: tr
                         </ul>
                     </div>
 
+                    <h3>Sürüm 1.1.0 - 2025-08-22</h3>
+                    <div class="alert alert-success">
+                        <h4><i class="fas fa-star me-2"></i>Yeni Özellikler</h4>
+                        <ul class="mb-0">
+                            <li><strong>Excel Desteği</strong>: Kapsamlı Excel dosya işleme (.xlsx, .xls) EPPlus 8.1.0 entegrasyonu ile</li>
+                            <li><strong>Gelişmiş API Güvenilirliği</strong>: HTTP 529 (Overloaded) hataları için Anthropic API retry mekanizması</li>
+                            <li><strong>İçerik İşleme</strong>: Daha sağlam belge ayrıştırma ve fallback hata mesajları</li>
+                            <li><strong>Performans</strong>: Excel içerik çıkarma ve doğrulama optimizasyonu</li>
+                        </ul>
+                    </div>
+
                     <h3>Sürüm 1.0.3 - 2025-08-20</h3>
                     <div class="alert alert-info">
                         <h4><i class="fas fa-globe me-2"></i>Yeni Özellikler</h4>

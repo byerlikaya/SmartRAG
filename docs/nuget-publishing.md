@@ -91,7 +91,7 @@ Your SmartRAG package will appear as:
 ### **Updating Versions:**
 ```xml
 <!-- In src/SmartRAG/SmartRAG.csproj -->
-<PackageVersion>1.0.1</PackageVersion>
+<PackageVersion>1.1.0</PackageVersion>
 <PackageReleaseNotes>Bug fixes and performance improvements</PackageReleaseNotes>
 ```
 
