@@ -125,6 +125,71 @@ public class AskQuestionRequest
                     <h2>Расширенные примеры</h2>
                     <p>Более сложные случаи использования и расширенные функции.</p>
                     
+                    <h3>Умное определение намерения запроса</h3>
+                    <p>Автоматически направляйте запросы в чат или поиск документов на основе анализа намерения:</p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public async Task&lt;QueryResult&gt; ProcessQueryAsync(string query)
+{
+    // Анализировать намерение запроса
+    var intent = await _queryIntentService.AnalyzeIntentAsync(query);
+    
+    switch (intent.Type)
+    {
+        case QueryIntentType.Chat:
+            // Направить к разговорному ИИ
+            return await _chatService.ProcessChatQueryAsync(query);
+            
+        case QueryIntentType.DocumentSearch:
+            // Направить к поиску документов
+            var searchResults = await _documentService.SearchDocumentsAsync(query);
+            return new QueryResult 
+            { 
+                Type = QueryResultType.DocumentSearch,
+                Results = searchResults 
+            };
+            
+        case QueryIntentType.Mixed:
+            // Объединить оба подхода
+            var chatResponse = await _chatService.ProcessChatQueryAsync(query);
+            var docResults = await _documentService.SearchDocumentsAsync(query);
+            
+            return new QueryResult 
+            { 
+                Type = QueryResultType.Mixed,
+                ChatResponse = chatResponse,
+                DocumentResults = docResults 
+            };
+            
+        default:
+            throw new ArgumentException($"Неизвестный тип намерения: {intent.Type}");
+    }
+}</code></pre>
+                    </div>
+
+                    <h4>Конфигурация определения намерения</h4>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Настроить определение намерения
+services.AddSmartRAG(options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.ApiKey = "your-api-key";
+    
+    // Включить умное определение намерения запроса
+    options.EnableQueryIntentDetection = true;
+    options.IntentDetectionThreshold = 0.7; // Порог доверия
+    options.LanguageAgnostic = true; // Работает с любым языком
+});
+
+// Использовать в вашем контроллере
+[HttpPost("query")]
+public async Task&lt;ActionResult&lt;QueryResult&gt;&gt; ProcessQuery([FromBody] QueryRequest request)
+{
+    var result = await _queryProcessor.ProcessQueryAsync(request.Query);
+    return Ok(result);
+}</code></pre>
+                    </div>
+
                     <h3>Пакетная обработка документов</h3>
                     <div class="code-example">
                         <pre><code class="language-csharp">[HttpPost("upload-batch")]
