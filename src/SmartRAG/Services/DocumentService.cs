@@ -28,9 +28,9 @@ public class DocumentService(
     private const string NoContentTypesMessage = "No content types provided";
     private const string MismatchedCountsMessage = "Number of file streams, names, and content types must match";
 
-    // CompositeFormat for repeated formatting (CA1863)
-    private static readonly CompositeFormat UnsupportedFileTypeFormat = CompositeFormat.Parse("Unsupported file type: {0}. Supported types: {1}");
-    private static readonly CompositeFormat UnsupportedContentTypeFormat = CompositeFormat.Parse("Unsupported content type: {0}. Supported types: {1}");
+    // String format constants for repeated formatting
+    private const string UnsupportedFileTypeFormat = "Unsupported file type: {0}. Supported types: {1}";
+    private const string UnsupportedContentTypeFormat = "Unsupported content type: {0}. Supported types: {1}";
 
     #endregion
 
