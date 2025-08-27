@@ -14,7 +14,7 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <!-- <PackageIcon>icon.png</PackageIcon> -->
-    <PackageProjectUrl>https://github.com/byerlikaya/SmartRAG</PackageProjectUrl>
+    <PackageProjectUrl>https://byerlikaya.github.io/SmartRAG</PackageProjectUrl>
     <RepositoryUrl>https://github.com/byerlikaya/SmartRAG.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
