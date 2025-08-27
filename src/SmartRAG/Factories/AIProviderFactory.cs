@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+
 namespace SmartRAG.Factories;
 
 /// <summary>
@@ -11,7 +14,7 @@ public class AIProviderFactory : IAIProviderFactory
     public AIProviderFactory(ILoggerFactory loggerFactory)
     {
         _loggerFactory = loggerFactory;
-        _providers = [];
+        _providers = new Dictionary<AIProvider, IAIProvider>();
         InitializeProviders();
     }
 

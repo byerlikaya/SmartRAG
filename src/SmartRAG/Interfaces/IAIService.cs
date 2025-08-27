@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
 namespace SmartRAG.Interfaces;
 
 /// <summary>
@@ -9,12 +12,12 @@ public interface IAIService
     /// Generates AI response based on query and context
     /// </summary>
     Task<string> GenerateResponseAsync(string query, IEnumerable<string> context);
-    
+
     /// <summary>
     /// Generates embedding vector for the given text
     /// </summary>
     Task<List<float>> GenerateEmbeddingsAsync(string text);
-    
+
     /// <summary>
     /// Generates embeddings for multiple texts in batch
     /// </summary>

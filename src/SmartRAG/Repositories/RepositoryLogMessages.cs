@@ -1,3 +1,6 @@
+using Microsoft.Extensions.Logging;
+using System;
+
 namespace SmartRAG.Repositories;
 
 /// <summary>
