@@ -1,6 +1,3 @@
-using System.Text;
-using System.Text.RegularExpressions;
-
 namespace SmartRAG.Extensions;
 
 public static class SearchTextExtensions
@@ -14,10 +11,11 @@ public static class SearchTextExtensions
     /// </summary>
     public static string NormalizeForSearch(this string? input)
     {
-        if (string.IsNullOrWhiteSpace(input)) return string.Empty;
+        if (string.IsNullOrWhiteSpace(input))
+            return string.Empty;
 
         // Normalize Unicode characters (é -> e, ñ -> n, etc.)
-        var normalized = input.Normalize(NormalizationForm.FormD);
+        var normalized = input!.Normalize(NormalizationForm.FormD);
 
         // Use invariant culture for consistent international behavior
         var lower = normalized.ToLowerInvariant();

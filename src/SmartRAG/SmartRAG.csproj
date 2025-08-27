@@ -58,6 +58,10 @@
     
     <!-- Validation -->
     <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
+    <!-- Document Parsing -->
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
+    <PackageReference Include="itext" Version="9.2.0" />
+    <PackageReference Include="EPPlus" Version="8.1.0" />
   </ItemGroup>
 
   <!-- Conditional Package References for .NET Standard 2.1 -->
