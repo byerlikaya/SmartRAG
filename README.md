@@ -135,7 +135,7 @@ dotnet add package SmartRAG
 
 ### PackageReference
 ```xml
-<PackageReference Include="SmartRAG" Version="1.1.0" />
+<PackageReference Include="SmartRAG" Version="2.0.0" />
 ```
 
 ## 📄 Supported Document Formats
