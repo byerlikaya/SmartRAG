@@ -310,6 +310,143 @@ public async Task&lt;ActionResult&lt;IEnumerable&lt;SearchResult&gt;&gt;&gt; Enh
 }</code></pre>
                     </div>
 
+                    <h4>Языково-агностический дизайн</h4>
+                    <p>SmartRAG работает с любым языком без жестко заданных языковых шаблонов или языково-специфичных правил:</p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Языково-агностическая конфигурация - работает с любым языком
+services.AddSmartRAG(options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.ApiKey = "your-api-key";
+    
+    // Включить языково-агностические функции
+    options.LanguageAgnostic = true;
+    options.AutoDetectLanguage = true;
+    options.SupportedLanguages = new[] { "en", "tr", "de", "ru", "fr", "es", "ja", "ko", "zh" };
+    
+    // Нет жестко заданных языковых шаблонов
+    options.EnableMultilingualSupport = true;
+    options.FallbackLanguage = "en";
+});
+
+// Автоматически обрабатывать запросы на любом языке
+public async Task&lt;QueryResult&gt; ProcessMultilingualQueryAsync(string query)
+{
+    // Язык определяется автоматически
+    var detectedLanguage = await _languageService.DetectLanguageAsync(query);
+    
+    // Обрабатывать с помощью языково-агностических алгоритмов
+    var result = await _queryProcessor.ProcessQueryAsync(query, new QueryOptions
+    {
+        Language = detectedLanguage,
+        UseLanguageAgnosticProcessing = true
+    });
+    
+    return result;
+}</code></pre>
+                    </div>
+
+                    <h4>Расширенные языково-агностические функции</h4>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Расширенная языково-агностическая конфигурация
+var languageAgnosticConfig = new LanguageAgnosticConfiguration
+{
+    EnableLanguageDetection = true,
+    EnableMultilingualEmbeddings = true,
+    EnableCrossLanguageSearch = true,
+    LanguageDetectionThreshold = 0.8,
+    SupportedScripts = new[] { "Latin", "Cyrillic", "Arabic", "Chinese", "Japanese", "Korean" },
+    EnableScriptNormalization = true,
+    EnableUnicodeNormalization = true,
+    FallbackStrategies = new[] { "transliteration", "romanization", "english" }
+};
+
+services.AddSmartRAG(options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.ApiKey = "your-api-key";
+    
+    // Настроить расширенные языково-агностические функции
+    options.LanguageAgnostic = true;
+    options.LanguageAgnosticConfig = languageAgnosticConfig;
+});
+
+// Контроллер для многоязычной обработки документов
+[HttpPost("multilingual-upload")]
+public async Task&lt;ActionResult&lt;MultilingualUploadResult&gt;&gt; UploadMultilingualDocument(
+    [FromBody] MultilingualUploadRequest request)
+{
+    try
+    {
+        // Обработать документ на любом языке
+        var document = await _documentService.UploadMultilingualDocumentAsync(
+            request.Content, 
+            request.FileName,
+            request.DetectedLanguage);
+        
+        // Сгенерировать эмбеддинги с помощью языково-агностических алгоритмов
+        var embeddings = await _embeddingService.GenerateMultilingualEmbeddingsAsync(
+            document.Chunks,
+            document.DetectedLanguage);
+        
+        // Сохранить с языковыми метаданными
+        await _storageService.StoreMultilingualDocumentAsync(document, embeddings);
+        
+        return Ok(new MultilingualUploadResult
+        {
+            DocumentId = document.Id,
+            DetectedLanguage = document.DetectedLanguage,
+            LanguageConfidence = document.LanguageConfidence,
+            TotalChunks = document.Chunks.Count,
+            ProcessingTime = document.ProcessingTime
+        });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Ошибка при многоязычной обработке документа");
+        return StatusCode(500, "Не удалось обработать многоязычный документ");
+    }
+}
+
+// Многоязычный поиск по всем языкам
+[HttpGet("multilingual-search")]
+public async Task&lt;ActionResult&lt;MultilingualSearchResult&gt;&gt; SearchMultilingual(
+    [FromQuery] string query,
+    [FromQuery] string[] languages = null,
+    [FromQuery] int maxResults = 20)
+{
+    try
+    {
+        var searchOptions = new MultilingualSearchOptions
+        {
+            Query = query,
+            TargetLanguages = languages ?? new[] { "auto" },
+            MaxResults = maxResults,
+            EnableCrossLanguageSearch = true,
+            UseLanguageAgnosticScoring = true
+        };
+        
+        var results = await _searchService.SearchMultilingualAsync(searchOptions);
+        
+        return Ok(new MultilingualSearchResult
+        {
+            Query = query,
+            DetectedQueryLanguage = results.DetectedLanguage,
+            Results = results.Results,
+            CrossLanguageMatches = results.CrossLanguageMatches,
+            TotalResults = results.TotalResults
+        });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Ошибка при многоязычном поиске");
+        return StatusCode(500, "Не удалось выполнить многоязычный поиск");
+    }
+}</code></pre>
+                    </div>
+
                     <h4>Конфигурация определения намерения</h4>
                     <div class="code-example">
                         <pre><code class="language-csharp">// Настроить определение намерения

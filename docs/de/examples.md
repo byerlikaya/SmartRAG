@@ -310,6 +310,143 @@ public async Task&lt;ActionResult&lt;IEnumerable&lt;SearchResult&gt;&gt;&gt; Enh
 }</code></pre>
                     </div>
 
+                    <h4>Sprachagnostisches Design</h4>
+                    <p>SmartRAG funktioniert mit jeder Sprache ohne hartcodierte Sprachmuster oder sprachspezifische Regeln:</p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Sprachagnostische Konfiguration - funktioniert mit jeder Sprache
+services.AddSmartRAG(options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.ApiKey = "your-api-key";
+    
+    // Sprachagnostische Funktionen aktivieren
+    options.LanguageAgnostic = true;
+    options.AutoDetectLanguage = true;
+    options.SupportedLanguages = new[] { "en", "tr", "de", "ru", "fr", "es", "ja", "ko", "zh" };
+    
+    // Keine hartcodierten Sprachmuster
+    options.EnableMultilingualSupport = true;
+    options.FallbackLanguage = "en";
+});
+
+// Abfragen in jeder Sprache automatisch verarbeiten
+public async Task&lt;QueryResult&gt; ProcessMultilingualQueryAsync(string query)
+{
+    // Sprache wird automatisch erkannt
+    var detectedLanguage = await _languageService.DetectLanguageAsync(query);
+    
+    // Mit sprachagnostischen Algorithmen verarbeiten
+    var result = await _queryProcessor.ProcessQueryAsync(query, new QueryOptions
+    {
+        Language = detectedLanguage,
+        UseLanguageAgnosticProcessing = true
+    });
+    
+    return result;
+}</code></pre>
+                    </div>
+
+                    <h4>Erweiterte sprachagnostische Funktionen</h4>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Erweiterte sprachagnostische Konfiguration
+var languageAgnosticConfig = new LanguageAgnosticConfiguration
+{
+    EnableLanguageDetection = true,
+    EnableMultilingualEmbeddings = true,
+    EnableCrossLanguageSearch = true,
+    LanguageDetectionThreshold = 0.8,
+    SupportedScripts = new[] { "Latin", "Cyrillic", "Arabic", "Chinese", "Japanese", "Korean" },
+    EnableScriptNormalization = true,
+    EnableUnicodeNormalization = true,
+    FallbackStrategies = new[] { "transliteration", "romanization", "english" }
+};
+
+services.AddSmartRAG(options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.ApiKey = "your-api-key";
+    
+    // Erweiterte sprachagnostische Funktionen konfigurieren
+    options.LanguageAgnostic = true;
+    options.LanguageAgnosticConfig = languageAgnosticConfig;
+});
+
+// Controller für mehrsprachige Dokumentenverarbeitung
+[HttpPost("multilingual-upload")]
+public async Task&lt;ActionResult&lt;MultilingualUploadResult&gt;&gt; UploadMultilingualDocument(
+    [FromBody] MultilingualUploadRequest request)
+{
+    try
+    {
+        // Dokument in jeder Sprache verarbeiten
+        var document = await _documentService.UploadMultilingualDocumentAsync(
+            request.Content, 
+            request.FileName,
+            request.DetectedLanguage);
+        
+        // Embeddings mit sprachagnostischen Algorithmen generieren
+        var embeddings = await _embeddingService.GenerateMultilingualEmbeddingsAsync(
+            document.Chunks,
+            document.DetectedLanguage);
+        
+        // Mit Sprachmetadaten speichern
+        await _storageService.StoreMultilingualDocumentAsync(document, embeddings);
+        
+        return Ok(new MultilingualUploadResult
+        {
+            DocumentId = document.Id,
+            DetectedLanguage = document.DetectedLanguage,
+            LanguageConfidence = document.LanguageConfidence,
+            TotalChunks = document.Chunks.Count,
+            ProcessingTime = document.ProcessingTime
+        });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Fehler bei der mehrsprachigen Dokumentenverarbeitung");
+        return StatusCode(500, "Mehrsprachiges Dokument konnte nicht verarbeitet werden");
+    }
+}
+
+// Mehrsprachige Suche in allen Sprachen
+[HttpGet("multilingual-search")]
+public async Task&lt;ActionResult&lt;MultilingualSearchResult&gt;&gt; SearchMultilingual(
+    [FromQuery] string query,
+    [FromQuery] string[] languages = null,
+    [FromQuery] int maxResults = 20)
+{
+    try
+    {
+        var searchOptions = new MultilingualSearchOptions
+        {
+            Query = query,
+            TargetLanguages = languages ?? new[] { "auto" },
+            MaxResults = maxResults,
+            EnableCrossLanguageSearch = true,
+            UseLanguageAgnosticScoring = true
+        };
+        
+        var results = await _searchService.SearchMultilingualAsync(searchOptions);
+        
+        return Ok(new MultilingualSearchResult
+        {
+            Query = query,
+            DetectedQueryLanguage = results.DetectedLanguage,
+            Results = results.Results,
+            CrossLanguageMatches = results.CrossLanguageMatches,
+            TotalResults = results.TotalResults
+        });
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Fehler bei der mehrsprachigen Suche");
+        return StatusCode(500, "Mehrsprachige Suche konnte nicht durchgeführt werden");
+    }
+}</code></pre>
+                    </div>
+
                     <h4>Absichtserkennungs-Konfiguration</h4>
                     <div class="code-example">
                         <pre><code class="language-csharp">// Absichtserkennung konfigurieren
