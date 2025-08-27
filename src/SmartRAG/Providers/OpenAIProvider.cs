@@ -182,7 +182,7 @@ public class OpenAIProvider(ILogger<OpenAIProvider> logger) : BaseAIProvider(log
     /// <summary>
     /// Create OpenAI embedding payload
     /// </summary>
-    private static object CreateOpenAIEmbeddingPayload(string text, string model)
+    private static object CreateOpenAIEmbeddingPayload(string text, string? model)
     {
         return new
         {
@@ -194,7 +194,7 @@ public class OpenAIProvider(ILogger<OpenAIProvider> logger) : BaseAIProvider(log
     /// <summary>
     /// Create OpenAI batch embedding payload
     /// </summary>
-    private static object CreateOpenAIBatchEmbeddingPayload(List<string> texts, string model)
+    private static object CreateOpenAIBatchEmbeddingPayload(List<string> texts, string? model)
     {
         return new
         {
