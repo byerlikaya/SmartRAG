@@ -206,6 +206,35 @@ h1, h2, h3, h4, h5, h6 {
     transform: translateY(-1px);
 }
 
+.navbar-nav .nav-link.active {
+    color: var(--primary) !important;
+    background-color: var(--primary-light);
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    position: relative;
+}
+
+.navbar-nav .nav-link.active::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 20px;
+    height: 3px;
+    background-color: var(--primary);
+    border-radius: 2px;
+}
+
+[data-theme="dark"] .navbar-nav .nav-link.active {
+    color: var(--primary-light) !important;
+    background-color: var(--dark-surface);
+}
+
+[data-theme="dark"] .navbar-nav .nav-link.active::after {
+    background-color: var(--primary-light);
+}
+
 [data-theme="dark"] .navbar-nav .nav-link:hover {
     color: var(--primary-light) !important;
     background-color: var(--dark-surface);
@@ -481,11 +510,6 @@ h1, h2, h3, h4, h5, h6 {
 /* Add more space after section titles */
 .content-section h2 + p {
     margin-top: 1.5rem !important;
-}
-
-/* Page content spacing */
-.page-content {
-    padding-top: 2rem !important;
 }
 
 .content-section {
