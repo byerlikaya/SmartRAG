@@ -122,18 +122,27 @@
                     </li>
                 </ul>
                 
-                <!-- Language Selector -->
+                <!-- Language Selector - Simple Buttons -->
                 <ul class="navbar-nav ms-auto">
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="languageDropdown" role="button">
-                            <i class="fas fa-globe me-1"></i>{% if page.lang == "tr" %}Türkçe{% elsif page.lang == "de" %}Deutsch{% elsif page.lang == "ru" %}Русский{% else %}English{% endif %}
+                    <li class="nav-item">
+                        <a class="nav-link language-btn" href="{{ site.baseurl }}/en/" data-lang="en">
+                            <i class="fas fa-flag me-1"></i>EN
                         </a>
-                        <ul class="dropdown-menu dropdown-menu-end">
-                            <li><a class="dropdown-item language-link" href="#" data-lang="en"><i class="fas fa-flag me-2"></i>English</a></li>
-                            <li><a class="dropdown-item language-link" href="#" data-lang="tr"><i class="fas fa-flag me-2"></i>Türkçe</a></li>
-                            <li><a class="dropdown-item language-link" href="#" data-lang="de"><i class="fas fa-flag me-2"></i>Deutsch</a></li>
-                            <li><a class="dropdown-item language-link" href="#" data-lang="ru"><i class="fas fa-flag me-2"></i>Русский</a></li>
-                        </ul>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link language-btn" href="{{ site.baseurl }}/tr/" data-lang="tr">
+                            <i class="fas fa-flag me-1"></i>TR
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link language-btn" href="{{ site.baseurl }}/de/" data-lang="de">
+                            <i class="fas fa-flag me-1"></i>DE
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link language-btn" href="{{ site.baseurl }}/ru/" data-lang="ru">
+                            <i class="fas fa-flag me-1"></i>RU
+                        </a>
                     </li>
                 </ul>
             </div>
