@@ -348,7 +348,7 @@ var results = await documentService
                         <i class="fas fa-cog"></i>
                     </div>
                     <h3>Configuration</h3>
-                    <p>Detailed configuration options</p>
+                    <p>Configure SmartRAG for your needs</p>
                 </a>
             </div>
             <div class="col-lg-3 col-md-6">
