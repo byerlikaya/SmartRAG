@@ -441,7 +441,7 @@ Answer:";
             // Normalize Unicode characters
             var normalized = decoded.Normalize(System.Text.NormalizationForm.FormC);
 
-            // Handle common Turkish character variations (can be extended for other languages)
+            // Handle common character variations for multiple languages (Turkish, German, etc.)
             var characterMappings = new Dictionary<string, string>
         {
             {"ı", "i"}, {"İ", "I"}, {"ğ", "g"}, {"Ğ", "G"},
