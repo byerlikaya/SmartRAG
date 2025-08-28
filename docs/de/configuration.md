@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Konfiguration
-description: Detaillierte Konfigurationsoptionen und bewährte Praktiken für SmartRAG
+description: Konfigurieren Sie SmartRAG für Ihre spezifischen Bedürfnisse
 lang: de
 ---
 
@@ -9,9 +9,9 @@ lang: de
     <div class="container">
         <div class="row">
             <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">Konfigurationshandbuch</h1>
+                <h1 class="page-title">Konfiguration</h1>
                 <p class="page-description">
-                    Konfigurieren Sie SmartRAG für Ihre spezifischen Bedürfnisse mit detaillierten Optionen und bewährten Praktiken
+                    Konfigurieren Sie SmartRAG für Ihre spezifischen Bedürfnisse
                 </p>
             </div>
         </div>
