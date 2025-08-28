@@ -1,22 +1,9 @@
 ---
 layout: default
 title: Sorun Giderme
-description: SmartRAG ile ilgili yaygın sorunlar ve çözümler
+description: SmartRAG uygulaması için yaygın sorunlar ve çözümler
 lang: tr
 ---
-
-<div class="page-header">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">Sorun Giderme</h1>
-                <p class="page-description">
-                    SmartRAG ile ilgili yaygın sorunlar ve çözümler
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="page-content">
     <div class="container">

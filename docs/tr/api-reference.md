@@ -1,22 +1,9 @@
 ---
 layout: default
 title: API Referansı
-description: SmartRAG için örnekler ve kullanım desenleri ile tam API dokümantasyonu
+description: SmartRAG servisleri ve arayüzleri için tam API dokümantasyonu
 lang: tr
 ---
-
-<div class="page-header">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">API Referansı</h1>
-                <p class="page-description">
-                    SmartRAG için örnekler ve kullanım desenleri ile tam API dokümantasyonu
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="page-content">
     <div class="container">

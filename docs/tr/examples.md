@@ -1,22 +1,9 @@
 ---
 layout: default
 title: Örnekler
-description: SmartRAG'dan öğrenmek için gerçek dünya örnekleri ve örnek uygulamalar
+description: SmartRAG entegrasyonu için pratik örnekler ve kod örnekleri
 lang: tr
 ---
-
-<div class="page-header">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">Örnekler</h1>
-                <p class="page-description">
-                    SmartRAG'dan öğrenmek için gerçek dünya örnekleri ve örnek uygulamalar
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="page-content">
     <div class="container">

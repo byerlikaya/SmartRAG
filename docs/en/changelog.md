@@ -1,22 +1,9 @@
 ---
 layout: default
 title: Changelog
-description: Track new features, improvements, and bug fixes across SmartRAG versions
+description: Version history and release notes for SmartRAG
 lang: en
 ---
-
-<div class="page-header">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">Changelog</h1>
-                <p class="page-description">
-                    Track new features, improvements, and bug fixes across SmartRAG versions
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="page-content">
     <div class="container">

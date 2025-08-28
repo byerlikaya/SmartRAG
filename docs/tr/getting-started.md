@@ -1,22 +1,9 @@
 ---
 layout: default
 title: Başlangıç
-description: SmartRAG için hızlı kurulum ve kurulum rehberi
+description: SmartRAG'i .NET uygulamanızda sadece birkaç dakikada kurun ve yapılandırın
 lang: tr
 ---
-
-<div class="page-header">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">SmartRAG ile Başlangıç</h1>
-                <p class="page-description">
-                    SmartRAG'i .NET uygulamanızda sadece birkaç dakikada kurun ve yapılandırın
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="page-content">
     <div class="container">

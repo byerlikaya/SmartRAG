@@ -1,22 +1,9 @@
 ---
 layout: default
 title: Устранение неполадок
-description: Частые проблемы и решения для SmartRAG
+description: Распространенные проблемы и решения для реализации SmartRAG
 lang: ru
 ---
-
-<div class="page-header">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">Устранение неполадок</h1>
-                <p class="page-description">
-                    Частые проблемы и решения для SmartRAG
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="page-content">
     <div class="container">

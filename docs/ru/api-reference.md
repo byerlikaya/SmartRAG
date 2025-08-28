@@ -1,22 +1,9 @@
 ---
 layout: default
 title: Справочник API
-description: Полная документация API для SmartRAG с примерами и шаблонами использования
+description: Полная документация API для сервисов и интерфейсов SmartRAG
 lang: ru
 ---
-
-<div class="page-header">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">Справочник API</h1>
-                <p class="page-description">
-                    Полная документация API для SmartRAG с примерами и шаблонами использования
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="page-content">
     <div class="container">

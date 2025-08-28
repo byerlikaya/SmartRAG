@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Getting Started
-description: Quick installation and setup guide for SmartRAG
+description: Install and configure SmartRAG in your .NET application in just a few minutes
 lang: en
 ---
 

@@ -1,22 +1,9 @@
 ---
 layout: default
 title: Fehlerbehebung
-description: Häufige Probleme und Lösungen für SmartRAG
+description: Häufige Probleme und Lösungen für die SmartRAG-Implementierung
 lang: de
 ---
-
-<div class="page-header">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">Fehlerbehebung</h1>
-                <p class="page-description">
-                    Häufige Probleme und Lösungen für SmartRAG
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="page-content">
     <div class="container">
