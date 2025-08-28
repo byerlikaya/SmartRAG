@@ -1233,7 +1233,7 @@ h1, h2, h3, h4, h5, h6 {
     display: flex;
     background: var(--white);
     border: 1px solid var(--gray-200);
-    border-bottom: none;
+    border-bottom: 1px solid var(--gray-200);
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     overflow: hidden;
     box-shadow: var(--shadow-md);
@@ -1554,7 +1554,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Language Selection Buttons */
 .language-btn {
-    color: rgba(255, 255, 255, 0.7) !important;
+    color: var(--gray-600) !important;
     font-size: 0.8rem !important;
     font-weight: 500 !important;
     padding: 0.25rem 0.5rem !important;
@@ -1562,14 +1562,15 @@ h1, h2, h3, h4, h5, h6 {
     border-radius: var(--radius-sm) !important;
     transition: var(--transition) !important;
     text-decoration: none !important;
-    border: 1px solid rgba(255, 255, 255, 0.2) !important;
-    background-color: rgba(255, 255, 255, 0.05) !important;
+    border: 1px solid var(--gray-200) !important;
+    background-color: var(--gray-50) !important;
+    display: inline-block !important;
 }
 
 .language-btn:hover {
-    color: white !important;
-    background-color: rgba(255, 255, 255, 0.15) !important;
-    border-color: rgba(255, 255, 255, 0.4) !important;
+    color: var(--primary) !important;
+    background-color: var(--gray-100) !important;
+    border-color: var(--primary) !important;
     transform: translateY(-1px) !important;
 }
 
@@ -1577,9 +1578,9 @@ h1, h2, h3, h4, h5, h6 {
 .language-btn[data-lang="{{ page.lang }}"] {
     color: white !important;
     background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%) !important;
-    border: 2px solid rgba(255, 255, 255, 0.8) !important;
+    border: 2px solid var(--primary) !important;
     font-weight: 600 !important;
-    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.4) !important;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4) !important;
     transform: translateY(-1px) !important;
     position: relative;
 }
@@ -1601,7 +1602,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .language-btn[data-lang="{{ page.lang }}"]:hover {
     transform: translateY(-2px) !important;
-    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.5) !important;
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.5) !important;
     background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%) !important;
 }
 
