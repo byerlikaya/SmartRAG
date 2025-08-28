@@ -273,6 +273,8 @@ h1, h2, h3, h4, h5, h6 {
     min-width: 160px;
     margin-top: 0.5rem;
     display: none; /* Hidden by default */
+    z-index: 1002;
+    position: absolute;
 }
 
 .navbar-nav .dropdown-menu.show {
