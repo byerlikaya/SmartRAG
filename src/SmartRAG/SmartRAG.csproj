@@ -30,7 +30,7 @@
     <!-- Assembly Information -->
     <AssemblyTitle>SmartRAG</AssemblyTitle>
     <AssemblyDescription>High-performance RAG library for .NET</AssemblyDescription>
-    <AssemblyCopyright>Copyright © 2024 Barış Yerlikaya</AssemblyCopyright>
+    <AssemblyCopyright>Copyright © 2025 Barış Yerlikaya</AssemblyCopyright>
     <AssemblyVersion>2.0.0.0</AssemblyVersion>
     <FileVersion>2.0.0.0</FileVersion>
     <NeutralLanguage>en</NeutralLanguage>
