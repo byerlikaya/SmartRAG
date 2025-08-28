@@ -1439,12 +1439,14 @@ h1, h2, h3, h4, h5, h6 {
     border-radius: var(--radius-sm) !important;
     transition: var(--transition) !important;
     text-decoration: none !important;
-    border: 1px solid transparent !important;
+    border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    background-color: rgba(255, 255, 255, 0.05) !important;
 }
 
 .language-btn:hover {
     color: white !important;
-    background-color: rgba(255, 255, 255, 0.1) !important;
+    background-color: rgba(255, 255, 255, 0.15) !important;
+    border-color: rgba(255, 255, 255, 0.4) !important;
     transform: translateY(-1px) !important;
 }
 
