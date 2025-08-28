@@ -84,31 +84,108 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Language Selection Functionality
-    document.querySelectorAll('.language-link').forEach(link => {
-        link.addEventListener('click', function(e) {
-            try {
-                e.preventDefault();
-                const targetLang = this.getAttribute('data-lang');
-                const currentPath = window.location.pathname;
-                
-                // Remove baseurl and current language prefix if exists
-                let newPath = currentPath.replace(/^\/SmartRAG/, '').replace(/^\/(en|tr|de|ru)/, '');
-                
-                // Add new language prefix with baseurl
-                if (newPath === '/' || newPath === '') {
-                    newPath = `/SmartRAG/${targetLang}/`;
-                } else {
-                    newPath = `/SmartRAG/${targetLang}${newPath}`;
-                }
-                
-                // Navigate to new language version
-                window.location.href = newPath;
-            } catch (error) {
-                console.warn('Language switch error:', error);
+    // Language Selection Functionality - Manual dropdown control
+    const languageDropdown = document.getElementById('languageDropdown');
+    const languageDropdownMenu = document.querySelector('#languageDropdown + .dropdown-menu');
+    const languageLinks = document.querySelectorAll('.language-link');
+    
+    console.log('Language dropdown found:', languageDropdown);
+    console.log('Language dropdown menu found:', languageDropdownMenu);
+    console.log('Language links found:', languageLinks.length);
+    
+    if (languageDropdown && languageDropdownMenu && languageLinks.length > 0) {
+        console.log('Setting up manual language dropdown...');
+        
+        // Toggle dropdown on click
+        languageDropdown.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const isOpen = languageDropdownMenu.classList.contains('show');
+            if (isOpen) {
+                languageDropdownMenu.classList.remove('show');
+            } else {
+                languageDropdownMenu.classList.add('show');
             }
         });
-    });
+        
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!languageDropdown.contains(e.target) && !languageDropdownMenu.contains(e.target)) {
+                languageDropdownMenu.classList.remove('show');
+            }
+        });
+        
+        // Add click handlers to language links
+        languageLinks.forEach((link, index) => {
+            console.log(`Adding click handler to language link ${index}:`, link);
+            
+            link.addEventListener('click', function(e) {
+                try {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const targetLang = this.getAttribute('data-lang');
+                    const currentPath = window.location.pathname;
+                    
+                    console.log('Language switch requested:', targetLang);
+                    console.log('Current path:', currentPath);
+                    
+                    // Get base URL from Jekyll site configuration
+                    const baseUrl = window.siteConfig ? window.siteConfig.baseurl : '/SmartRAG';
+                    console.log('Base URL:', baseUrl);
+                    
+                    // Remove baseurl and current language prefix if exists
+                    let newPath = currentPath;
+                    
+                    // Remove baseurl if present
+                    if (baseUrl && baseUrl !== '/') {
+                        newPath = currentPath.replace(new RegExp(`^${baseUrl}`), '');
+                        console.log('Path after removing baseurl:', newPath);
+                    }
+                    
+                    // Remove current language prefix
+                    newPath = newPath.replace(/^\/(en|tr|de|ru)/, '');
+                    console.log('Path after removing language prefix:', newPath);
+                    
+                    // Ensure path starts with /
+                    if (!newPath.startsWith('/')) {
+                        newPath = '/' + newPath;
+                    }
+                    
+                    // Add new language prefix
+                    if (newPath === '/') {
+                        newPath = `/${targetLang}/`;
+                    } else {
+                        newPath = `/${targetLang}${newPath}`;
+                    }
+                    console.log('Path after adding language prefix:', newPath);
+                    
+                    // Add baseurl back
+                    if (baseUrl && baseUrl !== '/') {
+                        newPath = baseUrl + newPath;
+                    }
+                    
+                    console.log('Final new path:', newPath);
+                    
+                    // Close dropdown
+                    languageDropdownMenu.classList.remove('show');
+                    
+                    // Navigate to new language version
+                    window.location.href = newPath;
+                } catch (error) {
+                    console.error('Language switch error:', error);
+                }
+            });
+        });
+        
+        console.log('Manual language dropdown setup completed');
+    } else {
+        console.warn('Language dropdown elements not found');
+        if (!languageDropdown) console.warn('languageDropdown element not found');
+        if (!languageDropdownMenu) console.warn('languageDropdownMenu element not found');
+        if (languageLinks.length === 0) console.warn('No language-link elements found');
+    }
     
     // Smooth scrolling for anchor links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
@@ -216,22 +293,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Language switching enhancement
-    const languageDropdown = document.getElementById('languageDropdown');
-    if (languageDropdown) {
-        // Add click handlers to dropdown items
-        document.querySelectorAll('.dropdown-item').forEach(item => {
-            item.addEventListener('click', function(e) {
-                const href = this.getAttribute('href');
-                if (href) {
-                    // Add smooth transition
-                    document.body.style.opacity = '0.8';
-                    setTimeout(() => {
-                        window.location.href = href;
-                    }, 150);
-                }
-            });
-        });
-    }
+    // This section is now handled by the manual dropdown control above.
     
     // Navbar scroll effect
     const navbar = document.querySelector('.navbar');
