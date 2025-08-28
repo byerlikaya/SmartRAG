@@ -5,19 +5,6 @@ description: Install and configure SmartRAG in your .NET application in just a f
 lang: en
 ---
 
-<div class="page-header">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">Getting Started with SmartRAG</h1>
-                <p class="page-description">
-                    Install and configure SmartRAG in your .NET application in just a few minutes
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
-
 <div class="page-content">
     <div class="container">
         <!-- Installation Section -->
