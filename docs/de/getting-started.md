@@ -52,7 +52,7 @@ lang: de
         <section class="content-section">
             <div class="row">
                 <div class="col-lg-8 mx-auto">
-                    <h2>Grundkonfiguration</h2>
+                    <h2>Konfiguration</h2>
                     <p>Konfigurieren Sie SmartRAG in Ihrer <code>Program.cs</code> oder <code>Startup.cs</code>:</p>
                     
                     <div class="code-example">

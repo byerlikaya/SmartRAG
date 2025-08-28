@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Başlangıç
-description: SmartRAG ile hızlı kurulum ve kurulum rehberi
+description: SmartRAG için hızlı kurulum ve kurulum rehberi
 lang: tr
 ---
 
@@ -9,7 +9,7 @@ lang: tr
     <div class="container">
         <div class="row">
             <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">SmartRAG ile Başlayın</h1>
+                <h1 class="page-title">SmartRAG ile Başlangıç</h1>
                 <p class="page-description">
                     SmartRAG'i .NET uygulamanızda sadece birkaç dakikada kurun ve yapılandırın
                 </p>
@@ -52,7 +52,7 @@ lang: tr
         <section class="content-section">
             <div class="row">
                 <div class="col-lg-8 mx-auto">
-                    <h2>Temel Yapılandırma</h2>
+                    <h2>Yapılandırma</h2>
                     <p>SmartRAG'i <code>Program.cs</code> veya <code>Startup.cs</code> dosyanızda yapılandırın:</p>
                     
                     <div class="code-example">
