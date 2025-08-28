@@ -449,44 +449,47 @@ h1, h2, h3, h4, h5, h6 {
     border-bottom-color: var(--dark-border);
 }
 
+/* Page Headers and Titles */
 .page-title {
     font-size: 2.5rem;
     font-weight: 700;
     color: var(--gray-900);
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: 1.5rem !important;
     text-align: center;
 }
 
-[data-theme="dark"] .page-title {
-    color: var(--gray-100);
-}
-
 .page-description {
-    font-size: 1.125rem;
+    font-size: 1.1rem;
     color: var(--gray-600);
-    max-width: 600px;
-    margin: 0 auto;
+    margin-bottom: 2rem !important;
+    text-align: center;
+    line-height: 1.6;
 }
 
-[data-theme="dark"] .page-description {
-    color: var(--gray-400);
+/* Section titles with more spacing */
+.content-section h2 {
+    font-size: 2rem;
+    font-weight: 600;
+    color: var(--gray-800);
+    margin-top: 3rem !important;
+    margin-bottom: 1.5rem !important;
+    padding-bottom: 0.75rem !important;
+    border-bottom: 2px solid var(--primary);
+    position: relative;
+}
+
+/* Add more space after section titles */
+.content-section h2 + p {
+    margin-top: 1.5rem !important;
+}
+
+/* Page content spacing */
+.page-content {
+    padding-top: 2rem !important;
 }
 
 .content-section {
-    margin-bottom: var(--spacing-2xl);
-}
-
-.content-section h2 {
-    font-size: 1.75rem;
-    font-weight: 600;
-    color: var(--gray-900);
-    margin-bottom: var(--spacing-lg);
-    border-bottom: 2px solid var(--primary);
-    padding-bottom: var(--spacing-sm);
-}
-
-[data-theme="dark"] .content-section h2 {
-    color: var(--gray-100);
+    margin-bottom: 3rem !important;
 }
 
 .content-section h3 {
