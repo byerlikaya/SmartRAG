@@ -1404,7 +1404,7 @@ h1, h2, h3, h4, h5, h6 {
     transform: translateY(-1px) !important;
 }
 
-/* Current language button - HIGHLIGHTED */
+/* Current language button - FORCE HIGHLIGHT */
 .language-btn[data-lang="{{ page.lang }}"] {
     color: white !important;
     background-color: rgba(255, 255, 255, 0.25) !important;
@@ -1414,11 +1414,14 @@ h1, h2, h3, h4, h5, h6 {
     transform: translateY(-1px) !important;
 }
 
-/* Current language button hover */
-.language-btn[data-lang="{{ page.lang }}"]:hover {
-    background-color: rgba(255, 255, 255, 0.3) !important;
-    border-color: rgba(255, 255, 255, 0.8) !important;
-    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3) !important;
+/* Override any conflicting styles */
+.navbar-nav .nav-link.language-btn[data-lang="{{ page.lang }}"] {
+    color: white !important;
+    background-color: rgba(255, 255, 255, 0.25) !important;
+    border: 2px solid rgba(255, 255, 255, 0.6) !important;
+    font-weight: 600 !important;
+    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2) !important;
+    transform: translateY(-1px) !important;
 }
 
 #themeToggle:hover {
