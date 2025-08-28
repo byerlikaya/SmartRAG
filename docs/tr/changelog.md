@@ -1,22 +1,9 @@
 ---
 layout: default
 title: Değişiklik Günlüğü
-description: SmartRAG sürümlerinde yapılan değişiklikler, yeni özellikler ve hata düzeltmeleri
+description: SmartRAG için sürüm geçmişi ve sürüm notları
 lang: tr
 ---
-
-<div class="page-header">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">Değişiklik Günlüğü</h1>
-                <p class="page-description">
-                    SmartRAG sürümlerinde yapılan değişiklikler, yeni özellikler ve hata düzeltmeleri
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="page-content">
     <div class="container">

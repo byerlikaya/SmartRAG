@@ -1,22 +1,9 @@
 ---
 layout: default
 title: Yapılandırma
-description: SmartRAG'i ihtiyaçlarınıza göre yapılandırın
+description: SmartRAG'i tercih ettiğiniz AI ve depolama sağlayıcıları ile yapılandırın
 lang: tr
 ---
-
-<div class="page-header">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">Yapılandırma</h1>
-                <p class="page-description">
-                    SmartRAG'i ihtiyaçlarınıza göre yapılandırın
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="page-content">
     <div class="container">

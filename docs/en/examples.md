@@ -1,22 +1,9 @@
 ---
 layout: default
 title: Examples
-description: Real-world examples and sample applications to learn from SmartRAG
+description: Practical examples and code samples for SmartRAG integration
 lang: en
 ---
-
-<div class="page-header">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">Examples</h1>
-                <p class="page-description">
-                    Real-world examples and sample applications to learn from SmartRAG
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="page-content">
     <div class="container">

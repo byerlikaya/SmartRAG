@@ -1,22 +1,9 @@
 ---
 layout: default
 title: Konfiguration
-description: Konfigurieren Sie SmartRAG für Ihre spezifischen Bedürfnisse
+description: Konfigurieren Sie SmartRAG mit Ihren bevorzugten KI- und Speicheranbietern
 lang: de
 ---
-
-<div class="page-header">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">Konfiguration</h1>
-                <p class="page-description">
-                    Konfigurieren Sie SmartRAG für Ihre spezifischen Bedürfnisse
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="page-content">
     <div class="container">

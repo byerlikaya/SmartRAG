@@ -1,22 +1,9 @@
 ---
 layout: default
 title: API-Referenz
-description: Vollständige API-Dokumentation für SmartRAG mit Beispielen und Verwendungsmustern
+description: Vollständige API-Dokumentation für SmartRAG-Dienste und -Schnittstellen
 lang: de
 ---
-
-<div class="page-header">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">API-Referenz</h1>
-                <p class="page-description">
-                    Vollständige API-Dokumentation für SmartRAG mit Beispielen und Verwendungsmustern
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="page-content">
     <div class="container">

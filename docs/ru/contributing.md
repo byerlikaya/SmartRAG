@@ -1,22 +1,9 @@
 ---
 layout: default
-title: Участие в проекте
-description: Узнайте, как внести свой вклад в проект SmartRAG
+title: Вклад в проект
+description: Как внести вклад в SmartRAG
 lang: ru
 ---
-
-<div class="page-header">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">Участие в проекте</h1>
-                <p class="page-description">
-                    Узнайте, как внести свой вклад в проект SmartRAG
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="page-content">
     <div class="container">

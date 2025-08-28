@@ -1,22 +1,9 @@
 ---
 layout: default
 title: Начало работы
-description: Быстрое руководство по установке и настройке SmartRAG
+description: Установите и настройте SmartRAG в вашем .NET приложении за несколько минут
 lang: ru
 ---
-
-<div class="page-header">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">Начало работы с SmartRAG</h1>
-                <p class="page-description">
-                    Установите и настройте SmartRAG в вашем .NET приложении всего за несколько минут
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="page-content">
     <div class="container">
