@@ -6,22 +6,29 @@ document.addEventListener('DOMContentLoaded', function() {
     const themeIcon = document.getElementById('themeIcon');
     const body = document.body;
     
+    console.log('Theme toggle found:', themeToggle);
+    console.log('Theme icon found:', themeIcon);
+    
     // Check for saved theme preference or default to 'light'
     const currentTheme = localStorage.getItem('theme') || 'light';
+    console.log('Current theme from localStorage:', currentTheme);
     
     // Apply the current theme
     function applyTheme(theme) {
         try {
+            console.log('Applying theme:', theme);
             if (theme === 'dark') {
                 body.setAttribute('data-theme', 'dark');
                 if (themeIcon) {
                     themeIcon.className = 'fas fa-moon';
+                    console.log('Dark theme applied, icon changed to moon');
                 }
                 localStorage.setItem('theme', 'dark');
             } else {
                 body.removeAttribute('data-theme');
                 if (themeIcon) {
                     themeIcon.className = 'fas fa-sun';
+                    console.log('Light theme applied, icon changed to sun');
                 }
                 localStorage.setItem('theme', 'light');
             }
@@ -36,20 +43,26 @@ document.addEventListener('DOMContentLoaded', function() {
     // Also apply theme on page load to ensure persistence
     window.addEventListener('load', function() {
         const savedTheme = localStorage.getItem('theme') || 'light';
+        console.log('Page loaded, applying saved theme:', savedTheme);
         applyTheme(savedTheme);
     });
     
     // Theme toggle click handler
     if (themeToggle) {
+        console.log('Setting up theme toggle click handler');
         themeToggle.addEventListener('click', function() {
             try {
+                console.log('Theme toggle clicked!');
                 const currentTheme = localStorage.getItem('theme') || 'light';
                 const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+                console.log('Switching from', currentTheme, 'to', newTheme);
                 applyTheme(newTheme);
             } catch (error) {
                 console.warn('Theme toggle error:', error);
             }
         });
+    } else {
+        console.warn('Theme toggle button not found!');
     }
     
     // Back to Top Button
