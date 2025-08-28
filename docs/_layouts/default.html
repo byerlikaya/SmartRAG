@@ -125,7 +125,7 @@
                 <!-- Language Selector -->
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" href="#" id="languageDropdown" role="button" data-bs-toggle="dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="languageDropdown" role="button">
                             <i class="fas fa-globe me-1"></i>{% if page.lang == "tr" %}Türkçe{% elsif page.lang == "de" %}Deutsch{% elsif page.lang == "ru" %}Русский{% else %}English{% endif %}
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
@@ -140,25 +140,25 @@
         </div>
     </nav>
 
-            <!-- Main Content -->
-        <main class="main-content">
-            <div class="container-fluid">
-                <div class="content-wrapper">
-                    {% unless page.hide_title %}
-                    <div class="page-header">
-                        <h1 class="page-title">{{ page.title }}</h1>
-                        {% if page.description %}
-                        <p class="page-description">{{ page.description }}</p>
-                        {% endif %}
-                    </div>
-                    {% endunless %}
-                    
-                    <div class="page-content">
-                        {{ content }}
-                    </div>
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="container-fluid">
+            <div class="content-wrapper">
+                {% unless page.hide_title %}
+                <div class="page-header">
+                    <h1 class="page-title">{{ page.title }}</h1>
+                    {% if page.description %}
+                    <p class="page-description">{{ page.description }}</p>
+                    {% endif %}
+                </div>
+                {% endunless %}
+                
+                <div class="page-content">
+                    {{ content }}
                 </div>
             </div>
-        </main>
+        </div>
+    </main>
 
     <!-- Footer -->
     <footer class="footer">
@@ -191,6 +191,13 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     
     <!-- Custom JS -->
+    <script>
+        // Pass Jekyll variables to JavaScript
+        window.siteConfig = {
+            baseurl: '{{ site.baseurl }}',
+            currentLang: '{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}'
+        };
+    </script>
     <script src="{{ site.baseurl }}/assets/js/script.js?v={{ site.cache_bust }}"></script>
 </body>
 </html>
