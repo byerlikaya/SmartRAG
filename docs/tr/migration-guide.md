@@ -1,22 +1,9 @@
 ---
 layout: default
 title: Geçiş Rehberi
-description: SmartRAG 1.x'den 2.0.0'a geçiş için kapsamlı rehber
+description: Önceki sürümlerden yükseltin ve mevcut uygulamaları geçirin
 lang: tr
 ---
-
-<div class="page-header">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">Geçiş Rehberi: SmartRAG 1.x'den 2.0.0'a</h1>
-                <p class="page-description">
-                    .NET Standard desteği ile SmartRAG 1.x'den 2.0.0'a geçiş için kapsamlı rehber
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="page-content">
     <div class="container">

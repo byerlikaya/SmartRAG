@@ -1,22 +1,9 @@
 ---
 layout: default
 title: Migration Guide
-description: Complete migration guide from SmartRAG 1.x to 2.0.0
+description: Upgrade from previous versions and migrate existing implementations
 lang: en
 ---
-
-<div class="page-header">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">Migration Guide: SmartRAG 1.x to 2.0.0</h1>
-                <p class="page-description">
-                    Complete guide to migrate from SmartRAG 1.x to 2.0.0 with .NET Standard support
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="page-content">
     <div class="container">

@@ -291,6 +291,10 @@ h1, h2, h3, h4, h5, h6 {
     opacity: 1 !important;
 }
 
+.navbar-nav .dropdown {
+    position: relative;
+}
+
 .navbar-nav .dropdown-menu.show {
     display: block !important; /* Show when .show class is added */
     visibility: visible !important;

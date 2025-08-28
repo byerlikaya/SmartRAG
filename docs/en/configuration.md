@@ -1,22 +1,9 @@
 ---
 layout: default
 title: Configuration
-description: Configure SmartRAG for your specific needs with detailed options and best practices
+description: Configure SmartRAG with your preferred AI and storage providers
 lang: en
 ---
-
-<div class="page-header">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">Configuration</h1>
-                <p class="page-description">
-                    Configure SmartRAG for your specific needs with detailed options and best practices
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="page-content">
     <div class="container">

@@ -5,19 +5,6 @@ description: SmartRAG projesine nasıl katkıda bulunabileceğinizi öğrenin
 lang: tr
 ---
 
-<div class="page-header">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">Katkıda Bulunma</h1>
-                <p class="page-description">
-                    SmartRAG projesine nasıl katkıda bulunabileceğinizi öğrenin
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
-
 <div class="page-content">
     <div class="container">
         <!-- How to Contribute Section -->

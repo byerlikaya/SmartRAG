@@ -1,22 +1,9 @@
 ---
 layout: default
 title: Примеры
-description: Практические примеры и случаи использования для SmartRAG
+description: Практические примеры и образцы кода для интеграции SmartRAG
 lang: ru
 ---
-
-<div class="page-header">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">Примеры</h1>
-                <p class="page-description">
-                    Практические примеры и случаи использования для SmartRAG
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="page-content">
     <div class="container">

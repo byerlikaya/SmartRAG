@@ -1,22 +1,9 @@
 ---
 layout: default
 title: Beitragen
-description: Erfahren Sie, wie Sie zum SmartRAG-Projekt beitragen können
+description: Wie Sie zu SmartRAG beitragen können
 lang: de
 ---
-
-<div class="page-header">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">Beitragen</h1>
-                <p class="page-description">
-                    Erfahren Sie, wie Sie zum SmartRAG-Projekt beitragen können
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="page-content">
     <div class="container">

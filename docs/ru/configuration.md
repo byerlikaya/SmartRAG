@@ -1,22 +1,9 @@
 ---
 layout: default
 title: Конфигурация
-description: Настройте SmartRAG для ваших конкретных потребностей
+description: Настройте SmartRAG с предпочитаемыми AI и хранилищем
 lang: ru
 ---
-
-<div class="page-header">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">Конфигурация</h1>
-                <p class="page-description">
-                    Настройте SmartRAG для ваших конкретных потребностей
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="page-content">
     <div class="container">

@@ -1,22 +1,9 @@
 ---
 layout: default
 title: Erste Schritte
-description: Schnelle Installations- und Einrichtungsanleitung für SmartRAG
+description: Installieren und konfigurieren Sie SmartRAG in Ihrer .NET-Anwendung in nur wenigen Minuten
 lang: de
 ---
-
-<div class="page-header">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">Erste Schritte mit SmartRAG</h1>
-                <p class="page-description">
-                    Installieren und konfigurieren Sie SmartRAG in Ihrer .NET-Anwendung in nur wenigen Minuten
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="page-content">
     <div class="container">

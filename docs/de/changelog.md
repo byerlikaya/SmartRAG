@@ -1,22 +1,9 @@
 ---
 layout: default
-title: Changelog
-description: Verfolgen Sie neue Funktionen, Verbesserungen und Fehlerbehebungen in SmartRAG-Versionen
+title: Änderungsprotokoll
+description: Versionsverlauf und Versionshinweise für SmartRAG
 lang: de
 ---
-
-<div class="page-header">
-    <div class="container">
-        <div class="row">
-            <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">Changelog</h1>
-                <p class="page-description">
-                    Verfolgen Sie neue Funktionen, Verbesserungen und Fehlerbehebungen in SmartRAG-Versionen
-                </p>
-            </div>
-        </div>
-    </div>
-</div>
 
 <div class="page-content">
     <div class="container">
