@@ -78,6 +78,64 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
+
+    // Provider Tabs Functionality
+    const providerTabs = document.querySelectorAll('.provider-tab');
+    const providerPanels = document.querySelectorAll('.provider-panel');
+    
+    if (providerTabs.length > 0) {
+        console.log('Setting up provider tabs...');
+        
+        providerTabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                const targetTab = this.getAttribute('data-tab');
+                
+                // Remove active class from all tabs and panels
+                providerTabs.forEach(t => t.classList.remove('active'));
+                providerPanels.forEach(p => p.classList.remove('active'));
+                
+                // Add active class to clicked tab
+                this.classList.add('active');
+                
+                // Show corresponding panel
+                const targetPanel = document.getElementById(targetTab);
+                if (targetPanel) {
+                    targetPanel.classList.add('active');
+                }
+                
+                console.log('Provider tab switched to:', targetTab);
+            });
+        });
+    }
+
+    // Storage Tabs Functionality
+    const storageTabs = document.querySelectorAll('.storage-tab');
+    const storagePanels = document.querySelectorAll('.storage-panel');
+    
+    if (storageTabs.length > 0) {
+        console.log('Setting up storage tabs...');
+        
+        storageTabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                const targetTab = this.getAttribute('data-tab');
+                
+                // Remove active class from all tabs and panels
+                storageTabs.forEach(t => t.classList.remove('active'));
+                storagePanels.forEach(p => p.classList.remove('active'));
+                
+                // Add active class to clicked tab
+                this.classList.add('active');
+                
+                // Show corresponding panel
+                const targetPanel = document.getElementById(targetTab);
+                if (targetPanel) {
+                    targetPanel.classList.add('active');
+                }
+                
+                console.log('Storage tab switched to:', targetTab);
+            });
+        });
+    }
     
     // Language Selection Functionality
     const languageButtons = document.querySelectorAll('.language-btn');
