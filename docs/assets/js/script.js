@@ -50,6 +50,35 @@ document.addEventListener('DOMContentLoaded', function() {
         console.warn('Theme toggle button not found!');
     }
     
+    // Tab Functionality for Configuration Pages
+    const codeTabs = document.querySelectorAll('.code-tab');
+    const codePanels = document.querySelectorAll('.code-panel');
+    
+    if (codeTabs.length > 0) {
+        console.log('Setting up code tabs...');
+        
+        codeTabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                const targetTab = this.getAttribute('data-tab');
+                
+                // Remove active class from all tabs and panels
+                codeTabs.forEach(t => t.classList.remove('active'));
+                codePanels.forEach(p => p.classList.remove('active'));
+                
+                // Add active class to clicked tab
+                this.classList.add('active');
+                
+                // Show corresponding panel
+                const targetPanel = document.getElementById(targetTab);
+                if (targetPanel) {
+                    targetPanel.classList.add('active');
+                }
+                
+                console.log('Tab switched to:', targetTab);
+            });
+        });
+    }
+    
     // Language Selection Functionality
     const languageButtons = document.querySelectorAll('.language-btn');
     
