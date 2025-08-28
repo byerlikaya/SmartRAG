@@ -52,7 +52,7 @@ lang: ru
         <section class="content-section">
             <div class="row">
                 <div class="col-lg-8 mx-auto">
-                    <h2>Базовая конфигурация</h2>
+                    <h2>Конфигурация</h2>
                     <p>Настройте SmartRAG в вашем <code>Program.cs</code> или <code>Startup.cs</code>:</p>
                     
                     <div class="code-example">
