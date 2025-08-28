@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Getting Started
-description: Quick installation and setup guide to get you up and running with SmartRAG
+description: Quick installation and setup guide for SmartRAG
 lang: en
 ---
 
@@ -9,7 +9,7 @@ lang: en
     <div class="container">
         <div class="row">
             <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">Get Started with SmartRAG</h1>
+                <h1 class="page-title">Getting Started with SmartRAG</h1>
                 <p class="page-description">
                     Install and configure SmartRAG in your .NET application in just a few minutes
                 </p>
@@ -52,7 +52,7 @@ lang: en
         <section class="content-section">
             <div class="row">
                 <div class="col-lg-8 mx-auto">
-                    <h2>Basic Configuration</h2>
+                    <h2>Configuration</h2>
                     <p>Configure SmartRAG in your <code>Program.cs</code> or <code>Startup.cs</code>:</p>
                     
                     <div class="code-example">
