@@ -346,6 +346,91 @@ h1, h2, h3, h4, h5, h6 {
         box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
     }
     
+    /* Mobile Language Buttons - Side by Side */
+    .navbar-nav .language-btn {
+        display: inline-block !important;
+        margin: 0 0.25rem !important;
+        padding: 0.5rem 0.75rem !important;
+        font-size: 0.8rem !important;
+        border-radius: var(--radius-sm) !important;
+        background: var(--white) !important;
+        border: 1px solid var(--gray-300) !important;
+        color: var(--gray-700) !important;
+        text-align: center !important;
+        min-width: 50px !important;
+        transition: all 0.3s ease !important;
+        float: left !important;
+        width: calc(25% - 0.5rem) !important;
+    }
+    
+    /* Container for language buttons to ensure proper layout */
+    .navbar-nav .nav-item:has(.language-btn) {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        gap: 0.25rem !important;
+        justify-content: center !important;
+        width: 100% !important;
+        margin-bottom: 1rem !important;
+    }
+    
+    .navbar-nav .nav-item:has(.language-btn) .language-btn {
+        flex: 1 !important;
+        min-width: 0 !important;
+        margin: 0 0.125rem !important;
+    }
+    
+    .navbar-nav .language-btn:hover {
+        background: var(--gray-50) !important;
+        border-color: var(--primary) !important;
+        color: var(--primary) !important;
+        transform: translateY(-2px) !important;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1) !important;
+    }
+    
+    .navbar-nav .language-btn[data-lang="{{ page.lang }}"] {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%) !important;
+        color: white !important;
+        border: 2px solid var(--primary) !important;
+        font-weight: 600 !important;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4) !important;
+        transform: translateY(-1px) !important;
+        position: relative !important;
+    }
+    
+    .navbar-nav .language-btn[data-lang="{{ page.lang }}"]::after {
+        content: '' !important;
+        position: absolute !important;
+        bottom: -3px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        width: 0 !important;
+        height: 0 !important;
+        background: transparent !important;
+        border-left: 4px solid transparent !important;
+        border-right: 4px solid transparent !important;
+        border-bottom: 4px solid var(--primary) !important;
+        transition: all 0.3s ease !important;
+    }
+    
+    [data-theme="dark"] .navbar-nav .language-btn {
+        background: var(--dark-surface) !important;
+        border-color: var(--gray-600) !important;
+        color: var(--gray-300) !important;
+    }
+    
+    [data-theme="dark"] .navbar-nav .language-btn:hover {
+        background: var(--dark-bg) !important;
+        border-color: var(--primary) !important;
+        color: var(--primary-light) !important;
+    }
+    
+    [data-theme="dark"] .navbar-nav .language-btn[data-lang="{{ page.lang }}"] {
+        background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%) !important;
+        color: white !important;
+        border: 2px solid var(--primary) !important;
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.5) !important;
+    }
+    
     .navbar-nav .dropdown-menu {
         position: static;
         float: none;
