@@ -1612,7 +1612,7 @@ h1, h2, h3, h4, h5, h6 {
 /* Current language button - FORCE HIGHLIGHT */
 .language-btn[data-lang="{{ page.lang }}"] {
     color: white !important;
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%) !important;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%) !important;
     border: 2px solid var(--primary) !important;
     font-weight: 600 !important;
     box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4) !important;
@@ -1644,7 +1644,7 @@ h1, h2, h3, h4, h5, h6 {
 /* Override any conflicting styles */
 .navbar-nav .nav-link.language-btn[data-lang="{{ page.lang }}"] {
     color: white !important;
-    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%) !important;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%) !important;
     border: 2px solid rgba(255, 255, 255, 0.8) !important;
     font-weight: 600 !important;
     box-shadow: 0 2px 8px rgba(0, 123, 255, 0.4) !important;
