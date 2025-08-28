@@ -1451,21 +1451,65 @@ h1, h2, h3, h4, h5, h6 {
 /* Current language button - FORCE HIGHLIGHT */
 .language-btn[data-lang="{{ page.lang }}"] {
     color: white !important;
-    background-color: rgba(255, 255, 255, 0.25) !important;
-    border: 2px solid rgba(255, 255, 255, 0.6) !important;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%) !important;
+    border: 2px solid rgba(255, 255, 255, 0.8) !important;
     font-weight: 600 !important;
-    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2) !important;
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.4) !important;
     transform: translateY(-1px) !important;
+    position: relative;
+}
+
+.language-btn[data-lang="{{ page.lang }}"]::after {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    background: transparent;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-bottom: 4px solid var(--primary);
+    transition: all 0.3s ease;
+}
+
+.language-btn[data-lang="{{ page.lang }}"]:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.5) !important;
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%) !important;
 }
 
 /* Override any conflicting styles */
 .navbar-nav .nav-link.language-btn[data-lang="{{ page.lang }}"] {
     color: white !important;
-    background-color: rgba(255, 255, 255, 0.25) !important;
-    border: 2px solid rgba(255, 255, 255, 0.6) !important;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%) !important;
+    border: 2px solid rgba(255, 255, 255, 0.8) !important;
     font-weight: 600 !important;
-    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2) !important;
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.4) !important;
     transform: translateY(-1px) !important;
+    position: relative;
+}
+
+.navbar-nav .nav-link.language-btn[data-lang="{{ page.lang }}"]::after {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    background: transparent;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-bottom: 4px solid var(--primary);
+    transition: all 0.3s ease;
+}
+
+.navbar-nav .nav-link.language-btn[data-lang="{{ page.lang }}"]:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.5) !important;
+    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%) !important;
 }
 
 #themeToggle:hover {
