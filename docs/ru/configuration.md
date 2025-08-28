@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Конфигурация
-description: Подробные опции конфигурации и лучшие практики для SmartRAG
+description: Настройте SmartRAG для ваших конкретных потребностей
 lang: ru
 ---
 
@@ -9,9 +9,9 @@ lang: ru
     <div class="container">
         <div class="row">
             <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">Руководство по конфигурации</h1>
+                <h1 class="page-title">Конфигурация</h1>
                 <p class="page-description">
-                    Настройте SmartRAG для ваших конкретных потребностей с подробными опциями и лучшими практиками
+                    Настройте SmartRAG для ваших конкретных потребностей
                 </p>
             </div>
         </div>

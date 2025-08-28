@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Yapılandırma
-description: SmartRAG için detaylı yapılandırma seçenekleri ve en iyi uygulamalar
+description: SmartRAG'i ihtiyaçlarınıza göre yapılandırın
 lang: tr
 ---
 
@@ -9,9 +9,9 @@ lang: tr
     <div class="container">
         <div class="row">
             <div class="col-lg-8 mx-auto text-center">
-                <h1 class="page-title">Yapılandırma Rehberi</h1>
+                <h1 class="page-title">Yapılandırma</h1>
                 <p class="page-description">
-                    SmartRAG'i ihtiyaçlarınıza göre detaylı seçenekler ve en iyi uygulamalarla yapılandırın
+                    SmartRAG'i ihtiyaçlarınıza göre yapılandırın
                 </p>
             </div>
         </div>
