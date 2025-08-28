@@ -1273,6 +1273,52 @@ h1, h2, h3, h4, h5, h6 {
     transform: translateY(-2px);
 }
 
+/* Theme Toggle Button */
+#themeToggle {
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+    cursor: pointer;
+    font-size: 0.875rem;
+}
+
+#themeToggle:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-1px);
+}
+
+#themeToggle:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+}
+
+#themeToggle i {
+    font-size: 1rem;
+}
+
+/* Dark theme toggle button */
+[data-theme="dark"] #themeToggle {
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+[data-theme="dark"] #themeToggle:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Mobile responsive theme toggle */
+@media (max-width: 991.98px) {
+    #themeToggle {
+        margin: 0.5rem 0;
+        width: 100%;
+        justify-content: center;
+    }
+}
+
 /* Responsive Design */
 @media (max-width: 991.98px) {
     .navbar-nav .nav-link {
