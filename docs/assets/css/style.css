@@ -351,7 +351,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Ensure dropdown is properly positioned and visible */
 .navbar-nav .dropdown {
-    position: relative;
+    position: relative !important;
 }
 
 .navbar-nav .dropdown-menu {
@@ -365,9 +365,66 @@ h1, h2, h3, h4, h5, h6 {
     z-index: 1002 !important;
     visibility: visible !important;
     opacity: 1 !important;
+    background-color: var(--white) !important;
+    border: 1px solid var(--gray-200) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--shadow-lg) !important;
+    min-width: 200px !important;
 }
 
 .navbar-nav .dropdown-menu.show {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Override Bootstrap dropdown styles - CRITICAL */
+.dropdown-menu {
+    position: absolute !important;
+    display: none !important;
+    z-index: 9999 !important;
+}
+
+.dropdown-menu.show {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Language dropdown specific overrides */
+.navbar-nav .dropdown-menu {
+    position: absolute !important;
+    top: 100% !important;
+    right: 0 !important;
+    left: auto !important;
+    transform: none !important;
+    margin-top: 0.5rem !important;
+    display: none !important;
+    z-index: 9999 !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    background-color: var(--white) !important;
+    border: 1px solid var(--gray-200) !important;
+    border-radius: var(--radius-md) !important;
+    box-shadow: var(--shadow-lg) !important;
+    min-width: 200px !important;
+    max-height: none !important;
+    overflow: visible !important;
+}
+
+.navbar-nav .dropdown-menu.show {
+    display: block !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+
+/* Ensure dropdown container is positioned correctly */
+.navbar-nav .dropdown {
+    position: relative !important;
+}
+
+/* Force dropdown items to be visible */
+.dropdown-item {
     display: block !important;
     visibility: visible !important;
     opacity: 1 !important;
@@ -1323,6 +1380,42 @@ h1, h2, h3, h4, h5, h6 {
     visibility: visible !important;
     opacity: 1 !important;
     background-color: transparent !important;
+}
+
+/* Language Selection Buttons */
+.language-btn {
+    color: rgba(255, 255, 255, 0.7) !important;
+    font-size: 0.8rem !important;
+    font-weight: 500 !important;
+    padding: 0.25rem 0.5rem !important;
+    margin: 0 0.1rem !important;
+    border-radius: var(--radius-sm) !important;
+    transition: var(--transition) !important;
+    text-decoration: none !important;
+    border: 1px solid transparent !important;
+}
+
+.language-btn:hover {
+    color: white !important;
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* Current language button - HIGHLIGHTED */
+.language-btn[data-lang="{{ page.lang }}"] {
+    color: white !important;
+    background-color: rgba(255, 255, 255, 0.25) !important;
+    border: 2px solid rgba(255, 255, 255, 0.6) !important;
+    font-weight: 600 !important;
+    box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2) !important;
+    transform: translateY(-1px) !important;
+}
+
+/* Current language button hover */
+.language-btn[data-lang="{{ page.lang }}"]:hover {
+    background-color: rgba(255, 255, 255, 0.3) !important;
+    border-color: rgba(255, 255, 255, 0.8) !important;
+    box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3) !important;
 }
 
 #themeToggle:hover {

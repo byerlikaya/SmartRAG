@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dropdown Test</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <style>
+        body { padding-top: 80px; }
+        .test-info { 
+            background: #f8f9fa; 
+            padding: 20px; 
+            border-radius: 8px; 
+            margin: 20px 0; 
+        }
+        
+        /* Active language button for test page */
+        .language-btn.active {
+            color: white !important;
+            background-color: rgba(255, 255, 255, 0.25) !important;
+            border: 2px solid rgba(255, 255, 255, 0.6) !important;
+            font-weight: 600 !important;
+            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2) !important;
+            transform: translateY(-1px) !important;
+        }
+        
+        /* Force active button to be visible */
+        .language-btn.active,
+        .language-btn.active:hover {
+            color: white !important;
+            background-color: rgba(255, 255, 255, 0.25) !important;
+            border: 2px solid rgba(255, 255, 255, 0.6) !important;
+            font-weight: 600 !important;
+            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2) !important;
+            transform: translateY(-1px) !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <div class="container">
+            <a class="navbar-brand" href="#">
+                <span class="brand-text">SmartRAG</span>
+            </a>
+            
+            <div class="navbar-nav ms-auto">
+                <!-- Theme Toggle -->
+                <ul class="navbar-nav me-2">
+                    <li class="nav-item">
+                        <button class="btn btn-outline-light btn-sm" id="themeToggle" title="Toggle theme">
+                            <i class="fas fa-sun" id="themeIcon"></i>
+                        </button>
+                    </li>
+                </ul>
+                
+                <!-- Language Selector - Simple Buttons -->
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link language-btn" href="#" data-lang="en" style="color: white !important; background-color: rgba(255, 255, 255, 0.25) !important; border: 2px solid rgba(255, 255, 255, 0.6) !important; font-weight: 600 !important; box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2) !important; transform: translateY(-1px) !important;">
+                            <i class="fas fa-flag me-1"></i>EN
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link language-btn" href="#" data-lang="tr">
+                            <i class="fas fa-flag me-1"></i>TR
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link language-btn" href="#" data-lang="de">
+                            <i class="fas fa-flag me-1"></i>DE
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link language-btn" href="#" data-lang="ru">
+                            <i class="fas fa-flag me-1"></i>RU
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="test-info">
+            <h3>Dropdown Test Page</h3>
+            <p>Bu sayfa dropdown ve tema butonunun çalışıp çalışmadığını test etmek için oluşturuldu.</p>
+            <p><strong>Test:</strong> Sağ üstteki dil seçimi dropdown'ına tıklayın ve açılıp açılmadığını kontrol edin.</p>
+            <p><strong>Console:</strong> F12 ile console'u açın ve dropdown tıklamalarını izleyin.</p>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Status</h5>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Theme Button:</strong> <span id="themeStatus">Checking...</span></p>
+                        <p><strong>CSS Loaded:</strong> <span id="cssStatus">Checking...</span></p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <button class="btn btn-secondary" onclick="testTheme()">Test Theme</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="assets/js/script.js"></script>
+    <script>
+        // Test functions
+        function testTheme() {
+            const themeBtn = document.getElementById('themeToggle');
+            const isVisible = themeBtn && themeBtn.offsetParent !== null;
+            console.log('Theme button visible:', isVisible);
+            alert('Theme button visible: ' + isVisible);
+        }
+        
+        // Check elements on load
+        document.addEventListener('DOMContentLoaded', function() {
+            const themeBtn = document.getElementById('themeToggle');
+            const cssLoaded = document.querySelector('link[href*="style.css"]');
+            
+            document.getElementById('themeStatus').textContent = themeBtn ? 'Found' : 'Not Found';
+            document.getElementById('cssStatus').textContent = cssLoaded ? 'Loaded' : 'Not Loaded';
+        });
+    </script>
+</body>
+</html>
