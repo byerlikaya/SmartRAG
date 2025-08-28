@@ -50,6 +50,65 @@ document.addEventListener('DOMContentLoaded', function() {
         console.warn('Theme toggle button not found!');
     }
     
+    // Language Selection Functionality
+    const languageButtons = document.querySelectorAll('.language-btn');
+    
+    if (languageButtons.length > 0) {
+        console.log('Setting up language selection...');
+        
+        languageButtons.forEach(button => {
+            button.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const targetLang = this.getAttribute('data-lang');
+                const currentPath = window.location.pathname;
+                
+                console.log('Language switch requested:', targetLang);
+                console.log('Current path:', currentPath);
+                
+                // Get base URL from Jekyll site configuration
+                const baseUrl = window.siteConfig ? window.siteConfig.baseurl : '/SmartRAG';
+                console.log('Base URL:', baseUrl);
+                
+                // Remove baseurl and current language prefix if exists
+                let newPath = currentPath;
+                
+                // Remove baseurl if present
+                if (baseUrl && baseUrl !== '/') {
+                    newPath = currentPath.replace(new RegExp(`^${baseUrl}`), '');
+                    console.log('Path after removing baseurl:', newPath);
+                }
+                
+                // Remove current language prefix
+                newPath = newPath.replace(/^\/(en|tr|de|ru)/, '');
+                console.log('Path after removing language prefix:', newPath);
+                
+                // Ensure path starts with /
+                if (!newPath.startsWith('/')) {
+                    newPath = '/' + newPath;
+                }
+                
+                // Add new language prefix
+                if (newPath === '/') {
+                    newPath = `/${targetLang}/`;
+                } else {
+                    newPath = `/${targetLang}${newPath}`;
+                }
+                console.log('Path after adding language prefix:', newPath);
+                
+                // Add baseurl back
+                if (baseUrl && baseUrl !== '/') {
+                    newPath = baseUrl + newPath;
+                }
+                
+                console.log('Final URL:', newPath);
+                
+                // Navigate to new URL
+                window.location.href = newPath;
+            });
+        });
+    }
+    
     // Smooth scrolling for anchor links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function (e) {
