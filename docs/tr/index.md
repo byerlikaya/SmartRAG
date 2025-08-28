@@ -18,8 +18,8 @@ hide_title: true
                         <span>Kurumsal Hazır</span>
                     </div>
                     <h1 class="hero-title">
-                        Akıllı Uygulamalar Oluşturun 
-                        <span class="text-gradient">SmartRAG</span> ile
+                        <span class="text-gradient">SmartRAG</span> ile 
+                        Akıllı Uygulamalar Oluşturun
                     </h1>
                     <p class="hero-description">
                         Belge işleme, AI embedding'leri ve anlamsal arama için en güçlü .NET kütüphanesi. 
@@ -130,7 +130,7 @@ var results = await documentService
                         <i class="fas fa-database"></i>
                     </div>
                     <h3>Esnek Depolama</h3>
-                    <p>Esnek dağıtım seçenekleri için çoklu depolama backend'leri.</p>
+                    <p>Farklı ihtiyaçlara uygun çoklu depolama seçenekleri ile esnek dağıtım imkanı.</p>
                 </div>
             </div>
             <div class="col-lg-4 col-md-6">
