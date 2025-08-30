@@ -30,9 +30,9 @@ dotnet build</code></pre>
 
                     <h4>Bağımlılık Çakışması</h4>
                     <div class="code-example">
-                        <pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="1.1.0" /&gt;
-&lt;PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" /&gt;
-&lt;PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" /&gt;</code></pre>
+                        <pre><code class="language-xml"><PackageReference Include="SmartRAG" Version="1.1.0" />
+<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+<PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" /></code></pre>
                     </div>
 
                     <h3>Çalışma Zamanı Sorunları</h3>
@@ -113,9 +113,9 @@ builder.Logging.SetMinimumLevel(LogLevel.Debug);</code></pre>
 
                     <h5>Servis Implementasyonu</h5>
                     <div class="code-example">
-                        <pre><code class="language-csharp">private readonly ILogger&lt;DocumentService&gt; _logger;
+                        <pre><code class="language-csharp">private readonly ILogger<DocumentService> _logger;
 
-public async Task&lt;Document&gt; UploadDocumentAsync(IFormFile file)
+public async Task<Document> UploadDocumentAsync(IFormFile file)
 {
     _logger.LogInformation("Belge yükleniyor: {FileName}", file.FileName);
     // ... implementasyon
@@ -164,7 +164,7 @@ catch (Exception ex)
 public async Task UploadDocument_ValidFile_ReturnsDocument()
 {
     // Arrange
-    var mockFile = new Mock&lt;IFormFile&gt;();
+    var mockFile = new Mock<IFormFile>();
     var service = new DocumentService(mockLogger.Object);
     
     // Act
