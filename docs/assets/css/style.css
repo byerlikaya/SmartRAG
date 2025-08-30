@@ -1367,9 +1367,10 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .code-tab:hover {
-    background: var(--gray-100);
-    color: var(--primary);
-    transform: translateY(-1px);
+    background: var(--primary-dark);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
 }
 
 .code-tab:hover::before {
@@ -1377,15 +1378,17 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 [data-theme="dark"] .code-tab:hover {
-    background: var(--dark-surface);
-    color: var(--primary-light);
+    background: var(--primary-dark);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
 }
 
 .code-tab.active {
     color: white;
-    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    background: var(--primary);
     font-weight: 600;
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+    box-shadow: var(--shadow-md);
     transform: translateY(-1px);
     position: relative;
 }
@@ -1406,9 +1409,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 [data-theme="dark"] .code-tab.active {
-    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%);
+    background: var(--primary);
     color: white;
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4);
+    box-shadow: var(--shadow-md);
 }
 
 .code-panel {
