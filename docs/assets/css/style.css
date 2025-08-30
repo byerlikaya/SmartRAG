@@ -676,6 +676,11 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow: var(--shadow-md);
     margin: var(--spacing-lg) 0;
     max-width: 100%;
+    writing-mode: horizontal-tb !important;
+    flex-direction: row !important;
+    display: block !important;
+    text-orientation: mixed !important;
+    text-combine-upright: none !important;
 }
 
 [data-theme="dark"] .code-example {
@@ -694,6 +699,12 @@ h1, h2, h3, h4, h5, h6 {
     overflow-x: auto;
     word-wrap: break-word;
     white-space: pre-wrap;
+    writing-mode: horizontal-tb !important;
+    flex-direction: row !important;
+    display: block !important;
+    text-orientation: mixed !important;
+    text-combine-upright: none !important;
+    direction: ltr !important;
 }
 
 [data-theme="dark"] .code-example pre {
