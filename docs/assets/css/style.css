@@ -217,20 +217,7 @@ h1, h2, h3, h4, h5, h6 {
     transition: all 0.3s ease;
 }
 
-.navbar-nav .nav-link.active::after {
-    content: '';
-    position: absolute;
-    bottom: -2px;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 0;
-    height: 0;
-    background: transparent;
-    border-left: 6px solid transparent;
-    border-right: 6px solid transparent;
-    border-bottom: 6px solid var(--primary);
-    transition: all 0.3s ease;
-}
+/* Removed the arrow indicator from active nav links */
 
 [data-theme="dark"] .navbar-nav .nav-link.active {
     color: var(--white) !important;
@@ -238,9 +225,7 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow: 0 2px 8px rgba(0, 123, 255, 0.4);
 }
 
-[data-theme="dark"] .navbar-nav .nav-link.active::after {
-    border-bottom-color: var(--primary-light);
-}
+/* Removed the arrow indicator from active nav links in dark mode */
 
 .navbar-nav .nav-link.active:hover {
     transform: translateY(-2px);
@@ -1531,6 +1516,9 @@ h1, h2, h3, h4, h5, h6 {
     background: linear-gradient(135deg, var(--primary), var(--secondary));
     color: white;
     text-align: center;
+    margin: 0 calc(-50vw + 50%);
+    padding-left: calc(50vw - 50%);
+    padding-right: calc(50vw - 50%);
 }
 
 .cta-content h2 {
