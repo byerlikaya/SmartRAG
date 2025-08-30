@@ -85,16 +85,16 @@ lang: de
                     <h2>KI-Anbieter-Konfiguration</h2>
                     <p>Wählen Sie aus mehreren KI-Anbietern für die Embedding-Generierung:</p>
                     
-                    <div class="provider-tabs">
-                        <div class="provider-tab active" data-tab="anthropic">Anthropic</div>
-                        <div class="provider-tab" data-tab="openai">OpenAI</div>
-                        <div class="provider-tab" data-tab="azure">Azure OpenAI</div>
-                        <div class="provider-tab" data-tab="gemini">Gemini</div>
-                        <div class="provider-tab" data-tab="custom">Benutzerdefiniert</div>
+                    <div class="code-tabs">
+                        <div class="code-tab active" data-tab="anthropic">Anthropic</div>
+                        <div class="code-tab" data-tab="openai">OpenAI</div>
+                        <div class="code-tab" data-tab="azure">Azure OpenAI</div>
+                        <div class="code-tab" data-tab="gemini">Gemini</div>
+                        <div class="code-tab" data-tab="custom">Benutzerdefiniert</div>
                     </div>
                     
-                    <div class="provider-content">
-                        <div class="provider-panel active" id="anthropic">
+                    <div class="code-content">
+                        <div class="code-panel active" id="anthropic">
                             <h3>Anthropic (Claude)</h3>
                             <div class="code-example">
                                 <pre><code class="language-csharp">services.AddSmartRAG(options =>
@@ -106,7 +106,7 @@ lang: de
                             </div>
                         </div>
                         
-                        <div class="provider-panel" id="openai">
+                        <div class="code-panel" id="openai">
                             <h3>OpenAI</h3>
                             <div class="code-example">
                                 <pre><code class="language-csharp">services.AddSmartRAG(options =>
@@ -118,7 +118,7 @@ lang: de
                             </div>
                         </div>
                         
-                        <div class="provider-panel" id="azure">
+                        <div class="code-panel" id="azure">
                             <h3>Azure OpenAI</h3>
                             <div class="code-example">
                                 <pre><code class="language-csharp">services.AddSmartRAG(options =>
@@ -131,7 +131,7 @@ lang: de
                             </div>
                         </div>
                         
-                        <div class="provider-panel" id="gemini">
+                        <div class="code-panel" id="gemini">
                             <h3>Google Gemini</h3>
                             <div class="code-example">
                                 <pre><code class="language-csharp">services.AddSmartRAG(options =>
@@ -143,7 +143,7 @@ lang: de
                             </div>
                         </div>
                         
-                        <div class="provider-panel" id="custom">
+                        <div class="code-panel" id="custom">
                             <h3>Benutzerdefinierter KI-Anbieter</h3>
                             <div class="code-example">
                                 <pre><code class="language-csharp">services.AddSmartRAG(options =>
@@ -167,16 +167,16 @@ lang: de
                     <h2>Speicher-Anbieter-Konfiguration</h2>
                     <p>Wählen Sie das Speicher-Backend, das am besten zu Ihren Bedürfnissen passt:</p>
                     
-                    <div class="storage-tabs">
-                        <div class="storage-tab active" data-tab="qdrant">Qdrant</div>
-                        <div class="storage-tab" data-tab="redis">Redis</div>
-                        <div class="storage-tab" data-tab="sqlite">SQLite</div>
-                        <div class="storage-tab" data-tab="memory">In-Memory</div>
-                        <div class="storage-tab" data-tab="filesystem">Dateisystem</div>
+                    <div class="code-tabs">
+                        <div class="code-tab active" data-tab="qdrant">Qdrant</div>
+                        <div class="code-tab" data-tab="redis">Redis</div>
+                        <div class="code-tab" data-tab="sqlite">SQLite</div>
+                        <div class="code-tab" data-tab="memory">In-Memory</div>
+                        <div class="code-tab" data-tab="filesystem">Dateisystem</div>
                     </div>
                     
-                    <div class="storage-content">
-                        <div class="storage-panel active" id="qdrant">
+                    <div class="code-content">
+                        <div class="code-panel active" id="qdrant">
                             <h3>Qdrant (Vektor-Datenbank)</h3>
                             <div class="code-example">
                                 <pre><code class="language-csharp">services.AddSmartRAG(options =>
@@ -188,7 +188,7 @@ lang: de
                             </div>
                         </div>
                         
-                        <div class="storage-panel" id="redis">
+                        <div class="code-panel" id="redis">
                             <h3>Redis (In-Memory-Cache)</h3>
                             <div class="code-example">
                                 <pre><code class="language-csharp">services.AddSmartRAG(options =>
@@ -200,7 +200,7 @@ lang: de
                             </div>
                         </div>
                         
-                        <div class="storage-panel" id="sqlite">
+                        <div class="code-panel" id="sqlite">
                             <h3>SQLite (Lokale Datenbank)</h3>
                             <div class="code-example">
                                 <pre><code class="language-csharp">services.AddSmartRAG(options =>
@@ -211,7 +211,7 @@ lang: de
                             </div>
                         </div>
                         
-                        <div class="storage-panel" id="memory">
+                        <div class="code-panel" id="memory">
                             <h3>In-Memory (Entwicklung)</h3>
                             <div class="code-example">
                                 <pre><code class="language-csharp">services.AddSmartRAG(options =>
@@ -222,7 +222,7 @@ lang: de
                             </div>
                         </div>
                         
-                        <div class="storage-panel" id="filesystem">
+                        <div class="code-panel" id="filesystem">
                             <h3>Dateisystem (Lokaler Speicher)</h3>
                             <div class="code-example">
                                 <pre><code class="language-csharp">services.AddSmartRAG(options =>
