@@ -30,9 +30,9 @@ dotnet build</code></pre>
 
                     <h4>Abhängigkeitskonflikt</h4>
                     <div class="code-example">
-                        <pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="1.1.0" /&gt;
-&lt;PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" /&gt;
-&lt;PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" /&gt;</code></pre>
+                        <pre><code class="language-xml"><PackageReference Include="SmartRAG" Version="1.1.0" />
+<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+<PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" /></code></pre>
                     </div>
 
                     <h3>Laufzeitprobleme</h3>
@@ -88,7 +88,7 @@ dotnet build</code></pre>
                     <h4>Speicherverbrauch</h4>
                     <div class="code-example">
                         <pre><code class="language-csharp">// Verwenden Sie Streaming für große Dateien
-public async Task&lt;Document&gt; UploadLargeDocumentAsync(IFormFile file)
+public async Task<Document> UploadLargeDocumentAsync(IFormFile file)
 {
     using var stream = file.OpenReadStream();
     var chunks = await _documentParserService.ChunkTextAsync(stream, 1000, 200);
@@ -192,9 +192,9 @@ app.Run();</code></pre>
                         <pre><code class="language-csharp">public class DocumentController : ControllerBase
 {
     private readonly IDocumentService _documentService;
-    private readonly ILogger&lt;DocumentController&gt; _logger;
+    private readonly ILogger<DocumentController> _logger;
 
-    public DocumentController(IDocumentService documentService, ILogger&lt;DocumentController&gt; logger)
+    public DocumentController(IDocumentService documentService, ILogger<DocumentController> logger)
     {
         _documentService = documentService;
         _logger = logger;
@@ -205,7 +205,7 @@ app.Run();</code></pre>
                     <h5>Fehlerbehandlung</h5>
                     <div class="code-example">
                         <pre><code class="language-csharp">[HttpPost("upload")]
-public async Task&lt;ActionResult&lt;Document&gt;&gt; UploadDocument(IFormFile file)
+public async Task<ActionResult<Document>> UploadDocument(IFormFile file)
 {
     _logger.LogInformation("Dokument-Upload gestartet: {FileName}, Größe: {Size}", 
         file?.FileName, file?.Length);
@@ -250,7 +250,7 @@ public async Task&lt;ActionResult&lt;Document&gt;&gt; UploadDocument(IFormFile f
                     <h3>Leistungsüberwachung</h3>
                     <div class="code-example">
                         <pre><code class="language-csharp">[HttpPost("search")]
-public async Task&lt;ActionResult&lt;IEnumerable&lt;DocumentChunk&gt;&gt;&gt; SearchDocuments(
+public async Task<ActionResult<IEnumerable<DocumentChunk>>> SearchDocuments(
     [FromQuery] string query, 
     [FromQuery] int maxResults = 10)
 {
@@ -293,23 +293,23 @@ public async Task&lt;ActionResult&lt;IEnumerable&lt;DocumentChunk&gt;&gt;&gt; Se
 public async Task UploadDocument_ValidFile_ReturnsDocument()
 {
     // Arrange
-    var mockFile = new Mock&lt;IFormFile&gt;();
+    var mockFile = new Mock<IFormFile>();
     mockFile.Setup(f => f.FileName).Returns("test.pdf");
     mockFile.Setup(f => f.Length).Returns(1024);
     mockFile.Setup(f => f.ContentType).Returns("application/pdf");
     
-    var mockDocumentService = new Mock&lt;IDocumentService&gt;();
+    var mockDocumentService = new Mock<IDocumentService>();
     var expectedDocument = new Document { Id = "test-id", FileName = "test.pdf" };
-    mockDocumentService.Setup(s => s.UploadDocumentAsync(It.IsAny&lt;IFormFile&gt;()))
+    mockDocumentService.Setup(s => s.UploadDocumentAsync(It.IsAny<IFormFile>()))
                       .ReturnsAsync(expectedDocument);
     
-    var controller = new DocumentController(mockDocumentService.Object, Mock.Of&lt;ILogger&lt;DocumentController&gt;&gt;());
+    var controller = new DocumentController(mockDocumentService.Object, Mock.Of<ILogger<DocumentController>>());
     
     // Act
     var result = await controller.UploadDocument(mockFile.Object);
     
     // Assert
-    Assert.IsInstanceOf&lt;OkObjectResult&gt;(result);
+    Assert.IsInstanceOf<OkObjectResult>(result);
     var okResult = result as OkObjectResult;
     Assert.AreEqual(expectedDocument, okResult.Value);
 }</code></pre>
@@ -323,7 +323,7 @@ public async Task SearchDocuments_IntegrationTest()
     // Arrange
     var host = CreateTestHost();
     using var scope = host.Services.CreateScope();
-    var documentService = scope.ServiceProvider.GetRequiredService&lt;IDocumentService&gt;();
+    var documentService = scope.ServiceProvider.GetRequiredService<IDocumentService>();
     
     // Testdaten laden
     var testFile = CreateTestFile("test-document.txt", "Dies ist ein Testdokument.");
@@ -371,7 +371,7 @@ public async Task UploadDocument_ApiTest()
     // Assert
     response.EnsureSuccessStatusCode();
     var responseContent = await response.Content.ReadAsStringAsync();
-    var document = JsonSerializer.Deserialize&lt;Document&gt;(responseContent);
+    var document = JsonSerializer.Deserialize<Document>(responseContent);
     Assert.IsNotNull(document);
     Assert.AreEqual("test-file.pdf", document.FileName);
 }</code></pre>
@@ -431,15 +431,15 @@ public async Task UploadDocument_ApiTest()
                         <pre><code class="language-csharp">public class SmartRAGHealthCheck : IHealthCheck
 {
     private readonly IDocumentService _documentService;
-    private readonly ILogger&lt;SmartRAGHealthCheck&gt; _logger;
+    private readonly ILogger<SmartRAGHealthCheck> _logger;
 
-    public SmartRAGHealthCheck(IDocumentService documentService, ILogger&lt;SmartRAGHealthCheck&gt; logger)
+    public SmartRAGHealthCheck(IDocumentService documentService, ILogger<SmartRAGHealthCheck> logger)
     {
         _documentService = documentService;
         _logger = logger;
     }
 
-    public async Task&lt;HealthCheckResult&gt; CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+    public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
     {
         try
         {
