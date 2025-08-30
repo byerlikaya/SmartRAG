@@ -171,6 +171,8 @@ app.Run();</code></pre>
                     <p>Debugging-Techniken für Ihre SmartRAG-Anwendung.</p>
                     
                     <h3>Protokollierungskonfiguration</h3>
+                    
+                    <h5>Logging-Konfiguration</h5>
                     <div class="code-example">
                         <pre><code class="language-json">// appsettings.json
 {
@@ -185,7 +187,7 @@ app.Run();</code></pre>
 }</code></pre>
                     </div>
 
-                    <h3>Detailliertes Debugging</h3>
+                    <h5>Controller-Implementierung</h5>
                     <div class="code-example">
                         <pre><code class="language-csharp">public class DocumentController : ControllerBase
 {
@@ -197,47 +199,50 @@ app.Run();</code></pre>
         _documentService = documentService;
         _logger = logger;
     }
+}</code></pre>
+                    </div>
 
-    [HttpPost("upload")]
-    public async Task&lt;ActionResult&lt;Document&gt;&gt; UploadDocument(IFormFile file)
+                    <h5>Fehlerbehandlung</h5>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[HttpPost("upload")]
+public async Task&lt;ActionResult&lt;Document&gt;&gt; UploadDocument(IFormFile file)
+{
+    _logger.LogInformation("Dokument-Upload gestartet: {FileName}, Größe: {Size}", 
+        file?.FileName, file?.Length);
+
+    try
     {
-        _logger.LogInformation("Dokument-Upload gestartet: {FileName}, Größe: {Size}", 
-            file?.FileName, file?.Length);
+        if (file == null || file.Length == 0)
+        {
+            _logger.LogWarning("Datei ist null oder leer");
+            return BadRequest("Keine Datei ausgewählt");
+        }
 
-        try
-        {
-            if (file == null || file.Length == 0)
-            {
-                _logger.LogWarning("Datei ist null oder leer");
-                return BadRequest("Keine Datei ausgewählt");
-            }
-
-            _logger.LogDebug("Datei validiert, Verarbeitung beginnt");
-            var document = await _documentService.UploadDocumentAsync(file);
-            
-            _logger.LogInformation("Dokument erfolgreich hochgeladen: {DocumentId}", document.Id);
-            return Ok(document);
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogError(ex, "Ungültiges Dateiformat: {FileName}", file?.FileName);
-            return BadRequest($"Ungültiges Dateiformat: {ex.Message}");
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            _logger.LogError(ex, "API-Schlüssel-Fehler");
-            return Unauthorized("Ungültiger API-Schlüssel");
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogError(ex, "Netzwerkverbindungsfehler");
-            return StatusCode(503, "Service vorübergehend nicht verfügbar");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unerwarteter Fehler aufgetreten");
-            return StatusCode(500, "Interner Serverfehler");
-        }
+        _logger.LogDebug("Datei validiert, Verarbeitung beginnt");
+        var document = await _documentService.UploadDocumentAsync(file);
+        
+        _logger.LogInformation("Dokument erfolgreich hochgeladen: {DocumentId}", document.Id);
+        return Ok(document);
+    }
+    catch (ArgumentException ex)
+    {
+        _logger.LogError(ex, "Ungültiges Dateiformat: {FileName}", file?.FileName);
+        return BadRequest($"Ungültiges Dateiformat: {ex.Message}");
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+        _logger.LogError(ex, "API-Schlüssel-Fehler");
+        return Unauthorized("Ungültiger API-Schlüssel");
+    }
+    catch (HttpRequestException ex)
+    {
+        _logger.LogError(ex, "Netzwerkverbindungsfehler");
+        return StatusCode(503, "Service vorübergehend nicht verfügbar");
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Unerwarteter Fehler aufgetreten");
+        return StatusCode(500, "Interner Serverfehler");
     }
 }</code></pre>
                     </div>
