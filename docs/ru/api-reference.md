@@ -19,12 +19,12 @@ lang: ru
                     <div class="code-example">
                         <pre><code class="language-csharp">public interface IDocumentService
 {
-    Task&lt;Document&gt; UploadDocumentAsync(IFormFile file);
-    Task&lt;Document&gt; GetDocumentByIdAsync(string id);
-    Task&lt;IEnumerable&lt;Document&gt;&gt; GetAllDocumentsAsync();
-    Task&lt;bool&gt; DeleteDocumentAsync(string id);
-    Task&lt;IEnumerable&lt;DocumentChunk&gt;&gt; SearchDocumentsAsync(string query, int maxResults = 5);
-    Task&lt;RagResponse&gt; GenerateRagAnswerAsync(string query, int maxResults = 5);
+    Task<Document> UploadDocumentAsync(IFormFile file);
+    Task<Document> GetDocumentByIdAsync(string id);
+    Task<IEnumerable<Document>> GetAllDocumentsAsync();
+    Task<bool> DeleteDocumentAsync(string id);
+    Task<IEnumerable<DocumentChunk>> SearchDocumentsAsync(string query, int maxResults = 5);
+    Task<RagResponse> GenerateRagAnswerAsync(string query, int maxResults = 5);
 }</code></pre>
                     </div>
 
@@ -33,9 +33,9 @@ lang: ru
                     <div class="code-example">
                         <pre><code class="language-csharp">public interface IDocumentParserService
 {
-    Task&lt;string&gt; ParseDocumentAsync(IFormFile file);
+    Task<string> ParseDocumentAsync(IFormFile file);
     bool CanParse(string fileName);
-    Task&lt;IEnumerable&lt;string&gt;&gt; ChunkTextAsync(string text, int chunkSize = 1000, int overlap = 200);
+    Task<IEnumerable<string>> ChunkTextAsync(string text, int chunkSize = 1000, int overlap = 200);
 }</code></pre>
                     </div>
 
@@ -44,8 +44,8 @@ lang: ru
                     <div class="code-example">
                         <pre><code class="language-csharp">public interface IDocumentSearchService
 {
-    Task&lt;List&lt;DocumentChunk&gt;&gt; SearchDocumentsAsync(string query, int maxResults = 5);
-    Task&lt;RagResponse&gt; GenerateRagAnswerAsync(string query, int maxResults = 5);
+    Task<List<DocumentChunk>> SearchDocumentsAsync(string query, int maxResults = 5);
+    Task<RagResponse> GenerateRagAnswerAsync(string query, int maxResults = 5);
 }</code></pre>
                     </div>
 
@@ -54,9 +54,9 @@ lang: ru
                     <div class="code-example">
                         <pre><code class="language-csharp">public interface IAIService
 {
-    Task&lt;float[]&gt; GenerateEmbeddingAsync(string text);
-    Task&lt;string&gt; GenerateTextAsync(string prompt);
-    Task&lt;string&gt; GenerateTextAsync(string prompt, string context);
+    Task<float[]> GenerateEmbeddingAsync(string text);
+    Task<string> GenerateTextAsync(string prompt);
+    Task<string> GenerateTextAsync(string prompt, string context);
 }</code></pre>
                     </div>
                 </div>
@@ -80,7 +80,7 @@ lang: ru
     public string ContentType { get; set; }
     public long FileSize { get; set; }
     public DateTime UploadedAt { get; set; }
-    public List&lt;DocumentChunk&gt; Chunks { get; set; }
+    public List<DocumentChunk> Chunks { get; set; }
 }</code></pre>
                     </div>
 
@@ -102,7 +102,7 @@ lang: ru
                         <pre><code class="language-csharp">public class RagResponse
 {
     public string Answer { get; set; }
-    public List&lt;SearchSource&gt; Sources { get; set; }
+    public List<SearchSource> Sources { get; set; }
     public DateTime SearchedAt { get; set; }
     public RagConfiguration Configuration { get; set; }
 }</code></pre>
@@ -203,7 +203,7 @@ services.AddSmartRAG(configuration, options =>
     options.RetryDelayMs = 2000;
     options.RetryPolicy = RetryPolicy.ExponentialBackoff;
     options.EnableFallbackProviders = true;
-    options.FallbackProviders = new List&lt;AIProvider&gt; 
+    options.FallbackProviders = new List<AIProvider> 
     { 
         AIProvider.Anthropic, 
         AIProvider.Gemini 
@@ -224,7 +224,7 @@ services.AddSmartRAG(configuration, options =>
                     <h3>Загрузка документа</h3>
                     <div class="code-example">
                         <pre><code class="language-csharp">[HttpPost("upload")]
-public async Task&lt;ActionResult&lt;Document&gt;&gt; UploadDocument(IFormFile file)
+public async Task<ActionResult<Document>> UploadDocument(IFormFile file)
 {
     try
     {
@@ -241,7 +241,7 @@ public async Task&lt;ActionResult&lt;Document&gt;&gt; UploadDocument(IFormFile f
                     <h3>Поиск документов</h3>
                     <div class="code-example">
                         <pre><code class="language-csharp">[HttpGet("search")]
-public async Task&lt;ActionResult&lt;IEnumerable&lt;DocumentChunk&gt;&gt;&gt; SearchDocuments(
+public async Task<ActionResult<IEnumerable<DocumentChunk>>> SearchDocuments(
     [FromQuery] string query, 
     [FromQuery] int maxResults = 10)
 {
@@ -260,7 +260,7 @@ public async Task&lt;ActionResult&lt;IEnumerable&lt;DocumentChunk&gt;&gt;&gt; Se
                     <h3>Генерация RAG ответа</h3>
                     <div class="code-example">
                         <pre><code class="language-csharp">[HttpPost("ask")]
-public async Task&lt;ActionResult&lt;RagResponse&gt;&gt; AskQuestion([FromBody] string question)
+public async Task<ActionResult<RagResponse>> AskQuestion([FromBody] string question)
 {
     try
     {

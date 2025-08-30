@@ -300,7 +300,7 @@ var results = await documentService
                         </div>
                         <div class="code-panel" id="use">
                             <pre><code class="language-csharp">var documentService = serviceProvider
-    .GetRequiredService&lt;IDocumentService&gt;();
+    .GetRequiredService<IDocumentService>();
 
 var results = await documentService
     .SearchAsync("your query");</code></pre>
