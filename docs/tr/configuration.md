@@ -95,7 +95,6 @@ lang: tr
                     
                     <div class="code-content">
                         <div class="code-panel active" id="anthropic">
-                            <h3>Anthropic (Claude)</h3>
                             <div class="code-example">
                                 <pre><code class="language-csharp">services.AddSmartRAG(options =>
 {
@@ -107,7 +106,6 @@ lang: tr
                         </div>
                         
                         <div class="code-panel" id="openai">
-                            <h3>OpenAI</h3>
                             <div class="code-example">
                                 <pre><code class="language-csharp">services.AddSmartRAG(options =>
 {
@@ -119,7 +117,6 @@ lang: tr
                         </div>
                         
                         <div class="code-panel" id="azure">
-                            <h3>Azure OpenAI</h3>
                             <div class="code-example">
                                 <pre><code class="language-csharp">services.AddSmartRAG(options =>
 {
@@ -132,7 +129,6 @@ lang: tr
                         </div>
                         
                         <div class="code-panel" id="gemini">
-                            <h3>Google Gemini</h3>
                             <div class="code-example">
                                 <pre><code class="language-csharp">services.AddSmartRAG(options =>
 {
@@ -144,7 +140,6 @@ lang: tr
                         </div>
                         
                         <div class="code-panel" id="custom">
-                            <h3>Özel AI Provider</h3>
                             <div class="code-example">
                                 <pre><code class="language-csharp">services.AddSmartRAG(options =>
 {
@@ -177,7 +172,6 @@ lang: tr
                     
                     <div class="code-content">
                         <div class="code-panel active" id="qdrant">
-                            <h3>Qdrant (Vektör Veritabanı)</h3>
                             <div class="code-example">
                                 <pre><code class="language-csharp">services.AddSmartRAG(options =>
 {
@@ -189,7 +183,6 @@ lang: tr
                         </div>
                         
                         <div class="code-panel" id="redis">
-                            <h3>Redis (Bellek İçi Önbellek)</h3>
                             <div class="code-example">
                                 <pre><code class="language-csharp">services.AddSmartRAG(options =>
 {
@@ -201,7 +194,6 @@ lang: tr
                         </div>
                         
                         <div class="code-panel" id="sqlite">
-                            <h3>SQLite (Yerel Veritabanı)</h3>
                             <div class="code-example">
                                 <pre><code class="language-csharp">services.AddSmartRAG(options =>
 {
@@ -212,7 +204,6 @@ lang: tr
                         </div>
                         
                         <div class="code-panel" id="memory">
-                            <h3>Bellek İçi (Geliştirme)</h3>
                             <div class="code-example">
                                 <pre><code class="language-csharp">services.AddSmartRAG(options =>
 {
@@ -223,7 +214,6 @@ lang: tr
                         </div>
                         
                         <div class="code-panel" id="filesystem">
-                            <h3>Dosya Sistemi (Yerel Depolama)</h3>
                             <div class="code-example">
                                 <pre><code class="language-csharp">services.AddSmartRAG(options =>
 {
