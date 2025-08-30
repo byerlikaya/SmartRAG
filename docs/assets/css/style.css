@@ -675,6 +675,7 @@ h1, h2, h3, h4, h5, h6 {
     overflow: hidden;
     box-shadow: var(--shadow-md);
     margin: var(--spacing-lg) 0;
+    max-width: 100%;
 }
 
 [data-theme="dark"] .code-example {
@@ -691,6 +692,8 @@ h1, h2, h3, h4, h5, h6 {
     font-size: 0.875rem;
     line-height: 1.6;
     overflow-x: auto;
+    word-wrap: break-word;
+    white-space: pre-wrap;
 }
 
 [data-theme="dark"] .code-example pre {

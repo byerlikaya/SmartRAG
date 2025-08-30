@@ -17,7 +17,7 @@ lang: en
                     <h3>Simple Document Upload</h3>
                     <div class="code-example">
                         <pre><code class="language-csharp">[HttpPost("upload")]
-public async Task&lt;ActionResult&lt;Document&gt;&gt; UploadDocument(IFormFile file)
+public async Task<ActionResult<Document>> UploadDocument(IFormFile file)
 {
     try
     {
@@ -34,7 +34,7 @@ public async Task&lt;ActionResult&lt;Document&gt;&gt; UploadDocument(IFormFile f
                     <h3>Document Search</h3>
                     <div class="code-example">
                         <pre><code class="language-csharp">[HttpGet("search")]
-public async Task&lt;ActionResult&lt;IEnumerable&lt;DocumentChunk&gt;&gt;&gt; SearchDocuments(
+public async Task<ActionResult<IEnumerable<DocumentChunk>>> SearchDocuments(
     [FromQuery] string query, 
     [FromQuery] int maxResults = 10)
 {
@@ -62,8 +62,8 @@ public async Task&lt;ActionResult&lt;IEnumerable&lt;DocumentChunk&gt;&gt;&gt; Se
                     
                     <h3>Batch Document Processing</h3>
                     <div class="code-example">
-                        <pre><code class="language-csharp">public async Task&lt;IEnumerable&lt;Document&gt;&gt; ProcessMultipleDocumentsAsync(
-    IEnumerable&lt;IFormFile&gt; files)
+                        <pre><code class="language-csharp">public async Task<IEnumerable<Document>> ProcessMultipleDocumentsAsync(
+    IEnumerable<IFormFile> files)
 {
     var tasks = files.Select(async file =>
     {
@@ -86,7 +86,7 @@ public async Task&lt;ActionResult&lt;IEnumerable&lt;DocumentChunk&gt;&gt;&gt; Se
                     <h3>Smart Query Intent Detection</h3>
                     <p>Automatically route queries to chat or document search based on intent analysis:</p>
                     <div class="code-example">
-                        <pre><code class="language-csharp">public async Task&lt;QueryResult&gt; ProcessQueryAsync(string query)
+                        <pre><code class="language-csharp">public async Task<QueryResult> ProcessQueryAsync(string query)
 {
     // Analyze query intent
     var intent = await _queryIntentService.AnalyzeIntentAsync(query);
@@ -127,7 +127,7 @@ public async Task&lt;ActionResult&lt;IEnumerable&lt;DocumentChunk&gt;&gt;&gt; Se
                     <h4>Enhanced Semantic Search</h4>
                     <p>Advanced search with hybrid scoring (80% semantic + 20% keyword) and context awareness:</p>
                     <div class="code-example">
-                        <pre><code class="language-csharp">public async Task&lt;IEnumerable&lt;SearchResult&gt;&gt; EnhancedSearchAsync(
+                        <pre><code class="language-csharp">public async Task<IEnumerable<SearchResult>> EnhancedSearchAsync(
     string query, 
     SearchOptions options = null)
 {
@@ -174,10 +174,10 @@ public async Task&lt;ActionResult&lt;IEnumerable&lt;DocumentChunk&gt;&gt;&gt; Se
 
                     <h5>Service Usage</h5>
                     <div class="code-example">
-                        <pre><code class="language-csharp">public async Task&lt;IEnumerable&lt;float[]&gt;&gt; GenerateEmbeddingsAsync(
-    IEnumerable&lt;string&gt; texts)
+                        <pre><code class="language-csharp">public async Task<IEnumerable<float[]>> GenerateEmbeddingsAsync(
+    IEnumerable<string> texts)
 {
-    var embeddingService = serviceProvider.GetRequiredService&lt;IVoyageAIEmbeddingService&gt;();
+    var embeddingService = serviceProvider.GetRequiredService<IVoyageAIEmbeddingService>();
     var embeddings = await embeddingService.GenerateEmbeddingsAsync(texts);
     return embeddings;
 }</code></pre>
@@ -196,7 +196,7 @@ public async Task&lt;ActionResult&lt;IEnumerable&lt;DocumentChunk&gt;&gt;&gt; Se
     MaxRetries = 3,
     Timeout = TimeSpan.FromSeconds(30),
     EnableCompression = true,
-    CustomHeaders = new Dictionary&lt;string, string&gt;
+    CustomHeaders = new Dictionary<string, string>
     {
         ["User-Agent"] = "SmartRAG/1.1.0"
     }
@@ -215,12 +215,12 @@ services.AddSmartRAG(options =>
                     <h5>Controller Implementation</h5>
                     <div class="code-example">
                         <pre><code class="language-csharp">[HttpPost("generate-embeddings")]
-public async Task&lt;ActionResult&lt;EmbeddingResponse&gt;&gt; GenerateEmbeddings(
+public async Task<ActionResult<EmbeddingResponse>> GenerateEmbeddings(
     [FromBody] EmbeddingRequest request)
 {
     try
     {
-        var embeddingService = _serviceProvider.GetRequiredService&lt;IVoyageAIEmbeddingService&gt;();
+        var embeddingService = _serviceProvider.GetRequiredService<IVoyageAIEmbeddingService>();
         var embeddings = await embeddingService.GenerateEmbeddingsAsync(request.Texts);
         
         return Ok(new EmbeddingResponse
@@ -258,7 +258,7 @@ services.AddSmartRAG(options =>
 
 // Use in your controller
 [HttpGet("enhanced-search")]
-public async Task&lt;ActionResult&lt;IEnumerable&lt;SearchResult&gt;&gt;&gt; EnhancedSearch(
+public async Task<ActionResult<IEnumerable<SearchResult>>> EnhancedSearch(
     [FromQuery] string query,
     [FromQuery] int maxResults = 20)
 {
@@ -290,7 +290,7 @@ public async Task&lt;ActionResult&lt;IEnumerable&lt;SearchResult&gt;&gt;&gt; Enh
 
                     <h5>Query Processing</h5>
                     <div class="code-example">
-                        <pre><code class="language-csharp">public async Task&lt;QueryResult&gt; ProcessMultilingualQueryAsync(string query)
+                        <pre><code class="language-csharp">public async Task<QueryResult> ProcessMultilingualQueryAsync(string query)
 {
     // Language is automatically detected
     var detectedLanguage = await _languageService.DetectLanguageAsync(query);
@@ -335,7 +335,7 @@ services.AddSmartRAG(options =>
                     <h5>Multilingual Upload Controller</h5>
                     <div class="code-example">
                         <pre><code class="language-csharp">[HttpPost("multilingual-upload")]
-public async Task&lt;ActionResult&lt;MultilingualUploadResult&gt;&gt; UploadMultilingualDocument(
+public async Task<ActionResult<MultilingualUploadResult>> UploadMultilingualDocument(
     [FromBody] MultilingualUploadRequest request)
 {
     try
@@ -368,7 +368,7 @@ public async Task&lt;ActionResult&lt;MultilingualUploadResult&gt;&gt; UploadMult
                     <h5>Multilingual Search Controller</h5>
                     <div class="code-example">
                         <pre><code class="language-csharp">[HttpGet("multilingual-search")]
-public async Task&lt;ActionResult&lt;MultilingualSearchResult&gt;&gt; SearchMultilingual(
+public async Task<ActionResult<MultilingualSearchResult>> SearchMultilingual(
     [FromQuery] string query,
     [FromQuery] string[] languages = null,
     [FromQuery] int maxResults = 20)
@@ -406,7 +406,7 @@ public async Task&lt;ActionResult&lt;MultilingualSearchResult&gt;&gt; SearchMult
                     <h4>Anthropic API Retry Mechanism</h4>
                     <p>Advanced retry logic for handling HTTP 529 (Overloaded) errors:</p>
                     <div class="code-example">
-                        <pre><code class="language-csharp">public async Task&lt;ChatResponse&gt; ProcessWithRetryAsync(string prompt, int maxRetries = 3)
+                        <pre><code class="language-csharp">public async Task<ChatResponse> ProcessWithRetryAsync(string prompt, int maxRetries = 3)
 {
     var retryPolicy = new ExponentialBackoffRetryPolicy
     {
@@ -519,7 +519,7 @@ options.RetryConfiguration.CustomRetryPredicate = async (exception, attempt) =>
         _logger = logger;
     }
 
-    public async Task&lt;ChatResponse&gt; ChatWithRetryAsync(ChatRequest request)
+    public async Task<ChatResponse> ChatWithRetryAsync(ChatRequest request)
     {
         return await _retryPolicy.ExecuteAsync(async () =>
         {
@@ -567,7 +567,7 @@ options.RetryConfiguration.CustomRetryPredicate = async (exception, attempt) =>
         _resetTimeout = resetTimeout ?? TimeSpan.FromMinutes(5);
     }
 
-    public async Task&lt;T&gt; ExecuteAsync&lt;T&gt;(Func&lt;Task&lt;T&gt;&gt; action)
+    public async Task<T> ExecuteAsync<T>(Func<Task<T>> action)
     {
         if (_state == CircuitBreakerState.Open)
         {
@@ -615,7 +615,7 @@ options.RetryConfiguration.CustomRetryPredicate = async (exception, attempt) =>
                     <h5>Controller Implementation</h5>
                     <div class="code-example">
                         <pre><code class="language-csharp">[HttpPost("chat-with-retry")]
-public async Task&lt;ActionResult&lt;ChatResponse&gt;&gt; ChatWithRetry([FromBody] ChatRequest request)
+public async Task<ActionResult<ChatResponse>> ChatWithRetry([FromBody] ChatRequest request)
 {
     try
     {
@@ -655,7 +655,7 @@ services.AddSmartRAG(options =>
 
 // Use in your controller
 [HttpPost("query")]
-public async Task&lt;ActionResult&lt;QueryResult&gt;&gt; ProcessQuery([FromBody] QueryRequest request)
+public async Task<ActionResult<QueryResult>> ProcessQuery([FromBody] QueryRequest request)
 {
     var result = await _queryProcessor.ProcessQueryAsync(request.Query);
     return Ok(result);
@@ -666,9 +666,9 @@ public async Task&lt;ActionResult&lt;QueryResult&gt;&gt; ProcessQuery([FromBody]
                     <div class="code-example">
                         <pre><code class="language-csharp">public class CustomChunkingStrategy : IChunkingStrategy
 {
-    public IEnumerable&lt;string&gt; ChunkText(string text, int chunkSize, int overlap)
+    public IEnumerable<string> ChunkText(string text, int chunkSize, int overlap)
     {
-        var chunks = new List&lt;string&gt;();
+        var chunks = new List<string>();
         var sentences = text.Split(new[] { '.', '!', '?' }, 
             StringSplitOptions.RemoveEmptyEntries);
         
@@ -710,7 +710,7 @@ public async Task&lt;ActionResult&lt;QueryResult&gt;&gt; ProcessQuery([FromBody]
         _apiKey = configuration["CustomAI:ApiKey"];
     }
     
-    public async Task&lt;float[]&gt; GenerateEmbeddingAsync(string text)
+    public async Task<float[]> GenerateEmbeddingAsync(string text)
     {
         var request = new
         {
@@ -723,7 +723,7 @@ public async Task&lt;ActionResult&lt;QueryResult&gt;&gt; ProcessQuery([FromBody]
         
         response.EnsureSuccessStatusCode();
         
-        var result = await response.Content.ReadFromJsonAsync&lt;EmbeddingResponse&gt;();
+        var result = await response.Content.ReadFromJsonAsync<EmbeddingResponse>();
         return result.Embedding;
     }
 }</code></pre>
@@ -746,18 +746,18 @@ public async Task&lt;ActionResult&lt;QueryResult&gt;&gt; ProcessQuery([FromBody]
 public class DocumentsController : ControllerBase
 {
     private readonly IDocumentService _documentService;
-    private readonly ILogger&lt;DocumentsController&gt; _logger;
+    private readonly ILogger<DocumentsController> _logger;
     
     public DocumentsController(
         IDocumentService documentService,
-        ILogger&lt;DocumentsController&gt; logger)
+        ILogger<DocumentsController> logger)
     {
         _documentService = documentService;
         _logger = logger;
     }
     
     [HttpPost("upload")]
-    public async Task&lt;ActionResult&lt;Document&gt;&gt; UploadDocument(IFormFile file)
+    public async Task<ActionResult<Document>> UploadDocument(IFormFile file)
     {
         if (file == null || file.Length == 0)
             return BadRequest("No file provided");
@@ -776,7 +776,7 @@ public class DocumentsController : ControllerBase
     }
     
     [HttpGet("search")]
-    public async Task&lt;ActionResult&lt;IEnumerable&lt;DocumentChunk&gt;&gt;&gt; SearchDocuments(
+    public async Task<ActionResult<IEnumerable<DocumentChunk>>> SearchDocuments(
         [FromQuery] string query, 
         [FromQuery] int maxResults = 10)
     {
@@ -796,7 +796,7 @@ public class DocumentsController : ControllerBase
     }
     
     [HttpGet("{id}")]
-    public async Task&lt;ActionResult&lt;Document&gt;&gt; GetDocument(string id)
+    public async Task<ActionResult<Document>> GetDocument(string id)
     {
         try
         {
@@ -814,7 +814,7 @@ public class DocumentsController : ControllerBase
     }
     
     [HttpDelete("{id}")]
-    public async Task&lt;ActionResult&gt; DeleteDocument(string id)
+    public async Task<ActionResult> DeleteDocument(string id)
     {
         try
         {
@@ -862,7 +862,7 @@ public class DocumentsController : ControllerBase
         });
         
         var serviceProvider = services.BuildServiceProvider();
-        var documentService = serviceProvider.GetRequiredService&lt;IDocumentService&gt;();
+        var documentService = serviceProvider.GetRequiredService<IDocumentService>();
         
         Console.WriteLine("SmartRAG Console Application");
         Console.WriteLine("============================");
