@@ -14,8 +14,22 @@ lang: tr
                     <h2>Kurulum</h2>
                     <p>SmartRAG NuGet paketi olarak mevcuttur ve .NET Standard 2.0/2.1'i destekler, bu da .NET Framework 4.6.1+, .NET Core 2.0+ ve .NET 5+ uygulamalarıyla uyumlu olmasını sağlar. Tercih ettiğiniz kurulum yöntemini seçin:</p>
                     
-                    <div class="code-example">
-                        <pre><code class="language-bash">dotnet add package SmartRAG</code></pre>
+                    <div class="code-tabs">
+                        <div class="code-tab active" data-tab="cli">.NET CLI</div>
+                        <div class="code-tab" data-tab="pm">Package Manager</div>
+                        <div class="code-tab" data-tab="xml">Package Reference</div>
+                    </div>
+                    
+                    <div class="code-content">
+                        <div class="code-panel active" id="cli">
+                            <pre><code class="language-bash">dotnet add package SmartRAG</code></pre>
+                        </div>
+                        <div class="code-panel" id="pm">
+                            <pre><code class="language-bash">Install-Package SmartRAG</code></pre>
+                        </div>
+                        <div class="code-panel" id="xml">
+                            <pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="1.0.0" /&gt;</code></pre>
+                        </div>
                     </div>
                 </div>
             </div>
