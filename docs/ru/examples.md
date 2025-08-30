@@ -21,16 +21,16 @@ lang: ru
 public class DocumentController : ControllerBase
 {
     private readonly IDocumentService _documentService;
-    private readonly ILogger&lt;DocumentController&gt; _logger;
+    private readonly ILogger<DocumentController> _logger;
 
-    public DocumentController(IDocumentService documentService, ILogger&lt;DocumentController&gt; logger)
+    public DocumentController(IDocumentService documentService, ILogger<DocumentController> logger)
     {
         _documentService = documentService;
         _logger = logger;
     }
 
     [HttpPost("upload")]
-    public async Task&lt;ActionResult&lt;Document&gt;&gt; UploadDocument(IFormFile file)
+    public async Task<ActionResult<Document>> UploadDocument(IFormFile file)
     {
         try
         {
@@ -50,7 +50,7 @@ public class DocumentController : ControllerBase
     }
 
     [HttpGet("search")]
-    public async Task&lt;ActionResult&lt;IEnumerable&lt;DocumentChunk&gt;&gt;&gt; SearchDocuments(
+    public async Task<ActionResult<IEnumerable<DocumentChunk>>> SearchDocuments(
         [FromQuery] string query, 
         [FromQuery] int maxResults = 10)
     {
@@ -76,7 +76,7 @@ public class DocumentController : ControllerBase
                     <h3>Генерация RAG ответа</h3>
                     <div class="code-example">
                         <pre><code class="language-csharp">[HttpPost("ask")]
-public async Task&lt;ActionResult&lt;RagResponse&gt;&gt; AskQuestion([FromBody] AskQuestionRequest request)
+public async Task<ActionResult<RagResponse>> AskQuestion([FromBody] AskQuestionRequest request)
 {
     try
     {
@@ -115,7 +115,7 @@ public class AskQuestionRequest
                     <h3>Умное определение намерения запроса</h3>
                     <p>Автоматически направляйте запросы в чат или поиск документов на основе анализа намерения:</p>
                     <div class="code-example">
-                        <pre><code class="language-csharp">public async Task&lt;QueryResult&gt; ProcessQueryAsync(string query)
+                        <pre><code class="language-csharp">public async Task<QueryResult> ProcessQueryAsync(string query)
 {
     // Анализировать намерение запроса
     var intent = await _queryIntentService.AnalyzeIntentAsync(query);
@@ -156,7 +156,7 @@ public class AskQuestionRequest
                     <h4>Расширенный семантический поиск</h4>
                     <p>Расширенный поиск с гибридной оценкой (80% семантическая + 20% ключевые слова) и осведомленностью о контексте:</p>
                     <div class="code-example">
-                        <pre><code class="language-csharp">public async Task&lt;IEnumerable&lt;SearchResult&gt;&gt; EnhancedSearchAsync(
+                        <pre><code class="language-csharp">public async Task<IEnumerable<SearchResult>> EnhancedSearchAsync(
     string query, 
     SearchOptions options = null)
 {
@@ -200,10 +200,10 @@ services.AddSmartRAG(options =>
 });
 
 // Использовать эмбеддинги VoyageAI в вашем сервисе
-public async Task&lt;IEnumerable&lt;float[]&gt;&gt; GenerateEmbeddingsAsync(
-    IEnumerable&lt;string&gt; texts)
+public async Task<IEnumerable<float[]>> GenerateEmbeddingsAsync(
+    IEnumerable<string> texts)
 {
-    var embeddingService = serviceProvider.GetRequiredService&lt;IVoyageAIEmbeddingService&gt;();
+    var embeddingService = serviceProvider.GetRequiredService<IVoyageAIEmbeddingService>();
     
     // Генерировать высококачественные эмбеддинги
     var embeddings = await embeddingService.GenerateEmbeddingsAsync(texts);
@@ -224,7 +224,7 @@ var voyageAIConfig = new VoyageAIConfiguration
     MaxRetries = 3,
     Timeout = TimeSpan.FromSeconds(30),
     EnableCompression = true,
-    CustomHeaders = new Dictionary&lt;string, string&gt;
+    CustomHeaders = new Dictionary<string, string>
     {
         ["User-Agent"] = "SmartRAG/1.1.0"
     }
@@ -243,12 +243,12 @@ services.AddSmartRAG(options =>
 
 // Реализация контроллера
 [HttpPost("generate-embeddings")]
-public async Task&lt;ActionResult&lt;EmbeddingResponse&gt;&gt; GenerateEmbeddings(
+public async Task<ActionResult<EmbeddingResponse>> GenerateEmbeddings(
     [FromBody] EmbeddingRequest request)
 {
     try
     {
-        var embeddingService = _serviceProvider.GetRequiredService&lt;IVoyageAIEmbeddingService&gt;();
+        var embeddingService = _serviceProvider.GetRequiredService<IVoyageAIEmbeddingService>();
         
         var embeddings = await embeddingService.GenerateEmbeddingsAsync(request.Texts);
         
@@ -287,7 +287,7 @@ services.AddSmartRAG(options =>
 
 // Использовать в вашем контроллере
 [HttpGet("enhanced-search")]
-public async Task&lt;ActionResult&lt;IEnumerable&lt;SearchResult&gt;&gt;&gt; EnhancedSearch(
+public async Task<ActionResult<IEnumerable<SearchResult>>> EnhancedSearch(
     [FromQuery] string query,
     [FromQuery] int maxResults = 20)
 {
@@ -318,7 +318,7 @@ services.AddSmartRAG(options =>
 });
 
 // Автоматически обрабатывать запросы на любом языке
-public async Task&lt;QueryResult&gt; ProcessMultilingualQueryAsync(string query)
+public async Task<QueryResult> ProcessMultilingualQueryAsync(string query)
 {
     // Язык определяется автоматически
     var detectedLanguage = await _languageService.DetectLanguageAsync(query);
@@ -362,7 +362,7 @@ services.AddSmartRAG(options =>
 
 // Контроллер для многоязычной обработки документов
 [HttpPost("multilingual-upload")]
-public async Task&lt;ActionResult&lt;MultilingualUploadResult&gt;&gt; UploadMultilingualDocument(
+public async Task<ActionResult<MultilingualUploadResult>> UploadMultilingualDocument(
     [FromBody] MultilingualUploadRequest request)
 {
     try
@@ -399,7 +399,7 @@ public async Task&lt;ActionResult&lt;MultilingualUploadResult&gt;&gt; UploadMult
 
 // Многоязычный поиск по всем языкам
 [HttpGet("multilingual-search")]
-public async Task&lt;ActionResult&lt;MultilingualSearchResult&gt;&gt; SearchMultilingual(
+public async Task<ActionResult<MultilingualSearchResult>> SearchMultilingual(
     [FromQuery] string query,
     [FromQuery] string[] languages = null,
     [FromQuery] int maxResults = 20)
@@ -437,7 +437,7 @@ public async Task&lt;ActionResult&lt;MultilingualSearchResult&gt;&gt; SearchMult
                     <h4>Механизм повторных попыток Anthropic API</h4>
                     <p>Расширенная логика повторных попыток для обработки ошибок HTTP 529 (Overloaded):</p>
                     <div class="code-example">
-                        <pre><code class="language-csharp">public async Task&lt;ChatResponse&gt; ProcessWithRetryAsync(string prompt, int maxRetries = 3)
+                        <pre><code class="language-csharp">public async Task<ChatResponse> ProcessWithRetryAsync(string prompt, int maxRetries = 3)
 {
     var retryPolicy = new ExponentialBackoffRetryPolicy
     {
@@ -547,7 +547,7 @@ public class AnthropicService
         _logger = logger;
     }
 
-    public async Task&lt;ChatResponse&gt; ChatWithRetryAsync(ChatRequest request)
+    public async Task<ChatResponse> ChatWithRetryAsync(ChatRequest request)
     {
         return await _retryPolicy.ExecuteAsync(async () =>
         {
@@ -595,7 +595,7 @@ public class AnthropicCircuitBreaker
         _resetTimeout = resetTimeout ?? TimeSpan.FromMinutes(5);
     }
 
-    public async Task&lt;T&gt; ExecuteAsync&lt;T&gt;(Func&lt;Task&lt;T&gt;&gt; action)
+    public async Task<T> ExecuteAsync<T>(Func<Task<T>> action)
     {
         if (_state == CircuitBreakerState.Open)
         {
@@ -641,7 +641,7 @@ public class AnthropicCircuitBreaker
 
 // Реализация контроллера с Circuit Breaker
 [HttpPost("chat-with-retry")]
-public async Task&lt;ActionResult&lt;ChatResponse&gt;&gt; ChatWithRetry([FromBody] ChatRequest request)
+public async Task<ActionResult<ChatResponse>> ChatWithRetry([FromBody] ChatRequest request)
 {
     try
     {
@@ -681,7 +681,7 @@ services.AddSmartRAG(options =>
 
 // Использовать в вашем контроллере
 [HttpPost("query")]
-public async Task&lt;ActionResult&lt;QueryResult&gt;&gt; ProcessQuery([FromBody] QueryRequest request)
+public async Task<ActionResult<QueryResult>> ProcessQuery([FromBody] QueryRequest request)
 {
     var result = await _queryProcessor.ProcessQueryAsync(request.Query);
     return Ok(result);
@@ -691,12 +691,12 @@ public async Task&lt;ActionResult&lt;QueryResult&gt;&gt; ProcessQuery([FromBody]
                     <h3>Пакетная обработка документов</h3>
                     <div class="code-example">
                         <pre><code class="language-csharp">[HttpPost("upload-batch")]
-public async Task&lt;ActionResult&lt;BatchUploadResult&gt;&gt; UploadBatchDocuments(IFormFileCollection files)
+public async Task<ActionResult<BatchUploadResult>> UploadBatchDocuments(IFormFileCollection files)
 {
     try
     {
-        var results = new List&lt;Document&gt;();
-        var errors = new List&lt;string&gt;();
+        var results = new List<Document>();
+        var errors = new List<string>();
 
         foreach (var file in files)
         {
@@ -732,8 +732,8 @@ public async Task&lt;ActionResult&lt;BatchUploadResult&gt;&gt; UploadBatchDocume
 
 public class BatchUploadResult
 {
-    public List&lt;Document&gt; SuccessfulUploads { get; set; }
-    public List&lt;string&gt; Errors { get; set; }
+    public List<Document> SuccessfulUploads { get; set; }
+    public List<string> Errors { get; set; }
     public int TotalFiles { get; set; }
     public int SuccessCount { get; set; }
     public int ErrorCount { get; set; }
@@ -743,7 +743,7 @@ public class BatchUploadResult
                     <h3>Расширенный поиск с фильтрами</h3>
                     <div class="code-example">
                         <pre><code class="language-csharp">[HttpPost("advanced-search")]
-public async Task&lt;ActionResult&lt;AdvancedSearchResult&gt;&gt; AdvancedSearch([FromBody] AdvancedSearchRequest request)
+public async Task<ActionResult<AdvancedSearchResult>> AdvancedSearch([FromBody] AdvancedSearchRequest request)
 {
     try
     {
@@ -787,13 +787,13 @@ public class AdvancedSearchRequest
     public string Query { get; set; }
     public int MaxResults { get; set; } = 10;
     public float? MinSimilarityScore { get; set; }
-    public List&lt;string&gt; ContentTypes { get; set; }
+    public List<string> ContentTypes { get; set; }
 }
 
 public class AdvancedSearchResult
 {
     public string Query { get; set; }
-    public List&lt;DocumentChunk&gt; Results { get; set; }
+    public List<DocumentChunk> Results { get; set; }
     public int TotalResults { get; set; }
     public DateTime SearchTime { get; set; }
     public object AppliedFilters { get; set; }
@@ -818,9 +818,9 @@ public class AdvancedSearchResult
 public class DocumentController : ControllerBase
 {
     private readonly IDocumentService _documentService;
-    private readonly ILogger&lt;DocumentController&gt; _logger;
+    private readonly ILogger<DocumentController> _logger;
 
-    public DocumentController(IDocumentService documentService, ILogger&lt;DocumentController&gt; logger)
+    public DocumentController(IDocumentService documentService, ILogger<DocumentController> logger)
     {
         _documentService = documentService;
         _logger = logger;
@@ -833,7 +833,7 @@ public class DocumentController : ControllerBase
     [ProducesResponseType(typeof(Document), 200)]
     [ProducesResponseType(400)]
     [ProducesResponseType(500)]
-    public async Task&lt;ActionResult&lt;Document&gt;&gt; UploadDocument(IFormFile file)
+    public async Task<ActionResult<Document>> UploadDocument(IFormFile file)
     {
         // Реализация см. выше
     }
@@ -844,7 +844,7 @@ public class DocumentController : ControllerBase
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(Document), 200)]
     [ProducesResponseType(404)]
-    public async Task&lt;ActionResult&lt;Document&gt;&gt; GetDocument(string id)
+    public async Task<ActionResult<Document>> GetDocument(string id)
     {
         try
         {
@@ -865,8 +865,8 @@ public class DocumentController : ControllerBase
     /// Получает все документы
     /// </summary>
     [HttpGet]
-    [ProducesResponseType(typeof(IEnumerable&lt;Document&gt;), 200)]
-    public async Task&lt;ActionResult&lt;IEnumerable&lt;Document&gt;&gt;&gt; GetAllDocuments()
+    [ProducesResponseType(typeof(IEnumerable<Document>), 200)]
+    public async Task<ActionResult<IEnumerable<Document>>> GetAllDocuments()
     {
         try
         {
@@ -886,7 +886,7 @@ public class DocumentController : ControllerBase
     [HttpDelete("{id}")]
     [ProducesResponseType(200)]
     [ProducesResponseType(404)]
-    public async Task&lt;ActionResult&gt; DeleteDocument(string id)
+    public async Task<ActionResult> DeleteDocument(string id)
     {
         try
         {
@@ -908,8 +908,8 @@ public class DocumentController : ControllerBase
     /// Ищет в документах
     /// </summary>
     [HttpGet("search")]
-    [ProducesResponseType(typeof(IEnumerable&lt;DocumentChunk&gt;), 200)]
-    public async Task&lt;ActionResult&lt;IEnumerable&lt;DocumentChunk&gt;&gt;&gt; SearchDocuments(
+    [ProducesResponseType(typeof(IEnumerable<DocumentChunk>), 200)]
+    public async Task<ActionResult<IEnumerable<DocumentChunk>>> SearchDocuments(
         [FromQuery] string query, 
         [FromQuery] int maxResults = 10)
     {
@@ -921,7 +921,7 @@ public class DocumentController : ControllerBase
     /// </summary>
     [HttpPost("ask")]
     [ProducesResponseType(typeof(RagResponse), 200)]
-    public async Task&lt;ActionResult&lt;RagResponse&gt;&gt; AskQuestion([FromBody] AskQuestionRequest request)
+    public async Task<ActionResult<RagResponse>> AskQuestion([FromBody] AskQuestionRequest request)
     {
         // Реализация см. выше
     }
@@ -953,8 +953,8 @@ namespace SmartRAG.ConsoleApp
             var host = CreateHostBuilder(args).Build();
             
             using var scope = host.Services.CreateScope();
-            var documentService = scope.ServiceProvider.GetRequiredService&lt;IDocumentService&gt;();
-            var logger = scope.ServiceProvider.GetRequiredService&lt;ILogger&lt;Program&gt;&gt;();
+            var documentService = scope.ServiceProvider.GetRequiredService<IDocumentService>();
+            var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
 
             logger.LogInformation("Консольное приложение SmartRAG запущено");
 
