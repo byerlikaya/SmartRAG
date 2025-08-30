@@ -171,6 +171,8 @@ app.Run();</code></pre>
                     <p>Техники отладки для вашего SmartRAG приложения.</p>
                     
                     <h3>Конфигурация логирования</h3>
+                    
+                    <h5>Конфигурация логирования</h5>
                     <div class="code-example">
                         <pre><code class="language-json">// appsettings.json
 {
@@ -185,7 +187,7 @@ app.Run();</code></pre>
 }</code></pre>
                     </div>
 
-                    <h3>Детальная отладка</h3>
+                    <h5>Реализация контроллера</h5>
                     <div class="code-example">
                         <pre><code class="language-csharp">public class DocumentController : ControllerBase
 {
@@ -197,47 +199,50 @@ app.Run();</code></pre>
         _documentService = documentService;
         _logger = logger;
     }
+}</code></pre>
+                    </div>
 
-    [HttpPost("upload")]
-    public async Task<ActionResult<Document>> UploadDocument(IFormFile file)
+                    <h5>Обработка ошибок</h5>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[HttpPost("upload")]
+public async Task<ActionResult<Document>> UploadDocument(IFormFile file)
+{
+    _logger.LogInformation("Загрузка документа начата: {FileName}, Размер: {Size}", 
+        file?.FileName, file?.Length);
+
+    try
     {
-        _logger.LogInformation("Загрузка документа начата: {FileName}, Размер: {Size}", 
-            file?.FileName, file?.Length);
+        if (file == null || file.Length == 0)
+        {
+            _logger.LogWarning("Файл null или пустой");
+            return BadRequest("Файл не выбран");
+        }
 
-        try
-        {
-            if (file == null || file.Length == 0)
-            {
-                _logger.LogWarning("Файл null или пустой");
-                return BadRequest("Файл не выбран");
-            }
-
-            _logger.LogDebug("Файл проверен, начинается обработка");
-            var document = await _documentService.UploadDocumentAsync(file);
-            
-            _logger.LogInformation("Документ успешно загружен: {DocumentId}", document.Id);
-            return Ok(document);
-        }
-        catch (ArgumentException ex)
-        {
-            _logger.LogError(ex, "Неверный формат файла: {FileName}", file?.FileName);
-            return BadRequest($"Неверный формат файла: {ex.Message}");
-        }
-        catch (UnauthorizedAccessException ex)
-        {
-            _logger.LogError(ex, "Ошибка API ключа");
-            return Unauthorized("Неверный API ключ");
-        }
-        catch (HttpRequestException ex)
-        {
-            _logger.LogError(ex, "Ошибка сетевого подключения");
-            return StatusCode(503, "Сервис временно недоступен");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Произошла неожиданная ошибка");
-            return StatusCode(500, "Внутренняя ошибка сервера");
-        }
+        _logger.LogDebug("Файл проверен, начинается обработка");
+        var document = await _documentService.UploadDocumentAsync(file);
+        
+        _logger.LogInformation("Документ успешно загружен: {DocumentId}", document.Id);
+        return Ok(document);
+    }
+    catch (ArgumentException ex)
+    {
+        _logger.LogError(ex, "Неверный формат файла: {FileName}", file?.FileName);
+        return BadRequest($"Неверный формат файла: {ex.Message}");
+    }
+    catch (UnauthorizedAccessException ex)
+    {
+        _logger.LogError(ex, "Ошибка API ключа");
+        return Unauthorized("Неверный API ключ");
+    }
+    catch (HttpRequestException ex)
+    {
+        _logger.LogError(ex, "Ошибка сетевого подключения");
+        return StatusCode(503, "Сервис временно недоступен");
+    }
+    catch (Exception ex)
+    {
+        _logger.LogError(ex, "Произошла неожиданная ошибка");
+        return StatusCode(500, "Внутренняя ошибка сервера");
     }
 }</code></pre>
                     </div>

@@ -103,13 +103,17 @@ services.AddSmartRAG(options =>
                     <p>SmartRAG uygulamalarınızı hata ayıklamanıza yardımcı olacak araçlar ve teknikler.</p>
 
                     <h3>Logging'i Etkinleştirin</h3>
+                    
+                    <h5>Logging Yapılandırması</h5>
                     <div class="code-example">
                         <pre><code class="language-csharp">// Logging'i yapılandırın
 builder.Logging.AddConsole();
-builder.Logging.SetMinimumLevel(LogLevel.Debug);
+builder.Logging.SetMinimumLevel(LogLevel.Debug);</code></pre>
+                    </div>
 
-// Servisinizde
-private readonly ILogger&lt;DocumentService&gt; _logger;
+                    <h5>Servis Implementasyonu</h5>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">private readonly ILogger&lt;DocumentService&gt; _logger;
 
 public async Task&lt;Document&gt; UploadDocumentAsync(IFormFile file)
 {
@@ -119,6 +123,8 @@ public async Task&lt;Document&gt; UploadDocumentAsync(IFormFile file)
                     </div>
 
                     <h3>Hata Yönetimi</h3>
+                    
+                    <h5>Temel Hata Yönetimi</h5>
                     <div class="code-example">
                         <pre><code class="language-csharp">try
 {
