@@ -154,9 +154,10 @@ public async Task&lt;ActionResult&lt;IEnumerable&lt;DocumentChunk&gt;&gt;&gt; Se
 
                     <h4>VoyageAI Integration</h4>
                     <p>High-quality embeddings for Anthropic Claude models using VoyageAI:</p>
+                    
+                    <h5>Basic Configuration</h5>
                     <div class="code-example">
-                        <pre><code class="language-csharp">// Configure VoyageAI integration
-services.AddSmartRAG(options =>
+                        <pre><code class="language-csharp">services.AddSmartRAG(options =>
 {
     options.AIProvider = AIProvider.Anthropic;
     options.StorageProvider = StorageProvider.Qdrant;
@@ -165,28 +166,28 @@ services.AddSmartRAG(options =>
     // Enable VoyageAI for high-quality embeddings
     options.EnableVoyageAI = true;
     options.VoyageAI.ApiKey = "your-voyageai-api-key";
-    options.VoyageAI.Model = "voyage-large-2"; // Latest model
-    options.VoyageAI.Dimensions = 1536; // Embedding dimensions
-    options.VoyageAI.BatchSize = 100; // Batch processing
-});
+    options.VoyageAI.Model = "voyage-large-2";
+    options.VoyageAI.Dimensions = 1536;
+    options.VoyageAI.BatchSize = 100;
+});</code></pre>
+                    </div>
 
-// Use VoyageAI embeddings in your service
-public async Task&lt;IEnumerable&lt;float[]&gt;&gt; GenerateEmbeddingsAsync(
+                    <h5>Service Usage</h5>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public async Task&lt;IEnumerable&lt;float[]&gt;&gt; GenerateEmbeddingsAsync(
     IEnumerable&lt;string&gt; texts)
 {
     var embeddingService = serviceProvider.GetRequiredService&lt;IVoyageAIEmbeddingService&gt;();
-    
-    // Generate high-quality embeddings
     var embeddings = await embeddingService.GenerateEmbeddingsAsync(texts);
-    
     return embeddings;
 }</code></pre>
                     </div>
 
                     <h4>Advanced VoyageAI Configuration</h4>
+                    
+                    <h5>Custom Configuration</h5>
                     <div class="code-example">
-                        <pre><code class="language-csharp">// Advanced VoyageAI configuration with custom settings
-var voyageAIConfig = new VoyageAIConfiguration
+                        <pre><code class="language-csharp">var voyageAIConfig = new VoyageAIConfiguration
 {
     ApiKey = "your-voyageai-api-key",
     Model = "voyage-large-2",
@@ -206,21 +207,20 @@ services.AddSmartRAG(options =>
     options.AIProvider = AIProvider.Anthropic;
     options.StorageProvider = StorageProvider.Qdrant;
     options.ApiKey = "your-anthropic-api-key";
-    
-    // Configure VoyageAI with custom settings
     options.EnableVoyageAI = true;
     options.VoyageAI = voyageAIConfig;
-});
+});</code></pre>
+                    </div>
 
-// Controller implementation
-[HttpPost("generate-embeddings")]
+                    <h5>Controller Implementation</h5>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[HttpPost("generate-embeddings")]
 public async Task&lt;ActionResult&lt;EmbeddingResponse&gt;&gt; GenerateEmbeddings(
     [FromBody] EmbeddingRequest request)
 {
     try
     {
         var embeddingService = _serviceProvider.GetRequiredService&lt;IVoyageAIEmbeddingService&gt;();
-        
         var embeddings = await embeddingService.GenerateEmbeddingsAsync(request.Texts);
         
         return Ok(new EmbeddingResponse
@@ -270,9 +270,10 @@ public async Task&lt;ActionResult&lt;IEnumerable&lt;SearchResult&gt;&gt;&gt; Enh
 
                     <h4>Language-Agnostic Design</h4>
                     <p>SmartRAG works with any language without hardcoded patterns or language-specific rules:</p>
+                    
+                    <h5>Basic Configuration</h5>
                     <div class="code-example">
-                        <pre><code class="language-csharp">// Language-agnostic configuration - works with any language
-services.AddSmartRAG(options =>
+                        <pre><code class="language-csharp">services.AddSmartRAG(options =>
 {
     options.AIProvider = AIProvider.Anthropic;
     options.StorageProvider = StorageProvider.Qdrant;
@@ -282,14 +283,14 @@ services.AddSmartRAG(options =>
     options.LanguageAgnostic = true;
     options.AutoDetectLanguage = true;
     options.SupportedLanguages = new[] { "en", "tr", "de", "ru", "fr", "es", "ja", "ko", "zh" };
-    
-    // No hardcoded language patterns
     options.EnableMultilingualSupport = true;
     options.FallbackLanguage = "en";
-});
+});</code></pre>
+                    </div>
 
-// Process queries in any language automatically
-public async Task&lt;QueryResult&gt; ProcessMultilingualQueryAsync(string query)
+                    <h5>Query Processing</h5>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public async Task&lt;QueryResult&gt; ProcessMultilingualQueryAsync(string query)
 {
     // Language is automatically detected
     var detectedLanguage = await _languageService.DetectLanguageAsync(query);
@@ -306,9 +307,10 @@ public async Task&lt;QueryResult&gt; ProcessMultilingualQueryAsync(string query)
                     </div>
 
                     <h4>Advanced Language-Agnostic Features</h4>
+                    
+                    <h5>Advanced Configuration</h5>
                     <div class="code-example">
-                        <pre><code class="language-csharp">// Advanced language-agnostic configuration
-var languageAgnosticConfig = new LanguageAgnosticConfiguration
+                        <pre><code class="language-csharp">var languageAgnosticConfig = new LanguageAgnosticConfiguration
 {
     EnableLanguageDetection = true,
     EnableMultilingualEmbeddings = true,
@@ -325,31 +327,25 @@ services.AddSmartRAG(options =>
     options.AIProvider = AIProvider.Anthropic;
     options.StorageProvider = StorageProvider.Qdrant;
     options.ApiKey = "your-api-key";
-    
-    // Configure advanced language-agnostic features
     options.LanguageAgnostic = true;
     options.LanguageAgnosticConfig = languageAgnosticConfig;
-});
+});</code></pre>
+                    </div>
 
-// Controller for multilingual document processing
-[HttpPost("multilingual-upload")]
+                    <h5>Multilingual Upload Controller</h5>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[HttpPost("multilingual-upload")]
 public async Task&lt;ActionResult&lt;MultilingualUploadResult&gt;&gt; UploadMultilingualDocument(
     [FromBody] MultilingualUploadRequest request)
 {
     try
     {
-        // Process document in any language
         var document = await _documentService.UploadMultilingualDocumentAsync(
-            request.Content, 
-            request.FileName,
-            request.DetectedLanguage);
+            request.Content, request.FileName, request.DetectedLanguage);
         
-        // Generate embeddings using language-agnostic algorithms
         var embeddings = await _embeddingService.GenerateMultilingualEmbeddingsAsync(
-            document.Chunks,
-            document.DetectedLanguage);
+            document.Chunks, document.DetectedLanguage);
         
-        // Store with language metadata
         await _storageService.StoreMultilingualDocumentAsync(document, embeddings);
         
         return Ok(new MultilingualUploadResult
@@ -366,10 +362,12 @@ public async Task&lt;ActionResult&lt;MultilingualUploadResult&gt;&gt; UploadMult
         _logger.LogError(ex, "Error processing multilingual document");
         return StatusCode(500, "Failed to process multilingual document");
     }
-}
+}</code></pre>
+                    </div>
 
-// Multilingual search across all languages
-[HttpGet("multilingual-search")]
+                    <h5>Multilingual Search Controller</h5>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[HttpGet("multilingual-search")]
 public async Task&lt;ActionResult&lt;MultilingualSearchResult&gt;&gt; SearchMultilingual(
     [FromQuery] string query,
     [FromQuery] string[] languages = null,
@@ -459,9 +457,10 @@ public async Task&lt;ActionResult&lt;MultilingualSearchResult&gt;&gt; SearchMult
 
                     <h4>Advanced Retry Configuration</h4>
                     <p>Configure sophisticated retry policies for different error scenarios:</p>
+                    
+                    <h5>Basic Retry Configuration</h5>
                     <div class="code-example">
-                        <pre><code class="language-csharp">// Configure advanced retry policies
-services.AddSmartRAG(options =>
+                        <pre><code class="language-csharp">services.AddSmartRAG(options =>
 {
     options.AIProvider = AIProvider.Anthropic;
     options.StorageProvider = StorageProvider.Qdrant;
@@ -478,34 +477,36 @@ services.AddSmartRAG(options =>
         EnableCircuitBreaker = true,
         CircuitBreakerThreshold = 10,
         CircuitBreakerTimeout = TimeSpan.FromMinutes(5),
-        
-        // Specific error handling
         RetryOnStatusCodes = new[] { 429, 529, 500, 502, 503, 504 },
-        ExponentialBackoff = true,
-        LinearBackoff = false,
-        
-        // Custom retry conditions
-        CustomRetryPredicate = async (exception, attempt) =>
-        {
-            if (exception is AnthropicApiException apiEx)
-            {
-                // Always retry on 529 (Overloaded)
-                if (apiEx.StatusCode == 529) return true;
-                
-                // Retry on 429 (Rate Limited) with backoff
-                if (apiEx.StatusCode == 429) return attempt <= 3;
-                
-                // Retry on server errors
-                if (apiEx.StatusCode >= 500) return attempt <= 2;
-            }
-            
-            return false;
-        }
+        ExponentialBackoff = true
     };
-});
+});</code></pre>
+                    </div>
 
-// Use in your service with retry handling
-public class AnthropicService
+                    <h5>Custom Retry Predicate</h5>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Custom retry conditions
+options.RetryConfiguration.CustomRetryPredicate = async (exception, attempt) =>
+{
+    if (exception is AnthropicApiException apiEx)
+    {
+        // Always retry on 529 (Overloaded)
+        if (apiEx.StatusCode == 529) return true;
+        
+        // Retry on 429 (Rate Limited) with backoff
+        if (apiEx.StatusCode == 429) return attempt <= 3;
+        
+        // Retry on server errors
+        if (apiEx.StatusCode >= 500) return attempt <= 2;
+    }
+    
+    return false;
+};</code></pre>
+                    </div>
+
+                    <h5>Service Implementation</h5>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public class AnthropicService
 {
     private readonly IAnthropicClient _client;
     private readonly IRetryPolicy _retryPolicy;
@@ -531,7 +532,6 @@ public class AnthropicService
                 _logger.LogError(ex, "Anthropic API error: {StatusCode} - {Message}", 
                     ex.StatusCode, ex.Message);
                 
-                // Log specific error details for monitoring
                 if (ex.StatusCode == 529)
                 {
                     _logger.LogWarning("API overload detected - implementing backoff strategy");
@@ -546,9 +546,10 @@ public class AnthropicService
 
                     <h4>Circuit Breaker Pattern</h4>
                     <p>Implement circuit breaker for API protection:</p>
+                    
+                    <h5>Circuit Breaker Implementation</h5>
                     <div class="code-example">
-                        <pre><code class="language-csharp">// Circuit breaker implementation
-public class AnthropicCircuitBreaker
+                        <pre><code class="language-csharp">public class AnthropicCircuitBreaker
 {
     private readonly ILogger<AnthropicCircuitBreaker> _logger;
     private readonly int _failureThreshold;
@@ -608,10 +609,12 @@ public class AnthropicCircuitBreaker
             throw;
         }
     }
-}
+}</code></pre>
+                    </div>
 
-// Controller implementation with circuit breaker
-[HttpPost("chat-with-retry")]
+                    <h5>Controller Implementation</h5>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[HttpPost("chat-with-retry")]
 public async Task&lt;ActionResult&lt;ChatResponse&gt;&gt; ChatWithRetry([FromBody] ChatRequest request)
 {
     try
