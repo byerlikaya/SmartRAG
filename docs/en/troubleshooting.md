@@ -30,9 +30,9 @@ dotnet build</code></pre>
 
                     <h4>Dependency Conflict</h4>
                     <div class="code-example">
-                        <pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="1.1.0" /&gt;
-&lt;PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" /&gt;
-&lt;PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" /&gt;</code></pre>
+                        <pre><code class="language-xml"><PackageReference Include="SmartRAG" Version="1.1.0" />
+<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+<PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" /></code></pre>
                     </div>
 
                     <h3>Runtime Issues</h3>
@@ -109,9 +109,9 @@ builder.Logging.AddConsole();
 builder.Logging.SetMinimumLevel(LogLevel.Debug);
 
 // In your service
-private readonly ILogger&lt;DocumentService&gt; _logger;
+private readonly ILogger<DocumentService> _logger;
 
-public async Task&lt;Document&gt; UploadDocumentAsync(IFormFile file)
+public async Task<Document> UploadDocumentAsync(IFormFile file)
 {
     _logger.LogInformation("Uploading document: {FileName}", file.FileName);
     // ... implementation
@@ -158,7 +158,7 @@ catch (Exception ex)
 public async Task UploadDocument_ValidFile_ReturnsDocument()
 {
     // Arrange
-    var mockFile = new Mock&lt;IFormFile&gt;();
+    var mockFile = new Mock<IFormFile>();
     var service = new DocumentService(mockLogger.Object);
     
     // Act
