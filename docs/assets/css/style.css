@@ -388,14 +388,14 @@ h1, h2, h3, h4, h5, h6 {
     }
     
     .navbar-nav .language-btn[data-lang="{{ page.lang }}"] {
-        background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%) !important;
-        color: white !important;
-        border: 2px solid var(--primary) !important;
-        font-weight: 600 !important;
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4) !important;
-        transform: translateY(-1px) !important;
-        position: relative !important;
-    }
+    background: var(--primary) !important;
+    color: white !important;
+    border: 2px solid var(--primary) !important;
+    font-weight: 600 !important;
+    box-shadow: var(--shadow-md) !important;
+    transform: translateY(-1px) !important;
+    position: relative !important;
+}
     
     .navbar-nav .language-btn[data-lang="{{ page.lang }}"]::after {
         content: '' !important;
@@ -425,11 +425,11 @@ h1, h2, h3, h4, h5, h6 {
     }
     
     [data-theme="dark"] .navbar-nav .language-btn[data-lang="{{ page.lang }}"] {
-        background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%) !important;
-        color: white !important;
-        border: 2px solid var(--primary) !important;
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.5) !important;
-    }
+    background: var(--primary) !important;
+    color: white !important;
+    border: 2px solid var(--primary) !important;
+    box-shadow: var(--shadow-md) !important;
+}
     
     .navbar-nav .dropdown-menu {
         position: static;
@@ -1317,7 +1317,6 @@ h1, h2, h3, h4, h5, h6 {
 .code-tabs {
     display: flex;
     background: var(--white);
-    border: 1px solid var(--gray-200);
     border-bottom: 1px solid var(--gray-200);
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     overflow: hidden;
@@ -1326,7 +1325,7 @@ h1, h2, h3, h4, h5, h6 {
 
 [data-theme="dark"] .code-tabs {
     background: var(--dark-surface);
-    border-color: var(--dark-border);
+    border-bottom-color: var(--dark-border);
     box-shadow: var(--shadow-lg);
 }
 
@@ -1700,10 +1699,10 @@ h1, h2, h3, h4, h5, h6 {
 /* Current language button - FORCE HIGHLIGHT */
 .language-btn[data-lang="{{ page.lang }}"] {
     color: white !important;
-    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%) !important;
+    background: var(--primary) !important;
     border: 2px solid var(--primary) !important;
     font-weight: 600 !important;
-    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.4) !important;
+    box-shadow: var(--shadow-md) !important;
     transform: translateY(-1px) !important;
     position: relative;
 }
@@ -1725,8 +1724,8 @@ h1, h2, h3, h4, h5, h6 {
 
 .language-btn[data-lang="{{ page.lang }}"]:hover {
     transform: translateY(-2px) !important;
-    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.5) !important;
-    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%) !important;
+    box-shadow: var(--shadow-lg) !important;
+    background: var(--primary-dark) !important;
 }
 
 /* Override any conflicting styles */
@@ -1757,8 +1756,8 @@ h1, h2, h3, h4, h5, h6 {
 
 .navbar-nav .nav-link.language-btn[data-lang="{{ page.lang }}"]:hover {
     transform: translateY(-2px) !important;
-    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.5) !important;
-    background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 100%) !important;
+    box-shadow: var(--shadow-lg) !important;
+    background: var(--primary-dark) !important;
 }
 
 #themeToggle:hover {
