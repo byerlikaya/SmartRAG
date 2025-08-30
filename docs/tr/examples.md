@@ -429,9 +429,10 @@ public async Task&lt;ActionResult&lt;MultilingualSearchResult&gt;&gt; SearchMult
 
                     <h4>Gelişmiş Retry Yapılandırması</h4>
                     <p>Farklı hata senaryoları için sofistike retry politikaları yapılandırın:</p>
+                    
+                    <h5>Temel Retry Yapılandırması</h5>
                     <div class="code-example">
-                        <pre><code class="language-csharp">// Gelişmiş retry politikalarını yapılandırın
-services.AddSmartRAG(options =>
+                        <pre><code class="language-csharp">services.AddSmartRAG(options =>
 {
     options.AIProvider = AIProvider.Anthropic;
     options.StorageProvider = StorageProvider.Qdrant;
@@ -448,34 +449,36 @@ services.AddSmartRAG(options =>
         EnableCircuitBreaker = true,
         CircuitBreakerThreshold = 10,
         CircuitBreakerTimeout = TimeSpan.FromMinutes(5),
-        
-        // Özel hata işleme
         RetryOnStatusCodes = new[] { 429, 529, 500, 502, 503, 504 },
-        ExponentialBackoff = true,
-        LinearBackoff = false,
-        
-        // Özel retry koşulları
-        CustomRetryPredicate = async (exception, attempt) =>
-        {
-            if (exception is AnthropicApiException apiEx)
-            {
-                // 529 (Overloaded) durumunda her zaman retry yap
-                if (apiEx.StatusCode == 529) return true;
-                
-                // 429 (Rate Limited) durumunda backoff ile retry yap
-                if (apiEx.StatusCode == 429) return attempt <= 3;
-                
-                // Sunucu hatalarında retry yap
-                if (apiEx.StatusCode >= 500) return attempt <= 2;
-            }
-            
-            return false;
-        }
+        ExponentialBackoff = true
     };
-});
+});</code></pre>
+                    </div>
 
-// Retry handling ile servisinizde kullanın
-public class AnthropicService
+                    <h5>Özel Retry Koşulları</h5>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Özel retry koşulları
+options.RetryConfiguration.CustomRetryPredicate = async (exception, attempt) =>
+{
+    if (exception is AnthropicApiException apiEx)
+    {
+        // 529 (Overloaded) durumunda her zaman retry yap
+        if (apiEx.StatusCode == 529) return true;
+        
+        // 429 (Rate Limited) durumunda backoff ile retry yap
+        if (apiEx.StatusCode == 429) return attempt <= 3;
+        
+        // Sunucu hatalarında retry yap
+        if (apiEx.StatusCode >= 500) return attempt <= 2;
+    }
+    
+    return false;
+};</code></pre>
+                    </div>
+
+                    <h5>Servis Implementasyonu</h5>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public class AnthropicService
 {
     private readonly IAnthropicClient _client;
     private readonly IRetryPolicy _retryPolicy;
@@ -501,7 +504,6 @@ public class AnthropicService
                 _logger.LogError(ex, "Anthropic API hatası: {StatusCode} - {Message}", 
                     ex.StatusCode, ex.Message);
                 
-                // Monitoring için özel hata detaylarını logla
                 if (ex.StatusCode == 529)
                 {
                     _logger.LogWarning("API aşırı yük tespit edildi - backoff stratejisi uygulanıyor");
