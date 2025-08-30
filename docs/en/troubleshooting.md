@@ -103,13 +103,17 @@ services.AddSmartRAG(options =>
                     <p>Tools and techniques to help you debug SmartRAG applications.</p>
 
                     <h3>Enable Logging</h3>
+                    
+                    <h5>Logging Configuration</h5>
                     <div class="code-example">
                         <pre><code class="language-csharp">// Configure logging
 builder.Logging.AddConsole();
-builder.Logging.SetMinimumLevel(LogLevel.Debug);
+builder.Logging.SetMinimumLevel(LogLevel.Debug);</code></pre>
+                    </div>
 
-// In your service
-private readonly ILogger<DocumentService> _logger;
+                    <h5>Service Implementation</h5>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">private readonly ILogger<DocumentService> _logger;
 
 public async Task<Document> UploadDocumentAsync(IFormFile file)
 {
@@ -119,6 +123,8 @@ public async Task<Document> UploadDocumentAsync(IFormFile file)
                     </div>
 
                     <h3>Exception Handling</h3>
+                    
+                    <h5>Basic Error Handling</h5>
                     <div class="code-example">
                         <pre><code class="language-csharp">try
 {
