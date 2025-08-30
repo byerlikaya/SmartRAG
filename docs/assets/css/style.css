@@ -1317,7 +1317,6 @@ h1, h2, h3, h4, h5, h6 {
 .code-tab {
     background: var(--gray-50);
     border: none;
-    border-right: 1px solid var(--gray-200);
     padding: var(--spacing-sm) var(--spacing-lg);
     font-size: 0.875rem;
     font-weight: 500;
@@ -1335,7 +1334,6 @@ h1, h2, h3, h4, h5, h6 {
 [data-theme="dark"] .code-tab {
     background: var(--dark-bg);
     color: var(--gray-400);
-    border-right-color: var(--dark-border);
 }
 
 .code-tab::before {
