@@ -86,6 +86,82 @@ var results = await documentService
     </div>
 </section>
 
+<!-- Quick Start Section -->
+<section class="quick-start-section">
+    <div class="container">
+        <div class="section-header text-center">
+            <h2 class="section-title">Get Started in Minutes</h2>
+            <p class="section-description">
+                Follow these simple steps to integrate SmartRAG into your .NET application
+            </p>
+        </div>
+        
+        <div class="row g-4 mb-5">
+            <div class="col-lg-6">
+                <div class="steps">
+                    <div class="step">
+                        <div class="step-number">1</div>
+                        <div class="step-content">
+                            <h4>Install Package</h4>
+                            <p>Add SmartRAG NuGet package to your project</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">2</div>
+                        <div class="step-content">
+                            <h4>Configure Services</h4>
+                            <p>Set up AI and storage providers in your startup</p>
+                        </div>
+                    </div>
+                    <div class="step">
+                        <div class="step-number">3</div>
+                        <div class="step-content">
+                            <h4>Start Building</h4>
+                            <p>Upload documents and perform semantic search</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="code-example">
+                    <div class="code-tabs">
+                        <button class="code-tab active" data-tab="setup">Setup</button>
+                        <button class="code-tab" data-tab="usage">Usage</button>
+                        <button class="code-tab" data-tab="search">Search</button>
+                    </div>
+                    <div class="code-panel active" id="setup">
+                        <pre><code class="language-csharp">// Program.cs
+services.AddSmartRAG(options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.ApiKey = "your-api-key";
+});</code></pre>
+                    </div>
+                    <div class="code-panel" id="usage">
+                        <pre><code class="language-csharp">// Upload document
+var document = await documentService
+    .UploadDocumentAsync(file);
+
+// Process and index
+await documentService.ProcessAsync(document);</code></pre>
+                    </div>
+                    <div class="code-panel" id="search">
+                        <pre><code class="language-csharp">// Perform search
+var results = await documentService
+    .SearchAsync("your query", maxResults: 5);
+
+foreach (var result in results)
+{
+    Console.WriteLine(result.Content);
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
 <!-- Features Section -->
 <section class="features-section">
     <div class="container">
