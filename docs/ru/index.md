@@ -64,20 +64,18 @@ hide_title: true
                         </div>
                         <div class="code-content">
                             <pre><code class="language-csharp">// Добавьте SmartRAG в ваш проект
-services.AddSmartRAG(options =>
-{
-    options.AIProvider = AIProvider.Anthropic;
-    options.StorageProvider = StorageProvider.Qdrant;
-    options.ApiKey = "your-api-key";
-});
+services.UseSmartRag(configuration,
+    storageProvider: StorageProvider.InMemory,
+    aiProvider: AIProvider.Gemini
+);
 
 // Загрузите и обработайте документ
 var document = await documentService
-    .UploadDocumentAsync(file);
+    .UploadDocumentAsync(fileStream, fileName, contentType, "user123");
 
-// Выполните семантический поиск
-var results = await documentService
-    .SearchAsync("your query");</code></pre>
+// Общайтесь с вашими документами с помощью ИИ
+var answer = await documentSearchService
+    .GenerateRagAnswerAsync("О чем этот документ?", maxResults: 5);</code></pre>
                         </div>
                     </div>
                 </div>
