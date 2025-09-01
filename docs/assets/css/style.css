@@ -822,7 +822,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .hero-title {
-    font-size: 3.5rem;
+    font-size: 2.5rem;
     font-weight: 800;
     line-height: 1.1;
     margin-bottom: var(--spacing-lg);
@@ -834,7 +834,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .hero-description {
-    font-size: 1.25rem;
+    font-size: 1.1rem;
     color: var(--gray-600);
     margin-bottom: var(--spacing-xl);
     max-width: 600px;
@@ -868,7 +868,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .stat-number {
-    font-size: 2rem;
+    font-size: 1.5rem;
     font-weight: 700;
     color: var(--primary);
     line-height: 1;
