@@ -64,20 +64,18 @@ hide_title: true
                         </div>
                         <div class="code-content">
                             <pre><code class="language-csharp">// SmartRAG zu Ihrem Projekt hinzufügen
-services.AddSmartRAG(options =>
-{
-    options.AIProvider = AIProvider.Anthropic;
-    options.StorageProvider = StorageProvider.Qdrant;
-    options.ApiKey = "your-api-key";
-});
+services.UseSmartRag(configuration,
+    storageProvider: StorageProvider.InMemory,
+    aiProvider: AIProvider.Gemini
+);
 
 // Dokument hochladen und verarbeiten
 var document = await documentService
-    .UploadDocumentAsync(file);
+    .UploadDocumentAsync(fileStream, fileName, contentType, "user123");
 
-// Semantische Suche durchführen
-var results = await documentService
-    .SearchAsync("your query");</code></pre>
+// Mit KI über Ihre Dokumente sprechen
+var answer = await documentSearchService
+    .GenerateRagAnswerAsync("Worum geht es in diesem Dokument?", maxResults: 5);</code></pre>
                         </div>
                     </div>
                 </div>

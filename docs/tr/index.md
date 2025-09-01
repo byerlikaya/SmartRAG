@@ -62,23 +62,21 @@ hide_title: true
                             </div>
                             <div class="code-title">SmartRAG.cs</div>
                         </div>
-                        <div class="code-content">
-                            <pre><code class="language-csharp">// SmartRAG'ı projenize ekleyin
-services.AddSmartRAG(options =>
-{
-    options.AIProvider = AIProvider.Anthropic;
-    options.StorageProvider = StorageProvider.Qdrant;
-    options.ApiKey = "your-api-key";
-});
+                                                 <div class="code-content">
+                             <pre><code class="language-csharp">// SmartRAG'ı projenize ekleyin
+ services.UseSmartRag(configuration,
+     storageProvider: StorageProvider.InMemory,
+     aiProvider: AIProvider.Gemini
+ );
 
-// Belge yükleyin ve işleyin
-var document = await documentService
-    .UploadDocumentAsync(file);
+ // Belge yükleyin ve işleyin
+ var document = await documentService
+     .UploadDocumentAsync(fileStream, fileName, contentType, "user123");
 
-// Anlamsal arama yapın
-var results = await documentService
-    .SearchAsync("your query");</code></pre>
-                        </div>
+ // Yapay zeka ile belgeleriniz hakkında konuşun
+ var answer = await documentSearchService
+     .GenerateRagAnswerAsync("Bu belge ne hakkında?", maxResults: 5);</code></pre>
+                         </div>
                     </div>
                 </div>
             </div>
@@ -300,21 +298,30 @@ var results = await documentService
                         <div class="code-panel active" id="install">
                             <pre><code class="language-bash">dotnet add package SmartRAG</code></pre>
                         </div>
-                        <div class="code-panel" id="configure">
-                            <pre><code class="language-csharp">services.AddSmartRAG(options =>
-{
-    options.AIProvider = AIProvider.Anthropic;
-    options.StorageProvider = StorageProvider.Qdrant;
-    options.ApiKey = "your-api-key";
-});</code></pre>
-                        </div>
-                        <div class="code-panel" id="use">
-                            <pre><code class="language-csharp">var documentService = serviceProvider
-    .GetRequiredService&lt;IDocumentService&gt;();
+                                                 <div class="code-panel" id="configure">
+                             <pre><code class="language-csharp">services.UseSmartRag(configuration,
+     storageProvider: StorageProvider.InMemory,
+     aiProvider: AIProvider.Gemini
+ );
 
-var results = await documentService
-    .SearchAsync("your query");</code></pre>
-                        </div>
+ // Veya özel seçeneklerle
+ services.AddSmartRag(configuration, options =>
+ {
+     options.AIProvider = AIProvider.Anthropic;
+     options.StorageProvider = StorageProvider.Qdrant;
+     options.MaxChunkSize = 1000;
+     options.ChunkOverlap = 200;
+ });</code></pre>
+                         </div>
+                         <div class="code-panel" id="use">
+                             <pre><code class="language-csharp">// Belge yükleyin
+ var document = await documentService
+     .UploadDocumentAsync(fileStream, fileName, contentType, "user123");
+
+ // Yapay zeka ile belge hakkında soru sorun
+ var answer = await documentSearchService
+     .GenerateRagAnswerAsync("Bu belgede hangi konular ele alınıyor?", maxResults: 5);</code></pre>
+                         </div>
                     </div>
                 </div>
             </div>
