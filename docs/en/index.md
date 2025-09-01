@@ -234,15 +234,7 @@ hide_title: true
                     <p>Automatically routes queries to chat or document search based on intent detection.</p>
                 </div>
             </div>
-            <div class="col-lg-4 col-md-6">
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <i class="fas fa-shield-alt"></i>
-                    </div>
-                    <h3>Production Ready</h3>
-                    <p>Built for enterprise environments with performance and reliability.</p>
-                </div>
-            </div>
+
         </div>
     </div>
 </section>
