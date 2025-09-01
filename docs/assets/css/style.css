@@ -1057,6 +1057,9 @@ h1, h2, h3, h4, h5, h6 {
     font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', monospace;
     font-size: 0.875rem;
     line-height: 1.6;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-width: 100%;
 }
 
 /* Visual Studio Code Syntax Highlighting */
@@ -1113,6 +1116,9 @@ h1, h2, h3, h4, h5, h6 {
 
 [data-theme="dark"] .code-content pre {
     color: #e2e8f0;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    max-width: 100%;
 }
 
 /* Sections */
