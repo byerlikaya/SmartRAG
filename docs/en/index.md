@@ -21,10 +21,10 @@ hide_title: true
                         Build Intelligent Applications with 
                         <span class="text-gradient">SmartRAG</span>
                     </h1>
-                    <p class="hero-description">
-                        The most powerful .NET library for document processing, AI embeddings, and semantic search. 
-                        Transform your applications with enterprise-grade RAG capabilities.
-                    </p>
+                                         <p class="hero-description">
+                         The most powerful .NET library for document processing and AI-powered conversations. 
+                         Upload your documents and chat with them using artificial intelligence.
+                     </p>
                     <div class="hero-stats">
                         <div class="stat-item">
                             <div class="stat-number">5+</div>
@@ -62,23 +62,21 @@ hide_title: true
                             </div>
                             <div class="code-title">SmartRAG.cs</div>
                         </div>
-                        <div class="code-content">
-                            <pre><code class="language-csharp">// Add SmartRAG to your project
-services.AddSmartRAG(options =>
-{
-    options.AIProvider = AIProvider.Anthropic;
-    options.StorageProvider = StorageProvider.Qdrant;
-    options.ApiKey = "your-api-key";
-});
+                                                 <div class="code-content">
+                             <pre><code class="language-csharp">// Add SmartRAG to your project
+ services.UseSmartRag(configuration,
+     storageProvider: StorageProvider.InMemory,
+     aiProvider: AIProvider.Gemini
+ );
 
-// Upload and process documents
-var document = await documentService
-    .UploadDocumentAsync(file);
+ // Upload and process documents
+ var document = await documentService
+     .UploadDocumentAsync(fileStream, fileName, contentType, "user123");
 
-// Perform semantic search
-var results = await documentService
-    .SearchAsync("your query");</code></pre>
-                        </div>
+ // Chat with your documents using AI
+ var answer = await documentSearchService
+     .GenerateRagAnswerAsync("What is this document about?", maxResults: 5);</code></pre>
+                         </div>
                     </div>
                 </div>
             </div>
@@ -91,9 +89,9 @@ var results = await documentService
     <div class="container">
         <div class="section-header text-center">
             <h2 class="section-title">Get Started in Minutes</h2>
-            <p class="section-description">
-                Follow these simple steps to integrate SmartRAG into your .NET application
-            </p>
+                                 <p class="section-description">
+                         Follow these simple steps to upload documents and chat with them using AI
+                     </p>
         </div>
         
         <div class="row g-4 mb-5">
@@ -101,24 +99,24 @@ var results = await documentService
                 <div class="steps">
                     <div class="step">
                         <div class="step-number">1</div>
-                        <div class="step-content">
-                            <h4>Install Package</h4>
-                            <p>Add SmartRAG NuGet package to your project</p>
-                        </div>
-                    </div>
-                    <div class="step">
-                        <div class="step-number">2</div>
-                        <div class="step-content">
-                            <h4>Configure Services</h4>
-                            <p>Set up AI and storage providers in your startup</p>
-                        </div>
-                    </div>
-                    <div class="step">
-                        <div class="step-number">3</div>
-                        <div class="step-content">
-                            <h4>Start Building</h4>
-                            <p>Upload documents and perform semantic search</p>
-                        </div>
+                                                 <div class="step-content">
+                             <h4>Install Package</h4>
+                             <p>Add SmartRAG NuGet package to your project</p>
+                         </div>
+                     </div>
+                     <div class="step">
+                         <div class="step-number">2</div>
+                         <div class="step-content">
+                             <h4>Configure Services</h4>
+                             <p>Set up AI and storage providers in your startup</p>
+                         </div>
+                     </div>
+                     <div class="step">
+                         <div class="step-number">3</div>
+                         <div class="step-content">
+                             <h4>Start Building</h4>
+                             <p>Upload documents and chat with them using AI</p>
+                         </div>
                     </div>
                 </div>
             </div>
@@ -129,33 +127,42 @@ var results = await documentService
                         <button class="code-tab" data-tab="usage">Usage</button>
                         <button class="code-tab" data-tab="search">Search</button>
                     </div>
-                    <div class="code-panel active" id="setup">
-                        <pre><code class="language-csharp">// Program.cs
-services.AddSmartRAG(options =>
-{
-    options.AIProvider = AIProvider.Anthropic;
-    options.StorageProvider = StorageProvider.Qdrant;
-    options.ApiKey = "your-api-key";
-});</code></pre>
-                    </div>
-                    <div class="code-panel" id="usage">
-                        <pre><code class="language-csharp">// Upload document
-var document = await documentService
-    .UploadDocumentAsync(file);
+                                         <div class="code-panel active" id="setup">
+                         <pre><code class="language-csharp">// Program.cs
+ services.UseSmartRag(configuration,
+     storageProvider: StorageProvider.InMemory,
+     aiProvider: AIProvider.Gemini
+ );
 
-// Process and index
-await documentService.ProcessAsync(document);</code></pre>
-                    </div>
-                    <div class="code-panel" id="search">
-                        <pre><code class="language-csharp">// Perform search
-var results = await documentService
-    .SearchAsync("your query", maxResults: 5);
+ // Or with custom options
+ services.AddSmartRag(configuration, options =>
+ {
+     options.AIProvider = AIProvider.Anthropic;
+     options.StorageProvider = StorageProvider.Qdrant;
+     options.MaxChunkSize = 1000;
+     options.ChunkOverlap = 200;
+ });</code></pre>
+                     </div>
+                     <div class="code-panel" id="usage">
+                         <pre><code class="language-csharp">// Upload and process document
+ var document = await documentService
+     .UploadDocumentAsync(fileStream, fileName, contentType, "user123");
 
-foreach (var result in results)
-{
-    Console.WriteLine(result.Content);
-}</code></pre>
-                    </div>
+ // Document is automatically processed, chunked, and indexed
+ // Ready for AI-powered conversations</code></pre>
+                     </div>
+                     <div class="code-panel" id="search">
+                         <pre><code class="language-csharp">// Ask questions about your documents
+ var ragResponse = await documentSearchService
+     .GenerateRagAnswerAsync("What are the main topics discussed?", maxResults: 5);
+
+ // Get AI-generated answer based on document content
+ Console.WriteLine(ragResponse.Answer);
+
+ // Or search for specific information
+ var results = await documentSearchService
+     .SearchDocumentsAsync("machine learning algorithms", maxResults: 3);</code></pre>
+                     </div>
                 </div>
             </div>
         </div>
@@ -300,7 +307,7 @@ foreach (var result in results)
     <div class="container">
         <div class="cta-content text-center">
             <h2>Ready to Build Something Amazing?</h2>
-            <p>Join thousands of developers using SmartRAG to build intelligent applications</p>
+                         <p>Join thousands of developers using SmartRAG to chat with their documents using AI</p>
             <div class="cta-buttons">
                 <a href="{{ site.baseurl }}/en/getting-started" class="btn btn-primary btn-lg">
                     <i class="fas fa-rocket"></i>
