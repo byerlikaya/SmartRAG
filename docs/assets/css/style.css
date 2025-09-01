@@ -1948,3 +1948,182 @@ h1, h2, h3, h4, h5, h6 {
 ::-webkit-scrollbar-thumb:hover {
     background: var(--primary-dark);
 }
+
+/* Quick Start Section Code Example - Isolated from other code examples */
+.quick-start-section .code-example {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-lg);
+    position: relative;
+    z-index: 1;
+}
+
+[data-theme="dark"] .quick-start-section .code-example {
+    background: var(--dark-surface);
+    border-color: var(--dark-border);
+}
+
+.quick-start-section .code-tabs {
+    display: flex;
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-bottom: none;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+}
+
+[data-theme="dark"] .quick-start-section .code-tabs {
+    background: var(--dark-surface);
+    border-color: var(--dark-border);
+    border-bottom: none;
+    box-shadow: var(--shadow-lg);
+}
+
+.quick-start-section .code-tab {
+    background: var(--gray-50);
+    border: none;
+    padding: var(--spacing-sm) var(--spacing-lg);
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--gray-600);
+    cursor: pointer;
+    transition: var(--transition);
+    position: relative;
+    overflow: hidden;
+}
+
+.quick-start-section .code-tab:last-child {
+    border-right: none;
+}
+
+[data-theme="dark"] .quick-start-section .code-tab {
+    background: var(--dark-bg);
+    color: var(--gray-400);
+}
+
+.quick-start-section .code-tab::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    transform: scaleX(0);
+    transition: var(--transition);
+}
+
+.quick-start-section .code-tab:hover {
+    background: var(--primary-dark);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.quick-start-section .code-tab:hover::before {
+    transform: scaleX(1);
+}
+
+[data-theme="dark"] .quick-start-section .code-tab:hover {
+    background: var(--primary-dark);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+}
+
+.quick-start-section .code-tab.active {
+    color: white;
+    background: var(--primary);
+    font-weight: 600;
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+    position: relative;
+}
+
+.quick-start-section .code-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -3px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    background: transparent;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-bottom: 4px solid var(--primary);
+    transition: all 0.3s ease;
+}
+
+[data-theme="dark"] .quick-start-section .code-tab.active {
+    background: var(--primary);
+    color: white;
+    box-shadow: var(--shadow-md);
+}
+
+.quick-start-section .code-panel {
+    display: none;
+    padding: var(--spacing-lg);
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-top: none;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+.quick-start-section .code-panel.active {
+    display: block;
+}
+
+.quick-start-section .code-panel pre {
+    margin: 0;
+    background: none;
+    color: var(--gray-700);
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    line-height: 1.6;
+}
+
+[data-theme="dark"] .quick-start-section .code-panel {
+    background: var(--dark-surface);
+    border-color: var(--dark-border);
+}
+
+[data-theme="dark"] .quick-start-section .code-panel pre {
+    color: var(--gray-300);
+}
+
+/* Code Example - General styles for other pages */
+.code-example {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-md);
+    margin: var(--spacing-lg) 0;
+    max-width: 100%;
+}
+
+[data-theme="dark"] .code-example {
+    background: var(--dark-surface);
+    border-color: var(--dark-border);
+}
+
+.code-example pre {
+    margin: 0;
+    padding: var(--spacing-lg);
+    background: none;
+    color: var(--gray-700);
+    font-family: var(--font-mono);
+    font-size: 0.875rem;
+    line-height: 1.6;
+    overflow-x: auto;
+    word-wrap: break-word;
+    white-space: pre-wrap;
+}
+
+[data-theme="dark"] .code-example pre {
+    color: var(--gray-300);
+}
