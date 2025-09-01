@@ -12,16 +12,18 @@ lang: tr
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Temel Örnekler</h2>
-                    <p>SmartRAG ile başlamanız için basit örnekler.</p>
+                    <p>SmartRAG ile başlamak için basit örnekler.</p>
                     
-                    <h3>Basit Belge Yükleme</h3>
+                    <h3>Basit Doküman Yükleme</h3>
                     <div class="code-example">
                         <pre><code class="language-csharp">[HttpPost("upload")]
 public async Task<ActionResult<Document>> UploadDocument(IFormFile file)
 {
     try
     {
-        var document = await _documentService.UploadDocumentAsync(file);
+        using var stream = file.OpenReadStream();
+        var document = await _documentService.UploadDocumentAsync(
+            stream, file.FileName, file.ContentType, "user123");
         return Ok(document);
     }
     catch (Exception ex)
@@ -31,7 +33,7 @@ public async Task<ActionResult<Document>> UploadDocument(IFormFile file)
 }</code></pre>
                     </div>
 
-                    <h3>Belge Arama</h3>
+                    <h3>Doküman Arama</h3>
                     <div class="code-example">
                         <pre><code class="language-csharp">[HttpGet("search")]
 public async Task<ActionResult<IEnumerable<DocumentChunk>>> SearchDocuments(
@@ -40,8 +42,27 @@ public async Task<ActionResult<IEnumerable<DocumentChunk>>> SearchDocuments(
 {
     try
     {
-        var results = await _documentService.SearchDocumentsAsync(query, maxResults);
+        var results = await _documentSearchService.SearchDocumentsAsync(query, maxResults);
         return Ok(results);
+    }
+    catch (Exception ex)
+    {
+        return BadRequest(ex.Message);
+    }
+}</code></pre>
+                    </div>
+
+                    <h3>RAG Cevap Üretimi</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[HttpPost("chat")]
+public async Task<ActionResult<RagResponse>> ChatWithDocuments(
+    [FromBody] string query,
+    [FromQuery] int maxResults = 5)
+{
+    try
+    {
+        var response = await _documentSearchService.GenerateRagAnswerAsync(query, maxResults);
+        return Ok(response);
     }
     catch (Exception ex)
     {
@@ -58,643 +79,115 @@ public async Task<ActionResult<IEnumerable<DocumentChunk>>> SearchDocuments(
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Gelişmiş Örnekler</h2>
-                    <p>Gelişmiş kullanım durumları için daha karmaşık örnekler.</p>
+                    <p>Gelişmiş kullanım senaryoları için daha karmaşık örnekler.</p>
                     
-                    <h3>Toplu Belge İşleme</h3>
+                    <h3>Toplu Doküman İşleme</h3>
                     <div class="code-example">
-                        <pre><code class="language-csharp">public async Task<IEnumerable<Document>> ProcessMultipleDocumentsAsync(
+                        <pre><code class="language-csharp">[HttpPost("upload-multiple")]
+public async Task<ActionResult<List<Document>>> UploadMultipleDocuments(
     IEnumerable<IFormFile> files)
 {
-    var tasks = files.Select(async file =>
-    {
-        try
-        {
-            return await _documentService.UploadDocumentAsync(file);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to process file: {FileName}", file.FileName);
-            return null;
-        }
-    });
-
-    var results = await Task.WhenAll(tasks);
-    return results.Where(d => d != null);
-}</code></pre>
-                    </div>
-
-                    <h3>Akıllı Sorgu Niyet Algılama</h3>
-                    <p>Niyet analizine dayalı olarak sorguları otomatik olarak sohbet veya belge aramasına yönlendirin:</p>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">public async Task<QueryResult> ProcessQueryAsync(string query)
-{
-    // Sorgu niyetini analiz et
-    var intent = await _queryIntentService.AnalyzeIntentAsync(query);
-    
-    switch (intent.Type)
-    {
-        case QueryIntentType.Chat:
-            // Konuşma AI'ına yönlendir
-            return await _chatService.ProcessChatQueryAsync(query);
-            
-        case QueryIntentType.DocumentSearch:
-            // Belge aramasına yönlendir
-            var searchResults = await _documentService.SearchDocumentsAsync(query);
-            return new QueryResult 
-            { 
-                Type = QueryResultType.DocumentSearch,
-                Results = searchResults 
-            };
-            
-        case QueryIntentType.Mixed:
-            // Her iki yaklaşımı birleştir
-            var chatResponse = await _chatService.ProcessChatQueryAsync(query);
-            var docResults = await _documentService.SearchDocumentsAsync(query);
-            
-            return new QueryResult 
-            { 
-                Type = QueryResultType.Mixed,
-                ChatResponse = chatResponse,
-                DocumentResults = docResults 
-            };
-            
-        default:
-            throw new ArgumentException($"Bilinmeyen niyet türü: {intent.Type}");
-    }
-}</code></pre>
-                    </div>
-
-                    <h4>Gelişmiş Anlamsal Arama</h4>
-                    <p>Hibrit puanlama (80% anlamsal + 20% anahtar kelime) ve bağlam farkındalığı ile gelişmiş arama:</p>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">public async Task<IEnumerable<SearchResult>> EnhancedSearchAsync(
-    string query, 
-    SearchOptions options = null)
-{
-    // Hibrit puanlama ağırlıklarını yapılandır
-    var searchConfig = new EnhancedSearchConfiguration
-    {
-        SemanticWeight = 0.8,        // 80% anlamsal benzerlik
-        KeywordWeight = 0.2,          // 20% anahtar kelime eşleşmesi
-        ContextWindowSize = 512,      // Bağlam farkındalığı penceresi
-        MinSimilarityThreshold = 0.6, // Minimum benzerlik skoru
-        EnableFuzzyMatching = true,   // Bulanık anahtar kelime eşleşmesi
-        MaxResults = options?.MaxResults ?? 20
-    };
-
-    // Hibrit arama yap
-    var results = await _searchService.EnhancedSearchAsync(query, searchConfig);
-    
-    // Bağlam farkındalıklı sıralama uygula
-    var rankedResults = await _rankingService.RankByContextAsync(results, query);
-    
-    return rankedResults;
-}</code></pre>
-                    </div>
-
-                    <h4>Arama Yapılandırması</h4>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">// Gelişmiş anlamsal aramayı yapılandır
-services.AddSmartRAG(options =>
-{
-    options.AIProvider = AIProvider.Anthropic;
-    options.StorageProvider = StorageProvider.Qdrant;
-    options.ApiKey = "your-api-key";
-    
-    // Gelişmiş anlamsal aramayı etkinleştir
-    options.EnableEnhancedSearch = true;
-    options.SemanticWeight = 0.8;
-    options.KeywordWeight = 0.2;
-    options.ContextAwareness = true;
-    options.FuzzyMatching = true;
-});
-
-// Controller'ınızda kullanın
-[HttpGet("enhanced-search")]
-public async Task<ActionResult<IEnumerable<SearchResult>>> EnhancedSearch(
-    [FromQuery] string query,
-    [FromQuery] int maxResults = 20)
-{
-    var options = new SearchOptions { MaxResults = maxResults };
-    var results = await _searchService.EnhancedSearchAsync(query, options);
-    return Ok(results);
-}</code></pre>
-                    </div>
-
-                    <h4>Gelişmiş Anlamsal Arama</h4>
-                    <p>Hibrit puanlama (80% anlamsal + 20% anahtar kelime) ve bağlam farkındalığı ile gelişmiş arama:</p>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">public async Task<IEnumerable<SearchResult>> EnhancedSearchAsync(
-    string query, 
-    SearchOptions options = null)
-{
-    // Hibrit puanlama ağırlıklarını yapılandır
-    var searchConfig = new EnhancedSearchConfiguration
-    {
-        SemanticWeight = 0.8,        // 80% anlamsal benzerlik
-        KeywordWeight = 0.2,          // 20% anahtar kelime eşleşmesi
-        ContextWindowSize = 512,      // Bağlam farkındalığı penceresi
-        MinSimilarityThreshold = 0.6, // Minimum benzerlik skoru
-        EnableFuzzyMatching = true,   // Bulanık anahtar kelime eşleşmesi
-        MaxResults = options?.MaxResults ?? 20
-    };
-
-    // Hibrit arama yap
-    var results = await _searchService.EnhancedSearchAsync(query, searchConfig);
-    
-    // Bağlam farkındalıklı sıralama uygula
-    var rankedResults = await _rankingService.RankByContextAsync(results, query);
-    
-    return rankedResults;
-}</code></pre>
-                    </div>
-
-                    <h4>Arama Yapılandırması</h4>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">// Gelişmiş anlamsal aramayı yapılandır
-services.AddSmartRAG(options =>
-{
-    options.AIProvider = AIProvider.Anthropic;
-    options.StorageProvider = StorageProvider.Qdrant;
-    options.ApiKey = "your-api-key";
-    
-    // Gelişmiş anlamsal aramayı etkinleştir
-    options.EnableEnhancedSearch = true;
-    options.SemanticWeight = 0.8;
-    options.KeywordWeight = 0.2;
-    options.ContextAwareness = true;
-    options.FuzzyMatching = true;
-});
-
-// Controller'ınızda kullanın
-[HttpGet("enhanced-search")]
-public async Task<ActionResult<IEnumerable<SearchResult>>> EnhancedSearch(
-    [FromQuery] string query,
-    [FromQuery] int maxResults = 20)
-{
-    var options = new SearchOptions { MaxResults = maxResults };
-    var results = await _searchService.EnhancedSearchAsync(query, options);
-    return Ok(results);
-}</code></pre>
-                    </div>
-
-                    <h4>Dil-Agnostik Tasarım</h4>
-                    <p>SmartRAG, hardcoded dil kalıpları veya dil-spesifik kurallar olmadan herhangi bir dilde çalışır:</p>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">// Dil-agnostik yapılandırma - herhangi bir dilde çalışır
-services.AddSmartRAG(options =>
-{
-    options.AIProvider = AIProvider.Anthropic;
-    options.StorageProvider = StorageProvider.Qdrant;
-    options.ApiKey = "your-api-key";
-    
-    // Dil-agnostik özellikleri etkinleştir
-    options.LanguageAgnostic = true;
-    options.AutoDetectLanguage = true;
-    options.SupportedLanguages = new[] { "en", "tr", "de", "ru", "fr", "es", "ja", "ko", "zh" };
-    
-    // Hardcoded dil kalıpları yok
-    options.EnableMultilingualSupport = true;
-    options.FallbackLanguage = "en";
-});
-
-// Herhangi bir dildeki sorguları otomatik olarak işle
-public async Task<QueryResult> ProcessMultilingualQueryAsync(string query)
-{
-    // Dil otomatik olarak algılanır
-    var detectedLanguage = await _languageService.DetectLanguageAsync(query);
-    
-    // Dil-agnostik algoritmalarla işle
-    var result = await _queryProcessor.ProcessQueryAsync(query, new QueryOptions
-    {
-        Language = detectedLanguage,
-        UseLanguageAgnosticProcessing = true
-    });
-    
-    return result;
-}</code></pre>
-                    </div>
-
-                    <h4>Gelişmiş Dil-Agnostik Özellikler</h4>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">// Gelişmiş dil-agnostik yapılandırma
-var languageAgnosticConfig = new LanguageAgnosticConfiguration
-{
-    EnableLanguageDetection = true,
-    EnableMultilingualEmbeddings = true,
-    EnableCrossLanguageSearch = true,
-    LanguageDetectionThreshold = 0.8,
-    SupportedScripts = new[] { "Latin", "Cyrillic", "Arabic", "Chinese", "Japanese", "Korean" },
-    EnableScriptNormalization = true,
-    EnableUnicodeNormalization = true,
-    FallbackStrategies = new[] { "transliteration", "romanization", "english" }
-};
-
-services.AddSmartRAG(options =>
-{
-    options.AIProvider = AIProvider.Anthropic;
-    options.StorageProvider = StorageProvider.Qdrant;
-    options.ApiKey = "your-api-key";
-    
-    // Gelişmiş dil-agnostik özellikleri yapılandır
-    options.LanguageAgnostic = true;
-    options.LanguageAgnosticConfig = languageAgnosticConfig;
-});
-
-// Çok dilli belge işleme için controller
-[HttpPost("multilingual-upload")]
-public async Task<ActionResult<MultilingualUploadResult>> UploadMultilingualDocument(
-    [FromBody] MultilingualUploadRequest request)
-{
     try
     {
-        // Belgeyi herhangi bir dilde işle
-        var document = await _documentService.UploadMultilingualDocumentAsync(
-            request.Content, 
-            request.FileName,
-            request.DetectedLanguage);
-        
-        // Dil-agnostik algoritmalar kullanarak embedding'ler oluştur
-        var embeddings = await _embeddingService.GenerateMultilingualEmbeddingsAsync(
-            document.Chunks,
-            document.DetectedLanguage);
-        
-        // Dil metadata'sı ile sakla
-        await _storageService.StoreMultilingualDocumentAsync(document, embeddings);
-        
-        return Ok(new MultilingualUploadResult
+        var streams = new List<Stream>();
+        var fileNames = new List<string>();
+        var contentTypes = new List<string>();
+
+        foreach (var file in files)
         {
-            DocumentId = document.Id,
-            DetectedLanguage = document.DetectedLanguage,
-            LanguageConfidence = document.LanguageConfidence,
-            TotalChunks = document.Chunks.Count,
-            ProcessingTime = document.ProcessingTime
-        });
+            streams.Add(file.OpenReadStream());
+            fileNames.Add(file.FileName);
+            contentTypes.Add(file.ContentType);
+        }
+
+        var documents = await _documentService.UploadDocumentsAsync(
+            streams, fileNames, contentTypes, "user123");
+        
+        return Ok(documents);
     }
     catch (Exception ex)
     {
-        _logger.LogError(ex, "Çok dilli belge işlenirken hata");
-        return StatusCode(500, "Çok dilli belge işlenemedi");
+        return BadRequest(ex.Message);
     }
+}</code></pre>
+                    </div>
+
+                    <h3>Doküman Yönetimi</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Tüm dokümanları getir
+[HttpGet]
+public async Task<ActionResult<List<Document>>> GetAllDocuments()
+{
+    var documents = await _documentService.GetAllDocumentsAsync();
+    return Ok(documents);
 }
 
-// Tüm dillerde çok dilli arama
-[HttpGet("multilingual-search")]
-public async Task<ActionResult<MultilingualSearchResult>> SearchMultilingual(
-    [FromQuery] string query,
-    [FromQuery] string[] languages = null,
-    [FromQuery] int maxResults = 20)
+// Belirli dokümanı getir
+[HttpGet("{id}")]
+public async Task<ActionResult<Document>> GetDocument(Guid id)
 {
-    try
-    {
-        var searchOptions = new MultilingualSearchOptions
-        {
-            Query = query,
-            TargetLanguages = languages ?? new[] { "auto" },
-            MaxResults = maxResults,
-            EnableCrossLanguageSearch = true,
-            UseLanguageAgnosticScoring = true
-        };
-        
-        var results = await _searchService.SearchMultilingualAsync(searchOptions);
-        
-        return Ok(new MultilingualSearchResult
-        {
-            Query = query,
-            DetectedQueryLanguage = results.DetectedLanguage,
-            Results = results.Results,
-            CrossLanguageMatches = results.CrossLanguageMatches,
-            TotalResults = results.TotalResults
-        });
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "Çok dilli aramada hata");
-        return StatusCode(500, "Çok dilli arama yapılamadı");
-    }
-}</code></pre>
-                    </div>
-
-                    <h4>Anthropic API Retry Mekanizması</h4>
-                    <p>HTTP 529 (Overloaded) hataları için gelişmiş retry logic:</p>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">public async Task<ChatResponse> ProcessWithRetryAsync(string prompt, int maxRetries = 3)
-{
-    var retryPolicy = new ExponentialBackoffRetryPolicy
-    {
-        MaxRetries = maxRetries,
-        BaseDelay = TimeSpan.FromSeconds(2),
-        MaxDelay = TimeSpan.FromSeconds(30),
-        JitterFactor = 0.1
-    };
-
-    for (int attempt = 1; attempt <= maxRetries; attempt++)
-    {
-        try
-        {
-            var response = await _anthropicService.ChatAsync(new ChatRequest
-            {
-                Model = "claude-3-sonnet-20240229",
-                MaxTokens = 1000,
-                Messages = new[] { new Message { Role = "user", Content = prompt } }
-            });
-
-            return response;
-        }
-        catch (AnthropicApiException ex) when (ex.StatusCode == 529)
-        {
-            _logger.LogWarning("Anthropic API aşırı yüklü (HTTP 529), deneme {Attempt}/{MaxRetries}", 
-                attempt, maxRetries);
-
-            if (attempt == maxRetries)
-            {
-                throw new AnthropicServiceUnavailableException(
-                    "Anthropic API şu anda birden fazla deneme sonrası aşırı yüklü", ex);
-            }
-
-            var delay = retryPolicy.CalculateDelay(attempt);
-            await Task.Delay(delay);
-        }
-        catch (AnthropicApiException ex) when (ex.StatusCode == 429)
-        {
-            // Rate limiting - exponential backoff kullan
-            var delay = retryPolicy.CalculateDelay(attempt);
-            await Task.Delay(delay);
-        }
-    }
-
-    throw new InvalidOperationException("Beklenmeyen retry loop çıkışı");
-}</code></pre>
-                    </div>
-
-                    <h4>Gelişmiş Retry Yapılandırması</h4>
-                    <p>Farklı hata senaryoları için sofistike retry politikaları yapılandırın:</p>
-                    
-                    <h5>Temel Retry Yapılandırması</h5>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">services.AddSmartRAG(options =>
-{
-    options.AIProvider = AIProvider.Anthropic;
-    options.StorageProvider = StorageProvider.Qdrant;
-    options.ApiKey = "your-anthropic-api-key";
+    var document = await _documentService.GetDocumentAsync(id);
+    if (document == null)
+        return NotFound();
     
-    // Gelişmiş retry mekanizmasını etkinleştir
-    options.EnableAdvancedRetry = true;
-    options.RetryConfiguration = new AnthropicRetryConfiguration
-    {
-        MaxRetries = 5,
-        BaseDelay = TimeSpan.FromSeconds(1),
-        MaxDelay = TimeSpan.FromSeconds(60),
-        JitterFactor = 0.15,
-        EnableCircuitBreaker = true,
-        CircuitBreakerThreshold = 10,
-        CircuitBreakerTimeout = TimeSpan.FromMinutes(5),
-        RetryOnStatusCodes = new[] { 429, 529, 500, 502, 503, 504 },
-        ExponentialBackoff = true
-    };
-});</code></pre>
-                    </div>
-
-                    <h5>Özel Retry Koşulları</h5>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">// Özel retry koşulları
-options.RetryConfiguration.CustomRetryPredicate = async (exception, attempt) =>
-{
-    if (exception is AnthropicApiException apiEx)
-    {
-        // 529 (Overloaded) durumunda her zaman retry yap
-        if (apiEx.StatusCode == 529) return true;
-        
-        // 429 (Rate Limited) durumunda backoff ile retry yap
-        if (apiEx.StatusCode == 429) return attempt <= 3;
-        
-        // Sunucu hatalarında retry yap
-        if (apiEx.StatusCode >= 500) return attempt <= 2;
-    }
-    
-    return false;
-};</code></pre>
-                    </div>
-
-                    <h5>Servis Implementasyonu</h5>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">public class AnthropicService
-{
-    private readonly IAnthropicClient _client;
-    private readonly IRetryPolicy _retryPolicy;
-    private readonly ILogger<AnthropicService> _logger;
-
-    public AnthropicService(IAnthropicClient client, IRetryPolicy retryPolicy, ILogger<AnthropicService> logger)
-    {
-        _client = client;
-        _retryPolicy = retryPolicy;
-        _logger = logger;
-    }
-
-    public async Task<ChatResponse> ChatWithRetryAsync(ChatRequest request)
-    {
-        return await _retryPolicy.ExecuteAsync(async () =>
-        {
-            try
-            {
-                return await _client.ChatAsync(request);
-            }
-            catch (AnthropicApiException ex)
-            {
-                _logger.LogError(ex, "Anthropic API hatası: {StatusCode} - {Message}", 
-                    ex.StatusCode, ex.Message);
-                
-                if (ex.StatusCode == 529)
-                {
-                    _logger.LogWarning("API aşırı yük tespit edildi - backoff stratejisi uygulanıyor");
-                }
-                
-                throw;
-            }
-        });
-    }
-}</code></pre>
-                    </div>
-
-                    <h4>Circuit Breaker Pattern</h4>
-                    <p>API koruması için circuit breaker uygulayın:</p>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">// Circuit breaker implementasyonu
-public class AnthropicCircuitBreaker
-{
-    private readonly ILogger<AnthropicCircuitBreaker> _logger;
-    private readonly int _failureThreshold;
-    private readonly TimeSpan _resetTimeout;
-    
-    private int _failureCount;
-    private DateTime _lastFailureTime;
-    private CircuitBreakerState _state = CircuitBreakerState.Closed;
-
-    public AnthropicCircuitBreaker(ILogger<AnthropicCircuitBreaker> logger, 
-        int failureThreshold = 10, TimeSpan? resetTimeout = null)
-    {
-        _logger = logger;
-        _failureThreshold = failureThreshold;
-        _resetTimeout = resetTimeout ?? TimeSpan.FromMinutes(5);
-    }
-
-    public async Task<T> ExecuteAsync<T>(Func<Task<T>> action)
-    {
-        if (_state == CircuitBreakerState.Open)
-        {
-            if (DateTime.UtcNow - _lastFailureTime > _resetTimeout)
-            {
-                _logger.LogInformation("Circuit breaker timeout'a ulaştı, kapatmaya çalışılıyor");
-                _state = CircuitBreakerState.HalfOpen;
-            }
-            else
-            {
-                throw new CircuitBreakerOpenException("Circuit breaker açık");
-            }
-        }
-
-        try
-        {
-            var result = await action();
-            
-            if (_state == CircuitBreakerState.HalfOpen)
-            {
-                _logger.LogInformation("Circuit breaker başarıyla kapatıldı");
-                _state = CircuitBreakerState.Closed;
-                _failureCount = 0;
-            }
-            
-            return result;
-        }
-        catch (Exception ex)
-        {
-            _failureCount++;
-            _lastFailureTime = DateTime.UtcNow;
-            
-            if (_failureCount >= _failureThreshold)
-            {
-                _logger.LogWarning("Circuit breaker {FailureCount} başarısızlıktan sonra açıldı", _failureCount);
-                _state = CircuitBreakerState.Open;
-            }
-            
-            throw;
-        }
-    }
+    return Ok(document);
 }
 
-// Circuit breaker ile controller implementasyonu
-[HttpPost("chat-with-retry")]
-public async Task<ActionResult<ChatResponse>> ChatWithRetry([FromBody] ChatRequest request)
+// Dokümanı sil
+[HttpDelete("{id}")]
+public async Task<ActionResult> DeleteDocument(Guid id)
 {
-    try
-    {
-        var response = await _anthropicService.ChatWithRetryAsync(request);
-        return Ok(response);
-    }
-    catch (CircuitBreakerOpenException)
-    {
-        return StatusCode(503, new { error = "Yüksek hata oranı nedeniyle servis geçici olarak kullanılamıyor" });
-    }
-    catch (AnthropicServiceUnavailableException ex)
-    {
-        return StatusCode(503, new { error = ex.Message });
-    }
-    catch (Exception ex)
-    {
-        _logger.LogError(ex, "Chat servisinde beklenmeyen hata");
-        return StatusCode(500, new { error = "İç sunucu hatası" });
-    }
+    var success = await _documentService.DeleteDocumentAsync(id);
+    if (!success)
+        return NotFound();
+    
+    return NoContent();
 }</code></pre>
                     </div>
 
-                    <h4>Niyet Analizi Yapılandırması</h4>
+                    <h3>Depolama İstatistikleri</h3>
                     <div class="code-example">
-                        <pre><code class="language-csharp">// Niyet algılamayı yapılandır
-services.AddSmartRAG(options =>
+                        <pre><code class="language-csharp">[HttpGet("statistics")]
+public async Task<ActionResult<Dictionary<string, object>>> GetStorageStatistics()
 {
-    options.AIProvider = AIProvider.Anthropic;
-    options.StorageProvider = StorageProvider.Qdrant;
-    options.ApiKey = "your-api-key";
-    
-    // Akıllı sorgu niyet algılamayı etkinleştir
-    options.EnableQueryIntentDetection = true;
-    options.IntentDetectionThreshold = 0.7; // Güven eşiği
-    options.LanguageAgnostic = true; // Herhangi bir dilde çalışır
-});
-
-// Controller'ınızda kullanın
-[HttpPost("query")]
-public async Task<ActionResult<QueryResult>> ProcessQuery([FromBody] QueryRequest request)
-{
-    var result = await _queryProcessor.ProcessQueryAsync(request.Query);
-    return Ok(result);
+    var stats = await _documentService.GetStorageStatisticsAsync();
+    return Ok(stats);
 }</code></pre>
                     </div>
 
-                    <h3>Özel Parçalama Stratejisi</h3>
+                    <h3>Embedding İşlemleri</h3>
                     <div class="code-example">
-                        <pre><code class="language-csharp">public class CustomChunkingStrategy : IChunkingStrategy
+                        <pre><code class="language-csharp">// Tüm embedding'leri yeniden oluştur
+[HttpPost("regenerate-embeddings")]
+public async Task<ActionResult> RegenerateAllEmbeddings()
 {
-    public IEnumerable<string> ChunkText(string text, int chunkSize, int overlap)
-    {
-        var chunks = new List<string>();
-        var sentences = text.Split(new[] { '.', '!', '?' }, 
-            StringSplitOptions.RemoveEmptyEntries);
-        
-        var currentChunk = new StringBuilder();
-        
-        foreach (var sentence in sentences)
-        {
-            if (currentChunk.Length + sentence.Length > chunkSize)
-            {
-                if (currentChunk.Length > 0)
-                {
-                    chunks.Add(currentChunk.ToString().Trim());
-                    currentChunk.Clear();
-                }
-            }
-            currentChunk.AppendLine(sentence.Trim() + ".");
-        }
-        
-        if (currentChunk.Length > 0)
-        {
-            chunks.Add(currentChunk.ToString().Trim());
-        }
-        
-        return chunks;
-    }
-}</code></pre>
-                    </div>
+    var success = await _documentService.RegenerateAllEmbeddingsAsync();
+    if (success)
+        return Ok("Tüm embedding'ler başarıyla yeniden oluşturuldu");
+    else
+        return BadRequest("Embedding'ler yeniden oluşturulamadı");
+}
 
-                    <h3>Özel AI Provider</h3>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">public class CustomAIProvider : IAIProvider
+// Tüm embedding'leri temizle
+[HttpPost("clear-embeddings")]
+public async Task<ActionResult> ClearAllEmbeddings()
 {
-    private readonly HttpClient _httpClient;
-    private readonly string _apiKey;
-    
-    public CustomAIProvider(HttpClient httpClient, IConfiguration configuration)
-    {
-        _httpClient = httpClient;
-        _apiKey = configuration["CustomAI:ApiKey"];
-    }
-    
-    public async Task<float[]> GenerateEmbeddingAsync(string text)
-    {
-        var request = new
-        {
-            text = text,
-            model = "custom-embedding-model"
-        };
-        
-        var response = await _httpClient.PostAsJsonAsync(
-            "https://api.customai.com/embeddings", request);
-        
-        response.EnsureSuccessStatusCode();
-        
-        var result = await response.Content.ReadFromJsonAsync<EmbeddingResponse>();
-        return result.Embedding;
-    }
+    var success = await _documentService.ClearAllEmbeddingsAsync();
+    if (success)
+        return Ok("Tüm embedding'ler başarıyla temizlendi");
+    else
+        return BadRequest("Embedding'ler temizlenemedi");
+}
+
+// Tüm dokümanları temizle
+[HttpPost("clear-all")]
+public async Task<ActionResult> ClearAllDocuments()
+{
+    var success = await _documentService.ClearAllDocumentsAsync();
+    if (success)
+        return Ok("Tüm dokümanlar başarıyla temizlendi");
+    else
+        return BadRequest("Dokümanlar temizlenemedi");
 }</code></pre>
                     </div>
                 </div>
@@ -715,13 +208,16 @@ public async Task<ActionResult<QueryResult>> ProcessQuery([FromBody] QueryReques
 public class DocumentsController : ControllerBase
 {
     private readonly IDocumentService _documentService;
+    private readonly IDocumentSearchService _documentSearchService;
     private readonly ILogger<DocumentsController> _logger;
     
     public DocumentsController(
         IDocumentService documentService,
+        IDocumentSearchService documentSearchService,
         ILogger<DocumentsController> logger)
     {
         _documentService = documentService;
+        _documentSearchService = documentSearchService;
         _logger = logger;
     }
     
@@ -729,17 +225,19 @@ public class DocumentsController : ControllerBase
     public async Task<ActionResult<Document>> UploadDocument(IFormFile file)
     {
         if (file == null || file.Length == 0)
-            return BadRequest("No file provided");
+            return BadRequest("Dosya sağlanmadı");
             
         try
         {
-            var document = await _documentService.UploadDocumentAsync(file);
-            _logger.LogInformation("Document uploaded: {DocumentId}", document.Id);
+            using var stream = file.OpenReadStream();
+            var document = await _documentService.UploadDocumentAsync(
+                stream, file.FileName, file.ContentType, "user123");
+            _logger.LogInformation("Doküman yüklendi: {DocumentId}", document.Id);
             return Ok(document);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to upload document: {FileName}", file.FileName);
+            _logger.LogError(ex, "Doküman yükleme başarısız: {FileName}", file.FileName);
             return BadRequest(ex.Message);
         }
     }
@@ -750,26 +248,46 @@ public class DocumentsController : ControllerBase
         [FromQuery] int maxResults = 10)
     {
         if (string.IsNullOrWhiteSpace(query))
-            return BadRequest("Query parameter is required");
+            return BadRequest("Sorgu parametresi gerekli");
             
         try
         {
-            var results = await _documentService.SearchDocumentsAsync(query, maxResults);
+            var results = await _documentSearchService.SearchDocumentsAsync(query, maxResults);
             return Ok(results);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Search failed for query: {Query}", query);
+            _logger.LogError(ex, "Arama başarısız, sorgu: {Query}", query);
+            return BadRequest(ex.Message);
+        }
+    }
+    
+    [HttpPost("chat")]
+    public async Task<ActionResult<RagResponse>> ChatWithDocuments(
+        [FromBody] string query,
+        [FromQuery] int maxResults = 5)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+            return BadRequest("Sorgu parametresi gerekli");
+            
+        try
+        {
+            var response = await _documentSearchService.GenerateRagAnswerAsync(query, maxResults);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Sohbet başarısız, sorgu: {Query}", query);
             return BadRequest(ex.Message);
         }
     }
     
     [HttpGet("{id}")]
-    public async Task<ActionResult<Document>> GetDocument(string id)
+    public async Task<ActionResult<Document>> GetDocument(Guid id)
     {
         try
         {
-            var document = await _documentService.GetDocumentByIdAsync(id);
+            var document = await _documentService.GetDocumentAsync(id);
             if (document == null)
                 return NotFound();
                 
@@ -777,13 +295,28 @@ public class DocumentsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get document: {DocumentId}", id);
+            _logger.LogError(ex, "Doküman getirme başarısız: {DocumentId}", id);
+            return BadRequest(ex.Message);
+        }
+    }
+    
+    [HttpGet]
+    public async Task<ActionResult<List<Document>>> GetAllDocuments()
+    {
+        try
+        {
+            var documents = await _documentService.GetAllDocumentsAsync();
+            return Ok(documents);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Tüm dokümanları getirme başarısız");
             return BadRequest(ex.Message);
         }
     }
     
     [HttpDelete("{id}")]
-    public async Task<ActionResult> DeleteDocument(string id)
+    public async Task<ActionResult> DeleteDocument(Guid id)
     {
         try
         {
@@ -791,12 +324,12 @@ public class DocumentsController : ControllerBase
             if (!success)
                 return NotFound();
                 
-            _logger.LogInformation("Document deleted: {DocumentId}", id);
+            _logger.LogInformation("Doküman silindi: {DocumentId}", id);
             return NoContent();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to delete document: {DocumentId}", id);
+            _logger.LogError(ex, "Doküman silme başarısız: {DocumentId}", id);
             return BadRequest(ex.Message);
         }
     }
@@ -821,28 +354,29 @@ public class DocumentsController : ControllerBase
         var services = new ServiceCollection();
         
         // Servisleri yapılandır
-        services.AddSmartRAG(options =>
+        services.AddSmartRag(configuration, options =>
         {
             options.AIProvider = AIProvider.Anthropic;
             options.StorageProvider = StorageProvider.Qdrant;
-            options.ApiKey = Environment.GetEnvironmentVariable("ANTHROPIC_API_KEY");
-            options.ChunkSize = 1000;
+            options.MaxChunkSize = 1000;
             options.ChunkOverlap = 200;
         });
         
         var serviceProvider = services.BuildServiceProvider();
         var documentService = serviceProvider.GetRequiredService<IDocumentService>();
+        var documentSearchService = serviceProvider.GetRequiredService<IDocumentSearchService>();
         
         Console.WriteLine("SmartRAG Konsol Uygulaması");
-        Console.WriteLine("============================");
+        Console.WriteLine("===========================");
         
         while (true)
         {
             Console.WriteLine("\nSeçenekler:");
-            Console.WriteLine("1. Belge yükle");
-            Console.WriteLine("2. Belgelerde ara");
-            Console.WriteLine("3. Tüm belgeleri listele");
-            Console.WriteLine("4. Çıkış");
+            Console.WriteLine("1. Doküman yükle");
+            Console.WriteLine("2. Doküman ara");
+            Console.WriteLine("3. Dokümanlarla sohbet et");
+            Console.WriteLine("4. Tüm dokümanları listele");
+            Console.WriteLine("5. Çıkış");
             Console.Write("Bir seçenek seçin: ");
             
             var choice = Console.ReadLine();
@@ -853,12 +387,15 @@ public class DocumentsController : ControllerBase
                     await UploadDocument(documentService);
                     break;
                 case "2":
-                    await SearchDocuments(documentService);
+                    await SearchDocuments(documentSearchService);
                     break;
                 case "3":
-                    await ListDocuments(documentService);
+                    await ChatWithDocuments(documentSearchService);
                     break;
                 case "4":
+                    await ListDocuments(documentService);
+                    break;
+                case "5":
                     return;
                 default:
                     Console.WriteLine("Geçersiz seçenek. Lütfen tekrar deneyin.");
@@ -881,22 +418,19 @@ public class DocumentsController : ControllerBase
         try
         {
             var fileInfo = new FileInfo(filePath);
-            var fileStream = File.OpenRead(filePath);
+            using var fileStream = File.OpenRead(filePath);
             
-            // Mock IFormFile oluştur
-            var formFile = new FormFile(fileStream, 0, fileInfo.Length, 
-                fileInfo.Name, fileInfo.Name);
-            
-            var document = await documentService.UploadDocumentAsync(formFile);
-            Console.WriteLine($"Belge başarıyla yüklendi. ID: {document.Id}");
+            var document = await documentService.UploadDocumentAsync(
+                fileStream, fileInfo.Name, "application/octet-stream", "console-user");
+            Console.WriteLine($"Doküman başarıyla yüklendi. ID: {document.Id}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Belge yükleme hatası: {ex.Message}");
+            Console.WriteLine($"Doküman yükleme hatası: {ex.Message}");
         }
     }
     
-    static async Task SearchDocuments(IDocumentService documentService)
+    static async Task SearchDocuments(IDocumentSearchService documentSearchService)
     {
         Console.Write("Arama sorgusunu girin: ");
         var query = Console.ReadLine();
@@ -909,8 +443,8 @@ public class DocumentsController : ControllerBase
         
         try
         {
-            var results = await documentService.SearchDocumentsAsync(query, 5);
-            Console.WriteLine($"{results.Count()} sonuç bulundu:");
+            var results = await documentSearchService.SearchDocumentsAsync(query, 5);
+            Console.WriteLine($"{results.Count} sonuç bulundu:");
             
             foreach (var result in results)
             {
@@ -919,7 +453,29 @@ public class DocumentsController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Belge arama hatası: {ex.Message}");
+            Console.WriteLine($"Doküman arama hatası: {ex.Message}");
+        }
+    }
+    
+    static async Task ChatWithDocuments(IDocumentSearchService documentSearchService)
+    {
+        Console.Write("Sorunuzu girin: ");
+        var query = Console.ReadLine();
+        
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            Console.WriteLine("Soru boş olamaz.");
+            return;
+        }
+        
+        try
+        {
+            var response = await documentSearchService.GenerateRagAnswerAsync(query, 5);
+            Console.WriteLine($"AI Cevabı: {response.Answer}");
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Dokümanlarla sohbet hatası: {ex.Message}");
         }
     }
     
@@ -928,7 +484,7 @@ public class DocumentsController : ControllerBase
         try
         {
             var documents = await documentService.GetAllDocumentsAsync();
-            Console.WriteLine($"Toplam belge sayısı: {documents.Count()}");
+            Console.WriteLine($"Toplam doküman: {documents.Count}");
             
             foreach (var doc in documents)
             {
@@ -937,7 +493,7 @@ public class DocumentsController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Belge listeleme hatası: {ex.Message}");
+            Console.WriteLine($"Doküman listeleme hatası: {ex.Message}");
         }
     }
 }</code></pre>
@@ -946,17 +502,72 @@ public class DocumentsController : ControllerBase
             </div>
         </section>
 
-        <!-- Help Section -->
+        <!-- Configuration Examples Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Yapılandırma Örnekleri</h2>
+                    <p>SmartRAG servislerini yapılandırmanın farklı yolları.</p>
+                    
+                    <h3>Temel Yapılandırma</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Program.cs
+services.UseSmartRag(configuration,
+    storageProvider: StorageProvider.InMemory,
+    aiProvider: AIProvider.Gemini
+);</code></pre>
+                    </div>
+
+                    <h3>Gelişmiş Yapılandırma</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Program.cs
+services.AddSmartRag(configuration, options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.MaxChunkSize = 1000;
+    options.MinChunkSize = 50;
+    options.ChunkOverlap = 200;
+    options.MaxRetryAttempts = 3;
+    options.RetryDelayMs = 1000;
+    options.RetryPolicy = RetryPolicy.ExponentialBackoff;
+    options.EnableFallbackProviders = true;
+    options.FallbackProviders = new[] { AIProvider.Gemini, AIProvider.OpenAI };
+});</code></pre>
+                    </div>
+
+                    <h3>appsettings.json Yapılandırması</h3>
+                    <div class="code-example">
+                        <pre><code class="language-json">{
+  "SmartRAG": {
+    "AIProvider": "Anthropic",
+    "StorageProvider": "Qdrant",
+    "MaxChunkSize": 1000,
+    "MinChunkSize": 50,
+    "ChunkOverlap": 200,
+    "MaxRetryAttempts": 3,
+    "RetryDelayMs": 1000,
+    "RetryPolicy": "ExponentialBackoff",
+    "EnableFallbackProviders": true,
+    "FallbackProviders": ["Gemini", "OpenAI"]
+  }
+}</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Need Help Section -->
         <section class="content-section">
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <div class="alert alert-info">
                         <h4><i class="fas fa-question-circle me-2"></i>Yardıma mı ihtiyacınız var?</h4>
-                        <p class="mb-0">Örnekler konusunda yardıma ihtiyacınız varsa:</p>
-                        <ul class="mb-0 mt-2">
-                            <li><a href="{{ site.baseurl }}/tr/getting-started">Başlangıç Kılavuzu</a></li>
+                        <p class="mb-2">Örneklerle ilgili yardıma ihtiyacınız varsa:</p>
+                        <ul class="mb-0">
+                            <li><a href="{{ site.baseurl }}/tr/getting-started">Başlangıç Rehberi</a></li>
                             <li><a href="{{ site.baseurl }}/tr/api-reference">API Referansı</a></li>
-                            <li><a href="https://github.com/byerlikaya/SmartRAG/issues" target="_blank">GitHub'da issue açın</a></li>
+                            <li><a href="https://github.com/byerlikaya/SmartRAG/issues">GitHub'da sorun açın</a></li>
                             <li><a href="mailto:b.yerlikaya@outlook.com">E-posta ile destek alın</a></li>
                         </ul>
                     </div>
