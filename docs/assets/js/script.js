@@ -79,6 +79,35 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Quick Start Section Tabs (Homepage specific)
+    const quickStartTabs = document.querySelectorAll('.quick-start-section .code-tab');
+    const quickStartPanels = document.querySelectorAll('.quick-start-section .code-panel');
+    
+    if (quickStartTabs.length > 0) {
+        console.log('Setting up quick start tabs...');
+        
+        quickStartTabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                const targetTab = this.getAttribute('data-tab');
+                
+                // Remove active class from all tabs and panels in quick start section only
+                quickStartTabs.forEach(t => t.classList.remove('active'));
+                quickStartPanels.forEach(p => p.classList.remove('active'));
+                
+                // Add active class to clicked tab
+                this.classList.add('active');
+                
+                // Show corresponding panel
+                const targetPanel = document.getElementById(targetTab);
+                if (targetPanel) {
+                    targetPanel.classList.add('active');
+                }
+                
+                console.log('Quick start tab switched to:', targetTab);
+            });
+        });
+    }
+
     // Provider Tabs Functionality
     const providerTabs = document.querySelectorAll('.provider-tab');
     const providerPanels = document.querySelectorAll('.provider-panel');
