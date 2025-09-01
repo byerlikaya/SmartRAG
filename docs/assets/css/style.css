@@ -1040,7 +1040,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .code-content {
-    background: #1e1e1e;
+    background: #f8f9fa;
     border: 1px solid var(--gray-200);
     border-top: none;
     border-radius: 0 0 var(--radius-lg) var(--radius-lg);
@@ -1053,7 +1053,7 @@ h1, h2, h3, h4, h5, h6 {
 .code-content pre {
     margin: 0;
     background: none;
-    color: #d4d4d4;
+    color: #2d3748;
     font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', monospace;
     font-size: 0.875rem;
     line-height: 1.6;
@@ -1105,14 +1105,14 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 [data-theme="dark"] .code-content {
-    background: #1e1e1e;
+    background: #2d3748;
     border-color: var(--dark-border);
     box-shadow: var(--shadow-lg);
     margin-top: -1px;
 }
 
 [data-theme="dark"] .code-content pre {
-    color: #d4d4d4;
+    color: #e2e8f0;
 }
 
 /* Sections */
