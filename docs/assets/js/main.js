@@ -1,39 +1,6 @@
 // SmartRAG Documentation - Main JavaScript
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Theme Toggle Functionality
-    const themeToggle = document.getElementById('themeToggle');
-    const themeIcon = document.getElementById('themeIcon');
-    const body = document.body;
-    
-    // Check for saved theme preference or default to 'light'
-    const currentTheme = localStorage.getItem('theme') || 'light';
-    
-    // Apply the current theme
-    function applyTheme(theme) {
-        if (theme === 'dark') {
-            body.setAttribute('data-theme', 'dark');
-            themeIcon.className = 'fas fa-moon';
-            localStorage.setItem('theme', 'dark');
-        } else {
-            body.removeAttribute('data-theme');
-            themeIcon.className = 'fas fa-sun';
-            localStorage.setItem('theme', 'light');
-        }
-    }
-    
-    // Initialize theme
-    applyTheme(currentTheme);
-    
-    // Theme toggle click handler
-    if (themeToggle) {
-        themeToggle.addEventListener('click', function() {
-            const currentTheme = localStorage.getItem('theme') || 'light';
-            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-            applyTheme(newTheme);
-        });
-    }
-    
     // Back to Top Button
     const backToTopButton = document.getElementById('backToTop');
     

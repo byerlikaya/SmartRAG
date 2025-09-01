@@ -3,53 +3,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded, initializing SmartRAG documentation...');
     
-    // Theme Toggle Functionality
-    const themeToggle = document.getElementById('themeToggle');
-    const themeIcon = document.getElementById('themeIcon');
-    const body = document.body;
-    
-    console.log('Theme toggle found:', themeToggle);
-    console.log('Theme icon found:', themeIcon);
-    
-    if (themeToggle) {
-        console.log('Setting up theme toggle...');
-        themeToggle.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Theme toggle clicked!');
-            
-            const currentTheme = body.getAttribute('data-theme') || 'light';
-            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-            
-            if (newTheme === 'dark') {
-                body.setAttribute('data-theme', 'dark');
-                if (themeIcon) {
-                    themeIcon.className = 'fas fa-moon';
-                }
-                localStorage.setItem('theme', 'dark');
-                console.log('Dark theme applied');
-            } else {
-                body.removeAttribute('data-theme');
-                if (themeIcon) {
-                    themeIcon.className = 'fas fa-sun';
-                }
-                localStorage.setItem('theme', 'light');
-                console.log('Light theme applied');
-            }
-        });
-        
-        // Apply saved theme
-        const savedTheme = localStorage.getItem('theme');
-        if (savedTheme === 'dark') {
-            body.setAttribute('data-theme', 'dark');
-            if (themeIcon) {
-                themeIcon.className = 'fas fa-moon';
-            }
-        }
-    } else {
-        console.warn('Theme toggle button not found!');
-    }
-    
     // Tab Functionality for Configuration Pages
     const codeTabs = document.querySelectorAll('.code-tab');
     const codePanels = document.querySelectorAll('.code-panel');
