@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Fehlerbehebung
-description: Häufige Probleme und Lösungen für die SmartRAG-Implementierung
+description: Häufige Probleme und Lösungen für SmartRAG-Implementierung
 lang: de
 ---
 
@@ -12,152 +12,116 @@ lang: de
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Häufige Probleme</h2>
-                    <p>Häufige Probleme und Lösungen, die Sie bei der Verwendung von SmartRAG begegnen können.</p>
+                    <p>Häufige Probleme und Lösungen, die Sie bei der Verwendung von SmartRAG antreffen können.</p>
 
-                    <h3>Kompilierungsprobleme</h3>
+                    <h3>Service-Registrierungsprobleme</h3>
                     <div class="alert alert-warning">
-                        <h4><i class="fas fa-exclamation-triangle me-2"></i>Achtung</h4>
-                        <p class="mb-0">Erstellen Sie zuerst eine saubere Lösung, um Kompilierungsfehler zu beheben.</p>
+                        <h4><i class="fas fa-exclamation-triangle me-2"></i>Warnung</h4>
+                        <p class="mb-0">Stellen Sie immer sicher, dass die Service-Registrierung und Dependency Injection korrekt eingerichtet sind.</p>
                     </div>
 
-                    <h4>NuGet-Paketfehler</h4>
+                    <h4>Service nicht registriert</h4>
                     <div class="code-example">
-                        <pre><code class="language-bash"># Saubere Lösung
-dotnet clean
-dotnet restore
-dotnet build</code></pre>
-                    </div>
-
-                    <h4>Abhängigkeitskonflikt</h4>
-                    <div class="code-example">
-                        <pre><code class="language-xml"><PackageReference Include="SmartRAG" Version="1.1.0" />
-<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
-<PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" /></code></pre>
-                    </div>
-
-                    <h3>Laufzeitprobleme</h3>
-                    
-                    <h4>API-Schlüssel-Fehler</h4>
-                    <div class="alert alert-danger">
-                        <h4><i class="fas fa-times-circle me-2"></i>Fehler</h4>
-                        <p class="mb-0">UnauthorizedAccessException: API-Schlüssel ungültig oder fehlend.</p>
-                    </div>
-
-                    <div class="code-example">
-                        <pre><code class="language-json">// appsettings.json
-{
-  "SmartRAG": {
-    "AIProvider": "Anthropic",
-    "Anthropic": {
-      "ApiKey": "your-api-key-here",
-      "Model": "claude-3-sonnet-20240229"
-    }
-  }
-}</code></pre>
-                    </div>
-
-                    <h4>Verbindungs-Timeout</h4>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">services.AddSmartRAG(configuration, options =>
+                        <pre><code class="language-csharp">// Stellen Sie sicher, dass Services korrekt registriert sind
+services.AddSmartRag(configuration, options =>
 {
     options.AIProvider = AIProvider.Anthropic;
     options.StorageProvider = StorageProvider.Qdrant;
-    options.MaxRetryAttempts = 5;
-    options.RetryDelayMs = 2000;
+    options.MaxChunkSize = 1000;
+    options.ChunkOverlap = 200;
+});
+
+// Erforderliche Services abrufen
+var documentService = serviceProvider.GetRequiredService<IDocumentService>();
+var documentSearchService = serviceProvider.GetRequiredService<IDocumentSearchService>();</code></pre>
+                    </div>
+
+                    <h4>Konfigurationsprobleme</h4>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Korrekte Konfiguration sicherstellen
+services.AddSmartRag(configuration, options =>
+{
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.MaxChunkSize = 1000;
+    options.MinChunkSize = 50;
+    options.ChunkOverlap = 200;
+    options.MaxRetryAttempts = 3;
+    options.RetryDelayMs = 1000;
     options.RetryPolicy = RetryPolicy.ExponentialBackoff;
 });</code></pre>
                     </div>
 
-                    <h3>Leistungsprobleme</h3>
-                    
-                    <h4>Langsame Suche</h4>
+                    <h3>API-Schlüssel-Konfiguration</h3>
                     <div class="alert alert-info">
-                        <h4><i class="fas fa-info-circle me-2"></i>Tipp</h4>
-                        <p class="mb-0">Optimieren Sie die Chunk-Größen, um die Leistung zu verbessern.</p>
+                        <h4><i class="fas fa-info-circle me-2"></i>Konfiguration</h4>
+                        <p class="mb-0">API-Schlüssel sollten in appsettings.json oder Umgebungsvariablen konfiguriert werden.</p>
                     </div>
 
+                    <h4>Umgebungsvariablen</h4>
                     <div class="code-example">
-                        <pre><code class="language-csharp">services.AddSmartRAG(configuration, options =>
-{
-    options.MaxChunkSize = 1000;  // 1000-1500 empfohlen
-    options.ChunkOverlap = 200;   // 200-300 empfohlen
-    options.MaxRetryAttempts = 3;
-});</code></pre>
-                    </div>
+                        <pre><code class="language-bash"># Umgebungsvariablen setzen
+export ANTHROPIC_API_KEY=your-anthropic-api-key
+export QDRANT_API_KEY=your-qdrant-api-key
 
-                    <h4>Speicherverbrauch</h4>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">// Verwenden Sie Streaming für große Dateien
-public async Task<Document> UploadLargeDocumentAsync(IFormFile file)
+# Oder appsettings.json verwenden
 {
-    using var stream = file.OpenReadStream();
-    var chunks = await _documentParserService.ChunkTextAsync(stream, 1000, 200);
-    
-    var document = new Document
-    {
-        Id = Guid.NewGuid().ToString(),
-        FileName = file.FileName,
-        Content = await _documentParserService.ParseDocumentAsync(file),
-        ContentType = file.ContentType,
-        FileSize = file.Length,
-        UploadedAt = DateTime.UtcNow
-    };
-    
-    return document;
+  "SmartRAG": {
+    "AIProvider": "Anthropic",
+    "StorageProvider": "Qdrant",
+    "MaxChunkSize": 1000,
+    "ChunkOverlap": 200
+  },
+  "Anthropic": {
+    "ApiKey": "your-anthropic-api-key"
+  },
+  "Qdrant": {
+    "ApiKey": "your-qdrant-api-key"
+  }
 }</code></pre>
                     </div>
 
-                    <h3>Konfigurationsprobleme</h3>
-                    
-                    <h4>Falsche Provider-Auswahl</h4>
+                    <h3>Leistungsprobleme</h3>
+                    <div class="alert alert-success">
+                        <h4><i class="fas fa-tachometer-alt me-2"></i>Optimierung</h4>
+                        <p class="mb-0">Die Leistung kann durch korrekte Konfiguration verbessert werden.</p>
+                    </div>
+
+                    <h4>Langsame Dokumentenverarbeitung</h4>
                     <div class="code-example">
-                        <pre><code class="language-csharp">// Richtige Konfiguration
-services.AddSmartRAG(configuration, options =>
+                        <pre><code class="language-csharp">// Chunk-Größe für schnellere Verarbeitung optimieren
+services.AddSmartRag(configuration, options =>
 {
-    options.AIProvider = AIProvider.Anthropic;
-    options.StorageProvider = StorageProvider.Qdrant;
-    
-    // Erforderliche Einstellungen für Qdrant
-    options.Qdrant = new QdrantOptions
-    {
-        Host = "localhost",
-        Port = 6333,
-        CollectionName = "smartrag_documents"
-    };
+    options.MaxChunkSize = 500; // Kleinere Chunks für schnellere Verarbeitung
+    options.MinChunkSize = 50;
+    options.ChunkOverlap = 100;
+    options.MaxRetryAttempts = 2; // Retries für schnelleres Fehlschlagen reduzieren
 });</code></pre>
                     </div>
 
-                    <h4>Fehlende Abhängigkeiten</h4>
+                    <h4>Speichernutzung-Optimierung</h4>
                     <div class="code-example">
-                        <pre><code class="language-csharp">// Program.cs
-var builder = WebApplication.CreateBuilder(args);
-
-// Erforderliche Services
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-// SmartRAG Services
-builder.Services.AddSmartRAG(builder.Configuration, options =>
+                        <pre><code class="language-csharp">// Passenden Speicheranbieter verwenden
+services.AddSmartRag(configuration, options =>
 {
-    options.AIProvider = AIProvider.Anthropic;
-    options.StorageProvider = StorageProvider.Qdrant;
-});
+    options.StorageProvider = StorageProvider.InMemory; // Für kleine Datensätze
+    // oder
+    options.StorageProvider = StorageProvider.Qdrant; // Für große Datensätze
+    options.EnableFallbackProviders = true; // Fallback für Zuverlässigkeit aktivieren
+});</code></pre>
+                    </div>
 
-var app = builder.Build();
-
-// Middleware-Pipeline
-if (app.Environment.IsDevelopment())
+                    <h3>Retry-Konfiguration</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Retry-Richtlinien konfigurieren
+services.AddSmartRag(configuration, options =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-app.UseHttpsRedirection();
-app.UseAuthorization();
-app.MapControllers();
-
-app.Run();</code></pre>
+    options.MaxRetryAttempts = 3;
+    options.RetryDelayMs = 1000;
+    options.RetryPolicy = RetryPolicy.ExponentialBackoff;
+    options.EnableFallbackProviders = true;
+    options.FallbackProviders = new[] { AIProvider.Gemini, AIProvider.OpenAI };
+});</code></pre>
                     </div>
                 </div>
             </div>
@@ -168,110 +132,95 @@ app.Run();</code></pre>
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Debugging</h2>
-                    <p>Debugging-Techniken für Ihre SmartRAG-Anwendung.</p>
+                    <p>Tools und Techniken, die Ihnen beim Debuggen von SmartRAG-Anwendungen helfen.</p>
+
+                    <h3>Logging aktivieren</h3>
                     
-                    <h3>Protokollierungskonfiguration</h3>
-                    
-                    <h5>Logging-Konfiguration</h5>
+                    <h4>Logging-Konfiguration</h4>
                     <div class="code-example">
-                        <pre><code class="language-json">// appsettings.json
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "SmartRAG": "Debug",
-      "Microsoft": "Warning",
-      "Microsoft.Hosting.Lifetime": "Information"
-    }
-  }
-}</code></pre>
+                        <pre><code class="language-csharp">// Logging konfigurieren
+builder.Logging.AddConsole();
+builder.Logging.SetMinimumLevel(LogLevel.Debug);
+
+// SmartRAG-spezifisches Logging hinzufügen
+builder.Logging.AddFilter("SmartRAG", LogLevel.Debug);</code></pre>
                     </div>
 
-                    <h5>Controller-Implementierung</h5>
+                    <h4>Service-Implementierung</h4>
                     <div class="code-example">
-                        <pre><code class="language-csharp">public class DocumentController : ControllerBase
-{
-    private readonly IDocumentService _documentService;
-    private readonly ILogger<DocumentController> _logger;
+                        <pre><code class="language-csharp">private readonly ILogger<DocumentsController> _logger;
 
-    public DocumentController(IDocumentService documentService, ILogger<DocumentController> logger)
-    {
-        _documentService = documentService;
-        _logger = logger;
-    }
-}</code></pre>
-                    </div>
-
-                    <h5>Fehlerbehandlung</h5>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">[HttpPost("upload")]
 public async Task<ActionResult<Document>> UploadDocument(IFormFile file)
 {
-    _logger.LogInformation("Dokument-Upload gestartet: {FileName}, Größe: {Size}", 
-        file?.FileName, file?.Length);
-
+    _logger.LogInformation("Dokument wird hochgeladen: {FileName}", file.FileName);
     try
     {
-        if (file == null || file.Length == 0)
-        {
-            _logger.LogWarning("Datei ist null oder leer");
-            return BadRequest("Keine Datei ausgewählt");
-        }
-
-        _logger.LogDebug("Datei validiert, Verarbeitung beginnt");
-        var document = await _documentService.UploadDocumentAsync(file);
-        
+        using var stream = file.OpenReadStream();
+        var document = await _documentService.UploadDocumentAsync(
+            stream, file.FileName, file.ContentType, "user123");
         _logger.LogInformation("Dokument erfolgreich hochgeladen: {DocumentId}", document.Id);
         return Ok(document);
     }
-    catch (ArgumentException ex)
-    {
-        _logger.LogError(ex, "Ungültiges Dateiformat: {FileName}", file?.FileName);
-        return BadRequest($"Ungültiges Dateiformat: {ex.Message}");
-    }
-    catch (UnauthorizedAccessException ex)
-    {
-        _logger.LogError(ex, "API-Schlüssel-Fehler");
-        return Unauthorized("Ungültiger API-Schlüssel");
-    }
-    catch (HttpRequestException ex)
-    {
-        _logger.LogError(ex, "Netzwerkverbindungsfehler");
-        return StatusCode(503, "Service vorübergehend nicht verfügbar");
-    }
     catch (Exception ex)
     {
-        _logger.LogError(ex, "Unerwarteter Fehler aufgetreten");
-        return StatusCode(500, "Interner Serverfehler");
+        _logger.LogError(ex, "Dokument-Upload fehlgeschlagen: {FileName}", file.FileName);
+        return BadRequest(ex.Message);
     }
 }</code></pre>
                     </div>
 
-                    <h3>Leistungsüberwachung</h3>
+                    <h3>Exception-Behandlung</h3>
+                    
+                    <h4>Grundlegende Fehlerbehandlung</h4>
                     <div class="code-example">
-                        <pre><code class="language-csharp">[HttpPost("search")]
-public async Task<ActionResult<IEnumerable<DocumentChunk>>> SearchDocuments(
-    [FromQuery] string query, 
-    [FromQuery] int maxResults = 10)
+                        <pre><code class="language-csharp">try
 {
-    var stopwatch = Stopwatch.StartNew();
-    _logger.LogInformation("Suche gestartet: {Query}", query);
+    using var stream = file.OpenReadStream();
+    var document = await _documentService.UploadDocumentAsync(
+        stream, file.FileName, file.ContentType, "user123");
+    return Ok(document);
+}
+catch (ArgumentException ex)
+{
+    _logger.LogError(ex, "Ungültiges Dateiformat: {FileName}", file.FileName);
+    return BadRequest("Ungültiges Dateiformat");
+}
+catch (HttpRequestException ex)
+{
+    _logger.LogError(ex, "AI-Provider-Fehler: {Message}", ex.Message);
+    return StatusCode(503, "Service vorübergehend nicht verfügbar");
+}
+catch (Exception ex)
+{
+    _logger.LogError(ex, "Unerwarteter Fehler beim Upload: {FileName}", file.FileName);
+    return StatusCode(500, "Interner Serverfehler");
+}</code></pre>
+                    </div>
 
+                    <h4>Service-Level-Fehlerbehandlung</h4>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public async Task<Document> UploadDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy)
+{
     try
     {
-        var results = await _documentService.SearchDocumentsAsync(query, maxResults);
-        stopwatch.Stop();
+        _logger.LogInformation("Dokument-Upload beginnt: {FileName}", fileName);
         
-        _logger.LogInformation("Suche abgeschlossen: {Query}, Ergebnisse: {Count}, Dauer: {Duration}ms", 
-            query, results.Count(), stopwatch.ElapsedMilliseconds);
+        // Eingabe validieren
+        if (fileStream == null || fileStream.Length == 0)
+            throw new ArgumentException("Dateistream ist null oder leer");
         
-        return Ok(results);
+        if (string.IsNullOrWhiteSpace(fileName))
+            throw new ArgumentException("Dateiname ist erforderlich");
+        
+        // Dokument verarbeiten
+        var document = await ProcessDocumentAsync(fileStream, fileName, contentType, uploadedBy);
+        
+        _logger.LogInformation("Dokument erfolgreich hochgeladen: {DocumentId}", document.Id);
+        return document;
     }
     catch (Exception ex)
     {
-        stopwatch.Stop();
-        _logger.LogError(ex, "Suchfehler: {Query}, Dauer: {Duration}ms", 
-            query, stopwatch.ElapsedMilliseconds);
+        _logger.LogError(ex, "Dokument-Upload fehlgeschlagen: {FileName}", fileName);
         throw;
     }
 }</code></pre>
@@ -285,32 +234,47 @@ public async Task<ActionResult<IEnumerable<DocumentChunk>>> SearchDocuments(
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Testen</h2>
-                    <p>Methoden zum Testen Ihrer SmartRAG-Anwendung.</p>
-                    
+                    <p>Wie Sie Ihre SmartRAG-Implementierung testen können.</p>
+
                     <h3>Unit-Tests</h3>
                     <div class="code-example">
                         <pre><code class="language-csharp">[Test]
 public async Task UploadDocument_ValidFile_ReturnsDocument()
 {
     // Arrange
+    var mockDocumentService = new Mock<IDocumentService>();
+    var mockDocumentSearchService = new Mock<IDocumentSearchService>();
+    var mockLogger = new Mock<ILogger<DocumentsController>>();
+    
+    var controller = new DocumentsController(
+        mockDocumentService.Object, 
+        mockDocumentSearchService.Object, 
+        mockLogger.Object);
+    
     var mockFile = new Mock<IFormFile>();
     mockFile.Setup(f => f.FileName).Returns("test.pdf");
-    mockFile.Setup(f => f.Length).Returns(1024);
     mockFile.Setup(f => f.ContentType).Returns("application/pdf");
+    mockFile.Setup(f => f.OpenReadStream()).Returns(new MemoryStream());
     
-    var mockDocumentService = new Mock<IDocumentService>();
-    var expectedDocument = new Document { Id = "test-id", FileName = "test.pdf" };
-    mockDocumentService.Setup(s => s.UploadDocumentAsync(It.IsAny<IFormFile>()))
-                      .ReturnsAsync(expectedDocument);
+    var expectedDocument = new Document 
+    { 
+        Id = Guid.NewGuid(), 
+        FileName = "test.pdf" 
+    };
     
-    var controller = new DocumentController(mockDocumentService.Object, Mock.Of<ILogger<DocumentController>>());
+    mockDocumentService.Setup(s => s.UploadDocumentAsync(
+        It.IsAny<Stream>(), 
+        It.IsAny<string>(), 
+        It.IsAny<string>(), 
+        It.IsAny<string>()))
+        .ReturnsAsync(expectedDocument);
     
     // Act
     var result = await controller.UploadDocument(mockFile.Object);
     
     // Assert
-    Assert.IsInstanceOf<OkObjectResult>(result);
     var okResult = result as OkObjectResult;
+    Assert.IsNotNull(okResult);
     Assert.AreEqual(expectedDocument, okResult.Value);
 }</code></pre>
                     </div>
@@ -318,62 +282,84 @@ public async Task UploadDocument_ValidFile_ReturnsDocument()
                     <h3>Integrationstests</h3>
                     <div class="code-example">
                         <pre><code class="language-csharp">[Test]
-public async Task SearchDocuments_IntegrationTest()
+public async Task SearchDocuments_ReturnsRelevantResults()
 {
     // Arrange
-    var host = CreateTestHost();
-    using var scope = host.Services.CreateScope();
-    var documentService = scope.ServiceProvider.GetRequiredService<IDocumentService>();
+    var mockDocumentSearchService = new Mock<IDocumentSearchService>();
+    var mockDocumentService = new Mock<IDocumentService>();
+    var mockLogger = new Mock<ILogger<DocumentsController>>();
     
-    // Testdaten laden
-    var testFile = CreateTestFile("test-document.txt", "Dies ist ein Testdokument.");
-    await documentService.UploadDocumentAsync(testFile);
+    var controller = new DocumentsController(
+        mockDocumentService.Object,
+        mockDocumentSearchService.Object,
+        mockLogger.Object);
+    
+    var testQuery = "test query";
+    var expectedResults = new List<DocumentChunk>
+    {
+        new DocumentChunk { Content = "Test-Inhalt 1" },
+        new DocumentChunk { Content = "Test-Inhalt 2" }
+    };
+    
+    mockDocumentSearchService.Setup(s => s.SearchDocumentsAsync(testQuery, 10))
+        .ReturnsAsync(expectedResults);
     
     // Act
-    var results = await documentService.SearchDocumentsAsync("test", 5);
+    var result = await controller.SearchDocuments(testQuery);
     
     // Assert
+    var okResult = result as OkObjectResult;
+    Assert.IsNotNull(okResult);
+    var results = okResult.Value as IEnumerable<DocumentChunk>;
     Assert.IsNotNull(results);
-    Assert.IsTrue(results.Any());
-    Assert.IsTrue(results.First().Content.Contains("test"));
-}
-
-private IHost CreateTestHost()
-{
-    return Host.CreateDefaultBuilder()
-        .ConfigureServices((context, services) =>
-        {
-            services.AddSmartRAG(context.Configuration, options =>
-            {
-                options.AIProvider = AIProvider.Anthropic;
-                options.StorageProvider = StorageProvider.InMemory; // InMemory für Tests verwenden
-            });
-        })
-        .Build();
+    Assert.AreEqual(expectedResults.Count, results.Count());
 }</code></pre>
                     </div>
 
-                    <h3>API-Tests</h3>
+                    <h3>End-to-End-Tests</h3>
                     <div class="code-example">
                         <pre><code class="language-csharp">[Test]
-public async Task UploadDocument_ApiTest()
+public async Task CompleteWorkflow_UploadSearchChat_WorksCorrectly()
 {
     // Arrange
-    var client = _factory.CreateClient();
-    var content = new MultipartFormDataContent();
-    var fileContent = new ByteArrayContent(File.ReadAllBytes("test-file.pdf"));
-    fileContent.Headers.ContentType = MediaTypeHeaderValue.Parse("application/pdf");
-    content.Add(fileContent, "file", "test-file.pdf");
+    var services = new ServiceCollection();
+    services.AddSmartRag(configuration, options =>
+    {
+        options.AIProvider = AIProvider.Anthropic;
+        options.StorageProvider = StorageProvider.InMemory;
+        options.MaxChunkSize = 1000;
+        options.ChunkOverlap = 200;
+    });
     
-    // Act
-    var response = await client.PostAsync("/api/document/upload", content);
+    var serviceProvider = services.BuildServiceProvider();
+    var documentService = serviceProvider.GetRequiredService<IDocumentService>();
+    var documentSearchService = serviceProvider.GetRequiredService<IDocumentSearchService>();
     
-    // Assert
-    response.EnsureSuccessStatusCode();
-    var responseContent = await response.Content.ReadAsStringAsync();
-    var document = JsonSerializer.Deserialize<Document>(responseContent);
+    // Testdatei erstellen
+    var testContent = "Dies ist ein Testdokument über künstliche Intelligenz.";
+    var testStream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(testContent));
+    
+    // Act - Upload
+    var document = await documentService.UploadDocumentAsync(
+        testStream, "test.txt", "text/plain", "test-user");
+    
+    // Assert - Upload
     Assert.IsNotNull(document);
-    Assert.AreEqual("test-file.pdf", document.FileName);
+    Assert.AreEqual("test.txt", document.FileName);
+    
+    // Act - Suche
+    var searchResults = await documentSearchService.SearchDocumentsAsync("künstliche Intelligenz", 5);
+    
+    // Assert - Suche
+    Assert.IsNotNull(searchResults);
+    Assert.IsTrue(searchResults.Count > 0);
+    
+    // Act - Chat
+    var chatResponse = await documentSearchService.GenerateRagAnswerAsync("Worum geht es in diesem Dokument?", 5);
+    
+    // Assert - Chat
+    Assert.IsNotNull(chatResponse);
+    Assert.IsFalse(string.IsNullOrWhiteSpace(chatResponse.Answer));
 }</code></pre>
                     </div>
                 </div>
@@ -384,28 +370,37 @@ public async Task UploadDocument_ApiTest()
         <section class="content-section">
             <div class="row">
                 <div class="col-lg-8 mx-auto">
-                    <h2>Hilfe erhalten</h2>
-                    <p>Methoden, um Hilfe bei SmartRAG-Problemen zu erhalten.</p>
-                    
-                    <h3>GitHub Issues</h3>
-                    <div class="alert alert-info">
-                        <h4><i class="fas fa-github me-2"></i>GitHub</h4>
-                        <p class="mb-0">Melden Sie Probleme auf GitHub und erhalten Sie Community-Unterstützung.</p>
+                    <h2>Hilfe bekommen</h2>
+                    <p>Wenn Sie immer noch Probleme haben, hier ist, wie Sie Hilfe bekommen können.</p>
+
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="alert alert-info">
+                                <h4><i class="fas fa-github me-2"></i>GitHub Issues</h4>
+                                <p class="mb-0">Melden Sie Bugs und fordern Sie Features auf GitHub an.</p>
+                                <a href="https://github.com/byerlikaya/SmartRAG/issues" target="_blank" class="btn btn-sm btn-outline-info mt-2">Issue öffnen</a>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-success">
+                                <h4><i class="fas fa-envelope me-2"></i>E-Mail-Support</h4>
+                                <p class="mb-0">Erhalten Sie direkte Hilfe per E-Mail.</p>
+                                <a href="mailto:b.yerlikaya@outlook.com" class="btn btn-sm btn-outline-success mt-2">Kontakt</a>
+                            </div>
+                        </div>
                     </div>
 
-                    <h3>E-Mail-Support</h3>
-                    <div class="alert alert-success">
-                        <h4><i class="fas fa-envelope me-2"></i>E-Mail</h4>
-                        <p class="mb-0">Erhalten Sie direkten E-Mail-Support: <a href="mailto:b.yerlikaya@outlook.com">b.yerlikaya@outlook.com</a></p>
+                    <h3>Bevor Sie um Hilfe bitten</h3>
+                    <div class="alert alert-warning">
+                        <h4><i class="fas fa-list me-2"></i>Checkliste</h4>
+                        <ul class="mb-0">
+                            <li>Überprüfen Sie die <a href="{{ site.baseurl }}/de/getting-started">Erste Schritte</a>-Anleitung</li>
+                            <li>Überprüfen Sie die <a href="{{ site.baseurl }}/de/configuration">Konfigurations</a>-Dokumentation</li>
+                            <li>Durchsuchen Sie bestehende <a href="https://github.com/byerlikaya/SmartRAG/issues" target="_blank">GitHub Issues</a></li>
+                            <li>Fügen Sie Fehlermeldungen und Konfigurationsdetails hinzu</li>
+                            <li>Überprüfen Sie die <a href="{{ site.baseurl }}/de/api-reference">API-Referenz</a> für korrekte Methodensignaturen</li>
+                        </ul>
                     </div>
-
-                    <h3>Dokumentation</h3>
-                    <ul>
-                        <li><a href="{{ site.baseurl }}/de/getting-started">Erste Schritte</a></li>
-                        <li><a href="{{ site.baseurl }}/de/configuration">Konfiguration</a></li>
-                        <li><a href="{{ site.baseurl }}/de/api-reference">API-Referenz</a></li>
-                        <li><a href="{{ site.baseurl }}/de/examples">Beispiele</a></li>
-                    </ul>
                 </div>
             </div>
         </section>
@@ -415,45 +410,64 @@ public async Task UploadDocument_ApiTest()
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Prävention</h2>
-                    <p>Methoden zur Vermeidung von Problemen in Ihrer SmartRAG-Anwendung.</p>
-                    
-                    <h3>Beste Praktiken</h3>
-                    <ul>
-                        <li><strong>Fehlerbehandlung</strong>: Wickeln Sie alle API-Aufrufe in try-catch-Blöcke ein</li>
-                        <li><strong>Protokollierung</strong>: Führen Sie detaillierte Protokollierung durch und konfigurieren Sie Log-Levels angemessen</li>
-                        <li><strong>Leistung</strong>: Optimieren Sie Chunk-Größen und verwenden Sie Streaming für große Dateien</li>
-                        <li><strong>Sicherheit</strong>: Speichern Sie API-Schlüssel sicher</li>
-                        <li><strong>Tests</strong>: Schreiben Sie umfassende Tests und führen Sie sie in CI/CD-Pipelines aus</li>
-                    </ul>
+                    <p>Best Practices, um häufige Probleme zu vermeiden.</p>
 
-                    <h3>Konfigurationsprüfung</h3>
+                    <h3>Konfigurations-Best Practices</h3>
+                    <div class="row g-4">
+                        <div class="col-md-6">
+                            <div class="alert alert-primary">
+                                <h4><i class="fas fa-key me-2"></i>API-Schlüssel</h4>
+                                <p class="mb-0">API-Schlüssel niemals hardcoden. Verwenden Sie Umgebungsvariablen oder sichere Konfiguration.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-info">
+                                <h4><i class="fas fa-database me-2"></i>Speicher</h4>
+                                <p class="mb-0">Wählen Sie den richtigen Speicheranbieter für Ihren Anwendungsfall.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-success">
+                                <h4><i class="fas fa-shield-alt me-2"></i>Fehlerbehandlung</h4>
+                                <p class="mb-0">Implementieren Sie ordnungsgemäße Fehlerbehandlung und Logging.</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="alert alert-warning">
+                                <h4><i class="fas fa-balance-scale me-2"></i>Leistung</h4>
+                                <p class="mb-0">Überwachen Sie die Leistung und optimieren Sie Chunk-Größen.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h3>Entwicklungs- vs Produktionskonfiguration</h3>
                     <div class="code-example">
-                        <pre><code class="language-csharp">public class SmartRAGHealthCheck : IHealthCheck
+                        <pre><code class="language-csharp">// Entwicklungs-Konfiguration
+if (builder.Environment.IsDevelopment())
 {
-    private readonly IDocumentService _documentService;
-    private readonly ILogger<SmartRAGHealthCheck> _logger;
-
-    public SmartRAGHealthCheck(IDocumentService documentService, ILogger<SmartRAGHealthCheck> logger)
+    services.AddSmartRag(configuration, options =>
     {
-        _documentService = documentService;
-        _logger = logger;
-    }
-
-    public async Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+        options.AIProvider = AIProvider.Gemini; // Kostenlose Stufe für Entwicklung
+        options.StorageProvider = StorageProvider.InMemory; // Schnell für Entwicklung
+        options.MaxChunkSize = 500;
+        options.ChunkOverlap = 100;
+        options.MaxRetryAttempts = 1; // Schnelles Fehlschlagen in Entwicklung
+    });
+}
+else
+{
+    // Produktions-Konfiguration
+    services.AddSmartRag(configuration, options =>
     {
-        try
-        {
-            // Einfache Testabfrage
-            var results = await _documentService.SearchDocumentsAsync("health check", 1);
-            
-            return HealthCheckResult.Healthy("SmartRAG-Service läuft");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "SmartRAG-Gesundheitsprüfung fehlgeschlagen");
-            return HealthCheckResult.Unhealthy("SmartRAG-Service läuft nicht", ex);
-        }
-    }
+        options.AIProvider = AIProvider.Anthropic; // Bessere Qualität für Produktion
+        options.StorageProvider = StorageProvider.Qdrant; // Persistenter Speicher
+        options.MaxChunkSize = 1000;
+        options.ChunkOverlap = 200;
+        options.MaxRetryAttempts = 3;
+        options.RetryDelayMs = 1000;
+        options.RetryPolicy = RetryPolicy.ExponentialBackoff;
+        options.EnableFallbackProviders = true;
+    });
 }</code></pre>
                     </div>
                 </div>
