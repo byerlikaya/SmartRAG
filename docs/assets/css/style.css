@@ -852,19 +852,21 @@ h1, h2, h3, h4, h5, h6 {
 
 .stat-item {
     text-align: center;
-    background: rgba(99, 102, 241, 0.1);
+    background: rgba(99, 102, 241, 0.08);
     padding: var(--spacing-lg);
-    border-radius: var(--radius-lg);
-    border: 1px solid rgba(99, 102, 241, 0.2);
-    backdrop-filter: blur(10px);
+    border-radius: var(--radius-xl);
+    border: 1px solid rgba(99, 102, 241, 0.15);
+    backdrop-filter: blur(8px);
     transition: var(--transition);
+    min-width: 140px;
+    flex: 1;
 }
 
 .stat-item:hover {
-    background: rgba(99, 102, 241, 0.15);
-    border-color: rgba(99, 102, 241, 0.3);
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-md);
+    background: rgba(99, 102, 241, 0.12);
+    border-color: rgba(99, 102, 241, 0.25);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-sm);
 }
 
 .stat-number {
@@ -879,6 +881,9 @@ h1, h2, h3, h4, h5, h6 {
     color: var(--gray-600);
     margin-top: var(--spacing-xs);
     font-weight: 500;
+    line-height: 1.3;
+    word-wrap: break-word;
+    max-width: 100%;
 }
 
 .hero-buttons {
