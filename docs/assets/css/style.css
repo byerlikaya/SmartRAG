@@ -1232,6 +1232,18 @@ h1, h2, h3, h4, h5, h6 {
     background: var(--white);
 }
 
+.quick-start-section .row {
+    align-items: center;
+}
+
+.quick-start-section .steps {
+    margin-bottom: 0;
+}
+
+.quick-start-section .code-example {
+    margin: 0;
+}
+
 [data-theme="dark"] .quick-start-section {
     background: var(--dark-bg);
 }
