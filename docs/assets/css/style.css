@@ -1019,6 +1019,75 @@ h1, h2, h3, h4, h5, h6 {
     color: #d4d4d4;
 }
 
+/* Prism.js Override for Visual Studio Theme */
+.code-content .token.keyword,
+.code-content .token.builtin,
+.code-content .token.type,
+.code-content .token.literal {
+    color: #569cd6;
+}
+
+.code-content .token.string,
+.code-content .token.regex {
+    color: #ce9178;
+}
+
+.code-content .token.comment {
+    color: #6a9955;
+    font-style: italic;
+}
+
+.code-content .token.number,
+.code-content .token.boolean {
+    color: #b5cea8;
+}
+
+.code-content .token.function,
+.code-content .token.title {
+    color: #dcdcaa;
+}
+
+.code-content .token.params {
+    color: #9cdcfe;
+}
+
+.code-content .token.class,
+.code-content .token.property {
+    color: #4ec9b0;
+}
+
+.code-content .token.operator {
+    color: #d4d4d4;
+}
+
+.code-content .token.punctuation {
+    color: #d4d4d4;
+}
+
+.code-content .token.namespace {
+    color: #4ec9b0;
+}
+
+.code-content .token.variable {
+    color: #9cdcfe;
+}
+
+.code-content .token.parameter {
+    color: #9cdcfe;
+}
+
+.code-content .token.tag {
+    color: #569cd6;
+}
+
+.code-content .token.attr-name {
+    color: #9cdcfe;
+}
+
+.code-content .token.attr-value {
+    color: #ce9178;
+}
+
 [data-theme="dark"] .code-content {
     background: #2d3748;
     border-color: var(--dark-border);
@@ -2131,4 +2200,197 @@ h1, h2, h3, h4, h5, h6 {
 
 [data-theme="dark"] .code-example pre {
     color: var(--gray-300);
+}
+
+/* Troubleshooting Page Specific Styles */
+.troubleshooting-section {
+    background: var(--white);
+    border: 1px solid var(--gray-200);
+    border-radius: var(--radius-lg);
+    padding: var(--spacing-xl);
+    margin: var(--spacing-lg) 0;
+    box-shadow: var(--shadow-md);
+    transition: var(--transition);
+}
+
+[data-theme="dark"] .troubleshooting-section {
+    background: var(--dark-surface);
+    border-color: var(--dark-border);
+    box-shadow: var(--shadow-lg);
+}
+
+.troubleshooting-section:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+}
+
+.troubleshooting-section h3 {
+    color: var(--primary);
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: var(--spacing-md);
+    display: flex;
+    align-items: center;
+    gap: var(--spacing-sm);
+}
+
+.troubleshooting-section h3::before {
+    content: '🔧';
+    font-size: 1.1rem;
+}
+
+.troubleshooting-section h4 {
+    color: var(--gray-800);
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: var(--spacing-lg) 0 var(--spacing-sm) 0;
+    padding-bottom: var(--spacing-xs);
+    border-bottom: 2px solid var(--primary);
+    display: inline-block;
+}
+
+[data-theme="dark"] .troubleshooting-section h4 {
+    color: var(--gray-200);
+}
+
+.troubleshooting-section p {
+    color: var(--gray-600);
+    line-height: 1.7;
+    margin-bottom: var(--spacing-md);
+}
+
+[data-theme="dark"] .troubleshooting-section p {
+    color: var(--gray-400);
+}
+
+.troubleshooting-section ul {
+    color: var(--gray-600);
+    margin: var(--spacing-md) 0;
+    padding-left: var(--spacing-lg);
+}
+
+[data-theme="dark"] .troubleshooting-section ul {
+    color: var(--gray-400);
+}
+
+.troubleshooting-section li {
+    margin-bottom: var(--spacing-xs);
+    line-height: 1.6;
+}
+
+.troubleshooting-section strong {
+    color: var(--gray-800);
+    font-weight: 600;
+}
+
+[data-theme="dark"] .troubleshooting-section strong {
+    color: var(--gray-200);
+}
+
+/* Problem/Solution styling */
+.problem-solution {
+    background: var(--gray-50);
+    border-left: 4px solid var(--primary);
+    padding: var(--spacing-md);
+    margin: var(--spacing-md) 0;
+    border-radius: 0 var(--radius-md) var(--radius-md) 0;
+}
+
+[data-theme="dark"] .problem-solution {
+    background: var(--dark-bg);
+    border-left-color: var(--primary);
+}
+
+.problem-solution strong {
+    color: var(--primary);
+    font-weight: 600;
+    display: block;
+    margin-bottom: var(--spacing-xs);
+}
+
+/* Code blocks in troubleshooting */
+.troubleshooting-section .code-example {
+    margin: var(--spacing-md) 0;
+    border: 1px solid var(--gray-300);
+    box-shadow: var(--shadow-sm);
+}
+
+[data-theme="dark"] .troubleshooting-section .code-example {
+    border-color: var(--dark-border);
+    box-shadow: var(--shadow-md);
+}
+
+.troubleshooting-section .code-example pre {
+    background: #1e1e1e;
+    color: #d4d4d4;
+    border-radius: var(--radius-md);
+}
+
+/* Enhanced Prism.js styles for troubleshooting */
+.troubleshooting-section .token.keyword,
+.troubleshooting-section .token.builtin,
+.troubleshooting-section .token.type,
+.troubleshooting-section .token.literal {
+    color: #569cd6 !important;
+}
+
+.troubleshooting-section .token.string,
+.troubleshooting-section .token.regex {
+    color: #ce9178 !important;
+}
+
+.troubleshooting-section .token.comment {
+    color: #6a9955 !important;
+    font-style: italic;
+}
+
+.troubleshooting-section .token.number,
+.troubleshooting-section .token.boolean {
+    color: #b5cea8 !important;
+}
+
+.troubleshooting-section .token.function,
+.troubleshooting-section .token.title {
+    color: #dcdcaa !important;
+}
+
+.troubleshooting-section .token.params {
+    color: #9cdcfe !important;
+}
+
+.troubleshooting-section .token.class,
+.troubleshooting-section .token.property {
+    color: #4ec9b0 !important;
+}
+
+.troubleshooting-section .token.operator {
+    color: #d4d4d4 !important;
+}
+
+.troubleshooting-section .token.punctuation {
+    color: #d4d4d4 !important;
+}
+
+.troubleshooting-section .token.namespace {
+    color: #4ec9b0 !important;
+}
+
+.troubleshooting-section .token.variable {
+    color: #9cdcfe !important;
+}
+
+.troubleshooting-section .token.parameter {
+    color: #9cdcfe !important;
+}
+
+.troubleshooting-section .token.tag {
+    color: #569cd6 !important;
+}
+
+.troubleshooting-section .token.attr-name {
+    color: #9cdcfe !important;
+}
+
+.troubleshooting-section .token.attr-value {
+    color: #ce9178 !important;
 }
