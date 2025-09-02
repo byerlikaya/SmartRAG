@@ -1,4 +1,4 @@
-// SmartRAG Documentation - Modern JavaScript
+// SmartRAG Documentation - Clean JavaScript
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded, initializing SmartRAG documentation...');
@@ -7,254 +7,111 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeof Prism !== 'undefined') {
         console.log('Initializing Prism.js syntax highlighting...');
         Prism.highlightAll();
-        
-        // Re-highlight when content changes (for dynamic content)
-        const observer = new MutationObserver(function(mutations) {
-            mutations.forEach(function(mutation) {
-                if (mutation.type === 'childList') {
-                    Prism.highlightAll();
-                }
-            });
-        });
-        
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
     } else {
         console.warn('Prism.js not loaded');
     }
     
-    // Tab Functionality for Configuration Pages
+    // Tab Functionality for Code Examples
     const codeTabs = document.querySelectorAll('.code-tab');
-    const codePanels = document.querySelectorAll('.code-panel');
-    
-    if (codeTabs.length > 0) {
-        console.log('Setting up code tabs...');
-        
-        codeTabs.forEach(tab => {
-            tab.addEventListener('click', function() {
-                const targetTab = this.getAttribute('data-tab');
-                
-                // Remove active class from all tabs and panels
-                codeTabs.forEach(t => t.classList.remove('active'));
-                codePanels.forEach(p => p.classList.remove('active'));
-                
-                // Add active class to clicked tab
-                this.classList.add('active');
-                
-                // Show corresponding panel
-                const targetPanel = document.getElementById(targetTab);
-                if (targetPanel) {
-                    targetPanel.classList.add('active');
-                }
-                
-                console.log('Tab switched to:', targetTab);
-            });
+    codeTabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const target = this.getAttribute('data-target');
+            const tabContainer = this.closest('.code-example');
+            
+            // Remove active class from all tabs and panels
+            tabContainer.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
+            tabContainer.querySelectorAll('.code-panel').forEach(p => p.classList.remove('active'));
+            
+            // Add active class to clicked tab and corresponding panel
+            this.classList.add('active');
+            tabContainer.querySelector(`.code-panel[data-panel="${target}"]`).classList.add('active');
         });
-    }
-
-    // Quick Start Section Tabs (Homepage specific)
-    const quickStartTabs = document.querySelectorAll('.quick-start-section .code-tab');
-    const quickStartPanels = document.querySelectorAll('.quick-start-section .code-panel');
+    });
     
-    if (quickStartTabs.length > 0) {
-        console.log('Setting up quick start tabs...');
-        
-        quickStartTabs.forEach(tab => {
-            tab.addEventListener('click', function() {
-                const targetTab = this.getAttribute('data-tab');
-                
-                // Remove active class from all tabs and panels in quick start section only
-                quickStartTabs.forEach(t => t.classList.remove('active'));
-                quickStartPanels.forEach(p => p.classList.remove('active'));
-                
-                // Add active class to clicked tab
-                this.classList.add('active');
-                
-                // Show corresponding panel
-                const targetPanel = document.getElementById(targetTab);
-                if (targetPanel) {
-                    targetPanel.classList.add('active');
-                }
-                
-                console.log('Quick start tab switched to:', targetTab);
-            });
-        });
-    }
-
     // Provider Tabs Functionality
     const providerTabs = document.querySelectorAll('.provider-tab');
-    const providerPanels = document.querySelectorAll('.provider-panel');
-    
-    if (providerTabs.length > 0) {
-        console.log('Setting up provider tabs...');
-        
-        providerTabs.forEach(tab => {
-            tab.addEventListener('click', function() {
-                const targetTab = this.getAttribute('data-tab');
-                
-                // Remove active class from all tabs and panels
-                providerTabs.forEach(t => t.classList.remove('active'));
-                providerPanels.forEach(p => p.classList.remove('active'));
-                
-                // Add active class to clicked tab
-                this.classList.add('active');
-                
-                // Show corresponding panel
-                const targetPanel = document.getElementById(targetTab);
-                if (targetPanel) {
-                    targetPanel.classList.add('active');
-                }
-                
-                console.log('Provider tab switched to:', targetTab);
-            });
+    providerTabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const target = this.getAttribute('data-target');
+            const tabContainer = this.closest('.provider-content');
+            
+            // Remove active class from all tabs and panels
+            tabContainer.querySelectorAll('.provider-tab').forEach(t => t.classList.remove('active'));
+            tabContainer.querySelectorAll('.provider-panel').forEach(p => p.classList.remove('active'));
+            
+            // Add active class to clicked tab and corresponding panel
+            this.classList.add('active');
+            tabContainer.querySelector(`.provider-panel[data-panel="${target}"]`).classList.add('active');
         });
-    }
-
+    });
+    
     // Storage Tabs Functionality
     const storageTabs = document.querySelectorAll('.storage-tab');
-    const storagePanels = document.querySelectorAll('.storage-panel');
+    storageTabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const target = this.getAttribute('data-target');
+            const tabContainer = this.closest('.storage-content');
+            
+            // Remove active class from all tabs and panels
+            tabContainer.querySelectorAll('.storage-tab').forEach(t => t.classList.remove('active'));
+            tabContainer.querySelectorAll('.storage-panel').forEach(p => p.classList.remove('active'));
+            
+            // Add active class to clicked tab and corresponding panel
+            this.classList.add('active');
+            tabContainer.querySelector(`.storage-panel[data-panel="${target}"]`).classList.add('active');
+        });
+    });
     
-    if (storageTabs.length > 0) {
-        console.log('Setting up storage tabs...');
+    // Language Dropdown Functionality
+    const languageDropdown = document.getElementById('languageDropdown');
+    if (languageDropdown) {
+        languageDropdown.addEventListener('click', function(e) {
+            e.preventDefault();
+            const dropdownMenu = this.querySelector('.dropdown-menu');
+            dropdownMenu.classList.toggle('show');
+        });
         
-        storageTabs.forEach(tab => {
-            tab.addEventListener('click', function() {
-                const targetTab = this.getAttribute('data-tab');
-                
-                // Remove active class from all tabs and panels
-                storageTabs.forEach(t => t.classList.remove('active'));
-                storagePanels.forEach(p => p.classList.remove('active'));
-                
-                // Add active class to clicked tab
-                this.classList.add('active');
-                
-                // Show corresponding panel
-                const targetPanel = document.getElementById(targetTab);
-                if (targetPanel) {
-                    targetPanel.classList.add('active');
-                }
-                
-                console.log('Storage tab switched to:', targetTab);
-            });
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!languageDropdown.contains(e.target)) {
+                const dropdownMenu = languageDropdown.querySelector('.dropdown-menu');
+                dropdownMenu.classList.remove('show');
+            }
         });
     }
     
-    // Language Selection Functionality
-    const languageButtons = document.querySelectorAll('.language-btn');
-    
-    if (languageButtons.length > 0) {
-        console.log('Setting up language selection...');
+    // Back to Top Button
+    const backToTopBtn = document.querySelector('.back-to-top');
+    if (backToTopBtn) {
+        window.addEventListener('scroll', function() {
+            if (window.pageYOffset > 300) {
+                backToTopBtn.classList.add('show');
+            } else {
+                backToTopBtn.classList.remove('show');
+            }
+        });
         
-        languageButtons.forEach(button => {
-            button.addEventListener('click', function(e) {
-                e.preventDefault();
-                
-                const targetLang = this.getAttribute('data-lang');
-                const currentPath = window.location.pathname;
-                
-                console.log('Language switch requested:', targetLang);
-                console.log('Current path:', currentPath);
-                
-                // Get base URL from Jekyll site configuration
-                const baseUrl = window.siteConfig ? window.siteConfig.baseurl : '/SmartRAG';
-                console.log('Base URL:', baseUrl);
-                
-                // Remove baseurl and current language prefix if exists
-                let newPath = currentPath;
-                
-                // Remove baseurl if present
-                if (baseUrl && baseUrl !== '/') {
-                    newPath = currentPath.replace(new RegExp(`^${baseUrl}`), '');
-                    console.log('Path after removing baseurl:', newPath);
-                }
-                
-                // Remove current language prefix
-                newPath = newPath.replace(/^\/(en|tr|de|ru)/, '');
-                console.log('Path after removing language prefix:', newPath);
-                
-                // Ensure path starts with /
-                if (!newPath.startsWith('/')) {
-                    newPath = '/' + newPath;
-                }
-                
-                // Add new language prefix
-                if (newPath === '/') {
-                    newPath = `/${targetLang}/`;
-                } else {
-                    newPath = `/${targetLang}${newPath}`;
-                }
-                console.log('Path after adding language prefix:', newPath);
-                
-                // Add baseurl back
-                if (baseUrl && baseUrl !== '/') {
-                    newPath = baseUrl + newPath;
-                }
-                
-                console.log('Final URL:', newPath);
-                
-                // Navigate to new URL
-                window.location.href = newPath;
+        backToTopBtn.addEventListener('click', function() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
             });
         });
     }
     
     // Smooth scrolling for anchor links
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
-            try {
-                const href = this.getAttribute('href');
-                // Skip if href is just "#" or empty
-                if (!href || href === '#' || href === '#!') {
-                    return;
-                }
-                e.preventDefault();
-                const target = document.querySelector(href);
-                if (target) {
-                    target.scrollIntoView({
-                        behavior: 'smooth',
-                        block: 'start'
-                    });
-                }
-            } catch (error) {
-                console.warn('Smooth scroll error:', error);
+        anchor.addEventListener('click', function(e) {
+            e.preventDefault();
+            const target = document.querySelector(this.getAttribute('href'));
+            if (target) {
+                target.scrollIntoView({
+                    behavior: 'smooth',
+                    block: 'start'
+                });
             }
         });
     });
     
-    // Back to Top Button
-    const backToTopButton = document.getElementById('backToTop');
-    
-    if (backToTopButton) {
-        // Show button when scrolling down
-        window.addEventListener('scroll', function() {
-            try {
-                if (window.pageYOffset > 300) {
-                    backToTopButton.classList.add('show');
-                } else {
-                    backToTopButton.classList.remove('show');
-                }
-            } catch (error) {
-                console.warn('Back to top scroll error:', error);
-            }
-        });
-        
-        // Scroll to top when button is clicked
-        backToTopButton.addEventListener('click', function() {
-            try {
-                window.scrollTo({
-                    top: 0,
-                    behavior: 'smooth'
-                });
-            } catch (error) {
-                console.warn('Back to top click error:', error);
-                // Fallback for older browsers
-                window.scrollTo(0, 0);
-            }
-        });
-    }
-    
-    // Initialize any additional components
-    console.log('SmartRAG documentation initialization complete!');
+    console.log('SmartRAG documentation initialized successfully');
 });
