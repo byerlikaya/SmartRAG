@@ -52,7 +52,7 @@ public async Task<ActionResult<IEnumerable<DocumentChunk>>> SearchDocuments(
 }</code></pre>
                     </div>
 
-                    <h3>Генерация RAG Ответов</h3>
+                    <h3>Генерация RAG Ответа</h3>
                     <div class="code-example">
                         <pre><code class="language-csharp">[HttpPost("chat")]
 public async Task<ActionResult<RagResponse>> ChatWithDocuments(
@@ -78,7 +78,7 @@ public async Task<ActionResult<RagResponse>> ChatWithDocuments(
         <section class="content-section">
             <div class="row">
                 <div class="col-lg-8 mx-auto">
-                    <h2>Расширенные Примеры</h2>
+                    <h2>Продвинутые Примеры</h2>
                     <p>Более сложные примеры для продвинутых случаев использования.</p>
                     
                     <h3>Пакетная Обработка Документов</h3>
@@ -155,28 +155,28 @@ public async Task<ActionResult<Dictionary<string, object>>> GetStorageStatistics
 }</code></pre>
                     </div>
 
-                    <h3>Операции с Эмбеддингами</h3>
+                    <h3>Операции с Embedding</h3>
                     <div class="code-example">
-                        <pre><code class="language-csharp">// Регенерировать все эмбеддинги
+                        <pre><code class="language-csharp">// Регенерировать все embedding
 [HttpPost("regenerate-embeddings")]
 public async Task<ActionResult> RegenerateAllEmbeddings()
 {
     var success = await _documentService.RegenerateAllEmbeddingsAsync();
     if (success)
-        return Ok("All embeddings regenerated successfully");
+        return Ok("Все embedding успешно регенерированы");
     else
-        return BadRequest("Failed to regenerate embeddings");
+        return BadRequest("Не удалось регенерировать embedding");
 }
 
-// Очистить все эмбеддинги
+// Очистить все embedding
 [HttpPost("clear-embeddings")]
 public async Task<ActionResult> ClearAllEmbeddings()
 {
     var success = await _documentService.ClearAllEmbeddingsAsync();
     if (success)
-        return Ok("All embeddings cleared successfully");
+        return Ok("Все embedding успешно очищены");
     else
-        return BadRequest("Failed to clear embeddings");
+        return BadRequest("Не удалось очистить embedding");
 }
 
 // Очистить все документы
@@ -185,9 +185,9 @@ public async Task<ActionResult> ClearAllDocuments()
 {
     var success = await _documentService.ClearAllDocumentsAsync();
     if (success)
-        return Ok("All documents cleared successfully");
+        return Ok("Все документы успешно очищены");
     else
-        return BadRequest("Failed to clear documents");
+        return BadRequest("Не удалось очистить документы");
 }</code></pre>
                     </div>
                 </div>
@@ -225,19 +225,19 @@ public class DocumentsController : ControllerBase
     public async Task<ActionResult<Document>> UploadDocument(IFormFile file)
     {
         if (file == null || file.Length == 0)
-            return BadRequest("No file provided");
+            return BadRequest("Файл не предоставлен");
             
         try
         {
             using var stream = file.OpenReadStream();
             var document = await _documentService.UploadDocumentAsync(
                 stream, file.FileName, file.ContentType, "user123");
-            _logger.LogInformation("Document uploaded: {DocumentId}", document.Id);
+            _logger.LogInformation("Документ загружен: {DocumentId}", document.Id);
             return Ok(document);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to upload document: {FileName}", file.FileName);
+            _logger.LogError(ex, "Не удалось загрузить документ: {FileName}", file.FileName);
             return BadRequest(ex.Message);
         }
     }
@@ -248,7 +248,7 @@ public class DocumentsController : ControllerBase
         [FromQuery] int maxResults = 10)
     {
         if (string.IsNullOrWhiteSpace(query))
-            return BadRequest("Query parameter is required");
+            return BadRequest("Параметр запроса обязателен");
             
         try
         {
@@ -257,7 +257,7 @@ public class DocumentsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Search failed for query: {Query}", query);
+            _logger.LogError(ex, "Поиск не удался для запроса: {Query}", query);
             return BadRequest(ex.Message);
         }
     }
@@ -268,7 +268,7 @@ public class DocumentsController : ControllerBase
         [FromQuery] int maxResults = 5)
     {
         if (string.IsNullOrWhiteSpace(query))
-            return BadRequest("Query parameter is required");
+            return BadRequest("Параметр запроса обязателен");
             
         try
         {
@@ -277,7 +277,7 @@ public class DocumentsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Chat failed for query: {Query}", query);
+            _logger.LogError(ex, "Чат не удался для запроса: {Query}", query);
             return BadRequest(ex.Message);
         }
     }
@@ -295,7 +295,7 @@ public class DocumentsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get document: {DocumentId}", id);
+            _logger.LogError(ex, "Не удалось получить документ: {DocumentId}", id);
             return BadRequest(ex.Message);
         }
     }
@@ -310,7 +310,7 @@ public class DocumentsController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to get all documents");
+            _logger.LogError(ex, "Не удалось получить все документы");
             return BadRequest(ex.Message);
         }
     }
@@ -324,12 +324,12 @@ public class DocumentsController : ControllerBase
             if (!success)
                 return NotFound();
                 
-            _logger.LogInformation("Document deleted: {DocumentId}", id);
+            _logger.LogInformation("Документ удален: {DocumentId}", id);
             return NoContent();
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to delete document: {DocumentId}", id);
+            _logger.LogError(ex, "Не удалось удалить документ: {DocumentId}", id);
             return BadRequest(ex.Message);
         }
     }
@@ -360,37 +360,31 @@ public class DocumentsController : ControllerBase
             
         var services = new ServiceCollection();
         
-        // Configure services
+        // Настроить сервисы
         services.AddSmartRag(configuration, options =>
         {
             options.AIProvider = AIProvider.Anthropic;
             options.StorageProvider = StorageProvider.Qdrant;
             options.MaxChunkSize = 1000;
-            options.MinChunkSize = 50;
             options.ChunkOverlap = 200;
-            options.MaxRetryAttempts = 3;
-            options.RetryDelayMs = 1000;
-            options.RetryPolicy = RetryPolicy.ExponentialBackoff;
-            options.EnableFallbackProviders = true;
-            options.FallbackProviders = new[] { AIProvider.Gemini, AIProvider.OpenAI };
         });
         
         var serviceProvider = services.BuildServiceProvider();
         var documentService = serviceProvider.GetRequiredService<IDocumentService>();
         var documentSearchService = serviceProvider.GetRequiredService<IDocumentSearchService>();
         
-        Console.WriteLine("SmartRAG Console Application");
-        Console.WriteLine("============================");
+        Console.WriteLine("SmartRAG Консольное Приложение");
+        Console.WriteLine("===============================");
         
         while (true)
         {
-            Console.WriteLine("\nOptions:");
-            Console.WriteLine("1. Upload document");
-            Console.WriteLine("2. Search documents");
-            Console.WriteLine("3. Chat with documents");
-            Console.WriteLine("4. List all documents");
-            Console.WriteLine("5. Exit");
-            Console.Write("Choose an option: ");
+            Console.WriteLine("\nОпции:");
+            Console.WriteLine("1. Загрузить документ");
+            Console.WriteLine("2. Искать документы");
+            Console.WriteLine("3. Чат с документами");
+            Console.WriteLine("4. Список всех документов");
+            Console.WriteLine("5. Выход");
+            Console.Write("Выберите опцию: ");
             
             var choice = Console.ReadLine();
             
@@ -411,7 +405,7 @@ public class DocumentsController : ControllerBase
                 case "5":
                     return;
                 default:
-                    Console.WriteLine("Invalid option. Please try again.");
+                    Console.WriteLine("Неверная опция. Попробуйте снова.");
                     break;
             }
         }
@@ -419,12 +413,12 @@ public class DocumentsController : ControllerBase
     
     static async Task UploadDocument(IDocumentService documentService)
     {
-        Console.Write("Enter file path: ");
+        Console.Write("Введите путь к файлу: ");
         var filePath = Console.ReadLine();
         
         if (!File.Exists(filePath))
         {
-            Console.WriteLine("File not found.");
+            Console.WriteLine("Файл не найден.");
             return;
         }
         
@@ -435,29 +429,29 @@ public class DocumentsController : ControllerBase
             
             var document = await documentService.UploadDocumentAsync(
                 fileStream, fileInfo.Name, "application/octet-stream", "console-user");
-            Console.WriteLine($"Document uploaded successfully. ID: {document.Id}");
+            Console.WriteLine($"Документ успешно загружен. ID: {document.Id}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error uploading document: {ex.Message}");
+            Console.WriteLine($"Ошибка загрузки документа: {ex.Message}");
         }
     }
     
     static async Task SearchDocuments(IDocumentSearchService documentSearchService)
     {
-        Console.Write("Enter search query: ");
+        Console.Write("Введите поисковый запрос: ");
         var query = Console.ReadLine();
         
         if (string.IsNullOrWhiteSpace(query))
         {
-            Console.WriteLine("Query cannot be empty.");
+            Console.WriteLine("Запрос не может быть пустым.");
             return;
         }
         
         try
         {
             var results = await documentSearchService.SearchDocumentsAsync(query, 5);
-            Console.WriteLine($"Found {results.Count} results:");
+            Console.WriteLine($"Найдено {results.Count} результатов:");
             
             foreach (var result in results)
             {
@@ -466,29 +460,29 @@ public class DocumentsController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error searching documents: {ex.Message}");
+            Console.WriteLine($"Ошибка поиска документов: {ex.Message}");
         }
     }
     
     static async Task ChatWithDocuments(IDocumentSearchService documentSearchService)
     {
-        Console.Write("Enter your question: ");
+        Console.Write("Введите ваш вопрос: ");
         var query = Console.ReadLine();
         
         if (string.IsNullOrWhiteSpace(query))
         {
-            Console.WriteLine("Question cannot be empty.");
+            Console.WriteLine("Вопрос не может быть пустым.");
             return;
         }
         
         try
         {
             var response = await documentSearchService.GenerateRagAnswerAsync(query, 5);
-            Console.WriteLine($"AI Answer: {response.Answer}");
+            Console.WriteLine($"ИИ Ответ: {response.Answer}");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error chatting with documents: {ex.Message}");
+            Console.WriteLine($"Ошибка чата с документами: {ex.Message}");
         }
     }
     
@@ -497,7 +491,7 @@ public class DocumentsController : ControllerBase
         try
         {
             var documents = await documentService.GetAllDocumentsAsync();
-            Console.WriteLine($"Total documents: {documents.Count}");
+            Console.WriteLine($"Всего документов: {documents.Count}");
             
             foreach (var doc in documents)
             {
@@ -506,7 +500,7 @@ public class DocumentsController : ControllerBase
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error listing documents: {ex.Message}");
+            Console.WriteLine($"Ошибка списка документов: {ex.Message}");
         }
     }
 }</code></pre>
@@ -531,7 +525,7 @@ services.UseSmartRag(configuration,
 );</code></pre>
                     </div>
 
-                    <h3>Расширенная Конфигурация</h3>
+                    <h3>Продвинутая Конфигурация</h3>
                     <div class="code-example">
                         <pre><code class="language-csharp">// Program.cs
 services.AddSmartRag(configuration, options =>
