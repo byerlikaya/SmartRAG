@@ -3,6 +3,28 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded, initializing SmartRAG documentation...');
     
+    // Initialize Prism.js syntax highlighting
+    if (typeof Prism !== 'undefined') {
+        console.log('Initializing Prism.js syntax highlighting...');
+        Prism.highlightAll();
+        
+        // Re-highlight when content changes (for dynamic content)
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                if (mutation.type === 'childList') {
+                    Prism.highlightAll();
+                }
+            });
+        });
+        
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+    } else {
+        console.warn('Prism.js not loaded');
+    }
+    
     // Tab Functionality for Configuration Pages
     const codeTabs = document.querySelectorAll('.code-tab');
     const codePanels = document.querySelectorAll('.code-panel');
