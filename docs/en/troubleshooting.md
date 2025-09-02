@@ -62,10 +62,12 @@ services.AddSmartRag(configuration, options =>
                     <div class="code-example">
                         <pre><code class="language-bash"># Set environment variables
 export ANTHROPIC_API_KEY=your-anthropic-api-key
-export QDRANT_API_KEY=your-qdrant-api-key
+export QDRANT_API_KEY=your-qdrant-api-key</code></pre>
+                    </div>
 
-# Or use appsettings.json
-{
+                    <h4>appsettings.json Configuration</h4>
+                    <div class="code-example">
+                        <pre><code class="language-json">{
   "SmartRAG": {
     "AIProvider": "Anthropic",
     "StorageProvider": "Qdrant",
@@ -322,6 +324,12 @@ public async Task SearchDocuments_ReturnsRelevantResults()
 public async Task CompleteWorkflow_UploadSearchChat_WorksCorrectly()
 {
     // Arrange
+    var configuration = new ConfigurationBuilder()
+        .SetBasePath(Directory.GetCurrentDirectory())
+        .AddJsonFile("appsettings.json", optional: true)
+        .AddEnvironmentVariables()
+        .Build();
+        
     var services = new ServiceCollection();
     services.AddSmartRag(configuration, options =>
     {
