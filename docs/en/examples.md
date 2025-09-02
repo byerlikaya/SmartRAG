@@ -351,6 +351,13 @@ public class DocumentsController : ControllerBase
 {
     static async Task Main(string[] args)
     {
+        // Create configuration
+        var configuration = new ConfigurationBuilder()
+            .SetBasePath(Directory.GetCurrentDirectory())
+            .AddJsonFile("appsettings.json", optional: true)
+            .AddEnvironmentVariables()
+            .Build();
+            
         var services = new ServiceCollection();
         
         // Configure services
@@ -550,6 +557,12 @@ services.AddSmartRag(configuration, options =>
     "RetryPolicy": "ExponentialBackoff",
     "EnableFallbackProviders": true,
     "FallbackProviders": ["Gemini", "OpenAI"]
+  },
+  "Anthropic": {
+    "ApiKey": "your-anthropic-api-key"
+  },
+  "Qdrant": {
+    "ApiKey": "your-qdrant-api-key"
   }
 }</code></pre>
                     </div>
