@@ -269,83 +269,83 @@ namespace SmartRAG.Services
                 {
                     var textBuilder = new StringBuilder();
 
-                // Check if workbook has any worksheets
-                if (package.Workbook.Worksheets.Count == 0)
-                {
-                    return "Excel file contains no worksheets";
-                }
-
-                foreach (var worksheet in package.Workbook.Worksheets)
-                {
-                    if (worksheet.Dimension != null)
+                    // Check if workbook has any worksheets
+                    if (package.Workbook.Worksheets.Count == 0)
                     {
-                        textBuilder.AppendLine(string.Format(System.Globalization.CultureInfo.InvariantCulture, "Worksheet: {0}", worksheet.Name));
+                        return "Excel file contains no worksheets";
+                    }
 
-                        var rowCount = worksheet.Dimension.Rows;
-                        var colCount = worksheet.Dimension.Columns;
-
-                        // Add header row if exists
-                        var hasData = false;
-                        for (int row = 1; row <= rowCount; row++)
+                    foreach (var worksheet in package.Workbook.Worksheets)
+                    {
+                        if (worksheet.Dimension != null)
                         {
-                            var rowBuilder = new StringBuilder();
-                            var rowHasData = false;
+                            textBuilder.AppendLine(string.Format(System.Globalization.CultureInfo.InvariantCulture, "Worksheet: {0}", worksheet.Name));
 
-                            for (int col = 1; col <= colCount; col++)
+                            var rowCount = worksheet.Dimension.Rows;
+                            var colCount = worksheet.Dimension.Columns;
+
+                            // Add header row if exists
+                            var hasData = false;
+                            for (int row = 1; row <= rowCount; row++)
                             {
-                                var cellValue = worksheet.Cells[row, col].Value;
-                                if (cellValue != null)
+                                var rowBuilder = new StringBuilder();
+                                var rowHasData = false;
+
+                                for (int col = 1; col <= colCount; col++)
                                 {
-                                    var cellText = cellValue.ToString();
-                                    if (!string.IsNullOrWhiteSpace(cellText))
+                                    var cellValue = worksheet.Cells[row, col].Value;
+                                    if (cellValue != null)
                                     {
-                                        rowBuilder.Append(cellText);
-                                        rowHasData = true;
-                                        if (col < colCount) rowBuilder.Append('\t');
+                                        var cellText = cellValue.ToString();
+                                        if (!string.IsNullOrWhiteSpace(cellText))
+                                        {
+                                            rowBuilder.Append(cellText);
+                                            rowHasData = true;
+                                            if (col < colCount) rowBuilder.Append('\t');
+                                        }
+                                        else
+                                        {
+                                            rowBuilder.Append(' '); // Empty cell gets space
+                                            if (col < colCount) rowBuilder.Append('\t');
+                                        }
                                     }
                                     else
                                     {
-                                        rowBuilder.Append(' '); // Empty cell gets space
+                                        rowBuilder.Append(' '); // Null cell gets space
                                         if (col < colCount) rowBuilder.Append('\t');
                                     }
                                 }
-                                else
+
+                                if (rowHasData)
                                 {
-                                    rowBuilder.Append(' '); // Null cell gets space
-                                    if (col < colCount) rowBuilder.Append('\t');
+                                    textBuilder.AppendLine(rowBuilder.ToString());
+                                    hasData = true;
                                 }
                             }
 
-                            if (rowHasData)
+                            if (!hasData)
                             {
-                                textBuilder.AppendLine(rowBuilder.ToString());
-                                hasData = true;
+                                textBuilder.AppendLine("Worksheet contains no data");
                             }
-                        }
 
-                        if (!hasData)
+                            textBuilder.AppendLine();
+                        }
+                        else
                         {
-                            textBuilder.AppendLine("Worksheet contains no data");
+                            textBuilder.AppendLine(string.Format(System.Globalization.CultureInfo.InvariantCulture, "Worksheet: {0} (empty)", worksheet.Name));
                         }
-
-                        textBuilder.AppendLine();
                     }
-                    else
+
+                    var content = textBuilder.ToString();
+                    var cleanedContent = CleanContent(content);
+
+                    // If content is still empty after cleaning, return a fallback message
+                    if (string.IsNullOrWhiteSpace(cleanedContent))
                     {
-                        textBuilder.AppendLine(string.Format(System.Globalization.CultureInfo.InvariantCulture, "Worksheet: {0} (empty)", worksheet.Name));
+                        return "Excel file processed but no text content extracted";
                     }
-                }
 
-                var content = textBuilder.ToString();
-                var cleanedContent = CleanContent(content);
-
-                // If content is still empty after cleaning, return a fallback message
-                if (string.IsNullOrWhiteSpace(cleanedContent))
-                {
-                    return "Excel file processed but no text content extracted";
-                }
-
-                return cleanedContent;
+                    return cleanedContent;
                 }
             }
             catch (Exception ex)

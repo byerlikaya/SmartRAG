@@ -1,11 +1,9 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using Microsoft.Extensions.Logging;
 using SmartRAG.Enums;
 using SmartRAG.Interfaces;
-using SmartRAG.Models;
 using SmartRAG.Providers;
+using System;
+using System.Collections.Generic;
 
 namespace SmartRAG.Factories
 {

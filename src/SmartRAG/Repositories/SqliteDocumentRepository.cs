@@ -457,30 +457,30 @@ namespace SmartRAG.Repositories
 
                     using (var reader = command.ExecuteReader())
                     {
-                SmartRAG.Entities.Document document = null;
-                var chunks = new List<DocumentChunk>();
+                        SmartRAG.Entities.Document document = null;
+                        var chunks = new List<DocumentChunk>();
 
-                while (await reader.ReadAsync())
-                {
-                    if (document == null)
-                    {
-                        document = CreateDocumentFromReader(reader);
-                    }
+                        while (await reader.ReadAsync())
+                        {
+                            if (document == null)
+                            {
+                                document = CreateDocumentFromReader(reader);
+                            }
 
-                    if (!IsDBNullSafe(reader, "ChunkId"))
-                    {
-                        var chunk = CreateChunkFromReader(reader, id);
-                        chunks.Add(chunk);
-                    }
-                }
+                            if (!IsDBNullSafe(reader, "ChunkId"))
+                            {
+                                var chunk = CreateChunkFromReader(reader, id);
+                                chunks.Add(chunk);
+                            }
+                        }
 
-                if (document != null)
-                {
-                    document.Chunks = chunks;
-                    RepositoryLogMessages.LogSqliteDocumentRetrieved(Logger, id, null);
-                }
+                        if (document != null)
+                        {
+                            document.Chunks = chunks;
+                            RepositoryLogMessages.LogSqliteDocumentRetrieved(Logger, id, null);
+                        }
 
-                return document;
+                        return document;
                     }
                 }
             }
@@ -508,40 +508,40 @@ namespace SmartRAG.Repositories
 
                     using (var reader = command.ExecuteReader())
                     {
-                SmartRAG.Entities.Document currentDocument = null;
-                var chunks = new List<DocumentChunk>();
+                        SmartRAG.Entities.Document currentDocument = null;
+                        var chunks = new List<DocumentChunk>();
 
-                while (await reader.ReadAsync())
-                {
-                    var documentId = Guid.Parse(GetStringSafe(reader, "Id"));
+                        while (await reader.ReadAsync())
+                        {
+                            var documentId = Guid.Parse(GetStringSafe(reader, "Id"));
 
-                    if (currentDocument == null || currentDocument.Id != documentId)
-                    {
+                            if (currentDocument == null || currentDocument.Id != documentId)
+                            {
+                                if (currentDocument != null)
+                                {
+                                    currentDocument.Chunks = chunks;
+                                    documents.Add(currentDocument);
+                                }
+
+                                currentDocument = CreateDocumentFromReader(reader);
+                                chunks = new List<DocumentChunk>();
+                            }
+
+                            if (!IsDBNullSafe(reader, "ChunkId"))
+                            {
+                                var chunk = CreateChunkFromReader(reader, documentId);
+                                chunks.Add(chunk);
+                            }
+                        }
+
                         if (currentDocument != null)
                         {
                             currentDocument.Chunks = chunks;
                             documents.Add(currentDocument);
                         }
 
-                        currentDocument = CreateDocumentFromReader(reader);
-                        chunks = new List<DocumentChunk>();
-                    }
-
-                    if (!IsDBNullSafe(reader, "ChunkId"))
-                    {
-                        var chunk = CreateChunkFromReader(reader, documentId);
-                        chunks.Add(chunk);
-                    }
-                }
-
-                if (currentDocument != null)
-                {
-                    currentDocument.Chunks = chunks;
-                    documents.Add(currentDocument);
-                }
-
-                RepositoryLogMessages.LogSqliteDocumentsRetrieved(Logger, documents.Count, null);
-                return documents;
+                        RepositoryLogMessages.LogSqliteDocumentsRetrieved(Logger, documents.Count, null);
+                        return documents;
                     }
                 }
             }

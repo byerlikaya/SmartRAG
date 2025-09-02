@@ -1,14 +1,15 @@
-namespace SmartRAG.Enums {
-
-/// <summary>
-/// Supported storage providers
-/// </summary>
-public enum StorageProvider
+namespace SmartRAG.Enums
 {
-    InMemory,
-    FileSystem,
-    Redis,
-    Sqlite,
-    Qdrant
-}
+
+    /// <summary>
+    /// Supported storage providers
+    /// </summary>
+    public enum StorageProvider
+    {
+        InMemory,
+        FileSystem,
+        Redis,
+        Sqlite,
+        Qdrant
+    }
 }

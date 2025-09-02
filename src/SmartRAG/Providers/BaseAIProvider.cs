@@ -9,9 +9,6 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
-using System.Text.RegularExpressions;
-using System.Net;
-using System.Globalization;
 
 namespace SmartRAG.Providers
 {
@@ -379,7 +376,7 @@ namespace SmartRAG.Providers
                                 {
                                     if (value.TryGetSingle(out var f))
                                         floats.Add(f);
-                                    }
+                                }
                                 results.Add(floats);
                             }
                             else

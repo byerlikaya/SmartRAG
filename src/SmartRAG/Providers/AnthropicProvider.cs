@@ -57,39 +57,39 @@ namespace SmartRAG.Providers
             {
                 var systemMessage = config.SystemMessage;
 
-            var messages = new List<object>();
+                var messages = new List<object>();
 
-            if (!string.IsNullOrEmpty(systemMessage))
-            {
-                messages.Add(new { role = "system", content = systemMessage });
-            }
+                if (!string.IsNullOrEmpty(systemMessage))
+                {
+                    messages.Add(new { role = "system", content = systemMessage });
+                }
 
-            messages.Add(new { role = "user", content = prompt });
+                messages.Add(new { role = "user", content = prompt });
 
-            var payload = new
-            {
-                model = config.Model,
-                max_tokens = config.MaxTokens,
-                temperature = config.Temperature,
-                messages = messages.ToArray()
-            };
+                var payload = new
+                {
+                    model = config.Model,
+                    max_tokens = config.MaxTokens,
+                    temperature = config.Temperature,
+                    messages = messages.ToArray()
+                };
 
-            var chatEndpoint = BuildAnthropicUrl(config.Endpoint, "v1/messages");
+                var chatEndpoint = BuildAnthropicUrl(config.Endpoint, "v1/messages");
 
-            var (success, response, error) = await MakeHttpRequestAsync(client, chatEndpoint, payload);
+                var (success, response, error) = await MakeHttpRequestAsync(client, chatEndpoint, payload);
 
-            if (!success)
-                return error;
+                if (!success)
+                    return error;
 
-            try
-            {
-                return ParseAnthropicTextResponse(response);
-            }
-            catch (Exception ex)
-            {
-                ProviderLogMessages.LogAnthropicResponseParsingError(Logger, ex.Message, ex);
-                return $"Error parsing response: {ex.Message}";
-            }
+                try
+                {
+                    return ParseAnthropicTextResponse(response);
+                }
+                catch (Exception ex)
+                {
+                    ProviderLogMessages.LogAnthropicResponseParsingError(Logger, ex.Message, ex);
+                    return $"Error parsing response: {ex.Message}";
+                }
             }
         }
 
