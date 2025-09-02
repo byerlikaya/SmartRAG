@@ -1,12 +1,9 @@
+using Microsoft.Extensions.Logging;
+using SmartRAG.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-using SmartRAG.Interfaces;
-using SmartRAG.Models;
-using SmartRAG.Entities;
 
 namespace SmartRAG.Services
 {

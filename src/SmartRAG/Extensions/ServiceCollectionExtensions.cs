@@ -1,16 +1,12 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using SmartRAG.Enums;
+using SmartRAG.Factories;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
-using SmartRAG.Providers;
-using SmartRAG.Repositories;
 using SmartRAG.Services;
-using SmartRAG.Factories;
-using Microsoft.Extensions.Options;
+using System;
 
 namespace SmartRAG.Extensions
 {
