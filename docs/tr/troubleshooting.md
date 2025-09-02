@@ -1,26 +1,54 @@
 ---
 layout: default
 title: Sorun Giderme
-nav_order: 5
+description: SmartRAG için yaygın sorunlar ve çözümleri
+lang: tr
 ---
 
-# Sorun Giderme
-
-Bu sayfa SmartRAG kullanırken karşılaşabileceğiniz yaygın sorunların çözümlerini sağlar.
-
-<div class="troubleshooting-section">
-## Yapılandırma Sorunları
-
-### API Anahtarı Yapılandırması
-
-<div class="problem-solution">
-**Sorun**: AI veya depolama sağlayıcıları ile kimlik doğrulama hataları alıyorsunuz.
-
-**Çözüm**: API anahtarlarınızın `appsettings.json` dosyasında doğru yapılandırıldığından emin olun:
+<!-- Page Header -->
+<div class="page-header">
+    <div class="container">
+        <h1 class="page-title">Sorun Giderme</h1>
+        <p class="page-description">
+            SmartRAG kullanırken karşılaşabileceğiniz yaygın sorunlar ve çözümleri
+        </p>
+    </div>
 </div>
 
-```json
-{
+<!-- Main Content -->
+<div class="main-content">
+    <div class="container">
+        
+        <!-- Quick Navigation -->
+        <div class="content-section">
+            <div class="row">
+                <div class="col-12">
+                    <div class="alert alert-info" role="alert">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Yardıma mı ihtiyacınız var?</strong> Burada çözüm bulamadıysanız, 
+                        <a href="{{ site.baseurl }}/tr/getting-started" class="alert-link">Başlangıç Rehberi</a>'mizi kontrol edin 
+                        veya <a href="https://github.com/byerlikaya/SmartRAG" class="alert-link" target="_blank">GitHub</a>'da sorun oluşturun.
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configuration Issues -->
+        <div class="content-section">
+            <h2>Yapılandırma Sorunları</h2>
+            
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-key"></i>
+                        </div>
+                        <h3>API Anahtarı Yapılandırması</h3>
+                        <p><strong>Sorun:</strong> AI veya depolama sağlayıcıları ile kimlik doğrulama hataları alıyorsunuz.</p>
+                        <p><strong>Çözüm:</strong> API anahtarlarınızın <code>appsettings.json</code> dosyasında doğru yapılandırıldığından emin olun:</p>
+                        
+                        <div class="code-example">
+                            <pre><code class="language-json">{
   "SmartRAG": {
     "AIProvider": "Anthropic",
     "StorageProvider": "Qdrant",
@@ -33,27 +61,29 @@ Bu sayfa SmartRAG kullanırken karşılaşabileceğiniz yaygın sorunların çö
   "Qdrant": {
     "ApiKey": "your-qdrant-api-key"
   }
-}
-```
-
-Veya ortam değişkenlerini ayarlayın:
-
-```bash
-# Ortam değişkenlerini ayarlayın
+}</code></pre>
+                        </div>
+                        
+                        <p>Veya ortam değişkenlerini ayarlayın:</p>
+                        <div class="code-example">
+                            <pre><code class="language-bash"># Ortam değişkenlerini ayarlayın
 export ANTHROPIC_API_KEY=your-anthropic-api-key
-export QDRANT_API_KEY=your-qdrant-api-key
-```
-
-### Servis Kayıt Sorunları
-
-<div class="problem-solution">
-**Sorun**: Bağımlılık enjeksiyonu hataları alıyorsunuz.
-
-**Çözüm**: SmartRAG servislerinin `Program.cs` dosyanızda doğru şekilde kaydedildiğinden emin olun:
-</div>
-
-```csharp
-using SmartRAG.Extensions;
+export QDRANT_API_KEY=your-qdrant-api-key</code></pre>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-cogs"></i>
+                        </div>
+                        <h3>Servis Kayıt Sorunları</h3>
+                        <p><strong>Sorun:</strong> Dependency injection hataları alıyorsunuz.</p>
+                        <p><strong>Çözüm:</strong> SmartRAG servislerinin <code>Program.cs</code> dosyanızda doğru şekilde kayıtlı olduğundan emin olun:</p>
+                        
+                        <div class="code-example">
+                            <pre><code class="language-csharp">using SmartRAG.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -62,185 +92,250 @@ builder.Services.AddSmartRag(builder.Configuration);
 
 var app = builder.Build();
 app.UseSmartRag(builder.Configuration, StorageProvider.Qdrant, AIProvider.Anthropic);
-app.Run();
-```
-</div>
+app.Run();</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-<div class="troubleshooting-section">
-## Belge Yükleme Sorunları
+        <!-- Document Upload Issues -->
+        <div class="content-section">
+            <h2>Belge Yükleme Sorunları</h2>
+            
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-file-upload"></i>
+                        </div>
+                        <h3>Dosya Boyutu Sınırlamaları</h3>
+                        <p><strong>Sorun:</strong> Büyük belgeler yüklenemiyor veya işlenemiyor.</p>
+                        <p><strong>Çözümler:</strong></p>
+                        <ul>
+                            <li><code>appsettings.json</code> dosyasındaki dosya boyutu sınırlarını kontrol edin</li>
+                            <li>Büyük belgeleri daha küçük parçalara bölmeyi düşünün</li>
+                            <li>İşlem için yeterli bellek olduğundan emin olun</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="col-lg-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-file-alt"></i>
+                        </div>
+                        <h3>Desteklenmeyen Dosya Türleri</h3>
+                        <p><strong>Sorun:</strong> Belirli dosya formatları için hatalar alıyorsunuz.</p>
+                        <p><strong>Çözüm:</strong> SmartRAG yaygın metin formatlarını destekler:</p>
+                        <ul>
+                            <li>PDF dosyaları (.pdf)</li>
+                            <li>Metin dosyaları (.txt)</li>
+                            <li>Word belgeleri (.docx)</li>
+                            <li>Markdown dosyaları (.md)</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-### Dosya Boyutu Sınırlamaları
+        <!-- Search and Retrieval Issues -->
+        <div class="content-section">
+            <h2>Arama ve Alma Sorunları</h2>
+            
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <h3>Arama Sonucu Bulunamıyor</h3>
+                        <p><strong>Sorun:</strong> Arama sorguları sonuç döndürmüyor.</p>
+                        <p><strong>Olası Çözümler:</strong></p>
+                        <ol>
+                            <li><strong>Belge yüklemesini kontrol edin:</strong> Belgelerin başarıyla yüklendiğinden emin olun</li>
+                            <li><strong>Embedding'leri doğrulayın:</strong> Embedding'lerin düzgün oluşturulduğunu kontrol edin</li>
+                            <li><strong>Sorgu özgüllüğü:</strong> Daha spesifik arama terimleri deneyin</li>
+                            <li><strong>Depolama bağlantısı:</strong> Depolama sağlayıcınızın erişilebilir olduğunu doğrulayın</li>
+                        </ol>
+                    </div>
+                </div>
+                
+                <div class="col-lg-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <h3>Düşük Arama Kalitesi</h3>
+                        <p><strong>Sorun:</strong> Arama sonuçları ilgili değil.</p>
+                        <p><strong>Çözümler:</strong></p>
+                        <ul>
+                            <li><code>MaxChunkSize</code> ve <code>ChunkOverlap</code> ayarlarını ayarlayın</li>
+                            <li>Daha spesifik arama sorguları kullanın</li>
+                            <li>Belgelerin düzgün formatlandığından emin olun</li>
+                            <li>Embedding'lerin güncel olduğunu kontrol edin</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-<div class="problem-solution">
-**Sorun**: Büyük belgeler yüklenemiyor veya işlenemiyor.
+        <!-- Performance Issues -->
+        <div class="content-section">
+            <h2>Performans Sorunları</h2>
+            
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-tachometer-alt"></i>
+                        </div>
+                        <h3>Yavaş Belge İşleme</h3>
+                        <p><strong>Sorun:</strong> Belge yükleme ve işleme çok uzun sürüyor.</p>
+                        <p><strong>Çözümler:</strong></p>
+                        <ul>
+                            <li>Parça sayısını azaltmak için <code>MaxChunkSize</code>'ı artırın</li>
+                            <li>Daha güçlü bir AI sağlayıcısı kullanın</li>
+                            <li>Depolama sağlayıcı yapılandırmanızı optimize edin</li>
+                            <li>Uygulamanızda async operasyonları kullanmayı düşünün</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="col-lg-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-memory"></i>
+                        </div>
+                        <h3>Bellek Sorunları</h3>
+                        <p><strong>Sorun:</strong> Uygulama işlem sırasında bellek tükeniyor.</p>
+                        <p><strong>Çözümler:</strong></p>
+                        <ul>
+                            <li>Daha küçük parçalar oluşturmak için <code>MaxChunkSize</code>'ı azaltın</li>
+                            <li>Belgeleri toplu olarak işleyin</li>
+                            <li>Bellek kullanımını izleyin ve optimize edin</li>
+                            <li>Büyük dosyalar için streaming operasyonları kullanmayı düşünün</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-**Çözüm**: 
-</div>
+        <!-- Storage Provider Issues -->
+        <div class="content-section">
+            <h2>Depolama Sağlayıcısı Sorunları</h2>
+            
+            <div class="row g-4">
+                <div class="col-lg-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <h3>Qdrant Bağlantı Sorunları</h3>
+                        <p><strong>Sorun:</strong> Qdrant'a bağlanılamıyor.</p>
+                        <p><strong>Çözümler:</strong></p>
+                        <ul>
+                            <li>Qdrant API anahtarının doğru olduğunu doğrulayın</li>
+                            <li>Qdrant servisine ağ bağlantısını kontrol edin</li>
+                            <li>Qdrant servisinin çalıştığından ve erişilebilir olduğundan emin olun</li>
+                            <li>Güvenlik duvarı ayarlarını kontrol edin</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-redis"></i>
+                        </div>
+                        <h3>Redis Bağlantı Sorunları</h3>
+                        <p><strong>Sorun:</strong> Redis'e bağlanılamıyor.</p>
+                        <p><strong>Çözümler:</strong></p>
+                        <ul>
+                            <li>Redis bağlantı dizesini doğrulayın</li>
+                            <li>Redis sunucusunun çalıştığından emin olun</li>
+                            <li>Ağ bağlantısını kontrol edin</li>
+                            <li><code>appsettings.json</code> dosyasındaki Redis yapılandırmasını doğrulayın</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-hdd"></i>
+                        </div>
+                        <h3>SQLite Sorunları</h3>
+                        <p><strong>Sorun:</strong> SQLite veritabanı hataları.</p>
+                        <p><strong>Çözümler:</strong></p>
+                        <ul>
+                            <li>Veritabanı dizini için dosya izinlerini kontrol edin</li>
+                            <li>Yeterli disk alanı olduğundan emin olun</li>
+                            <li>Veritabanı dosya yolunun doğru olduğunu doğrulayın</li>
+                            <li>Veritabanı bozulmasını kontrol edin</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-- Uygulamanızın dosya boyutu sınırlarını `appsettings.json` dosyasında kontrol edin
-- Büyük belgeleri daha küçük parçalara bölmeyi düşünün
-- İşleme için yeterli bellek olduğundan emin olun
+        <!-- AI Provider Issues -->
+        <div class="content-section">
+            <h2>AI Sağlayıcısı Sorunları</h2>
+            
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <h3>Anthropic API Hataları</h3>
+                        <p><strong>Sorun:</strong> Anthropic API'den hatalar alıyorsunuz.</p>
+                        <p><strong>Çözümler:</strong></p>
+                        <ul>
+                            <li>API anahtarının geçerli olduğunu ve yeterli kredisi olduğunu doğrulayın</li>
+                            <li>API hız sınırlarını kontrol edin</li>
+                            <li>Doğru API endpoint yapılandırmasından emin olun</li>
+                            <li>API kullanımını ve kotaları izleyin</li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="col-lg-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-brain"></i>
+                        </div>
+                        <h3>OpenAI API Hataları</h3>
+                        <p><strong>Sorun:</strong> OpenAI API'den hatalar alıyorsunuz.</p>
+                        <p><strong>Çözümler:</strong></p>
+                        <ul>
+                            <li>API anahtarının geçerli olduğunu doğrulayın</li>
+                            <li>API hız sınırlarını ve kotaları kontrol edin</li>
+                            <li>Doğru model yapılandırmasından emin olun</li>
+                            <li>API kullanımını izleyin</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-### Desteklenmeyen Dosya Türleri
-
-<div class="problem-solution">
-**Sorun**: Belirli dosya formatları için hatalar alıyorsunuz.
-
-**Çözüm**: SmartRAG yaygın metin formatlarını destekler. Dosyalarınızın desteklenen formatlarda olduğundan emin olun:
-</div>
-
-- PDF dosyaları
-- Metin dosyaları (.txt)
-- Word belgeleri (.docx)
-- Markdown dosyaları (.md)
-</div>
-
-<div class="troubleshooting-section">
-## Arama ve Alma Sorunları
-
-### Arama Sonucu Yok
-
-<div class="problem-solution">
-**Sorun**: Arama sorguları sonuç döndürmüyor.
-
-**Olası Çözümler**:
-</div>
-
-1. **Belge yüklemesini kontrol edin**: Belgelerin başarıyla yüklendiğinden emin olun
-2. **Embedding'leri doğrulayın**: Embedding'lerin düzgün oluşturulduğunu kontrol edin
-3. **Sorgu özgüllüğü**: Daha spesifik arama terimleri deneyin
-4. **Depolama bağlantısı**: Depolama sağlayıcınızın erişilebilir olduğunu doğrulayın
-
-### Düşük Arama Kalitesi
-
-<div class="problem-solution">
-**Sorun**: Arama sonuçları ilgili değil.
-
-**Çözümler**:
-</div>
-
-- `MaxChunkSize` ve `ChunkOverlap` ayarlarını ayarlayın
-- Daha spesifik arama sorguları kullanın
-- Belgelerin düzgün formatlandığından emin olun
-- Embedding'lerin güncel olduğunu kontrol edin
-</div>
-
-<div class="troubleshooting-section">
-## Performans Sorunları
-
-### Yavaş Belge İşleme
-
-<div class="problem-solution">
-**Sorun**: Belge yükleme ve işleme çok uzun sürüyor.
-
-**Çözümler**:
-</div>
-
-- Chunk sayısını azaltmak için `MaxChunkSize`'ı artırın
-- Daha güçlü bir AI sağlayıcısı kullanın
-- Depolama sağlayıcı yapılandırmanızı optimize edin
-- Uygulamanızda async operasyonları kullanmayı düşünün
-
-### Bellek Sorunları
-
-<div class="problem-solution">
-**Sorun**: Uygulama işleme sırasında belleği tüketiyor.
-
-**Çözümler**:
-</div>
-
-- Daha küçük chunk'lar oluşturmak için `MaxChunkSize`'ı azaltın
-- Belgeleri toplu halde işleyin
-- Bellek kullanımını izleyin ve optimize edin
-- Büyük dosyalar için streaming operasyonları kullanmayı düşünün
-</div>
-
-<div class="troubleshooting-section">
-## Depolama Sağlayıcısı Sorunları
-
-### Qdrant Bağlantı Sorunları
-
-<div class="problem-solution">
-**Sorun**: Qdrant'a bağlanamıyorsunuz.
-
-**Çözümler**:
-</div>
-
-- Qdrant API anahtarının doğru olduğunu doğrulayın
-- Qdrant servisine ağ bağlantısını kontrol edin
-- Qdrant servisinin çalıştığından ve erişilebilir olduğundan emin olun
-- Güvenlik duvarı ayarlarını kontrol edin
-
-### Redis Bağlantı Sorunları
-
-<div class="problem-solution">
-**Sorun**: Redis'e bağlanamıyorsunuz.
-
-**Çözümler**:
-</div>
-
-- Redis bağlantı dizesini doğrulayın
-- Redis sunucusunun çalıştığından emin olun
-- Ağ bağlantısını kontrol edin
-- `appsettings.json` dosyasındaki Redis yapılandırmasını doğrulayın
-
-### SQLite Sorunları
-
-<div class="problem-solution">
-**Sorun**: SQLite veritabanı hataları.
-
-**Çözümler**:
-</div>
-
-- Veritabanı dizini için dosya izinlerini kontrol edin
-- Yeterli disk alanı olduğundan emin olun
-- Veritabanı dosya yolunun doğru olduğunu doğrulayın
-- Veritabanı bozulmasını kontrol edin
-</div>
-
-<div class="troubleshooting-section">
-## AI Sağlayıcısı Sorunları
-
-### Anthropic API Hataları
-
-<div class="problem-solution">
-**Sorun**: Anthropic API'den hatalar alıyorsunuz.
-
-**Çözümler**:
-</div>
-
-- API anahtarının geçerli olduğunu ve yeterli kredisi olduğunu doğrulayın
-- API hız sınırlarını kontrol edin
-- Doğru API endpoint yapılandırmasından emin olun
-- API kullanımını ve kotaları izleyin
-
-### OpenAI API Hataları
-
-<div class="problem-solution">
-**Sorun**: OpenAI API'den hatalar alıyorsunuz.
-
-**Çözümler**:
-</div>
-
-- API anahtarının geçerli olduğunu doğrulayın
-- API hız sınırlarını ve kotaları kontrol edin
-- Doğru model yapılandırmasından emin olun
-- API kullanımını izleyin
-</div>
-
-<div class="troubleshooting-section">
-## Test ve Hata Ayıklama
-
-### Birim Testleri
-
-<div class="problem-solution">
-**Sorun**: SmartRAG bağımlılıkları nedeniyle testler başarısız oluyor.
-
-**Çözüm**: Birim testlerinde SmartRAG servisleri için mocking kullanın:
-</div>
-
-```csharp
-[Test]
+        <!-- Testing and Debugging -->
+        <div class="content-section">
+            <h2>Test ve Hata Ayıklama</h2>
+            
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-vial"></i>
+                        </div>
+                        <h3>Birim Testleri</h3>
+                        <p><strong>Sorun:</strong> SmartRAG bağımlılıkları nedeniyle testler başarısız oluyor.</p>
+                        <p><strong>Çözüm:</strong> Birim testlerinde SmartRAG servisleri için mocking kullanın:</p>
+                        
+                        <div class="code-example">
+                            <pre><code class="language-csharp">[Test]
 public async Task TestDocumentUpload()
 {
     // Arrange
@@ -254,19 +349,22 @@ public async Task TestDocumentUpload()
 
     // Act & Assert
     // Test mantığınız burada
-}
-```
-
-### Entegrasyon Testleri
-
-<div class="problem-solution">
-**Sorun**: Entegrasyon testleri başarısız oluyor.
-
-**Çözüm**: Test yapılandırması kullanın ve doğru kurulumdan emin olun:
-</div>
-
-```csharp
-[Test]
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-cogs"></i>
+                        </div>
+                        <h3>Entegrasyon Testleri</h3>
+                        <p><strong>Sorun:</strong> Entegrasyon testleri başarısız oluyor.</p>
+                        <p><strong>Çözüm:</strong> Test yapılandırması kullanın ve doğru kurulumdan emin olun:</p>
+                        
+                        <div class="code-example">
+                            <pre><code class="language-csharp">[Test]
 public async Task TestEndToEndWorkflow()
 {
     // Arrange
@@ -283,44 +381,173 @@ public async Task TestEndToEndWorkflow()
     
     // Act & Assert
     // Entegrasyon test mantığınız burada
-}
-```
-</div>
+}</code></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-<div class="troubleshooting-section">
-## Yaygın Hata Mesajları
+        <!-- Common Error Messages -->
+        <div class="content-section">
+            <h2>Yaygın Hata Mesajları</h2>
+            
+            <div class="row g-4">
+                <div class="col-lg-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <h3>Yaygın Hatalar</h3>
+                        
+                        <div class="alert alert-warning" role="alert">
+                            <strong>"Document not found"</strong>
+                            <ul class="mb-0 mt-2">
+                                <li>Belge ID'sinin doğru olduğunu doğrulayın</li>
+                                <li>Belgenin başarıyla yüklendiğini kontrol edin</li>
+                                <li>Belgenin silinmediğinden emin olun</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="alert alert-warning" role="alert">
+                            <strong>"Storage provider not configured"</strong>
+                            <ul class="mb-0 mt-2">
+                                <li>Yapılandırmadaki <code>StorageProvider</code> ayarını doğrulayın</li>
+                                <li>Tüm gerekli depolama ayarlarının sağlandığından emin olun</li>
+                                <li>Servis kaydını kontrol edin</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-6">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-exclamation-circle"></i>
+                        </div>
+                        <h3>Diğer Hatalar</h3>
+                        
+                        <div class="alert alert-warning" role="alert">
+                            <strong>"AI provider not configured"</strong>
+                            <ul class="mb-0 mt-2">
+                                <li>Yapılandırmadaki <code>AIProvider</code> ayarını doğrulayın</li>
+                                <li>Seçilen sağlayıcı için API anahtarının sağlandığından emin olun</li>
+                                <li>Servis kaydını kontrol edin</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="alert alert-warning" role="alert">
+                            <strong>"Invalid file format"</strong>
+                            <ul class="mb-0 mt-2">
+                                <li>Dosyanın desteklenen bir formatta olduğundan emin olun</li>
+                                <li>Dosya uzantısını ve içeriğini kontrol edin</li>
+                                <li>Dosyanın bozulmadığını doğrulayın</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-### "Document not found"
-- Belge ID'sinin doğru olduğunu doğrulayın
-- Belgenin başarıyla yüklendiğini kontrol edin
-- Belgenin silinmediğinden emin olun
+        <!-- Getting Help -->
+        <div class="content-section">
+            <h2>Yardım Alma</h2>
+            
+            <div class="row g-4">
+                <div class="col-lg-8">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fas fa-question-circle"></i>
+                        </div>
+                        <h3>Hala Yardıma mı İhtiyacınız Var?</h3>
+                        <p>Hala sorun yaşıyorsanız, şu adımları takip edin:</p>
+                        
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-start">
+                                    <div class="flex-shrink-0">
+                                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                            <i class="fas fa-file-alt"></i>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h5>Logları kontrol edin</h5>
+                                        <p class="text-muted">Detaylı hata mesajları için uygulama loglarını inceleyin</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-start">
+                                    <div class="flex-shrink-0">
+                                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                            <i class="fas fa-cog"></i>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h5>Yapılandırmayı doğrulayın</h5>
+                                        <p class="text-muted">Tüm yapılandırma ayarlarını tekrar kontrol edin</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-start">
+                                    <div class="flex-shrink-0">
+                                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                            <i class="fas fa-play"></i>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h5>Minimal kurulumla test edin</h5>
+                                        <p class="text-muted">Önce basit bir yapılandırma ile deneyin</p>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="d-flex align-items-start">
+                                    <div class="flex-shrink-0">
+                                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                            <i class="fas fa-book"></i>
+                                        </div>
+                                    </div>
+                                    <div class="flex-grow-1 ms-3">
+                                        <h5>Dokümantasyonu inceleyin</h5>
+                                        <p class="text-muted">Rehberlik için diğer dokümantasyon sayfalarını kontrol edin</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4">
+                    <div class="feature-card">
+                        <div class="feature-icon">
+                            <i class="fab fa-github"></i>
+                        </div>
+                        <h3>Ek Destek</h3>
+                        <p>Ek destek için şunlara başvurun:</p>
+                        
+                        <div class="d-grid gap-3">
+                            <a href="https://github.com/byerlikaya/SmartRAG" class="btn btn-primary" target="_blank">
+                                <i class="fab fa-github me-2"></i>
+                                GitHub Deposu
+                            </a>
+                            <a href="https://github.com/byerlikaya/SmartRAG/issues" class="btn btn-outline-primary" target="_blank">
+                                <i class="fas fa-bug me-2"></i>
+                                Sorun Oluştur
+                            </a>
+                            <a href="{{ site.baseurl }}/tr/getting-started" class="btn btn-outline-primary">
+                                <i class="fas fa-rocket me-2"></i>
+                                Başlangıç Rehberi
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-### "Storage provider not configured"
-- Yapılandırmadaki `StorageProvider` ayarını doğrulayın
-- Gerekli tüm depolama ayarlarının sağlandığından emin olun
-- Servis kaydını kontrol edin
-
-### "AI provider not configured"
-- Yapılandırmadaki `AIProvider` ayarını doğrulayın
-- Seçilen sağlayıcı için API anahtarının sağlandığından emin olun
-- Servis kaydını kontrol edin
-
-### "Invalid file format"
-- Dosyanın desteklenen bir formatta olduğundan emin olun
-- Dosya uzantısını ve içeriğini kontrol edin
-- Dosyanın bozulmadığını doğrulayın
-</div>
-
-<div class="troubleshooting-section">
-## Yardım Alma
-
-Hala sorun yaşıyorsanız:
-
-1. **Logları kontrol edin**: Detaylı hata mesajları için uygulama loglarını inceleyin
-2. **Yapılandırmayı doğrulayın**: Tüm yapılandırma ayarlarını tekrar kontrol edin
-3. **Minimal kurulumla test edin**: Önce basit bir yapılandırma ile deneyin
-4. **Bağımlılıkları kontrol edin**: Gerekli tüm servislerin çalıştığından emin olun
-5. **Dokümantasyonu inceleyin**: Rehberlik için diğer dokümantasyon sayfalarını kontrol edin
-
-Ek destek için lütfen projenin GitHub deposuna başvurun veya sorununuzla ilgili detaylı bilgi ile bir issue oluşturun.
+    </div>
 </div>
