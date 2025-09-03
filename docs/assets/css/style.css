@@ -320,6 +320,13 @@ h1, h2, h3, h4, h5, h6 {
     white-space: pre-wrap;
 }
 
+/* Override Prism.js dark theme */
+:not(pre) > code[class*=language-], 
+pre[class*=language-] {
+    background: var(--white) !important;
+    color: var(--gray-900) !important;
+}
+
 /* Code blocks follow theme */
 pre {
     background: var(--white);
