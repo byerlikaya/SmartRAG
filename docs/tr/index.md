@@ -295,10 +295,10 @@ hide_title: true
                         <button class="code-tab" data-tab="use">Kullan</button>
                     </div>
                     <div class="code-content">
-                        <div class="code-panel active" id="install">
+                        <div class="code-panel active" data-tab="install">
                             <pre><code class="language-bash">dotnet add package SmartRAG</code></pre>
                         </div>
-                                                 <div class="code-panel" id="configure">
+                                                 <div class="code-panel" data-tab="configure">
                              <pre><code class="language-csharp">services.UseSmartRag(configuration,
      storageProvider: StorageProvider.InMemory,
      aiProvider: AIProvider.Gemini
@@ -313,7 +313,7 @@ hide_title: true
      options.ChunkOverlap = 200;
  });</code></pre>
                          </div>
-                         <div class="code-panel" id="use">
+                         <div class="code-panel" data-tab="use">
                              <pre><code class="language-csharp">// Belge yükleyin
  var document = await documentService
      .UploadDocumentAsync(fileStream, fileName, contentType, "user123");

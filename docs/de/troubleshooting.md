@@ -30,8 +30,8 @@ lang: de
                         oder erstellen Sie ein Issue auf <a href="https://github.com/byerlikaya/SmartRAG" class="alert-link" target="_blank">GitHub</a>.
                     </div>
                 </div>
-            </div>
-        </div>
+                    </div>
+                    </div>
 
         <!-- Configuration Issues -->
         <div class="content-section">
@@ -42,12 +42,12 @@ lang: de
                     <div class="feature-card">
                         <div class="feature-icon">
                             <i class="fas fa-key"></i>
-                        </div>
+                    </div>
                         <h3>API-Schlüssel-Konfiguration</h3>
                         <p><strong>Problem:</strong> Authentifizierungsfehler mit AI- oder Speicheranbietern.</p>
                         <p><strong>Lösung:</strong> Stellen Sie sicher, dass Ihre API-Schlüssel in <code>appsettings.json</code> korrekt konfiguriert sind:</p>
-                        
-                        <div class="code-example">
+
+                    <div class="code-example">
                             <pre><code class="language-json">{
   "SmartRAG": {
     "AIProvider": "Anthropic",
@@ -55,34 +55,34 @@ lang: de
     "MaxChunkSize": 1000,
     "ChunkOverlap": 200
   },
-  "Anthropic": {
+    "Anthropic": {
     "ApiKey": "your-anthropic-api-key"
   },
   "Qdrant": {
     "ApiKey": "your-qdrant-api-key"
   }
 }</code></pre>
-                        </div>
-                        
+                    </div>
+
                         <p>Oder setzen Sie Umgebungsvariablen:</p>
-                        <div class="code-example">
+                    <div class="code-example">
                             <pre><code class="language-bash"># Umgebungsvariablen setzen
 export ANTHROPIC_API_KEY=your-anthropic-api-key
 export QDRANT_API_KEY=your-qdrant-api-key</code></pre>
-                        </div>
                     </div>
-                </div>
-                
+                    </div>
+                    </div>
+
                 <div class="col-lg-6">
                     <div class="feature-card">
                         <div class="feature-icon">
                             <i class="fas fa-cogs"></i>
-                        </div>
+                    </div>
                         <h3>Service-Registrierungsprobleme</h3>
                         <p><strong>Problem:</strong> Dependency Injection-Fehler.</p>
                         <p><strong>Lösung:</strong> Stellen Sie sicher, dass SmartRAG-Services in Ihrer <code>Program.cs</code> korrekt registriert sind:</p>
-                        
-                        <div class="code-example">
+                    
+                    <div class="code-example">
                             <pre><code class="language-csharp">using SmartRAG.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -118,8 +118,8 @@ app.Run();</code></pre>
                             <li>Stellen Sie sicher, dass genügend Speicher für die Verarbeitung verfügbar ist</li>
                         </ul>
                     </div>
-                </div>
-                
+                    </div>
+
                 <div class="col-lg-6">
                     <div class="feature-card">
                         <div class="feature-icon">
@@ -159,8 +159,8 @@ app.Run();</code></pre>
                             <li><strong>Speicherverbindung:</strong> Verifizieren Sie, dass Ihr Speicheranbieter zugänglich ist</li>
                         </ol>
                     </div>
-                </div>
-                
+                    </div>
+
                 <div class="col-lg-6">
                     <div class="feature-card">
                         <div class="feature-icon">
@@ -241,8 +241,8 @@ app.Run();</code></pre>
                             <li>Überprüfen Sie Firewall-Einstellungen</li>
                         </ul>
                     </div>
-                </div>
-                
+                    </div>
+
                 <div class="col-lg-4">
                     <div class="feature-card">
                         <div class="feature-icon">
@@ -330,12 +330,12 @@ app.Run();</code></pre>
                         <div class="feature-icon">
                             <i class="fas fa-vial"></i>
                         </div>
-                        <h3>Unit-Tests</h3>
+                    <h3>Unit-Tests</h3>
                         <p><strong>Problem:</strong> Tests schlagen aufgrund von SmartRAG-Abhängigkeiten fehl.</p>
                         <p><strong>Lösung:</strong> Verwenden Sie Mocking für SmartRAG-Services in Unit-Tests:</p>
                         
-                        <div class="code-example">
-                            <pre><code class="language-csharp">[Test]
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[Test]
 public async Task TestDocumentUpload()
 {
     // Arrange
@@ -352,19 +352,19 @@ public async Task TestDocumentUpload()
 }</code></pre>
                         </div>
                     </div>
-                </div>
-                
+                    </div>
+
                 <div class="col-lg-6">
                     <div class="feature-card">
                         <div class="feature-icon">
                             <i class="fas fa-cogs"></i>
                         </div>
-                        <h3>Integrationstests</h3>
+                    <h3>Integrationstests</h3>
                         <p><strong>Problem:</strong> Integrationstests schlagen fehl.</p>
                         <p><strong>Lösung:</strong> Verwenden Sie Test-Konfiguration und stellen Sie sicher, dass das Setup korrekt ist:</p>
                         
-                        <div class="code-example">
-                            <pre><code class="language-csharp">[Test]
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[Test]
 public async Task TestEndToEndWorkflow()
 {
     // Arrange
@@ -434,8 +434,8 @@ public async Task TestEndToEndWorkflow()
                                 <li>Stellen Sie sicher, dass ein API-Schlüssel für den ausgewählten Anbieter bereitgestellt wird</li>
                                 <li>Prüfen Sie die Service-Registrierung</li>
                             </ul>
-                        </div>
-                        
+                    </div>
+
                         <div class="alert alert-warning" role="alert">
                             <strong>"Invalid file format"</strong>
                             <ul class="mb-0 mt-2">

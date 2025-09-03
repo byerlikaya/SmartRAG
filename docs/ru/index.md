@@ -295,10 +295,10 @@ var answer = await documentSearchService
                         <button class="code-tab" data-tab="use">Использовать</button>
                     </div>
                     <div class="code-content">
-                        <div class="code-panel active" id="install">
+                        <div class="code-panel active" data-tab="install">
                             <pre><code class="language-bash">dotnet add package SmartRAG</code></pre>
                         </div>
-                        <div class="code-panel" id="configure">
+                        <div class="code-panel" data-tab="configure">
                             <pre><code class="language-csharp">services.AddSmartRAG(options =>
 {
     options.AIProvider = AIProvider.Anthropic;
@@ -306,7 +306,7 @@ var answer = await documentSearchService
     options.ApiKey = "your-api-key";
 });</code></pre>
                         </div>
-                        <div class="code-panel" id="use">
+                        <div class="code-panel" data-tab="use">
                             <pre><code class="language-csharp">var documentService = serviceProvider
     .GetRequiredService<IDocumentService>();
 
