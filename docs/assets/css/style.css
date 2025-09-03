@@ -409,62 +409,62 @@ code {
 .code-content .token.builtin,
 .code-content .token.type,
 .code-content .token.literal {
-    color: #569cd6;
+    color: #0066cc;
 }
 
 .code-content .token.string,
 .code-content .token.regex {
-    color: #ce9178;
+    color: #cc6600;
 }
 
 .code-content .token.comment {
-    color: #6a9955;
+    color: #666666;
     font-style: italic;
 }
 
 .code-content .token.number,
 .code-content .token.boolean {
-    color: #b5cea8;
+    color: #006600;
 }
 
 .code-content .token.function,
 .code-content .token.title {
-    color: #dcdcaa;
+    color: #cc6600;
 }
 
 .code-content .token.params {
-    color: #9cdcfe;
+    color: #0066cc;
 }
 
 .code-content .token.class,
 .code-content .token.property {
-    color: #4ec9b0;
+    color: #006666;
 }
 
 .code-content .token.operator,
 .code-content .token.punctuation {
-    color: #d4d4d4;
+    color: #333333;
 }
 
 .code-content .token.namespace {
-    color: #4ec9b0;
+    color: #006666;
 }
 
 .code-content .token.variable,
 .code-content .token.parameter {
-    color: #9cdcfe;
+    color: #0066cc;
 }
 
 .code-content .token.tag {
-    color: #569cd6;
+    color: #0066cc;
 }
 
 .code-content .token.attr-name {
-    color: #9cdcfe;
+    color: #0066cc;
 }
 
 .code-content .token.attr-value {
-    color: #ce9178;
+    color: #cc6600;
 }
 
 /* Hero Section */
