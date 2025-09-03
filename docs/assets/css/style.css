@@ -310,14 +310,28 @@ h1, h2, h3, h4, h5, h6 {
 .code-example pre {
     margin: 0;
     padding: var(--spacing-lg);
-    background: #ffffff;
-    color: #1a202c;
+    background: var(--gray-50);
+    color: var(--gray-900);
     font-family: var(--font-mono);
     font-size: 0.875rem;
     line-height: 1.6;
     overflow-x: auto;
     word-wrap: break-word;
     white-space: pre-wrap;
+}
+
+/* Code blocks follow theme */
+pre {
+    background: var(--gray-50);
+    color: var(--gray-900);
+}
+
+code {
+    background: var(--gray-100);
+    color: var(--gray-900);
+    padding: 0.125rem 0.25rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.875em;
 }
 
 /* Code Window (Hero Section) */
@@ -361,7 +375,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .code-content {
-    background: #ffffff;
+    background: var(--gray-50);
     border: 1px solid var(--gray-200);
     border-top: none;
     border-radius: 0 0 var(--radius-lg) var(--radius-lg);
@@ -374,7 +388,7 @@ h1, h2, h3, h4, h5, h6 {
 .code-content pre {
     margin: 0;
     background: none;
-    color: #1a202c;
+    color: var(--gray-900);
     font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', monospace;
     font-size: 0.875rem;
     line-height: 1.6;
@@ -901,8 +915,8 @@ h1, h2, h3, h4, h5, h6 {
 
 .code-panel pre {
     margin: 0;
-    background: #ffffff;
-    color: #1a202c;
+    background: var(--gray-50);
+    color: var(--gray-900);
     font-family: var(--font-mono);
     font-size: 0.875rem;
     line-height: 1.6;
