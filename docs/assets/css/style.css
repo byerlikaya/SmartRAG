@@ -404,7 +404,11 @@ code {
     max-width: 100%;
 }
 
-/* Syntax Highlighting - Light Theme */
+/* Syntax Highlighting - Light Theme (All Code Blocks) */
+pre .token.keyword,
+pre .token.builtin,
+pre .token.type,
+pre .token.literal,
 .code-content .token.keyword,
 .code-content .token.builtin,
 .code-content .token.type,
@@ -412,57 +416,75 @@ code {
     color: #0066cc;
 }
 
+pre .token.string,
+pre .token.regex,
 .code-content .token.string,
 .code-content .token.regex {
     color: #cc6600;
 }
 
+pre .token.comment,
 .code-content .token.comment {
     color: #666666;
     font-style: italic;
 }
 
+pre .token.number,
+pre .token.boolean,
 .code-content .token.number,
 .code-content .token.boolean {
     color: #006600;
 }
 
+pre .token.function,
+pre .token.title,
 .code-content .token.function,
 .code-content .token.title {
     color: #cc6600;
 }
 
+pre .token.params,
 .code-content .token.params {
     color: #0066cc;
 }
 
+pre .token.class,
+pre .token.property,
 .code-content .token.class,
 .code-content .token.property {
     color: #006666;
 }
 
+pre .token.operator,
+pre .token.punctuation,
 .code-content .token.operator,
 .code-content .token.punctuation {
     color: #333333;
 }
 
+pre .token.namespace,
 .code-content .token.namespace {
     color: #006666;
 }
 
+pre .token.variable,
+pre .token.parameter,
 .code-content .token.variable,
 .code-content .token.parameter {
     color: #0066cc;
 }
 
+pre .token.tag,
 .code-content .token.tag {
     color: #0066cc;
 }
 
+pre .token.attr-name,
 .code-content .token.attr-name {
     color: #0066cc;
 }
 
+pre .token.attr-value,
 .code-content .token.attr-value {
     color: #cc6600;
 }
