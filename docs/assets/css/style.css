@@ -281,6 +281,10 @@ pre {
     word-wrap: break-word;
     overflow: hidden;
     word-break: break-all;
+    box-sizing: border-box;
+    display: block;
+    width: 100%;
+    max-width: 100%;
 }
 
 code {
@@ -302,6 +306,7 @@ code {
     min-height: 400px;
     width: 100%;
     max-width: 100%;
+    box-sizing: border-box;
 }
 
 .code-header {
@@ -348,6 +353,7 @@ code {
     min-height: 350px;
     width: 100%;
     max-width: 100%;
+    box-sizing: border-box;
 }
 
 .code-content pre {
@@ -364,6 +370,8 @@ code {
     width: 100%;
     max-width: 100%;
     word-break: break-all;
+    box-sizing: border-box;
+    display: block;
 }
 
 /* Syntax Highlighting */
@@ -523,6 +531,8 @@ code .token.attr-value,
     width: 100%;
     max-width: 100%;
     flex: 1;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 .hero-badge {
@@ -606,6 +616,8 @@ code .token.attr-value,
     width: 100%;
     max-width: 100%;
     flex: 1;
+    box-sizing: border-box;
+    overflow: hidden;
 }
 
 /* Buttons */
