@@ -14,66 +14,91 @@ lang: en
                     <h2>Basic Configuration</h2>
                     <p>SmartRAG can be configured with various options to suit your needs:</p>
                     
-                    <div class="code-example">
-                        <pre><code class="language-csharp">services.AddSmartRAG(options =>
+                                         <div class="code-example">
+                         <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
 {
     options.AIProvider = AIProvider.Anthropic;
     options.StorageProvider = StorageProvider.Qdrant;
-    options.ApiKey = "your-api-key";
+    options.MaxChunkSize = 1000;
+    options.ChunkOverlap = 200;
 });</code></pre>
-                    </div>
+                     </div>
 
-                    <h3>Configuration Options</h3>
-                    <div class="table-responsive">
-                        <table class="table table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Option</th>
-                                    <th>Type</th>
-                                    <th>Default</th>
-                                    <th>Description</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>AIProvider</code></td>
-                                    <td><code>AIProvider</code></td>
-                                    <td><code>Anthropic</code></td>
-                                    <td>The AI provider to use for embeddings</td>
-                                </tr>
-                                <tr>
-                                    <td><code>StorageProvider</code></td>
-                                    <td><code>StorageProvider</code></td>
-                                    <td><code>Qdrant</code></td>
-                                    <td>The storage provider for vectors</td>
-                                </tr>
-                                <tr>
-                                    <td><code>ApiKey</code></td>
-                                    <td><code>string</code></td>
-                                    <td>Required</td>
-                                    <td>Your API key for the AI provider</td>
-                                </tr>
-                                <tr>
-                                    <td><code>ModelName</code></td>
-                                    <td><code>string</code></td>
-                                    <td>Provider default</td>
-                                    <td>The specific model to use</td>
-                                </tr>
-                                <tr>
-                                    <td><code>ChunkSize</code></td>
-                                    <td><code>int</code></td>
-                                    <td>1000</td>
-                                    <td>Size of document chunks</td>
-                                </tr>
-                                <tr>
-                                    <td><code>ChunkOverlap</code></td>
-                                    <td><code>int</code></td>
-                                    <td>200</td>
-                                    <td>Overlap between chunks</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
+                                         <h3>Configuration Options</h3>
+                     <div class="table-responsive">
+                         <table class="table table-striped">
+                             <thead>
+                                 <tr>
+                                     <th>Option</th>
+                                     <th>Type</th>
+                                     <th>Default</th>
+                                     <th>Description</th>
+                                 </tr>
+                             </thead>
+                             <tbody>
+                                 <tr>
+                                     <td><code>AIProvider</code></td>
+                                     <td><code>AIProvider</code></td>
+                                     <td><code>OpenAI</code></td>
+                                     <td>The AI provider to use for embeddings</td>
+                                 </tr>
+                                 <tr>
+                                     <td><code>StorageProvider</code></td>
+                                     <td><code>StorageProvider</code></td>
+                                     <td><code>InMemory</code></td>
+                                     <td>The storage provider for vectors</td>
+                                 </tr>
+                                 <tr>
+                                     <td><code>MaxChunkSize</code></td>
+                                     <td><code>int</code></td>
+                                     <td>1000</td>
+                                     <td>Maximum size of document chunks</td>
+                                 </tr>
+                                 <tr>
+                                     <td><code>MinChunkSize</code></td>
+                                     <td><code>int</code></td>
+                                     <td>100</td>
+                                     <td>Minimum size of document chunks</td>
+                                 </tr>
+                                 <tr>
+                                     <td><code>ChunkOverlap</code></td>
+                                     <td><code>int</code></td>
+                                     <td>200</td>
+                                     <td>Overlap between chunks</td>
+                                 </tr>
+                                 <tr>
+                                     <td><code>MaxRetryAttempts</code></td>
+                                     <td><code>int</code></td>
+                                     <td>3</td>
+                                     <td>Maximum retry attempts</td>
+                                 </tr>
+                                 <tr>
+                                     <td><code>RetryDelayMs</code></td>
+                                     <td><code>int</code></td>
+                                     <td>1000</td>
+                                     <td>Delay between retry attempts (ms)</td>
+                                 </tr>
+                                 <tr>
+                                     <td><code>RetryPolicy</code></td>
+                                     <td><code>RetryPolicy</code></td>
+                                     <td><code>ExponentialBackoff</code></td>
+                                     <td>Retry policy for failed requests</td>
+                                 </tr>
+                                 <tr>
+                                     <td><code>EnableFallbackProviders</code></td>
+                                     <td><code>bool</code></td>
+                                     <td>false</td>
+                                     <td>Enable fallback providers</td>
+                                 </tr>
+                                 <tr>
+                                     <td><code>FallbackProviders</code></td>
+                                     <td><code>AIProvider[]</code></td>
+                                     <td>[]</td>
+                                     <td>List of fallback AI providers</td>
+                                 </tr>
+                             </tbody>
+                         </table>
+                     </div>
                 </div>
             </div>
         </section>
@@ -85,71 +110,104 @@ lang: en
                     <h2>AI Provider Configuration</h2>
                     <p>Choose from multiple AI providers for embedding generation:</p>
                     
-                    <div class="code-tabs">
-                        <div class="code-tab active" data-tab="anthropic">Anthropic</div>
-                        <div class="code-tab" data-tab="openai">OpenAI</div>
-                        <div class="code-tab" data-tab="azure">Azure OpenAI</div>
-                        <div class="code-tab" data-tab="gemini">Gemini</div>
-                        <div class="code-tab" data-tab="custom">Custom</div>
-                    </div>
-                    
-                    <div class="code-content">
-                        <div class="code-panel active" id="anthropic">
-                            <div class="code-example">
-                                <pre><code class="language-csharp">services.AddSmartRAG(options =>
+                    <div class="code-example">
+                        <div class="code-tabs">
+                            <button class="code-tab active" data-tab="ai-anthropic">Anthropic</button>
+                            <button class="code-tab" data-tab="ai-openai">OpenAI</button>
+                            <button class="code-tab" data-tab="ai-azure">Azure OpenAI</button>
+                            <button class="code-tab" data-tab="ai-gemini">Gemini</button>
+                            <button class="code-tab" data-tab="ai-custom">Custom</button>
+                        </div>
+                        
+                                                 <div class="code-panel active" data-tab="ai-anthropic">
+                             <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
 {
     options.AIProvider = AIProvider.Anthropic;
-    options.ApiKey = "your-anthropic-key";
-    options.ModelName = "claude-3-sonnet-20240229";
-});</code></pre>
-                            </div>
-                        </div>
-                        
-                        <div class="code-panel" id="openai">
-                            <div class="code-example">
-                                <pre><code class="language-csharp">services.AddSmartRAG(options =>
+    options.MaxChunkSize = 1000;
+    options.ChunkOverlap = 200;
+});
+
+// appsettings.json
+{
+  "Anthropic": {
+    "ApiKey": "your-anthropic-key",
+    "Model": "claude-3-sonnet-20240229"
+  }
+}</code></pre>
+                         </div>
+                         
+                         <div class="code-panel" data-tab="ai-openai">
+                             <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
 {
     options.AIProvider = AIProvider.OpenAI;
-    options.ApiKey = "your-openai-key";
-    options.ModelName = "text-embedding-ada-002";
-});</code></pre>
-                            </div>
-                        </div>
-                        
-                        <div class="code-panel" id="azure">
-                            <div class="code-example">
-                                <pre><code class="language-csharp">services.AddSmartRAG(options =>
+    options.MaxChunkSize = 1000;
+    options.ChunkOverlap = 200;
+});
+
+// appsettings.json
+{
+  "OpenAI": {
+    "ApiKey": "your-openai-key",
+    "Model": "gpt-4",
+    "EmbeddingModel": "text-embedding-ada-002"
+  }
+}</code></pre>
+                         </div>
+                         
+                         <div class="code-panel" data-tab="ai-azure">
+                             <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
 {
     options.AIProvider = AIProvider.AzureOpenAI;
-    options.ApiKey = "your-azure-key";
-    options.Endpoint = "https://your-resource.openai.azure.com/";
-    options.ModelName = "text-embedding-ada-002";
-});</code></pre>
-                            </div>
-                        </div>
-                        
-                        <div class="code-panel" id="gemini">
-                            <div class="code-example">
-                                <pre><code class="language-csharp">services.AddSmartRAG(options =>
+    options.MaxChunkSize = 1000;
+    options.ChunkOverlap = 200;
+});
+
+// appsettings.json
+{
+  "AzureOpenAI": {
+    "ApiKey": "your-azure-key",
+    "Endpoint": "https://your-resource.openai.azure.com/",
+    "Model": "gpt-4",
+    "EmbeddingModel": "text-embedding-ada-002"
+  }
+}</code></pre>
+                         </div>
+                         
+                         <div class="code-panel" data-tab="ai-gemini">
+                             <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
 {
     options.AIProvider = AIProvider.Gemini;
-    options.ApiKey = "your-gemini-key";
-    options.ModelName = "embedding-001";
-});</code></pre>
-                            </div>
-                        </div>
-                        
-                        <div class="code-panel" id="custom">
-                            <div class="code-example">
-                                <pre><code class="language-csharp">services.AddSmartRAG(options =>
+    options.MaxChunkSize = 1000;
+    options.ChunkOverlap = 200;
+});
+
+// appsettings.json
+{
+  "Gemini": {
+    "ApiKey": "your-gemini-key",
+    "Model": "gemini-pro",
+    "EmbeddingModel": "embedding-001"
+  }
+}</code></pre>
+                         </div>
+                         
+                         <div class="code-panel" data-tab="ai-custom">
+                             <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
 {
     options.AIProvider = AIProvider.Custom;
-    options.CustomEndpoint = "https://your-custom-api.com/v1/embeddings";
-    options.ApiKey = "your-custom-key";
-    options.ModelName = "your-custom-model";
-});</code></pre>
-                            </div>
-                        </div>
+    options.MaxChunkSize = 1000;
+    options.ChunkOverlap = 200;
+});
+
+// appsettings.json
+{
+  "Custom": {
+    "ApiKey": "your-custom-key",
+    "Endpoint": "https://your-custom-api.com/v1",
+    "Model": "your-custom-model"
+  }
+}</code></pre>
+                         </div>
                     </div>
                 </div>
             </div>
@@ -162,66 +220,102 @@ lang: en
                     <h2>Storage Provider Configuration</h2>
                     <p>Choose the storage backend that best fits your needs:</p>
                     
-                    <div class="code-tabs">
-                        <div class="code-tab active" data-tab="qdrant">Qdrant</div>
-                        <div class="code-tab" data-tab="redis">Redis</div>
-                        <div class="code-tab" data-tab="sqlite">SQLite</div>
-                        <div class="code-tab" data-tab="memory">In-Memory</div>
-                        <div class="code-tab" data-tab="filesystem">File System</div>
-                    </div>
-                    
-                    <div class="code-content">
-                        <div class="code-panel active" id="qdrant">
-                            <div class="code-example">
-                                <pre><code class="language-csharp">services.AddSmartRAG(options =>
+                    <div class="code-example">
+                        <div class="code-tabs">
+                            <button class="code-tab active" data-tab="storage-qdrant">Qdrant</button>
+                            <button class="code-tab" data-tab="storage-redis">Redis</button>
+                            <button class="code-tab" data-tab="storage-sqlite">SQLite</button>
+                            <button class="code-tab" data-tab="storage-memory">In-Memory</button>
+                            <button class="code-tab" data-tab="storage-filesystem">File System</button>
+                        </div>
+                        
+                                                 <div class="code-panel active" data-tab="storage-qdrant">
+                             <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
 {
     options.StorageProvider = StorageProvider.Qdrant;
-    options.QdrantUrl = "http://localhost:6333";
-    options.CollectionName = "smartrag_documents";
-});</code></pre>
-                            </div>
-                        </div>
-                        
-                        <div class="code-panel" id="redis">
-                            <div class="code-example">
-                                <pre><code class="language-csharp">services.AddSmartRAG(options =>
+    options.MaxChunkSize = 1000;
+    options.ChunkOverlap = 200;
+});
+
+// appsettings.json
+{
+  "Storage": {
+    "Qdrant": {
+      "Host": "localhost",
+      "ApiKey": "your-qdrant-key",
+      "CollectionName": "smartrag_documents",
+      "VectorSize": 768
+    }
+  }
+}</code></pre>
+                         </div>
+                         
+                         <div class="code-panel" data-tab="storage-redis">
+                             <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
 {
     options.StorageProvider = StorageProvider.Redis;
-    options.RedisConnectionString = "localhost:6379";
-    options.DatabaseId = 0;
-});</code></pre>
-                            </div>
-                        </div>
-                        
-                        <div class="code-panel" id="sqlite">
-                            <div class="code-example">
-                                <pre><code class="language-csharp">services.AddSmartRAG(options =>
+    options.MaxChunkSize = 1000;
+    options.ChunkOverlap = 200;
+});
+
+// appsettings.json
+{
+  "Storage": {
+    "Redis": {
+      "ConnectionString": "localhost:6379",
+      "Database": 0,
+      "KeyPrefix": "smartrag:doc:"
+    }
+  }
+}</code></pre>
+                         </div>
+                         
+                         <div class="code-panel" data-tab="storage-sqlite">
+                             <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
 {
     options.StorageProvider = StorageProvider.Sqlite;
-    options.ConnectionString = "Data Source=smartrag.db";
-});</code></pre>
-                            </div>
-                        </div>
-                        
-                        <div class="code-panel" id="memory">
-                            <div class="code-example">
-                                <pre><code class="language-csharp">services.AddSmartRAG(options =>
+    options.MaxChunkSize = 1000;
+    options.ChunkOverlap = 200;
+});
+
+// appsettings.json
+{
+  "Storage": {
+    "Sqlite": {
+      "DatabasePath": "SmartRag.db",
+      "EnableForeignKeys": true
+    }
+  }
+}</code></pre>
+                         </div>
+                         
+                         <div class="code-panel" data-tab="storage-memory">
+                             <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
 {
     options.StorageProvider = StorageProvider.InMemory;
-    // No additional configuration needed
-});</code></pre>
-                            </div>
-                        </div>
-                        
-                        <div class="code-panel" id="filesystem">
-                            <div class="code-example">
-                                <pre><code class="language-csharp">services.AddSmartRAG(options =>
+    options.MaxChunkSize = 1000;
+    options.ChunkOverlap = 200;
+});
+// No additional configuration needed</code></pre>
+                         </div>
+                         
+                         <div class="code-panel" data-tab="storage-filesystem">
+                             <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
 {
     options.StorageProvider = StorageProvider.FileSystem;
-    options.StoragePath = "./data/smartrag";
-});</code></pre>
-                            </div>
-                        </div>
+    options.MaxChunkSize = 1000;
+    options.ChunkOverlap = 200;
+});
+
+// appsettings.json
+{
+  "Storage": {
+    "FileSystem": {
+      "FileSystemPath": "./smartrag_storage"
+    }
+  }
+}</code></pre>
+                         </div>
                     </div>
                 </div>
             </div>
@@ -234,25 +328,27 @@ lang: en
                     <h2>Advanced Configuration</h2>
                     <p>Fine-tune SmartRAG for your specific requirements:</p>
                     
-                    <h3>Custom Chunking</h3>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">services.AddSmartRAG(options =>
+                                         <h3>Custom Chunking</h3>
+                     <div class="code-example">
+                         <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
 {
-    options.ChunkSize = 500;
+    options.MaxChunkSize = 500;
+    options.MinChunkSize = 50;
     options.ChunkOverlap = 100;
-    options.ChunkingStrategy = ChunkingStrategy.Sentence;
 });</code></pre>
-                    </div>
-                    
-                    <h3>Document Processing</h3>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">services.AddSmartRAG(options =>
+                     </div>
+                     
+                     <h3>Retry Configuration</h3>
+                     <div class="code-example">
+                         <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
 {
-    options.SupportedFormats = new[] { ".pdf", ".docx", ".txt" };
-    options.MaxFileSize = 10 * 1024 * 1024; // 10MB
-    options.EnableTextExtraction = true;
+    options.MaxRetryAttempts = 3;
+    options.RetryDelayMs = 1000;
+    options.RetryPolicy = RetryPolicy.ExponentialBackoff;
+    options.EnableFallbackProviders = true;
+    options.FallbackProviders = new[] { AIProvider.Gemini, AIProvider.OpenAI };
 });</code></pre>
-                    </div>
+                     </div>
                 </div>
             </div>
         </section>
@@ -264,25 +360,28 @@ lang: en
                     <h2>Environment Configuration</h2>
                     <p>Configure SmartRAG using environment variables or configuration files:</p>
                     
-                    <h3>appsettings.json</h3>
-                    <div class="code-example">
-                        <pre><code class="language-json">{
-  "SmartRAG": {
-    "AIProvider": "Anthropic",
-    "StorageProvider": "Qdrant",
-    "ApiKey": "your-api-key",
-    "ChunkSize": 1000,
-    "ChunkOverlap": 200
+                                         <h3>appsettings.json</h3>
+                     <div class="code-example">
+                         <pre><code class="language-json">{
+  "Anthropic": {
+    "ApiKey": "your-anthropic-key",
+    "Model": "claude-3-sonnet-20240229"
+  },
+  "Storage": {
+    "Qdrant": {
+      "Host": "localhost",
+      "ApiKey": "your-qdrant-key",
+      "CollectionName": "smartrag_documents"
+    }
   }
 }</code></pre>
-                    </div>
-                    
-                    <h3>Environment Variables</h3>
-                    <div class="code-example">
-                        <pre><code class="language-bash">export SMARTRAG_AI_PROVIDER=Anthropic
-export SMARTRAG_STORAGE_PROVIDER=Qdrant
-export SMARTRAG_API_KEY=your-api-key</code></pre>
-                    </div>
+                     </div>
+                     
+                     <h3>Environment Variables</h3>
+                     <div class="code-example">
+                         <pre><code class="language-bash">export ANTHROPIC_API_KEY=your-anthropic-key
+export QDRANT_API_KEY=your-qdrant-key</code></pre>
+                     </div>
                 </div>
             </div>
         </section>

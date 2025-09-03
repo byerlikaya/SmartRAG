@@ -14,20 +14,20 @@ lang: en
                     <h2>Installation</h2>
                     <p>SmartRAG is available as a NuGet package and supports .NET Standard 2.0/2.1, making it compatible with .NET Framework 4.6.1+, .NET Core 2.0+, and .NET 5+ applications. Choose your preferred installation method:</p>
                     
-                    <div class="code-tabs">
-                        <div class="code-tab active" data-tab="cli">.NET CLI</div>
-                        <div class="code-tab" data-tab="pm">Package Manager</div>
-                        <div class="code-tab" data-tab="xml">Package Reference</div>
-                    </div>
-                    
-                    <div class="code-content">
-                        <div class="code-panel active" id="cli">
+                    <div class="code-example">
+                        <div class="code-tabs">
+                            <button class="code-tab active" data-tab="cli">.NET CLI</button>
+                            <button class="code-tab" data-tab="pm">Package Manager</button>
+                            <button class="code-tab" data-tab="xml">Package Reference</button>
+                        </div>
+                        
+                        <div class="code-panel active" data-tab="cli">
                             <pre><code class="language-bash">dotnet add package SmartRAG</code></pre>
                         </div>
-                        <div class="code-panel" id="pm">
+                        <div class="code-panel" data-tab="pm">
                             <pre><code class="language-bash">Install-Package SmartRAG</code></pre>
                         </div>
-                        <div class="code-panel" id="xml">
+                        <div class="code-panel" data-tab="xml">
                             <pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="1.0.0" /&gt;</code></pre>
                         </div>
                     </div>
@@ -133,7 +133,7 @@ public class DocumentController : ControllerBase
         </section>
 
         <!-- Help Section -->
-        <section class="content-section">
+        <section class="content-section help-section">
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <div class="alert alert-info">

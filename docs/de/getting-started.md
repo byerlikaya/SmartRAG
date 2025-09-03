@@ -133,7 +133,7 @@ public class DocumentController : ControllerBase
         </section>
 
         <!-- Help Section -->
-        <section class="content-section">
+        <section class="content-section help-section">
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <div class="alert alert-info">

@@ -110,16 +110,15 @@ lang: de
                     <h2>KI-Anbieter-Konfiguration</h2>
                     <p>Wählen Sie aus mehreren KI-Anbietern für die Embedding-Generierung:</p>
                     
-                    <div class="code-tabs">
-                        <div class="code-tab active" data-tab="anthropic">Anthropic</div>
-                        <div class="code-tab" data-tab="openai">OpenAI</div>
-                        <div class="code-tab" data-tab="gemini">Gemini</div>
-                    </div>
-                    
-                    <div class="code-content">
-                        <div class="code-panel active" id="anthropic">
-                            <div class="code-example">
-                                <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
+                    <div class="code-example">
+                        <div class="code-tabs">
+                            <button class="code-tab active" data-tab="ai-anthropic">Anthropic</button>
+                            <button class="code-tab" data-tab="ai-openai">OpenAI</button>
+                            <button class="code-tab" data-tab="ai-gemini">Gemini</button>
+                        </div>
+                        
+                                                 <div class="code-panel active" data-tab="ai-anthropic">
+                             <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
 {
     options.AIProvider = AIProvider.Anthropic;
     options.MaxChunkSize = 1000;
@@ -129,15 +128,14 @@ lang: de
 // appsettings.json
 {
   "Anthropic": {
-    "ApiKey": "your-anthropic-key"
+    "ApiKey": "your-anthropic-key",
+    "Model": "claude-3-sonnet-20240229"
   }
 }</code></pre>
-                            </div>
-                        </div>
-                        
-                        <div class="code-panel" id="openai">
-                            <div class="code-example">
-                                <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
+                         </div>
+                         
+                         <div class="code-panel" data-tab="ai-openai">
+                             <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
 {
     options.AIProvider = AIProvider.OpenAI;
     options.MaxChunkSize = 1000;
@@ -147,15 +145,15 @@ lang: de
 // appsettings.json
 {
   "OpenAI": {
-    "ApiKey": "your-openai-key"
+    "ApiKey": "your-openai-key",
+    "Model": "gpt-4",
+    "EmbeddingModel": "text-embedding-ada-002"
   }
 }</code></pre>
-                            </div>
-                        </div>
-                        
-                        <div class="code-panel" id="gemini">
-                            <div class="code-example">
-                                <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
+                         </div>
+                         
+                         <div class="code-panel" data-tab="ai-gemini">
+                             <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
 {
     options.AIProvider = AIProvider.Gemini;
     options.MaxChunkSize = 1000;
@@ -165,11 +163,12 @@ lang: de
 // appsettings.json
 {
   "Gemini": {
-    "ApiKey": "your-gemini-key"
+    "ApiKey": "your-gemini-key",
+    "Model": "gemini-pro",
+    "EmbeddingModel": "embedding-001"
   }
 }</code></pre>
-                            </div>
-                        </div>
+                         </div>
                     </div>
                 </div>
             </div>
@@ -182,15 +181,14 @@ lang: de
                     <h2>Speicher-Anbieter-Konfiguration</h2>
                     <p>Wählen Sie das Speicher-Backend, das am besten zu Ihren Bedürfnissen passt:</p>
                     
-                    <div class="code-tabs">
-                        <div class="code-tab active" data-tab="qdrant">Qdrant</div>
-                        <div class="code-tab" data-tab="memory">In-Memory</div>
-                    </div>
-                    
-                    <div class="code-content">
-                        <div class="code-panel active" id="qdrant">
-                            <div class="code-example">
-                                <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
+                    <div class="code-example">
+                        <div class="code-tabs">
+                            <button class="code-tab active" data-tab="storage-qdrant">Qdrant</button>
+                            <button class="code-tab" data-tab="storage-memory">In-Memory</button>
+                        </div>
+                        
+                                                 <div class="code-panel active" data-tab="storage-qdrant">
+                             <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
 {
     options.StorageProvider = StorageProvider.Qdrant;
     options.MaxChunkSize = 1000;
@@ -199,24 +197,26 @@ lang: de
 
 // appsettings.json
 {
-  "Qdrant": {
-    "ApiKey": "your-qdrant-key"
+  "Storage": {
+    "Qdrant": {
+      "Host": "localhost",
+      "ApiKey": "your-qdrant-key",
+      "CollectionName": "smartrag_documents",
+      "VectorSize": 768
+    }
   }
 }</code></pre>
-                            </div>
-                        </div>
-                        
-                        <div class="code-panel" id="memory">
-                            <div class="code-example">
-                                <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
+                         </div>
+                         
+                         <div class="code-panel" data-tab="storage-memory">
+                             <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
 {
     options.StorageProvider = StorageProvider.InMemory;
     options.MaxChunkSize = 1000;
     options.ChunkOverlap = 200;
 });
 // Keine zusätzliche Konfiguration erforderlich</code></pre>
-                            </div>
-                        </div>
+                         </div>
                     </div>
                 </div>
             </div>
@@ -261,38 +261,28 @@ lang: de
                     <h2>Umgebungskonfiguration</h2>
                     <p>Konfigurieren Sie SmartRAG mit Umgebungsvariablen oder Konfigurationsdateien:</p>
                     
-                    <h3>appsettings.json</h3>
-                    <div class="code-example">
-                        <pre><code class="language-json">{
-  "SmartRAG": {
-    "AIProvider": "Anthropic",
-    "StorageProvider": "Qdrant",
-    "MaxChunkSize": 1000,
-    "MinChunkSize": 50,
-    "ChunkOverlap": 200,
-    "MaxRetryAttempts": 3,
-    "RetryDelayMs": 1000,
-    "RetryPolicy": "ExponentialBackoff",
-    "EnableFallbackProviders": false
-  },
-  "Anthropic": {
-    "ApiKey": "your-anthropic-key"
-  },
-  "Qdrant": {
-    "ApiKey": "your-qdrant-key"
-  }
-}</code></pre>
-                    </div>
-                    
-                    <h3>Umgebungsvariablen</h3>
-                    <div class="code-example">
-                        <pre><code class="language-bash">export SmartRAG__AIProvider=Anthropic
-export SmartRAG__StorageProvider=Qdrant
-export SmartRAG__MaxChunkSize=1000
-export SmartRAG__ChunkOverlap=200
-export ANTHROPIC_API_KEY=your-anthropic-key
+                                         <h3>appsettings.json</h3>
+                     <div class="code-example">
+                         <pre><code class="language-json">{
+   "Anthropic": {
+     "ApiKey": "your-anthropic-key",
+     "Model": "claude-3-sonnet-20240229"
+   },
+   "Storage": {
+     "Qdrant": {
+       "Host": "localhost",
+       "ApiKey": "your-qdrant-key",
+       "CollectionName": "smartrag_documents"
+     }
+   }
+ }</code></pre>
+                     </div>
+                     
+                     <h3>Umgebungsvariablen</h3>
+                     <div class="code-example">
+                         <pre><code class="language-bash">export ANTHROPIC_API_KEY=your-anthropic-key
 export QDRANT_API_KEY=your-qdrant-key</code></pre>
-                    </div>
+                     </div>
                 </div>
             </div>
         </section>
