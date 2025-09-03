@@ -310,7 +310,7 @@ h1, h2, h3, h4, h5, h6 {
 .code-example pre {
     margin: 0;
     padding: var(--spacing-lg);
-    background: var(--gray-50);
+    background: var(--white);
     color: var(--gray-900);
     font-family: var(--font-mono);
     font-size: 0.875rem;
@@ -322,7 +322,7 @@ h1, h2, h3, h4, h5, h6 {
 
 /* Code blocks follow theme */
 pre {
-    background: var(--gray-50);
+    background: var(--white);
     color: var(--gray-900);
 }
 
@@ -375,7 +375,7 @@ code {
 }
 
 .code-content {
-    background: var(--gray-50);
+    background: var(--white);
     border: 1px solid var(--gray-200);
     border-top: none;
     border-radius: 0 0 var(--radius-lg) var(--radius-lg);
@@ -915,7 +915,7 @@ code {
 
 .code-panel pre {
     margin: 0;
-    background: var(--gray-50);
+    background: var(--white);
     color: var(--gray-900);
     font-family: var(--font-mono);
     font-size: 0.875rem;
