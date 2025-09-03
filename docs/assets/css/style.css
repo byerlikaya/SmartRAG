@@ -260,9 +260,10 @@ body {
     font-family: var(--font-mono);
     font-size: 0.875rem;
     line-height: 1.6;
-    overflow-x: auto;
+    overflow: hidden;
     white-space: pre-wrap;
     word-wrap: break-word;
+    word-break: break-all;
 }
 
 /* Override Prism.js dark theme */
@@ -278,7 +279,8 @@ pre {
     color: var(--gray-900);
     white-space: pre-wrap;
     word-wrap: break-word;
-    overflow-x: auto;
+    overflow: hidden;
+    word-break: break-all;
 }
 
 code {
@@ -294,7 +296,7 @@ code {
     background: var(--white);
     border-radius: 1rem;
     box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
-    overflow: visible;
+    overflow: hidden;
     border: 1px solid var(--gray-200);
     height: auto;
     min-height: 400px;
@@ -339,7 +341,7 @@ code {
     border-top: none;
     border-radius: 0 0 1rem 1rem;
     padding: 1.5rem;
-    overflow: visible;
+    overflow: hidden;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
     margin-top: -1px;
     height: auto;
@@ -357,10 +359,11 @@ code {
     line-height: 1.6;
     white-space: pre-wrap;
     word-wrap: break-word;
-    overflow: visible;
+    overflow: hidden;
     height: auto;
     width: 100%;
     max-width: 100%;
+    word-break: break-all;
 }
 
 /* Syntax Highlighting */
@@ -974,7 +977,8 @@ code .token.attr-value,
     line-height: 1.6;
     white-space: pre-wrap;
     word-wrap: break-word;
-    overflow-x: auto;
+    overflow: hidden;
+    word-break: break-all;
 }
 
 /* Documentation Section */
