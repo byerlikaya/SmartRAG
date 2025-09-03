@@ -404,7 +404,7 @@ code {
     max-width: 100%;
 }
 
-/* Syntax Highlighting - Light Theme (All Code Blocks) */
+/* Syntax Highlighting - Light Theme (All Documentation Pages) */
 pre .token.keyword,
 pre .token.builtin,
 pre .token.type,
@@ -412,19 +412,33 @@ pre .token.literal,
 .code-content .token.keyword,
 .code-content .token.builtin,
 .code-content .token.type,
-.code-content .token.literal {
+.code-content .token.literal,
+code .token.keyword,
+code .token.builtin,
+code .token.type,
+code .token.literal,
+.highlight .token.keyword,
+.highlight .token.builtin,
+.highlight .token.type,
+.highlight .token.literal {
     color: #0066cc;
 }
 
 pre .token.string,
 pre .token.regex,
 .code-content .token.string,
-.code-content .token.regex {
+.code-content .token.regex,
+code .token.string,
+code .token.regex,
+.highlight .token.string,
+.highlight .token.regex {
     color: #cc6600;
 }
 
 pre .token.comment,
-.code-content .token.comment {
+.code-content .token.comment,
+code .token.comment,
+.highlight .token.comment {
     color: #666666;
     font-style: italic;
 }
@@ -432,60 +446,90 @@ pre .token.comment,
 pre .token.number,
 pre .token.boolean,
 .code-content .token.number,
-.code-content .token.boolean {
+.code-content .token.boolean,
+code .token.number,
+code .token.boolean,
+.highlight .token.number,
+.highlight .token.boolean {
     color: #006600;
 }
 
 pre .token.function,
 pre .token.title,
 .code-content .token.function,
-.code-content .token.title {
+.code-content .token.title,
+code .token.function,
+code .token.title,
+.highlight .token.function,
+.highlight .token.title {
     color: #cc6600;
 }
 
 pre .token.params,
-.code-content .token.params {
+.code-content .token.params,
+code .token.params,
+.highlight .token.params {
     color: #0066cc;
 }
 
 pre .token.class,
 pre .token.property,
 .code-content .token.class,
-.code-content .token.property {
+.code-content .token.property,
+code .token.class,
+code .token.property,
+.highlight .token.class,
+.highlight .token.property {
     color: #006666;
 }
 
 pre .token.operator,
 pre .token.punctuation,
 .code-content .token.operator,
-.code-content .token.punctuation {
+.code-content .token.punctuation,
+code .token.operator,
+code .token.punctuation,
+.highlight .token.operator,
+.highlight .token.punctuation {
     color: #333333;
 }
 
 pre .token.namespace,
-.code-content .token.namespace {
+.code-content .token.namespace,
+code .token.namespace,
+.highlight .token.namespace {
     color: #006666;
 }
 
 pre .token.variable,
 pre .token.parameter,
 .code-content .token.variable,
-.code-content .token.parameter {
+.code-content .token.parameter,
+code .token.variable,
+code .token.parameter,
+.highlight .token.variable,
+.highlight .token.parameter {
     color: #0066cc;
 }
 
 pre .token.tag,
-.code-content .token.tag {
+.code-content .token.tag,
+code .token.tag,
+.highlight .token.tag {
     color: #0066cc;
 }
 
 pre .token.attr-name,
-.code-content .token.attr-name {
+.code-content .token.attr-name,
+code .token.attr-name,
+.highlight .token.attr-name {
     color: #0066cc;
 }
 
 pre .token.attr-value,
-.code-content .token.attr-value {
+.code-content .token.attr-value,
+code .token.attr-value,
+.highlight .token.attr-value {
     color: #cc6600;
 }
 
