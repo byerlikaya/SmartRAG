@@ -15,8 +15,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const codeTabs = document.querySelectorAll('.code-tab');
     codeTabs.forEach(tab => {
         tab.addEventListener('click', function() {
-            const target = this.getAttribute('data-target');
+            const target = this.getAttribute('data-tab');
             const tabContainer = this.closest('.code-example');
+            
+            if (!tabContainer) {
+                console.warn('Tab container not found');
+                return;
+            }
             
             // Remove active class from all tabs and panels
             tabContainer.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
@@ -24,7 +29,12 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Add active class to clicked tab and corresponding panel
             this.classList.add('active');
-            tabContainer.querySelector(`.code-panel[data-panel="${target}"]`).classList.add('active');
+            const targetPanel = tabContainer.querySelector(`.code-panel[data-tab="${target}"]`);
+            if (targetPanel) {
+                targetPanel.classList.add('active');
+            } else {
+                console.warn(`Panel with data-tab="${target}" not found`);
+            }
         });
     });
     
@@ -32,8 +42,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const providerTabs = document.querySelectorAll('.provider-tab');
     providerTabs.forEach(tab => {
         tab.addEventListener('click', function() {
-            const target = this.getAttribute('data-target');
+            const target = this.getAttribute('data-tab');
             const tabContainer = this.closest('.provider-content');
+            
+            if (!tabContainer) {
+                console.warn('Provider tab container not found');
+                return;
+            }
             
             // Remove active class from all tabs and panels
             tabContainer.querySelectorAll('.provider-tab').forEach(t => t.classList.remove('active'));
@@ -41,7 +56,12 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Add active class to clicked tab and corresponding panel
             this.classList.add('active');
-            tabContainer.querySelector(`.provider-panel[data-panel="${target}"]`).classList.add('active');
+            const targetPanel = tabContainer.querySelector(`.provider-panel[data-tab="${target}"]`);
+            if (targetPanel) {
+                targetPanel.classList.add('active');
+            } else {
+                console.warn(`Provider panel with data-tab="${target}" not found`);
+            }
         });
     });
     
@@ -49,8 +69,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const storageTabs = document.querySelectorAll('.storage-tab');
     storageTabs.forEach(tab => {
         tab.addEventListener('click', function() {
-            const target = this.getAttribute('data-target');
+            const target = this.getAttribute('data-tab');
             const tabContainer = this.closest('.storage-content');
+            
+            if (!tabContainer) {
+                console.warn('Storage tab container not found');
+                return;
+            }
             
             // Remove active class from all tabs and panels
             tabContainer.querySelectorAll('.storage-tab').forEach(t => t.classList.remove('active'));
@@ -58,7 +83,12 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Add active class to clicked tab and corresponding panel
             this.classList.add('active');
-            tabContainer.querySelector(`.storage-panel[data-panel="${target}"]`).classList.add('active');
+            const targetPanel = tabContainer.querySelector(`.storage-panel[data-tab="${target}"]`);
+            if (targetPanel) {
+                targetPanel.classList.add('active');
+            } else {
+                console.warn(`Storage panel with data-tab="${target}" not found`);
+            }
         });
     });
     

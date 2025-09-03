@@ -127,7 +127,7 @@ hide_title: true
                         <button class="code-tab" data-tab="usage">Usage</button>
                         <button class="code-tab" data-tab="search">Search</button>
                     </div>
-                                         <div class="code-panel active" id="setup">
+                                         <div class="code-panel active" data-tab="setup">
                          <pre><code class="language-csharp">// Program.cs
  services.UseSmartRag(configuration,
      storageProvider: StorageProvider.InMemory,
@@ -143,7 +143,7 @@ hide_title: true
      options.ChunkOverlap = 200;
  });</code></pre>
                      </div>
-                     <div class="code-panel" id="usage">
+                     <div class="code-panel" data-tab="usage">
                          <pre><code class="language-csharp">// Upload and process document
  var document = await documentService
      .UploadDocumentAsync(fileStream, fileName, contentType, "user123");
@@ -151,7 +151,7 @@ hide_title: true
  // Document is automatically processed, chunked, and indexed
  // Ready for AI-powered conversations</code></pre>
                      </div>
-                     <div class="code-panel" id="search">
+                     <div class="code-panel" data-tab="search">
                          <pre><code class="language-csharp">// Ask questions about your documents
  var ragResponse = await documentSearchService
      .GenerateRagAnswerAsync("What are the main topics discussed?", maxResults: 5);

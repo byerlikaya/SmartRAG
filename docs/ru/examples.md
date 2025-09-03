@@ -17,17 +17,17 @@ lang: ru
                     <h3>Простая Загрузка Документа</h3>
                     <div class="code-example">
                         <pre><code class="language-csharp">[HttpPost("upload")]
-public async Task<ActionResult<Document>> UploadDocument(IFormFile file)
-{
-    try
+    public async Task<ActionResult<Document>> UploadDocument(IFormFile file)
     {
+        try
+        {
         using var stream = file.OpenReadStream();
         var document = await _documentService.UploadDocumentAsync(
             stream, file.FileName, file.ContentType, "user123");
-        return Ok(document);
-    }
-    catch (Exception ex)
-    {
+            return Ok(document);
+        }
+        catch (Exception ex)
+        {
         return BadRequest(ex.Message);
     }
 }</code></pre>
@@ -36,17 +36,17 @@ public async Task<ActionResult<Document>> UploadDocument(IFormFile file)
                     <h3>Поиск Документов</h3>
                     <div class="code-example">
                         <pre><code class="language-csharp">[HttpGet("search")]
-public async Task<ActionResult<IEnumerable<DocumentChunk>>> SearchDocuments(
-    [FromQuery] string query, 
-    [FromQuery] int maxResults = 10)
-{
-    try
+    public async Task<ActionResult<IEnumerable<DocumentChunk>>> SearchDocuments(
+        [FromQuery] string query, 
+        [FromQuery] int maxResults = 10)
     {
+        try
+        {
         var results = await _documentSearchService.SearchDocumentsAsync(query, maxResults);
-        return Ok(results);
-    }
-    catch (Exception ex)
-    {
+            return Ok(results);
+        }
+        catch (Exception ex)
+        {
         return BadRequest(ex.Message);
     }
 }</code></pre>
@@ -210,7 +210,7 @@ public class DocumentsController : ControllerBase
     private readonly IDocumentService _documentService;
     private readonly IDocumentSearchService _documentSearchService;
     private readonly ILogger<DocumentsController> _logger;
-    
+
     public DocumentsController(
         IDocumentService documentService,
         IDocumentSearchService documentSearchService,
@@ -220,7 +220,7 @@ public class DocumentsController : ControllerBase
         _documentSearchService = documentSearchService;
         _logger = logger;
     }
-    
+
     [HttpPost("upload")]
     public async Task<ActionResult<Document>> UploadDocument(IFormFile file)
     {
@@ -290,7 +290,7 @@ public class DocumentsController : ControllerBase
             var document = await _documentService.GetDocumentAsync(id);
             if (document == null)
                 return NotFound();
-                
+
             return Ok(document);
         }
         catch (Exception ex)
@@ -299,7 +299,7 @@ public class DocumentsController : ControllerBase
             return BadRequest(ex.Message);
         }
     }
-    
+
     [HttpGet]
     public async Task<ActionResult<List<Document>>> GetAllDocuments()
     {
@@ -314,7 +314,7 @@ public class DocumentsController : ControllerBase
             return BadRequest(ex.Message);
         }
     }
-    
+
     [HttpDelete("{id}")]
     public async Task<ActionResult> DeleteDocument(Guid id)
     {
@@ -323,7 +323,7 @@ public class DocumentsController : ControllerBase
             var success = await _documentService.DeleteDocumentAsync(id);
             if (!success)
                 return NotFound();
-                
+
             _logger.LogInformation("Документ удален: {DocumentId}", id);
             return NoContent();
         }
@@ -375,53 +375,53 @@ public class DocumentsController : ControllerBase
         
         Console.WriteLine("SmartRAG Консольное Приложение");
         Console.WriteLine("===============================");
-        
-        while (true)
-        {
+
+            while (true)
+            {
             Console.WriteLine("\nОпции:");
-            Console.WriteLine("1. Загрузить документ");
+                Console.WriteLine("1. Загрузить документ");
             Console.WriteLine("2. Искать документы");
             Console.WriteLine("3. Чат с документами");
             Console.WriteLine("4. Список всех документов");
             Console.WriteLine("5. Выход");
             Console.Write("Выберите опцию: ");
-            
-            var choice = Console.ReadLine();
-            
-            switch (choice)
-            {
-                case "1":
+
+                var choice = Console.ReadLine();
+
+                    switch (choice)
+                    {
+                        case "1":
                     await UploadDocument(documentService);
-                    break;
-                case "2":
+                            break;
+                        case "2":
                     await SearchDocuments(documentSearchService);
-                    break;
-                case "3":
+                            break;
+                        case "3":
                     await ChatWithDocuments(documentSearchService);
-                    break;
-                case "4":
+                            break;
+                        case "4":
                     await ListDocuments(documentService);
                     break;
                 case "5":
-                    return;
-                default:
+                            return;
+                        default:
                     Console.WriteLine("Неверная опция. Попробуйте снова.");
-                    break;
+                            break;
             }
         }
     }
     
     static async Task UploadDocument(IDocumentService documentService)
-    {
-        Console.Write("Введите путь к файлу: ");
-        var filePath = Console.ReadLine();
-        
-        if (!File.Exists(filePath))
         {
+            Console.Write("Введите путь к файлу: ");
+            var filePath = Console.ReadLine();
+
+            if (!File.Exists(filePath))
+            {
             Console.WriteLine("Файл не найден.");
-            return;
-        }
-        
+                return;
+            }
+
         try
         {
             var fileInfo = new FileInfo(filePath);
@@ -438,10 +438,10 @@ public class DocumentsController : ControllerBase
     }
     
     static async Task SearchDocuments(IDocumentSearchService documentSearchService)
-    {
-        Console.Write("Введите поисковый запрос: ");
-        var query = Console.ReadLine();
-        
+        {
+            Console.Write("Введите поисковый запрос: ");
+            var query = Console.ReadLine();
+
         if (string.IsNullOrWhiteSpace(query))
         {
             Console.WriteLine("Запрос не может быть пустым.");
@@ -529,9 +529,9 @@ services.UseSmartRag(configuration,
                     <div class="code-example">
                         <pre><code class="language-csharp">// Program.cs
 services.AddSmartRag(configuration, options =>
-{
-    options.AIProvider = AIProvider.Anthropic;
-    options.StorageProvider = StorageProvider.Qdrant;
+                    {
+                        options.AIProvider = AIProvider.Anthropic;
+                        options.StorageProvider = StorageProvider.Qdrant;
     options.MaxChunkSize = 1000;
     options.MinChunkSize = 50;
     options.ChunkOverlap = 200;
@@ -563,7 +563,7 @@ services.AddSmartRag(configuration, options =>
   },
   "Qdrant": {
     "ApiKey": "your-qdrant-api-key"
-  }
+    }
 }</code></pre>
                     </div>
                 </div>

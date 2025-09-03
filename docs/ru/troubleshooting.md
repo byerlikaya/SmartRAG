@@ -30,8 +30,8 @@ lang: ru
                         или создайте проблему на <a href="https://github.com/byerlikaya/SmartRAG" class="alert-link" target="_blank">GitHub</a>.
                     </div>
                 </div>
-            </div>
-        </div>
+                    </div>
+                    </div>
 
         <!-- Configuration Issues -->
         <div class="content-section">
@@ -42,12 +42,12 @@ lang: ru
                     <div class="feature-card">
                         <div class="feature-icon">
                             <i class="fas fa-key"></i>
-                        </div>
+                    </div>
                         <h3>Конфигурация API ключей</h3>
                         <p><strong>Проблема:</strong> Ошибки аутентификации с AI или провайдерами хранилищ.</p>
                         <p><strong>Решение:</strong> Убедитесь, что ваши API ключи правильно настроены в <code>appsettings.json</code>:</p>
-                        
-                        <div class="code-example">
+
+                    <div class="code-example">
                             <pre><code class="language-json">{
   "SmartRAG": {
     "AIProvider": "Anthropic",
@@ -55,34 +55,34 @@ lang: ru
     "MaxChunkSize": 1000,
     "ChunkOverlap": 200
   },
-  "Anthropic": {
+    "Anthropic": {
     "ApiKey": "your-anthropic-api-key"
   },
   "Qdrant": {
     "ApiKey": "your-qdrant-api-key"
   }
 }</code></pre>
-                        </div>
-                        
+                    </div>
+
                         <p>Или установите переменные окружения:</p>
-                        <div class="code-example">
+                    <div class="code-example">
                             <pre><code class="language-bash"># Установить переменные окружения
 export ANTHROPIC_API_KEY=your-anthropic-api-key
 export QDRANT_API_KEY=your-qdrant-api-key</code></pre>
-                        </div>
                     </div>
-                </div>
-                
+                    </div>
+                    </div>
+
                 <div class="col-lg-6">
                     <div class="feature-card">
                         <div class="feature-icon">
                             <i class="fas fa-cogs"></i>
-                        </div>
+                    </div>
                         <h3>Проблемы регистрации сервисов</h3>
                         <p><strong>Проблема:</strong> Ошибки dependency injection.</p>
                         <p><strong>Решение:</strong> Убедитесь, что сервисы SmartRAG правильно зарегистрированы в вашем <code>Program.cs</code>:</p>
-                        
-                        <div class="code-example">
+                    
+                    <div class="code-example">
                             <pre><code class="language-csharp">using SmartRAG.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -118,8 +118,8 @@ app.Run();</code></pre>
                             <li>Убедитесь, что достаточно памяти для обработки</li>
                         </ul>
                     </div>
-                </div>
-                
+                    </div>
+
                 <div class="col-lg-6">
                     <div class="feature-card">
                         <div class="feature-icon">
@@ -159,8 +159,8 @@ app.Run();</code></pre>
                             <li><strong>Соединение с хранилищем:</strong> Проверьте доступность вашего провайдера хранилища</li>
                         </ol>
                     </div>
-                </div>
-                
+                    </div>
+
                 <div class="col-lg-6">
                     <div class="feature-card">
                         <div class="feature-icon">
@@ -241,8 +241,8 @@ app.Run();</code></pre>
                             <li>Проверьте настройки файрвола</li>
                         </ul>
                     </div>
-                </div>
-                
+                    </div>
+
                 <div class="col-lg-4">
                     <div class="feature-card">
                         <div class="feature-icon">
@@ -330,12 +330,12 @@ app.Run();</code></pre>
                         <div class="feature-icon">
                             <i class="fas fa-vial"></i>
                         </div>
-                        <h3>Модульные тесты</h3>
+                    <h3>Модульные тесты</h3>
                         <p><strong>Проблема:</strong> Тесты не проходят из-за зависимостей SmartRAG.</p>
                         <p><strong>Решение:</strong> Используйте мокирование для сервисов SmartRAG в модульных тестах:</p>
                         
-                        <div class="code-example">
-                            <pre><code class="language-csharp">[Test]
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[Test]
 public async Task TestDocumentUpload()
 {
     // Arrange
@@ -352,19 +352,19 @@ public async Task TestDocumentUpload()
 }</code></pre>
                         </div>
                     </div>
-                </div>
-                
+                    </div>
+
                 <div class="col-lg-6">
                     <div class="feature-card">
                         <div class="feature-icon">
                             <i class="fas fa-cogs"></i>
                         </div>
-                        <h3>Интеграционные тесты</h3>
+                    <h3>Интеграционные тесты</h3>
                         <p><strong>Проблема:</strong> Интеграционные тесты не проходят.</p>
                         <p><strong>Решение:</strong> Используйте тестовую конфигурацию и убедитесь в правильности настройки:</p>
                         
-                        <div class="code-example">
-                            <pre><code class="language-csharp">[Test]
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[Test]
 public async Task TestEndToEndWorkflow()
 {
     // Arrange
@@ -434,8 +434,8 @@ public async Task TestEndToEndWorkflow()
                                 <li>Убедитесь, что предоставлен API ключ для выбранного провайдера</li>
                                 <li>Проверьте регистрацию сервисов</li>
                             </ul>
-                        </div>
-                        
+                    </div>
+
                         <div class="alert alert-warning" role="alert">
                             <strong>"Invalid file format"</strong>
                             <ul class="mb-0 mt-2">
