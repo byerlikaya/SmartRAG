@@ -260,8 +260,8 @@ h1, h2, h3, h4, h5, h6 {
 .code-example pre {
     margin: 0;
     padding: var(--spacing-lg);
-    background: none;
-    color: var(--gray-700);
+    background: #ffffff;
+    color: #1a202c;
     font-family: var(--font-mono);
     font-size: 0.875rem;
     line-height: 1.6;
@@ -1446,7 +1446,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .code-content {
-    background: #f8f9fa;
+    background: #ffffff;
     border: 1px solid var(--gray-200);
     border-top: none;
     border-radius: 0 0 var(--radius-lg) var(--radius-lg);
@@ -1459,7 +1459,7 @@ h1, h2, h3, h4, h5, h6 {
 .code-content pre {
     margin: 0;
     background: none;
-    color: #2d3748;
+    color: #1a202c;
     font-family: 'JetBrains Mono', 'Fira Code', 'Monaco', 'Consolas', monospace;
     font-size: 0.875rem;
     line-height: 1.6;
@@ -2005,8 +2005,8 @@ h1, h2, h3, h4, h5, h6 {
 
 .code-panel pre {
     margin: 0;
-    background: none;
-    color: var(--gray-700);
+    background: #ffffff;
+    color: #1a202c;
     font-family: var(--font-mono);
     font-size: 0.875rem;
     line-height: 1.6;
@@ -2647,8 +2647,8 @@ h1, h2, h3, h4, h5, h6 {
 
 .quick-start-section .code-panel pre {
     margin: 0;
-    background: none;
-    color: var(--gray-700);
+    background: #ffffff;
+    color: #1a202c;
     font-family: var(--font-mono);
     font-size: 0.875rem;
     line-height: 1.6;
@@ -2682,8 +2682,8 @@ h1, h2, h3, h4, h5, h6 {
 .code-example pre {
     margin: 0;
     padding: var(--spacing-lg);
-    background: none;
-    color: var(--gray-700);
+    background: #ffffff;
+    color: #1a202c;
     font-family: var(--font-mono);
     font-size: 0.875rem;
     line-height: 1.6;
