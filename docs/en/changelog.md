@@ -14,10 +14,40 @@ lang: en
                     <h2>Version History</h2>
                     <p>Complete history of SmartRAG releases with detailed change information.</p>
 
-                    <h3>Version 1.2.0 - 2025-01-15</h3>
+                    <h3>Version 2.1.0 - 2025-01-20</h3>
                     <div class="alert alert-success">
                         <h4><i class="fas fa-star me-2"></i>Latest Release</h4>
-                        <p class="mb-0">This is the current stable release with conversation history and enhanced features.</p>
+                        <p class="mb-0">This is the current stable release with automatic session management and conversation history.</p>
+                    </div>
+                    <ul>
+                        <li><strong>Automatic Session Management</strong>: No more manual session ID handling required</li>
+                        <li><strong>Persistent Conversation History</strong>: Conversations survive application restarts</li>
+                        <li><strong>New Conversation Commands</strong>: /new, /reset, /clear for conversation control</li>
+                        <li><strong>Enhanced API</strong>: Backward-compatible with optional startNewConversation parameter</li>
+                        <li><strong>Storage Integration</strong>: Works seamlessly with all providers (Redis, SQLite, FileSystem, InMemory)</li>
+                        <li><strong>Format Consistency</strong>: Standardized conversation format across all storage providers</li>
+                        <li><strong>Thread Safety</strong>: Enhanced concurrent access handling for conversation operations</li>
+                        <li><strong>Platform Agnostic</strong>: Maintains compatibility with all .NET environments</li>
+                        <li><strong>Documentation Updates</strong>: All language versions (EN, TR, DE, RU) updated with real examples</li>
+                        <li><strong>100% Compliance</strong>: All established rules maintained with zero warnings policy</li>
+                    </ul>
+
+                    <h3>Version 2.0.0 - 2025-08-27</h3>
+                    <div class="alert alert-info">
+                        <h4><i class="fas fa-info-circle me-2"></i>Previous Release</h4>
+                        <p class="mb-0">Previous stable release with .NET Standard 2.0/2.1 migration.</p>
+                    </div>
+                    <ul>
+                        <li><strong>.NET Standard 2.0/2.1</strong>: Compatibility with .NET Framework 4.6.1+, .NET Core 2.0+, .NET 5+</li>
+                        <li><strong>Maximum Compatibility</strong>: Support for legacy and enterprise .NET applications</li>
+                        <li><strong>Framework Change</strong>: Migration from .NET 9.0 to .NET Standard</li>
+                        <li><strong>Package Dependencies</strong>: Updated package versions for compatibility</li>
+                    </ul>
+
+                    <h3>Version 1.1.0 - 2025-08-22</h3>
+                    <div class="alert alert-info">
+                        <h4><i class="fas fa-info-circle me-2"></i>Previous Release</h4>
+                        <p class="mb-0">Previous stable release with Excel support and enhanced features.</p>
                     </div>
 
                     <h4>Added</h4>

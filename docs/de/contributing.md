@@ -288,7 +288,7 @@ Was passiert ist
 Fügen Sie Screenshots hinzu, falls vorhanden
 
 ## Umgebungsinformationen
-- SmartRAG-Version: 1.1.0
+- SmartRAG-Version: 2.1.0
 - .NET-Version: 9.0
 - Betriebssystem: Windows 11
 - Browser: Chrome 120</code></pre>

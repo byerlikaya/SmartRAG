@@ -14,6 +14,28 @@ lang: de
                     <h2>Versionsverlauf</h2>
                     <p>Vollständige Geschichte der SmartRAG-Releases mit detaillierten Änderungsinformationen.</p>
 
+## [2.1.0] - 2025-01-20
+
+### Added
+- **Automatic Session Management**: No more manual session ID handling required
+- **Persistent Conversation History**: Conversations survive application restarts
+- **New Conversation Commands**: /new, /reset, /clear for conversation control
+- **Enhanced API**: Backward-compatible with optional startNewConversation parameter
+- **Storage Integration**: Works seamlessly with all providers (Redis, SQLite, FileSystem, InMemory)
+- **Format Consistency**: Standardized conversation format across all storage providers
+- **Thread Safety**: Enhanced concurrent access handling for conversation operations
+- **Platform Agnostic**: Maintains compatibility with all .NET environments
+- **Documentation Updates**: All language versions (EN, TR, DE, RU) updated with real examples
+- **100% Compliance**: All established rules maintained with zero warnings policy
+
+## [2.0.0] - 2025-08-27
+
+### Added
+- **.NET Standard 2.0/2.1**: Compatibility with .NET Framework 4.6.1+, .NET Core 2.0+, .NET 5+
+- **Maximum Compatibility**: Support for legacy and enterprise .NET applications
+- **Framework Change**: Migration from .NET 9.0 to .NET Standard
+- **Package Dependencies**: Updated package versions for compatibility
+
 ## [1.1.0] - 2025-08-22
 
 ### Added
