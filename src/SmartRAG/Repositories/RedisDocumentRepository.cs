@@ -252,12 +252,22 @@ namespace SmartRAG.Repositories
             try
             {
                 var conversationKey = $"conversation:{sessionId}";
+                
+                // If question is empty, this is a special case (like session-id storage)
+                if (string.IsNullOrEmpty(question))
+                {
+                    await _database.StringSetAsync(conversationKey, answer);
+                    RepositoryLogMessages.LogRedisConversationUpdated(Logger, sessionId, null);
+                    return;
+                }
+                
                 var existingConversation = await GetConversationHistoryAsync(sessionId);
                 
-                var newEntry = $"\nQ: {question}\nA: {answer}";
-                var updatedConversation = existingConversation + newEntry;
+                var newEntry = string.IsNullOrEmpty(existingConversation) 
+                    ? $"User: {question}\nAssistant: {answer}"
+                    : $"{existingConversation}\nUser: {question}\nAssistant: {answer}";
                 
-                await _database.StringSetAsync(conversationKey, updatedConversation);
+                await _database.StringSetAsync(conversationKey, newEntry);
                 RepositoryLogMessages.LogRedisConversationUpdated(Logger, sessionId, null);
             }
             catch (Exception ex)
