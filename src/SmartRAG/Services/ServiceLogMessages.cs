@@ -471,6 +471,30 @@ namespace SmartRAG.Services
 
         #endregion
 
+        #region Session Management (EventId: 50001-50999)
+
+        public static readonly Action<ILogger, string, Exception> LogSessionCreated = LoggerMessage.Define<string>(
+            LogLevel.Information,
+            new EventId(50001, "SessionCreated"),
+            "New session created: {SessionId}");
+
+        public static readonly Action<ILogger, string, Exception> LogSessionRetrieved = LoggerMessage.Define<string>(
+            LogLevel.Debug,
+            new EventId(50002, "SessionRetrieved"),
+            "Session retrieved: {SessionId}");
+
+        public static readonly Action<ILogger, string, Exception> LogConversationRetrievalFailed = LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(50003, "ConversationRetrievalFailed"),
+            "Failed to retrieve conversation for session: {SessionId}");
+
+        public static readonly Action<ILogger, string, Exception> LogConversationStorageFailed = LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(50004, "ConversationStorageFailed"),
+            "Failed to store conversation for session: {SessionId}");
+
+        #endregion
+
         #region Semantic Search Service (EventId: 21001-21999)
 
         public static readonly Action<ILogger, Exception> LogSemanticSimilarityCalculationError = LoggerMessage.Define(

@@ -36,6 +36,7 @@ namespace SmartRAG.Repositories
         private const int SentenceTransformersDimension = 768;
         private const string DateTimeFormat = "O";
         private const string ForeignKeysEnabled = "Foreign Keys=True";
+        private const int MaxConversationLength = 2000;
         #endregion
 
         #region Fields
@@ -121,6 +122,14 @@ namespace SmartRAG.Repositories
         CREATE INDEX IF NOT EXISTS IX_Documents_ContentType ON Documents(ContentType);
         CREATE INDEX IF NOT EXISTS IX_Documents_UploadedAt ON Documents(UploadedAt);
         CREATE INDEX IF NOT EXISTS IX_Chunks_DocumentId ON DocumentChunks(DocumentId);
+        
+        CREATE TABLE IF NOT EXISTS Conversations (
+            SessionId TEXT PRIMARY KEY,
+            History TEXT NOT NULL,
+            LastUpdated TEXT NOT NULL
+        );
+        
+        CREATE INDEX IF NOT EXISTS IX_Conversations_LastUpdated ON Conversations(LastUpdated);
     ";
 
         #region Public Methods
@@ -724,6 +733,168 @@ namespace SmartRAG.Repositories
             }
         }
         #endregion
+
+        #endregion
+
+        #region Conversation Methods
+
+        public async Task<string> GetConversationHistoryAsync(string sessionId)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId))
+                return string.Empty;
+
+            try
+            {
+                if (_connection.State != System.Data.ConnectionState.Open)
+                {
+                    _connection.Open();
+                }
+
+                using (var command = _connection.CreateCommand())
+                {
+                    command.CommandText = "SELECT History FROM Conversations WHERE SessionId = @SessionId";
+                    command.Parameters.AddWithValue("@SessionId", sessionId);
+
+                    var result = await Task.Run(() => command.ExecuteScalar());
+                    return result?.ToString() ?? string.Empty;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting conversation history for session {SessionId}", sessionId);
+                return string.Empty;
+            }
+        }
+
+        public async Task AddToConversationAsync(string sessionId, string question, string answer)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId))
+                return;
+
+            try
+            {
+                // If question is empty, this is a special case (like session-id storage)
+                if (string.IsNullOrEmpty(question))
+                {
+                    if (_connection.State != System.Data.ConnectionState.Open)
+                    {
+                        _connection.Open();
+                    }
+
+                    using (var command = _connection.CreateCommand())
+                    {
+                        command.CommandText = @"
+                            INSERT OR REPLACE INTO Conversations (SessionId, History, LastUpdated) 
+                            VALUES (@SessionId, @History, @LastUpdated)";
+                        
+                        command.Parameters.AddWithValue("@SessionId", sessionId);
+                        command.Parameters.AddWithValue("@History", answer);
+                        command.Parameters.AddWithValue("@LastUpdated", DateTime.UtcNow);
+
+                        await Task.Run(() => command.ExecuteNonQuery());
+                    }
+                    return;
+                }
+
+                var currentHistory = await GetConversationHistoryAsync(sessionId);
+                var newEntry = string.IsNullOrEmpty(currentHistory) 
+                    ? $"User: {question}\nAssistant: {answer}"
+                    : $"{currentHistory}\nUser: {question}\nAssistant: {answer}";
+
+                // Limit conversation length to prevent memory issues
+                if (newEntry.Length > MaxConversationLength)
+                {
+                    newEntry = TruncateConversation(newEntry);
+                }
+
+                if (_connection.State != System.Data.ConnectionState.Open)
+                {
+                    _connection.Open();
+                }
+
+                using (var command = _connection.CreateCommand())
+                {
+                    command.CommandText = @"
+                        INSERT OR REPLACE INTO Conversations (SessionId, History, LastUpdated) 
+                        VALUES (@SessionId, @History, @LastUpdated)";
+                    
+                    command.Parameters.AddWithValue("@SessionId", sessionId);
+                    command.Parameters.AddWithValue("@History", newEntry);
+                    command.Parameters.AddWithValue("@LastUpdated", DateTime.UtcNow);
+
+                    await Task.Run(() => command.ExecuteNonQuery());
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding to conversation for session {SessionId}", sessionId);
+            }
+        }
+
+        public async Task ClearConversationAsync(string sessionId)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId))
+                return;
+
+            try
+            {
+                if (_connection.State != System.Data.ConnectionState.Open)
+                {
+                    _connection.Open();
+                }
+
+                using (var command = _connection.CreateCommand())
+                {
+                    command.CommandText = "DELETE FROM Conversations WHERE SessionId = @SessionId";
+                    command.Parameters.AddWithValue("@SessionId", sessionId);
+
+                    await Task.Run(() => command.ExecuteNonQuery());
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error clearing conversation for session {SessionId}", sessionId);
+            }
+        }
+
+        public async Task<bool> SessionExistsAsync(string sessionId)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId))
+                return false;
+
+            try
+            {
+                if (_connection.State != System.Data.ConnectionState.Open)
+                {
+                    _connection.Open();
+                }
+
+                using (var command = _connection.CreateCommand())
+                {
+                    command.CommandText = "SELECT COUNT(*) FROM Conversations WHERE SessionId = @SessionId";
+                    command.Parameters.AddWithValue("@SessionId", sessionId);
+
+                    var result = await Task.Run(() => command.ExecuteScalar());
+                    return Convert.ToInt32(result) > 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking session existence for {SessionId}", sessionId);
+                return false;
+            }
+        }
+
+        private static string TruncateConversation(string conversation)
+        {
+            // Keep only the last few exchanges
+            var lines = conversation.Split('\n');
+            if (lines.Length <= 6) // Keep at least 3 exchanges (6 lines)
+                return conversation;
+
+            // Keep last 6 lines (3 exchanges)
+            return string.Join("\n", lines.Skip(lines.Length - 6));
+        }
 
         #endregion
 

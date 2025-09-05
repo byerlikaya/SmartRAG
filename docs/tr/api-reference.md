@@ -40,13 +40,49 @@ lang: tr
                     </div>
 
                     <h3>IDocumentSearchService</h3>
-                    <p>Belge arama ve RAG işlemleri için servis.</p>
+                    <p>Otomatik oturum yönetimi ile belge arama ve RAG işlemleri için servis.</p>
                     <div class="code-example">
                         <pre><code class="language-csharp">public interface IDocumentSearchService
 {
     Task&lt;List&lt;DocumentChunk&gt;&gt; SearchDocumentsAsync(string query, int maxResults = 5);
-    Task&lt;RagResponse&gt; GenerateRagAnswerAsync(string query, int maxResults = 5);
+    Task&lt;RagResponse&gt; GenerateRagAnswerAsync(string query, int maxResults = 5, bool startNewConversation = false);
 }</code></pre>
+                    </div>
+
+                    <h4>GenerateRagAnswerAsync</h4>
+                    <p>Otomatik session yönetimi ve konuşma geçmişi ile AI destekli cevaplar üretir.</p>
+                    
+                    <div class="code-example">
+                        <pre><code class="language-csharp">Task&lt;RagResponse&gt; GenerateRagAnswerAsync(string query, int maxResults = 5, bool startNewConversation = false)</code></pre>
+                    </div>
+                    
+                    <p><strong>Parametreler:</strong></p>
+                    <ul>
+                        <li><code>query</code> (string): Kullanıcının sorusu</li>
+                        <li><code>maxResults</code> (int): Alınacak maksimum doküman parçası sayısı (varsayılan: 5)</li>
+                        <li><code>startNewConversation</code> (bool): Yeni konuşma session'ı başlat (varsayılan: false)</li>
+                    </ul>
+                    
+                    <p><strong>Döndürür:</strong></p>
+                    <ul>
+                        <li><code>RagResponse</code>: AI cevabı, kaynaklar ve metadata içerir</li>
+                    </ul>
+                    
+                    <p><strong>Özel Komutlar:</strong></p>
+                    <ul>
+                        <li><code>/new</code>, <code>/reset</code>, <code>/clear</code> - Yeni konuşma başlat</li>
+                    </ul>
+
+                    <p><strong>Kullanım Örnekleri:</strong></p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Normal konuşma (mevcut session devam eder)
+var response = await documentSearchService.GenerateRagAnswerAsync("Hava nasıl?");
+
+// Programatik olarak yeni konuşma başlat
+var response = await documentSearchService.GenerateRagAnswerAsync("Merhaba", startNewConversation: true);
+
+// Komut ile yeni konuşma başlat
+var response = await documentSearchService.GenerateRagAnswerAsync("/new");</code></pre>
                     </div>
 
                     <h3>IAIService</h3>
@@ -98,25 +134,30 @@ lang: tr
                     </div>
 
                     <h3>RagResponse</h3>
+                    <p>Konuşma bağlamı ile AI destekli soru-cevap için yanıt modeli.</p>
                     <div class="code-example">
                         <pre><code class="language-csharp">public class RagResponse
 {
+    public string Query { get; set; }
     public string Answer { get; set; }
     public List&lt;SearchSource&gt; Sources { get; set; }
     public DateTime SearchedAt { get; set; }
     public RagConfiguration Configuration { get; set; }
-}</code></pre>
-                    </div>
+}
 
-                    <h3>SearchSource</h3>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">public class SearchSource
+public class SearchSource
 {
     public string DocumentId { get; set; }
-    public string DocumentName { get; set; }
-    public string Content { get; set; }
-    public float SimilarityScore { get; set; }
-    public int ChunkIndex { get; set; }
+    public string FileName { get; set; }
+    public string RelevantContent { get; set; }
+    public double RelevanceScore { get; set; }
+}
+
+public class RagConfiguration
+{
+    public string AIProvider { get; set; }
+    public string StorageProvider { get; set; }
+    public string Model { get; set; }
 }</code></pre>
                     </div>
                 </div>
@@ -257,20 +298,30 @@ public async Task&lt;ActionResult&lt;IEnumerable&lt;DocumentChunk&gt;&gt;&gt; Se
 }</code></pre>
                     </div>
 
-                    <h3>RAG Yanıt Üretme</h3>
+                    <h3>RAG Yanıt Üretme (Konuşma Geçmişi ile)</h3>
                     <div class="code-example">
                         <pre><code class="language-csharp">[HttpPost("ask")]
-public async Task&lt;ActionResult&lt;RagResponse&gt;&gt; AskQuestion([FromBody] string question)
+public async Task&lt;ActionResult&lt;RagResponse&gt;&gt; AskQuestion([FromBody] QuestionRequest request)
 {
     try
     {
-        var response = await _documentService.GenerateRagAnswerAsync(question, 5);
+        var response = await _documentSearchService.GenerateRagAnswerAsync(
+            request.Question, 
+            request.SessionId,  // Oturum tabanlı konuşma geçmişi
+            maxResults: 5
+        );
         return Ok(response);
     }
     catch (Exception ex)
     {
         return BadRequest(ex.Message);
     }
+}
+
+public class QuestionRequest
+{
+    public string Question { get; set; } = string.Empty;
+    public string SessionId { get; set; } = string.Empty;  // Benzersiz oturum kimliği
 }</code></pre>
                     </div>
                 </div>

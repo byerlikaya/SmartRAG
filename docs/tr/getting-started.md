@@ -67,33 +67,105 @@ var app = builder.Build();</code></pre>
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Hızlı Örnek</h2>
-                    <p>Başlamanız için basit bir örnek:</p>
+                    <p>Konuşma geçmişi ile gerçek SmartRAG implementasyonunu kullanan basit bir örnek:</p>
                     
                     <div class="code-example">
-                        <pre><code class="language-csharp">// Document servisini enjekte et
-public class DocumentController : ControllerBase
+                        <pre><code class="language-csharp">// Document search servisini enjekte et
+public class SearchController : ControllerBase
 {
-    private readonly IDocumentService _documentService;
+    private readonly IDocumentSearchService _documentSearchService;
     
-    public DocumentController(IDocumentService documentService)
+    public SearchController(IDocumentSearchService documentSearchService)
     {
-        _documentService = documentService;
-    }
-    
-    [HttpPost("upload")]
-    public async Task&lt;IActionResult&gt; UploadDocument(IFormFile file)
-    {
-        var document = await _documentService.UploadDocumentAsync(file);
-        return Ok(document);
+        _documentSearchService = documentSearchService;
     }
     
     [HttpPost("search")]
-    public async Task&lt;IActionResult&gt; Search([FromBody] string query)
+    public async Task<ActionResult<object>> Search([FromBody] SearchRequest request)
     {
-        var results = await _documentService.SearchAsync(query);
-        return Ok(results);
+        string query = request?.Query ?? string.Empty;
+        int maxResults = request?.MaxResults ?? 5;
+        string sessionId = request?.SessionId ?? Guid.NewGuid().ToString();
+
+        if (string.IsNullOrWhiteSpace(query))
+            return BadRequest("Query cannot be empty");
+
+        try
+        {
+            var response = await _documentSearchService.GenerateRagAnswerAsync(query, sessionId, maxResults);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Internal server error: {ex.Message}");
+        }
     }
+}
+
+public class SearchRequest
+{
+    [Required]
+    public string Query { get; set; } = string.Empty;
+
+    [Range(1, 50)]
+    [DefaultValue(5)]
+    public int MaxResults { get; set; } = 5;
+
+    /// <summary>
+    /// Session ID for conversation history
+    /// </summary>
+    public string SessionId { get; set; } = string.Empty;
 }</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Conversation History Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>💬 Konuşma Geçmişi</h2>
+                    <p>SmartRAG oturum tabanlı bağlam farkındalığı kullanarak konuşma geçmişini otomatik olarak yönetir. Her konuşma oturumu birden fazla soru ve cevap arasında bağlamı korur.</p>
+                    
+                    <h3>Nasıl Çalışır</h3>
+                    <ul>
+                        <li><strong>Oturum Yönetimi</strong>: Her konuşma benzersiz bir oturum kimliği kullanır</li>
+                        <li><strong>Otomatik Bağlam</strong>: Önceki sorular ve cevaplar otomatik olarak bağlama dahil edilir</li>
+                        <li><strong>Akıllı Kısaltma</strong>: Konuşma geçmişi optimal performansı korumak için akıllıca kısaltılır</li>
+                        <li><strong>Depolama Entegrasyonu</strong>: Konuşma verileri yapılandırılan depolama sağlayıcısı kullanılarak saklanır</li>
+                    </ul>
+
+                    <h3>Kullanım Örneği</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// İlk soru
+var firstRequest = new SearchRequest
+{
+    Query = "Makine öğrenmesi nedir?",
+    SessionId = "user-session-123",
+    MaxResults = 5
+};
+
+// Takip sorusu (önceki bağlamı hatırlar)
+var followUpRequest = new SearchRequest
+{
+    Query = "Denetimli öğrenmeyi daha detaylı açıklayabilir misin?",
+    SessionId = "user-session-123",  // Aynı oturum kimliği
+    MaxResults = 5
+};
+
+// Başka bir takip sorusu
+var anotherRequest = new SearchRequest
+{
+    Query = "Derin öğrenmenin avantajları nelerdir?",
+    SessionId = "user-session-123",  // Aynı oturum kimliği
+    MaxResults = 5
+};</code></pre>
+                    </div>
+
+                    <div class="alert alert-success">
+                        <h4><i class="fas fa-lightbulb me-2"></i>Pro İpucu</h4>
+                        <p class="mb-0">Farklı kullanıcı oturumları veya konuşma thread'leri arasında bağlamı korumak için anlamlı oturum kimlikleri (kullanıcı kimlikleri veya konuşma kimlikleri gibi) kullanın.</p>
                     </div>
                 </div>
             </div>

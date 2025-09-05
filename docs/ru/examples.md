@@ -52,13 +52,17 @@ lang: ru
 }</code></pre>
                     </div>
 
-                    <h3>Генерация RAG Ответа</h3>
+                    <h3>Генерация RAG Ответа (с историей разговоров)</h3>
                     <div class="code-example">
-                        <pre><code class="language-csharp">[HttpPost("chat")]
-public async Task<ActionResult<RagResponse>> ChatWithDocuments(
-    [FromBody] string query,
-    [FromQuery] int maxResults = 5)
+                        <pre><code class="language-csharp">[HttpPost("search")]
+public async Task<ActionResult<object>> Search([FromBody] SearchRequest request)
 {
+    string query = request?.Query ?? string.Empty;
+    int maxResults = request?.MaxResults ?? 5;
+
+    if (string.IsNullOrWhiteSpace(query))
+        return BadRequest("Query cannot be empty");
+
     try
     {
         var response = await _documentSearchService.GenerateRagAnswerAsync(query, maxResults);
@@ -66,8 +70,23 @@ public async Task<ActionResult<RagResponse>> ChatWithDocuments(
     }
     catch (Exception ex)
     {
-        return BadRequest(ex.Message);
+        return StatusCode(500, $"Internal server error: {ex.Message}");
     }
+}
+
+public class SearchRequest
+{
+    [Required]
+    public string Query { get; set; } = string.Empty;
+
+    [Range(1, 50)]
+    [DefaultValue(5)]
+    public int MaxResults { get; set; } = 5;
+
+    /// <summary>
+    /// Session ID for conversation history
+    /// </summary>
+    public string SessionId { get; set; } = string.Empty;
 }</code></pre>
                     </div>
                 </div>

@@ -10,7 +10,7 @@ namespace SmartRAG.API.Controllers;
 public class SearchController(IDocumentSearchService documentSearchService) : ControllerBase
 {
     /// <summary>
-    /// Search documents using RAG (Retrieval-Augmented Generation)
+    /// Search documents using RAG (Retrieval-Augmented Generation) with automatic session management
     /// </summary>
     [HttpPost("search")]
     [ProducesResponseType(StatusCodes.Status200OK)]
