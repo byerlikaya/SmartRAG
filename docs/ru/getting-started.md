@@ -28,7 +28,7 @@ lang: ru
                             <pre><code class="language-bash">Install-Package SmartRAG</code></pre>
                         </div>
                         <div class="code-panel" id="xml">
-                            <pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="1.0.0" /&gt;</code></pre>
+                            <pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="2.1.0" /&gt;</code></pre>
                         </div>
                     </div>
                 </div>

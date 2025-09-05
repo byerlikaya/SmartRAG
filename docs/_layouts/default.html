@@ -80,7 +80,7 @@
             "priceCurrency": "USD"
         },
         "downloadUrl": "https://www.nuget.org/packages/SmartRAG",
-        "softwareVersion": "1.1.0"
+        "softwareVersion": "2.1.0"
     }
     </script>
 </head>
@@ -112,6 +112,9 @@
                     </li>
                     <li class="nav-item">
                         <a class="nav-link{% if page.url contains '/examples' %} active{% endif %}" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}{{ site.languages_default }}{% endif %}/examples"><i class="fas fa-lightbulb me-1"></i>{% if page.lang == "tr" %}Örnekler{% elsif page.lang == "de" %}Beispiele{% elsif page.lang == "ru" %}Примеры{% else %}Examples{% endif %}</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{% if page.url contains '/changelog' %} active{% endif %}" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}{{ site.languages_default }}{% endif %}/changelog"><i class="fas fa-history me-1"></i>{% if page.lang == "tr" %}Değişiklikler{% elsif page.lang == "de" %}Änderungen{% elsif page.lang == "ru" %}Изменения{% else %}Changelog{% endif %}</a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link{% if page.url contains '/troubleshooting' %} active{% endif %}" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}{{ site.languages_default }}{% endif %}/troubleshooting"><i class="fas fa-tools me-1"></i>{% if page.lang == "tr" %}Sorun Giderme{% elsif page.lang == "de" %}Fehlerbehebung{% elsif page.lang == "ru" %}Устранение Неполадок{% else %}Troubleshooting{% endif %}</a>

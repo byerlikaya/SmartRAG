@@ -288,7 +288,7 @@ dotnet test --collect:"XPlat Code Coverage"</code></pre>
 Добавьте скриншоты, если есть
 
 ## Информация об окружении
-- Версия SmartRAG: 1.1.0
+- Версия SmartRAG: 2.1.0
 - Версия .NET: 9.0
 - Операционная система: Windows 11
 - Браузер: Chrome 120</code></pre>
