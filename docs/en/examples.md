@@ -233,14 +233,13 @@ public class SearchController(IDocumentSearchService documentSearchService) : Co
     {
         string? query = request?.Query;
         int maxResults = request?.MaxResults ?? 5;
-        string sessionId = request?.SessionId ?? Guid.NewGuid().ToString();
 
         if (string.IsNullOrWhiteSpace(query))
             return BadRequest("Query cannot be empty");
 
         try
         {
-            var response = await documentSearchService.GenerateRagAnswerAsync(query, sessionId, maxResults);
+            var response = await documentSearchService.GenerateRagAnswerAsync(query, maxResults);
             return Ok(response);
         }
         catch (Exception ex)
@@ -452,18 +451,13 @@ public async Task<ActionResult<RagResponse>> StartConversation(
 {
     try
     {
-        // Generate unique session ID for new conversation
-        var sessionId = request.SessionId ?? Guid.NewGuid().ToString();
-        
         var response = await _documentSearchService.GenerateRagAnswerAsync(
             request.Question, 
-            sessionId,
             maxResults: 5
         );
         
         return Ok(new ConversationResponse
         {
-            SessionId = sessionId,
             Answer = response.Answer,
             Sources = response.Sources
         });
@@ -477,12 +471,10 @@ public async Task<ActionResult<RagResponse>> StartConversation(
 public class ConversationRequest
 {
     public string Question { get; set; } = string.Empty;
-    public string SessionId { get; set; } = string.Empty;  // Optional: if empty, creates new session
 }
 
 public class ConversationResponse
 {
-    public string SessionId { get; set; } = string.Empty;
     public string Answer { get; set; } = string.Empty;
     public List<SearchSource> Sources { get; set; } = new();
 }</code></pre>
@@ -537,26 +529,25 @@ var anotherResponse = await _documentSearchService.GenerateRagAnswerAsync(
     public async Task<ActionResult<RagResponse>> AskQuestion(
         [FromBody] QuestionRequest request)
     {
-        if (string.IsNullOrWhiteSpace(request.SessionId))
-            return BadRequest("SessionId is required");
-            
         try
         {
             var response = await _documentSearchService.GenerateRagAnswerAsync(
-                request.Question, 
-                request.SessionId,
-                5
+                request.Question,
+                maxResults: 5
             );
             
-            _logger.LogInformation("Question answered for session: {SessionId}", request.SessionId);
             return Ok(response);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to answer question for session: {SessionId}", request.SessionId);
             return BadRequest(ex.Message);
         }
     }
+}
+
+public class QuestionRequest
+{
+    public string Question { get; set; } = string.Empty;
 }
 
 public class ConversationSession
@@ -572,31 +563,14 @@ public class ConversationSession
 class ConversationManager {
     constructor(apiBaseUrl) {
         this.apiBaseUrl = apiBaseUrl;
-        this.sessionId = null;
-    }
-    
-    async startNewSession() {
-        const response = await fetch(`${this.apiBaseUrl}/conversation/start`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' }
-        });
-        
-        const session = await response.json();
-        this.sessionId = session.sessionId;
-        return session;
     }
     
     async askQuestion(question) {
-        if (!this.sessionId) {
-            await this.startNewSession();
-        }
-        
         const response = await fetch(`${this.apiBaseUrl}/conversation/ask`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                question: question,
-                sessionId: this.sessionId
+                question: question
             })
         });
         
