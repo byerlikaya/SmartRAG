@@ -224,6 +224,78 @@ namespace SmartRAG.Repositories
             }
         }
 
+        public async Task<string> GetConversationHistoryAsync(string sessionId)
+        {
+            try
+            {
+                var conversationKey = $"conversation:{sessionId}";
+                var conversationJson = await _database.StringGetAsync(conversationKey);
+                
+                if (conversationJson.IsNull)
+                {
+                    RepositoryLogMessages.LogRedisConversationNotFound(Logger, sessionId, null);
+                    return string.Empty;
+                }
+
+                RepositoryLogMessages.LogRedisConversationRetrieved(Logger, sessionId, null);
+                return conversationJson;
+            }
+            catch (Exception ex)
+            {
+                RepositoryLogMessages.LogRedisConversationRetrievalFailed(Logger, sessionId, ex);
+                return string.Empty;
+            }
+        }
+
+        public async Task AddToConversationAsync(string sessionId, string question, string answer)
+        {
+            try
+            {
+                var conversationKey = $"conversation:{sessionId}";
+                var existingConversation = await GetConversationHistoryAsync(sessionId);
+                
+                var newEntry = $"\nQ: {question}\nA: {answer}";
+                var updatedConversation = existingConversation + newEntry;
+                
+                await _database.StringSetAsync(conversationKey, updatedConversation);
+                RepositoryLogMessages.LogRedisConversationUpdated(Logger, sessionId, null);
+            }
+            catch (Exception ex)
+            {
+                RepositoryLogMessages.LogRedisConversationUpdateFailed(Logger, sessionId, ex);
+            }
+        }
+
+        public async Task ClearConversationAsync(string sessionId)
+        {
+            try
+            {
+                var conversationKey = $"conversation:{sessionId}";
+                await _database.KeyDeleteAsync(conversationKey);
+                RepositoryLogMessages.LogRedisConversationCleared(Logger, sessionId, null);
+            }
+            catch (Exception ex)
+            {
+                RepositoryLogMessages.LogRedisConversationClearFailed(Logger, sessionId, ex);
+            }
+        }
+
+        public async Task<bool> SessionExistsAsync(string sessionId)
+        {
+            try
+            {
+                var conversationKey = $"conversation:{sessionId}";
+                var exists = await _database.KeyExistsAsync(conversationKey);
+                RepositoryLogMessages.LogRedisSessionExistsChecked(Logger, sessionId, exists, null);
+                return exists;
+            }
+            catch (Exception ex)
+            {
+                RepositoryLogMessages.LogRedisSessionExistsCheckFailed(Logger, sessionId, ex);
+                return false;
+            }
+        }
+
         #endregion
 
         #region Private Helper Methods

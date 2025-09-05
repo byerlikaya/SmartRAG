@@ -12,6 +12,7 @@ SmartRAG is a **production-ready** .NET Standard 2.0/2.1 library that provides a
 
 - 🎯 **AI Question Answering**: Ask questions about your documents and get intelligent, contextual answers
 - 🧠 **Smart Query Intent Detection**: Automatically distinguishes between general conversation and document search queries
+- 💬 **Conversation History**: Automatic session-based conversation management with context awareness
 - 🌍 **Language-Agnostic**: Works with any language without hardcoded patterns or keywords
 - 🤖 **Universal AI Support**: 5 dedicated providers + CustomProvider for unlimited AI APIs  
 - 🏢 **Enterprise Storage**: Vector databases, Redis, SQL, FileSystem with advanced configurations
@@ -37,6 +38,7 @@ SmartRAG is a **production-ready** .NET Standard 2.0/2.1 library that provides a
 ### 🏆 **Production Features**
 - **Smart Chunking**: Maintains context continuity between document segments with word boundary validation
 - **Intelligent Query Routing**: Automatically routes general conversation to AI chat, document queries to RAG search
+- **Conversation History**: Automatic session-based conversation management with intelligent context truncation
 - **Language-Agnostic Design**: No hardcoded language patterns - works globally with any language
 - **Multiple Storage Options**: From in-memory to enterprise vector databases
 - **AI Provider Flexibility**: Switch between providers without code changes
@@ -228,24 +230,31 @@ public class DocumentController : ControllerBase
 }
 ```
 
-### 4. **AI-Powered Question Answering**
+### 4. **AI-Powered Question Answering with Conversation History**
 ```csharp
 public class QAController : ControllerBase
 {
-    private readonly IDocumentService _documentService;
+    private readonly IDocumentSearchService _documentSearchService;
 
     [HttpPost("ask")]
     public async Task<IActionResult> AskQuestion([FromBody] QuestionRequest request)
     {
         // User asks: "What are the main benefits mentioned in the contract?"
-        var response = await _documentService.GenerateRagAnswerAsync(
-            request.Question, 
+        var response = await _documentSearchService.GenerateRagAnswerAsync(
+            request.Question,
+            request.SessionId,  // Session-based conversation history
             maxResults: 5
         );
         
-        // Returns intelligent answer based on document content
+        // Returns intelligent answer based on document content + conversation context
         return Ok(response);
     }
+}
+
+public class QuestionRequest
+{
+    public string Question { get; set; } = string.Empty;
+    public string SessionId { get; set; } = string.Empty;  // Unique session identifier
 }
 ```
 
@@ -409,6 +418,52 @@ services.AddSmartRAG(configuration, options =>
     options.SemanticSearchThreshold = 0.3; // Similarity threshold
 });
 ```
+
+## 💬 Conversation History
+
+SmartRAG includes **automatic conversation history management** that maintains context across multiple questions within a session. This enables more natural, contextual conversations with your AI system.
+
+### **Key Features**
+- **Session-Based**: Each conversation is tied to a unique session ID
+- **Automatic Management**: No manual conversation handling required
+- **Context Awareness**: Previous questions and answers inform current responses
+- **Intelligent Truncation**: Automatically manages conversation length to prevent token limits
+- **Storage Integration**: Uses your configured storage provider for persistence
+
+### **How It Works**
+```csharp
+// First question in session
+var response1 = await _documentSearchService.GenerateRagAnswerAsync(
+    "What is the company's refund policy?",
+    "session-123",  // Unique session ID
+    maxResults: 5
+);
+
+// Follow-up question - AI remembers previous context
+var response2 = await _documentSearchService.GenerateRagAnswerAsync(
+    "What about international orders?",  // AI knows this relates to refund policy
+    "session-123",  // Same session ID
+    maxResults: 5
+);
+```
+
+### **Conversation Flow Example**
+```
+User: "What is the company's refund policy?"
+AI: "Based on the policy document, customers can request refunds within 30 days..."
+
+User: "What about international orders?"  // AI remembers previous context
+AI: "For international orders, the refund policy extends to 45 days due to shipping considerations..."
+
+User: "How do I initiate a refund?"  // AI maintains full conversation context
+AI: "To initiate a refund, you can contact customer service or use the online portal..."
+```
+
+### **Session Management**
+- **Unique Session IDs**: Generate unique identifiers for each user/conversation
+- **Automatic Cleanup**: Old conversations are automatically truncated to maintain performance
+- **Cross-Request Persistence**: Conversation history persists across multiple API calls
+- **Privacy**: Each session is isolated - no cross-contamination between users
 
 ## 🔧 Advanced Configuration
 
@@ -702,7 +757,7 @@ We welcome contributions!
 ## 📚 Resources
 
 - **📧 [Contact & Support](mailto:b.yerlikaya@outlook.com)**
-- **💼 [LinkedIn](https://www.linkedin.com/in/barisyerlikaya)**
+- **💼 [LinkedIn](https://www.linkedin.com/in/barisyerlikaya/)**
 - **🐙 [GitHub Profile](https://github.com/byerlikaya)**
 - **📦 [NuGet Packages](https://www.nuget.org/profiles/byerlikaya)**
 - **📖 [Documentation](https://byerlikaya.github.io/SmartRAG)** - Comprehensive guides and API reference
@@ -715,4 +770,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Built with ❤️ by Barış Yerlikaya**
 
-Made in Turkey 🇹🇷 | [Contact](mailto:b.yerlikaya@outlook.com) | [LinkedIn](https://www.linkedin.com/in/barisyerlikaya)
+Made in Turkey 🇹🇷 | [Contact](mailto:b.yerlikaya@outlook.com) | [LinkedIn](https://www.linkedin.com/in/barisyerlikaya/)

@@ -160,7 +160,7 @@ public class AIProviderIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task TestAIProviderFactory_ShouldCreateAllProviders()
+    public void TestAIProviderFactory_ShouldCreateAllProviders()
     {
         // Arrange & Act
         var openAIProvider = _aiProviderFactory.CreateProvider(AIProvider.OpenAI);
@@ -180,7 +180,7 @@ public class AIProviderIntegrationTests : IDisposable
     }
 
     [Fact]
-    public async Task TestStorageFactory_ShouldCreateAllProviders()
+    public void TestStorageFactory_ShouldCreateAllProviders()
     {
         // Arrange
         var inMemoryConfig = new InMemoryConfig();
