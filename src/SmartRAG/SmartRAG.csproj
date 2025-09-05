@@ -20,7 +20,28 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Release 2.1.0: Automatic Conversation History Management - Added automatic session-based conversation management with persistent context - Implemented intelligent conversation history storage across all providers (Redis, SQLite, FileSystem, InMemory) - Added new conversation commands (/new, /reset, /clear) for user control - Enhanced API with backward-compatible session management - Fixed conversation format consistency across all storage providers - Improved thread safety and error handling for conversation operations - Platform-agnostic design maintains compatibility with all .NET environments</PackageReleaseNotes>
+    <PackageReleaseNotes>Release 2.1.0: Automatic Conversation History Management
+
+✨ New Features:
+• Automatic session-based conversation management with persistent context
+• Intelligent conversation history storage across all providers (Redis, SQLite, FileSystem, InMemory)
+• New conversation commands (/new, /reset, /clear) for user control
+• Enhanced API with backward-compatible session management
+
+🔧 Technical Improvements:
+• Fixed conversation format consistency across all storage providers
+• Improved thread safety and error handling for conversation operations
+• Platform-agnostic design maintains compatibility with all .NET environments
+
+📚 Documentation Updates:
+• Updated all language versions (EN, TR, DE, RU)
+• Real examples aligned with actual codebase
+• API reference updated with new signatures
+
+🎯 Compliance:
+• 100% compliance with all established rules
+• Zero warnings policy maintained
+• SOLID and DRY principles applied</PackageReleaseNotes>
     
     <!-- Build Configuration -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
