@@ -59,14 +59,13 @@ public async Task<ActionResult<object>> Search([FromBody] SearchRequest request)
 {
     string query = request?.Query ?? string.Empty;
     int maxResults = request?.MaxResults ?? 5;
-    string sessionId = request?.SessionId ?? Guid.NewGuid().ToString();
 
     if (string.IsNullOrWhiteSpace(query))
         return BadRequest("Query cannot be empty");
 
     try
     {
-        var response = await _documentSearchService.GenerateRagAnswerAsync(query, sessionId, maxResults);
+        var response = await _documentSearchService.GenerateRagAnswerAsync(query, maxResults);
         return Ok(response);
     }
     catch (Exception ex)

@@ -242,7 +242,6 @@ public class QAController : ControllerBase
         // User asks: "What are the main benefits mentioned in the contract?"
         var response = await _documentSearchService.GenerateRagAnswerAsync(
             request.Question,
-            request.SessionId,  // Session-based conversation history
             maxResults: 5
         );
         
@@ -254,7 +253,6 @@ public class QAController : ControllerBase
 public class QuestionRequest
 {
     public string Question { get; set; } = string.Empty;
-    public string SessionId { get; set; } = string.Empty;  // Unique session identifier
 }
 ```
 
@@ -435,14 +433,12 @@ SmartRAG includes **automatic conversation history management** that maintains c
 // First question in session
 var response1 = await _documentSearchService.GenerateRagAnswerAsync(
     "What is the company's refund policy?",
-    "session-123",  // Unique session ID
     maxResults: 5
 );
 
 // Follow-up question - AI remembers previous context
 var response2 = await _documentSearchService.GenerateRagAnswerAsync(
     "What about international orders?",  // AI knows this relates to refund policy
-    "session-123",  // Same session ID
     maxResults: 5
 );
 ```
