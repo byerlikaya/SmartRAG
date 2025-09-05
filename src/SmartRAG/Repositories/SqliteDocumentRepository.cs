@@ -773,8 +773,33 @@ namespace SmartRAG.Repositories
 
             try
             {
+                // If question is empty, this is a special case (like session-id storage)
+                if (string.IsNullOrEmpty(question))
+                {
+                    if (_connection.State != System.Data.ConnectionState.Open)
+                    {
+                        _connection.Open();
+                    }
+
+                    using (var command = _connection.CreateCommand())
+                    {
+                        command.CommandText = @"
+                            INSERT OR REPLACE INTO Conversations (SessionId, History, LastUpdated) 
+                            VALUES (@SessionId, @History, @LastUpdated)";
+                        
+                        command.Parameters.AddWithValue("@SessionId", sessionId);
+                        command.Parameters.AddWithValue("@History", answer);
+                        command.Parameters.AddWithValue("@LastUpdated", DateTime.UtcNow);
+
+                        await Task.Run(() => command.ExecuteNonQuery());
+                    }
+                    return;
+                }
+
                 var currentHistory = await GetConversationHistoryAsync(sessionId);
-                var newEntry = $"{currentHistory}\nUser: {question}\nAssistant: {answer}".Trim();
+                var newEntry = string.IsNullOrEmpty(currentHistory) 
+                    ? $"User: {question}\nAssistant: {answer}"
+                    : $"{currentHistory}\nUser: {question}\nAssistant: {answer}";
 
                 // Limit conversation length to prevent memory issues
                 if (newEntry.Length > MaxConversationLength)

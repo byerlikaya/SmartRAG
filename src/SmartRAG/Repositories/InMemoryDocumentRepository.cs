@@ -272,8 +272,17 @@ namespace SmartRAG.Repositories
                     CleanupOldSessions();
                 }
 
+                // If question is empty, this is a special case (like session-id storage)
+                if (string.IsNullOrEmpty(question))
+                {
+                    _conversations[sessionId] = answer;
+                    return Task.CompletedTask;
+                }
+
                 var currentHistory = _conversations.TryGetValue(sessionId, out var existing) ? existing : string.Empty;
-                var newEntry = $"{currentHistory}\nUser: {question}\nAssistant: {answer}".Trim();
+                var newEntry = string.IsNullOrEmpty(currentHistory) 
+                    ? $"User: {question}\nAssistant: {answer}"
+                    : $"{currentHistory}\nUser: {question}\nAssistant: {answer}";
 
                 // Limit conversation length to prevent memory issues
                 if (newEntry.Length > MaxConversationLength)
