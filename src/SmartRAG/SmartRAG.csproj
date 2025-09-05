@@ -5,12 +5,12 @@
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
-    <PackageVersion>2.0.0</PackageVersion>
+    <PackageVersion>2.1.0</PackageVersion>
     <Authors>Barış Yerlikaya</Authors>
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
-    <Description>High-performance RAG (Retrieval-Augmented Generation) library for .NET Standard 2.0/2.1 that enables AI-powered document question-answering with multiple provider support and enterprise-grade vector storage. Compatible with .NET Framework 4.6.1+, .NET Core 2.0+, and .NET 5+ applications.</Description>
-    <PackageTags>rag retrieval-augmented-generation ai llm document-qa vector-database openai anthropic gemini azure-openai qdrant redis sqlite</PackageTags>
+    <Description>High-performance RAG (Retrieval-Augmented Generation) library for .NET Standard 2.0/2.1 that enables AI-powered document question-answering with automatic conversation history management, multiple provider support and enterprise-grade vector storage. Features intelligent session management, persistent conversation context, and platform-agnostic design. Compatible with .NET Framework 4.6.1+, .NET Core 2.0+, and .NET 5+ applications.</Description>
+    <PackageTags>rag retrieval-augmented-generation ai llm document-qa vector-database openai anthropic gemini azure-openai qdrant redis sqlite conversation-history session-management chat-context</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <!-- <PackageIcon>icon.png</PackageIcon> -->
@@ -20,7 +20,7 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Major Release 2.0.0: .NET Standard Migration - Migrated from .NET 9.0 to .NET Standard 2.0/2.1 - Now supports .NET Framework 4.6.1+, .NET Core 2.0+, .NET 5+ - Maximum compatibility with legacy and enterprise environments</PackageReleaseNotes>
+    <PackageReleaseNotes>Release 2.1.0: Automatic Conversation History Management - Added automatic session-based conversation management with persistent context - Implemented intelligent conversation history storage across all providers (Redis, SQLite, FileSystem, InMemory) - Added new conversation commands (/new, /reset, /clear) for user control - Enhanced API with backward-compatible session management - Fixed conversation format consistency across all storage providers - Improved thread safety and error handling for conversation operations - Platform-agnostic design maintains compatibility with all .NET environments</PackageReleaseNotes>
     
     <!-- Build Configuration -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -29,10 +29,10 @@
     
     <!-- Assembly Information -->
     <AssemblyTitle>SmartRAG</AssemblyTitle>
-    <AssemblyDescription>High-performance RAG library for .NET</AssemblyDescription>
+    <AssemblyDescription>High-performance RAG library with conversation history management for .NET</AssemblyDescription>
     <AssemblyCopyright>Copyright © 2025 Barış Yerlikaya</AssemblyCopyright>
-    <AssemblyVersion>2.0.0.0</AssemblyVersion>
-    <FileVersion>2.0.0.0</FileVersion>
+    <AssemblyVersion>2.1.0.0</AssemblyVersion>
+    <FileVersion>2.1.0.0</FileVersion>
     <NeutralLanguage>en</NeutralLanguage>
     <Culture>en-US</Culture>
   </PropertyGroup>
