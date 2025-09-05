@@ -10,4 +10,3 @@ public class SearchRequest
     public int MaxResults { get; set; } = 5;
 }
 
-

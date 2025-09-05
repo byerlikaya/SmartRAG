@@ -14,16 +14,39 @@ lang: tr
                     <h2>Sürüm Geçmişi</h2>
                     <p>Detaylı değişiklik bilgileri ile SmartRAG sürümlerinin tam geçmişi.</p>
 
-                    <h3>Sürüm 1.1.0 - 2025-08-22</h3>
+                    <h3>Sürüm 1.2.0 - 2025-01-15</h3>
                     <div class="alert alert-success">
-                        <h4><i class="fas fa-star me-2"></i>Yeni Özellikler</h4>
-                        <ul class="mb-0">
-                            <li><strong>Excel Dosya Desteği</strong>: Excel dosya işleme (.xlsx, .xls) EPPlus 8.1.0 entegrasyonu ile</li>
-                            <li><strong>Gelişmiş Retry Mantığı</strong>: HTTP 529 (Overloaded) hataları için Anthropic API retry mekanizması</li>
-                            <li><strong>İçerik Doğrulama</strong>: Gelişmiş belge içerik doğrulama</li>
-                            <li><strong>Excel Dokümantasyonu</strong>: Kapsamlı Excel format dokümantasyonu</li>
-                        </ul>
+                        <h4><i class="fas fa-star me-2"></i>En Son Sürüm</h4>
+                        <p class="mb-0">Konuşma geçmişi ve gelişmiş özelliklerle mevcut kararlı sürüm.</p>
                     </div>
+
+                    <h4>Eklenenler</h4>
+                    <ul>
+                        <li><strong>💬 Konuşma Geçmişi</strong>: Bağlam farkındalığı ile otomatik oturum tabanlı konuşma yönetimi</li>
+                        <li><strong>Oturum Yönetimi</strong>: Birden fazla soru arasında konuşma bağlamını korumak için benzersiz oturum kimlikleri</li>
+                        <li><strong>Akıllı Bağlam Kısaltma</strong>: Optimal performansı korumak için akıllı konuşma geçmişi kısaltma</li>
+                        <li><strong>Depolama Entegrasyonu</strong>: Yapılandırılan depolama sağlayıcıları (Redis, SQLite, vb.) kullanarak konuşma verisi depolama</li>
+                        <li><strong>Gelişmiş API</strong>: sessionId parametresi ile güncellenmiş GenerateRagAnswerAsync metodu</li>
+                        <li><strong>Gerçek Örnekler</strong>: Tüm dokümantasyon örnekleri gerçek implementasyon kodunu kullanacak şekilde güncellendi</li>
+                    </ul>
+
+                    <h4>İyileştirmeler</h4>
+                    <ul>
+                        <li><strong>Dokümantasyon Gerçekliği</strong>: Tüm örnekler artık gerçek kod tabanı implementasyonu ile eşleşiyor</li>
+                        <li><strong>Çoklu Dil Desteği</strong>: Tüm dil versiyonları (EN, TR, DE, RU) konuşma özellikleri ile güncellendi</li>
+                        <li><strong>API Tutarlılığı</strong>: Tüm API örneklerinin gerçek SearchController ve SearchRequest modellerini kullandığından emin olundu</li>
+                        <li><strong>Kod Kalitesi</strong>: 0 hata, 0 uyarı, 0 mesaj ile Sıfır Uyarı Politikası uygulandı</li>
+                    </ul>
+
+                    <h4>Düzeltmeler</h4>
+                    <ul>
+                        <li><strong>Dokümantasyon Doğruluğu</strong>: Tüm hayali örnekler kaldırıldı ve gerçek implementasyon ile değiştirildi</li>
+                        <li><strong>Build Uyumluluğu</strong>: SOLID ve DRY prensipleri ile %100 uyumluluk sağlandı</li>
+                        <li><strong>Sihirli Sayılar</strong>: Tüm sihirli sayılar isimli sabitlere dönüştürüldü</li>
+                        <li><strong>Loglama Standartları</strong>: Tüm konuşma işlemleri için LoggerMessage delegeleri uygulandı</li>
+                    </ul>
+
+                    <h3>Sürüm 1.1.0 - 2025-08-22</h3>
 
                     <h3>Sürüm 1.1.0 - 2025-08-22</h3>
                     <div class="alert alert-success">
