@@ -392,8 +392,18 @@ namespace SmartRAG.Repositories
 
             try
             {
+                // If question is empty, this is a special case (like session-id storage)
+                if (string.IsNullOrEmpty(question))
+                {
+                    var sessionFilePath = GetConversationFilePath(sessionId);
+                    await Task.Run(() => File.WriteAllText(sessionFilePath, answer));
+                    return;
+                }
+
                 var currentHistory = await GetConversationHistoryAsync(sessionId);
-                var newEntry = $"{currentHistory}\nUser: {question}\nAssistant: {answer}".Trim();
+                var newEntry = string.IsNullOrEmpty(currentHistory) 
+                    ? $"User: {question}\nAssistant: {answer}"
+                    : $"{currentHistory}\nUser: {question}\nAssistant: {answer}";
 
                 // Limit conversation length to prevent memory issues
                 if (newEntry.Length > MaxConversationLength)
