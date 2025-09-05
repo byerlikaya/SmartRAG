@@ -288,7 +288,7 @@ Ne oldu
 Varsa ekran görüntüleri ekleyin
 
 ## Ortam Bilgileri
-- SmartRAG Versiyonu: 1.1.0
+- SmartRAG Versiyonu: 2.1.0
 - .NET Versiyonu: 9.0
 - İşletim Sistemi: Windows 11
 - Tarayıcı: Chrome 120</code></pre>

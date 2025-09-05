@@ -730,7 +730,19 @@ We welcome contributions!
 
 ## 🆕 What's New
 
-### **Latest Release (v1.0.3)**
+### **Latest Release (v2.1.0) - Automatic Session Management**
+- 🎯 **Automatic Session Management** - No more manual session ID handling required
+- 💬 **Persistent Conversation History** - Conversations survive application restarts
+- 🆕 **New Conversation Commands** - `/new`, `/reset`, `/clear` for conversation control
+- 🔄 **Enhanced API** - Backward-compatible with optional `startNewConversation` parameter
+- 🗄️ **Storage Integration** - Works seamlessly with all providers (Redis, SQLite, FileSystem, InMemory)
+- 🔧 **Format Consistency** - Standardized conversation format across all storage providers
+- 🧵 **Thread Safety** - Enhanced concurrent access handling for conversation operations
+- 🌍 **Platform Agnostic** - Maintains compatibility with all .NET environments
+- 📚 **Documentation Updates** - All language versions (EN, TR, DE, RU) updated with real examples
+- ✅ **100% Compliance** - All established rules maintained with zero warnings policy
+
+### **Previous Release (v1.0.3)**
 - 🧠 **Smart Query Intent Detection** - Automatically routes queries to chat vs document search
 - 🌍 **Language-Agnostic Design** - Removed all hardcoded language patterns  
 - 🔍 **Enhanced Search Relevance** - Improved name detection and content scoring

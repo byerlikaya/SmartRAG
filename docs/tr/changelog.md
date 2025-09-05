@@ -14,10 +14,40 @@ lang: tr
                     <h2>Sürüm Geçmişi</h2>
                     <p>Detaylı değişiklik bilgileri ile SmartRAG sürümlerinin tam geçmişi.</p>
 
-                    <h3>Sürüm 1.2.0 - 2025-01-15</h3>
+                    <h3>Sürüm 2.1.0 - 2025-01-20</h3>
                     <div class="alert alert-success">
                         <h4><i class="fas fa-star me-2"></i>En Son Sürüm</h4>
-                        <p class="mb-0">Konuşma geçmişi ve gelişmiş özelliklerle mevcut kararlı sürüm.</p>
+                        <p class="mb-0">Otomatik oturum yönetimi ve konuşma geçmişi ile mevcut kararlı sürüm.</p>
+                    </div>
+                    <ul>
+                        <li><strong>Otomatik Oturum Yönetimi</strong>: Manuel oturum ID yönetimi artık gerekli değil</li>
+                        <li><strong>Kalıcı Konuşma Geçmişi</strong>: Konuşmalar uygulama yeniden başlatmalarında korunur</li>
+                        <li><strong>Yeni Konuşma Komutları</strong>: /new, /reset, /clear ile konuşma kontrolü</li>
+                        <li><strong>Gelişmiş API</strong>: Geriye uyumlu startNewConversation parametresi</li>
+                        <li><strong>Depolama Entegrasyonu</strong>: Tüm sağlayıcılarla (Redis, SQLite, FileSystem, InMemory) uyumlu</li>
+                        <li><strong>Format Tutarlılığı</strong>: Tüm depolama sağlayıcılarında standart konuşma formatı</li>
+                        <li><strong>Thread Güvenliği</strong>: Konuşma işlemleri için gelişmiş eşzamanlı erişim</li>
+                        <li><strong>Platform Bağımsız</strong>: Tüm .NET ortamlarıyla uyumluluk</li>
+                        <li><strong>Dokümantasyon Güncellemeleri</strong>: Tüm dil sürümleri (EN, TR, DE, RU) gerçek örneklerle güncellendi</li>
+                        <li><strong>%100 Uyumluluk</strong>: Tüm kurallar sıfır uyarı politikasıyla korundu</li>
+                    </ul>
+
+                    <h3>Sürüm 2.0.0 - 2025-08-27</h3>
+                    <div class="alert alert-info">
+                        <h4><i class="fas fa-info-circle me-2"></i>Önceki Sürüm</h4>
+                        <p class="mb-0">.NET Standard 2.0/2.1'e geçiş ile önceki kararlı sürüm.</p>
+                    </div>
+                    <ul>
+                        <li><strong>.NET Standard 2.0/2.1</strong>: .NET Framework 4.6.1+, .NET Core 2.0+, .NET 5+ uyumluluğu</li>
+                        <li><strong>Maksimum Uyumluluk</strong>: Eski ve kurumsal .NET uygulamalarıyla uyumluluk</li>
+                        <li><strong>Framework Değişikliği</strong>: .NET 9.0'dan .NET Standard'a geçiş</li>
+                        <li><strong>Paket Bağımlılıkları</strong>: Uyumluluk için paket versiyonları güncellendi</li>
+                    </ul>
+
+                    <h3>Sürüm 1.1.0 - 2025-08-22</h3>
+                    <div class="alert alert-info">
+                        <h4><i class="fas fa-info-circle me-2"></i>Önceki Sürüm</h4>
+                        <p class="mb-0">Excel desteği ve gelişmiş özelliklerle önceki kararlı sürüm.</p>
                     </div>
 
                     <h4>Eklenenler</h4>
