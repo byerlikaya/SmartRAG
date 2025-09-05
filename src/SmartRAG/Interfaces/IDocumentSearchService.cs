@@ -17,8 +17,8 @@ namespace SmartRAG.Interfaces
         Task<List<DocumentChunk>> SearchDocumentsAsync(string query, int maxResults = 5);
 
         /// <summary>
-        /// Generate RAG answer
+        /// Generate RAG answer with automatic session management
         /// </summary>
-        Task<RagResponse> GenerateRagAnswerAsync(string query, int maxResults = 5);
+        Task<RagResponse> GenerateRagAnswerAsync(string query, int maxResults = 5, bool startNewConversation = false);
     }
 }

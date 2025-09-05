@@ -52,22 +52,36 @@ public async Task<ActionResult<IEnumerable<DocumentChunk>>> SearchDocuments(
 }</code></pre>
                     </div>
 
-                    <h3>RAG Answer Generation</h3>
+                    <h3>RAG Answer Generation (with Conversation History)</h3>
                     <div class="code-example">
-                        <pre><code class="language-csharp">[HttpPost("chat")]
-public async Task<ActionResult<RagResponse>> ChatWithDocuments(
-    [FromBody] string query,
-    [FromQuery] int maxResults = 5)
+                        <pre><code class="language-csharp">    [HttpPost("search")]
+    public async Task<ActionResult<object>> Search([FromBody] SearchRequest request)
+    {
+        string query = request?.Query ?? string.Empty;
+        int maxResults = request?.MaxResults ?? 5;
+
+        if (string.IsNullOrWhiteSpace(query))
+            return BadRequest("Query cannot be empty");
+
+        try
+        {
+            var response = await _documentSearchService.GenerateRagAnswerAsync(query, maxResults);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Internal server error: {ex.Message}");
+        }
+    }
+
+public class SearchRequest
 {
-    try
-    {
-        var response = await _documentSearchService.GenerateRagAnswerAsync(query, maxResults);
-        return Ok(response);
-    }
-    catch (Exception ex)
-    {
-        return BadRequest(ex.Message);
-    }
+    [Required]
+    public string Query { get; set; } = string.Empty;
+
+    [Range(1, 50)]
+    [DefaultValue(5)]
+    public int MaxResults { get; set; } = 5;
 }</code></pre>
                     </div>
                 </div>
@@ -199,140 +213,54 @@ public async Task<ActionResult> ClearAllDocuments()
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Web API Examples</h2>
-                    <p>Complete controller examples for web applications.</p>
+                    <p>Complete controller examples based on actual SmartRAG implementation.</p>
                     
-                    <h3>Complete Controller</h3>
+                    <h3>SearchController (Actual Implementation)</h3>
                     <div class="code-example">
                         <pre><code class="language-csharp">[ApiController]
 [Route("api/[controller]")]
-public class DocumentsController : ControllerBase
+[Produces("application/json")]
+[ProducesResponseType(StatusCodes.Status500InternalServerError)]
+public class SearchController(IDocumentSearchService documentSearchService) : ControllerBase
 {
-    private readonly IDocumentService _documentService;
-    private readonly IDocumentSearchService _documentSearchService;
-    private readonly ILogger<DocumentsController> _logger;
-    
-    public DocumentsController(
-        IDocumentService documentService,
-        IDocumentSearchService documentSearchService,
-        ILogger<DocumentsController> logger)
+    /// <summary>
+    /// Search documents using RAG (Retrieval-Augmented Generation) with conversation history
+    /// </summary>
+    [HttpPost("search")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<object>> Search([FromBody] Contracts.SearchRequest request)
     {
-        _documentService = documentService;
-        _documentSearchService = documentSearchService;
-        _logger = logger;
-    }
-    
-    [HttpPost("upload")]
-    public async Task<ActionResult<Document>> UploadDocument(IFormFile file)
-    {
-        if (file == null || file.Length == 0)
-            return BadRequest("No file provided");
-            
-        try
-        {
-            using var stream = file.OpenReadStream();
-            var document = await _documentService.UploadDocumentAsync(
-                stream, file.FileName, file.ContentType, "user123");
-            _logger.LogInformation("Document uploaded: {DocumentId}", document.Id);
-            return Ok(document);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to upload document: {FileName}", file.FileName);
-            return BadRequest(ex.Message);
-        }
-    }
-    
-    [HttpGet("search")]
-    public async Task<ActionResult<IEnumerable<DocumentChunk>>> SearchDocuments(
-        [FromQuery] string query, 
-        [FromQuery] int maxResults = 10)
-    {
+        string? query = request?.Query;
+        int maxResults = request?.MaxResults ?? 5;
+        string sessionId = request?.SessionId ?? Guid.NewGuid().ToString();
+
         if (string.IsNullOrWhiteSpace(query))
-            return BadRequest("Query parameter is required");
-            
+            return BadRequest("Query cannot be empty");
+
         try
         {
-            var results = await _documentSearchService.SearchDocumentsAsync(query, maxResults);
-            return Ok(results);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Search failed for query: {Query}", query);
-            return BadRequest(ex.Message);
-        }
-    }
-    
-    [HttpPost("chat")]
-    public async Task<ActionResult<RagResponse>> ChatWithDocuments(
-        [FromBody] string query,
-        [FromQuery] int maxResults = 5)
-    {
-        if (string.IsNullOrWhiteSpace(query))
-            return BadRequest("Query parameter is required");
-            
-        try
-        {
-            var response = await _documentSearchService.GenerateRagAnswerAsync(query, maxResults);
+            var response = await documentSearchService.GenerateRagAnswerAsync(query, sessionId, maxResults);
             return Ok(response);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Chat failed for query: {Query}", query);
-            return BadRequest(ex.Message);
+            return StatusCode(500, $"Internal server error: {ex.Message}");
         }
     }
-    
-    [HttpGet("{id}")]
-    public async Task<ActionResult<Document>> GetDocument(Guid id)
-    {
-        try
-        {
-            var document = await _documentService.GetDocumentAsync(id);
-            if (document == null)
-                return NotFound();
-                
-            return Ok(document);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to get document: {DocumentId}", id);
-            return BadRequest(ex.Message);
-        }
-    }
-    
-    [HttpGet]
-    public async Task<ActionResult<List<Document>>> GetAllDocuments()
-    {
-        try
-        {
-            var documents = await _documentService.GetAllDocumentsAsync();
-            return Ok(documents);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to get all documents");
-            return BadRequest(ex.Message);
-        }
-    }
-    
-    [HttpDelete("{id}")]
-    public async Task<ActionResult> DeleteDocument(Guid id)
-    {
-        try
-        {
-            var success = await _documentService.DeleteDocumentAsync(id);
-            if (!success)
-                return NotFound();
-                
-            _logger.LogInformation("Document deleted: {DocumentId}", id);
-            return NoContent();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to delete document: {DocumentId}", id);
-            return BadRequest(ex.Message);
-        }
-    }
+}</code></pre>
+                    </div>
+
+                    <h3>SearchRequest Model (Actual Implementation)</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public class SearchRequest
+{
+    [Required]
+    public string Query { get; set; } = string.Empty;
+
+    [Range(1, 50)]
+    [DefaultValue(5)]
+    public int MaxResults { get; set; } = 5;
 }</code></pre>
                     </div>
                 </div>
@@ -504,6 +432,183 @@ public class DocumentsController : ControllerBase
         }
     }
 }</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Conversation History Examples Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Conversation History Examples</h2>
+                    <p>Examples demonstrating session-based conversation management.</p>
+                    
+                    <h3>Multi-Turn Conversation</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[HttpPost("conversation")]
+public async Task<ActionResult<RagResponse>> StartConversation(
+    [FromBody] ConversationRequest request)
+{
+    try
+    {
+        // Generate unique session ID for new conversation
+        var sessionId = request.SessionId ?? Guid.NewGuid().ToString();
+        
+        var response = await _documentSearchService.GenerateRagAnswerAsync(
+            request.Question, 
+            sessionId,
+            maxResults: 5
+        );
+        
+        return Ok(new ConversationResponse
+        {
+            SessionId = sessionId,
+            Answer = response.Answer,
+            Sources = response.Sources
+        });
+    }
+    catch (Exception ex)
+    {
+        return BadRequest(ex.Message);
+    }
+}
+
+public class ConversationRequest
+{
+    public string Question { get; set; } = string.Empty;
+    public string SessionId { get; set; } = string.Empty;  // Optional: if empty, creates new session
+}
+
+public class ConversationResponse
+{
+    public string SessionId { get; set; } = string.Empty;
+    public string Answer { get; set; } = string.Empty;
+    public List<SearchSource> Sources { get; set; } = new();
+}</code></pre>
+                    </div>
+
+                    <h3>Follow-up Questions</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// First question
+var firstResponse = await _documentSearchService.GenerateRagAnswerAsync(
+    "What is machine learning?", 
+    5
+);
+
+// Follow-up question (remembers previous context automatically)
+var followUpResponse = await _documentSearchService.GenerateRagAnswerAsync(
+    "Can you give me more details about supervised learning?", 
+    5
+);
+
+// Another follow-up
+var anotherResponse = await _documentSearchService.GenerateRagAnswerAsync(
+    "What are the advantages of deep learning?", 
+    5
+);</code></pre>
+                    </div>
+
+                    <h3>Session Management</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public class ConversationController : ControllerBase
+{
+    private readonly IDocumentSearchService _documentSearchService;
+    private readonly ILogger<ConversationController> _logger;
+    
+    public ConversationController(
+        IDocumentSearchService documentSearchService,
+        ILogger<ConversationController> logger)
+    {
+        _documentSearchService = documentSearchService;
+        _logger = logger;
+    }
+    
+    [HttpPost("start")]
+    public async Task<ActionResult<ConversationSession>> StartNewSession()
+    {
+        var sessionId = Guid.NewGuid().ToString();
+        _logger.LogInformation("Started new conversation session: {SessionId}", sessionId);
+        
+        return Ok(new ConversationSession { SessionId = sessionId });
+    }
+    
+    [HttpPost("ask")]
+    public async Task<ActionResult<RagResponse>> AskQuestion(
+        [FromBody] QuestionRequest request)
+    {
+        if (string.IsNullOrWhiteSpace(request.SessionId))
+            return BadRequest("SessionId is required");
+            
+        try
+        {
+            var response = await _documentSearchService.GenerateRagAnswerAsync(
+                request.Question, 
+                request.SessionId,
+                5
+            );
+            
+            _logger.LogInformation("Question answered for session: {SessionId}", request.SessionId);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to answer question for session: {SessionId}", request.SessionId);
+            return BadRequest(ex.Message);
+        }
+    }
+}
+
+public class ConversationSession
+{
+    public string SessionId { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+}</code></pre>
+                    </div>
+
+                    <h3>Frontend Integration Example</h3>
+                    <div class="code-example">
+                        <pre><code class="language-javascript">// JavaScript frontend example
+class ConversationManager {
+    constructor(apiBaseUrl) {
+        this.apiBaseUrl = apiBaseUrl;
+        this.sessionId = null;
+    }
+    
+    async startNewSession() {
+        const response = await fetch(`${this.apiBaseUrl}/conversation/start`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        
+        const session = await response.json();
+        this.sessionId = session.sessionId;
+        return session;
+    }
+    
+    async askQuestion(question) {
+        if (!this.sessionId) {
+            await this.startNewSession();
+        }
+        
+        const response = await fetch(`${this.apiBaseUrl}/conversation/ask`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                question: question,
+                sessionId: this.sessionId
+            })
+        });
+        
+        return await response.json();
+    }
+}
+
+// Usage
+const conversation = new ConversationManager('https://api.example.com');
+await conversation.askQuestion("What is artificial intelligence?");
+await conversation.askQuestion("Can you explain machine learning?");  // Remembers previous context
+await conversation.askQuestion("What are neural networks?");  // Continues conversation</code></pre>
                     </div>
                 </div>
             </div>

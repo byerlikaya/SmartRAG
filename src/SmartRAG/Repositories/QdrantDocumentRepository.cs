@@ -46,6 +46,7 @@ namespace SmartRAG.Repositories
         // Timeout constants
         private const int DefaultGrpcTimeoutMinutes = 5;
         private const int DefaultDelayMs = 100;
+        private const int MaxConversationLength = 2000;
 
         // Scoring constants
         private const double DefaultTextSearchScore = 0.5;
@@ -1136,6 +1137,36 @@ namespace SmartRAG.Repositories
         }
 
 
+
+        #endregion
+
+        #region Conversation Methods
+
+        public async Task<string> GetConversationHistoryAsync(string sessionId)
+        {
+            // Qdrant conversation support - simplified implementation
+            // In a real scenario, you would store conversations in a separate collection
+            return await Task.FromResult(string.Empty);
+        }
+
+        public async Task AddToConversationAsync(string sessionId, string question, string answer)
+        {
+            // Qdrant conversation support - simplified implementation
+            // In a real scenario, you would store conversations in a separate collection
+            await Task.CompletedTask;
+        }
+
+        public async Task ClearConversationAsync(string sessionId)
+        {
+            // Qdrant conversation support - simplified implementation
+            await Task.CompletedTask;
+        }
+
+        public async Task<bool> SessionExistsAsync(string sessionId)
+        {
+            // Qdrant conversation support - simplified implementation
+            return await Task.FromResult(false);
+        }
 
         #endregion
 

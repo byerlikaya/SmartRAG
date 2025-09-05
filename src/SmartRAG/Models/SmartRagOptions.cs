@@ -20,6 +20,12 @@ namespace SmartRAG.Models
         public StorageProvider StorageProvider { get; set; }
 
         /// <summary>
+        /// Storage provider to use for conversation history storage
+        /// If not specified, uses the same as StorageProvider (excluding Qdrant)
+        /// </summary>
+        public ConversationStorageProvider? ConversationStorageProvider { get; set; }
+
+        /// <summary>
         /// Maximum size of each document chunk in characters
         /// </summary>
         public int MaxChunkSize { get; set; } = 1000;

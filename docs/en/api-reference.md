@@ -28,6 +28,53 @@ lang: en
 }</code></pre>
                     </div>
 
+                    <h3>IDocumentSearchService</h3>
+                    <p>The service for AI-powered question answering with automatic session management.</p>
+                    
+                    <div class="code-example">
+                        <pre><code class="language-csharp">public interface IDocumentSearchService
+{
+    Task&lt;List&lt;DocumentChunk&gt;&gt; SearchDocumentsAsync(string query, int maxResults = 5);
+    Task&lt;RagResponse&gt; GenerateRagAnswerAsync(string query, int maxResults = 5, bool startNewConversation = false);
+}</code></pre>
+                    </div>
+
+                    <h4>GenerateRagAnswerAsync</h4>
+                    <p>Generates AI-powered answers with automatic session management and conversation history.</p>
+                    
+                    <div class="code-example">
+                        <pre><code class="language-csharp">Task&lt;RagResponse&gt; GenerateRagAnswerAsync(string query, int maxResults = 5, bool startNewConversation = false)</code></pre>
+                    </div>
+                    
+                    <p><strong>Parameters:</strong></p>
+                    <ul>
+                        <li><code>query</code> (string): The user's question</li>
+                        <li><code>maxResults</code> (int): Maximum number of document chunks to retrieve (default: 5)</li>
+                        <li><code>startNewConversation</code> (bool): Start a new conversation session (default: false)</li>
+                    </ul>
+                    
+                    <p><strong>Returns:</strong></p>
+                    <ul>
+                        <li><code>RagResponse</code>: Contains the AI answer, sources, and metadata</li>
+                    </ul>
+                    
+                    <p><strong>Special Commands:</strong></p>
+                    <ul>
+                        <li><code>/new</code>, <code>/reset</code>, <code>/clear</code> - Start a new conversation</li>
+                    </ul>
+
+                    <p><strong>Usage Examples:</strong></p>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Normal conversation (continues existing session)
+var response = await documentSearchService.GenerateRagAnswerAsync("What is the weather?");
+
+// Start new conversation programmatically
+var response = await documentSearchService.GenerateRagAnswerAsync("Hello", startNewConversation: true);
+
+// Start new conversation with command
+var response = await documentSearchService.GenerateRagAnswerAsync("/new");</code></pre>
+                    </div>
+
                     <h3>IDocumentParserService</h3>
                     <p>Service for parsing and processing documents.</p>
                     
@@ -96,23 +143,32 @@ lang: en
 }</code></pre>
                     </div>
 
-                    <h3>SmartRagOptions</h3>
-                    <p>Configuration options for SmartRAG.</p>
+                    <h3>RagResponse</h3>
+                    <p>Response model for AI-powered question answering with conversation context.</p>
                     
                     <div class="code-example">
-                        <pre><code class="language-csharp">public class SmartRagOptions
+                        <pre><code class="language-csharp">public class RagResponse
 {
-    public AIProvider AIProvider { get; set; }
-    public StorageProvider StorageProvider { get; set; }
-    public string ApiKey { get; set; }
-    public string ModelName { get; set; }
-    public int ChunkSize { get; set; } = 1000;
-    public int ChunkOverlap { get; set; } = 200;
-    public string QdrantUrl { get; set; }
-    public string CollectionName { get; set; }
-    public string RedisConnectionString { get; set; }
-    public int DatabaseId { get; set; }
-    public string ConnectionString { get; set; }
+    public string Query { get; set; }
+    public string Answer { get; set; }
+    public List&lt;SearchSource&gt; Sources { get; set; }
+    public DateTime SearchedAt { get; set; }
+    public RagConfiguration Configuration { get; set; }
+}
+
+public class SearchSource
+{
+    public string DocumentId { get; set; }
+    public string FileName { get; set; }
+    public string RelevantContent { get; set; }
+    public double RelevanceScore { get; set; }
+}
+
+public class RagConfiguration
+{
+    public string AIProvider { get; set; }
+    public string StorageProvider { get; set; }
+    public string Model { get; set; }
 }</code></pre>
                     </div>
                 </div>

@@ -40,12 +40,12 @@ lang: ru
                     </div>
 
                     <h3>IDocumentSearchService</h3>
-                    <p>Сервис для поиска документов и RAG операций.</p>
+                    <p>Сервис для поиска документов и RAG операций с историей разговоров.</p>
                     <div class="code-example">
                         <pre><code class="language-csharp">public interface IDocumentSearchService
 {
     Task<List<DocumentChunk>> SearchDocumentsAsync(string query, int maxResults = 5);
-    Task<RagResponse> GenerateRagAnswerAsync(string query, int maxResults = 5);
+    Task<RagResponse> GenerateRagAnswerAsync(string query, string sessionId, int maxResults = 5);
 }</code></pre>
                     </div>
 

@@ -67,33 +67,96 @@ var app = builder.Build();</code></pre>
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Quick Example</h2>
-                    <p>Here's a simple example to get you started:</p>
+                    <p>Here's a simple example using the actual SmartRAG implementation with conversation history:</p>
                     
                     <div class="code-example">
-                        <pre><code class="language-csharp">// Inject the document service
-public class DocumentController : ControllerBase
+                        <pre><code class="language-csharp">// Inject the document search service
+public class SearchController : ControllerBase
 {
-    private readonly IDocumentService _documentService;
+    private readonly IDocumentSearchService _documentSearchService;
     
-    public DocumentController(IDocumentService documentService)
+    public SearchController(IDocumentSearchService documentSearchService)
     {
-        _documentService = documentService;
-    }
-    
-    [HttpPost("upload")]
-    public async Task&lt;IActionResult&gt; UploadDocument(IFormFile file)
-    {
-        var document = await _documentService.UploadDocumentAsync(file);
-        return Ok(document);
+        _documentSearchService = documentSearchService;
     }
     
     [HttpPost("search")]
-    public async Task&lt;IActionResult&gt; Search([FromBody] string query)
+    public async Task<ActionResult<object>> Search([FromBody] SearchRequest request)
     {
-        var results = await _documentService.SearchAsync(query);
-        return Ok(results);
+        string query = request?.Query ?? string.Empty;
+        int maxResults = request?.MaxResults ?? 5;
+
+        if (string.IsNullOrWhiteSpace(query))
+            return BadRequest("Query cannot be empty");
+
+        try
+        {
+            var response = await _documentSearchService.GenerateRagAnswerAsync(query, maxResults);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Internal server error: {ex.Message}");
+        }
     }
+}
+
+public class SearchRequest
+{
+    [Required]
+    public string Query { get; set; } = string.Empty;
+
+    [Range(1, 50)]
+    [DefaultValue(5)]
+    public int MaxResults { get; set; } = 5;
 }</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Conversation History Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>💬 Conversation History</h2>
+                    <p>SmartRAG automatically manages conversation history using intelligent session management. Each conversation maintains context across multiple questions and answers without requiring manual session handling.</p>
+                    
+                    <h3>How It Works</h3>
+                    <ul>
+                        <li><strong>Automatic Session Management</strong>: Session IDs are generated and managed automatically</li>
+                        <li><strong>Automatic Context</strong>: Previous questions and answers are automatically included in context</li>
+                        <li><strong>Intelligent Truncation</strong>: Conversation history is intelligently truncated to maintain optimal performance</li>
+                        <li><strong>Storage Integration</strong>: Conversation data is stored using your configured storage provider</li>
+                    </ul>
+
+                    <h3>Usage Example</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// First question
+var firstRequest = new SearchRequest
+{
+    Query = "What is machine learning?",
+    MaxResults = 5
+};
+
+// Follow-up question (remembers previous context automatically)
+var followUpRequest = new SearchRequest
+{
+    Query = "Can you explain supervised learning in more detail?",
+    MaxResults = 5
+};
+
+// Another follow-up
+var anotherRequest = new SearchRequest
+{
+    Query = "What are the advantages of deep learning?",
+    MaxResults = 5
+};</code></pre>
+                    </div>
+
+                    <div class="alert alert-success">
+                        <h4><i class="fas fa-lightbulb me-2"></i>Pro Tip</h4>
+                        <p class="mb-0">SmartRAG automatically manages session IDs and conversation context. No need to manually handle session management!</p>
                     </div>
                 </div>
             </div>
@@ -125,6 +188,26 @@ public class DocumentController : ControllerBase
                                 <h3>API Reference</h3>
                                 <p>Explore the complete API documentation with examples.</p>
                                 <a href="{{ site.baseurl }}/en/api-reference" class="btn btn-outline-primary btn-sm">View API</a>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="feature-card">
+                                <div class="feature-icon">
+                                    <i class="fas fa-comments"></i>
+                                </div>
+                                <h3>Examples</h3>
+                                <p>See practical examples including conversation history usage.</p>
+                                <a href="{{ site.baseurl }}/en/examples" class="btn btn-outline-primary btn-sm">View Examples</a>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="feature-card">
+                                <div class="feature-icon">
+                                    <i class="fas fa-rocket"></i>
+                                </div>
+                                <h3>Features</h3>
+                                <p>Discover all SmartRAG features including conversation management.</p>
+                                <a href="{{ site.baseurl }}/en/features" class="btn btn-outline-primary btn-sm">Explore Features</a>
                             </div>
                         </div>
                     </div>
