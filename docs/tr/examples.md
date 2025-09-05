@@ -52,13 +52,17 @@ public async Task<ActionResult<IEnumerable<DocumentChunk>>> SearchDocuments(
 }</code></pre>
                     </div>
 
-                    <h3>RAG Cevap Üretimi</h3>
+                    <h3>RAG Cevap Üretimi (Konuşma Geçmişi ile)</h3>
                     <div class="code-example">
-                        <pre><code class="language-csharp">[HttpPost("chat")]
-public async Task<ActionResult<RagResponse>> ChatWithDocuments(
-    [FromBody] string query,
-    [FromQuery] int maxResults = 5)
+                        <pre><code class="language-csharp">[HttpPost("search")]
+public async Task<ActionResult<object>> Search([FromBody] SearchRequest request)
 {
+    string query = request?.Query ?? string.Empty;
+    int maxResults = request?.MaxResults ?? 5;
+
+    if (string.IsNullOrWhiteSpace(query))
+        return BadRequest("Query cannot be empty");
+
     try
     {
         var response = await _documentSearchService.GenerateRagAnswerAsync(query, maxResults);
@@ -66,8 +70,18 @@ public async Task<ActionResult<RagResponse>> ChatWithDocuments(
     }
     catch (Exception ex)
     {
-        return BadRequest(ex.Message);
+        return StatusCode(500, $"Internal server error: {ex.Message}");
     }
+}
+
+public class SearchRequest
+{
+    [Required]
+    public string Query { get; set; } = string.Empty;
+
+    [Range(1, 50)]
+    [DefaultValue(5)]
+    public int MaxResults { get; set; } = 5;
 }</code></pre>
                     </div>
                 </div>
@@ -565,6 +579,114 @@ services.AddSmartRag(configuration, options =>
     "ApiKey": "your-qdrant-api-key"
   }
 }</code></pre>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Conversation History Examples Section -->
+        <section class="content-section">
+            <div class="row">
+                <div class="col-lg-8 mx-auto">
+                    <h2>Konuşma Geçmişi Örnekleri</h2>
+                    <p>Gerçek SmartRAG implementasyonuna dayalı oturum tabanlı konuşma yönetimi örnekleri.</p>
+                    
+                    <h3>SearchController (Gerçek Implementasyon)</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">[ApiController]
+[Route("api/[controller]")]
+[Produces("application/json")]
+[ProducesResponseType(StatusCodes.Status500InternalServerError)]
+public class SearchController(IDocumentSearchService documentSearchService) : ControllerBase
+{
+    /// <summary>
+    /// Search documents using RAG (Retrieval-Augmented Generation) with conversation history
+    /// </summary>
+    [HttpPost("search")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<object>> Search([FromBody] Contracts.SearchRequest request)
+    {
+        string? query = request?.Query;
+        int maxResults = request?.MaxResults ?? 5;
+        string sessionId = request?.SessionId ?? Guid.NewGuid().ToString();
+
+        if (string.IsNullOrWhiteSpace(query))
+            return BadRequest("Query cannot be empty");
+
+        try
+        {
+            var response = await documentSearchService.GenerateRagAnswerAsync(query, sessionId, maxResults);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Internal server error: {ex.Message}");
+        }
+    }
+}</code></pre>
+                    </div>
+
+                    <h3>Takip Soruları (Gerçek Kullanım)</h3>
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// İlk soru
+var firstRequest = new SearchRequest
+{
+    Query = "Makine öğrenmesi nedir?",
+    SessionId = "session-123",
+    MaxResults = 5
+};
+
+// Takip sorusu (önceki bağlamı hatırlar)
+var followUpRequest = new SearchRequest
+{
+    Query = "Denetimli öğrenme hakkında daha fazla detay verebilir misin?",
+    SessionId = "session-123",  // Aynı oturum kimliği
+    MaxResults = 5
+};
+
+// Başka bir takip sorusu
+var anotherRequest = new SearchRequest
+{
+    Query = "Derin öğrenmenin avantajları nelerdir?",
+    SessionId = "session-123",  // Aynı oturum kimliği
+    MaxResults = 5
+};</code></pre>
+                    </div>
+
+                    <h3>Frontend Entegrasyon Örneği (Gerçek API)</h3>
+                    <div class="code-example">
+                        <pre><code class="language-javascript">// JavaScript frontend örneği - Gerçek API endpoint'i
+class SmartRAGClient {
+    constructor(apiBaseUrl) {
+        this.apiBaseUrl = apiBaseUrl;
+        this.sessionId = null;
+    }
+    
+    async askQuestion(question) {
+        if (!this.sessionId) {
+            this.sessionId = `session-${Date.now()}`;
+        }
+        
+        const response = await fetch(`${this.apiBaseUrl}/api/search/search`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                query: question,
+                sessionId: this.sessionId,
+                maxResults: 5
+            })
+        });
+        
+        return await response.json();
+    }
+}
+
+// Kullanım
+const client = new SmartRAGClient('https://api.example.com');
+await client.askQuestion("Yapay zeka nedir?");
+await client.askQuestion("Makine öğrenmesini açıklayabilir misin?");  // Önceki bağlamı hatırlar
+await client.askQuestion("Sinir ağları nedir?");  // Konuşmayı sürdürür</code></pre>
                     </div>
                 </div>
             </div>

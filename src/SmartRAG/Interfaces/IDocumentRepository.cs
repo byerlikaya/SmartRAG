@@ -40,5 +40,25 @@ namespace SmartRAG.Interfaces
         /// Searches documents using query string
         /// </summary>
         Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = 5);
+
+        /// <summary>
+        /// Gets conversation history for a session
+        /// </summary>
+        Task<string> GetConversationHistoryAsync(string sessionId);
+
+        /// <summary>
+        /// Adds a question-answer pair to conversation history
+        /// </summary>
+        Task AddToConversationAsync(string sessionId, string question, string answer);
+
+        /// <summary>
+        /// Clears conversation history for a session
+        /// </summary>
+        Task ClearConversationAsync(string sessionId);
+
+        /// <summary>
+        /// Checks if a session exists
+        /// </summary>
+        Task<bool> SessionExistsAsync(string sessionId);
     }
 }

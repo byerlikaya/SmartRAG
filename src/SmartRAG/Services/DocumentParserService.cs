@@ -24,24 +24,6 @@ namespace SmartRAG.Services
     /// </summary>
     public class DocumentParserService : IDocumentParserService
     {
-
-        private readonly ILogger<DocumentParserService> _logger;
-
-        public DocumentParserService(
-            IOptions<SmartRagOptions> options,
-            ILogger<DocumentParserService> logger)
-        {
-            _options = options.Value;
-            _logger = logger;
-        }
-        /// <summary>
-        /// Static constructor to set EPPlus license once for the application
-        /// </summary>
-        static DocumentParserService()
-        {
-            // EPPlus 6.x doesn't require explicit license setting for non-commercial use
-            // License is automatically set to NonCommercial
-        }
         #region Constants
 
         // Content validation constants
@@ -87,6 +69,28 @@ namespace SmartRAG.Services
         #region Fields
 
         private readonly SmartRagOptions _options;
+        private readonly ILogger<DocumentParserService> _logger;
+
+        #endregion
+
+        #region Constructor
+
+        /// <summary>
+        /// Static constructor to set EPPlus license once for the application
+        /// </summary>
+        static DocumentParserService()
+        {
+            // EPPlus 6.x doesn't require explicit license setting for non-commercial use
+            // License is automatically set to NonCommercial
+        }
+
+        public DocumentParserService(
+            IOptions<SmartRagOptions> options,
+            ILogger<DocumentParserService> logger)
+        {
+            _options = options.Value;
+            _logger = logger;
+        }
 
         #endregion
 
