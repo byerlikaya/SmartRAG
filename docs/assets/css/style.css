@@ -104,6 +104,38 @@ body {
     max-width: 100%;
 }
 
+.navbar-nav {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.navbar-nav .nav-item {
+    flex-shrink: 0;
+}
+
+.navbar .container-fluid {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.navbar .container-fluid::-webkit-scrollbar {
+    height: 2px;
+}
+
+.navbar .container-fluid::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.navbar .container-fluid::-webkit-scrollbar-thumb {
+    background: var(--gray-300);
+    border-radius: 1px;
+}
+
 .navbar-brand {
     font-weight: 700;
     font-size: 1.5rem;
@@ -125,11 +157,12 @@ body {
 .navbar-nav .nav-link {
     color: var(--gray-600) !important;
     font-weight: 500;
-    padding: 0.5rem 1rem !important;
-    margin: 0 0.25rem;
+    padding: 0.5rem 0.75rem !important;
+    margin: 0 0.125rem;
     border-radius: 0.5rem;
     transition: var(--transition);
-    font-size: 0.9rem;
+    font-size: 0.85rem;
+    white-space: nowrap;
 }
 
 .navbar-nav .nav-link:hover {
@@ -148,16 +181,17 @@ body {
 /* Language Buttons */
 .language-btn {
     color: var(--gray-600) !important;
-        font-size: 0.8rem !important;
+    font-size: 0.75rem !important;
     font-weight: 500 !important;
-    padding: 0.25rem 0.5rem !important;
-    margin: 0 0.1rem !important;
-    border-radius: 0.5rem !important;
+    padding: 0.2rem 0.4rem !important;
+    margin: 0 0.05rem !important;
+    border-radius: 0.4rem !important;
     transition: var(--transition) !important;
     text-decoration: none !important;
     border: 1px solid var(--gray-200) !important;
     background-color: var(--gray-50) !important;
     display: inline-block !important;
+    white-space: nowrap !important;
 }
 
 .language-btn:hover {
