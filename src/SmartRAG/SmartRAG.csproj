@@ -83,6 +83,10 @@
     <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
     <PackageReference Include="itext" Version="9.3.0" />
     <PackageReference Include="EPPlus" Version="8.1.0" />
+    
+    <!-- OCR and Image Processing -->
+    <PackageReference Include="Tesseract" Version="5.2.0" />
+    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.6" />
   </ItemGroup>
 
   <!-- Conditional Package References for .NET Standard 2.1 -->
