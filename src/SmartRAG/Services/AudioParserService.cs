@@ -245,6 +245,9 @@ namespace SmartRAG.Services
                 // Reset stream position
                 audioStream.Position = 0;
 
+                // Log audio stream info
+                _logger.LogDebug("Audio stream length: {Length} bytes", audioStream.Length);
+
                 // Create audio configuration with push stream
                 var pushStream = AudioInputStream.CreatePushStream();
                 var audioConfig = AudioConfig.FromStreamInput(pushStream);
@@ -255,14 +258,40 @@ namespace SmartRAG.Services
                     // Push audio data to the stream
                     var buffer = new byte[4096];
                     int bytesRead;
+                    int totalBytesRead = 0;
                     while ((bytesRead = await audioStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
                     {
                         pushStream.Write(buffer, bytesRead);
+                        totalBytesRead += bytesRead;
                     }
                     pushStream.Close();
 
-                    // Perform recognition
-                    var recognitionResult = await speechRecognizer.RecognizeOnceAsync();
+                    _logger.LogDebug("Pushed {TotalBytes} bytes to Azure Speech Services", totalBytesRead);
+
+                    // Perform recognition with multiple attempts
+                    SpeechRecognitionResult recognitionResult = null;
+                    int attempts = 0;
+                    const int maxAttempts = 3;
+
+                    while (attempts < maxAttempts)
+                    {
+                        attempts++;
+                        _logger.LogDebug("Recognition attempt {Attempt}/{MaxAttempts}", attempts, maxAttempts);
+                        
+                        recognitionResult = await speechRecognizer.RecognizeOnceAsync();
+                        
+                        if (recognitionResult.Reason == ResultReason.RecognizedSpeech && !string.IsNullOrWhiteSpace(recognitionResult.Text))
+                        {
+                            _logger.LogDebug("Successful recognition on attempt {Attempt}", attempts);
+                            break;
+                        }
+                        
+                        if (attempts < maxAttempts)
+                        {
+                            _logger.LogDebug("Recognition attempt {Attempt} failed, retrying...", attempts);
+                            await Task.Delay(1000); // Wait 1 second before retry
+                        }
+                    }
 
                 // Debug logging for recognition result
                 _logger.LogDebug("Recognition result reason: {Reason}", recognitionResult.Reason);
