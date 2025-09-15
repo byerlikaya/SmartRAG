@@ -64,5 +64,10 @@ namespace SmartRAG.Models
         /// List of fallback AI providers to try when primary provider fails
         /// </summary>
         public List<AIProvider> FallbackProviders { get; set; } = new List<AIProvider>();
+
+        /// <summary>
+        /// Azure Speech Services configuration for audio transcription
+        /// </summary>
+        public AzureSpeechConfig AzureSpeechConfig { get; set; }
     }
 }

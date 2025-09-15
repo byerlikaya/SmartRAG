@@ -67,7 +67,8 @@ namespace SmartRAG.Services
             _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             
-            InitializeSpeechConfig();
+            // Lazy initialization - only initialize when actually needed
+            // InitializeSpeechConfig();
         }
 
         #endregion
@@ -190,8 +191,11 @@ namespace SmartRAG.Services
         /// </summary>
         private void ConfigureSpeechService(AudioTranscriptionOptions options)
         {
+            // Lazy initialization - initialize when first needed
             if (_speechConfig == null)
-                throw new InvalidOperationException("Speech service not initialized");
+            {
+                InitializeSpeechConfig();
+            }
 
             _speechConfig.SpeechRecognitionLanguage = options.Language;
             
@@ -314,10 +318,19 @@ namespace SmartRAG.Services
         /// </summary>
         private string GetAzureSpeechKey()
         {
-            // This would typically come from configuration
-            // For now, we'll use a placeholder that should be configured
-            return Environment.GetEnvironmentVariable("AZURE_SPEECH_KEY") ?? 
-                   throw new InvalidOperationException("Azure Speech Service key not configured");
+            // Try configuration first, then environment variables
+            if (_options.AzureSpeechConfig != null && !string.IsNullOrEmpty(_options.AzureSpeechConfig.SubscriptionKey))
+            {
+                return _options.AzureSpeechConfig.SubscriptionKey;
+            }
+            
+            var envKey = Environment.GetEnvironmentVariable("AZURE_SPEECH_KEY");
+            if (!string.IsNullOrEmpty(envKey))
+            {
+                return envKey;
+            }
+            
+            throw new InvalidOperationException("Azure Speech Service key not configured");
         }
 
         /// <summary>
@@ -325,7 +338,18 @@ namespace SmartRAG.Services
         /// </summary>
         private string GetAzureSpeechRegion()
         {
-            return Environment.GetEnvironmentVariable("AZURE_SPEECH_REGION") ?? DefaultRegion;
+            if (_options.AzureSpeechConfig != null && !string.IsNullOrEmpty(_options.AzureSpeechConfig.Region))
+            {
+                return _options.AzureSpeechConfig.Region;
+            }
+            
+            var envRegion = Environment.GetEnvironmentVariable("AZURE_SPEECH_REGION");
+            if (!string.IsNullOrEmpty(envRegion))
+            {
+                return envRegion;
+            }
+            
+            return DefaultRegion;
         }
 
         #endregion
