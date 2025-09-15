@@ -88,7 +88,7 @@ namespace SmartRAG.Services
 
             var options = new AudioTranscriptionOptions
             {
-                Language = "en-US", // Try English first for testing
+                Language = "auto", // Auto-detect language
                 EnableDetailedResults = true,
                 MinConfidenceThreshold = MinConfidenceThreshold
             };
@@ -264,6 +264,19 @@ namespace SmartRAG.Services
 
                 _logger.LogDebug("Created temporary audio file: {TempFile}", tempFilePath);
 
+                // Check file format and add debug info
+                var fileInfo = new FileInfo(tempFilePath);
+                _logger.LogDebug("Audio file info: {Size} bytes, Extension: {Extension}", fileInfo.Length, fileInfo.Extension);
+                
+                // Read first few bytes to check format
+                var headerBytes = new byte[12];
+                using (var fs = File.OpenRead(tempFilePath))
+                {
+                    fs.Read(headerBytes, 0, 12);
+                }
+                var headerHex = BitConverter.ToString(headerBytes);
+                _logger.LogDebug("Audio header (first 12 bytes): {Header}", headerHex);
+
                 // Use Push Audio Stream for better format support (supports MP3, M4A, etc.)
                 using (var pushStream = AudioInputStream.CreatePushStream())
                 {
@@ -306,9 +319,18 @@ namespace SmartRAG.Services
                         else if (recognitionResult.Reason == ResultReason.NoMatch)
                         {
                             ServiceLogMessages.LogAudioNoMatch(_logger, null);
-                            result.Text = string.Empty;
-                            result.Confidence = 0;
-                            _logger.LogWarning("No speech recognized in audio file");
+                            
+                            // Try multiple languages if recognition failed
+                            if (string.IsNullOrEmpty(result.Text))
+                            {
+                                await TryMultipleLanguages(speechRecognizer, result, options);
+                            }
+                            else
+                            {
+                                result.Text = string.Empty;
+                                result.Confidence = 0;
+                                _logger.LogWarning("No speech recognized in audio file");
+                            }
                         }
                         else if (recognitionResult.Reason == ResultReason.Canceled)
                         {
@@ -350,6 +372,70 @@ namespace SmartRAG.Services
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Tries multiple languages for audio recognition
+        /// </summary>
+        private async Task TryMultipleLanguages(SpeechRecognizer speechRecognizer, AudioTranscriptionResult result, AudioTranscriptionOptions options)
+        {
+            // Define common languages to try (prioritize Turkish and English)
+            var languagesToTry = new[]
+            {
+                "tr-TR", // Turkish
+                "en-US", // English
+                "de-DE", // German
+                "fr-FR", // French
+                "es-ES", // Spanish
+                "it-IT", // Italian
+                "pt-BR", // Portuguese
+                "ru-RU", // Russian
+                "ja-JP", // Japanese
+                "ko-KR", // Korean
+                "zh-CN", // Chinese
+                "ar-SA", // Arabic
+                "hi-IN"  // Hindi
+            };
+
+            _logger.LogDebug("Trying multiple languages for audio recognition...");
+
+            // Get the original audio stream data
+            var originalLanguage = _speechConfig.SpeechRecognitionLanguage;
+            
+            foreach (var language in languagesToTry)
+            {
+                try
+                {
+                    _logger.LogDebug("Trying language: {Language}", language);
+                    _speechConfig.SpeechRecognitionLanguage = language;
+                    
+                    // Try recognition with current language
+                    var retryResult = await speechRecognizer.RecognizeOnceAsync();
+                    
+                    if (retryResult.Reason == ResultReason.RecognizedSpeech && !string.IsNullOrEmpty(retryResult.Text))
+                    {
+                        result.Text = retryResult.Text;
+                        result.Confidence = 0.8;
+                        result.Language = language;
+                        
+                        _logger.LogDebug("Recognition successful with {Language}: '{Text}'", language, result.Text);
+                        return; // Success! Exit the loop
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug("Language {Language} failed: {Error}", language, ex.Message);
+                    // Continue to next language
+                }
+            }
+
+            // Restore original language
+            _speechConfig.SpeechRecognitionLanguage = originalLanguage;
+
+            // If all languages failed
+            result.Text = string.Empty;
+            result.Confidence = 0;
+            _logger.LogWarning("All language attempts failed - no speech recognized");
         }
 
         /// <summary>
