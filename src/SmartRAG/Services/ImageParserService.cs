@@ -1,21 +1,20 @@
 using Microsoft.Extensions.Logging;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Processing;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Tesseract;
+using SkiaSharp;
 
 namespace SmartRAG.Services
 {
     /// <summary>
     /// Implementation of image parsing and OCR service using OCR engine
     /// </summary>
-    public class ImageParserService(ILogger<ImageParserService> logger) : IImageParserService, IDisposable
+    public class ImageParserService : IImageParserService, IDisposable
     {
         #region Constants
 
@@ -54,8 +53,19 @@ namespace SmartRAG.Services
 
         #region Fields
 
-        private readonly string _ocrEngineDataPath = FindOcrEngineDataPath(logger);
+        private readonly ILogger<ImageParserService> _logger;
+        private readonly string _ocrEngineDataPath;
         private bool _disposed = false;
+
+        #endregion
+
+        #region Constructor
+
+        public ImageParserService(ILogger<ImageParserService> logger)
+        {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _ocrEngineDataPath = FindOcrEngineDataPath(_logger);
+        }
 
         #endregion
 
@@ -64,12 +74,12 @@ namespace SmartRAG.Services
         /// <summary>
         /// Gets the list of supported image file extensions
         /// </summary>
-        public IReadOnlyList<string> GetSupportedFileTypes() => SupportedExtensions;
+        public IEnumerable<string> GetSupportedImageExtensions() => SupportedExtensions;
 
         /// <summary>
         /// Gets the list of supported image content types
         /// </summary>
-        public IReadOnlyList<string> GetSupportedContentTypes() => SupportedContentTypes;
+        public IEnumerable<string> GetSupportedImageContentTypes() => SupportedContentTypes;
 
         #endregion
 
@@ -78,7 +88,7 @@ namespace SmartRAG.Services
         /// <summary>
         /// Parses an image stream and extracts text using OCR
         /// </summary>
-        public async Task<string> ParseImageAsync(Stream imageStream, string language = DefaultLanguage)
+        public async Task<string> ExtractTextFromImageAsync(Stream imageStream, string language = DefaultLanguage)
         {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(ImageParserService));
@@ -112,28 +122,29 @@ namespace SmartRAG.Services
             try
             {
                 // Preprocess the image for better OCR results
-                using var preprocessedStream = await PreprocessImageAsync(imageStream);
-                
-                // Reset stream position
-                preprocessedStream.Position = 0;
-
-                // Perform OCR
-                var extractedText = await PerformOcrAsync(preprocessedStream, language);
-                
-                var processingTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
-                
-                return new OcrResult
+                using (var preprocessedStream = await PreprocessImageAsync(imageStream))
                 {
-                    Text = extractedText.Text,
-                    Confidence = extractedText.Confidence,
-                    ProcessingTimeMs = (long)processingTime,
-                    WordCount = CountWords(extractedText.Text),
-                    Language = language
-                };
+                    // Reset stream position
+                    preprocessedStream.Position = 0;
+
+                    // Perform OCR
+                    var extractedText = await PerformOcrAsync(preprocessedStream, language);
+                    
+                    var processingTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
+                
+                    return new OcrResult
+                    {
+                        Text = extractedText.Text,
+                        Confidence = extractedText.Confidence,
+                        ProcessingTimeMs = (long)processingTime,
+                        WordCount = CountWords(extractedText.Text),
+                        Language = language
+                    };
+                }
             }
             catch (Exception ex)
             {
-                ServiceLogMessages.LogImageOcrFailed(logger, ex);
+                ServiceLogMessages.LogImageOcrFailed(_logger, ex);
                 
                 return new OcrResult
                 {
@@ -155,7 +166,7 @@ namespace SmartRAG.Services
             {
                 // For now, return basic table extraction
                 // Advanced table detection can be implemented later
-                var text = await ParseImageAsync(imageStream, language);
+                var text = await ExtractTextFromImageAsync(imageStream, language);
                 
                 var tables = new List<ExtractedTable>();
                 
@@ -176,7 +187,7 @@ namespace SmartRAG.Services
             }
             catch (Exception ex)
             {
-                ServiceLogMessages.LogTableDetectionFailed(logger, ex);
+                ServiceLogMessages.LogTableDetectionFailed(_logger, ex);
                 return new List<ExtractedTable>();
             }
         }
@@ -213,43 +224,70 @@ namespace SmartRAG.Services
         {
             try
             {
-                var outputStream = new MemoryStream();
+                ServiceLogMessages.LogImageProcessingStarted(_logger, (int)imageStream.Length, null);
+
+                // Convert WebP to PNG for Tesseract compatibility
+                var convertedStream = await ConvertToPngIfNeededAsync(imageStream);
                 
-                using (var image = await Image.LoadAsync(imageStream))
-                {
-                    // Resize image if too small or too large
-                    if (image.Width < MinImageSize || image.Height < MinImageSize)
-                    {
-                        var scaleFactor = Math.Max((float)MinImageSize / image.Width, (float)MinImageSize / image.Height);
-                        var newWidth = (int)(image.Width * scaleFactor);
-                        var newHeight = (int)(image.Height * scaleFactor);
-                        
-                        image.Mutate(x => x.Resize(newWidth, newHeight));
-                    }
-                    else if (image.Width > MaxImageSize || image.Height > MaxImageSize)
-                    {
-                        var scaleFactor = Math.Min((float)MaxImageSize / image.Width, (float)MaxImageSize / image.Height);
-                        var newWidth = (int)(image.Width * scaleFactor);
-                        var newHeight = (int)(image.Height * scaleFactor);
-                        
-                        image.Mutate(x => x.Resize(newWidth, newHeight));
-                    }
-
-                    // Convert to grayscale for better OCR
-                    image.Mutate(x => x.Grayscale());
-
-                    // Save processed image
-                    await image.SaveAsPngAsync(outputStream);
-                }
-
-                outputStream.Position = 0;
-                return outputStream;
+                ServiceLogMessages.LogImageProcessingCompleted(_logger, (int)imageStream.Length, (int)convertedStream.Length, null);
+                return convertedStream;
             }
             catch (Exception ex)
             {
-                ServiceLogMessages.LogImageProcessingFailed(logger, ex);
+                ServiceLogMessages.LogImageProcessingFailed(_logger, ex);
                 
                 // Return original stream if preprocessing fails
+                imageStream.Position = 0;
+                return imageStream;
+            }
+        }
+
+        /// <summary>
+        /// Converts WebP images to PNG format for Tesseract compatibility using SkiaSharp
+        /// </summary>
+        private async Task<Stream> ConvertToPngIfNeededAsync(Stream imageStream)
+        {
+            try
+            {
+                imageStream.Position = 0;
+                
+                // Try to detect if it's a WebP image by reading the header
+                var header = new byte[12];
+                await imageStream.ReadAsync(header, 0, header.Length);
+                imageStream.Position = 0;
+
+                // Check for WebP signature (RIFF....WEBP)
+                bool isWebP = header.Length >= 12 && 
+                             header[0] == 0x52 && header[1] == 0x49 && header[2] == 0x46 && header[3] == 0x46 && // RIFF
+                             header[8] == 0x57 && header[9] == 0x45 && header[10] == 0x42 && header[11] == 0x50; // WEBP
+
+                if (!isWebP)
+                {
+                    // Not WebP, return original stream
+                    return imageStream;
+                }
+
+                // Convert WebP to PNG using SkiaSharp
+                using (var skImage = SKImage.FromEncodedData(imageStream))
+                {
+                    if (skImage == null)
+                    {
+                        _logger.LogWarning("Failed to decode WebP image with SkiaSharp");
+                        imageStream.Position = 0;
+                        return imageStream;
+                    }
+
+                    var pngData = skImage.Encode(SKEncodedImageFormat.Png, 100);
+                    var pngStream = new MemoryStream(pngData.ToArray());
+                    pngStream.Position = 0;
+                    
+                    _logger.LogInformation("Successfully converted WebP to PNG using SkiaSharp");
+                    return pngStream;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to convert WebP image format with SkiaSharp, using original stream");
                 imageStream.Position = 0;
                 return imageStream;
             }
@@ -268,30 +306,29 @@ namespace SmartRAG.Services
             {
                 try
                 {
-                    if (string.IsNullOrEmpty(_ocrEngineDataPath))
+                    // Use current directory for tessdata if no path is provided
+                    var tessdataPath = string.IsNullOrEmpty(_ocrEngineDataPath) ? "." : _ocrEngineDataPath;
+                    
+                    using (var engine = new TesseractEngine(tessdataPath, language, EngineMode.Default))
                     {
-                        ServiceLogMessages.LogOcrDataPathNotFound(logger, "OCR engine data path", null);
-                        return (string.Empty, 0f);
+                        // Configure OCR settings
+                        engine.SetVariable("tessedit_char_whitelist", OcrCharacterWhitelist);
+                        
+                        using (var img = Pix.LoadFromMemory(ReadStreamToByteArray(imageStream)))
+                        using (var page = engine.Process(img))
+                        {
+                            var text = page.GetText();
+                            var confidence = page.GetMeanConfidence();
+                            
+                            ServiceLogMessages.LogImageOcrSuccess(_logger, text.Length, null);
+                            
+                            return (text?.Trim() ?? string.Empty, confidence);
+                        }
                     }
-
-                    using var engine = new TesseractEngine(_ocrEngineDataPath, language, EngineMode.Default);
-                    
-                    // Configure OCR settings
-                    engine.SetVariable("tessedit_char_whitelist", OcrCharacterWhitelist);
-                    
-                    using var img = Pix.LoadFromMemory(ReadStreamToByteArray(imageStream));
-                    using var page = engine.Process(img);
-                    
-                    var text = page.GetText();
-                    var confidence = page.GetMeanConfidence();
-                    
-                    ServiceLogMessages.LogImageOcrSuccess(logger, text.Length, null);
-                    
-                    return (text?.Trim() ?? string.Empty, confidence);
                 }
                 catch (Exception ex)
                 {
-                    ServiceLogMessages.LogImageOcrFailed(logger, ex);
+                    ServiceLogMessages.LogImageOcrFailed(_logger, ex);
                     return (string.Empty, 0f);
                 }
             });
@@ -300,10 +337,11 @@ namespace SmartRAG.Services
         /// <summary>
         /// Finds the OCR engine data path
         /// </summary>
-        private static string FindOcrEngineDataPath(ILogger logger)
+        private static string FindOcrEngineDataPath(ILogger _logger)
         {
             var possiblePaths = new[]
             {
+                // Local tessdata folder (from Content)
                 Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tessdata"),
                 Path.Combine(Environment.CurrentDirectory, "tessdata"),
                 Path.Combine(Path.GetTempPath(), "tessdata"),
@@ -316,12 +354,35 @@ namespace SmartRAG.Services
             {
                 if (Directory.Exists(path))
                 {
-                    ServiceLogMessages.LogOcrDataPathFound(logger, path, null);
-                    return path;
+                    // Check if eng.traineddata exists in this path
+                    var engTrainedDataPath = Path.Combine(path, "eng.traineddata");
+                    if (File.Exists(engTrainedDataPath))
+                    {
+                        ServiceLogMessages.LogOcrDataPathFound(_logger, path, null);
+                        return path;
+                    }
                 }
             }
 
-            return string.Empty;
+            // Fallback: Try to find tessdata in any subdirectory
+            var baseDir = AppDomain.CurrentDomain.BaseDirectory;
+            var tessdataDirs = Directory.GetDirectories(baseDir, "*tessdata*", SearchOption.AllDirectories);
+            
+            foreach (var dir in tessdataDirs)
+            {
+                if (Directory.Exists(dir))
+                {
+                    var engTrainedDataPath = Path.Combine(dir, "eng.traineddata");
+                    if (File.Exists(engTrainedDataPath))
+                    {
+                        ServiceLogMessages.LogOcrDataPathFound(_logger, dir, null);
+                        return dir;
+                    }
+                }
+            }
+
+            ServiceLogMessages.LogOcrDataPathNotFound(_logger, "No tessdata with eng.traineddata found, using current directory", null);
+            return ".";
         }
 
         /// <summary>
@@ -329,9 +390,11 @@ namespace SmartRAG.Services
         /// </summary>
         private static byte[] ReadStreamToByteArray(Stream stream)
         {
-            using var memoryStream = new MemoryStream();
-            stream.CopyTo(memoryStream);
-            return memoryStream.ToArray();
+            using (var memoryStream = new MemoryStream())
+            {
+                stream.CopyTo(memoryStream);
+                return memoryStream.ToArray();
+            }
         }
 
         /// <summary>

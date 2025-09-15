@@ -86,7 +86,7 @@
     
     <!-- OCR and Image Processing -->
     <PackageReference Include="Tesseract" Version="5.2.0" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
+    <PackageReference Include="SkiaSharp" Version="2.88.8" />
   </ItemGroup>
 
   <!-- Conditional Package References for .NET Standard 2.1 -->
@@ -104,6 +104,13 @@
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="/" />
     <!-- <None Include="icon.png" Pack="true" PackagePath="/" /> -->
+  </ItemGroup>
+
+  <!-- Tessdata Files -->
+  <ItemGroup>
+    <Content Include="tessdata\eng.traineddata">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>

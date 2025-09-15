@@ -1,17 +1,17 @@
 namespace SmartRAG.Models
 {
     /// <summary>
-    /// Represents the result of OCR processing
+    /// Represents the result of an OCR operation
     /// </summary>
     public class OcrResult
     {
         /// <summary>
-        /// Extracted text from the image
+        /// The extracted text
         /// </summary>
         public string Text { get; set; } = string.Empty;
 
         /// <summary>
-        /// Confidence score of the OCR result (0-1)
+        /// Confidence score of the OCR result
         /// </summary>
         public float Confidence { get; set; }
 
@@ -21,7 +21,7 @@ namespace SmartRAG.Models
         public long ProcessingTimeMs { get; set; }
 
         /// <summary>
-        /// Number of words in the extracted text
+        /// Number of words extracted
         /// </summary>
         public int WordCount { get; set; }
 
@@ -29,15 +29,5 @@ namespace SmartRAG.Models
         /// Language used for OCR
         /// </summary>
         public string Language { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Indicates if the OCR result is successful
-        /// </summary>
-        public bool IsSuccessful => !string.IsNullOrWhiteSpace(Text) && Confidence > 0;
-
-        /// <summary>
-        /// Indicates if the confidence is acceptable
-        /// </summary>
-        public bool IsConfidenceAcceptable => Confidence >= 0.7f;
     }
 }

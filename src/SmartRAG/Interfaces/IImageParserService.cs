@@ -1,6 +1,7 @@
-using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Threading.Tasks;
+using SmartRAG.Models;
 
 namespace SmartRAG.Interfaces
 {
@@ -65,67 +66,5 @@ namespace SmartRAG.Interfaces
         Task<Stream> PreprocessImageAsync(Stream imageStream);
 
         #endregion
-    }
-
-    /// <summary>
-    /// Result of OCR operation with confidence scores
-    /// </summary>
-    public class OcrResult
-    {
-        /// <summary>
-        /// The extracted text
-        /// </summary>
-        public string Text { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Average confidence score (0-100)
-        /// </summary>
-        public float Confidence { get; set; }
-
-        /// <summary>
-        /// Processing time in milliseconds
-        /// </summary>
-        public long ProcessingTimeMs { get; set; }
-
-        /// <summary>
-        /// Number of words detected
-        /// </summary>
-        public int WordCount { get; set; }
-
-        /// <summary>
-        /// Language used for OCR
-        /// </summary>
-        public string Language { get; set; } = string.Empty;
-    }
-
-    /// <summary>
-    /// Represents an extracted table from an image
-    /// </summary>
-    public class ExtractedTable
-    {
-        /// <summary>
-        /// Table content as structured text
-        /// </summary>
-        public string Content { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Number of rows in the table
-        /// </summary>
-        public int RowCount { get; set; }
-
-        /// <summary>
-        /// Number of columns in the table
-        /// </summary>
-        public int ColumnCount { get; set; }
-
-        /// <summary>
-        /// Confidence score for table extraction
-        /// </summary>
-        public float Confidence { get; set; }
-
-        /// <summary>
-        /// Table data as structured rows and columns
-        /// </summary>
-        public List<List<string>> Data { get; set; } = new List<List<string>>();
     }
 }
