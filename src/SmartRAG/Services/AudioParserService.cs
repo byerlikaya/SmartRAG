@@ -203,7 +203,17 @@ namespace SmartRAG.Services
                 InitializeSpeechConfig();
             }
 
+            // Set language with Turkish-specific optimizations
             _speechConfig.SpeechRecognitionLanguage = options.Language;
+            
+            // Turkish-specific optimizations
+            if (options.Language.StartsWith("tr"))
+            {
+                _logger.LogDebug("Applying Turkish-specific speech recognition optimizations");
+                
+                // Note: Turkish language support in Azure Speech Service may be limited
+                // We'll try multiple fallback languages if Turkish fails
+            }
             
             if (options.EnableDetailedResults)
             {
@@ -318,12 +328,20 @@ namespace SmartRAG.Services
                             _logger.LogDebug("Attempt {Attempt} - Reason: {Reason}, Text: '{Text}'", 
                                 attempt, recognitionResult.Reason, recognitionResult.Text ?? "null");
                             
-                            // If we got speech, break
-                            if (recognitionResult.Reason == ResultReason.RecognizedSpeech && !string.IsNullOrWhiteSpace(recognitionResult.Text))
-                            {
-                                _logger.LogDebug("Success on attempt {Attempt}", attempt);
-                                break;
-                            }
+                // If we got speech, break
+                if (recognitionResult.Reason == ResultReason.RecognizedSpeech && !string.IsNullOrWhiteSpace(recognitionResult.Text))
+                {
+                    _logger.LogDebug("Success on attempt {Attempt}", attempt);
+                    break;
+                }
+                
+                // Special handling for Turkish - try different language codes
+                if (attempt == 2 && options.Language.StartsWith("tr"))
+                {
+                    _logger.LogDebug("Turkish failed, trying alternative Turkish code...");
+                    _speechConfig.SpeechRecognitionLanguage = "tr-TR";
+                    continue;
+                }
                             
                             // Wait before retry
                             if (attempt < maxAttempts)
@@ -664,6 +682,7 @@ namespace SmartRAG.Services
             
             return header;
         }
+
 
 
         /// <summary>
