@@ -34,6 +34,13 @@ namespace SmartRAG.Services
         private const int DefaultDynamicSearchRange = 500;
         private const int DynamicSearchRangeDivisor = 10;
         private const int UltimateSearchRange = 1000;
+        
+        // Regex pattern constants
+        private const string BinaryCharactersPattern = @"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]";
+        
+        // String format constants
+        private const string WorksheetFormat = "Worksheet: {0}";
+        private const string EmptyWorksheetFormat = "Worksheet: {0} (empty)";
 
         // File extension constants
         private static readonly string[] WordExtensions = new string[] { ".docx", ".doc" };
@@ -304,7 +311,7 @@ namespace SmartRAG.Services
                     {
                         if (worksheet.Dimension != null)
                         {
-                            textBuilder.AppendLine(string.Format(System.Globalization.CultureInfo.InvariantCulture, "Worksheet: {0}", worksheet.Name));
+                            textBuilder.AppendLine(string.Format(System.Globalization.CultureInfo.InvariantCulture, WorksheetFormat, worksheet.Name));
 
                             var rowCount = worksheet.Dimension.Rows;
                             var colCount = worksheet.Dimension.Columns;
@@ -357,7 +364,7 @@ namespace SmartRAG.Services
                         }
                         else
                         {
-                            textBuilder.AppendLine(string.Format(System.Globalization.CultureInfo.InvariantCulture, "Worksheet: {0} (empty)", worksheet.Name));
+                            textBuilder.AppendLine(string.Format(System.Globalization.CultureInfo.InvariantCulture, EmptyWorksheetFormat, worksheet.Name));
                         }
                     }
 
