@@ -40,6 +40,7 @@ namespace SmartRAG.Services
         private static readonly string[] PdfExtensions = new string[] { ".pdf" };
         private static readonly string[] ExcelExtensions = new string[] { ".xlsx", ".xls" };
         private static readonly string[] TextExtensions = new string[] { ".txt", ".md", ".json", ".xml", ".csv", ".html", ".htm" };
+        private static readonly string[] ImageExtensions = new string[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp" };
 
         // Content type constants
         private static readonly string[] WordContentTypes = new string[] {
@@ -55,6 +56,10 @@ namespace SmartRAG.Services
     };
 
         private static readonly string[] TextContentTypes = new string[] { "text/", "application/json", "application/xml", "application/csv" };
+        private static readonly string[] ImageContentTypes = new string[] { 
+            "image/jpeg", "image/jpg", "image/png", "image/gif", 
+            "image/bmp", "image/tiff", "image/webp" 
+        };
 
         // Sentence ending constants
         private static readonly char[] SentenceEndings = new char[] { '.', '!', '?', ';' };
@@ -69,6 +74,7 @@ namespace SmartRAG.Services
         #region Fields
 
         private readonly SmartRagOptions _options;
+        private readonly IImageParserService _imageParserService;
         private readonly ILogger<DocumentParserService> _logger;
 
         #endregion
@@ -86,9 +92,11 @@ namespace SmartRAG.Services
 
         public DocumentParserService(
             IOptions<SmartRagOptions> options,
+            IImageParserService imageParserService,
             ILogger<DocumentParserService> logger)
         {
             _options = options.Value;
+            _imageParserService = imageParserService;
             _logger = logger;
         }
 
@@ -122,12 +130,12 @@ namespace SmartRAG.Services
         /// <summary>
         /// Gets supported file types
         /// </summary>
-        public IEnumerable<string> GetSupportedFileTypes() => TextExtensions.Concat(WordExtensions).Concat(PdfExtensions).Concat(ExcelExtensions);
+        public IEnumerable<string> GetSupportedFileTypes() => TextExtensions.Concat(WordExtensions).Concat(PdfExtensions).Concat(ExcelExtensions).Concat(ImageExtensions);
 
         /// <summary>
         /// Gets supported content types
         /// </summary>
-        public IEnumerable<string> GetSupportedContentTypes() => TextContentTypes.Concat(WordContentTypes).Append("application/pdf").Concat(ExcelContentTypes);
+        public IEnumerable<string> GetSupportedContentTypes() => TextContentTypes.Concat(WordContentTypes).Append("application/pdf").Concat(ExcelContentTypes).Concat(ImageContentTypes);
 
         #endregion
 
@@ -194,6 +202,15 @@ namespace SmartRAG.Services
         }
 
         /// <summary>
+        /// Checks if file is an image document
+        /// </summary>
+        private static bool IsImageDocument(string fileName, string contentType)
+        {
+            return ImageExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) ||
+                   ImageContentTypes.Any(ct => contentType.Contains(ct));
+        }
+
+        /// <summary>
         /// Checks if file is text-based
         /// </summary>
         private static bool IsTextBasedFile(string fileName, string contentType)
@@ -205,7 +222,7 @@ namespace SmartRAG.Services
         /// <summary>
         /// Extracts text based on file type
         /// </summary>
-        private static async Task<string> ExtractTextAsync(Stream fileStream, string fileName, string contentType)
+        private async Task<string> ExtractTextAsync(Stream fileStream, string fileName, string contentType)
         {
             if (IsWordDocument(fileName, contentType))
             {
@@ -218,6 +235,10 @@ namespace SmartRAG.Services
             else if (IsExcelDocument(fileName, contentType))
             {
                 return await ParseExcelDocumentAsync(fileStream);
+            }
+            else if (IsImageDocument(fileName, contentType))
+            {
+                return await ParseImageDocumentAsync(fileStream);
             }
             else if (IsTextBasedFile(fileName, contentType))
             {
@@ -902,6 +923,30 @@ namespace SmartRAG.Services
             }
 
             return nextStart;
+        }
+
+        /// <summary>
+        /// Parses image document using OCR and extracts text content
+        /// </summary>
+        private async Task<string> ParseImageDocumentAsync(Stream fileStream)
+        {
+            try
+            {
+                // Use OCR to extract text from image
+                var extractedText = await _imageParserService.ExtractTextFromImageAsync(fileStream);
+                
+                if (string.IsNullOrWhiteSpace(extractedText))
+                {
+                    return string.Empty;
+                }
+
+                return CleanContent(extractedText);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to parse image document with OCR");
+                return string.Empty;
+            }
         }
 
         #endregion
