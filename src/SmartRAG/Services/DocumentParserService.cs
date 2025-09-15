@@ -48,7 +48,7 @@ namespace SmartRAG.Services
         private static readonly string[] ExcelExtensions = new string[] { ".xlsx", ".xls" };
         private static readonly string[] TextExtensions = new string[] { ".txt", ".md", ".json", ".xml", ".csv", ".html", ".htm" };
         private static readonly string[] ImageExtensions = new string[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp" };
-        private static readonly string[] AudioExtensions = new string[] { ".mp3", ".wav", ".m4a", ".aac", ".ogg", ".flac", ".wma" };
+        private static readonly string[] AudioExtensions = new string[] { ".wav", ".mp3", ".m4a", ".flac", ".ogg" };
 
         // Content type constants
         private static readonly string[] WordContentTypes = new string[] {
@@ -69,8 +69,7 @@ namespace SmartRAG.Services
             "image/bmp", "image/tiff", "image/webp" 
         };
         private static readonly string[] AudioContentTypes = new string[] { 
-            "audio/mpeg", "audio/wav", "audio/mp4", "audio/x-m4a", "audio/aac", 
-            "audio/ogg", "audio/flac", "audio/x-ms-wma" 
+            "audio/wav", "audio/mpeg", "audio/mp4", "audio/x-m4a", "audio/flac", "audio/ogg"
         };
 
         // Sentence ending constants
@@ -122,11 +121,11 @@ namespace SmartRAG.Services
         /// <summary>
         /// Parses document content based on file type
         /// </summary>
-        public async Task<SmartRAG.Entities.Document> ParseDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy)
+        public async Task<SmartRAG.Entities.Document> ParseDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy, string language = null)
         {
             try
             {
-                var content = await ExtractTextAsync(fileStream, fileName, contentType);
+                var content = await ExtractTextAsync(fileStream, fileName, contentType, language);
                 var documentId = Guid.NewGuid();
                 var chunks = CreateChunks(content, documentId);
 
@@ -246,7 +245,7 @@ namespace SmartRAG.Services
         /// <summary>
         /// Extracts text based on file type
         /// </summary>
-        private async Task<string> ExtractTextAsync(Stream fileStream, string fileName, string contentType)
+        private async Task<string> ExtractTextAsync(Stream fileStream, string fileName, string contentType, string language = null)
         {
             if (IsWordDocument(fileName, contentType))
             {
@@ -266,7 +265,7 @@ namespace SmartRAG.Services
             }
             else if (IsAudioDocument(fileName, contentType))
             {
-                return await ParseAudioDocumentAsync(fileStream, fileName);
+                return await ParseAudioDocumentAsync(fileStream, fileName, language);
             }
             else if (IsTextBasedFile(fileName, contentType))
             {
@@ -978,14 +977,63 @@ namespace SmartRAG.Services
         }
 
         /// <summary>
+        /// Hybrid language detection system for audio files
+        /// </summary>
+        private string DetectAudioLanguage(string apiLanguage, string fileName)
+        {
+            // Priority 1: API parameter (user specified)
+            if (!string.IsNullOrEmpty(apiLanguage))
+            {
+                return apiLanguage;
+            }
+
+            // Priority 2: Filename analysis
+            var fileNameLower = fileName.ToLowerInvariant();
+            
+            // Language keywords in filename
+            if (fileNameLower.Contains("turkish") || fileNameLower.Contains("turkce") || fileNameLower.Contains("tr"))
+                return "tr-TR";
+            if (fileNameLower.Contains("english") || fileNameLower.Contains("ingilizce") || fileNameLower.Contains("en"))
+                return "en-US";
+            if (fileNameLower.Contains("german") || fileNameLower.Contains("almanca") || fileNameLower.Contains("de"))
+                return "de-DE";
+            if (fileNameLower.Contains("french") || fileNameLower.Contains("fransizca") || fileNameLower.Contains("fr"))
+                return "fr-FR";
+            if (fileNameLower.Contains("spanish") || fileNameLower.Contains("ispanyolca") || fileNameLower.Contains("es"))
+                return "es-ES";
+            if (fileNameLower.Contains("italian") || fileNameLower.Contains("italyanca") || fileNameLower.Contains("it"))
+                return "it-IT";
+            if (fileNameLower.Contains("portuguese") || fileNameLower.Contains("portekizce") || fileNameLower.Contains("pt"))
+                return "pt-BR";
+            if (fileNameLower.Contains("russian") || fileNameLower.Contains("rusca") || fileNameLower.Contains("ru"))
+                return "ru-RU";
+            if (fileNameLower.Contains("japanese") || fileNameLower.Contains("japonca") || fileNameLower.Contains("ja"))
+                return "ja-JP";
+            if (fileNameLower.Contains("korean") || fileNameLower.Contains("korece") || fileNameLower.Contains("ko"))
+                return "ko-KR";
+            if (fileNameLower.Contains("chinese") || fileNameLower.Contains("cince") || fileNameLower.Contains("zh"))
+                return "zh-CN";
+            if (fileNameLower.Contains("arabic") || fileNameLower.Contains("arapca") || fileNameLower.Contains("ar"))
+                return "ar-SA";
+            if (fileNameLower.Contains("hindi") || fileNameLower.Contains("hintce") || fileNameLower.Contains("hi"))
+                return "hi-IN";
+
+            // Priority 3: Default to Turkish (most common for this project)
+            return "tr-TR";
+        }
+
+        /// <summary>
         /// Parses audio document using Speech-to-Text and extracts text content
         /// </summary>
-        private async Task<string> ParseAudioDocumentAsync(Stream fileStream, string fileName)
+        private async Task<string> ParseAudioDocumentAsync(Stream fileStream, string fileName, string language = null)
         {
             try
             {
-                // Use Speech-to-Text to extract text from audio
-                var transcriptionResult = await _audioParserService.TranscribeAudioAsync(fileStream, fileName);
+                // Hybrid language detection system
+                var detectedLanguage = DetectAudioLanguage(language, fileName);
+                
+                // Use Speech-to-Text to extract text from audio with detected language
+                var transcriptionResult = await _audioParserService.TranscribeAudioAsync(fileStream, fileName, detectedLanguage);
                 
                 if (string.IsNullOrWhiteSpace(transcriptionResult.Text))
                 {

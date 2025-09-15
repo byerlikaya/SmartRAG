@@ -78,7 +78,7 @@ namespace SmartRAG.Services
         /// <summary>
         /// Transcribes audio content from a stream to text using default options
         /// </summary>
-        public async Task<AudioTranscriptionResult> TranscribeAudioAsync(Stream audioStream, string fileName)
+        public async Task<AudioTranscriptionResult> TranscribeAudioAsync(Stream audioStream, string fileName, string language = null)
         {
             if (audioStream == null)
                 throw new ArgumentNullException(nameof(audioStream));
@@ -88,7 +88,7 @@ namespace SmartRAG.Services
 
             var options = new AudioTranscriptionOptions
             {
-                Language = "auto", // Auto-detect language
+                Language = language ?? "tr-TR", // Use provided language or default to Turkish
                 EnableDetailedResults = true,
                 MinConfidenceThreshold = MinConfidenceThreshold
             };
@@ -210,10 +210,18 @@ namespace SmartRAG.Services
                 _speechConfig.OutputFormat = OutputFormat.Detailed;
             }
             
-            // Add additional configuration for better recognition
-            _speechConfig.SetProperty(PropertyId.Speech_SegmentationSilenceTimeoutMs, "2000");
-            _speechConfig.SetProperty(PropertyId.SpeechServiceConnection_InitialSilenceTimeoutMs, "5000");
-            _speechConfig.SetProperty(PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs, "2000");
+            // Ultra-optimized settings for phone conversations and MP3 files
+            _speechConfig.SetProperty(PropertyId.Speech_SegmentationSilenceTimeoutMs, "500");         // 0.5 second silence detection
+            _speechConfig.SetProperty(PropertyId.SpeechServiceConnection_InitialSilenceTimeoutMs, "25000"); // 25 seconds initial wait
+            _speechConfig.SetProperty(PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs, "10000");     // 10 seconds end wait
+            
+            // Enable dictation mode for conversational speech
+            _speechConfig.EnableDictation();
+            
+            // Optimize for phone quality audio
+            _speechConfig.SetProperty(PropertyId.SpeechServiceConnection_EnableAudioLogging, "true");
+            
+            _logger.LogDebug("Speech service configured for phone conversations with language: {Language}", options.Language);
             
             _logger.LogDebug("Speech service configured with language: {Language}", options.Language);
         }
@@ -293,10 +301,34 @@ namespace SmartRAG.Services
                     // Create speech recognizer
                     using (var speechRecognizer = new SpeechRecognizer(_speechConfig, audioConfig))
                     {
-                        _logger.LogDebug("Starting stream-based recognition...");
+                        _logger.LogDebug("Starting ultra-optimized recognition for phone conversation...");
 
-                        // Perform recognition
-                        var recognitionResult = await speechRecognizer.RecognizeOnceAsync();
+                        // Multiple recognition attempts for phone conversations
+                        SpeechRecognitionResult recognitionResult = null;
+                        var maxAttempts = 3;
+                        
+                        for (int attempt = 1; attempt <= maxAttempts; attempt++)
+                        {
+                            _logger.LogDebug("Recognition attempt {Attempt}/{MaxAttempts}", attempt, maxAttempts);
+                            
+                            recognitionResult = await speechRecognizer.RecognizeOnceAsync();
+                            
+                            _logger.LogDebug("Attempt {Attempt} - Reason: {Reason}, Text: '{Text}'", 
+                                attempt, recognitionResult.Reason, recognitionResult.Text ?? "null");
+                            
+                            // If we got speech, break
+                            if (recognitionResult.Reason == ResultReason.RecognizedSpeech && !string.IsNullOrWhiteSpace(recognitionResult.Text))
+                            {
+                                _logger.LogDebug("Success on attempt {Attempt}", attempt);
+                                break;
+                            }
+                            
+                            // Wait before retry
+                            if (attempt < maxAttempts)
+                            {
+                                await Task.Delay(3000); // 3 second wait between attempts
+                            }
+                        }
 
                         // Debug logging for recognition result
                         _logger.LogDebug("Recognition result reason: {Reason}", recognitionResult.Reason);

@@ -14,7 +14,7 @@ namespace SmartRAG.Interfaces
         /// <summary>
         /// Upload a single document
         /// </summary>
-        Task<SmartRAG.Entities.Document> UploadDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy);
+        Task<SmartRAG.Entities.Document> UploadDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy, string language = null);
 
         /// <summary>
         /// Upload multiple documents
