@@ -503,5 +503,74 @@ namespace SmartRAG.Services
             "Failed to calculate enhanced semantic similarity");
 
         #endregion
+
+        #region Image Processing and OCR Operations (EventId: 70001-70999)
+
+        public static readonly Action<ILogger, Exception> LogImageStreamInvalid = LoggerMessage.Define(
+            LogLevel.Warning,
+            new EventId(70001, "ImageStreamInvalid"),
+            "Image stream is invalid or cannot be read");
+
+        public static readonly Action<ILogger, int, Exception> LogImageOcrSuccess = LoggerMessage.Define<int>(
+            LogLevel.Debug,
+            new EventId(70002, "ImageOcrSuccess"),
+            "OCR completed successfully, extracted {TextLength} characters");
+
+        public static readonly Action<ILogger, Exception> LogImageOcrFailed = LoggerMessage.Define(
+            LogLevel.Error,
+            new EventId(70003, "ImageOcrFailed"),
+            "OCR processing failed");
+
+        public static readonly Action<ILogger, string, Exception> LogOcrDataPathNotFound = LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(70004, "OcrDataPathNotFound"),
+            "OCR engine data path not found at: {Path}");
+
+        public static readonly Action<ILogger, string, Exception> LogOcrDataPathFound = LoggerMessage.Define<string>(
+            LogLevel.Debug,
+            new EventId(70005, "OcrDataPathFound"),
+            "OCR engine data path found at: {Path}");
+
+        public static readonly Action<ILogger, string, Exception> LogImageFormatNotSupported = LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(70006, "ImageFormatNotSupported"),
+            "Image format not supported: {Format}");
+
+        public static readonly Action<ILogger, string, Exception> LogImageLanguageNotSupported = LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(70007, "ImageLanguageNotSupported"),
+            "OCR language not supported: {Language}");
+
+        public static readonly Action<ILogger, int, Exception> LogImageProcessingStarted = LoggerMessage.Define<int>(
+            LogLevel.Debug,
+            new EventId(70008, "ImageProcessingStarted"),
+            "Starting image processing for {ImageCount} images");
+
+        public static readonly Action<ILogger, int, int, Exception> LogImageProcessingCompleted = LoggerMessage.Define<int, int>(
+            LogLevel.Debug,
+            new EventId(70009, "ImageProcessingCompleted"),
+            "Image processing completed: {SuccessCount}/{TotalCount} images processed successfully");
+
+        public static readonly Action<ILogger, Exception> LogImageProcessingFailed = LoggerMessage.Define(
+            LogLevel.Error,
+            new EventId(70010, "ImageProcessingFailed"),
+            "Image processing failed");
+
+        public static readonly Action<ILogger, string, float, Exception> LogOcrConfidenceLow = LoggerMessage.Define<string, float>(
+            LogLevel.Warning,
+            new EventId(70011, "OcrConfidenceLow"),
+            "OCR confidence is low ({Confidence}) for text: {TextPreview}");
+
+        public static readonly Action<ILogger, int, Exception> LogTableDetectionSuccess = LoggerMessage.Define<int>(
+            LogLevel.Debug,
+            new EventId(70012, "TableDetectionSuccess"),
+            "Table detection successful, found {TableCount} tables");
+
+        public static readonly Action<ILogger, Exception> LogTableDetectionFailed = LoggerMessage.Define(
+            LogLevel.Warning,
+            new EventId(70013, "TableDetectionFailed"),
+            "Table detection failed");
+
+        #endregion
     }
 }

@@ -110,7 +110,7 @@ var answer = await documentSearchService
                         <i class="fas fa-file-alt"></i>
                     </div>
                     <h3>Поддержка множественных форматов</h3>
-                    <p>Обрабатывайте документы Word, PDF, Excel и текстовые файлы с автоматическим определением формата.</p>
+                    <p>Обрабатывайте документы Word, PDF, Excel, текстовые файлы и изображения с автоматическим определением формата.</p>
                 </div>
             </div>
             <div class="col-lg-4 col-md-6">
@@ -156,6 +156,15 @@ var answer = await documentSearchService
                     </div>
                     <h3>Готово к продакшену</h3>
                     <p>Создано для корпоративных сред с производительностью и надежностью.</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-image"></i>
+                    </div>
+                    <h3>Поддержка OCR</h3>
+                    <p>Извлечение текста из изображений и распознавание таблиц с интеграцией OCR-движка.</p>
                 </div>
             </div>
         </div>
