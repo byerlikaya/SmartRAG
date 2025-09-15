@@ -572,5 +572,69 @@ namespace SmartRAG.Services
             "Table detection failed");
 
         #endregion
+
+        #region Audio Processing and Speech-to-Text Operations (EventId: 80001-80999)
+
+        public static readonly Action<ILogger, long, string, Exception> LogAudioTranscriptionStarted = LoggerMessage.Define<long, string>(
+            LogLevel.Information,
+            new EventId(80001, "AudioTranscriptionStarted"),
+            "Starting audio transcription for {AudioSize} bytes in language {Language}");
+
+        public static readonly Action<ILogger, int, double, Exception> LogAudioTranscriptionCompleted = LoggerMessage.Define<int, double>(
+            LogLevel.Information,
+            new EventId(80002, "AudioTranscriptionCompleted"),
+            "Audio transcription completed: {TextLength} characters with {Confidence} confidence");
+
+        public static readonly Action<ILogger, Exception> LogAudioTranscriptionFailed = LoggerMessage.Define(
+            LogLevel.Error,
+            new EventId(80003, "AudioTranscriptionFailed"),
+            "Audio transcription failed");
+
+        public static readonly Action<ILogger, string, Exception> LogAudioServiceInitialized = LoggerMessage.Define<string>(
+            LogLevel.Debug,
+            new EventId(80004, "AudioServiceInitialized"),
+            "Azure Speech Service initialized for region: {Region}");
+
+        public static readonly Action<ILogger, Exception> LogAudioServiceInitializationFailed = LoggerMessage.Define(
+            LogLevel.Error,
+            new EventId(80005, "AudioServiceInitializationFailed"),
+            "Azure Speech Service initialization failed");
+
+        public static readonly Action<ILogger, Exception> LogAudioNoMatch = LoggerMessage.Define(
+            LogLevel.Warning,
+            new EventId(80006, "AudioNoMatch"),
+            "No speech recognized in audio");
+
+        public static readonly Action<ILogger, string, Exception> LogAudioRecognitionFailed = LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(80007, "AudioRecognitionFailed"),
+            "Audio recognition failed: {Reason}");
+
+        public static readonly Action<ILogger, Exception> LogAudioTranscriptionError = LoggerMessage.Define(
+            LogLevel.Error,
+            new EventId(80008, "AudioTranscriptionError"),
+            "Error during audio transcription");
+
+        public static readonly Action<ILogger, Exception> LogAudioSegmentParsingFailed = LoggerMessage.Define(
+            LogLevel.Warning,
+            new EventId(80009, "AudioSegmentParsingFailed"),
+            "Failed to parse audio segments from detailed results");
+
+        public static readonly Action<ILogger, string, Exception> LogAudioFormatNotSupported = LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(80010, "AudioFormatNotSupported"),
+            "Audio format not supported: {Format}");
+
+        public static readonly Action<ILogger, long, Exception> LogAudioStreamValidationFailed = LoggerMessage.Define<long>(
+            LogLevel.Warning,
+            new EventId(80011, "AudioStreamValidationFailed"),
+            "Audio stream validation failed for {AudioSize} bytes");
+
+        public static readonly Action<ILogger, string, Exception> LogAudioLanguageNotSupported = LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(80012, "AudioLanguageNotSupported"),
+            "Audio language not supported: {Language}");
+
+        #endregion
     }
 }
