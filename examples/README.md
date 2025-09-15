@@ -8,10 +8,13 @@ This directory contains example projects demonstrating how to use SmartRAG in di
 - **Location**: `WebAPI/`
 - **Description**: Complete web API implementation showing document upload, search, and RAG operations
 - **Features**: 
-  - Multi-document upload
+  - Multi-document upload (PDF, Word, Excel, text files)
+  - Image processing with OCR support (.jpg, .png, .gif, .bmp, .tiff, .webp)
   - AI-powered question answering
   - Smart query intent detection
-  - Multiple storage providers
+  - Conversation history management
+  - Multiple storage providers (Qdrant, Redis, SQLite, FileSystem, InMemory)
+  - Enhanced semantic search with hybrid scoring
   - Comprehensive API documentation
 
 ## 🚀 Running Examples
@@ -23,7 +26,7 @@ dotnet restore
 dotnet run
 ```
 
-Browse to `https://localhost:5001/scalar/v1` for interactive API documentation.
+Browse to `https://localhost:5001/swagger` for interactive API documentation.
 
 ## 🔧 Configuration
 
@@ -47,8 +50,24 @@ cp appsettings.Development.template.json appsettings.Development.json
 Want to add more examples? Create a new directory and submit a pull request!
 
 ### Example Types to Consider:
-- **Console Application** - Command-line interface
-- **Blazor WebAssembly** - Client-side web app
-- **WPF Application** - Desktop application
-- **Azure Functions** - Serverless implementation
-- **Minimal API** - Lightweight web API
+- **Console Application** - Command-line interface with OCR support
+- **Blazor WebAssembly** - Client-side web app with image upload
+- **WPF Application** - Desktop application with document processing
+- **Azure Functions** - Serverless implementation with vector search
+- **Minimal API** - Lightweight web API with conversation management
+- **OCR Service** - Standalone OCR processing service
+- **Document Analyzer** - Advanced document analysis with table extraction
+
+## 📞 Support
+
+For questions, issues, or contributions, please visit our [GitHub repository](https://github.com/byerlikaya/SmartRAG).
+
+### Contact Information
+- **📧 [Contact & Support](mailto:b.yerlikaya@outlook.com)**
+- **💼 [LinkedIn](https://www.linkedin.com/in/barisyerlikaya/)**
+- **🐙 [GitHub Profile](https://github.com/byerlikaya)**
+- **📦 [NuGet Packages](https://www.nuget.org/profiles/byerlikaya)**
+- **📖 [Documentation](https://byerlikaya.github.io/SmartRAG)** - Comprehensive guides and API reference
+
+---
+**Made in Turkey 🇹🇷 | [Contact](mailto:b.yerlikaya@outlook.com) | [LinkedIn](https://www.linkedin.com/in/barisyerlikaya/)**

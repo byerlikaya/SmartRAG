@@ -87,6 +87,7 @@ To test a different provider, update `appsettings.Development.json`:
 - **`TestAIProviderFactory_ShouldCreateAllProviders`**: Tests AI Provider factory
 - **`TestStorageFactory_ShouldCreateAllProviders`**: Tests Storage factory
 - **`TestEndToEndWorkflow_ShouldWork`**: Tests complete workflow
+- **`FileUploadTests`**: Tests document upload functionality including OCR
 
 ## Key Features
 
@@ -98,7 +99,18 @@ To test a different provider, update `appsettings.Development.json`:
 ### ✅ **Flexible Provider Selection**
 - Change provider in development config
 - No code changes needed
-- All providers supported
+- All providers supported (OpenAI, Anthropic, Gemini, Azure OpenAI, Custom)
+
+### ✅ **OCR Testing Support**
+- Image processing and OCR functionality tests
+- Multiple image format support (.jpg, .png, .gif, .bmp, .tiff, .webp)
+- Table extraction and confidence scoring tests
+
+### ✅ **Enhanced Features Testing**
+- Conversation history management
+- Enhanced semantic search with hybrid scoring
+- Smart query intent detection
+- Multi-language OCR support
 
 ### ✅ **Secure Configuration**
 - Template values in committed files
@@ -137,3 +149,17 @@ To test a different provider, update `appsettings.Development.json`:
 - Verify SmartRAG package reference
 - Check extension method availability
 - Ensure configuration binding works
+
+## 📞 Support
+
+For questions, issues, or contributions, please visit our [GitHub repository](https://github.com/byerlikaya/SmartRAG).
+
+### Contact Information
+- **📧 [Contact & Support](mailto:b.yerlikaya@outlook.com)**
+- **💼 [LinkedIn](https://www.linkedin.com/in/barisyerlikaya/)**
+- **🐙 [GitHub Profile](https://github.com/byerlikaya)**
+- **📦 [NuGet Packages](https://www.nuget.org/profiles/byerlikaya)**
+- **📖 [Documentation](https://byerlikaya.github.io/SmartRAG)** - Comprehensive guides and API reference
+
+---
+**Made in Turkey 🇹🇷 | [Contact](mailto:b.yerlikaya@outlook.com) | [LinkedIn](https://www.linkedin.com/in/barisyerlikaya/)**
