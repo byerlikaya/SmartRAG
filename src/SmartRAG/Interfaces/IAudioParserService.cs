@@ -18,8 +18,9 @@ namespace SmartRAG.Interfaces
         /// </summary>
         /// <param name="audioStream">The audio stream to transcribe</param>
         /// <param name="fileName">The name of the audio file for format detection</param>
+        /// <param name="language">Language code for transcription (e.g., "tr-TR", "en-US")</param>
         /// <returns>Audio transcription result containing text and metadata</returns>
-        Task<AudioTranscriptionResult> TranscribeAudioAsync(Stream audioStream, string fileName);
+        Task<AudioTranscriptionResult> TranscribeAudioAsync(Stream audioStream, string fileName, string language = null);
 
         /// <summary>
         /// Transcribes audio content from a stream to text using custom options
