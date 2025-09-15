@@ -88,7 +88,7 @@ namespace SmartRAG.Services
 
             var options = new AudioTranscriptionOptions
             {
-                Language = DefaultLanguage,
+                Language = "en-US", // Try English first for testing
                 EnableDetailedResults = true,
                 MinConfidenceThreshold = MinConfidenceThreshold
             };
@@ -249,7 +249,7 @@ namespace SmartRAG.Services
                 _logger.LogDebug("Audio stream length: {Length} bytes", audioStream.Length);
 
                 // Create audio configuration with push stream
-                var pushStream = AudioInputStream.CreatePushStream();
+                var pushStream = AudioInputStream.CreatePushStream(AudioStreamFormat.GetWaveFormatPCM(16000, 16, 1));
                 var audioConfig = AudioConfig.FromStreamInput(pushStream);
 
                 // Create speech recognizer
