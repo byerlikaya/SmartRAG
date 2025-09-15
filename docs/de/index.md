@@ -152,15 +152,6 @@ var answer = await documentSearchService
             <div class="col-lg-4 col-md-6">
                 <div class="feature-card">
                     <div class="feature-icon">
-                        <i class="fas fa-magic"></i>
-                    </div>
-                    <h3>Intelligente Abfrage-Absicht</h3>
-                    <p>Leitet Abfragen automatisch zu Chat oder Dokumentsuche basierend auf Absichtserkennung weiter.</p>
-                </div>
-            </div>
-            <div class="col-lg-4 col-md-6">
-                <div class="feature-card">
-                    <div class="feature-icon">
                         <i class="fas fa-shield-alt"></i>
                     </div>
                     <h3>Produktionsbereit</h3>

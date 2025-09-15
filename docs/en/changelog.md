@@ -14,10 +14,26 @@ lang: en
                     <h2>Version History</h2>
                     <p>Complete history of SmartRAG releases with detailed change information.</p>
 
-                    <h3>Version 2.1.0 - 2025-01-20</h3>
+                    <h3>Version 2.2.0 - 2025-01-15</h3>
                     <div class="alert alert-success">
                         <h4><i class="fas fa-star me-2"></i>Latest Release</h4>
-                        <p class="mb-0">This is the current stable release with automatic session management and conversation history.</p>
+                        <p class="mb-0">This is the current stable release with enhanced OCR documentation and visibility improvements.</p>
+                    </div>
+                    <ul>
+                        <li><strong>Enhanced OCR Documentation</strong>: Comprehensive documentation showcasing OCR capabilities with real-world use cases</li>
+                        <li><strong>Improved README</strong>: Detailed image processing features highlighting Tesseract 5.2.0 + SkiaSharp integration</li>
+                        <li><strong>Use Case Examples</strong>: Added detailed examples for scanned documents, receipts, and image content processing</li>
+                        <li><strong>Package Metadata</strong>: Updated project URLs and release notes for better user experience</li>
+                        <li><strong>Documentation Structure</strong>: Enhanced documentation showcasing OCR as key differentiator</li>
+                        <li><strong>User Guidance</strong>: Improved guidance for image-based document processing workflows</li>
+                        <li><strong>WebP Support</strong>: Highlighted WebP to PNG conversion and multi-language OCR support</li>
+                        <li><strong>Developer Experience</strong>: Better visibility of image processing features for developers</li>
+                    </ul>
+
+                    <h3>Version 2.1.0 - 2025-01-20</h3>
+                    <div class="alert alert-info">
+                        <h4><i class="fas fa-info-circle me-2"></i>Previous Release</h4>
+                        <p class="mb-0">Previous stable release with automatic session management and conversation history.</p>
                     </div>
                     <ul>
                         <li><strong>Automatic Session Management</strong>: No more manual session ID handling required</li>
