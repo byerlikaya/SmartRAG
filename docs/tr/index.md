@@ -110,7 +110,7 @@ hide_title: true
                         <i class="fas fa-file-alt"></i>
                     </div>
                     <h3>Çoklu Format Desteği</h3>
-                    <p>Otomatik format algılama ile Word, PDF, Excel, metin belgeleri ve resim dosyalarını işleyin.</p>
+                    <p>Otomatik format algılama ile Word, PDF, Excel, metin belgeleri, resim dosyaları ve ses dosyalarını işleyin.</p>
                 </div>
             </div>
             <div class="col-lg-4 col-md-6">
@@ -165,6 +165,15 @@ hide_title: true
                     </div>
                     <h3>OCR Desteği</h3>
                     <p>Resim dosyalarından metin çıkarma ve tablo algılama ile OCR motoru entegrasyonu.</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-microphone"></i>
+                    </div>
+                    <h3>Ses Dosyası Desteği</h3>
+                    <p>Azure Speech Services ile ses dosyalarından metin çıkarma ve analiz.</p>
                 </div>
             </div>
         </div>

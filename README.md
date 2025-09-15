@@ -21,6 +21,7 @@ SmartRAG is a **production-ready** .NET Standard 2.0/2.1 library that provides a
 - 🔌 **Plug & Play**: Single-line integration with dependency injection
 - 📄 **Multi-Format**: PDF, Word, Excel, text files with intelligent parsing
 - 🖼️ **Revolutionary OCR**: Enterprise-grade image processing with Tesseract 5.2.0 + SkiaSharp, WebP support, multi-language OCR, table extraction
+- 🎵 **Speech-to-Text**: Azure Speech Services integration for audio file transcription and analysis
 - 🎯 **Enhanced Semantic Search**: Advanced hybrid scoring with 80% semantic + 20% keyword relevance
 - 🔍 **Smart Document Chunking**: Word boundary validation and optimal break points for context preservation
 - ✅ **Enterprise Grade**: Zero Warnings Policy, SOLID principles, comprehensive logging, XML documentation
@@ -192,6 +193,16 @@ SmartRAG supports a wide range of document formats with intelligent parsing and 
 - **🔍 Format Auto-Detection**: Automatic image format detection and validation across all supported types
 - **🏗️ Structured Data Output**: Converts images to searchable, queryable knowledge base content
 
+### **🎵 Audio Files (.mp3, .wav, .m4a, .aac, .ogg, .flac, .wma) - SPEECH-TO-TEXT REVOLUTION**
+- **🎤 Azure Speech Services**: Enterprise-grade speech recognition with Microsoft Cognitive Services
+- **🌍 Multi-Language Support**: Turkish (tr-TR), English (en-US), and 40+ languages supported
+- **⚡ Real-time Transcription**: Advanced speech-to-text conversion with confidence scoring
+- **📊 Detailed Results**: Segment-level transcription with timestamps and confidence metrics
+- **🔍 Audio Format Detection**: Automatic format validation and content type recognition
+- **🎯 Intelligent Processing**: Smart audio stream validation and error handling
+- **📈 Performance Optimized**: Efficient audio processing with minimal memory footprint
+- **🏗️ Structured Output**: Converts audio content to searchable, queryable knowledge base
+
 ### **🔍 Content Type Support**
 SmartRAG automatically detects file types using both file extensions and MIME content types:
 - **Excel**: `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, `application/vnd.ms-excel`
@@ -199,6 +210,7 @@ SmartRAG automatically detects file types using both file extensions and MIME co
 - **PDF**: `application/pdf`
 - **Text**: `text/*`, `application/json`, `application/xml`, `application/csv`
 - **Images**: `image/jpeg`, `image/png`, `image/gif`, `image/bmp`, `image/tiff`, `image/webp`
+- **Audio**: `audio/mpeg`, `audio/wav`, `audio/mp4`, `audio/aac`, `audio/ogg`, `audio/flac`, `audio/x-ms-wma`
 
 ## 🚀 Quick Start
 
