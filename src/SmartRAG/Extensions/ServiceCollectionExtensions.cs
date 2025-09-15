@@ -43,6 +43,7 @@ namespace SmartRAG.Extensions
             services.AddScoped<IDocumentService, DocumentService>();
             services.AddScoped<IDocumentParserService, DocumentParserService>();
             services.AddScoped<IDocumentSearchService, DocumentSearchService>();
+            services.AddScoped<IImageParserService, ImageParserService>();
 
             ConfigureStorageProvider(services, configuration);
 

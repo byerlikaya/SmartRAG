@@ -5,7 +5,7 @@
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
-    <PackageVersion>2.1.0</PackageVersion>
+    <PackageVersion>2.2.0</PackageVersion>
     <Authors>Barış Yerlikaya</Authors>
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
@@ -14,34 +14,29 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <!-- <PackageIcon>icon.png</PackageIcon> -->
-    <PackageProjectUrl>https://byerlikaya.github.io/SmartRAG</PackageProjectUrl>
+    <PackageProjectUrl>https://byerlikaya.github.io/SmartRAG/en/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/byerlikaya/SmartRAG.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Release 2.1.0: Automatic Conversation History Management
+    <PackageReleaseNotes>Release 2.2.0: OCR Feature Documentation and Visibility Enhancement
 
 ✨ New Features:
-• Automatic session-based conversation management with persistent context
-• Intelligent conversation history storage across all providers (Redis, SQLite, FileSystem, InMemory)
-• New conversation commands (/new, /reset, /clear) for user control
-• Enhanced API with backward-compatible session management
+• Enhanced OCR capabilities documentation with comprehensive use cases
+• Improved README highlighting Tesseract 5.2.0 + SkiaSharp integration
+• Better visibility of image processing features for developers
 
 🔧 Technical Improvements:
-• Fixed conversation format consistency across all storage providers
-• Improved thread safety and error handling for conversation operations
-• Platform-agnostic design maintains compatibility with all .NET environments
+• Updated package metadata with accurate project URLs
+• Enhanced documentation showcasing OCR as key differentiator
+• Improved user guidance for image-based document processing
 
 📚 Documentation Updates:
-• Updated all language versions (EN, TR, DE, RU)
-• Real examples aligned with actual codebase
-• API reference updated with new signatures
-
-🎯 Compliance:
-• 100% compliance with all established rules
-• Zero warnings policy maintained
-• SOLID and DRY principles applied</PackageReleaseNotes>
+• Comprehensive OCR feature documentation with real-world examples
+• Enhanced README with detailed image processing capabilities
+• Added use cases for scanned documents, receipts, and image content
+• Highlighted WebP to PNG conversion and multi-language OCR support</PackageReleaseNotes>
     
     <!-- Build Configuration -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -52,8 +47,8 @@
     <AssemblyTitle>SmartRAG</AssemblyTitle>
     <AssemblyDescription>High-performance RAG library with conversation history management for .NET</AssemblyDescription>
     <AssemblyCopyright>Copyright © 2025 Barış Yerlikaya</AssemblyCopyright>
-    <AssemblyVersion>2.1.0.0</AssemblyVersion>
-    <FileVersion>2.1.0.0</FileVersion>
+    <AssemblyVersion>2.2.0.0</AssemblyVersion>
+    <FileVersion>2.2.0.0</FileVersion>
     <NeutralLanguage>en</NeutralLanguage>
     <Culture>en-US</Culture>
   </PropertyGroup>
@@ -61,28 +56,32 @@
   <!-- Package References -->
   <ItemGroup>
     <!-- Microsoft Extensions -->
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.8" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.8" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.8" />
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.9" />
     
     <!-- HTTP Client -->
-    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.8" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.9" />
     
     <!-- JSON Processing -->
-    <PackageReference Include="System.Text.Json" Version="9.0.8" />
+    <PackageReference Include="System.Text.Json" Version="9.0.9" />
     
     <!-- Vector Database Support -->
     <PackageReference Include="Qdrant.Client" Version="1.15.1" />
-    <PackageReference Include="StackExchange.Redis" Version="2.9.11" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.8" />
+    <PackageReference Include="StackExchange.Redis" Version="2.9.17" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.9" />
     
     <!-- Validation -->
     <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
     <!-- Document Parsing -->
     <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
     <PackageReference Include="itext" Version="9.3.0" />
-    <PackageReference Include="EPPlus" Version="8.1.0" />
+    <PackageReference Include="EPPlus" Version="8.1.1" />
+    
+    <!-- OCR and Image Processing -->
+    <PackageReference Include="Tesseract" Version="5.2.0" />
+    <PackageReference Include="SkiaSharp" Version="3.119.0" />
   </ItemGroup>
 
   <!-- Conditional Package References for .NET Standard 2.1 -->
@@ -93,13 +92,20 @@
   <!-- Conditional Package References for .NET Standard 2.0 -->
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="9.0.8" />
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="9.0.9" />
   </ItemGroup>
 
   <!-- Documentation Files -->
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="/" />
     <!-- <None Include="icon.png" Pack="true" PackagePath="/" /> -->
+  </ItemGroup>
+
+  <!-- Tessdata Files -->
+  <ItemGroup>
+    <Content Include="tessdata\eng.traineddata">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
 </Project>
