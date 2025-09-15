@@ -82,6 +82,9 @@
     <!-- OCR and Image Processing -->
     <PackageReference Include="Tesseract" Version="5.2.0" />
     <PackageReference Include="SkiaSharp" Version="3.119.0" />
+    
+    <!-- Audio Processing -->
+    <PackageReference Include="Microsoft.CognitiveServices.Speech" Version="1.46.0" />
   </ItemGroup>
 
   <!-- Conditional Package References for .NET Standard 2.1 -->
