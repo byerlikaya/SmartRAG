@@ -203,6 +203,13 @@ namespace SmartRAG.Services
             {
                 _speechConfig.OutputFormat = OutputFormat.Detailed;
             }
+            
+            // Add additional configuration for better recognition
+            _speechConfig.SetProperty(PropertyId.Speech_SegmentationSilenceTimeoutMs, "2000");
+            _speechConfig.SetProperty(PropertyId.SpeechServiceConnection_InitialSilenceTimeoutMs, "5000");
+            _speechConfig.SetProperty(PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs, "2000");
+            
+            _logger.LogDebug("Speech service configured with language: {Language}", options.Language);
         }
 
         /// <summary>
@@ -257,11 +264,17 @@ namespace SmartRAG.Services
                     // Perform recognition
                     var recognitionResult = await speechRecognizer.RecognizeOnceAsync();
 
+                // Debug logging for recognition result
+                _logger.LogDebug("Recognition result reason: {Reason}", recognitionResult.Reason);
+                _logger.LogDebug("Recognition result text: '{Text}'", recognitionResult.Text ?? "null");
+                
                 if (recognitionResult.Reason == ResultReason.RecognizedSpeech)
                 {
                     result.Text = recognitionResult.Text;
                     // Azure Speech SDK doesn't provide confidence in basic recognition result
                     result.Confidence = 0.8; // Default confidence
+                    
+                    _logger.LogDebug("Speech recognized successfully: '{Text}'", result.Text);
                     
                     // Add segments if detailed results are enabled
                     if (options.EnableDetailedResults)
@@ -274,11 +287,20 @@ namespace SmartRAG.Services
                     ServiceLogMessages.LogAudioNoMatch(_logger, null);
                     result.Text = string.Empty;
                     result.Confidence = 0;
+                    _logger.LogWarning("No speech recognized in audio file");
+                }
+                else if (recognitionResult.Reason == ResultReason.Canceled)
+                {
+                    var errorMessage = $"Recognition canceled: {recognitionResult.Reason}";
+                    ServiceLogMessages.LogAudioRecognitionFailed(_logger, errorMessage, null);
+                    _logger.LogError("Audio recognition was canceled");
+                    throw new InvalidOperationException(errorMessage);
                 }
                 else
                 {
                     var errorMessage = $"Recognition failed: {recognitionResult.Reason}";
                     ServiceLogMessages.LogAudioRecognitionFailed(_logger, errorMessage, null);
+                    _logger.LogError("Audio recognition failed with reason: {Reason}", recognitionResult.Reason);
                     throw new InvalidOperationException(errorMessage);
                 }
                 }
