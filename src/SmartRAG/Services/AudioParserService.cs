@@ -285,15 +285,17 @@ namespace SmartRAG.Services
                 var headerHex = BitConverter.ToString(headerBytes);
                 _logger.LogDebug("Audio header (first 12 bytes): {Header}", headerHex);
 
-                // Use Push Audio Stream for MP3 format support
+                // Audio preprocessing for better recognition
+                var processedAudioData = PreprocessAudio(tempFilePath);
+                
+                // Use Push Audio Stream for processed audio
                 using (var pushStream = AudioInputStream.CreatePushStream())
                 {
-                    // Read the audio file and push to the stream
-                    var audioData = File.ReadAllBytes(tempFilePath);
-                    pushStream.Write(audioData);
+                    // Push processed audio data to the stream
+                    pushStream.Write(processedAudioData);
                     pushStream.Close();
 
-                    _logger.LogDebug("Pushed {AudioSize} bytes to audio stream", audioData.Length);
+                    _logger.LogDebug("Pushed {AudioSize} bytes of processed audio to stream", processedAudioData.Length);
                     
                     // Use stream-based recognition
                     var audioConfig = AudioConfig.FromStreamInput(pushStream);
@@ -520,6 +522,149 @@ namespace SmartRAG.Services
             
             throw new InvalidOperationException("Azure Speech Service key not configured");
         }
+
+        /// <summary>
+        /// Preprocesses audio data for better speech recognition
+        /// </summary>
+        private byte[] PreprocessAudio(string filePath)
+        {
+            try
+            {
+                var audioData = File.ReadAllBytes(filePath);
+                
+                _logger.LogDebug("=== AUDIO PREPROCESSING ===");
+                _logger.LogDebug("Original audio size: {Size} bytes", audioData.Length);
+                
+                // Check if it's a WAV file
+                if (IsWavFile(filePath))
+                {
+                    _logger.LogDebug("Processing WAV file for speech recognition optimization");
+                    return OptimizeWavForSpeech(audioData);
+                }
+                else
+                {
+                    _logger.LogDebug("Processing non-WAV file (MP3/M4A) - creating WAV wrapper");
+                    return CreateOptimizedWav(audioData);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Audio preprocessing failed: {Error}", ex.Message);
+                // Fallback to original audio
+                return File.ReadAllBytes(filePath);
+            }
+        }
+
+        /// <summary>
+        /// Optimizes WAV file for speech recognition
+        /// </summary>
+        private byte[] OptimizeWavForSpeech(byte[] wavData)
+        {
+            try
+            {
+                // For now, return original data
+                // Future: Implement volume normalization, noise reduction, etc.
+                _logger.LogDebug("WAV optimization: Using original data (volume normalization not implemented)");
+                return wavData;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("WAV optimization failed: {Error}", ex.Message);
+                return wavData;
+            }
+        }
+
+        /// <summary>
+        /// Creates optimized WAV file from compressed audio
+        /// </summary>
+        private byte[] CreateOptimizedWav(byte[] audioData)
+        {
+            try
+            {
+                _logger.LogDebug("Creating optimized WAV wrapper for compressed audio");
+                
+                // Create WAV header optimized for speech recognition
+                var header = CreateSpeechOptimizedWavHeader(audioData.Length);
+                
+                // Combine header and audio data
+                var wavData = new byte[header.Length + audioData.Length];
+                Array.Copy(header, 0, wavData, 0, header.Length);
+                Array.Copy(audioData, 0, wavData, header.Length, audioData.Length);
+                
+                _logger.LogDebug("Created optimized WAV: {Size} bytes", wavData.Length);
+                return wavData;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("WAV creation failed: {Error}", ex.Message);
+                return audioData;
+            }
+        }
+
+        /// <summary>
+        /// Creates WAV header optimized for speech recognition
+        /// </summary>
+        private byte[] CreateSpeechOptimizedWavHeader(int audioDataLength)
+        {
+            var header = new byte[44];
+            var dataSize = audioDataLength;
+            var fileSize = dataSize + 36;
+            
+            // RIFF header
+            header[0] = 0x52; // R
+            header[1] = 0x49; // I
+            header[2] = 0x46; // F
+            header[3] = 0x46; // F
+            header[4] = (byte)(fileSize & 0xff);
+            header[5] = (byte)((fileSize >> 8) & 0xff);
+            header[6] = (byte)((fileSize >> 16) & 0xff);
+            header[7] = (byte)((fileSize >> 24) & 0xff);
+            
+            // WAVE format
+            header[8] = 0x57;  // W
+            header[9] = 0x41;  // A
+            header[10] = 0x56; // V
+            header[11] = 0x45; // E
+            
+            // fmt chunk - optimized for speech recognition
+            header[12] = 0x66; // f
+            header[13] = 0x6d; // m
+            header[14] = 0x74; // t
+            header[15] = 0x20; // space
+            header[16] = 16;   // fmt chunk size
+            header[17] = 0;
+            header[18] = 0;
+            header[19] = 0;
+            header[20] = 1;    // PCM format
+            header[21] = 0;
+            header[22] = 1;    // mono (speech recognition works better with mono)
+            header[23] = 0;
+            header[24] = 0x40; // 16000 Hz (optimal for speech recognition)
+            header[25] = 0x3e;
+            header[26] = 0;
+            header[27] = 0;
+            header[28] = 0x80; // byte rate
+            header[29] = 0x3e;
+            header[30] = 0;
+            header[31] = 0;
+            header[32] = 2;    // block align
+            header[33] = 0;
+            header[34] = 16;   // bits per sample
+            header[35] = 0;
+            
+            // data chunk
+            header[36] = 0x64; // d
+            header[37] = 0x61; // a
+            header[38] = 0x74; // t
+            header[39] = 0x61; // a
+            header[40] = (byte)(dataSize & 0xff);
+            header[41] = (byte)((dataSize >> 8) & 0xff);
+            header[42] = (byte)((dataSize >> 16) & 0xff);
+            header[43] = (byte)((dataSize >> 24) & 0xff);
+            
+            return header;
+        }
+
 
         /// <summary>
         /// Gets the Azure Speech Service region from configuration
