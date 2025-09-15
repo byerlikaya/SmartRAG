@@ -42,6 +42,25 @@ namespace SmartRAG.Services
         private const int DefaultColumnCount = 1;
         private const int MaxRetryAttempts = 3;
         private const int DefaultTimeoutMs = 30000;
+        
+        // WebP header constants
+        private const int WebPHeaderSize = 12;
+        private const byte RIFFByte1 = 0x52; // R
+        private const byte RIFFByte2 = 0x49; // I
+        private const byte RIFFByte3 = 0x46; // F
+        private const byte RIFFByte4 = 0x46; // F
+        private const byte WEBPByte1 = 0x57; // W
+        private const byte WEBPByte2 = 0x45; // E
+        private const byte WEBPByte3 = 0x42; // B
+        private const byte WEBPByte4 = 0x50; // P
+        
+        // PNG encoding constants
+        private const int PNGQuality = 100;
+        
+        // Tesseract path constants
+        private const string TesseractPath40 = "/usr/share/tesseract-ocr/4.00/tessdata";
+        private const string TesseractPathDefault = "/usr/share/tesseract-ocr/tessdata";
+        private const string TesseractPathWindows = "C:\\Program Files\\Tesseract-OCR\\tessdata";
 
         // Character whitelist for OCR
         private const string OcrCharacterWhitelist = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,!?;:()[]{}\"'-/\\@#$%&*+=<>|~`";
@@ -252,14 +271,14 @@ namespace SmartRAG.Services
                 imageStream.Position = 0;
                 
                 // Try to detect if it's a WebP image by reading the header
-                var header = new byte[12];
+                var header = new byte[WebPHeaderSize];
                 await imageStream.ReadAsync(header, 0, header.Length);
                 imageStream.Position = 0;
 
                 // Check for WebP signature (RIFF....WEBP)
-                bool isWebP = header.Length >= 12 && 
-                             header[0] == 0x52 && header[1] == 0x49 && header[2] == 0x46 && header[3] == 0x46 && // RIFF
-                             header[8] == 0x57 && header[9] == 0x45 && header[10] == 0x42 && header[11] == 0x50; // WEBP
+                bool isWebP = header.Length >= WebPHeaderSize && 
+                             header[0] == RIFFByte1 && header[1] == RIFFByte2 && header[2] == RIFFByte3 && header[3] == RIFFByte4 && // RIFF
+                             header[8] == WEBPByte1 && header[9] == WEBPByte2 && header[10] == WEBPByte3 && header[11] == WEBPByte4; // WEBP
 
                 if (!isWebP)
                 {
@@ -277,7 +296,7 @@ namespace SmartRAG.Services
                         return imageStream;
                     }
 
-                    var pngData = skImage.Encode(SKEncodedImageFormat.Png, 100);
+                    var pngData = skImage.Encode(SKEncodedImageFormat.Png, PNGQuality);
                     var pngStream = new MemoryStream(pngData.ToArray());
                     pngStream.Position = 0;
                     
@@ -345,9 +364,9 @@ namespace SmartRAG.Services
                 Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tessdata"),
                 Path.Combine(Environment.CurrentDirectory, "tessdata"),
                 Path.Combine(Path.GetTempPath(), "tessdata"),
-                "/usr/share/tesseract-ocr/4.00/tessdata",
-                "/usr/share/tesseract-ocr/tessdata",
-                "C:\\Program Files\\Tesseract-OCR\\tessdata"
+                TesseractPath40,
+                TesseractPathDefault,
+                TesseractPathWindows
             };
 
             foreach (var path in possiblePaths)
