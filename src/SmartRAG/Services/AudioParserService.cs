@@ -246,6 +246,7 @@ namespace SmartRAG.Services
                 }
             };
 
+            string tempFilePath = null;
             try
             {
                 // Reset stream position
@@ -254,50 +255,25 @@ namespace SmartRAG.Services
                 // Log audio stream info
                 _logger.LogDebug("Audio stream length: {Length} bytes", audioStream.Length);
 
-                // Create audio configuration with push stream
-                var pushStream = AudioInputStream.CreatePushStream(AudioStreamFormat.GetWaveFormatPCM(16000, 16, 1));
-                var audioConfig = AudioConfig.FromStreamInput(pushStream);
+                // Create temporary file for audio processing
+                tempFilePath = Path.GetTempFileName();
+                using (var fileStream = File.Create(tempFilePath))
+                {
+                    await audioStream.CopyToAsync(fileStream);
+                }
 
+                _logger.LogDebug("Created temporary audio file: {TempFile}", tempFilePath);
+
+                // Use file-based recognition instead of stream-based
+                var audioConfig = AudioConfig.FromWavFileInput(tempFilePath);
+                
                 // Create speech recognizer
                 using (var speechRecognizer = new SpeechRecognizer(_speechConfig, audioConfig))
                 {
-                    // Push audio data to the stream
-                    var buffer = new byte[4096];
-                    int bytesRead;
-                    int totalBytesRead = 0;
-                    while ((bytesRead = await audioStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
-                    {
-                        pushStream.Write(buffer, bytesRead);
-                        totalBytesRead += bytesRead;
-                    }
-                    pushStream.Close();
+                    _logger.LogDebug("Starting file-based recognition...");
 
-                    _logger.LogDebug("Pushed {TotalBytes} bytes to Azure Speech Services", totalBytesRead);
-
-                    // Perform recognition with multiple attempts
-                    SpeechRecognitionResult recognitionResult = null;
-                    int attempts = 0;
-                    const int maxAttempts = 3;
-
-                    while (attempts < maxAttempts)
-                    {
-                        attempts++;
-                        _logger.LogDebug("Recognition attempt {Attempt}/{MaxAttempts}", attempts, maxAttempts);
-                        
-                        recognitionResult = await speechRecognizer.RecognizeOnceAsync();
-                        
-                        if (recognitionResult.Reason == ResultReason.RecognizedSpeech && !string.IsNullOrWhiteSpace(recognitionResult.Text))
-                        {
-                            _logger.LogDebug("Successful recognition on attempt {Attempt}", attempts);
-                            break;
-                        }
-                        
-                        if (attempts < maxAttempts)
-                        {
-                            _logger.LogDebug("Recognition attempt {Attempt} failed, retrying...", attempts);
-                            await Task.Delay(1000); // Wait 1 second before retry
-                        }
-                    }
+                    // Perform recognition
+                    var recognitionResult = await speechRecognizer.RecognizeOnceAsync();
 
                 // Debug logging for recognition result
                 _logger.LogDebug("Recognition result reason: {Reason}", recognitionResult.Reason);
@@ -344,6 +320,22 @@ namespace SmartRAG.Services
             {
                 ServiceLogMessages.LogAudioTranscriptionError(_logger, null);
                 throw;
+            }
+            finally
+            {
+                // Clean up temporary file
+                try
+                {
+                    if (File.Exists(tempFilePath))
+                    {
+                        File.Delete(tempFilePath);
+                        _logger.LogDebug("Cleaned up temporary file: {TempFile}", tempFilePath);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning("Failed to delete temporary file: {TempFile}. Error: {Error}", tempFilePath, ex.Message);
+                }
             }
 
             return result;
