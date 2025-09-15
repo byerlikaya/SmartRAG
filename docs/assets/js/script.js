@@ -1,4 +1,4 @@
-// SmartRAG Documentation - Clean JavaScript
+// SmartRAG Documentation - Optimized JavaScript
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM loaded, initializing SmartRAG documentation...');
@@ -10,6 +10,15 @@ document.addEventListener('DOMContentLoaded', function() {
     } else {
         console.warn('Prism.js not loaded');
     }
+    
+    // Back to Top Button (unified implementation)
+    initializeBackToTopButton();
+    
+    // Smooth scrolling for anchor links (unified implementation)
+    initializeSmoothScrolling();
+    
+    // Fade-in animations (unified implementation)
+    initializeFadeAnimations();
     
     // Tab Functionality for Code Examples
     const codeTabs = document.querySelectorAll('.code-tab');
@@ -110,8 +119,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Back to Top Button
-    const backToTopBtn = document.querySelector('.back-to-top');
+    console.log('SmartRAG documentation initialized successfully');
+});
+
+// Unified Back to Top Button Implementation
+function initializeBackToTopButton() {
+    const backToTopBtn = document.querySelector('.back-to-top') || document.getElementById('backToTop');
     if (backToTopBtn) {
         window.addEventListener('scroll', function() {
             if (window.pageYOffset > 300) {
@@ -128,8 +141,10 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
-    
-    // Smooth scrolling for anchor links
+}
+
+// Unified Smooth Scrolling Implementation
+function initializeSmoothScrolling() {
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
         anchor.addEventListener('click', function(e) {
             e.preventDefault();
@@ -142,6 +157,29 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+}
+
+// Unified Fade-in Animations Implementation
+function initializeFadeAnimations() {
+    const observerOptions = {
+        threshold: 0.1,
+        rootMargin: '0px 0px -50px 0px'
+    };
     
-    console.log('SmartRAG documentation initialized successfully');
-});
+    const observer = new IntersectionObserver(function(entries) {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                entry.target.style.opacity = '1';
+                entry.target.style.transform = 'translateY(0)';
+            }
+        });
+    }, observerOptions);
+    
+    // Observe content elements
+    document.querySelectorAll('.content-wrapper, .card, .alert, .feature-card, .doc-card').forEach(el => {
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(20px)';
+        el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+        observer.observe(el);
+    });
+}
