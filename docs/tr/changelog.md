@@ -14,10 +14,26 @@ lang: tr
                     <h2>Sürüm Geçmişi</h2>
                     <p>Detaylı değişiklik bilgileri ile SmartRAG sürümlerinin tam geçmişi.</p>
 
-                    <h3>Sürüm 2.1.0 - 2025-01-20</h3>
+                    <h3>Sürüm 2.2.0 - 2025-01-15</h3>
                     <div class="alert alert-success">
                         <h4><i class="fas fa-star me-2"></i>En Son Sürüm</h4>
-                        <p class="mb-0">Otomatik oturum yönetimi ve konuşma geçmişi ile mevcut kararlı sürüm.</p>
+                        <p class="mb-0">Geliştirilmiş OCR dokümantasyonu ve görünürlük iyileştirmeleri ile mevcut kararlı sürüm.</p>
+                    </div>
+                    <ul>
+                        <li><strong>Geliştirilmiş OCR Dokümantasyonu</strong>: Gerçek kullanım örnekleri ile OCR yeteneklerini sergileyen kapsamlı dokümantasyon</li>
+                        <li><strong>İyileştirilmiş README</strong>: Tesseract 5.2.0 + SkiaSharp entegrasyonunu vurgulayan detaylı görüntü işleme özellikleri</li>
+                        <li><strong>Kullanım Örnekleri</strong>: Taranmış belgeler, fişler ve görüntü içeriği işleme için detaylı örnekler</li>
+                        <li><strong>Paket Metadata</strong>: Daha iyi kullanıcı deneyimi için proje URL'leri ve sürüm notları güncellendi</li>
+                        <li><strong>Dokümantasyon Yapısı</strong>: OCR'ı temel farklılaştırıcı olarak sergileyen geliştirilmiş dokümantasyon</li>
+                        <li><strong>Kullanıcı Rehberliği</strong>: Görüntü tabanlı belge işleme iş akışları için iyileştirilmiş rehberlik</li>
+                        <li><strong>WebP Desteği</strong>: WebP'den PNG'ye dönüştürme ve çok dilli OCR desteği vurgulandı</li>
+                        <li><strong>Geliştirici Deneyimi</strong>: Görüntü işleme özelliklerinin geliştiriciler için daha iyi görünürlüğü</li>
+                    </ul>
+
+                    <h3>Sürüm 2.1.0 - 2025-01-20</h3>
+                    <div class="alert alert-info">
+                        <h4><i class="fas fa-info-circle me-2"></i>Önceki Sürüm</h4>
+                        <p class="mb-0">Otomatik oturum yönetimi ve konuşma geçmişi ile önceki kararlı sürüm.</p>
                     </div>
                     <ul>
                         <li><strong>Otomatik Oturum Yönetimi</strong>: Manuel oturum ID yönetimi artık gerekli değil</li>

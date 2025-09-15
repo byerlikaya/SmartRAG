@@ -14,6 +14,18 @@ lang: de
                     <h2>Versionsverlauf</h2>
                     <p>Vollständige Geschichte der SmartRAG-Releases mit detaillierten Änderungsinformationen.</p>
 
+## [2.2.0] - 2025-01-15
+
+### Added
+- **Enhanced OCR Documentation**: Comprehensive documentation showcasing OCR capabilities with real-world use cases
+- **Improved README**: Detailed image processing features highlighting Tesseract 5.2.0 + SkiaSharp integration
+- **Use Case Examples**: Added detailed examples for scanned documents, receipts, and image content processing
+- **Package Metadata**: Updated project URLs and release notes for better user experience
+- **Documentation Structure**: Enhanced documentation showcasing OCR as key differentiator
+- **User Guidance**: Improved guidance for image-based document processing workflows
+- **WebP Support**: Highlighted WebP to PNG conversion and multi-language OCR support
+- **Developer Experience**: Better visibility of image processing features for developers
+
 ## [2.1.0] - 2025-01-20
 
 ### Added

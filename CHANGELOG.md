@@ -5,6 +5,24 @@ All notable changes to SmartRAG will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.2.0] - 2025-01-15
+
+### ✨ Added
+- **Enhanced OCR Documentation**: Comprehensive documentation showcasing OCR capabilities with real-world use cases
+- **Improved README**: Detailed image processing features highlighting Tesseract 5.2.0 + SkiaSharp integration
+- **Use Case Examples**: Added detailed examples for scanned documents, receipts, and image content processing
+
+### 🔧 Improved
+- **Package Metadata**: Updated project URLs and release notes for better user experience
+- **Documentation Structure**: Enhanced documentation showcasing OCR as key differentiator
+- **User Guidance**: Improved guidance for image-based document processing workflows
+
+### 📚 Documentation
+- **OCR Capabilities**: Comprehensive OCR feature documentation with real-world examples
+- **Image Processing**: Enhanced README with detailed image processing capabilities
+- **WebP Support**: Highlighted WebP to PNG conversion and multi-language OCR support
+- **Developer Experience**: Better visibility of image processing features for developers
+
 ## [2.0.0] - 2025-01-27
 
 ### 🔄 **BREAKING CHANGE: .NET Standard Migration**

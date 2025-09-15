@@ -154,6 +154,15 @@ body {
     font-weight: 700;
 }
 
+/* Text Gradient Utility Class */
+.text-gradient {
+    background: linear-gradient(45deg, var(--primary) 0%, var(--secondary) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 700;
+}
+
 .navbar-nav .nav-link {
     color: var(--gray-600) !important;
     font-weight: 500;
@@ -307,7 +316,7 @@ pre[class*=language-] {
     color: var(--gray-900) !important;
 }
 
-/* Code blocks */
+/* Code blocks - optimized */
 pre {
     background: var(--white);
     color: var(--gray-900);
