@@ -48,8 +48,8 @@ static void RegisterServices(IServiceCollection services, IConfiguration configu
 
     // Add SmartRag services with minimal configuration
     services.UseSmartRag(configuration,
-        storageProvider: StorageProvider.InMemory,        // Use InMemory as requested
-        aiProvider: AIProvider.Gemini                     // Use Gemini provider
+        storageProvider: StorageProvider.Redis,        // Use InMemory as requested
+        aiProvider: AIProvider.Anthropic                     // Use Gemini provider
     );
 
 

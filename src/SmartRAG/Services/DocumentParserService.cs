@@ -69,7 +69,7 @@ namespace SmartRAG.Services
             "image/bmp", "image/tiff", "image/webp" 
         };
         private static readonly string[] AudioContentTypes = new string[] { 
-            "audio/mpeg", "audio/wav", "audio/mp4", "audio/aac", 
+            "audio/mpeg", "audio/wav", "audio/mp4", "audio/x-m4a", "audio/aac", 
             "audio/ogg", "audio/flac", "audio/x-ms-wma" 
         };
 
