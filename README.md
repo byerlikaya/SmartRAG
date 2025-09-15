@@ -725,7 +725,7 @@ cd examples/WebAPI
 dotnet run
 ```
 
-Browse to `https://localhost:5001/scalar/v1` for interactive API documentation.
+Browse to `https://localhost:5001/swagger` for interactive API documentation.
 
 ## 🤝 Contributing
 
