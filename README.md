@@ -20,6 +20,7 @@ SmartRAG is a **production-ready** .NET Standard 2.0/2.1 library that provides a
 - ⚡ **Lightning Fast**: Optimized vector search with context-aware answer synthesis
 - 🔌 **Plug & Play**: Single-line integration with dependency injection
 - 📄 **Multi-Format**: PDF, Word, Excel, text files with intelligent parsing
+- 🖼️ **OCR Support**: Image-to-text extraction with OCR engine
 - 🎯 **Enhanced Semantic Search**: Advanced hybrid scoring with 80% semantic + 20% keyword relevance
 - 🔍 **Smart Document Chunking**: Word boundary validation and optimal break points for context preservation
 - ✅ **Enterprise Grade**: Zero Warnings Policy, SOLID principles, comprehensive logging, XML documentation
@@ -169,12 +170,21 @@ SmartRAG supports a wide range of document formats with intelligent parsing and 
 - **Structure Preservation**: Maintains original formatting
 - **Fast Processing**: Optimized for text-based content
 
+### **🖼️ Image Files (.jpg, .jpeg, .png, .gif, .bmp, .tiff, .webp)**
+- **OCR Text Extraction**: Extracts text from images using OCR engine
+- **Multi-Language Support**: English, Turkish, and other OCR-supported languages
+- **Image Preprocessing**: Automatic resizing, grayscale conversion for better OCR accuracy
+- **Table Detection**: Basic table pattern recognition and extraction
+- **Confidence Scoring**: OCR confidence levels for quality assessment
+- **Format Validation**: Automatic image format detection and validation
+
 ### **🔍 Content Type Support**
 SmartRAG automatically detects file types using both file extensions and MIME content types:
 - **Excel**: `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, `application/vnd.ms-excel`
 - **Word**: `application/vnd.openxmlformats-officedocument.wordprocessingml.document`, `application/msword`
 - **PDF**: `application/pdf`
 - **Text**: `text/*`, `application/json`, `application/xml`, `application/csv`
+- **Images**: `image/jpeg`, `image/png`, `image/gif`, `image/bmp`, `image/tiff`, `image/webp`
 
 ## 🚀 Quick Start
 
