@@ -13,7 +13,7 @@ namespace SmartRAG.Interfaces
         /// <summary>
         /// Parses document from file stream and creates document entity
         /// </summary>
-        Task<Entities.Document> ParseDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy);
+        Task<Entities.Document> ParseDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy, string language = null);
 
         /// <summary>
         /// Gets list of supported file extensions

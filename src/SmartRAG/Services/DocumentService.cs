@@ -62,7 +62,7 @@ namespace SmartRAG.Services
 
         #region Public Methods
 
-        public async Task<SmartRAG.Entities.Document> UploadDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy)
+        public async Task<SmartRAG.Entities.Document> UploadDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy, string language = null)
         {
             var supportedExtensions = _documentParserService.GetSupportedFileTypes();
             var supportedContentTypes = _documentParserService.GetSupportedContentTypes();
@@ -81,7 +81,7 @@ namespace SmartRAG.Services
                 throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, UnsupportedContentTypeFormat, contentType, list));
             }
 
-            var document = await _documentParserService.ParseDocumentAsync(fileStream, fileName, contentType, uploadedBy);
+            var document = await _documentParserService.ParseDocumentAsync(fileStream, fileName, contentType, uploadedBy, language);
 
             ServiceLogMessages.LogDocumentUploaded(_logger, fileName, null);
 
