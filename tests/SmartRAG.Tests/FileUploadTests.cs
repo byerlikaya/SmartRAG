@@ -1,3 +1,6 @@
+using Moq;
+using SmartRAG.Interfaces;
+
 namespace SmartRAG.Tests;
 
 public class FileUploadTests
@@ -15,7 +18,8 @@ public class FileUploadTests
 
         var options = Options.Create(new SmartRagOptions());
         var logger = new TestLogger<DocumentParserService>();
-        var documentParserService = new DocumentParserService(options, logger);
+        var mockImageParserService = new Mock<IImageParserService>();
+        var documentParserService = new DocumentParserService(options, mockImageParserService.Object, logger);
 
         // Act
         var result = await documentParserService.ParseDocumentAsync(stream, fileName, contentType, uploadedBy);
@@ -38,7 +42,8 @@ public class FileUploadTests
         // Arrange
         var options = Options.Create(new SmartRagOptions());
         var logger = new TestLogger<DocumentParserService>();
-        var documentParserService = new DocumentParserService(options, logger);
+        var mockImageParserService = new Mock<IImageParserService>();
+        var documentParserService = new DocumentParserService(options, mockImageParserService.Object, logger);
 
         // Act
         var supportedTypes = documentParserService.GetSupportedFileTypes();
