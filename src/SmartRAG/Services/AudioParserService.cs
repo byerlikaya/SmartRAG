@@ -264,59 +264,67 @@ namespace SmartRAG.Services
 
                 _logger.LogDebug("Created temporary audio file: {TempFile}", tempFilePath);
 
-                // Convert to WAV format if needed
-                var wavFilePath = await ConvertToWavFormatAsync(tempFilePath);
-                
-                // Use file-based recognition with WAV file
-                var audioConfig = AudioConfig.FromWavFileInput(wavFilePath);
-                
-                // Create speech recognizer
-                using (var speechRecognizer = new SpeechRecognizer(_speechConfig, audioConfig))
+                // Use Push Audio Stream for better format support (supports MP3, M4A, etc.)
+                using (var pushStream = AudioInputStream.CreatePushStream())
                 {
-                    _logger.LogDebug("Starting file-based recognition...");
+                    // Read the audio file and push to the stream
+                    var audioData = File.ReadAllBytes(tempFilePath);
+                    pushStream.Write(audioData);
+                    pushStream.Close();
 
-                    // Perform recognition
-                    var recognitionResult = await speechRecognizer.RecognizeOnceAsync();
-
-                // Debug logging for recognition result
-                _logger.LogDebug("Recognition result reason: {Reason}", recognitionResult.Reason);
-                _logger.LogDebug("Recognition result text: '{Text}'", recognitionResult.Text ?? "null");
+                    _logger.LogDebug("Pushed {AudioSize} bytes to audio stream", audioData.Length);
+                    
+                    // Use stream-based recognition
+                    var audioConfig = AudioConfig.FromStreamInput(pushStream);
                 
-                if (recognitionResult.Reason == ResultReason.RecognizedSpeech)
-                {
-                    result.Text = recognitionResult.Text;
-                    // Azure Speech SDK doesn't provide confidence in basic recognition result
-                    result.Confidence = 0.8; // Default confidence
-                    
-                    _logger.LogDebug("Speech recognized successfully: '{Text}'", result.Text);
-                    
-                    // Add segments if detailed results are enabled
-                    if (options.EnableDetailedResults)
+                    // Create speech recognizer
+                    using (var speechRecognizer = new SpeechRecognizer(_speechConfig, audioConfig))
                     {
-                        ParseDetailedResults(recognitionResult, result, options);
+                        _logger.LogDebug("Starting stream-based recognition...");
+
+                        // Perform recognition
+                        var recognitionResult = await speechRecognizer.RecognizeOnceAsync();
+
+                        // Debug logging for recognition result
+                        _logger.LogDebug("Recognition result reason: {Reason}", recognitionResult.Reason);
+                        _logger.LogDebug("Recognition result text: '{Text}'", recognitionResult.Text ?? "null");
+                        
+                        if (recognitionResult.Reason == ResultReason.RecognizedSpeech)
+                        {
+                            result.Text = recognitionResult.Text;
+                            // Azure Speech SDK doesn't provide confidence in basic recognition result
+                            result.Confidence = 0.8; // Default confidence
+                            
+                            _logger.LogDebug("Speech recognized successfully: '{Text}'", result.Text);
+                            
+                            // Add segments if detailed results are enabled
+                            if (options.EnableDetailedResults)
+                            {
+                                ParseDetailedResults(recognitionResult, result, options);
+                            }
+                        }
+                        else if (recognitionResult.Reason == ResultReason.NoMatch)
+                        {
+                            ServiceLogMessages.LogAudioNoMatch(_logger, null);
+                            result.Text = string.Empty;
+                            result.Confidence = 0;
+                            _logger.LogWarning("No speech recognized in audio file");
+                        }
+                        else if (recognitionResult.Reason == ResultReason.Canceled)
+                        {
+                            var errorMessage = $"Recognition canceled: {recognitionResult.Reason}";
+                            ServiceLogMessages.LogAudioRecognitionFailed(_logger, errorMessage, null);
+                            _logger.LogError("Audio recognition was canceled");
+                            throw new InvalidOperationException(errorMessage);
+                        }
+                        else
+                        {
+                            var errorMessage = $"Recognition failed: {recognitionResult.Reason}";
+                            ServiceLogMessages.LogAudioRecognitionFailed(_logger, errorMessage, null);
+                            _logger.LogError("Audio recognition failed with reason: {Reason}", recognitionResult.Reason);
+                            throw new InvalidOperationException(errorMessage);
+                        }
                     }
-                }
-                else if (recognitionResult.Reason == ResultReason.NoMatch)
-                {
-                    ServiceLogMessages.LogAudioNoMatch(_logger, null);
-                    result.Text = string.Empty;
-                    result.Confidence = 0;
-                    _logger.LogWarning("No speech recognized in audio file");
-                }
-                else if (recognitionResult.Reason == ResultReason.Canceled)
-                {
-                    var errorMessage = $"Recognition canceled: {recognitionResult.Reason}";
-                    ServiceLogMessages.LogAudioRecognitionFailed(_logger, errorMessage, null);
-                    _logger.LogError("Audio recognition was canceled");
-                    throw new InvalidOperationException(errorMessage);
-                }
-                else
-                {
-                    var errorMessage = $"Recognition failed: {recognitionResult.Reason}";
-                    ServiceLogMessages.LogAudioRecognitionFailed(_logger, errorMessage, null);
-                    _logger.LogError("Audio recognition failed with reason: {Reason}", recognitionResult.Reason);
-                    throw new InvalidOperationException(errorMessage);
-                }
                 }
             }
             catch (Exception)
@@ -333,14 +341,6 @@ namespace SmartRAG.Services
                     {
                         File.Delete(tempFilePath);
                         _logger.LogDebug("Cleaned up temporary file: {TempFile}", tempFilePath);
-                    }
-                    
-                    // Also clean up WAV file if it was created
-                    var wavFilePath = Path.ChangeExtension(tempFilePath, ".wav");
-                    if (!string.IsNullOrEmpty(wavFilePath) && File.Exists(wavFilePath) && wavFilePath != tempFilePath)
-                    {
-                        File.Delete(wavFilePath);
-                        _logger.LogDebug("Cleaned up WAV file: {WavFile}", wavFilePath);
                     }
                 }
                 catch (Exception ex)
