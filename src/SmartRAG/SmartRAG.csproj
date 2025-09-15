@@ -5,7 +5,7 @@
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
-    <PackageVersion>2.1.0</PackageVersion>
+    <PackageVersion>2.2.0</PackageVersion>
     <Authors>Barış Yerlikaya</Authors>
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
@@ -14,34 +14,63 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <!-- <PackageIcon>icon.png</PackageIcon> -->
-    <PackageProjectUrl>https://byerlikaya.github.io/SmartRAG</PackageProjectUrl>
+    <PackageProjectUrl>https://byerlikaya.github.io/SmartRAG/en/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/byerlikaya/SmartRAG.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Release 2.1.0: Automatic Conversation History Management
+    <PackageReleaseNotes>Release 2.2.0: Revolutionary OCR-Powered Document Intelligence
 
-✨ New Features:
-• Automatic session-based conversation management with persistent context
-• Intelligent conversation history storage across all providers (Redis, SQLite, FileSystem, InMemory)
-• New conversation commands (/new, /reset, /clear) for user control
-• Enhanced API with backward-compatible session management
+🖼️ **BREAKTHROUGH OCR CAPABILITIES - THE GAME CHANGER:**
+• **Advanced OCR Engine**: Tesseract 5.2.0 with SkiaSharp 3.119.0 integration for enterprise-grade image processing
+• **Multi-Format Image Support**: JPG, JPEG, PNG, GIF, BMP, TIFF, WEBP with automatic format detection
+• **WebP to PNG Conversion**: Seamless WebP image processing using SkiaSharp for Tesseract compatibility
+• **Multi-Language OCR**: Support for English (eng), Turkish (tur), and extensible language framework
+• **Confidence Scoring**: Detailed OCR confidence metrics with processing time tracking
+• **Table Extraction**: Intelligent table detection and structured data parsing from images
+• **Character Whitelisting**: Optimized OCR character recognition for better accuracy
+• **Image Preprocessing**: Advanced image enhancement pipeline for superior OCR results
 
-🔧 Technical Improvements:
-• Fixed conversation format consistency across all storage providers
-• Improved thread safety and error handling for conversation operations
-• Platform-agnostic design maintains compatibility with all .NET environments
+🚀 **Complete Document Intelligence Pipeline:**
+• **Universal Document Support**: PDF, Word (.docx/.doc), Excel (.xlsx/.xls), Text, Images - ALL formats in one solution
+• **Smart Chunking**: Word boundary validation with context preservation across all document types
+• **Image-to-Text Integration**: Seamless OCR integration with RAG pipeline for image-based documents
+• **Table Intelligence**: Excel worksheet parsing + OCR table extraction for comprehensive data processing
+• **Language-Agnostic Design**: Works with any language without hardcoded patterns (English, Turkish, Chinese, etc.)
 
-📚 Documentation Updates:
-• Updated all language versions (EN, TR, DE, RU)
-• Real examples aligned with actual codebase
-• API reference updated with new signatures
+🤖 **Universal AI Provider Ecosystem:**
+• **5 Dedicated Providers**: OpenAI, Anthropic Claude, Google Gemini, Azure OpenAI, Custom endpoints
+• **VoyageAI Integration**: High-quality embeddings optimized for Anthropic Claude models
+• **CustomProvider**: Support for any AI API endpoint with flexible configuration
+• **Provider-Agnostic**: Switch between AI providers without code changes
 
-🎯 Compliance:
-• 100% compliance with all established rules
-• Zero warnings policy maintained
-• SOLID and DRY principles applied</PackageReleaseNotes>
+🏢 **Enterprise Storage Solutions:**
+• **Vector Databases**: Qdrant with advanced distance metrics and collection management
+• **Redis**: High-performance in-memory storage with persistence
+• **SQLite**: Lightweight file-based storage for small to medium deployments
+• **FileSystem**: Simple file-based storage for development and testing
+• **InMemory**: Fast ephemeral storage for temporary use cases
+
+💬 **Intelligent Conversation Management:**
+• **Smart Query Intent Detection**: Automatically distinguishes between general chat and document search queries
+• **Automatic Session-Based History**: Persistent conversation context across requests
+• **Cross-Request Persistence**: Conversation history survives multiple API calls
+• **Privacy-First**: Each session is isolated with no cross-contamination
+
+⚡ **Production-Ready Enterprise Features:**
+• **.NET Standard 2.0/2.1**: Maximum framework compatibility (.NET Framework 4.6.1+, .NET Core 2.0+, .NET 5+)
+• **Zero Warnings Policy**: 100% compliance with enterprise code quality standards
+• **SOLID & DRY Principles**: Enterprise-grade architecture and maintainability
+• **Thread-Safe Operations**: Concurrent request handling with proper synchronization
+• **Comprehensive Logging**: Structured logging with LoggerMessage delegates
+• **Dependency Injection**: Full DI container integration with plug-and-play setup
+
+🎯 **Revolutionary Use Cases Now Possible:**
+• Upload scanned documents, receipts, forms, and get instant intelligent answers
+• Process image-based reports, charts, and tables with OCR + RAG intelligence
+• Extract and query data from handwritten notes, printed documents, and screenshots
+• Transform any image with text into searchable, queryable knowledge base</PackageReleaseNotes>
     
     <!-- Build Configuration -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -52,8 +81,8 @@
     <AssemblyTitle>SmartRAG</AssemblyTitle>
     <AssemblyDescription>High-performance RAG library with conversation history management for .NET</AssemblyDescription>
     <AssemblyCopyright>Copyright © 2025 Barış Yerlikaya</AssemblyCopyright>
-    <AssemblyVersion>2.1.0.0</AssemblyVersion>
-    <FileVersion>2.1.0.0</FileVersion>
+    <AssemblyVersion>2.2.0.0</AssemblyVersion>
+    <FileVersion>2.2.0.0</FileVersion>
     <NeutralLanguage>en</NeutralLanguage>
     <Culture>en-US</Culture>
   </PropertyGroup>
@@ -86,7 +115,7 @@
     
     <!-- OCR and Image Processing -->
     <PackageReference Include="Tesseract" Version="5.2.0" />
-    <PackageReference Include="SkiaSharp" Version="2.88.8" />
+    <PackageReference Include="SkiaSharp" Version="3.119.0" />
   </ItemGroup>
 
   <!-- Conditional Package References for .NET Standard 2.1 -->
