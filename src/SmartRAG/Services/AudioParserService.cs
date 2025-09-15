@@ -210,10 +210,10 @@ namespace SmartRAG.Services
                 _speechConfig.OutputFormat = OutputFormat.Detailed;
             }
             
-            // Ultra-optimized settings for phone conversations and MP3 files
-            _speechConfig.SetProperty(PropertyId.Speech_SegmentationSilenceTimeoutMs, "500");         // 0.5 second silence detection
-            _speechConfig.SetProperty(PropertyId.SpeechServiceConnection_InitialSilenceTimeoutMs, "25000"); // 25 seconds initial wait
-            _speechConfig.SetProperty(PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs, "10000");     // 10 seconds end wait
+            // Ultra-aggressive settings for phone conversations and MP3 files
+            _speechConfig.SetProperty(PropertyId.Speech_SegmentationSilenceTimeoutMs, "300");         // 0.3 second silence detection
+            _speechConfig.SetProperty(PropertyId.SpeechServiceConnection_InitialSilenceTimeoutMs, "30000"); // 30 seconds initial wait
+            _speechConfig.SetProperty(PropertyId.SpeechServiceConnection_EndSilenceTimeoutMs, "15000");     // 15 seconds end wait
             
             // Enable dictation mode for conversational speech
             _speechConfig.EnableDictation();
@@ -285,7 +285,7 @@ namespace SmartRAG.Services
                 var headerHex = BitConverter.ToString(headerBytes);
                 _logger.LogDebug("Audio header (first 12 bytes): {Header}", headerHex);
 
-                // Use Push Audio Stream for better format support (supports MP3, M4A, etc.)
+                // Use Push Audio Stream for MP3 format support
                 using (var pushStream = AudioInputStream.CreatePushStream())
                 {
                     // Read the audio file and push to the stream
@@ -305,7 +305,7 @@ namespace SmartRAG.Services
 
                         // Multiple recognition attempts for phone conversations
                         SpeechRecognitionResult recognitionResult = null;
-                        var maxAttempts = 3;
+                        var maxAttempts = 5; // Increased attempts
                         
                         for (int attempt = 1; attempt <= maxAttempts; attempt++)
                         {
@@ -326,7 +326,7 @@ namespace SmartRAG.Services
                             // Wait before retry
                             if (attempt < maxAttempts)
                             {
-                                await Task.Delay(3000); // 3 second wait between attempts
+                                await Task.Delay(5000); // 5 second wait between attempts
                             }
                         }
 
