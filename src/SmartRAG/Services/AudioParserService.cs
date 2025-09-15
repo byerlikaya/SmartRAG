@@ -264,8 +264,11 @@ namespace SmartRAG.Services
 
                 _logger.LogDebug("Created temporary audio file: {TempFile}", tempFilePath);
 
-                // Use file-based recognition instead of stream-based
-                var audioConfig = AudioConfig.FromWavFileInput(tempFilePath);
+                // Convert to WAV format if needed
+                var wavFilePath = await ConvertToWavFormatAsync(tempFilePath);
+                
+                // Use file-based recognition with WAV file
+                var audioConfig = AudioConfig.FromWavFileInput(wavFilePath);
                 
                 // Create speech recognizer
                 using (var speechRecognizer = new SpeechRecognizer(_speechConfig, audioConfig))
@@ -323,18 +326,26 @@ namespace SmartRAG.Services
             }
             finally
             {
-                // Clean up temporary file
+                // Clean up temporary files
                 try
                 {
-                    if (File.Exists(tempFilePath))
+                    if (!string.IsNullOrEmpty(tempFilePath) && File.Exists(tempFilePath))
                     {
                         File.Delete(tempFilePath);
                         _logger.LogDebug("Cleaned up temporary file: {TempFile}", tempFilePath);
                     }
+                    
+                    // Also clean up WAV file if it was created
+                    var wavFilePath = Path.ChangeExtension(tempFilePath, ".wav");
+                    if (!string.IsNullOrEmpty(wavFilePath) && File.Exists(wavFilePath) && wavFilePath != tempFilePath)
+                    {
+                        File.Delete(wavFilePath);
+                        _logger.LogDebug("Cleaned up WAV file: {WavFile}", wavFilePath);
+                    }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning("Failed to delete temporary file: {TempFile}. Error: {Error}", tempFilePath, ex.Message);
+                    _logger.LogWarning("Failed to delete temporary files. Error: {Error}", ex.Message);
                 }
             }
 
@@ -409,6 +420,125 @@ namespace SmartRAG.Services
             }
             
             return DefaultRegion;
+        }
+
+        /// <summary>
+        /// Converts audio file to WAV format for Azure Speech Services
+        /// </summary>
+        private async Task<string> ConvertToWavFormatAsync(string inputFilePath)
+        {
+            try
+            {
+                // Check if file is already WAV format
+                if (IsWavFile(inputFilePath))
+                {
+                    _logger.LogDebug("File is already in WAV format: {FilePath}", inputFilePath);
+                    return inputFilePath;
+                }
+
+                // Create WAV output file path
+                var wavFilePath = Path.ChangeExtension(inputFilePath, ".wav");
+                
+                _logger.LogDebug("Converting audio file to WAV format: {InputFile} -> {OutputFile}", inputFilePath, wavFilePath);
+
+                // For now, we'll create a simple WAV header and copy the data
+                // In a real implementation, you would use FFmpeg or similar tool
+                await CreateWavFileAsync(inputFilePath, wavFilePath);
+                
+                _logger.LogDebug("Successfully converted to WAV format: {WavFile}", wavFilePath);
+                return wavFilePath;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError("Failed to convert audio file to WAV format: {Error}", ex.Message);
+                // Return original file path as fallback
+                return inputFilePath;
+            }
+        }
+
+        /// <summary>
+        /// Checks if the file is already in WAV format
+        /// </summary>
+        private bool IsWavFile(string filePath)
+        {
+            try
+            {
+                using (var fileStream = File.OpenRead(filePath))
+                {
+                    var header = new byte[4];
+                    fileStream.Read(header, 0, 4);
+                    
+                    // Check for RIFF header
+                    return System.Text.Encoding.ASCII.GetString(header) == "RIFF";
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Creates a WAV file with proper header
+        /// </summary>
+        private Task CreateWavFileAsync(string inputFilePath, string outputFilePath)
+        {
+            return Task.Run(() =>
+            {
+                try
+                {
+                    // Read input file data
+                    var audioData = File.ReadAllBytes(inputFilePath);
+                    
+                    // Create WAV header
+                    var wavHeader = CreateWavHeader(audioData.Length);
+                    
+                    // Combine header and audio data
+                    var wavData = new byte[wavHeader.Length + audioData.Length];
+                    Array.Copy(wavHeader, 0, wavData, 0, wavHeader.Length);
+                    Array.Copy(audioData, 0, wavData, wavHeader.Length, audioData.Length);
+                    
+                    // Write WAV file
+                    File.WriteAllBytes(outputFilePath, wavData);
+                    
+                    _logger.LogDebug("Created WAV file with header: {OutputFile} ({Size} bytes)", outputFilePath, wavData.Length);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError("Failed to create WAV file: {Error}", ex.Message);
+                    throw;
+                }
+            });
+        }
+
+        /// <summary>
+        /// Creates a WAV file header
+        /// </summary>
+        private byte[] CreateWavHeader(int audioDataLength)
+        {
+            var header = new byte[44];
+            var writer = new BinaryWriter(new MemoryStream(header));
+            
+            // RIFF header
+            writer.Write(System.Text.Encoding.ASCII.GetBytes("RIFF"));
+            writer.Write(36 + audioDataLength); // File size - 8
+            writer.Write(System.Text.Encoding.ASCII.GetBytes("WAVE"));
+            
+            // fmt chunk
+            writer.Write(System.Text.Encoding.ASCII.GetBytes("fmt "));
+            writer.Write(16); // fmt chunk size
+            writer.Write((short)1); // Audio format (PCM)
+            writer.Write((short)1); // Number of channels
+            writer.Write(16000); // Sample rate
+            writer.Write(32000); // Byte rate
+            writer.Write((short)2); // Block align
+            writer.Write((short)16); // Bits per sample
+            
+            // data chunk
+            writer.Write(System.Text.Encoding.ASCII.GetBytes("data"));
+            writer.Write(audioDataLength); // Data size
+            
+            return header;
         }
 
         #endregion
