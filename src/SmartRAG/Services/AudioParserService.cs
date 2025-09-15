@@ -238,12 +238,22 @@ namespace SmartRAG.Services
                 // Reset stream position
                 audioStream.Position = 0;
 
-                // Create audio configuration
-                var audioConfig = AudioConfig.FromStreamInput(AudioInputStream.CreatePushStream());
+                // Create audio configuration with push stream
+                var pushStream = AudioInputStream.CreatePushStream();
+                var audioConfig = AudioConfig.FromStreamInput(pushStream);
 
                 // Create speech recognizer
                 using (var speechRecognizer = new SpeechRecognizer(_speechConfig, audioConfig))
                 {
+                    // Push audio data to the stream
+                    var buffer = new byte[4096];
+                    int bytesRead;
+                    while ((bytesRead = await audioStream.ReadAsync(buffer, 0, buffer.Length)) > 0)
+                    {
+                        pushStream.Write(buffer, bytesRead);
+                    }
+                    pushStream.Close();
+
                     // Perform recognition
                     var recognitionResult = await speechRecognizer.RecognizeOnceAsync();
 
