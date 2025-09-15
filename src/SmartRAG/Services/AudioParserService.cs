@@ -173,6 +173,11 @@ namespace SmartRAG.Services
                 var subscriptionKey = GetAzureSpeechKey();
                 var region = GetAzureSpeechRegion();
 
+                // Test API key validity
+                _logger.LogDebug("Testing Azure Speech Service API key...");
+                _logger.LogDebug("API Key (first 10 chars): {ApiKeyPrefix}", subscriptionKey.Substring(0, Math.Min(10, subscriptionKey.Length)));
+                _logger.LogDebug("Region: {Region}", region);
+
                 _speechConfig = SpeechConfig.FromSubscription(subscriptionKey, region);
                 _speechConfig.SpeechRecognitionLanguage = DefaultLanguage;
                 _speechConfig.EnableDictation();
@@ -182,6 +187,7 @@ namespace SmartRAG.Services
             catch (Exception ex)
             {
                 ServiceLogMessages.LogAudioServiceInitializationFailed(_logger, ex);
+                _logger.LogError("Failed to initialize Azure Speech Service. Check API key and region. Error: {Error}", ex.Message);
                 throw;
             }
         }
