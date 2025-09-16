@@ -29,7 +29,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\SmartRAG\SmartRAG.csproj" />
-    <ProjectReference Include="..\..\examples\WebAPI\SmartRAG.API.csproj" />
   </ItemGroup>
 
   <!-- Ensure JSON files are copied to output directory -->
