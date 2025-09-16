@@ -22,6 +22,13 @@ namespace SmartRAG.Services
         private readonly IConfiguration _configuration;
         private readonly ILogger<AIService> _logger;
 
+        /// <summary>
+        /// Initializes a new instance of the AIService
+        /// </summary>
+        /// <param name="aiProviderFactory">Factory for creating AI provider instances</param>
+        /// <param name="options">SmartRAG configuration options</param>
+        /// <param name="configuration">Application configuration</param>
+        /// <param name="logger">Logger instance for this service</param>
         public AIService(
         IAIProviderFactory aiProviderFactory,
         IOptions<SmartRagOptions> options,

@@ -3,7 +3,9 @@ using System.Text.RegularExpressions;
 
 namespace SmartRAG.Extensions
 {
-
+    /// <summary>
+    /// Extension methods for text search normalization and processing
+    /// </summary>
     public static class SearchTextExtensions
     {
         private static readonly Regex NonWordRegex = new Regex(@"[^\p{L}\p{Nd}\s]", RegexOptions.Compiled);

@@ -18,6 +18,10 @@ namespace SmartRAG.Providers
     {
         private readonly ILogger<GeminiProvider> _logger;
 
+        /// <summary>
+        /// Initializes a new instance of the GeminiProvider
+        /// </summary>
+        /// <param name="logger">Logger instance for this provider</param>
         public GeminiProvider(ILogger<GeminiProvider> logger) : base(logger)
         {
             _logger = logger;
