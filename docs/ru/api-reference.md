@@ -12,52 +12,53 @@ lang: ru
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Основные интерфейсы</h2>
-                    <p>Основные интерфейсы и сервисы SmartRAG.</p>
+                    <!-- Updated for v2.3.0 -->
+                    <p>SmartRAG предоставляет несколько основных интерфейсов для обработки и управления документами.</p>
                     
-                    <h3>IDocumentService</h3>
-                    <p>Основной интерфейс сервиса для операций с документами.</p>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">public interface IDocumentService
-{
-    Task<Document> UploadDocumentAsync(IFormFile file);
-    Task<Document> GetDocumentByIdAsync(string id);
-    Task<IEnumerable<Document>> GetAllDocumentsAsync();
-    Task<bool> DeleteDocumentAsync(string id);
-    Task<IEnumerable<DocumentChunk>> SearchDocumentsAsync(string query, int maxResults = 5);
-    Task<RagResponse> GenerateRagAnswerAsync(string query, int maxResults = 5);
-}</code></pre>
-                    </div>
-
-                    <h3>IDocumentParserService</h3>
-                    <p>Сервис для парсинга различных форматов файлов.</p>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">public interface IDocumentParserService
-{
-    Task<string> ParseDocumentAsync(IFormFile file);
-    bool CanParse(string fileName);
-    Task<IEnumerable<string>> ChunkTextAsync(string text, int chunkSize = 1000, int overlap = 200);
-}</code></pre>
-                    </div>
-
                     <h3>IDocumentSearchService</h3>
-                    <p>Сервис для поиска документов и RAG операций с историей разговоров.</p>
+                    <p>Поиск документов и генерация ответов с помощью ИИ с использованием RAG (Retrieval-Augmented Generation).</p>
+                    
                     <div class="code-example">
                         <pre><code class="language-csharp">public interface IDocumentSearchService
 {
-    Task<List<DocumentChunk>> SearchDocumentsAsync(string query, int maxResults = 5);
-    Task<RagResponse> GenerateRagAnswerAsync(string query, string sessionId, int maxResults = 5);
+    Task&lt;List&lt;DocumentChunk&gt;&gt; SearchDocumentsAsync(string query, int maxResults = 5);
+    Task&lt;RagResponse&gt; GenerateRagAnswerAsync(string query, int maxResults = 5, bool startNewConversation = false);
 }</code></pre>
                     </div>
 
-                    <h3>IAIService</h3>
-                    <p>Сервис для взаимодействия с AI провайдерами.</p>
+                    <h4>GenerateRagAnswerAsync</h4>
+                    <p>Генерирует ответы с помощью ИИ с автоматическим управлением сессиями и историей разговоров.</p>
+                    
                     <div class="code-example">
-                        <pre><code class="language-csharp">public interface IAIService
-{
-    Task<float[]> GenerateEmbeddingAsync(string text);
-    Task<string> GenerateTextAsync(string prompt);
-    Task<string> GenerateTextAsync(string prompt, string context);
-}</code></pre>
+                        <pre><code class="language-csharp">Task&lt;RagResponse&gt; GenerateRagAnswerAsync(string query, int maxResults = 5, bool startNewConversation = false)</code></pre>
+                    </div>
+
+                    <p><strong>Параметры:</strong></p>
+                    <ul>
+                        <li><code>query</code> (string): Вопрос пользователя</li>
+                        <li><code>maxResults</code> (int): Максимальное количество фрагментов документов для получения (по умолчанию: 5)</li>
+                        <li><code>startNewConversation</code> (bool): Начать новую сессию разговора (по умолчанию: false)</li>
+                    </ul>
+                    
+                    <p><strong>Возвращает:</strong> <code>RagResponse</code> с ответом ИИ, источниками и метаданными</p>
+                    
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Базовое использование
+var response = await documentSearchService.GenerateRagAnswerAsync("Какая погода?");
+
+// Начать новый разговор
+var response = await documentSearchService.GenerateRagAnswerAsync("/new");</code></pre>
+                    </div>
+
+                    <h3>Другие ключевые интерфейсы</h3>
+                    <p>Дополнительные сервисы для обработки и хранения документов.</p>
+                    
+                    <div class="code-example">
+                        <pre><code class="language-csharp">// Обработка и анализ документов
+IDocumentParserService - Анализ документов и извлечение текста
+IDocumentRepository - Операции хранения документов
+IAIService - Коммуникация с провайдерами ИИ
+IAudioParserService - Транскрипция аудио (Google Speech-to-Text)</code></pre>
                     </div>
                 </div>
             </div>
@@ -67,211 +68,112 @@ lang: ru
         <section class="content-section">
             <div class="row">
                 <div class="col-lg-8 mx-auto">
-                    <h2>Модели</h2>
-                    <p>Основные модели данных, используемые в SmartRAG.</p>
+                    <h2>Ключевые модели</h2>
+                    <!-- Updated for v2.3.0 -->
+                    <p>Основные модели данных для операций SmartRAG.</p>
                     
-                    <h3>Document</h3>
                     <div class="code-example">
-                        <pre><code class="language-csharp">public class Document
+                        <pre><code class="language-csharp">// Основная модель ответа
+public class RagResponse
 {
-    public string Id { get; set; }
-    public string FileName { get; set; }
-    public string Content { get; set; }
-    public string ContentType { get; set; }
-    public long FileSize { get; set; }
-    public DateTime UploadedAt { get; set; }
-    public List<DocumentChunk> Chunks { get; set; }
-}</code></pre>
-                    </div>
-
-                    <h3>DocumentChunk</h3>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">public class DocumentChunk
-{
-    public string Id { get; set; }
-    public string DocumentId { get; set; }
-    public string Content { get; set; }
-    public float[] Embedding { get; set; }
-    public int ChunkIndex { get; set; }
-    public DateTime CreatedAt { get; set; }
-}</code></pre>
-                    </div>
-
-                    <h3>RagResponse</h3>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">public class RagResponse
-{
+    public string Query { get; set; }
     public string Answer { get; set; }
-    public List<SearchSource> Sources { get; set; }
+    public List&lt;SearchSource&gt; Sources { get; set; }
     public DateTime SearchedAt { get; set; }
-    public RagConfiguration Configuration { get; set; }
-}</code></pre>
-                    </div>
+}
 
-                    <h3>SearchSource</h3>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">public class SearchSource
+// Фрагмент документа для результатов поиска
+public class DocumentChunk
 {
+    public string Id { get; set; }
     public string DocumentId { get; set; }
-    public string DocumentName { get; set; }
     public string Content { get; set; }
-    public float SimilarityScore { get; set; }
-    public int ChunkIndex { get; set; }
+    public double RelevanceScore { get; set; }
 }</code></pre>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- Enums Section -->
+        <!-- Configuration Section -->
         <section class="content-section">
             <div class="row">
                 <div class="col-lg-8 mx-auto">
-                    <h2>Перечисления</h2>
-                    <p>Значения перечислений, используемые в SmartRAG.</p>
+                    <h2>Конфигурация</h2>
+                    <!-- Updated for v2.3.0 -->
+                    <p>Ключевые параметры конфигурации для SmartRAG.</p>
                     
-                    <h3>AIProvider</h3>
                     <div class="code-example">
-                        <pre><code class="language-csharp">public enum AIProvider
-{
-    OpenAI,
-    Anthropic,
-    Gemini,
-    AzureOpenAI,
-    Custom
-}</code></pre>
-                    </div>
+                        <pre><code class="language-csharp">// Провайдеры ИИ
+AIProvider.Anthropic    // Модели Claude
+AIProvider.OpenAI       // GPT модели
+AIProvider.Gemini       // Модели Google
 
-                    <h3>StorageProvider</h3>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">public enum StorageProvider
-{
-    Qdrant,
-    Redis,
-    SQLite,
-    InMemory,
-    FileSystem
-}</code></pre>
-                    </div>
-
-                    <h3>RetryPolicy</h3>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">public enum RetryPolicy
-{
-    None,
-    FixedDelay,
-    ExponentialBackoff,
-    LinearBackoff
-}</code></pre>
+// Провайдеры хранения  
+StorageProvider.Qdrant  // Векторная база данных
+StorageProvider.Redis   // Высокопроизводительный кэш
+StorageProvider.Sqlite  // Локальная база данных</code></pre>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- Service Registration Section -->
+        <!-- Quick Start Section -->
         <section class="content-section">
             <div class="row">
                 <div class="col-lg-8 mx-auto">
-                    <h2>Регистрация сервисов</h2>
-                    <p>Как зарегистрировать SmartRAG сервисы в вашем приложении.</p>
+                    <h2>Быстрый старт</h2>
+                    <!-- Updated for v2.3.0 -->
+                    <p>Начните работу с SmartRAG за минуты.</p>
                     
-                    <h3>Базовая регистрация</h3>
                     <div class="code-example">
-                        <pre><code class="language-csharp">// Program.cs или Startup.cs
-services.AddSmartRAG(configuration, options =>
+                        <pre><code class="language-csharp">// 1. Регистрация сервисов
+services.AddSmartRag(configuration, options =>
 {
     options.AIProvider = AIProvider.Anthropic;
-    options.StorageProvider = StorageProvider.Qdrant;
-    options.MaxChunkSize = 1000;
-    options.ChunkOverlap = 200;
-    options.MaxRetryAttempts = 3;
-    options.RetryDelayMs = 1000;
-    options.RetryPolicy = RetryPolicy.ExponentialBackoff;
-});</code></pre>
-                    </div>
-
-                    <h3>Расширенная конфигурация</h3>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">services.AddSmartRAG(configuration, options =>
-{
-    options.AIProvider = AIProvider.OpenAI;
     options.StorageProvider = StorageProvider.Redis;
-    options.MaxChunkSize = 1500;
-    options.MinChunkSize = 100;
-    options.ChunkOverlap = 300;
-    options.MaxRetryAttempts = 5;
-    options.RetryDelayMs = 2000;
-    options.RetryPolicy = RetryPolicy.ExponentialBackoff;
-    options.EnableFallbackProviders = true;
-    options.FallbackProviders = new List<AIProvider> 
-    { 
-        AIProvider.Anthropic, 
-        AIProvider.Gemini 
-    };
-});</code></pre>
+});
+
+// 2. Внедрение и использование
+public class MyController : ControllerBase
+{
+    private readonly IDocumentSearchService _searchService;
+    
+    public async Task<ActionResult> Ask(string question)
+    {
+        var response = await _searchService.GenerateRagAnswerAsync(question);
+        return Ok(response);
+    }
+}</code></pre>
                     </div>
                 </div>
             </div>
         </section>
 
-        <!-- Usage Examples Section -->
+        <!-- Common Patterns Section -->
         <section class="content-section">
             <div class="row">
                 <div class="col-lg-8 mx-auto">
-                    <h2>Примеры использования</h2>
-                    <p>Как использовать SmartRAG API.</p>
+                    <h2>Общие паттерны</h2>
+                    <!-- Updated for v2.3.0 -->
+                    <p>Часто используемые паттерны и конфигурации.</p>
                     
-                    <h3>Загрузка документа</h3>
                     <div class="code-example">
-                        <pre><code class="language-csharp">[HttpPost("upload")]
-public async Task<ActionResult<Document>> UploadDocument(IFormFile file)
-{
-    try
-    {
+                        <pre><code class="language-csharp">// Загрузка документа
         var document = await _documentService.UploadDocumentAsync(file);
-        return Ok(document);
-    }
-    catch (Exception ex)
-    {
-        return BadRequest(ex.Message);
-    }
-}</code></pre>
-                    </div>
 
-                    <h3>Поиск документов</h3>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">[HttpGet("search")]
-public async Task<ActionResult<IEnumerable<DocumentChunk>>> SearchDocuments(
-    [FromQuery] string query, 
-    [FromQuery] int maxResults = 10)
-{
-    try
-    {
-        var results = await _documentService.SearchDocumentsAsync(query, maxResults);
-        return Ok(results);
-    }
-    catch (Exception ex)
-    {
-        return BadRequest(ex.Message);
-    }
-}</code></pre>
-                    </div>
+// Поиск документов  
+var results = await _searchService.SearchDocumentsAsync(query, 10);
 
-                    <h3>Генерация RAG ответа</h3>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">[HttpPost("ask")]
-public async Task<ActionResult<RagResponse>> AskQuestion([FromBody] string question)
+// RAG разговор
+var response = await _searchService.GenerateRagAnswerAsync(question);
+
+// Конфигурация
+services.AddSmartRag(configuration, options =>
 {
-    try
-    {
-        var response = await _documentService.GenerateRagAnswerAsync(question, 5);
-        return Ok(response);
-    }
-    catch (Exception ex)
-    {
-        return BadRequest(ex.Message);
-    }
-}</code></pre>
+    options.AIProvider = AIProvider.Anthropic;
+    options.StorageProvider = StorageProvider.Redis;
+});</code></pre>
                     </div>
                 </div>
             </div>
@@ -282,47 +184,21 @@ public async Task<ActionResult<RagResponse>> AskQuestion([FromBody] string quest
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Обработка ошибок</h2>
-                    <p>Обработка ошибок и типы исключений в SmartRAG.</p>
+                    <!-- Updated for v2.3.0 -->
+                    <p>Частые исключения и паттерны обработки ошибок.</p>
                     
-                    <div class="alert alert-warning">
-                        <h4><i class="fas fa-exclamation-triangle me-2"></i>Важно</h4>
-                        <p class="mb-0">Все сервисы SmartRAG разработаны с надлежащей обработкой ошибок. Оберните ваши API вызовы в try-catch блоки.</p>
-                    </div>
-
-                    <h3>Частые ошибки</h3>
-                    <ul>
-                        <li><strong>ArgumentException</strong>: Неверные параметры</li>
-                        <li><strong>FileNotFoundException</strong>: Файл не найден</li>
-                        <li><strong>UnauthorizedAccessException</strong>: Неверный API ключ</li>
-                        <li><strong>HttpRequestException</strong>: Проблемы с сетевым подключением</li>
-                        <li><strong>TimeoutException</strong>: Таймаут запроса</li>
-                    </ul>
-
-                    <h3>Пример обработки ошибок</h3>
                     <div class="code-example">
                         <pre><code class="language-csharp">try
 {
-    var document = await _documentService.UploadDocumentAsync(file);
-    return Ok(document);
+    var response = await _searchService.GenerateRagAnswerAsync(query);
+    return Ok(response);
 }
-catch (ArgumentException ex)
+catch (SmartRagException ex)
 {
-    _logger.LogWarning("Invalid argument: {Message}", ex.Message);
-    return BadRequest("Invalid file or parameters");
-}
-catch (UnauthorizedAccessException ex)
-{
-    _logger.LogError("Authentication failed: {Message}", ex.Message);
-    return Unauthorized("Invalid API key");
-}
-catch (HttpRequestException ex)
-{
-    _logger.LogError("Network error: {Message}", ex.Message);
-    return StatusCode(503, "Service temporarily unavailable");
+    return BadRequest(ex.Message);
 }
 catch (Exception ex)
 {
-    _logger.LogError(ex, "Unexpected error occurred");
     return StatusCode(500, "Internal server error");
 }</code></pre>
                     </div>
@@ -330,60 +206,22 @@ catch (Exception ex)
             </div>
         </section>
 
-        <!-- Logging Section -->
+        <!-- Performance Section -->
         <section class="content-section">
             <div class="row">
                 <div class="col-lg-8 mx-auto">
-                    <h2>Логирование</h2>
-                    <p>Логирование и мониторинг в SmartRAG.</p>
+                    <h2>Советы по производительности</h2>
+                    <!-- Updated for v2.3.0 -->
+                    <p>Оптимизируйте производительность SmartRAG с этими советами.</p>
                     
-                    <h3>Уровни логирования</h3>
-                    <ul>
-                        <li><strong>Information</strong>: Обычные операции</li>
-                        <li><strong>Warning</strong>: Предупреждения и неожиданные ситуации</li>
-                        <li><strong>Error</strong>: Ошибки и исключения</li>
-                        <li><strong>Debug</strong>: Подробная отладочная информация</li>
+                    <div class="alert alert-info">
+                        <ul class="mb-0">
+                            <li><strong>Размер чанков</strong>: 500-1000 символов для оптимального баланса</li>
+                            <li><strong>Пакетные операции</strong>: Обрабатывайте несколько документов вместе</li>
+                            <li><strong>Кэширование</strong>: Используйте Redis для лучшей производительности</li>
+                            <li><strong>Векторное хранилище</strong>: Qdrant для производственного использования</li>
                     </ul>
-
-                    <h3>Конфигурация логирования</h3>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">// appsettings.json
-{
-  "Logging": {
-    "LogLevel": {
-      "Default": "Information",
-      "SmartRAG": "Debug",
-      "Microsoft": "Warning"
-    }
-  }
-}</code></pre>
                     </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Performance Considerations Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>Соображения производительности</h2>
-                    <p>Оптимизация производительности в SmartRAG.</p>
-                    
-                    <h3>Рекомендуемые настройки</h3>
-                    <ul>
-                        <li><strong>Chunk Size</strong>: 1000-1500 символов</li>
-                        <li><strong>Chunk Overlap</strong>: 200-300 символов</li>
-                        <li><strong>Max Results</strong>: 5-10 результатов</li>
-                        <li><strong>Retry Attempts</strong>: 3-5 попыток</li>
-                    </ul>
-
-                    <h3>Советы по производительности</h3>
-                    <ul>
-                        <li>Обрабатывайте большие файлы заранее</li>
-                        <li>Используйте подходящие размеры чанков</li>
-                        <li>Включайте механизмы кэширования</li>
-                        <li>Предпочитайте асинхронные операции</li>
-                    </ul>
                 </div>
             </div>
         </section>
@@ -394,13 +232,12 @@ catch (Exception ex)
                 <div class="col-lg-8 mx-auto">
                     <div class="alert alert-info">
                         <h4><i class="fas fa-question-circle me-2"></i>Нужна помощь?</h4>
-                        <p class="mb-0">По вопросам API:</p>
+                        <p class="mb-0">Если вам нужна помощь с API:</p>
                         <ul class="mb-0 mt-2">
-                            <li><a href="{{ site.baseurl }}/ru/getting-started">Начало работы</a></li>
-                            <li><a href="{{ site.baseurl }}/ru/examples">Примеры</a></li>
-                            <li><a href="{{ site.baseurl }}/ru/configuration">Конфигурация</a></li>
-                            <li><a href="https://github.com/byerlikaya/SmartRAG/issues" target="_blank">Создать GitHub Issue</a></li>
-                            <li><a href="mailto:b.yerlikaya@outlook.com">Поддержка по email</a></li>
+                            <li><a href="{{ site.baseurl }}/ru/getting-started">Руководство по началу работы</a></li>
+                            <li><a href="{{ site.baseurl }}/ru/configuration">Параметры конфигурации</a></li>
+                            <li><a href="https://github.com/byerlikaya/SmartRAG/issues" target="_blank">Создать issue на GitHub</a></li>
+                            <li><a href="mailto:b.yerlikaya@outlook.com">Связаться с поддержкой по email</a></li>
                         </ul>
                     </div>
                 </div>
