@@ -17,6 +17,10 @@ namespace SmartRAG.Providers
     {
         private readonly ILogger<OpenAIProvider> _logger;
 
+        /// <summary>
+        /// Initializes a new instance of the OpenAIProvider
+        /// </summary>
+        /// <param name="logger">Logger instance for this provider</param>
         public OpenAIProvider(ILogger<OpenAIProvider> logger) : base(logger)
         {
             _logger = logger;

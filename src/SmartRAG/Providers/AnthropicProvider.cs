@@ -17,6 +17,10 @@ namespace SmartRAG.Providers
     {
         private readonly ILogger<AnthropicProvider> _logger;
 
+        /// <summary>
+        /// Initializes a new instance of the AnthropicProvider
+        /// </summary>
+        /// <param name="logger">Logger instance for this provider</param>
         public AnthropicProvider(ILogger<AnthropicProvider> logger) : base(logger)
         {
             _logger = logger;
