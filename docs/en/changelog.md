@@ -14,10 +14,47 @@ lang: en
                     <h2>Version History</h2>
                     <p>Complete history of SmartRAG releases with detailed change information.</p>
 
-                    <h3>Version 2.2.0 - 2025-01-15</h3>
+                    <h3>Version 2.3.0 - 2025-09-16</h3>
                     <div class="alert alert-success">
                         <h4><i class="fas fa-star me-2"></i>Latest Release</h4>
-                        <p class="mb-0">This is the current stable release with enhanced OCR documentation and visibility improvements.</p>
+                        <p class="mb-0">This is the current stable release with Google Speech-to-Text integration and enhanced developer experience.</p>
+                    </div>
+
+                    <h4>Added</h4>
+                    <ul>
+                        <li><strong>Google Speech-to-Text Integration</strong>: Enterprise-grade speech recognition with Google Cloud AI</li>
+                        <li><strong>Enhanced Language Support</strong>: 100+ languages including Turkish, English, and global languages</li>
+                        <li><strong>Real-time Audio Processing</strong>: Advanced speech-to-text conversion with confidence scoring</li>
+                        <li><strong>Detailed Transcription Results</strong>: Segment-level transcription with timestamps and confidence metrics</li>
+                        <li><strong>Automatic Format Detection</strong>: Support for MP3, WAV, M4A, AAC, OGG, FLAC, WMA formats</li>
+                        <li><strong>Intelligent Audio Processing</strong>: Smart audio stream validation and error handling</li>
+                        <li><strong>Performance Optimized</strong>: Efficient audio processing with minimal memory footprint</li>
+                        <li><strong>Structured Audio Output</strong>: Converts audio content to searchable, queryable knowledge base</li>
+                        <li><strong>Comprehensive XML Documentation</strong>: Complete API documentation for all public classes and methods</li>
+                    </ul>
+
+                    <h4>Improved</h4>
+                    <ul>
+                        <li><strong>Audio Processing Pipeline</strong>: Enhanced audio processing with Google Cloud AI</li>
+                        <li><strong>Configuration Management</strong>: Updated all configuration files to use GoogleSpeechConfig</li>
+                        <li><strong>Error Handling</strong>: Enhanced error handling for audio transcription operations</li>
+                        <li><strong>Documentation</strong>: Updated all language versions with Google Speech-to-Text examples</li>
+                        <li><strong>Code Quality</strong>: Zero warnings policy compliance with SOLID/DRY principles</li>
+                        <li><strong>Security</strong>: Fixed CodeQL high severity vulnerability with log injection protection</li>
+                    </ul>
+
+                    <h4>Documentation</h4>
+                    <ul>
+                        <li><strong>Audio Processing</strong>: Comprehensive audio processing feature documentation</li>
+                        <li><strong>Multi-language Support</strong>: Updated all language versions (EN, TR, DE, RU) with examples</li>
+                        <li><strong>API Documentation</strong>: Complete XML documentation for all public APIs</li>
+                        <li><strong>Developer Experience</strong>: Better developer experience with detailed audio processing examples</li>
+                    </ul>
+
+                    <h3>Version 2.2.0 - 2025-01-15</h3>
+                    <div class="alert alert-info">
+                        <h4><i class="fas fa-info-circle me-2"></i>Previous Release</h4>
+                        <p class="mb-0">Previous stable release with enhanced OCR documentation and visibility improvements.</p>
                     </div>
                     <ul>
                         <li><strong>Enhanced OCR Documentation</strong>: Comprehensive documentation showcasing OCR capabilities with real-world use cases</li>
