@@ -593,12 +593,12 @@ namespace SmartRAG.Services
         public static readonly Action<ILogger, string, Exception> LogAudioServiceInitialized = LoggerMessage.Define<string>(
             LogLevel.Debug,
             new EventId(80004, "AudioServiceInitialized"),
-            "Azure Speech Service initialized for region: {Region}");
+            "Google Speech-to-Text service initialized");
 
         public static readonly Action<ILogger, Exception> LogAudioServiceInitializationFailed = LoggerMessage.Define(
             LogLevel.Error,
             new EventId(80005, "AudioServiceInitializationFailed"),
-            "Azure Speech Service initialization failed");
+            "Google Speech-to-Text service initialization failed");
 
         public static readonly Action<ILogger, Exception> LogAudioNoMatch = LoggerMessage.Define(
             LogLevel.Warning,
