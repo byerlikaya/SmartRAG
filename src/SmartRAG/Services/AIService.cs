@@ -40,6 +40,7 @@ namespace SmartRAG.Services
             _configuration = configuration;
             _logger = logger;
         }
+
         #region Constants
 
         // Retry and fallback constants

@@ -65,39 +65,6 @@ namespace SmartRAG.Services
             }
         }
 
-        /// <summary>
-        /// Transcribes audio content from a stream using Google Speech-to-Text
-        /// </summary>
-        public async Task<AudioTranscriptionResult> TranscribeAudioAsync(Stream audioStream, AudioTranscriptionOptions options)
-        {
-            if (audioStream == null)
-                throw new ArgumentNullException(nameof(audioStream));
-
-            if (options == null)
-                throw new ArgumentNullException(nameof(options));
-
-            try
-            {
-                _logger.LogInformation("Starting audio transcription for {Size} bytes in language {Language}", 
-                    audioStream.Length, options.Language);
-
-                // Validate audio stream
-                ValidateAudioStream(audioStream);
-
-                // Perform transcription
-                var result = await PerformTranscriptionAsync(audioStream, "audio", options);
-
-                _logger.LogInformation("Audio transcription completed: {Length} characters with {Confidence} confidence",
-                    result.Text?.Length ?? 0, result.Confidence);
-
-                return result;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError("Audio transcription failed: {Error}", ex.Message);
-                throw;
-            }
-        }
 
         /// <summary>
         /// Creates transcription options from language parameter
@@ -113,7 +80,6 @@ namespace SmartRAG.Services
             return new AudioTranscriptionOptions
             {
                 Language = language ?? config.DefaultLanguage ?? "tr-TR",
-                EnableDetailedResults = config.EnableDetailedResults,
                 MinConfidenceThreshold = config.MinConfidenceThreshold,
                 IncludeWordTimestamps = config.IncludeWordTimestamps
             };
@@ -323,49 +289,6 @@ namespace SmartRAG.Services
                 result.Text, result.Confidence);
         }
 
-        /// <summary>
-        /// Checks if the given file name represents a supported audio format
-        /// </summary>
-        public bool IsSupportedFormat(string fileName)
-        {
-            if (string.IsNullOrEmpty(fileName))
-                return false;
-
-            var extension = Path.GetExtension(fileName).ToLowerInvariant();
-            return GetSupportedFormats().Contains(extension, StringComparer.OrdinalIgnoreCase);
-        }
-
-        /// <summary>
-        /// Gets a list of supported audio file extensions
-        /// </summary>
-        public IEnumerable<string> GetSupportedFormats()
-        {
-            return new[]
-            {
-                ".wav",
-                ".mp3",
-                ".m4a",
-                ".flac",
-                ".ogg",
-                ".webm"
-            };
-        }
-
-        /// <summary>
-        /// Gets a list of supported MIME content types for audio
-        /// </summary>
-        public IEnumerable<string> GetSupportedContentTypes()
-        {
-            return new[]
-            {
-                "audio/wav",
-                "audio/mpeg",
-                "audio/mp4",
-                "audio/flac",
-                "audio/ogg",
-                "audio/webm"
-            };
-        }
 
         /// <summary>
         /// Disposes resources
