@@ -14,6 +14,33 @@ lang: de
                     <h2>Versionsverlauf</h2>
                     <p>Vollständige Geschichte der SmartRAG-Releases mit detaillierten Änderungsinformationen.</p>
 
+## [2.3.0] - 2025-09-16
+
+### Added
+- **Google Speech-to-Text Integration**: Enterprise-grade speech recognition with Google Cloud AI
+- **Enhanced Language Support**: 100+ languages including Turkish, English, and global languages
+- **Real-time Audio Processing**: Advanced speech-to-text conversion with confidence scoring
+- **Detailed Transcription Results**: Segment-level transcription with timestamps and confidence metrics
+- **Automatic Format Detection**: Support for MP3, WAV, M4A, AAC, OGG, FLAC, WMA formats
+- **Intelligent Audio Processing**: Smart audio stream validation and error handling
+- **Performance Optimized**: Efficient audio processing with minimal memory footprint
+- **Structured Audio Output**: Converts audio content to searchable, queryable knowledge base
+- **Comprehensive XML Documentation**: Complete API documentation for all public classes and methods
+
+### Improved
+- **Audio Processing Pipeline**: Enhanced audio processing with Google Cloud AI
+- **Configuration Management**: Updated all configuration files to use GoogleSpeechConfig
+- **Error Handling**: Enhanced error handling for audio transcription operations
+- **Documentation**: Updated all language versions with Google Speech-to-Text examples
+- **Code Quality**: Zero warnings policy compliance with SOLID/DRY principles
+- **Security**: Fixed CodeQL high severity vulnerability with log injection protection
+
+### Documentation
+- **Audio Processing**: Comprehensive audio processing feature documentation
+- **Multi-language Support**: Updated all language versions (EN, TR, DE, RU) with examples
+- **API Documentation**: Complete XML documentation for all public APIs
+- **Developer Experience**: Better developer experience with detailed audio processing examples
+
 ## [2.2.0] - 2025-01-15
 
 ### Added
