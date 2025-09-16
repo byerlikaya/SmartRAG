@@ -66,8 +66,8 @@ namespace SmartRAG.Models
         public List<AIProvider> FallbackProviders { get; set; } = new List<AIProvider>();
 
         /// <summary>
-        /// Azure Speech Services configuration for audio transcription
+        /// Google Speech-to-Text configuration for audio transcription
         /// </summary>
-        public AzureSpeechConfig AzureSpeechConfig { get; set; }
+        public GoogleSpeechConfig GoogleSpeechConfig { get; set; }
     }
 }
