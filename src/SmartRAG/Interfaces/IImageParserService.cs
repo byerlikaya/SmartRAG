@@ -10,20 +10,6 @@ namespace SmartRAG.Interfaces
     /// </summary>
     public interface IImageParserService
     {
-        #region Properties
-
-        /// <summary>
-        /// Gets the list of supported image file extensions
-        /// </summary>
-        IEnumerable<string> GetSupportedImageExtensions();
-
-        /// <summary>
-        /// Gets the list of supported image content types
-        /// </summary>
-        IEnumerable<string> GetSupportedImageContentTypes();
-
-        #endregion
-
         #region Public Methods
 
         /// <summary>
@@ -41,22 +27,6 @@ namespace SmartRAG.Interfaces
         /// <param name="language">The language code for OCR (e.g., "eng", "tur")</param>
         /// <returns>OCR result with text and confidence scores</returns>
         Task<OcrResult> ExtractTextWithConfidenceAsync(Stream imageStream, string language = "eng");
-
-        /// <summary>
-        /// Extracts tables from an image
-        /// </summary>
-        /// <param name="imageStream">The image stream to process</param>
-        /// <param name="language">The language code for OCR</param>
-        /// <returns>List of extracted tables</returns>
-        Task<List<ExtractedTable>> ExtractTablesAsync(Stream imageStream, string language = "eng");
-
-        /// <summary>
-        /// Checks if the image format is supported
-        /// </summary>
-        /// <param name="fileName">The image file name</param>
-        /// <param name="contentType">The content type of the image</param>
-        /// <returns>True if the format is supported</returns>
-        bool IsImageFormatSupported(string fileName, string contentType);
 
         /// <summary>
         /// Preprocesses an image for better OCR results

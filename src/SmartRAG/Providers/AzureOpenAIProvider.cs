@@ -18,10 +18,15 @@ namespace SmartRAG.Providers
     {
         private readonly ILogger<AzureOpenAIProvider> _logger;
 
+        /// <summary>
+        /// Initializes a new instance of the AzureOpenAIProvider
+        /// </summary>
+        /// <param name="logger">Logger instance for this provider</param>
         public AzureOpenAIProvider(ILogger<AzureOpenAIProvider> logger) : base(logger)
         {
             _logger = logger;
         }
+
         #region Constants
 
         // Rate limiting constants

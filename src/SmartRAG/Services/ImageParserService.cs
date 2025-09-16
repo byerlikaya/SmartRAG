@@ -2,9 +2,7 @@ using Microsoft.Extensions.Logging;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Threading.Tasks;
 using Tesseract;
 using SkiaSharp;
@@ -18,30 +16,10 @@ namespace SmartRAG.Services
     {
         #region Constants
 
-        // Supported image extensions
-        private static readonly string[] SupportedExtensions = { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp" };
-
-        // Supported content types
-        private static readonly string[] SupportedContentTypes = 
-        {
-            "image/jpeg", "image/jpg", "image/png", "image/gif", 
-            "image/bmp", "image/tiff", "image/webp"
-        };
+        // Supported formats are handled dynamically by Tesseract and SkiaSharp
 
         // Language codes
         private const string DefaultLanguage = "eng";
-        private const string TurkishLanguage = "tur";
-        private const string EnglishLanguage = "eng";
-
-        // Image processing constants
-        private const int MinImageSize = 100;
-        private const int MaxImageSize = 4096;
-        private const float DefaultDpi = 300.0f;
-        private const float DefaultConfidence = 0.7f;
-        private const int MinWordLength = 1;
-        private const int DefaultColumnCount = 1;
-        private const int MaxRetryAttempts = 3;
-        private const int DefaultTimeoutMs = 30000;
         
         // WebP header constants
         private const int WebPHeaderSize = 12;
@@ -65,9 +43,6 @@ namespace SmartRAG.Services
         // Character whitelist for OCR
         private const string OcrCharacterWhitelist = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,!?;:()[]{}\"'-/\\@#$%&*+=<>|~`";
 
-        // Table detection patterns
-        private static readonly string[] TablePatterns = { "|", "  ", "\t\t", "   ", "    " };
-
         #endregion
 
         #region Fields
@@ -85,20 +60,6 @@ namespace SmartRAG.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _ocrEngineDataPath = FindOcrEngineDataPath(_logger);
         }
-
-        #endregion
-
-        #region Properties
-
-        /// <summary>
-        /// Gets the list of supported image file extensions
-        /// </summary>
-        public IEnumerable<string> GetSupportedImageExtensions() => SupportedExtensions;
-
-        /// <summary>
-        /// Gets the list of supported image content types
-        /// </summary>
-        public IEnumerable<string> GetSupportedImageContentTypes() => SupportedContentTypes;
 
         #endregion
 
@@ -176,65 +137,6 @@ namespace SmartRAG.Services
             }
         }
 
-        /// <summary>
-        /// Extracts tables from an image
-        /// </summary>
-        public async Task<List<ExtractedTable>> ExtractTablesAsync(Stream imageStream, string language = DefaultLanguage)
-        {
-            try
-            {
-                // For now, return basic table extraction
-                // Advanced table detection can be implemented later
-                var text = await ExtractTextFromImageAsync(imageStream, language);
-                
-                var tables = new List<ExtractedTable>();
-                
-                // Simple table detection based on text patterns
-                if (ContainsTablePattern(text))
-                {
-                    tables.Add(new ExtractedTable
-                    {
-                        Content = text,
-                        RowCount = CountTableRows(text),
-                        ColumnCount = CountTableColumns(text),
-                        Confidence = DefaultConfidence,
-                        Data = ParseTableData(text)
-                    });
-                }
-                
-                return tables;
-            }
-            catch (Exception ex)
-            {
-                ServiceLogMessages.LogTableDetectionFailed(_logger, ex);
-                return new List<ExtractedTable>();
-            }
-        }
-
-        /// <summary>
-        /// Checks if the image format is supported
-        /// </summary>
-        public bool IsImageFormatSupported(string fileName, string contentType)
-        {
-            if (string.IsNullOrEmpty(fileName) && string.IsNullOrEmpty(contentType))
-                return false;
-
-            // Check file extension
-            if (!string.IsNullOrEmpty(fileName))
-            {
-                var extension = Path.GetExtension(fileName).ToLowerInvariant();
-                if (SupportedExtensions.Contains(extension))
-                    return true;
-            }
-
-            // Check content type
-            if (!string.IsNullOrEmpty(contentType))
-            {
-                return SupportedContentTypes.Any(ct => contentType.StartsWith(ct, StringComparison.OrdinalIgnoreCase));
-            }
-
-            return false;
-        }
 
         /// <summary>
         /// Preprocesses an image for better OCR results
@@ -427,77 +329,7 @@ namespace SmartRAG.Services
             return text.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
         }
 
-        /// <summary>
-        /// Checks if text contains table patterns
-        /// </summary>
-        private static bool ContainsTablePattern(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text))
-                return false;
-
-            return TablePatterns.Any(pattern => text.Contains(pattern));
-        }
-
-        /// <summary>
-        /// Counts table rows
-        /// </summary>
-        private static int CountTableRows(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text))
-                return 0;
-
-            return text.Split(new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
-        }
-
-        /// <summary>
-        /// Counts table columns
-        /// </summary>
-        private static int CountTableColumns(string text)
-        {
-            if (string.IsNullOrWhiteSpace(text))
-                return 0;
-
-            var lines = text.Split(new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-            if (lines.Length == 0)
-                return 0;
-
-            // Find the line with most separators
-            var maxColumns = 1;
-            foreach (var line in lines)
-            {
-                var columnCount = line.Split(new char[] { '|', '\t' }, StringSplitOptions.RemoveEmptyEntries).Length;
-                maxColumns = Math.Max(maxColumns, columnCount);
-            }
-
-            return maxColumns;
-        }
-
-        /// <summary>
-        /// Parses table data into structured format
-        /// </summary>
-        private static List<List<string>> ParseTableData(string text)
-        {
-            var result = new List<List<string>>();
-            
-            if (string.IsNullOrWhiteSpace(text))
-                return result;
-
-            var lines = text.Split(new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-            
-            foreach (var line in lines)
-            {
-                var columns = line.Split(new char[] { '|', '\t' }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(col => col.Trim())
-                    .ToList();
-                
-                if (columns.Count > 0)
-                {
-                    result.Add(columns);
-                }
-            }
-
-            return result;
-        }
+        // Table processing methods removed - not used in current implementation
 
         #endregion
 

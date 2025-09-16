@@ -28,7 +28,6 @@ namespace SmartRAG.Repositories
         private const int MaxEmbeddingVectorSize = 10000; // Reasonable limit for embedding vector size
         private const int MinEmbeddingValue = -1000;
         private const int MaxEmbeddingValue = 1000;
-        private const int MinSubnormalThreshold = 0;
         private const int MaxAbsoluteValue = 100;
         private const int MinValueThreshold = 0;
         private const int DefaultMaxSearchResults = 5;
@@ -786,7 +785,7 @@ namespace SmartRAG.Repositories
                         command.CommandText = @"
                             INSERT OR REPLACE INTO Conversations (SessionId, History, LastUpdated) 
                             VALUES (@SessionId, @History, @LastUpdated)";
-                        
+
                         command.Parameters.AddWithValue("@SessionId", sessionId);
                         command.Parameters.AddWithValue("@History", answer);
                         command.Parameters.AddWithValue("@LastUpdated", DateTime.UtcNow);
@@ -797,7 +796,7 @@ namespace SmartRAG.Repositories
                 }
 
                 var currentHistory = await GetConversationHistoryAsync(sessionId);
-                var newEntry = string.IsNullOrEmpty(currentHistory) 
+                var newEntry = string.IsNullOrEmpty(currentHistory)
                     ? $"User: {question}\nAssistant: {answer}"
                     : $"{currentHistory}\nUser: {question}\nAssistant: {answer}";
 
@@ -817,7 +816,7 @@ namespace SmartRAG.Repositories
                     command.CommandText = @"
                         INSERT OR REPLACE INTO Conversations (SessionId, History, LastUpdated) 
                         VALUES (@SessionId, @History, @LastUpdated)";
-                    
+
                     command.Parameters.AddWithValue("@SessionId", sessionId);
                     command.Parameters.AddWithValue("@History", newEntry);
                     command.Parameters.AddWithValue("@LastUpdated", DateTime.UtcNow);

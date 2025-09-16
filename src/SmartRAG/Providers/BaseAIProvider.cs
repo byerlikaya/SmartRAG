@@ -60,14 +60,29 @@ namespace SmartRAG.Providers
 
         #region Abstract Properties
 
+        /// <summary>
+        /// Gets the type of AI provider this implementation represents
+        /// </summary>
         public abstract AIProvider ProviderType { get; }
 
         #endregion
 
         #region Abstract Methods
 
+        /// <summary>
+        /// Generates text response from the AI provider
+        /// </summary>
+        /// <param name="prompt">The input prompt for text generation</param>
+        /// <param name="config">AI provider configuration settings</param>
+        /// <returns>Generated text response</returns>
         public abstract Task<string> GenerateTextAsync(string prompt, AIProviderConfig config);
 
+        /// <summary>
+        /// Generates vector embedding for the given text
+        /// </summary>
+        /// <param name="text">The text to generate embedding for</param>
+        /// <param name="config">AI provider configuration settings</param>
+        /// <returns>Vector embedding as list of floats</returns>
         public abstract Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config);
 
         #endregion
