@@ -101,10 +101,13 @@ To test a different provider, update `appsettings.Development.json`:
 - No code changes needed
 - All providers supported (OpenAI, Anthropic, Gemini, Azure OpenAI, Custom)
 
-### ✅ **OCR Testing Support**
+### ✅ **OCR and Speech-to-Text Testing Support**
 - Image processing and OCR functionality tests
 - Multiple image format support (.jpg, .png, .gif, .bmp, .tiff, .webp)
 - Table extraction and confidence scoring tests
+- Audio processing and Speech-to-Text functionality tests
+- Multiple audio format support (.mp3, .wav, .m4a, .aac, .ogg, .flac, .wma)
+- Transcription accuracy and confidence scoring tests
 
 ### ✅ **Enhanced Features Testing**
 - Conversation history management
@@ -158,7 +161,7 @@ For questions, issues, or contributions, please visit our [GitHub repository](ht
 - **📧 [Contact & Support](mailto:b.yerlikaya@outlook.com)**
 - **💼 [LinkedIn](https://www.linkedin.com/in/barisyerlikaya/)**
 - **🐙 [GitHub Profile](https://github.com/byerlikaya)**
-- **📦 [NuGet Packages](https://www.nuget.org/profiles/byerlikaya)**
+- **📦 [NuGet Packages](https://www.nuget.org/profiles/barisyerlikaya)**
 - **📖 [Documentation](https://byerlikaya.github.io/SmartRAG)** - Comprehensive guides and API reference
 
 ---

@@ -5,7 +5,32 @@ All notable changes to SmartRAG will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2.2.0] - 2025-01-15
+## [2.3.0] - 2025-09-16
+
+### ✨ Added
+- **Google Speech-to-Text Integration**: Enterprise-grade speech recognition with Google Cloud AI
+- **Enhanced Language Support**: 100+ languages including Turkish, English, and global languages
+- **Real-time Audio Processing**: Advanced speech-to-text conversion with confidence scoring
+- **Detailed Transcription Results**: Segment-level transcription with timestamps and confidence metrics
+- **Automatic Format Detection**: Support for MP3, WAV, M4A, AAC, OGG, FLAC, WMA formats
+- **Intelligent Audio Processing**: Smart audio stream validation and error handling
+- **Performance Optimized**: Efficient audio processing with minimal memory footprint
+- **Structured Audio Output**: Converts audio content to searchable, queryable knowledge base
+- **Comprehensive XML Documentation**: Complete API documentation for all public classes and methods
+
+### 🔧 Improved
+- **Audio Processing Pipeline**: Enhanced audio processing with Google Cloud AI
+- **Configuration Management**: Updated all configuration files to use GoogleSpeechConfig
+- **Error Handling**: Enhanced error handling for audio transcription operations
+- **Documentation**: Updated all language versions with Google Speech-to-Text examples
+
+### 📚 Documentation
+- **Audio Processing**: Comprehensive audio processing feature documentation
+- **Google Speech-to-Text**: Enhanced README with detailed speech-to-text capabilities
+- **Multi-language Support**: Highlighted 100+ language support for global applications
+- **Developer Experience**: Better visibility of audio processing features for developers
+
+## [2.2.0] - 2025-09-15
 
 ### ✨ Added
 - **Enhanced OCR Documentation**: Comprehensive documentation showcasing OCR capabilities with real-world use cases
@@ -23,7 +48,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **WebP Support**: Highlighted WebP to PNG conversion and multi-language OCR support
 - **Developer Experience**: Better visibility of image processing features for developers
 
-## [2.0.0] - 2025-01-27
+## [2.0.0] - 2025-09-10
 
 ### 🔄 **BREAKING CHANGE: .NET Standard Migration**
 - **Target Framework**: Migrated from .NET 9.0 to .NET Standard 2.0/2.1

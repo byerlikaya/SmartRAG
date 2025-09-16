@@ -30,6 +30,9 @@ namespace SmartRAG.Extensions
             // Configure SmartRagOptions using Options Pattern for non-provider settings
             services.Configure<SmartRagOptions>(options =>
             {
+                // Bind from configuration first
+                configuration.GetSection("SmartRAG").Bind(options);
+                // Then apply custom configuration
                 configureOptions(options);
             });
 
@@ -44,6 +47,7 @@ namespace SmartRAG.Extensions
             services.AddScoped<IDocumentParserService, DocumentParserService>();
             services.AddScoped<IDocumentSearchService, DocumentSearchService>();
             services.AddScoped<IImageParserService, ImageParserService>();
+            services.AddScoped<IAudioParserService, AudioParserService>();
 
             ConfigureStorageProvider(services, configuration);
 

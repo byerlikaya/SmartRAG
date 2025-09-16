@@ -19,7 +19,8 @@ public class FileUploadTests
         var options = Options.Create(new SmartRagOptions());
         var logger = new TestLogger<DocumentParserService>();
         var mockImageParserService = new Mock<IImageParserService>();
-        var documentParserService = new DocumentParserService(options, mockImageParserService.Object, logger);
+        var mockAudioParserService = new Mock<IAudioParserService>();
+        var documentParserService = new DocumentParserService(options, mockImageParserService.Object, mockAudioParserService.Object, logger);
 
         // Act
         var result = await documentParserService.ParseDocumentAsync(stream, fileName, contentType, uploadedBy);
@@ -43,7 +44,8 @@ public class FileUploadTests
         var options = Options.Create(new SmartRagOptions());
         var logger = new TestLogger<DocumentParserService>();
         var mockImageParserService = new Mock<IImageParserService>();
-        var documentParserService = new DocumentParserService(options, mockImageParserService.Object, logger);
+        var mockAudioParserService = new Mock<IAudioParserService>();
+        var documentParserService = new DocumentParserService(options, mockImageParserService.Object, mockAudioParserService.Object, logger);
 
         // Act
         var supportedTypes = documentParserService.GetSupportedFileTypes();
@@ -53,6 +55,8 @@ public class FileUploadTests
         Assert.Contains(".txt", supportedTypes);
         Assert.Contains(".pdf", supportedTypes);
         Assert.Contains(".docx", supportedTypes);
+        Assert.Contains(".mp3", supportedTypes);
+        Assert.Contains(".wav", supportedTypes);
     }
 }
 

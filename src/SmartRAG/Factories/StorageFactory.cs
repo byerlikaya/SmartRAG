@@ -5,6 +5,7 @@ using SmartRAG.Enums;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
 using SmartRAG.Repositories;
+using SmartRAG.Services;
 using System;
 
 namespace SmartRAG.Factories
@@ -59,7 +60,12 @@ namespace SmartRAG.Factories
                 case StorageProvider.Sqlite:
                     return new SqliteDocumentRepository(Options.Create(config.Sqlite), _loggerFactory.CreateLogger<SqliteDocumentRepository>());
                 case StorageProvider.Qdrant:
-                    return new QdrantDocumentRepository(Options.Create(config.Qdrant), _loggerFactory.CreateLogger<QdrantDocumentRepository>());
+                    // Create required services for QdrantDocumentRepository
+                    var collectionManager = new QdrantCollectionManager(Options.Create(config.Qdrant), _loggerFactory.CreateLogger<QdrantCollectionManager>());
+                    var embeddingService = new QdrantEmbeddingService(Options.Create(config.Qdrant), _loggerFactory.CreateLogger<QdrantEmbeddingService>());
+                    var cacheManager = new QdrantCacheManager(_loggerFactory.CreateLogger<QdrantCacheManager>());
+                    var searchService = new QdrantSearchService(Options.Create(config.Qdrant), _loggerFactory.CreateLogger<QdrantSearchService>(), embeddingService);
+                    return new QdrantDocumentRepository(Options.Create(config.Qdrant), _loggerFactory.CreateLogger<QdrantDocumentRepository>(), collectionManager, embeddingService, cacheManager, searchService);
                 default:
                     throw new ArgumentException($"Unsupported storage provider: {config.Provider}");
             }

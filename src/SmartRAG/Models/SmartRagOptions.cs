@@ -64,5 +64,10 @@ namespace SmartRAG.Models
         /// List of fallback AI providers to try when primary provider fails
         /// </summary>
         public List<AIProvider> FallbackProviders { get; set; } = new List<AIProvider>();
+
+        /// <summary>
+        /// Google Speech-to-Text configuration for audio transcription
+        /// </summary>
+        public GoogleSpeechConfig GoogleSpeechConfig { get; set; }
     }
 }
