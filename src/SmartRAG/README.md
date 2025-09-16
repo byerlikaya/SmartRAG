@@ -679,7 +679,19 @@ We welcome contributions!
 
 ## 🆕 What's New
 
-### **Latest Release (v1.0.3)**
+### **Latest Release (v2.2.0) - Google Speech-to-Text Integration**
+- 🎵 **Google Speech-to-Text Integration** - Enterprise-grade speech recognition with Google Cloud AI
+- 🌍 **Enhanced Language Support** - 100+ languages including Turkish, English, and global languages
+- ⚡ **Real-time Audio Processing** - Advanced speech-to-text conversion with confidence scoring
+- 📊 **Detailed Transcription Results** - Segment-level transcription with timestamps and confidence metrics
+- 🔍 **Automatic Format Detection** - Support for MP3, WAV, M4A, AAC, OGG, FLAC, WMA formats
+- 🎯 **Intelligent Audio Processing** - Smart audio stream validation and error handling
+- 📈 **Performance Optimized** - Efficient audio processing with minimal memory footprint
+- 🏗️ **Structured Audio Output** - Converts audio content to searchable, queryable knowledge base
+- ✅ **Zero Warnings Policy** - Maintained with comprehensive error handling and logging
+- 📚 **Documentation Updates** - All language versions updated with Google Speech-to-Text examples
+
+### **Previous Release (v1.0.3)**
 - 🧠 **Smart Query Intent Detection** - Automatically routes queries to chat vs document search
 - 🌍 **Language-Agnostic Design** - Removed all hardcoded language patterns  
 - 🔍 **Enhanced Search Relevance** - Improved name detection and content scoring

@@ -8,20 +8,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [2.2.0] - 2025-01-15
 
 ### ✨ Added
-- **Enhanced OCR Documentation**: Comprehensive documentation showcasing OCR capabilities with real-world use cases
-- **Improved README**: Detailed image processing features highlighting Tesseract 5.2.0 + SkiaSharp integration
-- **Use Case Examples**: Added detailed examples for scanned documents, receipts, and image content processing
+- **Google Speech-to-Text Integration**: Enterprise-grade speech recognition with Google Cloud AI
+- **Enhanced Language Support**: 100+ languages including Turkish, English, and global languages
+- **Real-time Audio Processing**: Advanced speech-to-text conversion with confidence scoring
+- **Detailed Transcription Results**: Segment-level transcription with timestamps and confidence metrics
+- **Automatic Format Detection**: Support for MP3, WAV, M4A, AAC, OGG, FLAC, WMA formats
+- **Intelligent Audio Processing**: Smart audio stream validation and error handling
+- **Performance Optimized**: Efficient audio processing with minimal memory footprint
+- **Structured Audio Output**: Converts audio content to searchable, queryable knowledge base
 
 ### 🔧 Improved
-- **Package Metadata**: Updated project URLs and release notes for better user experience
-- **Documentation Structure**: Enhanced documentation showcasing OCR as key differentiator
-- **User Guidance**: Improved guidance for image-based document processing workflows
+- **Audio Processing Pipeline**: Complete replacement of Azure Speech Services with Google Speech-to-Text
+- **Configuration Management**: Updated all configuration files to use GoogleSpeechConfig
+- **Error Handling**: Enhanced error handling for audio transcription operations
+- **Documentation**: Updated all language versions with Google Speech-to-Text examples
 
 ### 📚 Documentation
-- **OCR Capabilities**: Comprehensive OCR feature documentation with real-world examples
-- **Image Processing**: Enhanced README with detailed image processing capabilities
-- **WebP Support**: Highlighted WebP to PNG conversion and multi-language OCR support
-- **Developer Experience**: Better visibility of image processing features for developers
+- **Audio Processing**: Comprehensive audio processing feature documentation
+- **Google Speech-to-Text**: Enhanced README with detailed speech-to-text capabilities
+- **Multi-language Support**: Highlighted 100+ language support for global applications
+- **Developer Experience**: Better visibility of audio processing features for developers
 
 ## [2.0.0] - 2025-01-27
 

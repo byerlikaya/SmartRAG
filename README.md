@@ -21,7 +21,7 @@ SmartRAG is a **production-ready** .NET Standard 2.0/2.1 library that provides a
 - 🔌 **Plug & Play**: Single-line integration with dependency injection
 - 📄 **Multi-Format**: PDF, Word, Excel, text files with intelligent parsing
 - 🖼️ **Revolutionary OCR**: Enterprise-grade image processing with Tesseract 5.2.0 + SkiaSharp, WebP support, multi-language OCR, table extraction
-- 🎵 **Speech-to-Text**: Azure Speech Services integration for audio file transcription and analysis
+- 🎵 **Speech-to-Text**: Google Speech-to-Text integration for audio file transcription and analysis
 - 🎯 **Enhanced Semantic Search**: Advanced hybrid scoring with 80% semantic + 20% keyword relevance
 - 🔍 **Smart Document Chunking**: Word boundary validation and optimal break points for context preservation
 - ✅ **Enterprise Grade**: Zero Warnings Policy, SOLID principles, comprehensive logging, XML documentation
@@ -194,8 +194,8 @@ SmartRAG supports a wide range of document formats with intelligent parsing and 
 - **🏗️ Structured Data Output**: Converts images to searchable, queryable knowledge base content
 
 ### **🎵 Audio Files (.mp3, .wav, .m4a, .aac, .ogg, .flac, .wma) - SPEECH-TO-TEXT REVOLUTION**
-- **🎤 Azure Speech Services**: Enterprise-grade speech recognition with Microsoft Cognitive Services
-- **🌍 Multi-Language Support**: Turkish (tr-TR), English (en-US), and 40+ languages supported
+- **🎤 Google Speech-to-Text**: Enterprise-grade speech recognition with Google Cloud AI
+- **🌍 Multi-Language Support**: Turkish (tr-TR), English (en-US), and 100+ languages supported
 - **⚡ Real-time Transcription**: Advanced speech-to-text conversion with confidence scoring
 - **📊 Detailed Results**: Segment-level transcription with timestamps and confidence metrics
 - **🔍 Audio Format Detection**: Automatic format validation and content type recognition
@@ -766,7 +766,19 @@ We welcome contributions!
 
 ## 🆕 What's New
 
-### **Latest Release (v2.1.0) - Automatic Session Management**
+### **Latest Release (v2.2.0) - Google Speech-to-Text Integration**
+- 🎵 **Google Speech-to-Text Integration** - Enterprise-grade speech recognition with Google Cloud AI
+- 🌍 **Enhanced Language Support** - 100+ languages including Turkish, English, and global languages
+- ⚡ **Real-time Audio Processing** - Advanced speech-to-text conversion with confidence scoring
+- 📊 **Detailed Transcription Results** - Segment-level transcription with timestamps and confidence metrics
+- 🔍 **Automatic Format Detection** - Support for MP3, WAV, M4A, AAC, OGG, FLAC, WMA formats
+- 🎯 **Intelligent Audio Processing** - Smart audio stream validation and error handling
+- 📈 **Performance Optimized** - Efficient audio processing with minimal memory footprint
+- 🏗️ **Structured Audio Output** - Converts audio content to searchable, queryable knowledge base
+- ✅ **Zero Warnings Policy** - Maintained with comprehensive error handling and logging
+- 📚 **Documentation Updates** - All language versions updated with Google Speech-to-Text examples
+
+### **Previous Release (v2.1.0) - Automatic Session Management**
 - 🎯 **Automatic Session Management** - No more manual session ID handling required
 - 💬 **Persistent Conversation History** - Conversations survive application restarts
 - 🆕 **New Conversation Commands** - `/new`, `/reset`, `/clear` for conversation control
