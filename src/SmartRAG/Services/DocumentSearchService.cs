@@ -13,7 +13,9 @@ using System.Threading.Tasks;
 
 namespace SmartRAG.Services
 {
-
+    /// <summary>
+    /// Service for document search and RAG (Retrieval-Augmented Generation) operations
+    /// </summary>
     public class DocumentSearchService : IDocumentSearchService
     {
         private readonly IDocumentRepository _documentRepository;
@@ -21,6 +23,16 @@ namespace SmartRAG.Services
         private readonly IAIProviderFactory _aiProviderFactory;
 
 
+        /// <summary>
+        /// Initializes a new instance of the DocumentSearchService
+        /// </summary>
+        /// <param name="documentRepository">Repository for document operations</param>
+        /// <param name="aiService">AI service for text generation</param>
+        /// <param name="aiProviderFactory">Factory for AI provider creation</param>
+        /// <param name="semanticSearchService">Service for semantic search operations</param>
+        /// <param name="configuration">Application configuration</param>
+        /// <param name="options">SmartRAG configuration options</param>
+        /// <param name="logger">Logger instance for this service</param>
         public DocumentSearchService(
             IDocumentRepository documentRepository,
             IAIService aiService,
@@ -104,6 +116,12 @@ namespace SmartRAG.Services
 
         #region Public Methods
 
+        /// <summary>
+        /// Searches for relevant document chunks based on the query
+        /// </summary>
+        /// <param name="query">Search query string</param>
+        /// <param name="maxResults">Maximum number of results to return</param>
+        /// <returns>List of relevant document chunks</returns>
         public async Task<List<DocumentChunk>> SearchDocumentsAsync(string query, int maxResults = 5)
         {
             if (string.IsNullOrWhiteSpace(query))
@@ -127,6 +145,13 @@ namespace SmartRAG.Services
             return searchResults;
         }
 
+        /// <summary>
+        /// Generates a RAG answer based on the query and conversation history
+        /// </summary>
+        /// <param name="query">User query to process</param>
+        /// <param name="maxResults">Maximum number of document chunks to use</param>
+        /// <param name="startNewConversation">Whether to start a new conversation session</param>
+        /// <returns>RAG response with answer and sources</returns>
         public async Task<RagResponse> GenerateRagAnswerAsync(string query, int maxResults = 5, bool startNewConversation = false)
         {
             if (string.IsNullOrWhiteSpace(query))
