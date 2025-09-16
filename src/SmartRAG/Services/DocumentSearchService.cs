@@ -84,10 +84,6 @@ namespace SmartRAG.Services
         // Fallback search and content
         private const int FallbackSearchMaxResults = 5;
         private const int MinSubstantialContentLength = 50;
-        private const int MaxConversationLength = 2000;
-        private const int MinConversationLines = 6;
-        private const int MinExchanges = 3;
-        private const int LinesPerExchange = 2;
 
         // Generic messages
         private const string ChatUnavailableMessage = "Sorry, I cannot chat right now. Please try again later.";
@@ -835,11 +831,8 @@ Answer:";
                     ? $"User: {question}\nAssistant: {answer}"
                     : $"{currentHistory}\nUser: {question}\nAssistant: {answer}";
 
-                // Limit conversation length
-                if (newEntry.Length > MaxConversationLength)
-                {
-                    newEntry = TruncateConversation(newEntry);
-                }
+                // No automatic truncation - keep full conversation history
+                // Conversation will only be cleared when user starts a new session
 
                 // Store in persistent storage first
                 await StoreConversationToStorageAsync(sessionId, newEntry);
@@ -919,23 +912,8 @@ Answer:";
             }
         }
 
-        /// <summary>
-        /// Truncate conversation to keep only recent exchanges
-        /// </summary>
-        private static string TruncateConversation(string conversation)
-        {
-            var lines = conversation.Split('\n');
-            if (lines.Length <= MinConversationLines) // Keep at least 3 exchanges (6 lines)
-                return conversation;
-
-            // Keep last 6 lines (3 exchanges)
-            var result = new List<string>();
-            for (int i = lines.Length - MinConversationLines; i < lines.Length; i++)
-            {
-                result.Add(lines[i]);
-            }
-            return string.Join("\n", result);
-        }
+        // TruncateConversation method removed - no automatic conversation truncation
+        // Conversations are only cleared when user starts a new session
 
         #endregion
     }
