@@ -135,7 +135,7 @@ dotnet add package SmartRAG
 
 ### PackageReference
 ```xml
-<PackageReference Include="SmartRAG" Version="2.0.0" />
+<PackageReference Include="SmartRAG" Version="2.3.0" />
 ```
 
 ## 📄 Supported Document Formats
@@ -679,7 +679,7 @@ We welcome contributions!
 
 ## 🆕 What's New
 
-### **Latest Release (v2.2.0) - Google Speech-to-Text Integration**
+### **Latest Release (v2.3.0) - Google Speech-to-Text Integration**
 - 🎵 **Google Speech-to-Text Integration** - Enterprise-grade speech recognition with Google Cloud AI
 - 🌍 **Enhanced Language Support** - 100+ languages including Turkish, English, and global languages
 - ⚡ **Real-time Audio Processing** - Advanced speech-to-text conversion with confidence scoring
@@ -690,6 +690,12 @@ We welcome contributions!
 - 🏗️ **Structured Audio Output** - Converts audio content to searchable, queryable knowledge base
 - ✅ **Zero Warnings Policy** - Maintained with comprehensive error handling and logging
 - 📚 **Documentation Updates** - All language versions updated with Google Speech-to-Text examples
+
+### **Previous Release (v2.2.0) - Enhanced OCR Documentation**
+- 🖼️ **Enhanced OCR Documentation** - Comprehensive documentation showcasing OCR capabilities
+- 📚 **Improved README** - Detailed image processing features highlighting Tesseract 5.2.0 + SkiaSharp
+- 🎯 **Use Case Examples** - Added detailed examples for scanned documents, receipts, and image content
+- 📈 **Developer Experience** - Better visibility of image processing features for developers
 
 ### **Previous Release (v1.0.3)**
 - 🧠 **Smart Query Intent Detection** - Automatically routes queries to chat vs document search
