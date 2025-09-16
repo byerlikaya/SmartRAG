@@ -56,6 +56,7 @@
   <!-- Package References -->
   <ItemGroup>
     <!-- Microsoft Extensions -->
+    <PackageReference Include="Google.Cloud.Speech.V1" Version="3.8.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.9" />
