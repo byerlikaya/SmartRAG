@@ -161,7 +161,7 @@ For questions, issues, or contributions, please visit our [GitHub repository](ht
 - **📧 [Contact & Support](mailto:b.yerlikaya@outlook.com)**
 - **💼 [LinkedIn](https://www.linkedin.com/in/barisyerlikaya/)**
 - **🐙 [GitHub Profile](https://github.com/byerlikaya)**
-- **📦 [NuGet Packages](https://www.nuget.org/profiles/byerlikaya)**
+- **📦 [NuGet Packages](https://www.nuget.org/profiles/barisyerlikaya)**
 - **📖 [Documentation](https://byerlikaya.github.io/SmartRAG)** - Comprehensive guides and API reference
 
 ---
