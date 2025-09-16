@@ -5,7 +5,6 @@ nav:
   configuration: "Configuration"
   api_reference: "API Reference"
   examples: "Examples"
-  troubleshooting: "Troubleshooting"
   changelog: "Changelog"
   contributing: "Contributing"
 
@@ -48,8 +47,6 @@ home:
     api_reference_desc: "Complete API documentation with examples and usage patterns."
     examples: "Examples"
     examples_desc: "Real-world examples and sample applications to learn from."
-    troubleshooting: "Troubleshooting"
-    troubleshooting_desc: "Common issues and solutions to help you resolve problems."
     changelog: "Changelog"
     changelog_desc: "Track new features, improvements, and bug fixes across versions."
     contributing: "Contributing"

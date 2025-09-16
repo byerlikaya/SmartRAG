@@ -52,12 +52,3 @@
     - title: Migration Guide
       url: /migration-guide
 
-- title: Troubleshooting
-  url: /troubleshooting
-  children:
-    - title: Common Issues
-      url: /troubleshooting#common-issues
-    - title: Error Messages
-      url: /troubleshooting#error-messages
-    - title: Performance Tips
-      url: /troubleshooting#performance-tips

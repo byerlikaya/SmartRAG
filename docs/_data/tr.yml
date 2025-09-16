@@ -5,7 +5,6 @@ nav:
   configuration: "Yapılandırma"
   api_reference: "API Referansı"
   examples: "Örnekler"
-  troubleshooting: "Sorun Giderme"
   changelog: "Değişiklikler"
   contributing: "Katkıda Bulunma"
 
@@ -48,8 +47,6 @@ home:
     api_reference_desc: "Örnekler ve kullanım desenleri ile tam API dokümantasyonu."
     examples: "Örnekler"
     examples_desc: "Öğrenmek için gerçek dünya örnekleri ve örnek uygulamalar."
-    troubleshooting: "Sorun Giderme"
-    troubleshooting_desc: "Sorunları çözmenize yardımcı olacak yaygın sorunlar ve çözümler."
     changelog: "Değişiklikler"
     changelog_desc: "Versiyonlar arasında yeni özellikleri, iyileştirmeleri ve hata düzeltmelerini takip edin."
     contributing: "Katkıda Bulunma"
