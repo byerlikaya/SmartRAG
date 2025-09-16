@@ -32,7 +32,6 @@
 • Performance optimized audio processing with minimal memory footprint
 
 🔧 Technical Improvements:
-• Complete replacement of Azure Speech Services with Google Speech-to-Text
 • Enhanced audio processing pipeline with Google Cloud AI
 • Updated configuration management with GoogleSpeechConfig
 • Improved error handling for audio transcription operations

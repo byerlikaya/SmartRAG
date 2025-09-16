@@ -173,7 +173,7 @@ var answer = await documentSearchService
                         <i class="fas fa-microphone"></i>
                     </div>
                     <h3>Audiodatei-Unterstützung</h3>
-                    <p>Textextraktion aus Audiodateien und Analyse mit Azure Speech Services.</p>
+                    <p>Textextraktion aus Audiodateien und Analyse mit Google Speech-to-Text.</p>
                 </div>
             </div>
         </div>
