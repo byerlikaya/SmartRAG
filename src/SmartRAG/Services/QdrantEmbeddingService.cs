@@ -85,7 +85,7 @@ namespace SmartRAG.Services
                     }
                 }
 
-                _logger.LogDebug("Generated embedding with dimension {Dimension} for text length {TextLength}", 
+                _logger.LogDebug("Generated embedding with dimension {Dimension} for text length {TextLength}",
                     vectorDimension, text?.Length ?? 0);
 
                 return embedding;

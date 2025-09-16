@@ -1,7 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Qdrant.Client;
-using Qdrant.Client.Grpc;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
@@ -10,7 +9,6 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Threading.Tasks;
-using Value = Qdrant.Client.Grpc.Value;
 
 namespace SmartRAG.Services
 {
@@ -49,7 +47,7 @@ namespace SmartRAG.Services
         /// <param name="logger">Logger instance for this service</param>
         /// <param name="embeddingService">Embedding service for generating query embeddings</param>
         public QdrantSearchService(
-            IOptions<QdrantConfig> config, 
+            IOptions<QdrantConfig> config,
             ILogger<QdrantSearchService> logger,
             IQdrantEmbeddingService embeddingService)
         {
@@ -323,26 +321,26 @@ namespace SmartRAG.Services
 
         #region Private Methods
 
-        private static string GetPayloadString(Google.Protobuf.Collections.MapField<string, Value> payload, string key)
+        private static string GetPayloadString(Google.Protobuf.Collections.MapField<string, Qdrant.Client.Grpc.Value> payload, string key)
         {
             if (payload == null) return string.Empty;
 
-            if (!payload.TryGetValue(key, out Value value) || value == null)
+            if (!payload.TryGetValue(key, out Qdrant.Client.Grpc.Value value) || value == null)
                 return string.Empty;
 
             switch (value.KindCase)
             {
-                case Value.KindOneofCase.StringValue:
+                case Qdrant.Client.Grpc.Value.KindOneofCase.StringValue:
                     return value.StringValue ?? string.Empty;
-                case Value.KindOneofCase.DoubleValue:
+                case Qdrant.Client.Grpc.Value.KindOneofCase.DoubleValue:
                     return value.DoubleValue.ToString(CultureInfo.InvariantCulture);
-                case Value.KindOneofCase.IntegerValue:
+                case Qdrant.Client.Grpc.Value.KindOneofCase.IntegerValue:
                     return value.IntegerValue.ToString(CultureInfo.InvariantCulture);
-                case Value.KindOneofCase.BoolValue:
+                case Qdrant.Client.Grpc.Value.KindOneofCase.BoolValue:
                     return value.BoolValue.ToString();
-                case Value.KindOneofCase.StructValue:
+                case Qdrant.Client.Grpc.Value.KindOneofCase.StructValue:
                     return value.StructValue.ToString();
-                case Value.KindOneofCase.ListValue:
+                case Qdrant.Client.Grpc.Value.KindOneofCase.ListValue:
                     return string.Join(",", value.ListValue.Values.Select(v => v.ToString()));
                 default:
                     return value.ToString();

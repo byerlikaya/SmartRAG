@@ -38,6 +38,7 @@ namespace SmartRAG.Services
             _options = options.Value;
             _logger = logger;
         }
+
         #region Constants
 
         // Scoring weights
@@ -99,7 +100,7 @@ namespace SmartRAG.Services
         private readonly SemanticSearchService _semanticSearchService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<DocumentSearchService> _logger;
-        
+
         // Conversation management using existing storage
         private readonly ConcurrentDictionary<string, string> _conversationCache = new ConcurrentDictionary<string, string>();
 
@@ -142,7 +143,7 @@ namespace SmartRAG.Services
                 return new RagResponse
                 {
                     Query = query,
-                    Answer = "Yeni konuşma başlatıldı. Size nasıl yardımcı olabilirim?",
+                    Answer = "New conversation started. How can I help you?",
                     Sources = new List<SearchSource>(),
                     SearchedAt = DateTime.UtcNow,
                     Configuration = GetRagConfiguration()
@@ -210,16 +211,16 @@ namespace SmartRAG.Services
 
                 // Create new session
                 var newSessionId = $"session-{Guid.NewGuid():N}";
-                
+
                 // Store the new session ID in persistent storage
                 await _documentRepository.AddToConversationAsync(PersistentSessionKey, "", $"session-id:{newSessionId}");
                 await _documentRepository.AddToConversationAsync(newSessionId, "", "");
-                
+
                 // Add to cache
                 _conversationCache.TryAdd(newSessionId, string.Empty);
-                
+
                 ServiceLogMessages.LogSessionCreated(_logger, newSessionId, null);
-                
+
                 return newSessionId;
             }
             catch (Exception ex)
@@ -243,7 +244,7 @@ namespace SmartRAG.Services
         private async Task<string> GetOrCreateSessionIdAsync()
         {
             const string PersistentSessionKey = "smartrag-current-session";
-            
+
             // First, try to get existing session from storage
             try
             {
@@ -256,14 +257,14 @@ namespace SmartRAG.Services
                     if (sessionLine != null)
                     {
                         var sessionId = sessionLine.Substring("session-id:".Length).Trim();
-                        
+
                         // Verify session still exists and has conversation data
                         var sessionExists = await _documentRepository.SessionExistsAsync(sessionId);
                         if (sessionExists)
                         {
                             // Get the actual conversation history from the session
                             var conversationHistory = await _documentRepository.GetConversationHistoryAsync(sessionId);
-                            
+
                             // Add to cache for faster access
                             _conversationCache.TryAdd(sessionId, conversationHistory ?? string.Empty);
                             ServiceLogMessages.LogSessionRetrieved(_logger, sessionId, null);
@@ -276,26 +277,26 @@ namespace SmartRAG.Services
             {
                 ServiceLogMessages.LogConversationRetrievalFailed(_logger, PersistentSessionKey, ex);
             }
-            
+
             // Create new session ID
             var newSessionId = $"session-{Guid.NewGuid():N}";
-            
+
             // Store the session ID in persistent storage for future retrieval
             try
             {
                 await _documentRepository.AddToConversationAsync(PersistentSessionKey, "", $"session-id:{newSessionId}");
                 await _documentRepository.AddToConversationAsync(newSessionId, "", "");
-                
+
                 // Add to cache
                 _conversationCache.TryAdd(newSessionId, string.Empty);
-                
+
                 ServiceLogMessages.LogSessionCreated(_logger, newSessionId, null);
             }
             catch (Exception ex)
             {
                 ServiceLogMessages.LogConversationStorageFailed(_logger, newSessionId, ex);
             }
-            
+
             return newSessionId;
         }
 
@@ -308,15 +309,15 @@ namespace SmartRAG.Services
                 return false;
 
             var lowerQuery = query.ToLowerInvariant().Trim();
-            
+
             // English commands only
             if (lowerQuery == "/new" || lowerQuery == "/reset" || lowerQuery == "/clear")
                 return true;
-            
+
             // Commands with parameters
             if (lowerQuery.StartsWith("/new ") || lowerQuery.StartsWith("/reset ") || lowerQuery.StartsWith("/clear "))
                 return true;
-            
+
             return false;
         }
 
@@ -342,7 +343,7 @@ namespace SmartRAG.Services
                         return StorageProvider.InMemory; // Fallback
                 }
             }
-            
+
             // If not specified, use StorageProvider but exclude Qdrant
             switch (_options.StorageProvider)
             {
@@ -475,8 +476,8 @@ namespace SmartRAG.Services
             var context = string.Join("\n\n", chunks.Select(c => c.Content));
 
             // Build prompt with conversation history if available
-            var historyContext = !string.IsNullOrEmpty(conversationHistory) 
-                ? $"\n\nPrevious conversation:\n{conversationHistory}\n" 
+            var historyContext = !string.IsNullOrEmpty(conversationHistory)
+                ? $"\n\nPrevious conversation:\n{conversationHistory}\n"
                 : "";
 
             // Enhanced prompt for better AI understanding with conversation history
@@ -774,8 +775,8 @@ Answer:";
                 }
 
                 // Build prompt with conversation history if available
-                var historyContext = !string.IsNullOrEmpty(conversationHistory) 
-                    ? $"\n\nPrevious conversation:\n{conversationHistory}\n" 
+                var historyContext = !string.IsNullOrEmpty(conversationHistory)
+                    ? $"\n\nPrevious conversation:\n{conversationHistory}\n"
                     : "";
 
                 var prompt = $@"You are a helpful AI assistant. Answer the user's question naturally and friendly.
@@ -806,10 +807,10 @@ Answer:";
             {
                 // Always get fresh data from storage to ensure conversation continuity
                 var history = await GetConversationFromStorageAsync(sessionId);
-                
+
                 // Update cache with fresh data
                 _conversationCache.AddOrUpdate(sessionId, history, (key, oldValue) => history);
-                
+
                 return history;
             }
             catch (Exception ex)
@@ -828,9 +829,9 @@ Answer:";
             {
                 // Get current history from storage (not cache)
                 var currentHistory = await GetConversationFromStorageAsync(sessionId);
-                
+
                 // Build new conversation entry
-                var newEntry = string.IsNullOrEmpty(currentHistory) 
+                var newEntry = string.IsNullOrEmpty(currentHistory)
                     ? $"User: {question}\nAssistant: {answer}"
                     : $"{currentHistory}\nUser: {question}\nAssistant: {answer}";
 
@@ -842,7 +843,7 @@ Answer:";
 
                 // Store in persistent storage first
                 await StoreConversationToStorageAsync(sessionId, newEntry);
-                
+
                 // Then update cache
                 _conversationCache.AddOrUpdate(sessionId, newEntry, (key, oldValue) => newEntry);
             }
@@ -860,7 +861,7 @@ Answer:";
             try
             {
                 var conversationStorageProvider = GetConversationStorageProvider();
-                
+
                 switch (conversationStorageProvider)
                 {
                     case StorageProvider.Redis:
@@ -869,11 +870,11 @@ Answer:";
                     case StorageProvider.FileSystem:
                         // Use the existing document repository for conversation storage
                         return await _documentRepository.GetConversationHistoryAsync(sessionId);
-                    
+
                     case StorageProvider.Qdrant:
                         // Qdrant doesn't support conversation history yet
                         return string.Empty;
-                    
+
                     default:
                         return string.Empty;
                 }
@@ -893,7 +894,7 @@ Answer:";
             try
             {
                 var conversationStorageProvider = GetConversationStorageProvider();
-                
+
                 switch (conversationStorageProvider)
                 {
                     case StorageProvider.Redis:
@@ -903,11 +904,11 @@ Answer:";
                         // Use the existing document repository for conversation storage
                         await _documentRepository.AddToConversationAsync(sessionId, "", conversation);
                         break;
-                    
+
                     case StorageProvider.Qdrant:
                         // Qdrant doesn't support conversation history yet
                         break;
-                    
+
                     default:
                         break;
                 }
