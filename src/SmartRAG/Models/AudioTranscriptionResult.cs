@@ -21,19 +21,10 @@ namespace SmartRAG.Models
         public double Confidence { get; set; }
 
         /// <summary>
-        /// The duration of the audio file
-        /// </summary>
-        public TimeSpan Duration { get; set; }
-
-        /// <summary>
         /// The detected or specified language of the audio
         /// </summary>
         public string Language { get; set; } = string.Empty;
 
-        /// <summary>
-        /// List of audio segments with timestamps and individual confidence scores
-        /// </summary>
-        public List<AudioSegment> Segments { get; set; } = new List<AudioSegment>();
 
         /// <summary>
         /// Additional metadata from the transcription process

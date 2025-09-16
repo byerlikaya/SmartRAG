@@ -615,10 +615,6 @@ namespace SmartRAG.Services
             new EventId(80008, "AudioTranscriptionError"),
             "Error during audio transcription");
 
-        public static readonly Action<ILogger, Exception> LogAudioSegmentParsingFailed = LoggerMessage.Define(
-            LogLevel.Warning,
-            new EventId(80009, "AudioSegmentParsingFailed"),
-            "Failed to parse audio segments from detailed results");
 
         public static readonly Action<ILogger, string, Exception> LogAudioFormatNotSupported = LoggerMessage.Define<string>(
             LogLevel.Warning,

@@ -25,6 +25,7 @@ namespace SmartRAG.Providers
         {
             _logger = logger;
         }
+
         #region Constants
 
         // Custom provider constants
