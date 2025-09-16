@@ -67,6 +67,7 @@ var app = builder.Build();</code></pre>
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Schnelles Beispiel</h2>
+                    <!-- Updated for v2.3.0 -->
                     <p>Hier ist ein einfaches Beispiel zum Einstieg:</p>
                     
                     <div class="code-example">
