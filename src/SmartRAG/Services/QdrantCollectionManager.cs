@@ -2,7 +2,6 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
-using SmartRAG.Entities;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
 using System;
@@ -115,7 +114,7 @@ namespace SmartRAG.Services
                     Distance = GetDistanceMetric(_config.DistanceMetric)
                 };
 
-                _logger.LogInformation("Creating Qdrant collection: {CollectionName} with dimension: {Dimension}", 
+                _logger.LogInformation("Creating Qdrant collection: {CollectionName} with dimension: {Dimension}",
                     collectionName, vectorDimension);
 
                 await _client.CreateCollectionAsync(collectionName, vectorParams);
@@ -197,7 +196,7 @@ namespace SmartRAG.Services
                             var sizeValue = sizeProperty.GetValue(config);
                             if (sizeValue is ulong size)
                             {
-                                _logger.LogDebug("Detected vector dimension: {Dimension} from collection: {Collection}", 
+                                _logger.LogDebug("Detected vector dimension: {Dimension} from collection: {Collection}",
                                     (int)size, firstCollection);
                                 return (int)size;
                             }
