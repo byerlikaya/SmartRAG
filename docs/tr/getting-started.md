@@ -67,6 +67,7 @@ var app = builder.Build();</code></pre>
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Hızlı Örnek</h2>
+                    <!-- Updated for v2.3.0 -->
                     <p>Konuşma geçmişi ile gerçek SmartRAG implementasyonunu kullanan basit bir örnek:</p>
                     
                     <div class="code-example">
