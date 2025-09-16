@@ -17,6 +17,10 @@ namespace SmartRAG.Providers
     {
         private readonly ILogger<CustomProvider> _logger;
 
+        /// <summary>
+        /// Initializes a new instance of the CustomProvider
+        /// </summary>
+        /// <param name="logger">Logger instance for this provider</param>
         public CustomProvider(ILogger<CustomProvider> logger) : base(logger)
         {
             _logger = logger;
