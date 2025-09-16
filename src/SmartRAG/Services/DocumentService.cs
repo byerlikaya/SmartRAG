@@ -38,6 +38,7 @@ namespace SmartRAG.Services
             _options = options.Value;
             _logger = logger;
         }
+
         #region Constants
 
         // Batch processing constants
