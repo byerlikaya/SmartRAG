@@ -1,15 +1,15 @@
-﻿using SmartRAG.Extensions;
-using SmartRAG.Enums;
-using SmartRAG.Interfaces;
+﻿using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using SmartRAG.Enums;
+using SmartRAG.Extensions;
+using SmartRAG.Interfaces;
 
 namespace SmartRAG.Console
 {
-    class Program
+    internal class Program
     {
-        static async Task Main(string[] args)
+        private static async Task Main(string[] args)
         {
             System.Console.WriteLine("🚀 SmartRAG Console Chat Application");
             System.Console.WriteLine("=====================================");
@@ -24,7 +24,10 @@ namespace SmartRAG.Console
 
             // Service collection setup
             var services = new ServiceCollection();
-            
+
+            // Add configuration
+            services.AddSingleton<IConfiguration>(configuration);
+
             // Add logging
             services.AddLogging(builder =>
             {
@@ -35,8 +38,8 @@ namespace SmartRAG.Console
             // Add SmartRAG with configuration
             services.AddSmartRag(configuration, options =>
             {
-                options.StorageProvider = StorageProvider.InMemory;  // Simple in-memory storage for console
-                options.AIProvider = AIProvider.OpenAI;             // Default to OpenAI, can be changed in config
+                options.StorageProvider = StorageProvider.Redis;  // Simple in-memory storage for console
+                options.AIProvider = AIProvider.Anthropic;        // AIProvider will be read from configuration file
             });
 
             // Build service provider
@@ -76,7 +79,7 @@ namespace SmartRAG.Console
                 {
                     System.Console.WriteLine();
                     System.Console.Write("AI: ");
-                    
+
                     // Generate AI response using SmartRAG
                     var response = await documentSearchService.GenerateRagAnswerAsync(
                         userInput,
