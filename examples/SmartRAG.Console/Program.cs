@@ -11,7 +11,7 @@ namespace SmartRAG.Console
     {
         private static async Task Main(string[] args)
         {
-            System.Console.WriteLine("🚀 SmartRAG Console Chat Application");
+            System.Console.WriteLine(">> SmartRAG Console Chat Application");
             System.Console.WriteLine("=====================================");
             System.Console.WriteLine();
 
@@ -49,8 +49,8 @@ namespace SmartRAG.Console
             var documentSearchService = serviceProvider.GetRequiredService<IDocumentSearchService>();
             var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
 
-            System.Console.WriteLine("✅ SmartRAG initialized successfully!");
-            System.Console.WriteLine("💬 Start chatting with AI. Type 'exit' to quit, 'clear' to clear conversation history.");
+            System.Console.WriteLine("[OK] SmartRAG initialized successfully!");
+            System.Console.WriteLine("[INFO] Start chatting with AI. Type 'exit' to quit, 'clear' to clear conversation history.");
             System.Console.WriteLine();
 
             // Conversation loop
@@ -64,14 +64,14 @@ namespace SmartRAG.Console
 
                 if (userInput.ToLower() == "exit")
                 {
-                    System.Console.WriteLine("👋 Goodbye!");
+                    System.Console.WriteLine("[BYE] Goodbye!");
                     break;
                 }
 
                 if (userInput.ToLower() == "clear")
                 {
                     // Note: In a real implementation, you'd need to clear conversation history
-                    System.Console.WriteLine("🔄 Conversation history cleared!");
+                    System.Console.WriteLine("[CLEAR] Conversation history cleared!");
                     continue;
                 }
 
@@ -92,7 +92,7 @@ namespace SmartRAG.Console
                 catch (Exception ex)
                 {
                     logger.LogError(ex, "Error during AI conversation");
-                    System.Console.WriteLine($"❌ Error: {ex.Message}");
+                        System.Console.WriteLine($"[ERROR] Error: {ex.Message}");
                     System.Console.WriteLine();
                 }
             }
