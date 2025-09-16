@@ -173,7 +173,7 @@ var answer = await documentSearchService
                         <i class="fas fa-microphone"></i>
                     </div>
                     <h3>Поддержка аудиофайлов</h3>
-                    <p>Извлечение текста из аудиофайлов и анализ с помощью Azure Speech Services.</p>
+                    <p>Извлечение текста из аудиофайлов и анализ с помощью Google Speech-to-Text.</p>
                 </div>
             </div>
         </div>

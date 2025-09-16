@@ -173,7 +173,7 @@ hide_title: true
                         <i class="fas fa-microphone"></i>
                     </div>
                     <h3>Ses Dosyası Desteği</h3>
-                    <p>Azure Speech Services ile ses dosyalarından metin çıkarma ve analiz.</p>
+                    <p>Google Speech-to-Text ile ses dosyalarından metin çıkarma ve analiz.</p>
                 </div>
             </div>
         </div>
