@@ -51,7 +51,7 @@ lang: en
                         <li><strong>Developer Experience</strong>: Better developer experience with detailed audio processing examples</li>
                     </ul>
 
-                    <h3>Version 2.2.0 - 2025-01-15</h3>
+                    <h3>Version 2.2.0 - 2025-09-15</h3>
                     <div class="alert alert-info">
                         <h4><i class="fas fa-info-circle me-2"></i>Previous Release</h4>
                         <p class="mb-0">Previous stable release with enhanced OCR documentation and visibility improvements.</p>
@@ -67,7 +67,7 @@ lang: en
                         <li><strong>Developer Experience</strong>: Better visibility of image processing features for developers</li>
                     </ul>
 
-                    <h3>Version 2.1.0 - 2025-01-20</h3>
+                    <h3>Version 2.1.0 - 2025-09-05</h3>
                     <div class="alert alert-info">
                         <h4><i class="fas fa-info-circle me-2"></i>Previous Release</h4>
                         <p class="mb-0">Previous stable release with automatic session management and conversation history.</p>
