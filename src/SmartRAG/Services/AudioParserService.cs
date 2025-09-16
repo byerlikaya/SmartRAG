@@ -42,7 +42,7 @@ namespace SmartRAG.Services
             try
             {
                 _logger.LogInformation("Starting audio transcription for {Size} bytes in language {Language}", 
-                    audioStream.Length, language ?? "auto");
+                    audioStream.Length, SanitizeLanguageParameter(language ?? "auto"));
 
                 // Validate audio stream
                 ValidateAudioStream(audioStream);
@@ -60,7 +60,7 @@ namespace SmartRAG.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("Audio transcription failed: {Error}", ex.Message);
+                _logger.LogError("Audio transcription failed: {Error}", SanitizeErrorMessage(ex.Message));
                 throw;
             }
         }
@@ -141,7 +141,7 @@ namespace SmartRAG.Services
             }
             catch (Exception ex)
             {
-                _logger.LogError("Google Speech-to-Text transcription failed: {Error}", ex.Message);
+                _logger.LogError("Google Speech-to-Text transcription failed: {Error}", SanitizeErrorMessage(ex.Message));
                 throw;
             }
         }
@@ -289,6 +289,33 @@ namespace SmartRAG.Services
                 result.Text, result.Confidence);
         }
 
+        /// <summary>
+        /// Sanitizes language parameter to prevent log injection attacks
+        /// </summary>
+        /// <param name="language">Language parameter to sanitize</param>
+        /// <returns>Sanitized language parameter</returns>
+        private static string SanitizeLanguageParameter(string language)
+        {
+            if (string.IsNullOrEmpty(language))
+                return "auto";
+
+            // Remove any potentially dangerous characters for logging
+            return language.Replace("\n", "").Replace("\r", "").Replace("\t", "").Trim();
+        }
+
+        /// <summary>
+        /// Sanitizes error message to prevent log injection attacks
+        /// </summary>
+        /// <param name="errorMessage">Error message to sanitize</param>
+        /// <returns>Sanitized error message</returns>
+        private static string SanitizeErrorMessage(string errorMessage)
+        {
+            if (string.IsNullOrEmpty(errorMessage))
+                return "Unknown error";
+
+            // Remove any potentially dangerous characters for logging
+            return errorMessage.Replace("\n", " ").Replace("\r", " ").Replace("\t", " ").Trim();
+        }
 
         /// <summary>
         /// Disposes resources
