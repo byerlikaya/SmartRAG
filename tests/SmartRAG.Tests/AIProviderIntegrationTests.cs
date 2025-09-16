@@ -31,7 +31,7 @@ public class AIProviderIntegrationTests : IDisposable
         var services = new ServiceCollection();
 
         // Add test logger
-        services.AddLogging(builder => builder.AddConsole());
+        services.AddLogging(builder => builder.SetMinimumLevel(LogLevel.Warning));
 
         // Add configuration to DI container
         services.AddSingleton<IConfiguration>(configuration);

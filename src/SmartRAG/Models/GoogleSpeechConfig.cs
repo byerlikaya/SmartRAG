@@ -16,11 +16,6 @@ namespace SmartRAG.Models
         public string DefaultLanguage { get; set; } = "tr-TR";
 
         /// <summary>
-        /// Enable detailed results with confidence scores
-        /// </summary>
-        public bool EnableDetailedResults { get; set; } = true;
-
-        /// <summary>
         /// Minimum confidence threshold for results (0.0 - 1.0)
         /// </summary>
         public double MinConfidenceThreshold { get; set; } = 0.5;

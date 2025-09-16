@@ -25,6 +25,7 @@ namespace SmartRAG.Repositories
             _config = config;
             _logger = logger;
         }
+
         #region Constants
 
         // Search constants  
@@ -280,7 +281,7 @@ namespace SmartRAG.Repositories
                 }
 
                 var currentHistory = _conversations.TryGetValue(sessionId, out var existing) ? existing : string.Empty;
-                var newEntry = string.IsNullOrEmpty(currentHistory) 
+                var newEntry = string.IsNullOrEmpty(currentHistory)
                     ? $"User: {question}\nAssistant: {answer}"
                     : $"{currentHistory}\nUser: {question}\nAssistant: {answer}";
 
@@ -292,7 +293,7 @@ namespace SmartRAG.Repositories
 
                 _conversations[sessionId] = newEntry;
             }
-            
+
             return Task.CompletedTask;
         }
 
@@ -305,7 +306,7 @@ namespace SmartRAG.Repositories
             {
                 _conversations.Remove(sessionId);
             }
-            
+
             return Task.CompletedTask;
         }
 

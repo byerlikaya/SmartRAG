@@ -14,22 +14,22 @@ namespace SmartRAG.Interfaces
         /// <summary>
         /// Upload a single document
         /// </summary>
-        Task<SmartRAG.Entities.Document> UploadDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy, string language = null);
+        Task<Entities.Document> UploadDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy, string language = null);
 
         /// <summary>
         /// Upload multiple documents
         /// </summary>
-        Task<List<SmartRAG.Entities.Document>> UploadDocumentsAsync(IEnumerable<Stream> fileStreams, IEnumerable<string> fileNames, IEnumerable<string> contentTypes, string uploadedBy);
+        Task<List<Entities.Document>> UploadDocumentsAsync(IEnumerable<Stream> fileStreams, IEnumerable<string> fileNames, IEnumerable<string> contentTypes, string uploadedBy);
 
         /// <summary>
         /// Get document by ID
         /// </summary>
-        Task<SmartRAG.Entities.Document> GetDocumentAsync(Guid id);
+        Task<Entities.Document> GetDocumentAsync(Guid id);
 
         /// <summary>
         /// Get all documents
         /// </summary>
-        Task<List<SmartRAG.Entities.Document>> GetAllDocumentsAsync();
+        Task<List<Entities.Document>> GetAllDocumentsAsync();
 
         /// <summary>
         /// Delete document

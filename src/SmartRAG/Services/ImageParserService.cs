@@ -88,20 +88,6 @@ namespace SmartRAG.Services
 
         #endregion
 
-        #region Properties
-
-        /// <summary>
-        /// Gets the list of supported image file extensions
-        /// </summary>
-        public IEnumerable<string> GetSupportedImageExtensions() => SupportedExtensions;
-
-        /// <summary>
-        /// Gets the list of supported image content types
-        /// </summary>
-        public IEnumerable<string> GetSupportedImageContentTypes() => SupportedContentTypes;
-
-        #endregion
-
         #region Public Methods
 
         /// <summary>
@@ -176,65 +162,6 @@ namespace SmartRAG.Services
             }
         }
 
-        /// <summary>
-        /// Extracts tables from an image
-        /// </summary>
-        public async Task<List<ExtractedTable>> ExtractTablesAsync(Stream imageStream, string language = DefaultLanguage)
-        {
-            try
-            {
-                // For now, return basic table extraction
-                // Advanced table detection can be implemented later
-                var text = await ExtractTextFromImageAsync(imageStream, language);
-                
-                var tables = new List<ExtractedTable>();
-                
-                // Simple table detection based on text patterns
-                if (ContainsTablePattern(text))
-                {
-                    tables.Add(new ExtractedTable
-                    {
-                        Content = text,
-                        RowCount = CountTableRows(text),
-                        ColumnCount = CountTableColumns(text),
-                        Confidence = DefaultConfidence,
-                        Data = ParseTableData(text)
-                    });
-                }
-                
-                return tables;
-            }
-            catch (Exception ex)
-            {
-                ServiceLogMessages.LogTableDetectionFailed(_logger, ex);
-                return new List<ExtractedTable>();
-            }
-        }
-
-        /// <summary>
-        /// Checks if the image format is supported
-        /// </summary>
-        public bool IsImageFormatSupported(string fileName, string contentType)
-        {
-            if (string.IsNullOrEmpty(fileName) && string.IsNullOrEmpty(contentType))
-                return false;
-
-            // Check file extension
-            if (!string.IsNullOrEmpty(fileName))
-            {
-                var extension = Path.GetExtension(fileName).ToLowerInvariant();
-                if (SupportedExtensions.Contains(extension))
-                    return true;
-            }
-
-            // Check content type
-            if (!string.IsNullOrEmpty(contentType))
-            {
-                return SupportedContentTypes.Any(ct => contentType.StartsWith(ct, StringComparison.OrdinalIgnoreCase));
-            }
-
-            return false;
-        }
 
         /// <summary>
         /// Preprocesses an image for better OCR results

@@ -26,6 +26,7 @@ namespace SmartRAG.Providers
         {
             _logger = logger;
         }
+
         #region Constants
 
         // Gemini API constants
