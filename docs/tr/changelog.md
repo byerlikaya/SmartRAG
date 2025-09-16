@@ -14,10 +14,47 @@ lang: tr
                     <h2>Sürüm Geçmişi</h2>
                     <p>Detaylı değişiklik bilgileri ile SmartRAG sürümlerinin tam geçmişi.</p>
 
-                    <h3>Sürüm 2.2.0 - 2025-01-15</h3>
+                    <h3>Sürüm 2.3.0 - 2025-09-16</h3>
                     <div class="alert alert-success">
                         <h4><i class="fas fa-star me-2"></i>En Son Sürüm</h4>
-                        <p class="mb-0">Geliştirilmiş OCR dokümantasyonu ve görünürlük iyileştirmeleri ile mevcut kararlı sürüm.</p>
+                        <p class="mb-0">Google Speech-to-Text entegrasyonu ve geliştirilmiş geliştirici deneyimi ile mevcut kararlı sürüm.</p>
+                    </div>
+
+                    <h4>Eklenenler</h4>
+                    <ul>
+                        <li><strong>Google Speech-to-Text Entegrasyonu</strong>: Google Cloud AI ile kurumsal düzeyde konuşma tanıma</li>
+                        <li><strong>Geliştirilmiş Dil Desteği</strong>: Türkçe, İngilizce ve küresel diller dahil 100+ dil</li>
+                        <li><strong>Gerçek Zamanlı Ses İşleme</strong>: Güven skoru ile gelişmiş konuşma-metin dönüştürme</li>
+                        <li><strong>Detaylı Transkripsiyon Sonuçları</strong>: Zaman damgaları ve güven metrikleri ile segment düzeyinde transkripsiyon</li>
+                        <li><strong>Otomatik Format Algılama</strong>: MP3, WAV, M4A, AAC, OGG, FLAC, WMA formatları desteği</li>
+                        <li><strong>Akıllı Ses İşleme</strong>: Akıllı ses akışı doğrulama ve hata yönetimi</li>
+                        <li><strong>Performans Optimizasyonu</strong>: Minimal bellek kullanımı ile verimli ses işleme</li>
+                        <li><strong>Yapılandırılmış Ses Çıktısı</strong>: Ses içeriğini aranabilir, sorgulanabilir bilgi tabanına dönüştürür</li>
+                        <li><strong>Kapsamlı XML Dokümantasyonu</strong>: Tüm public class'lar ve metodlar için tam API dokümantasyonu</li>
+                    </ul>
+
+                    <h4>İyileştirmeler</h4>
+                    <ul>
+                        <li><strong>Ses İşleme Pipeline'ı</strong>: Google Cloud AI ile geliştirilmiş ses işleme</li>
+                        <li><strong>Yapılandırma Yönetimi</strong>: GoogleSpeechConfig kullanımı için tüm yapılandırma dosyaları güncellendi</li>
+                        <li><strong>Hata Yönetimi</strong>: Ses transkripsiyon işlemleri için geliştirilmiş hata yönetimi</li>
+                        <li><strong>Dokümantasyon</strong>: Google Speech-to-Text örnekleri ile tüm dil versiyonları güncellendi</li>
+                        <li><strong>Kod Kalitesi</strong>: SOLID/DRY prensipleri ile sıfır uyarı politikası uyumluluğu</li>
+                        <li><strong>Güvenlik</strong>: Log injection koruması ile CodeQL yüksek önem derecesi güvenlik açığı düzeltildi</li>
+                    </ul>
+
+                    <h4>Dokümantasyon</h4>
+                    <ul>
+                        <li><strong>Ses İşleme</strong>: Kapsamlı ses işleme özellik dokümantasyonu</li>
+                        <li><strong>Çoklu Dil Desteği</strong>: Örnekler ile tüm dil versiyonları (EN, TR, DE, RU) güncellendi</li>
+                        <li><strong>API Dokümantasyonu</strong>: Tüm public API'ler için tam XML dokümantasyonu</li>
+                        <li><strong>Geliştirici Deneyimi</strong>: Detaylı ses işleme örnekleri ile daha iyi geliştirici deneyimi</li>
+                    </ul>
+
+                    <h3>Sürüm 2.2.0 - 2025-01-15</h3>
+                    <div class="alert alert-info">
+                        <h4><i class="fas fa-info-circle me-2"></i>Önceki Sürüm</h4>
+                        <p class="mb-0">Geliştirilmiş OCR dokümantasyonu ve görünürlük iyileştirmeleri ile önceki kararlı sürüm.</p>
                     </div>
                     <ul>
                         <li><strong>Geliştirilmiş OCR Dokümantasyonu</strong>: Gerçek kullanım örnekleri ile OCR yeteneklerini sergileyen kapsamlı dokümantasyon</li>
