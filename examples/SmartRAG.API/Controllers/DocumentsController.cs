@@ -1,256 +1,134 @@
-namespace SmartRAG.API.Controllers;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using SmartRAG.Interfaces;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 
-/// <summary>
-/// Documents management controller
-/// </summary>
-[ApiController]
-[Route("api/[controller]")]
-[Produces("application/json")]
-[ProducesResponseType(StatusCodes.Status500InternalServerError)]
-public class DocumentsController(
-    IDocumentService documentService,
-    IDocumentParserService documentParser) : ControllerBase
+namespace SmartRAG.API.Controllers
 {
     /// <summary>
-    /// Gets supported file types and content types
+    /// Document management controller with multi-format support
     /// </summary>
-    /// <returns>Supported file types and content types</returns>
-    [HttpGet("supported-types")]
-    public IActionResult GetSupportedTypes()
+    [ApiController]
+    [Route("api/[controller]")]
+    [Produces("application/json")]
+    public class DocumentsController : ControllerBase
     {
-        var result = new
+        private readonly IDocumentService _documentService;
+        private readonly IDocumentParserService _documentParser;
+
+        public DocumentsController(
+            IDocumentService documentService,
+            IDocumentParserService documentParser)
         {
-            SupportedFileTypes = documentParser.GetSupportedFileTypes(),
-            SupportedContentTypes = documentParser.GetSupportedContentTypes(),
-            MaxFileSize = 50 * 1024 * 1024,
-            Description = "Supported document formats for text extraction and analysis"
-        };
+            _documentService = documentService;
+            _documentParser = documentParser;
+        }
 
-        return Ok(result);
-    }
-
-    /// <summary>
-    /// Upload a document to the system
-    /// </summary>
-    /// <param name="file">The file to upload</param>
-    /// <param name="language">Language code for audio files (e.g., "tr-TR", "en-US", "de-DE"). Auto-detected if not specified.</param>
-    [HttpPost("upload")]
-    public async Task<ActionResult<Entities.Document>> UploadDocument(IFormFile file, [FromQuery] string? language = null)
-    {
-        if (file == null || file.Length == 0)
-            return BadRequest("No file provided");
-
-        try
+        /// <summary>
+        /// Get supported file types and content types
+        /// </summary>
+        /// <returns>Supported file types information</returns>
+        [HttpGet("supported-types")]
+        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        public IActionResult GetSupportedTypes()
         {
-            var document = await documentService.UploadDocumentAsync(
-                file.OpenReadStream(),
-                file.FileName,
-                file.ContentType,
-                "system",
-                language);
-
-            // Return simple success response
-            return Ok(new
+            var result = new
             {
-                message = "Document uploaded successfully",
-                documentId = document.Id,
-                fileName = document.FileName,
-                chunkCount = document.Chunks?.Count ?? 0
-            });
+                SupportedFileTypes = _documentParser.GetSupportedFileTypes(),
+                SupportedContentTypes = _documentParser.GetSupportedContentTypes(),
+                MaxFileSize = 50 * 1024 * 1024,
+                Description = "Supported document formats for text extraction and analysis"
+            };
+
+            return Ok(result);
         }
-        catch (Exception ex)
+
+        /// <summary>
+        /// Upload a document to the system
+        /// </summary>
+        /// <param name="file">The file to upload</param>
+        /// <param name="language">Language code for audio files</param>
+        /// <returns>Upload result</returns>
+        [HttpPost("upload")]
+        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult> UploadDocument(IFormFile file, [FromQuery] string? language = null)
         {
-            return StatusCode(500, $"Internal server error: {ex.Message}");
-        }
-    }
+            if (file == null || file.Length == 0)
+                return BadRequest("No file provided");
 
-    /// <summary>
-    /// Upload multiple documents to the system
-    /// </summary>
-    [HttpPost("upload-multiple")]
-    [Consumes("multipart/form-data")]
-    [RequestSizeLimit(100 * 1024 * 1024)] // 100 MB
-    [RequestFormLimits(MultipartBodyLengthLimit = 100 * 1024 * 1024)]
-    public async Task<ActionResult<List<Entities.Document>>> UploadDocuments([FromForm] List<IFormFile> files)
-    {
-        if (files == null || files.Count == 0)
-            return BadRequest("No files provided");
-
-        try
-        {
-            var fileStreams = files.Select(f => f.OpenReadStream());
-            var fileNames = files.Select(f => f.FileName);
-            var contentTypes = files.Select(f => f.ContentType);
-
-            var documents = await documentService.UploadDocumentsAsync(
-                fileStreams,
-                fileNames,
-                contentTypes,
-                "system");
-
-            return CreatedAtAction(nameof(GetAllDocuments), documents);
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, $"Internal server error: {ex.Message}");
-        }
-    }
-    /// <summary>
-    /// Get a document by ID
-    /// </summary>
-    [HttpGet("{id:guid}")]
-    public async Task<ActionResult<Entities.Document>> GetDocument(Guid id)
-    {
-        var document = await documentService.GetDocumentAsync(id);
-
-        if (document == null)
-            return NotFound();
-
-        return Ok(document);
-    }
-
-    /// <summary>
-    /// Get all documents
-    /// </summary>
-    [HttpGet("search")]
-    public async Task<ActionResult<List<Entities.Document>>> GetAllDocuments()
-    {
-        var documents = await documentService.GetAllDocumentsAsync();
-
-        return Ok(documents);
-    }
-
-    /// <summary>
-    /// Delete a document
-    /// </summary>
-    [HttpDelete("{id:guid}")]
-    public async Task<ActionResult> DeleteDocument(Guid id)
-    {
-        var success = await documentService.DeleteDocumentAsync(id);
-
-        if (!success)
-            return NotFound();
-
-        return NoContent();
-    }
-
-    /// <summary>
-    /// Regenerate embeddings for all existing documents
-    /// </summary>
-    [HttpPost("regenerate-embeddings")]
-    public async Task<ActionResult> RegenerateAllEmbeddings()
-    {
-        try
-        {
-            Console.WriteLine("[API] Embedding regeneration requested");
-
-            var success = await documentService.RegenerateAllEmbeddingsAsync();
-
-            if (success)
+            try
             {
+                var document = await _documentService.UploadDocumentAsync(
+                    file.OpenReadStream(),
+                    file.FileName,
+                    file.ContentType,
+                    "system",
+                    language);
+
                 return Ok(new
                 {
-                    message = "Embedding regeneration completed successfully",
-                    timestamp = DateTime.UtcNow
+                    message = "Document uploaded successfully",
+                    documentId = document.Id,
+                    fileName = document.FileName,
+                    chunkCount = document.Chunks?.Count ?? 0
                 });
             }
-            else
+            catch (Exception ex)
             {
-                return StatusCode(500, new
-                {
-                    message = "Embedding regeneration failed",
-                    timestamp = DateTime.UtcNow
-                });
+                return StatusCode(500, $"Internal server error: {ex.Message}");
             }
         }
-        catch (Exception ex)
+
+        /// <summary>
+        /// Get a document by ID
+        /// </summary>
+        /// <param name="id">Document ID</param>
+        /// <returns>Document information</returns>
+        [HttpGet("{id:guid}")]
+        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult> GetDocument(Guid id)
         {
-            Console.WriteLine($"[API ERROR] Embedding regeneration failed: {ex.Message}");
-            return StatusCode(500, new
-            {
-                message = $"Internal server error: {ex.Message}",
-                timestamp = DateTime.UtcNow
-            });
+            var document = await _documentService.GetDocumentAsync(id);
+
+            if (document == null)
+                return NotFound();
+
+            return Ok(document);
         }
-    }
 
-    /// <summary>
-    /// Clear all embeddings from all documents
-    /// </summary>
-    [HttpPost("clear-embeddings")]
-    public async Task<ActionResult> ClearAllEmbeddings()
-    {
-        try
+        /// <summary>
+        /// Get all documents
+        /// </summary>
+        /// <returns>List of all documents</returns>
+        [HttpGet("search")]
+        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        public async Task<ActionResult> GetAllDocuments()
         {
-            Console.WriteLine("[API] Clear all embeddings requested");
-
-            var success = await documentService.ClearAllEmbeddingsAsync();
-
-            if (success)
-            {
-                return Ok(new
-                {
-                    message = "All embeddings cleared successfully",
-                    timestamp = DateTime.UtcNow
-                });
-            }
-            else
-            {
-                return StatusCode(500, new
-                {
-                    message = "Failed to clear embeddings",
-                    timestamp = DateTime.UtcNow
-                });
-            }
+            var documents = await _documentService.GetAllDocumentsAsync();
+            return Ok(documents);
         }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[API ERROR] Clear embeddings failed: {ex.Message}");
-            return StatusCode(500, new
-            {
-                message = $"Internal server error: {ex.Message}",
-                timestamp = DateTime.UtcNow
-            });
-        }
-    }
 
-    /// <summary>
-    /// Clear all documents and their embeddings
-    /// </summary>
-    [HttpPost("clear-documents")]
-    public async Task<ActionResult> ClearAllDocuments()
-    {
-        try
+        /// <summary>
+        /// Delete a document
+        /// </summary>
+        /// <param name="id">Document ID to delete</param>
+        /// <returns>Deletion result</returns>
+        [HttpDelete("{id:guid}")]
+        [ProducesResponseType(StatusCodes.Status204NoContent)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<ActionResult> DeleteDocument(Guid id)
         {
-            Console.WriteLine("[API] Clear all documents requested");
+            var success = await _documentService.DeleteDocumentAsync(id);
 
-            var success = await documentService.ClearAllDocumentsAsync();
+            if (!success)
+                return NotFound();
 
-            if (success)
-            {
-                return Ok(new
-                {
-                    message = "All documents and embeddings cleared successfully",
-                    timestamp = DateTime.UtcNow
-                });
-            }
-            else
-            {
-                return StatusCode(500, new
-                {
-                    message = "Failed to clear documents",
-                    timestamp = DateTime.UtcNow
-                });
-            }
-        }
-        catch (Exception ex)
-        {
-            Console.WriteLine($"[API ERROR] Clear documents failed: {ex.Message}");
-            return StatusCode(500, new
-            {
-                message = $"Internal server error: {ex.Message}",
-                timestamp = DateTime.UtcNow
-            });
+            return NoContent();
         }
     }
 }

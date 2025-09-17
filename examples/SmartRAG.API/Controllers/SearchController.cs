@@ -1,36 +1,51 @@
-namespace SmartRAG.API.Controllers;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
+using SmartRAG.Interfaces;
+using System;
+using System.Threading.Tasks;
 
-/// <summary>
-/// AI-powered search controller
-/// </summary>
-[ApiController]
-[Route("api/[controller]")]
-[Produces("application/json")]
-[ProducesResponseType(StatusCodes.Status500InternalServerError)]
-public class SearchController(IDocumentSearchService documentSearchService) : ControllerBase
+namespace SmartRAG.API.Controllers
 {
     /// <summary>
-    /// Search documents using RAG (Retrieval-Augmented Generation) with automatic session management
+    /// AI-powered search and conversation controller
     /// </summary>
-    [HttpPost("search")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<object>> Search([FromBody] Contracts.SearchRequest request)
+    [ApiController]
+    [Route("api/[controller]")]
+    [Produces("application/json")]
+    public class SearchController : ControllerBase
     {
-        string? query = request?.Query;
-        int maxResults = request?.MaxResults ?? 5;
+        private readonly IDocumentSearchService _documentSearchService;
 
-        if (string.IsNullOrWhiteSpace(query))
-            return BadRequest("Query cannot be empty");
-
-        try
+        public SearchController(IDocumentSearchService documentSearchService)
         {
-            var response = await documentSearchService.GenerateRagAnswerAsync(query, maxResults);
-            return Ok(response);
+            _documentSearchService = documentSearchService;
         }
-        catch (Exception ex)
+
+        /// <summary>
+        /// Intelligent AI search with automatic query routing
+        /// </summary>
+        /// <param name="request">Search request with query and parameters</param>
+        /// <returns>AI-generated response</returns>
+        [HttpPost("search")]
+        [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<object>> Search([FromBody] Contracts.SearchRequest request)
         {
-            return StatusCode(500, $"Internal server error: {ex.Message}");
+            string? query = request?.Query;
+            int maxResults = request?.MaxResults ?? 5;
+
+            if (string.IsNullOrWhiteSpace(query))
+                return BadRequest("Query cannot be empty");
+
+            try
+            {
+                var response = await _documentSearchService.GenerateRagAnswerAsync(query, maxResults);
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
         }
     }
 }

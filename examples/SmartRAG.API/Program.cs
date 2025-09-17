@@ -1,3 +1,9 @@
+using Microsoft.OpenApi.Models;
+using SmartRAG.API.Filters;
+using SmartRAG.Enums;
+using System;
+using System.IO;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Configure Kestrel server options for file uploads
@@ -31,10 +37,44 @@ static void RegisterServices(IServiceCollection services, IConfiguration configu
     services.AddOpenApi();
     services.AddSwaggerGen(c =>
     {
-        c.SwaggerDoc("v1", new OpenApiInfo { Title = "SmartRAG API", Version = "v1" });
+        c.SwaggerDoc("v1", new OpenApiInfo 
+        { 
+            Title = "SmartRAG API", 
+            Version = "v2.4.0",
+            Description = "Enterprise-grade RAG (Retrieval-Augmented Generation) API with universal database support",
+            Contact = new OpenApiContact
+            {
+                Name = "Barış Yerlikaya",
+                Email = "b.yerlikaya@outlook.com",
+                Url = new Uri("https://www.linkedin.com/in/barisyerlikaya/")
+            },
+            License = new OpenApiLicense
+            {
+                Name = "MIT License",
+                Url = new Uri("https://github.com/byerlikaya/SmartRAG/blob/main/LICENSE")
+            }
+        });
+
+        // Include XML documentation
+        var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+        var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+        if (File.Exists(xmlPath))
+        {
+            c.IncludeXmlComments(xmlPath);
+        }
+
+        // Include SmartRAG library XML documentation
+        var smartRagXmlPath = Path.Combine(AppContext.BaseDirectory, "SmartRAG.xml");
+        if (File.Exists(smartRagXmlPath))
+        {
+            c.IncludeXmlComments(smartRagXmlPath);
+        }
 
         // Configure multipart file upload for multiple files
         c.OperationFilter<MultipartFileUploadFilter>();
+
+        // Configure example values
+        c.SchemaFilter<ExampleSchemaFilter>();
     });
 
     // Configure form options for file uploads
