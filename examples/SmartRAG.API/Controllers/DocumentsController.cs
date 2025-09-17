@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace SmartRAG.API.Controllers
 {
-    /// <summary>
+/// <summary>
     /// Advanced Document Management and Processing Controller
     /// 
     /// This controller provides comprehensive document management capabilities including:
@@ -77,26 +77,26 @@ namespace SmartRAG.API.Controllers
     ///   -H "Content-Type: multipart/form-data" \
     ///   -F "files=@doc1.pdf" -F "files=@doc2.docx"
     /// ```
-    /// </summary>
-    [ApiController]
-    [Route("api/[controller]")]
-    [Produces("application/json")]
+/// </summary>
+[ApiController]
+[Route("api/[controller]")]
+[Produces("application/json")]
     public class DocumentsController : ControllerBase
     {
         private readonly IDocumentService _documentService;
         private readonly IDocumentParserService _documentParser;
 
         public DocumentsController(
-            IDocumentService documentService,
+    IDocumentService documentService,
             IDocumentParserService documentParser)
-        {
+{
             _documentService = documentService;
             _documentParser = documentParser;
         }
 
-        /// <summary>
+    /// <summary>
         /// Gets comprehensive information about supported file formats and processing capabilities
-        /// </summary>
+    /// </summary>
         /// <remarks>
         /// Returns detailed information about all supported document formats including:
         /// - **File Extensions**: Complete list of supported file extensions
@@ -120,24 +120,24 @@ namespace SmartRAG.API.Controllers
         /// - Plan document processing workflows
         /// </remarks>
         /// <returns>Comprehensive file format support information with capabilities and limits</returns>
-        [HttpGet("supported-types")]
+    [HttpGet("supported-types")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-        public IActionResult GetSupportedTypes()
+    public IActionResult GetSupportedTypes()
+    {
+        var result = new
         {
-            var result = new
-            {
                 SupportedFileTypes = _documentParser.GetSupportedFileTypes(),
                 SupportedContentTypes = _documentParser.GetSupportedContentTypes(),
-                MaxFileSize = 50 * 1024 * 1024,
-                Description = "Supported document formats for text extraction and analysis"
-            };
+            MaxFileSize = 50 * 1024 * 1024,
+            Description = "Supported document formats for text extraction and analysis"
+        };
 
-            return Ok(result);
-        }
+        return Ok(result);
+    }
 
-        /// <summary>
+    /// <summary>
         /// Uploads and processes a single document with advanced format support
-        /// </summary>
+    /// </summary>
         /// <remarks>
         /// Uploads and processes a document through the complete SmartRAG pipeline including:
         /// - **Format Detection**: Automatic file format and content type detection
@@ -170,40 +170,40 @@ namespace SmartRAG.API.Controllers
         /// <param name="file">Document file to upload (supports multiple formats)</param>
         /// <param name="language">Language code for audio processing (e.g., 'en', 'tr', 'de')</param>
         /// <returns>Upload results with document ID, processing statistics, and chunk information</returns>
-        [HttpPost("upload")]
+    [HttpPost("upload")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         public async Task<ActionResult> UploadDocument(IFormFile file, [FromQuery] string? language = null)
+    {
+        if (file == null || file.Length == 0)
+            return BadRequest("No file provided");
+
+        try
         {
-            if (file == null || file.Length == 0)
-                return BadRequest("No file provided");
-
-            try
-            {
                 var document = await _documentService.UploadDocumentAsync(
-                    file.OpenReadStream(),
-                    file.FileName,
-                    file.ContentType,
-                    "system",
-                    language);
+                file.OpenReadStream(),
+                file.FileName,
+                file.ContentType,
+                "system",
+                language);
 
-                return Ok(new
-                {
-                    message = "Document uploaded successfully",
-                    documentId = document.Id,
-                    fileName = document.FileName,
-                    chunkCount = document.Chunks?.Count ?? 0
-                });
-            }
-            catch (Exception ex)
+            return Ok(new
             {
-                return StatusCode(500, $"Internal server error: {ex.Message}");
-            }
+                message = "Document uploaded successfully",
+                documentId = document.Id,
+                fileName = document.FileName,
+                chunkCount = document.Chunks?.Count ?? 0
+            });
         }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"Internal server error: {ex.Message}");
+        }
+    }
 
-        /// <summary>
+    /// <summary>
         /// Retrieves detailed information for a specific document
-        /// </summary>
+    /// </summary>
         /// <remarks>
         /// Returns comprehensive document information including:
         /// - **Document Metadata**: Filename, content type, upload details, file size
@@ -229,34 +229,34 @@ namespace SmartRAG.API.Controllers
         /// </remarks>
         /// <param name="id">Unique document identifier</param>
         /// <returns>Complete document information with processing status and content analysis</returns>
-        [HttpGet("{id:guid}")]
+    [HttpGet("{id:guid}")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> GetDocument(Guid id)
-        {
+    {
             var document = await _documentService.GetDocumentAsync(id);
 
-            if (document == null)
-                return NotFound();
+        if (document == null)
+            return NotFound();
 
-            return Ok(document);
-        }
+        return Ok(document);
+    }
 
-        /// <summary>
-        /// Get all documents
-        /// </summary>
+    /// <summary>
+    /// Get all documents
+    /// </summary>
         /// <returns>List of all documents</returns>
-        [HttpGet("search")]
+    [HttpGet("search")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         public async Task<ActionResult> GetAllDocuments()
-        {
+    {
             var documents = await _documentService.GetAllDocumentsAsync();
-            return Ok(documents);
-        }
+        return Ok(documents);
+    }
 
-        /// <summary>
+    /// <summary>
         /// Permanently deletes a document and all associated data
-        /// </summary>
+    /// </summary>
         /// <remarks>
         /// Deletes a document and all related data including:
         /// - **Document Content**: Original file content and extracted text
@@ -285,22 +285,22 @@ namespace SmartRAG.API.Controllers
         /// </remarks>
         /// <param name="id">Unique identifier of the document to delete</param>
         /// <returns>Deletion confirmation with cleanup statistics</returns>
-        [HttpDelete("{id:guid}")]
+    [HttpDelete("{id:guid}")]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
-        public async Task<ActionResult> DeleteDocument(Guid id)
-        {
+    public async Task<ActionResult> DeleteDocument(Guid id)
+    {
             var success = await _documentService.DeleteDocumentAsync(id);
 
-            if (!success)
-                return NotFound();
+        if (!success)
+            return NotFound();
 
-            return NoContent();
-        }
+        return NoContent();
+    }
 
-        /// <summary>
+    /// <summary>
         /// Gets all documents with enhanced filtering and pagination
-        /// </summary>
+    /// </summary>
         /// <remarks>
         /// Retrieves all documents with comprehensive filtering options including:
         /// - **Pagination**: Efficient data retrieval with skip/limit
@@ -322,9 +322,9 @@ namespace SmartRAG.API.Controllers
             [FromQuery] int limit = 50,
             [FromQuery] string? contentType = null,
             [FromQuery] string? search = null)
+    {
+        try
         {
-            try
-            {
                 var documents = await _documentService.GetAllDocumentsAsync();
                 
                 var filteredDocuments = documents.AsQueryable();
@@ -359,16 +359,16 @@ namespace SmartRAG.API.Controllers
                         hasMore = skip + limit < totalCount
                     }
                 });
-            }
-            catch (Exception ex)
-            {
-                return StatusCode(500, new { Error = ex.Message });
-            }
         }
+        catch (Exception ex)
+        {
+                return StatusCode(500, new { Error = ex.Message });
+        }
+    }
 
-        /// <summary>
+    /// <summary>
         /// Gets document chunks for detailed analysis
-        /// </summary>
+    /// </summary>
         /// <remarks>
         /// Retrieves all chunks for a specific document including:
         /// - **Chunk Content**: Full text content of each chunk
@@ -388,9 +388,9 @@ namespace SmartRAG.API.Controllers
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> GetDocumentChunks(Guid id)
+    {
+        try
         {
-            try
-            {
                 var document = await _documentService.GetDocumentAsync(id);
                 if (document == null)
                     return NotFound(new { Error = "Document not found" });
@@ -475,20 +475,20 @@ namespace SmartRAG.API.Controllers
                             message = "Document uploaded successfully"
                         });
                         successCount++;
-                    }
-                    else
-                    {
+            }
+            else
+            {
                         results.Add(new
-                        {
+                {
                             fileName = file.FileName,
                             success = false,
                             error = "Empty file"
-                        });
+                });
                         failureCount++;
-                    }
-                }
-                catch (Exception ex)
-                {
+            }
+        }
+        catch (Exception ex)
+        {
                     results.Add(new
                     {
                         fileName = file.FileName,
@@ -507,11 +507,11 @@ namespace SmartRAG.API.Controllers
                 results,
                 message = $"Batch upload completed: {successCount} successful, {failureCount} failed"
             });
-        }
+    }
 
-        /// <summary>
+    /// <summary>
         /// Regenerates embeddings for all documents
-        /// </summary>
+    /// </summary>
         /// <remarks>
         /// Regenerates vector embeddings for all documents in the system including:
         /// - **Batch Processing**: Efficient processing of all documents
@@ -529,9 +529,9 @@ namespace SmartRAG.API.Controllers
         [HttpPost("regenerate-embeddings")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         public async Task<ActionResult> RegenerateAllEmbeddings()
+    {
+        try
         {
-            try
-            {
                 var success = await _documentService.RegenerateAllEmbeddingsAsync();
 
                 return Ok(new
@@ -576,9 +576,9 @@ namespace SmartRAG.API.Controllers
                     warning = "Semantic search is disabled until embeddings are regenerated",
                     timestamp = DateTime.UtcNow
                 });
-            }
-            catch (Exception ex)
-            {
+        }
+        catch (Exception ex)
+        {
                 return StatusCode(500, new { Error = ex.Message });
             }
         }

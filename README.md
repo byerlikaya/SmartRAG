@@ -1,4 +1,4 @@
-# 🚀 SmartRAG - Enterprise-Grade RAG Solution
+# 🚀 SmartRAG - Enterprise-Grade RAG Library
 
 [![Build Status](https://github.com/byerlikaya/SmartRAG/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/byerlikaya/SmartRAG/actions)
 [![NuGet Version](https://img.shields.io/nuget/v/SmartRAG.svg)](https://www.nuget.org/packages/SmartRAG)
@@ -6,28 +6,38 @@
 [![.NET](https://img.shields.io/badge/.NET%20Standard-2.0%2F2.1-blue.svg)](https://docs.microsoft.com/en-us/dotnet/standard/net-standard)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-SmartRAG is a **production-ready** .NET Standard 2.0/2.1 library that provides a complete **Retrieval-Augmented Generation (RAG)** solution for building **AI-powered question answering systems**. Upload your documents, ask questions in natural language, and get intelligent answers based on your content - all with enterprise-grade AI providers and storage options. Compatible with .NET Framework 4.6.1+, .NET Core 2.0+, and .NET 5+ applications.
+SmartRAG is a **production-ready** .NET Standard 2.0/2.1 **library** that provides a complete **Retrieval-Augmented Generation (RAG)** solution through a clean **service-oriented architecture**. Build intelligent applications with advanced document processing, multi-modal AI integration, and enterprise-grade storage options - all through simple dependency injection.
 
 ## ✨ Key Highlights
 
-- 🎯 **AI Question Answering**: Ask questions about your documents and get intelligent, contextual answers
-- 🧠 **Smart Query Intent Detection**: Automatically distinguishes between general conversation and document search queries
-- 💬 **Conversation History**: Automatic session-based conversation management with context awareness
-- 🌍 **Language-Agnostic**: Works with any language without hardcoded patterns or keywords
-- 🤖 **Universal AI Support**: 5 dedicated providers + CustomProvider for unlimited AI APIs  
-- 🏢 **Enterprise Storage**: Vector databases, Redis, SQL, FileSystem with advanced configurations
-- 🧠 **Advanced RAG Pipeline**: Smart chunking, semantic retrieval, AI-powered answer generation
-- ⚡ **Lightning Fast**: Optimized vector search with context-aware answer synthesis
-- 🔌 **Plug & Play**: Single-line integration with dependency injection
-- 📄 **Multi-Format**: PDF, Word, Excel, text files with intelligent parsing
-- 🖼️ **Revolutionary OCR**: Enterprise-grade image processing with Tesseract 5.2.0 + SkiaSharp, WebP support, multi-language OCR, table extraction
-- 🎵 **Speech-to-Text**: Google Speech-to-Text integration for audio file transcription and analysis
-- 🗄️ **Universal Database Support**: SQLite, SQL Server, MySQL, PostgreSQL with live connections, schema analysis, and intelligent data extraction
-- 🎯 **Enhanced Semantic Search**: Advanced hybrid scoring with 80% semantic + 20% keyword relevance
-- 🔍 **Smart Document Chunking**: Word boundary validation and optimal break points for context preservation
-- ✅ **Enterprise Grade**: Zero Warnings Policy, SOLID principles, comprehensive logging, XML documentation
-- 🔧 **Cross-Platform Compatibility**: .NET Standard 2.0/2.1 support for maximum framework compatibility
-- 📚 **Documentation**: Comprehensive documentation with GitHub Pages support
+### 🧠 **Core Intelligence Services**
+- **`IDocumentSearchService`**: Intelligent query processing with RAG pipeline and conversation management
+- **`ISemanticSearchService`**: Advanced semantic search with hybrid scoring (80% semantic + 20% keyword)
+- **`IAIService`**: Universal AI provider integration with OpenAI, Anthropic, Gemini, Azure, and Custom providers
+
+### 📄 **Document Processing Services**
+- **`IDocumentParserService`**: Multi-format document parsing (PDF, Word, Excel, Text, Images with OCR, Audio with Speech-to-Text)
+- **`IDocumentService`**: Document management with smart chunking and word boundary validation
+- **`IImageParserService`**: Enterprise-grade OCR with Tesseract 5.2.0 + SkiaSharp integration
+- **`IAudioParserService`**: Google Speech-to-Text integration for audio transcription and analysis
+
+### 🗄️ **Data Integration Services**
+- **`IDatabaseParserService`**: Universal database support (SQLite, SQL Server, MySQL, PostgreSQL) with live connections
+- **`IStorageProvider`**: Enterprise storage options (Vector databases, Redis, SQL, FileSystem)
+- **`IDocumentRepository`**: Intelligent document storage with metadata extraction and search optimization
+
+### 🤖 **AI & Analytics Services**
+- **`IAIProvider`**: Pluggable AI provider architecture with automatic failover
+- **`IAIProviderFactory`**: Dynamic provider switching and configuration management
+- **`IStorageFactory`**: Storage provider factory with environment-based configuration
+
+### ⚡ **Enterprise Features**
+- **🎯 Smart Query Intent Detection**: Automatically routes queries between general conversation and document search
+- **💬 Conversation Intelligence**: Automatic session-based conversation management with context awareness
+- **🌍 Language-Agnostic**: Works with any language without hardcoded patterns or keywords
+- **🔌 Dependency Injection**: Single-line integration with full DI container support
+- **✅ Zero Warnings Policy**: SOLID principles, comprehensive logging, XML documentation
+- **🔧 Cross-Platform**: .NET Standard 2.0/2.1 support for maximum compatibility
 
 ## 🎯 What Makes SmartRAG Special
 
@@ -35,13 +45,13 @@ SmartRAG is a **production-ready** .NET Standard 2.0/2.1 library that provides a
 ```
 📄 Document Upload → 🔍 Smart Chunking → 🧠 AI Embeddings → 💾 Vector Storage
                                                                         ↓
-🙋‍♂️ User Question → 🎯 Intent Detection → 🔍 Find Relevant Chunks → 🤖 AI Answer Generation → ✨ Smart Response
+🙋‍♂️ User Question → 🎯 Intent Detection → 🔍 Find Relevant Chunks → 🧠 QueryIntelligenceAsync → ✨ Smart Response
 ```
 
 ### 🏆 **Production Features**
 - **Revolutionary OCR Capabilities**: Enterprise-grade image processing with Tesseract 5.2.0 + SkiaSharp integration
 - **Smart Chunking**: Maintains context continuity between document segments with word boundary validation
-- **Intelligent Query Routing**: Automatically routes general conversation to AI chat, document queries to RAG search
+- **Intelligent Query Routing**: Automatically routes general conversation to AI chat, document queries to QueryIntelligenceAsync
 - **Conversation History**: Automatic session-based conversation management with intelligent context truncation
 - **Language-Agnostic Design**: No hardcoded language patterns - works globally with any language
 - **Multiple Storage Options**: From in-memory to enterprise vector databases
@@ -51,7 +61,7 @@ SmartRAG is a **production-ready** .NET Standard 2.0/2.1 library that provides a
 - **Dependency Injection**: Full DI container integration
 - **Enhanced Semantic Search**: Advanced hybrid scoring combining semantic similarity and keyword relevance
 - **VoyageAI Integration**: High-quality embeddings for Anthropic Claude models
-- **Cross-Platform Compatibility**: .NET Standard 2.0/2.1 support for maximum framework compatibility
+- **Cross-Platform Compatibility**: .NET Standard 2.0/2.1 support for maximum compatibility
 - **Enterprise Architecture**: Zero Warnings Policy, SOLID/DRY principles, comprehensive XML documentation
 - **Production Ready**: Thread-safe operations, centralized logging, proper error handling
 - **Documentation**: Professional documentation site with GitHub Pages integration
@@ -601,20 +611,20 @@ SmartRAG follows clean architecture principles with clear separation of concerns
 
 SmartRAG is built as a **layered enterprise architecture** with 5 distinct layers, each with specific responsibilities and clear interfaces:
 
-| Layer | Responsibility | Key Components |
-|-------|---------------|----------------|
-| **🧠 Intelligence Layer** | Advanced query processing, RAG pipeline, conversation intelligence | `IntelligenceController`, `DocumentSearchService`, `SemanticSearchService` |
-| **📄 Document Layer** | Document processing, parsing, and management | `DocumentsController`, `DocumentService`, `DocumentParserService` |
-| **🤖 AI & Analytics Layer** | AI provider management, analytics, monitoring | `AIController`, `AnalyticsController`, `AIService` |
-| **🗄️ Data Layer** | Database integration, storage management | `DatabaseController`, `StorageController`, `DatabaseParserService` |
-| **⚙️ Infrastructure Layer** | Configuration, conversation management, system services | `ConfigurationController`, `ConversationController`, Core Services |
+| Service Layer | Responsibility | Key Interfaces |
+|---------------|---------------|----------------|
+| **🧠 Intelligence Services** | Query processing, RAG pipeline, conversation intelligence | `IDocumentSearchService`, `ISemanticSearchService` |
+| **📄 Document Services** | Document processing, parsing, and management | `IDocumentParserService`, `IDocumentService`, `IImageParserService`, `IAudioParserService` |
+| **🤖 AI & Provider Services** | AI provider management, analytics, monitoring | `IAIProvider`, `IAIProviderFactory`, `IAIService` |
+| **🗄️ Data & Storage Services** | Database integration, storage management | `IDatabaseParserService`, `IStorageProvider`, `IStorageFactory`, `IDocumentRepository` |
+| **⚙️ Infrastructure Services** | Configuration, conversation management, system services | `IQdrantCacheManager`, `IQdrantCollectionManager`, `IQdrantEmbeddingService` |
 
 ### **🔄 Data Flow Architecture**
 
 ```
 📱 Client Request
     ↓
-🧠 IntelligenceController (Query Processing)
+🧠 IDocumentSearchService.QueryIntelligenceAsync()
     ↓
 📊 Multi-Modal Search (Documents + Databases + Conversations)
     ↓
@@ -650,121 +660,153 @@ SmartRAG is built as a **layered enterprise architecture** with 5 distinct layer
 
 ### **Key Components**
 
-#### **🧠 Intelligence Layer:**
-- **IntelligenceController**: Advanced query processing with RAG and conversation intelligence
+#### **🧠 Intelligence Services:**
+- **`IDocumentSearchService`**: Advanced query processing with RAG and conversation intelligence
 - **DocumentSearchService**: Core RAG operations with `QueryIntelligenceAsync` method
 - **SemanticSearchService**: Advanced semantic search with hybrid scoring
 
-#### **📄 Document Management:**
-- **DocumentsController**: Document upload, processing, and management
+#### **📄 Document Services:**
+- **`IDocumentParserService`**: Multi-format document parsing and processing
 - **DocumentService**: Main orchestrator for document operations
 - **DocumentParserService**: Multi-format parsing (PDF, Word, Excel, Images, Audio, Databases)
 
-#### **🤖 AI & Analytics:**
-- **AIController**: AI provider management and direct AI operations
+#### **🤖 AI & Provider Services:**
+- **`IAIProvider`**: Universal AI provider interface with OpenAI, Anthropic, Gemini, Azure support
 - **AnalyticsController**: Usage tracking, performance monitoring, and insights
 - **AIService**: AI provider interactions and embeddings
 
-#### **🗄️ Data & Storage:**
-- **DatabaseController**: Universal database integration (SQLite, SQL Server, MySQL, PostgreSQL)
+#### **🗄️ Data & Storage Services:**
+- **`IDatabaseParserService`**: Universal database integration (SQLite, SQL Server, MySQL, PostgreSQL)
 - **StorageController**: Storage provider management, backup, restore, migration
 - **DatabaseParserService**: Live database connections and intelligent data extraction
 
-#### **💬 Conversation & Configuration:**
-- **ConversationController**: Session management and conversation intelligence
+#### **⚙️ Infrastructure Services:**
+- **`IQdrantCacheManager`**: Vector database cache management and optimization
 - **ConfigurationController**: Runtime configuration updates and validation
 - **ConfigurationService**: System configuration and health monitoring
 
-#### **🏗️ Infrastructure:**
-- **Factories**: Provider instantiation and configuration
+#### **🏗️ Factory Services:**
+- **`IAIProviderFactory`**: Dynamic AI provider instantiation and configuration
 - **Repositories**: Storage abstraction layer (Redis, Qdrant, SQLite, FileSystem)
 - **Extensions**: Dependency injection configuration
 
-## 🎨 API Examples
+## 🎨 Library Usage Examples
 
-### **Document Management**
+### **Service Registration & Configuration**
+```csharp
+// Program.cs or Startup.cs
+services.AddSmartRAG(options => {
+    options.AIProvider = AIProvider.OpenAI;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.OpenAI.ApiKey = "your-openai-api-key";
+    options.Qdrant.Endpoint = "http://localhost:6333";
+});
+
+// With multiple providers and fallback
+services.AddSmartRAG(options => {
+    options.AIProvider = AIProvider.OpenAI;
+    options.EnableFallbackProviders = true;
+    options.FallbackProviders = [AIProvider.Anthropic, AIProvider.Gemini];
+});
+```
+
+### **Core Service Usage**
+```csharp
+public class MyApplicationService
+{
+    private readonly IDocumentSearchService _documentSearchService;
+    private readonly IDocumentParserService _documentParserService;
+    private readonly IDatabaseParserService _databaseParserService;
+    
+    public MyApplicationService(
+        IDocumentSearchService documentSearchService,
+        IDocumentParserService documentParserService,
+        IDatabaseParserService databaseParserService)
+    {
+        _documentSearchService = documentSearchService;
+        _documentParserService = documentParserService;
+        _databaseParserService = databaseParserService;
+    }
+    
+    public async Task<string> QueryIntelligence(string query)
+    {
+        var result = await _documentSearchService.QueryIntelligenceAsync(query, maxResults: 5);
+        return result.Answer;
+    }
+    
+    public async Task<List<DocumentChunk>> ProcessDocument(IFormFile file)
+    {
+        var result = await _documentParserService.ParseDocumentAsync(file);
+        return result.Chunks;
+    }
+}
+```
+
+### **Database Integration Examples**
+```csharp
+// Connect to live SQL Server database
+var sqlServerConfig = new DatabaseConfig
+{
+    ConnectionString = "Server=localhost;Database=Northwind;Trusted_Connection=true;",
+    DatabaseType = DatabaseType.SqlServer,
+    IncludedTables = new List<string> { "Customers", "Orders", "Products" },
+    MaxRows = 1000,
+    SanitizeSensitiveData = true
+};
+
+var result = await _databaseParserService.ConnectToDatabaseAsync(sqlServerConfig);
+
+// Connect to MySQL database
+var mySqlConfig = new DatabaseConfig
+{
+    ConnectionString = "Server=localhost;Database=sakila;Uid=root;Pwd=password;",
+    DatabaseType = DatabaseType.MySQL,
+    IncludedTables = new List<string> { "actor", "film", "customer" }
+};
+
+var mySqlResult = await _databaseParserService.ConnectToDatabaseAsync(mySqlConfig);
+
+// Parse SQLite database file
+var sqliteResult = await _databaseParserService.ParseDatabaseFileAsync(fileStream, DatabaseType.SQLite);
+
+// Execute custom SQL query
+var queryResult = await _databaseParserService.ExecuteQueryAsync(
+    connectionString: "Server=localhost;Database=Northwind;Trusted_Connection=true;",
+    query: "SELECT TOP 10 CustomerID, CompanyName FROM Customers WHERE Country = 'USA'",
+    databaseType: DatabaseType.SqlServer,
+    maxRows: 10
+);
+```
+
+### **Optional API Examples (Reference Only)**
 ```bash
-# Upload document
+# These are optional API endpoints - SmartRAG is primarily a library
+# Upload document via API (if you choose to implement controllers)
 curl -X POST "http://localhost:5000/api/documents/upload" \
   -F "file=@research-paper.pdf"
 
-# Get document
-curl "http://localhost:5000/api/documents/{document-id}"
-
-# Delete document  
-curl -X DELETE "http://localhost:5000/api/documents/{document-id}"
-
-# List all documents
-curl "http://localhost:5000/api/documents/search"
-```
-
-### **Database Management**
-```bash
-# Upload SQLite database file
-curl -X POST "http://localhost:5000/api/documents/upload" \
-  -F "file=@company.db"
-
-# Connect to live SQL Server database
-curl -X POST "http://localhost:5000/api/database/connect-database" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "connectionString": "Server=localhost;Database=Northwind;Trusted_Connection=true;",
-    "databaseType": "SqlServer",
-    "includedTables": ["Customers", "Orders", "Products"],
-    "maxRows": 1000,
-    "sanitizeSensitiveData": true
-  }'
-
-# Connect to MySQL database
-curl -X POST "http://localhost:5000/api/database/connect-database" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "connectionString": "Server=localhost;Database=sakila;Uid=root;Pwd=password;",
-    "databaseType": "MySQL",
-    "includedTables": ["actor", "film", "customer"]
-  }'
-
-# Connect to PostgreSQL database
-curl -X POST "http://localhost:5000/api/database/connect-database" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "connectionString": "Host=localhost;Database=dvdrental;Username=postgres;Password=password;",
-    "databaseType": "PostgreSQL",
-    "includeSchema": true,
-    "includeForeignKeys": true
-  }'
-
-# Execute custom SQL query
-curl -X POST "http://localhost:5000/api/database/execute-query" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "connectionString": "Server=localhost;Database=Northwind;Trusted_Connection=true;",
-    "query": "SELECT TOP 10 CustomerID, CompanyName FROM Customers WHERE Country = '\''USA'\''",
-    "databaseType": "SqlServer",
-    "maxRows": 10
-  }'
-```
-
-### **AI Question Answering & Chat**
-
-SmartRAG handles both document search and general conversation automatically:
-
-```bash
-# Ask questions about your documents (RAG mode)
+# Query via API (if you choose to implement controllers)  
 curl -X POST "http://localhost:5000/api/intelligence/query" \
   -H "Content-Type: application/json" \
-  -d '{
-    "query": "What are the main risks mentioned in the financial report?",
-    "maxResults": 5
-  }'
+  -d '{"query": "What are the main benefits?", "maxResults": 5}'
+```
 
-# General conversation (Direct AI chat mode)
-curl -X POST "http://localhost:5000/api/intelligence/query" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "How are you today?",
-    "maxResults": 1
-  }'
+### **Library Integration Examples**
+
+SmartRAG handles both document search and general conversation automatically through service layer:
+
+```csharp
+// Ask questions about your documents (RAG mode)
+var ragResult = await _documentSearchService.QueryIntelligenceAsync(
+    "What are the main risks mentioned in the financial report?", 
+    maxResults: 5
+);
+
+// General conversation (Direct AI chat mode)
+var chatResult = await _documentSearchService.QueryIntelligenceAsync(
+    "How are you today?", 
+    maxResults: 1
+);
 ```
 
 **Document Search Response Example:**
@@ -899,64 +941,71 @@ We welcome contributions!
 
 ## 🆕 What's New
 
-### **Latest Release (v3.0.0) - Intelligence Platform Revolution**
+### **Latest Release (v3.0.0) - Intelligence Library Revolution**
 
-🚀 **BREAKING CHANGES - Major Platform Evolution:**
-- **SearchController → IntelligenceController** - Reflects true AI intelligence capabilities
-- **GenerateRagAnswerAsync → QueryIntelligenceAsync** - Better represents intelligent query processing  
-- **API Endpoints: /api/search/* → /api/intelligence/*** - Professional enterprise naming
-- **Enhanced API Documentation** - Comprehensive Swagger documentation with examples
-- **Complete Controller Suite** - 8 comprehensive controllers with 65+ endpoints
+🚀 **BREAKING CHANGES - Major Library Evolution:**
+- **`GenerateRagAnswerAsync` → `QueryIntelligenceAsync`** - Better represents intelligent query processing
+- **Enhanced `IDocumentSearchService` interface** - New intelligent query processing method
+- **Service layer improvements** - Advanced semantic search and conversation management
+- **Backward compatibility maintained** - Legacy methods marked as deprecated
+- **Migration guide provided** - Step-by-step upgrade instructions from v2.3.0
 
-🧠 **Intelligence Platform Features:**
-- **Advanced Query Intelligence** - Automatic intent detection and smart routing
-- **Multi-Modal Search** - Documents, databases, conversations, and hybrid search
-- **Enterprise Analytics** - Usage tracking, performance monitoring, and insights
-- **Configuration Management** - Runtime configuration updates and validation
-- **Storage Management** - Backup, restore, migration, and provider switching
-- **Conversation Intelligence** - Session management and context-aware responses
+🧠 **Enhanced Service Layer Features:**
+- **`QueryIntelligenceAsync()`** - New intelligent query processing with advanced RAG pipeline
+- **Enhanced Semantic Search** - Improved hybrid scoring with 80% semantic + 20% keyword relevance
+- **Conversation Intelligence** - Better session management and context-aware responses
+- **Multi-Modal Processing** - Documents, databases, conversations, and hybrid search capabilities
+- **Smart Query Routing** - Automatic intent detection and intelligent query handling
 
 🔧 **Technical Improvements:**
-- **Professional API Design** - RESTful endpoints with comprehensive documentation
+- **Service-Oriented Architecture** - Clean separation of concerns with dependency injection
 - **Enterprise Architecture** - SOLID principles, zero warnings policy maintained
 - **Production Ready** - Comprehensive error handling, validation, and logging
-- **Swagger UI Optimization** - Collapsed default view with enhanced navigation
 - **Memory Management** - Optimized performance with streaming and caching
+- **Provider Pattern** - Enhanced pluggable architecture for AI and storage providers
 
 📚 **Documentation & Developer Experience:**
-- **Complete API Documentation** - All endpoints with detailed examples and use cases
-- **Migration Guide** - Step-by-step upgrade instructions from v2.4.0
+- **Library Documentation** - Comprehensive service layer API reference
+- **Migration Guide** - Step-by-step upgrade instructions from v2.3.0
 - **Enhanced README** - Updated with v3.0.0 features and breaking changes
-- **Professional Swagger UI** - Optimized interface with collapsed endpoints
-- **Enterprise Examples** - Real-world usage scenarios and best practices
+- **Usage Examples** - Real-world library integration scenarios and best practices
+- **Service Layer Focus** - Clear documentation of core library interfaces
 
-### **🔄 Migration from v2.4.0 to v3.0.0**
+### **🔄 Migration from v2.3.0 to v3.0.0**
 
-#### **API Endpoint Changes:**
-```bash
-# OLD (v2.4.0)
-POST /api/search                    # → POST /api/intelligence/query
-GET  /api/search/documents          # → GET  /api/intelligence/documents  
-GET  /api/search/suggestions        # → GET  /api/intelligence/suggestions
-GET  /api/search/conversations      # → GET  /api/intelligence/conversations
-GET  /api/search/analytics          # → GET  /api/intelligence/analytics
-```
-
-#### **Method Name Changes:**
+#### **Service Layer Method Changes:**
 ```csharp
-// OLD (v2.4.0)
-await documentSearchService.GenerateRagAnswerAsync(query, maxResults);
+// OLD (v2.3.0)
+await _documentSearchService.GenerateRagAnswerAsync(query, maxResults);
 
 // NEW (v3.0.0)  
-await documentSearchService.QueryIntelligenceAsync(query, maxResults);
+await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 ```
 
-#### **Controller Changes:**
+#### **Interface Changes:**
 ```csharp
-// OLD (v2.4.0)
-public class SearchController : ControllerBase
+// OLD (v2.3.0)
+public interface IDocumentSearchService
+{
+    Task<RagResponse> GenerateRagAnswerAsync(string query, int maxResults = 5);
+}
 
 // NEW (v3.0.0)
+public interface IDocumentSearchService
+{
+    Task<RagResponse> QueryIntelligenceAsync(string query, int maxResults = 5);
+    
+    [Obsolete("Use QueryIntelligenceAsync instead")]
+    Task<RagResponse> GenerateRagAnswerAsync(string query, int maxResults = 5);
+}
+```
+
+#### **Optional API Examples (for reference only):**
+```csharp
+// OLD (v2.3.0) - Optional API Controller
+public class SearchController : ControllerBase
+
+// NEW (v3.0.0) - Optional API Controller  
 public class IntelligenceController : ControllerBase
 ```
 
@@ -965,20 +1014,6 @@ public class IntelligenceController : ControllerBase
 - **Deprecation warnings** - Use new methods to avoid warnings in future versions
 - **Gradual migration** - Update endpoints and methods at your own pace
 - **v4.0.0 removal** - Legacy methods will be removed in the next major version
-
-### **Previous Release (v2.4.0) - Universal Database Support**
-- 🗄️ **Universal Database Integration** - Complete support for SQLite, SQL Server, MySQL, PostgreSQL databases
-- 🔗 **Live Database Connections** - Connect to production databases with real-time data extraction
-- 📊 **Intelligent Schema Analysis** - Automatic table schema extraction with data types, constraints, and relationships
-- 🛡️ **Enterprise Security** - Automatic sensitive data sanitization with configurable protection patterns
-- 🎯 **Smart Table Filtering** - Include/exclude specific tables with advanced filtering capabilities
-- ⚡ **Performance Optimized** - Configurable row limits, query timeouts, and efficient data processing
-- 🔍 **Custom SQL Queries** - Execute custom SQL queries with formatted results for advanced analysis
-- 📈 **Metadata Extraction** - Foreign keys, indexes, primary keys, and database version information
-- 🌐 **Cloud Database Support** - Works with Azure SQL, AWS RDS, Google Cloud SQL, and other cloud providers
-- 🏗️ **Enterprise Architecture** - SOLID principles, comprehensive logging, and production-ready implementation
-- ✅ **Zero Warnings Policy** - Maintained code quality standards with full XML documentation
-- 📚 **Documentation Updates** - All language versions updated with comprehensive database examples
 
 ### **Previous Release (v2.3.0) - Google Speech-to-Text Integration**
 - 🎵 **Google Speech-to-Text Integration** - Enterprise-grade speech recognition with Google Cloud AI
@@ -1006,7 +1041,7 @@ public class IntelligenceController : ControllerBase
 - 🗄️ **Storage Integration** - Works seamlessly with all providers (Redis, SQLite, FileSystem, InMemory)
 - 🔧 **Format Consistency** - Standardized conversation format across all storage providers
 - 🧵 **Thread Safety** - Enhanced concurrent access handling for conversation operations
-- 🌍 **Platform Agnostic** - Maintains compatibility with all .NET environments
+- 🌍 **Platform Agnostic** - Maintains compatibility across all .NET environments
 - 📚 **Documentation Updates** - All language versions (EN, TR, DE, RU) updated with real examples
 - ✅ **100% Compliance** - All established rules maintained with zero warnings policy
 
@@ -1030,13 +1065,30 @@ public class IntelligenceController : ControllerBase
 - 📊 **Performance Optimizations** - Faster chunking and search algorithms
 - ✅ **Code Quality** - SOLID principles, zero warnings, comprehensive documentation
 
+### **🎯 Library Statistics:**
+- **12+ Core Services** with comprehensive interfaces and implementations
+- **5 AI Providers** with unified interface (OpenAI, Anthropic, Gemini, Azure, Custom)
+- **4 Storage Providers** with enterprise-grade features
+- **4 Database Types** with universal connectivity (SQLite, SQL Server, MySQL, PostgreSQL)
+- **Production-ready** with comprehensive error handling and validation
+
 ## 📚 Resources
 
-- **📧 [Contact & Support](mailto:b.yerlikaya@outlook.com)**
-- **💼 [LinkedIn](https://www.linkedin.com/in/barisyerlikaya/)**
-- **🐙 [GitHub Profile](https://github.com/byerlikaya)**
-- **📦 [NuGet Packages](https://www.nuget.org/profiles/barisyerlikaya)**
-- **📖 [Documentation](https://byerlikaya.github.io/SmartRAG)** - Comprehensive guides and API reference
+### **📖 Library Documentation**
+- **📚 [SmartRAG Documentation](https://byerlikaya.github.io/SmartRAG)** - Comprehensive service layer API reference and integration guides
+- **🔧 [Service Layer API Reference](https://byerlikaya.github.io/SmartRAG/api-reference)** - Detailed interface documentation
+- **🚀 [Getting Started Guide](https://byerlikaya.github.io/SmartRAG/getting-started)** - Step-by-step library integration
+- **📝 [Usage Examples](https://byerlikaya.github.io/SmartRAG/examples)** - Real-world implementation scenarios
+
+### **📦 Package & Distribution**
+- **📦 [NuGet Package](https://www.nuget.org/packages/SmartRAG)** - Install via Package Manager or .NET CLI
+- **🐙 [GitHub Repository](https://github.com/byerlikaya/SmartRAG)** - Source code, issues, and contributions
+- **📊 [Package Statistics](https://www.nuget.org/profiles/barisyerlikaya)** - Download stats and version history
+
+### **💼 Professional Support**
+- **📧 [Contact & Support](mailto:b.yerlikaya@outlook.com)** - Technical support and consulting
+- **💼 [LinkedIn](https://www.linkedin.com/in/barisyerlikaya/)** - Professional networking and updates
+- **🌐 [Project Website](https://byerlikaya.github.io/SmartRAG/en/)** - Official project homepage
 
 ## 📄 License
 
