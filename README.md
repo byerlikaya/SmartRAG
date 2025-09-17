@@ -595,46 +595,90 @@ services.AddSmartRAG(configuration, options =>
 
 ## 🏗️ Architecture
 
-SmartRAG follows clean architecture principles with clear separation of concerns:
+SmartRAG follows clean architecture principles with clear separation of concerns and enterprise-grade design patterns.
+
+### **🎯 Core Architecture Overview**
+
+SmartRAG is built as a **layered enterprise architecture** with 5 distinct layers, each with specific responsibilities and clear interfaces:
+
+| Layer | Responsibility | Key Components |
+|-------|---------------|----------------|
+| **🧠 Intelligence Layer** | Advanced query processing, RAG pipeline, conversation intelligence | `IntelligenceController`, `DocumentSearchService`, `SemanticSearchService` |
+| **📄 Document Layer** | Document processing, parsing, and management | `DocumentsController`, `DocumentService`, `DocumentParserService` |
+| **🤖 AI & Analytics Layer** | AI provider management, analytics, monitoring | `AIController`, `AnalyticsController`, `AIService` |
+| **🗄️ Data Layer** | Database integration, storage management | `DatabaseController`, `StorageController`, `DatabaseParserService` |
+| **⚙️ Infrastructure Layer** | Configuration, conversation management, system services | `ConfigurationController`, `ConversationController`, Core Services |
+
+### **🔄 Data Flow Architecture**
 
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   API Layer    │    │  Service Layer   │    │ Repository Layer│
-│                 │    │                  │    │                 │
-│ • Controllers   │───▶│ • DocumentService│───▶│ • Redis Repo    │
-│ • DTOs          │    │ • AIService      │    │ • Qdrant Repo   │
-│ • Validation    │    │ • ParserService  │    │ • SQLite Repo   │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-                                │
-                                ▼
-                       ┌──────────────────┐
-                       │   AI Providers   │
-                       │                  │
-                       │ • OpenAI         │
-                       │ • Anthropic      │
-                       │ • Gemini         │
-                       │ • CustomProvider │
-                       └──────────────────┘
-                                │
-                                ▼
-                       ┌──────────────────┐
-                       │ Semantic Search  │
-                       │                  │
-                       │ • Hybrid Scoring │
-                       │ • Context Aware  │
-                       │ • Word Boundary  │
-                       └──────────────────┘
+📱 Client Request
+    ↓
+🧠 IntelligenceController (Query Processing)
+    ↓
+📊 Multi-Modal Search (Documents + Databases + Conversations)
+    ↓
+🤖 AI Provider Selection (OpenAI, Anthropic, Gemini, etc.)
+    ↓
+💾 Storage Layer (Qdrant, Redis, SQLite, etc.)
+    ↓
+✨ Intelligent Response with Sources
 ```
+
+### **🎯 Key Architectural Patterns**
+
+#### **1. 🧠 Intelligence-First Design**
+- **Query Intent Detection**: Automatically routes queries to appropriate handlers
+- **Multi-Modal Processing**: Handles documents, databases, and conversations seamlessly
+- **Context-Aware Responses**: Maintains conversation history and context
+
+#### **2. 🏭 Provider Pattern Implementation**
+- **AI Providers**: 5+ providers with unified interface (OpenAI, Anthropic, Gemini, Azure, Custom)
+- **Storage Providers**: Multiple storage options (Vector DBs, Traditional DBs, File System)
+- **Database Providers**: Universal database support (SQLite, SQL Server, MySQL, PostgreSQL)
+
+#### **3. 🔧 Service-Oriented Architecture**
+- **Loose Coupling**: Services communicate through well-defined interfaces
+- **Dependency Injection**: Full DI container integration for testability
+- **Configuration-Driven**: Environment-based configuration with sensible defaults
+
+#### **4. 📊 Enterprise-Grade Features**
+- **Analytics & Monitoring**: Comprehensive usage tracking and performance metrics
+- **Configuration Management**: Runtime configuration updates and validation
+- **Storage Management**: Backup, restore, migration capabilities
+- **Security**: Automatic sensitive data sanitization and protection
 
 ### **Key Components**
 
-- **📄 DocumentService**: Main orchestrator for document operations
-- **🤖 AIService**: Handles AI provider interactions and embeddings  
-- **📝 DocumentParserService**: Multi-format document parsing with smart chunking
-- **🔍 SemanticSearchService**: Advanced semantic search with hybrid scoring
-- **🏭 Factories**: Provider instantiation and configuration
-- **📚 Repositories**: Storage abstraction layer
-- **🔧 Extensions**: Dependency injection configuration
+#### **🧠 Intelligence Layer:**
+- **IntelligenceController**: Advanced query processing with RAG and conversation intelligence
+- **DocumentSearchService**: Core RAG operations with `QueryIntelligenceAsync` method
+- **SemanticSearchService**: Advanced semantic search with hybrid scoring
+
+#### **📄 Document Management:**
+- **DocumentsController**: Document upload, processing, and management
+- **DocumentService**: Main orchestrator for document operations
+- **DocumentParserService**: Multi-format parsing (PDF, Word, Excel, Images, Audio, Databases)
+
+#### **🤖 AI & Analytics:**
+- **AIController**: AI provider management and direct AI operations
+- **AnalyticsController**: Usage tracking, performance monitoring, and insights
+- **AIService**: AI provider interactions and embeddings
+
+#### **🗄️ Data & Storage:**
+- **DatabaseController**: Universal database integration (SQLite, SQL Server, MySQL, PostgreSQL)
+- **StorageController**: Storage provider management, backup, restore, migration
+- **DatabaseParserService**: Live database connections and intelligent data extraction
+
+#### **💬 Conversation & Configuration:**
+- **ConversationController**: Session management and conversation intelligence
+- **ConfigurationController**: Runtime configuration updates and validation
+- **ConfigurationService**: System configuration and health monitoring
+
+#### **🏗️ Infrastructure:**
+- **Factories**: Provider instantiation and configuration
+- **Repositories**: Storage abstraction layer (Redis, Qdrant, SQLite, FileSystem)
+- **Extensions**: Dependency injection configuration
 
 ## 🎨 API Examples
 
