@@ -112,7 +112,16 @@ static void ConfigureMiddleware(WebApplication app, IWebHostEnvironment environm
     {
         app.MapOpenApi();
         app.MapSwagger();
-        app.UseSwaggerUI();
+        app.UseSwaggerUI(c =>
+        {
+            c.SwaggerEndpoint("/swagger/v1/swagger.json", "SmartRAG API v2.4.0");
+            c.DocumentTitle = "SmartRAG API Documentation";
+            c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None); // All endpoints collapsed by default
+            c.DefaultModelsExpandDepth(-1); // Hide schemas section by default
+            c.DisplayRequestDuration(); // Show request duration
+            c.EnableFilter(); // Enable search filter
+            c.EnableDeepLinking(); // Enable deep linking to endpoints
+        });
     }
 
     // Serve static files for simple upload page
