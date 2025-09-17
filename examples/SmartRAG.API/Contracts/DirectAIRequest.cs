@@ -43,13 +43,13 @@ namespace SmartRAG.API.Contracts
         /// <summary>
         /// Optional conversation history for context
         /// </summary>
-        public List<ConversationMessage> ConversationHistory { get; set; } = new List<ConversationMessage>();
+        public List<SimpleConversationMessage> ConversationHistory { get; set; } = new List<SimpleConversationMessage>();
     }
 
     /// <summary>
-    /// Conversation message for context
+    /// Simple conversation message for AI context
     /// </summary>
-    public class ConversationMessage
+    public class SimpleConversationMessage
     {
         /// <summary>
         /// Role of the message sender
