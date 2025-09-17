@@ -134,6 +134,15 @@ var answer = await documentSearchService
             <div class="col-lg-4 col-md-6">
                 <div class="feature-card">
                     <div class="feature-icon">
+                        <i class="fas fa-server"></i>
+                    </div>
+                    <h3>Универсальная поддержка баз данных</h3>
+                    <p>Подключение к SQLite, SQL Server, MySQL, PostgreSQL с извлечением данных в реальном времени и анализом схемы.</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
                         <i class="fas fa-rocket"></i>
                     </div>
                     <h3>Простая интеграция</h3>

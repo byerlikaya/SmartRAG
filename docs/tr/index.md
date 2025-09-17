@@ -134,6 +134,15 @@ hide_title: true
             <div class="col-lg-4 col-md-6">
                 <div class="feature-card">
                     <div class="feature-icon">
+                        <i class="fas fa-server"></i>
+                    </div>
+                    <h3>Evrensel Veritabanı Desteği</h3>
+                    <p>SQLite, SQL Server, MySQL, PostgreSQL ile canlı veri çekme ve şema analizi.</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
                         <i class="fas fa-rocket"></i>
                     </div>
                     <h3>Kolay Entegrasyon</h3>

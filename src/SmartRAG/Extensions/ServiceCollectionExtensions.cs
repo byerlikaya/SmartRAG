@@ -48,6 +48,10 @@ namespace SmartRAG.Extensions
             services.AddScoped<IDocumentSearchService, DocumentSearchService>();
             services.AddScoped<IImageParserService, ImageParserService>();
             services.AddScoped<IAudioParserService, AudioParserService>();
+            services.AddScoped<IDatabaseParserService, DatabaseParserService>();
+            
+            // Add memory cache for database operations
+            services.AddMemoryCache();
 
             ConfigureStorageProvider(services, configuration);
 

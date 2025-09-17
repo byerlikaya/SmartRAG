@@ -35,7 +35,7 @@ public class DocumentsController(
     /// <param name="file">The file to upload</param>
     /// <param name="language">Language code for audio files (e.g., "tr-TR", "en-US", "de-DE"). Auto-detected if not specified.</param>
     [HttpPost("upload")]
-    public async Task<ActionResult<Entities.Document>> UploadDocument(IFormFile file, [FromQuery] string language = null)
+    public async Task<ActionResult<Entities.Document>> UploadDocument(IFormFile file, [FromQuery] string? language = null)
     {
         if (file == null || file.Length == 0)
             return BadRequest("No file provided");

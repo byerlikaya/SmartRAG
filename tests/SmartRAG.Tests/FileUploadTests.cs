@@ -20,7 +20,8 @@ public class FileUploadTests
         var logger = new TestLogger<DocumentParserService>();
         var mockImageParserService = new Mock<IImageParserService>();
         var mockAudioParserService = new Mock<IAudioParserService>();
-        var documentParserService = new DocumentParserService(options, mockImageParserService.Object, mockAudioParserService.Object, logger);
+        var mockDatabaseParserService = new Mock<IDatabaseParserService>();
+        var documentParserService = new DocumentParserService(options, mockImageParserService.Object, mockAudioParserService.Object, mockDatabaseParserService.Object, logger);
 
         // Act
         var result = await documentParserService.ParseDocumentAsync(stream, fileName, contentType, uploadedBy);
@@ -45,7 +46,8 @@ public class FileUploadTests
         var logger = new TestLogger<DocumentParserService>();
         var mockImageParserService = new Mock<IImageParserService>();
         var mockAudioParserService = new Mock<IAudioParserService>();
-        var documentParserService = new DocumentParserService(options, mockImageParserService.Object, mockAudioParserService.Object, logger);
+        var mockDatabaseParserService = new Mock<IDatabaseParserService>();
+        var documentParserService = new DocumentParserService(options, mockImageParserService.Object, mockAudioParserService.Object, mockDatabaseParserService.Object, logger);
 
         // Act
         var supportedTypes = documentParserService.GetSupportedFileTypes();

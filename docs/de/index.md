@@ -143,6 +143,15 @@ var answer = await documentSearchService
             <div class="col-lg-4 col-md-6">
                 <div class="feature-card">
                     <div class="feature-icon">
+                        <i class="fas fa-server"></i>
+                    </div>
+                    <h3>Universelle Datenbank-Unterstützung</h3>
+                    <p>Verbindung zu SQLite, SQL Server, MySQL, PostgreSQL mit Live-Datenextraktion und Schema-Analyse.</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
                         <i class="fas fa-magic"></i>
                     </div>
                     <h3>Intelligente Abfrage-Absicht</h3>

@@ -5,12 +5,12 @@
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
-    <PackageVersion>2.3.0</PackageVersion>
+    <PackageVersion>2.4.0</PackageVersion>
     <Authors>Barış Yerlikaya</Authors>
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
     <Description>High-performance RAG (Retrieval-Augmented Generation) library for .NET Standard 2.0/2.1 that enables AI-powered document question-answering with automatic conversation history management, multiple provider support and enterprise-grade vector storage. Features intelligent session management, persistent conversation context, and platform-agnostic design. Compatible with .NET Framework 4.6.1+, .NET Core 2.0+, and .NET 5+ applications.</Description>
-    <PackageTags>rag retrieval-augmented-generation ai llm document-qa vector-database openai anthropic gemini azure-openai qdrant redis sqlite conversation-history session-management chat-context</PackageTags>
+    <PackageTags>rag retrieval-augmented-generation ai llm document-qa vector-database openai anthropic gemini azure-openai qdrant redis sqlite sqlserver mysql postgresql database-integration conversation-history session-management chat-context</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <!-- <PackageIcon>icon.png</PackageIcon> -->
@@ -20,32 +20,32 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Release 2.3.0: Google Speech-to-Text Integration
+    <PackageReleaseNotes>Release 2.4.0: Universal Database Support
 
 ✨ New Features:
-• Google Speech-to-Text integration with enterprise-grade speech recognition
-• Support for 100+ languages including Turkish, English, and global languages
-• Real-time audio processing with advanced speech-to-text conversion
-• Detailed transcription results with timestamps and confidence metrics
-• Automatic format detection for MP3, WAV, M4A, AAC, OGG, FLAC, WMA
-• Intelligent audio processing with smart validation and error handling
-• Performance optimized audio processing with minimal memory footprint
+• Universal Database Integration - Complete support for SQLite, SQL Server, MySQL, PostgreSQL
+• Live Database Connections - Connect to production databases with real-time data extraction
+• Intelligent Schema Analysis - Automatic table schema extraction with data types and constraints
+• Enterprise Security - Automatic sensitive data sanitization with configurable protection
+• Smart Table Filtering - Include/exclude specific tables with advanced filtering
+• Custom SQL Queries - Execute custom SQL queries with formatted results
+• Metadata Extraction - Foreign keys, indexes, primary keys, and database information
 
 🔧 Technical Improvements:
-• Enhanced audio processing pipeline with Google Cloud AI
-• Updated configuration management with GoogleSpeechConfig
-• Improved error handling for audio transcription operations
-• Comprehensive XML documentation for all public APIs
-• Zero warnings policy compliance with SOLID/DRY principles
-• Structured audio output for searchable, queryable knowledge base
+• SOLID principles implementation with clean architecture patterns
+• Comprehensive error handling and logging for database operations
+• Performance optimized data processing with configurable limits
+• Thread-safe database connection management
+• Zero warnings policy compliance maintained
+• Enterprise-grade connection validation and timeout handling
 
 📚 Documentation Updates:
-• Comprehensive audio processing feature documentation
-• Enhanced README with detailed speech-to-text capabilities
-• Updated all language versions (EN, TR, DE, RU) with examples
-• Added multi-language support documentation for global applications
-• Better developer experience with detailed audio processing examples
-• Complete API documentation with XML summaries</PackageReleaseNotes>
+• Comprehensive database integration documentation with examples
+• Enhanced README with detailed database support capabilities
+• Updated all language versions (EN, TR, DE, RU) with database examples
+• Complete API documentation with database connection guides
+• Better developer experience with real-world database scenarios
+• Production deployment guides for cloud databases</PackageReleaseNotes>
     
     <!-- Build Configuration -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -70,6 +70,8 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.9" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.9" />
     
     <!-- HTTP Client -->
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.9" />
@@ -81,6 +83,11 @@
     <PackageReference Include="Qdrant.Client" Version="1.15.1" />
     <PackageReference Include="StackExchange.Redis" Version="2.9.17" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.9" />
+    
+    <!-- Database Connectivity -->
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+    <PackageReference Include="MySql.Data" Version="9.1.0" />
+    <PackageReference Include="Npgsql" Version="8.0.5" />
     
     <!-- Validation -->
     <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />

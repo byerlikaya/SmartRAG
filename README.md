@@ -22,6 +22,7 @@ SmartRAG is a **production-ready** .NET Standard 2.0/2.1 library that provides a
 - 📄 **Multi-Format**: PDF, Word, Excel, text files with intelligent parsing
 - 🖼️ **Revolutionary OCR**: Enterprise-grade image processing with Tesseract 5.2.0 + SkiaSharp, WebP support, multi-language OCR, table extraction
 - 🎵 **Speech-to-Text**: Google Speech-to-Text integration for audio file transcription and analysis
+- 🗄️ **Universal Database Support**: SQLite, SQL Server, MySQL, PostgreSQL with live connections, schema analysis, and intelligent data extraction
 - 🎯 **Enhanced Semantic Search**: Advanced hybrid scoring with 80% semantic + 20% keyword relevance
 - 🔍 **Smart Document Chunking**: Word boundary validation and optimal break points for context preservation
 - ✅ **Enterprise Grade**: Zero Warnings Policy, SOLID principles, comprehensive logging, XML documentation
@@ -150,7 +151,7 @@ dotnet add package SmartRAG
 
 ### PackageReference
 ```xml
-<PackageReference Include="SmartRAG" Version="2.3.0" />
+<PackageReference Include="SmartRAG" Version="2.4.0" />
 ```
 
 ## 📄 Supported Document Formats
@@ -203,6 +204,18 @@ SmartRAG supports a wide range of document formats with intelligent parsing and 
 - **📈 Performance Optimized**: Efficient audio processing with minimal memory footprint
 - **🏗️ Structured Output**: Converts audio content to searchable, queryable knowledge base
 
+### **🗄️ Database Files (.db, .sqlite, .sqlite3) - ENTERPRISE DATABASE INTEGRATION**
+- **🚀 Universal Database Support**: SQLite, SQL Server, MySQL, PostgreSQL with live connections
+- **📊 Intelligent Schema Analysis**: Automatic table schema extraction with data types and constraints
+- **🔗 Relationship Mapping**: Foreign key relationships and index information extraction
+- **🛡️ Security-First**: Automatic sensitive data sanitization and configurable data protection
+- **⚡ Performance Optimized**: Configurable row limits, query timeouts, and connection pooling
+- **🎯 Smart Filtering**: Include/exclude specific tables with advanced filtering options
+- **📈 Enterprise Features**: Connection validation, custom SQL query execution, and error handling
+- **🌐 Cross-Platform**: Works with cloud databases (Azure SQL, AWS RDS, Google Cloud SQL)
+- **🔍 Metadata Extraction**: Column details, primary keys, indexes, and database version information
+- **🏗️ Structured Output**: Converts database content to searchable, queryable knowledge base
+
 ### **🔍 Content Type Support**
 SmartRAG automatically detects file types using both file extensions and MIME content types:
 - **Excel**: `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, `application/vnd.ms-excel`
@@ -211,6 +224,7 @@ SmartRAG automatically detects file types using both file extensions and MIME co
 - **Text**: `text/*`, `application/json`, `application/xml`, `application/csv`
 - **Images**: `image/jpeg`, `image/png`, `image/gif`, `image/bmp`, `image/tiff`, `image/webp`
 - **Audio**: `audio/mpeg`, `audio/wav`, `audio/mp4`, `audio/aac`, `audio/ogg`, `audio/flac`, `audio/x-ms-wma`
+- **Databases**: `application/x-sqlite3`, `application/vnd.sqlite3`, `application/octet-stream`
 
 ## 🚀 Quick Start
 
@@ -245,12 +259,14 @@ builder.Services.UseSmartRAG(builder.Configuration,
 var app = builder.Build();
 ```
 
-### 3. **Upload Documents**
+### 3. **Upload Documents & Connect Databases**
 ```csharp
 public class DocumentController : ControllerBase
 {
     private readonly IDocumentService _documentService;
+    private readonly IDatabaseParserService _databaseService;
 
+    // Upload files (PDF, Word, Excel, Images, Audio, SQLite databases)
     [HttpPost("upload")]
     public async Task<IActionResult> Upload(IFormFile file)
     {
@@ -262,6 +278,26 @@ public class DocumentController : ControllerBase
         );
         
         return Ok(document);
+    }
+
+    // Connect to live databases (SQL Server, MySQL, PostgreSQL)
+    [HttpPost("connect-database")]
+    public async Task<IActionResult> ConnectDatabase([FromBody] DatabaseRequest request)
+    {
+        var config = new DatabaseConfig
+        {
+            Type = request.DatabaseType,
+            ConnectionString = request.ConnectionString,
+            IncludedTables = request.Tables,
+            MaxRowsPerTable = 1000,
+            SanitizeSensitiveData = true
+        };
+
+        var content = await _databaseService.ParseDatabaseConnectionAsync(
+            request.ConnectionString, 
+            config);
+        
+        return Ok(new { content, message = "Database connected successfully" });
     }
 }
 ```
@@ -321,6 +357,12 @@ cp examples/WebAPI/appsettings.json examples/WebAPI/appsettings.Development.json
     "InMemory": {
       "MaxDocuments": 1000
     }
+  },
+  "Database": {
+    "MaxRowsPerTable": 1000,
+    "QueryTimeoutSeconds": 30,
+    "SanitizeSensitiveData": true,
+    "SensitiveColumns": ["password", "ssn", "credit_card", "email"]
   }
 }
 ```
@@ -612,6 +654,53 @@ curl -X DELETE "http://localhost:5000/api/documents/{document-id}"
 curl "http://localhost:5000/api/documents/search"
 ```
 
+### **Database Management**
+```bash
+# Upload SQLite database file
+curl -X POST "http://localhost:5000/api/documents/upload" \
+  -F "file=@company.db"
+
+# Connect to live SQL Server database
+curl -X POST "http://localhost:5000/api/database/connect-database" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "connectionString": "Server=localhost;Database=Northwind;Trusted_Connection=true;",
+    "databaseType": "SqlServer",
+    "includedTables": ["Customers", "Orders", "Products"],
+    "maxRows": 1000,
+    "sanitizeSensitiveData": true
+  }'
+
+# Connect to MySQL database
+curl -X POST "http://localhost:5000/api/database/connect-database" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "connectionString": "Server=localhost;Database=sakila;Uid=root;Pwd=password;",
+    "databaseType": "MySQL",
+    "includedTables": ["actor", "film", "customer"]
+  }'
+
+# Connect to PostgreSQL database
+curl -X POST "http://localhost:5000/api/database/connect-database" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "connectionString": "Host=localhost;Database=dvdrental;Username=postgres;Password=password;",
+    "databaseType": "PostgreSQL",
+    "includeSchema": true,
+    "includeForeignKeys": true
+  }'
+
+# Execute custom SQL query
+curl -X POST "http://localhost:5000/api/database/execute-query" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "connectionString": "Server=localhost;Database=Northwind;Trusted_Connection=true;",
+    "query": "SELECT TOP 10 CustomerID, CompanyName FROM Customers WHERE Country = '\''USA'\''",
+    "databaseType": "SqlServer",
+    "maxRows": 10
+  }'
+```
+
 ### **AI Question Answering & Chat**
 
 SmartRAG handles both document search and general conversation automatically:
@@ -766,7 +855,21 @@ We welcome contributions!
 
 ## 🆕 What's New
 
-### **Latest Release (v2.3.0) - Google Speech-to-Text Integration**
+### **Latest Release (v2.4.0) - Universal Database Support**
+- 🗄️ **Universal Database Integration** - Complete support for SQLite, SQL Server, MySQL, PostgreSQL databases
+- 🔗 **Live Database Connections** - Connect to production databases with real-time data extraction
+- 📊 **Intelligent Schema Analysis** - Automatic table schema extraction with data types, constraints, and relationships
+- 🛡️ **Enterprise Security** - Automatic sensitive data sanitization with configurable protection patterns
+- 🎯 **Smart Table Filtering** - Include/exclude specific tables with advanced filtering capabilities
+- ⚡ **Performance Optimized** - Configurable row limits, query timeouts, and efficient data processing
+- 🔍 **Custom SQL Queries** - Execute custom SQL queries with formatted results for advanced analysis
+- 📈 **Metadata Extraction** - Foreign keys, indexes, primary keys, and database version information
+- 🌐 **Cloud Database Support** - Works with Azure SQL, AWS RDS, Google Cloud SQL, and other cloud providers
+- 🏗️ **Enterprise Architecture** - SOLID principles, comprehensive logging, and production-ready implementation
+- ✅ **Zero Warnings Policy** - Maintained code quality standards with full XML documentation
+- 📚 **Documentation Updates** - All language versions updated with comprehensive database examples
+
+### **Previous Release (v2.3.0) - Google Speech-to-Text Integration**
 - 🎵 **Google Speech-to-Text Integration** - Enterprise-grade speech recognition with Google Cloud AI
 - 🌍 **Enhanced Language Support** - 100+ languages including Turkish, English, and global languages
 - ⚡ **Real-time Audio Processing** - Advanced speech-to-text conversion with confidence scoring

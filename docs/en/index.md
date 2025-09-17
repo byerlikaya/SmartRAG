@@ -228,6 +228,15 @@ hide_title: true
             <div class="col-lg-4 col-md-6">
                 <div class="feature-card">
                     <div class="feature-icon">
+                        <i class="fas fa-server"></i>
+                    </div>
+                    <h3>Universal Database Support</h3>
+                    <p>Connect to SQLite, SQL Server, MySQL, PostgreSQL with live data extraction and schema analysis.</p>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6">
+                <div class="feature-card">
+                    <div class="feature-icon">
                         <i class="fas fa-magic"></i>
                     </div>
                     <h3>Smart Query Intent</h3>
