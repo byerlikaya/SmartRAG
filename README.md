@@ -151,7 +151,7 @@ dotnet add package SmartRAG
 
 ### PackageReference
 ```xml
-<PackageReference Include="SmartRAG" Version="2.4.0" />
+<PackageReference Include="SmartRAG" Version="3.0.0" />
 ```
 
 ## 📄 Supported Document Formats
@@ -312,7 +312,7 @@ public class QAController : ControllerBase
     public async Task<IActionResult> AskQuestion([FromBody] QuestionRequest request)
     {
         // User asks: "What are the main benefits mentioned in the contract?"
-        var response = await _documentSearchService.GenerateRagAnswerAsync(
+        var response = await _documentSearchService.QueryIntelligenceAsync(
             request.Question,
             maxResults: 5
         );
@@ -509,13 +509,13 @@ SmartRAG includes **automatic conversation history management** that maintains c
 ### **How It Works**
 ```csharp
 // First question in session
-var response1 = await _documentSearchService.GenerateRagAnswerAsync(
+var response1 = await _documentSearchService.QueryIntelligenceAsync(
     "What is the company's refund policy?",
     maxResults: 5
 );
 
 // Follow-up question - AI remembers previous context
-var response2 = await _documentSearchService.GenerateRagAnswerAsync(
+var response2 = await _documentSearchService.QueryIntelligenceAsync(
     "What about international orders?",  // AI knows this relates to refund policy
     maxResults: 5
 );
@@ -707,7 +707,7 @@ SmartRAG handles both document search and general conversation automatically:
 
 ```bash
 # Ask questions about your documents (RAG mode)
-curl -X POST "http://localhost:5000/api/search/search" \
+curl -X POST "http://localhost:5000/api/intelligence/query" \
   -H "Content-Type: application/json" \
   -d '{
     "query": "What are the main risks mentioned in the financial report?",
@@ -715,7 +715,7 @@ curl -X POST "http://localhost:5000/api/search/search" \
   }'
 
 # General conversation (Direct AI chat mode)
-curl -X POST "http://localhost:5000/api/search/search" \
+curl -X POST "http://localhost:5000/api/intelligence/query" \
   -H "Content-Type: application/json" \
   -d '{
     "query": "How are you today?",
@@ -855,7 +855,74 @@ We welcome contributions!
 
 ## 🆕 What's New
 
-### **Latest Release (v2.4.0) - Universal Database Support**
+### **Latest Release (v3.0.0) - Intelligence Platform Revolution**
+
+🚀 **BREAKING CHANGES - Major Platform Evolution:**
+- **SearchController → IntelligenceController** - Reflects true AI intelligence capabilities
+- **GenerateRagAnswerAsync → QueryIntelligenceAsync** - Better represents intelligent query processing  
+- **API Endpoints: /api/search/* → /api/intelligence/*** - Professional enterprise naming
+- **Enhanced API Documentation** - Comprehensive Swagger documentation with examples
+- **Complete Controller Suite** - 8 comprehensive controllers with 65+ endpoints
+
+🧠 **Intelligence Platform Features:**
+- **Advanced Query Intelligence** - Automatic intent detection and smart routing
+- **Multi-Modal Search** - Documents, databases, conversations, and hybrid search
+- **Enterprise Analytics** - Usage tracking, performance monitoring, and insights
+- **Configuration Management** - Runtime configuration updates and validation
+- **Storage Management** - Backup, restore, migration, and provider switching
+- **Conversation Intelligence** - Session management and context-aware responses
+
+🔧 **Technical Improvements:**
+- **Professional API Design** - RESTful endpoints with comprehensive documentation
+- **Enterprise Architecture** - SOLID principles, zero warnings policy maintained
+- **Production Ready** - Comprehensive error handling, validation, and logging
+- **Swagger UI Optimization** - Collapsed default view with enhanced navigation
+- **Memory Management** - Optimized performance with streaming and caching
+
+📚 **Documentation & Developer Experience:**
+- **Complete API Documentation** - All endpoints with detailed examples and use cases
+- **Migration Guide** - Step-by-step upgrade instructions from v2.4.0
+- **Enhanced README** - Updated with v3.0.0 features and breaking changes
+- **Professional Swagger UI** - Optimized interface with collapsed endpoints
+- **Enterprise Examples** - Real-world usage scenarios and best practices
+
+### **🔄 Migration from v2.4.0 to v3.0.0**
+
+#### **API Endpoint Changes:**
+```bash
+# OLD (v2.4.0)
+POST /api/search                    # → POST /api/intelligence/query
+GET  /api/search/documents          # → GET  /api/intelligence/documents  
+GET  /api/search/suggestions        # → GET  /api/intelligence/suggestions
+GET  /api/search/conversations      # → GET  /api/intelligence/conversations
+GET  /api/search/analytics          # → GET  /api/intelligence/analytics
+```
+
+#### **Method Name Changes:**
+```csharp
+// OLD (v2.4.0)
+await documentSearchService.GenerateRagAnswerAsync(query, maxResults);
+
+// NEW (v3.0.0)  
+await documentSearchService.QueryIntelligenceAsync(query, maxResults);
+```
+
+#### **Controller Changes:**
+```csharp
+// OLD (v2.4.0)
+public class SearchController : ControllerBase
+
+// NEW (v3.0.0)
+public class IntelligenceController : ControllerBase
+```
+
+#### **Backward Compatibility:**
+- **Legacy methods are deprecated but still work** - `GenerateRagAnswerAsync` calls `QueryIntelligenceAsync` internally
+- **Deprecation warnings** - Use new methods to avoid warnings in future versions
+- **Gradual migration** - Update endpoints and methods at your own pace
+- **v4.0.0 removal** - Legacy methods will be removed in the next major version
+
+### **Previous Release (v2.4.0) - Universal Database Support**
 - 🗄️ **Universal Database Integration** - Complete support for SQLite, SQL Server, MySQL, PostgreSQL databases
 - 🔗 **Live Database Connections** - Connect to production databases with real-time data extraction
 - 📊 **Intelligent Schema Analysis** - Automatic table schema extraction with data types, constraints, and relationships

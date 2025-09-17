@@ -22,15 +22,15 @@ lang: de
                         <pre><code class="language-csharp">public interface IDocumentSearchService
 {
     Task&lt;List&lt;DocumentChunk&gt;&gt; SearchDocumentsAsync(string query, int maxResults = 5);
-    Task&lt;RagResponse&gt; GenerateRagAnswerAsync(string query, int maxResults = 5, bool startNewConversation = false);
+    Task&lt;RagResponse&gt; QueryIntelligenceAsync(string query, int maxResults = 5, bool startNewConversation = false);
 }</code></pre>
                     </div>
 
-                    <h4>GenerateRagAnswerAsync</h4>
+                    <h4>QueryIntelligenceAsync</h4>
                     <p>Generiert KI-gestützte Antworten mit automatischer Sitzungsverwaltung und Gesprächshistorie.</p>
                     
                     <div class="code-example">
-                        <pre><code class="language-csharp">Task&lt;RagResponse&gt; GenerateRagAnswerAsync(string query, int maxResults = 5, bool startNewConversation = false)</code></pre>
+                        <pre><code class="language-csharp">Task&lt;RagResponse&gt; QueryIntelligenceAsync(string query, int maxResults = 5, bool startNewConversation = false)</code></pre>
                     </div>
 
                     <p><strong>Parameter:</strong></p>
@@ -44,10 +44,10 @@ lang: de
                     
                     <div class="code-example">
                         <pre><code class="language-csharp">// Grundlegende Verwendung
-var response = await documentSearchService.GenerateRagAnswerAsync("Wie ist das Wetter?");
+var response = await documentSearchService.QueryIntelligenceAsync("Wie ist das Wetter?");
 
 // Neues Gespräch starten
-var response = await documentSearchService.GenerateRagAnswerAsync("/new");</code></pre>
+var response = await documentSearchService.QueryIntelligenceAsync("/new");</code></pre>
                     </div>
 
                     <h3>Weitere wichtige Schnittstellen</h3>

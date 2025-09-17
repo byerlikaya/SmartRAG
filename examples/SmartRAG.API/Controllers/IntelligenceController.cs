@@ -7,24 +7,24 @@ using System.Threading.Tasks;
 namespace SmartRAG.API.Controllers
 {
     /// <summary>
-    /// Advanced AI-Powered Search and Query Intelligence Controller
+    /// Advanced AI-Powered Intelligence and Query Processing Controller
     /// 
-    /// This controller provides sophisticated search capabilities including:
+    /// This controller provides sophisticated intelligence capabilities including:
     /// - Intelligent query routing with automatic intent detection
     /// - RAG (Retrieval-Augmented Generation) with context-aware responses
-    /// - Multi-modal search across documents, databases, and conversations
-    /// - Semantic search with vector similarity and hybrid ranking
+    /// - Multi-modal intelligence across documents, databases, and conversations
+    /// - Semantic intelligence with vector similarity and hybrid ranking
     /// - Query suggestions and auto-completion
-    /// - Search analytics and performance optimization
-    /// - Conversation-aware search with session context
+    /// - Intelligence analytics and performance optimization
+    /// - Conversation-aware intelligence with session context
     /// 
-    /// Search Intelligence Features:
+    /// Intelligence Features:
     /// - **Query Intent Detection**: Automatically determines search vs conversation intent
-    /// - **Hybrid Search**: Combines keyword, semantic, and vector search methods
+    /// - **Hybrid Intelligence**: Combines keyword, semantic, and vector search methods
     /// - **Context Awareness**: Maintains conversation context for follow-up queries
-    /// - **Multi-Language Support**: Search and respond in multiple languages
+    /// - **Multi-Language Support**: Intelligence and respond in multiple languages
     /// - **Content Ranking**: Advanced relevance scoring and result ranking
-    /// - **Search Personalization**: User-specific search optimization and history
+    /// - **Intelligence Personalization**: User-specific optimization and history
     /// - **Real-Time Suggestions**: Dynamic query suggestions and auto-completion
     /// 
     /// RAG Pipeline:
@@ -35,13 +35,13 @@ namespace SmartRAG.API.Controllers
     /// 5. **Quality Assurance**: Response validation and confidence scoring
     /// 6. **Learning Loop**: Continuous improvement based on user feedback
     /// 
-    /// Search Types:
-    /// - **Document Search**: Full-text and semantic search across uploaded documents
-    /// - **Database Search**: Natural language queries against connected databases
-    /// - **Conversation Search**: Search through conversation history and context
-    /// - **Hybrid Search**: Combined search across all content types
-    /// - **Semantic Search**: Vector-based similarity search for conceptual matches
-    /// - **Faceted Search**: Filtered search with multiple criteria and constraints
+    /// Intelligence Types:
+    /// - **Document Intelligence**: Full-text and semantic search across uploaded documents
+    /// - **Database Intelligence**: Natural language queries against connected databases
+    /// - **Conversation Intelligence**: Search through conversation history and context
+    /// - **Hybrid Intelligence**: Combined search across all content types
+    /// - **Semantic Intelligence**: Vector-based similarity search for conceptual matches
+    /// - **Faceted Intelligence**: Filtered search with multiple criteria and constraints
     /// 
     /// Use Cases:
     /// - **Knowledge Discovery**: Find relevant information across all content
@@ -53,38 +53,38 @@ namespace SmartRAG.API.Controllers
     /// 
     /// Example Usage:
     /// ```bash
-    /// # Intelligent RAG search with conversation context
-    /// curl -X POST "https://localhost:7001/api/search" \
+    /// # Intelligent RAG query with conversation context
+    /// curl -X POST "https://localhost:7001/api/intelligence/query" \
     ///   -H "Content-Type: application/json" \
     ///   -d '{"query": "What are the key findings in our quarterly reports?", "maxResults": 5}'
     /// 
-    /// # Document-only semantic search
-    /// curl -X GET "https://localhost:7001/api/search/documents?query=machine learning&limit=10"
+    /// # Document-only semantic intelligence
+    /// curl -X GET "https://localhost:7001/api/intelligence/documents?query=machine learning&limit=10"
     /// 
-    /// # Get search suggestions
-    /// curl -X GET "https://localhost:7001/api/search/suggestions?partial=artific"
+    /// # Get intelligence suggestions
+    /// curl -X GET "https://localhost:7001/api/intelligence/suggestions?partial=artific"
     /// 
     /// # Search conversation history
-    /// curl -X GET "https://localhost:7001/api/search/history?userId=user123&query=database"
+    /// curl -X GET "https://localhost:7001/api/intelligence/conversations?userId=user123&query=database"
     /// ```
     /// </summary>
     [ApiController]
     [Route("api/[controller]")]
     [Produces("application/json")]
-    public class SearchController : ControllerBase
+    public class IntelligenceController : ControllerBase
     {
         private readonly IDocumentSearchService _documentSearchService;
 
-        public SearchController(IDocumentSearchService documentSearchService)
+        public IntelligenceController(IDocumentSearchService documentSearchService)
         {
             _documentSearchService = documentSearchService;
         }
 
         /// <summary>
-        /// Intelligent AI search with automatic query routing and RAG
+        /// Intelligent AI query processing with automatic routing and RAG
         /// </summary>
         /// <remarks>
-        /// Performs intelligent search with comprehensive RAG pipeline including:
+        /// Performs intelligent query processing with comprehensive RAG pipeline including:
         /// - **Query Intent Analysis**: Determines if query requires search, conversation, or both
         /// - **Multi-Modal Retrieval**: Searches across documents, databases, and conversations
         /// - **Context Assembly**: Selects and ranks relevant information from multiple sources
@@ -99,12 +99,12 @@ namespace SmartRAG.API.Controllers
         /// - Generates accurate, well-cited responses
         /// - Provides source links and confidence metrics
         /// </remarks>
-        /// <param name="request">Search request with query and parameters</param>
+        /// <param name="request">Intelligence request with query and parameters</param>
         /// <returns>AI-generated response with sources and confidence metrics</returns>
-        [HttpPost]
+        [HttpPost("query")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult<object>> Search([FromBody] Contracts.SearchRequest request)
+        public async Task<ActionResult<object>> QueryIntelligence([FromBody] Contracts.SearchRequest request)
         {
             string? query = request?.Query;
             int maxResults = request?.MaxResults ?? 5;
@@ -114,7 +114,7 @@ namespace SmartRAG.API.Controllers
 
             try
             {
-                var response = await _documentSearchService.GenerateRagAnswerAsync(query, maxResults);
+                var response = await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
                 return Ok(response);
             }
             catch (Exception ex)
@@ -124,24 +124,24 @@ namespace SmartRAG.API.Controllers
         }
 
         /// <summary>
-        /// Performs document-only semantic search without AI generation
+        /// Performs document-only semantic intelligence without AI generation
         /// </summary>
         /// <remarks>
         /// Searches through uploaded documents using semantic similarity including:
-        /// - **Vector Search**: Uses embeddings for semantic similarity matching
+        /// - **Vector Intelligence**: Uses embeddings for semantic similarity matching
         /// - **Relevance Ranking**: Advanced scoring algorithms for result ranking
         /// - **Metadata Filtering**: Filter by document type, date, author, etc.
         /// - **Chunk-Level Results**: Returns specific document sections with context
         /// - **Performance Optimization**: Fast vector search with optimized indexing
         /// 
-        /// This endpoint returns raw search results without AI interpretation,
+        /// This endpoint returns raw intelligence results without AI interpretation,
         /// useful for:
         /// - Document discovery and exploration
         /// - Research and analysis workflows
         /// - Content audit and inventory
-        /// - Building custom search interfaces
+        /// - Building custom intelligence interfaces
         /// </remarks>
-        /// <param name="query">Search query text</param>
+        /// <param name="query">Intelligence query text</param>
         /// <param name="limit">Maximum number of results to return</param>
         /// <param name="contentType">Filter by document content type</param>
         /// <param name="minScore">Minimum similarity score threshold</param>
@@ -149,7 +149,7 @@ namespace SmartRAG.API.Controllers
         [HttpGet("documents")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult> SearchDocuments(
+        public async Task<ActionResult> QueryDocuments(
             [FromQuery] string query,
             [FromQuery] int limit = 10,
             [FromQuery] string? contentType = null,
@@ -192,12 +192,12 @@ namespace SmartRAG.API.Controllers
         }
 
         /// <summary>
-        /// Gets intelligent search suggestions and auto-completion
+        /// Gets intelligent query suggestions and auto-completion
         /// </summary>
         /// <remarks>
-        /// Provides real-time search suggestions based on:
+        /// Provides real-time intelligence suggestions based on:
         /// - **Content Analysis**: Suggestions based on available document content
-        /// - **Query History**: Popular and recent search queries
+        /// - **Query History**: Popular and recent intelligence queries
         /// - **Entity Recognition**: Identified entities and concepts in documents
         /// - **Semantic Similarity**: Related concepts and topics
         /// - **User Patterns**: Personalized suggestions based on user behavior
@@ -206,15 +206,15 @@ namespace SmartRAG.API.Controllers
         /// - **Auto-completion**: Complete partial queries
         /// - **Related Queries**: Suggest related or follow-up questions
         /// - **Entity Suggestions**: Suggest specific entities or concepts
-        /// - **Popular Queries**: Show frequently searched topics
+        /// - **Popular Queries**: Show frequently queried topics
         /// </remarks>
         /// <param name="partial">Partial query text for auto-completion</param>
         /// <param name="limit">Maximum number of suggestions to return</param>
         /// <param name="userId">User ID for personalized suggestions</param>
-        /// <returns>List of search suggestions with relevance scores</returns>
+        /// <returns>List of intelligence suggestions with relevance scores</returns>
         [HttpGet("suggestions")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-        public async Task<ActionResult> GetSearchSuggestions(
+        public async Task<ActionResult> GetIntelligenceSuggestions(
             [FromQuery] string partial,
             [FromQuery] int limit = 5,
             [FromQuery] string? userId = null)
@@ -263,7 +263,7 @@ namespace SmartRAG.API.Controllers
         }
 
         /// <summary>
-        /// Searches through conversation history
+        /// Searches through conversation history with intelligence
         /// </summary>
         /// <remarks>
         /// Searches through user conversation history including:
@@ -279,7 +279,7 @@ namespace SmartRAG.API.Controllers
         /// - Retrieving context for follow-up questions
         /// - Building conversation-aware responses
         /// </remarks>
-        /// <param name="query">Search query for conversation content</param>
+        /// <param name="query">Intelligence query for conversation content</param>
         /// <param name="userId">Filter by specific user ID</param>
         /// <param name="limit">Maximum number of results to return</param>
         /// <param name="startDate">Search conversations after this date</param>
@@ -288,7 +288,7 @@ namespace SmartRAG.API.Controllers
         [HttpGet("conversations")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult> SearchConversations(
+        public async Task<ActionResult> QueryConversations(
             [FromQuery] string query,
             [FromQuery] string? userId = null,
             [FromQuery] int limit = 10,
@@ -354,19 +354,19 @@ namespace SmartRAG.API.Controllers
         }
 
         /// <summary>
-        /// Gets search analytics and performance metrics
+        /// Gets intelligence analytics and performance metrics
         /// </summary>
         /// <remarks>
-        /// Provides comprehensive search analytics including:
-        /// - **Query Statistics**: Most popular queries, search patterns, trends
-        /// - **Performance Metrics**: Search response times, success rates, user satisfaction
-        /// - **Content Analytics**: Most searched content, gap analysis, relevance metrics
-        /// - **User Behavior**: Search patterns, session analytics, conversion rates
-        /// - **System Performance**: Search infrastructure performance and optimization
+        /// Provides comprehensive intelligence analytics including:
+        /// - **Query Statistics**: Most popular queries, intelligence patterns, trends
+        /// - **Performance Metrics**: Intelligence response times, success rates, user satisfaction
+        /// - **Content Analytics**: Most queried content, gap analysis, relevance metrics
+        /// - **User Behavior**: Intelligence patterns, session analytics, conversion rates
+        /// - **System Performance**: Intelligence infrastructure performance and optimization
         /// 
         /// Analytics help with:
         /// - Understanding user information needs
-        /// - Optimizing search algorithms and ranking
+        /// - Optimizing intelligence algorithms and ranking
         /// - Identifying content gaps and opportunities
         /// - Improving user experience and satisfaction
         /// - System performance monitoring and tuning
@@ -374,10 +374,10 @@ namespace SmartRAG.API.Controllers
         /// <param name="startDate">Analytics start date (optional)</param>
         /// <param name="endDate">Analytics end date (optional)</param>
         /// <param name="userId">Filter by specific user (optional)</param>
-        /// <returns>Comprehensive search analytics and metrics</returns>
+        /// <returns>Comprehensive intelligence analytics and metrics</returns>
         [HttpGet("analytics")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-        public async Task<ActionResult> GetSearchAnalytics(
+        public async Task<ActionResult> GetIntelligenceAnalytics(
             [FromQuery] DateTime? startDate = null,
             [FromQuery] DateTime? endDate = null,
             [FromQuery] string? userId = null)

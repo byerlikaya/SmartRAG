@@ -5,7 +5,7 @@
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
-    <PackageVersion>2.4.0</PackageVersion>
+    <PackageVersion>3.0.0</PackageVersion>
     <Authors>Barış Yerlikaya</Authors>
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
@@ -20,32 +20,42 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Release 2.4.0: Universal Database Support
+    <PackageReleaseNotes>Release 3.0.0: Intelligence Platform Revolution
 
-✨ New Features:
-• Universal Database Integration - Complete support for SQLite, SQL Server, MySQL, PostgreSQL
-• Live Database Connections - Connect to production databases with real-time data extraction
-• Intelligent Schema Analysis - Automatic table schema extraction with data types and constraints
-• Enterprise Security - Automatic sensitive data sanitization with configurable protection
-• Smart Table Filtering - Include/exclude specific tables with advanced filtering
-• Custom SQL Queries - Execute custom SQL queries with formatted results
-• Metadata Extraction - Foreign keys, indexes, primary keys, and database information
+BREAKING CHANGES - Major Platform Evolution:
+• SearchController → IntelligenceController - Reflects true AI intelligence capabilities
+• GenerateRagAnswerAsync → QueryIntelligenceAsync - Better represents intelligent query processing
+• API Endpoints: /api/search/* → /api/intelligence/* - Professional enterprise naming
+• Enhanced API Documentation - Comprehensive Swagger documentation with examples
+• Complete Controller Suite - 8 comprehensive controllers with 65+ endpoints
 
-🔧 Technical Improvements:
-• SOLID principles implementation with clean architecture patterns
-• Comprehensive error handling and logging for database operations
-• Performance optimized data processing with configurable limits
-• Thread-safe database connection management
-• Zero warnings policy compliance maintained
-• Enterprise-grade connection validation and timeout handling
+Intelligence Platform Features:
+• Advanced Query Intelligence - Automatic intent detection and smart routing
+• Multi-Modal Search - Documents, databases, conversations, and hybrid search
+• Enterprise Analytics - Usage tracking, performance monitoring, and insights
+• Configuration Management - Runtime configuration updates and validation
+• Storage Management - Backup, restore, migration, and provider switching
+• Conversation Intelligence - Session management and context-aware responses
 
-📚 Documentation Updates:
-• Comprehensive database integration documentation with examples
-• Enhanced README with detailed database support capabilities
-• Updated all language versions (EN, TR, DE, RU) with database examples
-• Complete API documentation with database connection guides
-• Better developer experience with real-world database scenarios
-• Production deployment guides for cloud databases</PackageReleaseNotes>
+Technical Improvements:
+• Professional API Design - RESTful endpoints with comprehensive documentation
+• Enterprise Architecture - SOLID principles, zero warnings policy maintained
+• Production Ready - Comprehensive error handling, validation, and logging
+• Swagger UI Optimization - Collapsed default view with enhanced navigation
+• Memory Management - Optimized performance with streaming and caching
+
+Documentation and Developer Experience:
+• Complete API Documentation - All endpoints with detailed examples and use cases
+• Migration Guide - Step-by-step upgrade instructions from v2.4.0
+• Enhanced README - Updated with v3.0.0 features and breaking changes
+• Professional Swagger UI - Optimized interface with collapsed endpoints
+• Enterprise Examples - Real-world usage scenarios and best practices
+
+Migration from v2.4.0:
+• Update API endpoints: /api/search → /api/intelligence
+• Update method calls: GenerateRagAnswerAsync → QueryIntelligenceAsync
+• Update controller references: SearchController → IntelligenceController
+• See migration guide in README.md for detailed instructions</PackageReleaseNotes>
     
     <!-- Build Configuration -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -56,8 +66,8 @@
     <AssemblyTitle>SmartRAG</AssemblyTitle>
     <AssemblyDescription>High-performance RAG library with conversation history management for .NET</AssemblyDescription>
     <AssemblyCopyright>Copyright © 2025 Barış Yerlikaya</AssemblyCopyright>
-    <AssemblyVersion>2.4.0.0</AssemblyVersion>
-    <FileVersion>2.4.0.0</FileVersion>
+    <AssemblyVersion>3.0.0.0</AssemblyVersion>
+    <FileVersion>3.0.0.0</FileVersion>
     <NeutralLanguage>en</NeutralLanguage>
     <Culture>en-US</Culture>
   </PropertyGroup>

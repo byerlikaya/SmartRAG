@@ -93,7 +93,7 @@ public class SearchController : ControllerBase
 
         try
         {
-            var response = await _documentSearchService.GenerateRagAnswerAsync(query, sessionId, maxResults);
+            var response = await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
             return Ok(response);
         }
         catch (Exception ex)

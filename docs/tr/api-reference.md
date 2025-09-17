@@ -22,15 +22,15 @@ lang: tr
                         <pre><code class="language-csharp">public interface IDocumentSearchService
 {
     Task&lt;List&lt;DocumentChunk&gt;&gt; SearchDocumentsAsync(string query, int maxResults = 5);
-    Task&lt;RagResponse&gt; GenerateRagAnswerAsync(string query, int maxResults = 5, bool startNewConversation = false);
+    Task&lt;RagResponse&gt; QueryIntelligenceAsync(string query, int maxResults = 5, bool startNewConversation = false);
 }</code></pre>
                     </div>
 
-                    <h4>GenerateRagAnswerAsync</h4>
+                    <h4>QueryIntelligenceAsync</h4>
                     <p>Otomatik oturum yönetimi ve konuşma geçmişi ile AI destekli yanıtlar üretir.</p>
                     
                     <div class="code-example">
-                        <pre><code class="language-csharp">Task&lt;RagResponse&gt; GenerateRagAnswerAsync(string query, int maxResults = 5, bool startNewConversation = false)</code></pre>
+                        <pre><code class="language-csharp">Task&lt;RagResponse&gt; QueryIntelligenceAsync(string query, int maxResults = 5, bool startNewConversation = false)</code></pre>
                     </div>
                     
                     <p><strong>Parametreler:</strong></p>
@@ -44,10 +44,10 @@ lang: tr
                     
                     <div class="code-example">
                         <pre><code class="language-csharp">// Temel kullanım
-var response = await documentSearchService.GenerateRagAnswerAsync("Hava nasıl?");
+var response = await documentSearchService.QueryIntelligenceAsync("Hava nasıl?");
 
 // Yeni konuşma başlat
-var response = await documentSearchService.GenerateRagAnswerAsync("/new");</code></pre>
+var response = await documentSearchService.QueryIntelligenceAsync("/new");</code></pre>
                     </div>
 
                     <h3>Diğer Önemli Arayüzler</h3>

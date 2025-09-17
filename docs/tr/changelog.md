@@ -14,10 +14,10 @@ lang: tr
                     <h2>Sürüm Geçmişi</h2>
                     <p>Detaylı değişiklik bilgileri ile SmartRAG sürümlerinin tam geçmişi.</p>
 
-                    <h3>Sürüm 2.3.0 - 2025-09-16</h3>
+                    <h3>Sürüm 3.0.0 - 2025-01-16</h3>
                     <div class="alert alert-success">
                         <h4><i class="fas fa-star me-2"></i>En Son Sürüm</h4>
-                        <p class="mb-0">Google Speech-to-Text entegrasyonu ve geliştirilmiş geliştirici deneyimi ile mevcut kararlı sürüm.</p>
+                        <p class="mb-0">Intelligence Platform Revolution - Gelişmiş API tasarımı ve kapsamlı dokümantasyon ile büyük breaking değişiklikler.</p>
                     </div>
 
                     <h4>Eklenenler</h4>

@@ -23,22 +23,22 @@ var document = await _documentService.UploadDocumentAsync(file);
 // 2. Search documents
 var results = await _searchService.SearchDocumentsAsync(query, 10);
 
-// 3. Generate RAG answer with conversation history
-var response = await _searchService.GenerateRagAnswerAsync(question);</code></pre>
+// 3. Process intelligent query with conversation history
+var response = await _searchService.QueryIntelligenceAsync(question);</code></pre>
                     </div>
 
                     <h3>Controller Example</h3>
                     <div class="code-example">
                         <pre><code class="language-csharp">[ApiController]
 [Route("api/[controller]")]
-public class SearchController : ControllerBase
+public class IntelligenceController : ControllerBase
 {
     private readonly IDocumentSearchService _searchService;
     
-    [HttpPost("search")]
-    public async Task<ActionResult> Search([FromBody] SearchRequest request)
+    [HttpPost("query")]
+    public async Task<ActionResult> QueryIntelligence([FromBody] SearchRequest request)
     {
-        var response = await _searchService.GenerateRagAnswerAsync(
+        var response = await _searchService.QueryIntelligenceAsync(
             request.Query, request.MaxResults);
         return Ok(response);
     }

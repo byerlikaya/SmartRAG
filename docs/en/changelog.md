@@ -14,10 +14,10 @@ lang: en
                     <h2>Version History</h2>
                     <p>Complete history of SmartRAG releases with detailed change information.</p>
 
-                    <h3>Version 2.3.0 - 2025-09-16</h3>
+                    <h3>Version 3.0.0 - 2025-01-16</h3>
                     <div class="alert alert-success">
                         <h4><i class="fas fa-star me-2"></i>Latest Release</h4>
-                        <p class="mb-0">This is the current stable release with Google Speech-to-Text integration and enhanced developer experience.</p>
+                        <p class="mb-0">Intelligence Platform Revolution - Major breaking changes with enhanced API design and comprehensive documentation.</p>
                     </div>
 
                     <h4>Added</h4>

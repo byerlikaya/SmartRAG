@@ -146,13 +146,13 @@ namespace SmartRAG.Services
         }
 
         /// <summary>
-        /// Generates a RAG answer based on the query and conversation history
+        /// Process intelligent query with RAG and automatic session management
         /// </summary>
         /// <param name="query">User query to process</param>
         /// <param name="maxResults">Maximum number of document chunks to use</param>
         /// <param name="startNewConversation">Whether to start a new conversation session</param>
         /// <returns>RAG response with answer and sources</returns>
-        public async Task<RagResponse> GenerateRagAnswerAsync(string query, int maxResults = 5, bool startNewConversation = false)
+        public async Task<RagResponse> QueryIntelligenceAsync(string query, int maxResults = 5, bool startNewConversation = false)
         {
             if (string.IsNullOrWhiteSpace(query))
                 throw new ArgumentException("Query cannot be empty", nameof(query));
@@ -939,6 +939,19 @@ Answer:";
 
         // TruncateConversation method removed - no automatic conversation truncation
         // Conversations are only cleared when user starts a new session
+
+        /// <summary>
+        /// Generate RAG answer with automatic session management (Legacy method - use QueryIntelligenceAsync)
+        /// </summary>
+        /// <param name="query">User query to process</param>
+        /// <param name="maxResults">Maximum number of document chunks to use</param>
+        /// <param name="startNewConversation">Whether to start a new conversation session</param>
+        /// <returns>RAG response with answer and sources</returns>
+        [Obsolete("Use QueryIntelligenceAsync instead. This method will be removed in v4.0.0")]
+        public async Task<RagResponse> GenerateRagAnswerAsync(string query, int maxResults = 5, bool startNewConversation = false)
+        {
+            return await QueryIntelligenceAsync(query, maxResults, startNewConversation);
+        }
 
         #endregion
     }

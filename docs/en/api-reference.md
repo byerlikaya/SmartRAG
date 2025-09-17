@@ -36,15 +36,19 @@ lang: en
                         <pre><code class="language-csharp">public interface IDocumentSearchService
 {
     Task&lt;List&lt;DocumentChunk&gt;&gt; SearchDocumentsAsync(string query, int maxResults = 5);
+    Task&lt;RagResponse&gt; QueryIntelligenceAsync(string query, int maxResults = 5, bool startNewConversation = false);
+    
+    // Legacy method (deprecated in v3.0.0)
+    [Obsolete("Use QueryIntelligenceAsync instead. This method will be removed in v4.0.0")]
     Task&lt;RagResponse&gt; GenerateRagAnswerAsync(string query, int maxResults = 5, bool startNewConversation = false);
 }</code></pre>
                     </div>
 
-                    <h4>GenerateRagAnswerAsync</h4>
-                    <p>Generates AI-powered answers with automatic session management and conversation history.</p>
+                    <h4>QueryIntelligenceAsync</h4>
+                    <p>Processes intelligent queries with RAG and automatic session management and conversation history.</p>
                     
                     <div class="code-example">
-                        <pre><code class="language-csharp">Task&lt;RagResponse&gt; GenerateRagAnswerAsync(string query, int maxResults = 5, bool startNewConversation = false)</code></pre>
+                        <pre><code class="language-csharp">Task&lt;RagResponse&gt; QueryIntelligenceAsync(string query, int maxResults = 5, bool startNewConversation = false)</code></pre>
                     </div>
                     
                     <p><strong>Parameters:</strong></p>
@@ -57,11 +61,14 @@ lang: en
                     <p><strong>Returns:</strong> <code>RagResponse</code> with AI answer, sources, and metadata</p>
                     
                     <div class="code-example">
-                        <pre><code class="language-csharp">// Basic usage
-var response = await documentSearchService.GenerateRagAnswerAsync("What is the weather?");
+                        <pre><code class="language-csharp">// Basic usage (v3.0.0+)
+var response = await documentSearchService.QueryIntelligenceAsync("What is the weather?");
 
-// Start new conversation
-var response = await documentSearchService.GenerateRagAnswerAsync("/new");</code></pre>
+// Start new conversation (v3.0.0+)
+var response = await documentSearchService.QueryIntelligenceAsync("/new");
+
+// Legacy usage (still works but deprecated)
+var response = await documentSearchService.GenerateRagAnswerAsync("What is the weather?");</code></pre>
                     </div>
 
                     <h3>Other Key Interfaces</h3>

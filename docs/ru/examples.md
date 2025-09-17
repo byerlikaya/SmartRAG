@@ -24,21 +24,21 @@ var document = await _documentService.UploadDocumentAsync(file);
 var results = await _searchService.SearchDocumentsAsync(query, 10);
 
 // 3. Генерация RAG ответа с историей разговора
-var response = await _searchService.GenerateRagAnswerAsync(question);</code></pre>
+var response = await _searchService.QueryIntelligenceAsync(question);</code></pre>
                     </div>
 
                     <h3>Пример контроллера</h3>
                     <div class="code-example">
                         <pre><code class="language-csharp">[ApiController]
 [Route("api/[controller]")]
-public class SearchController : ControllerBase
+public class IntelligenceController : ControllerBase
 {
     private readonly IDocumentSearchService _searchService;
     
     [HttpPost("search")]
     public async Task<ActionResult> Search([FromBody] SearchRequest request)
     {
-        var response = await _searchService.GenerateRagAnswerAsync(
+        var response = await _searchService.QueryIntelligenceAsync(
             request.Query, request.MaxResults);
         return Ok(response);
     }
