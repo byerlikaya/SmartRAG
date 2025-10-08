@@ -12,7 +12,7 @@ lang: de
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Schnelle Beispiele</h2>
-                    <!-- Updated for v2.3.0 -->
+                    <!-- Updated for v2.3.1 -->
                     <p>Starten Sie in Minuten mit SmartRAG.</p>
                     
                     <h3>Grundlegende Verwendung</h3>
@@ -59,7 +59,7 @@ public class SearchRequest
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Erweiterte Verwendung</h2>
-                    <!-- Updated for v2.3.0 -->
+                    <!-- Updated for v2.3.1 -->
                     <p>Erweiterte Beispiele für Produktionsumgebungen.</p>
                     
                     <h3>Batch-Verarbeitung</h3>
@@ -93,7 +93,7 @@ await _documentService.ClearAllDocumentsAsync();</code></pre>
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Konfiguration</h2>
-                    <!-- Updated for v2.3.0 -->
+                    <!-- Updated for v2.3.1 -->
                     <p>Konfigurieren Sie SmartRAG für Ihre Bedürfnisse.</p>
                     
                     <h3>Service-Registrierung</h3>
