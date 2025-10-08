@@ -28,7 +28,7 @@ lang: tr
                             <pre><code class="language-bash">Install-Package SmartRAG</code></pre>
                         </div>
                         <div class="code-panel" data-tab="xml">
-                            <pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="2.3.0" /&gt;</code></pre>
+                            <pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="2.3.1" /&gt;</code></pre>
                         </div>
                     </div>
                 </div>
@@ -67,7 +67,7 @@ var app = builder.Build();</code></pre>
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Hızlı Örnek</h2>
-                    <!-- Updated for v2.3.0 -->
+                    <!-- Updated for v2.3.1 -->
                     <p>Konuşma geçmişi ile gerçek SmartRAG implementasyonunu kullanan basit bir örnek:</p>
                     
                     <div class="code-example">

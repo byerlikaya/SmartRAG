@@ -150,7 +150,7 @@ dotnet add package SmartRAG
 
 ### PackageReference
 ```xml
-<PackageReference Include="SmartRAG" Version="2.3.0" />
+<PackageReference Include="SmartRAG" Version="2.3.1" />
 ```
 
 ## 📄 Supported Document Formats
@@ -766,7 +766,13 @@ We welcome contributions!
 
 ## 🆕 What's New
 
-### **Latest Release (v2.3.0) - Google Speech-to-Text Integration**
+### **Latest Release (v2.3.1) - Bug Fix Release**
+- 🐛 **LoggerMessage Fix** - Fixed `System.ArgumentException` in `ServiceLogMessages.LogAudioServiceInitialized`
+- 🔧 **Logging Stability** - Improved logging infrastructure reliability for Google Speech-to-Text service
+- ✅ **Code Quality** - Maintained zero warnings policy compliance
+- 🧪 **Test Coverage** - All tests passing (8/8)
+
+### **Previous Release (v2.3.0) - Google Speech-to-Text Integration**
 - 🎵 **Google Speech-to-Text Integration** - Enterprise-grade speech recognition with Google Cloud AI
 - 🌍 **Enhanced Language Support** - 100+ languages including Turkish, English, and global languages
 - ⚡ **Real-time Audio Processing** - Advanced speech-to-text conversion with confidence scoring

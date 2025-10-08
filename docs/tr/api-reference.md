@@ -12,7 +12,7 @@ lang: tr
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Temel Arayüzler</h2>
-                    <!-- Updated for v2.3.0 -->
+                    <!-- Updated for v2.3.1 -->
                     <p>SmartRAG, belge işleme ve yönetimi için temel arayüzler sağlar.</p>
                     
                     <h3>IDocumentSearchService</h3>
@@ -69,7 +69,7 @@ IAudioParserService - Ses transkripsiyonu (Google Speech-to-Text)</code></pre>
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Ana Modeller</h2>
-                    <!-- Updated for v2.3.0 -->
+                    <!-- Updated for v2.3.1 -->
                     <p>SmartRAG işlemleri için temel veri modelleri.</p>
                     
                     <div class="code-example">
@@ -100,7 +100,7 @@ public class DocumentChunk
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Yapılandırma</h2>
-                    <!-- Updated for v2.3.0 -->
+                    <!-- Updated for v2.3.1 -->
                     <p>SmartRAG için temel yapılandırma seçenekleri.</p>
                     
                     <div class="code-example">
@@ -123,7 +123,7 @@ StorageProvider.Sqlite  // Yerel veritabanı</code></pre>
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Hızlı Başlangıç</h2>
-                    <!-- Updated for v2.3.0 -->
+                    <!-- Updated for v2.3.1 -->
                     <p>SmartRAG ile dakikalar içinde başlayın.</p>
                     
                     <div class="code-example">
@@ -155,7 +155,7 @@ public class MyController : ControllerBase
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Yaygın Kalıplar</h2>
-                    <!-- Updated for v2.3.0 -->
+                    <!-- Updated for v2.3.1 -->
                     <p>Sık kullanılan kalıplar ve yapılandırmalar.</p>
                     
                     <div class="code-example">
@@ -184,7 +184,7 @@ services.AddSmartRag(configuration, options =>
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Hata Yönetimi</h2>
-                    <!-- Updated for v2.3.0 -->
+                    <!-- Updated for v2.3.1 -->
                     <p>Yaygın hatalar ve hata yönetimi kalıpları.</p>
                     
                     <div class="code-example">
@@ -211,7 +211,7 @@ catch (Exception ex)
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Performans İpuçları</h2>
-                    <!-- Updated for v2.3.0 -->
+                    <!-- Updated for v2.3.1 -->
                     <p>SmartRAG performansını optimize edin.</p>
                     
                     <div class="alert alert-info">

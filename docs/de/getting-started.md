@@ -28,7 +28,7 @@ lang: de
                             <pre><code class="language-bash">Install-Package SmartRAG</code></pre>
                         </div>
                         <div class="code-panel" id="xml">
-                            <pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="2.3.0" /&gt;</code></pre>
+                            <pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="2.3.1" /&gt;</code></pre>
                         </div>
                     </div>
                 </div>
@@ -67,7 +67,7 @@ var app = builder.Build();</code></pre>
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Schnelles Beispiel</h2>
-                    <!-- Updated for v2.3.0 -->
+                    <!-- Updated for v2.3.1 -->
                     <p>Hier ist ein einfaches Beispiel zum Einstieg:</p>
                     
                     <div class="code-example">
