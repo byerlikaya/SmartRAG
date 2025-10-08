@@ -5,7 +5,7 @@
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
-    <PackageVersion>2.3.0</PackageVersion>
+    <PackageVersion>2.3.1</PackageVersion>
     <Authors>Barış Yerlikaya</Authors>
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
@@ -20,32 +20,17 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Release 2.3.0: Google Speech-to-Text Integration
+    <PackageReleaseNotes>Release 2.3.1: Bug Fix Release
 
-✨ New Features:
-• Google Speech-to-Text integration with enterprise-grade speech recognition
-• Support for 100+ languages including Turkish, English, and global languages
-• Real-time audio processing with advanced speech-to-text conversion
-• Detailed transcription results with timestamps and confidence metrics
-• Automatic format detection for MP3, WAV, M4A, AAC, OGG, FLAC, WMA
-• Intelligent audio processing with smart validation and error handling
-• Performance optimized audio processing with minimal memory footprint
+🐛 Bug Fixes:
+• Fixed LoggerMessage.Define parameter mismatch in ServiceLogMessages.LogAudioServiceInitialized
+• Corrected format string parameter count to prevent System.ArgumentException during service initialization
+• Improved logging stability for Google Speech-to-Text service initialization
 
 🔧 Technical Improvements:
-• Enhanced audio processing pipeline with Google Cloud AI
-• Updated configuration management with GoogleSpeechConfig
-• Improved error handling for audio transcription operations
-• Comprehensive XML documentation for all public APIs
-• Zero warnings policy compliance with SOLID/DRY principles
-• Structured audio output for searchable, queryable knowledge base
-
-📚 Documentation Updates:
-• Comprehensive audio processing feature documentation
-• Enhanced README with detailed speech-to-text capabilities
-• Updated all language versions (EN, TR, DE, RU) with examples
-• Added multi-language support documentation for global applications
-• Better developer experience with detailed audio processing examples
-• Complete API documentation with XML summaries</PackageReleaseNotes>
+• Enhanced logging infrastructure reliability
+• Zero warnings policy compliance maintained
+• All tests passing (8/8)</PackageReleaseNotes>
     
     <!-- Build Configuration -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -56,8 +41,8 @@
     <AssemblyTitle>SmartRAG</AssemblyTitle>
     <AssemblyDescription>High-performance RAG library with conversation history management for .NET</AssemblyDescription>
     <AssemblyCopyright>Copyright © 2025 Barış Yerlikaya</AssemblyCopyright>
-    <AssemblyVersion>2.4.0.0</AssemblyVersion>
-    <FileVersion>2.4.0.0</FileVersion>
+    <AssemblyVersion>2.3.1.0</AssemblyVersion>
+    <FileVersion>2.3.1.0</FileVersion>
     <NeutralLanguage>en</NeutralLanguage>
     <Culture>en-US</Culture>
   </PropertyGroup>

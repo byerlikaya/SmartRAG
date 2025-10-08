@@ -590,7 +590,7 @@ namespace SmartRAG.Services
             new EventId(80003, "AudioTranscriptionFailed"),
             "Audio transcription failed");
 
-        public static readonly Action<ILogger, string, Exception> LogAudioServiceInitialized = LoggerMessage.Define<string>(
+        public static readonly Action<ILogger, Exception> LogAudioServiceInitialized = LoggerMessage.Define(
             LogLevel.Debug,
             new EventId(80004, "AudioServiceInitialized"),
             "Google Speech-to-Text service initialized");

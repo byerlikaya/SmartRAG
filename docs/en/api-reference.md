@@ -12,7 +12,7 @@ lang: en
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Core Interfaces</h2>
-                    <!-- Updated for v2.3.0 -->
+                    <!-- Updated for v2.3.1 -->
                     <p>SmartRAG provides several core interfaces for document processing and management.</p>
                     
                     <h3>IDocumentService</h3>
@@ -83,7 +83,7 @@ IAudioParserService - Audio transcription (Google Speech-to-Text)</code></pre>
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Key Models</h2>
-                    <!-- Updated for v2.3.0 -->
+                    <!-- Updated for v2.3.1 -->
                     <p>Essential data models for SmartRAG operations.</p>
                     
                     <div class="code-example">
@@ -114,7 +114,7 @@ public class DocumentChunk
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Configuration</h2>
-                    <!-- Updated for v2.3.0 -->
+                    <!-- Updated for v2.3.1 -->
                     <p>Key configuration options for SmartRAG.</p>
                     
                     <div class="code-example">
@@ -137,7 +137,7 @@ StorageProvider.Sqlite  // Local database</code></pre>
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Quick Start</h2>
-                    <!-- Updated for v2.3.0 -->
+                    <!-- Updated for v2.3.1 -->
                     <p>Get started with SmartRAG in minutes.</p>
                     
                     <div class="code-example">
@@ -169,7 +169,7 @@ public class MyController : ControllerBase
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Common Patterns</h2>
-                    <!-- Updated for v2.3.0 -->
+                    <!-- Updated for v2.3.1 -->
                     <p>Frequently used patterns and configurations.</p>
                     
                     <div class="code-example">
@@ -198,7 +198,7 @@ services.AddSmartRag(configuration, options =>
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Error Handling</h2>
-                    <!-- Updated for v2.3.0 -->
+                    <!-- Updated for v2.3.1 -->
                     <p>Common exceptions and error handling patterns.</p>
                     
                     <div class="code-example">
@@ -225,7 +225,7 @@ catch (Exception ex)
             <div class="row">
                 <div class="col-lg-8 mx-auto">
                     <h2>Performance Tips</h2>
-                    <!-- Updated for v2.3.0 -->
+                    <!-- Updated for v2.3.1 -->
                     <p>Optimize SmartRAG performance with these tips.</p>
                     
                     <div class="alert alert-info">
