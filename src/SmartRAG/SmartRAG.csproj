@@ -91,12 +91,12 @@ Migration from v2.4.0:
     
     <!-- Vector Database Support -->
     <PackageReference Include="Qdrant.Client" Version="1.15.1" />
-    <PackageReference Include="StackExchange.Redis" Version="2.9.17" />
+    <PackageReference Include="StackExchange.Redis" Version="2.9.32" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.9" />
     
     <!-- Database Connectivity -->
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
-    <PackageReference Include="MySql.Data" Version="9.1.0" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.2" />
+    <PackageReference Include="MySql.Data" Version="9.4.0" />
     <PackageReference Include="Npgsql" Version="8.0.5" />
     
     <!-- Validation -->
@@ -104,11 +104,11 @@ Migration from v2.4.0:
     <!-- Document Parsing -->
     <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
     <PackageReference Include="itext" Version="9.3.0" />
-    <PackageReference Include="EPPlus" Version="8.1.1" />
+    <PackageReference Include="EPPlus" Version="8.2.1" />
     
     <!-- OCR and Image Processing -->
     <PackageReference Include="Tesseract" Version="5.2.0" />
-    <PackageReference Include="SkiaSharp" Version="3.119.0" />
+    <PackageReference Include="SkiaSharp" Version="3.119.1" />
     
     <!-- Audio Processing - Google Speech-to-Text is included in Google.Cloud.Speech.V1 -->
   </ItemGroup>

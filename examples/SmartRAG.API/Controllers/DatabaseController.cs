@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 using SmartRAG.API.Contracts;
 using SmartRAG.Enums;
 using SmartRAG.Interfaces;
@@ -414,6 +415,158 @@ namespace SmartRAG.API.Controllers
                 supportedFileExtensions = supportedExtensions.ToList(),
                 message = "Database support information retrieved successfully"
             });
+        }
+
+        /// <summary>
+        /// Gets all configured database connections
+        /// </summary>
+        /// <remarks>
+        /// Returns information about all configured database connections including:
+        /// - Connection status and validation
+        /// - Schema analysis status
+        /// - Database metadata and statistics
+        /// - Table counts and row estimates
+        /// </remarks>
+        /// <returns>List of configured database connections</returns>
+        [HttpGet("connections")]
+        [ProducesResponseType(typeof(List<DatabaseConnectionInfoDto>), StatusCodes.Status200OK)]
+        public async Task<ActionResult<List<DatabaseConnectionInfoDto>>> GetConnections()
+        {
+            var connectionManager = HttpContext.RequestServices.GetService<IDatabaseConnectionManager>();
+            var schemaAnalyzer = HttpContext.RequestServices.GetService<IDatabaseSchemaAnalyzer>();
+
+            if (connectionManager == null || schemaAnalyzer == null)
+            {
+                return StatusCode(500, "Multi-database services not configured");
+            }
+
+            try
+            {
+                var connections = await connectionManager.GetAllConnectionsAsync();
+                var result = new List<DatabaseConnectionInfoDto>();
+
+                foreach (var conn in connections)
+                {
+                    var databaseId = await connectionManager.GetDatabaseIdAsync(conn);
+                    var schema = await schemaAnalyzer.GetSchemaAsync(databaseId);
+
+                    var dto = new DatabaseConnectionInfoDto
+                    {
+                        DatabaseId = databaseId,
+                        DatabaseName = schema?.DatabaseName ?? "Unknown",
+                        DatabaseType = conn.DatabaseType,
+                        Description = conn.Description,
+                        Enabled = conn.Enabled,
+                        IsValid = await connectionManager.ValidateConnectionAsync(databaseId),
+                        SchemaStatus = schema?.Status.ToString() ?? "NotAnalyzed",
+                        TableCount = schema?.Tables.Count ?? 0,
+                        TotalRows = schema?.TotalRowCount ?? 0,
+                        LastAnalyzed = schema?.LastAnalyzed
+                    };
+
+                    result.Add(dto);
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error retrieving database connections: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Triggers schema analysis for all configured databases
+        /// </summary>
+        /// <remarks>
+        /// Initiates comprehensive schema analysis for all enabled database connections including:
+        /// - Table and column discovery
+        /// - Relationship mapping (foreign keys)
+        /// - Row count estimation
+        /// - AI-powered content summarization
+        /// 
+        /// This is an asynchronous operation that runs in the background.
+        /// Use the GET /connections endpoint to check analysis status.
+        /// </remarks>
+        /// <returns>Analysis initiation status</returns>
+        [HttpPost("analyze-all")]
+        [ProducesResponseType(typeof(object), StatusCodes.Status202Accepted)]
+        public async Task<IActionResult> AnalyzeAllDatabases()
+        {
+            var connectionManager = HttpContext.RequestServices.GetService<IDatabaseConnectionManager>();
+            var schemaAnalyzer = HttpContext.RequestServices.GetService<IDatabaseSchemaAnalyzer>();
+
+            if (connectionManager == null || schemaAnalyzer == null)
+            {
+                return StatusCode(500, "Multi-database services not configured");
+            }
+
+            try
+            {
+                var connections = await connectionManager.GetAllConnectionsAsync();
+                var enabledConnections = connections.Where(c => c.Enabled).ToList();
+
+                // Start background analysis for each database
+                foreach (var conn in enabledConnections)
+                {
+                    _ = Task.Run(async () =>
+                    {
+                        try
+                        {
+                            await schemaAnalyzer.AnalyzeDatabaseSchemaAsync(conn);
+                        }
+                        catch
+                        {
+                            // Logged by analyzer
+                        }
+                    });
+                }
+
+                return Accepted(new
+                {
+                    message = $"Schema analysis initiated for {enabledConnections.Count} database(s)",
+                    databaseCount = enabledConnections.Count,
+                    databases = enabledConnections.Select(c => c.Name ?? c.DatabaseType.ToString()).ToList()
+                });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error initiating schema analysis: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Gets detailed schema information for a specific database
+        /// </summary>
+        /// <param name="databaseId">Database identifier</param>
+        /// <returns>Detailed schema information</returns>
+        [HttpGet("schema/{databaseId}")]
+        [ProducesResponseType(typeof(DatabaseSchemaInfo), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetDatabaseSchema(string databaseId)
+        {
+            var schemaAnalyzer = HttpContext.RequestServices.GetService<IDatabaseSchemaAnalyzer>();
+
+            if (schemaAnalyzer == null)
+            {
+                return StatusCode(500, "Schema analyzer not configured");
+            }
+
+            try
+            {
+                var schema = await schemaAnalyzer.GetSchemaAsync(databaseId);
+
+                if (schema == null)
+                {
+                    return NotFound($"Schema not found for database: {databaseId}");
+                }
+
+                return Ok(schema);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error retrieving schema: {ex.Message}");
+            }
         }
     }
 }

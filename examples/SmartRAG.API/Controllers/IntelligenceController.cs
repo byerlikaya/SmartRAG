@@ -1,7 +1,11 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
+using SmartRAG.API.Contracts;
 using SmartRAG.Interfaces;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace SmartRAG.API.Controllers
@@ -428,6 +432,182 @@ namespace SmartRAG.API.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, new { Error = ex.Message });
+            }
+        }
+
+        /// <summary>
+        /// Performs intelligent multi-database query across all configured databases
+        /// </summary>
+        /// <remarks>
+        /// Executes an AI-powered query across multiple configured databases including:
+        /// - **Query Intent Analysis**: AI analyzes the query to determine which databases contain relevant data
+        /// - **Smart Routing**: Automatically identifies which tables and columns to query in each database
+        /// - **SQL Generation**: AI generates optimized SQL queries for each database
+        /// - **Parallel Execution**: Queries are executed simultaneously across multiple databases
+        /// - **Result Merging**: Data from all databases is intelligently merged and synthesized
+        /// - **Natural Language Response**: AI generates a comprehensive answer combining all data sources
+        /// 
+        /// This endpoint enables powerful cross-database analytics such as:
+        /// - "Show me top selling products and their customer information"
+        /// - "List all orders with product details and customer names"
+        /// - "What are the most profitable product categories?"
+        /// 
+        /// The system automatically:
+        /// - Determines which databases to query based on schema analysis
+        /// - Generates appropriate SQL queries for each database type
+        /// - Handles cross-database relationships and joins
+        /// - Merges results into a coherent answer
+        /// 
+        /// Example queries:
+        /// - "Who are our top 10 customers by total purchase amount?"
+        /// - "Which products have been ordered the most in the last month?"
+        /// - "Show me sales trends by product category"
+        /// </remarks>
+        /// <param name="request">Multi-database query request</param>
+        /// <returns>AI-generated answer with data from multiple databases</returns>
+        [HttpPost("multi-database-query")]
+        [ProducesResponseType(typeof(MultiDatabaseQueryResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<MultiDatabaseQueryResponseDto>> QueryMultipleDatabases(
+            [FromBody] Contracts.MultiDatabaseQueryRequest request)
+        {
+            if (request == null || string.IsNullOrWhiteSpace(request.Query))
+            {
+                return BadRequest("Query cannot be empty");
+            }
+
+            var coordinator = HttpContext.RequestServices.GetService<IMultiDatabaseQueryCoordinator>();
+
+            if (coordinator == null)
+            {
+                return StatusCode(500, new MultiDatabaseQueryResponseDto
+                {
+                    Success = false,
+                    Answer = "Multi-database query service is not configured. Please ensure database connections are configured in appsettings.json",
+                    Errors = new List<string> { "IMultiDatabaseQueryCoordinator service not available" }
+                });
+            }
+
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+            try
+            {
+                // Execute multi-database query
+                var response = await coordinator.QueryMultipleDatabasesAsync(request.Query, request.MaxResults);
+
+                stopwatch.Stop();
+
+                var result = new MultiDatabaseQueryResponseDto
+                {
+                    Answer = response.Answer,
+                    Sources = response.Sources.Select(s => s.FileName).ToList(),
+                    Success = !string.IsNullOrEmpty(response.Answer),
+                    ExecutionTimeMs = stopwatch.ElapsedMilliseconds,
+                    DatabasesQueried = response.Sources.Count,
+                    TotalRowsRetrieved = 0 // TODO: Calculate from response
+                };
+
+                // Include query analysis if requested
+                if (request.IncludeQueryAnalysis)
+                {
+                    var queryIntent = await coordinator.AnalyzeQueryIntentAsync(request.Query);
+                    result.QueryAnalysis = new QueryIntentAnalysisResponseDto
+                    {
+                        OriginalQuery = queryIntent.OriginalQuery,
+                        QueryUnderstanding = queryIntent.QueryUnderstanding,
+                        Confidence = queryIntent.Confidence,
+                        RequiresCrossDatabaseJoin = queryIntent.RequiresCrossDatabaseJoin,
+                        Reasoning = queryIntent.Reasoning,
+                        DatabaseQueries = queryIntent.DatabaseQueries.Select(dq => new DatabaseQueryPlanDto
+                        {
+                            DatabaseId = dq.DatabaseId,
+                            DatabaseName = dq.DatabaseName,
+                            RequiredTables = dq.RequiredTables,
+                            GeneratedQuery = dq.GeneratedQuery,
+                            Purpose = dq.Purpose,
+                            Priority = dq.Priority
+                        }).ToList()
+                    };
+                }
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                stopwatch.Stop();
+                
+                return StatusCode(500, new MultiDatabaseQueryResponseDto
+                {
+                    Success = false,
+                    Answer = "An error occurred while processing your query",
+                    ExecutionTimeMs = stopwatch.ElapsedMilliseconds,
+                    Errors = new List<string> { ex.Message }
+                });
+            }
+        }
+
+        /// <summary>
+        /// Analyzes a query and returns which databases would be queried (without executing)
+        /// </summary>
+        /// <remarks>
+        /// Performs query intent analysis to show which databases and tables would be used
+        /// without actually executing the queries. Useful for:
+        /// - Understanding query routing logic
+        /// - Debugging query issues
+        /// - Previewing which data sources will be accessed
+        /// </remarks>
+        /// <param name="query">Natural language query to analyze</param>
+        /// <returns>Query intent analysis showing databases and tables that would be queried</returns>
+        [HttpPost("analyze-query-intent")]
+        [ProducesResponseType(typeof(QueryIntentAnalysisResponseDto), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<ActionResult<QueryIntentAnalysisResponseDto>> AnalyzeQueryIntent(
+            [FromBody] Contracts.SearchRequest request)
+        {
+            string? query = request?.Query;
+            
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return BadRequest("Query cannot be empty");
+            }
+
+            var coordinator = HttpContext.RequestServices.GetService<IMultiDatabaseQueryCoordinator>();
+
+            if (coordinator == null)
+            {
+                return StatusCode(500, "Multi-database query service is not configured");
+            }
+
+            try
+            {
+                var queryIntent = await coordinator.AnalyzeQueryIntentAsync(query);
+                
+                // Generate SQL queries
+                queryIntent = await coordinator.GenerateDatabaseQueriesAsync(queryIntent);
+
+                var result = new QueryIntentAnalysisResponseDto
+                {
+                    OriginalQuery = queryIntent.OriginalQuery,
+                    QueryUnderstanding = queryIntent.QueryUnderstanding,
+                    Confidence = queryIntent.Confidence,
+                    RequiresCrossDatabaseJoin = queryIntent.RequiresCrossDatabaseJoin,
+                    Reasoning = queryIntent.Reasoning,
+                    DatabaseQueries = queryIntent.DatabaseQueries.Select(dq => new DatabaseQueryPlanDto
+                    {
+                        DatabaseId = dq.DatabaseId,
+                        DatabaseName = dq.DatabaseName,
+                        RequiredTables = dq.RequiredTables,
+                        GeneratedQuery = dq.GeneratedQuery,
+                        Purpose = dq.Purpose,
+                        Priority = dq.Priority
+                    }).ToList()
+                };
+
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error analyzing query intent: {ex.Message}");
             }
         }
     }

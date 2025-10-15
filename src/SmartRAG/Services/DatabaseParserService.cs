@@ -452,18 +452,20 @@ namespace SmartRAG.Services
 
         private async Task<string> ParseSqlServerDatabaseAsync(string connectionString, DatabaseConfig config)
         {
-            using (var connection = new SqlConnection(connectionString))
+            try
             {
-                await connection.OpenAsync();
+                using (var connection = new SqlConnection(connectionString))
+                {
+                    await connection.OpenAsync();
 
-                var content = new StringBuilder();
-                content.AppendLine("=== SQL Server Database Content ===");
-                content.AppendLine($"Database: {connection.Database}");
-                content.AppendLine($"Server: {connection.DataSource}");
-                content.AppendLine();
+                    var content = new StringBuilder();
+                    content.AppendLine("=== SQL Server Database Content ===");
+                    content.AppendLine($"Database: {connection.Database}");
+                    content.AppendLine($"Server: {connection.DataSource}");
+                    content.AppendLine();
 
-                var allTables = await GetSqlServerTableNamesInternalAsync(connection);
-                var tablesToProcess = FilterTables(allTables, config);
+                    var allTables = await GetSqlServerTableNamesInternalAsync(connection);
+                    var tablesToProcess = FilterTables(allTables, config);
 
                 _logger.LogInformation("Processing {TableCount} tables from SQL Server database", tablesToProcess.Count);
 
@@ -492,15 +494,44 @@ namespace SmartRAG.Services
                 }
 
                 return content.ToString();
+                }
+            }
+            catch (SqlException sqlEx)
+            {
+                // If database doesn't exist, return error message
+                if (sqlEx.Number == 4060 || sqlEx.Message.Contains("Cannot open database"))
+                {
+                    _logger.LogWarning("SQL Server database does not exist yet");
+                    return "=== SQL Server Database Content ===\nDatabase does not exist yet. Please create the database first.\n";
+                }
+                
+                _logger.LogError(sqlEx, "Error parsing SQL Server database");
+                throw;
             }
         }
 
         private async Task<List<string>> GetSqlServerTableNamesAsync(string connectionString)
         {
-            using (var connection = new SqlConnection(connectionString))
+            try
             {
-                await connection.OpenAsync();
-                return await GetSqlServerTableNamesInternalAsync(connection);
+                using (var connection = new SqlConnection(connectionString))
+                {
+                    await connection.OpenAsync();
+                    return await GetSqlServerTableNamesInternalAsync(connection);
+                }
+            }
+            catch (SqlException sqlEx)
+            {
+                // If database doesn't exist, return empty list
+                if (sqlEx.Number == 4060 || sqlEx.Message.Contains("Cannot open database"))
+                {
+                    _logger.LogInformation($"Database does not exist yet, returning empty table list");
+                    return new List<string>();
+                }
+                
+                // Re-throw other SQL errors
+                _logger.LogError(sqlEx, "Error getting SQL Server table names");
+                throw;
             }
         }
 
@@ -530,10 +561,25 @@ namespace SmartRAG.Services
 
         private async Task<string> GetSqlServerTableSchemaAsync(string connectionString, string tableName)
         {
-            using (var connection = new SqlConnection(connectionString))
+            try
             {
-                await connection.OpenAsync();
-                return await GetSqlServerTableSchemaInternalAsync(connection, tableName);
+                using (var connection = new SqlConnection(connectionString))
+                {
+                    await connection.OpenAsync();
+                    return await GetSqlServerTableSchemaInternalAsync(connection, tableName);
+                }
+            }
+            catch (SqlException sqlEx)
+            {
+                // If database doesn't exist, return error message
+                if (sqlEx.Number == 4060 || sqlEx.Message.Contains("Cannot open database"))
+                {
+                    _logger.LogWarning($"SQL Server database does not exist yet for table {tableName}");
+                    return $"-- Table: {tableName}\n-- Database does not exist yet\n";
+                }
+                
+                _logger.LogError(sqlEx, $"Error getting SQL Server table schema for {tableName}");
+                throw;
             }
         }
 
@@ -590,26 +636,82 @@ namespace SmartRAG.Services
 
         private async Task<string> ExecuteSqlServerQueryAsync(string connectionString, string query, int maxRows)
         {
-            using (var connection = new SqlConnection(connectionString))
+            try
             {
-                await connection.OpenAsync();
-
-                using (var command = connection.CreateCommand())
+                using (var connection = new SqlConnection(connectionString))
                 {
-                    command.CommandText = query;
-                    command.CommandTimeout = DefaultQueryTimeout;
+                    await connection.OpenAsync();
 
-                    return await ExecuteQueryInternalAsync(command, query, maxRows);
+                    using (var command = connection.CreateCommand())
+                    {
+                        command.CommandText = query;
+                        command.CommandTimeout = DefaultQueryTimeout;
+
+                        return await ExecuteQueryInternalAsync(command, query, maxRows);
+                    }
                 }
+            }
+            catch (SqlException sqlEx)
+            {
+                // If database doesn't exist, return error message
+                if (sqlEx.Number == 4060 || sqlEx.Message.Contains("Cannot open database"))
+                {
+                    _logger.LogWarning("SQL Server database does not exist yet for query execution");
+                    return "Error: Database does not exist yet. Please create the database first.\n";
+                }
+                
+                _logger.LogError(sqlEx, "Error executing SQL Server query");
+                throw;
             }
         }
 
         private async Task<bool> ValidateSqlServerConnectionAsync(string connectionString)
         {
-            using (var connection = new SqlConnection(connectionString))
+            try
             {
-                await connection.OpenAsync();
-                return connection.State == System.Data.ConnectionState.Open;
+                // Try to connect - if database doesn't exist, try master
+                using (var connection = new SqlConnection(connectionString))
+                {
+                    await connection.OpenAsync();
+                    return connection.State == System.Data.ConnectionState.Open;
+                }
+            }
+            catch (SqlException sqlEx)
+            {
+                // Check if error is related to database not existing (error codes: 4060, 18456)
+                if (sqlEx.Number == 4060 || sqlEx.Message.Contains("Cannot open database"))
+                {
+                    // Database doesn't exist, try connecting to master to verify server is accessible
+                    try
+                    {
+                        var builder = new SqlConnectionStringBuilder(connectionString);
+                        var targetDatabase = builder.InitialCatalog;
+                        builder.InitialCatalog = "master";
+                        
+                        using (var masterConnection = new SqlConnection(builder.ConnectionString))
+                        {
+                            await masterConnection.OpenAsync();
+                            _logger.LogInformation($"SQL Server is accessible but database '{targetDatabase}' does not exist yet. This is expected for first-time setup.");
+                            return true; // Server is accessible, database can be created
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "SQL Server validation failed - server not accessible");
+                        return false;
+                    }
+                }
+                else
+                {
+                    // Other SQL errors
+                    _logger.LogWarning(sqlEx, $"SQL Server connection validation failed with error {sqlEx.Number}: {sqlEx.Message}");
+                    return false;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "SQL Server connection validation failed");
+                return false;
             }
         }
 

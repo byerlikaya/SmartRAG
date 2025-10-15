@@ -69,5 +69,25 @@ namespace SmartRAG.Models
         /// Google Speech-to-Text configuration for audio transcription
         /// </summary>
         public GoogleSpeechConfig GoogleSpeechConfig { get; set; }
+
+        /// <summary>
+        /// Multi-database connections for intelligent cross-database querying
+        /// </summary>
+        public List<DatabaseConnectionConfig> DatabaseConnections { get; set; } = new List<DatabaseConnectionConfig>();
+
+        /// <summary>
+        /// Enable automatic schema analysis on startup
+        /// </summary>
+        public bool EnableAutoSchemaAnalysis { get; set; } = true;
+
+        /// <summary>
+        /// Enable periodic schema refresh
+        /// </summary>
+        public bool EnablePeriodicSchemaRefresh { get; set; } = true;
+
+        /// <summary>
+        /// Default schema refresh interval in minutes (0 = use per-connection settings)
+        /// </summary>
+        public int DefaultSchemaRefreshIntervalMinutes { get; set; } = 60;
     }
 }
