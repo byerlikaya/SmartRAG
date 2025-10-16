@@ -254,6 +254,12 @@ config.json
 *.iml
 *.ipr
 
+# Cursor AI - Rules and config files
+.cursorrules
+.aidigestignore
+.cursorignore
+.cursor/
+
 # Database
 *.db
 *.sqlite

@@ -6,8 +6,11 @@ using SmartRAG.Extensions;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace SmartRAG.DatabaseTests
@@ -20,6 +23,7 @@ namespace SmartRAG.DatabaseTests
         private static IDatabaseConnectionManager? _connectionManager;
         private static IDatabaseSchemaAnalyzer? _schemaAnalyzer;
         private static IMultiDatabaseQueryCoordinator? _multiDbCoordinator;
+    private static IAIService? _aiService;
 
         private static async Task Main(string[] args)
         {
@@ -128,6 +132,7 @@ namespace SmartRAG.DatabaseTests
             _connectionManager = _serviceProvider.GetService<IDatabaseConnectionManager>();
             _schemaAnalyzer = _serviceProvider.GetService<IDatabaseSchemaAnalyzer>();
             _multiDbCoordinator = _serviceProvider.GetService<IMultiDatabaseQueryCoordinator>();
+            _aiService = _serviceProvider.GetService<IAIService>();
             _logger = _serviceProvider.GetRequiredService<ILogger<Program>>();
 
             Console.WriteLine("   ✓ Services loaded");
@@ -207,6 +212,9 @@ namespace SmartRAG.DatabaseTests
                     case "6":
                         await CreateSqlServerDatabase();
                         break;
+                    case "7":
+                        await CreateMySqlDatabase();
+                        break;
                     case "0":
                         Console.WriteLine("\n👋 Goodbye!");
                         return;
@@ -232,6 +240,7 @@ namespace SmartRAG.DatabaseTests
             Console.WriteLine("4. 🔬 Query Analysis (SQL Generation)");
             Console.WriteLine("5. 🧪 Automatic Test Queries");
             Console.WriteLine("6. 🗄️  Create SQL Server Test Database");
+            Console.WriteLine("7. 🐬 Create MySQL Test Database");
             Console.WriteLine("0. 🚪 Exit");
             Console.WriteLine();
             Console.Write("Selection: ");
@@ -449,42 +458,70 @@ namespace SmartRAG.DatabaseTests
 
         private static async Task RunTestQueries()
         {
-            var testQueries = new[]
-            {
-                "What is the best-selling product?",
-                "What products did customer 1 buy?",
-                "How many customers are from Istanbul?",
-                "What is the total sales amount?",
-                "Which orders are pending?",
-                "What products are in the electronics category?"
-            };
-
             Console.WriteLine();
             Console.WriteLine("═══════════════════════════════════════════════════════════════════");
             Console.WriteLine("🧪 Automatic Test Queries");
             Console.WriteLine("═══════════════════════════════════════════════════════════════════");
             Console.WriteLine();
 
-            for (int i = 0; i < testQueries.Length; i++)
+            // Generate dynamic test queries based on current database schemas
+            Console.WriteLine("📊 Analyzing database schemas to generate test queries...");
+            var testQueries = await GenerateTestQueries();
+
+            if (testQueries.Count == 0)
             {
-                var query = testQueries[i];
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine("⚠️  No test queries could be generated. Please ensure databases are connected.");
+                Console.ResetColor();
+                return;
+            }
+
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"✓ Generated {testQueries.Count} cross-database test queries");
+            Console.ResetColor();
+            
+            // Show query categories breakdown
+            var categoryBreakdown = testQueries.GroupBy(q => q.Category.Split(' ')[0]).Select(g => $"{g.Key} ({g.Count()})");
+            Console.ForegroundColor = ConsoleColor.DarkGray;
+            Console.WriteLine($"  Categories: {string.Join(", ", categoryBreakdown)}");
+            Console.ResetColor();
+            Console.WriteLine();
+
+            // Ask user how many tests to run
+            Console.Write($"How many tests to run? (1-{testQueries.Count}, Enter for all): ");
+            var input = Console.ReadLine();
+            var testCount = testQueries.Count;
+            
+            if (!string.IsNullOrWhiteSpace(input) && int.TryParse(input, out var parsed) && parsed > 0 && parsed <= testQueries.Count)
+            {
+                testCount = parsed;
+            }
+
+            Console.WriteLine();
+
+            for (int i = 0; i < testCount; i++)
+            {
+                var testQuery = testQueries[i];
                 
                 Console.ForegroundColor = ConsoleColor.Cyan;
-                Console.WriteLine($"[{i + 1}/{testQueries.Length}] Question: {query}");
+                Console.WriteLine($"[{i + 1}/{testCount}] {testQuery.Category}");
+                Console.WriteLine($"  Query: {testQuery.Query}");
+                Console.ForegroundColor = ConsoleColor.DarkCyan;
+                Console.WriteLine($"  Databases: {testQuery.DatabaseName}");
                 Console.ResetColor();
 
                 try
                 {
-                    var response = await _multiDbCoordinator!.QueryMultipleDatabasesAsync(query, maxResults: 5);
+                    var response = await _multiDbCoordinator!.QueryMultipleDatabasesAsync(testQuery.Query, maxResults: 5);
 
                     Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine($"Cevap: {response.Answer}");
+                    Console.WriteLine($"Answer: {response.Answer}");
                     Console.ResetColor();
 
                     if (response.Sources.Any())
                     {
                         Console.ForegroundColor = ConsoleColor.DarkGray;
-                        Console.WriteLine($"Kaynak: {string.Join(", ", response.Sources.Select(s => s.FileName))}");
+                        Console.WriteLine($"Source: {string.Join(", ", response.Sources.Select(s => s.FileName))}");
                         Console.ResetColor();
                 }
             }
@@ -496,13 +533,405 @@ namespace SmartRAG.DatabaseTests
                 }
 
                 Console.WriteLine();
-                if (i < testQueries.Length - 1)
+                if (i < testCount - 1)
                 {
                     await Task.Delay(500);
                 }
             }
 
             Console.WriteLine("✅ Test queries completed!");
+        }
+
+        private static async Task<List<TestQuery>> GenerateTestQueries()
+        {
+            var testQueries = new List<TestQuery>();
+
+            try
+            {
+                var schemas = await _schemaAnalyzer!.GetAllSchemasAsync();
+                
+                if (schemas.Count < 2)
+                {
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine($"⚠️  Need at least 2 databases for cross-database tests. Currently have: {schemas.Count}");
+                    Console.ResetColor();
+                    return testQueries;
+                }
+
+                // Ask AI to generate intelligent test queries based on schema
+                var aiGeneratedQueries = await GenerateAITestQueries(schemas);
+                if (aiGeneratedQueries.Count > 0)
+                {
+                    testQueries.AddRange(aiGeneratedQueries);
+                }
+
+                // Also add some schema-based queries as fallback
+                testQueries.AddRange(await GenerateSchemaBasedQueries(schemas));
+
+                // Shuffle for variety
+                var random = new Random();
+                testQueries = testQueries.OrderBy(x => random.Next()).ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error generating test queries");
+            }
+
+            return testQueries;
+        }
+
+        private static async Task<List<TestQuery>> GenerateAITestQueries(List<DatabaseSchemaInfo> schemas)
+        {
+            var queries = new List<TestQuery>();
+
+            try
+            {
+                // Build schema summary for AI
+                var schemaPrompt = BuildSchemaPromptForAI(schemas);
+                
+                // Add randomization to get different queries each time
+                var random = new Random();
+                var queryCountVariation = random.Next(8, 15); // 8-14 queries each time
+                var focusAreas = new[] 
+                { 
+                    "aggregations and calculations",
+                    "data correlations and relationships", 
+                    "temporal comparisons and trends",
+                    "filtering and grouping across databases",
+                    "comprehensive data analysis"
+                };
+                var selectedFocus = focusAreas[random.Next(focusAreas.Length)];
+                
+                var aiPrompt = $@"{schemaPrompt}
+
+Based on the database schemas above, generate {queryCountVariation} intelligent, MEANINGFUL cross-database test queries.
+
+🎯 YOUR TASK:
+Analyze the schemas and generate REALISTIC business questions that require data from MULTIPLE databases.
+
+CRITICAL REQUIREMENTS:
+1. EVERY query MUST use at least 2 databases
+2. Queries should be SPECIFIC and MEANINGFUL (not generic calculations)
+3. Focus on foreign key relationships between databases
+4. Generate questions based on actual table/column names
+5. Think like a business analyst asking real questions
+6. Each database should be used in at least one query
+
+📊 HOW TO GENERATE MEANINGFUL QUERIES:
+
+Step 1: Identify relationships
+  - Look for FK columns (ProductID, CustomerID, etc.)
+  - Find which tables connect across databases
+
+Step 2: Analyze columns to understand data
+  - Price/Amount/Total columns → ask about monetary calculations
+  - Quantity/Stock/Count columns → ask about inventory questions  
+  - Date/Time columns → ask about temporal analysis
+  - Status/Type/Category columns → ask about grouping
+  - ID columns → usually foreign keys for relationships
+  
+Step 3: Create business-meaningful questions (NOT technical column references)
+  GOOD examples:
+   - What is the total sales revenue by customer city?
+   - Which warehouses have inventory below threshold?
+   - What is the average order value per customer?
+   - Which products generate the most revenue?
+  
+  BAD examples to AVOID:
+   - Calculate combined totals using ColumnA and ColumnB
+   - Compare data between Table1 and Table2
+   - Show all records with foreign key relationships
+   - Calculate totals using CategoryID and StockID
+  
+CRITICAL RULES:
+  1. Questions must be about BUSINESS CONCEPTS not technical names
+  2. NEVER mention database names in questions
+  3. NEVER mention column names in questions  
+  4. Use business terms: orders, products, customers, inventory, revenue, sales
+
+Good question: What is the total revenue from electronics orders?
+Bad question: Calculate revenue from SalesManagement and ProductCatalog
+Bad question: Join OrderDetails with Products using ProductID
+
+Step 4: Ensure cross-database requirement
+  - Question should NEED data from multiple DBs
+  - Can't be answered from a single database
+
+EXAMPLE THOUGHT PROCESS:
+
+If schema has tables with:
+  - Database1: TableA with ForeignKeyColumn linking to Database2
+  - Database1: TableA with NumericColumn1 (quantity/amount type)
+  - Database2: TableB with NumericColumn2 (price/value type)
+  - Database2: TableB with CategoryColumn (text grouping)
+
+Good question examples:
+  - What is the total value combining numeric columns from both databases?
+  - Which categories have the highest totals when combining data sources?
+  - Which items show discrepancy between databases?
+  - What is the aggregated value grouped by location or category?
+
+Return ONLY a JSON array in this exact format:
+[
+  {{
+    """"category"""": """"Cross-DB Calculation"""",
+    """"query"""": """"Specific meaningful business question here"""",
+    """"databases"""": """"Database1 + Database2""""
+  }}
+]
+
+Category options (use emoji prefix):
+- Cross-DB Join (showing related data)
+- Cross-DB Calculation (value/total calculations)
+- Cross-DB Filter (filtering by criteria)
+- Cross-DB Temporal (time-based analysis)
+- Cross-DB Search (finding specific items)
+- Coverage Test (validation queries)
+- Multi-DB Coverage (comprehensive reports)
+
+Respond ONLY with the JSON array, no other text.";
+
+                var response = await _aiService!.GenerateResponseAsync(aiPrompt, new List<string>());
+                
+                // Parse AI response
+                var jsonStart = response.IndexOf('[');
+                var jsonEnd = response.LastIndexOf(']');
+                
+                if (jsonStart >= 0 && jsonEnd > jsonStart)
+                {
+                    var json = response.Substring(jsonStart, jsonEnd - jsonStart + 1);
+                    var aiQueries = JsonSerializer.Deserialize<List<JsonElement>>(json);
+                    
+                    if (aiQueries != null)
+                    {
+                        foreach (var item in aiQueries)
+                        {
+                            if (item.TryGetProperty("category", out var cat) && 
+                                item.TryGetProperty("query", out var q) && 
+                                item.TryGetProperty("databases", out var dbs))
+                            {
+                                var dbList = dbs.GetString() ?? "";
+                                // Ensure it's actually cross-database
+                                if (dbList.Contains("+") || dbList.Contains(","))
+                                {
+                                    queries.Add(new TestQuery
+                                    {
+                                        Category = cat.GetString() ?? "🧪 Test",
+                                        Query = q.GetString() ?? "",
+                                        DatabaseName = dbList
+                                    });
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to generate AI test queries, will use schema-based fallback");
+            }
+
+            return queries;
+        }
+
+        private static string BuildSchemaPromptForAI(List<DatabaseSchemaInfo> schemas)
+        {
+            var sb = new StringBuilder();
+            sb.AppendLine("AVAILABLE DATABASES:");
+            sb.AppendLine();
+
+            foreach (var schema in schemas)
+            {
+                sb.AppendLine($"DATABASE: {schema.DatabaseName} ({schema.DatabaseType})");
+                sb.AppendLine($"Description: {schema.Description}");
+                sb.AppendLine("TABLES:");
+                
+                foreach (var table in schema.Tables.Take(5))
+                {
+                    sb.AppendLine($"  - {schema.DatabaseName}.{table.TableName} ({table.RowCount} rows)");
+                    sb.AppendLine($"    Columns: {string.Join(", ", table.Columns.Select(c => $"{c.ColumnName} ({c.DataType})"))}");
+                    
+                    if (table.ForeignKeys.Any())
+                    {
+                        foreach (var fk in table.ForeignKeys.Take(3))
+                        {
+                            sb.AppendLine($"    FK: {fk.ColumnName} → {fk.ReferencedTable}.{fk.ReferencedColumn}");
+                        }
+                    }
+                }
+                sb.AppendLine();
+            }
+
+            return sb.ToString();
+        }
+
+        private static Task<List<TestQuery>> GenerateSchemaBasedQueries(List<DatabaseSchemaInfo> schemas)
+        {
+            var queries = new List<TestQuery>();
+
+            // Build database combinations for comprehensive testing
+            var databasePairs = new List<(DatabaseSchemaInfo Db1, DatabaseSchemaInfo Db2)>();
+            for (int i = 0; i < schemas.Count; i++)
+            {
+                for (int j = i + 1; j < schemas.Count; j++)
+                {
+                    databasePairs.Add((schemas[i], schemas[j]));
+                }
+            }
+
+            // 1. Cross-database queries using foreign key relationships
+            var tablesWithForeignKeys = schemas
+                .SelectMany(s => s.Tables.Where(t => t.ForeignKeys.Any()).Select(t => new { Schema = s, Table = t }))
+                .ToList();
+
+            foreach (var item in tablesWithForeignKeys)
+            {
+                foreach (var fk in item.Table.ForeignKeys.Take(2))
+                {
+                    // Find which database has the referenced table
+                    var referencedDb = schemas.FirstOrDefault(s => 
+                        s.Tables.Any(t => t.TableName.Equals(fk.ReferencedTable, StringComparison.OrdinalIgnoreCase)));
+
+                    if (referencedDb != null && referencedDb.DatabaseId != item.Schema.DatabaseId)
+                    {
+                        // Create business-friendly question based on table semantics
+                        var businessQuery = "Show all orders with their complete customer and product information";
+                        
+                        queries.Add(new TestQuery
+                        {
+                            Category = "🔗 Cross-DB Join",
+                            Query = businessQuery,
+                            DatabaseName = $"{item.Schema.DatabaseName} + {referencedDb.DatabaseName}"
+                        });
+                    }
+                }
+            }
+
+            // 2. Cross-database aggregation queries (BUSINESS-MEANINGFUL)
+            foreach (var pair in databasePairs)
+            {
+                // Find tables with meaningful numeric columns
+                var table1WithQuantity = pair.Db1.Tables.FirstOrDefault(t => 
+                    t.Columns.Any(c => IsNumericType(c.DataType) && 
+                        (c.ColumnName.Contains("Quantity", StringComparison.OrdinalIgnoreCase) ||
+                         c.ColumnName.Contains("Stock", StringComparison.OrdinalIgnoreCase) ||
+                         c.ColumnName.Contains("Count", StringComparison.OrdinalIgnoreCase))));
+                
+                var table2WithPrice = pair.Db2.Tables.FirstOrDefault(t => 
+                    t.Columns.Any(c => IsNumericType(c.DataType) && 
+                        (c.ColumnName.Contains("Price", StringComparison.OrdinalIgnoreCase) ||
+                         c.ColumnName.Contains("Amount", StringComparison.OrdinalIgnoreCase) ||
+                         c.ColumnName.Contains("Total", StringComparison.OrdinalIgnoreCase))));
+
+                // Find FK relationship between them
+                if (table1WithQuantity != null && table2WithPrice != null)
+                {
+                    var hasFkRelation = table1WithQuantity.ForeignKeys.Any(fk => 
+                        fk.ReferencedTable.Equals(table2WithPrice.TableName, StringComparison.OrdinalIgnoreCase));
+                    
+                    if (hasFkRelation)
+                    {
+                        // Create meaningful business question
+                        var entityName = table2WithPrice.TableName.Replace("s", "", StringComparison.OrdinalIgnoreCase).ToLower();
+                        queries.Add(new TestQuery
+                        {
+                            Category = "💰 Cross-DB Calculation",
+                            Query = $"What is the total inventory value for all items in stock?",
+                            DatabaseName = $"{pair.Db1.DatabaseName} + {pair.Db2.DatabaseName}"
+                        });
+                    }
+                }
+            }
+
+            // 3. Multi-database coverage query
+            if (schemas.Count >= 2)
+            {
+                var allDbNames = string.Join(" + ", schemas.Select(s => s.DatabaseName));
+                queries.Add(new TestQuery
+                {
+                    Category = "🌐 Multi-DB Coverage",
+                    Query = "Analyze all available data to find correlations between sales, inventory, and customer information",
+                    DatabaseName = allDbNames
+                });
+            }
+
+            // 4. Cross-database temporal analysis
+            var tablesWithDates = schemas
+                .SelectMany(s => s.Tables.Where(t => 
+                    t.Columns.Any(c => c.DataType.Contains("date", StringComparison.OrdinalIgnoreCase) ||
+                                      c.DataType.Contains("time", StringComparison.OrdinalIgnoreCase)))
+                    .Select(t => new { Schema = s, Table = t }))
+                .ToList();
+
+            if (tablesWithDates.Count >= 2)
+            {
+                var dateTable1 = tablesWithDates[0];
+                var dateTable2 = tablesWithDates.FirstOrDefault(t => t.Schema.DatabaseId != dateTable1.Schema.DatabaseId);
+
+                if (dateTable2 != null)
+                {
+                    queries.Add(new TestQuery
+                    {
+                        Category = "📅 Cross-DB Temporal",
+                        Query = "What is the timeline correlation between customer registrations and their first orders?",
+                        DatabaseName = $"{dateTable1.Schema.DatabaseName} + {dateTable2.Schema.DatabaseName}"
+                    });
+                }
+            }
+
+            // 5. Ensure every database is tested at least once
+            var databasesUsed = new HashSet<string>();
+            foreach (var query in queries)
+            {
+                var dbNames = query.DatabaseName.Split(new[] { " + " }, StringSplitOptions.RemoveEmptyEntries);
+                foreach (var db in dbNames)
+                {
+                    databasesUsed.Add(db);
+                }
+            }
+
+            // Add queries for databases not yet covered
+            foreach (var schema in schemas)
+            {
+                if (!databasesUsed.Contains(schema.DatabaseName))
+                {
+                    var otherDb = schemas.FirstOrDefault(s => s.DatabaseId != schema.DatabaseId);
+                    if (otherDb != null)
+                    {
+                        var table1 = schema.Tables.FirstOrDefault();
+                        var table2 = otherDb.Tables.FirstOrDefault();
+
+                        if (table1 != null && table2 != null)
+                        {
+                            queries.Add(new TestQuery
+                            {
+                                Category = "✅ Coverage Test",
+                                Query = $"Analyze relationship between {table1.TableName} and {table2.TableName}",
+                                DatabaseName = $"{schema.DatabaseName} + {otherDb.DatabaseName}"
+                            });
+                        }
+                    }
+                }
+            }
+
+            return Task.FromResult(queries);
+        }
+
+        private static bool IsNumericType(string dataType)
+        {
+            return dataType.Contains("int", StringComparison.OrdinalIgnoreCase) ||
+                   dataType.Contains("decimal", StringComparison.OrdinalIgnoreCase) ||
+                   dataType.Contains("numeric", StringComparison.OrdinalIgnoreCase) ||
+                   dataType.Contains("float", StringComparison.OrdinalIgnoreCase) ||
+                   dataType.Contains("double", StringComparison.OrdinalIgnoreCase) ||
+                   dataType.Contains("money", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private class TestQuery
+        {
+            public string Category { get; set; } = string.Empty;
+            public string Query { get; set; } = string.Empty;
+            public string DatabaseName { get; set; } = string.Empty;
         }
 
         private static async Task CreateSqlServerDatabase()
@@ -512,7 +941,7 @@ namespace SmartRAG.DatabaseTests
             Console.WriteLine("🗄️  Create SQL Server Test Database");
             Console.WriteLine("═══════════════════════════════════════════════════════════════════");
             Console.WriteLine();
-
+            
             try
             {
                 var sqlServerCreator = new SqlServerTestDatabaseCreator(_configuration!);
@@ -588,6 +1017,80 @@ namespace SmartRAG.DatabaseTests
                 Console.WriteLine("  3. Or set SQL Server to 'Enabled: false' in appsettings.json");
             }
         }
+
+        private static async Task CreateMySqlDatabase()
+        {
+            Console.WriteLine();
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+            Console.WriteLine("🐬 Create MySQL Test Database");
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+
+            try
+            {
+                var creator = TestDatabaseFactory.GetCreator(SmartRAG.Enums.DatabaseType.MySQL, _configuration);
+                var connectionString = creator.GetDefaultConnectionString();
+
+                Console.WriteLine();
+                Console.WriteLine($"📝 Database: InventoryManagement");
+                Console.WriteLine($"📝 Connection: {connectionString.Replace("Password=2059680", "Password=***")}");
+                Console.WriteLine();
+
+                // Create database
+                creator.CreateSampleDatabase(connectionString);
+
+                Console.WriteLine();
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine("💡 Next Steps:");
+                Console.WriteLine("   1. Verify connection with option 1 (Show Database Connections)");
+                Console.WriteLine("   2. Check schema details with option 2 (Show Database Schemas)");
+                Console.WriteLine("   3. Test multi-database queries with option 3 or 5");
+                Console.ResetColor();
+
+                // Trigger schema refresh
+                if (_connectionManager != null && _schemaAnalyzer != null)
+                {
+                    Console.WriteLine();
+                    Console.WriteLine("🔄 Refreshing schema analysis...");
+                    
+                    var connections = await _connectionManager.GetAllConnectionsAsync();
+                    var mySqlConn = connections.FirstOrDefault(c => c.DatabaseType == SmartRAG.Enums.DatabaseType.MySQL);
+                    
+                    if (mySqlConn != null)
+                    {
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                await _schemaAnalyzer.AnalyzeDatabaseSchemaAsync(mySqlConn);
+                            }
+                            catch { }
+                        });
+                    }
+                    
+                    await Task.Delay(2000);
+                    Console.WriteLine("   ✓ Schema analysis initiated");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"❌ Error: {ex.Message}");
+                Console.WriteLine();
+                Console.WriteLine("Possible causes:");
+                Console.WriteLine("  • MySQL server not installed");
+                Console.WriteLine("  • MySQL service not running");
+                Console.WriteLine("  • Incorrect username or password");
+                Console.WriteLine("  • Port 3306 blocked or in use");
+                Console.ResetColor();
+                Console.WriteLine();
+                Console.WriteLine("Solution:");
+                Console.WriteLine("  1. Install MySQL Server");
+                Console.WriteLine("  2. Ensure MySQL service is running");
+                Console.WriteLine("  3. Verify credentials (User: root, Password: 2059680)");
+                Console.WriteLine("  4. Or set MySQL to 'Enabled: false' in appsettings.json");
+            }
+        }
     }
 }
+
 

@@ -37,23 +37,23 @@ Use menu option: `6. Create SQL Server Test Database`
 
 Create `appsettings.Development.json`:
 
-```json
+   ```json
 {
-  "AI": {
-    "Anthropic": {
+   "AI": {
+     "Anthropic": {
       "ApiKey": "sk-ant-YOUR_REAL_KEY",
       "EmbeddingApiKey": "pa-YOUR_VOYAGE_KEY"
     }
-  }
-}
-```
+     }
+   }
+   ```
 
 ### 3. Run
 
-```bash
+   ```bash
 cd examples/SmartRAG.DatabaseTests
-dotnet run
-```
+   dotnet run
+   ```
 
 ## 💬 Usage
 

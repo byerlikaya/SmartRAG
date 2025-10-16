@@ -593,9 +593,30 @@ namespace SmartRAG.Services
             {
                 using (var cmd = connection.CreateCommand())
                 {
-                cmd.CommandText = $"SELECT COUNT(*) FROM \"{tableName}\"";
-                var result = await cmd.ExecuteScalarAsync();
-                return Convert.ToInt64(result);
+                    // Use appropriate identifier quoting based on database type
+                    string quotedTable;
+                    var connectionType = connection.GetType().Name;
+                    
+                    if (connectionType == "SqlConnection")
+                    {
+                        quotedTable = $"[{tableName}]";
+                    }
+                    else if (connectionType == "MySqlConnection")
+                    {
+                        quotedTable = $"`{tableName}`";
+                    }
+                    else if (connectionType == "NpgsqlConnection")
+                    {
+                        quotedTable = $"\"{tableName}\"";
+                    }
+                    else
+                    {
+                        quotedTable = tableName; // SQLite doesn't require quotes for simple table names
+                    }
+                    
+                    cmd.CommandText = $"SELECT COUNT(*) FROM {quotedTable}";
+                    var result = await cmd.ExecuteScalarAsync();
+                    return Convert.ToInt64(result);
                 }
             }
             catch (Exception ex)
@@ -612,25 +633,24 @@ namespace SmartRAG.Services
         {
             try
             {
-                string limitClause;
+                // Use appropriate identifier quoting and limit syntax based on database type
+                string query;
                 switch (databaseType)
                 {
                     case DatabaseType.SqlServer:
-                        limitClause = "TOP 3";
+                        query = $"SELECT TOP 3 * FROM [{tableName}]";
                         break;
                     case DatabaseType.MySQL:
-                    case DatabaseType.PostgreSQL:
-                    case DatabaseType.SQLite:
-                        limitClause = "LIMIT 3";
+                        query = $"SELECT * FROM `{tableName}` LIMIT 3";
                         break;
+                    case DatabaseType.PostgreSQL:
+                        query = $"SELECT * FROM \"{tableName}\" LIMIT 3";
+                        break;
+                    case DatabaseType.SQLite:
                     default:
-                        limitClause = "LIMIT 3";
+                        query = $"SELECT * FROM {tableName} LIMIT 3";
                         break;
                 }
-
-                var query = databaseType == DatabaseType.SqlServer
-                    ? $"SELECT {limitClause} * FROM [{tableName}]"
-                    : $"SELECT * FROM \"{tableName}\" {limitClause}";
 
                 using (var cmd = connection.CreateCommand())
                 {

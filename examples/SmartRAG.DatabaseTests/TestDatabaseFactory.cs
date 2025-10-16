@@ -22,7 +22,8 @@ namespace SmartRAG.DatabaseTests
             {
                 DatabaseType.SQLite => new SqliteTestDatabaseCreator(configuration),
                 DatabaseType.SqlServer => new SqlServerTestDatabaseCreator(configuration),
-                _ => throw new NotSupportedException($"Database type '{databaseType}' is not supported yet. Supported types: SQLite, SqlServer")
+                DatabaseType.MySQL => new MySqlTestDatabaseCreator(configuration),
+                _ => throw new NotSupportedException($"Database type '{databaseType}' is not supported yet. Supported types: SQLite, SqlServer, MySQL")
             };
         }
 
@@ -36,7 +37,8 @@ namespace SmartRAG.DatabaseTests
             return new Dictionary<DatabaseType, string>
             {
                 { DatabaseType.SQLite, new SqliteTestDatabaseCreator(configuration).GetDescription() },
-                { DatabaseType.SqlServer, new SqlServerTestDatabaseCreator(configuration).GetDescription() }
+                { DatabaseType.SqlServer, new SqlServerTestDatabaseCreator(configuration).GetDescription() },
+                { DatabaseType.MySQL, new MySqlTestDatabaseCreator(configuration).GetDescription() }
             };
         }
 
@@ -47,7 +49,9 @@ namespace SmartRAG.DatabaseTests
         /// <returns>True if supported, false otherwise</returns>
         public static bool IsSupported(DatabaseType databaseType)
         {
-            return databaseType == DatabaseType.SQLite || databaseType == DatabaseType.SqlServer;
+            return databaseType == DatabaseType.SQLite || 
+                   databaseType == DatabaseType.SqlServer || 
+                   databaseType == DatabaseType.MySQL;
         }
 
         /// <summary>
