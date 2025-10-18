@@ -1,316 +1,408 @@
 ---
 layout: default
-title: Değişiklik Günlüğü
-description: SmartRAG için sürüm geçmişi ve sürüm notları
+title: Değişiklikler
+description: SmartRAG için eksiksiz versiyon geçmişi, breaking change'ler ve taşınma kılavuzları
 lang: tr
 ---
 
-<div class="page-content">
-    <div class="container">
-        <!-- Version History Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>Sürüm Geçmişi</h2>
-                    <p>Detaylı değişiklik bilgileri ile SmartRAG sürümlerinin tam geçmişi.</p>
+<div class="container">
 
-                    <h3>Sürüm 3.0.0 - 2025-10-18</h3>
-                    <div class="alert alert-success">
-                        <h4><i class="fas fa-star me-2"></i>En Son Sürüm</h4>
-                        <p class="mb-0">Intelligence Platform Revolution - Gelişmiş SQL üretimi, çok dilli destek ve kapsamlı veritabanı entegrasyonu.</p>
-                    </div>
+SmartRAG'deki tüm önemli değişiklikler burada belgelenmiştir. Proje [Anlamsal Versiyonlama](https://semver.org/spec/v2.0.0.html)'ya uymaktadır.
 
-                    <h4>SQL Üretimi & Çok Dilli Destek</h4>
-                    <ul>
-                        <li><strong>Dil-Güvenli SQL Üretimi</strong>: SQL sorgularında İngilizce olmayan metinlerin otomatik algılanması ve önlenmesi</li>
-                        <li><strong>Gelişmiş SQL Doğrulama</strong>: Türkçe/Almanca/Rusça karakterler ve anahtar kelimeleri engelleyen sıkı doğrulama</li>
-                        <li><strong>Çok Dilli Sorgu Desteği</strong>: AI herhangi bir dilde sorgu işlerken saf İngilizce SQL üretiyor</li>
-                        <li><strong>Karakter Doğrulama</strong>: İngilizce olmayan karakterlerin algılanması (ç, ğ, ı, ö, ş, ü, ä, ö, ü, ß, Kiril)</li>
-                        <li><strong>Anahtar Kelime Doğrulama</strong>: SQL'de İngilizce olmayan anahtar kelimelerin önlenmesi (sorgu, abfrage, запрос)</li>
-                        <li><strong>PostgreSQL Tam Desteği</strong>: Eksiksiz PostgreSQL entegrasyonu ve doğrulama</li>
-                    </ul>
+---
 
-                    <h4>Eklenenler</h4>
-                    <ul>
-                        <li><strong>Google Speech-to-Text Entegrasyonu</strong>: Google Cloud AI ile kurumsal düzeyde konuşma tanıma</li>
-                        <li><strong>Geliştirilmiş Dil Desteği</strong>: Türkçe, İngilizce ve küresel diller dahil 100+ dil</li>
-                        <li><strong>Gerçek Zamanlı Ses İşleme</strong>: Güven skoru ile gelişmiş konuşma-metin dönüştürme</li>
-                        <li><strong>Detaylı Transkripsiyon Sonuçları</strong>: Zaman damgaları ve güven metrikleri ile segment düzeyinde transkripsiyon</li>
-                        <li><strong>Otomatik Format Algılama</strong>: MP3, WAV, M4A, AAC, OGG, FLAC, WMA formatları desteği</li>
-                        <li><strong>Akıllı Ses İşleme</strong>: Akıllı ses akışı doğrulama ve hata yönetimi</li>
-                        <li><strong>Performans Optimizasyonu</strong>: Minimal bellek kullanımı ile verimli ses işleme</li>
-                        <li><strong>Yapılandırılmış Ses Çıktısı</strong>: Ses içeriğini aranabilir, sorgulanabilir bilgi tabanına dönüştürür</li>
-                        <li><strong>Kapsamlı XML Dokümantasyonu</strong>: Tüm public class'lar ve metodlar için tam API dokümantasyonu</li>
-                    </ul>
+## [3.0.0] - 2025-10-18
 
-                    <h4>İyileştirmeler</h4>
-                    <ul>
-                        <li><strong>Ses İşleme Pipeline'ı</strong>: Google Cloud AI ile geliştirilmiş ses işleme</li>
-                        <li><strong>Yapılandırma Yönetimi</strong>: GoogleSpeechConfig kullanımı için tüm yapılandırma dosyaları güncellendi</li>
-                        <li><strong>Hata Yönetimi</strong>: Ses transkripsiyon işlemleri için geliştirilmiş hata yönetimi</li>
-                        <li><strong>Dokümantasyon</strong>: Google Speech-to-Text örnekleri ile tüm dil versiyonları güncellendi</li>
-                        <li><strong>Kod Kalitesi</strong>: SOLID/DRY prensipleri ile sıfır uyarı politikası uyumluluğu</li>
-                        <li><strong>Güvenlik</strong>: Log injection koruması ile CodeQL yüksek önem derecesi güvenlik açığı düzeltildi</li>
-                    </ul>
+<div class="alert alert-warning">
+    <h4><i class="fas fa-exclamation-triangle me-2"></i> BREAKING CHANGE'LER</h4>
+    <p class="mb-0">Bu sürüm breaking API değişiklikleri içerir. Aşağıdaki taşınma kılavuzuna bakın.</p>
+</div>
 
-                    <h4>Dokümantasyon</h4>
-                    <ul>
-                        <li><strong>Ses İşleme</strong>: Kapsamlı ses işleme özellik dokümantasyonu</li>
-                        <li><strong>Çoklu Dil Desteği</strong>: Örnekler ile tüm dil versiyonları (EN, TR, DE, RU) güncellendi</li>
-                        <li><strong>API Dokümantasyonu</strong>: Tüm public API'ler için tam XML dokümantasyonu</li>
-                        <li><strong>Geliştirici Deneyimi</strong>: Detaylı ses işleme örnekleri ile daha iyi geliştirici deneyimi</li>
-                    </ul>
+### 🚀 Zeka Kütüphanesi Devrimi
 
-                    <h3>Sürüm 2.2.0 - 2025-01-15</h3>
-                    <div class="alert alert-info">
-                        <h4><i class="fas fa-info-circle me-2"></i>Önceki Sürüm</h4>
-                        <p class="mb-0">Geliştirilmiş OCR dokümantasyonu ve görünürlük iyileştirmeleri ile önceki kararlı sürüm.</p>
-                    </div>
-                    <ul>
-                        <li><strong>Geliştirilmiş OCR Dokümantasyonu</strong>: Gerçek kullanım örnekleri ile OCR yeteneklerini sergileyen kapsamlı dokümantasyon</li>
-                        <li><strong>İyileştirilmiş README</strong>: Tesseract 5.2.0 + SkiaSharp entegrasyonunu vurgulayan detaylı görüntü işleme özellikleri</li>
-                        <li><strong>Kullanım Örnekleri</strong>: Taranmış belgeler, fişler ve görüntü içeriği işleme için detaylı örnekler</li>
-                        <li><strong>Paket Metadata</strong>: Daha iyi kullanıcı deneyimi için proje URL'leri ve sürüm notları güncellendi</li>
-                        <li><strong>Dokümantasyon Yapısı</strong>: OCR'ı temel farklılaştırıcı olarak sergileyen geliştirilmiş dokümantasyon</li>
-                        <li><strong>Kullanıcı Rehberliği</strong>: Görüntü tabanlı belge işleme iş akışları için iyileştirilmiş rehberlik</li>
-                        <li><strong>WebP Desteği</strong>: WebP'den PNG'ye dönüştürme ve çok dilli OCR desteği vurgulandı</li>
-                        <li><strong>Geliştirici Deneyimi</strong>: Görüntü işleme özelliklerinin geliştiriciler için daha iyi görünürlüğü</li>
-                    </ul>
+#### Önemli API Değişiklikleri
+- **`GenerateRagAnswerAsync` → `QueryIntelligenceAsync`**: Akıllı sorgu işlemeyi daha iyi temsil etmek için metod yeniden adlandırıldı
+- **Geliştirilmiş `IDocumentSearchService` interface'i**: Gelişmiş RAG pipeline ile yeni akıllı sorgu işleme
+- **Servis katmanı iyileştirmeleri**: Gelişmiş anlamsal arama ve konuşma yönetimi
+- **Geriye dönük uyumluluk korundu**: Eski metodlar kullanımdan kaldırıldı olarak işaretlendi (v4.0.0'da kaldırılacak)
 
-                    <h3>Sürüm 2.1.0 - 2025-01-20</h3>
-                    <div class="alert alert-info">
-                        <h4><i class="fas fa-info-circle me-2"></i>Önceki Sürüm</h4>
-                        <p class="mb-0">Otomatik oturum yönetimi ve konuşma geçmişi ile önceki kararlı sürüm.</p>
-                    </div>
-                    <ul>
-                        <li><strong>Otomatik Oturum Yönetimi</strong>: Manuel oturum ID yönetimi artık gerekli değil</li>
-                        <li><strong>Kalıcı Konuşma Geçmişi</strong>: Konuşmalar uygulama yeniden başlatmalarında korunur</li>
-                        <li><strong>Yeni Konuşma Komutları</strong>: /new, /reset, /clear ile konuşma kontrolü</li>
-                        <li><strong>Gelişmiş API</strong>: Geriye uyumlu startNewConversation parametresi</li>
-                        <li><strong>Depolama Entegrasyonu</strong>: Tüm sağlayıcılarla (Redis, SQLite, FileSystem, InMemory) uyumlu</li>
-                        <li><strong>Format Tutarlılığı</strong>: Tüm depolama sağlayıcılarında standart konuşma formatı</li>
-                        <li><strong>Thread Güvenliği</strong>: Konuşma işlemleri için gelişmiş eşzamanlı erişim</li>
-                        <li><strong>Platform Bağımsız</strong>: Tüm .NET ortamlarıyla uyumluluk</li>
-                        <li><strong>Dokümantasyon Güncellemeleri</strong>: Tüm dil sürümleri (EN, TR, DE, RU) gerçek örneklerle güncellendi</li>
-                        <li><strong>%100 Uyumluluk</strong>: Tüm kurallar sıfır uyarı politikasıyla korundu</li>
-                    </ul>
+### 🔧 SQL Üretimi & Çok Dilli Destek
 
-                    <h3>Sürüm 2.0.0 - 2025-08-27</h3>
-                    <div class="alert alert-info">
-                        <h4><i class="fas fa-info-circle me-2"></i>Önceki Sürüm</h4>
-                        <p class="mb-0">.NET Standard 2.0/2.1'e geçiş ile önceki kararlı sürüm.</p>
-                    </div>
-                    <ul>
-                        <li><strong>.NET Standard 2.0/2.1</strong>: .NET Framework 4.6.1+, .NET Core 2.0+, .NET 5+ uyumluluğu</li>
-                        <li><strong>Maksimum Uyumluluk</strong>: Eski ve kurumsal .NET uygulamalarıyla uyumluluk</li>
-                        <li><strong>Framework Değişikliği</strong>: .NET 9.0'dan .NET Standard'a geçiş</li>
-                        <li><strong>Paket Bağımlılıkları</strong>: Uyumluluk için paket versiyonları güncellendi</li>
-                    </ul>
+#### Dil-Güvenli SQL Üretimi
+- **Otomatik doğrulama**: SQL sorgularında İngilizce olmayan metnin tespiti ve önlenmesi
+- **Geliştirilmiş SQL doğrulaması**: SQL'de Türkçe/Almanca/Rusça karakterleri ve anahtar kelimeleri önleyen katı doğrulama
+- **Çok dilli sorgu desteği**: AI, herhangi bir dilde sorguları işlerken saf İngilizce SQL üretir
+- **Karakter doğrulaması**: İngilizce olmayan karakterleri tespit eder (Türkçe: ç, ğ, ı, ö, ş, ü; Almanca: ä, ö, ü, ß; Rusça: Kiril)
+- **Anahtar kelime doğrulaması**: SQL'de İngilizce olmayan anahtar kelimeleri önler (sorgu, abfrage, запрос)
+- **İyileştirilmiş hata mesajları**: Hata raporlarında veritabanı tipi bilgisiyle daha iyi tanılama
 
-                    <h3>Sürüm 1.1.0 - 2025-08-22</h3>
-                    <div class="alert alert-info">
-                        <h4><i class="fas fa-info-circle me-2"></i>Önceki Sürüm</h4>
-                        <p class="mb-0">Excel desteği ve gelişmiş özelliklerle önceki kararlı sürüm.</p>
-                    </div>
+#### PostgreSQL Tam Desteği
+- **Eksiksiz entegrasyon**: Canlı bağlantılarla tam PostgreSQL desteği
+- **Şema analizi**: Akıllı şema çıkarma ve ilişki haritalama
+- **Çoklu-veritabanı sorguları**: PostgreSQL ile çapraz-veritabanı sorgu koordinasyonu
+- **Üretime hazır**: Kapsamlı test ve doğrulama
 
-                    <h4>Eklenenler</h4>
-                    <ul>
-                        <li><strong>💬 Konuşma Geçmişi</strong>: Bağlam farkındalığı ile otomatik oturum tabanlı konuşma yönetimi</li>
-                        <li><strong>Oturum Yönetimi</strong>: Birden fazla soru arasında konuşma bağlamını korumak için benzersiz oturum kimlikleri</li>
-                        <li><strong>Akıllı Bağlam Kısaltma</strong>: Optimal performansı korumak için akıllı konuşma geçmişi kısaltma</li>
-                        <li><strong>Depolama Entegrasyonu</strong>: Yapılandırılan depolama sağlayıcıları (Redis, SQLite, vb.) kullanarak konuşma verisi depolama</li>
-                        <li><strong>Gelişmiş API</strong>: sessionId parametresi ile güncellenmiş GenerateRagAnswerAsync metodu</li>
-                        <li><strong>Gerçek Örnekler</strong>: Tüm dokümantasyon örnekleri gerçek implementasyon kodunu kullanacak şekilde güncellendi</li>
-                    </ul>
+### 🔒 Yerinde & Yerel AI Desteği
 
-                    <h4>İyileştirmeler</h4>
-                    <ul>
-                        <li><strong>Dokümantasyon Gerçekliği</strong>: Tüm örnekler artık gerçek kod tabanı implementasyonu ile eşleşiyor</li>
-                        <li><strong>Çoklu Dil Desteği</strong>: Tüm dil versiyonları (EN, TR, DE, RU) konuşma özellikleri ile güncellendi</li>
-                        <li><strong>API Tutarlılığı</strong>: Tüm API örneklerinin gerçek SearchController ve SearchRequest modellerini kullandığından emin olundu</li>
-                        <li><strong>Kod Kalitesi</strong>: 0 hata, 0 uyarı, 0 mesaj ile Sıfır Uyarı Politikası uygulandı</li>
-                    </ul>
+#### Tam Yerel İşlem
+- **Yerel AI modelleri**: Ollama, LM Studio ve herhangi bir OpenAI-uyumlu yerel API için tam destek
+- **Doküman işleme**: PDF, Word, Excel ayrıştırma - tamamen yerel
+- **OCR işleme**: Tesseract 5.2.0 - tamamen yerel, buluta veri gönderilmez
+- **Veritabanı entegrasyonu**: SQLite, SQL Server, MySQL, PostgreSQL - tüm yerel bağlantılar
+- **Depolama seçenekleri**: In-Memory, SQLite, FileSystem, Redis - tümü yerel
+- **Tam gizlilik**: Verileriniz altyapınızda kalır
 
-                    <h4>Düzeltmeler</h4>
-                    <ul>
-                        <li><strong>Dokümantasyon Doğruluğu</strong>: Tüm hayali örnekler kaldırıldı ve gerçek implementasyon ile değiştirildi</li>
-                        <li><strong>Build Uyumluluğu</strong>: SOLID ve DRY prensipleri ile %100 uyumluluk sağlandı</li>
-                        <li><strong>Sihirli Sayılar</strong>: Tüm sihirli sayılar isimli sabitlere dönüştürüldü</li>
-                        <li><strong>Loglama Standartları</strong>: Tüm konuşma işlemleri için LoggerMessage delegeleri uygulandı</li>
-                    </ul>
+#### Kurumsal Uyumluluk
+- **GDPR uyumlu**: Tüm verileri altyapınızda tutun
+- **KVKK uyumlu**: Türk veri koruma kanunu uyumluluğu
+- **Hava boşluklu sistemler**: İnternetsiz çalışır (ses transkripsiyonu hariç)
+- **Finansal kurumlar**: Yerel dağıtım ile banka düzeyinde güvenlik
+- **Sağlık**: HIPAA uyumlu dağıtımlar mümkün
+- **Devlet**: Yerel modellerle gizli veri işleme
 
-                    <h3>Sürüm 1.1.0 - 2025-08-22</h3>
+### ⚠️ Önemli Kısıtlamalar
 
-                    <h3>Sürüm 1.1.0 - 2025-08-22</h3>
-                    <div class="alert alert-success">
-                        <h4><i class="fas fa-star me-2"></i>Yeni Özellikler</h4>
-                        <ul class="mb-0">
-                            <li><strong>Excel Desteği</strong>: Kapsamlı Excel dosya işleme (.xlsx, .xls) EPPlus 8.1.0 entegrasyonu ile</li>
-                            <li><strong>Gelişmiş API Güvenilirliği</strong>: HTTP 529 (Overloaded) hataları için Anthropic API retry mekanizması</li>
-                            <li><strong>İçerik İşleme</strong>: Daha sağlam belge ayrıştırma ve fallback hata mesajları</li>
-                            <li><strong>Performans</strong>: Excel içerik çıkarma ve doğrulama optimizasyonu</li>
-                        </ul>
-                    </div>
+#### Ses Dosyaları
+- **Google Cloud gerekli**: Ses transkripsiyonu Google Cloud Speech-to-Text API gerektirir
+- **Veri gizliliği**: Ses dosyaları işleme için Google Cloud'a gönderilir
+- **Alternatif**: Veri gizliliği kritikse ses dosyalarından kaçının
+- **Diğer formatlar**: Diğer tüm dosya tipleri tamamen yerel kalır
 
-                    <h3>Sürüm 1.0.3 - 2025-08-20</h3>
-                    <div class="alert alert-info">
-                        <h4><i class="fas fa-globe me-2"></i>Yeni Özellikler</h4>
-                        <ul class="mb-0">
-                            <li><strong>Çoklu Dil Desteği</strong>: Türkçe, Almanca, Rusça dil desteği eklendi</li>
-                            <li><strong>GitHub Pages Entegrasyonu</strong>: Otomatik dokümantasyon sitesi</li>
-                            <li><strong>Gelişmiş SEO</strong>: Meta etiketleri ve yapılandırılmış veri desteği</li>
-                            <li><strong>Responsive Tasarım</strong>: Mobil cihazlarda mükemmel görünüm</li>
-                        </ul>
-                    </div>
+#### OCR (Görsel'den Metne)
+- **El yazısı kısıtlaması**: Tesseract OCR el yazısını tam olarak destekleyemez (düşük başarı oranı)
+- **Mükemmel çalışır**: Basılı dokümanlar, taranmış basılı dokümanlar, yazılmış metinli dijital ekran görüntüleri
+- **Sınırlı destek**: El yazısı notları, formlar, bitişik yazı (çok düşük doğruluk)
+- **En iyi sonuçlar**: Basılı dokümanların yüksek kaliteli taramaları
+- **100+ dil**: [Desteklenen tüm dilleri görüntüle](https://github.com/tesseract-ocr/tessdata)
 
-                    <div class="alert alert-warning">
-                        <h4><i class="fas fa-tools me-2"></i>İyileştirmeler</h4>
-                        <ul class="mb-0">
-                            <li><strong>Dokümantasyon</strong>: Kapsamlı API referansı ve örnekler</li>
-                            <li><strong>Navigasyon</strong>: Dile bağlı menü ve link sistemi</li>
-                            <li><strong>Performans</strong>: Sayfa yükleme hızı optimizasyonu</li>
-                            <li><strong>Erişilebilirlik</strong>: WCAG 2.1 uyumluluğu</li>
-                        </ul>
-                    </div>
+### ✨ Eklenenler
+- **Çok dilli README**: İngilizce, Türkçe, Almanca ve Rusça'da mevcut
+- **Çok dilli CHANGELOG**: 4 dilde mevcut
+- **Geliştirilmiş dokümantasyon**: Kapsamlı yerinde dağıtım dokümantasyonu
+- **Yerel AI kurulum örnekleri**: Ollama ve LM Studio için yapılandırma
+- **Kurumsal kullanım senaryoları**: Bankacılık, Sağlık, Hukuk, Devlet, Üretim
 
-                    <div class="alert alert-danger">
-                        <h4><i class="fas fa-bug me-2"></i>Hata Düzeltmeleri</h4>
-                        <ul class="mb-0">
-                            <li><strong>Dil Seçimi</strong>: Dil değiştirme işlevselliği düzeltildi</li>
-                            <li><strong>Mobil Uyumluluk</strong>: Küçük ekranlarda görüntüleme sorunları giderildi</li>
-                            <li><strong>Link Sorunları</strong>: İç ve dış linklerin doğru çalışması sağlandı</li>
-                            <li><strong>Tema Sorunları</strong>: Koyu tema uyumluluğu iyileştirildi</li>
-                        </ul>
-                    </div>
+### 🔧 İyileştirmeler
+- **Yeniden deneme mekanizması**: Dile özgü talimatlarla geliştirilmiş yeniden deneme istekleri
+- **Hata yönetimi**: Veritabanı tipi bilgisiyle daha iyi hata mesajları
+- **Dokümantasyon yapısı**: CHANGELOG bağlantılarıyla daha temiz README
+- **Kod kalitesi**: Boyunca sürdürülen SOLID/DRY prensipleri
+- **Performans**: Optimize edilmiş çoklu-veritabanı sorgu koordinasyonu
 
-                    <h3>Sürüm 1.0.2 - 2025-08-19</h3>
-                    <div class="alert alert-primary">
-                        <h4><i class="fas fa-rocket me-2"></i>Yeni Özellikler</h4>
-                        <ul class="mb-0">
-                            <li><strong>AI Provider Desteği</strong>: OpenAI, Anthropic, Azure OpenAI, Gemini desteği</li>
-                            <li><strong>Depolama Seçenekleri</strong>: Qdrant, Redis, SQLite, In-Memory, File System</li>
-                            <li><strong>Belge Formatları</strong>: PDF, Word, Excel, TXT desteği</li>
-                            <li><strong>Anlamsal Arama</strong>: Gelişmiş arama algoritmaları</li>
-                        </ul>
-                    </div>
+### 📚 Dokümantasyon
+- **Yerinde kılavuz**: Kapsamlı dağıtım dokümantasyonu
+- **Gizlilik kılavuzu**: Veri gizliliği ve uyumluluk dokümantasyonu
+- **OCR kısıtlamaları**: Net yetenekler ve kısıtlamalar
+- **Ses işleme**: Net gereksinimler ve kısıtlamalar
+- **Kurumsal senaryolar**: Gerçek dünya kullanım senaryoları
 
-                    <h3>Sürüm 1.0.1 - 2025-08-17</h3>
-                    <div class="alert alert-secondary">
-                        <h4><i class="fas fa-cog me-2"></i>Temel Özellikler</h4>
-                        <ul class="mb-0">
-                            <li><strong>Temel RAG</strong>: Retrieval-Augmented Generation implementasyonu</li>
-                            <li><strong>Embedding</strong>: AI destekli metin embedding'leri</li>
-                            <li><strong>Chunking</strong>: Akıllı metin parçalama</li>
-                            <li><strong>Vector Search</strong>: Vektör tabanlı arama</li>
-                        </ul>
-                    </div>
+### ✅ Kalite Güvencesi
+- **Sıfır Uyarı Politikası**: 0 hata, 0 uyarı standardı korundu
+- **SOLID Prensipleri**: Temiz kod mimarisi
+- **Kapsamlı Test**: PostgreSQL entegrasyonu ile çoklu-veritabanı test kapsamı
+- **Güvenlik sertleştirme**: Geliştirilmiş kimlik bilgisi koruması
+- **Performans optimizasyonu**: Tüm özelliklerde yüksek performans
 
-                    <h3>Sürüm 1.0.0 - 2025-08-15</h3>
-                    <div class="alert alert-dark">
-                        <h4><i class="fas fa-birthday-cake me-2"></i>İlk Sürüm</h4>
-                        <ul class="mb-0">
-                            <li><strong>SmartRAG</strong>: .NET için RAG kütüphanesi</li>
-                            <li><strong>Temel Özellikler</strong>: Belge yükleme, işleme ve arama</li>
-                            <li><strong>AI Entegrasyonu</strong>: OpenAI API desteği</li>
-                            <li><strong>Basit Depolama</strong>: SQLite ile temel depolama</li>
-                        </ul>
-                    </div>
-                </div>
+### 🔄 Taşınma Kılavuzu (v2.3.0 → v3.0.0)
+
+#### Servis Katmanı Metod Değişiklikleri
+
+**ESKİ (v2.3.0):**
+```csharp
+await _documentSearchService.GenerateRagAnswerAsync(query, maxResults);
+```
+
+**YENİ (v3.0.0):**
+```csharp
+await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
+```
+
+#### Geriye Dönük Uyumluluk
+- Eski metodlar kullanımdan kaldırıldı ancak hala çalışıyor (v4.0.0'da kaldırılacak)
+- Metodları kendi hızınızda güncelleyin
+- Eski metodları kullanmaya devam ederseniz ani breaking change yok
+
+---
+
+## [2.3.1] - 2025-10-08
+
+### 🐛 Hata Düzeltmeleri
+- **LoggerMessage Parametre Uyumsuzluğu**: ServiceLogMessages.LogAudioServiceInitialized parametre uyumsuzluğu düzeltildi
+- **Format String Düzeltmesi**: Servis başlatma sırasında System.ArgumentException'ı önlemek için format string düzeltildi
+- **Günlükleme Kararlılığı**: Google Speech-to-Text başlatma için geliştirilmiş günlükleme
+
+### 🔧 Teknik İyileştirmeler
+- **Günlükleme Altyapısı**: Geliştirilmiş güvenilirlik
+- **Sıfır Uyarı Politikası**: Uyumluluk korundu
+- **Test Kapsamı**: Tüm testler başarılı (8/8)
+
+---
+
+## [2.3.0] - 2025-09-16
+
+### ✨ Eklenenler
+- **Google Speech-to-Text Entegrasyonu**: Kurumsal düzeyde konuşma tanıma
+- **Geliştirilmiş Dil Desteği**: Türkçe, İngilizce dahil 100+ dil
+- **Gerçek Zamanlı Ses İşleme**: Güven puanlamalı gelişmiş konuşmadan-metne dönüşüm
+- **Detaylı Transkripsiyon Sonuçları**: Zaman damgalı segment düzeyinde transkripsiyon
+- **Otomatik Format Tespiti**: MP3, WAV, M4A, AAC, OGG, FLAC, WMA desteği
+- **Akıllı Ses İşleme**: Akıllı ses doğrulama ve hata yönetimi
+- **Performans Optimize**: Minimum bellek ayak iziyle verimli işleme
+- **Yapılandırılmış Ses Çıktısı**: Aranabilir, sorgulanabilir bilgi tabanı
+- **Kapsamlı XML Dokümantasyonu**: Eksiksiz API dokümantasyonu
+
+### 🔧 İyileştirmeler
+- **Ses İşleme Pipeline**: Google Cloud AI ile geliştirilmiş
+- **Yapılandırma Yönetimi**: GoogleSpeechConfig kullanacak şekilde güncellendi
+- **Hata Yönetimi**: Ses transkripsiyonu için geliştirilmiş
+- **Dokümantasyon**: Speech-to-Text örnekleriyle güncellendi
+
+---
+
+## [2.2.0] - 2025-09-15
+
+### ✨ Eklenenler
+- **Geliştirilmiş OCR Dokümantasyonu**: Gerçek dünya kullanım senaryolarıyla kapsamlı
+- **İyileştirilmiş README**: Detaylı görsel işleme özellikleri
+- **Kullanım Senaryosu Örnekleri**: Taranmış dokümanlar, makbuzlar, görsel içeriği
+
+### 🔧 İyileştirmeler
+- **Paket Metadata**: Güncellenmiş proje URL'leri ve sürüm notları
+- **Dokümantasyon Yapısı**: Geliştirilmiş OCR vitrini
+- **Kullanıcı Rehberliği**: İyileştirilmiş görsel işleme iş akışları
+
+---
+
+## [2.1.0] - 2025-09-05
+
+### ✨ Eklenenler
+- **Otomatik Oturum Yönetimi**: Manuel oturum ID işleme gerekmez
+- **Kalıcı Konuşma Geçmişi**: Konuşmalar yeniden başlatmalarda hayatta kalır
+- **Yeni Konuşma Komutları**: `/new`, `/reset`, `/clear`
+- **Geliştirilmiş API**: İsteğe bağlı `startNewConversation` ile geriye dönük uyumlu
+- **Depolama Entegrasyonu**: Redis, SQLite, FileSystem, InMemory ile çalışır
+
+### 🔧 İyileştirmeler
+- **Format Tutarlılığı**: Depolama sağlayıcıları arasında standardize edildi
+- **Thread Güvenliği**: Geliştirilmiş eşzamanlı erişim yönetimi
+- **Platform Agnostik**: .NET ortamlarında uyumlu
+
+---
+
+## [2.0.0] - 2025-08-27
+
+<div class="alert alert-warning">
+    <h4><i class="fas fa-exclamation-triangle me-2"></i> BREAKING CHANGE</h4>
+    <p class="mb-0">.NET 9.0'dan .NET Standard 2.0/2.1'e taşındı</p>
+</div>
+
+### 🔄 .NET Standard Taşınması
+- **Hedef Framework**: .NET 9.0'dan .NET Standard 2.0/2.1'e taşındı
+- **Framework Uyumluluğu**: Şimdi .NET Framework 4.6.1+, .NET Core 2.0+, .NET 5+ destekler
+- **Maksimum Erişim**: Eski ve kurumsal ortamlarla geliştirilmiş uyumluluk
+
+### ✨ Eklenenler
+- **Çapraz Platform Desteği**: .NET Standard 2.0/2.1 hedef frameworkleri
+- **Eski Framework Desteği**: Tam .NET Framework uyumluluğu
+- **Kurumsal Entegrasyon**: Mevcut kurumsal çözümlerle sorunsuz entegrasyon
+
+### 🔧 İyileştirmeler
+- **Dil Uyumluluğu**: .NET Standard 2.0/2.1 için C# 7.3 sözdizimi
+- **Paket Versiyonları**: .NET Standard uyumlu versiyonlara güncellendi
+- **API Uyumluluğu**: Framework uyumluluğu sağlarken işlevselliği korundu
+
+---
+
+## [1.1.0] - 2025-08-22
+
+### ✨ Eklenenler
+- **Excel Doküman Desteği**: Kapsamlı Excel ayrıştırma (.xlsx, .xls)
+- **EPPlus 8.1.0 Entegrasyonu**: Ticari olmayan lisanslı modern Excel kütüphanesi
+- **Çalışma Sayfası Ayrıştırma**: Sekme ile ayrılmış veri korumayla akıllı ayrıştırma
+- **Geliştirilmiş İçerik Doğrulama**: Excel'e özgü yedek işleme
+- **Anthropic API Güvenilirliği**: HTTP 529 (Aşırı Yüklenmiş) hataları için geliştirilmiş yeniden deneme
+
+### 🔧 İyileştirmeler
+- **API Hata Yönetimi**: Hız sınırlama için daha iyi yeniden deneme mantığı
+- **İçerik İşleme**: Daha sağlam doküman ayrıştırma
+- **Performans**: Optimize edilmiş Excel çıkarma ve doğrulama
+
+---
+
+## [1.0.3] - 2025-08-20
+
+### 🔧 Düzeltmeler
+- LoggerMessage parametre sayısı uyumsuzlukları
+- Sağlayıcı günlükleme mesajı uygulamaları
+- Servis koleksiyonu kayıt sorunları
+
+---
+
+## Versiyon Geçmişi
+
+<div class="table-responsive mt-4">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Versiyon</th>
+                <th>Tarih</th>
+                <th>Öne Çıkanlar</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>3.0.0</strong></td>
+                <td>2025-10-18</td>
+                <td>Zeka Kütüphanesi Devrimi, SQL Üretimi, Yerinde Destek, PostgreSQL</td>
+            </tr>
+            <tr>
+                <td><strong>2.3.1</strong></td>
+                <td>2025-10-08</td>
+                <td>Hata düzeltmeleri, Günlükleme kararlılığı iyileştirmeleri</td>
+            </tr>
+            <tr>
+                <td><strong>2.3.0</strong></td>
+                <td>2025-09-16</td>
+                <td>Google Speech-to-Text entegrasyonu, Ses işleme</td>
+            </tr>
+            <tr>
+                <td><strong>2.2.0</strong></td>
+                <td>2025-09-15</td>
+                <td>Geliştirilmiş OCR dokümantasyonu</td>
+            </tr>
+            <tr>
+                <td><strong>2.1.0</strong></td>
+                <td>2025-09-05</td>
+                <td>Otomatik oturum yönetimi, Kalıcı konuşma geçmişi</td>
+            </tr>
+            <tr>
+                <td><strong>2.0.0</strong></td>
+                <td>2025-08-27</td>
+                <td>.NET Standard 2.0/2.1 taşınması</td>
+            </tr>
+            <tr>
+                <td><strong>1.1.0</strong></td>
+                <td>2025-08-22</td>
+                <td>Excel desteği, EPPlus entegrasyonu</td>
+            </tr>
+            <tr>
+                <td><strong>1.0.3</strong></td>
+                <td>2025-08-20</td>
+                <td>Hata düzeltmeleri ve günlükleme iyileştirmeleri</td>
+            </tr>
+            <tr>
+                <td><strong>1.0.2</strong></td>
+                <td>2025-08-19</td>
+                <td>İlk kararlı sürüm</td>
+            </tr>
+            <tr>
+                <td><strong>1.0.1</strong></td>
+                <td>2025-08-17</td>
+                <td>Beta sürümü</td>
+            </tr>
+            <tr>
+                <td><strong>1.0.0</strong></td>
+                <td>2025-08-15</td>
+                <td>İlk sürüm</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+---
+
+## Taşınma Kılavuzları
+
+### v2.x'ten v3.0.0'a Taşınma
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> Temel Değişiklikler</h4>
+    <p>Birincil değişiklik, <code>GenerateRagAnswerAsync</code>'in <code>QueryIntelligenceAsync</code> olarak yeniden adlandırılmasıdır.</p>
+</div>
+
+**Adım 1: Metod çağrılarını güncelleyin**
+
+```csharp
+// Önce (v2.x)
+var response = await _searchService.GenerateRagAnswerAsync(query, maxResults);
+
+// Sonra (v3.0.0)
+var response = await _searchService.QueryIntelligenceAsync(query, maxResults);
+```
+
+**Adım 2: API endpoint'lerini güncelleyin (Web API kullanıyorsanız)**
+
+```csharp
+// Önce
+[HttpPost("generate-answer")]
+public async Task<IActionResult> GenerateAnswer([FromBody] QueryRequest request)
+{
+    var response = await _searchService.GenerateRagAnswerAsync(request.Query);
+    return Ok(response);
+}
+
+// Sonra
+[HttpPost("query")]
+public async Task<IActionResult> Query([FromBody] QueryRequest request)
+{
+    var response = await _searchService.QueryIntelligenceAsync(request.Query);
+    return Ok(response);
+}
+```
+
+<div class="alert alert-success">
+    <h4><i class="fas fa-check-circle me-2"></i> Acil Eylem Gerekmez</h4>
+    <p class="mb-0">
+        Eski <code>GenerateRagAnswerAsync</code> metodu hala çalışıyor (kullanımdan kaldırıldı olarak işaretli). 
+        v4.0.0 yayınlanmadan önce kademeli olarak taşınabilirsiniz.
+    </p>
+</div>
+
+---
+
+## Kullanımdan Kaldırma Bildirimleri
+
+### v3.0.0'da Kullanımdan Kaldırıldı (v4.0.0'da Kaldırılacak)
+
+<div class="alert alert-warning">
+    <h4><i class="fas fa-clock me-2"></i> Kaldırma Planlandı</h4>
+    <p>Aşağıdaki metodlar kullanımdan kaldırıldı ve v4.0.0'da kaldırılacak:</p>
+    <ul class="mb-0">
+        <li><code>IDocumentSearchService.GenerateRagAnswerAsync()</code> - Yerine <code>QueryIntelligenceAsync()</code> kullanın</li>
+    </ul>
+</div>
+
+---
+
+## Sonraki Adımlar
+
+<div class="row g-4 mt-4">
+    <div class="col-md-6">
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i class="fas fa-rocket"></i>
             </div>
-        </section>
-
-        <!-- Version Information Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>Sürüm Bilgileri</h2>
-                    <p>SmartRAG sürüm numaralandırması ve destek politikası hakkında bilgiler.</p>
-
-                    <h3>Sürüm Numaralandırması</h3>
-                    <div class="alert alert-info">
-                        <h4><i class="fas fa-info-circle me-2"></i>Semantic Versioning</h4>
-                        <p class="mb-0">SmartRAG, <a href="https://semver.org/" target="_blank">Semantic Versioning</a> kullanır:</p>
-                        <ul class="mt-2 mb-0">
-                            <li><strong>MAJOR</strong>: Geriye dönük uyumsuz API değişiklikleri</li>
-                            <li><strong>MINOR</strong>: Geriye dönük uyumlu yeni özellikler</li>
-                            <li><strong>PATCH</strong>: Geriye dönük uyumlu hata düzeltmeleri</li>
-                        </ul>
-                    </div>
-
-                    <h3>Desteklenen Sürümler</h3>
-                    <div class="row g-4">
-                        <div class="col-md-4">
-                            <div class="alert alert-success">
-                                <h4><i class="fas fa-check-circle me-2"></i>Aktif</h4>
-                                <p class="mb-0"><strong>1.1.x</strong><br>En son özellikler ve güvenlik güncellemeleri</p>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="alert alert-warning">
-                                <h4><i class="fas fa-shield-alt me-2"></i>LTS</h4>
-                                <p class="mb-0"><strong>1.0.x</strong><br>Uzun süreli destek, sadece kritik hata düzeltmeleri</p>
-                            </div>
-                        </div>
-                        <div class="col-md-4">
-                            <div class="alert alert-danger">
-                                <h4><i class="fas fa-times-circle me-2"></i>Eski</h4>
-                                <p class="mb-0"><strong>0.x.x</strong><br>Artık desteklenmiyor</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <h3>Geçiş Rehberleri</h3>
-                    <div class="row g-4">
-                        <div class="col-md-6">
-                            <div class="card border-0 shadow-sm">
-                                <div class="card-body text-center p-4">
-                                    <i class="fas fa-arrow-right fa-2x text-primary mb-3"></i>
-                                    <h5 class="card-title">1.0.x'den 1.1.x'e</h5>
-                                    <p class="card-text">Excel desteği ve yeni özellikler için geçiş rehberi.</p>
-                                    <a href="{{ site.baseurl }}/tr/migration/1.0-to-1.1" class="btn btn-primary">Geçiş Rehberi</a>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="card border-0 shadow-sm">
-                                <div class="card-body text-center p-4">
-                                    <i class="fas fa-arrow-up fa-2x text-success mb-3"></i>
-                                    <h5 class="card-title">0.x.x'den 1.0.x'e</h5>
-                                    <p class="card-text">İlk sürümden kararlı sürüme geçiş rehberi.</p>
-                                    <a href="{{ site.baseurl }}/tr/migration/0.x-to-1.0" class="btn btn-success">Geçiş Rehberi</a>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <h3>Başlangıç</h3>
+            <p>SmartRAG'i kurun ve akıllı uygulamalar oluşturmaya başlayın</p>
+            <a href="{{ site.baseurl }}/tr/getting-started" class="btn btn-outline-primary btn-sm mt-3">
+                Başlayın
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i class="fab fa-github"></i>
             </div>
-        </section>
-
-        <!-- Feedback Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>Geri Bildirim</h2>
-                    <p>Sürümler hakkında geri bildirimlerinizi bizimle paylaşın.</p>
-
-                    <div class="row g-4">
-                        <div class="col-md-6">
-                            <div class="alert alert-info">
-                                <h4><i class="fas fa-github me-2"></i>GitHub Issues</h4>
-                                <p class="mb-0">Hata raporları ve özellik istekleri için GitHub Issues kullanın.</p>
-                                <a href="https://github.com/byerlikaya/SmartRAG/issues" target="_blank" class="btn btn-sm btn-outline-info mt-2">Issue Aç</a>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="alert alert-success">
-                                <h4><i class="fas fa-envelope me-2"></i>E-posta</h4>
-                                <p class="mb-0">Doğrudan geri bildirim için e-posta gönderin.</p>
-                                <a href="mailto:b.yerlikaya@outlook.com" class="btn btn-sm btn-outline-success mt-2">İletişim</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
+            <h3>GitHub Repository</h3>
+            <p>Kaynak kodunu görüntüleyin, sorunları bildirin ve katkıda bulunun</p>
+            <a href="https://github.com/byerlikaya/SmartRAG" class="btn btn-outline-primary btn-sm mt-3" target="_blank">
+                GitHub'da Görüntüle
+            </a>
+        </div>
     </div>
 </div>
+
+</div>
+

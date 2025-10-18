@@ -1,155 +1,105 @@
-// SmartRAG Documentation - Optimized JavaScript
+// SmartRAG Documentation - Interactive Features
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM loaded, initializing SmartRAG documentation...');
+    console.log('SmartRAG Documentation initialized');
     
-    // Initialize Prism.js syntax highlighting
+    // Initialize all features
+    initThemeToggle();
+    initLanguagePreference();
+    initBackToTop();
+    initSmoothScroll();
+    initCodeTabs();
+    initAnimations();
+    
+    // Initialize Prism.js if available
     if (typeof Prism !== 'undefined') {
-        console.log('Initializing Prism.js syntax highlighting...');
         Prism.highlightAll();
-    } else {
-        console.warn('Prism.js not loaded');
     }
-    
-    // Back to Top Button (unified implementation)
-    initializeBackToTopButton();
-    
-    // Smooth scrolling for anchor links (unified implementation)
-    initializeSmoothScrolling();
-    
-    // Fade-in animations (unified implementation)
-    initializeFadeAnimations();
-    
-    // Tab Functionality for Code Examples
-    const codeTabs = document.querySelectorAll('.code-tab');
-    codeTabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-            const target = this.getAttribute('data-tab');
-            const tabContainer = this.closest('.code-example');
-            
-            if (!tabContainer) {
-                console.warn('Tab container not found');
-                return;
-            }
-            
-            // Remove active class from all tabs and panels
-            tabContainer.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
-            tabContainer.querySelectorAll('.code-panel').forEach(p => p.classList.remove('active'));
-            
-            // Add active class to clicked tab and corresponding panel
-            this.classList.add('active');
-            const targetPanel = tabContainer.querySelector(`.code-panel[data-tab="${target}"]`);
-            if (targetPanel) {
-                targetPanel.classList.add('active');
-            } else {
-                console.warn(`Panel with data-tab="${target}" not found`);
-            }
-        });
-    });
-    
-    // Provider Tabs Functionality
-    const providerTabs = document.querySelectorAll('.provider-tab');
-    providerTabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-            const target = this.getAttribute('data-tab');
-            const tabContainer = this.closest('.provider-content');
-            
-            if (!tabContainer) {
-                console.warn('Provider tab container not found');
-                return;
-            }
-            
-            // Remove active class from all tabs and panels
-            tabContainer.querySelectorAll('.provider-tab').forEach(t => t.classList.remove('active'));
-            tabContainer.querySelectorAll('.provider-panel').forEach(p => p.classList.remove('active'));
-            
-            // Add active class to clicked tab and corresponding panel
-            this.classList.add('active');
-            const targetPanel = tabContainer.querySelector(`.provider-panel[data-tab="${target}"]`);
-            if (targetPanel) {
-                targetPanel.classList.add('active');
-            } else {
-                console.warn(`Provider panel with data-tab="${target}" not found`);
-            }
-        });
-    });
-    
-    // Storage Tabs Functionality
-    const storageTabs = document.querySelectorAll('.storage-tab');
-    storageTabs.forEach(tab => {
-        tab.addEventListener('click', function() {
-            const target = this.getAttribute('data-tab');
-            const tabContainer = this.closest('.storage-content');
-            
-            if (!tabContainer) {
-                console.warn('Storage tab container not found');
-                return;
-            }
-            
-            // Remove active class from all tabs and panels
-            tabContainer.querySelectorAll('.storage-tab').forEach(t => t.classList.remove('active'));
-            tabContainer.querySelectorAll('.storage-panel').forEach(p => p.classList.remove('active'));
-            
-            // Add active class to clicked tab and corresponding panel
-            this.classList.add('active');
-            const targetPanel = tabContainer.querySelector(`.storage-panel[data-tab="${target}"]`);
-            if (targetPanel) {
-                targetPanel.classList.add('active');
-            } else {
-                console.warn(`Storage panel with data-tab="${target}" not found`);
-            }
-        });
-    });
-    
-    // Language Dropdown Functionality
-    const languageDropdown = document.getElementById('languageDropdown');
-    if (languageDropdown) {
-        languageDropdown.addEventListener('click', function(e) {
-            e.preventDefault();
-            const dropdownMenu = this.querySelector('.dropdown-menu');
-            dropdownMenu.classList.toggle('show');
-        });
-        
-        // Close dropdown when clicking outside
-        document.addEventListener('click', function(e) {
-            if (!languageDropdown.contains(e.target)) {
-                const dropdownMenu = languageDropdown.querySelector('.dropdown-menu');
-                dropdownMenu.classList.remove('show');
-            }
-        });
-    }
-    
-    console.log('SmartRAG documentation initialized successfully');
 });
 
-// Unified Back to Top Button Implementation
-function initializeBackToTopButton() {
-    const backToTopBtn = document.querySelector('.back-to-top') || document.getElementById('backToTop');
-    if (backToTopBtn) {
-        window.addEventListener('scroll', function() {
-            if (window.pageYOffset > 300) {
-                backToTopBtn.classList.add('show');
-            } else {
-                backToTopBtn.classList.remove('show');
-            }
-        });
+// ===== THEME TOGGLE =====
+function initThemeToggle() {
+    const themeToggle = document.getElementById('themeToggle');
+    const htmlElement = document.documentElement;
+    const iconDark = document.querySelector('.theme-icon-dark');
+    const iconLight = document.querySelector('.theme-icon-light');
+    
+    if (!themeToggle) return;
+    
+    // Load saved theme or default to light
+    const savedTheme = localStorage.getItem('smartrag-theme') || 'light';
+    setTheme(savedTheme);
+    
+    // Theme toggle click handler
+    themeToggle.addEventListener('click', function() {
+        const currentTheme = htmlElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        setTheme(newTheme);
+    });
+    
+    function setTheme(theme) {
+        htmlElement.setAttribute('data-theme', theme);
+        localStorage.setItem('smartrag-theme', theme);
         
-        backToTopBtn.addEventListener('click', function() {
-            window.scrollTo({
-                top: 0,
-                behavior: 'smooth'
-            });
-        });
+        // Update toggle button icons
+        if (theme === 'dark') {
+            if (iconDark) iconDark.style.display = 'none';
+            if (iconLight) iconLight.style.display = 'inline-block';
+        } else {
+            if (iconDark) iconDark.style.display = 'inline-block';
+            if (iconLight) iconLight.style.display = 'none';
+        }
     }
 }
 
-// Unified Smooth Scrolling Implementation
-function initializeSmoothScrolling() {
+// ===== LANGUAGE PREFERENCE =====
+function initLanguagePreference() {
+    const languageButtons = document.querySelectorAll('.language-btn');
+    
+    languageButtons.forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            const lang = this.getAttribute('data-lang');
+            if (lang) {
+                localStorage.setItem('smartrag-language', lang);
+            }
+        });
+    });
+}
+
+// ===== BACK TO TOP BUTTON =====
+function initBackToTop() {
+    const backToTop = document.querySelector('.back-to-top');
+    if (!backToTop) return;
+    
+    // Show/hide on scroll
+    window.addEventListener('scroll', function() {
+        if (window.pageYOffset > 300) {
+            backToTop.classList.add('show');
+        } else {
+            backToTop.classList.remove('show');
+        }
+    });
+    
+    // Scroll to top on click
+    backToTop.addEventListener('click', function(e) {
+        e.preventDefault();
+        window.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+        });
+    });
+}
+
+// ===== SMOOTH SCROLL =====
+function initSmoothScroll() {
     document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function(e) {
-            e.preventDefault();
-            const target = document.querySelector(this.getAttribute('href'));
+        anchor.addEventListener('click', function (e) {
+            const targetId = this.getAttribute('href');
+            if (targetId === '#') return;
+            
+            const target = document.querySelector(targetId);
             if (target) {
+                e.preventDefault();
                 target.scrollIntoView({
                     behavior: 'smooth',
                     block: 'start'
@@ -159,8 +109,37 @@ function initializeSmoothScrolling() {
     });
 }
 
-// Unified Fade-in Animations Implementation
-function initializeFadeAnimations() {
+// ===== CODE TABS =====
+function initCodeTabs() {
+    const codeTabs = document.querySelectorAll('.code-tab');
+    
+    codeTabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            const targetTab = this.getAttribute('data-tab');
+            const container = this.closest('.code-tabs').parentElement;
+            
+            // Remove active class from all tabs and panels in this container
+            container.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
+            container.querySelectorAll('.code-panel').forEach(p => p.classList.remove('active'));
+            
+            // Add active class to clicked tab and corresponding panel
+            this.classList.add('active');
+            const targetPanel = container.querySelector(`.code-panel[data-tab="${targetTab}"]`);
+            if (targetPanel) {
+                targetPanel.classList.add('active');
+                
+                // Re-highlight code in the newly visible panel
+                if (typeof Prism !== 'undefined') {
+                    Prism.highlightAllUnder(targetPanel);
+                }
+            }
+        });
+    });
+}
+
+// ===== ANIMATIONS =====
+function initAnimations() {
+    // Intersection Observer for fade-in animations
     const observerOptions = {
         threshold: 0.1,
         rootMargin: '0px 0px -50px 0px'
@@ -169,17 +148,99 @@ function initializeFadeAnimations() {
     const observer = new IntersectionObserver(function(entries) {
         entries.forEach(entry => {
             if (entry.isIntersecting) {
-                entry.target.style.opacity = '1';
-                entry.target.style.transform = 'translateY(0)';
+                entry.target.classList.add('fade-in-up');
+                observer.unobserve(entry.target);
             }
         });
     }, observerOptions);
     
-    // Observe content elements
-    document.querySelectorAll('.content-wrapper, .card, .alert, .feature-card, .doc-card').forEach(el => {
-        el.style.opacity = '0';
-        el.style.transform = 'translateY(20px)';
-        el.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+    // Observe elements
+    const elementsToAnimate = document.querySelectorAll('.feature-card, .provider-card, .stat-card, .alert, details');
+    elementsToAnimate.forEach(el => {
         observer.observe(el);
     });
 }
+
+// ===== COPY CODE BUTTON =====
+function addCopyButtons() {
+    const codeBlocks = document.querySelectorAll('pre code');
+    
+    codeBlocks.forEach((codeBlock) => {
+        const pre = codeBlock.parentElement;
+        const button = document.createElement('button');
+        button.className = 'copy-code-btn';
+        button.innerHTML = '<i class="fas fa-copy"></i>';
+        button.title = 'Copy code';
+        
+        button.addEventListener('click', async function() {
+            const code = codeBlock.textContent;
+            try {
+                await navigator.clipboard.writeText(code);
+                button.innerHTML = '<i class="fas fa-check"></i>';
+                button.style.color = '#10b981';
+                
+                setTimeout(() => {
+                    button.innerHTML = '<i class="fas fa-copy"></i>';
+                    button.style.color = '';
+                }, 2000);
+            } catch (err) {
+                console.error('Failed to copy:', err);
+            }
+        });
+        
+        pre.style.position = 'relative';
+        pre.appendChild(button);
+    });
+}
+
+// Add copy buttons after page load
+setTimeout(addCopyButtons, 500);
+
+// ===== SEARCH FUNCTIONALITY (Optional for future) =====
+function initSearch() {
+    const searchInput = document.getElementById('searchInput');
+    if (!searchInput) return;
+    
+    searchInput.addEventListener('input', function(e) {
+        const query = e.target.value.toLowerCase();
+        // Future: Implement client-side search
+        console.log('Search query:', query);
+    });
+}
+
+// ===== MOBILE MENU CLOSE ON CLICK =====
+document.querySelectorAll('.navbar-nav .nav-link').forEach(link => {
+    link.addEventListener('click', function() {
+        const navbarCollapse = document.querySelector('.navbar-collapse');
+        const bsCollapse = bootstrap.Collapse.getInstance(navbarCollapse);
+        if (bsCollapse && window.innerWidth < 992) {
+            bsCollapse.hide();
+        }
+    });
+});
+
+// ===== NAVBAR SCROLL EFFECT =====
+let lastScroll = 0;
+window.addEventListener('scroll', function() {
+    const navbar = document.querySelector('.navbar');
+    const currentScroll = window.pageYOffset;
+    
+    if (currentScroll > 100) {
+        navbar.style.boxShadow = 'var(--shadow-md)';
+    } else {
+        navbar.style.boxShadow = 'var(--shadow-sm)';
+    }
+    
+    lastScroll = currentScroll;
+});
+
+// ===== EXTERNAL LINKS IN NEW TAB =====
+document.querySelectorAll('a[href^="http"]').forEach(link => {
+    if (!link.hostname.includes('byerlikaya.github.io')) {
+        link.setAttribute('target', '_blank');
+        link.setAttribute('rel', 'noopener noreferrer');
+    }
+});
+
+console.log('SmartRAG Documentation ready!');
+

@@ -1,235 +1,354 @@
 ---
 layout: default
 title: Getting Started
-description: Install and configure SmartRAG in your .NET application in just a few minutes
+description: Install and configure SmartRAG in your .NET application in minutes
 lang: en
 ---
 
-<div class="page-content">
-    <div class="container">
-        <!-- Installation Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>Installation</h2>
-                    <p>SmartRAG is available as a NuGet package and supports .NET Standard 2.0/2.1, making it compatible with .NET Framework 4.6.1+, .NET Core 2.0+, and .NET 5+ applications. Choose your preferred installation method:</p>
-                    
-                    <div class="code-example">
-                        <div class="code-tabs">
-                            <button class="code-tab active" data-tab="cli">.NET CLI</button>
-                            <button class="code-tab" data-tab="pm">Package Manager</button>
-                            <button class="code-tab" data-tab="xml">Package Reference</button>
-                        </div>
-                        
-                        <div class="code-panel active" data-tab="cli">
-                            <pre><code class="language-bash">dotnet add package SmartRAG</code></pre>
-                        </div>
-                        <div class="code-panel" data-tab="pm">
-                            <pre><code class="language-bash">Install-Package SmartRAG</code></pre>
-                        </div>
-                        <div class="code-panel" data-tab="xml">
-                            <pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="2.3.0" /&gt;</code></pre>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
+<div class="container">
 
-        <!-- Configuration Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>Configuration</h2>
-                    <p>Configure SmartRAG in your <code>Program.cs</code> or <code>Startup.cs</code>:</p>
-                    
-                    <div class="code-example">
-                        <pre><code class="language-csharp">// Program.cs
-using SmartRAG;
+## Installation
+
+SmartRAG is available as a NuGet package and supports **.NET Standard 2.0/2.1**, making it compatible with:
+- ✅ .NET Framework 4.6.1+
+- ✅ .NET Core 2.0+
+- ✅ .NET 5, 6, 7, 8, 9+
+
+### Installation Methods
+
+<div class="code-tabs">
+    <button class="code-tab active" data-tab="cli">.NET CLI</button>
+    <button class="code-tab" data-tab="pm">Package Manager</button>
+    <button class="code-tab" data-tab="xml">Package Reference</button>
+</div>
+
+<div class="code-panel active" data-tab="cli">
+
+```bash
+dotnet add package SmartRAG
+```
+
+</div>
+
+<div class="code-panel" data-tab="pm">
+
+```bash
+Install-Package SmartRAG
+```
+
+</div>
+
+<div class="code-panel" data-tab="xml">
+
+```xml
+<PackageReference Include="SmartRAG" Version="3.0.0" />
+```
+
+</div>
+
+---
+
+## Basic Configuration
+
+Configure SmartRAG in your `Program.cs` or `Startup.cs`:
+
+### Quick Setup (Recommended)
+
+```csharp
+using SmartRAG.Extensions;
+using SmartRAG.Enums;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add SmartRAG services
-builder.Services.AddSmartRAG(options =>
+// Simple one-line configuration
+builder.Services.UseSmartRag(builder.Configuration,
+    storageProvider: StorageProvider.InMemory,  // Start with in-memory
+    aiProvider: AIProvider.Gemini               // Choose your AI provider
+);
+
+var app = builder.Build();
+app.Run();
+```
+
+### Advanced Setup
+
+```csharp
+using SmartRAG.Extensions;
+using SmartRAG.Enums;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Advanced configuration with options
+builder.Services.AddSmartRag(builder.Configuration, options =>
 {
-    options.AIProvider = AIProvider.Anthropic;
+    // AI Provider
+    options.AIProvider = AIProvider.OpenAI;
+    
+    // Storage Provider
     options.StorageProvider = StorageProvider.Qdrant;
-    options.ApiKey = "your-api-key";
+    
+    // Chunking Configuration
+    options.MaxChunkSize = 1000;
+    options.MinChunkSize = 100;
+    options.ChunkOverlap = 200;
+    
+    // Retry Configuration
+    options.MaxRetryAttempts = 3;
+    options.RetryDelayMs = 1000;
+    options.RetryPolicy = RetryPolicy.ExponentialBackoff;
+    
+    // Fallback Providers
+    options.EnableFallbackProviders = true;
+    options.FallbackProviders = new List<AIProvider> 
+    { 
+        AIProvider.Anthropic, 
+        AIProvider.Gemini 
+    };
 });
 
-var app = builder.Build();</code></pre>
-                    </div>
-                </div>
-            </div>
-        </section>
+var app = builder.Build();
+app.Run();
+```
 
-        <!-- Quick Example Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>Quick Example</h2>
-                    <!-- Updated for v2.3.0 -->
-                    <p>Here's a simple example using the actual SmartRAG implementation with conversation history:</p>
-                    
-                    <div class="code-example">
-                        <pre><code class="language-csharp">// Inject the document search service
-public class SearchController : ControllerBase
+---
+
+## Configuration File
+
+Create `appsettings.json` or `appsettings.Development.json`:
+
+```json
 {
-    private readonly IDocumentSearchService _documentSearchService;
+  "AI": {
+    "OpenAI": {
+      "ApiKey": "sk-proj-YOUR_API_KEY",
+      "Model": "gpt-4",
+      "EmbeddingModel": "text-embedding-ada-002"
+    },
+    "Anthropic": {
+      "ApiKey": "sk-ant-YOUR_API_KEY",
+      "Model": "claude-3-5-sonnet-20241022",
+      "EmbeddingApiKey": "pa-YOUR_VOYAGE_KEY",
+      "EmbeddingModel": "voyage-large-2"
+    },
+    "Gemini": {
+      "ApiKey": "YOUR_GEMINI_KEY",
+      "Model": "gemini-pro",
+      "EmbeddingModel": "embedding-001"
+    }
+  },
+  "Storage": {
+    "InMemory": {
+      "MaxDocuments": 1000
+    },
+    "Qdrant": {
+      "Host": "localhost:6334",
+      "UseHttps": false,
+      "CollectionName": "smartrag_documents",
+      "VectorSize": 1536
+    },
+    "Redis": {
+      "ConnectionString": "localhost:6379",
+      "Database": 0,
+      "KeyPrefix": "smartrag:"
+    }
+  }
+}
+```
+
+<div class="alert alert-warning">
+    <h4><i class="fas fa-exclamation-triangle me-2"></i> Security Warning</h4>
+    <p class="mb-0">
+        <strong>Never commit API keys to source control!</strong> 
+        Use <code>appsettings.Development.json</code> for local development (add to .gitignore).
+        Use environment variables or Azure Key Vault for production.
+    </p>
+</div>
+
+---
+
+## Quick Usage Example
+
+### 1. Upload Documents
+
+```csharp
+public class DocumentController : ControllerBase
+{
+    private readonly IDocumentService _documentService;
     
-    public SearchController(IDocumentSearchService documentSearchService)
+    public DocumentController(IDocumentService documentService)
     {
-        _documentSearchService = documentSearchService;
+        _documentService = documentService;
     }
     
-    [HttpPost("search")]
-    public async Task<ActionResult<object>> Search([FromBody] SearchRequest request)
+    [HttpPost("upload")]
+    public async Task<IActionResult> Upload(IFormFile file)
     {
-        string query = request?.Query ?? string.Empty;
-        int maxResults = request?.MaxResults ?? 5;
+        var document = await _documentService.UploadDocumentAsync(
+            file.OpenReadStream(),
+            file.FileName,
+            file.ContentType,
+            "user-123"
+        );
+        
+        return Ok(new 
+        { 
+            id = document.Id,
+            fileName = document.FileName,
+            chunks = document.Chunks.Count,
+            message = "Document processed successfully"
+        });
+    }
+}
+```
 
-        if (string.IsNullOrWhiteSpace(query))
-            return BadRequest("Query cannot be empty");
+### 2. Ask Questions with AI
 
-        try
-        {
-            var response = await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
-            return Ok(response);
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, $"Internal server error: {ex.Message}");
-        }
+```csharp
+public class IntelligenceController : ControllerBase
+{
+    private readonly IDocumentSearchService _searchService;
+    
+    public IntelligenceController(IDocumentSearchService searchService)
+    {
+        _searchService = searchService;
+    }
+    
+    [HttpPost("ask")]
+    public async Task<IActionResult> Ask([FromBody] QuestionRequest request)
+    {
+        var response = await _searchService.QueryIntelligenceAsync(
+            request.Question,
+            maxResults: 5
+        );
+        
+        return Ok(response);
     }
 }
 
-public class SearchRequest
+public class QuestionRequest
 {
-    [Required]
-    public string Query { get; set; } = string.Empty;
+    public string Question { get; set; } = string.Empty;
+}
+```
 
-    [Range(1, 50)]
-    [DefaultValue(5)]
-    public int MaxResults { get; set; } = 5;
-}</code></pre>
-                    </div>
-                </div>
-            </div>
-        </section>
+### 3. Response Example
 
-        <!-- Conversation History Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>💬 Conversation History</h2>
-                    <p>SmartRAG automatically manages conversation history using intelligent session management. Each conversation maintains context across multiple questions and answers without requiring manual session handling.</p>
-                    
-                    <h3>How It Works</h3>
-                    <ul>
-                        <li><strong>Automatic Session Management</strong>: Session IDs are generated and managed automatically</li>
-                        <li><strong>Automatic Context</strong>: Previous questions and answers are automatically included in context</li>
-                        <li><strong>Intelligent Truncation</strong>: Conversation history is intelligently truncated to maintain optimal performance</li>
-                        <li><strong>Storage Integration</strong>: Conversation data is stored using your configured storage provider</li>
-                    </ul>
-
-                    <h3>Usage Example</h3>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">// First question
-var firstRequest = new SearchRequest
+```json
 {
-    Query = "What is machine learning?",
-    MaxResults = 5
-};
+  "query": "What are the main benefits?",
+  "answer": "Based on the contract document, the main benefits include: 1) 24/7 customer support, 2) 30-day money-back guarantee, 3) Free updates for lifetime...",
+  "sources": [
+    {
+      "documentId": "abc-123",
+      "fileName": "contract.pdf",
+      "chunkContent": "Our service includes 24/7 customer support...",
+      "relevanceScore": 0.94
+    }
+  ],
+  "searchedAt": "2025-10-18T14:30:00Z"
+}
+```
 
-// Follow-up question (remembers previous context automatically)
-var followUpRequest = new SearchRequest
-{
-    Query = "Can you explain supervised learning in more detail?",
-    MaxResults = 5
-};
+---
 
-// Another follow-up
-var anotherRequest = new SearchRequest
-{
-    Query = "What are the advantages of deep learning?",
-    MaxResults = 5
-};</code></pre>
-                    </div>
+## Conversation History
 
-                    <div class="alert alert-success">
-                        <h4><i class="fas fa-lightbulb me-2"></i>Pro Tip</h4>
-                        <p class="mb-0">SmartRAG automatically manages session IDs and conversation context. No need to manually handle session management!</p>
-                    </div>
-                </div>
+SmartRAG automatically manages conversation history:
+
+```csharp
+// First question
+var q1 = await _searchService.QueryIntelligenceAsync("What is machine learning?");
+
+// Follow-up question - AI remembers previous context
+var q2 = await _searchService.QueryIntelligenceAsync("Can you explain supervised learning?");
+
+// Start new conversation
+var newConv = await _searchService.QueryIntelligenceAsync(
+    "New topic", 
+    startNewConversation: true
+);
+```
+
+<div class="alert alert-success">
+    <h4><i class="fas fa-lightbulb me-2"></i> Pro Tip</h4>
+    <p class="mb-0">
+        SmartRAG automatically manages session IDs and conversation context. 
+        No manual session handling required!
+    </p>
+</div>
+
+---
+
+## Next Steps
+
+<div class="row g-4 mt-4">
+    <div class="col-md-6">
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i class="fas fa-cog"></i>
             </div>
-        </section>
-
-        <!-- Next Steps Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>Next Steps</h2>
-                    <p>Now that you have SmartRAG installed and configured, explore these features:</p>
-                    
-                    <div class="row g-4">
-                        <div class="col-md-6">
-                            <div class="feature-card">
-                                <div class="feature-icon">
-                                    <i class="fas fa-cog"></i>
-                                </div>
-                                <h3>Configuration</h3>
-                                <p>Learn about advanced configuration options and best practices.</p>
-                                <a href="{{ site.baseurl }}/en/configuration" class="btn btn-outline-primary btn-sm">Configure</a>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="feature-card">
-                                <div class="feature-icon">
-                                    <i class="fas fa-code"></i>
-                                </div>
-                                <h3>API Reference</h3>
-                                <p>Explore the complete API documentation with examples.</p>
-                                <a href="{{ site.baseurl }}/en/api-reference" class="btn btn-outline-primary btn-sm">View API</a>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="feature-card">
-                                <div class="feature-icon">
-                                    <i class="fas fa-comments"></i>
-                                </div>
-                                <h3>Examples</h3>
-                                <p>See practical examples including conversation history usage.</p>
-                                <a href="{{ site.baseurl }}/en/examples" class="btn btn-outline-primary btn-sm">View Examples</a>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="feature-card">
-                                <div class="feature-icon">
-                                    <i class="fas fa-rocket"></i>
-                                </div>
-                                <h3>Features</h3>
-                                <p>Discover all SmartRAG features including conversation management.</p>
-                                <a href="{{ site.baseurl }}/en/features" class="btn btn-outline-primary btn-sm">Explore Features</a>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <h3>Configuration</h3>
+            <p>Explore all configuration options, AI providers, storage backends, and advanced settings.</p>
+            <a href="{{ site.baseurl }}/en/configuration" class="btn btn-outline-primary btn-sm mt-3">
+                Configure SmartRAG <i class="fas fa-arrow-right ms-2"></i>
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i class="fas fa-code"></i>
             </div>
-        </section>
-
-        <!-- Help Section -->
-        <section class="content-section help-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <div class="alert alert-info">
-                        <h4><i class="fas fa-question-circle me-2"></i>Need Help?</h4>
-                        <p class="mb-0">If you encounter any issues or need assistance:</p>
-                        <ul class="mb-0 mt-2">
-                            <li><a href="https://github.com/byerlikaya/SmartRAG/issues" target="_blank">Open an issue on GitHub</a></li>
-                            <li><a href="mailto:b.yerlikaya@outlook.com">Contact support via email</a></li>
-                        </ul>
-                    </div>
-                </div>
+            <h3>API Reference</h3>
+            <p>Complete API documentation with all interfaces, methods, parameters, and examples.</p>
+            <a href="{{ site.baseurl }}/en/api-reference" class="btn btn-outline-primary btn-sm mt-3">
+                View API Docs <i class="fas fa-arrow-right ms-2"></i>
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i class="fas fa-lightbulb"></i>
             </div>
-        </section>
+            <h3>Examples</h3>
+            <p>Real-world examples including multi-database queries, OCR processing, and audio transcription.</p>
+            <a href="{{ site.baseurl }}/en/examples" class="btn btn-outline-primary btn-sm mt-3">
+                See Examples <i class="fas fa-arrow-right ms-2"></i>
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i class="fas fa-history"></i>
+            </div>
+            <h3>Changelog</h3>
+            <p>Track new features, improvements, and breaking changes across all versions.</p>
+            <a href="{{ site.baseurl }}/en/changelog" class="btn btn-outline-primary btn-sm mt-3">
+                View Changelog <i class="fas fa-arrow-right ms-2"></i>
+            </a>
+        </div>
     </div>
 </div>
+
+---
+
+## Need Help?
+
+<div class="alert alert-info mt-5">
+    <h4><i class="fas fa-question-circle me-2"></i> Support & Community</h4>
+    <p>If you encounter issues or need assistance:</p>
+    <ul class="mb-0">
+        <li><strong>GitHub Issues:</strong> <a href="https://github.com/byerlikaya/SmartRAG/issues" target="_blank">Report bugs or request features</a></li>
+        <li><strong>Email Support:</strong> <a href="mailto:b.yerlikaya@outlook.com">b.yerlikaya@outlook.com</a></li>
+        <li><strong>LinkedIn:</strong> <a href="https://www.linkedin.com/in/barisyerlikaya/" target="_blank">Connect for professional inquiries</a></li>
+        <li><strong>Documentation:</strong> Explore full documentation on this site</li>
+    </ul>
+</div>
+
+</div>
+
