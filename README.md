@@ -452,37 +452,6 @@ Here are 10 powerful real-world scenarios demonstrating SmartRAG's unique multi-
 
 ---
 
-## ✨ Key Highlights
-
-### 🧠 **Core Intelligence Services**
-- **`IDocumentSearchService`**: Intelligent query processing with RAG pipeline and conversation management
-- **`ISemanticSearchService`**: Advanced semantic search with hybrid scoring (80% semantic + 20% keyword)
-- **`IAIService`**: Universal AI provider integration with OpenAI, Anthropic, Gemini, Azure, and Custom providers
-
-### 📄 **Document Processing Services**
-- **`IDocumentParserService`**: Multi-format document parsing (PDF, Word, Excel, Text, Images with OCR, Audio with Speech-to-Text)
-- **`IDocumentService`**: Document management with smart chunking and word boundary validation
-- **`IImageParserService`**: Enterprise-grade OCR with Tesseract 5.2.0 + SkiaSharp integration
-- **`IAudioParserService`**: Google Speech-to-Text integration for audio transcription and analysis
-
-### 🗄️ **Data Integration Services**
-- **`IDatabaseParserService`**: Universal database support (SQLite, SQL Server, MySQL, PostgreSQL) with live connections
-- **`IStorageProvider`**: Enterprise storage options (Vector databases, Redis, SQL, FileSystem)
-- **`IDocumentRepository`**: Intelligent document storage with metadata extraction and search optimization
-
-### 🤖 **AI & Analytics Services**
-- **`IAIProvider`**: Pluggable AI provider architecture with automatic failover
-- **`IAIProviderFactory`**: Dynamic provider switching and configuration management
-- **`IStorageFactory`**: Storage provider factory with environment-based configuration
-
-### ⚡ **Enterprise Features**
-- **🎯 Smart Query Intent Detection**: Automatically routes queries between general conversation and document search
-- **💬 Conversation Intelligence**: Automatic session-based conversation management with context awareness
-- **🌍 Language-Agnostic**: Works with any language without hardcoded patterns or keywords
-- **🔌 Dependency Injection**: Single-line integration with full DI container support
-- **✅ Zero Warnings Policy**: SOLID principles, comprehensive logging, XML documentation
-- **🔧 Cross-Platform**: .NET Standard 2.0/2.1 support for maximum compatibility
-
 ## 🎯 What Makes SmartRAG Special
 
 ### 🚀 **Complete RAG Workflow**
@@ -492,7 +461,7 @@ Here are 10 powerful real-world scenarios demonstrating SmartRAG's unique multi-
 🙋‍♂️ User Question → 🎯 Intent Detection → 🔍 Find Relevant Chunks → 🧠 QueryIntelligenceAsync → ✨ Smart Response
 ```
 
-### 🏆 **Production Features**
+### 🏆 **Key Features**
 - **Advanced OCR Capabilities**: Enterprise-grade image processing with Tesseract 5.2.0 + SkiaSharp integration
 - **Smart Chunking**: Maintains context continuity between document segments with word boundary validation
 - **Intelligent Query Routing**: Automatically routes general conversation to AI chat, document queries to QueryIntelligenceAsync
@@ -503,12 +472,20 @@ Here are 10 powerful real-world scenarios demonstrating SmartRAG's unique multi-
 - **Universal Document Intelligence**: Advanced parsing for PDF, Word, Excel, text formats, AND images with OCR
 - **Configuration-First**: Environment-based configuration with sensible defaults
 - **Dependency Injection**: Full DI container integration
-- **Enhanced Semantic Search**: Advanced hybrid scoring combining semantic similarity and keyword relevance
+- **Enhanced Semantic Search**: Advanced hybrid scoring combining semantic similarity and keyword relevance (80% semantic + 20% keyword)
 - **VoyageAI Integration**: High-quality embeddings for Anthropic Claude models
 - **Cross-Platform Compatibility**: .NET Standard 2.0/2.1 support for maximum compatibility
-- **Enterprise Architecture**: Zero Warnings Policy, SOLID/DRY principles, comprehensive XML documentation
 - **Production Ready**: Thread-safe operations, centralized logging, proper error handling
-- **Documentation**: Professional documentation site with GitHub Pages integration
+- **Professional Documentation**: Comprehensive documentation site with GitHub Pages integration
+
+### 🧠 **Core Services**
+- **`IDocumentSearchService`**: Intelligent query processing with RAG pipeline and conversation management
+- **`ISemanticSearchService`**: Advanced semantic search with hybrid scoring
+- **`IAIService`**: Universal AI provider integration (OpenAI, Anthropic, Gemini, Azure, Custom)
+- **`IDocumentParserService`**: Multi-format document parsing (PDF, Word, Excel, Images with OCR, Audio with Speech-to-Text)
+- **`IDatabaseParserService`**: Universal database support (SQLite, SQL Server, MySQL, PostgreSQL) with live connections
+- **`IStorageProvider`**: Enterprise storage options (Vector databases, Redis, SQL, FileSystem)
+- **`IAIProvider`**: Pluggable AI provider architecture with automatic failover
 
 ### 🎯 **Practical OCR Use Cases**
 - **📄 Scanned Documents**: Upload scanned contracts, reports, forms and get instant intelligent answers
@@ -821,7 +798,6 @@ cp examples/WebAPI/appsettings.json examples/WebAPI/appsettings.Development.json
 }
 ```
 
-📖 **[Complete Configuration Guide](docs/configuration.md) | [🔧 Troubleshooting Guide](docs/troubleshooting.md)**
 
 ### 🔑 **Important Note for Anthropic Users**
 **Anthropic Claude models require a separate VoyageAI API key for embeddings:**
@@ -1291,54 +1267,52 @@ var chatResult = await _documentSearchService.QueryIntelligenceAsync(
 ```
 
 
-## 📊 Performance & Scaling
+## 🧪 Testing & Examples
 
-### **Benchmarks**
-- **Document Upload**: ~500ms for 100KB file, ~1-2s for 1MB file
-- **Semantic Search**: ~200ms for simple queries, ~500ms for complex queries
-- **AI Response**: ~2-5s for 5 sources, ~3-8s for 10 sources
-- **Memory Usage**: ~50MB base + documents, ~100MB with Redis cache
-- **Enhanced Chunking**: ~300ms for 10KB document with smart boundary detection
-- **Hybrid Scoring**: ~150ms for semantic + keyword relevance calculation
+SmartRAG provides comprehensive example applications for testing and learning:
 
-### **Scaling Tips**
-- Use **Redis** or **Qdrant** for production workloads
-- Enable **connection pooling** for database connections
-- Implement **caching** for frequently accessed documents
-- Use **background services** for bulk document processing
-- Optimize **chunk sizes** based on your content type
-- Use **semantic search threshold** to filter low-relevance results
-
-## 🧪 Testing
-
-SmartRAG includes comprehensive testing with xUnit and follows best practices:
-
-### **Test Project Structure**
+### **Example Applications**
 ```
-tests/
-└── SmartRAG.Tests/
-    ├── FileUploadTests.cs          # File upload functionality tests
-    ├── GlobalUsings.cs             # Centralized using directives
-    └── SmartRAG.Tests.csproj      # Test project configuration
+examples/
+├── SmartRAG.API/              # Full-featured REST API with Swagger
+├── SmartRAG.Console/          # Console application for testing
+└── SmartRAG.DatabaseTests/    # Multi-database RAG testing with Docker support
 ```
 
-### **Test Features**
-- ✅ **xUnit Framework**: Modern, extensible testing framework
-- ✅ **GlobalUsings**: Clean, maintainable test code
-- ✅ **File Upload Tests**: Comprehensive document upload testing
-- ✅ **Mock Support**: Moq integration for dependency mocking
-- ✅ **Async Testing**: Full async/await support
+### **SmartRAG.API** - REST API Example
+- ✅ Complete REST API implementation with all SmartRAG features
+- ✅ Swagger/OpenAPI documentation
+- ✅ Document upload, search, and intelligence endpoints
+- ✅ Database connection and multi-database query endpoints
+- ✅ Real-time testing with interactive Swagger UI
 
-### **Running Tests**
+### **SmartRAG.Console** - Console Application
+- ✅ Simple console-based testing
+- ✅ Document processing examples
+- ✅ AI provider integration demos
+- ✅ Quick prototyping and experimentation
+
+### **SmartRAG.DatabaseTests** - Multi-Database Testing
+- ✅ Multi-database query coordination testing
+- ✅ Docker Compose setup for SQL Server, MySQL, PostgreSQL
+- ✅ Test database creators for all supported databases
+- ✅ Real-world multi-database scenarios
+- ✅ Language selection for test queries
+
+### **Running Examples**
 ```bash
-# Run all tests
-dotnet test
+# Run REST API with Swagger
+cd examples/SmartRAG.API
+dotnet run
+# Browse to https://localhost:7001/swagger
 
-# Run specific test project
-dotnet test tests/SmartRAG.Tests/
+# Run Console application
+cd examples/SmartRAG.Console
+dotnet run
 
-# Run tests with coverage
-dotnet test --collect:"XPlat Code Coverage"
+# Run Database Tests
+cd examples/SmartRAG.DatabaseTests
+dotnet run
 ```
 
 ## 🛠️ Development
@@ -1349,28 +1323,22 @@ git clone https://github.com/byerlikaya/SmartRAG.git
 cd SmartRAG
 dotnet restore
 dotnet build
-dotnet test
 ```
 
-### **Running Tests**
+### **Running Example Applications**
 ```bash
-# Run all tests
-dotnet test
+# Run the REST API example
+cd examples/SmartRAG.API
+dotnet run
 
-# Run specific test project
-dotnet test tests/SmartRAG.Tests/
+# Run the Console example
+cd examples/SmartRAG.Console
+dotnet run
 
-# Run tests with coverage
-dotnet test --collect:"XPlat Code Coverage"
-```
-
-### **Running the Sample API**
-```bash
-cd examples/WebAPI
+# Run Database Tests
+cd examples/SmartRAG.DatabaseTests
 dotnet run
 ```
-
-Browse to `https://localhost:5001/swagger` for interactive API documentation.
 
 ## 🤝 Contributing
 
@@ -1397,15 +1365,6 @@ We welcome contributions!
 
 **📋 [View Full Changelog](CHANGELOG.md)** for detailed release notes and migration guide.
 
-### **Recent Releases:**
-- **v2.3.1** (2025-10-08) - Bug fixes, Logging stability improvements
-- **v2.3.0** (2025-09-16) - Google Speech-to-Text integration, Audio processing
-- **v2.2.0** (2025-09-15) - Enhanced OCR documentation
-- **v2.1.0** (2025-09-05) - Automatic session management, Persistent conversation history
-- **v2.0.0** (2025-08-27) - .NET Standard 2.0/2.1 migration (BREAKING CHANGE)
-- **v1.1.0** (2025-08-22) - Excel support, EPPlus integration
-
-**📋 [Full Version History](CHANGELOG.md)**
 
 ## 📚 Resources
 
