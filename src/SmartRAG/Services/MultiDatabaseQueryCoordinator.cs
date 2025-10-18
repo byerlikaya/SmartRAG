@@ -247,216 +247,101 @@ namespace SmartRAG.Services
                     
                     dbQuery.GeneratedQuery = extractedSql;
                     
-                    // CRITICAL: Validate SQL doesn't use tables that don't exist in this database
-                    var availableTableNames = schema.Tables.Select(t => t.TableName).ToList();
-                    var sqlUpper = dbQuery.GeneratedQuery.ToUpperInvariant();
+                    // CRITICAL: Multi-Retry validation with progressive strategies
+                    const int maxRetries = 3;
+                    bool validationPassed = false;
+                    List<string> allErrors = new List<string>();
                     
-                    // Check for invalid patterns
-                    bool hasInvalidJoin = false;
-                    var validationErrors = new List<string>();
-                    
-                    // 1. Check for cross-database JOIN patterns (DatabaseName.TableName)
-                    if (sqlUpper.Contains("JOIN") && sqlUpper.Contains("."))
+                    for (int retryAttempt = 0; retryAttempt <= maxRetries; retryAttempt++)
                     {
-                        // Check for pattern: JOIN DatabaseName.TableName or Database.Table
-                        foreach (var otherSchema in await _schemaAnalyzer.GetAllSchemasAsync())
+                        var currentErrors = new List<string>();
+                        
+                        // Validate #1: SQL columns exist in schema (generic validation)
+                        if (!ValidateSQLColumnExistence(dbQuery.GeneratedQuery, schema, dbQuery.RequiredTables, out var columnErrors))
                         {
-                            if (otherSchema.DatabaseId != schema.DatabaseId)
-                            {
-                                var crossDbPattern = $"{otherSchema.DatabaseName.ToUpperInvariant()}.";
-                                if (sqlUpper.Contains(crossDbPattern))
-                                {
-                                    validationErrors.Add($"Cross-database reference detected: {otherSchema.DatabaseName}.TableName");
-                                    hasInvalidJoin = true;
-                                    break;
-                                }
-                            }
+                            currentErrors.AddRange(columnErrors);
                         }
-                    }
-                    
-                    // 2. Parse SQL to find all table names
-                    // Include backticks (MySQL), brackets (SQL Server), and quotes as split characters
-                    var words = sqlUpper.Split(new[] { ' ', '\n', '\r', '\t', ',', '(', ')', ';', '`', '[', ']', '"', '\'' }, StringSplitOptions.RemoveEmptyEntries);
-                    
-                    // Common SQL keywords and noise words to skip
-                    var sqlKeywords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
-                    {
-                        "SELECT", "FROM", "WHERE", "JOIN", "LEFT", "RIGHT", "INNER", "OUTER", "CROSS",
-                        "ON", "AND", "OR", "NOT", "IN", "EXISTS", "AS", "ORDER", "GROUP", "HAVING",
-                        "LIMIT", "TOP", "OFFSET", "UNION", "EXCEPT", "INTERSECT", "DISTINCT", "ALL",
-                        "THE", "THIS", "THAT", "THESE", "THOSE", "WITH", "WITHOUT", "BETWEEN",
-                        "LIKE", "IS", "NULL", "TRUE", "FALSE", "CASE", "WHEN", "THEN", "ELSE", "END"
-                    };
-                    
-                    for (int i = 0; i < words.Length; i++)
-                    {
-                        // Check words after FROM or JOIN
-                        if ((words[i] == "FROM" || words[i] == "JOIN") && i + 1 < words.Length)
+                        
+                        // Validate #2: SQL tables exist in schema (generic validation)
+                        var tableErrors = await ValidateSQLTableExistenceAsync(dbQuery.GeneratedQuery, schema, dbQuery.DatabaseName);
+                        if (tableErrors.Any())
                         {
-                            // Remove SQL identifier wrappers: backticks (MySQL), brackets (SQL Server), quotes
-                            var potentialTableName = words[i + 1]
-                                .TrimEnd(';', ',', ')', '(', '`', '[', ']', '"', '\'')
-                                .TrimStart('`', '[', ']', '"', '\'');
-                            
-                            // Skip SQL keywords and noise words
-                            if (potentialTableName.Length < 2 || sqlKeywords.Contains(potentialTableName))
+                            currentErrors.AddRange(tableErrors);
+                        }
+                        
+                        // Validate #3: SQL syntax correctness (generic validation)
+                        var syntaxErrors = ValidateSQLSyntax(dbQuery.GeneratedQuery, schema.DatabaseType);
+                        if (syntaxErrors.Any())
+                        {
+                            currentErrors.AddRange(syntaxErrors);
+                        }
+                        
+                        // Check if all validations passed
+                        if (currentErrors.Count == 0)
+                        {
+                            validationPassed = true;
+                            if (retryAttempt > 0)
                             {
-                                continue;
+                                _logger.LogInformation("SQL validation passed after {Attempts} retry attempt(s) for {DatabaseName}", retryAttempt, schema.DatabaseName);
                             }
-                            
-                            // Check if contains dot (cross-database reference or schema.table)
-                            if (potentialTableName.Contains("."))
-                            {
-                                validationErrors.Add($"Cross-database table reference: {potentialTableName}");
-                                hasInvalidJoin = true;
                                 break;
-                            }
-                            
-                            // Check if this table exists in current database
-                            if (!availableTableNames.Any(t => t.ToUpperInvariant() == potentialTableName))
-                            {
-                                validationErrors.Add($"Table '{potentialTableName}' doesn't exist in {dbQuery.DatabaseName}");
-                                hasInvalidJoin = true;
-                                break;
-                            }
-                        }
-                    }
-                    
-                    // 3. Check for undefined aliases (e.g., p.ColumnName when 'p' is not defined)
-                    var definedAliases = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-                    
-                    // Add table names as valid references
-                    foreach (var tableName in availableTableNames)
-                    {
-                        definedAliases.Add(tableName);
-                    }
-                    
-                    // Extract table aliases from FROM/JOIN clauses
-                    for (int i = 0; i < words.Length; i++)
-                    {
-                        if ((words[i] == "FROM" || words[i] == "JOIN") && i + 2 < words.Length)
-                        {
-                            var tableName = words[i + 1].TrimStart('`', '[', '"', '\'').TrimEnd('`', ']', '"', '\'');
-                            var potentialAlias = words[i + 2];
-                            
-                            // Skip if it's a keyword
-                            var keywords = new[] { "WHERE", "ON", "JOIN", "LEFT", "INNER", "RIGHT", 
-                                                   "OUTER", "CROSS", "ORDER", "GROUP", "HAVING", 
-                                                   "LIMIT", "TOP", "UNION", "EXCEPT" };
-                            
-                            if (!keywords.Contains(potentialAlias) && potentialAlias.Length <= 4)
-                            {
-                                definedAliases.Add(potentialAlias);
-                                _logger.LogDebug("  Defined alias: {Alias} for table {Table}", potentialAlias, tableName);
-                            }
-                        }
-                    }
-                    
-                    // Check for usage of undefined aliases in entire SQL
-                    var sqlLines = dbQuery.GeneratedQuery.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-                    foreach (var line in sqlLines)
-                    {
-                        // Find all alias.column references (e.g., p.ProductID, od.Quantity)
-                        // Pattern: Must start with letter (not number) to avoid false positives like "0.1"
-                        var matches = Regex.Matches(line, @"([a-zA-Z_]\w*)\.(\w+)");
-                        foreach (Match match in matches)
-                        {
-                            var alias = match.Groups[1].Value.ToUpperInvariant();
-                            var column = match.Groups[2].Value;
-                            
-                            // Skip if it's a number (decimal point)
-                            if (char.IsDigit(alias[0]))
-                                continue;
-                            
-                            // Check if alias is defined or is a table name
-                            if (!definedAliases.Contains(alias))
-                            {
-                                validationErrors.Add($"Undefined alias '{alias}' in {alias}.{column} - this table doesn't exist in {dbQuery.DatabaseName}!");
-                                hasInvalidJoin = true;
-                            }
-                        }
-                    }
-                    
-                    // 4. Check for tables in subqueries (more targeted)
-                    // Look for patterns like: JOIN (SELECT * FROM TableName) or WHERE EXISTS (SELECT FROM TableName)
-                    var subqueryPattern = @"\(\s*SELECT\s+.+?\s+FROM\s+(\w+)";
-                    var subqueryMatches = Regex.Matches(sqlUpper, subqueryPattern, RegexOptions.IgnoreCase | RegexOptions.Singleline);
-                    foreach (Match match in subqueryMatches)
-                    {
-                        var tableName = match.Groups[1].Value;
-                        
-                        // Skip if it's a valid table or alias
-                        if (tableName.Length > 1 && 
-                            tableName != "SELECT" && 
-                            !availableTableNames.Any(t => t.ToUpperInvariant() == tableName) &&
-                            !definedAliases.Contains(tableName))
-                        {
-                            validationErrors.Add($"Subquery uses table '{tableName}' which is not in allowed tables!");
-                            hasInvalidJoin = true;
-                        }
-                    }
-                    
-                    if (hasInvalidJoin)
-                    {
-                        // Invalid SQL - log errors and skip this database
-                        _logger.LogError("❌ CRITICAL: Generated SQL has validation errors for {Database}!", dbQuery.DatabaseName);
-                        foreach (var error in validationErrors)
-                        {
-                            _logger.LogError("   • {Error}", error);
-                        }
-                        _logger.LogError("   Available tables: {Tables}", string.Join(", ", availableTableNames));
-                        _logger.LogError("   Generated SQL: {SQL}", dbQuery.GeneratedQuery);
-                        
-                        _logger.LogWarning("⚠️  Skipping {Database} - SQL validation failed", 
-                            dbQuery.DatabaseName);
-                        
-                        // Extract table names from failed SQL and find them in other databases
-                        var missingTableNames = new List<string>();
-                        for (int i = 0; i < words.Length; i++)
-                        {
-                            if ((words[i] == "FROM" || words[i] == "JOIN") && i + 1 < words.Length)
-                            {
-                                // Remove SQL identifier wrappers: backticks (MySQL), brackets (SQL Server), quotes
-                                var potentialTableName = words[i + 1]
-                                    .TrimEnd(';', ',', ')', '(', '`', '[', ']', '"', '\'')
-                                    .TrimStart('`', '[', ']', '"', '\'');
-                                if (!availableTableNames.Any(t => t.ToUpperInvariant() == potentialTableName))
-                                {
-                                    missingTableNames.Add(potentialTableName);
-                                }
-                            }
                         }
                         
-                        // Try to find these tables in other databases
-                        foreach (var missingTable in missingTableNames.Distinct())
+                        // Validation failed - accumulate errors
+                        allErrors.AddRange(currentErrors);
+                        
+                        if (retryAttempt == maxRetries)
                         {
-                            var correctSchema = allSchemas.FirstOrDefault(s => 
-                                s.Tables.Any(t => t.TableName.Equals(missingTable, StringComparison.OrdinalIgnoreCase)));
-                            
-                            if (correctSchema != null && 
-                                !queryIntent.DatabaseQueries.Any(q => q.DatabaseId == correctSchema.DatabaseId) &&
-                                !additionalQueries.Any(q => q.DatabaseId == correctSchema.DatabaseId))
+                            // Max retries reached
+                            _logger.LogWarning("SQL validation failed after {MaxRetries} attempts for {DatabaseName}", maxRetries, schema.DatabaseName);
+                            foreach (var error in allErrors.Distinct())
                             {
-                                var exactTableName = correctSchema.Tables.First(t => 
-                                    t.TableName.Equals(missingTable, StringComparison.OrdinalIgnoreCase)).TableName;
-                                
-                                _logger.LogInformation("🔧 Found '{Table}' in {Database}, adding to query list", 
-                                    exactTableName, correctSchema.DatabaseName);
-                                
-                                additionalQueries.Add(new DatabaseQueryIntent
-                                {
-                                    DatabaseId = correctSchema.DatabaseId,
-                                    DatabaseName = correctSchema.DatabaseName,
-                                    RequiredTables = new List<string> { exactTableName },
-                                    Purpose = $"Get {exactTableName} data",
-                                    Priority = 2
-                                });
+                                _logger.LogWarning("  - {Error}", error);
                             }
+                            break;
                         }
                         
+                        // Retry with progressively stricter prompts
+                        _logger.LogInformation("Retry attempt {Attempt}/{MaxRetries} for {DatabaseName}", retryAttempt + 1, maxRetries, schema.DatabaseName);
+                        
+                        string retryPrompt;
+                        if (retryAttempt == 0)
+                        {
+                            // First retry: Emphasize validation errors
+                            retryPrompt = BuildStricterSQLPrompt(queryIntent.OriginalQuery, dbQuery, schema, currentErrors);
+                        }
+                        else if (retryAttempt == 1)
+                        {
+                            // Second retry: Ultra-strict with ALL previous errors
+                            retryPrompt = BuildUltraStrictSQLPrompt(queryIntent.OriginalQuery, dbQuery, schema, allErrors.Distinct().ToList(), retryAttempt + 1);
+                        }
+                        else
+                        {
+                            // Third retry: Simplest possible query
+                            retryPrompt = BuildSimplifiedSQLPrompt(queryIntent.OriginalQuery, dbQuery, schema, allErrors.Distinct().ToList());
+                        }
+                        
+                        var retriedSql = await _aiService.GenerateResponseAsync(retryPrompt, new List<string>());
+                        var retriedExtracted = ExtractSQLFromAIResponse(retriedSql);
+                        
+                        if (!IsCompleteSql(retriedExtracted))
+                        {
+                            _logger.LogWarning("Retry {Attempt} generated incomplete SQL for {DatabaseName}", retryAttempt + 1, schema.DatabaseName);
+                            continue;
+                        }
+                        
+                        dbQuery.GeneratedQuery = retriedExtracted;
+                    }
+                    
+                    if (!validationPassed)
+                    {
+                        _logger.LogWarning("Could not generate valid SQL for {DatabaseName} after {MaxRetries} attempts, skipping", schema.DatabaseName, maxRetries);
                         dbQuery.GeneratedQuery = null;
+                        continue;
                     }
 
+                    
+                    // Log the generated SQL result
                     if (!string.IsNullOrEmpty(dbQuery.GeneratedQuery))
                     {
                         _logger.LogInformation("✓ Generated SQL for {DatabaseId}: {SQL}", 
@@ -829,12 +714,19 @@ namespace SmartRAG.Services
             sb.AppendLine($"   YOU CAN ONLY USE THESE TABLES: {string.Join(", ", dbQuery.RequiredTables)}");
             sb.AppendLine("   ANY OTHER TABLE WILL CAUSE AN ERROR!");
             sb.AppendLine();
+            sb.AppendLine("⚠️ COLUMN VALIDATION IS CRITICAL:");
+            sb.AppendLine("   - ONLY use columns that exist in the schema below");
+            sb.AppendLine("   - Before referencing ANY column, verify it exists in the table's column list");
+            sb.AppendLine("   - Using a non-existent column will cause SQL execution ERROR");
+            sb.AppendLine("   - Check column names character-by-character against the schema");
+            sb.AppendLine();
             sb.AppendLine($"📍 TARGET DATABASE: {schema.DatabaseName} ({schema.DatabaseType})");
             sb.AppendLine($"📋 YOUR ALLOWED TABLES: {string.Join(", ", dbQuery.RequiredTables)}");
             sb.AppendLine();
             sb.AppendLine("🎯 YOUR TASK:");
             sb.AppendLine($"   Write a simple SQL query using ONLY these tables: {string.Join(", ", dbQuery.RequiredTables)}");
             sb.AppendLine("   Return data with all foreign key IDs so application can merge with other databases");
+            sb.AppendLine("   VERIFY every column you use exists in the schema below!");
             sb.AppendLine();
             sb.AppendLine($"❓ User Question: {userQuery}");
             sb.AppendLine($"🎨 What to retrieve from {schema.DatabaseName}: {dbQuery.Purpose}");
@@ -849,14 +741,18 @@ namespace SmartRAG.Services
                 if (table != null)
                 {
                     sb.AppendLine($"\n✓ Table: {schema.DatabaseName}.{table.TableName}");
-                    sb.AppendLine($"  ONLY THESE COLUMNS EXIST IN THIS DATABASE:");
+                    sb.AppendLine($"  ═══════════════════════════════════════");
+                    sb.AppendLine($"  ONLY THESE {table.Columns.Count} COLUMNS EXIST - USE NO OTHER COLUMNS:");
+                    sb.AppendLine($"  ═══════════════════════════════════════");
                     
                     foreach (var col in table.Columns)
                     {
                         sb.AppendLine($"    ✓ {col.ColumnName} ({col.DataType})");
                     }
                     
-                    sb.AppendLine($"  ⚠️  Any other column will cause ERROR!");
+                    sb.AppendLine();
+                    sb.AppendLine($"  🚫 CRITICAL: ANY column not in the list above DOES NOT EXIST in {table.TableName}!");
+                    sb.AppendLine($"  🚫 Before using a column in JOIN, SELECT, or WHERE - verify it's in the list!");
                     
                     if (table.ForeignKeys.Any())
                     {
@@ -929,9 +825,11 @@ namespace SmartRAG.Services
             sb.AppendLine($"   → You cannot use: Any other table in {schema.DatabaseName}");
             sb.AppendLine();
             sb.AppendLine("STEP 2: Write SELECT clause");
-            sb.AppendLine("   → Include ALL foreign key columns (e.g., ProductID, CustomerID)");
+            sb.AppendLine("   → Verify EACH column exists in the table's column list above");
+            sb.AppendLine("   → Include ALL foreign key columns that exist in the table");
             sb.AppendLine("   → Include columns needed to answer the question");
             sb.AppendLine("   → Use aggregations (SUM, COUNT, AVG) if needed");
+            sb.AppendLine("   → ❌ DO NOT assume a column exists - CHECK THE SCHEMA FIRST!");
             sb.AppendLine();
             sb.AppendLine("STEP 3: Write FROM clause");
             sb.AppendLine($"   → FROM {dbQuery.RequiredTables[0]}  ✅ (use allowed table)");
@@ -939,18 +837,23 @@ namespace SmartRAG.Services
             sb.AppendLine();
             sb.AppendLine("STEP 4: Write JOIN clause (if needed)");
             sb.AppendLine("   → JOIN between allowed tables only");
+            sb.AppendLine("   → ⚠️  BEFORE writing ON clause, verify columns exist in BOTH tables!");
             sb.AppendLine($"   → Example: FROM {dbQuery.RequiredTables[0]} t1 JOIN {(dbQuery.RequiredTables.Count > 1 ? dbQuery.RequiredTables[1] : dbQuery.RequiredTables[0])} t2 ON t1.ID = t2.ID");
             sb.AppendLine("   → NEVER join with tables from other databases");
+            sb.AppendLine("   → ❌ Using t1.NonExistentColumn or t2.NonExistentColumn will cause ERROR!");
             sb.AppendLine();
             sb.AppendLine("STEP 5: Apply filters and ordering");
             sb.AppendLine("   → WHERE, GROUP BY, ORDER BY as needed");
             sb.AppendLine("   → Use columns from allowed tables only");
+            sb.AppendLine("   → ❌ NEVER use aggregates (SUM, AVG, COUNT) in WHERE clause!");
+            sb.AppendLine("   → ✅ Use HAVING for filtering aggregated values");
+            sb.AppendLine("   → ✅ If using GROUP BY: ALL non-aggregate SELECT columns must be in GROUP BY");
             sb.AppendLine();
             sb.AppendLine("═══════════════════════════════════════");
             sb.AppendLine("💡 SIMPLE STRATEGY:");
             sb.AppendLine("═══════════════════════════════════════");
             sb.AppendLine("1. SELECT data from your allowed tables");
-            sb.AppendLine("2. Always include foreign key columns (ProductID, CustomerID, etc.)");
+            sb.AppendLine("2. Always include foreign key ID columns (if they exist)");
             sb.AppendLine("3. Don't worry about data from other databases - application handles merging");
             sb.AppendLine();
             sb.AppendLine("═══════════════════════════════════════");
@@ -1045,6 +948,8 @@ namespace SmartRAG.Services
                 case DatabaseType.MySQL:
                     sb.AppendLine($"Format: SELECT columns FROM {dbQuery.RequiredTables[0]} WHERE ... ORDER BY column LIMIT 100");
                     sb.AppendLine("• LIMIT at the very end");
+                    sb.AppendLine("• 🚨 CRITICAL: If using GROUP BY, ALL non-aggregate SELECT columns MUST be in GROUP BY!");
+                    sb.AppendLine("• Example: SELECT Col1, Col2, SUM(Col3) ... GROUP BY Col1, Col2");
                     break;
                     
                 case DatabaseType.PostgreSQL:
@@ -1366,6 +1271,556 @@ namespace SmartRAG.Services
 
             return resultData.Split(new char[] { '\n' }, StringSplitOptions.RemoveEmptyEntries)
                 .Count(line => !line.StartsWith("---") && !line.StartsWith("Table:"));
+        }
+
+        /// <summary>
+        /// Builds a stricter SQL generation prompt after validation failures (generic approach)
+        /// </summary>
+        private string BuildStricterSQLPrompt(string userQuery, DatabaseQueryIntent dbQuery, DatabaseSchemaInfo schema, List<string> previousErrors)
+        {
+            var sb = new StringBuilder();
+            
+            sb.AppendLine("╔════════════════════════════════════════════════════════════════╗");
+            sb.AppendLine("║       SQL REGENERATION - PREVIOUS ATTEMPT HAD ERRORS           ║");
+            sb.AppendLine("╚════════════════════════════════════════════════════════════════╝");
+            sb.AppendLine();
+            sb.AppendLine("🚨 CRITICAL: Your previous SQL had these errors:");
+            
+            // Categorize errors for better understanding
+            var columnErrors = previousErrors.Where(e => e.Contains("Column") || e.Contains("column")).ToList();
+            var tableErrors = previousErrors.Where(e => e.Contains("Table") || e.Contains("table") && !e.Contains("Column")).ToList();
+            var syntaxErrors = previousErrors.Where(e => e.Contains("syntax") || e.Contains("aggregate") || e.Contains("GROUP BY") || e.Contains("WHERE")).ToList();
+            var otherErrors = previousErrors.Except(columnErrors).Except(tableErrors).Except(syntaxErrors).ToList();
+            
+            if (columnErrors.Any())
+            {
+                sb.AppendLine();
+                sb.AppendLine("  📋 COLUMN ERRORS:");
+                foreach (var error in columnErrors)
+                {
+                    sb.AppendLine($"     ❌ {error}");
+                }
+            }
+            
+            if (tableErrors.Any())
+            {
+                sb.AppendLine();
+                sb.AppendLine("  🗂️  TABLE ERRORS:");
+                foreach (var error in tableErrors)
+                {
+                    sb.AppendLine($"     ❌ {error}");
+                }
+            }
+            
+            if (syntaxErrors.Any())
+            {
+                sb.AppendLine();
+                sb.AppendLine("  ⚠️  SQL SYNTAX ERRORS:");
+                foreach (var error in syntaxErrors)
+                {
+                    sb.AppendLine($"     ❌ {error}");
+                }
+            }
+            
+            if (otherErrors.Any())
+            {
+                sb.AppendLine();
+                sb.AppendLine("  ❗ OTHER ERRORS:");
+                foreach (var error in otherErrors)
+                {
+                    sb.AppendLine($"     ❌ {error}");
+                }
+            }
+            
+            sb.AppendLine();
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("📋 AVAILABLE COLUMNS (USE ONLY THESE):");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            
+            foreach (var tableName in dbQuery.RequiredTables)
+            {
+                var table = schema.Tables.FirstOrDefault(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase));
+                if (table != null)
+                {
+                    sb.AppendLine();
+                    sb.AppendLine($"Table: {table.TableName}");
+                    sb.AppendLine($"Available Columns:");
+                    foreach (var col in table.Columns)
+                    {
+                        sb.AppendLine($"  ✓ {col.ColumnName} ({col.DataType})");
+                    }
+                    sb.AppendLine($"❌ ANY OTHER COLUMN IN {table.TableName} WILL CAUSE ERROR!");
+                }
+            }
+            
+            sb.AppendLine();
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("🎯 RULES - READ CAREFULLY:");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("COLUMN RULES:");
+            sb.AppendLine("1. ONLY use columns listed above");
+            sb.AppendLine("2. If a column doesn't exist, DO NOT use it");
+            sb.AppendLine("3. Check column names character-by-character");
+            sb.AppendLine("4. Use exact casing from the list above");
+            sb.AppendLine("5. Before writing JOIN, verify both tables have the referenced columns");
+            sb.AppendLine();
+            sb.AppendLine("SQL SYNTAX RULES:");
+            sb.AppendLine("6. ❌ NEVER use aggregates (SUM, AVG, COUNT) in WHERE clause");
+            sb.AppendLine("7. ✅ Use HAVING clause for filtering aggregates");
+            sb.AppendLine("8. ✅ In GROUP BY queries: SELECT only grouped columns or aggregates");
+            sb.AppendLine("9. ✅ Every non-aggregate column in SELECT must be in GROUP BY");
+            sb.AppendLine();
+            sb.AppendLine("EXAMPLES:");
+            sb.AppendLine("  ❌ WHERE SUM(Amount) > 100  (WRONG)");
+            sb.AppendLine("  ✅ HAVING SUM(Amount) > 100 (CORRECT)");
+            sb.AppendLine();
+            sb.AppendLine("  ❌ SELECT Col1, Col2, SUM(Col3) GROUP BY Col1  (WRONG - Col2 not in GROUP BY)");
+            sb.AppendLine("  ✅ SELECT Col1, SUM(Col3) GROUP BY Col1        (CORRECT)");
+            sb.AppendLine();
+            sb.AppendLine($"User Query: {userQuery}");
+            sb.AppendLine($"Purpose: {dbQuery.Purpose}");
+            sb.AppendLine();
+            sb.AppendLine("Generate a valid SQL query using ONLY the columns listed above.");
+            sb.AppendLine("Follow SQL syntax rules strictly.");
+            sb.AppendLine("Output ONLY the SQL query, no explanations.");
+            
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Builds an ultra-strict prompt for second retry attempt (even more emphasis on validation)
+        /// </summary>
+        private string BuildUltraStrictSQLPrompt(string userQuery, DatabaseQueryIntent dbQuery, DatabaseSchemaInfo schema, List<string> allPreviousErrors, int attemptNumber)
+        {
+            var sb = new StringBuilder();
+            
+            sb.AppendLine("╔════════════════════════════════════════════════════════════════╗");
+            sb.AppendLine($"║     RETRY ATTEMPT #{attemptNumber} - ULTRA STRICT MODE        ║");
+            sb.AppendLine("╚════════════════════════════════════════════════════════════════╝");
+            sb.AppendLine();
+            sb.AppendLine("🔴 CRITICAL: ALL previous attempts FAILED with these errors:");
+            foreach (var error in allPreviousErrors)
+            {
+                sb.AppendLine($"   ⚠️  {error}");
+            }
+            sb.AppendLine();
+            sb.AppendLine("🚨 YOU MUST FIX THESE ERRORS NOW!");
+            sb.AppendLine();
+            
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("📋 EXACT COLUMN LIST - NO OTHER COLUMNS EXIST:");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            
+            foreach (var tableName in dbQuery.RequiredTables)
+            {
+                var table = schema.Tables.FirstOrDefault(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase));
+                if (table != null)
+                {
+                    sb.AppendLine();
+                    sb.AppendLine($"━━━ TABLE: {table.TableName} ━━━");
+                    sb.AppendLine($"COMPLETE COLUMN LIST ({table.Columns.Count} columns):");
+                    for (int i = 0; i < table.Columns.Count; i++)
+                    {
+                        var col = table.Columns[i];
+                        sb.AppendLine($"  {i + 1}. {col.ColumnName} ({col.DataType})");
+                    }
+                    sb.AppendLine();
+                    sb.AppendLine($"⚠️  THESE ARE THE ONLY {table.Columns.Count} COLUMNS IN {table.TableName}!");
+                    sb.AppendLine($"⚠️  ANY OTHER COLUMN NAME = INSTANT ERROR!");
+                }
+            }
+            
+            sb.AppendLine();
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("⚡ MANDATORY CHECKLIST BEFORE WRITING SQL:");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("COLUMN CHECKS:");
+            sb.AppendLine("□ Did I verify EVERY column exists in the exact list above?");
+            sb.AppendLine("□ Did I check spelling character-by-character?");
+            sb.AppendLine("□ Did I avoid assuming column names?");
+            sb.AppendLine("□ Did I use ONLY columns from the numbered list?");
+            sb.AppendLine();
+            sb.AppendLine("SQL SYNTAX CHECKS:");
+            sb.AppendLine("□ Did I avoid aggregates (SUM, AVG, COUNT) in WHERE clause?");
+            sb.AppendLine("□ Did I use HAVING for aggregate filtering?");
+            sb.AppendLine("□ If using GROUP BY: Are ALL non-aggregate SELECT columns in GROUP BY?");
+            sb.AppendLine("□ Are parentheses balanced?");
+            sb.AppendLine();
+            sb.AppendLine("🚫 COMMON MISTAKES TO AVOID:");
+            sb.AppendLine("  ❌ WHERE SUM(...) > value     → Use HAVING");
+            sb.AppendLine("  ❌ WHERE AVG(...) > value     → Use HAVING");
+            sb.AppendLine("  ❌ SELECT A, B, SUM(C) GROUP BY A  → Add B to GROUP BY");
+            sb.AppendLine();
+            sb.AppendLine($"Query: {userQuery}");
+            sb.AppendLine($"Task: {dbQuery.Purpose}");
+            sb.AppendLine();
+            sb.AppendLine("Write the SQL query. Triple-check EVERY column name AND syntax before outputting.");
+            sb.AppendLine("Output format: Pure SQL only, no text.");
+            
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Builds a simplified prompt for final retry (simplest possible query)
+        /// </summary>
+        private string BuildSimplifiedSQLPrompt(string userQuery, DatabaseQueryIntent dbQuery, DatabaseSchemaInfo schema, List<string> allPreviousErrors)
+        {
+            var sb = new StringBuilder();
+            
+            sb.AppendLine("╔════════════════════════════════════════════════════════════════╗");
+            sb.AppendLine("║    FINAL ATTEMPT - SIMPLIFIED QUERY STRATEGY                   ║");
+            sb.AppendLine("╚════════════════════════════════════════════════════════════════╝");
+            sb.AppendLine();
+            sb.AppendLine("⚠️  Previous complex queries failed. Let's simplify.");
+            sb.AppendLine();
+            sb.AppendLine("Previous errors:");
+            foreach (var error in allPreviousErrors.Take(3))
+            {
+                sb.AppendLine($"  - {error}");
+            }
+            sb.AppendLine();
+            
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("📝 SIMPLIFIED STRATEGY:");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("Write the SIMPLEST possible query that:");
+            sb.AppendLine("1. Uses ONLY the first table in the list");
+            sb.AppendLine("2. SELECTs ALL columns using: SELECT * FROM TableName");
+            sb.AppendLine("3. NO JOINs, NO complex WHERE clauses");
+            sb.AppendLine("4. NO aggregates in WHERE (use HAVING if needed)");
+            sb.AppendLine("5. NO GROUP BY issues - keep it simple");
+            sb.AppendLine("6. Just return basic data for merging");
+            sb.AppendLine();
+            
+            sb.AppendLine("Available tables:");
+            foreach (var tableName in dbQuery.RequiredTables)
+            {
+                var table = schema.Tables.FirstOrDefault(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase));
+                if (table != null)
+                {
+                    sb.AppendLine($"  • {table.TableName} ({table.Columns.Count} columns)");
+                }
+            }
+            
+            sb.AppendLine();
+            sb.AppendLine($"SIMPLEST QUERY TEMPLATE:");
+            if (schema.DatabaseType == DatabaseType.SqlServer)
+            {
+                sb.AppendLine($"  SELECT TOP 100 * FROM {dbQuery.RequiredTables[0]}");
+            }
+            else
+            {
+                sb.AppendLine($"  SELECT * FROM {dbQuery.RequiredTables[0]} LIMIT 100");
+            }
+            
+            sb.AppendLine();
+            sb.AppendLine("Write a simple query like above. No complexity.");
+            sb.AppendLine("Output: SQL only.");
+            
+            return sb.ToString();
+        }
+
+        /// <summary>
+        /// Validates SQL syntax for common errors (generic validation)
+        /// </summary>
+        private List<string> ValidateSQLSyntax(string sql, DatabaseType databaseType)
+        {
+            var errors = new List<string>();
+            
+            if (string.IsNullOrWhiteSpace(sql))
+            {
+                return errors;
+            }
+
+            try
+            {
+                var sqlUpper = sql.ToUpperInvariant();
+                
+                // 1. Check for aggregate functions in WHERE clause (common error)
+                if (sqlUpper.Contains("WHERE"))
+                {
+                    var whereClausePattern = @"WHERE\s+(.+?)(?:GROUP\s+BY|ORDER\s+BY|LIMIT|OFFSET|$)";
+                    var whereMatch = Regex.Match(sqlUpper, whereClausePattern, RegexOptions.Singleline);
+                    
+                    if (whereMatch.Success)
+                    {
+                        var whereClause = whereMatch.Groups[1].Value;
+                        
+                        // Check for aggregate functions: SUM, AVG, COUNT, MAX, MIN
+                        var aggregates = new[] { "SUM(", "AVG(", "COUNT(", "MAX(", "MIN(" };
+                        foreach (var agg in aggregates)
+                        {
+                            if (whereClause.Contains(agg))
+                            {
+                                errors.Add($"Aggregate function in WHERE clause detected. Use HAVING instead of WHERE for aggregates.");
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                // 2. Check for HAVING without GROUP BY or aggregate (SQLite error)
+                if (sqlUpper.Contains("HAVING"))
+                {
+                    // HAVING requires either GROUP BY or aggregate in SELECT
+                    var hasGroupBy = sqlUpper.Contains("GROUP BY");
+                    var hasAggregate = sqlUpper.Contains("SUM(") || sqlUpper.Contains("AVG(") || 
+                                      sqlUpper.Contains("COUNT(") || sqlUpper.Contains("MAX(") || 
+                                      sqlUpper.Contains("MIN(");
+                    
+                    if (!hasGroupBy && !hasAggregate)
+                    {
+                        errors.Add("HAVING clause without GROUP BY or aggregate function. Remove HAVING or add GROUP BY.");
+                    }
+                }
+                
+                // 3. Check for GROUP BY without aggregate (might cause HAVING errors)
+                if (sqlUpper.Contains("GROUP BY") && !sqlUpper.Contains("SUM(") && 
+                    !sqlUpper.Contains("AVG(") && !sqlUpper.Contains("COUNT(") && 
+                    !sqlUpper.Contains("MAX(") && !sqlUpper.Contains("MIN("))
+                {
+                    // If there's HAVING too, this is definitely wrong
+                    if (sqlUpper.Contains("HAVING"))
+                    {
+                        errors.Add("GROUP BY with HAVING but no aggregate function in SELECT. Add aggregate or remove HAVING.");
+                    }
+                }
+                
+                // 4. For MySQL: Check if SELECT columns not in GROUP BY (strict mode issue)
+                if (databaseType == DatabaseType.MySQL && sqlUpper.Contains("GROUP BY"))
+                {
+                    // Add hint to use only grouped columns or aggregates
+                    // This is complex to validate perfectly, so just add a warning in retry prompts
+                }
+                
+                // 5. Check for basic syntax issues
+                var openParens = sql.Count(c => c == '(');
+                var closeParens = sql.Count(c => c == ')');
+                if (openParens != closeParens)
+                {
+                    errors.Add($"Mismatched parentheses: {openParens} opening, {closeParens} closing");
+                }
+
+                return errors;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error validating SQL syntax (continuing anyway)");
+                return errors;
+            }
+        }
+
+        /// <summary>
+        /// Validates that all tables referenced in SQL exist in the schema (generic validation)
+        /// </summary>
+        private async Task<List<string>> ValidateSQLTableExistenceAsync(string sql, DatabaseSchemaInfo schema, string databaseName)
+        {
+            var errors = new List<string>();
+            
+            if (string.IsNullOrWhiteSpace(sql) || schema == null)
+            {
+                return errors;
+            }
+
+            try
+            {
+                var availableTableNames = schema.Tables.Select(t => t.TableName).ToList();
+                var sqlUpper = sql.ToUpperInvariant();
+                
+                // Common SQL keywords to skip
+                var sqlKeywords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+                {
+                    "SELECT", "FROM", "WHERE", "JOIN", "LEFT", "RIGHT", "INNER", "OUTER", "CROSS",
+                    "ON", "AND", "OR", "NOT", "IN", "EXISTS", "AS", "ORDER", "GROUP", "HAVING",
+                    "LIMIT", "TOP", "OFFSET", "UNION", "EXCEPT", "INTERSECT", "DISTINCT", "ALL",
+                    "THE", "THIS", "THAT", "THESE", "THOSE", "WITH", "WITHOUT", "BETWEEN",
+                    "LIKE", "IS", "NULL", "TRUE", "FALSE", "CASE", "WHEN", "THEN", "ELSE", "END"
+                };
+                
+                // 1. Check for cross-database references (DatabaseName.TableName)
+                if (sqlUpper.Contains("."))
+                {
+                    var allSchemas = await _schemaAnalyzer.GetAllSchemasAsync();
+                    foreach (var otherSchema in allSchemas)
+                    {
+                        if (otherSchema.DatabaseId != schema.DatabaseId)
+                        {
+                            var crossDbPattern = $"{otherSchema.DatabaseName.ToUpperInvariant()}.";
+                            if (sqlUpper.Contains(crossDbPattern))
+                            {
+                                errors.Add($"Cross-database reference: {otherSchema.DatabaseName}.TableName not allowed");
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                // 2. Parse SQL to find table references
+                var words = sqlUpper.Split(new[] { ' ', '\n', '\r', '\t', ',', '(', ')', ';', '`', '[', ']', '"', '\'' }, StringSplitOptions.RemoveEmptyEntries);
+                
+                for (int i = 0; i < words.Length; i++)
+                {
+                    // Check words after FROM or JOIN
+                    if ((words[i] == "FROM" || words[i] == "JOIN") && i + 1 < words.Length)
+                    {
+                        var potentialTableName = words[i + 1]
+                            .TrimEnd(';', ',', ')', '(', '`', '[', ']', '"', '\'')
+                            .TrimStart('`', '[', ']', '"', '\'');
+                        
+                        // Skip SQL keywords
+                        if (potentialTableName.Length < 2 || sqlKeywords.Contains(potentialTableName))
+                        {
+                            continue;
+                        }
+                        
+                        // Check if contains dot (schema.table or database.table)
+                        if (potentialTableName.Contains("."))
+                        {
+                            errors.Add($"Qualified table reference '{potentialTableName}' not allowed");
+                            continue;
+                        }
+                        
+                        // Check if this table exists in current database
+                        if (!availableTableNames.Any(t => t.Equals(potentialTableName, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            errors.Add($"Table '{potentialTableName}' doesn't exist in {databaseName}. Available: {string.Join(", ", availableTableNames)}");
+                        }
+                    }
+                }
+                
+                // 3. Check for tables in subqueries
+                var subqueryPattern = @"\(\s*SELECT\s+.+?\s+FROM\s+(\w+)";
+                var subqueryMatches = Regex.Matches(sqlUpper, subqueryPattern, RegexOptions.IgnoreCase | RegexOptions.Singleline);
+                
+                foreach (Match match in subqueryMatches)
+                {
+                    var tableName = match.Groups[1].Value;
+                    
+                    if (tableName.Length > 1 && 
+                        tableName != "SELECT" && 
+                        !availableTableNames.Any(t => t.Equals(tableName, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        errors.Add($"Subquery references table '{tableName}' which doesn't exist in {databaseName}");
+                    }
+                }
+
+                return errors;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error validating SQL table existence (continuing anyway)");
+                return errors;
+            }
+        }
+
+        /// <summary>
+        /// Validates that all columns referenced in SQL exist in the schema (generic validation with alias support)
+        /// </summary>
+        private bool ValidateSQLColumnExistence(string sql, DatabaseSchemaInfo schema, List<string> allowedTables, out List<string> errors)
+        {
+            errors = new List<string>();
+            
+            if (string.IsNullOrWhiteSpace(sql) || schema == null || allowedTables == null || !allowedTables.Any())
+            {
+                return true; // Skip validation if data is invalid
+            }
+
+            try
+            {
+                // Get all available columns from allowed tables
+                var availableColumns = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+                
+                foreach (var tableName in allowedTables)
+                {
+                    var table = schema.Tables.FirstOrDefault(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase));
+                    if (table != null)
+                    {
+                        var columnSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                        foreach (var col in table.Columns)
+                        {
+                            columnSet.Add(col.ColumnName);
+                        }
+                        availableColumns[table.TableName] = columnSet;
+                    }
+                }
+
+                // Parse SQL to extract table aliases (FROM/JOIN TableName alias)
+                var aliasToTable = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                
+                // Pattern: FROM/JOIN TableName alias
+                var aliasPattern = @"(?:FROM|JOIN)\s+([a-zA-Z_][a-zA-Z0-9_]*)\s+(?:AS\s+)?([a-zA-Z_][a-zA-Z0-9_]*)\b";
+                var aliasMatches = Regex.Matches(sql, aliasPattern, RegexOptions.IgnoreCase);
+                
+                foreach (Match aliasMatch in aliasMatches)
+                {
+                    if (aliasMatch.Groups.Count >= 3)
+                    {
+                        var tableName = aliasMatch.Groups[1].Value;
+                        var alias = aliasMatch.Groups[2].Value;
+                        
+                        // Check if this is one of our allowed tables
+                        var matchingTable = allowedTables.FirstOrDefault(t => 
+                            t.Equals(tableName, StringComparison.OrdinalIgnoreCase));
+                        
+                        if (matchingTable != null && !string.IsNullOrEmpty(alias))
+                        {
+                            // Skip SQL keywords that might be mistaken as aliases
+                            var sqlKeywords = new[] { "ON", "WHERE", "AND", "OR", "GROUP", "ORDER", "HAVING", "LIMIT", "OFFSET", "SET" };
+                            if (!sqlKeywords.Contains(alias.ToUpperInvariant()))
+                            {
+                                aliasToTable[alias] = matchingTable;
+                            }
+                        }
+                    }
+                }
+
+                // Parse SQL to find column references (alias.Column or Table.Column)
+                var columnPattern = @"\b([a-zA-Z_][a-zA-Z0-9_]*)\s*\.\s*([a-zA-Z_][a-zA-Z0-9_]*)\b";
+                var matches = Regex.Matches(sql, columnPattern, RegexOptions.IgnoreCase);
+
+                foreach (Match match in matches)
+                {
+                    if (match.Groups.Count >= 3)
+                    {
+                        var tableOrAlias = match.Groups[1].Value;
+                        var columnName = match.Groups[2].Value;
+
+                        // First, check if it's an alias
+                        string actualTableName = null;
+                        if (aliasToTable.ContainsKey(tableOrAlias))
+                        {
+                            actualTableName = aliasToTable[tableOrAlias];
+                        }
+                        else
+                        {
+                            // Check if this is a direct table reference
+                            actualTableName = availableColumns.Keys.FirstOrDefault(t => 
+                                t.Equals(tableOrAlias, StringComparison.OrdinalIgnoreCase));
+                        }
+
+                        if (actualTableName != null && availableColumns.ContainsKey(actualTableName))
+                        {
+                            // Validate column exists in table
+                            if (!availableColumns[actualTableName].Contains(columnName))
+                            {
+                                var availableCols = string.Join(", ", availableColumns[actualTableName].Take(10));
+                                if (availableColumns[actualTableName].Count > 10)
+                                {
+                                    availableCols += ", ...";
+                                }
+                                errors.Add($"Column '{columnName}' does not exist in table '{actualTableName}' (alias: '{tableOrAlias}'). Available columns: {availableCols}");
+                            }
+                        }
+                    }
+                }
+
+                return errors.Count == 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error validating SQL column existence (continuing anyway)");
+                return true; // Don't block SQL execution on validation errors
+            }
         }
 
         private async Task<RagResponse> GenerateFinalAnswerAsync(

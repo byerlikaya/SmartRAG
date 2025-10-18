@@ -11,6 +11,9 @@ namespace SmartRAG.Console
     {
         private static async Task Main(string[] args)
         {
+            // Enable UTF-8 encoding for console to display emojis and special characters correctly
+            System.Console.OutputEncoding = System.Text.Encoding.UTF8;
+            
             System.Console.WriteLine(">> SmartRAG Console Chat Application");
             System.Console.WriteLine("=====================================");
             System.Console.WriteLine();

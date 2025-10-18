@@ -27,6 +27,9 @@ namespace SmartRAG.DatabaseTests
 
         private static async Task Main(string[] args)
         {
+            // Enable UTF-8 encoding for console to display emojis correctly
+            Console.OutputEncoding = System.Text.Encoding.UTF8;
+            
             Console.WriteLine("╔═══════════════════════════════════════════════════════════════════╗");
             Console.WriteLine("║   SmartRAG Multi-Database RAG Test System                        ║");
             Console.WriteLine("╚═══════════════════════════════════════════════════════════════════╝");
@@ -63,7 +66,7 @@ namespace SmartRAG.DatabaseTests
         private static async Task SetupTestDatabases()
         {
             // Create SQLite database
-            var sqliteDbPath = Path.Combine(Directory.GetCurrentDirectory(), "TestData", "ProductCatalog.db");
+            var sqliteDbPath = Path.Combine(Directory.GetCurrentDirectory(), "TestData", "TestDatabase.db");
             var sqliteDir = Path.GetDirectoryName(sqliteDbPath);
             
             if (!string.IsNullOrEmpty(sqliteDir) && !Directory.Exists(sqliteDir))
@@ -333,10 +336,10 @@ namespace SmartRAG.DatabaseTests
             Console.WriteLine("═══════════════════════════════════════════════════════════════════");
             Console.WriteLine();
             Console.WriteLine("Sample Questions:");
-            Console.WriteLine("  • What is the best-selling product?");
-            Console.WriteLine("  • What products did customer 1 buy and at what price?");
-            Console.WriteLine("  • How many customers from Istanbul placed orders?");
-            Console.WriteLine("  • What is the total sales amount?");
+            Console.WriteLine("  • Show me the items with highest values");
+            Console.WriteLine("  • Find records where foreign key ID is 1 and show related data");
+            Console.WriteLine("  • How many records match the criteria from both databases?");
+            Console.WriteLine("  • What is the total of all numeric values?");
             Console.WriteLine();
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.Write("Your question: ");
@@ -360,7 +363,7 @@ namespace SmartRAG.DatabaseTests
 
                 Console.WriteLine();
                 Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine("📝 CEVAP:");
+                Console.WriteLine("📝 ANSWER:");
                 Console.WriteLine("─────────────────────────────────────────────────────────────────");
                 Console.ResetColor();
                 Console.WriteLine(response.Answer);
@@ -369,7 +372,7 @@ namespace SmartRAG.DatabaseTests
                 if (response.Sources.Any())
                 {
                     Console.ForegroundColor = ConsoleColor.DarkGray;
-                    Console.WriteLine("📚 Kaynaklar:");
+                    Console.WriteLine("📚 Sources:");
                     foreach (var source in response.Sources)
                     {
                         Console.WriteLine($"   • {source.FileName}");
@@ -499,6 +502,10 @@ namespace SmartRAG.DatabaseTests
 
             Console.WriteLine();
 
+            // Track failed queries with SQL details
+            var failedQueries = new List<(TestQuery Query, string Error, string GeneratedSQL)>();
+            var successCount = 0;
+
             for (int i = 0; i < testCount; i++)
             {
                 var testQuery = testQueries[i];
@@ -514,22 +521,42 @@ namespace SmartRAG.DatabaseTests
                 {
                     var response = await _multiDbCoordinator!.QueryMultipleDatabasesAsync(testQuery.Query, maxResults: 5);
 
-                    Console.ForegroundColor = ConsoleColor.Green;
-                    Console.WriteLine($"Answer: {response.Answer}");
-                    Console.ResetColor();
+                    // Check if the response indicates an error
+                    if (response.Answer.Contains("failed", StringComparison.OrdinalIgnoreCase) ||
+                        response.Answer.Contains("error", StringComparison.OrdinalIgnoreCase) ||
+                        response.Answer.Contains("SQLite Error", StringComparison.OrdinalIgnoreCase) ||
+                        response.Answer.Contains("does not exist", StringComparison.OrdinalIgnoreCase))
+                    {
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.WriteLine($"⚠️  Query Failed: {response.Answer}");
+                        Console.ResetColor();
+                        
+                        // Extract SQL info from error message if available
+                        var sqlInfo = ExtractSQLFromError(response.Answer);
+                        failedQueries.Add((testQuery, response.Answer, sqlInfo));
+                    }
+                    else
+                    {
+                        Console.ForegroundColor = ConsoleColor.Green;
+                        Console.WriteLine($"✓ Answer: {response.Answer}");
+                        Console.ResetColor();
+                        successCount++;
+                    }
 
                     if (response.Sources.Any())
                     {
                         Console.ForegroundColor = ConsoleColor.DarkGray;
-                        Console.WriteLine($"Source: {string.Join(", ", response.Sources.Select(s => s.FileName))}");
+                        Console.WriteLine($"  Source: {string.Join(", ", response.Sources.Select(s => s.FileName))}");
                         Console.ResetColor();
+                    }
                 }
-            }
-            catch (Exception ex)
-            {
+                catch (Exception ex)
+                {
                     Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"Error: {ex.Message}");
+                    Console.WriteLine($"❌ Exception: {ex.Message}");
                     Console.ResetColor();
+                    
+                    failedQueries.Add((testQuery, ex.Message, string.Empty));
                 }
 
                 Console.WriteLine();
@@ -539,7 +566,68 @@ namespace SmartRAG.DatabaseTests
                 }
             }
 
-            Console.WriteLine("✅ Test queries completed!");
+            // Display summary
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+            Console.WriteLine("📊 TEST SUMMARY");
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"✅ Successful: {successCount}/{testCount}");
+            Console.ResetColor();
+            
+            if (failedQueries.Any())
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"❌ Failed: {failedQueries.Count}/{testCount}");
+                Console.ResetColor();
+                Console.WriteLine();
+                
+                Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+                Console.WriteLine("🔴 FAILED QUERIES (for analysis):");
+                Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+                
+                for (int i = 0; i < failedQueries.Count; i++)
+                {
+                    var failed = failedQueries[i];
+                    Console.WriteLine();
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine($"[FAIL #{i + 1}]");
+                    Console.ResetColor();
+                    Console.WriteLine($"Category: {failed.Query.Category}");
+                    Console.WriteLine($"Databases: {failed.Query.DatabaseName}");
+                    Console.WriteLine();
+                    Console.ForegroundColor = ConsoleColor.Cyan;
+                    Console.WriteLine($"User Query:");
+                    Console.WriteLine($"  {failed.Query.Query}");
+                    Console.ResetColor();
+                    Console.WriteLine();
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"Error Details:");
+                    Console.WriteLine($"  {failed.Error}");
+                    Console.ResetColor();
+                    
+                    if (!string.IsNullOrEmpty(failed.GeneratedSQL))
+                    {
+                        Console.WriteLine();
+                        Console.ForegroundColor = ConsoleColor.DarkGray;
+                        Console.WriteLine($"SQL Analysis:");
+                        Console.WriteLine($"  {failed.GeneratedSQL}");
+                        Console.ResetColor();
+                    }
+                    
+                    Console.WriteLine("─────────────────────────────────────────────────────────────────");
+                }
+                
+                Console.WriteLine();
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine("💡 Copy the failed queries above to share for troubleshooting.");
+                Console.ResetColor();
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("🎉 All tests passed successfully!");
+                Console.ResetColor();
+            }
         }
 
         private static async Task<List<TestQuery>> GenerateTestQueries()
@@ -607,51 +695,51 @@ namespace SmartRAG.DatabaseTests
 Based on the database schemas above, generate {queryCountVariation} intelligent, MEANINGFUL cross-database test queries.
 
 🎯 YOUR TASK:
-Analyze the schemas and generate REALISTIC business questions that require data from MULTIPLE databases.
+Analyze the schemas and generate REALISTIC questions that require data from MULTIPLE databases.
 
 CRITICAL REQUIREMENTS:
 1. EVERY query MUST use at least 2 databases
 2. Queries should be SPECIFIC and MEANINGFUL (not generic calculations)
 3. Focus on foreign key relationships between databases
 4. Generate questions based on actual table/column names
-5. Think like a business analyst asking real questions
+5. Think about data relationships and correlations
 6. Each database should be used in at least one query
 
 📊 HOW TO GENERATE MEANINGFUL QUERIES:
 
 Step 1: Identify relationships
-  - Look for FK columns (ProductID, CustomerID, etc.)
+  - Look for FK columns (ID columns referencing other tables)
   - Find which tables connect across databases
 
 Step 2: Analyze columns to understand data
-  - Price/Amount/Total columns → ask about monetary calculations
-  - Quantity/Stock/Count columns → ask about inventory questions  
+  - Numeric columns (decimal/int) → ask about calculations and aggregations
+  - Text columns with categories → ask about grouping and filtering
   - Date/Time columns → ask about temporal analysis
   - Status/Type/Category columns → ask about grouping
   - ID columns → usually foreign keys for relationships
   
-Step 3: Create business-meaningful questions (NOT technical column references)
+Step 3: Create meaningful questions (NOT technical column references)
   GOOD examples:
-   - What is the total sales revenue by customer city?
-   - Which warehouses have inventory below threshold?
-   - What is the average order value per customer?
-   - Which products generate the most revenue?
+   - What is the total value by grouping column from both databases?
+   - Which records have values below threshold when comparing databases?
+   - What is the average of numeric column per category?
+   - Which items show highest values when combining data sources?
   
   BAD examples to AVOID:
    - Calculate combined totals using ColumnA and ColumnB
    - Compare data between Table1 and Table2
    - Show all records with foreign key relationships
-   - Calculate totals using CategoryID and StockID
+   - Calculate totals using generic column references
   
 CRITICAL RULES:
-  1. Questions must be about BUSINESS CONCEPTS not technical names
-  2. NEVER mention database names in questions
-  3. NEVER mention column names in questions  
-  4. Use business terms: orders, products, customers, inventory, revenue, sales
+  1. Questions must be about DATA RELATIONSHIPS not technical names
+  2. NEVER mention specific database names in questions
+  3. NEVER mention specific column names in questions  
+  4. Use generic terms: items, records, data, values, totals, categories
 
-Good question: What is the total revenue from electronics orders?
-Bad question: Calculate revenue from SalesManagement and ProductCatalog
-Bad question: Join OrderDetails with Products using ProductID
+Good question: What is the total value for items in first category?
+Bad question: Calculate combined values from Database1 and Database2
+Bad question: Join TableA with TableB using ForeignKeyID
 
 Step 4: Ensure cross-database requirement
   - Question should NEED data from multiple DBs
@@ -661,8 +749,8 @@ EXAMPLE THOUGHT PROCESS:
 
 If schema has tables with:
   - Database1: TableA with ForeignKeyColumn linking to Database2
-  - Database1: TableA with NumericColumn1 (quantity/amount type)
-  - Database2: TableB with NumericColumn2 (price/value type)
+  - Database1: TableA with NumericColumn1 (numeric data type)
+  - Database2: TableB with NumericColumn2 (numeric data type)
   - Database2: TableB with CategoryColumn (text grouping)
 
 Good question examples:
@@ -675,7 +763,7 @@ Return ONLY a JSON array in this exact format:
 [
   {{
     """"category"""": """"Cross-DB Calculation"""",
-    """"query"""": """"Specific meaningful business question here"""",
+    """"query"""": """"Specific meaningful question here"""",
     """"databases"""": """"Database1 + Database2""""
   }}
 ]
@@ -794,51 +882,50 @@ Respond ONLY with the JSON array, no other text.";
 
                     if (referencedDb != null && referencedDb.DatabaseId != item.Schema.DatabaseId)
                     {
-                        // Create business-friendly question based on table semantics
-                        var businessQuery = "Show all orders with their complete customer and product information";
+                        // Create generic cross-database join question
+                        var genericQuery = $"Show all records from {item.Table.TableName} with their related {fk.ReferencedTable} information";
                         
                         queries.Add(new TestQuery
                         {
                             Category = "🔗 Cross-DB Join",
-                            Query = businessQuery,
+                            Query = genericQuery,
                             DatabaseName = $"{item.Schema.DatabaseName} + {referencedDb.DatabaseName}"
                         });
                     }
                 }
             }
 
-            // 2. Cross-database aggregation queries (BUSINESS-MEANINGFUL)
+            // 2. Cross-database aggregation queries
             foreach (var pair in databasePairs)
             {
-                // Find tables with meaningful numeric columns
-                var table1WithQuantity = pair.Db1.Tables.FirstOrDefault(t => 
-                    t.Columns.Any(c => IsNumericType(c.DataType) && 
-                        (c.ColumnName.Contains("Quantity", StringComparison.OrdinalIgnoreCase) ||
-                         c.ColumnName.Contains("Stock", StringComparison.OrdinalIgnoreCase) ||
-                         c.ColumnName.Contains("Count", StringComparison.OrdinalIgnoreCase))));
+                // Find tables with numeric columns (generic approach - no specific column name requirements)
+                var table1WithNumeric = pair.Db1.Tables.FirstOrDefault(t => 
+                    t.Columns.Any(c => IsNumericType(c.DataType) && !c.ColumnName.EndsWith("ID", StringComparison.OrdinalIgnoreCase)));
                 
-                var table2WithPrice = pair.Db2.Tables.FirstOrDefault(t => 
-                    t.Columns.Any(c => IsNumericType(c.DataType) && 
-                        (c.ColumnName.Contains("Price", StringComparison.OrdinalIgnoreCase) ||
-                         c.ColumnName.Contains("Amount", StringComparison.OrdinalIgnoreCase) ||
-                         c.ColumnName.Contains("Total", StringComparison.OrdinalIgnoreCase))));
+                var table2WithNumeric = pair.Db2.Tables.FirstOrDefault(t => 
+                    t.Columns.Any(c => IsNumericType(c.DataType) && !c.ColumnName.EndsWith("ID", StringComparison.OrdinalIgnoreCase)));
 
                 // Find FK relationship between them
-                if (table1WithQuantity != null && table2WithPrice != null)
+                if (table1WithNumeric != null && table2WithNumeric != null)
                 {
-                    var hasFkRelation = table1WithQuantity.ForeignKeys.Any(fk => 
-                        fk.ReferencedTable.Equals(table2WithPrice.TableName, StringComparison.OrdinalIgnoreCase));
+                    var hasFkRelation = table1WithNumeric.ForeignKeys.Any(fk => 
+                        fk.ReferencedTable.Equals(table2WithNumeric.TableName, StringComparison.OrdinalIgnoreCase));
                     
                     if (hasFkRelation)
                     {
-                        // Create meaningful business question
-                        var entityName = table2WithPrice.TableName.Replace("s", "", StringComparison.OrdinalIgnoreCase).ToLower();
-                        queries.Add(new TestQuery
+                        // Create generic cross-database calculation question
+                        var numericCol1 = table1WithNumeric.Columns.FirstOrDefault(c => IsNumericType(c.DataType) && !c.ColumnName.EndsWith("ID", StringComparison.OrdinalIgnoreCase))?.ColumnName;
+                        var numericCol2 = table2WithNumeric.Columns.FirstOrDefault(c => IsNumericType(c.DataType) && !c.ColumnName.EndsWith("ID", StringComparison.OrdinalIgnoreCase))?.ColumnName;
+                        
+                        if (!string.IsNullOrEmpty(numericCol1) && !string.IsNullOrEmpty(numericCol2))
                         {
-                            Category = "💰 Cross-DB Calculation",
-                            Query = $"What is the total inventory value for all items in stock?",
-                            DatabaseName = $"{pair.Db1.DatabaseName} + {pair.Db2.DatabaseName}"
-                        });
+                            queries.Add(new TestQuery
+                            {
+                                Category = "💰 Cross-DB Calculation",
+                                Query = $"Calculate the combined value using {numericCol1} from {table1WithNumeric.TableName} and {numericCol2} from {table2WithNumeric.TableName}",
+                                DatabaseName = $"{pair.Db1.DatabaseName} + {pair.Db2.DatabaseName}"
+                            });
+                        }
                     }
                 }
             }
@@ -850,7 +937,7 @@ Respond ONLY with the JSON array, no other text.";
                 queries.Add(new TestQuery
                 {
                     Category = "🌐 Multi-DB Coverage",
-                    Query = "Analyze all available data to find correlations between sales, inventory, and customer information",
+                    Query = "Analyze all available data to find correlations and patterns across all databases",
                     DatabaseName = allDbNames
                 });
             }
@@ -873,7 +960,7 @@ Respond ONLY with the JSON array, no other text.";
                     queries.Add(new TestQuery
                     {
                         Category = "📅 Cross-DB Temporal",
-                        Query = "What is the timeline correlation between customer registrations and their first orders?",
+                        Query = $"What is the timeline correlation between {dateTable1.Table.TableName} and {dateTable2.Table.TableName} records?",
                         DatabaseName = $"{dateTable1.Schema.DatabaseName} + {dateTable2.Schema.DatabaseName}"
                     });
                 }
@@ -927,6 +1014,117 @@ Respond ONLY with the JSON array, no other text.";
                    dataType.Contains("money", StringComparison.OrdinalIgnoreCase);
         }
 
+        private static string ExtractSQLFromError(string errorMessage)
+        {
+            if (string.IsNullOrEmpty(errorMessage))
+                return string.Empty;
+
+            var sqlInfo = new StringBuilder();
+            var issues = new List<string>();
+
+            // Extract "no such column" errors
+            if (errorMessage.Contains("no such column", StringComparison.OrdinalIgnoreCase))
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(
+                    errorMessage, 
+                    @"no such column:\s*'?([^'.\s]+(?:\.[^'.\s]+)?)'?",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+                
+                if (match.Success)
+                {
+                    issues.Add($"Missing column: {match.Groups[1].Value}");
+                }
+            }
+
+            // Extract "does not exist" errors
+            if (errorMessage.Contains("does not exist", StringComparison.OrdinalIgnoreCase))
+            {
+                var match = System.Text.RegularExpressions.Regex.Match(
+                    errorMessage,
+                    @"(Column|Table)\s+'?([^']+)'?\s+does not exist",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+                if (match.Success)
+                {
+                    issues.Add($"{match.Groups[1].Value} '{match.Groups[2].Value}' not found in schema");
+                }
+            }
+
+            // Extract "HAVING clause" errors (SQL syntax)
+            if (errorMessage.Contains("HAVING clause", StringComparison.OrdinalIgnoreCase))
+            {
+                issues.Add("SQL Syntax: HAVING clause used incorrectly (probably on non-aggregate query)");
+            }
+
+            // Extract "aggregate" errors
+            if (errorMessage.Contains("aggregate", StringComparison.OrdinalIgnoreCase) && 
+                errorMessage.Contains("WHERE", StringComparison.OrdinalIgnoreCase))
+            {
+                issues.Add("SQL Syntax: Aggregate function in WHERE clause (should use HAVING)");
+            }
+
+            // Extract "GROUP BY" errors
+            if (errorMessage.Contains("GROUP BY", StringComparison.OrdinalIgnoreCase) && 
+                errorMessage.Contains("not in", StringComparison.OrdinalIgnoreCase))
+            {
+                issues.Add("SQL Syntax: Column in SELECT not in GROUP BY clause");
+            }
+
+            // Extract "No query generated" errors
+            if (errorMessage.Contains("No query generated", StringComparison.OrdinalIgnoreCase))
+            {
+                issues.Add("Validation failed after 3 retry attempts - could not generate valid SQL");
+            }
+
+            // Extract database names from error
+            var dbMatches = System.Text.RegularExpressions.Regex.Matches(
+                errorMessage,
+                @"Database\s+([a-zA-Z0-9_]+):",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            // Build final message
+            if (issues.Any())
+            {
+                if (dbMatches.Count > 0)
+                {
+                    foreach (System.Text.RegularExpressions.Match dbMatch in dbMatches)
+                    {
+                        var dbName = dbMatch.Groups[1].Value;
+                        sqlInfo.AppendLine($"[{dbName}]");
+                        
+                        // Find issues related to this database
+                        var relevantIssues = issues.Where(issue => 
+                            errorMessage.Substring(dbMatch.Index).Contains(issue, StringComparison.OrdinalIgnoreCase) ||
+                            dbMatch.Index == 0 || 
+                            issues.Count == 1).ToList();
+                        
+                        foreach (var issue in relevantIssues.Any() ? relevantIssues : issues)
+                        {
+                            sqlInfo.AppendLine($"  • {issue}");
+                        }
+                    }
+                }
+                else
+                {
+                    foreach (var issue in issues)
+                    {
+                        sqlInfo.AppendLine($"• {issue}");
+                    }
+                }
+            }
+
+            // If no specific SQL info found
+            if (sqlInfo.Length == 0)
+            {
+                sqlInfo.AppendLine("Error details not parsed. Check application logs for:");
+                sqlInfo.AppendLine("  • Generated SQL queries");
+                sqlInfo.AppendLine("  • Validation errors");
+                sqlInfo.AppendLine("  • Retry attempts");
+            }
+
+            return sqlInfo.ToString().TrimEnd();
+        }
+
         private class TestQuery
         {
             public string Category { get; set; } = string.Empty;
@@ -947,12 +1145,12 @@ Respond ONLY with the JSON array, no other text.";
                 var sqlServerCreator = new SqlServerTestDatabaseCreator(_configuration!);
                 var connectionString = sqlServerCreator.GetDefaultConnectionString();
 
-                Console.WriteLine("SalesManagement database will be created:");
+                Console.WriteLine("SQL Server test database will be created:");
                 Console.WriteLine($"Server: (localdb)\\MSSQLLocalDB");
-                Console.WriteLine($"Database: SalesManagement");
+                Console.WriteLine($"Database: TestDatabaseSql");
                 Console.WriteLine();
                 Console.ForegroundColor = ConsoleColor.Yellow;
-                Console.WriteLine("⚠️  WARNING: If SalesManagement database exists, it will be dropped and recreated!");
+                Console.WriteLine("⚠️  WARNING: If database exists, it will be dropped and recreated!");
                 Console.ResetColor();
             Console.WriteLine();
                 Console.Write("Do you want to continue? (Y/N): ");
@@ -1031,7 +1229,7 @@ Respond ONLY with the JSON array, no other text.";
                 var connectionString = creator.GetDefaultConnectionString();
 
                 Console.WriteLine();
-                Console.WriteLine($"📝 Database: InventoryManagement");
+                Console.WriteLine($"📝 Database: TestDatabaseMySql");
                 Console.WriteLine($"📝 Connection: {connectionString.Replace("Password=2059680", "Password=***")}");
                 Console.WriteLine();
 
