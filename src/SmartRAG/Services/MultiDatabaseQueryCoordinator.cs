@@ -963,18 +963,31 @@ namespace SmartRAG.Services
             sb.AppendLine("║                   CRITICAL OUTPUT RULES                        ║");
             sb.AppendLine("╚════════════════════════════════════════════════════════════════╝");
             sb.AppendLine();
+            sb.AppendLine("🚨 LANGUAGE-CRITICAL RULE:");
+            sb.AppendLine("   SQL is a COMPUTER LANGUAGE - it ONLY understands SQL keywords!");
+            sb.AppendLine("   ❌ NEVER write Turkish, German, Russian, or any human language in SQL");
+            sb.AppendLine("   ❌ NEVER write comments or explanations in SQL");
+            sb.AppendLine("   ❌ NEVER translate SQL keywords to other languages");
+            sb.AppendLine("   ✅ ONLY use English SQL keywords: SELECT, FROM, WHERE, JOIN, etc.");
+            sb.AppendLine();
+            sb.AppendLine("   BAD EXAMPLES (will cause syntax errors):");
+            sb.AppendLine("   ❌ 'Bu sorgu, ürünleri seçer' (Turkish text in SQL)");
+            sb.AppendLine("   ❌ 'Diese Abfrage wählt Produkte' (German text in SQL)");
+            sb.AppendLine("   ❌ 'Этот запрос выбирает продукты' (Russian text in SQL)");
+            sb.AppendLine("   ❌ SELECT * FROM Products -- This selects products");
+            sb.AppendLine();
+            sb.AppendLine("   GOOD EXAMPLE:");
+            sb.AppendLine("   ✅ SELECT ProductID, ProductName FROM Products");
+            sb.AppendLine("   (Pure SQL only, no comments, no human language text!)");
+            sb.AppendLine();
             sb.AppendLine("⛔ DO NOT WRITE:");
             sb.AppendLine("   • 'Here is the SQL query...'");
             sb.AppendLine("   • 'This query...'");
             sb.AppendLine("   • 'The key points are...'");
             sb.AppendLine("   • ANY explanations, descriptions, or comments");
             sb.AppendLine("   • Markdown code blocks (```)");
-            sb.AppendLine();
-            sb.AppendLine("✅ ONLY WRITE:");
-            sb.AppendLine("   • Pure SQL query");
-            sb.AppendLine("   • Start with SELECT");
-            sb.AppendLine("   • Nothing before SELECT");
-            sb.AppendLine("   • Nothing after the query ends");
+            sb.AppendLine("   • ANY non-English text");
+            sb.AppendLine("   • ANY SQL comments (-- or /* */)");
             sb.AppendLine();
             sb.AppendLine("✅ Example of CORRECT output:");
             if (schema.DatabaseType == DatabaseType.SqlServer)
@@ -1004,6 +1017,17 @@ namespace SmartRAG.Services
             sb.AppendLine($"  - ALLOWED TABLES: {string.Join(", ", dbQuery.RequiredTables)}");
             sb.AppendLine("  - DO NOT use any other tables in FROM, JOIN, WHERE, or subqueries!");
             sb.AppendLine("  - Your response must START with SELECT, not with any text!");
+            sb.AppendLine();
+            sb.AppendLine("🌍 LANGUAGE ENFORCEMENT:");
+            sb.AppendLine("  - SQL is ENGLISH-ONLY computer language");
+            sb.AppendLine("  - Even if user question is in Turkish/German/Russian:");
+            sb.AppendLine("    ✅ SQL must still be pure English SQL");
+            sb.AppendLine("    ❌ NO Turkish/German/Russian text in SQL output");
+            sb.AppendLine("  - Example: User asks 'Müşterileri göster'");
+            sb.AppendLine("    ✅ Correct: SELECT * FROM Customers");
+            sb.AppendLine("    ❌ Wrong: Bu sorgu müşterileri seçer: SELECT * FROM Customers");
+            sb.AppendLine();
+            sb.AppendLine("YOUR RESPONSE = SQL QUERY ONLY (starts with SELECT, pure English SQL, no text!)");
 
             return sb.ToString();
         }
@@ -1380,9 +1404,14 @@ namespace SmartRAG.Services
             sb.AppendLine($"User Query: {userQuery}");
             sb.AppendLine($"Purpose: {dbQuery.Purpose}");
             sb.AppendLine();
+            sb.AppendLine("🌍 LANGUAGE RULE:");
+            sb.AppendLine("   SQL must be PURE ENGLISH - NO Turkish/German/Russian text!");
+            sb.AppendLine("   ❌ Do NOT write: 'Bu sorgu', 'Diese Abfrage', 'Этот запрос'");
+            sb.AppendLine("   ✅ Only write: SELECT, FROM, WHERE, etc. (English SQL keywords)");
+            sb.AppendLine();
             sb.AppendLine("Generate a valid SQL query using ONLY the columns listed above.");
             sb.AppendLine("Follow SQL syntax rules strictly.");
-            sb.AppendLine("Output ONLY the SQL query, no explanations.");
+            sb.AppendLine("Output ONLY pure English SQL query, no explanations, no comments.");
             
             return sb.ToString();
         }
@@ -1454,8 +1483,9 @@ namespace SmartRAG.Services
             sb.AppendLine($"Query: {userQuery}");
             sb.AppendLine($"Task: {dbQuery.Purpose}");
             sb.AppendLine();
+            sb.AppendLine("🌍 CRITICAL: SQL must be PURE ENGLISH - NO Turkish/German/Russian text!");
             sb.AppendLine("Write the SQL query. Triple-check EVERY column name AND syntax before outputting.");
-            sb.AppendLine("Output format: Pure SQL only, no text.");
+            sb.AppendLine("Output format: Pure English SQL only, no text, no comments.");
             
             return sb.ToString();
         }
@@ -1514,8 +1544,9 @@ namespace SmartRAG.Services
             }
             
             sb.AppendLine();
+            sb.AppendLine("🌍 CRITICAL: Write pure ENGLISH SQL - NO Turkish/German/Russian words!");
             sb.AppendLine("Write a simple query like above. No complexity.");
-            sb.AppendLine("Output: SQL only.");
+            sb.AppendLine("Output: Pure English SQL only, no text, no comments.");
             
             return sb.ToString();
         }
@@ -1535,6 +1566,44 @@ namespace SmartRAG.Services
             try
             {
                 var sqlUpper = sql.ToUpperInvariant();
+                
+                // 0. Check for non-English text in SQL (Turkish, German, Russian, etc.)
+                var nonEnglishPatterns = new[]
+                {
+                    // Turkish characters
+                    "ç", "ğ", "ı", "ö", "ş", "ü", "Ç", "Ğ", "İ", "Ö", "Ş", "Ü",
+                    // German umlauts
+                    "ä", "ö", "ü", "ß", "Ä", "Ö", "Ü",
+                    // Russian Cyrillic
+                    "а", "б", "в", "г", "д", "е", "ж", "з", "и", "к", "л", "м", "н", "о", "п", "р", "с", "т", "у", "ф", "х", "ц", "ч", "ш", "щ", "ъ", "ы", "ь", "э", "ю", "я",
+                    "А", "Б", "В", "Г", "Д", "Е", "Ж", "З", "И", "К", "Л", "М", "Н", "О", "П", "Р", "С", "Т", "У", "Ф", "Х", "Ц", "Ч", "Ш", "Щ", "Ъ", "Ы", "Ь", "Э", "Ю", "Я"
+                };
+                
+                foreach (var pattern in nonEnglishPatterns)
+                {
+                    if (sql.Contains(pattern))
+                    {
+                        errors.Add($"Non-English character detected in SQL: '{pattern}'. SQL must use only English characters and SQL keywords.");
+                        break;
+                    }
+                }
+                
+                // Also check for common Turkish/German/Russian SQL keywords
+                var nonEnglishKeywords = new[]
+                {
+                    "sorgu", "seçer", "tablo", "kolon", // Turkish
+                    "abfrage", "wählt", "tabelle", "spalte", // German
+                    "запрос", "выбирает", "таблица", "столбец" // Russian
+                };
+                
+                foreach (var keyword in nonEnglishKeywords)
+                {
+                    if (sqlUpper.Contains(keyword.ToUpperInvariant()))
+                    {
+                        errors.Add($"Non-English keyword detected in SQL: '{keyword}'. SQL must use only English SQL keywords (SELECT, FROM, WHERE, etc.).");
+                        break;
+                    }
+                }
                 
                 // 1. Check for aggregate functions in WHERE clause (common error)
                 if (sqlUpper.Contains("WHERE"))

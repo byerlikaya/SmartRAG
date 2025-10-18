@@ -24,6 +24,7 @@ namespace SmartRAG.DatabaseTests
         private static IDatabaseSchemaAnalyzer? _schemaAnalyzer;
         private static IMultiDatabaseQueryCoordinator? _multiDbCoordinator;
     private static IAIService? _aiService;
+    private static string _selectedLanguage = "English";
 
         private static async Task Main(string[] args)
         {
@@ -38,12 +39,13 @@ namespace SmartRAG.DatabaseTests
             try
             {
                 // Setup test databases
-                Console.WriteLine("📁 Preparing test databases...");
                 await SetupTestDatabases();
-                Console.WriteLine();
 
                 // Load configuration
                 LoadConfiguration();
+
+                // Select language for queries and responses
+                SelectLanguage();
 
                 // Initialize services
                 await InitializeServices();
@@ -78,36 +80,72 @@ namespace SmartRAG.DatabaseTests
             
             if (!File.Exists(sqliteDbPath))
             {
-                Console.WriteLine("   Creating SQLite test database...");
+                Console.Write("📁 Creating SQLite test database... ");
                 sqliteCreator.CreateSampleDatabase($"Data Source={sqliteDbPath}");
-                Console.WriteLine("   ✓ SQLite database created");
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("✓");
+                Console.ResetColor();
             }
-            else
-            {
-                Console.WriteLine("   ✓ SQLite test database exists");
-            }
-
-            Console.WriteLine();
 
             await Task.CompletedTask;
         }
 
         private static void LoadConfiguration()
         {
-            Console.WriteLine("⚙️  Loading configuration...");
-
             _configuration = new ConfigurationBuilder()
                 .SetBasePath(Directory.GetCurrentDirectory())
                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                 .AddJsonFile("appsettings.Development.json", optional: true, reloadOnChange: true)
                 .Build();
+        }
 
-            Console.WriteLine("   ✓ Configuration loaded");
+        private static void SelectLanguage()
+        {
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+            Console.WriteLine("🌍 LANGUAGE SELECTION");
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+            Console.WriteLine();
+            Console.WriteLine("Please select the language for test queries and AI responses:");
+            Console.WriteLine();
+            Console.WriteLine("1. 🇬🇧 English");
+            Console.WriteLine("2. 🇩🇪 German (Deutsch)");
+            Console.WriteLine("3. 🇹🇷 Turkish (Türkçe)");
+            Console.WriteLine("4. 🇷🇺 Russian (Русский)");
+            Console.WriteLine("5. 🌐 Other (specify)");
+            Console.WriteLine();
+            Console.Write("Selection (default: English): ");
+            
+            var choice = Console.ReadLine();
+            
+            _selectedLanguage = choice switch
+            {
+                "1" or "" => "English",
+                "2" => "German",
+                "3" => "Turkish",
+                "4" => "Russian",
+                "5" => GetCustomLanguage(),
+                _ => "English"
+            };
+            
+            Console.WriteLine();
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"✓ Language set to: {_selectedLanguage}");
+            Console.ResetColor();
+            Console.WriteLine();
+        }
+
+        private static string GetCustomLanguage()
+        {
+            Console.WriteLine();
+            Console.Write("Enter language name (e.g., French, Spanish, Italian): ");
+            var customLang = Console.ReadLine();
+            return string.IsNullOrWhiteSpace(customLang) ? "English" : customLang.Trim();
         }
 
         private static async Task InitializeServices()
         {
-            Console.WriteLine("🔧 Starting SmartRAG services...");
+            Console.WriteLine("🔧 Initializing SmartRAG...");
+            Console.WriteLine();
 
             if (_configuration == null)
             {
@@ -120,8 +158,7 @@ namespace SmartRAG.DatabaseTests
             services.AddLogging(builder =>
             {
                 builder.AddConsole();
-                builder.SetMinimumLevel(LogLevel.Information);
-                builder.AddFilter("SmartRAG", LogLevel.Debug);
+                builder.AddConfiguration(_configuration.GetSection("Logging"));
             });
 
             services.AddSmartRag(_configuration, options =>
@@ -138,53 +175,67 @@ namespace SmartRAG.DatabaseTests
             _aiService = _serviceProvider.GetService<IAIService>();
             _logger = _serviceProvider.GetRequiredService<ILogger<Program>>();
 
-            Console.WriteLine("   ✓ Services loaded");
-            Console.WriteLine();
-
             // Initialize database connections
             if (_connectionManager != null)
             {
-                Console.WriteLine("🔗 Initializing database connections...");
                 await _connectionManager.InitializeAsync();
 
                 var connections = await _connectionManager.GetAllConnectionsAsync();
-                Console.WriteLine($"   ✓ {connections.Count} database connections loaded");
-                Console.WriteLine();
-
-                // Validate connections
-                foreach (var conn in connections)
-                {
-                    var dbId = await _connectionManager.GetDatabaseIdAsync(conn);
-                    var isValid = await _connectionManager.ValidateConnectionAsync(dbId);
-                    
-                    Console.Write($"   • {conn.Name ?? dbId} ({conn.DatabaseType}): ");
-                    
-                    if (isValid)
-                    {
-                        Console.ForegroundColor = ConsoleColor.Green;
-                        Console.WriteLine("✓");
-                        Console.ResetColor();
-                    }
-                    else
-                    {
-                        Console.ForegroundColor = ConsoleColor.Red;
-                        Console.WriteLine("✗");
-                        Console.ResetColor();
-                    }
-                }
-                Console.WriteLine();
-
                 // Display schema analysis results
                 var schemas = await _schemaAnalyzer!.GetAllSchemasAsync();
-                var completed = schemas.Where(s => s.Status == SchemaAnalysisStatus.Completed).ToList();
-                Console.WriteLine($"📊 Schema Analysis: {completed.Count}/{schemas.Count} databases analyzed successfully");
+                var completed = schemas.Where(s => s.Status == SchemaAnalysisStatus.Completed && s.Tables.Count > 0).ToList();
+                var needsSetup = schemas.Where(s => s.Tables.Count == 0).ToList();
                 
-                foreach (var schema in schemas)
+                Console.WriteLine($"📊 Ready: {completed.Count} database(s) with data");
+                
+                foreach (var schema in completed)
                 {
-                    Console.WriteLine($"   • {schema.DatabaseName}: {schema.Tables.Count} tables, {schema.TotalRowCount} total rows");
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.WriteLine($"   ✓ {schema.DatabaseName}: {schema.Tables.Count} tables, {schema.TotalRowCount} total rows");
+                    Console.ResetColor();
                 }
                 
-            Console.WriteLine();
+                Console.WriteLine();
+
+                // Show setup instructions if databases need creation
+                if (needsSetup.Any())
+                {
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine("⚠️  SETUP REQUIRED");
+                    Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+                    Console.ResetColor();
+                    Console.WriteLine();
+                    Console.WriteLine("Some databases are not created yet. Please follow these steps:");
+                    Console.WriteLine();
+
+                    var instructionsShown = new HashSet<string>();
+                    
+                    foreach (var schema in needsSetup)
+                    {
+                        var instruction = schema.DatabaseType switch
+                        {
+                            DatabaseType.SqlServer => "6. 🗄️  Create SQL Server Test Database → SalesManagement",
+                            DatabaseType.MySQL => "7. 🐬 Create MySQL Test Database → InventoryManagement",
+                            DatabaseType.PostgreSQL => "8. 🐘 Create PostgreSQL Test Database → LogisticsManagement",
+                            _ => null
+                        };
+
+                        if (instruction != null && !instructionsShown.Contains(instruction))
+                        {
+                            Console.WriteLine($"   {instruction}");
+                            instructionsShown.Add(instruction);
+                        }
+                    }
+
+                    if (instructionsShown.Any())
+                    {
+                        Console.WriteLine();
+                        Console.ForegroundColor = ConsoleColor.Cyan;
+                        Console.WriteLine("💡 TIP: Use the menu options above to create databases automatically!");
+                        Console.ResetColor();
+                        Console.WriteLine();
+                    }
+                }
             }
         }
 
@@ -218,6 +269,9 @@ namespace SmartRAG.DatabaseTests
                     case "7":
                         await CreateMySqlDatabase();
                         break;
+                    case "8":
+                        await CreatePostgreSqlDatabase();
+                        break;
                     case "0":
                         Console.WriteLine("\n👋 Goodbye!");
                         return;
@@ -244,6 +298,7 @@ namespace SmartRAG.DatabaseTests
             Console.WriteLine("5. 🧪 Automatic Test Queries");
             Console.WriteLine("6. 🗄️  Create SQL Server Test Database");
             Console.WriteLine("7. 🐬 Create MySQL Test Database");
+            Console.WriteLine("8. 🐘 Create PostgreSQL Test Database");
             Console.WriteLine("0. 🚪 Exit");
             Console.WriteLine();
             Console.Write("Selection: ");
@@ -257,18 +312,31 @@ namespace SmartRAG.DatabaseTests
             Console.WriteLine("═══════════════════════════════════════════════════════════════════");
 
             var connections = await _connectionManager!.GetAllConnectionsAsync();
+            var needsSetup = new List<string>();
             
             foreach (var conn in connections)
             {
                 var dbId = await _connectionManager.GetDatabaseIdAsync(conn);
-                var isValid = await _connectionManager.ValidateConnectionAsync(dbId);
+                
+                // Suppress validation warnings by catching them
+                bool isValid;
+                try
+                {
+                    var originalLogLevel = _logger?.IsEnabled(LogLevel.Warning) ?? false;
+                    isValid = await _connectionManager.ValidateConnectionAsync(dbId);
+                }
+                catch
+                {
+                    isValid = false;
+                }
+                
                 var schema = await _schemaAnalyzer!.GetSchemaAsync(dbId);
 
                 Console.WriteLine();
                 Console.ForegroundColor = ConsoleColor.Yellow;
                 Console.WriteLine($"📂 {conn.Name ?? dbId}");
                 Console.ResetColor();
-                Console.WriteLine($"   Tip: {conn.DatabaseType}");
+                Console.WriteLine($"   Type: {conn.DatabaseType}");
                 Console.WriteLine($"   Connection: {(isValid ? "✓ Active" : "✗ Inactive")}");
                 
                 if (schema != null)
@@ -276,6 +344,12 @@ namespace SmartRAG.DatabaseTests
                     Console.WriteLine($"   Schema: {schema.Status}");
                     Console.WriteLine($"   Tables: {schema.Tables.Count}");
                     Console.WriteLine($"   Total Rows: {schema.TotalRowCount:N0}");
+                    
+                    // Track databases that need setup
+                    if (schema.Tables.Count == 0 && conn.DatabaseType != DatabaseType.SQLite)
+                    {
+                        needsSetup.Add(GetSetupInstruction(conn.DatabaseType));
+                    }
                 }
 
                 if (!string.IsNullOrEmpty(conn.Description))
@@ -285,6 +359,39 @@ namespace SmartRAG.DatabaseTests
                     Console.ResetColor();
                 }
             }
+
+            // Show setup instructions if needed
+            if (needsSetup.Any())
+            {
+                Console.WriteLine();
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine("⚠️  ACTION REQUIRED");
+                Console.WriteLine("───────────────────────────────────────────────────────────────────");
+                Console.ResetColor();
+                Console.WriteLine("The following databases need to be created:");
+                Console.WriteLine();
+                
+                foreach (var instruction in needsSetup.Distinct())
+                {
+                    Console.WriteLine($"   {instruction}");
+                }
+                
+                Console.WriteLine();
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine("💡 Use the menu options above to create databases automatically!");
+                Console.ResetColor();
+            }
+        }
+
+        private static string GetSetupInstruction(DatabaseType databaseType)
+        {
+            return databaseType switch
+            {
+                DatabaseType.SqlServer => "Select option 6 → Create SQL Server Test Database",
+                DatabaseType.MySQL => "Select option 7 → Create MySQL Test Database",
+                DatabaseType.PostgreSQL => "Select option 8 → Create PostgreSQL Test Database",
+                _ => string.Empty
+            };
         }
 
         private static async Task ShowDatabaseSchemas()
@@ -335,6 +442,10 @@ namespace SmartRAG.DatabaseTests
             Console.WriteLine("🤖 Multi-Database Smart Query");
             Console.WriteLine("═══════════════════════════════════════════════════════════════════");
             Console.WriteLine();
+            Console.ForegroundColor = ConsoleColor.DarkGray;
+            Console.WriteLine($"Language: {_selectedLanguage}");
+            Console.ResetColor();
+            Console.WriteLine();
             Console.WriteLine("Sample Questions:");
             Console.WriteLine("  • Show me the items with highest values");
             Console.WriteLine("  • Find records where foreign key ID is 1 and show related data");
@@ -342,7 +453,7 @@ namespace SmartRAG.DatabaseTests
             Console.WriteLine("  • What is the total of all numeric values?");
             Console.WriteLine();
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.Write("Your question: ");
+            Console.Write($"Your question ({_selectedLanguage}): ");
             Console.ResetColor();
 
             var query = Console.ReadLine();
@@ -359,7 +470,10 @@ namespace SmartRAG.DatabaseTests
                 Console.WriteLine("⏳ Analyzing databases and preparing query...");
                 Console.ResetColor();
 
-                var response = await _multiDbCoordinator!.QueryMultipleDatabasesAsync(query, maxResults: 10);
+                // Add language instruction to query
+                var languageInstructedQuery = $"{query}\n\n[IMPORTANT: Respond in {_selectedLanguage} language]";
+                
+                var response = await _multiDbCoordinator!.QueryMultipleDatabasesAsync(languageInstructedQuery, maxResults: 10);
 
                 Console.WriteLine();
                 Console.ForegroundColor = ConsoleColor.Green;
@@ -396,7 +510,11 @@ namespace SmartRAG.DatabaseTests
             Console.WriteLine("🔬 Query Analysis (SQL Generation - Without Execution)");
             Console.WriteLine("═══════════════════════════════════════════════════════════════════");
             Console.WriteLine();
-            Console.Write("Question to analyze: ");
+            Console.ForegroundColor = ConsoleColor.DarkGray;
+            Console.WriteLine($"Language: {_selectedLanguage}");
+            Console.ResetColor();
+            Console.WriteLine();
+            Console.Write($"Question to analyze ({_selectedLanguage}): ");
 
             var query = Console.ReadLine();
             if (string.IsNullOrWhiteSpace(query))
@@ -410,7 +528,10 @@ namespace SmartRAG.DatabaseTests
                 Console.WriteLine();
                 Console.WriteLine("⏳ AI analyzing...");
                 
-                var intent = await _multiDbCoordinator!.AnalyzeQueryIntentAsync(query);
+                // Add language instruction to query
+                var languageInstructedQuery = $"{query}\n\n[IMPORTANT: Analyze and respond in {_selectedLanguage} language]";
+                
+                var intent = await _multiDbCoordinator!.AnalyzeQueryIntentAsync(languageInstructedQuery);
                 intent = await _multiDbCoordinator.GenerateDatabaseQueriesAsync(intent);
 
                 Console.WriteLine();
@@ -466,6 +587,10 @@ namespace SmartRAG.DatabaseTests
             Console.WriteLine("🧪 Automatic Test Queries");
             Console.WriteLine("═══════════════════════════════════════════════════════════════════");
             Console.WriteLine();
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine($"🌍 Query Language: {_selectedLanguage}");
+            Console.ResetColor();
+            Console.WriteLine();
 
             // Generate dynamic test queries based on current database schemas
             Console.WriteLine("📊 Analyzing database schemas to generate test queries...");
@@ -515,11 +640,18 @@ namespace SmartRAG.DatabaseTests
                 Console.WriteLine($"  Query: {testQuery.Query}");
                 Console.ForegroundColor = ConsoleColor.DarkCyan;
                 Console.WriteLine($"  Databases: {testQuery.DatabaseName}");
+                if (!string.IsNullOrEmpty(testQuery.DatabaseTypes))
+                {
+                    Console.WriteLine($"  Types: {testQuery.DatabaseTypes}");
+                }
                 Console.ResetColor();
 
                 try
                 {
-                    var response = await _multiDbCoordinator!.QueryMultipleDatabasesAsync(testQuery.Query, maxResults: 5);
+                    // Add language instruction for test queries
+                    var languageInstructedQuery = $"{testQuery.Query}\n\n[IMPORTANT: Respond in {_selectedLanguage} language]";
+                    
+                    var response = await _multiDbCoordinator!.QueryMultipleDatabasesAsync(languageInstructedQuery, maxResults: 5);
 
                     // Check if the response indicates an error
                     if (response.Answer.Contains("failed", StringComparison.OrdinalIgnoreCase) ||
@@ -532,7 +664,8 @@ namespace SmartRAG.DatabaseTests
                         Console.ResetColor();
                         
                         // Extract SQL info from error message if available
-                        var sqlInfo = ExtractSQLFromError(response.Answer);
+                        var schemas = await _schemaAnalyzer!.GetAllSchemasAsync();
+                        var sqlInfo = ExtractSQLFromError(response.Answer, schemas);
                         failedQueries.Add((testQuery, response.Answer, sqlInfo));
                     }
                     else
@@ -594,6 +727,12 @@ namespace SmartRAG.DatabaseTests
                     Console.ResetColor();
                     Console.WriteLine($"Category: {failed.Query.Category}");
                     Console.WriteLine($"Databases: {failed.Query.DatabaseName}");
+                    if (!string.IsNullOrEmpty(failed.Query.DatabaseTypes))
+                    {
+                        Console.ForegroundColor = ConsoleColor.Magenta;
+                        Console.WriteLine($"Database Types: {failed.Query.DatabaseTypes}");
+                        Console.ResetColor();
+                    }
                     Console.WriteLine();
                     Console.ForegroundColor = ConsoleColor.Cyan;
                     Console.WriteLine($"User Query:");
@@ -694,6 +833,24 @@ namespace SmartRAG.DatabaseTests
 
 Based on the database schemas above, generate {queryCountVariation} intelligent, MEANINGFUL cross-database test queries.
 
+🌍 CRITICAL LANGUAGE REQUIREMENT - READ CAREFULLY:
+YOU MUST write EVERY SINGLE query in {_selectedLanguage} language!
+
+If {_selectedLanguage} is Turkish:
+- Write: """"İki veritabanındaki toplam değer nedir?""""
+- NOT: """"What is the total value across both databases?""""
+
+If {_selectedLanguage} is German:
+- Write: """"Was ist der Gesamtwert in beiden Datenbanken?""""
+- NOT: """"What is the total value across both databases?""""
+
+If {_selectedLanguage} is Russian:
+- Write: """"Какова общая стоимость в обеих базах данных?""""
+- NOT: """"What is the total value across both databases?""""
+
+ONLY category field stays in English (with emoji).
+Query field MUST be in {_selectedLanguage}.
+
 🎯 YOUR TASK:
 Analyze the schemas and generate REALISTIC questions that require data from MULTIPLE databases.
 
@@ -759,23 +916,62 @@ Good question examples:
   - Which items show discrepancy between databases?
   - What is the aggregated value grouped by location or category?
 
-Return ONLY a JSON array in this exact format:
+Category options (use emoji prefix - category in English, query in {_selectedLanguage}):
+- Cross-DB Join
+- Cross-DB Calculation
+- Cross-DB Filter
+- Cross-DB Temporal
+- Cross-DB Search
+- Coverage Test
+- Multi-DB Coverage
+
+REQUIRED JSON FORMAT EXAMPLES:
+
+If {_selectedLanguage} is Turkish:
 [
   {{
-    """"category"""": """"Cross-DB Calculation"""",
-    """"query"""": """"Specific meaningful question here"""",
+    """"category"""": """"💰 Cross-DB Calculation"""",
+    """"query"""": """"İki veritabanındaki toplam değer nedir?"""",
+    """"databases"""": """"Database1 + Database2""""
+  }},
+  {{
+    """"category"""": """"🔗 Cross-DB Join"""",
+    """"query"""": """"Hangi kayıtlar birbiriyle ilişkilidir?"""",
     """"databases"""": """"Database1 + Database2""""
   }}
 ]
 
-Category options (use emoji prefix):
-- Cross-DB Join (showing related data)
-- Cross-DB Calculation (value/total calculations)
-- Cross-DB Filter (filtering by criteria)
-- Cross-DB Temporal (time-based analysis)
-- Cross-DB Search (finding specific items)
-- Coverage Test (validation queries)
-- Multi-DB Coverage (comprehensive reports)
+If {_selectedLanguage} is English:
+[
+  {{
+    """"category"""": """"💰 Cross-DB Calculation"""",
+    """"query"""": """"What is the total value across both databases?"""",
+    """"databases"""": """"Database1 + Database2""""
+  }}
+]
+
+If {_selectedLanguage} is German:
+[
+  {{
+    """"category"""": """"💰 Cross-DB Calculation"""",
+    """"query"""": """"Was ist der Gesamtwert über beide Datenbanken?"""",
+    """"databases"""": """"Database1 + Database2""""
+  }}
+]
+
+If {_selectedLanguage} is Russian:
+[
+  {{
+    """"category"""": """"💰 Cross-DB Calculation"""",
+    """"query"""": """"Какова общая стоимость в обеих базах данных?"""",
+    """"databases"""": """"Database1 + Database2""""
+  }}
+]
+
+CRITICAL: Category stays emoji + English. Query MUST be 100% {_selectedLanguage}.
+
+🚨 FINAL CHECK:
+Before responding, verify that EVERY """"query"""" value is 100% in {_selectedLanguage} language!
 
 Respond ONLY with the JSON array, no other text.";
 
@@ -802,11 +998,15 @@ Respond ONLY with the JSON array, no other text.";
                                 // Ensure it's actually cross-database
                                 if (dbList.Contains("+") || dbList.Contains(","))
                                 {
+                                    // Extract database types from schema
+                                    var dbTypes = ExtractDatabaseTypes(dbList, schemas);
+                                    
                                     queries.Add(new TestQuery
                                     {
                                         Category = cat.GetString() ?? "🧪 Test",
                                         Query = q.GetString() ?? "",
-                                        DatabaseName = dbList
+                                        DatabaseName = dbList,
+                                        DatabaseTypes = dbTypes
                                     });
                                 }
                             }
@@ -882,14 +1082,19 @@ Respond ONLY with the JSON array, no other text.";
 
                     if (referencedDb != null && referencedDb.DatabaseId != item.Schema.DatabaseId)
                     {
-                        // Create generic cross-database join question
-                        var genericQuery = $"Show all records from {item.Table.TableName} with their related {fk.ReferencedTable} information";
+                        // Create generic cross-database join question in selected language
+                        var genericQuery = TranslateQuery(
+                            $"Show all records from {item.Table.TableName} with their related {fk.ReferencedTable} information",
+                            _selectedLanguage,
+                            item.Table.TableName,
+                            fk.ReferencedTable);
                         
                         queries.Add(new TestQuery
                         {
                             Category = "🔗 Cross-DB Join",
                             Query = genericQuery,
-                            DatabaseName = $"{item.Schema.DatabaseName} + {referencedDb.DatabaseName}"
+                            DatabaseName = $"{item.Schema.DatabaseName} + {referencedDb.DatabaseName}",
+                            DatabaseTypes = $"{item.Schema.DatabaseType} + {referencedDb.DatabaseType}"
                         });
                     }
                 }
@@ -919,11 +1124,20 @@ Respond ONLY with the JSON array, no other text.";
                         
                         if (!string.IsNullOrEmpty(numericCol1) && !string.IsNullOrEmpty(numericCol2))
                         {
+                            var calculationQuery = _selectedLanguage switch
+                            {
+                                "Turkish" => $"{table1WithNumeric.TableName} tablosundaki {numericCol1} ve {table2WithNumeric.TableName} tablosundaki {numericCol2} değerlerini kullanarak toplam değeri hesapla",
+                                "German" => $"Berechne den Gesamtwert mit {numericCol1} aus {table1WithNumeric.TableName} und {numericCol2} aus {table2WithNumeric.TableName}",
+                                "Russian" => $"Рассчитайте общее значение используя {numericCol1} из {table1WithNumeric.TableName} и {numericCol2} из {table2WithNumeric.TableName}",
+                                _ => $"Calculate the combined value using {numericCol1} from {table1WithNumeric.TableName} and {numericCol2} from {table2WithNumeric.TableName}"
+                            };
+                            
                             queries.Add(new TestQuery
                             {
                                 Category = "💰 Cross-DB Calculation",
-                                Query = $"Calculate the combined value using {numericCol1} from {table1WithNumeric.TableName} and {numericCol2} from {table2WithNumeric.TableName}",
-                                DatabaseName = $"{pair.Db1.DatabaseName} + {pair.Db2.DatabaseName}"
+                                Query = calculationQuery,
+                                DatabaseName = $"{pair.Db1.DatabaseName} + {pair.Db2.DatabaseName}",
+                                DatabaseTypes = $"{pair.Db1.DatabaseType} + {pair.Db2.DatabaseType}"
                             });
                         }
                     }
@@ -934,11 +1148,22 @@ Respond ONLY with the JSON array, no other text.";
             if (schemas.Count >= 2)
             {
                 var allDbNames = string.Join(" + ", schemas.Select(s => s.DatabaseName));
+                var allDbTypes = string.Join(" + ", schemas.Select(s => s.DatabaseType));
+                
+                var coverageQuery = _selectedLanguage switch
+                {
+                    "Turkish" => "Tüm veritabanlarındaki mevcut verileri analiz ederek korelasyonları ve kalıpları bul",
+                    "German" => "Analysiere alle verfügbaren Daten um Korrelationen und Muster über alle Datenbanken zu finden",
+                    "Russian" => "Проанализируйте все доступные данные чтобы найти корреляции и паттерны во всех базах данных",
+                    _ => "Analyze all available data to find correlations and patterns across all databases"
+                };
+                
                 queries.Add(new TestQuery
                 {
                     Category = "🌐 Multi-DB Coverage",
-                    Query = "Analyze all available data to find correlations and patterns across all databases",
-                    DatabaseName = allDbNames
+                    Query = coverageQuery,
+                    DatabaseName = allDbNames,
+                    DatabaseTypes = allDbTypes
                 });
             }
 
@@ -957,11 +1182,20 @@ Respond ONLY with the JSON array, no other text.";
 
                 if (dateTable2 != null)
                 {
+                    var temporalQuery = _selectedLanguage switch
+                    {
+                        "Turkish" => $"{dateTable1.Table.TableName} ve {dateTable2.Table.TableName} kayıtları arasındaki zaman çizelgesi korelasyonu nedir?",
+                        "German" => $"Was ist die zeitliche Korrelation zwischen {dateTable1.Table.TableName} und {dateTable2.Table.TableName} Datensätzen?",
+                        "Russian" => $"Какова временная корреляция между записями {dateTable1.Table.TableName} и {dateTable2.Table.TableName}?",
+                        _ => $"What is the timeline correlation between {dateTable1.Table.TableName} and {dateTable2.Table.TableName} records?"
+                    };
+                    
                     queries.Add(new TestQuery
                     {
                         Category = "📅 Cross-DB Temporal",
-                        Query = $"What is the timeline correlation between {dateTable1.Table.TableName} and {dateTable2.Table.TableName} records?",
-                        DatabaseName = $"{dateTable1.Schema.DatabaseName} + {dateTable2.Schema.DatabaseName}"
+                        Query = temporalQuery,
+                        DatabaseName = $"{dateTable1.Schema.DatabaseName} + {dateTable2.Schema.DatabaseName}",
+                        DatabaseTypes = $"{dateTable1.Schema.DatabaseType} + {dateTable2.Schema.DatabaseType}"
                     });
                 }
             }
@@ -990,11 +1224,20 @@ Respond ONLY with the JSON array, no other text.";
 
                         if (table1 != null && table2 != null)
                         {
+                            var relationshipQuery = _selectedLanguage switch
+                            {
+                                "Turkish" => $"{table1.TableName} ve {table2.TableName} arasındaki ilişkiyi analiz et",
+                                "German" => $"Analysiere die Beziehung zwischen {table1.TableName} und {table2.TableName}",
+                                "Russian" => $"Проанализируйте связь между {table1.TableName} и {table2.TableName}",
+                                _ => $"Analyze relationship between {table1.TableName} and {table2.TableName}"
+                            };
+                            
                             queries.Add(new TestQuery
                             {
                                 Category = "✅ Coverage Test",
-                                Query = $"Analyze relationship between {table1.TableName} and {table2.TableName}",
-                                DatabaseName = $"{schema.DatabaseName} + {otherDb.DatabaseName}"
+                                Query = relationshipQuery,
+                                DatabaseName = $"{schema.DatabaseName} + {otherDb.DatabaseName}",
+                                DatabaseTypes = $"{schema.DatabaseType} + {otherDb.DatabaseType}"
                             });
                         }
                     }
@@ -1014,7 +1257,35 @@ Respond ONLY with the JSON array, no other text.";
                    dataType.Contains("money", StringComparison.OrdinalIgnoreCase);
         }
 
-        private static string ExtractSQLFromError(string errorMessage)
+        private static string ExtractDatabaseTypes(string databaseNames, List<DatabaseSchemaInfo> schemas)
+        {
+            var dbNames = databaseNames.Split(new[] { " + ", ", " }, StringSplitOptions.RemoveEmptyEntries);
+            var dbTypes = new List<string>();
+
+            foreach (var dbName in dbNames)
+            {
+                var schema = schemas.FirstOrDefault(s => s.DatabaseName.Equals(dbName.Trim(), StringComparison.OrdinalIgnoreCase));
+                if (schema != null)
+                {
+                    dbTypes.Add(schema.DatabaseType.ToString());
+                }
+            }
+
+            return string.Join(" + ", dbTypes);
+        }
+
+        private static string TranslateQuery(string template, string language, string table1, string table2)
+        {
+            return language switch
+            {
+                "Turkish" => $"{table1} tablosundaki tüm kayıtları ilgili {table2} bilgileriyle birlikte göster",
+                "German" => $"Zeige alle Datensätze aus {table1} mit ihren zugehörigen {table2} Informationen",
+                "Russian" => $"Показать все записи из {table1} с соответствующей информацией {table2}",
+                _ => template
+            };
+        }
+
+        private static string ExtractSQLFromError(string errorMessage, List<DatabaseSchemaInfo> schemas)
         {
             if (string.IsNullOrEmpty(errorMessage))
                 return string.Empty;
@@ -1090,7 +1361,12 @@ Respond ONLY with the JSON array, no other text.";
                     foreach (System.Text.RegularExpressions.Match dbMatch in dbMatches)
                     {
                         var dbName = dbMatch.Groups[1].Value;
-                        sqlInfo.AppendLine($"[{dbName}]");
+                        
+                        // Find database type from schemas
+                        var schema = schemas.FirstOrDefault(s => s.DatabaseName.Equals(dbName, StringComparison.OrdinalIgnoreCase));
+                        var dbType = schema != null ? $" ({schema.DatabaseType})" : "";
+                        
+                        sqlInfo.AppendLine($"[{dbName}{dbType}]");
                         
                         // Find issues related to this database
                         var relevantIssues = issues.Where(issue => 
@@ -1130,6 +1406,7 @@ Respond ONLY with the JSON array, no other text.";
             public string Category { get; set; } = string.Empty;
             public string Query { get; set; } = string.Empty;
             public string DatabaseName { get; set; } = string.Empty;
+            public string DatabaseTypes { get; set; } = string.Empty;
         }
 
         private static async Task CreateSqlServerDatabase()
@@ -1146,8 +1423,8 @@ Respond ONLY with the JSON array, no other text.";
                 var connectionString = sqlServerCreator.GetDefaultConnectionString();
 
                 Console.WriteLine("SQL Server test database will be created:");
-                Console.WriteLine($"Server: (localdb)\\MSSQLLocalDB");
-                Console.WriteLine($"Database: TestDatabaseSql");
+                Console.WriteLine($"Server: localhost,1433 (Docker)");
+                Console.WriteLine($"Database: SalesManagement");
                 Console.WriteLine();
                 Console.ForegroundColor = ConsoleColor.Yellow;
                 Console.WriteLine("⚠️  WARNING: If database exists, it will be dropped and recreated!");
@@ -1204,15 +1481,16 @@ Respond ONLY with the JSON array, no other text.";
                 Console.WriteLine($"❌ Error: {ex.Message}");
             Console.WriteLine();
                 Console.WriteLine("Possible causes:");
-                Console.WriteLine("  • SQL Server LocalDB not installed");
-                Console.WriteLine("  • LocalDB service not running");
+                Console.WriteLine("  • SQL Server Docker container not running");
                 Console.WriteLine("  • Connection permission denied");
+                Console.WriteLine("  • Port 1433 blocked or in use");
                 Console.ResetColor();
             Console.WriteLine();
                 Console.WriteLine("Solution:");
-                Console.WriteLine("  1. Install SQL Server Express + LocalDB");
-                Console.WriteLine("  2. Run 'sqllocaldb start MSSQLLocalDB' command");
-                Console.WriteLine("  3. Or set SQL Server to 'Enabled: false' in appsettings.json");
+                Console.WriteLine("  1. Start SQL Server using Docker: cd examples/SmartRAG.DatabaseTests && docker-compose up -d sqlserver");
+                Console.WriteLine("  2. Or install SQL Server manually");
+                Console.WriteLine("  3. Verify credentials (User: sa, Password: SmartRAG@2024)");
+                Console.WriteLine("  4. Or set SQL Server to 'Enabled: false' in appsettings.json");
             }
         }
 
@@ -1229,8 +1507,8 @@ Respond ONLY with the JSON array, no other text.";
                 var connectionString = creator.GetDefaultConnectionString();
 
                 Console.WriteLine();
-                Console.WriteLine($"📝 Database: TestDatabaseMySql");
-                Console.WriteLine($"📝 Connection: {connectionString.Replace("Password=2059680", "Password=***")}");
+                Console.WriteLine($"📝 Database: InventoryManagement");
+                Console.WriteLine($"📝 Connection: {connectionString.Replace("Password=mysql123", "Password=***")}");
                 Console.WriteLine();
 
                 // Create database
@@ -1275,17 +1553,90 @@ Respond ONLY with the JSON array, no other text.";
                 Console.WriteLine($"❌ Error: {ex.Message}");
                 Console.WriteLine();
                 Console.WriteLine("Possible causes:");
-                Console.WriteLine("  • MySQL server not installed");
+                Console.WriteLine("  • MySQL Docker container not running");
                 Console.WriteLine("  • MySQL service not running");
                 Console.WriteLine("  • Incorrect username or password");
                 Console.WriteLine("  • Port 3306 blocked or in use");
                 Console.ResetColor();
                 Console.WriteLine();
                 Console.WriteLine("Solution:");
-                Console.WriteLine("  1. Install MySQL Server");
-                Console.WriteLine("  2. Ensure MySQL service is running");
-                Console.WriteLine("  3. Verify credentials (User: root, Password: 2059680)");
+                Console.WriteLine("  1. Start MySQL using Docker: cd examples/SmartRAG.DatabaseTests && docker-compose up -d mysql");
+                Console.WriteLine("  2. Or install MySQL Server manually");
+                Console.WriteLine("  3. Verify credentials (User: root, Password: mysql123)");
                 Console.WriteLine("  4. Or set MySQL to 'Enabled: false' in appsettings.json");
+            }
+        }
+
+        private static async Task CreatePostgreSqlDatabase()
+        {
+            Console.WriteLine();
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+            Console.WriteLine("🐘 Create PostgreSQL Test Database");
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+
+            try
+            {
+                var creator = TestDatabaseFactory.GetCreator(SmartRAG.Enums.DatabaseType.PostgreSQL, _configuration);
+                var connectionString = creator.GetDefaultConnectionString();
+
+                Console.WriteLine();
+                Console.WriteLine($"📝 Database: LogisticsManagement");
+                Console.WriteLine($"📝 Connection: {connectionString.Replace("Password=postgres123", "Password=***")}");
+                Console.WriteLine();
+
+                // Create database
+                creator.CreateSampleDatabase(connectionString);
+
+                Console.WriteLine();
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine("💡 Next Steps:");
+                Console.WriteLine("   1. Verify connection with option 1 (Show Database Connections)");
+                Console.WriteLine("   2. Check schema details with option 2 (Show Database Schemas)");
+                Console.WriteLine("   3. Test multi-database queries with option 3 or 5");
+                Console.ResetColor();
+
+                // Trigger schema refresh
+                if (_connectionManager != null && _schemaAnalyzer != null)
+                {
+                    Console.WriteLine();
+                    Console.WriteLine("🔄 Refreshing schema analysis...");
+                    
+                    var connections = await _connectionManager.GetAllConnectionsAsync();
+                    var postgresConn = connections.FirstOrDefault(c => c.DatabaseType == SmartRAG.Enums.DatabaseType.PostgreSQL);
+                    
+                    if (postgresConn != null)
+                    {
+                        _ = Task.Run(async () =>
+                        {
+                            try
+                            {
+                                await _schemaAnalyzer.AnalyzeDatabaseSchemaAsync(postgresConn);
+                            }
+                            catch { }
+                        });
+                    }
+                    
+                    await Task.Delay(2000);
+                    Console.WriteLine("   ✓ Schema analysis initiated");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"❌ Error: {ex.Message}");
+                Console.WriteLine();
+                Console.WriteLine("Possible causes:");
+                Console.WriteLine("  • PostgreSQL server not installed");
+                Console.WriteLine("  • PostgreSQL service not running");
+                Console.WriteLine("  • Incorrect username or password");
+                Console.WriteLine("  • Port 5432 blocked or in use");
+                Console.ResetColor();
+                Console.WriteLine();
+                Console.WriteLine("Solution:");
+                Console.WriteLine("  1. Start PostgreSQL using Docker: cd examples/SmartRAG.DatabaseTests && docker-compose up -d");
+                Console.WriteLine("  2. Or install PostgreSQL Server manually");
+                Console.WriteLine("  3. Verify credentials (User: postgres, Password: postgres123)");
+                Console.WriteLine("  4. Or set PostgreSQL to 'Enabled: false' in appsettings.json");
             }
         }
     }

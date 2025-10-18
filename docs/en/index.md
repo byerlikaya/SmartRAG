@@ -22,7 +22,7 @@ hide_title: true
                         <span class="text-gradient">SmartRAG</span>
                     </h1>
                                          <p class="hero-description">
-                         The most powerful .NET library for document processing and AI-powered conversations. 
+                         A powerful .NET library for document processing and AI-powered conversations. 
                          Upload your documents and chat with them using artificial intelligence.
                      </p>
                     <div class="hero-stats">
@@ -186,7 +186,7 @@ hide_title: true
                         <i class="fas fa-brain"></i>
                     </div>
                     <h3>AI-Powered</h3>
-                    <p>Integrate with leading AI providers for powerful embeddings and intelligent processing.</p>
+                    <p>Integrate with major AI providers for powerful embeddings and intelligent processing.</p>
                 </div>
             </div>
             <div class="col-lg-4 col-md-6">

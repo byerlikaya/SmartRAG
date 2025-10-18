@@ -16,7 +16,7 @@ namespace SmartRAG.DatabaseTests
         public SqlServerTestDatabaseCreator(IConfiguration? configuration = null)
         {
             _configuration = configuration;
-            _server = configuration?["DatabaseConnections:1:ConnectionString"]?.Split(';')[0].Split('=')[1] ?? "(localdb)\\MSSQLLocalDB";
+            _server = "localhost,1433";
             _databaseName = "SalesManagement";
         }
 
@@ -24,7 +24,7 @@ namespace SmartRAG.DatabaseTests
 
         public string GetDefaultConnectionString()
         {
-            return $"Server={_server};Database={_databaseName};Trusted_Connection=true;TrustServerCertificate=true;";
+            return $"Server={_server};Database={_databaseName};User Id=sa;Password=SmartRAG@2024;TrustServerCertificate=true;";
         }
 
         public string GetDescription()
@@ -106,7 +106,7 @@ namespace SmartRAG.DatabaseTests
 
         private void CreateDatabase()
         {
-            var masterConnectionString = $"Server={_server};Database=master;Trusted_Connection=true;TrustServerCertificate=true;";
+            var masterConnectionString = $"Server={_server};Database=master;User Id=sa;Password=SmartRAG@2024;TrustServerCertificate=true;";
 
             using (var connection = new SqlConnection(masterConnectionString))
             {

@@ -14,6 +14,16 @@ lang: de
                     <h2>Versionsverlauf</h2>
                     <p>Vollständige Geschichte der SmartRAG-Releases mit detaillierten Änderungsinformationen.</p>
 
+## [3.0.0] - 2025-10-18
+
+### SQL-Generierung & Mehrsprachige Unterstützung
+- **Sprachsichere SQL-Generierung**: Automatische Erkennung und Verhinderung von nicht-englischem Text in SQL-Abfragen
+- **Erweiterte SQL-Validierung**: Strenge Validierung verhindert türkische/deutsche/russische Zeichen und Schlüsselwörter in SQL
+- **Mehrsprachige Abfrageunterstützung**: AI verarbeitet Abfragen in jeder Sprache und generiert dabei reines englisches SQL
+- **Zeichenvalidierung**: Erkennung nicht-englischer Zeichen (ç, ğ, ı, ö, ş, ü, ä, ö, ü, ß, Kyrillisch)
+- **Schlüsselwortvalidierung**: Verhinderung nicht-englischer Schlüsselwörter in SQL (sorgu, abfrage, запрос)
+- **Vollständige PostgreSQL-Unterstützung**: Komplette PostgreSQL-Integration und Validierung
+
 ## [2.3.0] - 2025-09-16
 
 ### Added

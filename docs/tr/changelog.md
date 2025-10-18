@@ -14,11 +14,21 @@ lang: tr
                     <h2>Sürüm Geçmişi</h2>
                     <p>Detaylı değişiklik bilgileri ile SmartRAG sürümlerinin tam geçmişi.</p>
 
-                    <h3>Sürüm 3.0.0 - 2025-01-16</h3>
+                    <h3>Sürüm 3.0.0 - 2025-10-18</h3>
                     <div class="alert alert-success">
                         <h4><i class="fas fa-star me-2"></i>En Son Sürüm</h4>
-                        <p class="mb-0">Intelligence Platform Revolution - Gelişmiş API tasarımı ve kapsamlı dokümantasyon ile büyük breaking değişiklikler.</p>
+                        <p class="mb-0">Intelligence Platform Revolution - Gelişmiş SQL üretimi, çok dilli destek ve kapsamlı veritabanı entegrasyonu.</p>
                     </div>
+
+                    <h4>SQL Üretimi & Çok Dilli Destek</h4>
+                    <ul>
+                        <li><strong>Dil-Güvenli SQL Üretimi</strong>: SQL sorgularında İngilizce olmayan metinlerin otomatik algılanması ve önlenmesi</li>
+                        <li><strong>Gelişmiş SQL Doğrulama</strong>: Türkçe/Almanca/Rusça karakterler ve anahtar kelimeleri engelleyen sıkı doğrulama</li>
+                        <li><strong>Çok Dilli Sorgu Desteği</strong>: AI herhangi bir dilde sorgu işlerken saf İngilizce SQL üretiyor</li>
+                        <li><strong>Karakter Doğrulama</strong>: İngilizce olmayan karakterlerin algılanması (ç, ğ, ı, ö, ş, ü, ä, ö, ü, ß, Kiril)</li>
+                        <li><strong>Anahtar Kelime Doğrulama</strong>: SQL'de İngilizce olmayan anahtar kelimelerin önlenmesi (sorgu, abfrage, запрос)</li>
+                        <li><strong>PostgreSQL Tam Desteği</strong>: Eksiksiz PostgreSQL entegrasyonu ve doğrulama</li>
+                    </ul>
 
                     <h4>Eklenenler</h4>
                     <ul>

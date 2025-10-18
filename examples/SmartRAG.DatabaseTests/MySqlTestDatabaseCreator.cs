@@ -26,7 +26,7 @@ namespace SmartRAG.DatabaseTests
             _server = "localhost";
             _port = 3306;
             _user = "root";
-            _password = "2059680";
+            _password = "mysql123";
             _databaseName = "InventoryManagement";
         }
 

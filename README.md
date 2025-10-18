@@ -1,3 +1,11 @@
+<div align="center">
+
+**📚 Full Documentation:** [byerlikaya.github.io/SmartRAG](https://byerlikaya.github.io/SmartRAG)
+
+</div>
+
+---
+
 # 🚀 SmartRAG - Enterprise-Grade RAG Library
 
 [![Build Status](https://github.com/byerlikaya/SmartRAG/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/byerlikaya/SmartRAG/actions)
@@ -7,6 +15,442 @@
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 SmartRAG is a **production-ready** .NET Standard 2.0/2.1 **library** that provides a complete **Retrieval-Augmented Generation (RAG)** solution through a clean **service-oriented architecture**. Build intelligent applications with advanced document processing, multi-modal AI integration, and enterprise-grade storage options - all through simple dependency injection.
+
+## 🔒 On-Premise & Local AI Support
+
+**CRITICAL FOR ENTERPRISE**: SmartRAG is designed for **complete on-premise deployment** with **full data privacy**. You can run everything locally without sending data to cloud services.
+
+### ✅ **100% Local Operation** (No Cloud Required)
+- **🏠 Local AI Models**: Full support for Ollama, LM Studio, and any OpenAI-compatible local API
+- **📄 Document Processing**: PDF, Word, Excel parsing - **completely local**
+- **🖼️ OCR Processing**: Tesseract 5.2.0 - **completely local**, no data sent to cloud
+- **🗄️ Database Integration**: SQLite, SQL Server, MySQL, PostgreSQL - **all local connections**
+- **💾 Storage Options**: In-Memory, SQLite, FileSystem, Redis - **all local**
+- **🧠 Embeddings & AI**: Use your own local models via CustomProvider
+- **🔐 Complete Privacy**: All your data stays on your infrastructure
+
+### ⚠️ **Important Notes**
+
+#### **Audio Files Limitation**
+**Audio transcription requires Google Cloud Speech-to-Text API**, which means audio files will be sent to Google Cloud for processing. If you need to process audio files:
+- 📤 Audio data is sent to Google Cloud for Speech-to-Text conversion
+- 🔒 If data privacy is critical, avoid uploading audio files or use alternative solutions
+- ✅ All other file types (PDF, Word, Excel, Images, Databases) remain **completely local**
+
+#### **OCR (Image to Text) Limitation**
+**Tesseract OCR library cannot fully support handwritten text (success rate is very low)**:
+- ✅ **Works perfectly**: Printed documents, scanned printed documents, digital screenshots with typed text
+- ⚠️ **Limited support**: Handwritten notes, handwritten forms, cursive writing (very low accuracy, not recommended)
+- 💡 **Best results**: High-quality scans of printed documents, clear digital images with printed text
+- 🌍 **Supported languages**: 100+ languages - [View all supported languages](https://github.com/tesseract-ocr/tessdata)
+- 📝 **Recommendation**: Use printed text documents for optimal OCR results
+
+### 🏢 **Suitable for Enterprise On-Premise Systems**
+- ✅ **GDPR Compliant**: Keep all data within your infrastructure
+- ✅ **KVKK Compliant**: Turkish data protection law compliance
+- ✅ **Air-Gapped Systems**: Works without internet (except for audio transcription)
+- ✅ **Financial Institutions**: Bank-grade security with local deployment
+- ✅ **Healthcare**: HIPAA-compliant deployments possible
+- ✅ **Government**: Classified data handling with local models
+
+### 🛠️ **Local AI Setup Examples**
+
+#### Ollama (Local Models)
+```json
+{
+  "AI": {
+    "Custom": {
+      "ApiKey": "not-needed",
+      "Endpoint": "http://localhost:11434/v1/chat/completions",
+      "Model": "llama2",
+      "EmbeddingModel": "nomic-embed-text"
+    }
+  }
+}
+```
+
+#### LM Studio (Local Models)
+```json
+{
+  "AI": {
+    "Custom": {
+      "ApiKey": "not-needed",
+      "Endpoint": "http://localhost:1234/v1/chat/completions",
+      "Model": "local-model",
+      "EmbeddingModel": "local-embedding"
+    }
+  }
+}
+```
+
+### 🎯 **Enterprise Use Cases**
+- **🏦 Banking & Finance**: Process sensitive financial documents locally
+- **🏥 Healthcare**: Handle patient records without cloud exposure
+- **⚖️ Legal**: Manage confidential legal documents on-premise
+- **🏛️ Government**: Classified document analysis with local AI
+- **🏭 Manufacturing**: Keep industrial secrets within your network
+- **💼 Consulting**: Client data never leaves your infrastructure
+
+**Your data, your infrastructure, your control.** 🔐
+
+---
+
+### ⚠️ **Important Disclaimer About Examples**
+
+The examples below are **illustrative scenarios** demonstrating SmartRAG's technical capabilities. These specific use cases:
+
+- ✅ **Are technically feasible** - SmartRAG provides all the necessary features
+- ✅ **Demonstrate real capabilities** - Multi-database queries, OCR, multi-modal integration are production-ready
+- ⚠️ **Have not been tested in production** - These exact scenarios are conceptual examples
+- ⚠️ **May require additional implementation** - Business logic, validation rules, compliance checks need custom development
+- 📋 **Regulatory compliance required** - Financial, healthcare, legal applications need proper regulatory approval
+
+**Recommendation**: Use these examples as inspiration. Test thoroughly in your specific environment. Ensure compliance with relevant regulations (GDPR, HIPAA, financial regulations, etc.) before production deployment.
+
+---
+
+## 💡 Real-World Examples - What You Can Build With SmartRAG
+
+Here are 10 powerful real-world scenarios demonstrating SmartRAG's unique multi-database and multi-modal capabilities:
+
+> 💡 **Tip**: Click on example headings to see questions and answers
+
+<details>
+<summary><h4>1️⃣ 🏥 Medical Records Intelligence System</h4></summary>
+
+**The Challenge**: Get complete patient history scattered across departments
+```csharp
+// Doctor asks: "Show me Emily Davis's complete medical history for the past year"
+```
+**SmartRAG Magic**:
+- 🗄️ PostgreSQL (patient records, admissions, discharge summaries)
+- 📊 Excel files (lab results from 3 different labs)
+- 🖼️ OCR scanned prescriptions (handwritten notes - limited, typed prescriptions - perfect)
+- 🎤 Speech-to-Text (doctor's voice notes from appointments)
+
+**AI Response**:
+> "**Emily Davis - Annual Health Timeline**:  
+> March 2024: Diagnosed with Type 2 Diabetes (HbA1c: 8.2%) - Dr. Smith  
+> April-June: Medication: Metformin 1000mg twice daily - Labs improving (HbA1c: 7.1%)  
+> July 2024: Chest pain episode - ECG normal, referred to cardiology  
+> August 2024: Stress test completed - No cardiac issues detected  
+> October 2024: Latest HbA1c: 6.4% ✅ (controlled) - Continue current medication"
+
+**⚡ Power**: 4 data sources unified (PostgreSQL + Excel + OCR + Audio) → Complete patient timeline from 4 disconnected systems, saving doctors hours of manual data gathering.
+
+</details>
+
+<details>
+<summary><h4>2️⃣ 🏦 Banking Credit Limit Evaluation</h4></summary>
+
+**The Challenge**: Evaluate customer financial profile for credit card limit increase
+```csharp
+// Relationship Manager asks: "Should we increase John Smith's credit card limit from $8K to $18K?"
+```
+**SmartRAG Magic**:
+- 🗄️ SQL Server (36 months transaction history, bill payments, salary deposits)
+- 🗄️ MySQL (credit card usage - 18 months, spending patterns, payment behavior)
+- 🗄️ PostgreSQL (existing loans, mortgage, credit score history)
+- 🗄️ SQLite (branch visit history, customer service interactions, complaints)
+- 🖼️ OCR (scanned income documents, tax returns, employment verification)
+- 📄 PDF (account statements, investment portfolios, property ownership docs)
+
+**AI Response**:
+> "**John Smith - Credit Limit Evaluation Report:**  
+>   
+> **Income & Stability Analysis:**  
+> Monthly salary: $4,200 (verified from 36 consecutive deposits - stable employer 8 years)  
+> Additional income: $1,100/month (rental property + freelance consulting - verified via tax OCR)  
+> Total monthly income: $5,300 ✅ (+22% vs. initial application)  
+>   
+> **Current Credit Behavior:**  
+> Credit Score: 795 (excellent) - improved from 720 in past 18 months  
+> Current card limit: $8,000  
+> Average monthly usage: $3,600 (45% utilization - moderate)  
+> Payment history: 100% on-time, full balance (18/18 months)  
+> **Key insight**: Customer pays full balance monthly, uses card heavily for rewards  
+>   
+> **Spending Patterns Analysis:**  
+> - Business expenses: $2,100/month (consulting expenses - reimbursed within 15 days)  
+> - Family expenses: $1,500/month  
+> - Occasionally hits limit during travel season (March, July, December)  
+> - Never late payment, never over-limit fee  
+>   
+> **Financial Obligations:**  
+> Mortgage: $1,000/month ($155K remaining, 18 years)  
+> No auto loans, no other debt  
+> Debt-to-income ratio: 19% - Excellent  
+>   
+> **Assets Verification:**  
+> Checking balance: $6,700 (average 6 months)  
+> Savings: $25,000  
+> Investment accounts: $47,000 (via PDF statements)  
+> Property equity: ~$103,000 (home + rental shop)  
+>   
+> **⚠️ Risk Assessment:**  
+> Default risk: Very Low  
+> Fraud indicators: None  
+> Customer lifetime value: High (8 years, multiple products)  
+> Branch feedback: "VIP customer, excellent relationship"  
+>   
+> **💳 RECOMMENDATION: APPROVE LIMIT INCREASE** ✅  
+> New limit: $18,000 (125% increase justified)  
+> Additional offer: Premium card upgrade available  
+> Cross-sell opportunity: Business credit card for consulting income  
+> Risk Level: MINIMAL  
+> Reasoning: Strong income growth, perfect payment history, high usage without risk, solid asset base"
+
+**⚡ Power**: 6 data sources coordinated (SQL Server + MySQL + PostgreSQL + SQLite + OCR docs + PDFs) → 360° customer financial intelligence combining transaction patterns, credit behavior, income verification, asset analysis, customer service history - comprehensive risk-free decision making impossible with siloed systems.
+
+</details>
+
+<details>
+<summary><h4>3️⃣ ⚖️ Legal Precedent Discovery Engine</h4></summary>
+
+**The Challenge**: Find winning strategies from 10 years of case history
+```csharp
+// Lawyer asks: "What arguments won our contract dispute cases in the last 5 years?"
+```
+**SmartRAG Magic**:
+- 📄 1,000+ PDF legal documents (cases, briefs, judgments)
+- 🗄️ SQL Server case database (outcomes, dates, judges, clients)
+- 🖼️ OCR court orders (scanned official documents)
+
+**AI Response**:
+> "**Analyzed 1,247 cases, identified 23 wins on force majeure:**  
+> **Winning Pattern Discovered**:  
+> ✅ 94% success when citing 'Act of God' + precedent case law  
+> ✅ 87% success with documented mitigation efforts  
+> ✅ 91% success when Judge Martinez presiding  
+> **Key Argument**: Combine unforeseeability proof + mitigation documentation.  
+> **Template**: Case #2019-445 (won $2.3M) - use as reference template"
+
+**⚡ Power**: 2 data sources unified (1,000+ PDFs + SQL Server database) → AI discovers winning legal patterns that would take lawyers weeks to find manually.
+
+</details>
+
+<details>
+<summary><h4>4️⃣ 📦 Predictive Inventory Intelligence</h4></summary>
+
+**The Challenge**: Prevent stockouts before they happen
+```csharp
+// Manager asks: "Which products will run out of stock in the next 2 weeks?"
+```
+**SmartRAG Magic**:
+- 🗄️ SQLite (product catalog - 10,000 SKUs)
+- 🗄️ SQL Server (sales data - 2M transactions/month)
+- 🗄️ MySQL (warehouse inventory - real-time stock levels)
+- 🗄️ PostgreSQL (supplier data - lead times, reliability)
+
+**AI Response**:
+> "**🚨 15 Products at Risk of Stockout:**  
+> **CRITICAL (2-5 days)**:  
+> Product A: 12 units left, selling 8/day, supplier lead 14 days ⚠️ ORDER NOW!  
+> Product B: 5 units left, selling 3/day, supplier lead 7 days ⚠️ ORDER TODAY!  
+>   
+> **WARNING (6-14 days)**:  
+> Product C: 45 units left, selling 5/day (+52% growth trend)  
+> **Recommendation**: Automated purchase orders sent to suppliers for Products A, B, C"
+
+**⚡ Power**: 4 databases coordinated (SQLite + SQL Server + MySQL + PostgreSQL) → Cross-database predictive analytics preventing stockouts before they happen, impossible with single-database queries.
+
+</details>
+
+<details>
+<summary><h4>5️⃣ 🏭 Manufacturing Root Cause Analysis</h4></summary>
+
+**The Challenge**: Find why production quality dropped last week
+```csharp
+// Quality Manager asks: "Why did we have 47 defects in last week's production batch?"
+```
+**SmartRAG Magic**:
+- 📊 Excel production reports (5 production lines, hourly data)
+- 🗄️ PostgreSQL sensor data (temperature, pressure, speed - 100K+ readings)
+- 🖼️ OCR quality control photos (defect images with inspector notes)
+- 📄 PDF maintenance logs (equipment service history)
+
+**AI Response**:
+> "**Root Cause Identified: Machine #3 Temperature Variance**  
+> **Evidence**:  
+> - 94% of defects occurred when Machine #3 temp > 185°C  
+> - Normal operating range: 175-180°C  
+> - Temperature spikes correlate with cooling system malfunction  
+> - Maintenance overdue by 12 days (last service: Aug 15)  
+> **Action**: Schedule immediate maintenance. Estimated cost: $2,400 vs $45K batch loss"
+
+**⚡ Power**: 4 data sources unified (Excel reports + PostgreSQL 100K+ sensor readings + OCR photos + PDF logs) → AI correlates temperature anomalies across millions of data points to pinpoint exact root cause.
+
+</details>
+
+<details>
+<summary><h4>6️⃣ 👔 AI Resume Screening at Scale</h4></summary>
+
+**The Challenge**: Find best-matching candidates from 500+ applications
+```csharp
+// HR asks: "Find senior React developers with Python skills and AWS certifications"
+```
+**SmartRAG Magic**:
+- 📄 500+ resume PDFs (multiple languages, formats)
+- 🗄️ Applicant database (SQL Server - skills, experience, education)
+- 🖼️ OCR scanned certificates (AWS, Azure, Google Cloud certifications)
+- 🎤 Speech-to-Text video interview transcripts
+
+**AI Response**:
+> "**8 Top Matches Found:**  
+> **#1 - Sarah Chen** ⭐⭐⭐⭐⭐  
+> React: 7 years (led 3 major projects), Python: 8 years (ML expertise)  
+> AWS Solutions Architect + DevOps Professional (verified via OCR)  
+> Interview highlight: 'Built scalable microservices serving 10M users'  
+> Availability: 2 weeks notice  
+>   
+> **Why Sarah is #1**: Only candidate with proven scale (10M users) + dual AWS certs"
+
+**⚡ Power**: 4 data sources unified (500+ PDFs + SQL Server + OCR certificates + Audio interviews) → AI screens and ranks candidates across multiple data types, reducing HR screening time from days to minutes.
+
+</details>
+
+<details>
+<summary><h4>7️⃣ 💼 Financial Audit Automation</h4></summary>
+
+**The Challenge**: Detect expense anomalies across departments
+```csharp
+// CFO asks: "Show me all expenses over $10K in July-September with approval status"
+```
+**SmartRAG Magic**:
+- 📊 Excel financial reports (12 departments, 15,000 line items)
+- 🗄️ SQL Server transaction database (500K+ transactions)
+- 🖼️ OCR vendor invoices (scanned invoices, receipts)
+- 📄 PDF approval workflows (email trails, signatures)
+
+**AI Response**:
+> "**July-September High-Value Expenses - 7 Items Over $10K:**  
+> ✅ $15,400 IT Equipment - Approved by CFO (normal procurement)  
+> ⚠️ $23,000 Marketing Campaign - **MISSING APPROVAL** (policy violation!)  
+> ✅ $12,500 Office Renovation - Approved by CEO (40% over budget but authorized)  
+> 🚨 $18,900 Consulting Fees - Vendor not in approved list (compliance issue!)  
+>   
+> **Action Required**: Review items marked ⚠️🚨 with Finance Director"
+
+**⚡ Power**: 4 data sources cross-validated (Excel 15K line items + SQL Server 500K transactions + OCR invoices + PDF approvals) → AI auditor detects policy violations humans would miss.
+
+</details>
+
+<details>
+<summary><h4>8️⃣ 🏛️ Smart Government Services</h4></summary>
+
+**The Challenge**: Process thousands of citizen applications efficiently
+```csharp
+// Official asks: "How many building permits in Istanbul, September 2024? Average processing time?"
+```
+**SmartRAG Magic**:
+- 🗄️ PostgreSQL citizen database (15M citizen records)
+- 🖼️ OCR application forms (scanned documents, blueprints)
+- 🎤 Speech-to-Text call center recordings (citizen inquiries)
+- 📄 PDF regulation documents (zoning laws, building codes)
+
+**AI Response**:
+> "**Istanbul Building Permits - September 2024:**  
+> Total applications: 512 | Approved: 342 (67%) | Rejected: 125 | Pending: 45  
+> Average processing time: 18 days (target: 15 days)  
+> Top approval reason: Residential construction (78%)  
+> Top rejection reason: Zoning regulation violations (62%)  
+> **Insight**: 34% of rejections could be prevented with better initial guidance"
+
+**⚡ Power**: 4 data sources unified (PostgreSQL 15M records + OCR forms + Audio calls + PDF regulations) → Government analytics across all citizen touchpoints in one query.
+
+</details>
+
+<details>
+<summary><h4>9️⃣ 🔬 Academic Research Pattern Discovery</h4></summary>
+
+**The Challenge**: Extract insights from years of research
+```csharp
+// Professor asks: "What are the common success factors in our machine learning research over the past 5 years?"
+```
+**SmartRAG Magic**:
+- 📄 50+ research paper PDFs (300+ pages total)
+- 📊 Experiment data Excel files (100K+ data points)
+- 🖼️ OCR lab notebooks (typed experimental notes - works great!)
+- 🗄️ SQLite research database (experiment parameters, results)
+
+**AI Response**:
+> "**Meta-Analysis of 50 Machine Learning Research Papers (2020-2024):**  
+> **Success Pattern Identified**:  
+> ✅ Transfer learning: +18% avg accuracy improvement (42/50 papers)  
+> ✅ Data augmentation: Critical for datasets <10K samples (38/50 papers)  
+> ✅ Ensemble methods: Beat single models in 47/50 experiments  
+> **Golden Combination**: Transfer learning + Data augmentation + Ensemble = +34% improvement  
+> **Next research direction**: Apply this combo to medical imaging (unexplored area)"
+
+**⚡ Power**: 4 data sources unified (50 PDFs 300+ pages + Excel 100K data points + OCR notebooks + SQLite experiments) → AI meta-analysis across 5 years of research discovers patterns humans never noticed.
+
+</details>
+
+<details>
+<summary><h4>🔟 🚚 Smart Logistics Command Center</h4></summary>
+
+**The Challenge**: Real-time supply chain visibility and optimization
+```csharp
+// Logistics Director asks: "Why are shipments delayed? Show me the bottlenecks."
+```
+**SmartRAG Magic**:
+- 🗄️ PostgreSQL shipment tracking (real-time GPS data, 5000+ active shipments)
+- 🗄️ MySQL warehouse inventory (stock levels, 50 warehouses)
+- 🗄️ SQL Server order database (customer orders, priorities, SLAs)
+- 🖼️ OCR delivery receipts (scanned POD - Proof of Delivery documents)
+
+**AI Response**:
+> "**18 Delayed Shipments - Root Cause Analysis:**  
+> **Primary Bottleneck: Warehouse B Inventory Shortage** (12 shipments affected)  
+> - Product X: Stockout since Oct 10 (supplier delayed)  
+> - Impact: $125K revenue at risk  
+> - Alternative: Warehouse D has Product X (85 units) - reroute possible  
+>   
+> **Secondary Issue: Route Optimization** (4 shipments)  
+> - Route Istanbul→Ankara: +2.3 days avg delay (traffic pattern changed)  
+> - **Solution**: Alternative route via Eskişehir (-1.5 days, implemented)  
+>   
+> **Customs Delays** (2 shipments): Normal processing, no action needed"
+
+**⚡ Power**: 4 data sources coordinated (PostgreSQL GPS tracking + MySQL inventory 50 warehouses + SQL Server orders + OCR receipts) → Real-time supply chain optimization across entire logistics network.
+
+</details>
+
+---
+
+### 🎯 **What Makes SmartRAG Powerful**
+
+#### **🗄️ Multi-Database RAG Capabilities**
+- Queries multiple database types simultaneously (SQL Server, MySQL, PostgreSQL, SQLite)
+- Coordinates cross-database queries in a single intelligent request
+- AI-powered cross-database joins and correlations
+- Unified query interface across heterogeneous database systems
+
+#### **📊 Multi-Modal Intelligence**
+- Combines PDF + Excel + Images (OCR) + Audio (Speech) + Databases in a single answer
+- Unified intelligence across all your data types
+- Seamless integration between structured and unstructured data
+
+#### **🔒 On-Premise Privacy**
+- 100% local operation with Ollama/LM Studio
+- GDPR/KVKK/HIPAA compliant deployments
+- Your sensitive data NEVER leaves your infrastructure (except audio if needed)
+- Well-suited for financial institutions, healthcare, legal, government
+
+#### **🌍 Language Agnostic**
+- Works in Turkish, English, German, Russian, Chinese, Arabic - **ANY** language
+- No hardcoded language patterns or keywords
+- Truly international RAG solution
+
+#### **✅ Production Ready**
+- Zero Warnings Policy, SOLID/DRY principles
+- Comprehensive error handling and retry mechanisms
+- Enterprise-grade logging and monitoring
+- Battle-tested in production environments
+
+**Build the future of intelligent document processing - TODAY!** 🚀
+
+---
 
 ## ✨ Key Highlights
 
@@ -49,7 +493,7 @@ SmartRAG is a **production-ready** .NET Standard 2.0/2.1 **library** that provid
 ```
 
 ### 🏆 **Production Features**
-- **Revolutionary OCR Capabilities**: Enterprise-grade image processing with Tesseract 5.2.0 + SkiaSharp integration
+- **Advanced OCR Capabilities**: Enterprise-grade image processing with Tesseract 5.2.0 + SkiaSharp integration
 - **Smart Chunking**: Maintains context continuity between document segments with word boundary validation
 - **Intelligent Query Routing**: Automatically routes general conversation to AI chat, document queries to QueryIntelligenceAsync
 - **Conversation History**: Automatic session-based conversation management with intelligent context truncation
@@ -66,7 +510,7 @@ SmartRAG is a **production-ready** .NET Standard 2.0/2.1 **library** that provid
 - **Production Ready**: Thread-safe operations, centralized logging, proper error handling
 - **Documentation**: Professional documentation site with GitHub Pages integration
 
-### 🎯 **Revolutionary OCR Use Cases**
+### 🎯 **Practical OCR Use Cases**
 - **📄 Scanned Documents**: Upload scanned contracts, reports, forms and get instant intelligent answers
 - **🧾 Receipt Processing**: Process receipts, invoices, and financial documents with OCR + RAG intelligence
 - **📊 Image-Based Reports**: Extract and query data from charts, graphs, and visual reports
@@ -193,12 +637,12 @@ SmartRAG supports a wide range of document formats with intelligent parsing and 
 - **Structure Preservation**: Maintains original formatting
 - **Fast Processing**: Optimized for text-based content
 
-### **🖼️ Image Files (.jpg, .jpeg, .png, .gif, .bmp, .tiff, .webp) - REVOLUTIONARY OCR POWER**
+### **🖼️ Image Files (.jpg, .jpeg, .png, .gif, .bmp, .tiff, .webp) - ADVANCED OCR PROCESSING**
 - **🚀 Advanced OCR Engine**: Enterprise-grade Tesseract 5.2.0 with SkiaSharp 3.119.0 integration
 - **🌍 Multi-Language OCR**: English (eng), Turkish (tur), and extensible language framework
 - **🔄 WebP to PNG Conversion**: Seamless WebP image processing using SkiaSharp for Tesseract compatibility
 - **📊 Intelligent Table Extraction**: Advanced table detection and structured data parsing from images
-- **🎯 Character Whitelisting**: Optimized OCR character recognition for superior accuracy
+- **🎯 Character Whitelisting**: Optimized OCR character recognition for high accuracy
 - **⚡ Image Preprocessing Pipeline**: Advanced image enhancement for maximum OCR performance
 - **📈 Confidence Scoring**: Detailed OCR confidence metrics with processing time tracking
 - **🔍 Format Auto-Detection**: Automatic image format detection and validation across all supported types
@@ -214,8 +658,8 @@ SmartRAG supports a wide range of document formats with intelligent parsing and 
 - **📈 Performance Optimized**: Efficient audio processing with minimal memory footprint
 - **🏗️ Structured Output**: Converts audio content to searchable, queryable knowledge base
 
-### **🗄️ Database Files (.db, .sqlite, .sqlite3) - ENTERPRISE DATABASE INTEGRATION**
-- **🚀 Universal Database Support**: SQLite, SQL Server, MySQL, PostgreSQL with live connections
+### **🗄️ Multi-Database Support (SQLite, SQL Server, MySQL, PostgreSQL)**
+- **🚀 Live Database Connections**: Connect to SQLite, SQL Server, MySQL, PostgreSQL with real-time data access
 - **📊 Intelligent Schema Analysis**: Automatic table schema extraction with data types and constraints
 - **🔗 Relationship Mapping**: Foreign key relationships and index information extraction
 - **🛡️ Security-First**: Automatic sensitive data sanitization and configurable data protection
@@ -943,6 +1387,18 @@ We welcome contributions!
 
 ### **Latest Release (v3.0.0) - Intelligence Library Revolution**
 
+🔧 **SQL Generation Improvements:**
+- Language-Safe SQL Generation with automatic validation
+- Enhanced multi-language query support
+- PostgreSQL Full Support with complete integration
+
+📊 **Technical Enhancements:**
+- Advanced character and keyword validation
+- Enhanced retry mechanism with language-specific instructions
+- Zero Warnings Policy maintained
+
+**📋 [View Full Changelog](CHANGELOG.md)**
+
 🚀 **BREAKING CHANGES - Major Library Evolution:**
 - **`GenerateRagAnswerAsync` → `QueryIntelligenceAsync`** - Better represents intelligent query processing
 - **Enhanced `IDocumentSearchService` interface** - New intelligent query processing method
@@ -1089,6 +1545,43 @@ public class IntelligenceController : ControllerBase
 - **📧 [Contact & Support](mailto:b.yerlikaya@outlook.com)** - Technical support and consulting
 - **💼 [LinkedIn](https://www.linkedin.com/in/barisyerlikaya/)** - Professional networking and updates
 - **🌐 [Project Website](https://byerlikaya.github.io/SmartRAG/en/)** - Official project homepage
+
+### **🔧 Third-Party Libraries & Technologies**
+
+SmartRAG is built with these excellent open-source libraries and cloud services:
+
+#### **Document Processing**
+- **📄 [iText7](https://github.com/itext/itext7-dotnet)** - PDF processing and text extraction
+- **📊 [EPPlus](https://github.com/EPPlusSoftware/EPPlus)** - Excel file parsing and processing
+- **📝 [Open XML SDK](https://github.com/dotnet/Open-XML-SDK)** - Word document processing
+
+#### **OCR & Image Processing**
+- **🔍 [Tesseract OCR](https://github.com/tesseract-ocr/tesseract)** - Enterprise-grade OCR engine (v5.2.0)
+- **🎨 [SkiaSharp](https://github.com/mono/SkiaSharp)** - Cross-platform 2D graphics library for image preprocessing
+
+#### **Speech-to-Text**
+- **🎤 [Google Cloud Speech-to-Text](https://cloud.google.com/speech-to-text)** - Enterprise speech recognition API
+
+#### **Vector Databases & Storage**
+- **🗄️ [Qdrant](https://github.com/qdrant/qdrant)** - Vector similarity search engine
+- **⚡ [Redis](https://redis.io/)** - In-memory data structure store
+- **💾 [SQLite](https://www.sqlite.org/)** - Embedded relational database
+
+#### **Database Connectivity**
+- **🗄️ [Npgsql](https://github.com/npgsql/npgsql)** - PostgreSQL .NET driver
+- **🗄️ [MySqlConnector](https://github.com/mysql-net/MySqlConnector)** - MySQL .NET driver
+- **🗄️ [Microsoft.Data.SqlClient](https://github.com/dotnet/SqlClient)** - SQL Server .NET driver
+
+#### **AI Providers**
+- **🤖 [OpenAI API](https://platform.openai.com/)** - GPT models and embeddings
+- **🧠 [Anthropic Claude](https://www.anthropic.com/)** - Claude models
+- **🌟 [Google Gemini](https://ai.google.dev/)** - Gemini AI models
+- **☁️ [Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service)** - Enterprise OpenAI service
+- **🚀 [VoyageAI](https://www.voyageai.com/)** - High-quality embeddings for Anthropic
+
+#### **Local AI Support**
+- **🦙 [Ollama](https://ollama.ai/)** - Run AI models locally
+- **🏠 [LM Studio](https://lmstudio.ai/)** - Local AI model playground
 
 ## 📄 License
 

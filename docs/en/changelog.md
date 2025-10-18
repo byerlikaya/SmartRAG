@@ -14,11 +14,21 @@ lang: en
                     <h2>Version History</h2>
                     <p>Complete history of SmartRAG releases with detailed change information.</p>
 
-                    <h3>Version 3.0.0 - 2025-01-16</h3>
+                    <h3>Version 3.0.0 - 2025-10-18</h3>
                     <div class="alert alert-success">
                         <h4><i class="fas fa-star me-2"></i>Latest Release</h4>
-                        <p class="mb-0">Intelligence Platform Revolution - Major breaking changes with enhanced API design and comprehensive documentation.</p>
+                        <p class="mb-0">Intelligence Platform Revolution - Enhanced SQL generation with multi-language support and comprehensive database integration.</p>
                     </div>
+
+                    <h4>SQL Generation & Multi-Language Support</h4>
+                    <ul>
+                        <li><strong>Language-Safe SQL Generation</strong>: Automatic detection and prevention of non-English text in SQL queries</li>
+                        <li><strong>Enhanced SQL Validation</strong>: Strict validation preventing Turkish/German/Russian characters and keywords in SQL</li>
+                        <li><strong>Multi-Language Query Support</strong>: AI handles queries in any language while generating pure English SQL</li>
+                        <li><strong>Character Validation</strong>: Detection of non-English characters (ç, ğ, ı, ö, ş, ü, ä, ö, ü, ß, Cyrillic)</li>
+                        <li><strong>Keyword Validation</strong>: Prevention of non-English keywords in SQL (sorgu, abfrage, запрос)</li>
+                        <li><strong>PostgreSQL Full Support</strong>: Complete PostgreSQL integration and validation</li>
+                    </ul>
 
                     <h4>Added</h4>
                     <ul>
