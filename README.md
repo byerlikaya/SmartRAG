@@ -1385,148 +1385,27 @@ We welcome contributions!
 
 ## 🆕 What's New
 
-### **Latest Release (v3.0.0) - Intelligence Library Revolution**
+### **Latest Release (v3.0.0) - 2025-10-18**
 
-🔧 **SQL Generation Improvements:**
-- Language-Safe SQL Generation with automatic validation
-- Enhanced multi-language query support
-- PostgreSQL Full Support with complete integration
+**Major Highlights:**
+- 🚀 **BREAKING CHANGE**: `GenerateRagAnswerAsync` → `QueryIntelligenceAsync` (backward compatible)
+- 🔧 **Language-Safe SQL Generation**: Automatic validation preventing non-English text in SQL
+- 🗄️ **PostgreSQL Full Support**: Complete integration with multi-database queries
+- 🔒 **On-Premise AI Support**: Full local operation with Ollama/LM Studio
+- ⚠️ **Important Limitations**: Audio requires Google Cloud, OCR limited for handwriting
+- 📚 **Enhanced Documentation**: Comprehensive on-premise deployment guide
 
-📊 **Technical Enhancements:**
-- Advanced character and keyword validation
-- Enhanced retry mechanism with language-specific instructions
-- Zero Warnings Policy maintained
+**📋 [View Full Changelog](CHANGELOG.md)** for detailed release notes and migration guide.
 
-**📋 [View Full Changelog](CHANGELOG.md)**
+### **Recent Releases:**
+- **v2.3.1** (2025-10-08) - Bug fixes, Logging stability improvements
+- **v2.3.0** (2025-09-16) - Google Speech-to-Text integration, Audio processing
+- **v2.2.0** (2025-09-15) - Enhanced OCR documentation
+- **v2.1.0** (2025-09-05) - Automatic session management, Persistent conversation history
+- **v2.0.0** (2025-08-27) - .NET Standard 2.0/2.1 migration (BREAKING CHANGE)
+- **v1.1.0** (2025-08-22) - Excel support, EPPlus integration
 
-🚀 **BREAKING CHANGES - Major Library Evolution:**
-- **`GenerateRagAnswerAsync` → `QueryIntelligenceAsync`** - Better represents intelligent query processing
-- **Enhanced `IDocumentSearchService` interface** - New intelligent query processing method
-- **Service layer improvements** - Advanced semantic search and conversation management
-- **Backward compatibility maintained** - Legacy methods marked as deprecated
-- **Migration guide provided** - Step-by-step upgrade instructions from v2.3.0
-
-🧠 **Enhanced Service Layer Features:**
-- **`QueryIntelligenceAsync()`** - New intelligent query processing with advanced RAG pipeline
-- **Enhanced Semantic Search** - Improved hybrid scoring with 80% semantic + 20% keyword relevance
-- **Conversation Intelligence** - Better session management and context-aware responses
-- **Multi-Modal Processing** - Documents, databases, conversations, and hybrid search capabilities
-- **Smart Query Routing** - Automatic intent detection and intelligent query handling
-
-🔧 **Technical Improvements:**
-- **Service-Oriented Architecture** - Clean separation of concerns with dependency injection
-- **Enterprise Architecture** - SOLID principles, zero warnings policy maintained
-- **Production Ready** - Comprehensive error handling, validation, and logging
-- **Memory Management** - Optimized performance with streaming and caching
-- **Provider Pattern** - Enhanced pluggable architecture for AI and storage providers
-
-📚 **Documentation & Developer Experience:**
-- **Library Documentation** - Comprehensive service layer API reference
-- **Migration Guide** - Step-by-step upgrade instructions from v2.3.0
-- **Enhanced README** - Updated with v3.0.0 features and breaking changes
-- **Usage Examples** - Real-world library integration scenarios and best practices
-- **Service Layer Focus** - Clear documentation of core library interfaces
-
-### **🔄 Migration from v2.3.0 to v3.0.0**
-
-#### **Service Layer Method Changes:**
-```csharp
-// OLD (v2.3.0)
-await _documentSearchService.GenerateRagAnswerAsync(query, maxResults);
-
-// NEW (v3.0.0)  
-await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
-```
-
-#### **Interface Changes:**
-```csharp
-// OLD (v2.3.0)
-public interface IDocumentSearchService
-{
-    Task<RagResponse> GenerateRagAnswerAsync(string query, int maxResults = 5);
-}
-
-// NEW (v3.0.0)
-public interface IDocumentSearchService
-{
-    Task<RagResponse> QueryIntelligenceAsync(string query, int maxResults = 5);
-    
-    [Obsolete("Use QueryIntelligenceAsync instead")]
-    Task<RagResponse> GenerateRagAnswerAsync(string query, int maxResults = 5);
-}
-```
-
-#### **Optional API Examples (for reference only):**
-```csharp
-// OLD (v2.3.0) - Optional API Controller
-public class SearchController : ControllerBase
-
-// NEW (v3.0.0) - Optional API Controller  
-public class IntelligenceController : ControllerBase
-```
-
-#### **Backward Compatibility:**
-- **Legacy methods are deprecated but still work** - `GenerateRagAnswerAsync` calls `QueryIntelligenceAsync` internally
-- **Deprecation warnings** - Use new methods to avoid warnings in future versions
-- **Gradual migration** - Update endpoints and methods at your own pace
-- **v4.0.0 removal** - Legacy methods will be removed in the next major version
-
-### **Previous Release (v2.3.0) - Google Speech-to-Text Integration**
-- 🎵 **Google Speech-to-Text Integration** - Enterprise-grade speech recognition with Google Cloud AI
-- 🌍 **Enhanced Language Support** - 100+ languages including Turkish, English, and global languages
-- ⚡ **Real-time Audio Processing** - Advanced speech-to-text conversion with confidence scoring
-- 📊 **Detailed Transcription Results** - Segment-level transcription with timestamps and confidence metrics
-- 🔍 **Automatic Format Detection** - Support for MP3, WAV, M4A, AAC, OGG, FLAC, WMA formats
-- 🎯 **Intelligent Audio Processing** - Smart audio stream validation and error handling
-- 📈 **Performance Optimized** - Efficient audio processing with minimal memory footprint
-- 🏗️ **Structured Audio Output** - Converts audio content to searchable, queryable knowledge base
-- ✅ **Zero Warnings Policy** - Maintained with comprehensive error handling and logging
-- 📚 **Documentation Updates** - All language versions updated with Google Speech-to-Text examples
-
-### **Previous Release (v2.2.0) - Enhanced OCR Documentation**
-- 🖼️ **Enhanced OCR Documentation** - Comprehensive documentation showcasing OCR capabilities
-- 📚 **Improved README** - Detailed image processing features highlighting Tesseract 5.2.0 + SkiaSharp
-- 🎯 **Use Case Examples** - Added detailed examples for scanned documents, receipts, and image content
-- 📈 **Developer Experience** - Better visibility of image processing features for developers
-
-### **Previous Release (v2.1.0) - Automatic Session Management**
-- 🎯 **Automatic Session Management** - No more manual session ID handling required
-- 💬 **Persistent Conversation History** - Conversations survive application restarts
-- 🆕 **New Conversation Commands** - `/new`, `/reset`, `/clear` for conversation control
-- 🔄 **Enhanced API** - Backward-compatible with optional `startNewConversation` parameter
-- 🗄️ **Storage Integration** - Works seamlessly with all providers (Redis, SQLite, FileSystem, InMemory)
-- 🔧 **Format Consistency** - Standardized conversation format across all storage providers
-- 🧵 **Thread Safety** - Enhanced concurrent access handling for conversation operations
-- 🌍 **Platform Agnostic** - Maintains compatibility across all .NET environments
-- 📚 **Documentation Updates** - All language versions (EN, TR, DE, RU) updated with real examples
-- ✅ **100% Compliance** - All established rules maintained with zero warnings policy
-
-### **Previous Release (v1.0.3)**
-- 🧠 **Smart Query Intent Detection** - Automatically routes queries to chat vs document search
-- 🌍 **Language-Agnostic Design** - Removed all hardcoded language patterns  
-- 🔍 **Enhanced Search Relevance** - Improved name detection and content scoring
-- 🔤 **Unicode Normalization** - Fixed special character handling issues
-- ⚡ **Rate Limiting & Retry Logic** - Robust API handling with exponential backoff
-- 🚀 **VoyageAI Integration** - Anthropic embedding support
-- 📚 **Enhanced Documentation** - Official documentation links
-- 🧹 **Configuration Cleanup** - Removed unnecessary fields
-- 🎯 **Project Simplification** - Streamlined for better performance
-
-### **Architecture & Code Quality**
-- 🎯 **Enhanced Semantic Search** - Advanced hybrid scoring (80% semantic + 20% keyword)
-- 🔍 **Smart Document Chunking** - Word boundary validation and optimal break points
-- 🧠 **SemanticSearchService** - Dedicated service for semantic relevance scoring
-- ⚙️ **Configuration Management** - User settings take absolute priority
-- 🔧 **Enterprise Error Handling** - Comprehensive logging and retry mechanisms
-- 📊 **Performance Optimizations** - Faster chunking and search algorithms
-- ✅ **Code Quality** - SOLID principles, zero warnings, comprehensive documentation
-
-### **🎯 Library Statistics:**
-- **12+ Core Services** with comprehensive interfaces and implementations
-- **5 AI Providers** with unified interface (OpenAI, Anthropic, Gemini, Azure, Custom)
-- **4 Storage Providers** with enterprise-grade features
-- **4 Database Types** with universal connectivity (SQLite, SQL Server, MySQL, PostgreSQL)
-- **Production-ready** with comprehensive error handling and validation
+**📋 [Full Version History](CHANGELOG.md)**
 
 ## 📚 Resources
 
