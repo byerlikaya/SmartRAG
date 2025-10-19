@@ -454,7 +454,7 @@ namespace SmartRAG.LocalDemo
             Console.WriteLine("═══════════════════════════════════════════════════════════════════");
             Console.WriteLine("1.  🔗 Show Database Connections");
             Console.WriteLine("2.  🔧 System Health Check");
-            Console.WriteLine("3.  🗄️  Create SQL Server Test Database");
+            Console.WriteLine("3.  🗄️ Create SQL Server Test Database");
             Console.WriteLine("4.  🐬 Create MySQL Test Database");
             Console.WriteLine("5.  🐘 Create PostgreSQL Test Database");
             Console.WriteLine("6.  📊 Show Database Schemas");
@@ -466,7 +466,7 @@ namespace SmartRAG.LocalDemo
             Console.WriteLine("12. 📄 Upload Documents (PDF, Word, Excel, Images, Audio)");
             Console.WriteLine("13. 📚 List Uploaded Documents");
             Console.WriteLine("14. 🎯 Multi-Modal RAG (Documents + Databases)");
-            Console.WriteLine("15. 🗑️  Clear All Documents");
+            Console.WriteLine("15. 🗑️ Clear All Documents");
             Console.WriteLine("0.  🚪 Exit");
             Console.WriteLine();
             Console.Write("Selection: ");
@@ -2081,7 +2081,7 @@ Respond ONLY with the JSON array, no other text.";
             Console.WriteLine("  • Excel spreadsheets (.xlsx)");
             Console.WriteLine("  • Images (.jpg, .png, .bmp - OCR)");
             Console.WriteLine("  • Text files (.txt)");
-            
+
             Console.ForegroundColor = ConsoleColor.Cyan;
             if (_useLocalEnvironment)
             {
