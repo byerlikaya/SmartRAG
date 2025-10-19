@@ -430,6 +430,9 @@ namespace SmartRAG.LocalDemo
                     case "14":
                         await RunMultiModalQuery();
                         break;
+                    case "15":
+                        await ClearAllDocuments();
+                        break;
                     case "0":
                         Console.WriteLine("\n👋 Goodbye!");
                         return;
@@ -460,9 +463,10 @@ namespace SmartRAG.LocalDemo
             Console.WriteLine("9.  🤖 Multi-Database Query (AI)");
             Console.WriteLine("10. 🤖 Setup Ollama Models");
             Console.WriteLine("11. 📦 Test Vector Store (InMemory/FileSystem/Redis/SQLite/Qdrant)");
-            Console.WriteLine("12. 📄 Upload Documents (PDF, Word, Excel, Images)");
+            Console.WriteLine("12. 📄 Upload Documents (PDF, Word, Excel, Images, Audio)");
             Console.WriteLine("13. 📚 List Uploaded Documents");
             Console.WriteLine("14. 🎯 Multi-Modal RAG (Documents + Databases)");
+            Console.WriteLine("15. 🗑️  Clear All Documents");
             Console.WriteLine("0.  🚪 Exit");
             Console.WriteLine();
             Console.Write("Selection: ");
@@ -2178,6 +2182,68 @@ Respond ONLY with the JSON array, no other text.";
             catch (Exception ex)
             {
                 _logger?.LogError(ex, "Error listing documents");
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"❌ Error: {ex.Message}");
+                Console.ResetColor();
+            }
+        }
+
+        private static async Task ClearAllDocuments()
+        {
+            Console.WriteLine();
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+            Console.WriteLine("🗑️  Clear All Documents");
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+            Console.WriteLine();
+
+            var documents = await _documentService!.GetAllDocumentsAsync();
+            Console.WriteLine($"Total documents in storage: {documents.Count}");
+            Console.WriteLine();
+
+            if (documents.Count == 0)
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine("⚠️  No documents to clear!");
+                Console.ResetColor();
+                return;
+            }
+
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine("⚠️  WARNING: This will permanently delete ALL documents and their embeddings!");
+            Console.ResetColor();
+            Console.WriteLine();
+            Console.Write("Are you sure? Type 'yes' to confirm: ");
+
+            var confirmation = Console.ReadLine();
+            if (confirmation?.ToLower() != "yes")
+            {
+                Console.WriteLine("❌ Operation cancelled.");
+                return;
+            }
+
+            try
+            {
+                Console.WriteLine();
+                Console.WriteLine("🗑️  Clearing all documents...");
+
+                var success = await _documentService.ClearAllDocumentsAsync();
+
+                if (success)
+                {
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.WriteLine($"✓ Successfully cleared {documents.Count} documents!");
+                    Console.ResetColor();
+                }
+                else
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("❌ Failed to clear documents!");
+                    Console.ResetColor();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error clearing documents");
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"❌ Error: {ex.Message}");
                 Console.ResetColor();
