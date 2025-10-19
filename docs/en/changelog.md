@@ -5,7 +5,6 @@ description: Complete version history, breaking changes, and migration guides fo
 lang: en
 ---
 
-<div class="container">
 
 All notable changes to SmartRAG are documented here. The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
@@ -16,7 +15,7 @@ All notable changes to SmartRAG are documented here. The project adheres to [Sem
 <div class="alert alert-warning">
     <h4><i class="fas fa-exclamation-triangle me-2"></i> BREAKING CHANGES</h4>
     <p class="mb-0">This release includes breaking API changes. See migration guide below.</p>
-</div>
+                    </div>
 
 ### 🚀 Intelligence Library Revolution
 
@@ -210,7 +209,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 <div class="alert alert-warning">
     <h4><i class="fas fa-exclamation-triangle me-2"></i> BREAKING CHANGE</h4>
     <p class="mb-0">Migrated from .NET 9.0 to .NET Standard 2.0/2.1</p>
-</div>
+                    </div>
 
 ### 🔄 .NET Standard Migration
 - **Target Framework**: Migrated from .NET 9.0 to .NET Standard 2.0/2.1
@@ -356,18 +355,18 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
             </tr>
         </tbody>
     </table>
-</div>
+            </div>
 
 ---
 
 ## Migration Guides
 
 ### Migrating from v2.x to v3.0.0
-
-<div class="alert alert-info">
+                    
+                    <div class="alert alert-info">
     <h4><i class="fas fa-info-circle me-2"></i> Key Changes</h4>
     <p>The primary change is the renaming of <code>GenerateRagAnswerAsync</code> to <code>QueryIntelligenceAsync</code>.</p>
-</div>
+                    </div>
 
 **Step 1: Update method calls**
 
@@ -415,14 +414,14 @@ const response = await fetch('/api/intelligence/query', { ... });
         The old <code>GenerateRagAnswerAsync</code> method still works (marked as deprecated). 
         You can migrate gradually before v4.0.0 is released.
     </p>
-</div>
+                    </div>
 
 ### Migrating from v1.x to v2.0.0
 
 <div class="alert alert-warning">
     <h4><i class="fas fa-exclamation-triangle me-2"></i> Framework Change</h4>
     <p class="mb-0">Version 2.0.0 migrated from .NET 9.0 to .NET Standard 2.0/2.1</p>
-</div>
+                </div>
 
 **Step 1: Verify framework compatibility**
 
@@ -460,8 +459,8 @@ No API changes - all functionality remains the same. Just ensure your project ta
     <p>The following methods are deprecated and will be removed in v4.0.0:</p>
     <ul class="mb-0">
         <li><code>IDocumentSearchService.GenerateRagAnswerAsync()</code> - Use <code>QueryIntelligenceAsync()</code> instead</li>
-    </ul>
-</div>
+                    </ul>
+                </div>
 
 ---
 
@@ -472,14 +471,14 @@ No API changes - all functionality remains the same. Just ensure your project ta
         <div class="feature-card">
             <div class="feature-icon">
                 <i class="fas fa-rocket"></i>
-            </div>
+                    </div>
             <h3>Getting Started</h3>
             <p>Install SmartRAG and start building intelligent applications</p>
             <a href="{{ site.baseurl }}/en/getting-started" class="btn btn-outline-primary btn-sm mt-3">
                 Get Started
             </a>
-        </div>
-    </div>
+                </div>
+            </div>
     
     <div class="col-md-6">
         <div class="feature-card">
@@ -491,9 +490,7 @@ No API changes - all functionality remains the same. Just ensure your project ta
             <a href="https://github.com/byerlikaya/SmartRAG" class="btn btn-outline-primary btn-sm mt-3" target="_blank">
                 View on GitHub
             </a>
-        </div>
-    </div>
-</div>
-
-</div>
+                    </div>
+                </div>
+            </div>
 

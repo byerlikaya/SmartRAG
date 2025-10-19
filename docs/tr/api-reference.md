@@ -5,7 +5,6 @@ description: SmartRAG interface'leri, metodları ve modelleri için eksiksiz API
 lang: tr
 ---
 
-<div class="container">
 
 ## Temel Interface'ler
 
@@ -88,7 +87,7 @@ foreach (var chunk in chunks)
         Yerine <code>QueryIntelligenceAsync</code> kullanın. Bu metod v4.0.0'da kaldırılacak.
         Geriye dönük uyumluluk için sağlanan eski metod.
     </p>
-</div>
+                    </div>
 
 ```csharp
 [Obsolete("Yerine QueryIntelligenceAsync kullanın")]
@@ -473,15 +472,15 @@ catch (Exception ex)
 
 <div class="alert alert-success">
     <h4><i class="fas fa-bolt me-2"></i> Performans Optimizasyonu</h4>
-    <ul class="mb-0">
+                        <ul class="mb-0">
         <li><strong>Chunk Boyutu:</strong> Optimal denge için 500-1000 karakter</li>
         <li><strong>MaxResults:</strong> Genellikle 5-10 parça yeterli</li>
         <li><strong>Toplu İşlemler:</strong> Birden fazla dosya için <code>UploadDocumentsAsync</code> kullanın</li>
         <li><strong>Depolama:</strong> Üretim için Qdrant veya Redis kullanın (InMemory değil)</li>
         <li><strong>Önbellekleme:</strong> Daha iyi performans için konuşma depolamayı etkinleştirin</li>
         <li><strong>Veritabanı Limitleri:</strong> Makul MaxRowsPerTable ayarlayın (1000-5000)</li>
-    </ul>
-</div>
+                        </ul>
+                    </div>
 
 ---
 
@@ -498,8 +497,8 @@ catch (Exception ex)
             <a href="{{ site.baseurl }}/tr/examples" class="btn btn-outline-primary btn-sm mt-3">
                 Örnekleri Görüntüle
             </a>
-        </div>
-    </div>
+                </div>
+            </div>
     
     <div class="col-md-6">
         <div class="feature-card">
@@ -511,9 +510,7 @@ catch (Exception ex)
             <a href="{{ site.baseurl }}/tr/getting-started" class="btn btn-outline-primary btn-sm mt-3">
                 Başlayın
             </a>
-        </div>
-    </div>
-</div>
-
-</div>
+                    </div>
+                </div>
+            </div>
 

@@ -72,22 +72,22 @@ function initBackToTop() {
     if (!backToTop) return;
     
     // Show/hide on scroll
-    window.addEventListener('scroll', function() {
-        if (window.pageYOffset > 300) {
+        window.addEventListener('scroll', function() {
+            if (window.pageYOffset > 300) {
             backToTop.classList.add('show');
-        } else {
+            } else {
             backToTop.classList.remove('show');
-        }
-    });
-    
+            }
+        });
+        
     // Scroll to top on click
     backToTop.addEventListener('click', function(e) {
         e.preventDefault();
-        window.scrollTo({
-            top: 0,
-            behavior: 'smooth'
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
         });
-    });
 }
 
 // ===== SMOOTH SCROLL =====
@@ -99,7 +99,7 @@ function initSmoothScroll() {
             
             const target = document.querySelector(targetId);
             if (target) {
-                e.preventDefault();
+            e.preventDefault();
                 target.scrollIntoView({
                     behavior: 'smooth',
                     block: 'start'

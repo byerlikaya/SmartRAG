@@ -23,7 +23,7 @@ hide_title: true
                     <p class="hero-subtitle">
                         Enterprise-Grade RAG Library for .NET featuring Multi-Database RAG + Multi-Modal Intelligence. 
                         Process documents, images, audio, and databases with AI-powered intelligence.
-                    </p>
+                     </p>
                     <div class="hero-stats">
                         <div class="stat-card">
                             <div class="stat-number">5+</div>
@@ -101,7 +101,7 @@ Console.WriteLine(answer.Answer);
             <h2 class="section-title">Key Features</h2>
             <p class="section-subtitle">
                 Powerful capabilities for building intelligent enterprise applications
-            </p>
+                     </p>
         </div>
         
         <div class="feature-grid">
@@ -168,8 +168,8 @@ Console.WriteLine(answer.Answer);
                 <h3>Production Ready</h3>
                 <p>Zero warnings policy, SOLID/DRY principles, comprehensive error handling, thread-safe operations, and battle-tested in production.</p>
             </div>
-        </div>
-    </div>
+                         </div>
+                     </div>
 </section>
 
 <section class="section section-dark">
@@ -220,8 +220,8 @@ Console.WriteLine(answer.Answer);
                         <h4>Custom</h4>
                         <p>Ollama / LM Studio</p>
                     </div>
-                </div>
-            </div>
+                         </div>
+                     </div>
             
             <div class="col-lg-6">
                 <h3 class="text-center mb-4">Storage & Databases</h3>
@@ -268,10 +268,10 @@ Console.WriteLine(answer.Answer);
                         <h4>SQLite</h4>
                         <p>Embedded DB</p>
                     </div>
+                         </div>
+                    </div>
                 </div>
             </div>
-        </div>
-    </div>
 </section>
 
 <section class="section section-light">
@@ -285,7 +285,7 @@ Console.WriteLine(answer.Answer);
         
         <div class="row">
             <div class="col-lg-12">
-                <div class="code-tabs">
+                    <div class="code-tabs">
                     <button class="code-tab active" data-tab="install">1. Installation</button>
                     <button class="code-tab" data-tab="config">2. Configuration</button>
                     <button class="code-tab" data-tab="usage">3. Usage</button>
@@ -300,7 +300,7 @@ Install-Package SmartRAG
 
 # Or add to .csproj
 &lt;PackageReference Include="SmartRAG" Version="3.0.0" /&gt;</code></pre>
-                </div>
+                    </div>
                 
                 <div class="code-panel" data-tab="config">
                     <pre><code class="language-csharp">using SmartRAG.Extensions;
@@ -310,25 +310,25 @@ var builder = WebApplication.CreateBuilder(args);
 
 // Simple configuration
 builder.Services.UseSmartRag(builder.Configuration,
-    storageProvider: StorageProvider.InMemory,
-    aiProvider: AIProvider.Gemini
-);
+     storageProvider: StorageProvider.InMemory,
+     aiProvider: AIProvider.Gemini
+ );
 
 // Or advanced configuration
 builder.Services.AddSmartRag(builder.Configuration, options =>
-{
+ {
     options.AIProvider = AIProvider.OpenAI;
-    options.StorageProvider = StorageProvider.Qdrant;
-    options.MaxChunkSize = 1000;
-    options.ChunkOverlap = 200;
+     options.StorageProvider = StorageProvider.Qdrant;
+     options.MaxChunkSize = 1000;
+     options.ChunkOverlap = 200;
     options.EnableFallbackProviders = true;
     options.FallbackProviders = new[] { AIProvider.Anthropic, AIProvider.Gemini };
 });
 
 var app = builder.Build();</code></pre>
-                </div>
+                     </div>
                 
-                <div class="code-panel" data-tab="usage">
+                     <div class="code-panel" data-tab="usage">
                     <pre><code class="language-csharp">public class IntelligenceController : ControllerBase
 {
     private readonly IDocumentService _documentService;
@@ -360,9 +360,9 @@ var app = builder.Build();</code></pre>
         return Ok(response);
     }
 }</code></pre>
+                     </div>
                 </div>
             </div>
-        </div>
         
         <div class="text-center mt-5">
             <a href="{{ site.baseurl }}/en/getting-started" class="btn btn-primary btn-lg">
@@ -400,7 +400,7 @@ var app = builder.Build();</code></pre>
                         <p><strong>Result:</strong> Complete patient timeline from 4 disconnected systems, saving hours of manual data gathering.</p>
                     </div>
                 </details>
-            </div>
+                </div>
             
             <div class="col-lg-6">
                 <details>
@@ -419,9 +419,9 @@ var app = builder.Build();</code></pre>
                             <li>PDF: Account statements, investment portfolios</li>
                         </ul>
                         <p><strong>Result:</strong> 360° customer financial intelligence for comprehensive risk assessment.</p>
-                    </div>
-                </details>
             </div>
+                </details>
+                    </div>
             
             <div class="col-lg-6">
                 <details>
@@ -437,7 +437,7 @@ var app = builder.Build();</code></pre>
                             <li>OCR: Scanned court orders</li>
                         </ul>
                         <p><strong>Result:</strong> AI discovers winning legal patterns in minutes vs. weeks of manual research.</p>
-                    </div>
+                </div>
                 </details>
             </div>
             
@@ -458,7 +458,7 @@ var app = builder.Build();</code></pre>
                         <p><strong>Result:</strong> Cross-database predictive analytics preventing stockouts across entire supply chain.</p>
                     </div>
                 </details>
-            </div>
+                </div>
             
             <div class="col-lg-6">
                 <details>
@@ -475,9 +475,9 @@ var app = builder.Build();</code></pre>
                             <li>PDF: Equipment maintenance logs</li>
                         </ul>
                         <p><strong>Result:</strong> AI correlates temperature anomalies across millions of data points to pinpoint exact root cause.</p>
-                    </div>
-                </details>
             </div>
+                </details>
+                    </div>
             
             <div class="col-lg-6">
                 <details>
@@ -494,11 +494,11 @@ var app = builder.Build();</code></pre>
                             <li>Audio: Video interview transcripts</li>
                         </ul>
                         <p><strong>Result:</strong> AI screens and ranks candidates across multiple data types in minutes.</p>
-                    </div>
+                </div>
                 </details>
+                </div>
             </div>
-        </div>
-        
+
         <div class="text-center mt-5">
             <a href="{{ site.baseurl }}/en/examples" class="btn btn-primary btn-lg">
                 <i class="fas fa-lightbulb"></i>
@@ -522,7 +522,7 @@ var app = builder.Build();</code></pre>
                     </div>
                     <h3>Multi-Database RAG</h3>
                     <p>Query SQL Server, MySQL, PostgreSQL, SQLite simultaneously with AI-powered coordination</p>
-                </div>
+                    </div>
             </div>
             <div class="col-lg-3 col-md-6">
                 <div class="feature-card text-center">
@@ -531,7 +531,7 @@ var app = builder.Build();</code></pre>
                     </div>
                     <h3>Multi-Modal</h3>
                     <p>Unified intelligence across PDF, Excel, Word, Images, Audio, and Databases</p>
-                </div>
+                    </div>
             </div>
             <div class="col-lg-3 col-md-6">
                 <div class="feature-card text-center">
@@ -540,7 +540,7 @@ var app = builder.Build();</code></pre>
                     </div>
                     <h3>100% Local</h3>
                     <p>Complete on-premise deployment with Ollama/LM Studio for total data privacy</p>
-                </div>
+                    </div>
             </div>
             <div class="col-lg-3 col-md-6">
                 <div class="feature-card text-center">
@@ -549,7 +549,7 @@ var app = builder.Build();</code></pre>
                     </div>
                     <h3>Language Agnostic</h3>
                     <p>Works in any language - Turkish, English, German, Russian, Chinese, Arabic</p>
-                </div>
+                    </div>
             </div>
         </div>
     </div>
@@ -565,14 +565,14 @@ var app = builder.Build();</code></pre>
         </div>
         
         <div class="hero-buttons" style="justify-content: center;">
-            <a href="{{ site.baseurl }}/en/getting-started" class="btn btn-primary btn-lg">
-                <i class="fas fa-rocket"></i>
-                Get Started Now
-            </a>
+                <a href="{{ site.baseurl }}/en/getting-started" class="btn btn-primary btn-lg">
+                    <i class="fas fa-rocket"></i>
+                    Get Started Now
+                </a>
             <a href="https://github.com/byerlikaya/SmartRAG" class="btn btn-outline-primary btn-lg" target="_blank">
-                <i class="fab fa-github"></i>
-                Star on GitHub
-            </a>
+                    <i class="fab fa-github"></i>
+                    Star on GitHub
+                </a>
             <a href="https://www.nuget.org/packages/SmartRAG" class="btn btn-secondary btn-lg" target="_blank">
                 <i class="fas fa-download"></i>
                 Download from NuGet

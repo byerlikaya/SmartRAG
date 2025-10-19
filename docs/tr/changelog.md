@@ -5,7 +5,6 @@ description: SmartRAG için eksiksiz versiyon geçmişi, breaking change'ler ve 
 lang: tr
 ---
 
-<div class="container">
 
 SmartRAG'deki tüm önemli değişiklikler burada belgelenmiştir. Proje [Anlamsal Versiyonlama](https://semver.org/spec/v2.0.0.html)'ya uymaktadır.
 
@@ -16,7 +15,7 @@ SmartRAG'deki tüm önemli değişiklikler burada belgelenmiştir. Proje [Anlams
 <div class="alert alert-warning">
     <h4><i class="fas fa-exclamation-triangle me-2"></i> BREAKING CHANGE'LER</h4>
     <p class="mb-0">Bu sürüm breaking API değişiklikleri içerir. Aşağıdaki taşınma kılavuzuna bakın.</p>
-</div>
+                    </div>
 
 ### 🚀 Zeka Kütüphanesi Devrimi
 
@@ -191,10 +190,10 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 
 ## [2.0.0] - 2025-08-27
 
-<div class="alert alert-warning">
+                    <div class="alert alert-warning">
     <h4><i class="fas fa-exclamation-triangle me-2"></i> BREAKING CHANGE</h4>
     <p class="mb-0">.NET 9.0'dan .NET Standard 2.0/2.1'e taşındı</p>
-</div>
+                    </div>
 
 ### 🔄 .NET Standard Taşınması
 - **Hedef Framework**: .NET 9.0'dan .NET Standard 2.0/2.1'e taşındı
@@ -307,7 +306,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
             </tr>
         </tbody>
     </table>
-</div>
+                    </div>
 
 ---
 
@@ -318,7 +317,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 <div class="alert alert-info">
     <h4><i class="fas fa-info-circle me-2"></i> Temel Değişiklikler</h4>
     <p>Birincil değişiklik, <code>GenerateRagAnswerAsync</code>'in <code>QueryIntelligenceAsync</code> olarak yeniden adlandırılmasıdır.</p>
-</div>
+                    </div>
 
 **Adım 1: Metod çağrılarını güncelleyin**
 
@@ -356,7 +355,7 @@ public async Task<IActionResult> Query([FromBody] QueryRequest request)
         Eski <code>GenerateRagAnswerAsync</code> metodu hala çalışıyor (kullanımdan kaldırıldı olarak işaretli). 
         v4.0.0 yayınlanmadan önce kademeli olarak taşınabilirsiniz.
     </p>
-</div>
+                    </div>
 
 ---
 
@@ -369,8 +368,8 @@ public async Task<IActionResult> Query([FromBody] QueryRequest request)
     <p>Aşağıdaki metodlar kullanımdan kaldırıldı ve v4.0.0'da kaldırılacak:</p>
     <ul class="mb-0">
         <li><code>IDocumentSearchService.GenerateRagAnswerAsync()</code> - Yerine <code>QueryIntelligenceAsync()</code> kullanın</li>
-    </ul>
-</div>
+                        </ul>
+                    </div>
 
 ---
 
@@ -381,28 +380,26 @@ public async Task<IActionResult> Query([FromBody] QueryRequest request)
         <div class="feature-card">
             <div class="feature-icon">
                 <i class="fas fa-rocket"></i>
-            </div>
+                            </div>
             <h3>Başlangıç</h3>
             <p>SmartRAG'i kurun ve akıllı uygulamalar oluşturmaya başlayın</p>
             <a href="{{ site.baseurl }}/tr/getting-started" class="btn btn-outline-primary btn-sm mt-3">
                 Başlayın
             </a>
-        </div>
-    </div>
-    
-    <div class="col-md-6">
+                        </div>
+                    </div>
+
+                        <div class="col-md-6">
         <div class="feature-card">
             <div class="feature-icon">
                 <i class="fab fa-github"></i>
-            </div>
+                                </div>
             <h3>GitHub Repository</h3>
             <p>Kaynak kodunu görüntüleyin, sorunları bildirin ve katkıda bulunun</p>
             <a href="https://github.com/byerlikaya/SmartRAG" class="btn btn-outline-primary btn-sm mt-3" target="_blank">
                 GitHub'da Görüntüle
             </a>
-        </div>
-    </div>
-</div>
-
-</div>
+                    </div>
+                </div>
+            </div>
 

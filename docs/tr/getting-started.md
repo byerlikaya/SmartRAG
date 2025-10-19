@@ -5,7 +5,6 @@ description: SmartRAG'i .NET uygulamanıza dakikalar içinde kurun ve yapıland�
 lang: tr
 ---
 
-<div class="container">
 
 ## Kurulum
 
@@ -348,7 +347,5 @@ var newConv = await _searchService.QueryIntelligenceAsync(
         <li><strong>LinkedIn:</strong> <a href="https://www.linkedin.com/in/barisyerlikaya/" target="_blank">Profesyonel sorular için bağlantı kurun</a></li>
         <li><strong>Dokümantasyon:</strong> Bu sitede tam dokümantasyonu keşfedin</li>
     </ul>
-</div>
-
 </div>
 

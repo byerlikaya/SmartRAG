@@ -5,8 +5,6 @@ description: Install and configure SmartRAG in your .NET application in minutes
 lang: en
 ---
 
-<div class="container">
-
 ## Installation
 
 SmartRAG is available as a NuGet package and supports **.NET Standard 2.0/2.1**, making it compatible with:
@@ -347,8 +345,6 @@ var newConv = await _searchService.QueryIntelligenceAsync(
         <li><strong>Email Support:</strong> <a href="mailto:b.yerlikaya@outlook.com">b.yerlikaya@outlook.com</a></li>
         <li><strong>LinkedIn:</strong> <a href="https://www.linkedin.com/in/barisyerlikaya/" target="_blank">Connect for professional inquiries</a></li>
         <li><strong>Documentation:</strong> Explore full documentation on this site</li>
-    </ul>
-</div>
-
-</div>
+            </ul>
+        </div>
 

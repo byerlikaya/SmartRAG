@@ -5,7 +5,6 @@ description: Complete API documentation for SmartRAG interfaces, methods, and mo
 lang: en
 ---
 
-<div class="container">
 
 ## Core Interfaces
 
@@ -88,7 +87,7 @@ foreach (var chunk in chunks)
         Use <code>QueryIntelligenceAsync</code> instead. This method will be removed in v4.0.0.
         Legacy method provided for backward compatibility.
     </p>
-</div>
+                    </div>
 
 ```csharp
 [Obsolete("Use QueryIntelligenceAsync instead")]
@@ -833,15 +832,15 @@ var result = await _searchService.QueryIntelligenceAsync(query).ConfigureAwait(f
 
 <div class="alert alert-success">
     <h4><i class="fas fa-bolt me-2"></i> Performance Optimization</h4>
-    <ul class="mb-0">
+                        <ul class="mb-0">
         <li><strong>Chunk Size:</strong> 500-1000 characters for optimal balance</li>
         <li><strong>MaxResults:</strong> 5-10 chunks typically sufficient</li>
         <li><strong>Batch Operations:</strong> Use <code>UploadDocumentsAsync</code> for multiple files</li>
         <li><strong>Storage:</strong> Use Qdrant or Redis for production (not InMemory)</li>
         <li><strong>Caching:</strong> Enable conversation storage for better performance</li>
         <li><strong>Database Limits:</strong> Set reasonable MaxRowsPerTable (1000-5000)</li>
-    </ul>
-</div>
+                        </ul>
+                    </div>
 
 ---
 
@@ -858,8 +857,8 @@ var result = await _searchService.QueryIntelligenceAsync(query).ConfigureAwait(f
             <a href="{{ site.baseurl }}/en/examples" class="btn btn-outline-primary btn-sm mt-3">
                 View Examples
             </a>
-        </div>
-    </div>
+                </div>
+            </div>
     
     <div class="col-md-6">
         <div class="feature-card">
@@ -871,9 +870,7 @@ var result = await _searchService.QueryIntelligenceAsync(query).ConfigureAwait(f
             <a href="{{ site.baseurl }}/en/getting-started" class="btn btn-outline-primary btn-sm mt-3">
                 Get Started
             </a>
-        </div>
-    </div>
-</div>
-
-</div>
+                    </div>
+                </div>
+            </div>
 

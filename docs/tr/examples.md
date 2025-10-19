@@ -5,7 +5,6 @@ description: SmartRAG için pratik kod örnekleri ve gerçek dünya kullanım se
 lang: tr
 ---
 
-<div class="container">
 
 ## Hızlı Örnekler
 
@@ -242,7 +241,7 @@ public class AudioController : ControllerBase
     <p class="mb-0">
         Ses dosyaları transkripsiyon için Google Cloud'a gönderilir. Diğer tüm formatlar (PDF, Word, Excel, Görseller, Veritabanları) %100 yerel olarak işlenir.
     </p>
-</div>
+                    </div>
 
 ---
 
@@ -592,8 +591,8 @@ var newConv = await _searchService.QueryIntelligenceAsync(
                 <li>Makul maxResults limitleri ayarlayın</li>
                 <li>Doğal etkileşimler için konuşma geçmişini kullanın</li>
             </ul>
-        </div>
-    </div>
+                </div>
+            </div>
     
     <div class="col-md-6">
         <div class="alert alert-warning">
@@ -605,10 +604,10 @@ var newConv = await _searchService.QueryIntelligenceAsync(
                 <li>Hata yönetimini atlamayın</li>
                 <li>Satır limitleri olmadan veritabanlarını sorgulamayın</li>
                 <li>Hassas veriyi temizlemeden yüklemeyin</li>
-            </ul>
-        </div>
-    </div>
-</div>
+                        </ul>
+                    </div>
+                </div>
+            </div>
 
 ---
 
@@ -653,7 +652,5 @@ var newConv = await _searchService.QueryIntelligenceAsync(
             </a>
         </div>
     </div>
-</div>
-
 </div>
 

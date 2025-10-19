@@ -5,7 +5,6 @@ description: SmartRAG için eksiksiz yapılandırma kılavuzu - AI sağlayıcıl
 lang: tr
 ---
 
-<div class="container">
 
 ## Temel Yapılandırma
 
@@ -61,7 +60,7 @@ Tüm mevcut yapılandırma seçenekleri:
         <li><strong>Daha büyük parçalar:</strong> Daha iyi bağlam, ama daha yavaş arama</li>
         <li><strong>Daha küçük parçalar:</strong> Daha kesin sonuçlar, ama daha az bağlam</li>
     </ul>
-</div>
+                    </div>
 
 ### Yeniden Deneme & Dayanıklılık Seçenekleri
 
@@ -140,8 +139,8 @@ builder.Services.AddSmartRag(configuration, options =>
         <li><strong>VoyageAI Anahtarı Alın:</strong> <a href="https://console.voyageai.com/" target="_blank">console.voyageai.com</a></li>
         <li><strong>Dokümantasyon:</strong> <a href="https://docs.anthropic.com/en/docs/build-with-claude/embeddings" target="_blank">Anthropic Embeddings Kılavuzu</a></li>
     </ul>
-</div>
-
+                        </div>
+                        
 ```json
 {
   "AI": {
@@ -214,7 +213,7 @@ builder.Services.AddSmartRag(configuration, options =>
     "AzureOpenAI": {
       "ApiKey": "AZURE_ANAHTARINIZ",
       "Endpoint": "https://your-resource.openai.azure.com/",
-      "Model": "gpt-4",
+    "Model": "gpt-4",
       "EmbeddingModel": "text-embedding-ada-002",
       "DeploymentName": "gpt-4-deployment",
       "MaxTokens": 4096,
@@ -238,8 +237,8 @@ builder.Services.AddSmartRag(configuration, options =>
 <div class="alert alert-success">
     <h4><i class="fas fa-server me-2"></i> Ollama / LM Studio ile %100 Yerel AI</h4>
     <p>Tam veri gizliliği için AI modellerini tamamen yerel olarak çalıştırın - yerinde dağıtımlar, GDPR/KVKK/HIPAA uyumluluğu için mükemmel.</p>
-</div>
-
+                         </div>
+                         
 #### Ollama (Yerel Modeller)
 
 ```json
@@ -435,7 +434,7 @@ builder.Services.AddSmartRag(configuration, options =>
 <div class="alert alert-warning">
     <h4><i class="fas fa-exclamation-triangle me-2"></i> Önemli</h4>
     <p class="mb-0">InMemory depolama, uygulama yeniden başlatıldığında tüm verileri kaybeder. Üretim için uygun değil!</p>
-</div>
+                         </div>
 
 ---
 
@@ -534,7 +533,7 @@ builder.Services.AddSmartRag(configuration, options =>
     <p class="mb-0">
         Ses dosyaları transkripsiyon için Google Cloud'a gönderilir. Tam veri gizliliği için ses dosyası yüklemeyin veya alternatif yerel çözümler kullanın.
     </p>
-</div>
+                    </div>
 
 ---
 
@@ -576,8 +575,8 @@ language: "tur+eng"
         <li><strong>💡 En iyi sonuçlar:</strong> Basılı dokümanların yüksek kaliteli taramaları</li>
         <li><strong>🔒 %100 Yerel:</strong> Buluta veri gönderilmez - Tesseract yerel olarak çalışır</li>
     </ul>
-</div>
-
+                    </div>
+                    
 ---
 
 ## Gelişmiş Yapılandırma Örnekleri
@@ -620,8 +619,8 @@ builder.Services.AddSmartRag(configuration, options =>
                 <li>Veritabanları için SanitizeSensitiveData'yı etkinleştirin</li>
                 <li>Dış servisler için HTTPS kullanın</li>
             </ul>
-        </div>
-    </div>
+                </div>
+            </div>
     
     <div class="col-md-6">
         <div class="alert alert-info">
@@ -632,9 +631,9 @@ builder.Services.AddSmartRag(configuration, options =>
                 <li>Güvenilirlik için yedek sağlayıcıları etkinleştirin</li>
                 <li>Makul MaxRowsPerTable limitleri ayarlayın</li>
             </ul>
-        </div>
-    </div>
-</div>
+                     </div>
+                </div>
+            </div>
 
 ---
 
@@ -651,35 +650,33 @@ builder.Services.AddSmartRag(configuration, options =>
             <a href="{{ site.baseurl }}/tr/api-reference" class="btn btn-outline-primary btn-sm mt-3">
                 API Dokümanlarını Görüntüle
             </a>
-        </div>
-    </div>
+                            </div>
+                        </div>
     
     <div class="col-md-4">
         <div class="feature-card text-center">
             <div class="feature-icon mx-auto">
                 <i class="fas fa-lightbulb"></i>
-            </div>
+                            </div>
             <h3>Örnekler</h3>
             <p>Pratik örnekleri ve gerçek dünya kullanım senaryolarını görün</p>
             <a href="{{ site.baseurl }}/tr/examples" class="btn btn-outline-primary btn-sm mt-3">
                 Örnekleri Gör
             </a>
-        </div>
-    </div>
+                            </div>
+                        </div>
     
     <div class="col-md-4">
         <div class="feature-card text-center">
             <div class="feature-icon mx-auto">
                 <i class="fas fa-book"></i>
-            </div>
+                            </div>
             <h3>Changelog</h3>
             <p>Versiyon geçmişini ve taşınma kılavuzlarını takip edin</p>
             <a href="{{ site.baseurl }}/tr/changelog" class="btn btn-outline-primary btn-sm mt-3">
                 Changelog'u Görüntüle
             </a>
-        </div>
-    </div>
-</div>
-
-</div>
+                        </div>
+                    </div>
+                </div>
 

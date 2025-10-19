@@ -5,7 +5,6 @@ description: Complete configuration guide for SmartRAG - AI providers, storage, 
 lang: en
 ---
 
-<div class="container">
 
 ## Basic Configuration
 
@@ -61,7 +60,7 @@ All available configuration options:
         <li><strong>Larger chunks:</strong> Better context, but slower search</li>
         <li><strong>Smaller chunks:</strong> More precise results, but less context</li>
     </ul>
-</div>
+                     </div>
 
 ### Retry & Resilience Options
 
@@ -145,7 +144,7 @@ builder.Services.AddSmartRag(configuration, options =>
 ```json
 {
   "AI": {
-    "Anthropic": {
+  "Anthropic": {
       "ApiKey": "sk-ant-YOUR_ANTHROPIC_KEY",
       "Model": "claude-3-5-sonnet-20241022",
       "MaxTokens": 4096,
@@ -211,10 +210,10 @@ builder.Services.AddSmartRag(configuration, options =>
 ```json
 {
   "AI": {
-    "AzureOpenAI": {
+  "AzureOpenAI": {
       "ApiKey": "YOUR_AZURE_KEY",
-      "Endpoint": "https://your-resource.openai.azure.com/",
-      "Model": "gpt-4",
+    "Endpoint": "https://your-resource.openai.azure.com/",
+    "Model": "gpt-4",
       "EmbeddingModel": "text-embedding-ada-002",
       "DeploymentName": "gpt-4-deployment",
       "MaxTokens": 4096,
@@ -238,8 +237,8 @@ builder.Services.AddSmartRag(configuration, options =>
 <div class="alert alert-success">
     <h4><i class="fas fa-server me-2"></i> 100% Local AI with Ollama / LM Studio</h4>
     <p>Run AI models completely locally for total data privacy - perfect for on-premise deployments, GDPR/KVKK/HIPAA compliance.</p>
-</div>
-
+                         </div>
+                         
 #### Ollama (Local Models)
 
 ```json
@@ -260,7 +259,7 @@ builder.Services.AddSmartRag(configuration, options =>
 ```json
 {
   "AI": {
-    "Custom": {
+  "Custom": {
       "ApiKey": "not-needed",
       "Endpoint": "http://localhost:1234/v1/chat/completions",
       "Model": "local-model",
@@ -452,7 +451,7 @@ builder.Services.AddSmartRag(configuration, options =>
 <div class="alert alert-warning">
     <h4><i class="fas fa-exclamation-triangle me-2"></i> Important</h4>
     <p class="mb-0">InMemory storage loses all data when application restarts. Not suitable for production!</p>
-</div>
+                         </div>
 
 ---
 
@@ -580,7 +579,7 @@ builder.Services.AddSmartRag(configuration, options =>
     <p class="mb-0">
         Audio files are sent to Google Cloud for transcription. For complete data privacy, avoid uploading audio files or use alternative local solutions.
     </p>
-</div>
+                    </div>
 
 ---
 
@@ -624,8 +623,8 @@ language: "eng+tur"
         <li><strong>💡 Best results:</strong> High-quality scans of printed documents</li>
         <li><strong>🔒 100% Local:</strong> No data sent to cloud - Tesseract runs locally</li>
     </ul>
-</div>
-
+                     </div>
+                     
 ---
 
 ## Advanced Configuration Examples
@@ -818,7 +817,7 @@ builder.Services.AddSmartRag(configuration, options =>
 ## Best Practices
 
 <div class="row g-4 mt-4">
-    <div class="col-md-6">
+                        <div class="col-md-6">
         <div class="alert alert-success">
             <h4><i class="fas fa-check-circle me-2"></i> Security</h4>
             <ul class="mb-0">
@@ -827,11 +826,11 @@ builder.Services.AddSmartRag(configuration, options =>
                 <li>Enable SanitizeSensitiveData for databases</li>
                 <li>Use HTTPS for external services</li>
             </ul>
-        </div>
-    </div>
+                            </div>
+                        </div>
     
-    <div class="col-md-6">
-        <div class="alert alert-info">
+                        <div class="col-md-6">
+                            <div class="alert alert-info">
             <h4><i class="fas fa-bolt me-2"></i> Performance</h4>
             <ul class="mb-0">
                 <li>Use Qdrant or Redis for production</li>
@@ -839,10 +838,10 @@ builder.Services.AddSmartRag(configuration, options =>
                 <li>Enable fallback providers for reliability</li>
                 <li>Set reasonable MaxRowsPerTable limits</li>
             </ul>
-        </div>
-    </div>
+                            </div>
+                        </div>
     
-    <div class="col-md-6">
+                        <div class="col-md-6">
         <div class="alert alert-warning">
             <h4><i class="fas fa-database me-2"></i> Database</h4>
             <ul class="mb-0">
@@ -851,11 +850,11 @@ builder.Services.AddSmartRag(configuration, options =>
                 <li>Monitor schema refresh intervals</li>
                 <li>Configure connection timeouts appropriately</li>
             </ul>
-        </div>
-    </div>
+                            </div>
+                        </div>
     
-    <div class="col-md-6">
-        <div class="alert alert-primary">
+                        <div class="col-md-6">
+                            <div class="alert alert-primary">
             <h4><i class="fas fa-shield-alt me-2"></i> Privacy</h4>
             <ul class="mb-0">
                 <li>Use Ollama/LM Studio for 100% local AI</li>
@@ -863,9 +862,9 @@ builder.Services.AddSmartRag(configuration, options =>
                 <li>OCR is 100% local (Tesseract)</li>
                 <li>Keep databases on-premise when needed</li>
             </ul>
-        </div>
-    </div>
-</div>
+                            </div>
+                        </div>
+                    </div>
 
 ---
 
@@ -895,8 +894,8 @@ builder.Services.AddSmartRag(configuration, options =>
             <a href="{{ site.baseurl }}/en/examples" class="btn btn-outline-primary btn-sm mt-3">
                 See Examples
             </a>
-        </div>
-    </div>
+                </div>
+            </div>
     
     <div class="col-md-4">
         <div class="feature-card text-center">
@@ -910,7 +909,5 @@ builder.Services.AddSmartRag(configuration, options =>
             </a>
         </div>
     </div>
-</div>
-
 </div>
 

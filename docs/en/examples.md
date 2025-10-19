@@ -5,7 +5,6 @@ description: Practical code examples and real-world use cases for SmartRAG
 lang: en
 ---
 
-<div class="container">
 
 ## Quick Examples
 
@@ -253,7 +252,7 @@ public class AudioController : ControllerBase
     <p class="mb-0">
         Audio files are sent to Google Cloud for transcription. All other formats (PDF, Word, Excel, Images, Databases) are processed 100% locally.
     </p>
-</div>
+                    </div>
 
 ---
 
@@ -818,8 +817,8 @@ public class DocumentServiceTests
                 <li>Test database connections before deployment</li>
             </ul>
         </div>
-    </div>
-    
+                    </div>
+
     <div class="col-md-6">
         <div class="alert alert-warning">
             <h4><i class="fas fa-times-circle me-2"></i> Don'ts</h4>
@@ -832,9 +831,9 @@ public class DocumentServiceTests
                 <li>Don't upload sensitive data without sanitization</li>
                 <li>Don't forget to dispose streams</li>
             </ul>
-        </div>
-    </div>
-</div>
+                    </div>
+                </div>
+            </div>
 
 ---
 
@@ -845,14 +844,14 @@ public class DocumentServiceTests
         <div class="feature-card text-center">
             <div class="feature-icon mx-auto">
                 <i class="fas fa-rocket"></i>
-            </div>
+                    </div>
             <h3>Getting Started</h3>
             <p>Quick installation and setup guide</p>
             <a href="{{ site.baseurl }}/en/getting-started" class="btn btn-outline-primary btn-sm mt-3">
                 Get Started
             </a>
-        </div>
-    </div>
+                </div>
+            </div>
     
     <div class="col-md-4">
         <div class="feature-card text-center">
@@ -864,8 +863,8 @@ public class DocumentServiceTests
             <a href="{{ site.baseurl }}/en/configuration" class="btn btn-outline-primary btn-sm mt-3">
                 Configure
             </a>
-        </div>
-    </div>
+                    </div>
+                </div>
     
     <div class="col-md-4">
         <div class="feature-card text-center">
@@ -877,9 +876,7 @@ public class DocumentServiceTests
             <a href="{{ site.baseurl }}/en/changelog" class="btn btn-outline-primary btn-sm mt-3">
                 View Changelog
             </a>
-        </div>
+            </div>
     </div>
-</div>
-
 </div>
 
