@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace SmartRAG.DatabaseTests
+namespace SmartRAG.LocalDemo
 {
     /// <summary>
     /// MySQL test database creator implementation

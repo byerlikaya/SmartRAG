@@ -593,7 +593,7 @@ namespace SmartRAG.Services
         public static readonly Action<ILogger, string, Exception> LogAudioServiceInitialized = LoggerMessage.Define<string>(
             LogLevel.Debug,
             new EventId(80004, "AudioServiceInitialized"),
-            "Google Speech-to-Text service initialized");
+            "Google Speech-to-Text service initialized with config: {configPath}");
 
         public static readonly Action<ILogger, Exception> LogAudioServiceInitializationFailed = LoggerMessage.Define(
             LogLevel.Error,

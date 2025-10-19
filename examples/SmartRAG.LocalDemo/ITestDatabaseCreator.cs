@@ -1,6 +1,6 @@
 using SmartRAG.Enums;
 
-namespace SmartRAG.DatabaseTests
+namespace SmartRAG.LocalDemo
 {
     /// <summary>
     /// Interface for creating test databases across different database types

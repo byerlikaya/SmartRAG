@@ -354,8 +354,8 @@ namespace SmartRAG.Services
                 {
                     case ConversationStorageProvider.Redis:
                         return StorageProvider.Redis;
-                    case ConversationStorageProvider.Sqlite:
-                        return StorageProvider.Sqlite;
+                    case ConversationStorageProvider.SQLite:
+                        return StorageProvider.SQLite;
                     case ConversationStorageProvider.FileSystem:
                         return StorageProvider.FileSystem;
                     case ConversationStorageProvider.InMemory:
@@ -883,7 +883,7 @@ Answer:";
                 switch (conversationStorageProvider)
                 {
                     case StorageProvider.Redis:
-                    case StorageProvider.Sqlite:
+                    case StorageProvider.SQLite:
                     case StorageProvider.InMemory:
                     case StorageProvider.FileSystem:
                         // Use the existing document repository for conversation storage
@@ -916,7 +916,7 @@ Answer:";
                 switch (conversationStorageProvider)
                 {
                     case StorageProvider.Redis:
-                    case StorageProvider.Sqlite:
+                    case StorageProvider.SQLite:
                     case StorageProvider.InMemory:
                     case StorageProvider.FileSystem:
                         // Use the existing document repository for conversation storage

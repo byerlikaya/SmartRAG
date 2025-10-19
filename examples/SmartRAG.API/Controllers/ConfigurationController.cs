@@ -1,13 +1,5 @@
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
 using SmartRAG.API.Contracts;
-using SmartRAG.Enums;
-using System;
-using System.Collections.Generic;
-using System.IO.Compression;
-using System.Linq;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace SmartRAG.API.Controllers
 {
@@ -744,8 +736,9 @@ namespace SmartRAG.API.Controllers
             {
                 if (confirm != "RESET_CONFIRMED")
                 {
-                    return BadRequest(new { 
-                        Error = "Configuration reset requires confirmation", 
+                    return BadRequest(new
+                    {
+                        Error = "Configuration reset requires confirmation",
                         RequiredConfirmation = "RESET_CONFIRMED",
                         Warning = "This operation will reset configuration to defaults and may cause service interruption"
                     });
@@ -853,7 +846,7 @@ namespace SmartRAG.API.Controllers
             var config = await GetAIProviderConfigAsync(request.Provider);
             config.LastUpdated = DateTime.UtcNow;
             config.UpdatedBy = "current-user"; // Replace with actual user
-            
+
             return config;
         }
 
@@ -903,7 +896,7 @@ namespace SmartRAG.API.Controllers
             var config = await GetStorageConfigAsync(request.Provider);
             config.LastUpdated = DateTime.UtcNow;
             config.UpdatedBy = "current-user"; // Replace with actual user
-            
+
             return config;
         }
 
@@ -957,7 +950,7 @@ namespace SmartRAG.API.Controllers
             var config = await GetSystemConfigAsync();
             config.LastUpdated = DateTime.UtcNow;
             config.UpdatedBy = "current-user"; // Replace with actual user
-            
+
             return config;
         }
 
@@ -1000,7 +993,7 @@ namespace SmartRAG.API.Controllers
             var config = await GetConversationConfigAsync();
             config.LastUpdated = DateTime.UtcNow;
             config.UpdatedBy = "current-user"; // Replace with actual user
-            
+
             return config;
         }
 
@@ -1213,7 +1206,7 @@ namespace SmartRAG.API.Controllers
             {
                 StorageProvider.Qdrant => "Qdrant Vector Database",
                 StorageProvider.Redis => "Redis Cache",
-                StorageProvider.Sqlite => "SQLite Database",
+                StorageProvider.SQLite => "SQLite Database",
                 StorageProvider.FileSystem => "File System Storage",
                 _ => provider.ToString()
             };
@@ -1225,7 +1218,7 @@ namespace SmartRAG.API.Controllers
             {
                 StorageProvider.Qdrant => "http://localhost:6333",
                 StorageProvider.Redis => "localhost:6379",
-                StorageProvider.Sqlite => "Data Source=smartrag.db",
+                StorageProvider.SQLite => "Data Source=smartrag.db",
                 StorageProvider.FileSystem => "./storage",
                 _ => ""
             };

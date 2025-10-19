@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using SmartRAG.Enums;
 
-namespace SmartRAG.DatabaseTests
+namespace SmartRAG.LocalDemo
 {
     /// <summary>
     /// Factory class for creating database creators

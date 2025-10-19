@@ -5,34 +5,34 @@ using SmartRAG.Enums;
 using SmartRAG.Extensions;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
-namespace SmartRAG.DatabaseTests
+namespace SmartRAG.LocalDemo
 {
     internal class Program
     {
-    private static IServiceProvider? _serviceProvider;
-    private static ILogger<Program>? _logger;
-    private static IConfiguration? _configuration;
+        private static IServiceProvider? _serviceProvider;
+        private static ILogger<Program>? _logger;
+        private static IConfiguration? _configuration;
         private static IDatabaseConnectionManager? _connectionManager;
         private static IDatabaseSchemaAnalyzer? _schemaAnalyzer;
         private static IMultiDatabaseQueryCoordinator? _multiDbCoordinator;
-    private static IAIService? _aiService;
-    private static string _selectedLanguage = "English";
+        private static IAIService? _aiService;
+        private static IDocumentService? _documentService;
+        private static IDocumentSearchService? _documentSearchService;
+        private static string _selectedLanguage = "English";
+        private static bool _useLocalEnvironment = true;
+        private static AIProvider _selectedAIProvider = AIProvider.Custom;
+        private static StorageProvider _selectedStorageProvider = StorageProvider.Qdrant;
 
         private static async Task Main(string[] args)
         {
             // Enable UTF-8 encoding for console to display emojis correctly
             Console.OutputEncoding = System.Text.Encoding.UTF8;
-            
+
             Console.WriteLine("╔═══════════════════════════════════════════════════════════════════╗");
-            Console.WriteLine("║   SmartRAG Multi-Database RAG Test System                        ║");
+            Console.WriteLine("║   SmartRAG Local Demo - Fully Local RAG System                    ║");
             Console.WriteLine("╚═══════════════════════════════════════════════════════════════════╝");
             Console.WriteLine();
 
@@ -43,6 +43,9 @@ namespace SmartRAG.DatabaseTests
 
                 // Load configuration
                 LoadConfiguration();
+
+                // Select environment (Local or Cloud)
+                SelectEnvironment();
 
                 // Select language for queries and responses
                 SelectLanguage();
@@ -55,8 +58,24 @@ namespace SmartRAG.DatabaseTests
             }
             catch (Exception ex)
             {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"\n❌ ERROR: {ex.Message}");
+                Console.WriteLine($"\nError Type: {ex.GetType().Name}");
+                Console.WriteLine($"\nStack Trace:");
+                Console.WriteLine(ex.StackTrace);
+
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"\nInner Exception: {ex.InnerException.Message}");
+                    Console.WriteLine($"Inner Type: {ex.InnerException.GetType().Name}");
+                    if (ex.InnerException.StackTrace != null)
+                    {
+                        Console.WriteLine($"Inner Stack:\n{ex.InnerException.StackTrace}");
+                    }
+                }
+                Console.ResetColor();
+
                 _logger?.LogError(ex, "Error starting application");
-                Console.WriteLine($"❌ ERROR: {ex.Message}");
             }
             finally
             {
@@ -68,16 +87,16 @@ namespace SmartRAG.DatabaseTests
         private static async Task SetupTestDatabases()
         {
             // Create SQLite database
-            var sqliteDbPath = Path.Combine(Directory.GetCurrentDirectory(), "TestData", "TestDatabase.db");
+            var sqliteDbPath = Path.Combine(Directory.GetCurrentDirectory(), "TestData", "ProductCatalog.db");
             var sqliteDir = Path.GetDirectoryName(sqliteDbPath);
-            
+
             if (!string.IsNullOrEmpty(sqliteDir) && !Directory.Exists(sqliteDir))
             {
                 Directory.CreateDirectory(sqliteDir);
             }
 
             var sqliteCreator = new SqliteTestDatabaseCreator();
-            
+
             if (!File.Exists(sqliteDbPath))
             {
                 Console.Write("📁 Creating SQLite test database... ");
@@ -99,6 +118,92 @@ namespace SmartRAG.DatabaseTests
                 .Build();
         }
 
+        private static void SelectEnvironment()
+        {
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+            Console.WriteLine("🚀 ENVIRONMENT SELECTION");
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+            Console.WriteLine();
+            Console.WriteLine("Choose your deployment environment:");
+            Console.WriteLine();
+            Console.WriteLine("1. ☁️  CLOUD Environment (Cloud Services)");
+            Console.WriteLine("   • AI: Gemini / OpenAI / AzureOpenAI / Anthropic / Custom");
+            Console.WriteLine("   • Vector Store: Qdrant Cloud");
+            Console.WriteLine("   • Cache: Redis Cloud");
+            Console.WriteLine("   • Databases: Can use cloud or local databases");
+            Console.WriteLine("   ⚡ High performance with cloud AI models");
+            Console.WriteLine();
+            Console.WriteLine("2. 🏠 LOCAL Environment (100% Local - No Cloud Required)");
+            Console.WriteLine("   • AI: Ollama (running on localhost)");
+            Console.WriteLine("   • Vector Store: Qdrant (local docker container)");
+            Console.WriteLine("   • Cache: Redis (local docker container)");
+            Console.WriteLine("   • Databases: Local SQL Server, MySQL, PostgreSQL, SQLite");
+            Console.WriteLine("   ✅ GDPR/KVKK compliant - All data stays on your machine");
+            Console.WriteLine();
+            Console.Write("Selection (default: Local): ");
+
+            var choice = Console.ReadLine();
+
+            _useLocalEnvironment = choice switch
+            {
+                "1" => false,
+                "2" or "" => true,
+                _ => true
+            };
+
+            if (_useLocalEnvironment)
+            {
+                _selectedAIProvider = AIProvider.Custom;  // Custom provider configured for Ollama
+                _selectedStorageProvider = StorageProvider.Redis;
+
+                Console.WriteLine();
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("✓ LOCAL Environment selected");
+                Console.WriteLine("  AI Provider: Ollama (via Custom provider)");
+                Console.WriteLine("  Storage: Redis (Document storage)");
+                Console.WriteLine();
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine("  ⚠️  Note: Make sure Ollama endpoint is configured in appsettings");
+                Console.WriteLine("     (AI:Custom:Endpoint = http://localhost:11434)");
+                Console.ResetColor();
+            }
+            else
+            {
+                // Cloud environment - let user choose provider
+                Console.WriteLine();
+                Console.WriteLine("Select AI Provider:");
+                Console.WriteLine("1. Google Gemini");
+                Console.WriteLine("2. OpenAI GPT");
+                Console.WriteLine("3. Azure OpenAI");
+                Console.WriteLine("4. Anthropic Claude");
+                Console.WriteLine("5. Custom Provider");
+                Console.Write("Selection (default: Anthropic): ");
+
+                var aiChoice = Console.ReadLine();
+                _selectedAIProvider = aiChoice switch
+                {
+                    "1" => AIProvider.Gemini,
+                    "2" => AIProvider.OpenAI,
+                    "3" => AIProvider.AzureOpenAI,
+                    "4" or "" => AIProvider.Anthropic,
+                    "5" => AIProvider.Custom,
+                    _ => AIProvider.Anthropic
+                };
+
+                // For document storage, use Redis (more reliable for GetAllDocuments)
+                _selectedStorageProvider = StorageProvider.Redis;
+
+                Console.WriteLine();
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine("✓ CLOUD Environment selected");
+                Console.WriteLine($"  AI Provider: {_selectedAIProvider}");
+                Console.WriteLine("  Storage: Redis (Document storage)");
+                Console.ResetColor();
+            }
+
+            Console.WriteLine();
+        }
+
         private static void SelectLanguage()
         {
             Console.WriteLine("═══════════════════════════════════════════════════════════════════");
@@ -114,9 +219,9 @@ namespace SmartRAG.DatabaseTests
             Console.WriteLine("5. 🌐 Other (specify)");
             Console.WriteLine();
             Console.Write("Selection (default: English): ");
-            
+
             var choice = Console.ReadLine();
-            
+
             _selectedLanguage = choice switch
             {
                 "1" or "" => "English",
@@ -126,7 +231,7 @@ namespace SmartRAG.DatabaseTests
                 "5" => GetCustomLanguage(),
                 _ => "English"
             };
-            
+
             Console.WriteLine();
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine($"✓ Language set to: {_selectedLanguage}");
@@ -152,27 +257,55 @@ namespace SmartRAG.DatabaseTests
                 throw new InvalidOperationException("Configuration not loaded yet!");
             }
 
-            var services = new ServiceCollection();
-            services.AddSingleton<IConfiguration>(_configuration);
-
-            services.AddLogging(builder =>
+            try
             {
-                builder.AddConsole();
-                builder.AddConfiguration(_configuration.GetSection("Logging"));
-            });
+                var services = new ServiceCollection();
+                services.AddSingleton<IConfiguration>(_configuration);
 
-            services.AddSmartRag(_configuration, options =>
+                services.AddLogging(builder =>
+                {
+                    builder.AddConsole();
+                    builder.AddConfiguration(_configuration.GetSection("Logging"));
+                });
+
+                Console.WriteLine($"   → Configuring {_selectedAIProvider} provider...");
+                Console.WriteLine($"   → Configuring {_selectedStorageProvider} storage...");
+
+                services.AddSmartRag(_configuration, options =>
+                {
+                    options.StorageProvider = _selectedStorageProvider;
+                    options.AIProvider = _selectedAIProvider;
+                });
+
+                Console.WriteLine("   → Building service provider...");
+                _serviceProvider = services.BuildServiceProvider();
+
+                Console.WriteLine();
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine($"✓ Services initialized successfully");
+                Console.WriteLine($"  AI Provider: {_selectedAIProvider}");
+                Console.WriteLine($"  Storage Provider: {_selectedStorageProvider}");
+                Console.ResetColor();
+            }
+            catch (Exception ex)
             {
-                options.StorageProvider = StorageProvider.InMemory;
-                options.AIProvider = AIProvider.Anthropic;
-            });
-
-            _serviceProvider = services.BuildServiceProvider();
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"❌ Service initialization failed: {ex.Message}");
+                Console.WriteLine($"   Type: {ex.GetType().Name}");
+                if (ex.InnerException != null)
+                {
+                    Console.WriteLine($"   Inner: {ex.InnerException.Message}");
+                }
+                Console.ResetColor();
+                throw;
+            }
 
             _connectionManager = _serviceProvider.GetService<IDatabaseConnectionManager>();
             _schemaAnalyzer = _serviceProvider.GetService<IDatabaseSchemaAnalyzer>();
             _multiDbCoordinator = _serviceProvider.GetService<IMultiDatabaseQueryCoordinator>();
             _aiService = _serviceProvider.GetService<IAIService>();
+            _documentService = _serviceProvider.GetService<IDocumentService>();
+            _documentSearchService = _serviceProvider.GetService<IDocumentSearchService>();
             _logger = _serviceProvider.GetRequiredService<ILogger<Program>>();
 
             // Initialize database connections
@@ -185,16 +318,16 @@ namespace SmartRAG.DatabaseTests
                 var schemas = await _schemaAnalyzer!.GetAllSchemasAsync();
                 var completed = schemas.Where(s => s.Status == SchemaAnalysisStatus.Completed && s.Tables.Count > 0).ToList();
                 var needsSetup = schemas.Where(s => s.Tables.Count == 0).ToList();
-                
+
                 Console.WriteLine($"📊 Ready: {completed.Count} database(s) with data");
-                
+
                 foreach (var schema in completed)
                 {
                     Console.ForegroundColor = ConsoleColor.Green;
                     Console.WriteLine($"   ✓ {schema.DatabaseName}: {schema.Tables.Count} tables, {schema.TotalRowCount} total rows");
                     Console.ResetColor();
                 }
-                
+
                 Console.WriteLine();
 
                 // Show setup instructions if databases need creation
@@ -209,7 +342,7 @@ namespace SmartRAG.DatabaseTests
                     Console.WriteLine();
 
                     var instructionsShown = new HashSet<string>();
-                    
+
                     foreach (var schema in needsSetup)
                     {
                         var instruction = schema.DatabaseType switch
@@ -252,25 +385,43 @@ namespace SmartRAG.DatabaseTests
                         await ShowDatabaseConnections();
                         break;
                     case "2":
-                        await ShowDatabaseSchemas();
+                        await RunSystemHealthCheck();
                         break;
                     case "3":
-                        await RunMultiDatabaseQuery();
-                        break;
-                    case "4":
-                        await AnalyzeQueryIntent();
-                        break;
-                    case "5":
-                        await RunTestQueries();
-                        break;
-                    case "6":
                         await CreateSqlServerDatabase();
                         break;
-                    case "7":
+                    case "4":
                         await CreateMySqlDatabase();
                         break;
-                    case "8":
+                    case "5":
                         await CreatePostgreSqlDatabase();
+                        break;
+                    case "6":
+                        await ShowDatabaseSchemas();
+                        break;
+                    case "7":
+                        await AnalyzeQueryIntent();
+                        break;
+                    case "8":
+                        await RunTestQueries();
+                        break;
+                    case "9":
+                        await RunMultiDatabaseQuery();
+                        break;
+                    case "10":
+                        await SetupOllamaModels();
+                        break;
+                    case "11":
+                        await TestVectorStore();
+                        break;
+                    case "12":
+                        await UploadDocuments();
+                        break;
+                    case "13":
+                        await ListDocuments();
+                        break;
+                    case "14":
+                        await RunMultiModalQuery();
                         break;
                     case "0":
                         Console.WriteLine("\n👋 Goodbye!");
@@ -291,15 +442,21 @@ namespace SmartRAG.DatabaseTests
             Console.WriteLine("═══════════════════════════════════════════════════════════════════");
             Console.WriteLine("📋 MAIN MENU");
             Console.WriteLine("═══════════════════════════════════════════════════════════════════");
-            Console.WriteLine("1. 🔗 Show Database Connections");
-            Console.WriteLine("2. 📊 Show Database Schemas");
-            Console.WriteLine("3. 🤖 Multi-Database Query (AI)");
-            Console.WriteLine("4. 🔬 Query Analysis (SQL Generation)");
-            Console.WriteLine("5. 🧪 Automatic Test Queries");
-            Console.WriteLine("6. 🗄️  Create SQL Server Test Database");
-            Console.WriteLine("7. 🐬 Create MySQL Test Database");
-            Console.WriteLine("8. 🐘 Create PostgreSQL Test Database");
-            Console.WriteLine("0. 🚪 Exit");
+            Console.WriteLine("1.  🔗 Show Database Connections");
+            Console.WriteLine("2.  🔧 System Health Check");
+            Console.WriteLine("3.  🗄️  Create SQL Server Test Database");
+            Console.WriteLine("4.  🐬 Create MySQL Test Database");
+            Console.WriteLine("5.  🐘 Create PostgreSQL Test Database");
+            Console.WriteLine("6.  📊 Show Database Schemas");
+            Console.WriteLine("7.  🔬 Query Analysis (SQL Generation)");
+            Console.WriteLine("8.  🧪 Automatic Test Queries");
+            Console.WriteLine("9.  🤖 Multi-Database Query (AI)");
+            Console.WriteLine("10. 🤖 Setup Ollama Models");
+            Console.WriteLine("11. 📦 Test Vector Store (InMemory/FileSystem/Redis/SQLite/Qdrant)");
+            Console.WriteLine("12. 📄 Upload Documents (PDF, Word, Excel, Images)");
+            Console.WriteLine("13. 📚 List Uploaded Documents");
+            Console.WriteLine("14. 🎯 Multi-Modal RAG (Documents + Databases)");
+            Console.WriteLine("0.  🚪 Exit");
             Console.WriteLine();
             Console.Write("Selection: ");
         }
@@ -313,11 +470,11 @@ namespace SmartRAG.DatabaseTests
 
             var connections = await _connectionManager!.GetAllConnectionsAsync();
             var needsSetup = new List<string>();
-            
+
             foreach (var conn in connections)
             {
                 var dbId = await _connectionManager.GetDatabaseIdAsync(conn);
-                
+
                 // Suppress validation warnings by catching them
                 bool isValid;
                 try
@@ -329,7 +486,7 @@ namespace SmartRAG.DatabaseTests
                 {
                     isValid = false;
                 }
-                
+
                 var schema = await _schemaAnalyzer!.GetSchemaAsync(dbId);
 
                 Console.WriteLine();
@@ -338,13 +495,13 @@ namespace SmartRAG.DatabaseTests
                 Console.ResetColor();
                 Console.WriteLine($"   Type: {conn.DatabaseType}");
                 Console.WriteLine($"   Connection: {(isValid ? "✓ Active" : "✗ Inactive")}");
-                
+
                 if (schema != null)
                 {
                     Console.WriteLine($"   Schema: {schema.Status}");
                     Console.WriteLine($"   Tables: {schema.Tables.Count}");
                     Console.WriteLine($"   Total Rows: {schema.TotalRowCount:N0}");
-                    
+
                     // Track databases that need setup
                     if (schema.Tables.Count == 0 && conn.DatabaseType != DatabaseType.SQLite)
                     {
@@ -370,12 +527,12 @@ namespace SmartRAG.DatabaseTests
                 Console.ResetColor();
                 Console.WriteLine("The following databases need to be created:");
                 Console.WriteLine();
-                
+
                 foreach (var instruction in needsSetup.Distinct())
                 {
                     Console.WriteLine($"   {instruction}");
                 }
-                
+
                 Console.WriteLine();
                 Console.ForegroundColor = ConsoleColor.Cyan;
                 Console.WriteLine("💡 Use the menu options above to create databases automatically!");
@@ -472,7 +629,7 @@ namespace SmartRAG.DatabaseTests
 
                 // Add language instruction to query
                 var languageInstructedQuery = $"{query}\n\n[IMPORTANT: Respond in {_selectedLanguage} language]";
-                
+
                 var response = await _multiDbCoordinator!.QueryMultipleDatabasesAsync(languageInstructedQuery, maxResults: 10);
 
                 Console.WriteLine();
@@ -527,10 +684,10 @@ namespace SmartRAG.DatabaseTests
             {
                 Console.WriteLine();
                 Console.WriteLine("⏳ AI analyzing...");
-                
+
                 // Add language instruction to query
                 var languageInstructedQuery = $"{query}\n\n[IMPORTANT: Analyze and respond in {_selectedLanguage} language]";
-                
+
                 var intent = await _multiDbCoordinator!.AnalyzeQueryIntentAsync(languageInstructedQuery);
                 intent = await _multiDbCoordinator.GenerateDatabaseQueriesAsync(intent);
 
@@ -607,7 +764,7 @@ namespace SmartRAG.DatabaseTests
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine($"✓ Generated {testQueries.Count} cross-database test queries");
             Console.ResetColor();
-            
+
             // Show query categories breakdown
             var categoryBreakdown = testQueries.GroupBy(q => q.Category.Split(' ')[0]).Select(g => $"{g.Key} ({g.Count()})");
             Console.ForegroundColor = ConsoleColor.DarkGray;
@@ -619,7 +776,7 @@ namespace SmartRAG.DatabaseTests
             Console.Write($"How many tests to run? (1-{testQueries.Count}, Enter for all): ");
             var input = Console.ReadLine();
             var testCount = testQueries.Count;
-            
+
             if (!string.IsNullOrWhiteSpace(input) && int.TryParse(input, out var parsed) && parsed > 0 && parsed <= testQueries.Count)
             {
                 testCount = parsed;
@@ -634,7 +791,7 @@ namespace SmartRAG.DatabaseTests
             for (int i = 0; i < testCount; i++)
             {
                 var testQuery = testQueries[i];
-                
+
                 Console.ForegroundColor = ConsoleColor.Cyan;
                 Console.WriteLine($"[{i + 1}/{testCount}] {testQuery.Category}");
                 Console.WriteLine($"  Query: {testQuery.Query}");
@@ -650,7 +807,7 @@ namespace SmartRAG.DatabaseTests
                 {
                     // Add language instruction for test queries
                     var languageInstructedQuery = $"{testQuery.Query}\n\n[IMPORTANT: Respond in {_selectedLanguage} language]";
-                    
+
                     var response = await _multiDbCoordinator!.QueryMultipleDatabasesAsync(languageInstructedQuery, maxResults: 5);
 
                     // Check if the response indicates an error
@@ -662,7 +819,7 @@ namespace SmartRAG.DatabaseTests
                         Console.ForegroundColor = ConsoleColor.Yellow;
                         Console.WriteLine($"⚠️  Query Failed: {response.Answer}");
                         Console.ResetColor();
-                        
+
                         // Extract SQL info from error message if available
                         var schemas = await _schemaAnalyzer!.GetAllSchemasAsync();
                         var sqlInfo = ExtractSQLFromError(response.Answer, schemas);
@@ -688,7 +845,7 @@ namespace SmartRAG.DatabaseTests
                     Console.ForegroundColor = ConsoleColor.Red;
                     Console.WriteLine($"❌ Exception: {ex.Message}");
                     Console.ResetColor();
-                    
+
                     failedQueries.Add((testQuery, ex.Message, string.Empty));
                 }
 
@@ -706,18 +863,18 @@ namespace SmartRAG.DatabaseTests
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine($"✅ Successful: {successCount}/{testCount}");
             Console.ResetColor();
-            
+
             if (failedQueries.Any())
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"❌ Failed: {failedQueries.Count}/{testCount}");
                 Console.ResetColor();
                 Console.WriteLine();
-                
+
                 Console.WriteLine("═══════════════════════════════════════════════════════════════════");
                 Console.WriteLine("🔴 FAILED QUERIES (for analysis):");
                 Console.WriteLine("═══════════════════════════════════════════════════════════════════");
-                
+
                 for (int i = 0; i < failedQueries.Count; i++)
                 {
                     var failed = failedQueries[i];
@@ -743,7 +900,7 @@ namespace SmartRAG.DatabaseTests
                     Console.WriteLine($"Error Details:");
                     Console.WriteLine($"  {failed.Error}");
                     Console.ResetColor();
-                    
+
                     if (!string.IsNullOrEmpty(failed.GeneratedSQL))
                     {
                         Console.WriteLine();
@@ -752,10 +909,10 @@ namespace SmartRAG.DatabaseTests
                         Console.WriteLine($"  {failed.GeneratedSQL}");
                         Console.ResetColor();
                     }
-                    
+
                     Console.WriteLine("─────────────────────────────────────────────────────────────────");
                 }
-                
+
                 Console.WriteLine();
                 Console.ForegroundColor = ConsoleColor.Cyan;
                 Console.WriteLine("💡 Copy the failed queries above to share for troubleshooting.");
@@ -776,7 +933,7 @@ namespace SmartRAG.DatabaseTests
             try
             {
                 var schemas = await _schemaAnalyzer!.GetAllSchemasAsync();
-                
+
                 if (schemas.Count < 2)
                 {
                     Console.ForegroundColor = ConsoleColor.Yellow;
@@ -815,20 +972,20 @@ namespace SmartRAG.DatabaseTests
             {
                 // Build schema summary for AI
                 var schemaPrompt = BuildSchemaPromptForAI(schemas);
-                
+
                 // Add randomization to get different queries each time
                 var random = new Random();
                 var queryCountVariation = random.Next(8, 15); // 8-14 queries each time
-                var focusAreas = new[] 
-                { 
+                var focusAreas = new[]
+                {
                     "aggregations and calculations",
-                    "data correlations and relationships", 
+                    "data correlations and relationships",
                     "temporal comparisons and trends",
                     "filtering and grouping across databases",
                     "comprehensive data analysis"
                 };
                 var selectedFocus = focusAreas[random.Next(focusAreas.Length)];
-                
+
                 var aiPrompt = $@"{schemaPrompt}
 
 Based on the database schemas above, generate {queryCountVariation} intelligent, MEANINGFUL cross-database test queries.
@@ -976,22 +1133,22 @@ Before responding, verify that EVERY """"query"""" value is 100% in {_selectedLa
 Respond ONLY with the JSON array, no other text.";
 
                 var response = await _aiService!.GenerateResponseAsync(aiPrompt, new List<string>());
-                
+
                 // Parse AI response
                 var jsonStart = response.IndexOf('[');
                 var jsonEnd = response.LastIndexOf(']');
-                
+
                 if (jsonStart >= 0 && jsonEnd > jsonStart)
                 {
                     var json = response.Substring(jsonStart, jsonEnd - jsonStart + 1);
                     var aiQueries = JsonSerializer.Deserialize<List<JsonElement>>(json);
-                    
+
                     if (aiQueries != null)
                     {
                         foreach (var item in aiQueries)
                         {
-                            if (item.TryGetProperty("category", out var cat) && 
-                                item.TryGetProperty("query", out var q) && 
+                            if (item.TryGetProperty("category", out var cat) &&
+                                item.TryGetProperty("query", out var q) &&
                                 item.TryGetProperty("databases", out var dbs))
                             {
                                 var dbList = dbs.GetString() ?? "";
@@ -1000,7 +1157,7 @@ Respond ONLY with the JSON array, no other text.";
                                 {
                                     // Extract database types from schema
                                     var dbTypes = ExtractDatabaseTypes(dbList, schemas);
-                                    
+
                                     queries.Add(new TestQuery
                                     {
                                         Category = cat.GetString() ?? "🧪 Test",
@@ -1033,12 +1190,12 @@ Respond ONLY with the JSON array, no other text.";
                 sb.AppendLine($"DATABASE: {schema.DatabaseName} ({schema.DatabaseType})");
                 sb.AppendLine($"Description: {schema.Description}");
                 sb.AppendLine("TABLES:");
-                
+
                 foreach (var table in schema.Tables.Take(5))
                 {
                     sb.AppendLine($"  - {schema.DatabaseName}.{table.TableName} ({table.RowCount} rows)");
                     sb.AppendLine($"    Columns: {string.Join(", ", table.Columns.Select(c => $"{c.ColumnName} ({c.DataType})"))}");
-                    
+
                     if (table.ForeignKeys.Any())
                     {
                         foreach (var fk in table.ForeignKeys.Take(3))
@@ -1077,7 +1234,7 @@ Respond ONLY with the JSON array, no other text.";
                 foreach (var fk in item.Table.ForeignKeys.Take(2))
                 {
                     // Find which database has the referenced table
-                    var referencedDb = schemas.FirstOrDefault(s => 
+                    var referencedDb = schemas.FirstOrDefault(s =>
                         s.Tables.Any(t => t.TableName.Equals(fk.ReferencedTable, StringComparison.OrdinalIgnoreCase)));
 
                     if (referencedDb != null && referencedDb.DatabaseId != item.Schema.DatabaseId)
@@ -1088,7 +1245,7 @@ Respond ONLY with the JSON array, no other text.";
                             _selectedLanguage,
                             item.Table.TableName,
                             fk.ReferencedTable);
-                        
+
                         queries.Add(new TestQuery
                         {
                             Category = "🔗 Cross-DB Join",
@@ -1104,24 +1261,24 @@ Respond ONLY with the JSON array, no other text.";
             foreach (var pair in databasePairs)
             {
                 // Find tables with numeric columns (generic approach - no specific column name requirements)
-                var table1WithNumeric = pair.Db1.Tables.FirstOrDefault(t => 
+                var table1WithNumeric = pair.Db1.Tables.FirstOrDefault(t =>
                     t.Columns.Any(c => IsNumericType(c.DataType) && !c.ColumnName.EndsWith("ID", StringComparison.OrdinalIgnoreCase)));
-                
-                var table2WithNumeric = pair.Db2.Tables.FirstOrDefault(t => 
+
+                var table2WithNumeric = pair.Db2.Tables.FirstOrDefault(t =>
                     t.Columns.Any(c => IsNumericType(c.DataType) && !c.ColumnName.EndsWith("ID", StringComparison.OrdinalIgnoreCase)));
 
                 // Find FK relationship between them
                 if (table1WithNumeric != null && table2WithNumeric != null)
                 {
-                    var hasFkRelation = table1WithNumeric.ForeignKeys.Any(fk => 
+                    var hasFkRelation = table1WithNumeric.ForeignKeys.Any(fk =>
                         fk.ReferencedTable.Equals(table2WithNumeric.TableName, StringComparison.OrdinalIgnoreCase));
-                    
+
                     if (hasFkRelation)
                     {
                         // Create generic cross-database calculation question
                         var numericCol1 = table1WithNumeric.Columns.FirstOrDefault(c => IsNumericType(c.DataType) && !c.ColumnName.EndsWith("ID", StringComparison.OrdinalIgnoreCase))?.ColumnName;
                         var numericCol2 = table2WithNumeric.Columns.FirstOrDefault(c => IsNumericType(c.DataType) && !c.ColumnName.EndsWith("ID", StringComparison.OrdinalIgnoreCase))?.ColumnName;
-                        
+
                         if (!string.IsNullOrEmpty(numericCol1) && !string.IsNullOrEmpty(numericCol2))
                         {
                             var calculationQuery = _selectedLanguage switch
@@ -1131,7 +1288,7 @@ Respond ONLY with the JSON array, no other text.";
                                 "Russian" => $"Рассчитайте общее значение используя {numericCol1} из {table1WithNumeric.TableName} и {numericCol2} из {table2WithNumeric.TableName}",
                                 _ => $"Calculate the combined value using {numericCol1} from {table1WithNumeric.TableName} and {numericCol2} from {table2WithNumeric.TableName}"
                             };
-                            
+
                             queries.Add(new TestQuery
                             {
                                 Category = "💰 Cross-DB Calculation",
@@ -1149,7 +1306,7 @@ Respond ONLY with the JSON array, no other text.";
             {
                 var allDbNames = string.Join(" + ", schemas.Select(s => s.DatabaseName));
                 var allDbTypes = string.Join(" + ", schemas.Select(s => s.DatabaseType));
-                
+
                 var coverageQuery = _selectedLanguage switch
                 {
                     "Turkish" => "Tüm veritabanlarındaki mevcut verileri analiz ederek korelasyonları ve kalıpları bul",
@@ -1157,7 +1314,7 @@ Respond ONLY with the JSON array, no other text.";
                     "Russian" => "Проанализируйте все доступные данные чтобы найти корреляции и паттерны во всех базах данных",
                     _ => "Analyze all available data to find correlations and patterns across all databases"
                 };
-                
+
                 queries.Add(new TestQuery
                 {
                     Category = "🌐 Multi-DB Coverage",
@@ -1169,7 +1326,7 @@ Respond ONLY with the JSON array, no other text.";
 
             // 4. Cross-database temporal analysis
             var tablesWithDates = schemas
-                .SelectMany(s => s.Tables.Where(t => 
+                .SelectMany(s => s.Tables.Where(t =>
                     t.Columns.Any(c => c.DataType.Contains("date", StringComparison.OrdinalIgnoreCase) ||
                                       c.DataType.Contains("time", StringComparison.OrdinalIgnoreCase)))
                     .Select(t => new { Schema = s, Table = t }))
@@ -1189,7 +1346,7 @@ Respond ONLY with the JSON array, no other text.";
                         "Russian" => $"Какова временная корреляция между записями {dateTable1.Table.TableName} и {dateTable2.Table.TableName}?",
                         _ => $"What is the timeline correlation between {dateTable1.Table.TableName} and {dateTable2.Table.TableName} records?"
                     };
-                    
+
                     queries.Add(new TestQuery
                     {
                         Category = "📅 Cross-DB Temporal",
@@ -1231,7 +1388,7 @@ Respond ONLY with the JSON array, no other text.";
                                 "Russian" => $"Проанализируйте связь между {table1.TableName} и {table2.TableName}",
                                 _ => $"Analyze relationship between {table1.TableName} and {table2.TableName}"
                             };
-                            
+
                             queries.Add(new TestQuery
                             {
                                 Category = "✅ Coverage Test",
@@ -1297,10 +1454,10 @@ Respond ONLY with the JSON array, no other text.";
             if (errorMessage.Contains("no such column", StringComparison.OrdinalIgnoreCase))
             {
                 var match = System.Text.RegularExpressions.Regex.Match(
-                    errorMessage, 
+                    errorMessage,
                     @"no such column:\s*'?([^'.\s]+(?:\.[^'.\s]+)?)'?",
                     System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-                
+
                 if (match.Success)
                 {
                     issues.Add($"Missing column: {match.Groups[1].Value}");
@@ -1328,14 +1485,14 @@ Respond ONLY with the JSON array, no other text.";
             }
 
             // Extract "aggregate" errors
-            if (errorMessage.Contains("aggregate", StringComparison.OrdinalIgnoreCase) && 
+            if (errorMessage.Contains("aggregate", StringComparison.OrdinalIgnoreCase) &&
                 errorMessage.Contains("WHERE", StringComparison.OrdinalIgnoreCase))
             {
                 issues.Add("SQL Syntax: Aggregate function in WHERE clause (should use HAVING)");
             }
 
             // Extract "GROUP BY" errors
-            if (errorMessage.Contains("GROUP BY", StringComparison.OrdinalIgnoreCase) && 
+            if (errorMessage.Contains("GROUP BY", StringComparison.OrdinalIgnoreCase) &&
                 errorMessage.Contains("not in", StringComparison.OrdinalIgnoreCase))
             {
                 issues.Add("SQL Syntax: Column in SELECT not in GROUP BY clause");
@@ -1361,19 +1518,19 @@ Respond ONLY with the JSON array, no other text.";
                     foreach (System.Text.RegularExpressions.Match dbMatch in dbMatches)
                     {
                         var dbName = dbMatch.Groups[1].Value;
-                        
+
                         // Find database type from schemas
                         var schema = schemas.FirstOrDefault(s => s.DatabaseName.Equals(dbName, StringComparison.OrdinalIgnoreCase));
                         var dbType = schema != null ? $" ({schema.DatabaseType})" : "";
-                        
+
                         sqlInfo.AppendLine($"[{dbName}{dbType}]");
-                        
+
                         // Find issues related to this database
-                        var relevantIssues = issues.Where(issue => 
+                        var relevantIssues = issues.Where(issue =>
                             errorMessage.Substring(dbMatch.Index).Contains(issue, StringComparison.OrdinalIgnoreCase) ||
-                            dbMatch.Index == 0 || 
+                            dbMatch.Index == 0 ||
                             issues.Count == 1).ToList();
-                        
+
                         foreach (var issue in relevantIssues.Any() ? relevantIssues : issues)
                         {
                             sqlInfo.AppendLine($"  • {issue}");
@@ -1416,7 +1573,7 @@ Respond ONLY with the JSON array, no other text.";
             Console.WriteLine("🗄️  Create SQL Server Test Database");
             Console.WriteLine("═══════════════════════════════════════════════════════════════════");
             Console.WriteLine();
-            
+
             try
             {
                 var sqlServerCreator = new SqlServerTestDatabaseCreator(_configuration!);
@@ -1429,20 +1586,20 @@ Respond ONLY with the JSON array, no other text.";
                 Console.ForegroundColor = ConsoleColor.Yellow;
                 Console.WriteLine("⚠️  WARNING: If database exists, it will be dropped and recreated!");
                 Console.ResetColor();
-            Console.WriteLine();
+                Console.WriteLine();
                 Console.Write("Do you want to continue? (Y/N): ");
-                
+
                 var confirm = Console.ReadLine();
                 if (confirm?.ToUpper() != "Y")
                 {
                     Console.WriteLine("❌ Cancelled.");
                     return;
-            }
-            
-            Console.WriteLine();
+                }
+
+                Console.WriteLine();
                 sqlServerCreator.CreateSampleDatabase(connectionString);
-            
-            Console.WriteLine();
+
+                Console.WriteLine();
                 Console.ForegroundColor = ConsoleColor.Cyan;
                 Console.WriteLine("💡 Database created! Now:");
                 Console.WriteLine("   1. Return to main menu");
@@ -1455,10 +1612,10 @@ Respond ONLY with the JSON array, no other text.";
                 {
                     Console.WriteLine();
                     Console.WriteLine("🔄 Refreshing schema analysis...");
-                    
+
                     var connections = await _connectionManager.GetAllConnectionsAsync();
                     var sqlServerConn = connections.FirstOrDefault(c => c.DatabaseType == SmartRAG.Enums.DatabaseType.SqlServer);
-                    
+
                     if (sqlServerConn != null)
                     {
                         _ = Task.Run(async () =>
@@ -1470,7 +1627,7 @@ Respond ONLY with the JSON array, no other text.";
                             catch { }
                         });
                     }
-                    
+
                     await Task.Delay(2000);
                     Console.WriteLine("   ✓ Schema analysis initiated");
                 }
@@ -1479,13 +1636,13 @@ Respond ONLY with the JSON array, no other text.";
             {
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine($"❌ Error: {ex.Message}");
-            Console.WriteLine();
+                Console.WriteLine();
                 Console.WriteLine("Possible causes:");
                 Console.WriteLine("  • SQL Server Docker container not running");
                 Console.WriteLine("  • Connection permission denied");
                 Console.WriteLine("  • Port 1433 blocked or in use");
                 Console.ResetColor();
-            Console.WriteLine();
+                Console.WriteLine();
                 Console.WriteLine("Solution:");
                 Console.WriteLine("  1. Start SQL Server using Docker: cd examples/SmartRAG.DatabaseTests && docker-compose up -d sqlserver");
                 Console.WriteLine("  2. Or install SQL Server manually");
@@ -1527,10 +1684,10 @@ Respond ONLY with the JSON array, no other text.";
                 {
                     Console.WriteLine();
                     Console.WriteLine("🔄 Refreshing schema analysis...");
-                    
+
                     var connections = await _connectionManager.GetAllConnectionsAsync();
                     var mySqlConn = connections.FirstOrDefault(c => c.DatabaseType == SmartRAG.Enums.DatabaseType.MySQL);
-                    
+
                     if (mySqlConn != null)
                     {
                         _ = Task.Run(async () =>
@@ -1542,7 +1699,7 @@ Respond ONLY with the JSON array, no other text.";
                             catch { }
                         });
                     }
-                    
+
                     await Task.Delay(2000);
                     Console.WriteLine("   ✓ Schema analysis initiated");
                 }
@@ -1600,10 +1757,10 @@ Respond ONLY with the JSON array, no other text.";
                 {
                     Console.WriteLine();
                     Console.WriteLine("🔄 Refreshing schema analysis...");
-                    
+
                     var connections = await _connectionManager.GetAllConnectionsAsync();
                     var postgresConn = connections.FirstOrDefault(c => c.DatabaseType == SmartRAG.Enums.DatabaseType.PostgreSQL);
-                    
+
                     if (postgresConn != null)
                     {
                         _ = Task.Run(async () =>
@@ -1615,7 +1772,7 @@ Respond ONLY with the JSON array, no other text.";
                             catch { }
                         });
                     }
-                    
+
                     await Task.Delay(2000);
                     Console.WriteLine("   ✓ Schema analysis initiated");
                 }
@@ -1637,6 +1794,553 @@ Respond ONLY with the JSON array, no other text.";
                 Console.WriteLine("  2. Or install PostgreSQL Server manually");
                 Console.WriteLine("  3. Verify credentials (User: postgres, Password: postgres123)");
                 Console.WriteLine("  4. Or set PostgreSQL to 'Enabled: false' in appsettings.json");
+            }
+        }
+
+        private static async Task SetupOllamaModels()
+        {
+            Console.WriteLine();
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+            Console.WriteLine("🤖 Setup Ollama Models");
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+            Console.WriteLine();
+
+            var ollamaManager = new OllamaModelManager();
+
+            // Check if Ollama is running
+            var isAvailable = await ollamaManager.IsServiceAvailableAsync();
+            if (!isAvailable)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("❌ Ollama service is not running!");
+                Console.ResetColor();
+                Console.WriteLine();
+                Console.WriteLine("Please start Ollama:");
+                Console.WriteLine("  • Docker: cd examples/SmartRAG.LocalDemo && docker-compose up -d ollama");
+                Console.WriteLine("  • Or download from: https://ollama.ai");
+                return;
+            }
+
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("✓ Ollama service is running");
+            Console.ResetColor();
+            Console.WriteLine();
+
+            // List installed models
+            var installedModels = await ollamaManager.ListInstalledModelsAsync();
+            Console.WriteLine($"Installed models: {installedModels.Count}");
+            foreach (var model in installedModels)
+            {
+                Console.WriteLine($"  • {model}");
+            }
+            Console.WriteLine();
+
+            // Show recommended models
+            Console.WriteLine("Recommended models for SmartRAG:");
+            var recommended = OllamaModelManager.GetRecommendedModels();
+            var index = 1;
+            foreach (var kvp in recommended)
+            {
+                var isInstalled = installedModels.Any(m => m.Contains(kvp.Key));
+                var status = isInstalled ? "✓ Installed" : "  Not installed";
+                Console.WriteLine($"{index}. {kvp.Key} - {kvp.Value} [{status}]");
+                index++;
+            }
+            Console.WriteLine();
+
+            Console.Write("Enter model number to install (0 to skip): ");
+            var choice = Console.ReadLine();
+
+            if (int.TryParse(choice, out var modelIndex) && modelIndex > 0 && modelIndex <= recommended.Count)
+            {
+                var modelToInstall = recommended.Keys.ElementAt(modelIndex - 1);
+                Console.WriteLine();
+                Console.WriteLine($"Downloading {modelToInstall}... (This may take several minutes)");
+                Console.WriteLine();
+
+                await ollamaManager.DownloadModelAsync(modelToInstall, (progress) =>
+                {
+                    Console.WriteLine($"  {progress}");
+                });
+
+                Console.WriteLine();
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine($"✓ Model {modelToInstall} installed successfully!");
+                Console.ResetColor();
+            }
+        }
+
+        private static async Task TestVectorStore()
+        {
+            Console.WriteLine();
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+            Console.WriteLine("📦 Test Vector Store");
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+            Console.WriteLine();
+
+            var healthCheck = new HealthCheckService();
+
+            Console.WriteLine($"Testing {_selectedStorageProvider} vector store...");
+            Console.WriteLine();
+
+            HealthStatus status;
+            if (_selectedStorageProvider == StorageProvider.Qdrant)
+            {
+                status = await healthCheck.CheckQdrantAsync();
+            }
+            else if (_selectedStorageProvider == StorageProvider.Redis)
+            {
+                status = await healthCheck.CheckRedisAsync();
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"⚠️  {_selectedStorageProvider} does not require health check (file-based or in-memory)");
+                Console.ResetColor();
+                return;
+            }
+
+            if (status.IsHealthy)
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine($"✓ {status.ServiceName} is healthy");
+                Console.ResetColor();
+                Console.WriteLine($"  {status.Message}");
+                Console.WriteLine($"  {status.Details}");
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"❌ {status.ServiceName} is not available");
+                Console.ResetColor();
+                Console.WriteLine($"  {status.Message}");
+                Console.WriteLine($"  {status.Details}");
+                Console.WriteLine();
+                Console.WriteLine("Solution:");
+                Console.WriteLine("  • Start services: cd examples/SmartRAG.LocalDemo && docker-compose up -d");
+            }
+        }
+
+        private static async Task RunSystemHealthCheck()
+        {
+            Console.WriteLine();
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+            Console.WriteLine("🔧 System Health Check");
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+            Console.WriteLine();
+
+            var healthCheck = new HealthCheckService();
+
+            Console.WriteLine("Checking all services...");
+            Console.WriteLine();
+
+            // Check AI Service
+            if (_useLocalEnvironment)
+            {
+                Console.Write("🤖 Ollama (AI)................. ");
+                var ollamaStatus = await healthCheck.CheckOllamaAsync();
+                PrintHealthStatus(ollamaStatus);
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine($"☁️  {_selectedAIProvider} (Cloud AI)");
+                Console.ResetColor();
+            }
+
+            // Check Vector Store
+            Console.Write($"📦 {_selectedStorageProvider} (Vector Store).... ");
+            HealthStatus? vectorStatus = null;
+            if (_selectedStorageProvider == StorageProvider.Qdrant)
+            {
+                vectorStatus = await healthCheck.CheckQdrantAsync();
+            }
+            else if (_selectedStorageProvider == StorageProvider.Redis)
+            {
+                vectorStatus = await healthCheck.CheckRedisAsync();
+            }
+            if (vectorStatus != null)
+            {
+                PrintHealthStatus(vectorStatus);
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine("N/A (file-based)");
+                Console.ResetColor();
+            }
+
+            // Check Databases
+            Console.WriteLine();
+            Console.WriteLine("Databases:");
+
+            var connections = await _connectionManager!.GetAllConnectionsAsync();
+            foreach (var conn in connections)
+            {
+                Console.Write($"  • {conn.Name} ({conn.DatabaseType})... ");
+
+                HealthStatus? dbStatus = null;
+                try
+                {
+                    dbStatus = conn.DatabaseType switch
+                    {
+                        SmartRAG.Enums.DatabaseType.SQLite => await healthCheck.CheckSqliteAsync(conn.ConnectionString),
+                        SmartRAG.Enums.DatabaseType.SqlServer => await healthCheck.CheckSqlServerAsync(conn.ConnectionString),
+                        SmartRAG.Enums.DatabaseType.MySQL => await healthCheck.CheckMySqlAsync(conn.ConnectionString),
+                        SmartRAG.Enums.DatabaseType.PostgreSQL => await healthCheck.CheckPostgreSqlAsync(conn.ConnectionString),
+                        _ => null
+                    };
+
+                    if (dbStatus != null)
+                    {
+                        PrintHealthStatus(dbStatus, inline: true);
+                    }
+                }
+                catch
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("✗ Error");
+                    Console.ResetColor();
+                }
+            }
+
+            Console.WriteLine();
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine("💡 TIP: Start all services with: docker-compose up -d");
+            Console.ResetColor();
+        }
+
+        private static string GetContentType(string filePath)
+        {
+            var extension = Path.GetExtension(filePath).ToLowerInvariant();
+            return extension switch
+            {
+                ".pdf" => "application/pdf",
+                ".docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                ".doc" => "application/msword",
+                ".xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                ".xls" => "application/vnd.ms-excel",
+                ".jpg" or ".jpeg" => "image/jpeg",
+                ".png" => "image/png",
+                ".bmp" => "image/bmp",
+                ".txt" => "text/plain",
+                ".mp3" => "audio/mpeg",
+                ".wav" => "audio/wav",
+                ".m4a" => "audio/mp4",
+                _ => "application/octet-stream"
+            };
+        }
+
+        private static void PrintHealthStatus(HealthStatus status, bool inline = false)
+        {
+            if (status.IsHealthy)
+            {
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("✓ Healthy");
+                Console.ResetColor();
+                if (!inline)
+                {
+                    Console.WriteLine($"   {status.Message}");
+                }
+            }
+            else
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("✗ Unavailable");
+                Console.ResetColor();
+                if (!inline)
+                {
+                    Console.WriteLine($"   {status.Message}");
+                    Console.WriteLine($"   {status.Details}");
+                }
+            }
+        }
+
+        private static async Task UploadDocuments()
+        {
+            Console.WriteLine();
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+            Console.WriteLine("📄 Upload Documents");
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+            Console.WriteLine();
+
+            Console.WriteLine("Supported file types:");
+            Console.WriteLine("  • PDF documents");
+            Console.WriteLine("  • Word documents (.docx)");
+            Console.WriteLine("  • Excel spreadsheets (.xlsx)");
+            Console.WriteLine("  • Images (.jpg, .png, .bmp - OCR)");
+            Console.WriteLine("  • Text files (.txt)");
+
+            if (!_useLocalEnvironment)
+            {
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine("  • Audio files (.mp3, .wav, .m4a - Cloud only)");
+                Console.ResetColor();
+            }
+
+            Console.WriteLine();
+            Console.Write("Enter file path (or drag & drop file here): ");
+
+            var filePath = Console.ReadLine()?.Trim().Trim('"');
+
+            if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine("❌ File not found!");
+                Console.ResetColor();
+                return;
+            }
+
+            try
+            {
+                // Check if audio file in local mode
+                var extension = Path.GetExtension(filePath).ToLowerInvariant();
+                var isAudioFile = extension is ".mp3" or ".wav" or ".m4a" or ".ogg" or ".flac";
+
+                if (isAudioFile && _useLocalEnvironment)
+                {
+                    Console.WriteLine();
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine("⚠️  Audio files are not supported in LOCAL environment");
+                    Console.ResetColor();
+                    Console.WriteLine();
+                    Console.WriteLine("Reason: Audio transcription requires cloud services (Google Speech API)");
+                    Console.WriteLine();
+                    Console.WriteLine("Options:");
+                    Console.WriteLine("  1. Switch to CLOUD environment (restart app, select option 2)");
+                    Console.WriteLine("  2. Use other document types (PDF, Word, Excel, Images)");
+                    return;
+                }
+
+                Console.WriteLine();
+                Console.WriteLine($"⏳ Processing file: {Path.GetFileName(filePath)}");
+                Console.WriteLine();
+
+                using var fileStream = File.OpenRead(filePath);
+                var fileName = Path.GetFileName(filePath);
+                var contentType = GetContentType(filePath);
+
+                var document = await _documentService!.UploadDocumentAsync(
+                    fileStream,
+                    fileName,
+                    contentType,
+                    "LocalDemo",
+                    _selectedLanguage
+                );
+
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine($"✓ Document uploaded successfully!");
+                Console.ResetColor();
+                Console.WriteLine($"  ID: {document.Id}");
+                Console.WriteLine($"  Name: {document.FileName}");
+                Console.WriteLine($"  Size: {document.Content.Length:N0} bytes");
+                Console.WriteLine($"  Chunks: {document.Chunks?.Count ?? 0}");
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error uploading document");
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"❌ Error: {ex.Message}");
+                Console.ResetColor();
+            }
+        }
+
+        private static async Task ListDocuments()
+        {
+            Console.WriteLine();
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+            Console.WriteLine("📚 Uploaded Documents");
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+            Console.WriteLine();
+
+            try
+            {
+                var documents = await _documentService!.GetAllDocumentsAsync();
+
+                if (!documents.Any())
+                {
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine("⚠️  No documents uploaded yet");
+                    Console.ResetColor();
+                    Console.WriteLine();
+                    Console.WriteLine("💡 Use option 13 to upload documents");
+                    return;
+                }
+
+                Console.WriteLine($"Total documents: {documents.Count}");
+                Console.WriteLine();
+
+                foreach (var doc in documents)
+                {
+                    Console.ForegroundColor = ConsoleColor.Cyan;
+                    Console.WriteLine($"📄 {doc.FileName}");
+                    Console.ResetColor();
+                    Console.WriteLine($"   ID: {doc.Id}");
+                    Console.WriteLine($"   Type: {doc.ContentType}");
+                    Console.WriteLine($"   Size: {doc.Content.Length:N0} bytes");
+                    Console.WriteLine($"   Chunks: {doc.Chunks?.Count ?? 0}");
+                    Console.WriteLine($"   Uploaded: {doc.UploadedAt:yyyy-MM-dd HH:mm}");
+                    Console.WriteLine();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error listing documents");
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"❌ Error: {ex.Message}");
+                Console.ResetColor();
+            }
+        }
+
+        private static async Task RunMultiModalQuery()
+        {
+            Console.WriteLine();
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+            Console.WriteLine("🎯 Multi-Modal RAG Query");
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+            Console.WriteLine();
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine("This feature searches BOTH:");
+            Console.WriteLine("  1. 📄 Uploaded documents (PDF, Word, Excel, Images)");
+            Console.WriteLine("  2. 🗄️  Connected databases (SQL Server, MySQL, PostgreSQL, SQLite)");
+            Console.ResetColor();
+            Console.WriteLine();
+            Console.ForegroundColor = ConsoleColor.DarkGray;
+            Console.WriteLine($"Language: {_selectedLanguage}");
+            Console.WriteLine($"Environment: {(_useLocalEnvironment ? "LOCAL (Ollama)" : $"CLOUD ({_selectedAIProvider})")}");
+            Console.ResetColor();
+            Console.WriteLine();
+
+            // Check if documents are available
+            var documents = await _documentService!.GetAllDocumentsAsync();
+            Console.WriteLine($"📄 Documents available: {documents.Count}");
+
+            var schemas = await _schemaAnalyzer!.GetAllSchemasAsync();
+            var totalTables = schemas.Sum(s => s.Tables.Count);
+            Console.WriteLine($"🗄️  Database tables: {totalTables} across {schemas.Count} databases");
+            Console.WriteLine();
+
+            if (documents.Count == 0 && totalTables == 0)
+            {
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine("⚠️  No data sources available!");
+                Console.ResetColor();
+                Console.WriteLine();
+                Console.WriteLine("Please:");
+                Console.WriteLine("  • Upload documents (option 13)");
+                Console.WriteLine("  • Create test databases (options 6-8)");
+                return;
+            }
+
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.Write($"Your question ({_selectedLanguage}): ");
+            Console.ResetColor();
+
+            var query = Console.ReadLine();
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                Console.WriteLine("❌ Empty query entered!");
+                return;
+            }
+
+            try
+            {
+                Console.WriteLine();
+                Console.ForegroundColor = ConsoleColor.DarkGray;
+                Console.WriteLine("⏳ Searching documents and databases...");
+                Console.ResetColor();
+
+                // Add language instruction
+                var languageInstructedQuery = $"{query}\n\n[IMPORTANT: Respond in {_selectedLanguage} language]";
+
+                // Search documents (if available)
+                List<string> documentContext = new List<string>();
+                if (documents.Count > 0)
+                {
+                    Console.WriteLine("   → Searching documents...");
+                    var docResults = await _documentSearchService!.SearchDocumentsAsync(languageInstructedQuery, maxResults: 5);
+
+                    foreach (var result in docResults)
+                    {
+                        var sourceDoc = documents.FirstOrDefault(d => d.Id == result.DocumentId);
+                        var docName = sourceDoc?.FileName ?? "Unknown";
+                        documentContext.Add($"[Document: {docName}]\n{result.Content}");
+                    }
+
+                    Console.WriteLine($"   ✓ Found {docResults.Count} relevant document chunks");
+                }
+
+                // Search databases (if available)
+                string? databaseAnswer = null;
+                if (totalTables > 0)
+                {
+                    Console.WriteLine("   → Querying databases...");
+                    var dbResponse = await _multiDbCoordinator!.QueryMultipleDatabasesAsync(languageInstructedQuery, maxResults: 10);
+                    databaseAnswer = dbResponse.Answer;
+                    Console.WriteLine($"   ✓ Database query completed");
+                }
+
+                // Combine results and generate final answer
+                Console.WriteLine("   → Generating combined answer...");
+                Console.WriteLine();
+
+                var combinedContext = new List<string>();
+
+                if (documentContext.Any())
+                {
+                    combinedContext.Add("=== DOCUMENT INFORMATION ===");
+                    combinedContext.AddRange(documentContext);
+                }
+
+                if (!string.IsNullOrEmpty(databaseAnswer))
+                {
+                    combinedContext.Add("=== DATABASE INFORMATION ===");
+                    combinedContext.Add(databaseAnswer);
+                }
+
+                var finalPrompt = $@"User Question: {query}
+
+Available Information:
+{string.Join("\n\n", combinedContext)}
+
+Instructions:
+- Analyze both document and database information
+- Provide a comprehensive answer combining insights from both sources
+- If information conflicts, mention both perspectives
+- Respond in {_selectedLanguage} language
+- Be clear about which source provided which information";
+
+                var finalAnswer = await _aiService!.GenerateResponseAsync(finalPrompt, new List<string>());
+
+                Console.ForegroundColor = ConsoleColor.Green;
+                Console.WriteLine("📝 COMBINED ANSWER:");
+                Console.WriteLine("─────────────────────────────────────────────────────────────────");
+                Console.ResetColor();
+                Console.WriteLine(finalAnswer);
+                Console.WriteLine();
+
+                // Show sources
+                if (documentContext.Any() || !string.IsNullOrEmpty(databaseAnswer))
+                {
+                    Console.ForegroundColor = ConsoleColor.DarkGray;
+                    Console.WriteLine("📚 Sources used:");
+                    if (documentContext.Any())
+                    {
+                        Console.WriteLine($"   • {documentContext.Count} document(s)");
+                    }
+                    if (!string.IsNullOrEmpty(databaseAnswer))
+                    {
+                        Console.WriteLine($"   • {schemas.Count} database(s)");
+                    }
+                    Console.ResetColor();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Error during multi-modal query");
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"❌ Error: {ex.Message}");
+                Console.ResetColor();
             }
         }
     }
