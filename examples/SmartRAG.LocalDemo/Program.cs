@@ -25,6 +25,7 @@ namespace SmartRAG.LocalDemo
         private static bool _useLocalEnvironment = true;
         private static AIProvider _selectedAIProvider = AIProvider.Custom;
         private static StorageProvider _selectedStorageProvider = StorageProvider.Qdrant;
+        private static AudioProvider _selectedAudioProvider = AudioProvider.Whisper;
 
         private static async Task Main(string[] args)
         {
@@ -155,12 +156,14 @@ namespace SmartRAG.LocalDemo
             {
                 _selectedAIProvider = AIProvider.Custom;  // Custom provider configured for Ollama
                 _selectedStorageProvider = StorageProvider.Redis;
+                _selectedAudioProvider = AudioProvider.Whisper;  // Local audio transcription
 
                 Console.WriteLine();
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.WriteLine("✓ LOCAL Environment selected");
                 Console.WriteLine("  AI Provider: Ollama (via Custom provider)");
                 Console.WriteLine("  Storage: Redis (Document storage)");
+                Console.WriteLine("  Audio: Whisper.net (Local transcription)");
                 Console.WriteLine();
                 Console.ForegroundColor = ConsoleColor.Yellow;
                 Console.WriteLine("  ⚠️  Note: Make sure Ollama endpoint is configured in appsettings");
@@ -192,12 +195,14 @@ namespace SmartRAG.LocalDemo
 
                 // For document storage, use Redis (more reliable for GetAllDocuments)
                 _selectedStorageProvider = StorageProvider.Redis;
+                _selectedAudioProvider = AudioProvider.GoogleCloud;  // Cloud audio transcription
 
                 Console.WriteLine();
                 Console.ForegroundColor = ConsoleColor.Cyan;
                 Console.WriteLine("✓ CLOUD Environment selected");
                 Console.WriteLine($"  AI Provider: {_selectedAIProvider}");
                 Console.WriteLine("  Storage: Redis (Document storage)");
+                Console.WriteLine("  Audio: Google Cloud Speech-to-Text");
                 Console.ResetColor();
             }
 
@@ -275,6 +280,7 @@ namespace SmartRAG.LocalDemo
                 {
                     options.StorageProvider = _selectedStorageProvider;
                     options.AIProvider = _selectedAIProvider;
+                    options.AudioProvider = _selectedAudioProvider;
                 });
 
                 Console.WriteLine("   → Building service provider...");
@@ -285,6 +291,7 @@ namespace SmartRAG.LocalDemo
                 Console.WriteLine($"✓ Services initialized successfully");
                 Console.WriteLine($"  AI Provider: {_selectedAIProvider}");
                 Console.WriteLine($"  Storage Provider: {_selectedStorageProvider}");
+                Console.WriteLine($"  Audio Provider: {_selectedAudioProvider}");
                 Console.ResetColor();
             }
             catch (Exception ex)
@@ -2070,13 +2077,17 @@ Respond ONLY with the JSON array, no other text.";
             Console.WriteLine("  • Excel spreadsheets (.xlsx)");
             Console.WriteLine("  • Images (.jpg, .png, .bmp - OCR)");
             Console.WriteLine("  • Text files (.txt)");
-
-            if (!_useLocalEnvironment)
+            
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            if (_useLocalEnvironment)
             {
-                Console.ForegroundColor = ConsoleColor.Cyan;
-                Console.WriteLine("  • Audio files (.mp3, .wav, .m4a - Cloud only)");
-                Console.ResetColor();
+                Console.WriteLine("  • Audio files (.mp3, .wav, .m4a - Whisper.net local)");
             }
+            else
+            {
+                Console.WriteLine("  • Audio files (.mp3, .wav, .m4a - Google Cloud)");
+            }
+            Console.ResetColor();
 
             Console.WriteLine();
             Console.Write("Enter file path (or drag & drop file here): ");
@@ -2093,25 +2104,6 @@ Respond ONLY with the JSON array, no other text.";
 
             try
             {
-                // Check if audio file in local mode
-                var extension = Path.GetExtension(filePath).ToLowerInvariant();
-                var isAudioFile = extension is ".mp3" or ".wav" or ".m4a" or ".ogg" or ".flac";
-
-                if (isAudioFile && _useLocalEnvironment)
-                {
-                    Console.WriteLine();
-                    Console.ForegroundColor = ConsoleColor.Yellow;
-                    Console.WriteLine("⚠️  Audio files are not supported in LOCAL environment");
-                    Console.ResetColor();
-                    Console.WriteLine();
-                    Console.WriteLine("Reason: Audio transcription requires cloud services (Google Speech API)");
-                    Console.WriteLine();
-                    Console.WriteLine("Options:");
-                    Console.WriteLine("  1. Switch to CLOUD environment (restart app, select option 2)");
-                    Console.WriteLine("  2. Use other document types (PDF, Word, Excel, Images)");
-                    return;
-                }
-
                 Console.WriteLine();
                 Console.WriteLine($"⏳ Processing file: {Path.GetFileName(filePath)}");
                 Console.WriteLine();

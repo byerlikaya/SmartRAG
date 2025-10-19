@@ -66,9 +66,19 @@ namespace SmartRAG.Models
         public List<AIProvider> FallbackProviders { get; set; } = new List<AIProvider>();
 
         /// <summary>
+        /// Selected audio transcription provider
+        /// </summary>
+        public AudioProvider AudioProvider { get; set; } = AudioProvider.Whisper;
+
+        /// <summary>
         /// Google Speech-to-Text configuration for audio transcription
         /// </summary>
         public GoogleSpeechConfig GoogleSpeechConfig { get; set; }
+
+        /// <summary>
+        /// Whisper configuration for local audio transcription
+        /// </summary>
+        public WhisperConfig WhisperConfig { get; set; } = new WhisperConfig();
 
         /// <summary>
         /// Multi-database connections for intelligent cross-database querying

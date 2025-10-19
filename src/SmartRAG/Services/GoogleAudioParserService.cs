@@ -16,13 +16,13 @@ namespace SmartRAG.Services
     /// Supports multiple audio formats including MP3, WAV, M4A, AAC, OGG, FLAC, and WMA.
     /// Provides enterprise-grade speech recognition with confidence scoring and detailed results.
     /// </summary>
-    public class AudioParserService : IAudioParserService
+    public class GoogleAudioParserService : IAudioParserService
     {
-        private readonly ILogger<AudioParserService> _logger;
+        private readonly ILogger<GoogleAudioParserService> _logger;
         private readonly SmartRagOptions _options;
         private SpeechClient _speechClient;
 
-        public AudioParserService(ILogger<AudioParserService> logger, IOptions<SmartRagOptions> options)
+        public GoogleAudioParserService(ILogger<GoogleAudioParserService> logger, IOptions<SmartRagOptions> options)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _options = options?.Value ?? throw new ArgumentNullException(nameof(options));

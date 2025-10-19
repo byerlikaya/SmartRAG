@@ -24,6 +24,7 @@ SmartRAG is a **production-ready** .NET Standard 2.0/2.1 **library** that provid
 - **🏠 Local AI Models**: Full support for Ollama, LM Studio, and any OpenAI-compatible local API
 - **📄 Document Processing**: PDF, Word, Excel parsing - **completely local**
 - **🖼️ OCR Processing**: Tesseract 5.2.0 - **completely local**, no data sent to cloud
+- **🎤 Audio Transcription**: Whisper.net - **completely local**, supports 99+ languages
 - **🗄️ Database Integration**: SQLite, SQL Server, MySQL, PostgreSQL - **all local connections**
 - **💾 Storage Options**: In-Memory, SQLite, FileSystem, Redis - **all local**
 - **🧠 Embeddings & AI**: Use your own local models via CustomProvider
@@ -31,11 +32,24 @@ SmartRAG is a **production-ready** .NET Standard 2.0/2.1 **library** that provid
 
 ### ⚠️ **Important Notes**
 
-#### **Audio Files Limitation**
-**Audio transcription requires Google Cloud Speech-to-Text API**, which means audio files will be sent to Google Cloud for processing. If you need to process audio files:
-- 📤 Audio data is sent to Google Cloud for Speech-to-Text conversion
-- 🔒 If data privacy is critical, avoid uploading audio files or use alternative solutions
-- ✅ All other file types (PDF, Word, Excel, Images, Databases) remain **completely local**
+#### **Audio Files - Local & Cloud Options**
+**SmartRAG supports both local and cloud audio transcription for maximum flexibility:**
+
+**🏠 Local Transcription (Whisper.net) - DEFAULT & RECOMMENDED:**
+- ✅ **100% Privacy**: All audio processing happens locally, no data sent to cloud
+- ✅ **Multi-Language**: 99+ languages including Turkish, English, German, Russian, Chinese, Arabic
+- ✅ **Model Options**: Choose from tiny (75MB) to large (2.9GB) based on accuracy needs
+- ✅ **Hardware Acceleration**: CPU, CUDA (NVIDIA GPU), CoreML (Apple), OpenVino (Intel)
+- ✅ **Zero Setup**: Whisper model AND FFmpeg binaries auto-download on first use
+- ✅ **Cost**: Completely free
+- ✅ **GDPR/KVKK/HIPAA**: Fully compliant for on-premise deployments
+- ⚙️ **Self-Contained**: No manual installation required, everything downloads automatically
+
+**☁️ Cloud Transcription (Google Cloud Speech-to-Text) - OPTIONAL:**
+- 📤 Audio data sent to Google Cloud for processing
+- 💰 Requires Google Cloud API key and billing
+- ⚡ Real-time transcription
+- 🔒 If data privacy is critical, use Whisper.net instead
 
 #### **OCR (Image to Text) Limitation**
 **Tesseract OCR library cannot fully support handwritten text (success rate is very low)**:
@@ -48,7 +62,7 @@ SmartRAG is a **production-ready** .NET Standard 2.0/2.1 **library** that provid
 ### 🏢 **Suitable for Enterprise On-Premise Systems**
 - ✅ **GDPR Compliant**: Keep all data within your infrastructure
 - ✅ **KVKK Compliant**: Turkish data protection law compliance
-- ✅ **Air-Gapped Systems**: Works without internet (except for audio transcription)
+- ✅ **Air-Gapped Systems**: Works 100% without internet (Whisper.net for audio)
 - ✅ **Financial Institutions**: Bank-grade security with local deployment
 - ✅ **Healthcare**: HIPAA-compliant deployments possible
 - ✅ **Government**: Classified data handling with local models
@@ -82,6 +96,42 @@ SmartRAG is a **production-ready** .NET Standard 2.0/2.1 **library** that provid
   }
 }
 ```
+
+#### Whisper.net (Local Audio Transcription)
+```json
+{
+  "SmartRAG": {
+    "AudioProvider": "Whisper",
+    "WhisperConfig": {
+      "ModelPath": "models/ggml-base.bin",
+      "DefaultLanguage": "auto",
+      "MinConfidenceThreshold": 0.5
+    }
+  }
+}
+```
+
+**Model Options:**
+- `ggml-tiny.bin` (75 MB) - Fast, good accuracy
+- `ggml-base.bin` (142 MB) - **Recommended** for most use cases
+- `ggml-small.bin` (466 MB) - Better accuracy
+- `ggml-medium.bin` (1.5 GB) - Excellent accuracy
+- `ggml-large-v1.bin` / `ggml-large-v2.bin` / `ggml-large-v3.bin` (2.9 GB) - Best accuracy
+
+**Note**: Both Whisper model and FFmpeg binaries auto-download on first use.
+
+**Automatic Setup:**
+- ✅ Whisper model: Downloads from Hugging Face (~142 MB for base model)
+- ✅ FFmpeg binaries: Auto-downloads and configures (~100 MB)
+- ✅ No manual installation needed
+- ✅ One-time download, cached for future use
+
+**Optional: Pre-install FFmpeg** (for faster first run):
+- **Windows**: `choco install ffmpeg`
+- **macOS**: `brew install ffmpeg`
+- **Linux**: `sudo apt install ffmpeg`
+
+If FFmpeg is already installed, SmartRAG will detect and use it automatically.
 
 ### 🎯 **Enterprise Use Cases**
 - **🏦 Banking & Finance**: Process sensitive financial documents locally
@@ -432,9 +482,9 @@ Here are 10 powerful real-world scenarios demonstrating SmartRAG's unique multi-
 - Seamless integration between structured and unstructured data
 
 #### **🔒 On-Premise Privacy**
-- 100% local operation with Ollama/LM Studio
+- 100% local operation with Ollama/LM Studio + Whisper.net
 - GDPR/KVKK/HIPAA compliant deployments
-- Your sensitive data NEVER leaves your infrastructure (except audio if needed)
+- Your sensitive data NEVER leaves your infrastructure
 - Well-suited for financial institutions, healthcare, legal, government
 
 #### **🌍 Language Agnostic**
@@ -625,14 +675,16 @@ SmartRAG supports a wide range of document formats with intelligent parsing and 
 - **🔍 Format Auto-Detection**: Automatic image format detection and validation across all supported types
 - **🏗️ Structured Data Output**: Converts images to searchable, queryable knowledge base content
 
-### **🎵 Audio Files (.mp3, .wav, .m4a, .aac, .ogg, .flac, .wma) - SPEECH-TO-TEXT REVOLUTION**
-- **🎤 Google Speech-to-Text**: Enterprise-grade speech recognition with Google Cloud AI
-- **🌍 Multi-Language Support**: Turkish (tr-TR), English (en-US), and 100+ languages supported
-- **⚡ Real-time Transcription**: Advanced speech-to-text conversion with confidence scoring
-- **📊 Detailed Results**: Segment-level transcription with timestamps and confidence metrics
-- **🔍 Audio Format Detection**: Automatic format validation and content type recognition
-- **🎯 Intelligent Processing**: Smart audio stream validation and error handling
-- **📈 Performance Optimized**: Efficient audio processing with minimal memory footprint
+### **🎵 Audio Files (.mp3, .wav, .m4a, .aac, .ogg, .flac, .wma) - LOCAL & CLOUD TRANSCRIPTION**
+- **🏠 Whisper.net (Local - DEFAULT)**: 100% privacy-preserving local transcription using OpenAI's Whisper model
+- **🌍 Multi-Language Support**: 99+ languages including Turkish, English, German, Russian, Chinese, Arabic
+- **⚙️ Hardware Acceleration**: CPU, CUDA (NVIDIA GPU), CoreML (Apple Silicon), OpenVino (Intel)
+- **📦 Model Options**: Tiny (75MB), Base (142MB - Recommended), Small (466MB), Medium (1.5GB), Large-v1/v2/v3 (2.9GB)
+- **🔄 Auto-Download**: Models automatically download on first use from Hugging Face
+- **☁️ Google Cloud (Optional)**: Enterprise-grade cloud transcription alternative
+- **📊 Confidence Scoring**: Detailed transcription confidence metrics
+- **⏱️ Timestamps**: Optional word-level and segment-level timestamp extraction
+- **🔍 Format Detection**: Automatic audio format validation and content type recognition
 - **🏗️ Structured Output**: Converts audio content to searchable, queryable knowledge base
 
 ### **🗄️ Multi-Database Support (SQLite, SQL Server, MySQL, PostgreSQL)**
@@ -1398,7 +1450,8 @@ SmartRAG is built with these excellent open-source libraries and cloud services:
 - **🎨 [SkiaSharp](https://github.com/mono/SkiaSharp)** - Cross-platform 2D graphics library for image preprocessing
 
 #### **Speech-to-Text**
-- **🎤 [Google Cloud Speech-to-Text](https://cloud.google.com/speech-to-text)** - Enterprise speech recognition API
+- **🎤 [Whisper.net](https://github.com/sandrohanea/whisper.net)** - Local speech-to-text transcription (.NET bindings for OpenAI Whisper)
+- **☁️ [Google Cloud Speech-to-Text](https://cloud.google.com/speech-to-text)** - Enterprise speech recognition API (optional)
 
 #### **Vector Databases & Storage**
 - **🗄️ [Qdrant](https://github.com/qdrant/qdrant)** - Vector similarity search engine

@@ -110,7 +110,16 @@ Migration from v2.4.0:
     <PackageReference Include="Tesseract" Version="5.2.0" />
     <PackageReference Include="SkiaSharp" Version="3.119.1" />
     
-    <!-- Audio Processing - Google Speech-to-Text is included in Google.Cloud.Speech.V1 -->
+    <!-- Audio Processing -->
+    <!-- Google Speech-to-Text (Cloud) -->
+    <!-- Whisper.net (Local transcription) -->
+    <PackageReference Include="Whisper.net" Version="1.8.1" />
+    <PackageReference Include="Whisper.net.Runtime" Version="1.8.1" />
+    <!-- FFMpegCore for cross-platform audio format conversion (MP3, M4A, FLAC → WAV) -->
+    <PackageReference Include="FFMpegCore" Version="5.1.0" />
+    
+    <!-- Xabe.FFmpeg for automatic FFmpeg binary download (self-contained) -->
+    <PackageReference Include="Xabe.FFmpeg.Downloader" Version="5.2.6" />
   </ItemGroup>
 
   <!-- Conditional Package References for .NET Standard 2.1 -->

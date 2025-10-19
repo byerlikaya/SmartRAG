@@ -91,13 +91,17 @@ namespace SmartRAG.Providers
 
             using (var client = CreateHttpClient(config.ApiKey))
             {
+                // Determine embedding endpoint
+                var embeddingEndpoint = GetEmbeddingEndpoint(config);
+
+                // Ollama-style payload
                 var payload = new
                 {
-                    text = text,
-                    model = config.EmbeddingModel
+                    model = config.EmbeddingModel,
+                    input = text
                 };
 
-                var (success, response, error) = await MakeHttpRequestAsync(client, config.Endpoint, payload);
+                var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
 
                 if (!success)
                 {
@@ -166,6 +170,46 @@ namespace SmartRAG.Providers
         private static bool IsMessagesFormat(string endpoint)
         {
             return endpoint.Contains("/chat") || endpoint.Contains("messages") || endpoint.Contains("completions");
+        }
+
+        /// <summary>
+        /// Gets the embedding endpoint, either from config or derived from main endpoint
+        /// </summary>
+        private static string GetEmbeddingEndpoint(AIProviderConfig config)
+        {
+            // If explicit embedding endpoint provided, use it
+            if (!string.IsNullOrEmpty(config.EmbeddingEndpoint))
+            {
+                return config.EmbeddingEndpoint;
+            }
+
+            // Derive from main endpoint
+            var endpoint = config.Endpoint;
+
+            // Ollama pattern: /v1/chat/completions → /api/embeddings or /v1/embeddings
+            if (endpoint.Contains("localhost") || endpoint.Contains("127.0.0.1"))
+            {
+                // Likely Ollama - use /api/embeddings
+                var baseUrl = endpoint.Substring(0, endpoint.IndexOf("/v1"));
+                return baseUrl + "/api/embeddings";
+            }
+
+            // OpenRouter, Groq, etc: usually same endpoint pattern
+            // /v1/chat/completions → /v1/embeddings
+            if (endpoint.Contains("/chat/completions"))
+            {
+                return endpoint.Replace("/chat/completions", "/embeddings");
+            }
+
+            // Default: try /v1/embeddings
+            if (endpoint.Contains("/v1/"))
+            {
+                var baseUrl = endpoint.Substring(0, endpoint.IndexOf("/v1/") + 4);
+                return baseUrl + "embeddings";
+            }
+
+            // Fallback: use main endpoint
+            return endpoint;
         }
 
         /// <summary>
@@ -254,7 +298,7 @@ namespace SmartRAG.Providers
         {
             var responseData = JsonSerializer.Deserialize<JsonElement>(response);
 
-            // Try different embedding field names
+            // Try Ollama format: { "embedding": [0.1, 0.2, ...] }
             if (responseData.TryGetProperty("embedding", out var embedding) && embedding.ValueKind == JsonValueKind.Array)
             {
                 var floats = new List<float>();
@@ -262,10 +306,13 @@ namespace SmartRAG.Providers
                 {
                     if (value.TryGetSingle(out var f))
                         floats.Add(f);
+                    else if (value.TryGetDouble(out var d))
+                        floats.Add((float)d);
                 }
                 return floats;
             }
 
+            // Try OpenAI/Ollama format: { "embeddings": [[0.1, 0.2, ...]] }
             if (responseData.TryGetProperty("embeddings", out var embeddings) && embeddings.ValueKind == JsonValueKind.Array)
             {
                 var firstEmbedding = embeddings.EnumerateArray().FirstOrDefault();
@@ -277,6 +324,26 @@ namespace SmartRAG.Providers
                     {
                         if (value.TryGetSingle(out var f))
                             floats.Add(f);
+                        else if (value.TryGetDouble(out var d))
+                            floats.Add((float)d);
+                    }
+                    return floats;
+                }
+            }
+
+            // Try OpenAI format: { "data": [{ "embedding": [0.1, 0.2, ...] }] }
+            if (responseData.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
+            {
+                var firstData = data.EnumerateArray().FirstOrDefault();
+                if (firstData.TryGetProperty("embedding", out var dataEmbedding) && dataEmbedding.ValueKind == JsonValueKind.Array)
+                {
+                    var floats = new List<float>();
+                    foreach (var value in dataEmbedding.EnumerateArray())
+                    {
+                        if (value.TryGetSingle(out var f))
+                            floats.Add(f);
+                        else if (value.TryGetDouble(out var d))
+                            floats.Add((float)d);
                     }
                     return floats;
                 }

@@ -28,6 +28,12 @@ namespace SmartRAG.Models
         public string Endpoint { get; set; }
 
         /// <summary>
+        /// Optional separate endpoint URL for embedding operations
+        /// If not specified, uses the main Endpoint
+        /// </summary>
+        public string EmbeddingEndpoint { get; set; }
+
+        /// <summary>
         /// API version identifier for versioned APIs
         /// </summary>
         public string ApiVersion { get; set; }
