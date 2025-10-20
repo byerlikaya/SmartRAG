@@ -1,3 +1,4 @@
+using FFMpegCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartRAG.Interfaces;
@@ -8,10 +9,7 @@ using System.IO;
 using System.Threading.Tasks;
 using Whisper.net;
 using Whisper.net.Ggml;
-using FFMpegCore;
-using FFMpegCore.Pipes;
 using Xabe.FFmpeg.Downloader;
-using FFMpegCore.Enums;
 
 namespace SmartRAG.Services
 {
@@ -65,7 +63,7 @@ namespace SmartRAG.Services
 
             try
             {
-                _logger.LogInformation("Starting Whisper transcription for {FileName} ({Size} bytes)", 
+                _logger.LogInformation("Starting Whisper transcription for {FileName} ({Size} bytes)",
                     SanitizeFileName(fileName), audioStream.Length);
 
                 // Validate audio stream
@@ -244,16 +242,28 @@ namespace SmartRAG.Services
                 if (_whisperFactory == null)
                     throw new InvalidOperationException("Whisper factory not initialized");
 
-                using (var processor = _whisperFactory.CreateBuilder()
+                // Determine optimal thread count
+                var threadCount = _config.MaxThreads > 0 
+                    ? _config.MaxThreads 
+                    : Environment.ProcessorCount;
+
+                var builder = _whisperFactory.CreateBuilder()
                     .WithLanguage(language ?? _config.DefaultLanguage)
-                    .WithThreads(4)
-                    .WithProbabilities()
-                    .Build())
+                    .WithThreads(threadCount)
+                    .WithProbabilities();
+
+                // Add prompt hint if provided (improves accuracy significantly)
+                if (!string.IsNullOrEmpty(_config.PromptHint))
+                {
+                    builder = builder.WithPrompt(_config.PromptHint);
+                }
+
+                using (var processor = builder.Build())
                 {
                     // Convert audio to WAV format if needed
                     Stream waveStream = null;
                     var needsConversion = RequiresConversion(fileName);
-                    
+
                     try
                     {
                         if (needsConversion)
@@ -271,6 +281,10 @@ namespace SmartRAG.Services
                         var transcriptionText = string.Empty;
                         var totalConfidence = 0.0;
                         var segmentCount = 0;
+                        var lastSegmentText = string.Empty;
+                        var duplicateCount = 0;
+                        var skippedLowConfidence = 0;
+                        var skippedDuplicates = 0;
 
                         _logger.LogDebug("Starting Whisper processing on WAV stream ({StreamLength} bytes)", waveStream.Length);
 
@@ -282,7 +296,35 @@ namespace SmartRAG.Services
                             while (await enumerator.MoveNextAsync().ConfigureAwait(false))
                             {
                                 var segment = enumerator.Current;
-                                
+                                var segmentText = segment.Text?.Trim() ?? string.Empty;
+
+                                // Skip low-confidence segments (likely non-speech or hallucination)
+                                if (segment.Probability < _config.MinConfidenceThreshold)
+                                {
+                                    _logger.LogDebug("Skipping low-confidence segment (P={Probability}): '{Text}'",
+                                        segment.Probability, segmentText);
+                                    skippedLowConfidence++;
+                                    continue;
+                                }
+
+                                // Detect and skip duplicate segments (Whisper hallucination pattern)
+                                if (segmentText == lastSegmentText)
+                                {
+                                    duplicateCount++;
+                                    if (duplicateCount > 2)
+                                    {
+                                        _logger.LogDebug("Skipping duplicate segment (#{Count}): '{Text}'",
+                                            duplicateCount, segmentText);
+                                        skippedDuplicates++;
+                                        continue;
+                                    }
+                                }
+                                else
+                                {
+                                    duplicateCount = 0;
+                                    lastSegmentText = segmentText;
+                                }
+
                                 _logger.LogDebug("Whisper segment: Start={Start}, End={End}, Text='{Text}', Probability={Probability}",
                                     segment.Start, segment.End, segment.Text, segment.Probability);
 
@@ -307,8 +349,9 @@ namespace SmartRAG.Services
                                     });
                                 }
                             }
-                            
-                            _logger.LogInformation("Whisper processing completed: {SegmentCount} segments processed", segmentCount);
+
+                            _logger.LogInformation("Whisper processing completed: {SegmentCount} segments processed, {SkippedLowConf} low-confidence skipped, {SkippedDup} duplicates skipped",
+                                segmentCount, skippedLowConfidence, skippedDuplicates);
                         }
                         finally
                         {
@@ -373,7 +416,7 @@ namespace SmartRAG.Services
         private async Task<Stream> ConvertToWavAsync(Stream audioStream, string fileName)
         {
             var extension = Path.GetExtension(fileName).ToLowerInvariant();
-            
+
             // Reset stream position
             audioStream.Position = 0;
 
@@ -407,7 +450,7 @@ namespace SmartRAG.Services
                     _logger.LogError(ffmpegEx, "FFmpeg conversion failed. Is FFmpeg installed?");
                     throw new InvalidOperationException(
                         $"FFmpeg is required for audio format conversion but not found or failed to execute. " +
-                        $"Please install FFmpeg from {FfmpegDownloadUrl} or convert your audio to WAV format manually.", 
+                        $"Please install FFmpeg from {FfmpegDownloadUrl} or convert your audio to WAV format manually.",
                         ffmpegEx);
                 }
 

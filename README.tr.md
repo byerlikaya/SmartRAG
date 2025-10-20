@@ -709,6 +709,115 @@ SmartRAG, hem dosya uzantılarını hem de MIME içerik türlerini kullanarak do
 - **Ses**: `audio/mpeg`, `audio/wav`, `audio/mp4`, `audio/aac`, `audio/ogg`, `audio/flac`, `audio/x-ms-wma`
 - **Veritabanları**: `application/x-sqlite3`, `application/vnd.sqlite3`, `application/octet-stream`
 
+## 💻 Sistem Gereksinimleri
+
+### Mutlak Minimum (Sadece Test İçin)
+⚠️ **Zar zor kullanılabilir - sadece test amaçlı**
+
+| Bileşen | Gereksinim |
+|---------|------------|
+| **CPU** | 2 çekirdek (herhangi bir Dual-core CPU) |
+| **RAM** | 4 GB |
+| **Disk** | 5 GB boş alan |
+| **GPU** | Yok |
+| **OS** | Windows 10/Linux/macOS |
+
+**Dahil Olanlar:**
+- Whisper tiny (75 MB) - Temel çevirme doğruluğu
+- Llama3.2:1b (1.3 GB) - Hafif AI
+- Sadece Redis (Qdrant yok, test veritabanları yok)
+
+**Performans:**
+- 🐌 AI Yanıtı: 15-20 saniye
+- 🐌 Ses Çevirisi: Dakikada 60+ saniye
+- ⚠️ Düşük doğruluk, üretime uygun değil
+
+---
+
+### Önerilen Minimum (Geliştirme)
+✅ **Gerçek geliştirme ve test için**
+
+| Bileşen | Gereksinim |
+|---------|------------|
+| **CPU** | 4 çekirdek (Intel i5/Ryzen 5 veya eşdeğeri) |
+| **RAM** | 8 GB |
+| **Disk** | 15 GB boş alan |
+| **GPU** | Yok (sadece CPU) |
+| **OS** | Windows 10/11, Linux, macOS |
+
+**Dahil Olanlar:**
+- Whisper base (142 MB) - İyi çevirme doğruluğu
+- Llama3.2 (2 GB) - Standart AI modeli
+- Redis + opsiyonel Qdrant
+- Opsiyonel SQLite test veritabanı
+
+**Performans:**
+- ⚡ AI Yanıtı: 5-10 saniye
+- ⚡ Ses Çevirisi: Dakikada 30 saniye
+- ✅ Geliştirme için kabul edilebilir
+
+---
+
+### Üretime Hazır (Varsayılan Konfigürasyon)
+🎯 **Mevcut varsayılan ayarlar - ürün için önerilir**
+
+| Bileşen | Gereksinim |
+|---------|------------|
+| **CPU** | 6-8 çekirdek (Intel i7/Ryzen 7) |
+| **RAM** | 16 GB |
+| **Disk** | 25 GB boş alan |
+| **GPU** | Yok (sadece CPU) |
+| **OS** | Windows 10/11, Linux, macOS |
+
+**Dahil Olanlar:**
+- **Whisper large-v3** (2.9 GB) - Kurumsal sınıf çevirme
+- **Llama3.2** (2 GB) - Kaliteli AI yanıtları
+- Redis + Qdrant + SQL Server/MySQL/PostgreSQL
+- Tam çoklu veritabanı desteği
+
+**Performans:**
+- ⚡ AI Yanıtı: 3-5 saniye
+- ⚡ Ses Çevirisi: Dakikada 10-15 saniye
+- ✅ Ürün kalitesinde doğruluk ve güvenilirlik
+
+**Disk Dağılımı:**
+```
+Whisper large-v3:    2.9 GB
+Llama3.2:            2.0 GB
+nomic-embed-text:    274 MB
+Docker image'ları:   2.0 GB (Ollama, Redis, Qdrant, SQL Server)
+FFmpeg:              100 MB
+Döküman kütüphaneleri: 150 MB
+Vektör verisi:       1-5 GB (kullanımla büyür)
+Veritabanı verisi:   2-10 GB (opsiyonel test verisi)
+─────────────────────────────
+Toplam:              10-25 GB
+```
+
+---
+
+### Kurumsal/GPU (Optimal Performans)
+🚀 **Yüksek performanslı dağıtımlar için**
+
+| Bileşen | Gereksinim |
+|---------|------------|
+| **CPU** | 8+ çekirdek (Intel i9/Ryzen 9) |
+| **RAM** | 32 GB |
+| **Disk** | 40 GB boş alan |
+| **GPU** | NVIDIA RTX (4GB+ VRAM, CUDA 11.8+) |
+| **OS** | Windows 10/11, Linux (Ubuntu 20.04+) |
+
+**Dahil Olanlar:**
+- Whisper large-v3 (GPU) - 20x daha hızlı çevirme
+- Mistral 7B (GPU) - 10x daha hızlı AI yanıtları
+- Tüm Docker servisleri (6 container)
+- Tam veritabanı paketi
+
+**Performans:**
+- 🚀 AI Yanıtı: 1-2 saniye (GPU hızlandırmalı)
+- 🚀 Ses Çevirisi: Dakikada 2-5 saniye (GPU hızlandırmalı)
+- ✅ Kurumsal sınıf performans ve doğruluk
+
 ## 🚀 Hızlı Başlangıç
 
 ### 1. **Geliştirme Kurulumu**

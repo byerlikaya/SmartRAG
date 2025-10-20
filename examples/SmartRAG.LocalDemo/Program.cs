@@ -2042,6 +2042,12 @@ Respond ONLY with the JSON array, no other text.";
             };
         }
 
+        private static bool IsAudioFile(string fileName)
+        {
+            var extension = Path.GetExtension(fileName).ToLowerInvariant();
+            return extension == ".mp3" || extension == ".wav" || extension == ".m4a" || extension == ".flac" || extension == ".ogg";
+        }
+
         private static void PrintHealthStatus(HealthStatus status, bool inline = false)
         {
             if (status.IsHealthy)
@@ -2116,12 +2122,39 @@ Respond ONLY with the JSON array, no other text.";
                 var fileName = Path.GetFileName(filePath);
                 var contentType = GetContentType(filePath);
 
+                // For audio files, ask user to select language for better accuracy
+                var languageToUse = _selectedLanguage;
+                if (IsAudioFile(fileName))
+                {
+                    Console.WriteLine();
+                    Console.WriteLine("🎤 Audio Language Selection:");
+                    Console.WriteLine("1. 🌍 Auto-detect (recommended)");
+                    Console.WriteLine("2. 🇹🇷 Turkish");
+                    Console.WriteLine("3. 🇬🇧 English");
+                    Console.WriteLine("4. 🇩🇪 German");
+                    Console.WriteLine("5. 🇷🇺 Russian");
+                    Console.Write("Select audio language (1-5): ");
+                    
+                    var langChoice = Console.ReadLine()?.Trim();
+                    languageToUse = langChoice switch
+                    {
+                        "2" => "tr",
+                        "3" => "en",
+                        "4" => "de",
+                        "5" => "ru",
+                        _ => "auto" // Default to auto-detect
+                    };
+                    
+                    Console.WriteLine($"Selected language: {languageToUse}");
+                    Console.WriteLine();
+                }
+
                 var document = await _documentService!.UploadDocumentAsync(
                     fileStream,
                     fileName,
                     contentType,
                     "LocalDemo",
-                    _selectedLanguage
+                    languageToUse
                 );
 
                 Console.ForegroundColor = ConsoleColor.Green;

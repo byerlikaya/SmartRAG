@@ -94,14 +94,28 @@ namespace SmartRAG.Providers
                 // Determine embedding endpoint
                 var embeddingEndpoint = GetEmbeddingEndpoint(config);
 
-                // Ollama-style payload
+                Logger.LogDebug("Ollama embedding request: Endpoint={Endpoint}, Model={Model}, TextLength={Length}",
+                    embeddingEndpoint, config.EmbeddingModel, text?.Length ?? 0);
+
+                // Ollama-style payload (uses "prompt" not "input")
                 var payload = new
                 {
                     model = config.EmbeddingModel,
-                    input = text
+                    prompt = text
                 };
 
+                Logger.LogDebug("Ollama embedding payload: {Payload}",
+                    JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = false }));
+
                 var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
+
+                Logger.LogDebug("Ollama embedding response: Success={Success}, ResponseLength={Length}, Error={Error}",
+                    success, response?.Length ?? 0, error ?? "None");
+
+                if (success && !string.IsNullOrEmpty(response))
+                {
+                    Logger.LogDebug("Ollama embedding response content: {Response}", response);
+                }
 
                 if (!success)
                 {
