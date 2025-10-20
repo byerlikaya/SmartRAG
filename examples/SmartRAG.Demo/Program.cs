@@ -8,7 +8,7 @@ using SmartRAG.Models;
 using System.Text;
 using System.Text.Json;
 
-namespace SmartRAG.LocalDemo
+namespace SmartRAG.Demo
 {
     internal class Program
     {
@@ -33,7 +33,7 @@ namespace SmartRAG.LocalDemo
             Console.OutputEncoding = System.Text.Encoding.UTF8;
 
             Console.WriteLine("╔═══════════════════════════════════════════════════════════════════╗");
-            Console.WriteLine("║   SmartRAG Local Demo - Fully Local RAG System                    ║");
+            Console.WriteLine("║   SmartRAG Demo - Deployment Flexible RAG System                  ║");
             Console.WriteLine("╚═══════════════════════════════════════════════════════════════════╝");
             Console.WriteLine();
 

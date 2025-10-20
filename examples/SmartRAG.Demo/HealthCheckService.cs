@@ -7,10 +7,10 @@ using MySqlConnector;
 using Npgsql;
 using StackExchange.Redis;
 
-namespace SmartRAG.LocalDemo
+namespace SmartRAG.Demo
 {
     /// <summary>
-    /// Service for checking health status of all SmartRAG Local Demo components
+    /// Service for checking health status of all SmartRAG Demo components
     /// </summary>
     public class HealthCheckService
     {

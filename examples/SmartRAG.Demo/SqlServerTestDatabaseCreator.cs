@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace SmartRAG.LocalDemo
+namespace SmartRAG.Demo
 {
     public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
     {

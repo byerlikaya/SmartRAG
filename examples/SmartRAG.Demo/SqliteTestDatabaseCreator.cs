@@ -2,7 +2,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
 using SmartRAG.Enums;
 
-namespace SmartRAG.LocalDemo
+namespace SmartRAG.Demo
 {
     /// <summary>
     /// SQLite test database creator implementation

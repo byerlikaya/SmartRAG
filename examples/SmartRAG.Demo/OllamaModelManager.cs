@@ -2,7 +2,7 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 
-namespace SmartRAG.LocalDemo
+namespace SmartRAG.Demo
 {
     /// <summary>
     /// Manages Ollama models - downloads, lists and verifies model availability
@@ -150,7 +150,7 @@ namespace SmartRAG.LocalDemo
         }
 
         /// <summary>
-        /// Gets recommended models for SmartRAG Local Demo
+        /// Gets recommended models for SmartRAG Demo
         /// </summary>
         /// <returns>Dictionary of model names and descriptions</returns>
         public static Dictionary<string, string> GetRecommendedModels()

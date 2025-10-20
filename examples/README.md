@@ -19,16 +19,19 @@ This directory contains example projects demonstrating how to use SmartRAG in di
   - Enhanced semantic search with hybrid scoring
   - Comprehensive API documentation
 
-### **SmartRAG.Console** - Console Chat Application
-- **Location**: `SmartRAG.Console/`
-- **Description**: Interactive console application for AI-powered conversations using SmartRAG
+### **SmartRAG.Demo** - Interactive Multi-Database RAG Demo
+- **Location**: `SmartRAG.Demo/`
+- **Description**: Comprehensive demo showcasing SmartRAG's deployment flexibility and multi-database capabilities
 - **Features**:
-  - Real-time AI chat with multiple providers (OpenAI, Anthropic, Gemini, Azure OpenAI, Custom)
-  - Smart query intent detection (general conversation vs document search)
-  - Conversation history management with session persistence
-  - Multi-language support (Turkish, English, German, etc.)
-  - Easy configuration switching between AI providers
-  - Simple command-line interface for testing and development
+  - **Deployment Modes**: 100% Local, 100% Cloud, or Hybrid configurations
+  - **Multi-Database Queries**: Cross-database natural language queries (SQL Server, MySQL, PostgreSQL, SQLite)
+  - **Local AI**: Ollama integration for complete on-premise deployment (GDPR/KVKK/HIPAA compliant)
+  - **Cloud AI**: Anthropic Claude, OpenAI GPT, Google Gemini support
+  - **Docker Orchestration**: Complete containerized environment with docker-compose
+  - **Test Databases**: Pre-configured test databases with cross-database relationships
+  - **Health Monitoring**: Service health checks for all components
+  - **Model Management**: Ollama model download and management
+  - **Multi-language**: Query support in English, Turkish, German, Russian
 
 ## 🚀 Running Examples
 
@@ -41,14 +44,19 @@ dotnet run
 
 Browse to `https://localhost:5001/swagger` for interactive API documentation.
 
-### SmartRAG.Console Example
+### SmartRAG.Demo Example
 ```bash
-cd examples/SmartRAG.Console
+cd examples/SmartRAG.Demo
+
+# Start Docker services (for local mode)
+docker-compose up -d
+
+# Run the application
 dotnet restore
 dotnet run
 ```
 
-Start chatting with AI! Type `exit` to quit.
+Choose your deployment mode (Local/Cloud/Hybrid) and explore multi-database RAG capabilities!
 
 ## 🔧 Configuration
 

@@ -1,4 +1,4 @@
-# Docker Setup Guide for SmartRAG Local Demo
+# Docker Setup Guide for SmartRAG Demo
 
 Complete guide for running SmartRAG with all local services using Docker.
 

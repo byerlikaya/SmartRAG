@@ -76,28 +76,28 @@ Migration from v2.4.0:
   <ItemGroup>
     <!-- Microsoft Extensions -->
     <PackageReference Include="Google.Cloud.Speech.V1" Version="3.8.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.10" />
     
     <!-- HTTP Client -->
-    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.10" />
     
     <!-- JSON Processing -->
-    <PackageReference Include="System.Text.Json" Version="9.0.9" />
+    <PackageReference Include="System.Text.Json" Version="9.0.10" />
     
     <!-- Vector Database Support -->
     <PackageReference Include="Qdrant.Client" Version="1.15.1" />
     <PackageReference Include="StackExchange.Redis" Version="2.9.32" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.10" />
     
     <!-- Database Connectivity -->
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.2" />
     <PackageReference Include="MySql.Data" Version="9.4.0" />
-    <PackageReference Include="Npgsql" Version="8.0.5" />
+    <PackageReference Include="Npgsql" Version="8.0.8" />
     
     <!-- Validation -->
     <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
@@ -116,10 +116,10 @@ Migration from v2.4.0:
     <PackageReference Include="Whisper.net" Version="1.8.1" />
     <PackageReference Include="Whisper.net.Runtime" Version="1.8.1" />
     <!-- FFMpegCore for cross-platform audio format conversion (MP3, M4A, FLAC → WAV) -->
-    <PackageReference Include="FFMpegCore" Version="5.1.0" />
+    <PackageReference Include="FFMpegCore" Version="5.3.0" />
     
     <!-- Xabe.FFmpeg for automatic FFmpeg binary download (self-contained) -->
-    <PackageReference Include="Xabe.FFmpeg.Downloader" Version="5.2.6" />
+    <PackageReference Include="Xabe.FFmpeg.Downloader" Version="6.0.2" />
   </ItemGroup>
 
   <!-- Conditional Package References for .NET Standard 2.1 -->
@@ -130,7 +130,7 @@ Migration from v2.4.0:
   <!-- Conditional Package References for .NET Standard 2.0 -->
   <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="9.0.10" />
   </ItemGroup>
 
   <!-- Documentation Files -->
