@@ -7,9 +7,8 @@ lang: en
 
 ## Installation
 
-SmartRAG is available as a NuGet package and supports **.NET Standard 2.0/2.1**, making it compatible with:
-- ✅ .NET Framework 4.6.1+
-- ✅ .NET Core 2.0+
+SmartRAG is available as a NuGet package and supports **.NET Standard 2.1**, making it compatible with:
+- ✅ .NET Core 3.0+
 - ✅ .NET 5, 6, 7, 8, 9+
 
 ### Installation Methods

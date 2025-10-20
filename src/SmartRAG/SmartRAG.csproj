@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
+    <TargetFramework>netstandard2.1</TargetFramework>
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
@@ -9,7 +9,7 @@
     <Authors>Barış Yerlikaya</Authors>
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
-    <Description>High-performance RAG (Retrieval-Augmented Generation) library for .NET Standard 2.0/2.1 that enables AI-powered document question-answering with automatic conversation history management, multiple provider support and enterprise-grade vector storage. Features intelligent session management, persistent conversation context, and platform-agnostic design. Compatible with .NET Framework 4.6.1+, .NET Core 2.0+, and .NET 5+ applications.</Description>
+    <Description>High-performance RAG (Retrieval-Augmented Generation) library for .NET Standard 2.1 that enables AI-powered document question-answering with automatic conversation history management, multiple provider support and enterprise-grade vector storage. Features intelligent session management, persistent conversation context, and platform-agnostic design. Compatible with .NET Core 3.0+ and .NET 5/6/7/8/9 applications.</Description>
     <PackageTags>rag retrieval-augmented-generation ai llm document-qa vector-database openai anthropic gemini azure-openai qdrant redis sqlite sqlserver mysql postgresql database-integration conversation-history session-management chat-context</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -23,6 +23,7 @@
     <PackageReleaseNotes>Release 3.0.0: Intelligence Platform Revolution
 
 BREAKING CHANGES - Major Platform Evolution:
+• Framework: Now requires .NET Standard 2.1 (.NET Core 3.0+) - Dropped .NET Framework support
 • SearchController → IntelligenceController - Reflects true AI intelligence capabilities
 • GenerateRagAnswerAsync → QueryIntelligenceAsync - Better represents intelligent query processing
 • API Endpoints: /api/search/* → /api/intelligence/* - Professional enterprise naming
@@ -122,16 +123,6 @@ Migration from v2.4.0:
     <PackageReference Include="Xabe.FFmpeg.Downloader" Version="6.0.2" />
   </ItemGroup>
 
-  <!-- Conditional Package References for .NET Standard 2.1 -->
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
-    <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" />
-  </ItemGroup>
-
-  <!-- Conditional Package References for .NET Standard 2.0 -->
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="9.0.10" />
-  </ItemGroup>
 
   <!-- Documentation Files -->
   <ItemGroup>

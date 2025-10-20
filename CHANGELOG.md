@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### 🚀 BREAKING CHANGES - Intelligence Library Revolution
 
+#### **Framework Requirements**
+- **Minimum .NET Version**: Now requires .NET Standard 2.1 (.NET Core 3.0+)
+- **Dropped Support**: .NET Framework 4.x and .NET Standard 2.0 no longer supported
+- **Reason**: Enable modern API features, better performance, and align with current AI provider SDK requirements
+- **Compatible With**: .NET Core 3.0+, .NET 5, .NET 6, .NET 7, .NET 8, .NET 9
+
 #### **Major API Changes**
 - **`GenerateRagAnswerAsync` → `QueryIntelligenceAsync`**: Method renamed to better represent intelligent query processing
 - **Enhanced `IDocumentSearchService` interface**: New intelligent query processing method with advanced RAG pipeline

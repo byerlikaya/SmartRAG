@@ -11,10 +11,10 @@
 [![Derleme Durumu](https://github.com/byerlikaya/SmartRAG/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/byerlikaya/SmartRAG/actions)
 [![NuGet Sürümü](https://img.shields.io/nuget/v/SmartRAG.svg)](https://www.nuget.org/packages/SmartRAG)
 [![NuGet İndirmeleri](https://img.shields.io/nuget/dt/SmartRAG.svg)](https://www.nuget.org/packages/SmartRAG)
-[![.NET](https://img.shields.io/badge/.NET%20Standard-2.0%2F2.1-blue.svg)](https://docs.microsoft.com/en-us/dotnet/standard/net-standard)
+[![.NET](https://img.shields.io/badge/.NET%20Standard-2.1-blue.svg)](https://docs.microsoft.com/en-us/dotnet/standard/net-standard)
 [![Lisans](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-SmartRAG, temiz bir **hizmet odaklı mimari** aracılığıyla eksiksiz bir **Arama Destekli Üretim (RAG)** çözümü sunan, **üretime hazır** bir .NET Standard 2.0/2.1 **kütüphanesi**dır. Gelişmiş belge işleme, çok modlu AI entegrasyonu ve kurumsal düzeyde depolama seçenekleri ile akıllı uygulamalar oluşturun - hepsi basit bağımlılık enjeksiyonu ile.
+SmartRAG, temiz bir **hizmet odaklı mimari** aracılığıyla eksiksiz bir **Arama Destekli Üretim (RAG)** çözümü sunan, **üretime hazır** bir .NET Standard 2.1 **kütüphanesi**dır. Gelişmiş belge işleme, çok modlu AI entegrasyonu ve kurumsal düzeyde depolama seçenekleri ile akıllı uygulamalar oluşturun - hepsi basit bağımlılık enjeksiyonu ile.
 
 ## 🔒 Yerinde ve Yerel AI Desteği
 
@@ -524,7 +524,7 @@ SmartRAG'ın benzersiz çoklu veritabanı ve çoklu mod özelliklerini gösteren
 - **Bağımlılık Enjeksiyonu**: Tam DI container entegrasyonu
 - **Gelişmiş Semantik Arama**: Semantik benzerlik ve anahtar kelime uygunluğunu birleştiren gelişmiş hibrit puanlama (%80 semantik + %20 anahtar kelime)
 - **VoyageAI Entegrasyonu**: Anthropic Claude modelleri için yüksek kaliteli embedding'ler
-- **Çapraz Platform Uyumluluğu**: Maksimum uyumluluk için .NET Standard 2.0/2.1 desteği
+- **Çapraz Platform Uyumluluğu**: .NET Standard 2.1 desteği (.NET Core 3.0+ ve .NET 5/6/7/8/9)
 - **Üretime Hazır**: Thread-safe işlemler, merkezi günlükleme, düzgün hata işleme
 - **Profesyonel Dokümantasyon**: GitHub Pages entegrasyonu ile kapsamlı dokümantasyon sitesi
 

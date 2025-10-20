@@ -14,7 +14,7 @@ hide_title: true
                 <div class="hero-content">
                     <div class="hero-badge">
                         <i class="fas fa-star"></i>
-                        <span>.NET Standard 2.0/2.1</span>
+                        <span>.NET Standard 2.1</span>
                     </div>
                     <h1 class="hero-title">
                         <span class="text-gradient">SmartRAG</span> ile Akıllı Uygulamalar Geliştirin

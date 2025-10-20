@@ -8,9 +8,8 @@ lang: tr
 
 ## Kurulum
 
-SmartRAG bir NuGet paketi olarak mevcuttur ve **.NET Standard 2.0/2.1** destekler, bu da şunlarla uyumlu olduğu anlamına gelir:
-- ✅ .NET Framework 4.6.1+
-- ✅ .NET Core 2.0+
+SmartRAG bir NuGet paketi olarak mevcuttur ve **.NET Standard 2.1** destekler, bu da şunlarla uyumlu olduğu anlamına gelir:
+- ✅ .NET Core 3.0+
 - ✅ .NET 5, 6, 7, 8, 9+
 
 ### Kurulum Yöntemleri

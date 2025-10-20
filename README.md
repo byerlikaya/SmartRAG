@@ -11,10 +11,10 @@
 [![Build Status](https://github.com/byerlikaya/SmartRAG/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/byerlikaya/SmartRAG/actions)
 [![NuGet Version](https://img.shields.io/nuget/v/SmartRAG.svg)](https://www.nuget.org/packages/SmartRAG)
 [![NuGet Downloads](https://img.shields.io/nuget/dt/SmartRAG.svg)](https://www.nuget.org/packages/SmartRAG)
-[![.NET](https://img.shields.io/badge/.NET%20Standard-2.0%2F2.1-blue.svg)](https://docs.microsoft.com/en-us/dotnet/standard/net-standard)
+[![.NET](https://img.shields.io/badge/.NET%20Standard-2.1-blue.svg)](https://docs.microsoft.com/en-us/dotnet/standard/net-standard)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-SmartRAG is a **production-ready** .NET Standard 2.0/2.1 **library** that provides a complete **Retrieval-Augmented Generation (RAG)** solution through a clean **service-oriented architecture**. Build intelligent applications with advanced document processing, multi-modal AI integration, and enterprise-grade storage options - all through simple dependency injection.
+SmartRAG is a **production-ready** .NET Standard 2.1 **library** that provides a complete **Retrieval-Augmented Generation (RAG)** solution through a clean **service-oriented architecture**. Build intelligent applications with advanced document processing, multi-modal AI integration, and enterprise-grade storage options - all through simple dependency injection.
 
 ## 🔒 On-Premise & Local AI Support
 
@@ -549,7 +549,7 @@ Here are 10 powerful real-world scenarios demonstrating SmartRAG's unique multi-
 - **Dependency Injection**: Full DI container integration
 - **Enhanced Semantic Search**: Advanced hybrid scoring combining semantic similarity and keyword relevance (80% semantic + 20% keyword)
 - **VoyageAI Integration**: High-quality embeddings for Anthropic Claude models
-- **Cross-Platform Compatibility**: .NET Standard 2.0/2.1 support for maximum compatibility
+- **Cross-Platform Compatibility**: .NET Standard 2.1 support (.NET Core 3.0+ and .NET 5/6/7/8/9)
 - **Production Ready**: Thread-safe operations, centralized logging, proper error handling
 - **Professional Documentation**: Comprehensive documentation site with GitHub Pages integration
 

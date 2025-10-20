@@ -208,21 +208,21 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 
 <div class="alert alert-warning">
     <h4><i class="fas fa-exclamation-triangle me-2"></i> BREAKING CHANGE</h4>
-    <p class="mb-0">Migrated from .NET 9.0 to .NET Standard 2.0/2.1</p>
+    <p class="mb-0">Migrated from .NET 9.0 to .NET Standard 2.1</p>
                     </div>
 
 ### 🔄 .NET Standard Migration
-- **Target Framework**: Migrated from .NET 9.0 to .NET Standard 2.0/2.1
+- **Target Framework**: Migrated from .NET 9.0 to .NET Standard 2.1
 - **Framework Compatibility**: Now supports .NET Framework 4.6.1+, .NET Core 2.0+, .NET 5+
 - **Maximum Reach**: Enhanced compatibility with legacy and enterprise environments
 
 ### ✨ Added
-- **Cross-Platform Support**: .NET Standard 2.0/2.1 target frameworks
+- **Cross-Platform Support**: .NET Standard 2.1 target frameworks
 - **Legacy Framework Support**: Full .NET Framework compatibility
 - **Enterprise Integration**: Seamless integration with existing enterprise solutions
 
 ### 🔧 Improved
-- **Language Compatibility**: C# 7.3 syntax for .NET Standard 2.0/2.1
+- **Language Compatibility**: C# 7.3 syntax for .NET Standard 2.1
 - **Package Versions**: Updated to .NET Standard compatible versions
 - **API Compatibility**: Maintained functionality while ensuring framework compatibility
 
@@ -232,7 +232,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Migration Guide**: Comprehensive guide for .NET 9.0 users
 
 ### 🧪 Testing
-- **Framework Compatibility**: Verified .NET Standard 2.0/2.1 compatibility
+- **Framework Compatibility**: Verified .NET Standard 2.1 compatibility
 - **Backward Compatibility**: All functionality remains intact
 - **Package Compatibility**: Tested all NuGet packages
 
@@ -326,7 +326,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
             <tr>
                 <td><strong>2.0.0</strong></td>
                 <td>2025-08-27</td>
-                <td>.NET Standard 2.0/2.1 migration</td>
+                <td>.NET Standard 2.1 migration</td>
             </tr>
             <tr>
                 <td><strong>1.1.0</strong></td>
@@ -420,7 +420,7 @@ const response = await fetch('/api/intelligence/query', { ... });
 
 <div class="alert alert-warning">
     <h4><i class="fas fa-exclamation-triangle me-2"></i> Framework Change</h4>
-    <p class="mb-0">Version 2.0.0 migrated from .NET 9.0 to .NET Standard 2.0/2.1</p>
+    <p class="mb-0">Version 2.0.0 migrated from .NET 9.0 to .NET Standard 2.1</p>
                 </div>
 
 **Step 1: Verify framework compatibility**

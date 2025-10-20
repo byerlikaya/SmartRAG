@@ -192,21 +192,21 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 
                     <div class="alert alert-warning">
     <h4><i class="fas fa-exclamation-triangle me-2"></i> BREAKING CHANGE</h4>
-    <p class="mb-0">.NET 9.0'dan .NET Standard 2.0/2.1'e taşındı</p>
+    <p class="mb-0">.NET 9.0'dan .NET Standard 2.1'e taşındı</p>
                     </div>
 
 ### 🔄 .NET Standard Taşınması
-- **Hedef Framework**: .NET 9.0'dan .NET Standard 2.0/2.1'e taşındı
+- **Hedef Framework**: .NET 9.0'dan .NET Standard 2.1'e taşındı
 - **Framework Uyumluluğu**: Şimdi .NET Framework 4.6.1+, .NET Core 2.0+, .NET 5+ destekler
 - **Maksimum Erişim**: Eski ve kurumsal ortamlarla geliştirilmiş uyumluluk
 
 ### ✨ Eklenenler
-- **Çapraz Platform Desteği**: .NET Standard 2.0/2.1 hedef frameworkleri
+- **Çapraz Platform Desteği**: .NET Standard 2.1 hedef frameworkleri
 - **Eski Framework Desteği**: Tam .NET Framework uyumluluğu
 - **Kurumsal Entegrasyon**: Mevcut kurumsal çözümlerle sorunsuz entegrasyon
 
 ### 🔧 İyileştirmeler
-- **Dil Uyumluluğu**: .NET Standard 2.0/2.1 için C# 7.3 sözdizimi
+- **Dil Uyumluluğu**: .NET Standard 2.1 için C# 7.3 sözdizimi
 - **Paket Versiyonları**: .NET Standard uyumlu versiyonlara güncellendi
 - **API Uyumluluğu**: Framework uyumluluğu sağlarken işlevselliği korundu
 
@@ -277,7 +277,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
             <tr>
                 <td><strong>2.0.0</strong></td>
                 <td>2025-08-27</td>
-                <td>.NET Standard 2.0/2.1 taşınması</td>
+                <td>.NET Standard 2.1 taşınması</td>
             </tr>
             <tr>
                 <td><strong>1.1.0</strong></td>
