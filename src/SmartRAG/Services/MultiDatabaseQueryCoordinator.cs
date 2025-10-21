@@ -419,7 +419,7 @@ namespace SmartRAG.Services
                 
                 if (!dbResult.Success || string.IsNullOrWhiteSpace(dbResult.ResultData))
                 {
-                    sb.AppendLine($"=== {dbResult.DatabaseName} ===");
+                sb.AppendLine($"=== {dbResult.DatabaseName} ===");
                     sb.AppendLine($"Error: {dbResult.ErrorMessage}");
                     sb.AppendLine();
                     continue;
@@ -442,7 +442,7 @@ namespace SmartRAG.Services
                 {
                     sb.AppendLine("=== SMART MERGED RESULTS (Cross-Database JOIN) ===");
                     sb.AppendLine(FormatParsedResult(mergedData));
-                    sb.AppendLine();
+                sb.AppendLine();
                 }
                 else
                 {
@@ -740,26 +740,43 @@ namespace SmartRAG.Services
             sb.AppendLine("║          SQL QUERY GENERATION FOR SINGLE DATABASE              ║");
             sb.AppendLine("╚════════════════════════════════════════════════════════════════╝");
             sb.AppendLine();
-            sb.AppendLine("🚨 CRITICAL - READ THIS FIRST:");
-            sb.AppendLine($"   YOU CAN ONLY USE THESE TABLES: {string.Join(", ", dbQuery.RequiredTables)}");
-            sb.AppendLine("   ANY OTHER TABLE WILL CAUSE AN ERROR!");
-            sb.AppendLine();
-            sb.AppendLine("COLUMN VALIDATION IS CRITICAL:");
-            sb.AppendLine("   - ONLY use columns that exist in the schema below");
-            sb.AppendLine("   - Before referencing ANY column, verify it exists in the table's column list");
-            sb.AppendLine("   - Using a non-existent column will cause SQL execution ERROR");
-            sb.AppendLine("   - Check column names character-by-character against the schema");
+            sb.AppendLine("🚨 ABSOLUTE RULES - FOLLOW EXACTLY:");
+            sb.AppendLine("═══════════════════════════════════════");
+            sb.AppendLine("1. Use ONLY columns listed in schema below (case-sensitive)");
+            sb.AppendLine("2. Use ONLY tables listed in your allowed tables");
+            sb.AppendLine("3. DO NOT assume any column exists - check schema first");
+            sb.AppendLine("4. DO NOT use table aliases (p, c, o) - use full table names");
+            sb.AppendLine("5. DO NOT use parameters (@param, :param)");
+            sb.AppendLine("6. DO NOT write JOIN - return foreign key IDs only");
+            sb.AppendLine("7. Match database type syntax (SQL Server=TOP, Others=LIMIT)");
+            sb.AppendLine("═══════════════════════════════════════");
             sb.AppendLine();
             sb.AppendLine($"TARGET DATABASE: {schema.DatabaseName} ({schema.DatabaseType})");
             sb.AppendLine($"YOUR ALLOWED TABLES: {string.Join(", ", dbQuery.RequiredTables)}");
             sb.AppendLine();
-            sb.AppendLine("YOUR TASK:");
-            sb.AppendLine($"   Write a simple SQL query using ONLY these tables: {string.Join(", ", dbQuery.RequiredTables)}");
-            sb.AppendLine("   Return data with all foreign key IDs so application can merge with other databases");
-            sb.AppendLine("   VERIFY every column you use exists in the schema below!");
+            sb.AppendLine("USER QUESTION:");
+            sb.AppendLine($"  {userQuery}");
             sb.AppendLine();
-            sb.AppendLine($"User Question: {userQuery}");
-            sb.AppendLine($"What to retrieve from {schema.DatabaseName}: {dbQuery.Purpose}");
+            sb.AppendLine("WHAT TO RETRIEVE FROM THIS DATABASE:");
+            sb.AppendLine($"  {dbQuery.Purpose}");
+            sb.AppendLine();
+            sb.AppendLine("🚨 CRITICAL COLUMN SELECTION:");
+            sb.AppendLine($"Task: {dbQuery.Purpose}");
+            sb.AppendLine();
+            sb.AppendLine("ANALYZE THE TASK AND SELECT APPROPRIATE COLUMNS:");
+            sb.AppendLine("1. Read the task above carefully");
+            sb.AppendLine("2. Identify what data types are needed (text, numeric, date)");
+            sb.AppendLine("3. Look at schema below and find matching columns");
+            sb.AppendLine("4. SELECT ALL relevant columns from schema");
+            sb.AppendLine("5. ALWAYS include ALL foreign key columns (ending with 'ID')");
+            sb.AppendLine();
+            sb.AppendLine("COLUMN TYPE GUIDE:");
+            sb.AppendLine("- TEXT/VARCHAR columns: Use for descriptive data");
+            sb.AppendLine("- INT/DECIMAL columns: Use for numeric calculations");
+            sb.AppendLine("- DATETIME/DATE columns: Use for temporal data");
+            sb.AppendLine("- Columns ending with 'ID': MUST always include for merging");
+            sb.AppendLine();
+            sb.AppendLine("🚨 INCLUDE DESCRIPTIVE COLUMNS, NOT JUST IDs!");
             sb.AppendLine();
             sb.AppendLine("═══════════════════════════════════════");
             sb.AppendLine($"TABLES AVAILABLE IN {schema.DatabaseName}:");
@@ -770,32 +787,25 @@ namespace SmartRAG.Services
                 var table = schema.Tables.FirstOrDefault(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase));
                 if (table != null)
                 {
-                    sb.AppendLine($"\nTable: {schema.DatabaseName}.{table.TableName}");
-                    sb.AppendLine($"  ═══════════════════════════════════════");
-                    sb.AppendLine($"  ONLY THESE {table.Columns.Count} COLUMNS EXIST - USE NO OTHER COLUMNS:");
-                    sb.AppendLine($"  ═══════════════════════════════════════");
+                    sb.AppendLine($"\n🚨 Table: {table.TableName}");
+                    sb.AppendLine("═══════════════════════════════════════");
+                    sb.AppendLine($"AVAILABLE COLUMNS (use EXACT names, case-sensitive):");
                     
-                    foreach (var col in table.Columns)
-                    {
-                        sb.AppendLine($"    {col.ColumnName} ({col.DataType})");
-                    }
+                    var columnList = string.Join(", ", table.Columns.Select(c => c.ColumnName));
+                    sb.AppendLine($"  {columnList}");
                     
                     sb.AppendLine();
-                    sb.AppendLine($"  🚨 CRITICAL: ANY column not in the list above DOES NOT EXIST in {table.TableName}!");
-                    sb.AppendLine($"  Before using a column in JOIN, SELECT, or WHERE - verify it's in the list!");
+                    sb.AppendLine($"🚨 YOU CAN ONLY USE THESE {table.Columns.Count} COLUMNS FROM {table.TableName}");
+                    sb.AppendLine("ANY OTHER COLUMN NAME WILL CAUSE ERROR!");
                     
                     if (table.ForeignKeys.Any())
                     {
                         sb.AppendLine();
-                        sb.AppendLine("  Foreign Keys (reference IDs to OTHER databases):");
+                        sb.AppendLine("Foreign Keys (must include in SELECT for data merging):");
                         foreach (var fk in table.ForeignKeys)
                         {
-                            sb.AppendLine($"    • {fk.ColumnName} links to {fk.ReferencedTable} table (in ANOTHER database)");
+                            sb.AppendLine($"  {fk.ColumnName}");
                         }
-                        sb.AppendLine();
-                        sb.AppendLine("  WHAT TO DO:");
-                        sb.AppendLine($"     Always include {string.Join(", ", table.ForeignKeys.Select(fk => fk.ColumnName))} in your SELECT");
-                        sb.AppendLine("     Application will use these IDs to fetch data from other databases");
                     }
                     
                     // Show example SQL for this table
@@ -964,55 +974,74 @@ namespace SmartRAG.Services
             switch (schema.DatabaseType)
             {
                 case DatabaseType.SqlServer:
-                    sb.AppendLine("🚨 SQL SERVER CRITICAL RULES:");
-                    sb.AppendLine($"Format: SELECT TOP 100 columns FROM {dbQuery.RequiredTables[0]} WHERE ... ORDER BY column");
-                    sb.AppendLine("• ✗ NEVER use LIMIT - use TOP instead!");
-                    sb.AppendLine("• ✗ NEVER use FETCH NEXT - use TOP instead!");
-                    sb.AppendLine("• ✗ NEVER use parameters like @ParamName - use actual values!");
-                    sb.AppendLine("• ✗ NEVER use OFFSET without ORDER BY!");
-                    sb.AppendLine("• ✓ TOP goes RIGHT AFTER SELECT: SELECT TOP 100 Col1, Col2...");
-                    sb.AppendLine("• ✓ Date filtering: WHERE DateColumn >= DATEADD(month, -3, GETDATE())");
-                    sb.AppendLine("• ✓ Date filtering: WHERE DateColumn >= '2024-01-01'");
-                    sb.AppendLine("• GROUP BY: ALL non-aggregate SELECT columns MUST be in GROUP BY!");
-                    sb.AppendLine("  ✗ WRONG: SELECT Col1, SUM(Col2) GROUP BY Col2");
-                    sb.AppendLine("  ✓ CORRECT: SELECT Col1, SUM(Col2) GROUP BY Col1");
+                    sb.AppendLine("🚨 SQL SERVER DATABASE - CRITICAL SYNTAX RULES");
+                    sb.AppendLine();
+                    sb.AppendLine("ABSOLUTELY FORBIDDEN:");
+                    sb.AppendLine("✗ LIMIT keyword (does not exist in SQL Server)");
+                    sb.AppendLine("✗ FETCH NEXT");
+                    sb.AppendLine("✗ Table aliases (c, p, o)");
+                    sb.AppendLine("✗ Parameters (@ParamName)");
+                    sb.AppendLine("✗ JOIN statements (return FK IDs only)");
+                    sb.AppendLine();
+                    sb.AppendLine("REQUIRED FORMAT:");
+                    sb.AppendLine($"SELECT TOP 100 columns FROM {dbQuery.RequiredTables[0]} WHERE conditions ORDER BY column");
+                    sb.AppendLine();
+                    sb.AppendLine("CORRECT EXAMPLES:");
+                    sb.AppendLine("✓ SELECT TOP 100 Column1, Column2 FROM TableName");
+                    sb.AppendLine("✓ WHERE DateColumn >= DATEADD(month, -3, GETDATE())");
+                    sb.AppendLine("✓ SELECT Column1, SUM(Column2) FROM TableName GROUP BY Column1");
                     break;
                     
                 case DatabaseType.SQLite:
-                    sb.AppendLine("🚨 SQLITE CRITICAL RULES:");
-                    sb.AppendLine($"Format: SELECT columns FROM {dbQuery.RequiredTables[0]} WHERE ... ORDER BY column LIMIT 100");
-                    sb.AppendLine("• ✗ NEVER use TOP - use LIMIT instead!");
-                    sb.AppendLine("• ✗ NEVER assume columns exist - verify in schema!");
-                    sb.AppendLine("• ✓ LIMIT goes at the VERY END: ...ORDER BY Col1 LIMIT 100");
-                    sb.AppendLine("• ✓ Use EXACT table/column casing from schema");
-                    sb.AppendLine("• ✓ Date filtering: WHERE DateColumn >= date('now', '-3 month')");
-                    sb.AppendLine("• ✓ Date filtering: WHERE DateColumn >= '2024-01-01'");
+                    sb.AppendLine("🚨 SQLITE DATABASE - CRITICAL SYNTAX RULES");
+                    sb.AppendLine();
+                    sb.AppendLine("ABSOLUTELY FORBIDDEN:");
+                    sb.AppendLine("✗ TOP keyword (does not exist in SQLite)");
+                    sb.AppendLine("✗ Columns not in schema");
+                    sb.AppendLine();
+                    sb.AppendLine("REQUIRED FORMAT:");
+                    sb.AppendLine($"SELECT columns FROM {dbQuery.RequiredTables[0]} WHERE conditions ORDER BY column LIMIT 100");
+                    sb.AppendLine();
+                    sb.AppendLine("CORRECT EXAMPLES:");
+                    sb.AppendLine("✓ SELECT Column1, Column2 FROM TableName LIMIT 100");
+                    sb.AppendLine("✓ WHERE DateColumn >= date('now', '-3 month')");
+                    sb.AppendLine("✓ Use EXACT table/column casing from schema");
                     break;
                     
                 case DatabaseType.MySQL:
-                    sb.AppendLine("🚨 MYSQL CRITICAL RULES:");
-                    sb.AppendLine($"Format: SELECT columns FROM {dbQuery.RequiredTables[0]} WHERE ... ORDER BY column LIMIT 100");
-                    sb.AppendLine("• ✗ NEVER use TOP - use LIMIT instead!");
-                    sb.AppendLine("• ✓ LIMIT goes at the VERY END: ...ORDER BY Col1 LIMIT 100");
-                    sb.AppendLine("• ✓ Date filtering: WHERE DateColumn >= DATE_SUB(NOW(), INTERVAL 3 MONTH)");
-                    sb.AppendLine("• ✓ Date filtering: WHERE DateColumn >= '2024-01-01'");
-                    sb.AppendLine("• CRITICAL: If using GROUP BY, ALL non-aggregate SELECT columns MUST be in GROUP BY!");
-                    sb.AppendLine("  ✗ WRONG: SELECT Col1, Col2, SUM(Col3) GROUP BY Col1");
-                    sb.AppendLine("  ✓ CORRECT: SELECT Col1, Col2, SUM(Col3) GROUP BY Col1, Col2");
+                    sb.AppendLine("🚨 MYSQL DATABASE - CRITICAL SYNTAX RULES");
+                    sb.AppendLine();
+                    sb.AppendLine("ABSOLUTELY FORBIDDEN:");
+                    sb.AppendLine("✗ TOP keyword (does not exist in MySQL)");
+                    sb.AppendLine();
+                    sb.AppendLine("CRITICAL GROUP BY RULE (MySQL strict mode):");
+                    sb.AppendLine("If using GROUP BY, EVERY non-aggregate column in SELECT MUST be in GROUP BY");
+                    sb.AppendLine("✗ WRONG: SELECT Col1, Col2, SUM(Col3) FROM Table GROUP BY Col1");
+                    sb.AppendLine("✓ CORRECT: SELECT Col1, Col2, SUM(Col3) FROM Table GROUP BY Col1, Col2");
+                    sb.AppendLine("✓ OR use only aggregates: SELECT SUM(Col1), AVG(Col2) FROM Table");
+                    sb.AppendLine();
+                    sb.AppendLine("REQUIRED FORMAT:");
+                    sb.AppendLine($"SELECT columns FROM {dbQuery.RequiredTables[0]} WHERE conditions ORDER BY column LIMIT 100");
+                    sb.AppendLine();
+                    sb.AppendLine("CORRECT EXAMPLES:");
+                    sb.AppendLine("✓ SELECT Column1, Column2 FROM TableName LIMIT 100");
+                    sb.AppendLine("✓ WHERE DateColumn >= DATE_SUB(NOW(), INTERVAL 3 MONTH)");
                     break;
                     
                 case DatabaseType.PostgreSQL:
-                    sb.AppendLine("🚨 POSTGRESQL CRITICAL RULES:");
-                    sb.AppendLine($"Format: SELECT columns FROM {dbQuery.RequiredTables[0]} WHERE ... ORDER BY column LIMIT 100");
-                    sb.AppendLine("• ✗ NEVER use TOP - use LIMIT instead!");
-                    sb.AppendLine("• ✗ NEVER write INTERVAL without quotes: INTERVAL 3 MONTH ← WRONG!");
-                    sb.AppendLine("• ✓ LIMIT goes at the VERY END: ...ORDER BY Col1 LIMIT 100");
-                    sb.AppendLine("• ✓ Date filtering: WHERE DateColumn >= CURRENT_DATE - INTERVAL '3 months'");
-                    sb.AppendLine("• ✓ Date filtering: WHERE DateColumn >= NOW() - INTERVAL '30 days'");
-                    sb.AppendLine("• ✓ Date filtering: WHERE DateColumn >= '2024-01-01'::date");
-                    sb.AppendLine("• INTERVAL must be in QUOTES: INTERVAL '3 months' NOT INTERVAL 3 months");
-                    sb.AppendLine("  ✗ WRONG: WHERE DateColumn < CURRENT_DATE - INTERVAL 3 MONTH");
-                    sb.AppendLine("  ✓ CORRECT: WHERE DateColumn < CURRENT_DATE - INTERVAL '3 months'");
+                    sb.AppendLine("🚨 POSTGRESQL DATABASE - CRITICAL SYNTAX RULES");
+                    sb.AppendLine();
+                    sb.AppendLine("ABSOLUTELY FORBIDDEN:");
+                    sb.AppendLine("✗ TOP keyword (does not exist in PostgreSQL)");
+                    sb.AppendLine("✗ INTERVAL without quotes (INTERVAL 3 MONTH is wrong)");
+                    sb.AppendLine();
+                    sb.AppendLine("REQUIRED FORMAT:");
+                    sb.AppendLine($"SELECT columns FROM {dbQuery.RequiredTables[0]} WHERE conditions ORDER BY column LIMIT 100");
+                    sb.AppendLine();
+                    sb.AppendLine("CORRECT EXAMPLES:");
+                    sb.AppendLine("✓ SELECT Column1, Column2 FROM TableName LIMIT 100");
+                    sb.AppendLine("✓ WHERE DateColumn >= CURRENT_DATE - INTERVAL '3 months'");
+                    sb.AppendLine("✓ WHERE DateColumn >= NOW() - INTERVAL '30 days'");
                     break;
             }
             
@@ -1713,14 +1742,34 @@ namespace SmartRAG.Services
                     }
                 }
                 
-                // 4. For MySQL: Check if SELECT columns not in GROUP BY (strict mode issue)
-                if (databaseType == DatabaseType.MySQL && sqlUpper.Contains("GROUP BY"))
+                // 4. Database-specific forbidden keywords
+                if (databaseType == DatabaseType.SqlServer)
                 {
-                    // Add hint to use only grouped columns or aggregates
-                    // This is complex to validate perfectly, so just add a warning in retry prompts
+                    if (sqlUpper.Contains("LIMIT"))
+                    {
+                        errors.Add("LIMIT keyword is not valid in SQL Server. Use TOP instead: SELECT TOP 100 ...");
+                    }
+                    if (sqlUpper.Contains("FETCH NEXT"))
+                    {
+                        errors.Add("FETCH NEXT is not allowed. Use TOP instead: SELECT TOP 100 ...");
+                    }
+                }
+                else if (databaseType == DatabaseType.SQLite || databaseType == DatabaseType.MySQL || databaseType == DatabaseType.PostgreSQL)
+                {
+                    if (sqlUpper.Contains(" TOP ") || sqlUpper.Contains("TOP\t"))
+                    {
+                        errors.Add($"TOP keyword is not valid in {databaseType}. Use LIMIT instead: ...LIMIT 100");
+                    }
                 }
                 
-                // 5. Check for basic syntax issues
+                // 5. Check for table aliases (c.Column, p.Column, o.Column patterns)
+                var aliasPattern = @"\b[a-z]\.[A-Za-z_][A-Za-z0-9_]*";
+                if (Regex.IsMatch(sql, aliasPattern))
+                {
+                    errors.Add("Table aliases detected (like c.Column, p.Column). Use full table names instead: TableName.Column");
+                }
+                
+                // 6. Check for basic syntax issues
                 var openParens = sql.Count(c => c == '(');
                 var closeParens = sql.Count(c => c == ')');
                 if (openParens != closeParens)

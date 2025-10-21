@@ -318,8 +318,8 @@ CREATE TABLE SalesSummary (
 
             try
             {
-                using (var cmd = connection.CreateCommand())
-                {
+            using (var cmd = connection.CreateCommand())
+            {
                     cmd.CommandText = salesSummarySql.ToString();
                 cmd.ExecuteNonQuery();
                 }

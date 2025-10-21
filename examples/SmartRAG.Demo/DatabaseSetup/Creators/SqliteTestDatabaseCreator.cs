@@ -273,7 +273,7 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
                 var price = Math.Round(random.NextDouble() * 10000 + 50, 2);
                 var stock = random.Next(10, 500);
 
-                productsSql.Append($"('{productName}', {categoryId}, {price}, {stock})");
+                productsSql.Append($"('{productName}', {categoryId}, {price.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {stock})");
                 productsSql.Append(i < 99 ? ",\n" : ";\n");
             }
             ExecuteSql(connection, productsSql.ToString(), "Products");
@@ -300,7 +300,7 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
                 var hireDay = random.Next(1, 29);
                 var hireDate = $"{hireYear:0000}-{hireMonth:00}-{hireDay:00}";
 
-                employeesSql.Append($"('{firstName}', '{lastName}', '{email}', '{department}', '{position}', {salary}, '{hireDate}')");
+                employeesSql.Append($"('{firstName}', '{lastName}', '{email}', '{department}', '{position}', {salary.ToString(System.Globalization.CultureInfo.InvariantCulture)}, '{hireDate}')");
                 employeesSql.Append(i < 99 ? ",\n" : ";\n");
             }
             ExecuteSql(connection, employeesSql.ToString(), "Employees");
@@ -320,7 +320,7 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
                 var city = SampleDataGenerator.GetRandomCity(random);
                 var shippingAddress = $"{SampleDataGenerator.GenerateAddress(random)}, {city}";
 
-                ordersSql.Append($"({customerId}, '{orderDate}', {totalAmount}, '{status}', '{shippingAddress}')");
+                ordersSql.Append($"({customerId}, '{orderDate}', {totalAmount.ToString(System.Globalization.CultureInfo.InvariantCulture)}, '{status}', '{shippingAddress}')");
                 ordersSql.Append(i < 99 ? ",\n" : ";\n");
             }
             ExecuteSql(connection, ordersSql.ToString(), "Orders");
@@ -335,7 +335,7 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
                 var unitPrice = Math.Round(random.NextDouble() * 5000 + 50, 2);
                 var totalPrice = Math.Round(quantity * unitPrice, 2);
 
-                orderDetailsSql.Append($"({orderId}, {productId}, {quantity}, {unitPrice}, {totalPrice})");
+                orderDetailsSql.Append($"({orderId}, {productId}, {quantity}, {unitPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {totalPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)})");
                 orderDetailsSql.Append(i < 149 ? ",\n" : ";\n");
             }
             ExecuteSql(connection, orderDetailsSql.ToString(), "Order Details");
