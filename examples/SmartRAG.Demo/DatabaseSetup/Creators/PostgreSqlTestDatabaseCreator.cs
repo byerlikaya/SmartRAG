@@ -1,7 +1,9 @@
 using Npgsql;
 using Microsoft.Extensions.Configuration;
+using SmartRAG.Demo.DatabaseSetup.Helpers;
 using SmartRAG.Demo.DatabaseSetup.Interfaces;
 using SmartRAG.Enums;
+using System.Text;
 
 namespace SmartRAG.Demo.DatabaseSetup.Creators;
 
@@ -286,61 +288,123 @@ CREATE INDEX idx_routes_status ON Routes(CompletionStatus);
 
         private void InsertSampleData(NpgsqlConnection connection)
         {
-            var insertDataSql = @"
--- Facilities (Distribution Centers)
-INSERT INTO Facilities (FacilityName, LocationCode, Capacity, OperationalStatus, EstablishedDate, ContactInfo) VALUES 
-    ('North Regional Hub', 'NRH-001', 10000, 'Active', '2023-01-15 08:00:00', 'Contact: north@logistics.com'),
-    ('South Distribution Center', 'SDC-002', 8000, 'Active', '2023-02-20 09:30:00', 'Contact: south@logistics.com'),
-    ('East Logistics Hub', 'ELH-003', 12000, 'Active', '2023-03-10 10:00:00', 'Contact: east@logistics.com'),
-    ('West Operations Center', 'WOC-004', 7500, 'Active', '2023-04-05 11:15:00', 'Contact: west@logistics.com');
+            var random = new Random(42); // Fixed seed for reproducible data
+            
+            // Generate 20 Facilities
+            var facilitiesSql = new StringBuilder("INSERT INTO Facilities (FacilityName, LocationCode, Capacity, OperationalStatus, EstablishedDate, ContactInfo) VALUES \n");
+            var facilityTypes = new[] { "Hub", "Distribution Center", "Logistics Center", "Operations Center", "Warehouse" };
+            var statuses = new[] { "Active", "Maintenance", "Expanding" };
+            
+            for (int i = 0; i < 20; i++)
+            {
+                var city = SampleDataGenerator.GetRandomCity(random);
+                var facilityType = facilityTypes[random.Next(facilityTypes.Length)];
+                var facilityName = $"{city} {facilityType}";
+                var locationCode = $"{city.Substring(0, Math.Min(3, city.Length)).ToUpper()}-{i + 1:000}";
+                var capacity = random.Next(5000, 15000);
+                var status = statuses[random.Next(statuses.Length)];
+                var year = random.Next(2020, 2025);
+                var month = random.Next(1, 13);
+                var day = random.Next(1, 29);
+                var establishedDate = $"{year}-{month:00}-{day:00} 08:00:00";
+                var contactInfo = $"Contact: {city.ToLower()}@logistics.com";
 
--- Shipments (ReferenceID links to external databases - ProductID, OrderID, CustomerID)
-INSERT INTO Shipments (ReferenceID, FacilityID, Quantity, ShipmentWeight, ShipmentValue, StatusCode, ScheduledDate, CompletedDate, Notes) VALUES 
-    -- ReferenceID 1-15 could be ProductIDs, OrderIDs, or CustomerIDs from other databases
-    (1, 1, 25, 125.50, 2500.00, 'Completed', '2024-10-01 09:00:00', '2024-10-01 15:30:00', 'Standard delivery'),
-    (2, 1, 50, 85.30, 4250.00, 'Completed', '2024-10-02 10:15:00', '2024-10-02 16:45:00', 'Express shipment'),
-    (3, 2, 15, 230.75, 3450.00, 'Completed', '2024-10-03 08:30:00', '2024-10-03 14:20:00', 'Fragile items'),
-    (4, 2, 100, 45.20, 4520.00, 'In Transit', '2024-10-15 07:00:00', NULL, 'Bulk order'),
-    (5, 3, 35, 156.80, 5488.00, 'Completed', '2024-10-05 11:00:00', '2024-10-05 17:30:00', 'Multiple items'),
-    (6, 3, 20, 98.40, 1968.00, 'Processing', '2024-10-16 09:30:00', NULL, 'Priority delivery'),
-    (7, 1, 75, 320.15, 24011.25, 'Completed', '2024-10-07 06:45:00', '2024-10-07 18:15:00', 'Large shipment'),
-    (8, 4, 10, 450.00, 4500.00, 'Scheduled', '2024-10-18 08:00:00', NULL, 'Heavy cargo'),
-    (9, 4, 45, 78.90, 3550.50, 'Completed', '2024-10-09 10:30:00', '2024-10-09 16:00:00', 'Regular delivery'),
-    (10, 2, 30, 120.60, 3618.00, 'Completed', '2024-10-10 09:00:00', '2024-10-10 15:45:00', 'Standard shipment'),
-    (11, 1, 60, 210.45, 12627.00, 'In Transit', '2024-10-17 07:30:00', NULL, 'Multi-destination'),
-    (12, 3, 25, 95.30, 2382.50, 'Completed', '2024-10-12 08:15:00', '2024-10-12 14:30:00', 'Express delivery'),
-    (13, 4, 80, 340.20, 27216.00, 'Completed', '2024-10-13 06:00:00', '2024-10-13 19:45:00', 'Consolidated shipment'),
-    (14, 2, 55, 165.75, 9116.25, 'Processing', '2024-10-18 10:00:00', NULL, 'Priority order'),
-    (15, 1, 40, 188.50, 7540.00, 'Completed', '2024-10-14 09:30:00', '2024-10-14 16:15:00', 'Standard delivery');
-
--- Routes (Delivery routes between facilities)
-INSERT INTO Routes (ShipmentID, OriginFacilityID, DestinationFacilityID, Distance, EstimatedDuration, ActualDuration, TransportMode, AssignedDriver, RouteDate, CompletionStatus) VALUES 
-    -- Completed routes
-    (1, 1, 2, 245.50, 240, 255, 'Truck', 'Driver A', '2024-10-01 09:30:00', 'Completed'),
-    (2, 1, 3, 312.30, 300, 310, 'Truck', 'Driver B', '2024-10-02 10:30:00', 'Completed'),
-    (3, 2, 1, 245.50, 240, 250, 'Van', 'Driver C', '2024-10-03 09:00:00', 'Completed'),
-    (5, 3, 4, 178.20, 180, 175, 'Truck', 'Driver D', '2024-10-05 11:30:00', 'Completed'),
-    (7, 1, 4, 420.80, 420, 435, 'Heavy Truck', 'Driver E', '2024-10-07 07:00:00', 'Completed'),
-    (9, 4, 2, 289.40, 290, 285, 'Truck', 'Driver F', '2024-10-09 11:00:00', 'Completed'),
-    (10, 2, 3, 198.75, 200, 195, 'Van', 'Driver G', '2024-10-10 09:30:00', 'Completed'),
-    (12, 3, 1, 312.30, 300, 315, 'Truck', 'Driver H', '2024-10-12 08:45:00', 'Completed'),
-    (13, 4, 3, 356.90, 360, 370, 'Heavy Truck', 'Driver I', '2024-10-13 06:30:00', 'Completed'),
-    (15, 1, 2, 245.50, 240, 245, 'Truck', 'Driver J', '2024-10-14 10:00:00', 'Completed'),
-    
-    -- In transit routes
-    (4, 2, 4, 334.60, 330, NULL, 'Truck', 'Driver K', '2024-10-15 07:30:00', 'In Transit'),
-    (11, 1, 3, 312.30, 300, NULL, 'Truck', 'Driver L', '2024-10-17 08:00:00', 'In Transit'),
-    (11, 3, 4, 178.20, 180, NULL, 'Van', 'Driver M', '2024-10-17 14:30:00', 'Scheduled'),
-    
-    -- Scheduled routes
-    (6, 3, 2, 198.75, 200, NULL, 'Van', 'Driver N', '2024-10-16 10:00:00', 'Scheduled'),
-    (8, 4, 1, 420.80, 420, NULL, 'Heavy Truck', 'Driver O', '2024-10-18 08:30:00', 'Scheduled'),
-    (14, 2, 1, 245.50, 240, NULL, 'Truck', 'Driver P', '2024-10-18 10:30:00', 'Scheduled');
-";
+                facilitiesSql.Append($"    ('{facilityName}', '{locationCode}', {capacity}, '{status}', '{establishedDate}', '{contactInfo}')");
+                facilitiesSql.Append(i < 19 ? ",\n" : ";\n");
+            }
 
             using (var cmd = connection.CreateCommand())
             {
-                cmd.CommandText = insertDataSql;
+                cmd.CommandText = facilitiesSql.ToString();
+                cmd.ExecuteNonQuery();
+            }
+
+            // Generate 100 Shipments (ReferenceID links to external databases)
+            var shipmentsSql = new StringBuilder("INSERT INTO Shipments (ReferenceID, FacilityID, Quantity, ShipmentWeight, ShipmentValue, StatusCode, ScheduledDate, CompletedDate, Notes) VALUES \n");
+            var shipmentStatuses = new[] { "Completed", "In Transit", "Processing", "Scheduled", "Delivered" };
+            
+            for (int i = 0; i < 100; i++)
+            {
+                // CRITICAL: ReferenceID must reference actual records from other databases
+                // Mix: Products (SQLite), Orders (SQL Server), Customers (SQLite)
+                int referenceId;
+                if (i < 50)
+                    referenceId = (i % 100) + 1; // Products 1-100 (SQLite)
+                else if (i < 80)
+                    referenceId = ((i - 50) % 100) + 1; // Orders 1-100 (SQL Server)
+                else
+                    referenceId = ((i - 80) % 100) + 1; // Customers 1-100 (SQLite)
+                var facilityId = random.Next(1, 21);
+                var quantity = random.Next(10, 200);
+                var weight = Math.Round(random.NextDouble() * 500 + 10, 2);
+                var value = Math.Round(random.NextDouble() * 50000 + 500, 2);
+                var status = shipmentStatuses[random.Next(shipmentStatuses.Length)];
+                var month = random.Next(1, 11);
+                var day = random.Next(1, 29);
+                var hour = random.Next(6, 20);
+                var scheduledDate = $"2025-{month:00}-{day:00} {hour:00}:00:00";
+                var completedHour = hour + random.Next(4, 10);
+                var completedDay = day;
+                if (completedHour >= 24)
+                {
+                    completedHour -= 24;
+                    completedDay++;
+                    if (completedDay > 28) completedDay = 28; // Keep within month range
+                }
+                var completedDate = status == "Completed" || status == "Delivered" 
+                    ? $"'2025-{month:00}-{completedDay:00} {completedHour:00}:00:00'" 
+                    : "NULL";
+                var notes = $"Shipment #{i + 1} - {status}";
+
+                shipmentsSql.Append($"    ({referenceId}, {facilityId}, {quantity}, {weight.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {value.ToString(System.Globalization.CultureInfo.InvariantCulture)}, '{status}', '{scheduledDate}', {completedDate}, '{notes}')");
+                shipmentsSql.Append(i < 99 ? ",\n" : ";\n");
+            }
+
+            using (var cmd = connection.CreateCommand())
+            {
+                cmd.CommandText = shipmentsSql.ToString();
+                cmd.ExecuteNonQuery();
+            }
+
+            // Generate 150 Routes
+            var routesSql = new StringBuilder("INSERT INTO Routes (ShipmentID, OriginFacilityID, DestinationFacilityID, Distance, EstimatedDuration, ActualDuration, TransportMode, AssignedDriver, RouteDate, CompletionStatus) VALUES \n");
+            var transportModes = new[] { "Truck", "Van", "Heavy Truck", "Express Van", "Container Truck" };
+            var routeStatuses = new[] { "Completed", "In Transit", "Scheduled", "Delayed" };
+            
+            for (int i = 0; i < 150; i++)
+            {
+                var shipmentId = random.Next(1, 101);
+                var originFacilityId = random.Next(1, 21);
+                var destinationFacilityId = random.Next(1, 21);
+                
+                while (destinationFacilityId == originFacilityId)
+                {
+                    destinationFacilityId = random.Next(1, 21);
+                }
+                
+                var distance = Math.Round(random.NextDouble() * 500 + 50, 2);
+                var estimatedDuration = (int)(distance * 0.8 + random.Next(30, 120));
+                var routeStatus = routeStatuses[random.Next(routeStatuses.Length)];
+                var actualDuration = routeStatus == "Completed" 
+                    ? (estimatedDuration + random.Next(-30, 60)).ToString() 
+                    : "NULL";
+                var transportMode = transportModes[random.Next(transportModes.Length)];
+                var firstName = SampleDataGenerator.GetRandomFirstName(random);
+                var lastName = SampleDataGenerator.GetRandomLastName(random);
+                var assignedDriver = $"{firstName} {lastName}";
+                var month = random.Next(1, 11);
+                var day = random.Next(1, 29);
+                var hour = random.Next(6, 20);
+                var routeDate = $"2025-{month:00}-{day:00} {hour:00}:00:00";
+                var completionStatus = routeStatus;
+
+                routesSql.Append($"    ({shipmentId}, {originFacilityId}, {destinationFacilityId}, {distance.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {estimatedDuration}, {actualDuration}, '{transportMode}', '{assignedDriver}', '{routeDate}', '{completionStatus}')");
+                routesSql.Append(i < 149 ? ",\n" : ";\n");
+            }
+
+            using (var cmd = connection.CreateCommand())
+            {
+                cmd.CommandText = routesSql.ToString();
                 cmd.ExecuteNonQuery();
             }
         }

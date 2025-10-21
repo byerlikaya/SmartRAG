@@ -125,18 +125,18 @@ public class AnimationService : IAnimationService
         System.Console.WriteLine();
         System.Console.WriteLine(); // Extra blank line after "Initializing"
 
-        await Task.Delay(600);
+        await Task.Delay(150);
     }
 
     private static async Task ShowProgressBarAsync()
     {
         var steps = new[]
         {
-            ("Loading neural networks", ConsoleColor.Cyan, "mario"),
-            ("Connecting vector databases", ConsoleColor.Green, "pacman"),
-            ("Initializing AI providers", ConsoleColor.Magenta, "tetris"),
-            ("Analyzing database schemas", ConsoleColor.Yellow, "zelda"),
-            ("System ready", ConsoleColor.Green, "donkeykong")
+            ("Loading neural networks", ConsoleColor.Cyan),
+            ("Connecting vector databases", ConsoleColor.Green),
+            ("Initializing AI providers", ConsoleColor.Magenta),
+            ("Analyzing database schemas", ConsoleColor.Yellow),
+            ("System ready", ConsoleColor.Green)
         };
 
         var windowWidth = System.Console.WindowWidth;
@@ -154,7 +154,7 @@ public class AnimationService : IAnimationService
         var maxTextLength = steps.Max(s => s.Item1.Length) + 6; // +6 for "▸ " and " ✓"
         var blockLeftPadding = Math.Max(0, (windowWidth - maxTextLength) / 2);
 
-        foreach (var (message, color, gameSound) in steps)
+        foreach (var (message, color) in steps)
         {
             System.Console.ForegroundColor = color;
             var text = $"▸ {message}";
@@ -163,7 +163,7 @@ public class AnimationService : IAnimationService
             // Animated dots with retro game sounds
             for (int i = 0; i < 3; i++)
             {
-                await Task.Delay(200);
+                await Task.Delay(100);
                 System.Console.Write(".");
             }
 

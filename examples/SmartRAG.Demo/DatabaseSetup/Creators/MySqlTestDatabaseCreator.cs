@@ -1,7 +1,9 @@
 using MySqlConnector;
 using Microsoft.Extensions.Configuration;
+using SmartRAG.Demo.DatabaseSetup.Helpers;
 using SmartRAG.Demo.DatabaseSetup.Interfaces;
 using SmartRAG.Enums;
+using System.Text;
 
 namespace SmartRAG.Demo.DatabaseSetup.Creators;
 
@@ -232,70 +234,84 @@ CREATE TABLE StockMovements (
 
         private void InsertSampleData(MySqlConnection connection)
         {
-            var insertDataSql = @"
--- Warehouses
-INSERT INTO Warehouses (WarehouseName, Location, Capacity, ManagerName, CreatedDate) VALUES 
-    ('Istanbul Central Warehouse', 'Istanbul, Maltepe', 5000, 'Mehmet Yilmaz', '2024-01-15 09:00:00'),
-    ('Ankara Distribution Center', 'Ankara, Sincan', 3000, 'Ayse Demir', '2024-02-20 10:30:00'),
-    ('Izmir Logistics Hub', 'Izmir, Cigli', 4000, 'Ahmet Kaya', '2024-03-10 11:45:00');
+            var random = new Random(42); // Fixed seed for reproducible data
+            
+            // Generate 15 Warehouses with European names
+            var warehousesSql = new StringBuilder("INSERT INTO Warehouses (WarehouseName, Location, Capacity, ManagerName, CreatedDate) VALUES \n");
+            
+            for (int i = 0; i < 15; i++)
+            {
+                var city = SampleDataGenerator.GetRandomCity(random);
+                var country = SampleDataGenerator.GetRandomCountry(random);
+                var warehouseName = $"{city} Distribution Center";
+                var location = $"{city}, {country}";
+                var capacity = random.Next(2000, 8000);
+                var firstName = SampleDataGenerator.GetRandomFirstName(random);
+                var lastName = SampleDataGenerator.GetRandomLastName(random);
+                var managerName = $"{firstName} {lastName}";
+                var year = random.Next(2020, 2025);
+                var month = random.Next(1, 13);
+                var day = random.Next(1, 29);
+                var createdDate = $"{year}-{month:00}-{day:00} 09:00:00";
 
--- Stock (ProductID -> references SQLite Products.ProductID)
-INSERT INTO Stock (ProductID, WarehouseID, Quantity, MinimumLevel, MaximumLevel) VALUES 
-    -- Istanbul Warehouse
-    (1, 1, 45, 10, 100),   -- Laptop
-    (2, 1, 78, 15, 150),   -- iPhone
-    (3, 1, 32, 10, 80),    -- Samsung
-    (4, 1, 156, 30, 300),  -- Headphones
-    (5, 1, 234, 50, 500),  -- Jeans
-    (6, 1, 189, 40, 400),  -- Dress
-    (7, 1, 567, 100, 1000),-- T-shirt
-    
-    -- Ankara Warehouse
-    (1, 2, 23, 5, 50),     -- Laptop
-    (2, 2, 34, 8, 100),    -- iPhone
-    (8, 2, 12, 3, 20),     -- Sofa Set
-    (9, 2, 28, 5, 50),     -- Chandelier
-    (10, 2, 15, 5, 30),    -- Carpet
-    
-    -- Izmir Warehouse
-    (3, 3, 56, 10, 100),   -- Samsung
-    (4, 3, 123, 25, 250),  -- Headphones
-    (11, 3, 89, 20, 150),  -- Novel
-    (12, 3, 67, 15, 120),  -- Cooking Book
-    (13, 3, 145, 30, 200), -- Science Book
-    (14, 3, 234, 50, 400); -- Football
-
--- Stock Movements (Recent 30 days)
-INSERT INTO StockMovements (StockID, MovementType, Quantity, MovementDate, Notes, CreatedBy) VALUES 
-    -- Istanbul movements
-    (1, 'IN', 50, '2024-10-01 09:00:00', 'New shipment from supplier', 'System'),
-    (1, 'OUT', 5, '2024-10-05 14:30:00', 'Sales order fulfillment', 'Warehouse Staff'),
-    (2, 'IN', 100, '2024-10-02 10:15:00', 'Bulk order from manufacturer', 'System'),
-    (2, 'OUT', 22, '2024-10-08 16:20:00', 'Multiple customer orders', 'Warehouse Staff'),
-    (3, 'IN', 40, '2024-10-03 11:30:00', 'Restocking', 'System'),
-    (3, 'OUT', 8, '2024-10-09 09:45:00', 'Customer orders', 'Warehouse Staff'),
-    (4, 'IN', 200, '2024-10-04 13:00:00', 'Popular item restock', 'System'),
-    (4, 'OUT', 44, '2024-10-12 15:30:00', 'High demand sales', 'Warehouse Staff'),
-    
-    -- Ankara movements
-    (8, 'IN', 15, '2024-10-01 08:30:00', 'Furniture delivery', 'System'),
-    (8, 'OUT', 3, '2024-10-07 14:00:00', 'Large orders', 'Warehouse Staff'),
-    (9, 'IN', 30, '2024-10-02 09:45:00', 'Lighting equipment', 'System'),
-    (9, 'OUT', 2, '2024-10-10 11:20:00', 'Customer purchase', 'Warehouse Staff'),
-    (10, 'IN', 20, '2024-10-03 10:00:00', 'Home decor items', 'System'),
-    (10, 'OUT', 5, '2024-10-14 16:45:00', 'Sales orders', 'Warehouse Staff'),
-    
-    -- Izmir movements
-    (13, 'IN', 150, '2024-10-01 07:30:00', 'Book shipment', 'System'),
-    (13, 'OUT', 5, '2024-10-06 13:15:00', 'Online orders', 'Warehouse Staff'),
-    (14, 'IN', 250, '2024-10-02 08:45:00', 'Sports equipment', 'System'),
-    (14, 'OUT', 16, '2024-10-11 15:00:00', 'Retail sales', 'Warehouse Staff'),
-    (15, 'IN', 100, '2024-10-05 09:30:00', 'Book delivery', 'System'),
-    (15, 'OUT', 33, '2024-10-13 14:30:00', 'Customer orders', 'Warehouse Staff');";
+                warehousesSql.Append($"    ('{warehouseName}', '{location}', {capacity}, '{managerName}', '{createdDate}')");
+                warehousesSql.Append(i < 14 ? ",\n" : ";\n");
+            }
 
             using (var cmd = connection.CreateCommand())
             {
-                cmd.CommandText = insertDataSql;
+                cmd.CommandText = warehousesSql.ToString();
+                cmd.ExecuteNonQuery();
+            }
+
+            // Generate 100 Stock entries (ProductID references SQLite Products 1-100)
+            var stockSql = new StringBuilder("INSERT INTO Stock (ProductID, WarehouseID, Quantity, MinimumLevel, MaximumLevel) VALUES \n");
+            
+            for (int i = 0; i < 100; i++)
+            {
+                // CRITICAL: ProductID must reference actual SQLite Products (1-100)
+                // Each product appears once, distributed across warehouses
+                var productId = i + 1; // Product 1-100 from SQLite
+                var warehouseId = (i % 15) + 1; // Distribute across 15 warehouses
+                var quantity = random.Next(10, 500);
+                var minimumLevel = random.Next(5, 50);
+                var maximumLevel = minimumLevel + random.Next(100, 500);
+
+                stockSql.Append($"    ({productId}, {warehouseId}, {quantity}, {minimumLevel}, {maximumLevel})");
+                stockSql.Append(i < 99 ? ",\n" : ";\n");
+            }
+
+            using (var cmd = connection.CreateCommand())
+            {
+                cmd.CommandText = stockSql.ToString();
+                cmd.ExecuteNonQuery();
+            }
+
+            // Generate 150 Stock Movements
+            var movementsSql = new StringBuilder("INSERT INTO StockMovements (StockID, MovementType, Quantity, MovementDate, Notes, CreatedBy) VALUES \n");
+            var movementTypes = new[] { "IN", "OUT", "ADJUSTMENT", "TRANSFER" };
+            var createdByUsers = new[] { "System", "Warehouse Staff", "Manager", "Inventory Team" };
+            
+            for (int i = 0; i < 150; i++)
+            {
+                var stockId = random.Next(1, 101); // References Stock
+                var movementType = movementTypes[random.Next(movementTypes.Length)];
+                var quantity = random.Next(1, 100);
+                var month = random.Next(1, 11);
+                var day = random.Next(1, 29);
+                var hour = random.Next(6, 20);
+                var minute = random.Next(0, 60);
+                var movementDate = $"2025-{month:00}-{day:00} {hour:00}:{minute:00}:00";
+                var notes = $"{movementType} movement #{i + 1}";
+                var createdBy = createdByUsers[random.Next(createdByUsers.Length)];
+
+                movementsSql.Append($"    ({stockId}, '{movementType}', {quantity}, '{movementDate}', '{notes}', '{createdBy}')");
+                movementsSql.Append(i < 149 ? ",\n" : ";\n");
+            }
+
+            using (var cmd = connection.CreateCommand())
+            {
+                cmd.CommandText = movementsSql.ToString();
                 cmd.ExecuteNonQuery();
             }
         }

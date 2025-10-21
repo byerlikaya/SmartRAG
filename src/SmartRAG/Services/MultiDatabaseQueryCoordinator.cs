@@ -672,8 +672,8 @@ namespace SmartRAG.Services
             sb.AppendLine("  ✓ Set requiresCrossDatabaseJoin: true");
             sb.AppendLine();
             sb.AppendLine("Example: Query requiring multiplication of columns from different tables");
-            sb.AppendLine("  → Database1 has: TableA (ForeignKeyID, QuantityColumn)");
-            sb.AppendLine("  → Database2 has: TableB (ID, PriceColumn)");
+            sb.AppendLine("  → Database1 has: TableA (ForeignKeyID, NumericColumn1)");
+            sb.AppendLine("  → Database2 has: TableB (ID, NumericColumn2)");
             sb.AppendLine("  → requiresCrossDatabaseJoin: true");
             sb.AppendLine();
             sb.AppendLine("Based on the user query, provide your analysis in the following JSON format:");
@@ -714,22 +714,22 @@ namespace SmartRAG.Services
             sb.AppendLine($"   YOU CAN ONLY USE THESE TABLES: {string.Join(", ", dbQuery.RequiredTables)}");
             sb.AppendLine("   ANY OTHER TABLE WILL CAUSE AN ERROR!");
             sb.AppendLine();
-            sb.AppendLine("⚠️ COLUMN VALIDATION IS CRITICAL:");
+            sb.AppendLine("COLUMN VALIDATION IS CRITICAL:");
             sb.AppendLine("   - ONLY use columns that exist in the schema below");
             sb.AppendLine("   - Before referencing ANY column, verify it exists in the table's column list");
             sb.AppendLine("   - Using a non-existent column will cause SQL execution ERROR");
             sb.AppendLine("   - Check column names character-by-character against the schema");
             sb.AppendLine();
-            sb.AppendLine($"📍 TARGET DATABASE: {schema.DatabaseName} ({schema.DatabaseType})");
-            sb.AppendLine($"📋 YOUR ALLOWED TABLES: {string.Join(", ", dbQuery.RequiredTables)}");
+            sb.AppendLine($"TARGET DATABASE: {schema.DatabaseName} ({schema.DatabaseType})");
+            sb.AppendLine($"YOUR ALLOWED TABLES: {string.Join(", ", dbQuery.RequiredTables)}");
             sb.AppendLine();
-            sb.AppendLine("🎯 YOUR TASK:");
+            sb.AppendLine("YOUR TASK:");
             sb.AppendLine($"   Write a simple SQL query using ONLY these tables: {string.Join(", ", dbQuery.RequiredTables)}");
             sb.AppendLine("   Return data with all foreign key IDs so application can merge with other databases");
             sb.AppendLine("   VERIFY every column you use exists in the schema below!");
             sb.AppendLine();
-            sb.AppendLine($"❓ User Question: {userQuery}");
-            sb.AppendLine($"🎨 What to retrieve from {schema.DatabaseName}: {dbQuery.Purpose}");
+            sb.AppendLine($"User Question: {userQuery}");
+            sb.AppendLine($"What to retrieve from {schema.DatabaseName}: {dbQuery.Purpose}");
             sb.AppendLine();
             sb.AppendLine("═══════════════════════════════════════");
             sb.AppendLine($"TABLES AVAILABLE IN {schema.DatabaseName}:");
@@ -740,37 +740,37 @@ namespace SmartRAG.Services
                 var table = schema.Tables.FirstOrDefault(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase));
                 if (table != null)
                 {
-                    sb.AppendLine($"\n✓ Table: {schema.DatabaseName}.{table.TableName}");
+                    sb.AppendLine($"\nTable: {schema.DatabaseName}.{table.TableName}");
                     sb.AppendLine($"  ═══════════════════════════════════════");
                     sb.AppendLine($"  ONLY THESE {table.Columns.Count} COLUMNS EXIST - USE NO OTHER COLUMNS:");
                     sb.AppendLine($"  ═══════════════════════════════════════");
                     
                     foreach (var col in table.Columns)
                     {
-                        sb.AppendLine($"    ✓ {col.ColumnName} ({col.DataType})");
+                        sb.AppendLine($"    {col.ColumnName} ({col.DataType})");
                     }
                     
                     sb.AppendLine();
-                    sb.AppendLine($"  🚫 CRITICAL: ANY column not in the list above DOES NOT EXIST in {table.TableName}!");
-                    sb.AppendLine($"  🚫 Before using a column in JOIN, SELECT, or WHERE - verify it's in the list!");
+                    sb.AppendLine($"  🚨 CRITICAL: ANY column not in the list above DOES NOT EXIST in {table.TableName}!");
+                    sb.AppendLine($"  Before using a column in JOIN, SELECT, or WHERE - verify it's in the list!");
                     
                     if (table.ForeignKeys.Any())
                     {
                         sb.AppendLine();
-                        sb.AppendLine("  🔗 Foreign Keys (reference IDs to OTHER databases):");
+                        sb.AppendLine("  Foreign Keys (reference IDs to OTHER databases):");
                         foreach (var fk in table.ForeignKeys)
                         {
                             sb.AppendLine($"    • {fk.ColumnName} links to {fk.ReferencedTable} table (in ANOTHER database)");
                         }
                         sb.AppendLine();
-                        sb.AppendLine("  💡 WHAT TO DO:");
+                        sb.AppendLine("  WHAT TO DO:");
                         sb.AppendLine($"     Always include {string.Join(", ", table.ForeignKeys.Select(fk => fk.ColumnName))} in your SELECT");
                         sb.AppendLine("     Application will use these IDs to fetch data from other databases");
                     }
                     
                     // Show example SQL for this table
                     sb.AppendLine();
-                    sb.AppendLine($"  📝 Example SQL for {table.TableName}:");
+                    sb.AppendLine($"  Example SQL for {table.TableName}:");
                     
                     var fkColumns = table.ForeignKeys.Select(fk => fk.ColumnName).ToList();
                     var regularColumns = table.Columns.Where(c => !fkColumns.Contains(c.ColumnName)).Take(3).Select(c => c.ColumnName).ToList();
@@ -801,7 +801,7 @@ namespace SmartRAG.Services
             }
             
             sb.AppendLine();
-            sb.AppendLine("⚠️ TABLES NOT IN THIS DATABASE (DO NOT USE):");
+            sb.AppendLine("TABLES NOT IN THIS DATABASE (DO NOT USE):");
             var otherTables = schema.Tables
                 .Where(t => !dbQuery.RequiredTables.Contains(t.TableName, StringComparer.OrdinalIgnoreCase))
                 .Select(t => t.TableName)
@@ -817,7 +817,7 @@ namespace SmartRAG.Services
 
             sb.AppendLine();
             sb.AppendLine("═══════════════════════════════════════");
-            sb.AppendLine("📝 HOW TO WRITE YOUR SQL QUERY:");
+            sb.AppendLine("HOW TO WRITE YOUR SQL QUERY:");
             sb.AppendLine("═══════════════════════════════════════");
             sb.AppendLine();
             sb.AppendLine("STEP 1: Choose your tables");
@@ -829,35 +829,35 @@ namespace SmartRAG.Services
             sb.AppendLine("   → Include ALL foreign key columns that exist in the table");
             sb.AppendLine("   → Include columns needed to answer the question");
             sb.AppendLine("   → Use aggregations (SUM, COUNT, AVG) if needed");
-            sb.AppendLine("   → ❌ DO NOT assume a column exists - CHECK THE SCHEMA FIRST!");
+            sb.AppendLine("   → DO NOT assume a column exists - CHECK THE SCHEMA FIRST!");
             sb.AppendLine();
             sb.AppendLine("STEP 3: Write FROM clause");
-            sb.AppendLine($"   → FROM {dbQuery.RequiredTables[0]}  ✅ (use allowed table)");
-            sb.AppendLine("   → FROM OtherTable  ❌ (not in allowed list)");
+            sb.AppendLine($"   ✓ FROM {dbQuery.RequiredTables[0]} (use allowed table)");
+            sb.AppendLine("   ✗ FROM OtherTable (not in allowed list)");
             sb.AppendLine();
             sb.AppendLine("STEP 4: Write JOIN clause (if needed)");
             sb.AppendLine("   → JOIN between allowed tables only");
-            sb.AppendLine("   → ⚠️  BEFORE writing ON clause, verify columns exist in BOTH tables!");
+            sb.AppendLine("   → BEFORE writing ON clause, verify columns exist in BOTH tables!");
             sb.AppendLine($"   → Example: FROM {dbQuery.RequiredTables[0]} t1 JOIN {(dbQuery.RequiredTables.Count > 1 ? dbQuery.RequiredTables[1] : dbQuery.RequiredTables[0])} t2 ON t1.ID = t2.ID");
             sb.AppendLine("   → NEVER join with tables from other databases");
-            sb.AppendLine("   → ❌ Using t1.NonExistentColumn or t2.NonExistentColumn will cause ERROR!");
+            sb.AppendLine("   → Using t1.NonExistentColumn or t2.NonExistentColumn will cause ERROR!");
             sb.AppendLine();
             sb.AppendLine("STEP 5: Apply filters and ordering");
             sb.AppendLine("   → WHERE, GROUP BY, ORDER BY as needed");
             sb.AppendLine("   → Use columns from allowed tables only");
-            sb.AppendLine("   → ❌ NEVER use aggregates (SUM, AVG, COUNT) in WHERE clause!");
-            sb.AppendLine("   → ✅ Use HAVING for filtering aggregated values");
-            sb.AppendLine("   → ✅ If using GROUP BY: ALL non-aggregate SELECT columns must be in GROUP BY");
+            sb.AppendLine("   ✗ NEVER use aggregates (SUM, AVG, COUNT) in WHERE clause!");
+            sb.AppendLine("   ✓ Use HAVING for filtering aggregated values");
+            sb.AppendLine("   ✓ If using GROUP BY: ALL non-aggregate SELECT columns must be in GROUP BY");
             sb.AppendLine();
             sb.AppendLine("═══════════════════════════════════════");
-            sb.AppendLine("💡 SIMPLE STRATEGY:");
+            sb.AppendLine("SIMPLE STRATEGY:");
             sb.AppendLine("═══════════════════════════════════════");
             sb.AppendLine("1. SELECT data from your allowed tables");
             sb.AppendLine("2. Always include foreign key ID columns (if they exist)");
             sb.AppendLine("3. Don't worry about data from other databases - application handles merging");
             sb.AppendLine();
             sb.AppendLine("═══════════════════════════════════════");
-            sb.AppendLine("📖 SQL TEMPLATES TO FOLLOW:");
+            sb.AppendLine("SQL TEMPLATES TO FOLLOW:");
             sb.AppendLine("═══════════════════════════════════════");
             sb.AppendLine();
             sb.AppendLine("Template 1: Simple data retrieval with FK");
@@ -881,80 +881,108 @@ namespace SmartRAG.Services
                 sb.AppendLine("  (Only one table available - no JOIN needed)");
             }
             sb.AppendLine();
-            sb.AppendLine("🚫 ABSOLUTELY FORBIDDEN - WILL CAUSE ERRORS:");
-            sb.AppendLine("  ❌ JOIN with tables not in allowed list");
-            sb.AppendLine("  ❌ Use DatabaseName.TableName syntax");
-            sb.AppendLine("  ❌ Reference columns from non-allowed tables");
-            sb.AppendLine("  ❌ EXISTS/IN subqueries with non-allowed tables");
-            sb.AppendLine("  ❌ ANY reference to tables outside your allowed list");
+            sb.AppendLine("🚨 ABSOLUTELY FORBIDDEN - WILL CAUSE ERRORS:");
+            sb.AppendLine("  ✗ JOIN with tables not in allowed list");
+            sb.AppendLine("  ✗ Use DatabaseName.TableName syntax");
+            sb.AppendLine("  ✗ Reference columns from non-allowed tables");
+            sb.AppendLine("  ✗ EXISTS/IN subqueries with non-allowed tables");
+            sb.AppendLine("  ✗ ANY reference to tables outside your allowed list");
             sb.AppendLine();
-            sb.AppendLine("🔴 CRITICAL: Even in WHERE clause, subquery, or EXISTS:");
+            sb.AppendLine("CRITICAL: Even in WHERE clause, subquery, or EXISTS:");
             sb.AppendLine("   You can ONLY use tables from your allowed list!");
             sb.AppendLine("   Example of FORBIDDEN patterns:");
-            sb.AppendLine("     ❌ WHERE EXISTS (SELECT 1 FROM OtherTable ...)");
-            sb.AppendLine("     ❌ WHERE ColumnX IN (SELECT ID FROM OtherTable)");
-            sb.AppendLine("     ❌ JOIN OtherTable ON ...");
+            sb.AppendLine("     ✗ WHERE EXISTS (SELECT 1 FROM OtherTable ...)");
+            sb.AppendLine("     ✗ WHERE ColumnX IN (SELECT ID FROM OtherTable)");
+            sb.AppendLine("     ✗ JOIN OtherTable ON ...");
             sb.AppendLine();
             sb.AppendLine($"   YOUR ALLOWED TABLES: {string.Join(", ", dbQuery.RequiredTables)}");
             sb.AppendLine("   Use ONLY these tables - nothing else!");
             sb.AppendLine();
-            sb.AppendLine("🎯 SPECIAL CASE - Cross-Database Calculations:");
-            sb.AppendLine("  User query: 'Calculate revenue from Electronics category orders'");
+            sb.AppendLine("SPECIAL CASE - Cross-Database Calculations:");
+            sb.AppendLine("  User query: 'Calculate total numeric value from filtered records'");
             sb.AppendLine($"  Your allowed tables: {string.Join(", ", dbQuery.RequiredTables)}");
             sb.AppendLine();
-            sb.AppendLine("  ❌ WRONG APPROACH (referencing other DB's table):");
-            sb.AppendLine("     SELECT SUM(od.Subtotal)");
-            sb.AppendLine("     FROM OrderDetails od");
-            sb.AppendLine("     JOIN Products p ON od.ProductID = p.ProductID  ← ERROR! Products not in your DB!");
-            sb.AppendLine("     WHERE p.Category = 'Electronics'");
+            sb.AppendLine("  ✗ WRONG APPROACH (referencing other DB's table):");
+            sb.AppendLine("     SELECT SUM(t1.NumericColumn)");
+            sb.AppendLine("     FROM TableA t1");
+            sb.AppendLine("     JOIN TableB t2 ON t1.ForeignKeyID = t2.ID  ← ERROR! TableB not in your DB!");
+            sb.AppendLine("     WHERE t2.FilterColumn = 'SpecificValue'");
             sb.AppendLine();
-            sb.AppendLine("  ❌ ALSO WRONG (EXISTS with other DB's table):");
-            sb.AppendLine("     SELECT SUM(od.Subtotal)");
-            sb.AppendLine("     FROM OrderDetails od");
+            sb.AppendLine("  ✗ ALSO WRONG (EXISTS with other DB's table):");
+            sb.AppendLine("     SELECT SUM(t1.NumericColumn)");
+            sb.AppendLine("     FROM TableA t1");
             sb.AppendLine("     WHERE EXISTS (");
-            sb.AppendLine("       SELECT 1 FROM Products p  ← ERROR! Products not in your DB!");
-            sb.AppendLine("       WHERE od.ProductID = p.ProductID AND p.Category = 'Electronics'");
+            sb.AppendLine("       SELECT 1 FROM TableB t2  ← ERROR! TableB not in your DB!");
+            sb.AppendLine("       WHERE t1.ForeignKeyID = t2.ID AND t2.FilterColumn = 'SpecificValue'");
             sb.AppendLine("     )");
             sb.AppendLine();
-            sb.AppendLine("  ✅ CORRECT APPROACH (return FK for merging):");
-            sb.AppendLine("     SELECT ProductID, SUM(Subtotal) AS Revenue");
-            sb.AppendLine("     FROM OrderDetails");
-            sb.AppendLine("     GROUP BY ProductID");
+            sb.AppendLine("  ✓ CORRECT APPROACH (return FK for merging):");
+            sb.AppendLine("     SELECT ForeignKeyID, SUM(NumericColumn) AS Total");
+            sb.AppendLine("     FROM TableA");
+            sb.AppendLine("     GROUP BY ForeignKeyID");
             sb.AppendLine("     → Application will:");
-            sb.AppendLine("        1. Get category from Products DB using ProductID");
-            sb.AppendLine("        2. Filter for 'Electronics' category");
-            sb.AppendLine("        3. Sum the revenues");
+            sb.AppendLine("        1. Get filter values from TableB database using ForeignKeyID");
+            sb.AppendLine("        2. Apply filtering based on values");
+            sb.AppendLine("        3. Sum the totals");
             sb.AppendLine();
             
             // Database-specific syntax
             sb.AppendLine("═══════════════════════════════════════");
-            sb.AppendLine($"🔧 {schema.DatabaseType} SYNTAX:");
+            sb.AppendLine($"{schema.DatabaseType} SYNTAX:");
             sb.AppendLine("═══════════════════════════════════════");
             
             switch (schema.DatabaseType)
             {
                 case DatabaseType.SqlServer:
+                    sb.AppendLine("🚨 SQL SERVER CRITICAL RULES:");
                     sb.AppendLine($"Format: SELECT TOP 100 columns FROM {dbQuery.RequiredTables[0]} WHERE ... ORDER BY column");
-                    sb.AppendLine("• TOP goes after SELECT");
-                    sb.AppendLine("• ORDER BY at the end");
+                    sb.AppendLine("• ✗ NEVER use LIMIT - use TOP instead!");
+                    sb.AppendLine("• ✗ NEVER use FETCH NEXT - use TOP instead!");
+                    sb.AppendLine("• ✗ NEVER use parameters like @ParamName - use actual values!");
+                    sb.AppendLine("• ✗ NEVER use OFFSET without ORDER BY!");
+                    sb.AppendLine("• ✓ TOP goes RIGHT AFTER SELECT: SELECT TOP 100 Col1, Col2...");
+                    sb.AppendLine("• ✓ Date filtering: WHERE DateColumn >= DATEADD(month, -3, GETDATE())");
+                    sb.AppendLine("• ✓ Date filtering: WHERE DateColumn >= '2024-01-01'");
+                    sb.AppendLine("• GROUP BY: ALL non-aggregate SELECT columns MUST be in GROUP BY!");
+                    sb.AppendLine("  ✗ WRONG: SELECT Col1, SUM(Col2) GROUP BY Col2");
+                    sb.AppendLine("  ✓ CORRECT: SELECT Col1, SUM(Col2) GROUP BY Col1");
                     break;
                     
                 case DatabaseType.SQLite:
+                    sb.AppendLine("🚨 SQLITE CRITICAL RULES:");
                     sb.AppendLine($"Format: SELECT columns FROM {dbQuery.RequiredTables[0]} WHERE ... ORDER BY column LIMIT 100");
-                    sb.AppendLine("• LIMIT at the very end");
-                    sb.AppendLine("• Use EXACT table/column casing");
+                    sb.AppendLine("• ✗ NEVER use TOP - use LIMIT instead!");
+                    sb.AppendLine("• ✗ NEVER assume columns exist - verify in schema!");
+                    sb.AppendLine("• ✓ LIMIT goes at the VERY END: ...ORDER BY Col1 LIMIT 100");
+                    sb.AppendLine("• ✓ Use EXACT table/column casing from schema");
+                    sb.AppendLine("• ✓ Date filtering: WHERE DateColumn >= date('now', '-3 month')");
+                    sb.AppendLine("• ✓ Date filtering: WHERE DateColumn >= '2024-01-01'");
                     break;
                     
                 case DatabaseType.MySQL:
+                    sb.AppendLine("🚨 MYSQL CRITICAL RULES:");
                     sb.AppendLine($"Format: SELECT columns FROM {dbQuery.RequiredTables[0]} WHERE ... ORDER BY column LIMIT 100");
-                    sb.AppendLine("• LIMIT at the very end");
-                    sb.AppendLine("• 🚨 CRITICAL: If using GROUP BY, ALL non-aggregate SELECT columns MUST be in GROUP BY!");
-                    sb.AppendLine("• Example: SELECT Col1, Col2, SUM(Col3) ... GROUP BY Col1, Col2");
+                    sb.AppendLine("• ✗ NEVER use TOP - use LIMIT instead!");
+                    sb.AppendLine("• ✓ LIMIT goes at the VERY END: ...ORDER BY Col1 LIMIT 100");
+                    sb.AppendLine("• ✓ Date filtering: WHERE DateColumn >= DATE_SUB(NOW(), INTERVAL 3 MONTH)");
+                    sb.AppendLine("• ✓ Date filtering: WHERE DateColumn >= '2024-01-01'");
+                    sb.AppendLine("• CRITICAL: If using GROUP BY, ALL non-aggregate SELECT columns MUST be in GROUP BY!");
+                    sb.AppendLine("  ✗ WRONG: SELECT Col1, Col2, SUM(Col3) GROUP BY Col1");
+                    sb.AppendLine("  ✓ CORRECT: SELECT Col1, Col2, SUM(Col3) GROUP BY Col1, Col2");
                     break;
                     
                 case DatabaseType.PostgreSQL:
+                    sb.AppendLine("🚨 POSTGRESQL CRITICAL RULES:");
                     sb.AppendLine($"Format: SELECT columns FROM {dbQuery.RequiredTables[0]} WHERE ... ORDER BY column LIMIT 100");
-                    sb.AppendLine("• LIMIT at the very end");
+                    sb.AppendLine("• ✗ NEVER use TOP - use LIMIT instead!");
+                    sb.AppendLine("• ✗ NEVER write INTERVAL without quotes: INTERVAL 3 MONTH ← WRONG!");
+                    sb.AppendLine("• ✓ LIMIT goes at the VERY END: ...ORDER BY Col1 LIMIT 100");
+                    sb.AppendLine("• ✓ Date filtering: WHERE DateColumn >= CURRENT_DATE - INTERVAL '3 months'");
+                    sb.AppendLine("• ✓ Date filtering: WHERE DateColumn >= NOW() - INTERVAL '30 days'");
+                    sb.AppendLine("• ✓ Date filtering: WHERE DateColumn >= '2024-01-01'::date");
+                    sb.AppendLine("• INTERVAL must be in QUOTES: INTERVAL '3 months' NOT INTERVAL 3 months");
+                    sb.AppendLine("  ✗ WRONG: WHERE DateColumn < CURRENT_DATE - INTERVAL 3 MONTH");
+                    sb.AppendLine("  ✓ CORRECT: WHERE DateColumn < CURRENT_DATE - INTERVAL '3 months'");
                     break;
             }
             
@@ -965,22 +993,22 @@ namespace SmartRAG.Services
             sb.AppendLine();
             sb.AppendLine("🚨 LANGUAGE-CRITICAL RULE:");
             sb.AppendLine("   SQL is a COMPUTER LANGUAGE - it ONLY understands SQL keywords!");
-            sb.AppendLine("   ❌ NEVER write Turkish, German, Russian, or any human language in SQL");
-            sb.AppendLine("   ❌ NEVER write comments or explanations in SQL");
-            sb.AppendLine("   ❌ NEVER translate SQL keywords to other languages");
-            sb.AppendLine("   ✅ ONLY use English SQL keywords: SELECT, FROM, WHERE, JOIN, etc.");
+            sb.AppendLine("   ✗ NEVER write Turkish, German, Russian, or any human language in SQL");
+            sb.AppendLine("   ✗ NEVER write comments or explanations in SQL");
+            sb.AppendLine("   ✗ NEVER translate SQL keywords to other languages");
+            sb.AppendLine("   ✓ ONLY use English SQL keywords: SELECT, FROM, WHERE, JOIN, etc.");
             sb.AppendLine();
             sb.AppendLine("   BAD EXAMPLES (will cause syntax errors):");
-            sb.AppendLine("   ❌ 'Bu sorgu, ürünleri seçer' (Turkish text in SQL)");
-            sb.AppendLine("   ❌ 'Diese Abfrage wählt Produkte' (German text in SQL)");
-            sb.AppendLine("   ❌ 'Этот запрос выбирает продукты' (Russian text in SQL)");
-            sb.AppendLine("   ❌ SELECT * FROM Products -- This selects products");
+            sb.AppendLine("   ✗ 'Bu sorgu, ürünleri seçer' (Turkish text in SQL)");
+            sb.AppendLine("   ✗ 'Diese Abfrage wählt Produkte' (German text in SQL)");
+            sb.AppendLine("   ✗ 'Этот запрос выбирает продукты' (Russian text in SQL)");
+            sb.AppendLine("   ✗ SELECT * FROM TableA -- This selects data");
             sb.AppendLine();
             sb.AppendLine("   GOOD EXAMPLE:");
-            sb.AppendLine("   ✅ SELECT ProductID, ProductName FROM Products");
+            sb.AppendLine("   ✓ SELECT Column1, Column2 FROM TableA");
             sb.AppendLine("   (Pure SQL only, no comments, no human language text!)");
             sb.AppendLine();
-            sb.AppendLine("⛔ DO NOT WRITE:");
+            sb.AppendLine("DO NOT WRITE:");
             sb.AppendLine("   • 'Here is the SQL query...'");
             sb.AppendLine("   • 'This query...'");
             sb.AppendLine("   • 'The key points are...'");
@@ -989,43 +1017,43 @@ namespace SmartRAG.Services
             sb.AppendLine("   • ANY non-English text");
             sb.AppendLine("   • ANY SQL comments (-- or /* */)");
             sb.AppendLine();
-            sb.AppendLine("✅ Example of CORRECT output:");
+            sb.AppendLine("Example of CORRECT output:");
             if (schema.DatabaseType == DatabaseType.SqlServer)
             {
-                sb.AppendLine($"   SELECT TOP 100 Column1, Column2, ForeignKeyColumn FROM {dbQuery.RequiredTables[0]}");
+                sb.AppendLine($"   ✓ SELECT TOP 100 Column1, Column2, ForeignKeyColumn FROM {dbQuery.RequiredTables[0]}");
             }
             else
             {
-                sb.AppendLine($"   SELECT Column1, Column2, ForeignKeyColumn FROM {dbQuery.RequiredTables[0]} LIMIT 100");
+                sb.AppendLine($"   ✓ SELECT Column1, Column2, ForeignKeyColumn FROM {dbQuery.RequiredTables[0]} LIMIT 100");
             }
             sb.AppendLine();
-            sb.AppendLine("❌ Example of WRONG output:");
-            sb.AppendLine("   Here is the SQL query: SELECT ...");
+            sb.AppendLine("Example of WRONG output:");
+            sb.AppendLine("   ✗ Here is the SQL query: SELECT ...");
             sb.AppendLine("   (No text before SQL!)");
             sb.AppendLine();
-            sb.AppendLine("❌ Example of INCOMPLETE SQL:");
-            sb.AppendLine("   SELECT Column1 FROM TableA ORDER BY");
+            sb.AppendLine("Example of INCOMPLETE SQL:");
+            sb.AppendLine("   ✗ SELECT Column1 FROM TableA ORDER BY");
             sb.AppendLine("   (ORDER BY must have column names!)");
             sb.AppendLine();
-            sb.AppendLine("🔴 CRITICAL COMPLETENESS RULES:");
+            sb.AppendLine("CRITICAL COMPLETENESS RULES:");
             sb.AppendLine("  - ORDER BY clause MUST include column name(s)");
             sb.AppendLine("  - GROUP BY clause MUST include column name(s)");
             sb.AppendLine("  - JOIN clause MUST include ON condition");
             sb.AppendLine("  - SQL MUST be complete and executable");
             sb.AppendLine();
-            sb.AppendLine("🔴 FINAL REMINDER:");
+            sb.AppendLine("FINAL REMINDER:");
             sb.AppendLine($"  - ALLOWED TABLES: {string.Join(", ", dbQuery.RequiredTables)}");
             sb.AppendLine("  - DO NOT use any other tables in FROM, JOIN, WHERE, or subqueries!");
             sb.AppendLine("  - Your response must START with SELECT, not with any text!");
             sb.AppendLine();
-            sb.AppendLine("🌍 LANGUAGE ENFORCEMENT:");
+            sb.AppendLine("LANGUAGE ENFORCEMENT:");
             sb.AppendLine("  - SQL is ENGLISH-ONLY computer language");
             sb.AppendLine("  - Even if user question is in Turkish/German/Russian:");
-            sb.AppendLine("    ✅ SQL must still be pure English SQL");
-            sb.AppendLine("    ❌ NO Turkish/German/Russian text in SQL output");
+            sb.AppendLine("    ✓ SQL must still be pure English SQL");
+            sb.AppendLine("    ✗ NO Turkish/German/Russian text in SQL output");
             sb.AppendLine("  - Example: User asks 'Müşterileri göster'");
-            sb.AppendLine("    ✅ Correct: SELECT * FROM Customers");
-            sb.AppendLine("    ❌ Wrong: Bu sorgu müşterileri seçer: SELECT * FROM Customers");
+            sb.AppendLine("    ✓ Correct: SELECT * FROM TableA");
+            sb.AppendLine("    ✗ Wrong: Bu sorgu verileri seçer: SELECT * FROM TableA");
             sb.AppendLine();
             sb.AppendLine("YOUR RESPONSE = SQL QUERY ONLY (starts with SELECT, pure English SQL, no text!)");
 
@@ -1319,46 +1347,46 @@ namespace SmartRAG.Services
             if (columnErrors.Any())
             {
                 sb.AppendLine();
-                sb.AppendLine("  📋 COLUMN ERRORS:");
+                sb.AppendLine("  COLUMN ERRORS:");
                 foreach (var error in columnErrors)
                 {
-                    sb.AppendLine($"     ❌ {error}");
+                    sb.AppendLine($"     ✗ {error}");
                 }
             }
             
             if (tableErrors.Any())
             {
                 sb.AppendLine();
-                sb.AppendLine("  🗂️  TABLE ERRORS:");
+                sb.AppendLine("  TABLE ERRORS:");
                 foreach (var error in tableErrors)
                 {
-                    sb.AppendLine($"     ❌ {error}");
+                    sb.AppendLine($"     ✗ {error}");
                 }
             }
             
             if (syntaxErrors.Any())
             {
                 sb.AppendLine();
-                sb.AppendLine("  ⚠️  SQL SYNTAX ERRORS:");
+                sb.AppendLine("  SQL SYNTAX ERRORS:");
                 foreach (var error in syntaxErrors)
                 {
-                    sb.AppendLine($"     ❌ {error}");
+                    sb.AppendLine($"     ✗ {error}");
                 }
             }
             
             if (otherErrors.Any())
             {
                 sb.AppendLine();
-                sb.AppendLine("  ❗ OTHER ERRORS:");
+                sb.AppendLine("  OTHER ERRORS:");
                 foreach (var error in otherErrors)
                 {
-                    sb.AppendLine($"     ❌ {error}");
+                    sb.AppendLine($"     ✗ {error}");
                 }
             }
             
             sb.AppendLine();
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
-            sb.AppendLine("📋 AVAILABLE COLUMNS (USE ONLY THESE):");
+            sb.AppendLine("AVAILABLE COLUMNS (USE ONLY THESE):");
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
             
             foreach (var tableName in dbQuery.RequiredTables)
@@ -1371,15 +1399,15 @@ namespace SmartRAG.Services
                     sb.AppendLine($"Available Columns:");
                     foreach (var col in table.Columns)
                     {
-                        sb.AppendLine($"  ✓ {col.ColumnName} ({col.DataType})");
+                        sb.AppendLine($"  {col.ColumnName} ({col.DataType})");
                     }
-                    sb.AppendLine($"❌ ANY OTHER COLUMN IN {table.TableName} WILL CAUSE ERROR!");
+                    sb.AppendLine($"🚨 ANY OTHER COLUMN IN {table.TableName} WILL CAUSE ERROR!");
                 }
             }
             
             sb.AppendLine();
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
-            sb.AppendLine("🎯 RULES - READ CAREFULLY:");
+            sb.AppendLine("RULES - READ CAREFULLY:");
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
             sb.AppendLine("COLUMN RULES:");
             sb.AppendLine("1. ONLY use columns listed above");
@@ -1389,25 +1417,25 @@ namespace SmartRAG.Services
             sb.AppendLine("5. Before writing JOIN, verify both tables have the referenced columns");
             sb.AppendLine();
             sb.AppendLine("SQL SYNTAX RULES:");
-            sb.AppendLine("6. ❌ NEVER use aggregates (SUM, AVG, COUNT) in WHERE clause");
-            sb.AppendLine("7. ✅ Use HAVING clause for filtering aggregates");
-            sb.AppendLine("8. ✅ In GROUP BY queries: SELECT only grouped columns or aggregates");
-            sb.AppendLine("9. ✅ Every non-aggregate column in SELECT must be in GROUP BY");
+            sb.AppendLine("6. ✗ NEVER use aggregates (SUM, AVG, COUNT) in WHERE clause");
+            sb.AppendLine("7. ✓ Use HAVING clause for filtering aggregates");
+            sb.AppendLine("8. ✓ In GROUP BY queries: SELECT only grouped columns or aggregates");
+            sb.AppendLine("9. ✓ Every non-aggregate column in SELECT must be in GROUP BY");
             sb.AppendLine();
             sb.AppendLine("EXAMPLES:");
-            sb.AppendLine("  ❌ WHERE SUM(Amount) > 100  (WRONG)");
-            sb.AppendLine("  ✅ HAVING SUM(Amount) > 100 (CORRECT)");
+            sb.AppendLine("  ✗ WHERE SUM(Amount) > 100  (WRONG)");
+            sb.AppendLine("  ✓ HAVING SUM(Amount) > 100 (CORRECT)");
             sb.AppendLine();
-            sb.AppendLine("  ❌ SELECT Col1, Col2, SUM(Col3) GROUP BY Col1  (WRONG - Col2 not in GROUP BY)");
-            sb.AppendLine("  ✅ SELECT Col1, SUM(Col3) GROUP BY Col1        (CORRECT)");
+            sb.AppendLine("  ✗ SELECT Col1, Col2, SUM(Col3) GROUP BY Col1  (WRONG - Col2 not in GROUP BY)");
+            sb.AppendLine("  ✓ SELECT Col1, SUM(Col3) GROUP BY Col1        (CORRECT)");
             sb.AppendLine();
             sb.AppendLine($"User Query: {userQuery}");
             sb.AppendLine($"Purpose: {dbQuery.Purpose}");
             sb.AppendLine();
-            sb.AppendLine("🌍 LANGUAGE RULE:");
+            sb.AppendLine("LANGUAGE RULE:");
             sb.AppendLine("   SQL must be PURE ENGLISH - NO Turkish/German/Russian text!");
-            sb.AppendLine("   ❌ Do NOT write: 'Bu sorgu', 'Diese Abfrage', 'Этот запрос'");
-            sb.AppendLine("   ✅ Only write: SELECT, FROM, WHERE, etc. (English SQL keywords)");
+            sb.AppendLine("   ✗ Do NOT write: 'Bu sorgu', 'Diese Abfrage', 'Этот запрос'");
+            sb.AppendLine("   ✓ Only write: SELECT, FROM, WHERE, etc. (English SQL keywords)");
             sb.AppendLine();
             sb.AppendLine("Generate a valid SQL query using ONLY the columns listed above.");
             sb.AppendLine("Follow SQL syntax rules strictly.");
@@ -1427,17 +1455,17 @@ namespace SmartRAG.Services
             sb.AppendLine($"║     RETRY ATTEMPT #{attemptNumber} - ULTRA STRICT MODE        ║");
             sb.AppendLine("╚════════════════════════════════════════════════════════════════╝");
             sb.AppendLine();
-            sb.AppendLine("🔴 CRITICAL: ALL previous attempts FAILED with these errors:");
+            sb.AppendLine("🚨 CRITICAL: ALL previous attempts FAILED with these errors:");
             foreach (var error in allPreviousErrors)
             {
-                sb.AppendLine($"   ⚠️  {error}");
+                sb.AppendLine($"   ✗ {error}");
             }
             sb.AppendLine();
-            sb.AppendLine("🚨 YOU MUST FIX THESE ERRORS NOW!");
+            sb.AppendLine("YOU MUST FIX THESE ERRORS NOW!");
             sb.AppendLine();
             
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
-            sb.AppendLine("📋 EXACT COLUMN LIST - NO OTHER COLUMNS EXIST:");
+            sb.AppendLine("EXACT COLUMN LIST - NO OTHER COLUMNS EXIST:");
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
             
             foreach (var tableName in dbQuery.RequiredTables)
@@ -1454,14 +1482,14 @@ namespace SmartRAG.Services
                         sb.AppendLine($"  {i + 1}. {col.ColumnName} ({col.DataType})");
                     }
                     sb.AppendLine();
-                    sb.AppendLine($"⚠️  THESE ARE THE ONLY {table.Columns.Count} COLUMNS IN {table.TableName}!");
-                    sb.AppendLine($"⚠️  ANY OTHER COLUMN NAME = INSTANT ERROR!");
+                    sb.AppendLine($"🚨 THESE ARE THE ONLY {table.Columns.Count} COLUMNS IN {table.TableName}!");
+                    sb.AppendLine($"ANY OTHER COLUMN NAME = INSTANT ERROR!");
                 }
             }
             
             sb.AppendLine();
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
-            sb.AppendLine("⚡ MANDATORY CHECKLIST BEFORE WRITING SQL:");
+            sb.AppendLine("MANDATORY CHECKLIST BEFORE WRITING SQL:");
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
             sb.AppendLine("COLUMN CHECKS:");
             sb.AppendLine("□ Did I verify EVERY column exists in the exact list above?");
@@ -1475,15 +1503,15 @@ namespace SmartRAG.Services
             sb.AppendLine("□ If using GROUP BY: Are ALL non-aggregate SELECT columns in GROUP BY?");
             sb.AppendLine("□ Are parentheses balanced?");
             sb.AppendLine();
-            sb.AppendLine("🚫 COMMON MISTAKES TO AVOID:");
-            sb.AppendLine("  ❌ WHERE SUM(...) > value     → Use HAVING");
-            sb.AppendLine("  ❌ WHERE AVG(...) > value     → Use HAVING");
-            sb.AppendLine("  ❌ SELECT A, B, SUM(C) GROUP BY A  → Add B to GROUP BY");
+            sb.AppendLine("COMMON MISTAKES TO AVOID:");
+            sb.AppendLine("  ✗ WHERE SUM(...) > value     → Use HAVING");
+            sb.AppendLine("  ✗ WHERE AVG(...) > value     → Use HAVING");
+            sb.AppendLine("  ✗ SELECT A, B, SUM(C) GROUP BY A  → Add B to GROUP BY");
             sb.AppendLine();
             sb.AppendLine($"Query: {userQuery}");
             sb.AppendLine($"Task: {dbQuery.Purpose}");
             sb.AppendLine();
-            sb.AppendLine("🌍 CRITICAL: SQL must be PURE ENGLISH - NO Turkish/German/Russian text!");
+            sb.AppendLine("CRITICAL: SQL must be PURE ENGLISH - NO Turkish/German/Russian text!");
             sb.AppendLine("Write the SQL query. Triple-check EVERY column name AND syntax before outputting.");
             sb.AppendLine("Output format: Pure English SQL only, no text, no comments.");
             
@@ -1501,7 +1529,7 @@ namespace SmartRAG.Services
             sb.AppendLine("║    FINAL ATTEMPT - SIMPLIFIED QUERY STRATEGY                   ║");
             sb.AppendLine("╚════════════════════════════════════════════════════════════════╝");
             sb.AppendLine();
-            sb.AppendLine("⚠️  Previous complex queries failed. Let's simplify.");
+            sb.AppendLine("Previous complex queries failed. Let's simplify.");
             sb.AppendLine();
             sb.AppendLine("Previous errors:");
             foreach (var error in allPreviousErrors.Take(3))
@@ -1511,7 +1539,7 @@ namespace SmartRAG.Services
             sb.AppendLine();
             
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
-            sb.AppendLine("📝 SIMPLIFIED STRATEGY:");
+            sb.AppendLine("SIMPLIFIED STRATEGY:");
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
             sb.AppendLine("Write the SIMPLEST possible query that:");
             sb.AppendLine("1. Uses ONLY the first table in the list");
@@ -1544,7 +1572,7 @@ namespace SmartRAG.Services
             }
             
             sb.AppendLine();
-            sb.AppendLine("🌍 CRITICAL: Write pure ENGLISH SQL - NO Turkish/German/Russian words!");
+            sb.AppendLine("🚨 CRITICAL: Write pure ENGLISH SQL - NO Turkish/German/Russian words!");
             sb.AppendLine("Write a simple query like above. No complexity.");
             sb.AppendLine("Output: Pure English SQL only, no text, no comments.");
             

@@ -1,7 +1,9 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
+using SmartRAG.Demo.DatabaseSetup.Helpers;
 using SmartRAG.Demo.DatabaseSetup.Interfaces;
 using SmartRAG.Enums;
+using System.Text;
 
 namespace SmartRAG.Demo.DatabaseSetup.Creators;
 
@@ -185,88 +187,148 @@ CREATE TABLE SalesSummary (
 
         private void InsertSampleData(SqlConnection connection)
         {
-            var insertDataSql = @"
--- Orders (CustomerID -> references SQLite Musteriler.MusteriID)
-INSERT INTO Orders (CustomerID, OrderDate, TotalAmount, OrderStatus, TrackingNumber) VALUES 
-    (1, '2024-10-01 14:30:00', 48500.00, N'Delivered', N'TRK-2024-1001'),
-    (2, '2024-10-02 10:15:00', 850.00, N'Delivered', N'TRK-2024-1002'),
-    (3, '2024-10-03 16:45:00', 42000.00, N'Shipped', N'TRK-2024-1003'),
-    (4, '2024-10-04 11:20:00', 11600.00, N'Delivered', N'TRK-2024-1004'),
-    (5, '2024-10-05 09:00:00', 65000.00, N'Processing', NULL),
-    (1, '2024-10-06 15:30:00', 3500.00, N'Delivered', N'TRK-2024-1006'),
-    (6, '2024-10-07 13:45:00', 25000.00, N'Shipped', N'TRK-2024-1007'),
-    (7, '2024-10-08 17:00:00', 1224.00, N'Delivered', N'TRK-2024-1008'),
-    (8, '2024-10-09 12:30:00', 4500.00, N'Delivered', N'TRK-2024-1009'),
-    (9, '2024-10-10 10:00:00', 900.00, N'Pending', NULL),
-    (10, '2024-10-11 14:15:00', 45000.00, N'Processing', NULL),
-    (2, '2024-10-12 11:30:00', 250.00, N'Delivered', N'TRK-2024-1012'),
-    (3, '2024-10-13 16:00:00', 450.00, N'Delivered', N'TRK-2024-1013'),
-    (4, '2024-10-14 09:45:00', 8000.00, N'Shipped', N'TRK-2024-1014'),
-    (1, '2024-10-15 10:30:00', 170500.00, N'Delivered', N'TRK-2024-1015');
-
--- Order Details (ProductID -> references SQLite Urunler.UrunID)
-INSERT INTO OrderDetails (OrderID, ProductID, Quantity, UnitPrice, DiscountRate) VALUES 
-    (1, 1, 1, 45000.00, 0),     -- Customer 1: Laptop
-    (1, 4, 1, 3500.00, 0),      -- Customer 1: Headphones
-    (2, 6, 1, 850.00, 0),       -- Customer 2: Dress
-    (3, 3, 1, 42000.00, 0),     -- Customer 3: Samsung
-    (4, 10, 1, 8000.00, 5),     -- Customer 4: Carpet (5% discount)
-    (4, 9, 1, 4500.00, 20),     -- Customer 4: Chandelier (20% discount)
-    (5, 2, 1, 65000.00, 0),     -- Customer 5: iPhone
-    (6, 4, 1, 3500.00, 0),      -- Customer 1: Headphones (2nd order)
-    (7, 8, 1, 25000.00, 0),     -- Customer 6: Sofa Set
-    (8, 5, 2, 450.00, 0),       -- Customer 7: Jeans x2
-    (8, 7, 3, 120.00, 10),      -- Customer 7: T-shirt x3
-    (9, 9, 1, 4500.00, 0),      -- Customer 8: Chandelier
-    (10, 14, 2, 450.00, 0),     -- Customer 9: Football x2
-    (11, 1, 1, 45000.00, 0),    -- Customer 10: Laptop
-    (12, 13, 1, 250.00, 0),     -- Customer 2: Book (2nd order)
-    (13, 14, 1, 450.00, 0),     -- Customer 3: Football (2nd order)
-    (14, 10, 1, 8000.00, 0),    -- Customer 4: Carpet (2nd order)
-    (15, 2, 2, 65000.00, 0),    -- Customer 1: iPhone x2 (Biggest order!)
-    (15, 1, 1, 45000.00, 10),   -- Customer 1: Laptop (10% discount)
-    (15, 4, 2, 3500.00, 5);     -- Customer 1: Headphones x2 (5% discount)
-
--- Payments
-INSERT INTO Payments (OrderID, PaymentDate, PaymentMethod, PaymentAmount, PaymentStatus) VALUES 
-    (1, '2024-10-01 14:30:00', N'Credit Card', 48500.00, N'Completed'),
-    (2, '2024-10-02 10:15:00', N'Cash', 850.00, N'Completed'),
-    (3, '2024-10-03 16:45:00', N'Bank Transfer', 42000.00, N'Completed'),
-    (4, '2024-10-04 11:20:00', N'Credit Card', 11600.00, N'Completed'),
-    (5, '2024-10-05 09:00:00', N'Credit Card', 65000.00, N'Pending'),
-    (6, '2024-10-06 15:30:00', N'Credit Card', 3500.00, N'Completed'),
-    (7, '2024-10-07 13:45:00', N'Bank Transfer', 25000.00, N'Completed'),
-    (8, '2024-10-08 17:00:00', N'Cash', 1224.00, N'Completed'),
-    (9, '2024-10-09 12:30:00', N'Credit Card', 4500.00, N'Completed'),
-    (10, '2024-10-10 10:00:00', N'Bank Transfer', 900.00, N'Pending'),
-    (11, '2024-10-11 14:15:00', N'Credit Card', 45000.00, N'Pending'),
-    (12, '2024-10-12 11:30:00', N'Cash', 250.00, N'Completed'),
-    (13, '2024-10-13 16:00:00', N'Credit Card', 450.00, N'Completed'),
-    (14, '2024-10-14 09:45:00', N'Bank Transfer', 8000.00, N'Completed'),
-    (15, '2024-10-15 10:30:00', N'Credit Card', 170500.00, N'Completed');
-
--- Sales Summary
-INSERT INTO SalesSummary (SalesDate, TotalSales, TotalOrders, AverageOrderAmount) VALUES 
-    ('2024-10-01', 48500.00, 1, 48500.00),
-    ('2024-10-02', 850.00, 1, 850.00),
-    ('2024-10-03', 42000.00, 1, 42000.00),
-    ('2024-10-04', 11600.00, 1, 11600.00),
-    ('2024-10-05', 65000.00, 1, 65000.00),
-    ('2024-10-06', 3500.00, 1, 3500.00),
-    ('2024-10-07', 25000.00, 1, 25000.00),
-    ('2024-10-08', 1224.00, 1, 1224.00),
-    ('2024-10-09', 4500.00, 1, 4500.00),
-    ('2024-10-10', 900.00, 1, 900.00),
-    ('2024-10-11', 45000.00, 1, 45000.00),
-    ('2024-10-12', 250.00, 1, 250.00),
-    ('2024-10-13', 450.00, 1, 450.00),
-    ('2024-10-14', 8000.00, 1, 8000.00),
-    ('2024-10-15', 170500.00, 1, 170500.00);";
-
-            using (var cmd = connection.CreateCommand())
+            var random = new Random(42); // Fixed seed for reproducible data
+            
+            // Generate 100 Orders (CustomerID references SQLite Customers 1-100)
+            var ordersSql = new StringBuilder();
+            ordersSql.AppendLine("INSERT INTO Orders (CustomerID, OrderDate, TotalAmount, OrderStatus, TrackingNumber) VALUES ");
+            
+            var statuses = new[] { "Delivered", "Shipped", "Processing", "Pending", "Cancelled" };
+            for (int i = 0; i < 100; i++)
             {
-                cmd.CommandText = insertDataSql;
+                // CRITICAL: CustomerID must reference actual SQLite Customers (1-100)
+                var customerId = (i % 100) + 1; // Distributes orders across all 100 customers
+                var orderMonth = random.Next(1, 11);
+                var orderDay = random.Next(1, 29);
+                var orderHour = random.Next(9, 18);
+                var orderMinute = random.Next(0, 60);
+                var orderDate = $"2025-{orderMonth:00}-{orderDay:00} {orderHour:00}:{orderMinute:00}:00";
+                var totalAmount = Math.Round(random.NextDouble() * 50000 + 100, 2);
+                var status = statuses[random.Next(statuses.Length)];
+                var trackingNumber = status != "Pending" && status != "Processing" 
+                    ? $"N'TRK-2025-{1000 + i}'" 
+                    : "NULL";
+
+                ordersSql.Append($"    ({customerId}, '{orderDate}', {totalAmount.ToString(System.Globalization.CultureInfo.InvariantCulture)}, N'{status}', {trackingNumber})");
+                ordersSql.AppendLine(i < 99 ? "," : ";");
+            }
+
+            try
+            {
+                using (var cmd = connection.CreateCommand())
+                {
+                    cmd.CommandText = ordersSql.ToString();
+                    cmd.ExecuteNonQuery();
+                }
+                System.Console.WriteLine("   ✓ Orders: 100 rows inserted");
+            }
+            catch (Exception ex)
+            {
+                System.Console.WriteLine($"   ❌ Orders INSERT failed: {ex.Message}");
+                throw;
+            }
+
+            // Generate 150 Order Details (ProductID references SQLite Products 1-100)
+            var orderDetailsSql = new StringBuilder();
+            orderDetailsSql.AppendLine("INSERT INTO OrderDetails (OrderID, ProductID, Quantity, UnitPrice, DiscountRate) VALUES ");
+            
+            for (int i = 0; i < 150; i++)
+            {
+                var orderId = (i % 100) + 1; // Reference to Orders 1-100 (some orders have multiple items)
+                // CRITICAL: ProductID must reference actual SQLite Products (1-100)
+                var productId = random.Next(1, 101); // Random product from SQLite catalog
+                var quantity = random.Next(1, 6);
+                var unitPrice = Math.Round(random.NextDouble() * 5000 + 50, 2);
+                var discountRate = random.Next(0, 21); // 0-20% discount
+
+                orderDetailsSql.Append($"    ({orderId}, {productId}, {quantity}, {unitPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {discountRate})");
+                orderDetailsSql.AppendLine(i < 149 ? "," : ";");
+            }
+
+            try
+            {
+                using (var cmd = connection.CreateCommand())
+                {
+                    cmd.CommandText = orderDetailsSql.ToString();
+                    cmd.ExecuteNonQuery();
+                }
+                System.Console.WriteLine("   ✓ OrderDetails: 150 rows inserted");
+            }
+            catch (Exception ex)
+            {
+                System.Console.WriteLine($"   ❌ OrderDetails INSERT failed: {ex.Message}");
+                throw;
+            }
+
+            // Generate 100 Payments
+            var paymentsSql = new StringBuilder();
+            paymentsSql.AppendLine("INSERT INTO Payments (OrderID, PaymentDate, PaymentMethod, PaymentAmount, PaymentStatus) VALUES ");
+            
+            var paymentMethods = new[] { "Credit Card", "Debit Card", "Bank Transfer", "Cash", "PayPal" };
+            var paymentStatuses = new[] { "Completed", "Pending", "Failed", "Refunded" };
+            
+            for (int i = 0; i < 100; i++)
+            {
+                var orderId = i + 1; // One payment per order
+                var paymentMonth = random.Next(1, 11);
+                var paymentDay = random.Next(1, 29);
+                var paymentHour = random.Next(9, 18);
+                var paymentMinute = random.Next(0, 60);
+                var paymentDate = $"2025-{paymentMonth:00}-{paymentDay:00} {paymentHour:00}:{paymentMinute:00}:00";
+                var paymentMethod = paymentMethods[random.Next(paymentMethods.Length)];
+                var paymentAmount = Math.Round(random.NextDouble() * 50000 + 100, 2);
+                var paymentStatus = paymentStatuses[random.Next(paymentStatuses.Length)];
+
+                paymentsSql.Append($"    ({orderId}, '{paymentDate}', N'{paymentMethod}', {paymentAmount.ToString(System.Globalization.CultureInfo.InvariantCulture)}, N'{paymentStatus}')");
+                paymentsSql.AppendLine(i < 99 ? "," : ";");
+            }
+
+            try
+            {
+            using (var cmd = connection.CreateCommand())
+                {
+                    cmd.CommandText = paymentsSql.ToString();
+                    cmd.ExecuteNonQuery();
+                }
+                System.Console.WriteLine("   ✓ Payments: 100 rows inserted");
+            }
+            catch (Exception ex)
+            {
+                System.Console.WriteLine($"   ❌ Payments INSERT failed: {ex.Message}");
+                throw;
+            }
+
+            // Generate 100 Sales Summary records
+            var summaryRecords = 100;
+            var salesSummarySql = new StringBuilder();
+            salesSummarySql.AppendLine("INSERT INTO SalesSummary (SalesDate, TotalSales, TotalOrders, AverageOrderAmount) VALUES ");
+            
+            for (int i = 0; i < summaryRecords; i++)
+            {
+                var salesMonth = random.Next(1, 11);
+                var salesDay = random.Next(1, 29);
+                var salesDate = $"2025-{salesMonth:00}-{salesDay:00}";
+                var totalSales = Math.Round(random.NextDouble() * 100000 + 1000, 2);
+                var totalOrders = random.Next(1, 20);
+                var averageOrderAmount = Math.Round(totalSales / totalOrders, 2);
+
+                salesSummarySql.Append($"    ('{salesDate}', {totalSales.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {totalOrders}, {averageOrderAmount.ToString(System.Globalization.CultureInfo.InvariantCulture)})");
+                salesSummarySql.AppendLine(i < summaryRecords - 1 ? "," : ";");
+            }
+
+            try
+            {
+                using (var cmd = connection.CreateCommand())
+                {
+                    cmd.CommandText = salesSummarySql.ToString();
                 cmd.ExecuteNonQuery();
+                }
+                System.Console.WriteLine("   ✓ SalesSummary: 100 rows inserted");
+            }
+            catch (Exception ex)
+            {
+                System.Console.WriteLine($"   ❌ SalesSummary INSERT failed: {ex.Message}");
+                throw;
             }
         }
 

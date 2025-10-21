@@ -150,9 +150,9 @@ public static class ConsoleHelper
             {
                 try
                 {
-                    // Set a larger buffer size so scrollback history is preserved
+                    // Set a very large buffer size so scrollback history is preserved
                     var currentWidth = System.Console.WindowWidth;
-                    var newHeight = 300; // Large buffer for scrollback
+                    var newHeight = 9999; // Maximum buffer for scrollback (prevents content from being cleared)
                     
                     // Only set if current buffer is smaller
                     if (System.Console.BufferHeight < newHeight)

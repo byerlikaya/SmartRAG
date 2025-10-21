@@ -1,7 +1,9 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
+using SmartRAG.Demo.DatabaseSetup.Helpers;
 using SmartRAG.Demo.DatabaseSetup.Interfaces;
 using SmartRAG.Enums;
+using System.Text;
 
 namespace SmartRAG.Demo.DatabaseSetup.Creators;
 
@@ -222,6 +224,8 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
 
         private void InsertSampleData(SqliteConnection connection)
         {
+            var random = new Random(42); // Fixed seed for reproducible data
+            
             // Categories
             var categoriesSql = @"
                 INSERT INTO Categories (CategoryName, Description) VALUES
@@ -231,79 +235,112 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
                 ('Home & Garden', 'Home and garden products'),
                 ('Sports', 'Sports and fitness products');
             ";
-
-            // Customers
-            var customersSql = @"
-                INSERT INTO Customers (FirstName, LastName, Email, Phone, Address, City) VALUES
-                ('Ahmet', 'Yılmaz', 'ahmet.yilmaz@email.com', '+90 532 123 4567', 'Atatürk Cad. No:123', 'İstanbul'),
-                ('Ayşe', 'Demir', 'ayse.demir@email.com', '+90 533 234 5678', 'Cumhuriyet Mah. No:45', 'Ankara'),
-                ('Mehmet', 'Kaya', 'mehmet.kaya@email.com', '+90 534 345 6789', 'Özgürlük Sok. No:67', 'İzmir'),
-                ('Fatma', 'Özkan', 'fatma.ozkan@email.com', '+90 535 456 7890', 'Barış Bulvarı No:89', 'Bursa'),
-                ('Ali', 'Çelik', 'ali.celik@email.com', '+90 536 567 8901', 'İstiklal Cad. No:101', 'Antalya'),
-                ('Zeynep', 'Şahin', 'zeynep.sahin@email.com', '+90 537 678 9012', 'Gazi Mah. No:23', 'Gaziantep'),
-                ('Mustafa', 'Aydın', 'mustafa.aydin@email.com', '+90 538 789 0123', 'Kemal Atatürk Cad. No:45', 'Konya'),
-                ('Elif', 'Türk', 'elif.turk@email.com', '+90 539 890 1234', 'Cumhuriyet Mah. No:67', 'Adana');
-            ";
-
-            // Products
-            var productsSql = @"
-                INSERT INTO Products (ProductName, CategoryID, UnitPrice, StockQuantity, Description) VALUES
-                ('iPhone 15 Pro', 1, 45000.00, 50, 'Apple iPhone 15 Pro 256GB'),
-                ('Samsung Galaxy S24', 1, 35000.00, 75, 'Samsung Galaxy S24 128GB'),
-                ('MacBook Air M2', 1, 25000.00, 25, 'Apple MacBook Air 13 inch M2 chip'),
-                ('Men T-Shirt', 2, 150.00, 200, 'Cotton mens t-shirt various colors'),
-                ('Jeans', 2, 450.00, 150, 'Classic fit jeans'),
-                ('Winter Jacket', 2, 850.00, 80, 'Waterproof winter jacket'),
-                ('Programming Book', 3, 120.00, 300, 'C# Programming Language Fundamentals'),
-                ('Novel Book', 3, 85.00, 500, 'Bestseller novel book'),
-                ('Garden Set', 4, 250.00, 60, '6-piece garden tools set'),
-                ('Lawn Mower', 4, 1200.00, 15, 'Electric lawn mower'),
-                ('Fitness Ball', 5, 180.00, 100, 'Training fitness ball'),
-                ('Running Shoes', 5, 650.00, 120, 'Professional running shoes');
-            ";
-
-            // Employees
-            var employeesSql = @"
-                INSERT INTO Employees (FirstName, LastName, Email, Department, Position, Salary, HireDate) VALUES
-                ('Barış', 'Yerlikaya', 'baris.yerlikaya@company.com', 'IT', 'Software Developer', 15000.00, '2023-01-15'),
-                ('Selin', 'Aktaş', 'selin.aktas@company.com', 'IT', 'DevOps Engineer', 16000.00, '2023-03-20'),
-                ('Emre', 'Doğan', 'emre.dogan@company.com', 'Sales', 'Sales Manager', 12000.00, '2022-11-10'),
-                ('Gamze', 'Öztürk', 'gamze.ozturk@company.com', 'Marketing', 'Marketing Specialist', 10000.00, '2023-05-08'),
-                ('Burak', 'Kurt', 'burak.kurt@company.com', 'Finance', 'Financial Analyst', 13000.00, '2023-02-28'),
-                ('Ceren', 'Polat', 'ceren.polat@company.com', 'HR', 'HR Specialist', 9500.00, '2023-07-12');
-            ";
-
-            // Orders
-            var ordersSql = @"
-                INSERT INTO Orders (CustomerID, OrderDate, TotalAmount, Status, ShippingAddress) VALUES
-                (1, '2024-01-15', 45000.00, 'Completed', 'Atatürk Cad. No:123, İstanbul'),
-                (2, '2024-01-16', 570.00, 'Shipped', 'Cumhuriyet Mah. No:45, Ankara'),
-                (3, '2024-01-17', 120.00, 'Pending', 'Özgürlük Sok. No:67, İzmir'),
-                (4, '2024-01-18', 1350.00, 'Completed', 'Barış Bulvarı No:89, Bursa'),
-                (1, '2024-01-19', 650.00, 'Processing', 'Atatürk Cad. No:123, İstanbul');
-            ";
-
-            // Order details
-            var orderDetailsSql = @"
-                INSERT INTO OrderDetails (OrderID, ProductID, Quantity, UnitPrice, TotalPrice) VALUES
-                (1, 1, 1, 45000.00, 45000.00),
-                (2, 4, 2, 150.00, 300.00),
-                (2, 5, 1, 450.00, 450.00),
-                (3, 7, 1, 120.00, 120.00),
-                (4, 6, 1, 850.00, 850.00),
-                (4, 9, 2, 250.00, 500.00),
-                (5, 12, 1, 650.00, 650.00);
-            ";
-
-            // Insert data
             ExecuteSql(connection, categoriesSql, "Categories");
-            ExecuteSql(connection, customersSql, "Customers");
-            ExecuteSql(connection, productsSql, "Products");
-            ExecuteSql(connection, employeesSql, "Employees");
-            ExecuteSql(connection, ordersSql, "Orders");
-            ExecuteSql(connection, orderDetailsSql, "Order Details");
 
-            Console.WriteLine("[✅ OK] SQLite sample data inserted - Total: 5 categories, 8 customers, 12 products, 6 employees, 5 orders");
+            // Generate 100 Customers with diverse European names
+            var customersSql = new StringBuilder("INSERT INTO Customers (FirstName, LastName, Email, Phone, Address, City, Country) VALUES \n");
+            for (int i = 0; i < 100; i++)
+            {
+                var firstName = SampleDataGenerator.GetRandomFirstName(random);
+                var lastName = SampleDataGenerator.GetRandomLastName(random);
+                var email = SampleDataGenerator.GenerateEmail(firstName, lastName, random);
+                var phone = SampleDataGenerator.GeneratePhone(random);
+                var address = SampleDataGenerator.GenerateAddress(random);
+                var city = SampleDataGenerator.GetRandomCity(random);
+                var country = SampleDataGenerator.GetRandomCountry(random);
+
+                customersSql.Append($"('{firstName}', '{lastName}', '{email}', '{phone}', '{address}', '{city}', '{country}')");
+                customersSql.Append(i < 99 ? ",\n" : ";\n");
+            }
+            ExecuteSql(connection, customersSql.ToString(), "Customers");
+
+            // Generate 100 Products with various prices
+            var productNames = new[] 
+            {
+                "Laptop", "Smartphone", "Tablet", "Smartwatch", "Wireless Earbuds", "Monitor", "Keyboard", "Mouse",
+                "T-Shirt", "Jeans", "Jacket", "Dress", "Sweater", "Shoes", "Sneakers", "Boots",
+                "Programming Guide", "Novel", "Biography", "Cookbook", "Dictionary", "Atlas", "Magazine", "Comic Book",
+                "Sofa", "Chair", "Table", "Lamp", "Carpet", "Curtain", "Vase", "Painting",
+                "Football", "Basketball", "Tennis Racket", "Yoga Mat", "Dumbbell", "Bicycle", "Helmet", "Water Bottle"
+            };
+            
+            var productsSql = new StringBuilder("INSERT INTO Products (ProductName, CategoryID, UnitPrice, StockQuantity) VALUES \n");
+            for (int i = 0; i < 100; i++)
+            {
+                var categoryId = (i % 5) + 1;
+                var baseName = productNames[random.Next(productNames.Length)];
+                var productName = $"{baseName} Model {i + 1}";
+                var price = Math.Round(random.NextDouble() * 10000 + 50, 2);
+                var stock = random.Next(10, 500);
+
+                productsSql.Append($"('{productName}', {categoryId}, {price}, {stock})");
+                productsSql.Append(i < 99 ? ",\n" : ";\n");
+            }
+            ExecuteSql(connection, productsSql.ToString(), "Products");
+
+            // Generate 100 Employees with European names
+            var departments = new[] { "IT", "Sales", "Marketing", "Finance", "HR", "Operations", "Support", "R&D" };
+            var positions = new[] 
+            { 
+                "Developer", "Manager", "Specialist", "Analyst", "Coordinator", "Director", 
+                "Engineer", "Consultant", "Administrator", "Supervisor" 
+            };
+
+            var employeesSql = new StringBuilder("INSERT INTO Employees (FirstName, LastName, Email, Department, Position, Salary, HireDate) VALUES \n");
+            for (int i = 0; i < 100; i++)
+            {
+                var firstName = SampleDataGenerator.GetRandomFirstName(random);
+                var lastName = SampleDataGenerator.GetRandomLastName(random);
+                var email = SampleDataGenerator.GenerateEmail(firstName, lastName, random);
+                var department = departments[random.Next(departments.Length)];
+                var position = positions[random.Next(positions.Length)];
+                var salary = Math.Round(random.NextDouble() * 15000 + 5000, 2);
+                var hireYear = random.Next(2020, 2025);
+                var hireMonth = random.Next(1, 13);
+                var hireDay = random.Next(1, 29);
+                var hireDate = $"{hireYear:0000}-{hireMonth:00}-{hireDay:00}";
+
+                employeesSql.Append($"('{firstName}', '{lastName}', '{email}', '{department}', '{position}', {salary}, '{hireDate}')");
+                employeesSql.Append(i < 99 ? ",\n" : ";\n");
+            }
+            ExecuteSql(connection, employeesSql.ToString(), "Employees");
+
+            // Generate 100 Orders
+            var statuses = new[] { "Completed", "Shipped", "Pending", "Processing", "Cancelled" };
+            var ordersSql = new StringBuilder("INSERT INTO Orders (CustomerID, OrderDate, TotalAmount, Status, ShippingAddress) VALUES \n");
+            for (int i = 0; i < 100; i++)
+            {
+                var customerId = random.Next(1, 101); // Reference to Customers
+                var orderYear = 2025;
+                var orderMonth = random.Next(1, 11);
+                var orderDay = random.Next(1, 29);
+                var orderDate = $"{orderYear}-{orderMonth:00}-{orderDay:00}";
+                var totalAmount = Math.Round(random.NextDouble() * 50000 + 100, 2);
+                var status = statuses[random.Next(statuses.Length)];
+                var city = SampleDataGenerator.GetRandomCity(random);
+                var shippingAddress = $"{SampleDataGenerator.GenerateAddress(random)}, {city}";
+
+                ordersSql.Append($"({customerId}, '{orderDate}', {totalAmount}, '{status}', '{shippingAddress}')");
+                ordersSql.Append(i < 99 ? ",\n" : ";\n");
+            }
+            ExecuteSql(connection, ordersSql.ToString(), "Orders");
+
+            // Generate 150 Order Details (multiple items per order)
+            var orderDetailsSql = new StringBuilder("INSERT INTO OrderDetails (OrderID, ProductID, Quantity, UnitPrice, TotalPrice) VALUES \n");
+            for (int i = 0; i < 150; i++)
+            {
+                var orderId = random.Next(1, 101); // Reference to Orders
+                var productId = random.Next(1, 101); // Reference to Products
+                var quantity = random.Next(1, 6);
+                var unitPrice = Math.Round(random.NextDouble() * 5000 + 50, 2);
+                var totalPrice = Math.Round(quantity * unitPrice, 2);
+
+                orderDetailsSql.Append($"({orderId}, {productId}, {quantity}, {unitPrice}, {totalPrice})");
+                orderDetailsSql.Append(i < 149 ? ",\n" : ";\n");
+            }
+            ExecuteSql(connection, orderDetailsSql.ToString(), "Order Details");
+
+            Console.WriteLine("[✅ OK] SQLite sample data inserted - Total: 5 categories, 100 customers, 100 products, 100 employees, 100 orders, 150 order details");
         }
 
         private void ExecuteSql(SqliteConnection connection, string sql, string tableName)

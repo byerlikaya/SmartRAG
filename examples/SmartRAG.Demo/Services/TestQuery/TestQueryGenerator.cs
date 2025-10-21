@@ -183,13 +183,12 @@ public class TestQueryGenerator(
 
 Based on the database schemas above, generate {queryCount} intelligent, MEANINGFUL cross-database test queries.
 
-🌍 CRITICAL LANGUAGE REQUIREMENT - READ CAREFULLY:
+CRITICAL LANGUAGE REQUIREMENT:
 YOU MUST write EVERY SINGLE query in {language} language!
-
 ONLY category field stays in English (with emoji).
 Query field MUST be in {language}.
 
-🎯 YOUR TASK:
+YOUR TASK:
 Analyze the schemas and generate REALISTIC questions that require data from MULTIPLE databases.
 
 CRITICAL REQUIREMENTS:
@@ -199,6 +198,25 @@ CRITICAL REQUIREMENTS:
 4. Generate questions based on actual table/column names
 5. Think about data relationships and correlations
 6. Each database should be used in at least one query
+
+🚨 CRITICAL SQL GENERATION RULES:
+1. NEVER use phrases like ""specific record"", ""certain ID"", ""particular value""
+2. NEVER assume column names that aren't in the schema
+3. ALWAYS use aggregation queries: ""total"", ""average"", ""count"", ""sum""
+4. ALWAYS use phrases: ""all records"", ""total value"", ""highest"", ""lowest""
+5. Focus on GROUP BY, SUM, AVG, COUNT queries that don't require WHERE with specific values
+6. Use foreign keys visible in schema for joins
+
+GOOD QUERY EXAMPLES:
+✓ ""Calculate total {{{{numericColumn}}}} grouped by {{{{foreignKey}}}}""
+✓ ""Show all records from {{{{table1}}}} with their related {{{{table2}}}} data""
+✓ ""What is the average {{{{numericColumn}}}} across all records?""
+✓ ""Compare totals between {{{{database1}}}} and {{{{database2}}}}""
+
+BAD QUERY EXAMPLES - DO NOT GENERATE:
+✗ ""Show specific employee's data"" (assumes specific column exists)
+✗ ""Calculate for ID 5"" (specific ID in WHERE clause)
+✗ ""Get order total for specific order"" (assumes specific column exists)
 
 Category options (use emoji prefix - category in English, query in {language}):
 - Cross-DB Join

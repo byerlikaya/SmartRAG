@@ -458,11 +458,24 @@ public class QueryHandler(
         System.Console.WriteLine("📊 TEST SUMMARY");
         System.Console.WriteLine("═══════════════════════════════════════════════════════════════════");
         
+        double successRate = (double)successCount / testCount * 100;
+        
         _console.WriteSuccess($"Successful: {successCount}/{testCount}");
 
         if (failedQueries.Any())
         {
             _console.WriteError($"Failed: {failedQueries.Count}/{testCount}");
+        }
+        
+        System.Console.WriteLine();
+        System.Console.ForegroundColor = successRate >= 70 ? ConsoleColor.Green : 
+                                         successRate >= 50 ? ConsoleColor.Yellow : 
+                                         ConsoleColor.Red;
+        System.Console.WriteLine($"📈 Success Rate: {successRate:F1}%");
+        System.Console.ResetColor();
+        
+        if (failedQueries.Any())
+        {
             System.Console.WriteLine();
 
             System.Console.WriteLine("═══════════════════════════════════════════════════════════════════");
