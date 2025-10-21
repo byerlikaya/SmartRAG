@@ -11,7 +11,7 @@ This directory contains example projects demonstrating how to use SmartRAG in di
 - **Features**: 
   - Multi-document upload (PDF, Word, Excel, text files)
   - Image processing with OCR support (.jpg, .png, .gif, .bmp, .tiff, .webp)
-  - Audio processing with Google Speech-to-Text (.mp3, .wav, .m4a, .aac, .ogg, .flac, .wma)
+  - Audio processing with Whisper.net (local, 99+ languages) and Google Cloud Speech-to-Text (optional)
   - AI-powered question answering
   - Smart query intent detection
   - Conversation history management
@@ -85,7 +85,7 @@ Want to add more examples? Create a new directory and submit a pull request!
 - **Azure Functions** - Serverless implementation with vector search
 - **Minimal API** - Lightweight web API with conversation management
 - **OCR Service** - Standalone OCR processing service
-- **Speech-to-Text Service** - Standalone audio transcription service
+- **Speech-to-Text Service** - Standalone audio transcription with Whisper.net
 - **Document Analyzer** - Advanced document analysis with table extraction
 - **Mobile App** - Cross-platform mobile application with SmartRAG integration
 

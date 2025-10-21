@@ -1,20 +1,186 @@
-<div align="center">
+<p align="center">
+  <img src="docs/assets/images/logo.svg" alt="SmartRAG Logo" width="200"/>
+</p>
 
-**📚 Tam Dokümantasyon:** [byerlikaya.github.io/SmartRAG](https://byerlikaya.github.io/SmartRAG)
+<p align="center">
+  <b>.NET için Multi-Database RAG Kütüphanesi</b><br>
+  Verileriniz hakkında doğal dilde sorular sorun
+</p>
 
-</div>
+<p align="center">
+  <a href="#-hızlı-başlangıç">Hızlı Başlangıç</a> •
+  <a href="#-neden-smartrag">Neden SmartRAG</a> •
+  <a href="#-neler-yapabilirsiniz">Örnekler</a> •
+  <a href="#-smartrag-vs-diğer-net-rag-kütüphaneleri">Karşılaştırma</a> •
+  <a href="https://byerlikaya.github.io/SmartRAG/tr">Dokümantasyon</a>
+</p>
+
+<p align="center">
+  <a href="https://www.nuget.org/packages/SmartRAG"><img src="https://img.shields.io/nuget/v/SmartRAG.svg?style=for-the-badge&logo=nuget" alt="NuGet Versiyon"/></a>
+  <a href="https://www.nuget.org/packages/SmartRAG"><img src="https://img.shields.io/nuget/dt/SmartRAG?style=for-the-badge&logo=nuget&label=İndirme&color=blue" alt="NuGet İndirme"/></a>
+  <a href="https://github.com/byerlikaya/SmartRAG"><img src="https://img.shields.io/github/stars/byerlikaya/SmartRAG?style=for-the-badge&logo=github" alt="GitHub Yıldız"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/lisans-MIT-green.svg?style=for-the-badge" alt="Lisans"/></a>
+</p>
 
 ---
 
-# 🚀 SmartRAG - Kurumsal Düzeyde RAG Kütüphanesi
+# 🚀 SmartRAG - Verileriniz Hakkında Sorular Sorun
 
-[![Derleme Durumu](https://github.com/byerlikaya/SmartRAG/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/byerlikaya/SmartRAG/actions)
-[![NuGet Sürümü](https://img.shields.io/nuget/v/SmartRAG.svg)](https://www.nuget.org/packages/SmartRAG)
-[![NuGet İndirmeleri](https://img.shields.io/nuget/dt/SmartRAG.svg)](https://www.nuget.org/packages/SmartRAG)
-[![.NET](https://img.shields.io/badge/.NET%20Standard-2.1-blue.svg)](https://docs.microsoft.com/en-us/dotnet/standard/net-standard)
-[![Lisans](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+**Belgelerinizi, veritabanlarınızı, resimlerinizi ve seslerinizi konuşabilen bir AI sistemine dönüştürün.**
 
-SmartRAG, temiz bir **hizmet odaklı mimari** aracılığıyla eksiksiz bir **Arama Destekli Üretim (RAG)** çözümü sunan, **üretime hazır** bir .NET Standard 2.1 **kütüphanesi**dır. Gelişmiş belge işleme, çok modlu AI entegrasyonu ve kurumsal düzeyde depolama seçenekleri ile akıllı uygulamalar oluşturun - hepsi basit bağımlılık enjeksiyonu ile.
+```csharp
+// 1. Veritabanlarınızı bağlayın
+await connector.ConnectAsync(sqlServer: "Server=localhost;Database=Satis;", 
+                              mysql: "Server=localhost;Database=Musteriler;",
+                              postgresql: "Host=localhost;Database=Analitik;");
+
+// 2. Belgeleri, PDF'leri, Excel dosyalarını, resimleri yükleyin
+await documents.UploadAsync(dosyalar);
+
+// 3. Doğal dilde sorun
+var cevap = await intelligence.QueryIntelligenceAsync(
+    "100 bin TL üzeri cirosu olan müşterileri tüm veritabanlarından göster"
+);
+// → AI otomatik olarak SQL Server, MySQL, PostgreSQL sorgular ve sonuçları birleştirir
+```
+
+---
+
+## 🎯 Neden SmartRAG?
+
+SmartRAG, birden fazla veritabanını doğal dille sorgulayıp belge zekasıyla birleştirmenize olanak tanır.
+
+✅ **Multi-Database RAG** - SQL Server, MySQL, PostgreSQL, SQLite'ı **tek bir doğal dil isteğinde birlikte** sorgulayın  
+✅ **Multi-Modal Zeka** - PDF, Excel, Resim (OCR), Ses (Speech-to-Text) ve Veritabanlarını tek cevapta birleştirin  
+✅ **On-Premise Hazır** - Ollama, LM Studio, Whisper.net ile %100 yerel çalışma → KVKK/GDPR/HIPAA uyumlu  
+✅ **Üretime Hazır** - Kurumsal düzeyde hata yönetimi, kapsamlı test edilmiş, production-ready  
+✅ **Konuşma Geçmişi** - Yerleşik otomatik bağlam yönetimi, birden fazla soru arasında süreklilik  
+✅ **.NET Standard 2.1** - .NET Core 3.0+, .NET 5/6/7/8/9 ile çalışır
+
+---
+
+## 📊 Neler Yapabilirsiniz?
+
+### **🏦 Bankacılık - Tam Finansal İstihbarat**
+```csharp
+"John'un kredi kartı limit artırımı için tam finansal profilini göster"
+```
+→ AI birleştirir:
+- **SQL Server**: 36 ay işlem geçmişi, fatura ödemeleri
+- **MySQL**: Kredi kartı kullanım kalıpları
+- **PostgreSQL**: Kredi skoru, mevcut krediler
+- **SQLite**: Şube ziyaret geçmişi
+- **OCR**: Taranmış gelir belgeleri
+- **PDF**: Hesap ekstreleri
+
+**Sonuç:** 360° müşteri zekası saatler değil, saniyeler içinde.
+
+---
+
+### **🏥 Sağlık - Birleşik Hasta Kayıtları**
+```csharp
+"Emily'nin geçen yıla ait tam tıbbi geçmişini göster"
+```
+→ AI birleştirir:
+- **PostgreSQL**: Hasta kayıtları, yatışlar
+- **Excel**: 3 farklı laboratuvardan test sonuçları
+- **OCR**: Taranmış reçeteler
+- **Ses**: Doktorun sesli notları (Whisper.net transkripsiyon)
+
+**Sonuç:** 4 kopuk sistemden tam hasta zaman çizelgesi.
+
+---
+
+### **📦 Envanter - Tahmine Dayalı Analitik**
+```csharp
+"Önümüzdeki 2 hafta içinde hangi ürünler tükenecek?"
+```
+→ AI birleştirir:
+- **SQLite**: Ürün kataloğu (10.000 SKU)
+- **SQL Server**: Satış verileri (ayda 2M işlem)
+- **MySQL**: Gerçek zamanlı stok seviyeleri
+- **PostgreSQL**: Tedarikçi teslim süreleri
+
+**Sonuç:** Veritabanları arası tahmine dayalı analitik ile stok tükenmelerini önleme.
+
+[10 detaylı gerçek dünya örneğini aşağıda görün ↓](#-gerçek-dünya-örnekleri---smartrag-ile-neler-yapabilirsiniz)
+
+---
+
+## 🆚 SmartRAG vs Diğer .NET RAG Kütüphaneleri
+
+| Özellik | SmartRAG | Semantic Kernel | Kernel Memory |
+|---------|:--------:|:---------------:|:-------------:|
+| **Multi-Database RAG** | ✅ | ❌ | ❌ |
+| **On-Premise (Ollama)** | ✅ %100 | ⚠️ Sınırlı | ⚠️ Sınırlı |
+| **OCR + Ses + DB** | ✅ Hepsi bir arada | ❌ Ayrı | ❌ Ayrı |
+| **Konuşma Geçmişi** | ✅ Yerleşik | ⚠️ Manuel | ✅ Yerleşik |
+| **Multi-Modal** | ✅ 7+ format | ⚠️ Basit | ✅ Multi-modal |
+| **.NET Standard 2.1** | ✅ | ❌ (.NET 6+) | ❌ (.NET 6+) |
+| **KVKK/HIPAA Hazır** | ✅ Yerel AI | ⚠️ Bulut öncelikli | ⚠️ Bulut öncelikli |
+| **Odak** | Multi-DB + RAG | AI Orkestrasyon | RAG-özel |
+| **Geliştirici** | Bağımsız | Microsoft | Microsoft |
+
+**Temel Farklar:**
+- **Semantic Kernel**: Genel AI orkestrasyon framework'ü, RAG-specific değil
+- **Kernel Memory**: RAG odaklı ancak multi-database desteği yok
+- **SmartRAG**: Multi-database RAG yeteneklerinde uzmanlaşmış
+
+**Sonuç:** Birden fazla veritabanını AI ile sorgulamanız veya on-premise deployment gerekiyorsa, SmartRAG bunun için tasarlandı.
+
+---
+
+## 📦 Hızlı Başlangıç
+
+### Kurulum
+```bash
+dotnet add package SmartRAG
+```
+
+### 5 Dakikada Kurulum
+```csharp
+// Program.cs
+builder.Services.UseSmartRAG(builder.Configuration,
+    aiProvider: AIProvider.OpenAI,
+    storageProvider: StorageProvider.InMemory
+);
+
+// Controller veya Service
+public class MyService
+{
+    private readonly IDocumentSearchService _intelligence;
+    
+    public MyService(IDocumentSearchService intelligence)
+    {
+        _intelligence = intelligence;
+    }
+    
+    public async Task<string> SoruSor(string soru)
+    {
+        var sonuc = await _intelligence.QueryIntelligenceAsync(soru, maxResults: 5);
+        return sonuc.Answer;
+    }
+}
+```
+
+### Konfigürasyon (appsettings.json)
+```json
+{
+  "AI": {
+    "OpenAI": {
+      "ApiKey": "sk-sizin-anahtariniz",
+      "Model": "gpt-4",
+      "EmbeddingModel": "text-embedding-ada-002"
+    }
+  }
+}
+```
+
+**Bu kadar!** Artık production-ready bir RAG sisteminiz var. 🎉
+
+[Tam dokümantasyon →](https://byerlikaya.github.io/SmartRAG/tr)
+
+---
 
 ## 🔒 Yerinde ve Yerel AI Desteği
 
@@ -144,17 +310,16 @@ FFmpeg zaten yüklüyse, SmartRAG bunu otomatik olarak algılar ve kullanır.
 
 ---
 
-### ⚠️ **Örneklerle İlgili Önemli Uyarı**
+### 💡 **Bu Örnekler Hakkında**
 
-Aşağıdaki örnekler, SmartRAG'ın teknik yeteneklerini gösteren **açıklayıcı senaryolardır**. Bu özel kullanım örnekleri:
+Aşağıdaki örnekler SmartRAG'ın gerçek dünya senaryolarındaki teknik yeteneklerini gösterir:
 
-- ✅ **Teknik olarak uygulanabilir** - SmartRAG gerekli tüm özellikleri sağlar
-- ✅ **Gerçek yetenekleri gösterir** - Çoklu veritabanı sorguları, OCR, çoklu mod entegrasyonu üretime hazırdır
-- ⚠️ **Üretimde test edilmemiştir** - Bu senaryolar kavramsal örneklerdir
-- ⚠️ **Ek uygulama gerektirebilir** - İş mantığı, doğrulama kuralları, uyumluluk kontrolleri özel geliştirme gerektirir
-- 📋 **Yasal uyumluluk gereklidir** - Finans, sağlık ve hukuk uygulamaları uygun yasal onay gerektirir
+- ✅ **Tüm özellikler üretime hazır** - Multi-database sorgular, OCR, ses işleme gösterildiği gibi çalışır
+- ✅ **Teknik olarak uygulanabilir** - SmartRAG gösterilen tüm gerekli özellikleri sağlar
+- ✅ **Uyarlanabilir kalıplar** - Bunları kendi kullanım senaryolarınız için şablon olarak kullanın
+- 📋 **Sizin sorumluluğunuz** - İş mantığı, doğrulama kuralları ve düzenleyici uyumluluk
 
-**Öneri**: Bu örnekleri ilham kaynağı olarak kullanın. Kendi ortamınızda kapsamlı bir şekilde test edin. Üretim aşamasına geçmeden önce ilgili düzenlemelere (GDPR, HIPAA, finansal düzenlemeler vb.) uygunluğunu kontrol edin.
+**Öneri**: Bu kalıpları özel kullanım senaryonuza uyarlayın ve üretim dağıtımından önce ilgili düzenlemelere (KVKK, GDPR, HIPAA, finansal düzenlemeler vb.) uyumu sağlayın.
 
 ---
 
@@ -493,10 +658,9 @@ SmartRAG'ın benzersiz çoklu veritabanı ve çoklu mod özelliklerini gösteren
 - Gerçekten uluslararası bir RAG çözümü
 
 #### **✅ Üretime Hazır**
-- Sıfır Uyarı Politikası, SOLID/DRY ilkeleri
 - Kapsamlı hata işleme ve yeniden deneme mekanizmaları
 - Kurumsal düzeyde günlük kaydı ve izleme
-- Üretim ortamlarında savaşta test edilmiştir
+- Production-ready, kapsamlı testlerle doğrulanmış
 
 **Akıllı belge işlemenin geleceğini inşa edin - BUGÜN!** 🚀
 
@@ -523,7 +687,7 @@ SmartRAG'ın benzersiz çoklu veritabanı ve çoklu mod özelliklerini gösteren
 - **Yapılandırma Öncelikli**: Mantıklı varsayılanlarla ortam tabanlı yapılandırma
 - **Bağımlılık Enjeksiyonu**: Tam DI container entegrasyonu
 - **Gelişmiş Semantik Arama**: Semantik benzerlik ve anahtar kelime uygunluğunu birleştiren gelişmiş hibrit puanlama (%80 semantik + %20 anahtar kelime)
-- **VoyageAI Entegrasyonu**: Anthropic Claude modelleri için yüksek kaliteli embedding'ler
+- **VoyageAI Entegrasyonu**: Anthropic Claude modelleri için yüksek kaliteli embedding desteği
 - **Çapraz Platform Uyumluluğu**: .NET Standard 2.1 desteği (.NET Core 3.0+ ve .NET 5/6/7/8/9)
 - **Üretime Hazır**: Thread-safe işlemler, merkezi günlükleme, düzgün hata işleme
 - **Profesyonel Dokümantasyon**: GitHub Pages entegrasyonu ile kapsamlı dokümantasyon sitesi
@@ -711,112 +875,28 @@ SmartRAG, hem dosya uzantılarını hem de MIME içerik türlerini kullanarak do
 
 ## 💻 Sistem Gereksinimleri
 
-### Mutlak Minimum (Sadece Test İçin)
-⚠️ **Zar zor kullanılabilir - sadece test amaçlı**
+### **SmartRAG Kütüphanesi İçin (Çekirdek)**
+SmartRAG, minimal gereksinimlerle hafif bir .NET Standard 2.1 kütüphanesidir:
 
 | Bileşen | Gereksinim |
 |---------|------------|
-| **CPU** | 2 çekirdek (herhangi bir Dual-core CPU) |
-| **RAM** | 4 GB |
-| **Disk** | 5 GB boş alan |
-| **GPU** | Yok |
-| **OS** | Windows 10/Linux/macOS |
+| **Framework** | .NET Core 3.0+ veya .NET 5/6/7/8/9 |
+| **RAM** | 2 GB minimum |
+| **OS** | Windows, Linux, macOS |
 
-**Dahil Olanlar:**
-- Whisper tiny (75 MB) - Temel çevirme doğruluğu
-- Llama3.2:1b (1.3 GB) - Hafif AI
-- Sadece Redis (Qdrant yok, test veritabanları yok)
+### **AI İşleme İçin**
 
-**Performans:**
-- 🐌 AI Yanıtı: 15-20 saniye
-- 🐌 Ses Çevirisi: Dakikada 60+ saniye
-- ⚠️ Düşük doğruluk, üretime uygun değil
+**Seçenek 1: Bulut AI (Başlangıç için önerilir)**
+- OpenAI/Anthropic/Gemini API anahtarı
+- Ek donanım gerekmez
+- Kullanım başına ödeme
 
----
+**Seçenek 2: Yerel AI (On-premise)**
+- 8 GB RAM minimum (16 GB önerilir)
+- Modeller için 10-25 GB disk alanı
+- Ollama/Whisper konfigürasyonu için [On-Premise Kurulum Rehberi](https://byerlikaya.github.io/SmartRAG/tr/on-premise)'ne bakın
 
-### Önerilen Minimum (Geliştirme)
-✅ **Gerçek geliştirme ve test için**
-
-| Bileşen | Gereksinim |
-|---------|------------|
-| **CPU** | 4 çekirdek (Intel i5/Ryzen 5 veya eşdeğeri) |
-| **RAM** | 8 GB |
-| **Disk** | 15 GB boş alan |
-| **GPU** | Yok (sadece CPU) |
-| **OS** | Windows 10/11, Linux, macOS |
-
-**Dahil Olanlar:**
-- Whisper base (142 MB) - İyi çevirme doğruluğu
-- Llama3.2 (2 GB) - Standart AI modeli
-- Redis + opsiyonel Qdrant
-- Opsiyonel SQLite test veritabanı
-
-**Performans:**
-- ⚡ AI Yanıtı: 5-10 saniye
-- ⚡ Ses Çevirisi: Dakikada 30 saniye
-- ✅ Geliştirme için kabul edilebilir
-
----
-
-### Üretime Hazır (Varsayılan Konfigürasyon)
-🎯 **Mevcut varsayılan ayarlar - ürün için önerilir**
-
-| Bileşen | Gereksinim |
-|---------|------------|
-| **CPU** | 6-8 çekirdek (Intel i7/Ryzen 7) |
-| **RAM** | 16 GB |
-| **Disk** | 25 GB boş alan |
-| **GPU** | Yok (sadece CPU) |
-| **OS** | Windows 10/11, Linux, macOS |
-
-**Dahil Olanlar:**
-- **Whisper large-v3** (2.9 GB) - Kurumsal sınıf çevirme
-- **Llama3.2** (2 GB) - Kaliteli AI yanıtları
-- Redis + Qdrant + SQL Server/MySQL/PostgreSQL
-- Tam çoklu veritabanı desteği
-
-**Performans:**
-- ⚡ AI Yanıtı: 3-5 saniye
-- ⚡ Ses Çevirisi: Dakikada 10-15 saniye
-- ✅ Ürün kalitesinde doğruluk ve güvenilirlik
-
-**Disk Dağılımı:**
-```
-Whisper large-v3:    2.9 GB
-Llama3.2:            2.0 GB
-nomic-embed-text:    274 MB
-Docker image'ları:   2.0 GB (Ollama, Redis, Qdrant, SQL Server)
-FFmpeg:              100 MB
-Döküman kütüphaneleri: 150 MB
-Vektör verisi:       1-5 GB (kullanımla büyür)
-Veritabanı verisi:   2-10 GB (opsiyonel test verisi)
-─────────────────────────────
-Toplam:              10-25 GB
-```
-
----
-
-### Kurumsal/GPU (Optimal Performans)
-🚀 **Yüksek performanslı dağıtımlar için**
-
-| Bileşen | Gereksinim |
-|---------|------------|
-| **CPU** | 8+ çekirdek (Intel i9/Ryzen 9) |
-| **RAM** | 32 GB |
-| **Disk** | 40 GB boş alan |
-| **GPU** | NVIDIA RTX (4GB+ VRAM, CUDA 11.8+) |
-| **OS** | Windows 10/11, Linux (Ubuntu 20.04+) |
-
-**Dahil Olanlar:**
-- Whisper large-v3 (GPU) - 20x daha hızlı çevirme
-- Mistral 7B (GPU) - 10x daha hızlı AI yanıtları
-- Tüm Docker servisleri (6 container)
-- Tam veritabanı paketi
-
-**Performans:**
-- 🚀 AI Yanıtı: 1-2 saniye (GPU hızlandırmalı)
-- 🚀 Ses Çevirisi: Dakikada 2-5 saniye (GPU hızlandırmalı)
-- ✅ Kurumsal sınıf performans ve doğruluk
+> **Not:** Sistem gereksinimleri AI sağlayıcı seçiminize göre değişir. Bulut API'leri minimal kaynak gerektirirken, yerel AI modelleri daha fazla donanım gerektirir ancak tam gizlilik sunar.
 
 ## 🚀 Hızlı Başlangıç
 
@@ -961,23 +1041,23 @@ cp examples/WebAPI/appsettings.json examples/WebAPI/appsettings.Development.json
 
 
 ### 🔑 **Anthropic Kullanıcıları için Önemli Not**
-**Anthropic Claude modelleri, gömüler için ayrı bir VoyageAI API anahtarı gerektirir:**
-- **Neden?** Anthropic gömme modelleri sağlamadığından, VoyageAI'nin yüksek kaliteli gömülerini kullanıyoruz
-- **Resmi Belgeler:** [Anthropic Gömme Kılavuzu](https://docs.anthropic.com/en/docs/build-with-claude/embeddings#how-to-get-embeddings-with-anthropic)
+**Anthropic Claude modelleri, embedding için ayrı bir VoyageAI API anahtarı gerektirir:**
+- **Neden?** Anthropic embedding modeli sağlamadığından, VoyageAI'nin yüksek kaliteli embedding'lerini kullanıyoruz
+- **Resmi Belgeler:** [Anthropic Embedding Kılavuzu](https://docs.anthropic.com/en/docs/build-with-claude/embeddings#how-to-get-embeddings-with-anthropic)
 - **API Anahtarı Alın:** [VoyageAI API Anahtarları](https://console.voyageai.com/)
 - **Modeller:** `voyage-large-2` (önerilen), `voyage-code-2`, `voyage-01`
-- **Belgeler:** [VoyageAI Gömme API'leri](https://docs.voyageai.com/embeddings/)
+- **Belgeler:** [VoyageAI Embedding API](https://docs.voyageai.com/embeddings/)
 
 ## 🤖 AI Sağlayıcıları - Evrensel Destek
 
-### 🎯 **Özel Sağlayıcılar** (Optimize Edilmiş ve Savaşta Test Edilmiş)
+### 🎯 **Özel Sağlayıcılar** (Optimize Edilmiş ve Üretimde Doğrulanmış)
 
 | Sağlayıcı | Yetenekler | Özel Özellikler |
 |----------|-------------|------------------|
-| **🤖 OpenAI** | ✅ En yeni GPT modelleri<br/>✅ Gelişmiş gömülü modeller | Endüstri standardı, güvenilir, kapsamlı model ailesi |
-| **🧠 Anthropic** | ✅ Claude ailesi modelleri<br/>✅ VoyageAI gömülü modeller | Güvenlik odaklı, anayasal AI, uzun bağlam, ayrı VoyageAI API anahtarı gerektirir |
-| **🌟 Google Gemini** | ✅ Gemini modelleri<br/>✅ Çok modlu gömülü öğeler | Çok modlu destek, en son Google AI yenilikleri |
-| **☁️ Azure OpenAI** | ✅ Kurumsal GPT modelleri<br/>✅ Kurumsal gömülü öğeler | GDPR uyumlu, kurumsal güvenlik, SLA desteği |
+| **🤖 OpenAI** | ✅ En yeni GPT modelleri<br/>✅ Gelişmiş embedding modelleri | Endüstri standardı, güvenilir, kapsamlı model ailesi |
+| **🧠 Anthropic** | ✅ Claude ailesi modelleri<br/>✅ VoyageAI embedding desteği | Güvenlik odaklı, anayasal AI, uzun bağlam, ayrı VoyageAI API anahtarı gerektirir |
+| **🌟 Google Gemini** | ✅ Gemini modelleri<br/>✅ Çok modlu embedding | Çok modlu destek, en son Google AI yenilikleri |
+| **☁️ Azure OpenAI** | ✅ Kurumsal GPT modelleri<br/>✅ Kurumsal embedding | GDPR uyumlu, kurumsal güvenlik, SLA desteği |
 
 ### 🛠️ **CustomProvider** - Evrensel API Desteği
 **Hepsini tek bir sağlayıcıyla yönetin!** OpenAI uyumlu herhangi bir API'ye bağlanın:
@@ -1254,7 +1334,7 @@ SmartRAG, her biri belirli sorumluluklara ve net arayüzlere sahip 5 farklı kat
 #### **🤖 AI ve Sağlayıcı Hizmetleri:**
 - **`IAIProvider`**: OpenAI, Anthropic, Gemini, Azure desteği ile evrensel AI sağlayıcı arayüzü
 - **AnalyticsController**: Kullanım izleme, performans izleme ve içgörüler
-- **AIService**: AI sağlayıcı etkileşimleri ve gömülü öğeler
+- **AIService**: AI sağlayıcı etkileşimleri ve embedding işlemleri
 
 #### **🗄️ Veri ve Depolama Hizmetleri:**
 - **`IDatabaseParserService`**: Evrensel veritabanı entegrasyonu (SQLite, SQL Server, MySQL, PostgreSQL)
@@ -1573,11 +1653,11 @@ SmartRAG, aşağıdaki mükemmel açık kaynak kütüphaneler ve bulut hizmetler
 - **🗄️ [Microsoft.Data.SqlClient](https://github.com/dotnet/SqlClient)** - SQL Server .NET sürücüsü
 
 #### **AI Sağlayıcıları**
-- **🤖 [OpenAI API](https://platform.openai.com/)** - GPT modelleri ve gömülü öğeler
+- **🤖 [OpenAI API](https://platform.openai.com/)** - GPT modelleri ve embedding
 - **🧠 [Anthropic Claude](https://www.anthropic.com/)** - Claude modelleri
 - **🌟 [Google Gemini](https://ai.google.dev/)** - Gemini AI modelleri
 - **☁️ [Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service)** - Kurumsal OpenAI hizmeti
-- **🚀 [VoyageAI](https://www.voyageai.com/)** - Anthropic için yüksek kaliteli gömüler
+- **🚀 [VoyageAI](https://www.voyageai.com/)** - Anthropic için yüksek kaliteli embedding
 
 #### **Yerel AI Desteği**
 - **🦙 [Ollama](https://ollama.ai/)** - AI modellerini yerel olarak çalıştırın

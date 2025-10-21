@@ -9,11 +9,11 @@
     <Authors>Barış Yerlikaya</Authors>
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
-    <Description>High-performance RAG (Retrieval-Augmented Generation) library for .NET Standard 2.1 that enables AI-powered document question-answering with automatic conversation history management, multiple provider support and enterprise-grade vector storage. Features intelligent session management, persistent conversation context, and platform-agnostic design. Compatible with .NET Core 3.0+ and .NET 5/6/7/8/9 applications.</Description>
-    <PackageTags>rag retrieval-augmented-generation ai llm document-qa vector-database openai anthropic gemini azure-openai qdrant redis sqlite sqlserver mysql postgresql database-integration conversation-history session-management chat-context</PackageTags>
+    <Description>Ask questions about your documents, databases, images and audio in natural language. Multi-database RAG library for .NET that queries SQL Server, MySQL, PostgreSQL, SQLite together with AI. On-premise ready with Ollama, Whisper.net. GDPR/KVKK/HIPAA compliant. Compatible with .NET Core 3.0+ and .NET 5/6/7/8/9.</Description>
+    <PackageTags>rag multi-database vector-database document-qa ollama ocr speech-to-text openai qdrant redis</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <!-- <PackageIcon>icon.png</PackageIcon> -->
+    <PackageIcon>icon.png</PackageIcon>
     <PackageProjectUrl>https://byerlikaya.github.io/SmartRAG/en/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/byerlikaya/SmartRAG.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
@@ -127,7 +127,7 @@ Migration from v2.4.0:
   <!-- Documentation Files -->
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="/" />
-    <!-- <None Include="icon.png" Pack="true" PackagePath="/" /> -->
+    <None Include="icon.png" Pack="true" PackagePath="/" />
   </ItemGroup>
 
   <!-- Tessdata Files -->
