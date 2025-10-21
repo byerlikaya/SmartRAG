@@ -5,14 +5,15 @@ using Microsoft.Data.SqlClient;
 using Microsoft.Data.Sqlite;
 using MySqlConnector;
 using Npgsql;
+using SmartRAG.Demo.Models;
 using StackExchange.Redis;
 
-namespace SmartRAG.Demo
-{
-    /// <summary>
-    /// Service for checking health status of all SmartRAG Demo components
-    /// </summary>
-    public class HealthCheckService
+namespace SmartRAG.Demo.Services;
+
+/// <summary>
+/// Service for checking health status of all SmartRAG Demo components
+/// </summary>
+public class HealthCheckService
     {
         #region Fields
 
@@ -261,17 +262,5 @@ namespace SmartRAG.Demo
         }
 
         #endregion
-    }
-
-    /// <summary>
-    /// Represents the health status of a service
-    /// </summary>
-    public class HealthStatus
-    {
-        public string ServiceName { get; set; } = string.Empty;
-        public bool IsHealthy { get; set; }
-        public string Message { get; set; } = string.Empty;
-        public string Details { get; set; } = string.Empty;
-    }
 }
 

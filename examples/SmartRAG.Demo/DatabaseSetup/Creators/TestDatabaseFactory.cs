@@ -1,13 +1,14 @@
 using Microsoft.Extensions.Configuration;
+using SmartRAG.Demo.DatabaseSetup.Interfaces;
 using SmartRAG.Enums;
 
-namespace SmartRAG.Demo
-{
-    /// <summary>
-    /// Factory class for creating database creators
-    /// Follows SOLID principles - Factory Pattern and Dependency Inversion
-    /// </summary>
-    public static class TestDatabaseFactory
+namespace SmartRAG.Demo.DatabaseSetup.Creators;
+
+/// <summary>
+/// Factory class for creating database creators
+/// Follows SOLID principles - Factory Pattern and Dependency Inversion
+/// </summary>
+public static class TestDatabaseFactory
     {
         /// <summary>
         /// Creates the appropriate database creator based on database type
@@ -67,5 +68,4 @@ namespace SmartRAG.Demo
         {
             return GetCreator(databaseType, configuration).GetDefaultConnectionString();
         }
-    }
 }

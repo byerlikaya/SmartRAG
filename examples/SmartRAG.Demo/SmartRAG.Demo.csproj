@@ -31,9 +31,5 @@
     </Content>
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="TestData\" />
-  </ItemGroup>
-
 </Project>
 

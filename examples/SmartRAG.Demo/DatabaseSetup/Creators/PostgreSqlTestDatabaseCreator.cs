@@ -1,16 +1,14 @@
 using Npgsql;
 using Microsoft.Extensions.Configuration;
+using SmartRAG.Demo.DatabaseSetup.Interfaces;
 using SmartRAG.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
-namespace SmartRAG.Demo
-{
-    /// <summary>
-    /// PostgreSQL test database creator implementation
-    /// </summary>
-    public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
+namespace SmartRAG.Demo.DatabaseSetup.Creators;
+
+/// <summary>
+/// PostgreSQL test database creator implementation
+/// </summary>
+public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
     {
         #region Fields
 
@@ -84,24 +82,19 @@ namespace SmartRAG.Demo
                 Console.WriteLine("   ✓ LogisticsManagement database created");
                 Console.ResetColor();
 
-                // 2. Create tables  
+                // Wait for PostgreSQL to complete database creation
+                System.Threading.Thread.Sleep(1000);
+
+                // 2. Create tables with retry mechanism
                 Console.WriteLine("2/3 Creating tables...");
-                using (var connection = new NpgsqlConnection(connectionString))
-                {
-                    connection.Open();
-                    CreateTables(connection);
-                }
+                ExecuteWithRetry(connectionString, CreateTables, 3);
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.WriteLine("   ✓ 3 tables created");
                 Console.ResetColor();
 
-                // 3. Insert data
+                // 3. Insert data with retry mechanism
                 Console.WriteLine("3/3 Inserting sample data...");
-                using (var connection = new NpgsqlConnection(connectionString))
-                {
-                    connection.Open();
-                    InsertSampleData(connection);
-                }
+                ExecuteWithRetry(connectionString, InsertSampleData, 3);
                 Console.ForegroundColor = ConsoleColor.Green;
                 Console.WriteLine("   ✓ Sample data inserted");
                 Console.ResetColor();
@@ -126,6 +119,56 @@ namespace SmartRAG.Demo
         #endregion
 
         #region Private Methods
+
+        private void ExecuteWithRetry(string connectionString, Action<NpgsqlConnection> action, int maxRetries)
+        {
+            int retryCount = 0;
+            Exception? lastException = null;
+
+            while (retryCount < maxRetries)
+            {
+                try
+                {
+                    using (var connection = new NpgsqlConnection(connectionString))
+                    {
+                        connection.Open();
+                        action(connection);
+                        return; // Success, exit
+                    }
+                }
+                catch (NpgsqlException ex) when (ex.Message.Contains("terminating connection") || 
+                                                   ex.Message.Contains("57P01"))
+                {
+                    lastException = ex;
+                    retryCount++;
+                    
+                    if (retryCount < maxRetries)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.WriteLine($"   ⏳ Connection interrupted, retrying ({retryCount}/{maxRetries})...");
+                        Console.ResetColor();
+                        System.Threading.Thread.Sleep(2000 * retryCount); // Exponential backoff
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // For other exceptions, don't retry
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine($"❌ Error: {ex.Message}");
+                    Console.ResetColor();
+                    throw;
+                }
+            }
+
+            // All retries failed
+            if (lastException != null)
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"❌ Failed after {maxRetries} retries: {lastException.Message}");
+                Console.ResetColor();
+                throw lastException;
+            }
+        }
 
         private void CreateDatabase()
         {
@@ -348,6 +391,5 @@ INSERT INTO Routes (ShipmentID, OriginFacilityID, DestinationFacilityID, Distanc
         }
 
         #endregion
-    }
 }
 

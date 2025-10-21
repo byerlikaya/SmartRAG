@@ -1,12 +1,12 @@
 using SmartRAG.Enums;
 
-namespace SmartRAG.Demo
-{
-    /// <summary>
-    /// Interface for creating test databases across different database types
-    /// Follows SOLID principles - Single Responsibility and Dependency Inversion
-    /// </summary>
-    public interface ITestDatabaseCreator
+namespace SmartRAG.Demo.DatabaseSetup.Interfaces;
+
+/// <summary>
+/// Interface for creating test databases across different database types
+/// Follows SOLID principles - Single Responsibility and Dependency Inversion
+/// </summary>
+public interface ITestDatabaseCreator
     {
         /// <summary>
         /// Creates a sample database with test data
@@ -38,5 +38,4 @@ namespace SmartRAG.Demo
         /// </summary>
         /// <returns>Database type description</returns>
         string GetDescription();
-    }
 }

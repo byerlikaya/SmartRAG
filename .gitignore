@@ -265,6 +265,10 @@ config.json
 *.tmp
 *.temp
 
+# Backup files
+*.backup
+*.bak
+
 # Package outputs
 nupkgs/
 *.nupkg

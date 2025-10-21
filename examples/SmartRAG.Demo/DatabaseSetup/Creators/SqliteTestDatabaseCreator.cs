@@ -1,14 +1,15 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
+using SmartRAG.Demo.DatabaseSetup.Interfaces;
 using SmartRAG.Enums;
 
-namespace SmartRAG.Demo
-{
-    /// <summary>
-    /// SQLite test database creator implementation
-    /// Follows SOLID principles - Single Responsibility Principle
-    /// </summary>
-    public class SqliteTestDatabaseCreator : ITestDatabaseCreator
+namespace SmartRAG.Demo.DatabaseSetup.Creators;
+
+/// <summary>
+/// SQLite test database creator implementation
+/// Follows SOLID principles - Single Responsibility Principle
+/// </summary>
+public class SqliteTestDatabaseCreator : ITestDatabaseCreator
     {
         private readonly IConfiguration? _configuration;
 
@@ -311,5 +312,4 @@ namespace SmartRAG.Demo
             var rowsAffected = command.ExecuteNonQuery();
             Console.WriteLine($"[✅ OK] {tableName}: {rowsAffected} rows inserted");
         }
-    }
 }

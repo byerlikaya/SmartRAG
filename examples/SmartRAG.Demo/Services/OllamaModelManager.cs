@@ -2,12 +2,12 @@ using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 
-namespace SmartRAG.Demo
-{
-    /// <summary>
-    /// Manages Ollama models - downloads, lists and verifies model availability
-    /// </summary>
-    public class OllamaModelManager
+namespace SmartRAG.Demo.Services;
+
+/// <summary>
+/// Manages Ollama models - downloads, lists and verifies model availability
+/// </summary>
+public class OllamaModelManager
     {
         #region Constants
 
@@ -167,6 +167,5 @@ namespace SmartRAG.Demo
         }
 
         #endregion
-    }
 }
 

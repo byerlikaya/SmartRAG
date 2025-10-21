@@ -1,13 +1,11 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
+using SmartRAG.Demo.DatabaseSetup.Interfaces;
 using SmartRAG.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
-namespace SmartRAG.Demo
-{
-    public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
+namespace SmartRAG.Demo.DatabaseSetup.Creators;
+
+public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
     {
         private readonly IConfiguration? _configuration;
         private readonly string _server;
@@ -304,5 +302,4 @@ INSERT INTO SalesSummary (SalesDate, TotalSales, TotalOrders, AverageOrderAmount
                 }
             }
         }
-    }
 }
