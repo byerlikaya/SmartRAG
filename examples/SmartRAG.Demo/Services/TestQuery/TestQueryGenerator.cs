@@ -207,16 +207,28 @@ CRITICAL REQUIREMENTS:
 5. Focus on GROUP BY, SUM, AVG, COUNT queries that don't require WHERE with specific values
 6. Use foreign keys visible in schema for joins
 
-GOOD QUERY EXAMPLES:
-✓ ""Calculate total {{{{numericColumn}}}} grouped by {{{{foreignKey}}}}""
-✓ ""Show all records from {{{{table1}}}} with their related {{{{table2}}}} data""
-✓ ""What is the average {{{{numericColumn}}}} across all records?""
-✓ ""Compare totals between {{{{database1}}}} and {{{{database2}}}}""
+CRITICAL INSTRUCTION - HOW TO WRITE QUERIES:
+Step 1: Analyze the schema above and identify:
+  - Numeric columns (DECIMAL, INT types)
+  - Foreign key columns (columns referencing other tables)
+  - Date/time columns (DATETIME, TIMESTAMP types)
+  - Text columns (VARCHAR, TEXT types for status/category)
 
-BAD QUERY EXAMPLES - DO NOT GENERATE:
-✗ ""Show specific employee's data"" (assumes specific column exists)
-✗ ""Calculate for ID 5"" (specific ID in WHERE clause)
-✗ ""Get order total for specific order"" (assumes specific column exists)
+Step 2: Use ACTUAL column/table names from the schema
+  - Look at schema and use the real names you see there
+  - DO NOT use placeholder syntax
+  - DO NOT assume column names not in schema
+
+EXAMPLE QUERY PATTERNS:
+✓ ""Show all records from [table in schema] with their related [foreign key table] data""
+✓ ""Calculate total [numeric column from schema] grouped by [text column from schema]""
+✓ ""What is the average [numeric column from schema] across all records?""
+✓ ""Compare totals between [database 1] and [database 2]""
+
+BAD PATTERNS - DO NOT USE:
+✗ ""Show specific record with ID 5"" (specific value)
+✗ ""Calculate numericColumn"" (placeholder not replaced)
+✗ ""Get TableName.ColumnName"" (database prefix in query text)
 
 Category options (use emoji prefix - category in English, query in {language}):
 - Cross-DB Join
