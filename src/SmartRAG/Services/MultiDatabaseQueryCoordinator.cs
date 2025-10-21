@@ -980,7 +980,8 @@ namespace SmartRAG.Services
                     sb.AppendLine("✗ LIMIT keyword (does not exist in SQL Server)");
                     sb.AppendLine("✗ FETCH NEXT");
                     sb.AppendLine("✗ Table aliases (c, p, o)");
-                    sb.AppendLine("✗ Parameters (@ParamName)");
+                    sb.AppendLine("✗ Parameters: @ParamName, :ParamName, ?");
+                    sb.AppendLine("✗ Template syntax: <placeholder>, {variable}");
                     sb.AppendLine("✗ JOIN statements (return FK IDs only)");
                     sb.AppendLine();
                     sb.AppendLine("REQUIRED FORMAT:");
@@ -989,6 +990,7 @@ namespace SmartRAG.Services
                     sb.AppendLine("CORRECT EXAMPLES:");
                     sb.AppendLine("✓ SELECT TOP 100 Column1, Column2 FROM TableName");
                     sb.AppendLine("✓ WHERE DateColumn >= DATEADD(month, -3, GETDATE())");
+                    sb.AppendLine("✓ WHERE NumericColumn > 100 (use literal values, NOT @param)");
                     sb.AppendLine("✓ SELECT Column1, SUM(Column2) FROM TableName GROUP BY Column1");
                     break;
                     
@@ -998,6 +1000,8 @@ namespace SmartRAG.Services
                     sb.AppendLine("ABSOLUTELY FORBIDDEN:");
                     sb.AppendLine("✗ TOP keyword (does not exist in SQLite)");
                     sb.AppendLine("✗ Columns not in schema");
+                    sb.AppendLine("✗ Parameters: @ParamName, :ParamName, ?");
+                    sb.AppendLine("✗ Template syntax: <placeholder>, {variable}");
                     sb.AppendLine();
                     sb.AppendLine("REQUIRED FORMAT:");
                     sb.AppendLine($"SELECT columns FROM {dbQuery.RequiredTables[0]} WHERE conditions ORDER BY column LIMIT 100");
@@ -1005,6 +1009,7 @@ namespace SmartRAG.Services
                     sb.AppendLine("CORRECT EXAMPLES:");
                     sb.AppendLine("✓ SELECT Column1, Column2 FROM TableName LIMIT 100");
                     sb.AppendLine("✓ WHERE DateColumn >= date('now', '-3 month')");
+                    sb.AppendLine("✓ WHERE NumericColumn > 100 (use literal values, NOT ?)");
                     sb.AppendLine("✓ Use EXACT table/column casing from schema");
                     break;
                     
@@ -1013,6 +1018,8 @@ namespace SmartRAG.Services
                     sb.AppendLine();
                     sb.AppendLine("ABSOLUTELY FORBIDDEN:");
                     sb.AppendLine("✗ TOP keyword (does not exist in MySQL)");
+                    sb.AppendLine("✗ Parameters: @ParamName, :ParamName, ?");
+                    sb.AppendLine("✗ Template syntax: <placeholder>, {variable}");
                     sb.AppendLine();
                     sb.AppendLine("CRITICAL GROUP BY RULE (MySQL strict mode):");
                     sb.AppendLine("If using GROUP BY, EVERY non-aggregate column in SELECT MUST be in GROUP BY");
@@ -1026,6 +1033,7 @@ namespace SmartRAG.Services
                     sb.AppendLine("CORRECT EXAMPLES:");
                     sb.AppendLine("✓ SELECT Column1, Column2 FROM TableName LIMIT 100");
                     sb.AppendLine("✓ WHERE DateColumn >= DATE_SUB(NOW(), INTERVAL 3 MONTH)");
+                    sb.AppendLine("✓ WHERE NumericColumn > 100 (use literal values, NOT ?)");
                     break;
                     
                 case DatabaseType.PostgreSQL:
@@ -1033,7 +1041,9 @@ namespace SmartRAG.Services
                     sb.AppendLine();
                     sb.AppendLine("ABSOLUTELY FORBIDDEN:");
                     sb.AppendLine("✗ TOP keyword (does not exist in PostgreSQL)");
-                    sb.AppendLine("✗ INTERVAL without quotes (INTERVAL 3 MONTH is wrong)");
+                    sb.AppendLine("✗ INTERVAL without quotes");
+                    sb.AppendLine("✗ Parameters: @ParamName, :ParamName, ?");
+                    sb.AppendLine("✗ Template syntax: <placeholder>, {variable}");
                     sb.AppendLine();
                     sb.AppendLine("REQUIRED FORMAT:");
                     sb.AppendLine($"SELECT columns FROM {dbQuery.RequiredTables[0]} WHERE conditions ORDER BY column LIMIT 100");
@@ -1042,6 +1052,11 @@ namespace SmartRAG.Services
                     sb.AppendLine("✓ SELECT Column1, Column2 FROM TableName LIMIT 100");
                     sb.AppendLine("✓ WHERE DateColumn >= CURRENT_DATE - INTERVAL '3 months'");
                     sb.AppendLine("✓ WHERE DateColumn >= NOW() - INTERVAL '30 days'");
+                    sb.AppendLine("✓ WHERE NumericColumn > 100 (use literal values, NOT $1)");
+                    sb.AppendLine();
+                    sb.AppendLine("DATE/TIME ARITHMETIC:");
+                    sb.AppendLine("✗ WRONG: INTERVAL 30 DAYS (no quotes)");
+                    sb.AppendLine("✓ CORRECT: INTERVAL '30 days' (with quotes!)");
                     break;
             }
             
