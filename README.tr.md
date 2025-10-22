@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/images/logo.svg" alt="SmartRAG Logo" width="200"/>
+  <img src="icon.svg" alt="SmartRAG Logo" width="200"/>
 </p>
 
 <p align="center">
@@ -872,31 +872,6 @@ SmartRAG, hem dosya uzantılarını hem de MIME içerik türlerini kullanarak do
 - **Görüntüler**: `image/jpeg`, `image/png`, `image/gif`, `image/bmp`, `image/tiff`, `image/webp`
 - **Ses**: `audio/mpeg`, `audio/wav`, `audio/mp4`, `audio/aac`, `audio/ogg`, `audio/flac`, `audio/x-ms-wma`
 - **Veritabanları**: `application/x-sqlite3`, `application/vnd.sqlite3`, `application/octet-stream`
-
-## 💻 Sistem Gereksinimleri
-
-### **SmartRAG Kütüphanesi İçin (Çekirdek)**
-SmartRAG, minimal gereksinimlerle hafif bir .NET Standard 2.1 kütüphanesidir:
-
-| Bileşen | Gereksinim |
-|---------|------------|
-| **Framework** | .NET Core 3.0+ veya .NET 5/6/7/8/9 |
-| **RAM** | 2 GB minimum |
-| **OS** | Windows, Linux, macOS |
-
-### **AI İşleme İçin**
-
-**Seçenek 1: Bulut AI (Başlangıç için önerilir)**
-- OpenAI/Anthropic/Gemini API anahtarı
-- Ek donanım gerekmez
-- Kullanım başına ödeme
-
-**Seçenek 2: Yerel AI (On-premise)**
-- 8 GB RAM minimum (16 GB önerilir)
-- Modeller için 10-25 GB disk alanı
-- Ollama/Whisper konfigürasyonu için [On-Premise Kurulum Rehberi](https://byerlikaya.github.io/SmartRAG/tr/on-premise)'ne bakın
-
-> **Not:** Sistem gereksinimleri AI sağlayıcı seçiminize göre değişir. Bulut API'leri minimal kaynak gerektirirken, yerel AI modelleri daha fazla donanım gerektirir ancak tam gizlilik sunar.
 
 ## 🚀 Hızlı Başlangıç
 

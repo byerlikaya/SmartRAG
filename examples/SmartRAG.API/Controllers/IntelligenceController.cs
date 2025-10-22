@@ -63,13 +63,13 @@ namespace SmartRAG.API.Controllers
     ///   -d '{"query": "What are the key findings in our quarterly reports?", "maxResults": 5}'
     /// 
     /// # Document-only semantic intelligence
-    /// curl -X GET "https://localhost:7001/api/intelligence/documents?query=machine learning&limit=10"
+    /// curl -X GET "https://localhost:7001/api/intelligence/documents?query=machine learning&amp;limit=10"
     /// 
     /// # Get intelligence suggestions
     /// curl -X GET "https://localhost:7001/api/intelligence/suggestions?partial=artific"
     /// 
     /// # Search conversation history
-    /// curl -X GET "https://localhost:7001/api/intelligence/conversations?userId=user123&query=database"
+    /// curl -X GET "https://localhost:7001/api/intelligence/conversations?userId=user123&amp;query=database"
     /// ```
     /// </summary>
     [ApiController]
@@ -218,7 +218,7 @@ namespace SmartRAG.API.Controllers
         /// <returns>List of intelligence suggestions with relevance scores</returns>
         [HttpGet("suggestions")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-        public async Task<ActionResult> GetIntelligenceSuggestions(
+        public Task<ActionResult> GetIntelligenceSuggestions(
             [FromQuery] string partial,
             [FromQuery] int limit = 5,
             [FromQuery] string? userId = null)
@@ -252,17 +252,17 @@ namespace SmartRAG.API.Controllers
                     }));
                 }
 
-                return Ok(new
+                return Task.FromResult<ActionResult>(Ok(new
                 {
                     partial,
                     totalSuggestions = suggestions.Count,
                     suggestions,
                     timestamp = DateTime.UtcNow
-                });
+                }));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Error = ex.Message });
+                return Task.FromResult<ActionResult>(StatusCode(500, new { Error = ex.Message }));
             }
         }
 

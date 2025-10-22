@@ -65,7 +65,7 @@ namespace SmartRAG.API.Controllers
     /// curl -X GET "https://localhost:7001/api/conversation/{id}/history"
     /// 
     /// # Search user conversations
-    /// curl -X GET "https://localhost:7001/api/conversation/search?userId=user123&searchTerm=machine learning"
+    /// curl -X GET "https://localhost:7001/api/conversation/search?userId=user123&amp;searchTerm=machine learning"
     /// ```
     /// </summary>
     [ApiController]

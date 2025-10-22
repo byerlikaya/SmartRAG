@@ -51,7 +51,7 @@ namespace SmartRAG.API.Controllers
     /// curl -X GET "https://localhost:7001/api/analytics/usage"
     /// 
     /// # Get performance metrics with custom date range
-    /// curl -X GET "https://localhost:7001/api/analytics/performance?startDate=2024-01-01&endDate=2024-01-31"
+    /// curl -X GET "https://localhost:7001/api/analytics/performance?startDate=2024-01-01&amp;endDate=2024-01-31"
     /// 
     /// # Get popular queries
     /// curl -X GET "https://localhost:7001/api/analytics/popular-queries?limit=50"

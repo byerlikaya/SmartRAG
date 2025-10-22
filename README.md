@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/images/logo.svg" alt="SmartRAG Logo" width="200"/>
+  <img src="icon.svg" alt="SmartRAG Logo" width="200"/>
 </p>
 
 <p align="center">
@@ -897,31 +897,6 @@ SmartRAG automatically detects file types using both file extensions and MIME co
 - **Images**: `image/jpeg`, `image/png`, `image/gif`, `image/bmp`, `image/tiff`, `image/webp`
 - **Audio**: `audio/mpeg`, `audio/wav`, `audio/mp4`, `audio/aac`, `audio/ogg`, `audio/flac`, `audio/x-ms-wma`
 - **Databases**: `application/x-sqlite3`, `application/vnd.sqlite3`, `application/octet-stream`
-
-## 💻 System Requirements
-
-### **For SmartRAG Library (Core)**
-SmartRAG is a lightweight .NET Standard 2.1 library with minimal requirements:
-
-| Component | Specification |
-|-----------|---------------|
-| **Framework** | .NET Core 3.0+ or .NET 5/6/7/8/9 |
-| **RAM** | 2 GB minimum |
-| **OS** | Windows, Linux, macOS |
-
-### **For AI Processing**
-
-**Option 1: Cloud AI (Recommended for getting started)**
-- OpenAI/Anthropic/Gemini API key
-- No additional hardware needed
-- Pay-per-use pricing
-
-**Option 2: Local AI (On-premise)**
-- 8 GB RAM minimum (16 GB recommended)
-- 10-25 GB disk space for models
-- See [On-Premise Setup Guide](https://byerlikaya.github.io/SmartRAG/on-premise) for Ollama/Whisper configuration
-
-> **Note:** System requirements vary based on your AI provider choice. Cloud APIs require minimal resources, while local AI models need more hardware but offer complete privacy.
 
 ## 🚀 Quick Start
 

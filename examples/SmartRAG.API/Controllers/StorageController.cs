@@ -446,7 +446,7 @@ public class StorageController(IStorageFactory storageFactory, IDocumentService 
                 });
             }
 
-            string backupId = null;
+            string? backupId = null;
             if (createBackup)
             {
                 // Mock backup creation before clearing
