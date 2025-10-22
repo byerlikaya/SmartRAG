@@ -4,7 +4,7 @@
 
 <p align="center">
   <b>Multi-Database RAG Library for .NET</b><br>
-  Ask questions about your data in natural language
+  Ask questions about your data in natural language.
 </p>
 
 <p align="center">
