@@ -40,9 +40,9 @@ This project uses **two separate configuration files**:
    - VoyageAI Embedding API Key: https://console.voyageai.com/
 
 **For Docker Databases (automatically configured):**
-- SQL Server: `sa` / `${SQLSERVER_SA_PASSWORD:-SmartRAG@2024}` (environment variable)
-- MySQL: `root` / `${MYSQL_ROOT_PASSWORD:-mysql123}` (environment variable)
-- PostgreSQL: `postgres` / `${POSTGRES_PASSWORD:-postgres123}` (environment variable)
+- SQL Server: `sa` / `${SQLSERVER_SA_PASSWORD}` (environment variable required)
+- MySQL: `root` / `${MYSQL_ROOT_PASSWORD}` (environment variable required)
+- PostgreSQL: `postgres` / `${POSTGRES_PASSWORD}` (environment variable required)
 
 3. **Update appsettings.Development.json:**
    ```json

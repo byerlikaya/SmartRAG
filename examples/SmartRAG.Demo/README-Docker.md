@@ -170,7 +170,7 @@ docker exec -it smartrag-redis redis-cli ping
 ### SQL Server
 - **Host**: localhost,1433
 - **Username**: sa
-- **Password**: `${SQLSERVER_SA_PASSWORD:-SmartRAG@2024}` (environment variable)
+- **Password**: `${SQLSERVER_SA_PASSWORD}` (environment variable required)
 - **Database**: SalesManagement (created by app)
 - **Container**: smartrag-sqlserver-test
 - **Volume**: sqlserver-data
@@ -180,28 +180,25 @@ docker exec -it smartrag-redis redis-cli ping
 # Using environment variable
 export SQLSERVER_SA_PASSWORD="your_secure_password"
 docker exec -it smartrag-sqlserver-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P $SQLSERVER_SA_PASSWORD -C -Q "SELECT @@VERSION"
-
-# Or using default password
-docker exec -it smartrag-sqlserver-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P ${SQLSERVER_SA_PASSWORD:-SmartRAG@2024} -C -Q "SELECT @@VERSION"
 ```
 
 ### MySQL
 - **Host**: localhost:3306
 - **Username**: root
-- **Password**: `${MYSQL_ROOT_PASSWORD:-mysql123}` (environment variable)
+- **Password**: `${MYSQL_ROOT_PASSWORD}` (environment variable required)
 - **Database**: InventoryManagement (created by app)
 - **Container**: smartrag-mysql-test
 - **Volume**: mysql-data
 
 **Test Connection:**
 ```bash
-docker exec -it smartrag-mysql-test mysql -u root -p${MYSQL_ROOT_PASSWORD:-mysql123} -e "SELECT VERSION()"
+docker exec -it smartrag-mysql-test mysql -u root -p${MYSQL_ROOT_PASSWORD} -e "SELECT VERSION()"
 ```
 
 ### PostgreSQL
 - **Host**: localhost:5432
 - **Username**: postgres
-- **Password**: `${POSTGRES_PASSWORD:-postgres123}` (environment variable)
+- **Password**: `${POSTGRES_PASSWORD}` (environment variable required)
 - **Database**: LogisticsManagement (created by app)
 - **Container**: smartrag-postgres-test
 - **Volume**: postgres-data

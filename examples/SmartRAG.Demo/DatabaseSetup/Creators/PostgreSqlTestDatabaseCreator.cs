@@ -31,7 +31,11 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
             _server = "localhost";
             _port = 5432;
             _user = "postgres";
-            _password = Environment.GetEnvironmentVariable("POSTGRES_PASSWORD") ?? "postgres123";
+            _password = Environment.GetEnvironmentVariable("POSTGRES_PASSWORD");
+            if (string.IsNullOrEmpty(_password))
+            {
+                throw new InvalidOperationException("POSTGRES_PASSWORD environment variable is required");
+            }
             _databaseName = "LogisticsManagement";
         }
 

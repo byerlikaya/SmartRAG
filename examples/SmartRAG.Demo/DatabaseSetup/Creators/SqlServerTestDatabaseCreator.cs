@@ -24,7 +24,11 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
 
         public string GetDefaultConnectionString()
         {
-            var password = Environment.GetEnvironmentVariable("SQLSERVER_SA_PASSWORD") ?? "SmartRAG@2024";
+            var password = Environment.GetEnvironmentVariable("SQLSERVER_SA_PASSWORD");
+            if (string.IsNullOrEmpty(password))
+            {
+                throw new InvalidOperationException("SQLSERVER_SA_PASSWORD environment variable is required");
+            }
             return $"Server={_server};Database={_databaseName};User Id=sa;Password={password};TrustServerCertificate=true;";
         }
 
@@ -107,7 +111,11 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
 
         private void CreateDatabase()
         {
-            var password = Environment.GetEnvironmentVariable("SQLSERVER_SA_PASSWORD") ?? "SmartRAG@2024";
+            var password = Environment.GetEnvironmentVariable("SQLSERVER_SA_PASSWORD");
+            if (string.IsNullOrEmpty(password))
+            {
+                throw new InvalidOperationException("SQLSERVER_SA_PASSWORD environment variable is required");
+            }
             var masterConnectionString = $"Server={_server};Database=master;User Id=sa;Password={password};TrustServerCertificate=true;";
 
             using (var connection = new SqlConnection(masterConnectionString))

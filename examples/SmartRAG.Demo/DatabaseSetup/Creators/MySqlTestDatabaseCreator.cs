@@ -26,7 +26,11 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
             _server = "localhost";
             _port = 3306;
             _user = "root";
-            _password = Environment.GetEnvironmentVariable("MYSQL_ROOT_PASSWORD") ?? "mysql123";
+            _password = Environment.GetEnvironmentVariable("MYSQL_ROOT_PASSWORD");
+            if (string.IsNullOrEmpty(_password))
+            {
+                throw new InvalidOperationException("MYSQL_ROOT_PASSWORD environment variable is required");
+            }
             _databaseName = "InventoryManagement";
         }
 
