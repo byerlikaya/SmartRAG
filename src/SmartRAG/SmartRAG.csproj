@@ -38,6 +38,21 @@ Intelligence Platform Features:
 • Storage Management - Backup, restore, migration, and provider switching
 • Conversation Intelligence - Session management and context-aware responses
 
+SQL Generation &amp; Multi-Language Support:
+• Language-Safe SQL Generation - Automatic validation preventing non-English text in SQL queries
+• Multi-Language Query Support - AI handles queries in any language while generating pure English SQL
+• Character Validation - Detection of Turkish/German/Russian characters (ç, ğ, ı, ö, ş, ü, ä, ö, ü, ß, Cyrillic)
+• Keyword Validation - Prevention of non-English keywords in SQL (sorgu, abfrage, запрос)
+• PostgreSQL Full Support - Complete integration with live connections and schema analysis
+
+On-Premise &amp; Local AI Support:
+• Complete Local Operation - Ollama, LM Studio, and OpenAI-compatible local API support
+• Document Processing - PDF, Word, Excel parsing completely local
+• OCR Processing - Tesseract 5.2.0 completely local, no data sent to cloud
+• Database Integration - SQLite, SQL Server, MySQL, PostgreSQL all local connections
+• Storage Options - In-Memory, SQLite, FileSystem, Redis all local
+• Enterprise Compliance - GDPR/KVKK/HIPAA compliant, air-gapped systems support
+
 Technical Improvements:
 • Professional API Design - RESTful endpoints with comprehensive documentation
 • Enterprise Architecture - SOLID principles, zero warnings policy maintained
@@ -46,11 +61,16 @@ Technical Improvements:
 • Memory Management - Optimized performance with streaming and caching
 
 Documentation and Developer Experience:
+• Multi-Language Documentation - Available in English, Turkish, German, and Russian
 • Complete API Documentation - All endpoints with detailed examples and use cases
 • Migration Guide - Step-by-step upgrade instructions from v2.4.0
 • Enhanced README - Updated with v3.0.0 features and breaking changes
 • Professional Swagger UI - Optimized interface with collapsed endpoints
 • Enterprise Examples - Real-world usage scenarios and best practices
+
+Important Limitations:
+• Audio Files - Google Cloud Speech-to-Text API required (data sent to Google Cloud)
+• OCR Handwriting - Limited support for handwritten text (printed text works perfectly)
 
 Migration from v2.4.0:
 • Update API endpoints: /api/search → /api/intelligence

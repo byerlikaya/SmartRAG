@@ -10,7 +10,7 @@ All notable changes to SmartRAG are documented here. The project adheres to [Sem
 
 ---
 
-## [3.0.0] - 2025-10-18
+## [3.0.0] - 2025-10-22
 
 <div class="alert alert-warning">
     <h4><i class="fas fa-exclamation-triangle me-2"></i> BREAKING CHANGES</h4>
@@ -123,7 +123,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 
 ---
 
-## [2.3.1] - 2025-10-08
+## [2.3.1] - 2025-10-20
 
 ### 🐛 Bug Fixes
 - **LoggerMessage Parameter Mismatch**: Fixed ServiceLogMessages.LogAudioServiceInitialized parameter mismatch

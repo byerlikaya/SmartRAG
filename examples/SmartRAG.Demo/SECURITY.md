@@ -39,10 +39,10 @@ This project uses **two separate configuration files**:
    - Anthropic API Key: https://console.anthropic.com/
    - VoyageAI Embedding API Key: https://console.voyageai.com/
 
-   **For Docker Databases (automatically configured):**
-   - SQL Server: `sa` / `SmartRAG@2024`
-   - MySQL: `root` / `mysql123`
-   - PostgreSQL: `postgres` / `postgres123`
+**For Docker Databases (automatically configured):**
+- SQL Server: `sa` / `${SQLSERVER_SA_PASSWORD:-SmartRAG@2024}` (environment variable)
+- MySQL: `root` / `${MYSQL_ROOT_PASSWORD:-mysql123}` (environment variable)
+- PostgreSQL: `postgres` / `${POSTGRES_PASSWORD:-postgres123}` (environment variable)
 
 3. **Update appsettings.Development.json:**
    ```json
@@ -125,6 +125,39 @@ Docker credentials are **intentionally simple** because:
 - Containers run on `localhost`
 - Data is isolated in Docker volumes
 - **Never use these credentials in production!**
+
+### Environment Variables for Docker
+
+For better security, use environment variables:
+
+**Option 1: Using .env file (Recommended)**
+```bash
+# Copy the example file
+cp env.example .env
+
+# Edit .env with your secure passwords
+nano .env
+
+# Start Docker (automatically reads .env)
+docker-compose up -d
+```
+
+**Option 2: Using export commands**
+```bash
+# Set secure passwords before starting Docker
+export SQLSERVER_SA_PASSWORD="YourSecurePassword123!"
+export MYSQL_ROOT_PASSWORD="YourMySQLPassword456!"
+export POSTGRES_PASSWORD="YourPostgresPassword789!"
+
+# Start Docker with custom passwords
+docker-compose up -d
+```
+
+This approach:
+- ✅ Avoids hardcoded passwords in code
+- ✅ Allows different passwords per environment
+- ✅ Follows security best practices
+- ✅ Prevents accidental credential exposure
 
 ## 📚 Additional Resources
 

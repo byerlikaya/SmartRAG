@@ -24,7 +24,8 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
 
         public string GetDefaultConnectionString()
         {
-            return $"Server={_server};Database={_databaseName};User Id=sa;Password=SmartRAG@2024;TrustServerCertificate=true;";
+            var password = Environment.GetEnvironmentVariable("SQLSERVER_SA_PASSWORD") ?? "SmartRAG@2024";
+            return $"Server={_server};Database={_databaseName};User Id=sa;Password={password};TrustServerCertificate=true;";
         }
 
         public string GetDescription()
@@ -106,7 +107,8 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
 
         private void CreateDatabase()
         {
-            var masterConnectionString = $"Server={_server};Database=master;User Id=sa;Password=SmartRAG@2024;TrustServerCertificate=true;";
+            var password = Environment.GetEnvironmentVariable("SQLSERVER_SA_PASSWORD") ?? "SmartRAG@2024";
+            var masterConnectionString = $"Server={_server};Database=master;User Id=sa;Password={password};TrustServerCertificate=true;";
 
             using (var connection = new SqlConnection(masterConnectionString))
             {

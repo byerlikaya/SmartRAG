@@ -6,7 +6,7 @@ All notable changes to SmartRAG will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.0.0] - 2025-10-18
+## [3.0.0] - 2025-10-22
 
 ### 🚀 BREAKING CHANGES - Intelligence Library Revolution
 
@@ -117,7 +117,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - Update endpoints and methods at your own pace
 - No immediate breaking changes if you continue using old methods
 
-## [2.3.1] - 2025-10-08
+## [2.3.1] - 2025-10-20
 
 ### 🐛 Bug Fixes
 - **LoggerMessage Parameter Mismatch**: Fixed LoggerMessage.Define parameter mismatch in ServiceLogMessages.LogAudioServiceInitialized

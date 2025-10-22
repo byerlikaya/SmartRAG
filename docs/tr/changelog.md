@@ -10,7 +10,7 @@ SmartRAG'deki tüm önemli değişiklikler burada belgelenmiştir. Proje [Anlams
 
 ---
 
-## [3.0.0] - 2025-10-18
+## [3.0.0] - 2025-10-22
 
 <div class="alert alert-warning">
     <h4><i class="fas fa-exclamation-triangle me-2"></i> BREAKING CHANGE'LER</h4>
@@ -123,7 +123,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 
 ---
 
-## [2.3.1] - 2025-10-08
+## [2.3.1] - 2025-10-20
 
 ### 🐛 Hata Düzeltmeleri
 - **LoggerMessage Parametre Uyumsuzluğu**: ServiceLogMessages.LogAudioServiceInitialized parametre uyumsuzluğu düzeltildi

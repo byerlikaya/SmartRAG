@@ -110,7 +110,7 @@ SmartRAG lets you query multiple databases with natural language while combining
 ## 🆚 SmartRAG vs Other .NET RAG Libraries
 
 | Feature | SmartRAG | Semantic Kernel | Kernel Memory |
-|---------|:--------:|:---------------:|:-------------:|
+|---------|----------|-----------------|---------------|
 | **Multi-Database RAG** | ✅ | ❌ | ❌ |
 | **On-Premise (Ollama)** | ✅ 100% | ⚠️ Limited | ⚠️ Limited |
 | **OCR + Audio + DB** | ✅ All-in-one | ❌ Separate | ❌ Separate |

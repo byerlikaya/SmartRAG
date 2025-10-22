@@ -110,7 +110,7 @@ SmartRAG, birden fazla veritabanını doğal dille sorgulayıp belge zekasıyla 
 ## 🆚 SmartRAG vs Diğer .NET RAG Kütüphaneleri
 
 | Özellik | SmartRAG | Semantic Kernel | Kernel Memory |
-|---------|:--------:|:---------------:|:-------------:|
+|---------|----------|-----------------|---------------|
 | **Multi-Database RAG** | ✅ | ❌ | ❌ |
 | **On-Premise (Ollama)** | ✅ %100 | ⚠️ Sınırlı | ⚠️ Sınırlı |
 | **OCR + Ses + DB** | ✅ Hepsi bir arada | ❌ Ayrı | ❌ Ayrı |

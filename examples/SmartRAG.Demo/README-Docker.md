@@ -18,16 +18,40 @@ This Docker setup includes **6 services**:
 
 ## 🚀 Quick Start
 
-### 1. Start All Services
+### 1. Environment Setup (Recommended)
+
+For better security, use environment variables instead of default passwords:
 
 ```bash
-cd examples/SmartRAG.LocalDemo
+# Copy the example file
+cp env.example .env
+
+# Edit .env with your secure passwords
+nano .env  # or use your preferred editor
+```
+
+**Example .env file:**
+```bash
+# SQL Server Configuration
+SQLSERVER_SA_PASSWORD=YourSecurePassword123!
+
+# MySQL Configuration  
+MYSQL_ROOT_PASSWORD=YourMySQLPassword456!
+
+# PostgreSQL Configuration
+POSTGRES_PASSWORD=YourPostgresPassword789!
+```
+
+### 2. Start All Services
+
+```bash
+cd examples/SmartRAG.Demo
 docker-compose up -d
 ```
 
 **Wait 10-15 seconds** for all services to initialize.
 
-### 2. Verify Services
+### 3. Verify Services
 
 ```bash
 docker-compose ps
@@ -35,7 +59,7 @@ docker-compose ps
 
 You should see all 6 containers running with "healthy" status.
 
-### 3. Setup Ollama Models
+### 4. Setup Ollama Models
 
 ```bash
 # Download LLaMA 3.2 (main AI model)
@@ -47,7 +71,7 @@ docker exec -it smartrag-ollama ollama pull nomic-embed-text
 
 **Note**: First download may take 5-10 minutes depending on your internet speed.
 
-### 4. Run the Application
+### 5. Run the Application
 
 ```bash
 dotnet run
@@ -146,33 +170,38 @@ docker exec -it smartrag-redis redis-cli ping
 ### SQL Server
 - **Host**: localhost,1433
 - **Username**: sa
-- **Password**: SmartRAG@2024
+- **Password**: `${SQLSERVER_SA_PASSWORD:-SmartRAG@2024}` (environment variable)
 - **Database**: SalesManagement (created by app)
 - **Container**: smartrag-sqlserver-test
 - **Volume**: sqlserver-data
 
 **Test Connection:**
 ```bash
-docker exec -it smartrag-sqlserver-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P SmartRAG@2024 -C -Q "SELECT @@VERSION"
+# Using environment variable
+export SQLSERVER_SA_PASSWORD="your_secure_password"
+docker exec -it smartrag-sqlserver-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P $SQLSERVER_SA_PASSWORD -C -Q "SELECT @@VERSION"
+
+# Or using default password
+docker exec -it smartrag-sqlserver-test /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P ${SQLSERVER_SA_PASSWORD:-SmartRAG@2024} -C -Q "SELECT @@VERSION"
 ```
 
 ### MySQL
 - **Host**: localhost:3306
 - **Username**: root
-- **Password**: mysql123
+- **Password**: `${MYSQL_ROOT_PASSWORD:-mysql123}` (environment variable)
 - **Database**: InventoryManagement (created by app)
 - **Container**: smartrag-mysql-test
 - **Volume**: mysql-data
 
 **Test Connection:**
 ```bash
-docker exec -it smartrag-mysql-test mysql -u root -pmysql123 -e "SELECT VERSION()"
+docker exec -it smartrag-mysql-test mysql -u root -p${MYSQL_ROOT_PASSWORD:-mysql123} -e "SELECT VERSION()"
 ```
 
 ### PostgreSQL
 - **Host**: localhost:5432
 - **Username**: postgres
-- **Password**: postgres123
+- **Password**: `${POSTGRES_PASSWORD:-postgres123}` (environment variable)
 - **Database**: LogisticsManagement (created by app)
 - **Container**: smartrag-postgres-test
 - **Volume**: postgres-data
@@ -389,8 +418,22 @@ docker stats smartrag-ollama
 - **NEVER use these configurations in production**
 - **NEVER expose these ports to the internet**
 
+### Environment Variables for Security
+
+For better security, use environment variables instead of hardcoded passwords:
+
+```bash
+# Set secure passwords
+export SQLSERVER_SA_PASSWORD="YourSecurePassword123!"
+export MYSQL_ROOT_PASSWORD="YourMySQLPassword456!"
+export POSTGRES_PASSWORD="YourPostgresPassword789!"
+
+# Start with custom passwords
+docker-compose up -d
+```
+
 For production deployments:
-- Use strong, unique passwords
+- Use strong, unique passwords via environment variables
 - Enable TLS/SSL encryption
 - Use proper authentication
 - Run behind a firewall

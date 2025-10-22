@@ -85,7 +85,31 @@ For production-grade scalability:
 - Docker Desktop (for local mode)
 - OR Cloud AI API keys (for cloud mode)
 
-### 1. Start Docker Services (Local Mode)
+### 1. Environment Setup (Recommended)
+
+For better security, use environment variables instead of default passwords:
+
+```bash
+# Copy the example file
+cp env.example .env
+
+# Edit .env with your secure passwords
+nano .env  # or use your preferred editor
+```
+
+**Example .env file:**
+```bash
+# SQL Server Configuration
+SQLSERVER_SA_PASSWORD=YourSecurePassword123!
+
+# MySQL Configuration  
+MYSQL_ROOT_PASSWORD=YourMySQLPassword456!
+
+# PostgreSQL Configuration
+POSTGRES_PASSWORD=YourPostgresPassword789!
+```
+
+### 2. Start Docker Services (Local Mode)
 
 ```bash
 cd examples/SmartRAG.Demo

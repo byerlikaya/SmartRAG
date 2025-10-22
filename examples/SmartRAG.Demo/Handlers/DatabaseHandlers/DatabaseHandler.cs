@@ -296,7 +296,7 @@ public class DatabaseHandler(
 
             System.Console.WriteLine();
             System.Console.WriteLine($"📝 Database: InventoryManagement");
-            System.Console.WriteLine($"📝 Connection: {connectionString.Replace("Password=mysql123", "Password=***")}");
+            System.Console.WriteLine($"📝 Connection: {connectionString.Replace("Password=", "Password=***")}");
             System.Console.WriteLine();
 
             creator.CreateSampleDatabase(connectionString);
@@ -351,7 +351,7 @@ public class DatabaseHandler(
 
             System.Console.WriteLine();
             System.Console.WriteLine($"📝 Database: LogisticsManagement");
-            System.Console.WriteLine($"📝 Connection: {connectionString.Replace("Password=postgres123", "Password=***")}");
+            System.Console.WriteLine($"📝 Connection: {connectionString.Replace("Password=", "Password=***")}");
             System.Console.WriteLine();
 
             creator.CreateSampleDatabase(connectionString);
