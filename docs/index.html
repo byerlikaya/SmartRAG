@@ -6,16 +6,36 @@ layout: null
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SmartRAG Documentation</title>
-    <meta name="description" content="Enterprise-grade RAG library for .NET applications">
+    <title>SmartRAG - Enterprise-Grade RAG Library for .NET</title>
+    <meta name="description" content="Enterprise-Grade RAG Library for .NET - Multi-Database + Multi-Modal Intelligence Platform">
     <meta http-equiv="refresh" content="0; url={{ site.baseurl }}/en/">
     <link rel="canonical" href="{{ site.baseurl }}/en/">
     <script>
-        // Immediate redirect to English version
-        window.location.href = '{{ site.baseurl }}/en/';
+        // Get user's preferred language from browser or localStorage
+        const savedLang = localStorage.getItem('smartrag-language');
+        const browserLang = navigator.language || navigator.userLanguage;
+        
+        let targetLang = 'en'; // Default to English
+        
+        if (savedLang === 'tr' || savedLang === 'en') {
+            targetLang = savedLang;
+        } else if (browserLang && browserLang.startsWith('tr')) {
+            targetLang = 'tr';
+        }
+        
+        // Immediate redirect
+        window.location.href = '{{ site.baseurl }}/' + targetLang + '/';
     </script>
 </head>
 <body>
-    <p>Redirecting to <a href="{{ site.baseurl }}/en/">English version</a>...</p>
+    <div style="text-align: center; padding: 50px; font-family: system-ui, -apple-system, sans-serif;">
+        <h1>SmartRAG Documentation</h1>
+        <p>Redirecting to documentation...</p>
+        <p>
+            <a href="{{ site.baseurl }}/en/" style="margin: 0 10px; text-decoration: none; color: #6366f1;">English</a>
+            <a href="{{ site.baseurl }}/tr/" style="margin: 0 10px; text-decoration: none; color: #6366f1;">Türkçe</a>
+        </p>
+    </div>
 </body>
 </html>
+

@@ -1,247 +1,516 @@
 ---
 layout: default
-title: API Referansı
-description: SmartRAG servisleri ve arayüzleri için tam API dokümantasyonu
+title: API Referans
+description: SmartRAG interface'leri, metodları ve modelleri için eksiksiz API dokümantasyonu
 lang: tr
 ---
 
-<div class="page-content">
-    <div class="container">
-        <!-- Core Interfaces Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>Temel Arayüzler</h2>
-                    <!-- Updated for v2.3.1 -->
-                    <p>SmartRAG, belge işleme ve yönetimi için temel arayüzler sağlar.</p>
-                    
-                    <h3>IDocumentSearchService</h3>
-                    <p>RAG (Retrieval-Augmented Generation) ile belge arama ve AI destekli yanıt üretimi.</p>
-                    
-                    <div class="code-example">
-                        <pre><code class="language-csharp">public interface IDocumentSearchService
+
+## Temel Interface'ler
+
+SmartRAG tüm işlemler için iyi tanımlanmış interface'ler sağlar. Bu interface'leri dependency injection ile enjekte edin.
+
+---
+
+## IDocumentSearchService
+
+**Amaç:** RAG pipeline ve konuşma yönetimi ile AI destekli akıllı sorgu işleme
+
+**Namespace:** `SmartRAG.Interfaces`
+
+### Metodlar
+
+#### QueryIntelligenceAsync
+
+RAG ve otomatik oturum yönetimi ile akıllı sorguları işleyin.
+
+```csharp
+Task<RagResponse> QueryIntelligenceAsync(
+    string query, 
+    int maxResults = 5, 
+    bool startNewConversation = false
+)
+```
+
+**Parametreler:**
+- `query` (string): Kullanıcının sorusu veya sorgusu
+- `maxResults` (int): Alınacak maksimum doküman parçası sayısı (varsayılan: 5)
+- `startNewConversation` (bool): Yeni bir konuşma oturumu başlat (varsayılan: false)
+
+**Döndürür:** AI cevabı, kaynakları ve metadata ile `RagResponse`
+
+**Örnek:**
+
+```csharp
+var response = await _searchService.QueryIntelligenceAsync(
+    "Ana faydalar nelerdir?", 
+    maxResults: 5
+);
+
+Console.WriteLine(response.Answer);
+// Kaynaklar response.Sources içinde mevcut
+```
+
+#### SearchDocumentsAsync
+
+AI cevabı üretmeden dokümanları anlamsal olarak arayın.
+
+```csharp
+Task<List<DocumentChunk>> SearchDocumentsAsync(
+    string query, 
+    int maxResults = 5
+)
+```
+
+**Parametreler:**
+- `query` (string): Arama sorgusu
+- `maxResults` (int): Döndürülecek maksimum parça sayısı (varsayılan: 5)
+
+**Döndürür:** İlgili doküman parçalarıyla `List<DocumentChunk>`
+
+**Örnek:**
+
+```csharp
+var chunks = await _searchService.SearchDocumentsAsync("makine öğrenimi", maxResults: 10);
+
+foreach (var chunk in chunks)
 {
-    Task&lt;List&lt;DocumentChunk&gt;&gt; SearchDocumentsAsync(string query, int maxResults = 5);
-    Task&lt;RagResponse&gt; GenerateRagAnswerAsync(string query, int maxResults = 5, bool startNewConversation = false);
-}</code></pre>
+    Console.WriteLine($"Skor: {chunk.RelevanceScore}, İçerik: {chunk.Content}");
+}
+```
+
+#### GenerateRagAnswerAsync (Kullanımdan Kaldırıldı)
+
+<div class="alert alert-warning">
+    <h4><i class="fas fa-exclamation-triangle me-2"></i> v3.0.0'da Kullanımdan Kaldırıldı</h4>
+    <p class="mb-0">
+        Yerine <code>QueryIntelligenceAsync</code> kullanın. Bu metod v4.0.0'da kaldırılacak.
+        Geriye dönük uyumluluk için sağlanan eski metod.
+    </p>
                     </div>
 
-                    <h4>GenerateRagAnswerAsync</h4>
-                    <p>Otomatik oturum yönetimi ve konuşma geçmişi ile AI destekli yanıtlar üretir.</p>
-                    
-                    <div class="code-example">
-                        <pre><code class="language-csharp">Task&lt;RagResponse&gt; GenerateRagAnswerAsync(string query, int maxResults = 5, bool startNewConversation = false)</code></pre>
-                    </div>
-                    
-                    <p><strong>Parametreler:</strong></p>
-                    <ul>
-                        <li><code>query</code> (string): Kullanıcının sorusu</li>
-                        <li><code>maxResults</code> (int): Alınacak maksimum belge parçası sayısı (varsayılan: 5)</li>
-                        <li><code>startNewConversation</code> (bool): Yeni konuşma oturumu başlat (varsayılan: false)</li>
-                    </ul>
-                    
-                    <p><strong>Döner:</strong> <code>RagResponse</code> AI yanıtı, kaynaklar ve metadata ile</p>
-                    
-                    <div class="code-example">
-                        <pre><code class="language-csharp">// Temel kullanım
-var response = await documentSearchService.GenerateRagAnswerAsync("Hava nasıl?");
+```csharp
+[Obsolete("Yerine QueryIntelligenceAsync kullanın")]
+Task<RagResponse> GenerateRagAnswerAsync(
+    string query, 
+    int maxResults = 5, 
+    bool startNewConversation = false
+)
+```
 
-// Yeni konuşma başlat
-var response = await documentSearchService.GenerateRagAnswerAsync("/new");</code></pre>
-                    </div>
+---
 
-                    <h3>Diğer Önemli Arayüzler</h3>
-                    <p>Belge işleme ve depolama için ek servisler.</p>
-                    
-                    <div class="code-example">
-                        <pre><code class="language-csharp">// Belge ayrıştırma ve işleme
-IDocumentParserService - Belgeleri ayrıştır ve metin çıkar
-IDocumentRepository - Belge depolama işlemleri
-IAIService - AI sağlayıcı iletişimi
-IAudioParserService - Ses transkripsiyonu (Google Speech-to-Text)</code></pre>
-                    </div>
-                </div>
-            </div>
-        </section>
+## IDocumentService
 
-        <!-- Models Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>Ana Modeller</h2>
-                    <!-- Updated for v2.3.1 -->
-                    <p>SmartRAG işlemleri için temel veri modelleri.</p>
-                    
-                    <div class="code-example">
-                        <pre><code class="language-csharp">// Ana yanıt modeli
+**Amaç:** Doküman CRUD işlemleri ve yönetimi
+
+**Namespace:** `SmartRAG.Interfaces`
+
+### Metodlar
+
+#### UploadDocumentAsync
+
+Tek bir doküman yükleyin ve işleyin.
+
+```csharp
+Task<Document> UploadDocumentAsync(
+    Stream fileStream, 
+    string fileName, 
+    string contentType, 
+    string uploadedBy, 
+    string language = null
+)
+```
+
+**Parametreler:**
+- `fileStream` (Stream): Doküman dosya akışı
+- `fileName` (string): Dosya adı
+- `contentType` (string): MIME içerik tipi
+- `uploadedBy` (string): Kullanıcı tanımlayıcısı
+- `language` (string, isteğe bağlı): OCR için dil kodu (örn. "tur", "eng")
+
+**Desteklenen Formatlar:**
+- PDF: `application/pdf`
+- Word: `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
+- Excel: `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`
+- Görseller: `image/jpeg`, `image/png`, `image/webp`, vb.
+- Ses: `audio/mpeg`, `audio/wav`, vb.
+- Veritabanları: `application/x-sqlite3`
+
+**Örnek:**
+
+```csharp
+using var fileStream = File.OpenRead("sozlesme.pdf");
+
+var document = await _documentService.UploadDocumentAsync(
+    fileStream,
+    "sozlesme.pdf",
+    "application/pdf",
+    "kullanici-123"
+);
+
+Console.WriteLine($"Yüklendi: {document.FileName}, Parçalar: {document.Chunks.Count}");
+```
+
+#### GetDocumentAsync
+
+ID'sine göre bir doküman alın.
+
+```csharp
+Task<Document> GetDocumentAsync(Guid id)
+```
+
+#### GetAllDocumentsAsync
+
+Tüm yüklenmiş dokümanları alın.
+
+```csharp
+Task<List<Document>> GetAllDocumentsAsync()
+```
+
+#### DeleteDocumentAsync
+
+Bir dokümanı ve parçalarını silin.
+
+```csharp
+Task<bool> DeleteDocumentAsync(Guid id)
+```
+
+#### GetStorageStatisticsAsync
+
+Depolama istatistiklerini ve metriklerini alın.
+
+```csharp
+Task<Dictionary<string, object>> GetStorageStatisticsAsync()
+```
+
+**Örnek:**
+
+```csharp
+var stats = await _documentService.GetStorageStatisticsAsync();
+
+Console.WriteLine($"Toplam Doküman: {stats["TotalDocuments"]}");
+Console.WriteLine($"Toplam Parça: {stats["TotalChunks"]}");
+```
+
+---
+
+## IDatabaseParserService
+
+**Amaç:** Canlı bağlantılarla evrensel veritabanı desteği
+
+**Namespace:** `SmartRAG.Interfaces`
+
+### Metodlar
+
+#### ParseDatabaseFileAsync
+
+Bir veritabanı dosyasını ayrıştırın (SQLite).
+
+```csharp
+Task<string> ParseDatabaseFileAsync(Stream dbStream, string fileName)
+```
+
+#### ParseDatabaseConnectionAsync
+
+Canlı veritabanına bağlanın ve içeriği çıkarın.
+
+```csharp
+Task<string> ParseDatabaseConnectionAsync(
+    string connectionString, 
+    DatabaseConfig config
+)
+```
+
+**Örnek:**
+
+```csharp
+var config = new DatabaseConfig
+{
+    Type = DatabaseType.SqlServer,
+    ConnectionString = "Server=localhost;Database=Northwind;Trusted_Connection=true;",
+    IncludedTables = new List<string> { "Customers", "Orders", "Products" },
+    MaxRowsPerTable = 1000,
+    SanitizeSensitiveData = true
+};
+
+var content = await _databaseService.ParseDatabaseConnectionAsync(
+    config.ConnectionString, 
+    config
+);
+```
+
+#### ExecuteQueryAsync
+
+Özel SQL sorgusu çalıştırın.
+
+```csharp
+Task<string> ExecuteQueryAsync(
+    string connectionString, 
+    string query, 
+    DatabaseType databaseType, 
+    int maxRows = 1000
+)
+```
+
+#### ValidateConnectionAsync
+
+Veritabanı bağlantısını doğrulayın.
+
+```csharp
+Task<bool> ValidateConnectionAsync(
+    string connectionString, 
+    DatabaseType databaseType
+)
+```
+
+**Örnek:**
+
+```csharp
+bool isValid = await _databaseService.ValidateConnectionAsync(
+    "Server=localhost;Database=MyDb;Trusted_Connection=true;",
+    DatabaseType.SqlServer
+);
+
+if (isValid)
+{
+    Console.WriteLine("Bağlantı başarılı!");
+}
+```
+
+---
+
+## Veri Modelleri
+
+### RagResponse
+
+Kaynaklarla AI tarafından üretilmiş yanıt.
+
+```csharp
 public class RagResponse
 {
-    public string Query { get; set; }
-    public string Answer { get; set; }
-    public List&lt;SearchSource&gt; Sources { get; set; }
-    public DateTime SearchedAt { get; set; }
+    public string Query { get; set; }              // Orijinal sorgu
+    public string Answer { get; set; }             // AI tarafından üretilen cevap
+    public List<SearchSource> Sources { get; set; } // Kaynak dokümanlar
+    public DateTime SearchedAt { get; set; }       // Zaman damgası
+    public Configuration Configuration { get; set; } // Sağlayıcı yapılandırması
 }
+```
 
-// Arama sonuçları için belge parçası
+**Örnek Yanıt:**
+
+```json
+{
+  "query": "RAG nedir?",
+  "answer": "RAG (Retrieval-Augmented Generation), alma ve üretimi birleştiren...",
+  "sources": [
+    {
+      "documentId": "abc-123",
+      "fileName": "ml-kilavuzu.pdf",
+      "chunkContent": "RAG, almayı birleştirir...",
+      "relevanceScore": 0.92
+    }
+  ],
+  "searchedAt": "2025-10-18T14:30:00Z"
+}
+```
+
+### DocumentChunk
+
+İlgililik skoru ile doküman parçası.
+
+```csharp
 public class DocumentChunk
 {
-    public string Id { get; set; }
-    public string DocumentId { get; set; }
-    public string Content { get; set; }
-    public double RelevanceScore { get; set; }
-}</code></pre>
-                    </div>
-                </div>
-            </div>
-        </section>
+    public string Id { get; set; }               // Parça ID
+    public string DocumentId { get; set; }       // Üst doküman ID
+    public string Content { get; set; }          // Parça metin içeriği
+    public List<float> Embedding { get; set; }   // Vektör embedding
+    public double RelevanceScore { get; set; }   // Benzerlik skoru (0-1)
+    public int ChunkIndex { get; set; }          // Dokümandaki pozisyon
+}
+```
 
-        <!-- Configuration Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>Yapılandırma</h2>
-                    <!-- Updated for v2.3.1 -->
-                    <p>SmartRAG için temel yapılandırma seçenekleri.</p>
-                    
-                    <div class="code-example">
-                        <pre><code class="language-csharp">// AI Sağlayıcıları
-AIProvider.Anthropic    // Claude modelleri
-AIProvider.OpenAI       // GPT modelleri
-AIProvider.Gemini       // Google modelleri
+### Document
 
-// Depolama Sağlayıcıları  
-StorageProvider.Qdrant  // Vektör veritabanı
-StorageProvider.Redis   // Yüksek performanslı önbellek
-StorageProvider.Sqlite  // Yerel veritabanı</code></pre>
-                    </div>
-                </div>
-            </div>
-        </section>
+Metadata ile doküman varlığı.
 
-        <!-- Quick Start Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>Hızlı Başlangıç</h2>
-                    <!-- Updated for v2.3.1 -->
-                    <p>SmartRAG ile dakikalar içinde başlayın.</p>
-                    
-                    <div class="code-example">
-                        <pre><code class="language-csharp">// 1. Servisleri kaydet
-services.AddSmartRag(configuration, options =>
+```csharp
+public class Document
 {
-    options.AIProvider = AIProvider.Anthropic;
-    options.StorageProvider = StorageProvider.Redis;
-});
+    public Guid Id { get; set; }                 // Doküman ID
+    public string FileName { get; set; }         // Orijinal dosya adı
+    public string ContentType { get; set; }      // MIME tipi
+    public long FileSize { get; set; }           // Byte cinsinden dosya boyutu
+    public DateTime UploadedAt { get; set; }     // Yükleme zaman damgası
+    public string UploadedBy { get; set; }       // Kullanıcı tanımlayıcısı
+    public string Content { get; set; }          // Çıkarılan metin içeriği
+    public List<DocumentChunk> Chunks { get; set; } // Doküman parçaları
+}
+```
 
-// 2. Enjekte et ve kullan
-public class MyController : ControllerBase
+---
+
+## Enumerasyonlar
+
+### AIProvider
+
+Desteklenen AI sağlayıcıları.
+
+```csharp
+public enum AIProvider
+{
+    OpenAI,        // OpenAI GPT modelleri
+    Anthropic,     // Anthropic Claude modelleri
+    Gemini,        // Google Gemini modelleri
+    AzureOpenAI,   // Azure OpenAI servisi
+    Custom         // Özel/Ollama/LM Studio/OpenRouter
+}
+```
+
+### StorageProvider
+
+Desteklenen depolama backend'leri.
+
+```csharp
+public enum StorageProvider
+{
+    Qdrant,       // Vektör veritabanı
+    Redis,        // Yüksek performanslı önbellek
+    Sqlite,       // Gömülü veritabanı
+    FileSystem,   // Dosya tabanlı depolama
+    InMemory      // RAM depolama (sadece geliştirme)
+}
+```
+
+### DatabaseType
+
+Desteklenen veritabanı tipleri.
+
+```csharp
+public enum DatabaseType
+{
+    SqlServer,    // Microsoft SQL Server
+    MySQL,        // MySQL / MariaDB
+    PostgreSql,   // PostgreSQL
+    Sqlite        // SQLite
+}
+```
+
+### RetryPolicy
+
+Başarısız istekler için yeniden deneme politikaları.
+
+```csharp
+public enum RetryPolicy
+{
+    None,                // Yeniden deneme yok
+    FixedDelay,         // Sabit gecikme
+    LinearBackoff,      // Doğrusal artan gecikme
+    ExponentialBackoff  // Üssel artan gecikme (önerilen)
+}
+```
+
+---
+
+## Kullanım Desenleri
+
+### Dependency Injection
+
+Servislerinizde/controller'larınızda interface'leri enjekte edin:
+
+```csharp
+public class MyService
 {
     private readonly IDocumentSearchService _searchService;
+    private readonly IDocumentService _documentService;
+    private readonly IDatabaseParserService _databaseService;
     
-    public async Task<ActionResult> Ask(string question)
+    public MyService(
+        IDocumentSearchService searchService,
+        IDocumentService documentService,
+        IDatabaseParserService databaseService)
     {
-        var response = await _searchService.GenerateRagAnswerAsync(question);
-        return Ok(response);
+        _searchService = searchService;
+        _documentService = documentService;
+        _databaseService = databaseService;
     }
-}</code></pre>
-                    </div>
-                </div>
-            </div>
-        </section>
+    
+    public async Task<string> ProcessQuery(string query)
+    {
+        var response = await _searchService.QueryIntelligenceAsync(query);
+        return response.Answer;
+    }
+}
+```
 
-        <!-- Common Patterns Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>Yaygın Kalıplar</h2>
-                    <!-- Updated for v2.3.1 -->
-                    <p>Sık kullanılan kalıplar ve yapılandırmalar.</p>
-                    
-                    <div class="code-example">
-                        <pre><code class="language-csharp">// Belge yükleme
-var document = await _documentService.UploadDocumentAsync(file);
+### Hata Yönetimi
 
-// Belge arama  
-var results = await _searchService.SearchDocumentsAsync(query, 10);
-
-// RAG konuşması
-var response = await _searchService.GenerateRagAnswerAsync(question);
-
-// Yapılandırma
-services.AddSmartRag(configuration, options =>
+```csharp
+try
 {
-    options.AIProvider = AIProvider.Anthropic;
-    options.StorageProvider = StorageProvider.Redis;
-});</code></pre>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Error Handling Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>Hata Yönetimi</h2>
-                    <!-- Updated for v2.3.1 -->
-                    <p>Yaygın hatalar ve hata yönetimi kalıpları.</p>
-                    
-                    <div class="code-example">
-                        <pre><code class="language-csharp">try
-{
-    var response = await _searchService.GenerateRagAnswerAsync(query);
+    var response = await _searchService.QueryIntelligenceAsync(query);
     return Ok(response);
 }
 catch (SmartRagException ex)
 {
-    return BadRequest(ex.Message);
+    // SmartRAG'e özgü istisnalar
+    _logger.LogError(ex, "SmartRAG hatası: {Message}", ex.Message);
+    return BadRequest(new { error = ex.Message });
 }
 catch (Exception ex)
 {
-    return StatusCode(500, "Internal server error");
-}</code></pre>
-                    </div>
-                </div>
-            </div>
-        </section>
+    // Genel istisnalar
+    _logger.LogError(ex, "Beklenmeyen hata");
+    return StatusCode(500, "Sunucu hatası");
+}
+```
 
-        <!-- Performance Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>Performans İpuçları</h2>
-                    <!-- Updated for v2.3.1 -->
-                    <p>SmartRAG performansını optimize edin.</p>
-                    
-                    <div class="alert alert-info">
+---
+
+## Performans İpuçları
+
+<div class="alert alert-success">
+    <h4><i class="fas fa-bolt me-2"></i> Performans Optimizasyonu</h4>
                         <ul class="mb-0">
-                            <li><strong>Parça Boyutu</strong>: Optimal denge için 500-1000 karakter</li>
-                            <li><strong>Toplu İşlemler</strong>: Birden fazla belgeyi birlikte işle</li>
-                            <li><strong>Önbellekleme</strong>: Daha iyi performans için Redis kullan</li>
-                            <li><strong>Vektör Depolama</strong>: Üretim için Qdrant kullan</li>
+        <li><strong>Chunk Boyutu:</strong> Optimal denge için 500-1000 karakter</li>
+        <li><strong>MaxResults:</strong> Genellikle 5-10 parça yeterli</li>
+        <li><strong>Toplu İşlemler:</strong> Birden fazla dosya için <code>UploadDocumentsAsync</code> kullanın</li>
+        <li><strong>Depolama:</strong> Üretim için Qdrant veya Redis kullanın (InMemory değil)</li>
+        <li><strong>Önbellekleme:</strong> Daha iyi performans için konuşma depolamayı etkinleştirin</li>
+        <li><strong>Veritabanı Limitleri:</strong> Makul MaxRowsPerTable ayarlayın (1000-5000)</li>
                         </ul>
                     </div>
-                </div>
-            </div>
-        </section>
 
-        <!-- Help Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <div class="alert alert-info">
-                        <h4><i class="fas fa-question-circle me-2"></i>Yardıma mı İhtiyacınız Var?</h4>
-                        <p class="mb-0">API ile ilgili yardıma ihtiyacınız varsa:</p>
-                        <ul class="mb-0 mt-2">
-                            <li><a href="{{ site.baseurl }}/tr/getting-started">Başlangıç Rehberi</a></li>
-                            <li><a href="{{ site.baseurl }}/tr/configuration">Yapılandırma Seçenekleri</a></li>
-                            <li><a href="https://github.com/byerlikaya/SmartRAG/issues" target="_blank">GitHub'da konu açın</a></li>
-                            <li><a href="mailto:b.yerlikaya@outlook.com">E-posta ile destek alın</a></li>
-                        </ul>
+---
+
+## Sonraki Adımlar
+
+<div class="row g-4 mt-4">
+    <div class="col-md-6">
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i class="fas fa-lightbulb"></i>
+            </div>
+            <h3>Örnekler</h3>
+            <p>Pratik kod örneklerini ve gerçek dünya uygulamalarını görün</p>
+            <a href="{{ site.baseurl }}/tr/examples" class="btn btn-outline-primary btn-sm mt-3">
+                Örnekleri Görüntüle
+            </a>
+                </div>
+            </div>
+    
+    <div class="col-md-6">
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i class="fas fa-rocket"></i>
+            </div>
+            <h3>Başlangıç</h3>
+            <p>Hızlı kurulum ve yapılandırma kılavuzu</p>
+            <a href="{{ site.baseurl }}/tr/getting-started" class="btn btn-outline-primary btn-sm mt-3">
+                Başlayın
+            </a>
                     </div>
                 </div>
             </div>
-        </section>
-    </div>
-</div>
+

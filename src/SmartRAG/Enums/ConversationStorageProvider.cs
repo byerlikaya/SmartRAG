@@ -13,7 +13,7 @@ namespace SmartRAG.Enums
         /// <summary>
         /// Store conversations in SQLite database
         /// </summary>
-        Sqlite,
+        SQLite,
 
         /// <summary>
         /// Store conversations in file system
