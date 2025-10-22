@@ -1,8 +1,4 @@
 <p align="center">
-  <img src="icon.svg" alt="SmartRAG Logo" width="200"/>
-</p>
-
-<p align="center">
   <b>.NET için Multi-Database RAG Kütüphanesi</b><br>
   Verileriniz hakkında doğal dilde sorular sorun
 </p>

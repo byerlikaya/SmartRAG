@@ -10,6 +10,21 @@ SmartRAG'deki tüm önemli değişiklikler burada belgelenmiştir. Proje [Anlams
 
 ---
 
+## [3.0.1] - 2025-10-22
+
+### 🐛 Düzeltildi
+- **LoggerMessage Parametre Uyumsuzluğu**: `LogAudioServiceInitialized` LoggerMessage tanımında eksik `configPath` parametresi düzeltildi
+- **EventId Çakışmaları**: ServiceLogMessages.cs'deki çakışan EventId atamaları çözüldü (6006, 6008, 6009)
+- **Logo Görüntüleme Sorunu**: NuGet'te görüntüleme sorunlarına neden olan README dosyalarındaki bozuk logo referansları kaldırıldı
+- **TypeInitializationException**: SmartRAG.Demo'nun çalışmasını engelleyen kritik başlatma hatası düzeltildi
+
+### 🔧 Teknik İyileştirmeler
+- **ServiceLogMessages.cs**: LoggerMessage tanımları parametre sayılarıyla doğru eşleşecek şekilde güncellendi
+- **EventId Yönetimi**: Benzersiz log tanımlayıcıları için çakışan EventId'ler yeniden atandı
+- **Dokümantasyon**: Daha iyi NuGet paket görüntüleme için README dosyaları temizlendi
+
+---
+
 ## [3.0.0] - 2025-10-22
 
 <div class="alert alert-warning">
