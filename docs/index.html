@@ -11,26 +11,15 @@ layout: null
     <meta http-equiv="refresh" content="0; url={{ site.baseurl }}/en/">
     <link rel="canonical" href="{{ site.baseurl }}/en/">
     <script>
-        // Get user's preferred language from browser or localStorage
-        const savedLang = localStorage.getItem('smartrag-language');
-        const browserLang = navigator.language || navigator.userLanguage;
-        
-        let targetLang = 'en'; // Default to English
-        
-        if (savedLang === 'tr' || savedLang === 'en') {
-            targetLang = savedLang;
-        } else if (browserLang && browserLang.startsWith('tr')) {
-            targetLang = 'tr';
-        }
-        
-        // Immediate redirect
-        window.location.href = '{{ site.baseurl }}/' + targetLang + '/';
+        // Always redirect to English by default
+        // Users can manually switch to Turkish if needed
+        window.location.href = '{{ site.baseurl }}/en/';
     </script>
 </head>
 <body>
     <div style="text-align: center; padding: 50px; font-family: system-ui, -apple-system, sans-serif;">
         <h1>SmartRAG Documentation</h1>
-        <p>Redirecting to documentation...</p>
+        <p>Redirecting to English documentation...</p>
         <p>
             <a href="{{ site.baseurl }}/en/" style="margin: 0 10px; text-decoration: none; color: #6366f1;">English</a>
             <a href="{{ site.baseurl }}/tr/" style="margin: 0 10px; text-decoration: none; color: #6366f1;">Türkçe</a>
