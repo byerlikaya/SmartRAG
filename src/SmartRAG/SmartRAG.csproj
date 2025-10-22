@@ -135,7 +135,6 @@ Migration from v2.4.0:
     <!-- Google Speech-to-Text (Cloud) -->
     <!-- Whisper.net (Local transcription) -->
     <PackageReference Include="Whisper.net" Version="1.8.1" />
-    <PackageReference Include="Whisper.net.Runtime" Version="1.8.1" />
     <!-- FFMpegCore for cross-platform audio format conversion (MP3, M4A, FLAC → WAV) -->
     <PackageReference Include="FFMpegCore" Version="5.3.0" />
     
