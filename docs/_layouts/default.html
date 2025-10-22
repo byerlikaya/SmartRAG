@@ -1,64 +1,58 @@
 <!DOCTYPE html>
-<html lang="{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}">
+<html lang="{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}" data-theme="light">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{% if page.title %}{{ page.title }} - {% endif %}{{ site.title }}</title>
-    <meta name="description" content="{{ page.description | default: site.description }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    
+    <!-- Title -->
+    <title>{% if page.title %}{{ page.title }} | {% endif %}{{ site.title }}</title>
     
     <!-- SEO Meta Tags -->
+    <meta name="description" content="{{ page.description | default: site.description }}">
     <meta name="author" content="{{ site.author }}">
     <meta name="keywords" content="{{ site.keywords }}">
     <meta name="robots" content="{{ site.robots }}">
-    <meta name="language" content="{{ site.language }}">
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website">
     <meta property="og:url" content="{{ site.url }}{{ site.baseurl }}{{ page.url }}">
     <meta property="og:title" content="{% if page.title %}{{ page.title }}{% else %}{{ site.title }}{% endif %}">
     <meta property="og:description" content="{{ page.description | default: site.description }}">
-    <meta property="og:image" content="{{ site.url }}{{ site.baseurl }}{{ page.image | default: site.image | default: '/assets/images/logo.svg' }}">
+    <meta property="og:image" content="{{ site.url }}{{ site.baseurl }}{{ site.og_image }}">
     <meta property="og:site_name" content="{{ site.title }}">
-    <meta property="og:locale" content="en_US">
     
     <!-- Twitter -->
-    <meta property="twitter:card" content="summary_large_image">
-    <meta property="twitter:url" content="{{ site.url }}{{ site.baseurl }}{{ page.url }}">
-    <meta property="twitter:title" content="{% if page.title %}{{ page.title }}{% else %}{{ site.title }}{% endif %}">
-    <meta property="twitter:description" content="{{ page.description | default: site.description }}">
-    <meta property="twitter:image" content="{{ site.url }}{{ site.baseurl }}{{ page.image | default: site.image | default: '/assets/images/logo.svg' }}">
-    <meta property="twitter:creator" content="@{{ site.twitter.username }}">
+    <meta name="twitter:card" content="{{ site.twitter.card }}">
+    <meta name="twitter:url" content="{{ site.url }}{{ site.baseurl }}{{ page.url }}">
+    <meta name="twitter:title" content="{% if page.title %}{{ page.title }}{% else %}{{ site.title }}{% endif %}">
+    <meta name="twitter:description" content="{{ page.description | default: site.description }}">
+    <meta name="twitter:image" content="{{ site.url }}{{ site.baseurl }}{{ site.og_image }}">
+    <meta name="twitter:creator" content="@{{ site.twitter.username }}">
     
     <!-- Canonical URL -->
     <link rel="canonical" href="{{ site.url }}{{ site.baseurl }}{{ page.url }}">
     
-    <!-- Favicon and Icons -->
-    <link rel="icon" type="image/x-icon" href="{{ site.baseurl }}/favicon.ico">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ site.baseurl }}/assets/images/apple-touch-icon.png">
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ site.baseurl }}/assets/images/favicon-32x32.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="{{ site.baseurl }}/assets/images/favicon-16x16.png">
-    
     <!-- Bootstrap 5 CSS -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     
-    <!-- Font Awesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     
     <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Prism.js for Syntax Highlighting -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="{{ site.baseurl }}/assets/css/style.css?v={{ site.cache_bust }}">
     
-    <!-- Prism.js for Syntax Highlighting - Optimized -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js" defer></script>
-    
     <!-- Jekyll SEO Tag -->
     {% seo %}
     
-    <!-- Structured Data for Rich Snippets -->
+    <!-- Structured Data (Schema.org) -->
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
@@ -67,12 +61,13 @@
         "description": "{{ site.description }}",
         "url": "{{ site.url }}{{ site.baseurl }}",
         "applicationCategory": "DeveloperApplication",
-        "operatingSystem": ".NET",
+        "operatingSystem": ".NET Standard 2.0/2.1",
         "programmingLanguage": "C#",
         "author": {
             "@type": "Person",
             "name": "{{ site.author }}",
-            "url": "https://github.com/byerlikaya"
+            "email": "{{ site.email }}",
+            "url": "{{ site.linkedin_url }}"
         },
         "offers": {
             "@type": "Offer",
@@ -80,16 +75,18 @@
             "priceCurrency": "USD"
         },
         "downloadUrl": "https://www.nuget.org/packages/SmartRAG",
-        "softwareVersion": "2.1.0"
+        "softwareVersion": "3.0.0",
+        "releaseNotes": "{{ site.url }}{{ site.baseurl }}/en/changelog"
     }
     </script>
 </head>
-<body data-page="{{ page.layout | default: page.name | replace: '.md', '' | replace: '.html', '' }}">
+<body data-lang="{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}">
+    
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top shadow-sm">
         <div class="container">
-            <a class="navbar-brand" href="{{ site.baseurl }}/{{ site.languages_default }}">
-                <span class="brand-text">SmartRAG</span>
+            <a class="navbar-brand d-flex align-items-center" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/">
+                <span class="brand-gradient fw-bold">SmartRAG</span>
             </a>
             
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -97,73 +94,120 @@
             </button>
             
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     <li class="nav-item">
-                        <a class="nav-link{% if page.url == '/' or page.url == '/tr/' or page.url == '/en/' or page.url == '/de/' or page.url == '/ru/' %} active{% endif %}" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}{{ site.languages_default }}{% endif %}"><i class="fas fa-home me-1"></i>{% if page.lang == "tr" %}Ana Sayfa{% elsif page.lang == "de" %}Startseite{% elsif page.lang == "ru" %}Главная{% else %}Home{% endif %}</a>
+                        <a class="nav-link{% if page.url contains '/index' or page.url == '/' %} active{% endif %}" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/">
+                            <i class="fas fa-home me-1"></i>
+                            {% if page.lang == 'tr' %}Anasayfa{% else %}Home{% endif %}
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link{% if page.url contains '/getting-started' %} active{% endif %}" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}{{ site.languages_default }}{% endif %}/getting-started"><i class="fas fa-rocket me-1"></i>{% if page.lang == "tr" %}Başlangıç{% elsif page.lang == "de" %}Erste Schritte{% elsif page.lang == "ru" %}Начало Работы{% else %}Getting Started{% endif %}</a>
+                        <a class="nav-link{% if page.url contains '/getting-started' %} active{% endif %}" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/getting-started">
+                            <i class="fas fa-rocket me-1"></i>
+                            {% if page.lang == 'tr' %}Başlangıç{% else %}Getting Started{% endif %}
+                        </a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle{% if page.url contains '/configuration' %} active{% endif %}" href="#" id="configurationDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-cog me-1"></i>
+                            {% if page.lang == 'tr' %}Yapılandırma{% else %}Configuration{% endif %}
+                        </a>
+                        <ul class="dropdown-menu" aria-labelledby="configurationDropdown">
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/configuration">
+                                <i class="fas fa-list me-2"></i>
+                                {% if page.lang == 'tr' %}Tüm Kategoriler{% else %}All Categories{% endif %}
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/configuration/basic">
+                                <i class="fas fa-cog me-2"></i>
+                                {% if page.lang == 'tr' %}Temel Yapılandırma{% else %}Basic Configuration{% endif %}
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/configuration/ai-providers">
+                                <i class="fas fa-brain me-2"></i>
+                                {% if page.lang == 'tr' %}AI Sağlayıcıları{% else %}AI Providers{% endif %}
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/configuration/storage">
+                                <i class="fas fa-database me-2"></i>
+                                {% if page.lang == 'tr' %}Depolama Sağlayıcıları{% else %}Storage Providers{% endif %}
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/configuration/database">
+                                <i class="fas fa-server me-2"></i>
+                                {% if page.lang == 'tr' %}Veritabanı Yapılandırması{% else %}Database Configuration{% endif %}
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/configuration/audio-ocr">
+                                <i class="fas fa-microphone me-2"></i>
+                                {% if page.lang == 'tr' %}Ses & OCR{% else %}Audio & OCR{% endif %}
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/configuration/advanced">
+                                <i class="fas fa-cogs me-2"></i>
+                                {% if page.lang == 'tr' %}Gelişmiş Yapılandırma{% else %}Advanced Configuration{% endif %}
+                            </a></li>
+                        </ul>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link{% if page.url contains '/configuration' %} active{% endif %}" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}{{ site.languages_default }}{% endif %}/configuration"><i class="fas fa-cog me-1"></i>{% if page.lang == "tr" %}Yapılandırma{% elsif page.lang == "de" %}Konfiguration{% elsif page.lang == "ru" %}Конфигурация{% else %}Configuration{% endif %}</a>
+                        <a class="nav-link{% if page.url contains '/api-reference' %} active{% endif %}" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/api-reference">
+                            <i class="fas fa-code me-1"></i>
+                            {% if page.lang == 'tr' %}API Referans{% else %}API Reference{% endif %}
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link{% if page.url contains '/api-reference' %} active{% endif %}" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}{{ site.languages_default }}{% endif %}/api-reference"><i class="fas fa-code me-1"></i>{% if page.lang == "tr" %}API Referansı{% elsif page.lang == "de" %}API-Referenz{% elsif page.lang == "ru" %}API Справочник{% else %}API Reference{% endif %}</a>
+                        <a class="nav-link{% if page.url contains '/examples' %} active{% endif %}" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/examples">
+                            <i class="fas fa-lightbulb me-1"></i>
+                            {% if page.lang == 'tr' %}Örnekler{% else %}Examples{% endif %}
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link{% if page.url contains '/examples' %} active{% endif %}" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}{{ site.languages_default }}{% endif %}/examples"><i class="fas fa-lightbulb me-1"></i>{% if page.lang == "tr" %}Örnekler{% elsif page.lang == "de" %}Beispiele{% elsif page.lang == "ru" %}Примеры{% else %}Examples{% endif %}</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link{% if page.url contains '/changelog' %} active{% endif %}" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}{{ site.languages_default }}{% endif %}/changelog"><i class="fas fa-history me-1"></i>{% if page.lang == "tr" %}Değişiklikler{% elsif page.lang == "de" %}Änderungen{% elsif page.lang == "ru" %}Изменения{% else %}Changelog{% endif %}</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link{% if page.url contains '/troubleshooting' %} active{% endif %}" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}{{ site.languages_default }}{% endif %}/troubleshooting"><i class="fas fa-tools me-1"></i>{% if page.lang == "tr" %}Sorun Giderme{% elsif page.lang == "de" %}Fehlerbehebung{% elsif page.lang == "ru" %}Устранение Неполадок{% else %}Troubleshooting{% endif %}</a>
+                        <a class="nav-link{% if page.url contains '/changelog' %} active{% endif %}" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/changelog">
+                            <i class="fas fa-history me-1"></i>
+                            {% if page.lang == 'tr' %}Değişiklikler{% else %}Changelog{% endif %}
+                        </a>
                     </li>
                 </ul>
                 
-                <!-- Language Selector - Simple Buttons -->
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link language-btn" href="{{ site.baseurl }}/en/" data-lang="en">
-                            <i class="fas fa-flag me-1"></i>EN
+                <!-- Language & Theme Controls -->
+                <div class="d-flex align-items-center gap-2">
+                    <!-- Language Selector -->
+                    <div class="btn-group" role="group">
+                        <a href="{{ site.baseurl }}/en{{ page.url | remove: '/tr' | remove: '/en' }}" 
+                           class="btn btn-sm {% if page.lang == 'en' or page.lang == null %}btn-primary{% else %}btn-outline-primary{% endif %} language-btn" 
+                           data-lang="en">
+                            EN
                         </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link language-btn" href="{{ site.baseurl }}/tr/" data-lang="tr">
-                            <i class="fas fa-flag me-1"></i>TR
+                        <a href="{{ site.baseurl }}/tr{{ page.url | remove: '/tr' | remove: '/en' }}" 
+                           class="btn btn-sm {% if page.lang == 'tr' %}btn-primary{% else %}btn-outline-primary{% endif %} language-btn" 
+                           data-lang="tr">
+                            TR
                         </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link language-btn" href="{{ site.baseurl }}/de/" data-lang="de">
-                            <i class="fas fa-flag me-1"></i>DE
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link language-btn" href="{{ site.baseurl }}/ru/" data-lang="ru">
-                            <i class="fas fa-flag me-1"></i>RU
-                        </a>
-                    </li>
-                </ul>
+                    </div>
+                    
+                    <!-- Theme Toggle -->
+                    <button id="themeToggle" class="btn btn-sm btn-outline-secondary theme-toggle" title="Toggle theme">
+                        <i class="fas fa-moon theme-icon-dark"></i>
+                        <i class="fas fa-sun theme-icon-light" style="display: none;"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </nav>
 
     <!-- Main Content -->
     <main class="main-content">
-        <div class="container-fluid">
-            <div class="content-wrapper">
-                {% unless page.hide_title %}
-                <div class="page-header">
-                    <h1 class="page-title">{{ page.title }}</h1>
-                    {% if page.description %}
-                    <p class="page-description">{{ page.description }}</p>
-                    {% endif %}
-                </div>
-                {% endunless %}
-                
-                <div class="page-content">
-                    {{ content }}
-                </div>
+        {% unless page.hide_title %}
+        {% if page.title %}
+        <div class="page-header">
+            <div class="container">
+                <h1 class="page-title">{{ page.title }}</h1>
+                {% if page.description %}
+                <p class="page-description">{{ page.description }}</p>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        {% endunless %}
+        
+        <div class="page-body">
+            <div class="container">
+                {{ content }}
             </div>
         </div>
     </main>
@@ -171,39 +215,109 @@
     <!-- Footer -->
     <footer class="footer">
         <div class="container">
-            <div class="row">
-                <div class="col-md-6">
-                    <p class="mb-0">&copy; 2025 <span class="text-gradient">SmartRAG</span>. {% if page.lang == "tr" %}Barış Yerlikaya tarafından ❤️ ile inşa edildi{% elsif page.lang == "de" %}Mit ❤️ entwickelt von Barış Yerlikaya{% elsif page.lang == "ru" %}Создано с ❤️ Барышом Ерликайа{% else %}Built with ❤️ by Barış Yerlikaya{% endif %}</p>
+            <div class="row g-4">
+                <div class="col-lg-4">
+                    <h5 class="footer-title">
+                        <span class="brand-gradient">SmartRAG</span>
+                    </h5>
+                    <p class="footer-text">
+                        {% if page.lang == 'tr' %}
+                        .NET için kurumsal düzeyde RAG kütüphanesi. Çok veritabanlı ve çok modlu yapay zeka platformu.
+                        {% else %}
+                        Enterprise-Grade RAG Library for .NET. Multi-Database and Multi-Modal Intelligence Platform.
+                        {% endif %}
+                    </p>
+                    <div class="footer-badges">
+                        <img src="https://img.shields.io/nuget/v/SmartRAG.svg" alt="NuGet Version">
+                        <img src="https://img.shields.io/nuget/dt/SmartRAG.svg" alt="NuGet Downloads">
+                    </div>
                 </div>
-                <div class="col-md-6 text-md-end">
-                    <a href="https://github.com/byerlikaya/SmartRAG" class="text-decoration-none me-3">
-                        <i class="fab fa-github"></i> {% if page.lang == "tr" %}GitHub{% elsif page.lang == "de" %}GitHub{% elsif page.lang == "ru" %}GitHub{% else %}GitHub{% endif %}
-                    </a>
-                    <a href="https://www.nuget.org/packages/SmartRAG" class="text-decoration-none me-3">
-                        <i class="fas fa-box"></i> {% if page.lang == "tr" %}NuGet{% elsif page.lang == "de" %}NuGet{% elsif page.lang == "ru" %}NuGet{% else %}NuGet{% endif %}
-                    </a>
-                    <a href="https://www.linkedin.com/in/barisyerlikaya/" class="text-decoration-none me-3">
-    <i class="fab fa-linkedin"></i> {% if page.lang == "tr" %}LinkedIn{% elsif page.lang == "de" %}LinkedIn{% elsif page.lang == "ru" %}LinkedIn{% else %}LinkedIn{% endif %}
-</a>
-                    <a href="mailto:b.yerlikaya@outlook.com" class="text-decoration-none">
-                        <i class="fas fa-envelope"></i> {% if page.lang == "tr" %}İletişim{% elsif page.lang == "de" %}Kontakt{% elsif page.lang == "ru" %}Контакты{% else %}Contact{% endif %}
-                    </a>
+                
+                <div class="col-lg-4">
+                    <h5 class="footer-title">
+                        {% if page.lang == 'tr' %}Hızlı Bağlantılar{% else %}Quick Links{% endif %}
+                    </h5>
+                    <ul class="footer-links">
+                        <li><a href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/getting-started">
+                            <i class="fas fa-rocket me-2"></i>{% if page.lang == 'tr' %}Başlangıç{% else %}Getting Started{% endif %}
+                        </a></li>
+                        <li><a href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/configuration">
+                            <i class="fas fa-cog me-2"></i>{% if page.lang == 'tr' %}Yapılandırma{% else %}Configuration{% endif %}
+                        </a></li>
+                        <li><a href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/api-reference">
+                            <i class="fas fa-code me-2"></i>{% if page.lang == 'tr' %}API Referans{% else %}API Reference{% endif %}
+                        </a></li>
+                        <li><a href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/examples">
+                            <i class="fas fa-lightbulb me-2"></i>{% if page.lang == 'tr' %}Örnekler{% else %}Examples{% endif %}
+                        </a></li>
+                    </ul>
+                </div>
+                
+                <div class="col-lg-4">
+                    <h5 class="footer-title">
+                        {% if page.lang == 'tr' %}Bağlantılar{% else %}Connect{% endif %}
+                    </h5>
+                    <div class="footer-social">
+                        <a href="https://github.com/byerlikaya/SmartRAG" target="_blank" class="social-link" title="GitHub">
+                            <i class="fab fa-github"></i>
+                            <span>GitHub</span>
+                        </a>
+                        <a href="https://www.nuget.org/packages/SmartRAG" target="_blank" class="social-link" title="NuGet">
+                            <i class="fas fa-box"></i>
+                            <span>NuGet</span>
+                        </a>
+                        <a href="https://www.linkedin.com/in/barisyerlikaya/" target="_blank" class="social-link" title="LinkedIn">
+                            <i class="fab fa-linkedin"></i>
+                            <span>LinkedIn</span>
+                        </a>
+                        <a href="mailto:b.yerlikaya@outlook.com" class="social-link" title="Contact">
+                            <i class="fas fa-envelope"></i>
+                            <span>Contact</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <hr class="footer-divider">
+            
+            <div class="row">
+                <div class="col-lg-6 text-center text-lg-start">
+                    <p class="footer-copyright mb-0">
+                        &copy; 2025 <span class="brand-gradient">SmartRAG</span>. 
+                        {% if page.lang == 'tr' %}
+                        <a href="https://www.linkedin.com/in/barisyerlikaya/" target="_blank">Barış Yerlikaya</a> tarafından ❤️ ile inşa edildi.
+                        {% else %}
+                        Built with ❤️ by <a href="https://www.linkedin.com/in/barisyerlikaya/" target="_blank">Barış Yerlikaya</a>.
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-lg-6 text-center text-lg-end">
+                    <p class="footer-license mb-0">
+                        {% if page.lang == 'tr' %}
+                        MIT Lisansı altında dağıtılmaktadır.
+                        {% else %}
+                        Distributed under the MIT License.
+                        {% endif %}
+                    </p>
                 </div>
             </div>
         </div>
     </footer>
 
     <!-- Back to Top Button -->
-    <button id="backToTop" class="btn btn-primary back-to-top">
+    <button id="backToTop" class="back-to-top" title="Back to top">
         <i class="fas fa-arrow-up"></i>
     </button>
 
-    <!-- Bootstrap 5 JS -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Prism.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/plugins/autoloader/prism-autoloader.min.js"></script>
     
     <!-- Custom JS -->
     <script>
-        // Pass Jekyll variables to JavaScript
         window.siteConfig = {
             baseurl: '{{ site.baseurl }}',
             currentLang: '{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}'
@@ -212,3 +326,4 @@
     <script src="{{ site.baseurl }}/assets/js/script.js?v={{ site.cache_bust }}"></script>
 </body>
 </html>
+

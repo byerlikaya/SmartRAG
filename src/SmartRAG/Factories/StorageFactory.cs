@@ -57,7 +57,7 @@ namespace SmartRAG.Factories
                     return new FileSystemDocumentRepository(config.FileSystemPath, _loggerFactory.CreateLogger<FileSystemDocumentRepository>());
                 case StorageProvider.Redis:
                     return new RedisDocumentRepository(Options.Create(config.Redis), _loggerFactory.CreateLogger<RedisDocumentRepository>());
-                case StorageProvider.Sqlite:
+                case StorageProvider.SQLite:
                     return new SqliteDocumentRepository(Options.Create(config.Sqlite), _loggerFactory.CreateLogger<SqliteDocumentRepository>());
                 case StorageProvider.Qdrant:
                     // Create required services for QdrantDocumentRepository

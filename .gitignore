@@ -241,18 +241,20 @@ secrets.json
 *.token
 config.json
 
-# IDE - VSCode
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
+# IDE - VSCode (Fully ignored - each developer uses their own config)
+.vscode/
 
 # IDE - IntelliJ
 .idea
 *.iws
 *.iml
 *.ipr
+
+# Cursor AI - Rules and config files
+.cursorrules
+.aidigestignore
+.cursorignore
+.cursor/
 
 # Database
 *.db
@@ -262,6 +264,10 @@ config.json
 # Temporary files
 *.tmp
 *.temp
+
+# Backup files
+*.backup
+*.bak
 
 # Package outputs
 nupkgs/

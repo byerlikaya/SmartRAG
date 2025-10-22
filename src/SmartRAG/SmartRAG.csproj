@@ -1,36 +1,82 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
+    <TargetFramework>netstandard2.1</TargetFramework>
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
-    <PackageVersion>2.3.1</PackageVersion>
+    <PackageVersion>3.0.0</PackageVersion>
     <Authors>Barış Yerlikaya</Authors>
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
-    <Description>High-performance RAG (Retrieval-Augmented Generation) library for .NET Standard 2.0/2.1 that enables AI-powered document question-answering with automatic conversation history management, multiple provider support and enterprise-grade vector storage. Features intelligent session management, persistent conversation context, and platform-agnostic design. Compatible with .NET Framework 4.6.1+, .NET Core 2.0+, and .NET 5+ applications.</Description>
-    <PackageTags>rag retrieval-augmented-generation ai llm document-qa vector-database openai anthropic gemini azure-openai qdrant redis sqlite conversation-history session-management chat-context</PackageTags>
+    <Description>Ask questions about your documents, databases, images and audio in natural language. Multi-database RAG library for .NET that queries SQL Server, MySQL, PostgreSQL, SQLite together with AI. On-premise ready with Ollama, Whisper.net. GDPR/KVKK/HIPAA compliant. Compatible with .NET Core 3.0+ and .NET 5/6/7/8/9.</Description>
+    <PackageTags>rag multi-database vector-database document-qa ollama ocr speech-to-text openai qdrant redis</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <!-- <PackageIcon>icon.png</PackageIcon> -->
+    <PackageIcon>icon.png</PackageIcon>
     <PackageProjectUrl>https://byerlikaya.github.io/SmartRAG/en/</PackageProjectUrl>
     <RepositoryUrl>https://github.com/byerlikaya/SmartRAG.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Release 2.3.1: Bug Fix Release
+    <PackageReleaseNotes>Release 3.0.0: Intelligence Platform Revolution
 
-🐛 Bug Fixes:
-• Fixed LoggerMessage.Define parameter mismatch in ServiceLogMessages.LogAudioServiceInitialized
-• Corrected format string parameter count to prevent System.ArgumentException during service initialization
-• Improved logging stability for Google Speech-to-Text service initialization
+BREAKING CHANGES - Major Platform Evolution:
+• Framework: Now requires .NET Standard 2.1 (.NET Core 3.0+) - Dropped .NET Framework support
+• SearchController → IntelligenceController - Reflects true AI intelligence capabilities
+• GenerateRagAnswerAsync → QueryIntelligenceAsync - Better represents intelligent query processing
+• API Endpoints: /api/search/* → /api/intelligence/* - Professional enterprise naming
+• Enhanced API Documentation - Comprehensive Swagger documentation with examples
+• Complete Controller Suite - 8 comprehensive controllers with 65+ endpoints
 
-🔧 Technical Improvements:
-• Enhanced logging infrastructure reliability
-• Zero warnings policy compliance maintained
-• All tests passing (8/8)</PackageReleaseNotes>
+Intelligence Platform Features:
+• Advanced Query Intelligence - Automatic intent detection and smart routing
+• Multi-Modal Search - Documents, databases, conversations, and hybrid search
+• Enterprise Analytics - Usage tracking, performance monitoring, and insights
+• Configuration Management - Runtime configuration updates and validation
+• Storage Management - Backup, restore, migration, and provider switching
+• Conversation Intelligence - Session management and context-aware responses
+
+SQL Generation &amp; Multi-Language Support:
+• Language-Safe SQL Generation - Automatic validation preventing non-English text in SQL queries
+• Multi-Language Query Support - AI handles queries in any language while generating pure English SQL
+• Character Validation - Detection of Turkish/German/Russian characters (ç, ğ, ı, ö, ş, ü, ä, ö, ü, ß, Cyrillic)
+• Keyword Validation - Prevention of non-English keywords in SQL (sorgu, abfrage, запрос)
+• PostgreSQL Full Support - Complete integration with live connections and schema analysis
+
+On-Premise &amp; Local AI Support:
+• Complete Local Operation - Ollama, LM Studio, and OpenAI-compatible local API support
+• Document Processing - PDF, Word, Excel parsing completely local
+• OCR Processing - Tesseract 5.2.0 completely local, no data sent to cloud
+• Database Integration - SQLite, SQL Server, MySQL, PostgreSQL all local connections
+• Storage Options - In-Memory, SQLite, FileSystem, Redis all local
+• Enterprise Compliance - GDPR/KVKK/HIPAA compliant, air-gapped systems support
+
+Technical Improvements:
+• Professional API Design - RESTful endpoints with comprehensive documentation
+• Enterprise Architecture - SOLID principles, zero warnings policy maintained
+• Production Ready - Comprehensive error handling, validation, and logging
+• Swagger UI Optimization - Collapsed default view with enhanced navigation
+• Memory Management - Optimized performance with streaming and caching
+
+Documentation and Developer Experience:
+• Multi-Language Documentation - Available in English, Turkish, German, and Russian
+• Complete API Documentation - All endpoints with detailed examples and use cases
+• Migration Guide - Step-by-step upgrade instructions from v2.4.0
+• Enhanced README - Updated with v3.0.0 features and breaking changes
+• Professional Swagger UI - Optimized interface with collapsed endpoints
+• Enterprise Examples - Real-world usage scenarios and best practices
+
+Important Limitations:
+• Audio Files - Google Cloud Speech-to-Text API required (data sent to Google Cloud)
+• OCR Handwriting - Limited support for handwritten text (printed text works perfectly)
+
+Migration from v2.4.0:
+• Update API endpoints: /api/search → /api/intelligence
+• Update method calls: GenerateRagAnswerAsync → QueryIntelligenceAsync
+• Update controller references: SearchController → IntelligenceController
+• See migration guide in README.md for detailed instructions</PackageReleaseNotes>
     
     <!-- Build Configuration -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -41,8 +87,8 @@
     <AssemblyTitle>SmartRAG</AssemblyTitle>
     <AssemblyDescription>High-performance RAG library with conversation history management for .NET</AssemblyDescription>
     <AssemblyCopyright>Copyright © 2025 Barış Yerlikaya</AssemblyCopyright>
-    <AssemblyVersion>2.3.1.0</AssemblyVersion>
-    <FileVersion>2.3.1.0</FileVersion>
+    <AssemblyVersion>3.0.0.0</AssemblyVersion>
+    <FileVersion>3.0.0.0</FileVersion>
     <NeutralLanguage>en</NeutralLanguage>
     <Culture>en-US</Culture>
   </PropertyGroup>
@@ -51,51 +97,56 @@
   <ItemGroup>
     <!-- Microsoft Extensions -->
     <PackageReference Include="Google.Cloud.Speech.V1" Version="3.8.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.9" />
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.10" />
     
     <!-- HTTP Client -->
-    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.9" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.10" />
     
     <!-- JSON Processing -->
-    <PackageReference Include="System.Text.Json" Version="9.0.9" />
+    <PackageReference Include="System.Text.Json" Version="9.0.10" />
     
     <!-- Vector Database Support -->
     <PackageReference Include="Qdrant.Client" Version="1.15.1" />
-    <PackageReference Include="StackExchange.Redis" Version="2.9.17" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.9" />
+    <PackageReference Include="StackExchange.Redis" Version="2.9.32" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.10" />
+    
+    <!-- Database Connectivity -->
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.2" />
+    <PackageReference Include="MySql.Data" Version="9.4.0" />
+    <PackageReference Include="Npgsql" Version="8.0.8" />
     
     <!-- Validation -->
     <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
     <!-- Document Parsing -->
     <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
     <PackageReference Include="itext" Version="9.3.0" />
-    <PackageReference Include="EPPlus" Version="8.1.1" />
+    <PackageReference Include="EPPlus" Version="8.2.1" />
     
     <!-- OCR and Image Processing -->
     <PackageReference Include="Tesseract" Version="5.2.0" />
-    <PackageReference Include="SkiaSharp" Version="3.119.0" />
+    <PackageReference Include="SkiaSharp" Version="3.119.1" />
     
-    <!-- Audio Processing - Google Speech-to-Text is included in Google.Cloud.Speech.V1 -->
+    <!-- Audio Processing -->
+    <!-- Google Speech-to-Text (Cloud) -->
+    <!-- Whisper.net (Local transcription) -->
+    <PackageReference Include="Whisper.net" Version="1.8.1" />
+    <!-- FFMpegCore for cross-platform audio format conversion (MP3, M4A, FLAC → WAV) -->
+    <PackageReference Include="FFMpegCore" Version="5.3.0" />
+    
+    <!-- Xabe.FFmpeg for automatic FFmpeg binary download (self-contained) -->
+    <PackageReference Include="Xabe.FFmpeg.Downloader" Version="6.0.2" />
   </ItemGroup>
 
-  <!-- Conditional Package References for .NET Standard 2.1 -->
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
-    <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.4" />
-  </ItemGroup>
-
-  <!-- Conditional Package References for .NET Standard 2.0 -->
-  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
-    <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
-    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="9.0.9" />
-  </ItemGroup>
 
   <!-- Documentation Files -->
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="/" />
-    <!-- <None Include="icon.png" Pack="true" PackagePath="/" /> -->
+    <None Include="icon.png" Pack="true" PackagePath="/" />
   </ItemGroup>
 
   <!-- Tessdata Files -->
