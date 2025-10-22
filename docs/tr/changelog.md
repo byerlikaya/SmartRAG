@@ -41,23 +41,23 @@ SmartRAG'deki tüm önemli değişiklikler burada belgelenmiştir. Proje [Anlams
 - **Çoklu-veritabanı sorguları**: PostgreSQL ile çapraz-veritabanı sorgu koordinasyonu
 - **Üretime hazır**: Kapsamlı test ve doğrulama
 
-### 🔒 Yerinde & Yerel AI Desteği
+### 🔒 On-Premise & Şirket İçi AI Desteği
 
-#### Tam Yerel İşlem
-- **Yerel AI modelleri**: Ollama, LM Studio ve herhangi bir OpenAI-uyumlu yerel API için tam destek
-- **Doküman işleme**: PDF, Word, Excel ayrıştırma - tamamen yerel
-- **OCR işleme**: Tesseract 5.2.0 - tamamen yerel, buluta veri gönderilmez
-- **Veritabanı entegrasyonu**: SQLite, SQL Server, MySQL, PostgreSQL - tüm yerel bağlantılar
-- **Depolama seçenekleri**: In-Memory, SQLite, FileSystem, Redis - tümü yerel
+#### Tam On-Premise İşlem
+- **On-premise AI modelleri**: Ollama, LM Studio ve herhangi bir OpenAI-uyumlu on-premise API için tam destek
+- **Doküman işleme**: PDF, Word, Excel ayrıştırma - tamamen on-premise
+- **OCR işleme**: Tesseract 5.2.0 - tamamen on-premise, buluta veri gönderilmez
+- **Veritabanı entegrasyonu**: SQLite, SQL Server, MySQL, PostgreSQL - tüm on-premise bağlantılar
+- **Depolama seçenekleri**: In-Memory, SQLite, FileSystem, Redis - tümü on-premise
 - **Tam gizlilik**: Verileriniz altyapınızda kalır
 
 #### Kurumsal Uyumluluk
 - **GDPR uyumlu**: Tüm verileri altyapınızda tutun
 - **KVKK uyumlu**: Türk veri koruma kanunu uyumluluğu
 - **Hava boşluklu sistemler**: İnternetsiz çalışır (ses transkripsiyonu hariç)
-- **Finansal kurumlar**: Yerel dağıtım ile banka düzeyinde güvenlik
+- **Finansal kurumlar**: On-premise dağıtım ile banka düzeyinde güvenlik
 - **Sağlık**: HIPAA uyumlu dağıtımlar mümkün
-- **Devlet**: Yerel modellerle gizli veri işleme
+- **Devlet**: On-premise modellerle gizli veri işleme
 
 ### ⚠️ Önemli Kısıtlamalar
 

@@ -16,21 +16,23 @@ hide_title: true
                         <i class="fas fa-star"></i>
                         <span>.NET Standard 2.1</span>
                     </div>
+                    <div class="hero-premise-badge">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <span>100% On-Premise • Cloud • Hybrid</span>
+                    </div>
                     <h1 class="hero-title">
-                        Build Intelligent Applications with 
-                        <span class="text-gradient">SmartRAG</span>
+                        <span class="text-gradient">SmartRAG</span> - Ask Questions About Your Data
                     </h1>
                     <p class="hero-subtitle">
-                        Enterprise-Grade RAG Library for .NET featuring Multi-Database RAG + Multi-Modal Intelligence. 
-                        Process documents, images, audio, and databases with AI-powered intelligence.
-                     </p>
+                        Turn your documents, databases, images and audio into a conversational AI system.
+                    </p>
                     <div class="hero-stats">
                         <div class="stat-card">
-                            <div class="stat-number">5+</div>
+                            <div class="stat-number">5</div>
                             <div class="stat-label">AI Providers</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-number">5+</div>
+                            <div class="stat-number">5</div>
                             <div class="stat-label">Storage Options</div>
                         </div>
                         <div class="stat-card">
@@ -38,7 +40,7 @@ hide_title: true
                             <div class="stat-label">Database Types</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-number">7+</div>
+                            <div class="stat-number">7</div>
                             <div class="stat-label">Document Formats</div>
                         </div>
                     </div>
@@ -49,11 +51,11 @@ hide_title: true
                         </a>
                         <a href="https://github.com/byerlikaya/SmartRAG" class="btn btn-outline-primary btn-lg" target="_blank">
                             <i class="fab fa-github"></i>
-                            View on GitHub
+                            GitHub
                         </a>
                         <a href="https://www.nuget.org/packages/SmartRAG" class="btn btn-secondary btn-lg" target="_blank">
                             <i class="fas fa-box"></i>
-                            NuGet Package
+                            NuGet
                         </a>
                     </div>
                 </div>
@@ -256,7 +258,7 @@ Console.WriteLine(answer.Answer);
                     </div>
                     <div class="provider-card">
                         <div class="provider-logo">
-                            <i class="fas fa-elephant"></i>
+                            <i class="fas fa-database"></i>
                         </div>
                         <h4>PostgreSQL</h4>
                         <p>Advanced DB</p>
@@ -272,105 +274,6 @@ Console.WriteLine(answer.Answer);
                     </div>
                 </div>
             </div>
-</section>
-
-<section class="section section-light">
-    <div class="container">
-        <div class="section-header">
-            <h2 class="section-title">Quick Start</h2>
-            <p class="section-subtitle">
-                Get started in minutes with simple installation and configuration
-            </p>
-        </div>
-        
-        <div class="row">
-            <div class="col-lg-12">
-                    <div class="code-tabs">
-                    <button class="code-tab active" data-tab="install">1. Installation</button>
-                    <button class="code-tab" data-tab="config">2. Configuration</button>
-                    <button class="code-tab" data-tab="usage">3. Usage</button>
-                </div>
-                
-                <div class="code-panel active" data-tab="install">
-                    <pre><code class="language-bash"># Install via .NET CLI
-dotnet add package SmartRAG
-
-# Or via Package Manager
-Install-Package SmartRAG
-
-# Or add to .csproj
-&lt;PackageReference Include="SmartRAG" Version="3.0.0" /&gt;</code></pre>
-                    </div>
-                
-                <div class="code-panel" data-tab="config">
-                    <pre><code class="language-csharp">using SmartRAG.Extensions;
-using SmartRAG.Enums;
-
-var builder = WebApplication.CreateBuilder(args);
-
-// Simple configuration
-builder.Services.UseSmartRag(builder.Configuration,
-     storageProvider: StorageProvider.InMemory,
-     aiProvider: AIProvider.Gemini
- );
-
-// Or advanced configuration
-builder.Services.AddSmartRag(builder.Configuration, options =>
- {
-    options.AIProvider = AIProvider.OpenAI;
-     options.StorageProvider = StorageProvider.Qdrant;
-     options.MaxChunkSize = 1000;
-     options.ChunkOverlap = 200;
-    options.EnableFallbackProviders = true;
-    options.FallbackProviders = new[] { AIProvider.Anthropic, AIProvider.Gemini };
-});
-
-var app = builder.Build();</code></pre>
-                     </div>
-                
-                     <div class="code-panel" data-tab="usage">
-                    <pre><code class="language-csharp">public class IntelligenceController : ControllerBase
-{
-    private readonly IDocumentService _documentService;
-    private readonly IDocumentSearchService _searchService;
-    
-    // Upload document (PDF, Word, Excel, Images, Audio, Database)
-    [HttpPost("upload")]
-    public async Task&lt;IActionResult&gt; Upload(IFormFile file)
-    {
-        var document = await _documentService.UploadDocumentAsync(
-            file.OpenReadStream(),
-            file.FileName,
-            file.ContentType,
-            "user-id"
-        );
-        
-        return Ok(document);
-    }
-    
-    // Ask intelligent questions
-    [HttpPost("ask")]
-    public async Task&lt;IActionResult&gt; Ask([FromBody] QuestionRequest request)
-    {
-        var response = await _searchService.QueryIntelligenceAsync(
-            request.Question,
-            maxResults: 5
-        );
-        
-        return Ok(response);
-    }
-}</code></pre>
-                     </div>
-                </div>
-            </div>
-        
-        <div class="text-center mt-5">
-            <a href="{{ site.baseurl }}/en/getting-started" class="btn btn-primary btn-lg">
-                <i class="fas fa-book-open"></i>
-                Read Full Documentation
-            </a>
-        </div>
-    </div>
 </section>
 
 <section class="section section-dark">
@@ -564,18 +467,18 @@ var app = builder.Build();</code></pre>
             </p>
         </div>
         
-        <div class="hero-buttons" style="justify-content: center;">
+        <div class="hero-buttons">
                 <a href="{{ site.baseurl }}/en/getting-started" class="btn btn-primary btn-lg">
                     <i class="fas fa-rocket"></i>
                     Get Started Now
                 </a>
             <a href="https://github.com/byerlikaya/SmartRAG" class="btn btn-outline-primary btn-lg" target="_blank">
                     <i class="fab fa-github"></i>
-                    Star on GitHub
+                    GitHub
                 </a>
             <a href="https://www.nuget.org/packages/SmartRAG" class="btn btn-secondary btn-lg" target="_blank">
                 <i class="fas fa-download"></i>
-                Download from NuGet
+                NuGet
             </a>
         </div>
     </div>

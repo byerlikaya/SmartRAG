@@ -81,14 +81,14 @@ body {
     font-family: var(--font-family);
     line-height: 1.7;
     color: var(--text-primary);
-    background-color: var(--bg-primary);
+    background: var(--bg-secondary);
     transition: background-color 0.3s ease, color 0.3s ease;
     overflow-x: hidden;
 }
 
 /* ===== NAVIGATION ===== */
 .navbar {
-    background-color: var(--bg-primary) !important;
+    background: var(--bg-secondary) !important;
     border-bottom: 1px solid var(--border-color);
     backdrop-filter: blur(10px);
     transition: var(--transition-normal);
@@ -158,6 +158,7 @@ body {
 .main-content {
     margin-top: 76px;
     min-height: calc(100vh - 76px - 300px);
+    background-color: transparent;
 }
 
 .page-header {
@@ -190,12 +191,12 @@ body {
 
 /* ===== HERO SECTION ===== */
 .hero-section {
-    min-height: 90vh;
+    min-height: 60vh;
     display: flex;
     align-items: center;
     position: relative;
     overflow: hidden;
-    padding: 4rem 0;
+    padding: 1.5rem 0;
 }
 
 .hero-section .row {
@@ -358,14 +359,14 @@ body {
     left: 0;
     right: 0;
     bottom: 0;
-    opacity: 0.5;
-    background: radial-gradient(circle at 20% 50%, rgba(99, 102, 241, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 80% 50%, rgba(16, 185, 129, 0.1) 0%, transparent 50%);
+    opacity: 0;
+    background: transparent;
 }
 
 .hero-content {
     position: relative;
     z-index: 2;
+    padding: 0.5rem 0;
 }
 
 .hero-badge {
@@ -380,10 +381,31 @@ body {
     font-weight: 600;
     margin-bottom: 1.5rem;
     box-shadow: var(--shadow-lg);
+    height: 2.5rem;
+    line-height: 1;
+}
+
+.hero-premise-badge {
+    position: absolute;
+    right: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    padding: 0.5rem 1.25rem;
+    border-radius: 2rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: var(--shadow-lg);
+    z-index: 10;
+    white-space: nowrap;
+    height: 2.5rem;
+    line-height: 1;
 }
 
 .hero-title {
-    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-size: clamp(1.8rem, 4vw, 3rem);
     font-weight: 900;
     line-height: 1.2;
     margin-bottom: 1.5rem;
@@ -391,7 +413,7 @@ body {
 }
 
 .hero-subtitle {
-    font-size: clamp(1.1rem, 2.5vw, 1.4rem);
+    font-size: clamp(1rem, 2vw, 1.2rem);
     color: var(--text-secondary);
     margin-bottom: 2rem;
     line-height: 1.6;
@@ -399,18 +421,18 @@ body {
 
 .hero-stats {
     display: flex;
-    gap: 2rem;
-    margin: 2.5rem 0;
+    gap: 1.5rem;
+    margin: 2rem 0;
     flex-wrap: wrap;
 }
 
 .stat-card {
     flex: 1;
-    min-width: 150px;
+    min-width: 120px;
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
-    border-radius: 1rem;
-    padding: 1.5rem;
+    border-radius: 0.75rem;
+    padding: 1rem;
     text-align: center;
     transition: var(--transition-normal);
     box-shadow: var(--shadow-sm);
@@ -423,7 +445,7 @@ body {
 }
 
 .stat-number {
-    font-size: 2.5rem;
+    font-size: 2rem;
     font-weight: 800;
     background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
     -webkit-background-clip: text;
@@ -441,8 +463,19 @@ body {
 .hero-buttons {
     display: flex;
     gap: 1rem;
-    flex-wrap: wrap;
-    margin-top: 2rem;
+    flex-wrap: nowrap;
+    justify-content: center;
+    align-items: flex-start;
+    margin-top: 0;
+    padding-top: 0;
+}
+
+.hero-buttons .btn {
+    white-space: nowrap;
+    height: 48px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* ===== BUTTONS ===== */
@@ -516,11 +549,11 @@ body {
 }
 
 .section-light {
-    background-color: var(--bg-primary);
+    background: var(--bg-secondary);
 }
 
 .section-dark {
-    background-color: var(--bg-primary);
+    background: var(--bg-secondary);
     border-top: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
 }
@@ -726,7 +759,7 @@ body {
 }
 
 .code-window {
-    background: var(--code-bg);
+    background: transparent;
     border-radius: 1rem;
     overflow: hidden;
     box-shadow: var(--shadow-xl);
@@ -766,6 +799,7 @@ body {
 .code-content {
     padding: 1.5rem;
     overflow-x: auto;
+    background: transparent;
 }
 
 .code-content pre {
@@ -906,6 +940,11 @@ li {
     margin-bottom: 0.75rem;
     color: var(--text-secondary);
     line-height: 1.7;
+}
+
+/* Navbar li elements should not have bottom margin */
+.navbar-nav li {
+    margin-bottom: 0;
 }
 
 /* ===== ALERTS ===== */
@@ -1135,6 +1174,12 @@ details summary::before {
     display: inline-block;
     transition: transform 0.3s ease;
     color: var(--primary);
+    font-size: 0.875rem;
+    width: 1rem;
+    text-align: center;
+    flex-shrink: 0;
+    line-height: 1;
+    margin-top: 10px;
 }
 
 details[open] summary::before {
@@ -1174,7 +1219,119 @@ details[open] {
     animation: fadeInUp 0.8s ease-out;
 }
 
-/* ===== RESPONSIVE DESIGN ===== */
+/* ===== DROPDOWN HOVER MENU ===== */
+.navbar-nav .dropdown:hover .dropdown-menu {
+    display: block;
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.navbar-nav .dropdown-menu {
+    display: none;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(-10px);
+    transition: all 0.3s ease;
+    border: none;
+    box-shadow: var(--shadow-lg);
+    border-radius: 8px;
+    padding: 0.5rem 0;
+    margin-top: 0.8rem;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 250px;
+    z-index: 1000;
+}
+
+/* Create invisible bridge between button and menu */
+.navbar-nav .dropdown::before {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    height: 10px;
+    background: transparent;
+    z-index: 999;
+}
+
+/* Ensure menu stays open when hovering over the bridge */
+.navbar-nav .dropdown:hover::before {
+    display: block;
+}
+
+.navbar-nav .dropdown-menu .dropdown-item {
+    padding: 0.5rem 1rem;
+    color: var(--text-primary);
+    transition: var(--transition-fast);
+    border-radius: 4px;
+    margin: 0 0.5rem;
+}
+
+.navbar-nav .dropdown-menu .dropdown-item:hover {
+    background-color: var(--primary);
+    color: white;
+    transform: translateX(4px);
+}
+
+.navbar-nav .dropdown-menu .dropdown-item i {
+    width: 20px;
+    text-align: center;
+}
+
+.navbar-nav .dropdown-menu .dropdown-divider {
+    margin: 0.5rem 0;
+    border-color: var(--border-color);
+}
+
+/* Mobile responsive - disable hover on touch devices */
+@media (max-width: 991.98px) {
+    .navbar-nav .dropdown:hover .dropdown-menu {
+        display: none;
+    }
+    
+    .navbar-nav .dropdown-menu {
+        display: none;
+        opacity: 1;
+        visibility: visible;
+        transform: none;
+        transition: none;
+        position: static;
+        float: none;
+        width: 100%;
+        margin-top: 0.5rem;
+        background-color: var(--bg-primary);
+        border: 1px solid var(--border-color);
+        border-radius: 0.5rem;
+        box-shadow: var(--shadow-lg);
+    }
+    
+    .navbar-nav .dropdown.show .dropdown-menu {
+        display: block;
+    }
+    
+    .navbar-nav .dropdown-menu .dropdown-item {
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid var(--border-color);
+    }
+    
+    .navbar-nav .dropdown-menu .dropdown-item:last-child {
+        border-bottom: none;
+    }
+    
+    /* Hero premise badge mobile positioning */
+    .hero-premise-badge {
+        position: static;
+        margin-bottom: 1rem;
+        align-self: flex-start;
+        font-size: 0.8rem;
+        padding: 0.4rem 1rem;
+        height: 2.2rem;
+        line-height: 1;
+    }
+}
 @media (max-width: 991.98px) {
     .navbar-collapse {
         background: var(--bg-primary);
@@ -1240,8 +1397,14 @@ details[open] {
         grid-template-columns: 1fr;
     }
     
+    .hero-buttons {
+        flex-wrap: wrap;
+        gap: 0.75rem;
+    }
+    
     .hero-buttons .btn {
-        width: 100%;
+        flex: 1;
+        min-width: 200px;
         justify-content: center;
     }
 }
@@ -1254,8 +1417,12 @@ details[open] {
     background-clip: text;
 }
 
-.container {
-    max-width: 1400px;
+/* Override Bootstrap default backgrounds */
+.container-fluid,
+.row,
+.col,
+[class*="col-"] {
+    background-color: transparent !important;
 }
 
 /* ===== SCROLLBAR ===== */

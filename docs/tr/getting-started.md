@@ -21,27 +21,15 @@ SmartRAG bir NuGet paketi olarak mevcuttur ve **.NET Standard 2.1** destekler, b
 </div>
 
 <div class="code-panel active" data-tab="cli">
-
-```bash
-dotnet add package SmartRAG
-```
-
+<pre><code class="language-bash">dotnet add package SmartRAG</code></pre>
 </div>
 
 <div class="code-panel" data-tab="pm">
-
-```bash
-Install-Package SmartRAG
-```
-
+<pre><code class="language-bash">Install-Package SmartRAG</code></pre>
 </div>
 
 <div class="code-panel" data-tab="xml">
-
-```xml
-<PackageReference Include="SmartRAG" Version="3.0.0" />
-```
-
+<pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="3.0.0" /&gt;</code></pre>
 </div>
 
 ---

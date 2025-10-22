@@ -16,20 +16,23 @@ hide_title: true
                         <i class="fas fa-star"></i>
                         <span>.NET Standard 2.1</span>
                     </div>
+                    <div class="hero-premise-badge">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <span>%100 On-Premise • Cloud • Hybrid</span>
+                    </div>
                     <h1 class="hero-title">
-                        <span class="text-gradient">SmartRAG</span> ile Akıllı Uygulamalar Geliştirin
+                        <span class="text-gradient">SmartRAG</span> ile verilerinizle konuşun
                     </h1>
                     <p class="hero-subtitle">
-                        .NET için Kurumsal Düzeyde RAG Kütüphanesi. Çok Veritabanlı RAG + Çok Modlu Yapay Zeka özellikli. 
-                        Dokümanları, görselleri, sesleri ve veritabanlarını yapay zeka destekli işleyin.
+                        Dokümanlarınızı, veritabanlarınızı, görsellerinizi ve ses dosyalarınızı konuşmalı yapay zeka sistemine dönüştürün.
                     </p>
                     <div class="hero-stats">
                         <div class="stat-card">
-                            <div class="stat-number">5+</div>
-                            <div class="stat-label">AI Sağlayıcı</div>
+                            <div class="stat-number">5</div>
+                            <div class="stat-label">Yapay Zeka Sağlayıcı</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-number">5+</div>
+                            <div class="stat-number">5</div>
                             <div class="stat-label">Depolama Seçeneği</div>
                         </div>
                         <div class="stat-card">
@@ -37,7 +40,7 @@ hide_title: true
                             <div class="stat-label">Veritabanı Tipi</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-number">7+</div>
+                            <div class="stat-number">7</div>
                             <div class="stat-label">Doküman Formatı</div>
                         </div>
                     </div>
@@ -48,11 +51,11 @@ hide_title: true
                         </a>
                         <a href="https://github.com/byerlikaya/SmartRAG" class="btn btn-outline-primary btn-lg" target="_blank">
                             <i class="fab fa-github"></i>
-                            GitHub'da Görüntüle
+                            GitHub
                         </a>
                         <a href="https://www.nuget.org/packages/SmartRAG" class="btn btn-secondary btn-lg" target="_blank">
                             <i class="fas fa-box"></i>
-                            NuGet Paketi
+                            NuGet
                         </a>
                     </div>
                 </div>
@@ -80,13 +83,13 @@ var document = await documentService.UploadDocumentAsync(
 );
 
 // Yapay zeka destekli sorular sorun
-var cevap = await searchService.QueryIntelligenceAsync(
+var answer = await searchService.QueryIntelligenceAsync(
     "Belirtilen ana faydalar nelerdir?", 
     maxResults: 5
 );
 
-Console.WriteLine(cevap.Answer);
-// AI dokümanlarınızı analiz eder ve akıllı cevaplar verir</code></pre>
+Console.WriteLine(answer.Answer);
+// Yapay zeka dokümanlarınızı analiz eder ve akıllı cevaplar verir</code></pre>
                     </div>
                 </div>
             </div>
@@ -117,15 +120,15 @@ Console.WriteLine(cevap.Answer);
                     <i class="fas fa-layer-group"></i>
                 </div>
                 <h3>Çok Modlu Zeka</h3>
-                <p>PDF, Excel, Word dokümanları, Görseller (OCR), Ses dosyaları (Konuşmadan Metne), Ve tabanları - hepsi tek bir akıllı platformda birleştirildi.</p>
+                <p>PDF, Excel, Word dokümanları, Görseller (OCR), Ses dosyaları (Konuşmadan Metne) ve Veritabanları - hepsi tek bir akıllı platformda birleştirildi.</p>
             </div>
             
             <div class="feature-card">
                 <div class="feature-icon">
                     <i class="fas fa-shield-alt"></i>
                 </div>
-                <h3>Yerinde & Yerel AI</h3>
-                <p>Ollama, LM Studio desteğiyle %100 yerel çalışma. GDPR/KVKK/HIPAA uyumlu. Verileriniz asla altyapınızdan ayrılmaz.</p>
+                <h3>On-Premise & Şirket İçi AI</h3>
+                <p>Ollama, LM Studio desteğiyle %100 on-premise çalışma. GDPR/KVKK/HIPAA uyumlu. Verileriniz asla altyapınızdan ayrılmaz.</p>
             </div>
             
             <div class="feature-card">
@@ -133,7 +136,7 @@ Console.WriteLine(cevap.Answer);
                     <i class="fas fa-comments"></i>
                 </div>
                 <h3>Konuşma Geçmişi</h3>
-                <p>Bağlam farkındalığıyla otomatik oturum tabanlı konuşma yönetimi. AI, doğal etkileşimler için önceki soruları hatırlar.</p>
+                <p>Bağlam farkındalığıyla otomatik oturum tabanlı konuşma yönetimi. Yapay zeka, doğal etkileşimler için önceki soruları hatırlar.</p>
             </div>
             
             <div class="feature-card">
@@ -182,14 +185,14 @@ Console.WriteLine(cevap.Answer);
         
         <div class="row g-5">
             <div class="col-lg-6">
-                <h3 class="text-center mb-4">AI Sağlayıcıları</h3>
+                <h3 class="text-center mb-4">Yapay Zeka Sağlayıcıları</h3>
                 <div class="provider-grid">
                     <div class="provider-card">
                         <div class="provider-logo">
                             <i class="fas fa-brain"></i>
                         </div>
                         <h4>OpenAI</h4>
-                        <p>GPT-4 + Embeddings</p>
+                        <p>GPT-4 + Vektör Gösterimleri</p>
                     </div>
                     <div class="provider-card">
                         <div class="provider-logo">
@@ -203,7 +206,7 @@ Console.WriteLine(cevap.Answer);
                             <i class="fab fa-google"></i>
                         </div>
                         <h4>Gemini</h4>
-                        <p>Google AI Modelleri</p>
+                        <p>Google Yapay Zeka Modelleri</p>
                     </div>
                     <div class="provider-card">
                         <div class="provider-logo">
@@ -251,122 +254,24 @@ Console.WriteLine(cevap.Answer);
                             <i class="fas fa-leaf"></i>
                         </div>
                         <h4>MySQL</h4>
-                        <p>Açık Kaynak VT</p>
+                        <p>Açık Kaynak Veritabanı</p>
                     </div>
                     <div class="provider-card">
                         <div class="provider-logo">
-                            <i class="fas fa-elephant"></i>
+                            <i class="fas fa-database"></i>
                         </div>
                         <h4>PostgreSQL</h4>
-                        <p>Gelişmiş VT</p>
+                        <p>Gelişmiş Veritabanı</p>
                     </div>
                     <div class="provider-card">
                         <div class="provider-logo">
                             <i class="fas fa-feather"></i>
                         </div>
                         <h4>SQLite</h4>
-                        <p>Gömülü VT</p>
+                        <p>Gömülü Veritabanı</p>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
-</section>
-
-<section class="section section-light">
-    <div class="container">
-        <div class="section-header">
-            <h2 class="section-title">Hızlı Başlangıç</h2>
-            <p class="section-subtitle">
-                Basit kurulum ve yapılandırma ile dakikalar içinde başlayın
-            </p>
-        </div>
-        
-        <div class="row">
-            <div class="col-lg-12">
-                <div class="code-tabs">
-                    <button class="code-tab active" data-tab="install">1. Kurulum</button>
-                    <button class="code-tab" data-tab="config">2. Yapılandırma</button>
-                    <button class="code-tab" data-tab="usage">3. Kullanım</button>
-                </div>
-                
-                <div class="code-panel active" data-tab="install">
-                    <pre><code class="language-bash"># .NET CLI ile kurulum
-dotnet add package SmartRAG
-
-# Veya Package Manager ile
-Install-Package SmartRAG
-
-# Veya .csproj'a ekleyin
-&lt;PackageReference Include="SmartRAG" Version="3.0.0" /&gt;</code></pre>
-                </div>
-                
-                <div class="code-panel" data-tab="config">
-                    <pre><code class="language-csharp">using SmartRAG.Extensions;
-using SmartRAG.Enums;
-
-var builder = WebApplication.CreateBuilder(args);
-
-// Basit yapılandırma
-builder.Services.UseSmartRag(builder.Configuration,
-    storageProvider: StorageProvider.InMemory,
-    aiProvider: AIProvider.Gemini);
-
-// Veya gelişmiş yapılandırma
-builder.Services.AddSmartRag(builder.Configuration, options =>
-{
-    options.AIProvider = AIProvider.OpenAI;
-    options.StorageProvider = StorageProvider.Qdrant;
-    options.MaxChunkSize = 1000;
-    options.ChunkOverlap = 200;
-    options.EnableFallbackProviders = true;
-    options.FallbackProviders = new[] { AIProvider.Anthropic, AIProvider.Gemini };
-});
-
-var app = builder.Build();</code></pre>
-                </div>
-                
-                <div class="code-panel" data-tab="usage">
-                    <pre><code class="language-csharp">public class IntelligenceController : ControllerBase
-{
-    private readonly IDocumentService _documentService;
-    private readonly IDocumentSearchService _searchService;
-    
-    // Doküman yükle (PDF, Word, Excel, Görsel, Ses, Veritabanı)
-    [HttpPost("upload")]
-    public async Task&lt;IActionResult&gt; Upload(IFormFile file)
-    {
-        var document = await _documentService.UploadDocumentAsync(
-            file.OpenReadStream(),
-            file.FileName,
-            file.ContentType,
-            "kullanici-id"
-        );
-        
-        return Ok(document);
-    }
-    
-    // Akıllı sorular sorun
-    [HttpPost("ask")]
-    public async Task&lt;IActionResult&gt; Ask([FromBody] QuestionRequest request)
-    {
-        var response = await _searchService.QueryIntelligenceAsync(
-            request.Question,
-            maxResults: 5
-        );
-        
-        return Ok(response);
-    }
-}</code></pre>
-                </div>
-            </div>
-        </div>
-        
-        <div class="text-center mt-5">
-            <a href="{{ site.baseurl }}/tr/getting-started" class="btn btn-primary btn-lg">
-                <i class="fas fa-book-open"></i>
-                Tüm Dokümantasyonu Okuyun
-            </a>
         </div>
     </div>
 </section>
@@ -481,7 +386,7 @@ var app = builder.Build();</code></pre>
                         <i class="fas fa-database"></i>
                     </div>
                     <h3>Çok Veritabanlı RAG</h3>
-                    <p>AI destekli koordinasyonla SQL Server, MySQL, PostgreSQL, SQLite'ı aynı anda sorgulayın</p>
+                    <p>Yapay zeka destekli koordinasyonla SQL Server, MySQL, PostgreSQL, SQLite'ı aynı anda sorgulayın</p>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6">
@@ -498,8 +403,8 @@ var app = builder.Build();</code></pre>
                     <div class="feature-icon mx-auto">
                         <i class="fas fa-shield-check"></i>
                     </div>
-                    <h3>%100 Yerel</h3>
-                    <p>Tam veri gizliliği için Ollama/LM Studio ile tamamen yerinde dağıtım</p>
+                    <h3>%100 On-Premise</h3>
+                    <p>Tam veri gizliliği için Ollama/LM Studio ile tamamen on-premise dağıtım</p>
                 </div>
             </div>
             <div class="col-lg-3 col-md-6">
@@ -524,18 +429,18 @@ var app = builder.Build();</code></pre>
             </p>
         </div>
         
-        <div class="hero-buttons" style="justify-content: center;">
+        <div class="hero-buttons">
             <a href="{{ site.baseurl }}/tr/getting-started" class="btn btn-primary btn-lg">
                 <i class="fas fa-rocket"></i>
                 Şimdi Başlayın
             </a>
             <a href="https://github.com/byerlikaya/SmartRAG" class="btn btn-outline-primary btn-lg" target="_blank">
                 <i class="fab fa-github"></i>
-                GitHub'da Yıldızlayın
+                GitHub
             </a>
             <a href="https://www.nuget.org/packages/SmartRAG" class="btn btn-secondary btn-lg" target="_blank">
                 <i class="fas fa-download"></i>
-                NuGet'ten İndirin
+                NuGet
             </a>
         </div>
     </div>

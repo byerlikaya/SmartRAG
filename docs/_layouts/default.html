@@ -107,11 +107,42 @@
                             {% if page.lang == 'tr' %}Başlangıç{% else %}Getting Started{% endif %}
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link{% if page.url contains '/configuration' %} active{% endif %}" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/configuration">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle{% if page.url contains '/configuration' %} active{% endif %}" href="#" id="configurationDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-cog me-1"></i>
                             {% if page.lang == 'tr' %}Yapılandırma{% else %}Configuration{% endif %}
                         </a>
+                        <ul class="dropdown-menu" aria-labelledby="configurationDropdown">
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/configuration">
+                                <i class="fas fa-list me-2"></i>
+                                {% if page.lang == 'tr' %}Tüm Kategoriler{% else %}All Categories{% endif %}
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/configuration/basic">
+                                <i class="fas fa-cog me-2"></i>
+                                {% if page.lang == 'tr' %}Temel Yapılandırma{% else %}Basic Configuration{% endif %}
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/configuration/ai-providers">
+                                <i class="fas fa-brain me-2"></i>
+                                {% if page.lang == 'tr' %}AI Sağlayıcıları{% else %}AI Providers{% endif %}
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/configuration/storage">
+                                <i class="fas fa-database me-2"></i>
+                                {% if page.lang == 'tr' %}Depolama Sağlayıcıları{% else %}Storage Providers{% endif %}
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/configuration/database">
+                                <i class="fas fa-server me-2"></i>
+                                {% if page.lang == 'tr' %}Veritabanı Yapılandırması{% else %}Database Configuration{% endif %}
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/configuration/audio-ocr">
+                                <i class="fas fa-microphone me-2"></i>
+                                {% if page.lang == 'tr' %}Ses & OCR{% else %}Audio & OCR{% endif %}
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/configuration/advanced">
+                                <i class="fas fa-cogs me-2"></i>
+                                {% if page.lang == 'tr' %}Gelişmiş Yapılandırma{% else %}Advanced Configuration{% endif %}
+                            </a></li>
+                        </ul>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link{% if page.url contains '/api-reference' %} active{% endif %}" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/api-reference">
