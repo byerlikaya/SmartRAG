@@ -1,32 +1,695 @@
-# 🚀 SmartRAG - Enterprise-Grade RAG Solution
+<p align="center">
+  <img src="icon.svg" alt="SmartRAG Logo" width="200"/>
+</p>
 
-[![Build Status](https://github.com/byerlikaya/SmartRAG/workflows/CI%2FCD%20Pipeline/badge.svg)](https://github.com/byerlikaya/SmartRAG/actions)
-[![NuGet Version](https://img.shields.io/nuget/v/SmartRAG.svg)](https://www.nuget.org/packages/SmartRAG)
-[![NuGet Downloads](https://img.shields.io/nuget/dt/SmartRAG.svg)](https://www.nuget.org/packages/SmartRAG)
-[![.NET](https://img.shields.io/badge/.NET%20Standard-2.0%2F2.1-blue.svg)](https://docs.microsoft.com/en-us/dotnet/standard/net-standard)
-[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+<p align="center">
+  <b>Multi-Database RAG Library for .NET</b><br>
+  Ask questions about your data in natural language.
+</p>
 
-SmartRAG is a **production-ready** .NET Standard 2.0/2.1 library that provides a complete **Retrieval-Augmented Generation (RAG)** solution for building **AI-powered question answering systems**. Upload your documents, ask questions in natural language, and get intelligent answers based on your content - all with enterprise-grade AI providers and storage options. Compatible with .NET Framework 4.6.1+, .NET Core 2.0+, and .NET 5+ applications.
+<p align="center">
+  <a href="#-quick-start">Quick Start</a> •
+  <a href="#-why-smartrag">Why SmartRAG</a> •
+  <a href="#-what-you-can-build">Examples</a> •
+  <a href="#-smartrag-vs-other-net-rag-libraries">Comparison</a> •
+  <a href="https://byerlikaya.github.io/SmartRAG">Documentation</a>
+</p>
 
-## ✨ Key Highlights
+<p align="center">
+  <a href="https://www.nuget.org/packages/SmartRAG"><img src="https://img.shields.io/nuget/v/SmartRAG.svg?style=for-the-badge&logo=nuget" alt="NuGet Version"/></a>
+  <a href="https://www.nuget.org/packages/SmartRAG"><img src="https://img.shields.io/nuget/dt/SmartRAG?style=for-the-badge&logo=nuget&label=Downloads&color=blue" alt="NuGet Downloads"/></a>
+  <a href="https://github.com/byerlikaya/SmartRAG"><img src="https://img.shields.io/github/stars/byerlikaya/SmartRAG?style=for-the-badge&logo=github" alt="GitHub Stars"/></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg?style=for-the-badge" alt="License"/></a>
+</p>
 
-- 🎯 **AI Question Answering**: Ask questions about your documents and get intelligent, contextual answers
-- 🧠 **Smart Query Intent Detection**: Automatically distinguishes between general conversation and document search queries
-- 💬 **Conversation History**: Automatic session-based conversation management with context awareness
-- 🌍 **Language-Agnostic**: Works with any language without hardcoded patterns or keywords
-- 🤖 **Universal AI Support**: 5 dedicated providers + CustomProvider for unlimited AI APIs  
-- 🏢 **Enterprise Storage**: Vector databases, Redis, SQL, FileSystem with advanced configurations
-- 🧠 **Advanced RAG Pipeline**: Smart chunking, semantic retrieval, AI-powered answer generation
-- ⚡ **Lightning Fast**: Optimized vector search with context-aware answer synthesis
-- 🔌 **Plug & Play**: Single-line integration with dependency injection
-- 📄 **Multi-Format**: PDF, Word, Excel, text files with intelligent parsing
-- 🖼️ **Revolutionary OCR**: Enterprise-grade image processing with Tesseract 5.2.0 + SkiaSharp, WebP support, multi-language OCR, table extraction
-- 🎵 **Speech-to-Text**: Google Speech-to-Text integration for audio file transcription and analysis
-- 🎯 **Enhanced Semantic Search**: Advanced hybrid scoring with 80% semantic + 20% keyword relevance
-- 🔍 **Smart Document Chunking**: Word boundary validation and optimal break points for context preservation
-- ✅ **Enterprise Grade**: Zero Warnings Policy, SOLID principles, comprehensive logging, XML documentation
-- 🔧 **Cross-Platform Compatibility**: .NET Standard 2.0/2.1 support for maximum framework compatibility
-- 📚 **Documentation**: Comprehensive documentation with GitHub Pages support
+---
+
+# 🚀 SmartRAG - Ask Questions About Your Data
+
+**Turn your documents, databases, images and audio into a conversational AI system.**
+
+```csharp
+// 1. Connect your databases
+await connector.ConnectAsync(sqlServer: "Server=localhost;Database=Sales;", 
+                              mysql: "Server=localhost;Database=Customers;",
+                              postgresql: "Host=localhost;Database=Analytics;");
+
+// 2. Upload documents, PDFs, Excel files, images
+await documents.UploadAsync(files);
+
+// 3. Ask in natural language
+var answer = await intelligence.QueryIntelligenceAsync(
+    "Show me customers with over $100K revenue across all databases"
+);
+// → AI automatically queries SQL Server, MySQL, PostgreSQL and combines results
+```
+
+---
+
+## 🎯 Why SmartRAG?
+
+SmartRAG lets you query multiple databases with natural language while combining document intelligence.
+
+✅ **Multi-Database RAG** - Query SQL Server, MySQL, PostgreSQL, SQLite **together** in one natural language request  
+✅ **Multi-Modal Intelligence** - Combine PDFs, Excel, Images (OCR), Audio (Speech-to-Text), and Databases in one answer  
+✅ **On-Premise Ready** - 100% local operation with Ollama, LM Studio, Whisper.net → GDPR/KVKK/HIPAA compliant  
+✅ **Production Ready** - Enterprise-grade error handling, comprehensive testing, production-ready  
+✅ **Conversation History** - Built-in automatic context management across multiple questions  
+✅ **.NET Standard 2.1** - Works with .NET Core 3.0+, .NET 5/6/7/8/9
+
+---
+
+## 📊 What You Can Build
+
+### **🏦 Banking - Complete Financial Intelligence**
+```csharp
+"Show me John's complete financial profile for credit limit increase"
+```
+→ AI combines:
+- **SQL Server**: 36 months transaction history, bill payments
+- **MySQL**: Credit card usage patterns
+- **PostgreSQL**: Credit score, existing loans
+- **SQLite**: Branch visit history
+- **OCR**: Scanned income documents
+- **PDF**: Account statements
+
+**Result:** 360° customer intelligence in seconds, not hours.
+
+---
+
+### **🏥 Healthcare - Unified Patient Records**
+```csharp
+"Show Emily's complete medical history for the past year"
+```
+→ AI combines:
+- **PostgreSQL**: Patient records, admissions
+- **Excel**: Lab results from 3 different labs
+- **OCR**: Scanned prescriptions
+- **Audio**: Doctor's voice notes (Whisper.net transcription)
+
+**Result:** Complete patient timeline from 4 disconnected systems.
+
+---
+
+### **📦 Inventory - Predictive Analytics**
+```csharp
+"Which products will run out of stock in the next 2 weeks?"
+```
+→ AI combines:
+- **SQLite**: Product catalog (10,000 SKUs)
+- **SQL Server**: Sales data (2M transactions/month)
+- **MySQL**: Real-time stock levels
+- **PostgreSQL**: Supplier lead times
+
+**Result:** Cross-database predictive analytics preventing stockouts.
+
+[See 10 detailed real-world examples below ↓](#-real-world-examples---what-you-can-build-with-smartrag)
+
+---
+
+## 🆚 SmartRAG vs Other .NET RAG Libraries
+
+| Feature | SmartRAG | Semantic Kernel | Kernel Memory |
+|---------|----------|-----------------|---------------|
+| **Multi-Database RAG** | ✅ | ❌ | ❌ |
+| **On-Premise (Ollama)** | ✅ 100% | ⚠️ Limited | ⚠️ Limited |
+| **OCR + Audio + DB** | ✅ All-in-one | ❌ Separate | ❌ Separate |
+| **Conversation History** | ✅ Built-in | ⚠️ Manual | ✅ Built-in |
+| **Multi-Modal** | ✅ 7+ formats | ⚠️ Basic | ✅ Multi-modal |
+| **.NET Standard 2.1** | ✅ | ❌ (.NET 6+) | ❌ (.NET 6+) |
+| **GDPR/HIPAA Ready** | ✅ Local AI | ⚠️ Cloud-first | ⚠️ Cloud-first |
+| **Focus** | Multi-DB + RAG | AI Orchestration | RAG-specific |
+| **Maintainer** | Independent | Microsoft | Microsoft |
+
+**Key Differences:**
+- **Semantic Kernel**: General AI orchestration framework, not RAG-specific
+- **Kernel Memory**: RAG-focused but no multi-database support
+- **SmartRAG**: Specialized in multi-database RAG capabilities
+
+**Bottom line:** If you need to query multiple databases with AI or require on-premise deployment, SmartRAG is built for this.
+
+---
+
+## 📦 Quick Start
+
+### Installation
+```bash
+dotnet add package SmartRAG
+```
+
+### 5-Minute Setup
+```csharp
+// Program.cs
+builder.Services.UseSmartRAG(builder.Configuration,
+    aiProvider: AIProvider.OpenAI,
+    storageProvider: StorageProvider.InMemory
+);
+
+// Controller or Service
+public class MyService
+{
+    private readonly IDocumentSearchService _intelligence;
+    
+    public MyService(IDocumentSearchService intelligence)
+    {
+        _intelligence = intelligence;
+    }
+    
+    public async Task<string> AskQuestion(string question)
+    {
+        var result = await _intelligence.QueryIntelligenceAsync(question, maxResults: 5);
+        return result.Answer;
+    }
+}
+```
+
+### Configuration (appsettings.json)
+```json
+{
+  "AI": {
+    "OpenAI": {
+      "ApiKey": "sk-your-key",
+      "Model": "gpt-4",
+      "EmbeddingModel": "text-embedding-ada-002"
+    }
+  }
+}
+```
+
+**That's it!** You now have a production-ready RAG system. 🎉
+
+[Full documentation →](https://byerlikaya.github.io/SmartRAG)
+
+---
+
+## 🔒 On-Premise & Local AI Support
+
+**CRITICAL FOR ENTERPRISE**: SmartRAG is designed for **complete on-premise deployment** with **full data privacy**. You can run everything locally without sending data to cloud services.
+
+### ✅ **100% Local Operation** (No Cloud Required)
+- **🏠 Local AI Models**: Full support for Ollama, LM Studio, and any OpenAI-compatible local API
+- **📄 Document Processing**: PDF, Word, Excel parsing - **completely local**
+- **🖼️ OCR Processing**: Tesseract 5.2.0 - **completely local**, no data sent to cloud
+- **🎤 Audio Transcription**: Whisper.net - **completely local**, supports 99+ languages
+- **🗄️ Database Integration**: SQLite, SQL Server, MySQL, PostgreSQL - **all local connections**
+- **💾 Storage Options**: In-Memory, SQLite, FileSystem, Redis - **all local**
+- **🧠 Embeddings & AI**: Use your own local models via CustomProvider
+- **🔐 Complete Privacy**: All your data stays on your infrastructure
+
+### ⚠️ **Important Notes**
+
+#### **Audio Files - Local & Cloud Options**
+**SmartRAG supports both local and cloud audio transcription for maximum flexibility:**
+
+**🏠 Local Transcription (Whisper.net) - DEFAULT & RECOMMENDED:**
+- ✅ **100% Privacy**: All audio processing happens locally, no data sent to cloud
+- ✅ **Multi-Language**: 99+ languages including Turkish, English, German, Russian, Chinese, Arabic
+- ✅ **Zero Setup**: Whisper model AND FFmpeg binaries auto-download on first use
+- ✅ **Cost**: Completely free, unlimited usage
+- ✅ **GDPR/KVKK/HIPAA**: Fully compliant for on-premise deployments
+- ✅ **Hardware Acceleration**: CPU, CUDA (NVIDIA GPU), CoreML (Apple), OpenVino (Intel)
+- 🎯 **Production-Ready**: Default large-v3 model for enterprise-grade accuracy
+- ⚙️ **Self-Contained**: No manual installation required, everything downloads automatically
+
+**Model Comparison & Selection:**
+| Model | Size | Speed | Accuracy | Language Detection | Use Case |
+|-------|------|-------|----------|-------------------|----------|
+| `ggml-tiny.bin` | 75 MB | ⚡⚡⚡⚡⚡ | ⭐⭐ | ❌ Poor | Quick testing only |
+| `ggml-base.bin` | 142 MB | ⚡⚡⚡⚡ | ⭐⭐⭐ | ⚠️ Basic | Simple demos |
+| `ggml-medium.bin` | 1.5 GB | ⚡⚡⚡ | ⭐⭐⭐⭐ | ✅ Good | Good balance |
+| **`ggml-large-v3.bin`** | **2.9 GB** | **⚡⚡** | **⭐⭐⭐⭐⭐** | **✅ Excellent** | **🎯 DEFAULT - Production** |
+
+**Why Large-v3 as Default?**
+- 🎯 **Critical Accuracy**: RAG systems require perfect transcription for reliable results
+- 🌍 **Superior Language Detection**: Accurately distinguishes Turkish/English/German/etc.
+- 🔇 **Minimal Hallucination**: Advanced filtering prevents duplicate/noise segments
+- 💾 **One-Time Download**: 2.9 GB downloads once, cached forever (~5-10 min first run)
+- 🏢 **Enterprise-Ready**: Suitable for production systems with critical accuracy needs
+- 💰 **Cost-Effective**: No per-request pricing, unlimited local usage after download
+
+**☁️ Cloud Transcription (Google Cloud Speech-to-Text) - OPTIONAL:**
+- 📤 Audio data sent to Google Cloud for processing
+- 💰 Requires Google Cloud API key and billing
+- ⚡ Real-time transcription
+- 🔒 If data privacy is critical, use Whisper.net instead
+
+#### **OCR (Image to Text) Limitation**
+**Tesseract OCR library cannot fully support handwritten text (success rate is very low)**:
+- ✅ **Works perfectly**: Printed documents, scanned printed documents, digital screenshots with typed text
+- ⚠️ **Limited support**: Handwritten notes, handwritten forms, cursive writing (very low accuracy, not recommended)
+- 💡 **Best results**: High-quality scans of printed documents, clear digital images with printed text
+- 🌍 **Supported languages**: 100+ languages - [View all supported languages](https://github.com/tesseract-ocr/tessdata)
+- 📝 **Recommendation**: Use printed text documents for optimal OCR results
+
+### 🏢 **Suitable for Enterprise On-Premise Systems**
+- ✅ **GDPR Compliant**: Keep all data within your infrastructure
+- ✅ **KVKK Compliant**: Turkish data protection law compliance
+- ✅ **Air-Gapped Systems**: Works 100% without internet (Whisper.net for audio)
+- ✅ **Financial Institutions**: Bank-grade security with local deployment
+- ✅ **Healthcare**: HIPAA-compliant deployments possible
+- ✅ **Government**: Classified data handling with local models
+
+### 🛠️ **Local AI Setup Examples**
+
+#### Ollama (Local Models)
+```json
+{
+  "AI": {
+    "Custom": {
+      "ApiKey": "not-needed",
+      "Endpoint": "http://localhost:11434/v1/chat/completions",
+      "Model": "llama2",
+      "EmbeddingModel": "nomic-embed-text"
+    }
+  }
+}
+```
+
+#### LM Studio (Local Models)
+```json
+{
+  "AI": {
+    "Custom": {
+      "ApiKey": "not-needed",
+      "Endpoint": "http://localhost:1234/v1/chat/completions",
+      "Model": "local-model",
+      "EmbeddingModel": "local-embedding"
+    }
+  }
+}
+```
+
+#### Whisper.net (Local Audio Transcription)
+```json
+{
+  "SmartRAG": {
+    "AudioProvider": "Whisper",
+    "WhisperConfig": {
+      "ModelPath": "models/ggml-large-v3.bin",  // Production default
+      "DefaultLanguage": "auto",  // Auto-detect language
+      "MinConfidenceThreshold": 0.3,  // Lower threshold + smart filtering
+      "PromptHint": "Natural conversation",  // Context hint for accuracy
+      "MaxThreads": 0  // Use all CPU cores (0 = auto-detect)
+    }
+  }
+}
+```
+
+**Model Selection Table:**
+| Model | Size | Speed | Best For | Command |
+|-------|------|-------|----------|---------|
+| `ggml-tiny.bin` | 75 MB | Very Fast | Testing only | Quick prototypes |
+| `ggml-base.bin` | 142 MB | Fast | Demos | Simple transcription |
+| `ggml-medium.bin` | 1.5 GB | Balanced | Good quality | Medium accuracy needs |
+| **`ggml-large-v3.bin`** | **2.9 GB** | **Slower** | **🎯 Production** | **Enterprise deployments** |
+
+**Default Model: Large-v3** ✅
+- **Why?** RAG accuracy depends on perfect transcription
+- **Download Once:** 2.9 GB cached forever, no recurring costs
+- **Multi-Language:** Best language detection (Turkish/English/German distinction)
+- **Low Hallucination:** Advanced duplicate/noise filtering built-in
+- **Cost Analysis:** Free forever vs. $0.006/min Google Cloud = ROI after 500 hours
+
+**Automatic Setup (Zero Configuration):**
+- ✅ Whisper model: Auto-downloads from Hugging Face (~2.9 GB, 5-10 min first run)
+- ✅ FFmpeg binaries: Auto-downloads and configures (~100 MB)
+- ✅ No manual installation needed
+- ✅ One-time download, cached permanently
+- ✅ Subsequent runs: Instant startup (model already on disk)
+
+**Optional: Pre-install FFmpeg** (for faster first run):
+- **Windows**: `choco install ffmpeg`
+- **macOS**: `brew install ffmpeg`
+- **Linux**: `sudo apt install ffmpeg`
+
+If FFmpeg is already installed, SmartRAG will detect and use it automatically.
+
+### 🎯 **Enterprise Use Cases**
+- **🏦 Banking & Finance**: Process sensitive financial documents locally
+- **🏥 Healthcare**: Handle patient records without cloud exposure
+- **⚖️ Legal**: Manage confidential legal documents on-premise
+- **🏛️ Government**: Classified document analysis with local AI
+- **🏭 Manufacturing**: Keep industrial secrets within your network
+- **💼 Consulting**: Client data never leaves your infrastructure
+
+**Your data, your infrastructure, your control.** 🔐
+
+---
+
+### 💡 **About These Examples**
+
+The examples below demonstrate SmartRAG's technical capabilities in real-world scenarios:
+
+- ✅ **All features are production-ready** - Multi-database queries, OCR, audio processing work as shown
+- ✅ **Technically feasible** - SmartRAG provides all the necessary features demonstrated
+- ✅ **Adaptable patterns** - Use these as templates for your specific use cases
+- 📋 **Your responsibility** - Business logic, validation rules, and regulatory compliance
+
+**Recommendation**: Adapt these patterns to your specific use case and ensure compliance with relevant regulations (GDPR, HIPAA, financial regulations, etc.) before production deployment.
+
+---
+
+## 💡 Real-World Examples - What You Can Build With SmartRAG
+
+Here are 10 powerful real-world scenarios demonstrating SmartRAG's unique multi-database and multi-modal capabilities:
+
+> 💡 **Tip**: Click on example headings to see questions and answers
+
+<details>
+<summary><h4>1️⃣ 🏥 Medical Records Intelligence System</h4></summary>
+
+**The Challenge**: Get complete patient history scattered across departments
+```csharp
+// Doctor asks: "Show me Emily Davis's complete medical history for the past year"
+```
+**SmartRAG Magic**:
+- 🗄️ PostgreSQL (patient records, admissions, discharge summaries)
+- 📊 Excel files (lab results from 3 different labs)
+- 🖼️ OCR scanned prescriptions (handwritten notes - limited, typed prescriptions - perfect)
+- 🎤 Speech-to-Text (doctor's voice notes from appointments)
+
+**AI Response**:
+> "**Emily Davis - Annual Health Timeline**:  
+> March 2024: Diagnosed with Type 2 Diabetes (HbA1c: 8.2%) - Dr. Smith  
+> April-June: Medication: Metformin 1000mg twice daily - Labs improving (HbA1c: 7.1%)  
+> July 2024: Chest pain episode - ECG normal, referred to cardiology  
+> August 2024: Stress test completed - No cardiac issues detected  
+> October 2024: Latest HbA1c: 6.4% ✅ (controlled) - Continue current medication"
+
+**⚡ Power**: 4 data sources unified (PostgreSQL + Excel + OCR + Audio) → Complete patient timeline from 4 disconnected systems, saving doctors hours of manual data gathering.
+
+</details>
+
+<details>
+<summary><h4>2️⃣ 🏦 Banking Credit Limit Evaluation</h4></summary>
+
+**The Challenge**: Evaluate customer financial profile for credit card limit increase
+```csharp
+// Relationship Manager asks: "Should we increase John Smith's credit card limit from $8K to $18K?"
+```
+**SmartRAG Magic**:
+- 🗄️ SQL Server (36 months transaction history, bill payments, salary deposits)
+- 🗄️ MySQL (credit card usage - 18 months, spending patterns, payment behavior)
+- 🗄️ PostgreSQL (existing loans, mortgage, credit score history)
+- 🗄️ SQLite (branch visit history, customer service interactions, complaints)
+- 🖼️ OCR (scanned income documents, tax returns, employment verification)
+- 📄 PDF (account statements, investment portfolios, property ownership docs)
+
+**AI Response**:
+> "**John Smith - Credit Limit Evaluation Report:**  
+>   
+> **Income & Stability Analysis:**  
+> Monthly salary: $4,200 (verified from 36 consecutive deposits - stable employer 8 years)  
+> Additional income: $1,100/month (rental property + freelance consulting - verified via tax OCR)  
+> Total monthly income: $5,300 ✅ (+22% vs. initial application)  
+>   
+> **Current Credit Behavior:**  
+> Credit Score: 795 (excellent) - improved from 720 in past 18 months  
+> Current card limit: $8,000  
+> Average monthly usage: $3,600 (45% utilization - moderate)  
+> Payment history: 100% on-time, full balance (18/18 months)  
+> **Key insight**: Customer pays full balance monthly, uses card heavily for rewards  
+>   
+> **Spending Patterns Analysis:**  
+> - Business expenses: $2,100/month (consulting expenses - reimbursed within 15 days)  
+> - Family expenses: $1,500/month  
+> - Occasionally hits limit during travel season (March, July, December)  
+> - Never late payment, never over-limit fee  
+>   
+> **Financial Obligations:**  
+> Mortgage: $1,000/month ($155K remaining, 18 years)  
+> No auto loans, no other debt  
+> Debt-to-income ratio: 19% - Excellent  
+>   
+> **Assets Verification:**  
+> Checking balance: $6,700 (average 6 months)  
+> Savings: $25,000  
+> Investment accounts: $47,000 (via PDF statements)  
+> Property equity: ~$103,000 (home + rental shop)  
+>   
+> **⚠️ Risk Assessment:**  
+> Default risk: Very Low  
+> Fraud indicators: None  
+> Customer lifetime value: High (8 years, multiple products)  
+> Branch feedback: "VIP customer, excellent relationship"  
+>   
+> **💳 RECOMMENDATION: APPROVE LIMIT INCREASE** ✅  
+> New limit: $18,000 (125% increase justified)  
+> Additional offer: Premium card upgrade available  
+> Cross-sell opportunity: Business credit card for consulting income  
+> Risk Level: MINIMAL  
+> Reasoning: Strong income growth, perfect payment history, high usage without risk, solid asset base"
+
+**⚡ Power**: 6 data sources coordinated (SQL Server + MySQL + PostgreSQL + SQLite + OCR docs + PDFs) → 360° customer financial intelligence combining transaction patterns, credit behavior, income verification, asset analysis, customer service history - comprehensive risk-free decision making impossible with siloed systems.
+
+</details>
+
+<details>
+<summary><h4>3️⃣ ⚖️ Legal Precedent Discovery Engine</h4></summary>
+
+**The Challenge**: Find winning strategies from 10 years of case history
+```csharp
+// Lawyer asks: "What arguments won our contract dispute cases in the last 5 years?"
+```
+**SmartRAG Magic**:
+- 📄 1,000+ PDF legal documents (cases, briefs, judgments)
+- 🗄️ SQL Server case database (outcomes, dates, judges, clients)
+- 🖼️ OCR court orders (scanned official documents)
+
+**AI Response**:
+> "**Analyzed 1,247 cases, identified 23 wins on force majeure:**  
+> **Winning Pattern Discovered**:  
+> ✅ 94% success when citing 'Act of God' + precedent case law  
+> ✅ 87% success with documented mitigation efforts  
+> ✅ 91% success when Judge Martinez presiding  
+> **Key Argument**: Combine unforeseeability proof + mitigation documentation.  
+> **Template**: Case #2019-445 (won $2.3M) - use as reference template"
+
+**⚡ Power**: 2 data sources unified (1,000+ PDFs + SQL Server database) → AI discovers winning legal patterns that would take lawyers weeks to find manually.
+
+</details>
+
+<details>
+<summary><h4>4️⃣ 📦 Predictive Inventory Intelligence</h4></summary>
+
+**The Challenge**: Prevent stockouts before they happen
+```csharp
+// Manager asks: "Which products will run out of stock in the next 2 weeks?"
+```
+**SmartRAG Magic**:
+- 🗄️ SQLite (product catalog - 10,000 SKUs)
+- 🗄️ SQL Server (sales data - 2M transactions/month)
+- 🗄️ MySQL (warehouse inventory - real-time stock levels)
+- 🗄️ PostgreSQL (supplier data - lead times, reliability)
+
+**AI Response**:
+> "**🚨 15 Products at Risk of Stockout:**  
+> **CRITICAL (2-5 days)**:  
+> Product A: 12 units left, selling 8/day, supplier lead 14 days ⚠️ ORDER NOW!  
+> Product B: 5 units left, selling 3/day, supplier lead 7 days ⚠️ ORDER TODAY!  
+>   
+> **WARNING (6-14 days)**:  
+> Product C: 45 units left, selling 5/day (+52% growth trend)  
+> **Recommendation**: Automated purchase orders sent to suppliers for Products A, B, C"
+
+**⚡ Power**: 4 databases coordinated (SQLite + SQL Server + MySQL + PostgreSQL) → Cross-database predictive analytics preventing stockouts before they happen, impossible with single-database queries.
+
+</details>
+
+<details>
+<summary><h4>5️⃣ 🏭 Manufacturing Root Cause Analysis</h4></summary>
+
+**The Challenge**: Find why production quality dropped last week
+```csharp
+// Quality Manager asks: "Why did we have 47 defects in last week's production batch?"
+```
+**SmartRAG Magic**:
+- 📊 Excel production reports (5 production lines, hourly data)
+- 🗄️ PostgreSQL sensor data (temperature, pressure, speed - 100K+ readings)
+- 🖼️ OCR quality control photos (defect images with inspector notes)
+- 📄 PDF maintenance logs (equipment service history)
+
+**AI Response**:
+> "**Root Cause Identified: Machine #3 Temperature Variance**  
+> **Evidence**:  
+> - 94% of defects occurred when Machine #3 temp > 185°C  
+> - Normal operating range: 175-180°C  
+> - Temperature spikes correlate with cooling system malfunction  
+> - Maintenance overdue by 12 days (last service: Aug 15)  
+> **Action**: Schedule immediate maintenance. Estimated cost: $2,400 vs $45K batch loss"
+
+**⚡ Power**: 4 data sources unified (Excel reports + PostgreSQL 100K+ sensor readings + OCR photos + PDF logs) → AI correlates temperature anomalies across millions of data points to pinpoint exact root cause.
+
+</details>
+
+<details>
+<summary><h4>6️⃣ 👔 AI Resume Screening at Scale</h4></summary>
+
+**The Challenge**: Find best-matching candidates from 500+ applications
+```csharp
+// HR asks: "Find senior React developers with Python skills and AWS certifications"
+```
+**SmartRAG Magic**:
+- 📄 500+ resume PDFs (multiple languages, formats)
+- 🗄️ Applicant database (SQL Server - skills, experience, education)
+- 🖼️ OCR scanned certificates (AWS, Azure, Google Cloud certifications)
+- 🎤 Speech-to-Text video interview transcripts
+
+**AI Response**:
+> "**8 Top Matches Found:**  
+> **#1 - Sarah Chen** ⭐⭐⭐⭐⭐  
+> React: 7 years (led 3 major projects), Python: 8 years (ML expertise)  
+> AWS Solutions Architect + DevOps Professional (verified via OCR)  
+> Interview highlight: 'Built scalable microservices serving 10M users'  
+> Availability: 2 weeks notice  
+>   
+> **Why Sarah is #1**: Only candidate with proven scale (10M users) + dual AWS certs"
+
+**⚡ Power**: 4 data sources unified (500+ PDFs + SQL Server + OCR certificates + Audio interviews) → AI screens and ranks candidates across multiple data types, reducing HR screening time from days to minutes.
+
+</details>
+
+<details>
+<summary><h4>7️⃣ 💼 Financial Audit Automation</h4></summary>
+
+**The Challenge**: Detect expense anomalies across departments
+```csharp
+// CFO asks: "Show me all expenses over $10K in July-September with approval status"
+```
+**SmartRAG Magic**:
+- 📊 Excel financial reports (12 departments, 15,000 line items)
+- 🗄️ SQL Server transaction database (500K+ transactions)
+- 🖼️ OCR vendor invoices (scanned invoices, receipts)
+- 📄 PDF approval workflows (email trails, signatures)
+
+**AI Response**:
+> "**July-September High-Value Expenses - 7 Items Over $10K:**  
+> ✅ $15,400 IT Equipment - Approved by CFO (normal procurement)  
+> ⚠️ $23,000 Marketing Campaign - **MISSING APPROVAL** (policy violation!)  
+> ✅ $12,500 Office Renovation - Approved by CEO (40% over budget but authorized)  
+> 🚨 $18,900 Consulting Fees - Vendor not in approved list (compliance issue!)  
+>   
+> **Action Required**: Review items marked ⚠️🚨 with Finance Director"
+
+**⚡ Power**: 4 data sources cross-validated (Excel 15K line items + SQL Server 500K transactions + OCR invoices + PDF approvals) → AI auditor detects policy violations humans would miss.
+
+</details>
+
+<details>
+<summary><h4>8️⃣ 🏛️ Smart Government Services</h4></summary>
+
+**The Challenge**: Process thousands of citizen applications efficiently
+```csharp
+// Official asks: "How many building permits in Istanbul, September 2024? Average processing time?"
+```
+**SmartRAG Magic**:
+- 🗄️ PostgreSQL citizen database (15M citizen records)
+- 🖼️ OCR application forms (scanned documents, blueprints)
+- 🎤 Speech-to-Text call center recordings (citizen inquiries)
+- 📄 PDF regulation documents (zoning laws, building codes)
+
+**AI Response**:
+> "**Istanbul Building Permits - September 2024:**  
+> Total applications: 512 | Approved: 342 (67%) | Rejected: 125 | Pending: 45  
+> Average processing time: 18 days (target: 15 days)  
+> Top approval reason: Residential construction (78%)  
+> Top rejection reason: Zoning regulation violations (62%)  
+> **Insight**: 34% of rejections could be prevented with better initial guidance"
+
+**⚡ Power**: 4 data sources unified (PostgreSQL 15M records + OCR forms + Audio calls + PDF regulations) → Government analytics across all citizen touchpoints in one query.
+
+</details>
+
+<details>
+<summary><h4>9️⃣ 🔬 Academic Research Pattern Discovery</h4></summary>
+
+**The Challenge**: Extract insights from years of research
+```csharp
+// Professor asks: "What are the common success factors in our machine learning research over the past 5 years?"
+```
+**SmartRAG Magic**:
+- 📄 50+ research paper PDFs (300+ pages total)
+- 📊 Experiment data Excel files (100K+ data points)
+- 🖼️ OCR lab notebooks (typed experimental notes - works great!)
+- 🗄️ SQLite research database (experiment parameters, results)
+
+**AI Response**:
+> "**Meta-Analysis of 50 Machine Learning Research Papers (2020-2024):**  
+> **Success Pattern Identified**:  
+> ✅ Transfer learning: +18% avg accuracy improvement (42/50 papers)  
+> ✅ Data augmentation: Critical for datasets <10K samples (38/50 papers)  
+> ✅ Ensemble methods: Beat single models in 47/50 experiments  
+> **Golden Combination**: Transfer learning + Data augmentation + Ensemble = +34% improvement  
+> **Next research direction**: Apply this combo to medical imaging (unexplored area)"
+
+**⚡ Power**: 4 data sources unified (50 PDFs 300+ pages + Excel 100K data points + OCR notebooks + SQLite experiments) → AI meta-analysis across 5 years of research discovers patterns humans never noticed.
+
+</details>
+
+<details>
+<summary><h4>🔟 🚚 Smart Logistics Command Center</h4></summary>
+
+**The Challenge**: Real-time supply chain visibility and optimization
+```csharp
+// Logistics Director asks: "Why are shipments delayed? Show me the bottlenecks."
+```
+**SmartRAG Magic**:
+- 🗄️ PostgreSQL shipment tracking (real-time GPS data, 5000+ active shipments)
+- 🗄️ MySQL warehouse inventory (stock levels, 50 warehouses)
+- 🗄️ SQL Server order database (customer orders, priorities, SLAs)
+- 🖼️ OCR delivery receipts (scanned POD - Proof of Delivery documents)
+
+**AI Response**:
+> "**18 Delayed Shipments - Root Cause Analysis:**  
+> **Primary Bottleneck: Warehouse B Inventory Shortage** (12 shipments affected)  
+> - Product X: Stockout since Oct 10 (supplier delayed)  
+> - Impact: $125K revenue at risk  
+> - Alternative: Warehouse D has Product X (85 units) - reroute possible  
+>   
+> **Secondary Issue: Route Optimization** (4 shipments)  
+> - Route Istanbul→Ankara: +2.3 days avg delay (traffic pattern changed)  
+> - **Solution**: Alternative route via Eskişehir (-1.5 days, implemented)  
+>   
+> **Customs Delays** (2 shipments): Normal processing, no action needed"
+
+**⚡ Power**: 4 data sources coordinated (PostgreSQL GPS tracking + MySQL inventory 50 warehouses + SQL Server orders + OCR receipts) → Real-time supply chain optimization across entire logistics network.
+
+</details>
+
+---
+
+### 🎯 **What Makes SmartRAG Powerful**
+
+#### **🗄️ Multi-Database RAG Capabilities**
+- Queries multiple database types simultaneously (SQL Server, MySQL, PostgreSQL, SQLite)
+- Coordinates cross-database queries in a single intelligent request
+- AI-powered cross-database joins and correlations
+- Unified query interface across heterogeneous database systems
+
+#### **📊 Multi-Modal Intelligence**
+- Combines PDF + Excel + Images (OCR) + Audio (Speech) + Databases in a single answer
+- Unified intelligence across all your data types
+- Seamless integration between structured and unstructured data
+
+#### **🔒 On-Premise Privacy**
+- 100% local operation with Ollama/LM Studio + Whisper.net
+- GDPR/KVKK/HIPAA compliant deployments
+- Your sensitive data NEVER leaves your infrastructure
+- Well-suited for financial institutions, healthcare, legal, government
+
+#### **🌍 Language Agnostic**
+- Works in Turkish, English, German, Russian, Chinese, Arabic - **ANY** language
+- No hardcoded language patterns or keywords
+- Truly international RAG solution
+
+#### **✅ Production Ready**
+- Comprehensive error handling and retry mechanisms
+- Enterprise-grade logging and monitoring
+- Production-ready with comprehensive testing
+
+**Build the future of intelligent document processing - TODAY!** 🚀
+
+---
 
 ## 🎯 What Makes SmartRAG Special
 
@@ -34,13 +697,13 @@ SmartRAG is a **production-ready** .NET Standard 2.0/2.1 library that provides a
 ```
 📄 Document Upload → 🔍 Smart Chunking → 🧠 AI Embeddings → 💾 Vector Storage
                                                                         ↓
-🙋‍♂️ User Question → 🎯 Intent Detection → 🔍 Find Relevant Chunks → 🤖 AI Answer Generation → ✨ Smart Response
+🙋‍♂️ User Question → 🎯 Intent Detection → 🔍 Find Relevant Chunks → 🧠 QueryIntelligenceAsync → ✨ Smart Response
 ```
 
-### 🏆 **Production Features**
-- **Revolutionary OCR Capabilities**: Enterprise-grade image processing with Tesseract 5.2.0 + SkiaSharp integration
+### 🏆 **Advanced Features**
+- **Advanced OCR Capabilities**: Enterprise-grade image processing with Tesseract 5.2.0 + SkiaSharp integration
 - **Smart Chunking**: Maintains context continuity between document segments with word boundary validation
-- **Intelligent Query Routing**: Automatically routes general conversation to AI chat, document queries to RAG search
+- **Intelligent Query Routing**: Automatically routes general conversation to AI chat, document queries to QueryIntelligenceAsync
 - **Conversation History**: Automatic session-based conversation management with intelligent context truncation
 - **Language-Agnostic Design**: No hardcoded language patterns - works globally with any language
 - **Multiple Storage Options**: From in-memory to enterprise vector databases
@@ -48,14 +711,22 @@ SmartRAG is a **production-ready** .NET Standard 2.0/2.1 library that provides a
 - **Universal Document Intelligence**: Advanced parsing for PDF, Word, Excel, text formats, AND images with OCR
 - **Configuration-First**: Environment-based configuration with sensible defaults
 - **Dependency Injection**: Full DI container integration
-- **Enhanced Semantic Search**: Advanced hybrid scoring combining semantic similarity and keyword relevance
+- **Enhanced Semantic Search**: Advanced hybrid scoring combining semantic similarity and keyword relevance (80% semantic + 20% keyword)
 - **VoyageAI Integration**: High-quality embeddings for Anthropic Claude models
-- **Cross-Platform Compatibility**: .NET Standard 2.0/2.1 support for maximum framework compatibility
-- **Enterprise Architecture**: Zero Warnings Policy, SOLID/DRY principles, comprehensive XML documentation
+- **Cross-Platform Compatibility**: .NET Standard 2.1 support (.NET Core 3.0+ and .NET 5/6/7/8/9)
 - **Production Ready**: Thread-safe operations, centralized logging, proper error handling
-- **Documentation**: Professional documentation site with GitHub Pages integration
+- **Professional Documentation**: Comprehensive documentation site with GitHub Pages integration
 
-### 🎯 **Revolutionary OCR Use Cases**
+### 🧠 **Core Services**
+- **`IDocumentSearchService`**: Intelligent query processing with RAG pipeline and conversation management
+- **`ISemanticSearchService`**: Advanced semantic search with hybrid scoring
+- **`IAIService`**: Universal AI provider integration (OpenAI, Anthropic, Gemini, Azure, Custom)
+- **`IDocumentParserService`**: Multi-format document parsing (PDF, Word, Excel, Images with OCR, Audio with Speech-to-Text)
+- **`IDatabaseParserService`**: Universal database support (SQLite, SQL Server, MySQL, PostgreSQL) with live connections
+- **`IStorageProvider`**: Enterprise storage options (Vector databases, Redis, SQL, FileSystem)
+- **`IAIProvider`**: Pluggable AI provider architecture with automatic failover
+
+### 🎯 **Practical OCR Use Cases**
 - **📄 Scanned Documents**: Upload scanned contracts, reports, forms and get instant intelligent answers
 - **🧾 Receipt Processing**: Process receipts, invoices, and financial documents with OCR + RAG intelligence
 - **📊 Image-Based Reports**: Extract and query data from charts, graphs, and visual reports
@@ -150,7 +821,7 @@ dotnet add package SmartRAG
 
 ### PackageReference
 ```xml
-<PackageReference Include="SmartRAG" Version="2.3.1" />
+<PackageReference Include="SmartRAG" Version="3.0.0" />
 ```
 
 ## 📄 Supported Document Formats
@@ -182,26 +853,40 @@ SmartRAG supports a wide range of document formats with intelligent parsing and 
 - **Structure Preservation**: Maintains original formatting
 - **Fast Processing**: Optimized for text-based content
 
-### **🖼️ Image Files (.jpg, .jpeg, .png, .gif, .bmp, .tiff, .webp) - REVOLUTIONARY OCR POWER**
+### **🖼️ Image Files (.jpg, .jpeg, .png, .gif, .bmp, .tiff, .webp) - ADVANCED OCR PROCESSING**
 - **🚀 Advanced OCR Engine**: Enterprise-grade Tesseract 5.2.0 with SkiaSharp 3.119.0 integration
 - **🌍 Multi-Language OCR**: English (eng), Turkish (tur), and extensible language framework
 - **🔄 WebP to PNG Conversion**: Seamless WebP image processing using SkiaSharp for Tesseract compatibility
 - **📊 Intelligent Table Extraction**: Advanced table detection and structured data parsing from images
-- **🎯 Character Whitelisting**: Optimized OCR character recognition for superior accuracy
+- **🎯 Character Whitelisting**: Optimized OCR character recognition for high accuracy
 - **⚡ Image Preprocessing Pipeline**: Advanced image enhancement for maximum OCR performance
 - **📈 Confidence Scoring**: Detailed OCR confidence metrics with processing time tracking
 - **🔍 Format Auto-Detection**: Automatic image format detection and validation across all supported types
 - **🏗️ Structured Data Output**: Converts images to searchable, queryable knowledge base content
 
-### **🎵 Audio Files (.mp3, .wav, .m4a, .aac, .ogg, .flac, .wma) - SPEECH-TO-TEXT REVOLUTION**
-- **🎤 Google Speech-to-Text**: Enterprise-grade speech recognition with Google Cloud AI
-- **🌍 Multi-Language Support**: Turkish (tr-TR), English (en-US), and 100+ languages supported
-- **⚡ Real-time Transcription**: Advanced speech-to-text conversion with confidence scoring
-- **📊 Detailed Results**: Segment-level transcription with timestamps and confidence metrics
-- **🔍 Audio Format Detection**: Automatic format validation and content type recognition
-- **🎯 Intelligent Processing**: Smart audio stream validation and error handling
-- **📈 Performance Optimized**: Efficient audio processing with minimal memory footprint
+### **🎵 Audio Files (.mp3, .wav, .m4a, .aac, .ogg, .flac, .wma) - LOCAL & CLOUD TRANSCRIPTION**
+- **🏠 Whisper.net (Local - DEFAULT)**: 100% privacy-preserving local transcription using OpenAI's Whisper model
+- **🌍 Multi-Language Support**: 99+ languages including Turkish, English, German, Russian, Chinese, Arabic
+- **⚙️ Hardware Acceleration**: CPU, CUDA (NVIDIA GPU), CoreML (Apple Silicon), OpenVino (Intel)
+- **📦 Model Options**: Tiny (75MB), Base (142MB - Recommended), Small (466MB), Medium (1.5GB), Large-v1/v2/v3 (2.9GB)
+- **🔄 Auto-Download**: Models automatically download on first use from Hugging Face
+- **☁️ Google Cloud (Optional)**: Enterprise-grade cloud transcription alternative
+- **📊 Confidence Scoring**: Detailed transcription confidence metrics
+- **⏱️ Timestamps**: Optional word-level and segment-level timestamp extraction
+- **🔍 Format Detection**: Automatic audio format validation and content type recognition
 - **🏗️ Structured Output**: Converts audio content to searchable, queryable knowledge base
+
+### **🗄️ Multi-Database Support (SQLite, SQL Server, MySQL, PostgreSQL)**
+- **🚀 Live Database Connections**: Connect to SQLite, SQL Server, MySQL, PostgreSQL with real-time data access
+- **📊 Intelligent Schema Analysis**: Automatic table schema extraction with data types and constraints
+- **🔗 Relationship Mapping**: Foreign key relationships and index information extraction
+- **🛡️ Security-First**: Automatic sensitive data sanitization and configurable data protection
+- **⚡ Performance Optimized**: Configurable row limits, query timeouts, and connection pooling
+- **🎯 Smart Filtering**: Include/exclude specific tables with advanced filtering options
+- **📈 Enterprise Features**: Connection validation, custom SQL query execution, and error handling
+- **🌐 Cross-Platform**: Works with cloud databases (Azure SQL, AWS RDS, Google Cloud SQL)
+- **🔍 Metadata Extraction**: Column details, primary keys, indexes, and database version information
+- **🏗️ Structured Output**: Converts database content to searchable, queryable knowledge base
 
 ### **🔍 Content Type Support**
 SmartRAG automatically detects file types using both file extensions and MIME content types:
@@ -211,6 +896,7 @@ SmartRAG automatically detects file types using both file extensions and MIME co
 - **Text**: `text/*`, `application/json`, `application/xml`, `application/csv`
 - **Images**: `image/jpeg`, `image/png`, `image/gif`, `image/bmp`, `image/tiff`, `image/webp`
 - **Audio**: `audio/mpeg`, `audio/wav`, `audio/mp4`, `audio/aac`, `audio/ogg`, `audio/flac`, `audio/x-ms-wma`
+- **Databases**: `application/x-sqlite3`, `application/vnd.sqlite3`, `application/octet-stream`
 
 ## 🚀 Quick Start
 
@@ -245,12 +931,14 @@ builder.Services.UseSmartRAG(builder.Configuration,
 var app = builder.Build();
 ```
 
-### 3. **Upload Documents**
+### 3. **Upload Documents & Connect Databases**
 ```csharp
 public class DocumentController : ControllerBase
 {
     private readonly IDocumentService _documentService;
+    private readonly IDatabaseParserService _databaseService;
 
+    // Upload files (PDF, Word, Excel, Images, Audio, SQLite databases)
     [HttpPost("upload")]
     public async Task<IActionResult> Upload(IFormFile file)
     {
@@ -262,6 +950,26 @@ public class DocumentController : ControllerBase
         );
         
         return Ok(document);
+    }
+
+    // Connect to live databases (SQL Server, MySQL, PostgreSQL)
+    [HttpPost("connect-database")]
+    public async Task<IActionResult> ConnectDatabase([FromBody] DatabaseRequest request)
+    {
+        var config = new DatabaseConfig
+        {
+            Type = request.DatabaseType,
+            ConnectionString = request.ConnectionString,
+            IncludedTables = request.Tables,
+            MaxRowsPerTable = 1000,
+            SanitizeSensitiveData = true
+        };
+
+        var content = await _databaseService.ParseDatabaseConnectionAsync(
+            request.ConnectionString, 
+            config);
+        
+        return Ok(new { content, message = "Database connected successfully" });
     }
 }
 ```
@@ -276,7 +984,7 @@ public class QAController : ControllerBase
     public async Task<IActionResult> AskQuestion([FromBody] QuestionRequest request)
     {
         // User asks: "What are the main benefits mentioned in the contract?"
-        var response = await _documentSearchService.GenerateRagAnswerAsync(
+        var response = await _documentSearchService.QueryIntelligenceAsync(
             request.Question,
             maxResults: 5
         );
@@ -321,11 +1029,16 @@ cp examples/WebAPI/appsettings.json examples/WebAPI/appsettings.Development.json
     "InMemory": {
       "MaxDocuments": 1000
     }
+  },
+  "Database": {
+    "MaxRowsPerTable": 1000,
+    "QueryTimeoutSeconds": 30,
+    "SanitizeSensitiveData": true,
+    "SensitiveColumns": ["password", "ssn", "credit_card", "email"]
   }
 }
 ```
 
-📖 **[Complete Configuration Guide](docs/configuration.md) | [🔧 Troubleshooting Guide](docs/troubleshooting.md)**
 
 ### 🔑 **Important Note for Anthropic Users**
 **Anthropic Claude models require a separate VoyageAI API key for embeddings:**
@@ -337,7 +1050,7 @@ cp examples/WebAPI/appsettings.json examples/WebAPI/appsettings.Development.json
 
 ## 🤖 AI Providers - Universal Support
 
-### 🎯 **Dedicated Providers** (Optimized & Battle-Tested)
+### 🎯 **Dedicated Providers** (Optimized & Production-Ready)
 
 | Provider | Capabilities | Special Features |
 |----------|-------------|------------------|
@@ -467,13 +1180,13 @@ SmartRAG includes **automatic conversation history management** that maintains c
 ### **How It Works**
 ```csharp
 // First question in session
-var response1 = await _documentSearchService.GenerateRagAnswerAsync(
+var response1 = await _documentSearchService.QueryIntelligenceAsync(
     "What is the company's refund policy?",
     maxResults: 5
 );
 
 // Follow-up question - AI remembers previous context
-var response2 = await _documentSearchService.GenerateRagAnswerAsync(
+var response2 = await _documentSearchService.QueryIntelligenceAsync(
     "What about international orders?",  // AI knows this relates to refund policy
     maxResults: 5
 );
@@ -553,85 +1266,208 @@ services.AddSmartRAG(configuration, options =>
 
 ## 🏗️ Architecture
 
-SmartRAG follows clean architecture principles with clear separation of concerns:
+SmartRAG follows clean architecture principles with clear separation of concerns and enterprise-grade design patterns.
+
+### **🎯 Core Architecture Overview**
+
+SmartRAG is built as a **layered enterprise architecture** with 5 distinct layers, each with specific responsibilities and clear interfaces:
+
+| Service Layer | Responsibility | Key Interfaces |
+|---------------|---------------|----------------|
+| **🧠 Intelligence Services** | Query processing, RAG pipeline, conversation intelligence | `IDocumentSearchService`, `ISemanticSearchService` |
+| **📄 Document Services** | Document processing, parsing, and management | `IDocumentParserService`, `IDocumentService`, `IImageParserService`, `IAudioParserService` |
+| **🤖 AI & Provider Services** | AI provider management, analytics, monitoring | `IAIProvider`, `IAIProviderFactory`, `IAIService` |
+| **🗄️ Data & Storage Services** | Database integration, storage management | `IDatabaseParserService`, `IStorageProvider`, `IStorageFactory`, `IDocumentRepository` |
+| **⚙️ Infrastructure Services** | Configuration, conversation management, system services | `IQdrantCacheManager`, `IQdrantCollectionManager`, `IQdrantEmbeddingService` |
+
+### **🔄 Data Flow Architecture**
 
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   API Layer    │    │  Service Layer   │    │ Repository Layer│
-│                 │    │                  │    │                 │
-│ • Controllers   │───▶│ • DocumentService│───▶│ • Redis Repo    │
-│ • DTOs          │    │ • AIService      │    │ • Qdrant Repo   │
-│ • Validation    │    │ • ParserService  │    │ • SQLite Repo   │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
-                                │
-                                ▼
-                       ┌──────────────────┐
-                       │   AI Providers   │
-                       │                  │
-                       │ • OpenAI         │
-                       │ • Anthropic      │
-                       │ • Gemini         │
-                       │ • CustomProvider │
-                       └──────────────────┘
-                                │
-                                ▼
-                       ┌──────────────────┐
-                       │ Semantic Search  │
-                       │                  │
-                       │ • Hybrid Scoring │
-                       │ • Context Aware  │
-                       │ • Word Boundary  │
-                       └──────────────────┘
+📱 Client Request
+    ↓
+🧠 IDocumentSearchService.QueryIntelligenceAsync()
+    ↓
+📊 Multi-Modal Search (Documents + Databases + Conversations)
+    ↓
+🤖 AI Provider Selection (OpenAI, Anthropic, Gemini, etc.)
+    ↓
+💾 Storage Layer (Qdrant, Redis, SQLite, etc.)
+    ↓
+✨ Intelligent Response with Sources
 ```
+
+### **🎯 Key Architectural Patterns**
+
+#### **1. 🧠 Intelligence-First Design**
+- **Query Intent Detection**: Automatically routes queries to appropriate handlers
+- **Multi-Modal Processing**: Handles documents, databases, and conversations seamlessly
+- **Context-Aware Responses**: Maintains conversation history and context
+
+#### **2. 🏭 Provider Pattern Implementation**
+- **AI Providers**: 5+ providers with unified interface (OpenAI, Anthropic, Gemini, Azure, Custom)
+- **Storage Providers**: Multiple storage options (Vector DBs, Traditional DBs, File System)
+- **Database Providers**: Universal database support (SQLite, SQL Server, MySQL, PostgreSQL)
+
+#### **3. 🔧 Service-Oriented Architecture**
+- **Loose Coupling**: Services communicate through well-defined interfaces
+- **Dependency Injection**: Full DI container integration for testability
+- **Configuration-Driven**: Environment-based configuration with sensible defaults
+
+#### **4. 📊 Enterprise-Grade Features**
+- **Analytics & Monitoring**: Comprehensive usage tracking and performance metrics
+- **Configuration Management**: Runtime configuration updates and validation
+- **Storage Management**: Backup, restore, migration capabilities
+- **Security**: Automatic sensitive data sanitization and protection
 
 ### **Key Components**
 
-- **📄 DocumentService**: Main orchestrator for document operations
-- **🤖 AIService**: Handles AI provider interactions and embeddings  
-- **📝 DocumentParserService**: Multi-format document parsing with smart chunking
-- **🔍 SemanticSearchService**: Advanced semantic search with hybrid scoring
-- **🏭 Factories**: Provider instantiation and configuration
-- **📚 Repositories**: Storage abstraction layer
-- **🔧 Extensions**: Dependency injection configuration
+#### **🧠 Intelligence Services:**
+- **`IDocumentSearchService`**: Advanced query processing with RAG and conversation intelligence
+- **DocumentSearchService**: Core RAG operations with `QueryIntelligenceAsync` method
+- **SemanticSearchService**: Advanced semantic search with hybrid scoring
 
-## 🎨 API Examples
+#### **📄 Document Services:**
+- **`IDocumentParserService`**: Multi-format document parsing and processing
+- **DocumentService**: Main orchestrator for document operations
+- **DocumentParserService**: Multi-format parsing (PDF, Word, Excel, Images, Audio, Databases)
 
-### **Document Management**
+#### **🤖 AI & Provider Services:**
+- **`IAIProvider`**: Universal AI provider interface with OpenAI, Anthropic, Gemini, Azure support
+- **AnalyticsController**: Usage tracking, performance monitoring, and insights
+- **AIService**: AI provider interactions and embeddings
+
+#### **🗄️ Data & Storage Services:**
+- **`IDatabaseParserService`**: Universal database integration (SQLite, SQL Server, MySQL, PostgreSQL)
+- **StorageController**: Storage provider management, backup, restore, migration
+- **DatabaseParserService**: Live database connections and intelligent data extraction
+
+#### **⚙️ Infrastructure Services:**
+- **`IQdrantCacheManager`**: Vector database cache management and optimization
+- **ConfigurationController**: Runtime configuration updates and validation
+- **ConfigurationService**: System configuration and health monitoring
+
+#### **🏗️ Factory Services:**
+- **`IAIProviderFactory`**: Dynamic AI provider instantiation and configuration
+- **Repositories**: Storage abstraction layer (Redis, Qdrant, SQLite, FileSystem)
+- **Extensions**: Dependency injection configuration
+
+## 🎨 Library Usage Examples
+
+### **Service Registration & Configuration**
+```csharp
+// Program.cs or Startup.cs
+services.AddSmartRAG(options => {
+    options.AIProvider = AIProvider.OpenAI;
+    options.StorageProvider = StorageProvider.Qdrant;
+    options.OpenAI.ApiKey = "your-openai-api-key";
+    options.Qdrant.Endpoint = "http://localhost:6333";
+});
+
+// With multiple providers and fallback
+services.AddSmartRAG(options => {
+    options.AIProvider = AIProvider.OpenAI;
+    options.EnableFallbackProviders = true;
+    options.FallbackProviders = [AIProvider.Anthropic, AIProvider.Gemini];
+});
+```
+
+### **Core Service Usage**
+```csharp
+public class MyApplicationService
+{
+    private readonly IDocumentSearchService _documentSearchService;
+    private readonly IDocumentParserService _documentParserService;
+    private readonly IDatabaseParserService _databaseParserService;
+    
+    public MyApplicationService(
+        IDocumentSearchService documentSearchService,
+        IDocumentParserService documentParserService,
+        IDatabaseParserService databaseParserService)
+    {
+        _documentSearchService = documentSearchService;
+        _documentParserService = documentParserService;
+        _databaseParserService = databaseParserService;
+    }
+    
+    public async Task<string> QueryIntelligence(string query)
+    {
+        var result = await _documentSearchService.QueryIntelligenceAsync(query, maxResults: 5);
+        return result.Answer;
+    }
+    
+    public async Task<List<DocumentChunk>> ProcessDocument(IFormFile file)
+    {
+        var result = await _documentParserService.ParseDocumentAsync(file);
+        return result.Chunks;
+    }
+}
+```
+
+### **Database Integration Examples**
+```csharp
+// Connect to live SQL Server database
+var sqlServerConfig = new DatabaseConfig
+{
+    ConnectionString = "Server=localhost;Database=Northwind;Trusted_Connection=true;",
+    DatabaseType = DatabaseType.SqlServer,
+    IncludedTables = new List<string> { "Customers", "Orders", "Products" },
+    MaxRows = 1000,
+    SanitizeSensitiveData = true
+};
+
+var result = await _databaseParserService.ConnectToDatabaseAsync(sqlServerConfig);
+
+// Connect to MySQL database
+var mySqlConfig = new DatabaseConfig
+{
+    ConnectionString = "Server=localhost;Database=sakila;Uid=root;Pwd=password;",
+    DatabaseType = DatabaseType.MySQL,
+    IncludedTables = new List<string> { "actor", "film", "customer" }
+};
+
+var mySqlResult = await _databaseParserService.ConnectToDatabaseAsync(mySqlConfig);
+
+// Parse SQLite database file
+var sqliteResult = await _databaseParserService.ParseDatabaseFileAsync(fileStream, DatabaseType.SQLite);
+
+// Execute custom SQL query
+var queryResult = await _databaseParserService.ExecuteQueryAsync(
+    connectionString: "Server=localhost;Database=Northwind;Trusted_Connection=true;",
+    query: "SELECT TOP 10 CustomerID, CompanyName FROM Customers WHERE Country = 'USA'",
+    databaseType: DatabaseType.SqlServer,
+    maxRows: 10
+);
+```
+
+### **Optional API Examples (Reference Only)**
 ```bash
-# Upload document
+# These are optional API endpoints - SmartRAG is primarily a library
+# Upload document via API (if you choose to implement controllers)
 curl -X POST "http://localhost:5000/api/documents/upload" \
   -F "file=@research-paper.pdf"
 
-# Get document
-curl "http://localhost:5000/api/documents/{document-id}"
-
-# Delete document  
-curl -X DELETE "http://localhost:5000/api/documents/{document-id}"
-
-# List all documents
-curl "http://localhost:5000/api/documents/search"
+# Query via API (if you choose to implement controllers)  
+curl -X POST "http://localhost:5000/api/intelligence/query" \
+  -H "Content-Type: application/json" \
+  -d '{"query": "What are the main benefits?", "maxResults": 5}'
 ```
 
-### **AI Question Answering & Chat**
+### **Library Integration Examples**
 
-SmartRAG handles both document search and general conversation automatically:
+SmartRAG handles both document search and general conversation automatically through service layer:
 
-```bash
-# Ask questions about your documents (RAG mode)
-curl -X POST "http://localhost:5000/api/search/search" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "What are the main risks mentioned in the financial report?",
-    "maxResults": 5
-  }'
+```csharp
+// Ask questions about your documents (RAG mode)
+var ragResult = await _documentSearchService.QueryIntelligenceAsync(
+    "What are the main risks mentioned in the financial report?", 
+    maxResults: 5
+);
 
-# General conversation (Direct AI chat mode)
-curl -X POST "http://localhost:5000/api/search/search" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "query": "How are you today?",
-    "maxResults": 1
-  }'
+// General conversation (Direct AI chat mode)
+var chatResult = await _documentSearchService.QueryIntelligenceAsync(
+    "How are you today?", 
+    maxResults: 1
+);
 ```
 
 **Document Search Response Example:**
@@ -672,54 +1508,52 @@ curl -X POST "http://localhost:5000/api/search/search" \
 ```
 
 
-## 📊 Performance & Scaling
+## 🧪 Testing & Examples
 
-### **Benchmarks**
-- **Document Upload**: ~500ms for 100KB file, ~1-2s for 1MB file
-- **Semantic Search**: ~200ms for simple queries, ~500ms for complex queries
-- **AI Response**: ~2-5s for 5 sources, ~3-8s for 10 sources
-- **Memory Usage**: ~50MB base + documents, ~100MB with Redis cache
-- **Enhanced Chunking**: ~300ms for 10KB document with smart boundary detection
-- **Hybrid Scoring**: ~150ms for semantic + keyword relevance calculation
+SmartRAG provides comprehensive example applications for testing and learning:
 
-### **Scaling Tips**
-- Use **Redis** or **Qdrant** for production workloads
-- Enable **connection pooling** for database connections
-- Implement **caching** for frequently accessed documents
-- Use **background services** for bulk document processing
-- Optimize **chunk sizes** based on your content type
-- Use **semantic search threshold** to filter low-relevance results
-
-## 🧪 Testing
-
-SmartRAG includes comprehensive testing with xUnit and follows best practices:
-
-### **Test Project Structure**
+### **Example Applications**
 ```
-tests/
-└── SmartRAG.Tests/
-    ├── FileUploadTests.cs          # File upload functionality tests
-    ├── GlobalUsings.cs             # Centralized using directives
-    └── SmartRAG.Tests.csproj      # Test project configuration
+examples/
+├── SmartRAG.API/              # Full-featured REST API with Swagger
+├── SmartRAG.Console/          # Console application for testing
+└── SmartRAG.DatabaseTests/    # Multi-database RAG testing with Docker support
 ```
 
-### **Test Features**
-- ✅ **xUnit Framework**: Modern, extensible testing framework
-- ✅ **GlobalUsings**: Clean, maintainable test code
-- ✅ **File Upload Tests**: Comprehensive document upload testing
-- ✅ **Mock Support**: Moq integration for dependency mocking
-- ✅ **Async Testing**: Full async/await support
+### **SmartRAG.API** - REST API Example
+- ✅ Complete REST API implementation with all SmartRAG features
+- ✅ Swagger/OpenAPI documentation
+- ✅ Document upload, search, and intelligence endpoints
+- ✅ Database connection and multi-database query endpoints
+- ✅ Real-time testing with interactive Swagger UI
 
-### **Running Tests**
+### **SmartRAG.Console** - Console Application
+- ✅ Simple console-based testing
+- ✅ Document processing examples
+- ✅ AI provider integration demos
+- ✅ Quick prototyping and experimentation
+
+### **SmartRAG.DatabaseTests** - Multi-Database Testing
+- ✅ Multi-database query coordination testing
+- ✅ Docker Compose setup for SQL Server, MySQL, PostgreSQL
+- ✅ Test database creators for all supported databases
+- ✅ Real-world multi-database scenarios
+- ✅ Language selection for test queries
+
+### **Running Examples**
 ```bash
-# Run all tests
-dotnet test
+# Run REST API with Swagger
+cd examples/SmartRAG.API
+dotnet run
+# Browse to https://localhost:7001/swagger
 
-# Run specific test project
-dotnet test tests/SmartRAG.Tests/
+# Run Console application
+cd examples/SmartRAG.Console
+dotnet run
 
-# Run tests with coverage
-dotnet test --collect:"XPlat Code Coverage"
+# Run Database Tests
+cd examples/SmartRAG.DatabaseTests
+dotnet run
 ```
 
 ## 🛠️ Development
@@ -730,28 +1564,22 @@ git clone https://github.com/byerlikaya/SmartRAG.git
 cd SmartRAG
 dotnet restore
 dotnet build
-dotnet test
 ```
 
-### **Running Tests**
+### **Running Example Applications**
 ```bash
-# Run all tests
-dotnet test
+# Run the REST API example
+cd examples/SmartRAG.API
+dotnet run
 
-# Run specific test project
-dotnet test tests/SmartRAG.Tests/
+# Run the Console example
+cd examples/SmartRAG.Console
+dotnet run
 
-# Run tests with coverage
-dotnet test --collect:"XPlat Code Coverage"
-```
-
-### **Running the Sample API**
-```bash
-cd examples/WebAPI
+# Run Database Tests
+cd examples/SmartRAG.DatabaseTests
 dotnet run
 ```
-
-Browse to `https://localhost:5001/swagger` for interactive API documentation.
 
 ## 🤝 Contributing
 
@@ -766,69 +1594,74 @@ We welcome contributions!
 
 ## 🆕 What's New
 
-### **Latest Release (v2.3.1) - Bug Fix Release**
-- 🐛 **LoggerMessage Fix** - Fixed `System.ArgumentException` in `ServiceLogMessages.LogAudioServiceInitialized`
-- 🔧 **Logging Stability** - Improved logging infrastructure reliability for Google Speech-to-Text service
-- ✅ **Code Quality** - Maintained zero warnings policy compliance
-- 🧪 **Test Coverage** - All tests passing (8/8)
+### **Latest Release (v3.0.0) - 2025-10-18**
 
-### **Previous Release (v2.3.0) - Google Speech-to-Text Integration**
-- 🎵 **Google Speech-to-Text Integration** - Enterprise-grade speech recognition with Google Cloud AI
-- 🌍 **Enhanced Language Support** - 100+ languages including Turkish, English, and global languages
-- ⚡ **Real-time Audio Processing** - Advanced speech-to-text conversion with confidence scoring
-- 📊 **Detailed Transcription Results** - Segment-level transcription with timestamps and confidence metrics
-- 🔍 **Automatic Format Detection** - Support for MP3, WAV, M4A, AAC, OGG, FLAC, WMA formats
-- 🎯 **Intelligent Audio Processing** - Smart audio stream validation and error handling
-- 📈 **Performance Optimized** - Efficient audio processing with minimal memory footprint
-- 🏗️ **Structured Audio Output** - Converts audio content to searchable, queryable knowledge base
-- ✅ **Zero Warnings Policy** - Maintained with comprehensive error handling and logging
-- 📚 **Documentation Updates** - All language versions updated with Google Speech-to-Text examples
+**Major Highlights:**
+- 🚀 **BREAKING CHANGE**: `GenerateRagAnswerAsync` → `QueryIntelligenceAsync` (backward compatible)
+- 🔧 **Language-Safe SQL Generation**: Automatic validation preventing non-English text in SQL
+- 🗄️ **PostgreSQL Full Support**: Complete integration with multi-database queries
+- 🔒 **On-Premise AI Support**: Full local operation with Ollama/LM Studio
+- ⚠️ **Important Limitations**: Audio requires Google Cloud, OCR limited for handwriting
+- 📚 **Enhanced Documentation**: Comprehensive on-premise deployment guide
 
-### **Previous Release (v2.2.0) - Enhanced OCR Documentation**
-- 🖼️ **Enhanced OCR Documentation** - Comprehensive documentation showcasing OCR capabilities
-- 📚 **Improved README** - Detailed image processing features highlighting Tesseract 5.2.0 + SkiaSharp
-- 🎯 **Use Case Examples** - Added detailed examples for scanned documents, receipts, and image content
-- 📈 **Developer Experience** - Better visibility of image processing features for developers
+**📋 [View Full Changelog](CHANGELOG.md)** for detailed release notes and migration guide.
 
-### **Previous Release (v2.1.0) - Automatic Session Management**
-- 🎯 **Automatic Session Management** - No more manual session ID handling required
-- 💬 **Persistent Conversation History** - Conversations survive application restarts
-- 🆕 **New Conversation Commands** - `/new`, `/reset`, `/clear` for conversation control
-- 🔄 **Enhanced API** - Backward-compatible with optional `startNewConversation` parameter
-- 🗄️ **Storage Integration** - Works seamlessly with all providers (Redis, SQLite, FileSystem, InMemory)
-- 🔧 **Format Consistency** - Standardized conversation format across all storage providers
-- 🧵 **Thread Safety** - Enhanced concurrent access handling for conversation operations
-- 🌍 **Platform Agnostic** - Maintains compatibility with all .NET environments
-- 📚 **Documentation Updates** - All language versions (EN, TR, DE, RU) updated with real examples
-- ✅ **100% Compliance** - All established rules maintained with zero warnings policy
-
-### **Previous Release (v1.0.3)**
-- 🧠 **Smart Query Intent Detection** - Automatically routes queries to chat vs document search
-- 🌍 **Language-Agnostic Design** - Removed all hardcoded language patterns  
-- 🔍 **Enhanced Search Relevance** - Improved name detection and content scoring
-- 🔤 **Unicode Normalization** - Fixed special character handling issues
-- ⚡ **Rate Limiting & Retry Logic** - Robust API handling with exponential backoff
-- 🚀 **VoyageAI Integration** - Anthropic embedding support
-- 📚 **Enhanced Documentation** - Official documentation links
-- 🧹 **Configuration Cleanup** - Removed unnecessary fields
-- 🎯 **Project Simplification** - Streamlined for better performance
-
-### **Architecture & Code Quality**
-- 🎯 **Enhanced Semantic Search** - Advanced hybrid scoring (80% semantic + 20% keyword)
-- 🔍 **Smart Document Chunking** - Word boundary validation and optimal break points
-- 🧠 **SemanticSearchService** - Dedicated service for semantic relevance scoring
-- ⚙️ **Configuration Management** - User settings take absolute priority
-- 🔧 **Enterprise Error Handling** - Comprehensive logging and retry mechanisms
-- 📊 **Performance Optimizations** - Faster chunking and search algorithms
-- ✅ **Code Quality** - SOLID principles, zero warnings, comprehensive documentation
 
 ## 📚 Resources
 
-- **📧 [Contact & Support](mailto:b.yerlikaya@outlook.com)**
-- **💼 [LinkedIn](https://www.linkedin.com/in/barisyerlikaya/)**
-- **🐙 [GitHub Profile](https://github.com/byerlikaya)**
-- **📦 [NuGet Packages](https://www.nuget.org/profiles/barisyerlikaya)**
-- **📖 [Documentation](https://byerlikaya.github.io/SmartRAG)** - Comprehensive guides and API reference
+### **📖 Library Documentation**
+- **📚 [SmartRAG Documentation](https://byerlikaya.github.io/SmartRAG)** - Comprehensive service layer API reference and integration guides
+- **🔧 [Service Layer API Reference](https://byerlikaya.github.io/SmartRAG/api-reference)** - Detailed interface documentation
+- **🚀 [Getting Started Guide](https://byerlikaya.github.io/SmartRAG/getting-started)** - Step-by-step library integration
+- **📝 [Usage Examples](https://byerlikaya.github.io/SmartRAG/examples)** - Real-world implementation scenarios
+
+### **📦 Package & Distribution**
+- **📦 [NuGet Package](https://www.nuget.org/packages/SmartRAG)** - Install via Package Manager or .NET CLI
+- **🐙 [GitHub Repository](https://github.com/byerlikaya/SmartRAG)** - Source code, issues, and contributions
+- **📊 [Package Statistics](https://www.nuget.org/profiles/barisyerlikaya)** - Download stats and version history
+
+### **💼 Professional Support**
+- **📧 [Contact & Support](mailto:b.yerlikaya@outlook.com)** - Technical support and consulting
+- **💼 [LinkedIn](https://www.linkedin.com/in/barisyerlikaya/)** - Professional networking and updates
+- **🌐 [Project Website](https://byerlikaya.github.io/SmartRAG/en/)** - Official project homepage
+
+### **🔧 Third-Party Libraries & Technologies**
+
+SmartRAG is built with these excellent open-source libraries and cloud services:
+
+#### **Document Processing**
+- **📄 [iText7](https://github.com/itext/itext7-dotnet)** - PDF processing and text extraction
+- **📊 [EPPlus](https://github.com/EPPlusSoftware/EPPlus)** - Excel file parsing and processing
+- **📝 [Open XML SDK](https://github.com/dotnet/Open-XML-SDK)** - Word document processing
+
+#### **OCR & Image Processing**
+- **🔍 [Tesseract OCR](https://github.com/tesseract-ocr/tesseract)** - Enterprise-grade OCR engine (v5.2.0)
+- **🎨 [SkiaSharp](https://github.com/mono/SkiaSharp)** - Cross-platform 2D graphics library for image preprocessing
+
+#### **Speech-to-Text**
+- **🎤 [Whisper.net](https://github.com/sandrohanea/whisper.net)** - Local speech-to-text transcription (.NET bindings for OpenAI Whisper)
+- **☁️ [Google Cloud Speech-to-Text](https://cloud.google.com/speech-to-text)** - Enterprise speech recognition API (optional)
+
+#### **Vector Databases & Storage**
+- **🗄️ [Qdrant](https://github.com/qdrant/qdrant)** - Vector similarity search engine
+- **⚡ [Redis](https://redis.io/)** - In-memory data structure store
+- **💾 [SQLite](https://www.sqlite.org/)** - Embedded relational database
+
+#### **Database Connectivity**
+- **🗄️ [Npgsql](https://github.com/npgsql/npgsql)** - PostgreSQL .NET driver
+- **🗄️ [MySqlConnector](https://github.com/mysql-net/MySqlConnector)** - MySQL .NET driver
+- **🗄️ [Microsoft.Data.SqlClient](https://github.com/dotnet/SqlClient)** - SQL Server .NET driver
+
+#### **AI Providers**
+- **🤖 [OpenAI API](https://platform.openai.com/)** - GPT models and embeddings
+- **🧠 [Anthropic Claude](https://www.anthropic.com/)** - Claude models
+- **🌟 [Google Gemini](https://ai.google.dev/)** - Gemini AI models
+- **☁️ [Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service)** - Enterprise OpenAI service
+- **🚀 [VoyageAI](https://www.voyageai.com/)** - High-quality embeddings for Anthropic
+
+#### **Local AI Support**
+- **🦙 [Ollama](https://ollama.ai/)** - Run AI models locally
+- **🏠 [LM Studio](https://lmstudio.ai/)** - Local AI model playground
 
 ## 📄 License
 

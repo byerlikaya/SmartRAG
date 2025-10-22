@@ -66,8 +66,38 @@ namespace SmartRAG.Models
         public List<AIProvider> FallbackProviders { get; set; } = new List<AIProvider>();
 
         /// <summary>
+        /// Selected audio transcription provider
+        /// </summary>
+        public AudioProvider AudioProvider { get; set; } = AudioProvider.Whisper;
+
+        /// <summary>
         /// Google Speech-to-Text configuration for audio transcription
         /// </summary>
         public GoogleSpeechConfig GoogleSpeechConfig { get; set; }
+
+        /// <summary>
+        /// Whisper configuration for local audio transcription
+        /// </summary>
+        public WhisperConfig WhisperConfig { get; set; } = new WhisperConfig();
+
+        /// <summary>
+        /// Multi-database connections for intelligent cross-database querying
+        /// </summary>
+        public List<DatabaseConnectionConfig> DatabaseConnections { get; set; } = new List<DatabaseConnectionConfig>();
+
+        /// <summary>
+        /// Enable automatic schema analysis on startup
+        /// </summary>
+        public bool EnableAutoSchemaAnalysis { get; set; } = true;
+
+        /// <summary>
+        /// Enable periodic schema refresh
+        /// </summary>
+        public bool EnablePeriodicSchemaRefresh { get; set; } = true;
+
+        /// <summary>
+        /// Default schema refresh interval in minutes (0 = use per-connection settings)
+        /// </summary>
+        public int DefaultSchemaRefreshIntervalMinutes { get; set; } = 60;
     }
 }

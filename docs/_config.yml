@@ -1,46 +1,56 @@
 title: SmartRAG Documentation
-description: A powerful and intelligent RAG library for .NET applications
+description: Enterprise-Grade RAG Library for .NET - Multi-Database + Multi-Modal Intelligence Platform
 baseurl: "/SmartRAG"
-url: "https://byerlikaya.github.io/SmartRAG/en/"
+url: "https://byerlikaya.github.io"
 
-# SEO and Search Engine Optimization
+# Author & Contact
 author: "Barış Yerlikaya"
-keywords: "SmartRAG, RAG, .NET, AI, Machine Learning, Document Processing, Semantic Search, Vector Database, OpenAI, Anthropic"
+email: "b.yerlikaya@outlook.com"
+github_username: "byerlikaya"
+linkedin_url: "https://www.linkedin.com/in/barisyerlikaya/"
+
+# SEO Optimization
+keywords: "SmartRAG, RAG, .NET, AI, Machine Learning, Document Processing, Semantic Search, Vector Database, OpenAI, Anthropic, Gemini, Multi-Database, OCR, Speech-to-Text, Enterprise AI, Local AI, Ollama, LM Studio"
 language: "en"
 robots: "index, follow"
-google_analytics: ""
-google_verification: ""
 
-# Social Media and Open Graph
+# Open Graph & Social Media
+og_image: "/assets/images/og-image.png"
 twitter:
   username: "byerlikaya"
   card: "summary_large_image"
 
-# Jekyll settings
-# theme: jekyll-theme-cayman  # Disabled to use custom theme
+# Multi-Language Support
+languages: ["en", "tr"]
+default_lang: "en"
+language_names:
+  en: "English"
+  tr: "Türkçe"
+
+# Jekyll Plugins
 plugins:
   - jekyll-feed
   - jekyll-seo-tag
   - jekyll-sitemap
 
-# Force cache refresh
-cache_bust: "2025-01-27-01"
-
-# Multi-language configuration
-languages: ["en", "tr", "de", "ru"]
-languages_default: "en"
-languages_names:
-  en: "English"
-  tr: "Türkçe"
-  de: "Deutsch"
-  ru: "Русский"
-
-# Data files
-data_dir: _data
-
-# Build settings
+# Build Settings
 markdown: kramdown
 highlighter: rouge
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+  syntax_highlighter_opts:
+    block:
+      line_numbers: false
+
+# Exclude from build
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
+  - .gitkeep
+  - README.md
 
 # Defaults
 defaults:
@@ -49,15 +59,12 @@ defaults:
       type: "pages"
     values:
       layout: "default"
-      top_level: true
       author: "Barış Yerlikaya"
-      image: "/assets/images/logo.svg"
 
-# UI
-color_scheme: light
-back_to_top: true
-back_to_top_text: "Back to top"
-scroll_to_top: true
+# Theme Settings
+theme_toggle: true
+default_theme: "light"
 
-# Footer
-footer_content: "Copyright &copy; 2025 SmartRAG. Distributed by an <a href=\"https://github.com/just-the-docs/just-the-docs/tree/main/LICENSE.txt\">MIT license.</a>"
+# Cache busting
+cache_bust: "2025-10-18-v1"
+

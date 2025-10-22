@@ -1,325 +1,157 @@
 ---
 layout: default
 title: Yapılandırma
-description: SmartRAG'i tercih ettiğiniz AI ve depolama sağlayıcıları ile yapılandırın
+description: SmartRAG için eksiksiz yapılandırma kılavuzu - AI sağlayıcıları, depolama, veritabanları ve gelişmiş seçenekler
 lang: tr
 ---
 
-<div class="page-content">
-    <div class="container">
-        <!-- Basic Configuration Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>Temel Yapılandırma</h2>
-                    <p>SmartRAG ihtiyaçlarınıza uygun çeşitli seçeneklerle yapılandırılabilir:</p>
-                    
-                    <div class="code-example">
-                        <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
-{
-    options.AIProvider = AIProvider.Anthropic;
-    options.StorageProvider = StorageProvider.Qdrant;
-    options.MaxChunkSize = 1000;
-    options.ChunkOverlap = 200;
-});</code></pre>
-                    </div>
+## Yapılandırma Kategorileri
 
-                    <h3>Yapılandırma Seçenekleri</h3>
-                    <div class="table-responsive">
-                        <table class="table table-striped">
-                            <thead>
-                                <tr>
-                                    <th>Seçenek</th>
-                                    <th>Tip</th>
-                                    <th>Varsayılan</th>
-                                    <th>Açıklama</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td><code>AIProvider</code></td>
-                                    <td><code>AIProvider</code></td>
-                                    <td><code>Anthropic</code></td>
-                                    <td>Embedding'ler için kullanılacak AI provider</td>
-                                </tr>
-                                <tr>
-                                    <td><code>StorageProvider</code></td>
-                                    <td><code>StorageProvider</code></td>
-                                    <td><code>Qdrant</code></td>
-                                    <td>Vektörler için depolama provider'ı</td>
-                                </tr>
-                                <tr>
-                                    <td><code>MaxChunkSize</code></td>
-                                    <td><code>int</code></td>
-                                    <td>1000</td>
-                                    <td>Belge parçalarının maksimum boyutu</td>
-                                </tr>
-                                <tr>
-                                    <td><code>MinChunkSize</code></td>
-                                    <td><code>int</code></td>
-                                    <td>50</td>
-                                    <td>Belge parçalarının minimum boyutu</td>
-                                </tr>
-                                <tr>
-                                    <td><code>ChunkOverlap</code></td>
-                                    <td><code>int</code></td>
-                                    <td>200</td>
-                                    <td>Parçalar arasındaki örtüşme</td>
-                                </tr>
-                                <tr>
-                                    <td><code>MaxRetryAttempts</code></td>
-                                    <td><code>int</code></td>
-                                    <td>3</td>
-                                    <td>Maksimum yeniden deneme sayısı</td>
-                                </tr>
-                                <tr>
-                                    <td><code>RetryDelayMs</code></td>
-                                    <td><code>int</code></td>
-                                    <td>1000</td>
-                                    <td>Yeniden deneme arasındaki gecikme (ms)</td>
-                                </tr>
-                                <tr>
-                                    <td><code>RetryPolicy</code></td>
-                                    <td><code>RetryPolicy</code></td>
-                                    <td><code>ExponentialBackoff</code></td>
-                                    <td>Yeniden deneme politikası</td>
-                                </tr>
-                                <tr>
-                                    <td><code>EnableFallbackProviders</code></td>
-                                    <td><code>bool</code></td>
-                                    <td>false</td>
-                                    <td>Yedek provider'ları etkinleştir</td>
-                                </tr>
-                                <tr>
-                                    <td><code>FallbackProviders</code></td>
-                                    <td><code>AIProvider[]</code></td>
-                                    <td>[]</td>
-                                    <td>Yedek AI provider'ları listesi</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+SmartRAG yapılandırması aşağıdaki kategorilere ayrılmıştır:
+
+<div class="row g-4 mt-4">
+    <div class="col-md-6">
+        <div class="feature-card text-center">
+            <div class="feature-icon mx-auto">
+                <i class="fas fa-cog"></i>
             </div>
-        </section>
+            <h3>Temel Yapılandırma</h3>
+            <p>Yapılandırma yöntemleri, temel seçenekler, parçalama ve yeniden deneme ayarları</p>
+            <a href="{{ site.baseurl }}/tr/configuration/basic" class="btn btn-outline-primary btn-sm mt-3">
+                Temel Yapılandırma
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="feature-card text-center">
+            <div class="feature-icon mx-auto">
+                <i class="fas fa-brain"></i>
+            </div>
+            <h3>AI Sağlayıcıları</h3>
+            <p>OpenAI, Anthropic, Google Gemini, Azure OpenAI ve özel sağlayıcılar</p>
+            <a href="{{ site.baseurl }}/tr/configuration/ai-providers" class="btn btn-outline-primary btn-sm mt-3">
+                AI Sağlayıcıları
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="feature-card text-center">
+            <div class="feature-icon mx-auto">
+                <i class="fas fa-database"></i>
+            </div>
+            <h3>Depolama Sağlayıcıları</h3>
+            <p>Qdrant, Redis, SQLite, FileSystem ve InMemory depolama seçenekleri</p>
+            <a href="{{ site.baseurl }}/tr/configuration/storage" class="btn btn-outline-primary btn-sm mt-3">
+                Depolama Sağlayıcıları
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="feature-card text-center">
+            <div class="feature-icon mx-auto">
+                <i class="fas fa-server"></i>
+            </div>
+            <h3>Veritabanı Yapılandırması</h3>
+            <p>Çoklu veritabanı bağlantıları, şema analizi ve güvenlik ayarları</p>
+            <a href="{{ site.baseurl }}/tr/configuration/database" class="btn btn-outline-primary btn-sm mt-3">
+                Veritabanı Yapılandırması
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="feature-card text-center">
+            <div class="feature-icon mx-auto">
+                <i class="fas fa-microphone"></i>
+            </div>
+            <h3>Ses & OCR</h3>
+            <p>Google Speech-to-Text ve Tesseract OCR yapılandırması</p>
+            <a href="{{ site.baseurl }}/tr/configuration/audio-ocr" class="btn btn-outline-primary btn-sm mt-3">
+                Ses & OCR
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="feature-card text-center">
+            <div class="feature-icon mx-auto">
+                <i class="fas fa-cogs"></i>
+            </div>
+            <h3>Gelişmiş Yapılandırma</h3>
+            <p>Yedek sağlayıcılar, en iyi pratikler ve sonraki adımlar</p>
+            <a href="{{ site.baseurl }}/tr/configuration/advanced" class="btn btn-outline-primary btn-sm mt-3">
+                Gelişmiş Yapılandırma
+            </a>
+        </div>
+    </div>
+</div>
 
-        <!-- AI Providers Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>AI Provider Yapılandırması</h2>
-                    <p>Embedding üretimi için birden fazla AI provider arasından seçim yapın:</p>
-                    
-                    <div class="code-example">
-                        <div class="code-tabs">
-                            <button class="code-tab active" data-tab="ai-anthropic">Anthropic</button>
-                            <button class="code-tab" data-tab="ai-openai">OpenAI</button>
-                            <button class="code-tab" data-tab="ai-gemini">Gemini</button>
-                        </div>
-                        
-                                                 <div class="code-panel active" data-tab="ai-anthropic">
-                             <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
-{
-    options.AIProvider = AIProvider.Anthropic;
-    options.MaxChunkSize = 1000;
-    options.ChunkOverlap = 200;
-});
+## Hızlı Başlangıç
 
-// appsettings.json
-{
-  "Anthropic": {
-    "ApiKey": "your-anthropic-key",
-    "Model": "claude-3-sonnet-20240229"
-  }
-}</code></pre>
-                         </div>
-                         
-                         <div class="code-panel" data-tab="ai-openai">
-                             <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
+### Basit Yapılandırma
+
+```csharp
+builder.Services.UseSmartRag(configuration,
+    storageProvider: StorageProvider.InMemory,
+    aiProvider: AIProvider.Gemini
+);
+```
+
+### Gelişmiş Yapılandırma
+
+```csharp
+builder.Services.AddSmartRag(configuration, options =>
 {
     options.AIProvider = AIProvider.OpenAI;
-    options.MaxChunkSize = 1000;
-    options.ChunkOverlap = 200;
-});
-
-// appsettings.json
-{
-  "OpenAI": {
-    "ApiKey": "your-openai-key",
-    "Model": "gpt-4",
-    "EmbeddingModel": "text-embedding-ada-002"
-  }
-}</code></pre>
-                         </div>
-                         
-                         <div class="code-panel" data-tab="ai-gemini">
-                             <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
-{
-    options.AIProvider = AIProvider.Gemini;
-    options.MaxChunkSize = 1000;
-    options.ChunkOverlap = 200;
-});
-
-// appsettings.json
-{
-  "Gemini": {
-    "ApiKey": "your-gemini-key",
-    "Model": "gemini-pro",
-    "EmbeddingModel": "embedding-001"
-  }
-}</code></pre>
-                         </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Storage Providers Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>Depolama Provider Yapılandırması</h2>
-                    <p>İhtiyaçlarınıza en uygun depolama backend'ini seçin:</p>
-                    
-                    <div class="code-example">
-                        <div class="code-tabs">
-                            <button class="code-tab active" data-tab="storage-qdrant">Qdrant</button>
-                            <button class="code-tab" data-tab="storage-memory">Bellek İçi</button>
-                        </div>
-                        
-                                                 <div class="code-panel active" data-tab="storage-qdrant">
-                             <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
-{
     options.StorageProvider = StorageProvider.Qdrant;
     options.MaxChunkSize = 1000;
     options.ChunkOverlap = 200;
-});
-
-// appsettings.json
-{
-  "Storage": {
-    "Qdrant": {
-      "Host": "localhost",
-      "ApiKey": "your-qdrant-key",
-      "CollectionName": "smartrag_documents",
-      "VectorSize": 768
-    }
-  }
-}</code></pre>
-                         </div>
-                         
-                         <div class="code-panel" data-tab="storage-memory">
-                             <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
-{
-    options.StorageProvider = StorageProvider.InMemory;
-    options.MaxChunkSize = 1000;
-    options.ChunkOverlap = 200;
-});
-// Ek yapılandırma gerekmez</code></pre>
-                         </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Advanced Configuration Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>Gelişmiş Yapılandırma</h2>
-                    <p>SmartRAG'i özel gereksinimleriniz için ince ayar yapın:</p>
-                    
-                    <h3>Özel Parçalama</h3>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
-{
-    options.MaxChunkSize = 500;
-    options.MinChunkSize = 50;
-    options.ChunkOverlap = 100;
-});</code></pre>
-                    </div>
-                    
-                    <h3>Yeniden Deneme Yapılandırması</h3>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">services.AddSmartRag(configuration, options =>
-{
     options.MaxRetryAttempts = 3;
-    options.RetryDelayMs = 1000;
-    options.RetryPolicy = RetryPolicy.ExponentialBackoff;
-    options.EnableFallbackProviders = true;
-    options.FallbackProviders = new[] { AIProvider.Gemini, AIProvider.OpenAI };
-});</code></pre>
-                    </div>
-                </div>
-            </div>
-        </section>
+});
+```
 
-        <!-- Environment Configuration Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>Ortam Yapılandırması</h2>
-                    <p>Ortam değişkenleri veya yapılandırma dosyaları kullanarak SmartRAG'i yapılandırın:</p>
-                    
-                                         <h3>appsettings.json</h3>
-                     <div class="code-example">
-                         <pre><code class="language-json">{
-   "Anthropic": {
-     "ApiKey": "your-anthropic-key",
-     "Model": "claude-3-sonnet-20240229"
-   },
-   "Storage": {
-     "Qdrant": {
-       "Host": "localhost",
-       "ApiKey": "your-qdrant-key",
-       "CollectionName": "smartrag_documents"
-     }
-   }
- }</code></pre>
-                     </div>
-                     
-                     <h3>Ortam Değişkenleri</h3>
-                     <div class="code-example">
-                         <pre><code class="language-bash">export ANTHROPIC_API_KEY=your-anthropic-key
-export QDRANT_API_KEY=your-qdrant-key</code></pre>
-                     </div>
-                </div>
-            </div>
-        </section>
+## Sonraki Adımlar
 
-        <!-- Best Practices Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>En İyi Uygulamalar</h2>
-                    <div class="row g-4">
-                        <div class="col-md-6">
-                            <div class="alert alert-warning">
-                                <h4><i class="fas fa-key me-2"></i>API Anahtarları</h4>
-                                <p class="mb-0">API anahtarlarını kaynak kodda asla hardcode yapmayın. Ortam değişkenleri veya güvenli yapılandırma kullanın.</p>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="alert alert-info">
-                                <h4><i class="fas fa-balance-scale me-2"></i>Parça Boyutu</h4>
-                                <p class="mb-0">Bağlam ve performans arasında denge kurun. Hassasiyet için küçük, bağlam için büyük parçalar.</p>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="alert alert-success">
-                                <h4><i class="fas fa-database me-2"></i>Depolama</h4>
-                                <p class="mb-0">Ölçeğinize ve gereksinimlerinize göre depolama provider'ı seçin.</p>
-                            </div>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="alert alert-primary">
-                                <h4><i class="fas fa-shield-alt me-2"></i>Güvenlik</h4>
-                                <p class="mb-0">Üretim ortamları için uygun erişim kontrolleri ve izleme kullanın.</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+<div class="row g-4 mt-4">
+    <div class="col-md-4">
+        <div class="feature-card text-center">
+            <div class="feature-icon mx-auto">
+                <i class="fas fa-rocket"></i>
             </div>
-        </section>
+            <h3>Başlangıç</h3>
+            <p>SmartRAG'ı projenize entegre edin</p>
+            <a href="{{ site.baseurl }}/tr/getting-started" class="btn btn-outline-primary btn-sm mt-3">
+                Başlangıç Kılavuzu
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="feature-card text-center">
+            <div class="feature-icon mx-auto">
+                <i class="fas fa-code"></i>
+            </div>
+            <h3>Örnekler</h3>
+            <p>Pratik örnekleri ve gerçek dünya kullanım senaryolarını görün</p>
+            <a href="{{ site.baseurl }}/tr/examples" class="btn btn-outline-primary btn-sm mt-3">
+                Örnekleri Gör
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="feature-card text-center">
+            <div class="feature-icon mx-auto">
+                <i class="fas fa-book"></i>
+            </div>
+            <h3>API Referansı</h3>
+            <p>Detaylı API dokümantasyonu ve metod referansları</p>
+            <a href="{{ site.baseurl }}/tr/api-reference" class="btn btn-outline-primary btn-sm mt-3">
+                API Referansı
+            </a>
+        </div>
     </div>
 </div>

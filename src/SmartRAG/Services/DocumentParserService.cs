@@ -49,6 +49,7 @@ namespace SmartRAG.Services
         private static readonly string[] TextExtensions = new string[] { ".txt", ".md", ".json", ".xml", ".csv", ".html", ".htm" };
         private static readonly string[] ImageExtensions = new string[] { ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".tiff", ".webp" };
         private static readonly string[] AudioExtensions = new string[] { ".wav", ".mp3", ".m4a", ".flac", ".ogg" };
+        private static readonly string[] DatabaseExtensions = new string[] { ".db", ".sqlite", ".sqlite3", ".db3" };
 
         // Content type constants
         private static readonly string[] WordContentTypes = new string[] {
@@ -71,6 +72,9 @@ namespace SmartRAG.Services
         private static readonly string[] AudioContentTypes = new string[] { 
             "audio/wav", "audio/mpeg", "audio/mp4", "audio/x-m4a", "audio/flac", "audio/ogg"
         };
+        private static readonly string[] DatabaseContentTypes = new string[] { 
+            "application/x-sqlite3", "application/vnd.sqlite3", "application/octet-stream"
+        };
 
         // Sentence ending constants
         private static readonly char[] SentenceEndings = new char[] { '.', '!', '?', ';' };
@@ -87,6 +91,7 @@ namespace SmartRAG.Services
         private readonly SmartRagOptions _options;
         private readonly IImageParserService _imageParserService;
         private readonly IAudioParserService _audioParserService;
+        private readonly IDatabaseParserService _databaseParserService;
         private readonly ILogger<DocumentParserService> _logger;
 
         #endregion
@@ -106,11 +111,13 @@ namespace SmartRAG.Services
             IOptions<SmartRagOptions> options,
             IImageParserService imageParserService,
             IAudioParserService audioParserService,
+            IDatabaseParserService databaseParserService,
             ILogger<DocumentParserService> logger)
         {
             _options = options.Value;
             _imageParserService = imageParserService;
             _audioParserService = audioParserService;
+            _databaseParserService = databaseParserService;
             _logger = logger;
         }
 
@@ -144,12 +151,12 @@ namespace SmartRAG.Services
         /// <summary>
         /// Gets supported file types
         /// </summary>
-        public IEnumerable<string> GetSupportedFileTypes() => TextExtensions.Concat(WordExtensions).Concat(PdfExtensions).Concat(ExcelExtensions).Concat(ImageExtensions).Concat(AudioExtensions);
+        public IEnumerable<string> GetSupportedFileTypes() => TextExtensions.Concat(WordExtensions).Concat(PdfExtensions).Concat(ExcelExtensions).Concat(ImageExtensions).Concat(AudioExtensions).Concat(DatabaseExtensions);
 
         /// <summary>
         /// Gets supported content types
         /// </summary>
-        public IEnumerable<string> GetSupportedContentTypes() => TextContentTypes.Concat(WordContentTypes).Append("application/pdf").Concat(ExcelContentTypes).Concat(ImageContentTypes).Concat(AudioContentTypes);
+        public IEnumerable<string> GetSupportedContentTypes() => TextContentTypes.Concat(WordContentTypes).Append("application/pdf").Concat(ExcelContentTypes).Concat(ImageContentTypes).Concat(AudioContentTypes).Concat(DatabaseContentTypes);
 
         #endregion
 
@@ -234,6 +241,15 @@ namespace SmartRAG.Services
         }
 
         /// <summary>
+        /// Checks if file is a database file
+        /// </summary>
+        private static bool IsDatabaseFile(string fileName, string contentType)
+        {
+            return DatabaseExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) ||
+                   DatabaseContentTypes.Any(ct => contentType.Contains(ct));
+        }
+
+        /// <summary>
         /// Checks if file is text-based
         /// </summary>
         private static bool IsTextBasedFile(string fileName, string contentType)
@@ -266,6 +282,10 @@ namespace SmartRAG.Services
             else if (IsAudioDocument(fileName, contentType))
             {
                 return await ParseAudioDocumentAsync(fileStream, fileName, language);
+            }
+            else if (IsDatabaseFile(fileName, contentType))
+            {
+                return await ParseDatabaseDocumentAsync(fileStream, fileName);
             }
             else if (IsTextBasedFile(fileName, contentType))
             {
@@ -1045,6 +1065,31 @@ namespace SmartRAG.Services
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to parse audio document with Speech-to-Text");
+                return string.Empty;
+            }
+        }
+
+        /// <summary>
+        /// Parses database document content
+        /// </summary>
+        private async Task<string> ParseDatabaseDocumentAsync(Stream fileStream, string fileName)
+        {
+            try
+            {
+                // Use database parser service to extract content
+                var content = await _databaseParserService.ParseDatabaseFileAsync(fileStream, fileName);
+                
+                if (string.IsNullOrWhiteSpace(content))
+                {
+                    return string.Empty;
+                }
+
+                _logger.LogInformation("Database document upload successful: {FileName}, Content length: {ContentLength}", fileName, content.Length);
+                return content;
+            }
+            catch (Exception ex)
+            {
+                ServiceLogMessages.LogDocumentUploadFailed(_logger, fileName, ex);
                 return string.Empty;
             }
         }

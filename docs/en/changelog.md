@@ -1,375 +1,496 @@
 ---
 layout: default
 title: Changelog
-description: Version history and release notes for SmartRAG
+description: Complete version history, breaking changes, and migration guides for SmartRAG
 lang: en
 ---
 
-<div class="page-content">
-    <div class="container">
-        <!-- Version History Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>Version History</h2>
-                    <p>Complete history of SmartRAG releases with detailed change information.</p>
 
-                    <h3>Version 2.3.0 - 2025-09-16</h3>
-                    <div class="alert alert-success">
-                        <h4><i class="fas fa-star me-2"></i>Latest Release</h4>
-                        <p class="mb-0">This is the current stable release with Google Speech-to-Text integration and enhanced developer experience.</p>
+All notable changes to SmartRAG are documented here. The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+---
+
+## [3.0.0] - 2025-10-22
+
+<div class="alert alert-warning">
+    <h4><i class="fas fa-exclamation-triangle me-2"></i> BREAKING CHANGES</h4>
+    <p class="mb-0">This release includes breaking API changes. See migration guide below.</p>
                     </div>
 
-                    <h4>Added</h4>
-                    <ul>
-                        <li><strong>Google Speech-to-Text Integration</strong>: Enterprise-grade speech recognition with Google Cloud AI</li>
-                        <li><strong>Enhanced Language Support</strong>: 100+ languages including Turkish, English, and global languages</li>
-                        <li><strong>Real-time Audio Processing</strong>: Advanced speech-to-text conversion with confidence scoring</li>
-                        <li><strong>Detailed Transcription Results</strong>: Segment-level transcription with timestamps and confidence metrics</li>
-                        <li><strong>Automatic Format Detection</strong>: Support for MP3, WAV, M4A, AAC, OGG, FLAC, WMA formats</li>
-                        <li><strong>Intelligent Audio Processing</strong>: Smart audio stream validation and error handling</li>
-                        <li><strong>Performance Optimized</strong>: Efficient audio processing with minimal memory footprint</li>
-                        <li><strong>Structured Audio Output</strong>: Converts audio content to searchable, queryable knowledge base</li>
-                        <li><strong>Comprehensive XML Documentation</strong>: Complete API documentation for all public classes and methods</li>
-                    </ul>
+### 🚀 Intelligence Library Revolution
 
-                    <h4>Improved</h4>
-                    <ul>
-                        <li><strong>Audio Processing Pipeline</strong>: Enhanced audio processing with Google Cloud AI</li>
-                        <li><strong>Configuration Management</strong>: Updated all configuration files to use GoogleSpeechConfig</li>
-                        <li><strong>Error Handling</strong>: Enhanced error handling for audio transcription operations</li>
-                        <li><strong>Documentation</strong>: Updated all language versions with Google Speech-to-Text examples</li>
-                        <li><strong>Code Quality</strong>: Zero warnings policy compliance with SOLID/DRY principles</li>
-                        <li><strong>Security</strong>: Fixed CodeQL high severity vulnerability with log injection protection</li>
-                    </ul>
+#### Major API Changes
+- **`GenerateRagAnswerAsync` → `QueryIntelligenceAsync`**: Method renamed to better represent intelligent query processing
+- **Enhanced `IDocumentSearchService` interface**: New intelligent query processing with advanced RAG pipeline
+- **Service layer improvements**: Advanced semantic search and conversation management
+- **Backward compatibility maintained**: Legacy methods marked as deprecated (will be removed in v4.0.0)
 
-                    <h4>Documentation</h4>
-                    <ul>
-                        <li><strong>Audio Processing</strong>: Comprehensive audio processing feature documentation</li>
-                        <li><strong>Multi-language Support</strong>: Updated all language versions (EN, TR, DE, RU) with examples</li>
-                        <li><strong>API Documentation</strong>: Complete XML documentation for all public APIs</li>
-                        <li><strong>Developer Experience</strong>: Better developer experience with detailed audio processing examples</li>
-                    </ul>
+### 🔧 SQL Generation & Multi-Language Support
 
-                    <h3>Version 2.2.0 - 2025-09-15</h3>
+#### Language-Safe SQL Generation
+- **Automatic validation**: Detection and prevention of non-English text in SQL queries
+- **Enhanced SQL validation**: Strict validation preventing Turkish/German/Russian characters in SQL
+- **Multi-language query support**: AI handles queries in any language while generating pure English SQL
+- **Character validation**: Detects non-English characters (Turkish: ç, ğ, ı, ö, ş, ü; German: ä, ö, ü, ß; Russian: Cyrillic)
+- **Keyword validation**: Prevents non-English keywords in SQL (sorgu, abfrage, запрос)
+- **Improved error messages**: Better diagnostics with database type information
+
+#### PostgreSQL Full Support
+- **Complete integration**: Full PostgreSQL support with live connections
+- **Schema analysis**: Intelligent schema extraction and relationship mapping
+- **Multi-database queries**: Cross-database query coordination with PostgreSQL
+- **Production ready**: Comprehensive testing and validation
+
+### 🔒 On-Premise & Local AI Support
+
+#### Complete Local Operation
+- **Local AI models**: Full support for Ollama, LM Studio, and OpenAI-compatible local APIs
+- **Document processing**: PDF, Word, Excel parsing - completely local
+- **OCR processing**: Tesseract 5.2.0 - completely local, no data sent to cloud
+- **Database integration**: SQLite, SQL Server, MySQL, PostgreSQL - all local
+- **Storage options**: In-Memory, SQLite, FileSystem, Redis - all local
+- **Complete privacy**: Your data stays on your infrastructure
+
+#### Enterprise Compliance
+- **GDPR compliant**: Keep all data within your infrastructure
+- **KVKK compliant**: Turkish data protection law compliance
+- **Air-gapped systems**: Works without internet (except audio transcription)
+- **Financial institutions**: Bank-grade security with local deployment
+- **Healthcare**: HIPAA-compliant deployments possible
+- **Government**: Classified data handling with local models
+
+### ⚠️ Important Limitations
+
+#### Audio Files
+- **Google Cloud required**: Audio transcription requires Google Cloud Speech-to-Text API
+- **Data privacy**: Audio files sent to Google Cloud for processing
+- **Alternative**: Avoid audio files if data privacy is critical
+- **Other formats**: All other file types remain completely local
+
+#### OCR (Image to Text)
+- **Handwriting limitation**: Tesseract OCR cannot fully support handwritten text (low success rate)
+- **Works perfectly**: Printed documents, scanned printed documents, digital screenshots
+- **Limited support**: Handwritten notes, forms, cursive writing (very low accuracy)
+- **Best results**: High-quality scans of printed documents
+- **100+ languages**: [View all supported languages](https://github.com/tesseract-ocr/tessdata)
+
+### ✨ Added
+- **Multi-language README**: Available in English, Turkish, German, and Russian
+- **Multi-language CHANGELOG**: Available in 4 languages
+- **Enhanced documentation**: Comprehensive on-premise deployment docs
+- **Local AI setup examples**: Configuration for Ollama and LM Studio
+- **Enterprise use cases**: Banking, Healthcare, Legal, Government, Manufacturing
+
+### 🔧 Improved
+- **Retry mechanism**: Enhanced retry prompts with language-specific instructions
+- **Error handling**: Better error messages with database type information
+- **Documentation structure**: Cleaner README with CHANGELOG links
+- **Code quality**: SOLID/DRY principles maintained
+- **Performance**: Optimized multi-database query coordination
+
+### 📚 Documentation
+- **On-Premise guide**: Comprehensive deployment documentation
+- **Privacy guide**: Data privacy and compliance documentation
+- **OCR limitations**: Clear capabilities and limitations
+- **Audio processing**: Clear requirements and limitations
+- **Enterprise scenarios**: Real-world use cases
+
+### ✅ Quality Assurance
+- **Zero Warnings Policy**: Maintained 0 errors, 0 warnings standard
+- **SOLID Principles**: Clean code architecture
+- **Comprehensive Testing**: Multi-database test coverage with PostgreSQL
+- **Security hardening**: Enhanced credential protection
+- **Performance optimization**: High performance across all features
+
+### 🔄 Migration Guide (v2.3.0 → v3.0.0)
+
+#### Service Layer Method Changes
+
+**OLD (v2.3.0):**
+```csharp
+await _documentSearchService.GenerateRagAnswerAsync(query, maxResults);
+```
+
+**NEW (v3.0.0):**
+```csharp
+await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
+```
+
+#### Backward Compatibility
+- Legacy methods are deprecated but still work (removed in v4.0.0)
+- Update methods at your own pace
+- No immediate breaking changes with old methods
+
+---
+
+## [2.3.1] - 2025-10-20
+
+### 🐛 Bug Fixes
+- **LoggerMessage Parameter Mismatch**: Fixed ServiceLogMessages.LogAudioServiceInitialized parameter mismatch
+- **Format String Correction**: Corrected format string to prevent System.ArgumentException
+- **Logging Stability**: Improved logging for Google Speech-to-Text initialization
+
+### 🔧 Technical Improvements
+- **Logging Infrastructure**: Enhanced reliability
+- **Zero Warnings Policy**: Compliance maintained
+- **Test Coverage**: All tests passing (8/8)
+
+---
+
+## [2.3.0] - 2025-09-16
+
+### ✨ Added
+- **Google Speech-to-Text Integration**: Enterprise-grade speech recognition
+- **Enhanced Language Support**: 100+ languages including Turkish, English, global languages
+- **Real-time Audio Processing**: Advanced speech-to-text with confidence scoring
+- **Detailed Transcription Results**: Segment-level transcription with timestamps
+- **Automatic Format Detection**: MP3, WAV, M4A, AAC, OGG, FLAC, WMA support
+- **Intelligent Audio Processing**: Smart audio validation and error handling
+- **Performance Optimized**: Efficient processing with minimal memory footprint
+- **Structured Audio Output**: Searchable, queryable knowledge base
+- **Comprehensive XML Documentation**: Complete API documentation
+
+### 🔧 Improved
+- **Audio Processing Pipeline**: Enhanced with Google Cloud AI
+- **Configuration Management**: Updated to use GoogleSpeechConfig
+- **Error Handling**: Enhanced for audio transcription
+- **Documentation**: Updated with Speech-to-Text examples
+
+### 📚 Documentation
+- **Audio Processing**: Comprehensive feature documentation
+- **Google Speech-to-Text**: Enhanced README with capabilities
+- **Multi-language Support**: Highlighted 100+ language support
+- **Developer Experience**: Better feature visibility
+
+---
+
+## [2.2.0] - 2025-09-15
+
+### ✨ Added
+- **Enhanced OCR Documentation**: Comprehensive with real-world use cases
+- **Improved README**: Detailed image processing features
+- **Use Case Examples**: Scanned documents, receipts, image content
+
+### 🔧 Improved
+- **Package Metadata**: Updated project URLs and release notes
+- **Documentation Structure**: Enhanced OCR showcase
+- **User Guidance**: Improved image processing workflows
+
+### 📚 Documentation
+- **OCR Capabilities**: Comprehensive with real-world examples
+- **Image Processing**: Enhanced capabilities documentation
+- **WebP Support**: Highlighted WebP to PNG conversion
+- **Developer Experience**: Better visibility of features
+
+---
+
+## [2.1.0] - 2025-09-05
+
+### ✨ Added
+- **Automatic Session Management**: No manual session ID handling
+- **Persistent Conversation History**: Conversations survive restarts
+- **New Conversation Commands**: `/new`, `/reset`, `/clear`
+- **Enhanced API**: Backward-compatible with optional `startNewConversation`
+- **Storage Integration**: Works with Redis, SQLite, FileSystem, InMemory
+
+### 🔧 Improved
+- **Format Consistency**: Standardized across storage providers
+- **Thread Safety**: Enhanced concurrent access handling
+- **Platform Agnostic**: Compatible across .NET environments
+
+### 📚 Documentation
+- **Multi-language Updates**: All languages (EN, TR, DE, RU) updated
+- **100% Compliance**: All established rules maintained
+
+---
+
+## [2.0.0] - 2025-08-27
+
+<div class="alert alert-warning">
+    <h4><i class="fas fa-exclamation-triangle me-2"></i> BREAKING CHANGE</h4>
+    <p class="mb-0">Migrated from .NET 9.0 to .NET Standard 2.1</p>
+                    </div>
+
+### 🔄 .NET Standard Migration
+- **Target Framework**: Migrated from .NET 9.0 to .NET Standard 2.1
+- **Framework Compatibility**: Now supports .NET Framework 4.6.1+, .NET Core 2.0+, .NET 5+
+- **Maximum Reach**: Enhanced compatibility with legacy and enterprise environments
+
+### ✨ Added
+- **Cross-Platform Support**: .NET Standard 2.1 target frameworks
+- **Legacy Framework Support**: Full .NET Framework compatibility
+- **Enterprise Integration**: Seamless integration with existing enterprise solutions
+
+### 🔧 Improved
+- **Language Compatibility**: C# 7.3 syntax for .NET Standard 2.1
+- **Package Versions**: Updated to .NET Standard compatible versions
+- **API Compatibility**: Maintained functionality while ensuring framework compatibility
+
+### 📚 Documentation
+- **Framework Requirements**: Updated for .NET Standard
+- **Installation Guide**: Updated package references
+- **Migration Guide**: Comprehensive guide for .NET 9.0 users
+
+### 🧪 Testing
+- **Framework Compatibility**: Verified .NET Standard 2.1 compatibility
+- **Backward Compatibility**: All functionality remains intact
+- **Package Compatibility**: Tested all NuGet packages
+
+### 🔒 Security
+- **Zero Warnings**: Maintained strict code quality
+- **SOLID Principles**: Preserved enterprise-grade architecture
+- **Package Security**: Updated packages for security vulnerabilities
+
+---
+
+## [1.1.0] - 2025-08-22
+
+### ✨ Added
+- **Excel Document Support**: Comprehensive Excel parsing (.xlsx, .xls)
+- **EPPlus 8.1.0 Integration**: Modern Excel library with non-commercial license
+- **Worksheet Parsing**: Intelligent parsing with tab-separated data preservation
+- **Enhanced Content Validation**: Excel-specific fallback handling
+- **Anthropic API Reliability**: Enhanced retry for HTTP 529 (Overloaded) errors
+
+### 🔧 Improved
+- **API Error Handling**: Better retry logic for rate limiting
+- **Content Processing**: More robust document parsing
+- **Performance**: Optimized Excel extraction and validation
+
+### 📚 Documentation
+- **Excel Format Support**: Comprehensive Excel processing documentation
+- **API Reliability**: Updated error handling documentation
+- **Installation Guide**: Updated package references
+
+### 🧪 Testing
+- **Excel Parsing**: Verified with various Excel formats
+- **API Retry**: Tested retry mechanism
+- **Backward Compatibility**: All functionality remains intact
+
+### 🔒 Security
+- **License Compliance**: Proper EPPlus non-commercial license
+- **Zero Warnings**: Maintained code quality standards
+
+---
+
+## [1.0.3] - 2025-08-20
+
+### 🔧 Fixed
+- LoggerMessage parameter count mismatches
+- Provider logging message implementations
+- Service collection registration issues
+
+### 📚 Documentation
+- Updated README with latest features
+- Improved installation instructions
+
+---
+
+## Version History
+
+<div class="table-responsive mt-4">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Version</th>
+                <th>Date</th>
+                <th>Highlights</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>3.0.0</strong></td>
+                <td>2025-10-18</td>
+                <td>Intelligence Library Revolution, SQL Generation, On-Premise Support, PostgreSQL</td>
+            </tr>
+            <tr>
+                <td><strong>2.3.1</strong></td>
+                <td>2025-10-08</td>
+                <td>Bug fixes, Logging stability improvements</td>
+            </tr>
+            <tr>
+                <td><strong>2.3.0</strong></td>
+                <td>2025-09-16</td>
+                <td>Google Speech-to-Text integration, Audio processing</td>
+            </tr>
+            <tr>
+                <td><strong>2.2.0</strong></td>
+                <td>2025-09-15</td>
+                <td>Enhanced OCR documentation</td>
+            </tr>
+            <tr>
+                <td><strong>2.1.0</strong></td>
+                <td>2025-09-05</td>
+                <td>Automatic session management, Persistent conversation history</td>
+            </tr>
+            <tr>
+                <td><strong>2.0.0</strong></td>
+                <td>2025-08-27</td>
+                <td>.NET Standard 2.1 migration</td>
+            </tr>
+            <tr>
+                <td><strong>1.1.0</strong></td>
+                <td>2025-08-22</td>
+                <td>Excel support, EPPlus integration</td>
+            </tr>
+            <tr>
+                <td><strong>1.0.3</strong></td>
+                <td>2025-08-20</td>
+                <td>Bug fixes and logging improvements</td>
+            </tr>
+            <tr>
+                <td><strong>1.0.2</strong></td>
+                <td>2025-08-19</td>
+                <td>Initial stable release</td>
+            </tr>
+            <tr>
+                <td><strong>1.0.1</strong></td>
+                <td>2025-08-17</td>
+                <td>Beta release</td>
+            </tr>
+            <tr>
+                <td><strong>1.0.0</strong></td>
+                <td>2025-08-15</td>
+                <td>Initial release</td>
+            </tr>
+        </tbody>
+    </table>
+            </div>
+
+---
+
+## Migration Guides
+
+### Migrating from v2.x to v3.0.0
+                    
                     <div class="alert alert-info">
-                        <h4><i class="fas fa-info-circle me-2"></i>Previous Release</h4>
-                        <p class="mb-0">Previous stable release with enhanced OCR documentation and visibility improvements.</p>
-                    </div>
-                    <ul>
-                        <li><strong>Enhanced OCR Documentation</strong>: Comprehensive documentation showcasing OCR capabilities with real-world use cases</li>
-                        <li><strong>Improved README</strong>: Detailed image processing features highlighting Tesseract 5.2.0 + SkiaSharp integration</li>
-                        <li><strong>Use Case Examples</strong>: Added detailed examples for scanned documents, receipts, and image content processing</li>
-                        <li><strong>Package Metadata</strong>: Updated project URLs and release notes for better user experience</li>
-                        <li><strong>Documentation Structure</strong>: Enhanced documentation showcasing OCR as key differentiator</li>
-                        <li><strong>User Guidance</strong>: Improved guidance for image-based document processing workflows</li>
-                        <li><strong>WebP Support</strong>: Highlighted WebP to PNG conversion and multi-language OCR support</li>
-                        <li><strong>Developer Experience</strong>: Better visibility of image processing features for developers</li>
-                    </ul>
-
-                    <h3>Version 2.1.0 - 2025-09-05</h3>
-                    <div class="alert alert-info">
-                        <h4><i class="fas fa-info-circle me-2"></i>Previous Release</h4>
-                        <p class="mb-0">Previous stable release with automatic session management and conversation history.</p>
-                    </div>
-                    <ul>
-                        <li><strong>Automatic Session Management</strong>: No more manual session ID handling required</li>
-                        <li><strong>Persistent Conversation History</strong>: Conversations survive application restarts</li>
-                        <li><strong>New Conversation Commands</strong>: /new, /reset, /clear for conversation control</li>
-                        <li><strong>Enhanced API</strong>: Backward-compatible with optional startNewConversation parameter</li>
-                        <li><strong>Storage Integration</strong>: Works seamlessly with all providers (Redis, SQLite, FileSystem, InMemory)</li>
-                        <li><strong>Format Consistency</strong>: Standardized conversation format across all storage providers</li>
-                        <li><strong>Thread Safety</strong>: Enhanced concurrent access handling for conversation operations</li>
-                        <li><strong>Platform Agnostic</strong>: Maintains compatibility with all .NET environments</li>
-                        <li><strong>Documentation Updates</strong>: All language versions (EN, TR, DE, RU) updated with real examples</li>
-                        <li><strong>100% Compliance</strong>: All established rules maintained with zero warnings policy</li>
-                    </ul>
-
-                    <h3>Version 2.0.0 - 2025-08-27</h3>
-                    <div class="alert alert-info">
-                        <h4><i class="fas fa-info-circle me-2"></i>Previous Release</h4>
-                        <p class="mb-0">Previous stable release with .NET Standard 2.0/2.1 migration.</p>
-                    </div>
-                    <ul>
-                        <li><strong>.NET Standard 2.0/2.1</strong>: Compatibility with .NET Framework 4.6.1+, .NET Core 2.0+, .NET 5+</li>
-                        <li><strong>Maximum Compatibility</strong>: Support for legacy and enterprise .NET applications</li>
-                        <li><strong>Framework Change</strong>: Migration from .NET 9.0 to .NET Standard</li>
-                        <li><strong>Package Dependencies</strong>: Updated package versions for compatibility</li>
-                    </ul>
-
-                    <h3>Version 1.1.0 - 2025-08-22</h3>
-                    <div class="alert alert-info">
-                        <h4><i class="fas fa-info-circle me-2"></i>Previous Release</h4>
-                        <p class="mb-0">Previous stable release with Excel support and enhanced features.</p>
+    <h4><i class="fas fa-info-circle me-2"></i> Key Changes</h4>
+    <p>The primary change is the renaming of <code>GenerateRagAnswerAsync</code> to <code>QueryIntelligenceAsync</code>.</p>
                     </div>
 
-                    <h4>Added</h4>
-                    <ul>
-                        <li><strong>💬 Conversation History</strong>: Automatic session-based conversation management with context awareness</li>
-                        <li><strong>Session Management</strong>: Unique session IDs for maintaining conversation context across multiple questions</li>
-                        <li><strong>Intelligent Context Truncation</strong>: Smart conversation history truncation to maintain optimal performance</li>
-                        <li><strong>Storage Integration</strong>: Conversation data storage using configured storage providers (Redis, SQLite, etc.)</li>
-                        <li><strong>Enhanced API</strong>: Updated GenerateRagAnswerAsync method with sessionId parameter</li>
-                        <li><strong>Real Examples</strong>: Updated all documentation examples to use actual implementation code</li>
-                    </ul>
+**Step 1: Update method calls**
 
-                    <h4>Improved</h4>
-                    <ul>
-                        <li><strong>Documentation Reality</strong>: All examples now match actual codebase implementation</li>
-                        <li><strong>Multi-language Support</strong>: Updated all language versions (EN, TR, DE, RU) with conversation features</li>
-                        <li><strong>API Consistency</strong>: Ensured all API examples use real SearchController and SearchRequest models</li>
-                        <li><strong>Code Quality</strong>: Applied Zero Warnings Policy with 0 errors, 0 warnings, 0 messages</li>
-                    </ul>
+```csharp
+// Before (v2.x)
+var response = await _searchService.GenerateRagAnswerAsync(query, maxResults);
 
-                    <h4>Fixed</h4>
-                    <ul>
-                        <li><strong>Documentation Accuracy</strong>: Removed all fictional examples and replaced with real implementation</li>
-                        <li><strong>Build Compliance</strong>: Achieved 100% compliance with SOLID and DRY principles</li>
-                        <li><strong>Magic Numbers</strong>: Converted all magic numbers to named constants</li>
-                        <li><strong>Logging Standards</strong>: Implemented LoggerMessage delegates for all conversation operations</li>
-                    </ul>
+// After (v3.0.0)
+var response = await _searchService.QueryIntelligenceAsync(query, maxResults);
+```
 
-                    <h3>Version 1.1.0 - 2025-08-22</h3>
+**Step 2: Update API endpoints (if using Web API)**
 
-                    <h4>Added</h4>
-                    <ul>
-                        <li><strong>Excel File Support</strong>: Added Excel file parsing (.xlsx, .xls) with EPPlus 8.1.0 integration</li>
-                        <li><strong>Enhanced Retry Logic</strong>: Improved Anthropic API retry mechanism for HTTP 529 (Overloaded) errors</li>
-                        <li><strong>Content Validation</strong>: Enhanced document content validation</li>
-                        <li><strong>Excel Documentation</strong>: Comprehensive Excel format documentation</li>
-                    </ul>
+```csharp
+// Before
+[HttpPost("generate-answer")]
+public async Task<IActionResult> GenerateAnswer([FromBody] QueryRequest request)
+{
+    var response = await _searchService.GenerateRagAnswerAsync(request.Query);
+    return Ok(response);
+}
 
-                    <h3>Version 1.0.3 - 2025-08-20</h3>
-                    
-                    <h4>Added</h4>
-                    <ul>
-                        <li><strong>Multi-language Support</strong>: Added comprehensive documentation in English, Turkish, German, and Russian</li>
-                        <li><strong>GitHub Pages</strong>: Complete documentation site with modern Bootstrap design</li>
-                        <li><strong>Enhanced Examples</strong>: Added comprehensive code examples and tutorials</li>
-                        <li><strong>Troubleshooting Guide</strong>: Detailed troubleshooting and debugging information</li>
-                        <li><strong>Contributing Guidelines</strong>: Complete contribution guide with coding standards</li>
-                    </ul>
+// After
+[HttpPost("query")]
+public async Task<IActionResult> Query([FromBody] QueryRequest request)
+{
+    var response = await _searchService.QueryIntelligenceAsync(request.Query);
+    return Ok(response);
+}
+```
 
-                    <h4>Improved</h4>
-                    <ul>
-                        <li><strong>Documentation</strong>: Complete rewrite with modern design and better organization</li>
-                        <li><strong>Code Examples</strong>: More realistic and comprehensive examples</li>
-                        <li><strong>API Reference</strong>: Detailed API documentation with usage patterns</li>
-                        <li><strong>Configuration Guide</strong>: Enhanced configuration options and best practices</li>
-                    </ul>
+**Step 3: Update client code (if applicable)**
 
-                    <h4>Fixed</h4>
-                    <ul>
-                        <li><strong>Type Conflicts</strong>: Resolved conflicts between Qdrant, OpenXML, and other libraries</li>
-                        <li><strong>Global Usings</strong>: Implemented GlobalUsings for all projects to reduce code duplication</li>
-                        <li><strong>Build Issues</strong>: Fixed various compilation and build warnings</li>
-                    </ul>
+```javascript
+// Before
+const response = await fetch('/api/intelligence/generate-answer', { ... });
 
-                    <h3>Version 1.0.2 - 2025-08-19</h3>
-                    
-                    <h4>Added</h4>
-                    <ul>
-                        <li><strong>Global Usings</strong>: Implemented GlobalUsings for SmartRAG core library</li>
-                        <li><strong>Type Resolution</strong>: Added explicit type resolution for conflicting types</li>
-                        <li><strong>Enhanced Logging</strong>: Improved logging with LoggerMessage delegates</li>
-                    </ul>
+// After
+const response = await fetch('/api/intelligence/query', { ... });
+```
 
-                    <h4>Improved</h4>
-                    <ul>
-                        <li><strong>Code Organization</strong>: Better #region organization and SOLID principles</li>
-                        <li><strong>Performance</strong>: Optimized document processing and storage operations</li>
-                        <li><strong>Error Handling</strong>: Enhanced error handling and exception management</li>
-                    </ul>
+<div class="alert alert-success">
+    <h4><i class="fas fa-check-circle me-2"></i> No Immediate Action Required</h4>
+    <p class="mb-0">
+        The old <code>GenerateRagAnswerAsync</code> method still works (marked as deprecated). 
+        You can migrate gradually before v4.0.0 is released.
+    </p>
+                    </div>
 
-                    <h4>Fixed</h4>
-                    <ul>
-                        <li><strong>Build Warnings</strong>: Resolved all compiler warnings and messages</li>
-                        <li><strong>Type Conflicts</strong>: Fixed conflicts between external library types</li>
-                        <li><strong>Memory Leaks</strong>: Improved resource disposal and memory management</li>
-                    </ul>
+### Migrating from v1.x to v2.0.0
 
-                    <h3>Version 1.0.1 - 2025-08-17</h3>
-                    
-                    <h4>Added</h4>
-                    <ul>
-                        <li><strong>Test Project</strong>: Added comprehensive xUnit test suite</li>
-                        <li><strong>Example Web API</strong>: Complete example web application</li>
-                        <li><strong>Documentation</strong>: Initial documentation structure</li>
-                    </ul>
+<div class="alert alert-warning">
+    <h4><i class="fas fa-exclamation-triangle me-2"></i> Framework Change</h4>
+    <p class="mb-0">Version 2.0.0 migrated from .NET 9.0 to .NET Standard 2.1</p>
+                </div>
 
-                    <h4>Improved</h4>
-                    <ul>
-                        <li><strong>Code Quality</strong>: Applied SOLID and DRY principles</li>
-                        <li><strong>Error Handling</strong>: Better exception handling and validation</li>
-                        <li><strong>Logging</strong>: Structured logging throughout the application</li>
-                    </ul>
+**Step 1: Verify framework compatibility**
 
-                    <h4>Fixed</h4>
-                    <ul>
-                        <li><strong>Minor Bugs</strong>: Various bug fixes and improvements</li>
-                        <li><strong>Performance</strong>: Optimized document processing</li>
-                        <li><strong>Security</strong>: Enhanced input validation and sanitization</li>
-                    </ul>
+```xml
+<!-- Your project must target one of these frameworks -->
+<TargetFramework>netstandard2.0</TargetFramework>
+<TargetFramework>netstandard2.1</TargetFramework>
+<TargetFramework>netcoreapp2.0</TargetFramework>
+<TargetFramework>net461</TargetFramework>
+<TargetFramework>net5.0</TargetFramework>
+<TargetFramework>net6.0</TargetFramework>
+<TargetFramework>net7.0</TargetFramework>
+<TargetFramework>net8.0</TargetFramework>
+<TargetFramework>net9.0</TargetFramework>
+```
 
-                    <h3>Version 1.0.0 - 2025-08-15</h3>
-                    
-                    <h4>Initial Release</h4>
-                    <ul>
-                        <li><strong>Core RAG Functionality</strong>: Document processing, embedding generation, and semantic search</li>
-                        <li><strong>AI Provider Support</strong>: OpenAI, Anthropic, Azure OpenAI, and Gemini integration</li>
-                        <li><strong>Storage Providers</strong>: Qdrant, Redis, SQLite, In-Memory, and File System support</li>
-                        <li><strong>Document Formats</strong>: PDF, Word, Excel, and text document processing</li>
-                        <li><strong>.NET 8 Support</strong>: Full compatibility with .NET 8 LTS</li>
-                        <li><strong>Dependency Injection</strong>: Native .NET dependency injection support</li>
-                        <li><strong>Async/Await</strong>: Full asynchronous operation support</li>
-                        <li><strong>Extensible Architecture</strong>: Plugin-based provider system</li>
+**Step 2: Update NuGet package**
+
+```bash
+dotnet add package SmartRAG --version 2.0.0
+```
+
+**Step 3: Verify code compatibility**
+
+No API changes - all functionality remains the same. Just ensure your project targets compatible framework.
+
+---
+
+## Deprecation Notices
+
+### Deprecated in v3.0.0 (Removed in v4.0.0)
+
+<div class="alert alert-warning">
+    <h4><i class="fas fa-clock me-2"></i> Planned for Removal</h4>
+    <p>The following methods are deprecated and will be removed in v4.0.0:</p>
+    <ul class="mb-0">
+        <li><code>IDocumentSearchService.GenerateRagAnswerAsync()</code> - Use <code>QueryIntelligenceAsync()</code> instead</li>
                     </ul>
                 </div>
-            </div>
-        </section>
 
-        <!-- Versioning Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>Versioning</h2>
-                    <p>SmartRAG follows <a href="https://semver.org/" target="_blank">Semantic Versioning</a> (SemVer):</p>
-                    
-                    <ul>
-                        <li><strong>MAJOR</strong>: Incompatible API changes</li>
-                        <li><strong>MINOR</strong>: New functionality in a backwards compatible manner</li>
-                        <li><strong>PATCH</strong>: Backwards compatible bug fixes</li>
-                    </ul>
+---
 
-                    <h3>Release Schedule</h3>
-                    <ul>
-                        <li><strong>Major Releases</strong>: Every 6-12 months with significant new features</li>
-                        <li><strong>Minor Releases</strong>: Every 2-3 months with new functionality</li>
-                        <li><strong>Patch Releases</strong>: As needed for critical bug fixes</li>
-                    </ul>
+## Next Steps
+
+<div class="row g-4 mt-4">
+    <div class="col-md-6">
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i class="fas fa-rocket"></i>
+                    </div>
+            <h3>Getting Started</h3>
+            <p>Install SmartRAG and start building intelligent applications</p>
+            <a href="{{ site.baseurl }}/en/getting-started" class="btn btn-outline-primary btn-sm mt-3">
+                Get Started
+            </a>
                 </div>
             </div>
-        </section>
-
-        <!-- Breaking Changes Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>Breaking Changes</h2>
-                    <p>Important breaking changes between versions.</p>
-                    
-                    <div class="alert alert-info">
-                        <h4><i class="fas fa-info-circle me-2"></i>Good News</h4>
-                        <p class="mb-0">No breaking changes between versions 1.0.0 and 1.2.0. All updates are backward compatible.</p>
-                    </div>
-
-                    <h3>Migration Guides</h3>
-                    <p>All version updates from 1.0.0 to 1.2.0 are fully backward compatible. No migration is required.</p>
-                    
-                    <h4>New Conversation History Feature</h4>
-                    <p>To use the new conversation history feature, simply add a <code>SessionId</code> parameter to your existing API calls:</p>
-                    <div class="code-example">
-                        <pre><code class="language-csharp">// Before (still works)
-var response = await _documentSearchService.GenerateRagAnswerAsync(query, maxResults);
-
-// After (with conversation history)
-var response = await _documentSearchService.GenerateRagAnswerAsync(query, sessionId, maxResults);</code></pre>
+    
+    <div class="col-md-6">
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i class="fab fa-github"></i>
+            </div>
+            <h3>GitHub Repository</h3>
+            <p>View source code, report issues, and contribute</p>
+            <a href="https://github.com/byerlikaya/SmartRAG" class="btn btn-outline-primary btn-sm mt-3" target="_blank">
+                View on GitHub
+            </a>
                     </div>
                 </div>
             </div>
-        </section>
 
-        <!-- Support Policy Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>Support Policy</h2>
-                    <p>Our commitment to supporting different versions of SmartRAG.</p>
-                    
-                    <ul>
-                        <li><strong>Current Version</strong>: Full support and bug fixes</li>
-                        <li><strong>Previous Version</strong>: Security updates and critical bug fixes only</li>
-                        <li><strong>Older Versions</strong>: No support</li>
-                    </ul>
-                </div>
-            </div>
-        </section>
-
-        <!-- Roadmap Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>Roadmap</h2>
-                    <p>Upcoming features and future plans for SmartRAG.</p>
-                    
-                    <h3>Upcoming Features (1.3.0)</h3>
-                    <ul>
-                        <li><strong>Advanced Chunking</strong>: Intelligent document chunking strategies</li>
-                        <li><strong>Custom Embeddings</strong>: Support for custom embedding models</li>
-                        <li><strong>Batch Processing</strong>: Improved batch document processing</li>
-                        <li><strong>Performance Monitoring</strong>: Built-in performance metrics and monitoring</li>
-                        <li><strong>Cloud Integration</strong>: Enhanced cloud provider support</li>
-                    </ul>
-
-                    <h3>Future Plans (2.0.0)</h3>
-                    <ul>
-                        <li><strong>Multi-modal Support</strong>: Image and audio document processing</li>
-                        <li><strong>Advanced Search</strong>: Semantic search with context awareness</li>
-                        <li><strong>Real-time Updates</strong>: Live document indexing and search</li>
-                        <li><strong>Distributed Processing</strong>: Support for distributed deployments</li>
-                        <li><strong>Advanced Analytics</strong>: Document usage and search analytics</li>
-                    </ul>
-                </div>
-            </div>
-        </section>
-
-        <!-- Contributing Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <h2>Contributing to Changelog</h2>
-                    <p>When contributing to SmartRAG, please update the changelog:</p>
-                    
-                    <ol>
-                        <li><strong>Add your changes</strong> to the appropriate section</li>
-                        <li><strong>Use consistent formatting</strong> following the existing style</li>
-                        <li><strong>Group changes</strong> by type (Added, Improved, Fixed, etc.)</li>
-                        <li><strong>Provide clear descriptions</strong> of what changed</li>
-                        <li><strong>Include breaking changes</strong> in a separate section</li>
-                    </ol>
-
-                    <h3>Changelog Entry Format</h3>
-                    <div class="code-example">
-                        <pre><code class="language-markdown">### Added
-- **Feature Name**: Brief description of the new feature
-
-### Improved
-- **Component Name**: Description of improvements made
-
-### Fixed
-- **Issue Description**: Description of the bug fix</code></pre>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Help Section -->
-        <section class="content-section">
-            <div class="row">
-                <div class="col-lg-8 mx-auto">
-                    <div class="alert alert-info">
-                        <h4><i class="fas fa-question-circle me-2"></i>Need Help?</h4>
-                        <p class="mb-0">If you need assistance with version updates:</p>
-                        <ul class="mb-0 mt-2">
-                            <li><a href="{{ site.baseurl }}/en/getting-started">Getting Started</a></li>
-                            <li><a href="{{ site.baseurl }}/en/configuration">Configuration</a></li>
-                            <li><a href="{{ site.baseurl }}/en/api-reference">API Reference</a></li>
-                            <li><a href="https://github.com/byerlikaya/SmartRAG/issues" target="_blank">GitHub Issues</a></li>
-                            <li><a href="mailto:b.yerlikaya@outlook.com">Email Support</a></li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </div>
-</div>

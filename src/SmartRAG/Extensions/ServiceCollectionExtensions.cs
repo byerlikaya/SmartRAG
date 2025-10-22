@@ -7,6 +7,7 @@ using SmartRAG.Interfaces;
 using SmartRAG.Models;
 using SmartRAG.Services;
 using System;
+using System.Collections.Generic;
 
 namespace SmartRAG.Extensions
 {
@@ -32,6 +33,14 @@ namespace SmartRAG.Extensions
             {
                 // Bind from configuration first
                 configuration.GetSection("SmartRAG").Bind(options);
+                
+                // Bind DatabaseConnections from root level
+                var dbConnectionsSection = configuration.GetSection("DatabaseConnections");
+                if (dbConnectionsSection.Exists())
+                {
+                    options.DatabaseConnections = dbConnectionsSection.Get<List<DatabaseConnectionConfig>>() ?? new List<DatabaseConnectionConfig>();
+                }
+                
                 // Then apply custom configuration
                 configureOptions(options);
             });
@@ -47,7 +56,29 @@ namespace SmartRAG.Extensions
             services.AddScoped<IDocumentParserService, DocumentParserService>();
             services.AddScoped<IDocumentSearchService, DocumentSearchService>();
             services.AddScoped<IImageParserService, ImageParserService>();
-            services.AddScoped<IAudioParserService, AudioParserService>();
+            
+            // Audio parser services - register both implementations
+            services.AddScoped<GoogleAudioParserService>();
+            services.AddScoped<WhisperAudioParserService>();
+            services.AddSingleton<IAudioParserFactory, AudioParserFactory>();
+            
+            // IAudioParserService registration - factory creates based on configuration
+            services.AddScoped<IAudioParserService>(sp =>
+            {
+                var factory = sp.GetRequiredService<IAudioParserFactory>();
+                var options = sp.GetRequiredService<IOptions<SmartRagOptions>>();
+                return factory.CreateAudioParser(options.Value.AudioProvider);
+            });
+            
+            services.AddScoped<IDatabaseParserService, DatabaseParserService>();
+            
+            // Multi-database services
+            services.AddSingleton<IDatabaseSchemaAnalyzer, DatabaseSchemaAnalyzer>();
+            services.AddSingleton<IDatabaseConnectionManager, DatabaseConnectionManager>();
+            services.AddSingleton<IMultiDatabaseQueryCoordinator, MultiDatabaseQueryCoordinator>();
+            
+            // Add memory cache for database operations
+            services.AddMemoryCache();
 
             ConfigureStorageProvider(services, configuration);
 
