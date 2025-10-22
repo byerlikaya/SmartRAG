@@ -1,10 +1,6 @@
 # 🚀 SmartRAG
 
 <p align="center">
-  <img src="icon.svg" alt="SmartRAG Logo" width="150"/>
-</p>
-
-<p align="center">
   <b>Multi-Database RAG Library for .NET</b><br>
   Ask questions about your data in natural language
 </p>

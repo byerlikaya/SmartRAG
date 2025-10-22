@@ -6,6 +6,19 @@ All notable changes to SmartRAG will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.1] - 2025-10-22
+
+### 🐛 Fixed
+- **LoggerMessage Parameter Mismatch**: Fixed `LogAudioServiceInitialized` LoggerMessage definition with missing `configPath` parameter
+- **EventId Conflicts**: Resolved duplicate EventId assignments in ServiceLogMessages.cs (6006, 6008, 6009)
+- **Logo Display Issue**: Removed broken logo references from README files that were causing display issues on NuGet
+- **TypeInitializationException**: Fixed critical startup error that prevented SmartRAG.Demo from running
+
+### 🔧 Technical Improvements
+- **ServiceLogMessages.cs**: Updated LoggerMessage definitions to match parameter counts correctly
+- **EventId Management**: Reassigned conflicting EventIds to ensure unique logging identifiers
+- **Documentation**: Cleaned up README files for better NuGet package display
+
 ## [3.0.0] - 2025-10-22
 
 ### 🚀 BREAKING CHANGES - Intelligence Library Revolution

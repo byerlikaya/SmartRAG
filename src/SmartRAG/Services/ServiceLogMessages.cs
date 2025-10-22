@@ -350,19 +350,19 @@ namespace SmartRAG.Services
 
         public static readonly Action<ILogger, string, int, Exception> LogDocumentProcessing = LoggerMessage.Define<string, int>(
             LogLevel.Information,
-            new EventId(6006, "DocumentProcessing"),
+            new EventId(6020, "DocumentProcessing"),
             "Document: {FileName} ({ChunkCount} chunks)");
 
 
 
         public static readonly Action<ILogger, Guid, Exception> LogChunkBatchEmbeddingFailedRetry = LoggerMessage.Define<Guid>(
             LogLevel.Warning,
-            new EventId(6008, "ChunkBatchEmbeddingFailedRetry"),
+            new EventId(6021, "ChunkBatchEmbeddingFailedRetry"),
             "Chunk {ChunkId}: Batch embedding failed, trying individual generation");
 
         public static readonly Action<ILogger, Guid, int, Exception> LogChunkIndividualEmbeddingSuccessRetry = LoggerMessage.Define<Guid, int>(
             LogLevel.Debug,
-            new EventId(6009, "ChunkIndividualEmbeddingSuccessRetry"),
+            new EventId(6022, "ChunkIndividualEmbeddingSuccessRetry"),
             "Chunk {ChunkId}: Individual embedding successful ({Dimensions} dimensions)");
 
         public static readonly Action<ILogger, Guid, Exception> LogChunkAllEmbeddingMethodsFailed = LoggerMessage.Define<Guid>(
@@ -590,7 +590,7 @@ namespace SmartRAG.Services
             new EventId(80003, "AudioTranscriptionFailed"),
             "Audio transcription failed");
 
-        public static readonly Action<ILogger, Exception> LogAudioServiceInitialized = LoggerMessage.Define(
+        public static readonly Action<ILogger, string, Exception> LogAudioServiceInitialized = LoggerMessage.Define<string>(
             LogLevel.Debug,
             new EventId(80004, "AudioServiceInitialized"),
             "Google Speech-to-Text service initialized with config: {configPath}");
