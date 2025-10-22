@@ -5,7 +5,7 @@
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
-    <PackageVersion>3.0.0</PackageVersion>
+    <PackageVersion>3.0.1</PackageVersion>
     <Authors>Barış Yerlikaya</Authors>
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
@@ -20,63 +20,20 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Release 3.0.0: Intelligence Platform Revolution
+    <PackageReleaseNotes>Release 3.0.1: Critical Bug Fixes
 
-BREAKING CHANGES - Major Platform Evolution:
-• Framework: Now requires .NET Standard 2.1 (.NET Core 3.0+) - Dropped .NET Framework support
-• SearchController → IntelligenceController - Reflects true AI intelligence capabilities
-• GenerateRagAnswerAsync → QueryIntelligenceAsync - Better represents intelligent query processing
-• API Endpoints: /api/search/* → /api/intelligence/* - Professional enterprise naming
-• Enhanced API Documentation - Comprehensive Swagger documentation with examples
-• Complete Controller Suite - 8 comprehensive controllers with 65+ endpoints
+BUG FIXES:
+• LoggerMessage Parameter Mismatch - Fixed LogAudioServiceInitialized LoggerMessage definition with missing configPath parameter
+• EventId Conflicts - Resolved duplicate EventId assignments in ServiceLogMessages.cs (6006, 6008, 6009)
+• Logo Display Issue - Removed broken logo references from README files that were causing display issues on NuGet
+• TypeInitializationException - Fixed critical startup error that prevented SmartRAG.Demo from running
 
-Intelligence Platform Features:
-• Advanced Query Intelligence - Automatic intent detection and smart routing
-• Multi-Modal Search - Documents, databases, conversations, and hybrid search
-• Enterprise Analytics - Usage tracking, performance monitoring, and insights
-• Configuration Management - Runtime configuration updates and validation
-• Storage Management - Backup, restore, migration, and provider switching
-• Conversation Intelligence - Session management and context-aware responses
+TECHNICAL IMPROVEMENTS:
+• ServiceLogMessages.cs - Updated LoggerMessage definitions to match parameter counts correctly
+• EventId Management - Reassigned conflicting EventIds to ensure unique logging identifiers
+• Documentation - Cleaned up README files for better NuGet package display
 
-SQL Generation &amp; Multi-Language Support:
-• Language-Safe SQL Generation - Automatic validation preventing non-English text in SQL queries
-• Multi-Language Query Support - AI handles queries in any language while generating pure English SQL
-• Character Validation - Detection of Turkish/German/Russian characters (ç, ğ, ı, ö, ş, ü, ä, ö, ü, ß, Cyrillic)
-• Keyword Validation - Prevention of non-English keywords in SQL (sorgu, abfrage, запрос)
-• PostgreSQL Full Support - Complete integration with live connections and schema analysis
-
-On-Premise &amp; Local AI Support:
-• Complete Local Operation - Ollama, LM Studio, and OpenAI-compatible local API support
-• Document Processing - PDF, Word, Excel parsing completely local
-• OCR Processing - Tesseract 5.2.0 completely local, no data sent to cloud
-• Database Integration - SQLite, SQL Server, MySQL, PostgreSQL all local connections
-• Storage Options - In-Memory, SQLite, FileSystem, Redis all local
-• Enterprise Compliance - GDPR/KVKK/HIPAA compliant, air-gapped systems support
-
-Technical Improvements:
-• Professional API Design - RESTful endpoints with comprehensive documentation
-• Enterprise Architecture - SOLID principles, zero warnings policy maintained
-• Production Ready - Comprehensive error handling, validation, and logging
-• Swagger UI Optimization - Collapsed default view with enhanced navigation
-• Memory Management - Optimized performance with streaming and caching
-
-Documentation and Developer Experience:
-• Multi-Language Documentation - Available in English, Turkish, German, and Russian
-• Complete API Documentation - All endpoints with detailed examples and use cases
-• Migration Guide - Step-by-step upgrade instructions from v2.4.0
-• Enhanced README - Updated with v3.0.0 features and breaking changes
-• Professional Swagger UI - Optimized interface with collapsed endpoints
-• Enterprise Examples - Real-world usage scenarios and best practices
-
-Important Limitations:
-• Audio Files - Google Cloud Speech-to-Text API required (data sent to Google Cloud)
-• OCR Handwriting - Limited support for handwritten text (printed text works perfectly)
-
-Migration from v2.4.0:
-• Update API endpoints: /api/search → /api/intelligence
-• Update method calls: GenerateRagAnswerAsync → QueryIntelligenceAsync
-• Update controller references: SearchController → IntelligenceController
-• See migration guide in README.md for detailed instructions</PackageReleaseNotes>
+This release fixes critical runtime errors and improves overall stability.</PackageReleaseNotes>
     
     <!-- Build Configuration -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -87,8 +44,8 @@ Migration from v2.4.0:
     <AssemblyTitle>SmartRAG</AssemblyTitle>
     <AssemblyDescription>High-performance RAG library with conversation history management for .NET</AssemblyDescription>
     <AssemblyCopyright>Copyright © 2025 Barış Yerlikaya</AssemblyCopyright>
-    <AssemblyVersion>3.0.0.0</AssemblyVersion>
-    <FileVersion>3.0.0.0</FileVersion>
+    <AssemblyVersion>3.0.1.0</AssemblyVersion>
+    <FileVersion>3.0.1.0</FileVersion>
     <NeutralLanguage>en</NeutralLanguage>
     <Culture>en-US</Culture>
   </PropertyGroup>
