@@ -332,3 +332,12 @@ documents/
 files/
 temp/
 temp-files/
+
+# Test data directories
+TestSQLiteData/
+
+# Whisper.net model files
+models/
+**/models/
+**/ggml-*.bin
+**/ggml-large-v3.bin
