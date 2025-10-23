@@ -317,6 +317,10 @@ BenchmarkDotNet.Artifacts/
 *.otf
 *.otm
 
+# OCR Model files - Large binary files
+tessdata/
+*.traineddata
+
 # Exception for documentation site
 !docs/_site/
 !docs/_site/**/*
