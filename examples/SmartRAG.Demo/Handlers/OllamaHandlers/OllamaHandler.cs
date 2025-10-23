@@ -57,6 +57,23 @@ public class OllamaHandler(IConsoleService console) : IOllamaHandler
             index++;
         }
         System.Console.WriteLine();
+        
+        // Küçük modeller için öneri
+        var smallModels = OllamaModelManager.GetSmallModels();
+        var hasSmallModels = smallModels.Any(model => !installedModels.Any(installed => installed.Contains(model)));
+        if (hasSmallModels)
+        {
+            System.Console.WriteLine("💡 TIP: For slow internet connections, try these small models first:");
+            foreach (var smallModel in smallModels)
+            {
+                var isInstalled = installedModels.Any(m => m.Contains(smallModel));
+                if (!isInstalled)
+                {
+                    System.Console.WriteLine($"  • {smallModel} (Fast download)");
+                }
+            }
+            System.Console.WriteLine();
+        }
 
         var choice = _console.ReadLine("Enter model number to install (0 to skip): ");
 
@@ -67,13 +84,31 @@ public class OllamaHandler(IConsoleService console) : IOllamaHandler
             System.Console.WriteLine($"Downloading {modelToInstall}... (This may take several minutes)");
             System.Console.WriteLine();
 
-            await ollamaManager.DownloadModelAsync(modelToInstall, (progress) =>
+            try
             {
-                System.Console.WriteLine($"  {progress}");
-            });
+                await ollamaManager.DownloadModelAsync(modelToInstall, (progress) =>
+                {
+                    System.Console.WriteLine($"  {progress}");
+                });
 
-            System.Console.WriteLine();
-            _console.WriteSuccess($"Model {modelToInstall} installed successfully!");
+                System.Console.WriteLine();
+                _console.WriteSuccess($"Model {modelToInstall} installed successfully!");
+            }
+            catch (InvalidOperationException ex)
+            {
+                System.Console.WriteLine();
+                _console.WriteError($"Model download failed: {ex.Message}");
+                System.Console.WriteLine();
+                System.Console.WriteLine("💡 Suggestions:");
+                System.Console.WriteLine("  • Try a smaller model like 'llama3.2:1b' or 'phi3'");
+                System.Console.WriteLine("  • Check your internet connection");
+                System.Console.WriteLine("  • Ensure Ollama service is running properly");
+            }
+            catch (Exception ex)
+            {
+                System.Console.WriteLine();
+                _console.WriteError($"Unexpected error: {ex.Message}");
+            }
         }
     }
 

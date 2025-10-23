@@ -47,7 +47,7 @@ var answer = await intelligence.QueryIntelligenceAsync(
 SmartRAG lets you query multiple databases with natural language while combining document intelligence.
 
 ✅ **Multi-Database RAG** - Query SQL Server, MySQL, PostgreSQL, SQLite **together** in one natural language request  
-✅ **Multi-Modal Intelligence** - Combine PDFs, Excel, Images (OCR), Audio (Speech-to-Text), and Databases in one answer  
+✅ **Multi-Modal Intelligence** - Combine PDFs, Excel, Images (OCR), Audio (Whisper.net), and Databases in one answer  
 ✅ **On-Premise Ready** - 100% local operation with Ollama, LM Studio, Whisper.net → GDPR/KVKK/HIPAA compliant  
 ✅ **Production Ready** - Enterprise-grade error handling, comprehensive testing, production-ready  
 ✅ **Conversation History** - Built-in automatic context management across multiple questions  
@@ -223,11 +223,6 @@ public class MyService
 - 🏢 **Enterprise-Ready**: Suitable for production systems with critical accuracy needs
 - 💰 **Cost-Effective**: No per-request pricing, unlimited local usage after download
 
-**☁️ Cloud Transcription (Google Cloud Speech-to-Text) - OPTIONAL:**
-- 📤 Audio data sent to Google Cloud for processing
-- 💰 Requires Google Cloud API key and billing
-- ⚡ Real-time transcription
-- 🔒 If data privacy is critical, use Whisper.net instead
 
 #### **OCR (Image to Text) Limitation**
 **Tesseract OCR library cannot fully support handwritten text (success rate is very low)**:
@@ -717,7 +712,7 @@ Here are 10 powerful real-world scenarios demonstrating SmartRAG's unique multi-
 - **`IDocumentSearchService`**: Intelligent query processing with RAG pipeline and conversation management
 - **`ISemanticSearchService`**: Advanced semantic search with hybrid scoring
 - **`IAIService`**: Universal AI provider integration (OpenAI, Anthropic, Gemini, Azure, Custom)
-- **`IDocumentParserService`**: Multi-format document parsing (PDF, Word, Excel, Images with OCR, Audio with Speech-to-Text)
+- **`IDocumentParserService`**: Multi-format document parsing (PDF, Word, Excel, Images with OCR, Audio with Whisper.net)
 - **`IDatabaseParserService`**: Universal database support (SQLite, SQL Server, MySQL, PostgreSQL) with live connections
 - **`IStorageProvider`**: Enterprise storage options (Vector databases, Redis, SQL, FileSystem)
 - **`IAIProvider`**: Pluggable AI provider architecture with automatic failover
@@ -860,13 +855,12 @@ SmartRAG supports a wide range of document formats with intelligent parsing and 
 - **🔍 Format Auto-Detection**: Automatic image format detection and validation across all supported types
 - **🏗️ Structured Data Output**: Converts images to searchable, queryable knowledge base content
 
-### **🎵 Audio Files (.mp3, .wav, .m4a, .aac, .ogg, .flac, .wma) - LOCAL & CLOUD TRANSCRIPTION**
+### **🎵 Audio Files (.mp3, .wav, .m4a, .aac, .ogg, .flac, .wma) - LOCAL TRANSCRIPTION**
 - **🏠 Whisper.net (Local - DEFAULT)**: 100% privacy-preserving local transcription using OpenAI's Whisper model
 - **🌍 Multi-Language Support**: 99+ languages including Turkish, English, German, Russian, Chinese, Arabic
 - **⚙️ Hardware Acceleration**: CPU, CUDA (NVIDIA GPU), CoreML (Apple Silicon), OpenVino (Intel)
-- **📦 Model Options**: Tiny (75MB), Base (142MB - Recommended), Small (466MB), Medium (1.5GB), Large-v1/v2/v3 (2.9GB)
+- **📦 Model Options**: Tiny (75MB), Base (142MB), Small (466MB), Medium (1.5GB), Large-v1/v2/v3 (2.9GB)
 - **🔄 Auto-Download**: Models automatically download on first use from Hugging Face
-- **☁️ Google Cloud (Optional)**: Enterprise-grade cloud transcription alternative
 - **📊 Confidence Scoring**: Detailed transcription confidence metrics
 - **⏱️ Timestamps**: Optional word-level and segment-level timestamp extraction
 - **🔍 Format Detection**: Automatic audio format validation and content type recognition
@@ -1636,7 +1630,6 @@ SmartRAG is built with these excellent open-source libraries and cloud services:
 
 #### **Speech-to-Text**
 - **🎤 [Whisper.net](https://github.com/sandrohanea/whisper.net)** - Local speech-to-text transcription (.NET bindings for OpenAI Whisper)
-- **☁️ [Google Cloud Speech-to-Text](https://cloud.google.com/speech-to-text)** - Enterprise speech recognition API (optional)
 
 #### **Vector Databases & Storage**
 - **🗄️ [Qdrant](https://github.com/qdrant/qdrant)** - Vector similarity search engine

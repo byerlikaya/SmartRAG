@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Audio & OCR
-description: SmartRAG audio and OCR configuration - Google Speech-to-Text and Tesseract OCR settings
+description: SmartRAG audio and OCR configuration - Whisper.net and Tesseract OCR settings
 lang: en
 ---
 
@@ -11,17 +11,21 @@ SmartRAG provides capabilities for converting audio files to text and extracting
 
 ---
 
-## Google Speech-to-Text
+## Whisper.net (Local Audio Transcription)
 
 ### Configuration
 
 ```json
 {
-  "GoogleSpeech": {
-    "CredentialsPath": "./path/to/google-credentials.json",
-    "DefaultLanguageCode": "en-US",
-    "EnableAutomaticPunctuation": true,
-    "Model": "default"
+  "SmartRAG": {
+    "WhisperConfig": {
+      "ModelPath": "models/ggml-large-v3.bin",
+      "DefaultLanguage": "auto",
+      "MinConfidenceThreshold": 0.3,
+      "IncludeWordTimestamps": false,
+      "PromptHint": "",
+      "MaxThreads": 0
+    }
   }
 }
 ```
@@ -29,29 +33,32 @@ SmartRAG provides capabilities for converting audio files to text and extracting
 ```csharp
 builder.Services.AddSmartRag(configuration, options =>
 {
-    options.GoogleSpeechConfig = new GoogleSpeechConfig
+    options.WhisperConfig = new WhisperConfig
     {
-        CredentialsPath = "./path/to/google-credentials.json",
-        DefaultLanguageCode = "en-US",
-        EnableAutomaticPunctuation = true,
-        Model = "default"
+        ModelPath = "models/ggml-large-v3.bin",
+        DefaultLanguage = "auto",
+        MinConfidenceThreshold = 0.3,
+        IncludeWordTimestamps = false,
+        PromptHint = "",
+        MaxThreads = 0
     };
 });
 ```
 
 ### Supported Languages
 
-- `en-US` - English (United States)
-- `tr-TR` - Turkish (Turkey)
-- `de-DE` - German (Germany)
-- `fr-FR` - French (France)
-- `es-ES` - Spanish (Spain)
-- `it-IT` - Italian (Italy)
-- `ru-RU` - Russian (Russia)
-- `ja-JP` - Japanese (Japan)
-- `ko-KR` - Korean (South Korea)
-- `zh-CN` - Chinese (China)
-- 100+ languages supported - [View all](https://cloud.google.com/speech-to-text/docs/languages)
+- `auto` - Automatic language detection (recommended)
+- `en` - English
+- `tr` - Turkish
+- `de` - German
+- `fr` - French
+- `es` - Spanish
+- `it` - Italian
+- `ru` - Russian
+- `ja` - Japanese
+- `ko` - Korean
+- `zh` - Chinese
+- 99+ languages supported
 
 ### Usage Example
 
@@ -71,10 +78,10 @@ var response = await _aiService.AskAsync(
 );
 ```
 
-<div class="alert alert-warning">
-    <h4><i class="fas fa-exclamation-triangle me-2"></i> Privacy Note</h4>
+<div class="alert alert-success">
+    <h4><i class="fas fa-shield-alt me-2"></i> Privacy First</h4>
     <p class="mb-0">
-        Audio files are sent to Google Cloud for transcription. For complete data privacy, avoid uploading audio files or use alternative on-premise solutions.
+        Audio files are processed locally using Whisper.net. No data leaves your machine - perfect for GDPR/KVKK/HIPAA compliance.
     </p>
 </div>
 
@@ -165,6 +172,13 @@ var info = await _aiService.AskAsync(
 
 ### Supported File Formats
 
+**Audio Formats:**
+- `audio/mpeg` - MP3 files
+- `audio/wav` - WAV files
+- `audio/m4a` - M4A files
+- `audio/flac` - FLAC files
+- `audio/ogg` - OGG files
+
 **Image Formats:**
 - `image/jpeg` - JPEG images
 - `image/png` - PNG images
@@ -174,6 +188,13 @@ var info = await _aiService.AskAsync(
 
 **PDF Formats:**
 - `application/pdf` - PDF documents (page-by-page OCR)
+
+### Audio Quality Tips
+
+1. **Clear Audio:** Avoid background noise and echo
+2. **Good Microphone:** Use quality recording equipment
+3. **Correct Language:** Specify the correct language of speech
+4. **File Format:** MP3, WAV, M4A formats work best
 
 ### OCR Quality Tips
 
@@ -186,28 +207,30 @@ var info = await _aiService.AskAsync(
 
 ## Audio and OCR Comparison
 
-| Feature | Google Speech-to-Text | Tesseract OCR |
-|---------|----------------------|---------------|
-| **Data Privacy** | ❌ Sent to cloud | ✅ 100% On-premise |
+| Feature | Whisper.net | Tesseract OCR |
+|---------|-------------|---------------|
+| **Data Privacy** | ✅ 100% On-premise | ✅ 100% On-premise |
 | **Accuracy** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
 | **Language Support** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
-| **Setup** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **Cost** | 💰 Paid | 🆓 Free |
-| **Performance** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
+| **Setup** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| **Cost** | 🆓 Free | 🆓 Free |
+| **Performance** | ⭐⭐⭐⭐ | ⭐⭐⭐ |
 
 ---
 
 ## Security and Privacy
 
-### Recommendations for Audio Files
+### Audio Security
 
 ```csharp
-// Use on-premise solutions for sensitive audio files
-if (isSensitiveAudio)
-{
-    // Alternative: Whisper.cpp or other on-premise solutions
-    throw new NotSupportedException("Use on-premise solutions for sensitive audio files");
-}
+// Whisper.net runs completely on-premise
+var document = await _documentService.UploadDocumentAsync(
+    sensitiveAudioStream,
+    "confidential-meeting.mp3",
+    "audio/mpeg",
+    "user-id"
+    // Data is never sent to cloud
+);
 ```
 
 ### OCR Security

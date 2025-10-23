@@ -5,7 +5,7 @@
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
-    <PackageVersion>3.0.1</PackageVersion>
+    <PackageVersion>3.0.2</PackageVersion>
     <Authors>Barış Yerlikaya</Authors>
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
@@ -53,7 +53,6 @@ This release fixes critical runtime errors and improves overall stability.</Pack
   <!-- Package References -->
   <ItemGroup>
     <!-- Microsoft Extensions -->
-    <PackageReference Include="Google.Cloud.Speech.V1" Version="3.8.0" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.10" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.10" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.10" />
@@ -74,7 +73,7 @@ This release fixes critical runtime errors and improves overall stability.</Pack
     
     <!-- Database Connectivity -->
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.2" />
-    <PackageReference Include="MySql.Data" Version="9.4.0" />
+    <PackageReference Include="MySql.Data" Version="9.5.0" />
     <PackageReference Include="Npgsql" Version="8.0.8" />
     
     <!-- Validation -->
@@ -89,9 +88,9 @@ This release fixes critical runtime errors and improves overall stability.</Pack
     <PackageReference Include="SkiaSharp" Version="3.119.1" />
     
     <!-- Audio Processing -->
-    <!-- Google Speech-to-Text (Cloud) -->
     <!-- Whisper.net (Local transcription) -->
     <PackageReference Include="Whisper.net" Version="1.8.1" />
+    <PackageReference Include="Whisper.net.Runtime" Version="1.8.1" />
     <!-- FFMpegCore for cross-platform audio format conversion (MP3, M4A, FLAC → WAV) -->
     <PackageReference Include="FFMpegCore" Version="5.3.0" />
     

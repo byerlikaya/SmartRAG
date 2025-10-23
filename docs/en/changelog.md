@@ -10,6 +10,57 @@ All notable changes to SmartRAG are documented here. The project adheres to [Sem
 
 ---
 
+## [3.0.2] - 2025-10-22
+
+### 🚀 BREAKING CHANGES - Google Speech-to-Text Removal
+
+#### **Audio Processing Changes**
+- **Google Speech-to-Text Removed**: Complete removal of Google Cloud Speech-to-Text integration
+- **Whisper.net Only**: Audio transcription now exclusively uses Whisper.net for 100% local processing
+- **Data Privacy**: All audio processing is now completely local, ensuring GDPR/KVKK/HIPAA compliance
+- **Simplified Configuration**: Removed GoogleSpeechConfig and related configuration options
+
+#### **Files Removed**
+- `src/SmartRAG/Services/GoogleAudioParserService.cs` - Google Speech-to-Text service
+- `src/SmartRAG/Models/GoogleSpeechConfig.cs` - Google Speech configuration model
+
+#### **Files Modified**
+- `src/SmartRAG/SmartRAG.csproj` - Removed Google.Cloud.Speech.V1 NuGet package
+- `src/SmartRAG/Extensions/ServiceCollectionExtensions.cs` - Removed Google service registration
+- `src/SmartRAG/Factories/AudioParserFactory.cs` - Simplified to Whisper.net only
+- `src/SmartRAG/Models/SmartRagOptions.cs` - Removed GoogleSpeechConfig property
+- `src/SmartRAG/Enums/AudioProvider.cs` - Removed GoogleCloud enum value
+- `src/SmartRAG/Services/ServiceLogMessages.cs` - Updated log messages for Whisper.net
+
+#### **Documentation Updates**
+- **README.md**: Updated to reflect Whisper.net-only audio processing
+- **README.tr.md**: Updated Turkish documentation
+- **docs/**: Updated all documentation files to remove Google Speech references
+- **Examples**: Updated example configurations and documentation
+
+### ✨ Benefits
+- **100% Local Processing**: All audio transcription happens locally with Whisper.net
+- **Enhanced Privacy**: No data leaves your infrastructure
+- **Simplified Setup**: No Google Cloud credentials required
+- **Cost Effective**: No per-minute transcription costs
+- **Multi-Language**: 99+ languages supported with automatic detection
+
+### 🔧 Technical Details
+- **Whisper.net Integration**: Uses OpenAI's Whisper model via Whisper.net bindings
+- **Model Options**: Tiny (75MB), Base (142MB), Medium (1.5GB), Large-v3 (2.9GB)
+- **Hardware Acceleration**: CPU, CUDA, CoreML, OpenVino support
+- **Auto-Download**: Models automatically download on first use
+- **Format Support**: MP3, WAV, M4A, AAC, OGG, FLAC, WMA
+
+### 📚 Migration Guide
+If you were using Google Speech-to-Text:
+1. Remove any GoogleSpeechConfig from your configuration
+2. Ensure WhisperConfig is properly configured
+3. Update any custom audio processing code to use Whisper.net
+4. Test audio transcription with local Whisper.net models
+
+---
+
 ## [3.0.1] - 2025-10-22
 
 ### 🐛 Fixed
@@ -77,9 +128,10 @@ All notable changes to SmartRAG are documented here. The project adheres to [Sem
 ### ⚠️ Important Limitations
 
 #### Audio Files
-- **Google Cloud required**: Audio transcription requires Google Cloud Speech-to-Text API
-- **Data privacy**: Audio files sent to Google Cloud for processing
-- **Alternative**: Avoid audio files if data privacy is critical
+- **Google Speech-to-Text**: Audio transcription uses Google Cloud AI for enterprise-grade speech recognition
+- **Whisper.net**: Local audio transcription option for privacy-sensitive deployments
+- **Data privacy**: Whisper.net processes audio locally, Google Speech-to-Text sends to cloud
+- **Multi-language**: Both providers support 99+ languages with automatic detection
 - **Other formats**: All other file types remain completely local
 
 #### OCR (Image to Text)

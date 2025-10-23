@@ -68,7 +68,7 @@ SmartRAG yapılandırması aşağıdaki kategorilere ayrılmıştır:
                 <i class="fas fa-microphone"></i>
             </div>
             <h3>Ses & OCR</h3>
-            <p>Google Speech-to-Text ve Tesseract OCR yapılandırması</p>
+            <p>Whisper.net ve Tesseract OCR yapılandırması</p>
             <a href="{{ site.baseurl }}/tr/configuration/audio-ocr" class="btn btn-outline-primary btn-sm mt-3">
                 Ses & OCR
             </a>

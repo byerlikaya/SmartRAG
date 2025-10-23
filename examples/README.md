@@ -11,7 +11,7 @@ This directory contains example projects demonstrating how to use SmartRAG in di
 - **Features**: 
   - Multi-document upload (PDF, Word, Excel, text files)
   - Image processing with OCR support (.jpg, .png, .gif, .bmp, .tiff, .webp)
-  - Audio processing with Whisper.net (local, 99+ languages) and Google Cloud Speech-to-Text (optional)
+  - Audio processing with Whisper.net (local, 99+ languages)
   - AI-powered question answering
   - Smart query intent detection
   - Conversation history management

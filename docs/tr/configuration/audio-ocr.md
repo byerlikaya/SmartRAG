@@ -1,7 +1,7 @@
 ---
 layout: default
 title: Ses & OCR
-description: SmartRAG ses ve OCR yapılandırması - Google Speech-to-Text ve Tesseract OCR ayarları
+description: SmartRAG ses ve OCR yapılandırması - Whisper.net ve Tesseract OCR ayarları
 lang: tr
 ---
 
@@ -11,17 +11,21 @@ SmartRAG ses dosyalarını metne çevirme ve görsellerden metin çıkarma yeten
 
 ---
 
-## Google Speech-to-Text
+## Whisper.net (Yerel Ses Transkripsiyonu)
 
 ### Yapılandırma
 
 ```json
 {
-  "GoogleSpeech": {
-    "CredentialsPath": "./path/to/google-credentials.json",
-    "DefaultLanguageCode": "tr-TR",
-    "EnableAutomaticPunctuation": true,
-    "Model": "default"
+  "SmartRAG": {
+    "WhisperConfig": {
+      "ModelPath": "models/ggml-large-v3.bin",
+      "DefaultLanguage": "auto",
+      "MinConfidenceThreshold": 0.3,
+      "IncludeWordTimestamps": false,
+      "PromptHint": "",
+      "MaxThreads": 0
+    }
   }
 }
 ```
@@ -29,29 +33,32 @@ SmartRAG ses dosyalarını metne çevirme ve görsellerden metin çıkarma yeten
 ```csharp
 builder.Services.AddSmartRag(configuration, options =>
 {
-    options.GoogleSpeechConfig = new GoogleSpeechConfig
+    options.WhisperConfig = new WhisperConfig
     {
-        CredentialsPath = "./path/to/google-credentials.json",
-        DefaultLanguageCode = "tr-TR",
-        EnableAutomaticPunctuation = true,
-        Model = "default"
+        ModelPath = "models/ggml-large-v3.bin",
+        DefaultLanguage = "auto",
+        MinConfidenceThreshold = 0.3,
+        IncludeWordTimestamps = false,
+        PromptHint = "",
+        MaxThreads = 0
     };
 });
 ```
 
 ### Desteklenen Diller
 
-- `tr-TR` - Türkçe (Türkiye)
-- `en-US` - İngilizce (ABD)
-- `de-DE` - Almanca (Almanya)
-- `fr-FR` - Fransızca (Fransa)
-- `es-ES` - İspanyolca (İspanya)
-- `it-IT` - İtalyanca (İtalya)
-- `ru-RU` - Rusça (Rusya)
-- `ja-JP` - Japonca (Japonya)
-- `ko-KR` - Korece (Güney Kore)
-- `zh-CN` - Çince (Çin)
-- 100+ dil desteklenir - [Tüm dilleri görün](https://cloud.google.com/speech-to-text/docs/languages)
+- `auto` - Otomatik dil algılama (önerilen)
+- `tr` - Türkçe
+- `en` - İngilizce
+- `de` - Almanca
+- `fr` - Fransızca
+- `es` - İspanyolca
+- `it` - İtalyanca
+- `ru` - Rusça
+- `ja` - Japonca
+- `ko` - Korece
+- `zh` - Çince
+- 99+ dil desteklenir
 
 ### Kullanım Örneği
 
@@ -71,10 +78,10 @@ var response = await _aiService.AskAsync(
 );
 ```
 
-<div class="alert alert-warning">
-    <h4><i class="fas fa-exclamation-triangle me-2"></i> Gizlilik Notu</h4>
+<div class="alert alert-success">
+    <h4><i class="fas fa-shield-alt me-2"></i> Gizlilik Öncelikli</h4>
     <p class="mb-0">
-        Ses dosyaları transkripsiyon için Google Cloud'a gönderilir. Tam veri gizliliği için ses dosyası yüklemeyin veya alternatif on-premise çözümler kullanın.
+        Ses dosyaları Whisper.net kullanılarak yerel olarak işlenir. Hiçbir veri makinenizi terk etmez - GDPR/KVKK/HIPAA uyumluluğu için mükemmel.
     </p>
 </div>
 
@@ -165,6 +172,13 @@ var info = await _aiService.AskAsync(
 
 ### Desteklenen Dosya Formatları
 
+**Ses Formatları:**
+- `audio/mpeg` - MP3 dosyaları
+- `audio/wav` - WAV dosyaları
+- `audio/m4a` - M4A dosyaları
+- `audio/flac` - FLAC dosyaları
+- `audio/ogg` - OGG dosyaları
+
 **Görsel Formatları:**
 - `image/jpeg` - JPEG görseller
 - `image/png` - PNG görseller
@@ -174,6 +188,13 @@ var info = await _aiService.AskAsync(
 
 **PDF Formatları:**
 - `application/pdf` - PDF dokümanları (sayfa sayfa OCR)
+
+### Ses Kalite İpuçları
+
+1. **Temiz Ses:** Arka plan gürültüsü ve eko'dan kaçının
+2. **İyi Mikrofon:** Kaliteli kayıt ekipmanı kullanın
+3. **Doğru Dil:** Konuşmanın dilini doğru belirtin
+4. **Dosya Formatı:** MP3, WAV, M4A formatları en iyi sonucu verir
 
 ### OCR Kalite İpuçları
 
@@ -186,31 +207,33 @@ var info = await _aiService.AskAsync(
 
 ## Ses ve OCR Karşılaştırması
 
-| Özellik | Google Speech-to-Text | Tesseract OCR |
-|---------|----------------------|---------------|
-| **Veri Gizliliği** | ❌ Buluta gönderilir | ✅ %100 On-premise |
+| Özellik | Whisper.net | Tesseract OCR |
+|---------|-------------|---------------|
+| **Veri Gizliliği** | ✅ %100 On-premise | ✅ %100 On-premise |
 | **Doğruluk** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
 | **Dil Desteği** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
-| **Kurulum** | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **Maliyet** | 💰 Ücretli | 🆓 Ücretsiz |
-| **Performans** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ |
+| **Kurulum** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
+| **Maliyet** | 🆓 Ücretsiz | 🆓 Ücretsiz |
+| **Performans** | ⭐⭐⭐⭐ | ⭐⭐⭐ |
 
 ---
 
 ## Güvenlik ve Gizlilik
 
-### Ses Dosyaları için Öneriler
+### Ses Güvenliği
 
 ```csharp
-// Hassas ses dosyaları için on-premise çözümler kullanın
-if (isSensitiveAudio)
-{
-    // Alternatif: Whisper.cpp veya diğer on-premise çözümler
-    throw new NotSupportedException("Hassas ses dosyaları için on-premise çözümler kullanın");
-}
+// Whisper.net tamamen on-premise çalışır
+var document = await _documentService.UploadDocumentAsync(
+    sensitiveAudioStream,
+    "gizli-toplanti.mp3",
+    "audio/mpeg",
+    "kullanici-id"
+    // Veri hiçbir zaman buluta gönderilmez
+);
 ```
 
-### OCR için Güvenlik
+### OCR Güvenliği
 
 ```csharp
 // OCR tamamen on-premise çalışır

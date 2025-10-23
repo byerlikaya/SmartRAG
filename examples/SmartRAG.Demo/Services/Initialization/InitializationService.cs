@@ -29,7 +29,7 @@ public class InitializationService(
 
     public async Task SetupTestDatabasesAsync()
     {
-        var sqliteDbPath = Path.Combine(Directory.GetCurrentDirectory(), "TestData", "ProductCatalog.db");
+        var sqliteDbPath = Path.Combine(Directory.GetCurrentDirectory(), "TestSQLiteData", "ProductCatalog.db");
         var sqliteDir = Path.GetDirectoryName(sqliteDbPath);
 
         if (!string.IsNullOrEmpty(sqliteDir) && !Directory.Exists(sqliteDir))
@@ -52,9 +52,9 @@ public class InitializationService(
     public async Task<(bool UseLocal, AIProvider AIProvider, StorageProvider StorageProvider, AudioProvider AudioProvider)> SelectEnvironmentAsync()
     {
         await Task.CompletedTask;
-        
+
         _console.WriteSectionHeader("🚀 ENVIRONMENT SELECTION");
-        
+
         System.Console.WriteLine("Choose your deployment environment:");
         System.Console.WriteLine();
         System.Console.WriteLine("1. ☁️  CLOUD Environment (Cloud Services)");
@@ -72,12 +72,12 @@ public class InitializationService(
         System.Console.WriteLine("   ✅ GDPR/KVKK compliant - All data stays on your machine");
         System.Console.WriteLine();
 
-        var choice = _console.ReadLine("Selection (default: Local): ");
+        var choice = _console.ReadLine("Selection (default: Cloud): ");
 
         var useLocalEnvironment = choice switch
         {
-            "1" => false,
-            "2" or "" => true,
+            "1" or "" => false,
+            "2" => true,
             _ => true
         };
 
@@ -119,18 +119,18 @@ public class InitializationService(
         _console.WriteInfo("CLOUD Environment selected");
         System.Console.WriteLine($"  AI Provider: {selectedAIProvider}");
         System.Console.WriteLine("  Storage: Redis (Document storage)");
-        System.Console.WriteLine("  Audio: Google Cloud Speech-to-Text");
+        System.Console.WriteLine("  Audio: Whisper.net (Local transcription)");
         System.Console.WriteLine();
 
-        return (false, selectedAIProvider, StorageProvider.Redis, AudioProvider.GoogleCloud);
+        return (false, selectedAIProvider, StorageProvider.Redis, AudioProvider.Whisper);
     }
 
     public async Task<string> SelectLanguageAsync()
     {
         await Task.CompletedTask;
-        
+
         _console.WriteSectionHeader("🌍 LANGUAGE SELECTION");
-        
+
         System.Console.WriteLine("Please select the language for test queries and AI responses:");
         System.Console.WriteLine();
         System.Console.WriteLine("1. 🇬🇧 English");

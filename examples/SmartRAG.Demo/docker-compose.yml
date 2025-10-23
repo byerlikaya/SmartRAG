@@ -3,6 +3,8 @@ services:
   sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: smartrag-sqlserver-test
+    env_file:
+      - .env
     environment:
       ACCEPT_EULA: "Y"
       SA_PASSWORD: "${SQLSERVER_SA_PASSWORD}"
@@ -22,6 +24,8 @@ services:
   mysql:
     image: mysql:8.0
     container_name: smartrag-mysql-test
+    env_file:
+      - .env
     environment:
       MYSQL_ROOT_PASSWORD: "${MYSQL_ROOT_PASSWORD}"
       MYSQL_DATABASE: "test"
@@ -41,6 +45,8 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: smartrag-postgres-test
+    env_file:
+      - .env
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"

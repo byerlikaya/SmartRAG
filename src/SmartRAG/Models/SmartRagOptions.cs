@@ -66,14 +66,9 @@ namespace SmartRAG.Models
         public List<AIProvider> FallbackProviders { get; set; } = new List<AIProvider>();
 
         /// <summary>
-        /// Selected audio transcription provider
+        /// Selected audio transcription provider - only Whisper.net supported
         /// </summary>
         public AudioProvider AudioProvider { get; set; } = AudioProvider.Whisper;
-
-        /// <summary>
-        /// Google Speech-to-Text configuration for audio transcription
-        /// </summary>
-        public GoogleSpeechConfig GoogleSpeechConfig { get; set; }
 
         /// <summary>
         /// Whisper configuration for local audio transcription

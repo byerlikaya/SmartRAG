@@ -23,15 +23,46 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
         public MySqlTestDatabaseCreator(IConfiguration? configuration = null)
         {
             _configuration = configuration;
-            _server = "localhost";
-            _port = 3306;
             _user = "root";
-            _password = Environment.GetEnvironmentVariable("MYSQL_ROOT_PASSWORD");
-            if (string.IsNullOrEmpty(_password))
+            
+            // Try to get connection details from configuration first
+            string? server = null;
+            int port = 3306;
+            string? password = null;
+            string? databaseName = null;
+            
+            if (_configuration != null)
             {
-                throw new InvalidOperationException("MYSQL_ROOT_PASSWORD environment variable is required");
+                var connectionString = _configuration.GetConnectionString("InventoryManagement") ?? 
+                                     _configuration["DatabaseConnections:2:ConnectionString"];
+                
+                if (!string.IsNullOrEmpty(connectionString))
+                {
+                    var builder = new MySqlConnectionStringBuilder(connectionString);
+                    server = builder.Server;
+                    port = (int)builder.Port;
+                    password = builder.Password;
+                    databaseName = builder.Database;
+                }
             }
-            _databaseName = "InventoryManagement";
+            
+            // Fallback to defaults if not found in config
+            _server = server ?? "localhost";
+            _port = port;
+            _databaseName = databaseName ?? "InventoryManagement";
+            
+            // Fallback to environment variable for password
+            if (string.IsNullOrEmpty(password))
+            {
+                password = Environment.GetEnvironmentVariable("MYSQL_ROOT_PASSWORD");
+            }
+            
+            if (string.IsNullOrEmpty(password))
+            {
+                throw new InvalidOperationException("MySQL password not found in configuration or environment variables");
+            }
+            
+            _password = password;
         }
 
         public DatabaseType GetDatabaseType() => DatabaseType.MySQL;

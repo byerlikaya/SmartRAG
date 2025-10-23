@@ -57,10 +57,12 @@ namespace SmartRAG.Extensions
             services.AddScoped<IDocumentSearchService, DocumentSearchService>();
             services.AddScoped<IImageParserService, ImageParserService>();
             
-            // Audio parser services - register both implementations
-            services.AddScoped<GoogleAudioParserService>();
+            // Audio conversion service - shared by audio parser
+            services.AddScoped<AudioConversionService>();
+            
+            // Audio parser service - only Whisper.net
             services.AddScoped<WhisperAudioParserService>();
-            services.AddSingleton<IAudioParserFactory, AudioParserFactory>();
+            services.AddScoped<IAudioParserFactory, AudioParserFactory>();
             
             // IAudioParserService registration - factory creates based on configuration
             services.AddScoped<IAudioParserService>(sp =>
@@ -73,9 +75,9 @@ namespace SmartRAG.Extensions
             services.AddScoped<IDatabaseParserService, DatabaseParserService>();
             
             // Multi-database services
-            services.AddSingleton<IDatabaseSchemaAnalyzer, DatabaseSchemaAnalyzer>();
-            services.AddSingleton<IDatabaseConnectionManager, DatabaseConnectionManager>();
-            services.AddSingleton<IMultiDatabaseQueryCoordinator, MultiDatabaseQueryCoordinator>();
+            services.AddScoped<IDatabaseSchemaAnalyzer, DatabaseSchemaAnalyzer>();
+            services.AddScoped<IDatabaseConnectionManager, DatabaseConnectionManager>();
+            services.AddScoped<IMultiDatabaseQueryCoordinator, MultiDatabaseQueryCoordinator>();
             
             // Add memory cache for database operations
             services.AddMemoryCache();

@@ -47,7 +47,7 @@ var cevap = await intelligence.QueryIntelligenceAsync(
 SmartRAG, birden fazla veritabanını doğal dille sorgulayıp belge zekasıyla birleştirmenize olanak tanır.
 
 ✅ **Multi-Database RAG** - SQL Server, MySQL, PostgreSQL, SQLite'ı **tek bir doğal dil isteğinde birlikte** sorgulayın  
-✅ **Multi-Modal Zeka** - PDF, Excel, Resim (OCR), Ses (Speech-to-Text) ve Veritabanlarını tek cevapta birleştirin  
+✅ **Multi-Modal Zeka** - PDF, Excel, Resim (OCR), Ses (Whisper.net) ve Veritabanlarını tek cevapta birleştirin  
 ✅ **On-Premise Hazır** - Ollama, LM Studio, Whisper.net ile %100 yerel çalışma → KVKK/GDPR/HIPAA uyumlu  
 ✅ **Üretime Hazır** - Kurumsal düzeyde hata yönetimi, kapsamlı test edilmiş, production-ready  
 ✅ **Konuşma Geçmişi** - Yerleşik otomatik bağlam yönetimi, birden fazla soru arasında süreklilik  
@@ -207,11 +207,6 @@ public class MyService
 - ✅ **GDPR/KVKK/HIPAA**: Yerinde dağıtımlar için tamamen uyumludur
 - ⚙️ **Bağımsız**: Manuel kurulum gerekmez, her şey otomatik olarak indirilir
 
-**☁️ Bulut Transkripsiyonu (Google Cloud Speech-to-Text) - İSTEĞE BAĞLI:**
-- 📤 İşlenmek üzere Google Cloud'a gönderilen ses verileri
-- 💰 Google Cloud API anahtarı ve faturalandırma gerektirir
-- ⚡ Gerçek zamanlı transkripsiyon
-- 🔒 Veri gizliliği kritik öneme sahipse, bunun yerine Whisper.net'i kullanın
 
 #### **OCR (Görüntüden Metne) Sınırlaması**
 **Tesseract OCR kütüphanesi el yazısı metinleri tam olarak destekleyemez (başarı oranı çok düşüktür)**:
@@ -1611,7 +1606,6 @@ SmartRAG, aşağıdaki mükemmel açık kaynak kütüphaneler ve bulut hizmetler
 
 #### **Konuşmayı Metne Dönüştürme**
 - **🎤 [Whisper.net](https://github.com/sandrohanea/whisper.net)** - Yerel konuşmayı metne dönüştürme (.NET bağlamaları için OpenAI Whisper)
-- **☁️ [Google Cloud Speech-to-Text](https://cloud.google.com/speech-to-text)** - Kurumsal konuşma tanıma API'si (isteğe bağlı)
 
 #### **Vektör Veritabanları ve Depolama**
 - **🗄️ [Qdrant](https://github.com/qdrant/qdrant)** - Vektör benzerlik arama motoru
