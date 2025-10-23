@@ -231,7 +231,7 @@ namespace SmartRAG.Services
                     // Build SQL generation prompt (tables are already validated)
                     var prompt = BuildSQLGenerationPrompt(queryIntent.OriginalQuery, dbQuery, schema);
                     _logger.LogInformation("=== AI PROMPT FOR {DatabaseId} (Initial) ===", dbQuery.DatabaseId);
-                    _logger.LogInformation("{Prompt}", prompt);
+                    _logger.LogInformation("{Prompt}", prompt.Replace(Environment.NewLine, "").Replace("\n", "").Replace("\r", ""));
                     _logger.LogInformation("=== END PROMPT ===");
                     
                     // Generate SQL using AI
@@ -327,7 +327,7 @@ namespace SmartRAG.Services
                             _logger.LogInformation("=== AI RETRY PROMPT FOR {DatabaseId} (Simplified - Attempt {Attempt}) ===", dbQuery.DatabaseId, retryAttempt + 2);
                         }
                         
-                        _logger.LogInformation("{Prompt}", retryPrompt);
+                        _logger.LogInformation("{Prompt}", retryPrompt.Replace(Environment.NewLine, "").Replace("\n", "").Replace("\r", ""));
                         _logger.LogInformation("=== END RETRY PROMPT ===");
                         
                         var retriedSql = await _aiService.GenerateResponseAsync(retryPrompt, new List<string>());
