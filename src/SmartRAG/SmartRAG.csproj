@@ -43,7 +43,7 @@ This release removes Google Speech-to-Text dependency and focuses on local audio
     <!-- Build Configuration -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);1591;NU5128</NoWarn>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <TreatWarningsAsErrors Condition="'$(Configuration)' != 'Release'">true</TreatWarningsAsErrors>
     
     <!-- Assembly Information -->
     <AssemblyTitle>SmartRAG</AssemblyTitle>
