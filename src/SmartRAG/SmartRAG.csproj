@@ -95,7 +95,6 @@ This release removes Google Speech-to-Text dependency and focuses on local audio
     <!-- Audio Processing -->
     <!-- Whisper.net (Local transcription) -->
     <PackageReference Include="Whisper.net" Version="1.8.1" />
-    <PackageReference Include="Whisper.net.AllRuntimes" Version="1.8.1" />
     <!-- FFMpegCore for cross-platform audio format conversion (MP3, M4A, FLAC → WAV) -->
     <PackageReference Include="FFMpegCore" Version="5.3.0" />
     
