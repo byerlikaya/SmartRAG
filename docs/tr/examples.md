@@ -189,7 +189,7 @@ curl -X POST "http://localhost:5000/api/ocr/upload/image?language=tur" \
 
 ### 4. Ses Transkripsiyonu
 
-Ses dosyalarını Google Speech-to-Text ile transkribe edin:
+Ses dosyalarını Whisper.net ile transkribe edin:
 
 ```csharp
 public class AudioController : ControllerBase

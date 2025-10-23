@@ -28,15 +28,48 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
         public PostgreSqlTestDatabaseCreator(IConfiguration? configuration = null)
         {
             _configuration = configuration;
-            _server = "localhost";
-            _port = 5432;
-            _user = "postgres";
-            _password = Environment.GetEnvironmentVariable("POSTGRES_PASSWORD");
-            if (string.IsNullOrEmpty(_password))
+            
+            // Try to get connection details from configuration first
+            string? server = null;
+            int port = 5432;
+            string? user = null;
+            string? password = null;
+            string? databaseName = null;
+            
+            if (_configuration != null)
             {
-                throw new InvalidOperationException("POSTGRES_PASSWORD environment variable is required");
+                var connectionString = _configuration.GetConnectionString("LogisticsManagement") ?? 
+                                     _configuration["DatabaseConnections:3:ConnectionString"];
+                
+                if (!string.IsNullOrEmpty(connectionString))
+                {
+                    var builder = new NpgsqlConnectionStringBuilder(connectionString);
+                    server = builder.Host;
+                    port = builder.Port;
+                    user = builder.Username;
+                    password = builder.Password;
+                    databaseName = builder.Database;
+                }
             }
-            _databaseName = "LogisticsManagement";
+            
+            // Fallback to defaults if not found in config
+            _server = server ?? "localhost";
+            _port = port;
+            _user = user ?? "postgres";
+            _databaseName = databaseName ?? "LogisticsManagement";
+            
+            // Fallback to environment variable for password
+            if (string.IsNullOrEmpty(password))
+            {
+                password = Environment.GetEnvironmentVariable("POSTGRES_PASSWORD");
+            }
+            
+            if (string.IsNullOrEmpty(password))
+            {
+                throw new InvalidOperationException("PostgreSQL password not found in configuration or environment variables");
+            }
+            
+            _password = password;
         }
 
         #endregion

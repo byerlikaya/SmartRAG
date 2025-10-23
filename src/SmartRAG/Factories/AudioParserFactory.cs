@@ -33,22 +33,12 @@ namespace SmartRAG.Factories
         #region Public Methods
 
         /// <summary>
-        /// Creates audio parser based on specified provider
+        /// Creates audio parser - only Whisper.net is supported
         /// </summary>
         public IAudioParserService CreateAudioParser(AudioProvider provider)
         {
-            if (provider == AudioProvider.GoogleCloud)
-            {
-                return _serviceProvider.GetRequiredService<GoogleAudioParserService>();
-            }
-            else if (provider == AudioProvider.Whisper)
-            {
-                return _serviceProvider.GetRequiredService<WhisperAudioParserService>();
-            }
-            else
-            {
-                throw new ArgumentException($"Unsupported audio provider: {provider}");
-            }
+            // Always use Whisper.net - only supported audio provider
+            return _serviceProvider.GetRequiredService<WhisperAudioParserService>();
         }
 
         /// <summary>

@@ -200,7 +200,7 @@ curl -X POST "http://localhost:5000/api/ocr/upload/image?language=eng" \
 
 ### 4. Audio Transcription
 
-Transcribe audio files with Google Speech-to-Text:
+Transcribe audio files with Whisper.net:
 
 ```csharp
 public class AudioController : ControllerBase

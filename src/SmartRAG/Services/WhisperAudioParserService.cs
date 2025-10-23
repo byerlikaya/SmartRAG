@@ -1,4 +1,3 @@
-using FFMpegCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartRAG.Interfaces;
@@ -9,7 +8,6 @@ using System.IO;
 using System.Threading.Tasks;
 using Whisper.net;
 using Whisper.net.Ggml;
-using Xabe.FFmpeg.Downloader;
 
 namespace SmartRAG.Services
 {
@@ -23,7 +21,6 @@ namespace SmartRAG.Services
 
         private const int DefaultSampleRate = 16000;
         private const string DefaultModelType = "base";
-        private const string FfmpegDownloadUrl = "https://ffmpeg.org/download.html";
 
         #endregion
 
@@ -31,19 +28,19 @@ namespace SmartRAG.Services
 
         private readonly ILogger<WhisperAudioParserService> _logger;
         private readonly WhisperConfig _config;
+        private readonly AudioConversionService _audioConversionService;
         private WhisperFactory _whisperFactory = null;
         private bool _disposed;
-        private static bool _ffmpegInitialized = false;
-        private static readonly object _ffmpegLock = new object();
 
         #endregion
 
         #region Constructor
 
-        public WhisperAudioParserService(ILogger<WhisperAudioParserService> logger, IOptions<SmartRagOptions> options)
+        public WhisperAudioParserService(ILogger<WhisperAudioParserService> logger, IOptions<SmartRagOptions> options, AudioConversionService audioConversionService)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _config = options?.Value?.WhisperConfig ?? throw new ArgumentNullException(nameof(options));
+            _audioConversionService = audioConversionService ?? throw new ArgumentNullException(nameof(audioConversionService));
         }
 
         #endregion
@@ -92,52 +89,6 @@ namespace SmartRAG.Services
         #region Private Methods
 
         /// <summary>
-        /// Ensures FFmpeg is initialized and available
-        /// </summary>
-        private void EnsureFfmpegInitialized()
-        {
-            if (_ffmpegInitialized)
-                return;
-
-            lock (_ffmpegLock)
-            {
-                if (_ffmpegInitialized)
-                    return;
-
-                try
-                {
-                    _logger.LogInformation("Initializing FFmpeg for audio conversion...");
-
-                    // Create FFmpeg directory
-                    var ffmpegDir = Path.Combine(Path.GetTempPath(), "SmartRAG", "ffmpeg");
-                    if (!Directory.Exists(ffmpegDir))
-                    {
-                        Directory.CreateDirectory(ffmpegDir);
-                    }
-
-                    // Download FFmpeg if not already present
-                    var task = Task.Run(async () =>
-                    {
-                        await FFmpegDownloader.GetLatestVersion(FFmpegVersion.Official, ffmpegDir);
-                    });
-                    task.Wait();
-
-                    // Configure FFMpegCore to use downloaded binaries
-                    GlobalFFOptions.Configure(new FFOptions { BinaryFolder = ffmpegDir });
-
-                    _ffmpegInitialized = true;
-                    _logger.LogInformation("FFmpeg initialized successfully at {Path}", ffmpegDir);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "FFmpeg auto-download failed. Falling back to system FFmpeg.");
-                    // Try to use system FFmpeg if download fails
-                    _ffmpegInitialized = true;
-                }
-            }
-        }
-
-        /// <summary>
         /// Ensures Whisper factory is initialized and model is loaded
         /// </summary>
         private async Task EnsureWhisperFactoryInitializedAsync()
@@ -146,9 +97,6 @@ namespace SmartRAG.Services
                 return;
 
             _logger.LogInformation("Initializing Whisper factory with model: {ModelPath}", _config.ModelPath);
-
-            // Ensure FFmpeg is initialized first (for audio conversion)
-            EnsureFfmpegInitialized();
 
             // Ensure model file exists, download if needed
             await EnsureModelExistsAsync();
@@ -266,11 +214,12 @@ namespace SmartRAG.Services
 
                     try
                     {
-                        if (needsConversion)
-                        {
-                            _logger.LogDebug("Converting audio file to WAV format: {FileName}", SanitizeFileName(fileName));
-                            waveStream = await ConvertToWavAsync(audioStream, fileName);
-                        }
+            if (needsConversion)
+            {
+                _logger.LogDebug("Converting audio file to WAV format: {FileName}", SanitizeFileName(fileName));
+                var (convertedStream, _) = await _audioConversionService.ConvertToCompatibleFormatAsync(audioStream, fileName);
+                waveStream = convertedStream;
+            }
                         else
                         {
                             // Already WAV, reset position
@@ -406,88 +355,7 @@ namespace SmartRAG.Services
         /// </summary>
         private static bool RequiresConversion(string fileName)
         {
-            var extension = Path.GetExtension(fileName).ToLowerInvariant();
-            return extension != ".wav";
-        }
-
-        /// <summary>
-        /// Converts audio stream to WAV format using FFMpeg
-        /// </summary>
-        private async Task<Stream> ConvertToWavAsync(Stream audioStream, string fileName)
-        {
-            var extension = Path.GetExtension(fileName).ToLowerInvariant();
-
-            // Reset stream position
-            audioStream.Position = 0;
-
-            var tempInputFile = Path.GetTempFileName() + extension;
-            var tempOutputFile = Path.GetTempFileName() + ".wav";
-
-            try
-            {
-                _logger.LogDebug("Converting {Extension} to WAV format", extension);
-
-                // Save input stream to temp file
-                using (var tempFileStream = File.Create(tempInputFile))
-                {
-                    await audioStream.CopyToAsync(tempFileStream).ConfigureAwait(false);
-                }
-
-                // Convert to WAV using FFMpeg
-                // 16kHz, 16-bit, mono - Whisper requirements
-                try
-                {
-                    await FFMpegArguments
-                        .FromFileInput(tempInputFile)
-                        .OutputToFile(tempOutputFile, overwrite: true, options => options
-                            .WithAudioCodec("pcm_s16le")
-                            .WithAudioSamplingRate(16000)
-                            .WithCustomArgument("-ac 1")) // Mono
-                        .ProcessAsynchronously();
-                }
-                catch (Exception ffmpegEx)
-                {
-                    _logger.LogError(ffmpegEx, "FFmpeg conversion failed. Is FFmpeg installed?");
-                    throw new InvalidOperationException(
-                        $"FFmpeg is required for audio format conversion but not found or failed to execute. " +
-                        $"Please install FFmpeg from {FfmpegDownloadUrl} or convert your audio to WAV format manually.",
-                        ffmpegEx);
-                }
-
-                // Read converted WAV file into memory stream
-                var outputStream = new MemoryStream();
-                using (var wavFileStream = File.OpenRead(tempOutputFile))
-                {
-                    await wavFileStream.CopyToAsync(outputStream).ConfigureAwait(false);
-                }
-
-                outputStream.Position = 0;
-
-                _logger.LogDebug("Audio conversion completed: {InputSize} → {OutputSize} bytes",
-                    new FileInfo(tempInputFile).Length, outputStream.Length);
-
-                return outputStream;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Audio format conversion failed for {FileName}", SanitizeFileName(fileName));
-                throw;
-            }
-            finally
-            {
-                // Cleanup temp files
-                try
-                {
-                    if (File.Exists(tempInputFile))
-                        File.Delete(tempInputFile);
-                    if (File.Exists(tempOutputFile))
-                        File.Delete(tempOutputFile);
-                }
-                catch
-                {
-                    // Ignore cleanup errors
-                }
-            }
+            return AudioConversionService.RequiresConversion(fileName);
         }
 
         /// <summary>

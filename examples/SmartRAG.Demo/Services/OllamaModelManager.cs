@@ -12,7 +12,8 @@ public class OllamaModelManager
         #region Constants
 
         private const string DefaultOllamaEndpoint = "http://localhost:11434";
-        private const int DefaultTimeoutSeconds = 300;
+        private const int DefaultTimeoutMinutes = 30; // 30 dakika timeout
+        private const int MaxRetryAttempts = 3;
 
         #endregion
 
@@ -30,7 +31,7 @@ public class OllamaModelManager
             _ollamaEndpoint = ollamaEndpoint ?? DefaultOllamaEndpoint;
             _httpClient = new HttpClient
             {
-                Timeout = TimeSpan.FromSeconds(DefaultTimeoutSeconds)
+                Timeout = TimeSpan.FromMinutes(DefaultTimeoutMinutes)
             };
         }
 
@@ -56,43 +57,92 @@ public class OllamaModelManager
         }
 
         /// <summary>
-        /// Downloads and installs a model from Ollama
+        /// Downloads and installs a model from Ollama with retry mechanism
         /// </summary>
         /// <returns>Task representing the async operation</returns>
         public async Task DownloadModelAsync(string modelName, Action<string>? progressCallback = null)
         {
-            progressCallback?.Invoke($"Starting download of model: {modelName}");
-
-            var payload = new { name = modelName };
-            var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-
-            var response = await _httpClient.PostAsync($"{_ollamaEndpoint}/api/pull", content);
-            response.EnsureSuccessStatusCode();
-
-            using var stream = await response.Content.ReadAsStreamAsync();
-            using var reader = new StreamReader(stream);
-
-            while (!reader.EndOfStream)
+            for (int attempt = 1; attempt <= MaxRetryAttempts; attempt++)
             {
-                var line = await reader.ReadLineAsync();
-                if (!string.IsNullOrEmpty(line))
+                try
                 {
-                    try
+                    progressCallback?.Invoke($"Starting download of model: {modelName} (Attempt {attempt}/{MaxRetryAttempts})");
+
+                    var payload = new { name = modelName };
+                    var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+                    var response = await _httpClient.PostAsync($"{_ollamaEndpoint}/api/pull", content);
+                    response.EnsureSuccessStatusCode();
+
+                    using var stream = await response.Content.ReadAsStreamAsync();
+                    using var reader = new StreamReader(stream);
+
+                    while (!reader.EndOfStream)
                     {
-                        var json = JsonSerializer.Deserialize<JsonElement>(line);
-                        if (json.TryGetProperty("status", out var status))
+                        var line = await reader.ReadLineAsync();
+                        if (!string.IsNullOrEmpty(line))
                         {
-                            progressCallback?.Invoke(status.GetString() ?? "Downloading...");
+                            try
+                            {
+                                var json = JsonSerializer.Deserialize<JsonElement>(line);
+                                if (json.TryGetProperty("status", out var status))
+                                {
+                                    progressCallback?.Invoke(status.GetString() ?? "Downloading...");
+                                }
+                            }
+                            catch
+                            {
+                                // Ignore JSON parsing errors
+                            }
                         }
                     }
-                    catch
+
+                    progressCallback?.Invoke($"Model {modelName} downloaded successfully");
+                    return; // Success, exit retry loop
+                }
+                catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
+                {
+                    progressCallback?.Invoke($"Download timeout on attempt {attempt}/{MaxRetryAttempts}. Retrying in 5 seconds...");
+                    
+                    if (attempt < MaxRetryAttempts)
                     {
-                        // Ignore JSON parsing errors
+                        await Task.Delay(5000); // 5 saniye bekle
+                        continue;
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"Model download failed after {MaxRetryAttempts} attempts due to timeout. The model might be too large for your connection. Try a smaller model like 'llama3.2:1b' or 'phi3'.", ex);
+                    }
+                }
+                catch (HttpRequestException ex)
+                {
+                    progressCallback?.Invoke($"Network error on attempt {attempt}/{MaxRetryAttempts}: {ex.Message}");
+                    
+                    if (attempt < MaxRetryAttempts)
+                    {
+                        await Task.Delay(5000); // 5 saniye bekle
+                        continue;
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException($"Model download failed after {MaxRetryAttempts} attempts due to network issues. Please check your internet connection and Ollama service.", ex);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    progressCallback?.Invoke($"Unexpected error on attempt {attempt}/{MaxRetryAttempts}: {ex.Message}");
+                    
+                    if (attempt < MaxRetryAttempts)
+                    {
+                        await Task.Delay(5000); // 5 saniye bekle
+                        continue;
+                    }
+                    else
+                    {
+                        throw;
                     }
                 }
             }
-
-            progressCallback?.Invoke($"Model {modelName} downloaded successfully");
         }
 
         /// <summary>
@@ -157,13 +207,22 @@ public class OllamaModelManager
         {
             return new Dictionary<string, string>
             {
-                { "llama3.2", "Meta's Llama 3.2 - Fast and efficient (Recommended)" },
-                { "llama3.2:1b", "Llama 3.2 1B - Ultra lightweight version" },
+                { "llama3.2:1b", "Llama 3.2 1B - Ultra lightweight (Recommended for slow connections)" },
+                { "phi3", "Microsoft Phi-3 - Compact and fast (Good for testing)" },
                 { "nomic-embed-text", "Text embedding model (Required for RAG)" },
-                { "phi3", "Microsoft Phi-3 - Compact and fast" },
-                { "mistral", "Mistral 7B - High quality responses" },
-                { "qwen2.5", "Alibaba Qwen 2.5 - Multilingual support" }
+                { "llama3.2", "Meta's Llama 3.2 - Fast and efficient (Large download)" },
+                { "mistral", "Mistral 7B - High quality responses (Very large download)" },
+                { "qwen2.5", "Alibaba Qwen 2.5 - Multilingual support (Large download)" }
             };
+        }
+
+        /// <summary>
+        /// Gets small models recommended for slow connections
+        /// </summary>
+        /// <returns>List of small model names</returns>
+        public static List<string> GetSmallModels()
+        {
+            return new List<string> { "llama3.2:1b", "phi3", "nomic-embed-text" };
         }
 
         #endregion

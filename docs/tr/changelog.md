@@ -10,6 +10,57 @@ SmartRAG'deki tüm önemli değişiklikler burada belgelenmiştir. Proje [Anlams
 
 ---
 
+## [3.0.2] - 2025-10-24
+
+### 🚀 BREAKING CHANGES - Google Speech-to-Text Kaldırıldı
+
+#### **Ses İşleme Değişiklikleri**
+- **Google Speech-to-Text Kaldırıldı**: Google Cloud Speech-to-Text entegrasyonunun tamamen kaldırılması
+- **Sadece Whisper.net**: Ses transkripsiyonu artık sadece Whisper.net kullanıyor, %100 yerel işleme
+- **Veri Gizliliği**: Tüm ses işleme artık tamamen yerel, GDPR/KVKK/HIPAA uyumluluğu sağlanıyor
+- **Basitleştirilmiş Yapılandırma**: GoogleSpeechConfig ve ilgili yapılandırma seçenekleri kaldırıldı
+
+#### **Kaldırılan Dosyalar**
+- `src/SmartRAG/Services/GoogleAudioParserService.cs` - Google Speech-to-Text servisi
+- `src/SmartRAG/Models/GoogleSpeechConfig.cs` - Google Speech yapılandırma modeli
+
+#### **Değiştirilen Dosyalar**
+- `src/SmartRAG/SmartRAG.csproj` - Google.Cloud.Speech.V1 NuGet paketi kaldırıldı
+- `src/SmartRAG/Extensions/ServiceCollectionExtensions.cs` - Google servis kaydı kaldırıldı
+- `src/SmartRAG/Factories/AudioParserFactory.cs` - Sadece Whisper.net için basitleştirildi
+- `src/SmartRAG/Models/SmartRagOptions.cs` - GoogleSpeechConfig özelliği kaldırıldı
+- `src/SmartRAG/Enums/AudioProvider.cs` - GoogleCloud enum değeri kaldırıldı
+- `src/SmartRAG/Services/ServiceLogMessages.cs` - Whisper.net için log mesajları güncellendi
+
+#### **Dokümantasyon Güncellemeleri**
+- **README.md**: Whisper.net-only ses işleme için güncellendi
+- **README.tr.md**: Türkçe dokümantasyon güncellendi
+- **docs/**: Tüm dokümantasyon dosyalarından Google Speech referansları kaldırıldı
+- **Examples**: Örnek yapılandırmalar ve dokümantasyon güncellendi
+
+### ✨ Faydalar
+- **%100 Yerel İşleme**: Tüm ses transkripsiyonu Whisper.net ile yerel olarak yapılıyor
+- **Geliştirilmiş Gizlilik**: Veri altyapınızı terk etmiyor
+- **Basitleştirilmiş Kurulum**: Google Cloud kimlik bilgileri gerekmiyor
+- **Maliyet Etkin**: Dakika başına transkripsiyon maliyeti yok
+- **Çok Dilli**: Otomatik algılama ile 99+ dil desteği
+
+### 🔧 Teknik Detaylar
+- **Whisper.net Entegrasyonu**: Whisper.net bağlamaları aracılığıyla OpenAI'nin Whisper modelini kullanır
+- **Model Seçenekleri**: Tiny (75MB), Base (142MB), Medium (1.5GB), Large-v3 (2.9GB)
+- **Donanım Hızlandırması**: CPU, CUDA, CoreML, OpenVino desteği
+- **Otomatik İndirme**: Modeller ilk kullanımda otomatik olarak indirilir
+- **Format Desteği**: MP3, WAV, M4A, AAC, OGG, FLAC, WMA
+
+### 📚 Geçiş Rehberi
+Google Speech-to-Text kullanıyorsanız:
+1. Yapılandırmanızdan GoogleSpeechConfig'i kaldırın
+2. WhisperConfig'in doğru yapılandırıldığından emin olun
+3. Özel ses işleme kodunuzu Whisper.net kullanacak şekilde güncelleyin
+4. Yerel Whisper.net modelleri ile ses transkripsiyonunu test edin
+
+---
+
 ## [3.0.1] - 2025-10-22
 
 ### 🐛 Düzeltildi
@@ -77,9 +128,10 @@ SmartRAG'deki tüm önemli değişiklikler burada belgelenmiştir. Proje [Anlams
 ### ⚠️ Önemli Kısıtlamalar
 
 #### Ses Dosyaları
-- **Google Cloud gerekli**: Ses transkripsiyonu Google Cloud Speech-to-Text API gerektirir
-- **Veri gizliliği**: Ses dosyaları işleme için Google Cloud'a gönderilir
-- **Alternatif**: Veri gizliliği kritikse ses dosyalarından kaçının
+- **Google Speech-to-Text**: Ses transkripsiyonu kurumsal düzeyde konuşma tanıma için Google Cloud AI kullanır
+- **Whisper.net**: Gizlilik hassas dağıtımlar için yerel ses transkripsiyonu seçeneği
+- **Veri gizliliği**: Whisper.net sesi yerel olarak işler, Google Speech-to-Text buluta gönderir
+- **Çok dilli**: Her iki sağlayıcı da otomatik algılama ile 99+ dil destekler
 - **Diğer formatlar**: Diğer tüm dosya tipleri tamamen yerel kalır
 
 #### OCR (Görsel'den Metne)
@@ -266,7 +318,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
         <tbody>
             <tr>
                 <td><strong>3.0.0</strong></td>
-                <td>2025-10-18</td>
+                <td>2025-10-22</td>
                 <td>Zeka Kütüphanesi Devrimi, SQL Üretimi, Yerinde Destek, PostgreSQL</td>
             </tr>
             <tr>

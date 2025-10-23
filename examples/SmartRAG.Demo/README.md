@@ -61,7 +61,7 @@ For production-grade scalability:
 ### SQLite - ProductCatalog
 - Customers, Products, Categories, Orders, Employees
 - Automatically created on first run
-- **Location**: `TestData/ProductCatalog.db`
+- **Location**: `TestSQLiteData/ProductCatalog.db`
 
 ### SQL Server - SalesManagement
 - Orders, OrderDetails, Payments, SalesSummary

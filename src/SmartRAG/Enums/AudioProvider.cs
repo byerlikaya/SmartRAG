@@ -6,12 +6,7 @@ namespace SmartRAG.Enums
     public enum AudioProvider
     {
         /// <summary>
-        /// Google Cloud Speech-to-Text (Cloud-based)
-        /// </summary>
-        GoogleCloud,
-        
-        /// <summary>
-        /// Whisper.net (Local transcription)
+        /// Whisper.net (Local transcription - only supported provider)
         /// </summary>
         Whisper
     }

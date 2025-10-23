@@ -317,6 +317,10 @@ BenchmarkDotNet.Artifacts/
 *.otf
 *.otm
 
+# OCR Model files - Large binary files
+tessdata/
+*.traineddata
+
 # Exception for documentation site
 !docs/_site/
 !docs/_site/**/*
@@ -332,3 +336,17 @@ documents/
 files/
 temp/
 temp-files/
+
+# Test data directories
+TestSQLiteData/
+
+# Whisper.net model files
+models/
+**/models/
+**/ggml-*.bin
+**/ggml-large-v3.bin
+
+# Development notes and TODO files
+TODO.md
+NOTES.md
+DEVELOPMENT.md
