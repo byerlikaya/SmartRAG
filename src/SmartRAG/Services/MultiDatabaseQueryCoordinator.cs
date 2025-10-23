@@ -384,7 +384,7 @@ namespace SmartRAG.Services
                         {
                             var prompt = BuildSQLGenerationPrompt(queryIntent.OriginalQuery, additionalQuery, schema);
                             _logger.LogInformation("=== AI PROMPT FOR ADDITIONAL DATABASE {DatabaseId} ===", additionalQuery.DatabaseId);
-                            _logger.LogInformation("{Prompt}", prompt);
+                            _logger.LogInformation("{Prompt}", prompt.Replace(Environment.NewLine, "").Replace("\n", "").Replace("\r", ""));
                             _logger.LogInformation("=== END ADDITIONAL PROMPT ===");
                             var sql = await _aiService.GenerateResponseAsync(prompt, new List<string>());
                             var extractedSql = ExtractSQLFromAIResponse(sql);
