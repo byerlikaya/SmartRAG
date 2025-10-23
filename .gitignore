@@ -345,3 +345,8 @@ models/
 **/models/
 **/ggml-*.bin
 **/ggml-large-v3.bin
+
+# Development notes and TODO files
+TODO.md
+NOTES.md
+DEVELOPMENT.md
