@@ -35,7 +35,8 @@ public class DocumentHandler(
         System.Console.WriteLine("  • Audio files (.mp3, .wav, .m4a)");
         System.Console.WriteLine();
 
-        var filePath = _console.ReadLine("Enter file path (or drag & drop file here): ")?.Trim().Trim('"');
+        // Dosya yolu alma ve sürükle-bırak desteği
+        var filePath = await GetFilePathAsync();
 
         if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
         {
@@ -168,6 +169,56 @@ public class DocumentHandler(
     #endregion
 
     #region Private Methods
+
+    private async Task<string?> GetFilePathAsync()
+    {
+        await Task.CompletedTask;
+        
+        System.Console.WriteLine("📁 File Selection Options:");
+        System.Console.WriteLine("1. Type file path manually");
+        System.Console.WriteLine("2. Drag & drop file (paste path)");
+        System.Console.WriteLine();
+        
+        var choice = _console.ReadLine("Choose option (1-2): ")?.Trim();
+        
+        if (choice == "1")
+        {
+            return _console.ReadLine("Enter file path: ")?.Trim().Trim('"');
+        }
+        else if (choice == "2")
+        {
+            System.Console.WriteLine();
+            System.Console.WriteLine("💡 Instructions:");
+            System.Console.WriteLine("  1. Select file in Windows Explorer");
+            System.Console.WriteLine("  2. Press Ctrl+C to copy");
+            System.Console.WriteLine("  3. Press Ctrl+V to paste here");
+            System.Console.WriteLine();
+            
+            var filePath = _console.ReadLine("Paste file path here: ")?.Trim().Trim('"');
+            
+            // Windows Explorer'dan kopyalanan yol genellikle tırnak içinde gelir
+            if (!string.IsNullOrEmpty(filePath))
+            {
+                // Tırnak işaretlerini temizle
+                filePath = filePath.Trim('"');
+                
+                // Windows path'lerini normalize et
+                if (filePath.Contains("\\"))
+                {
+                    filePath = filePath.Replace("\\", Path.DirectorySeparatorChar.ToString());
+                }
+                
+                return filePath;
+            }
+            
+            return null;
+        }
+        else
+        {
+            _console.WriteError("Invalid choice!");
+            return null;
+        }
+    }
 
     private static string GetContentType(string filePath)
     {

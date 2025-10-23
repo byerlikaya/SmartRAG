@@ -230,6 +230,9 @@ namespace SmartRAG.Services
 
                     // Build SQL generation prompt (tables are already validated)
                     var prompt = BuildSQLGenerationPrompt(queryIntent.OriginalQuery, dbQuery, schema);
+                    _logger.LogInformation("=== AI PROMPT FOR {DatabaseId} (Initial) ===", dbQuery.DatabaseId);
+                    _logger.LogInformation("{Prompt}", prompt.Replace(Environment.NewLine, "").Replace("\n", "").Replace("\r", ""));
+                    _logger.LogInformation("=== END PROMPT ===");
                     
                     // Generate SQL using AI
                     var sql = await _aiService.GenerateResponseAsync(prompt, new List<string>());
@@ -309,17 +312,23 @@ namespace SmartRAG.Services
                         {
                             // First retry: Emphasize validation errors
                             retryPrompt = BuildStricterSQLPrompt(queryIntent.OriginalQuery, dbQuery, schema, currentErrors);
+                            _logger.LogInformation("=== AI RETRY PROMPT FOR {DatabaseId} (Stricter - Attempt {Attempt}) ===", dbQuery.DatabaseId, retryAttempt + 2);
                         }
                         else if (retryAttempt == 1)
                         {
                             // Second retry: Ultra-strict with ALL previous errors
                             retryPrompt = BuildUltraStrictSQLPrompt(queryIntent.OriginalQuery, dbQuery, schema, allErrors.Distinct().ToList(), retryAttempt + 1);
+                            _logger.LogInformation("=== AI RETRY PROMPT FOR {DatabaseId} (UltraStrict - Attempt {Attempt}) ===", dbQuery.DatabaseId, retryAttempt + 2);
                         }
                         else
                         {
                             // Third retry: Simplest possible query
                             retryPrompt = BuildSimplifiedSQLPrompt(queryIntent.OriginalQuery, dbQuery, schema, allErrors.Distinct().ToList());
+                            _logger.LogInformation("=== AI RETRY PROMPT FOR {DatabaseId} (Simplified - Attempt {Attempt}) ===", dbQuery.DatabaseId, retryAttempt + 2);
                         }
+                        
+                        _logger.LogInformation("{Prompt}", retryPrompt.Replace(Environment.NewLine, "").Replace("\n", "").Replace("\r", ""));
+                        _logger.LogInformation("=== END RETRY PROMPT ===");
                         
                         var retriedSql = await _aiService.GenerateResponseAsync(retryPrompt, new List<string>());
                         var retriedExtracted = ExtractSQLFromAIResponse(retriedSql);
@@ -374,6 +383,9 @@ namespace SmartRAG.Services
                         if (schema != null)
                         {
                             var prompt = BuildSQLGenerationPrompt(queryIntent.OriginalQuery, additionalQuery, schema);
+                            _logger.LogInformation("=== AI PROMPT FOR ADDITIONAL DATABASE {DatabaseId} ===", additionalQuery.DatabaseId);
+                            _logger.LogInformation("{Prompt}", prompt.Replace(Environment.NewLine, "").Replace("\n", "").Replace("\r", ""));
+                            _logger.LogInformation("=== END ADDITIONAL PROMPT ===");
                             var sql = await _aiService.GenerateResponseAsync(prompt, new List<string>());
                             var extractedSql = ExtractSQLFromAIResponse(sql);
                             
@@ -775,11 +787,11 @@ namespace SmartRAG.Services
             // Get first table for examples
             var firstTable = schema.Tables.FirstOrDefault(t => dbQuery.RequiredTables.Contains(t.TableName, StringComparer.OrdinalIgnoreCase));
             
-            sb.AppendLine("╔════════════════════════════════════════════════════════════════╗");
-            sb.AppendLine("║          SQL QUERY GENERATION FOR SINGLE DATABASE              ║");
-            sb.AppendLine("╚════════════════════════════════════════════════════════════════╝");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════════");
+            sb.AppendLine("          SQL QUERY GENERATION FOR SINGLE DATABASE              ");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════════");
             sb.AppendLine();
-            sb.AppendLine("🚨 ABSOLUTE RULES - FOLLOW EXACTLY:");
+            sb.AppendLine("ABSOLUTE RULES - FOLLOW EXACTLY:");
             sb.AppendLine("═══════════════════════════════════════");
             sb.AppendLine("1. Use ONLY columns listed in schema below (case-sensitive)");
             sb.AppendLine("2. Use ONLY tables listed in your allowed tables");
@@ -788,6 +800,9 @@ namespace SmartRAG.Services
             sb.AppendLine("5. DO NOT use parameters (@param, :param)");
             sb.AppendLine("6. DO NOT write JOIN - return foreign key IDs only");
             sb.AppendLine("7. Match database type syntax (SQL Server=TOP, Others=LIMIT)");
+            sb.AppendLine("8. DO NOT use placeholder values (ENTER_ID_HERE, etc.)");
+            sb.AppendLine("9. DO NOT use AVG() on string/text columns - use numeric columns only");
+            sb.AppendLine("10. DO NOT reference tables from other databases in JOIN conditions");
             sb.AppendLine("═══════════════════════════════════════");
             sb.AppendLine();
             sb.AppendLine($"TARGET DATABASE: {schema.DatabaseName} ({schema.DatabaseType})");
@@ -799,7 +814,7 @@ namespace SmartRAG.Services
             sb.AppendLine("WHAT TO RETRIEVE FROM THIS DATABASE:");
             sb.AppendLine($"  {dbQuery.Purpose}");
             sb.AppendLine();
-            sb.AppendLine("🚨 CRITICAL COLUMN SELECTION:");
+            sb.AppendLine("CRITICAL COLUMN SELECTION:");
             sb.AppendLine($"Task: {dbQuery.Purpose}");
             sb.AppendLine();
             sb.AppendLine("MANDATORY COLUMN SELECTION RULES:");
@@ -1038,19 +1053,24 @@ namespace SmartRAG.Services
                     sb.AppendLine("ABSOLUTELY FORBIDDEN:");
                     sb.AppendLine("✗ LIMIT keyword (does not exist in SQL Server)");
                     sb.AppendLine("✗ FETCH NEXT");
+                    sb.AppendLine("✗ FETCH FIRST");
                     sb.AppendLine("✗ Table aliases (c, p, o)");
                     sb.AppendLine("✗ Parameters: @ParamName, :ParamName, ?");
                     sb.AppendLine("✗ Template syntax: <placeholder>, {variable}");
                     sb.AppendLine("✗ JOIN statements (return FK IDs only)");
+                    sb.AppendLine("✗ Placeholder values (ENTER_ID_HERE, etc.)");
                     sb.AppendLine();
                     sb.AppendLine("REQUIRED FORMAT:");
                     sb.AppendLine($"SELECT TOP 100 columns FROM {dbQuery.RequiredTables[0]} WHERE conditions ORDER BY column");
                     sb.AppendLine();
                     sb.AppendLine("CORRECT EXAMPLES:");
                     sb.AppendLine("✓ SELECT TOP 100 Column1, Column2 FROM TableName");
+                    sb.AppendLine("✓ SELECT Column1 FROM TableName ORDER BY Column1 OFFSET 0 ROWS FETCH NEXT 10 ROWS ONLY");
+                    sb.AppendLine("✗ SELECT Column1 FROM TableName FETCH FIRST 10 ROWS ONLY (WRONG - use TOP instead)");
                     sb.AppendLine("✓ WHERE DateColumn >= DATEADD(month, -3, GETDATE())");
                     sb.AppendLine("✓ WHERE NumericColumn > 100 (use literal values, NOT @param)");
                     sb.AppendLine("✓ SELECT Column1, SUM(Column2) FROM TableName GROUP BY Column1");
+                    sb.AppendLine("✓ WHERE ID = 1 (use actual values, not placeholders)");
                     break;
                     
                 case DatabaseType.SQLite:
@@ -1061,6 +1081,7 @@ namespace SmartRAG.Services
                     sb.AppendLine("✗ Columns not in schema");
                     sb.AppendLine("✗ Parameters: @ParamName, :ParamName, ?");
                     sb.AppendLine("✗ Template syntax: <placeholder>, {variable}");
+                    sb.AppendLine("✗ Placeholder values (ENTER_ID_HERE, etc.)");
                     sb.AppendLine();
                     sb.AppendLine("REQUIRED FORMAT:");
                     sb.AppendLine($"SELECT columns FROM {dbQuery.RequiredTables[0]} WHERE conditions ORDER BY column LIMIT 100");
@@ -1070,6 +1091,7 @@ namespace SmartRAG.Services
                     sb.AppendLine("✓ WHERE DateColumn >= date('now', '-3 month')");
                     sb.AppendLine("✓ WHERE NumericColumn > 100 (use literal values, NOT ?)");
                     sb.AppendLine("✓ Use EXACT table/column casing from schema");
+                    sb.AppendLine("✓ WHERE ID = 1 (use actual values, not placeholders)");
                     break;
                     
                 case DatabaseType.MySQL:
@@ -1079,6 +1101,7 @@ namespace SmartRAG.Services
                     sb.AppendLine("✗ TOP keyword (does not exist in MySQL)");
                     sb.AppendLine("✗ Parameters: @ParamName, :ParamName, ?");
                     sb.AppendLine("✗ Template syntax: <placeholder>, {variable}");
+                    sb.AppendLine("✗ Placeholder values (ENTER_ID_HERE, etc.)");
                     sb.AppendLine();
                     sb.AppendLine("CRITICAL GROUP BY RULE (MySQL strict mode):");
                     sb.AppendLine("If using GROUP BY, EVERY non-aggregate column in SELECT MUST be in GROUP BY");
@@ -1093,6 +1116,7 @@ namespace SmartRAG.Services
                     sb.AppendLine("✓ SELECT Column1, Column2 FROM TableName LIMIT 100");
                     sb.AppendLine("✓ WHERE DateColumn >= DATE_SUB(NOW(), INTERVAL 3 MONTH)");
                     sb.AppendLine("✓ WHERE NumericColumn > 100 (use literal values, NOT ?)");
+                    sb.AppendLine("✓ WHERE ID = 1 (use actual values, not placeholders)");
                     break;
                     
                 case DatabaseType.PostgreSQL:
@@ -1103,6 +1127,8 @@ namespace SmartRAG.Services
                     sb.AppendLine("✗ INTERVAL without quotes");
                     sb.AppendLine("✗ Parameters: @ParamName, :ParamName, ?");
                     sb.AppendLine("✗ Template syntax: <placeholder>, {variable}");
+                    sb.AppendLine("✗ AVG() function on string/text columns (use numeric columns only)");
+                    sb.AppendLine("✗ Placeholder values (ENTER_ID_HERE, etc.)");
                     sb.AppendLine();
                     sb.AppendLine("REQUIRED FORMAT:");
                     sb.AppendLine($"SELECT columns FROM {dbQuery.RequiredTables[0]} WHERE conditions ORDER BY column LIMIT 100");
@@ -1112,10 +1138,18 @@ namespace SmartRAG.Services
                     sb.AppendLine("✓ WHERE DateColumn >= CURRENT_DATE - INTERVAL '3 months'");
                     sb.AppendLine("✓ WHERE DateColumn >= NOW() - INTERVAL '30 days'");
                     sb.AppendLine("✓ WHERE NumericColumn > 100 (use literal values, NOT $1)");
+                    sb.AppendLine("✓ SELECT AVG(NumericColumn) FROM TableName (numeric columns only)");
+                    sb.AppendLine("✓ WHERE ID = 1 (use actual values, not placeholders)");
                     sb.AppendLine();
                     sb.AppendLine("DATE/TIME ARITHMETIC:");
                     sb.AppendLine("✗ WRONG: INTERVAL 30 DAYS (no quotes)");
                     sb.AppendLine("✓ CORRECT: INTERVAL '30 days' (with quotes!)");
+                    sb.AppendLine();
+                    sb.AppendLine("AGGREGATE FUNCTIONS:");
+                    sb.AppendLine("✗ WRONG: AVG(status) (string column)");
+                    sb.AppendLine("✓ CORRECT: AVG(capacity) (numeric column)");
+                    sb.AppendLine("✓ CORRECT: COUNT(*) (count all rows)");
+                    sb.AppendLine("✓ CORRECT: SUM(numeric_column) (sum numeric values)");
                     break;
             }
             
@@ -1178,6 +1212,9 @@ namespace SmartRAG.Services
             sb.AppendLine($"  - ALLOWED TABLES: {string.Join(", ", dbQuery.RequiredTables)}");
             sb.AppendLine("  - DO NOT use any other tables in FROM, JOIN, WHERE, or subqueries!");
             sb.AppendLine("  - Your response must START with SELECT, not with any text!");
+            sb.AppendLine("  - DO NOT use placeholder values (ENTER_ID_HERE, etc.)");
+            sb.AppendLine("  - DO NOT use AVG() on string/text columns - use numeric columns only");
+            sb.AppendLine("  - Use actual values (1, 2, 3) instead of placeholders");
             sb.AppendLine();
             sb.AppendLine("LANGUAGE ENFORCEMENT:");
             sb.AppendLine("  - SQL is ENGLISH-ONLY computer language");
@@ -1554,6 +1591,10 @@ namespace SmartRAG.Services
             sb.AppendLine("7. ✓ Use HAVING clause for filtering aggregates");
             sb.AppendLine("8. ✓ In GROUP BY queries: SELECT only grouped columns or aggregates");
             sb.AppendLine("9. ✓ Every non-aggregate column in SELECT must be in GROUP BY");
+            sb.AppendLine("10. ✗ DO NOT use placeholder values (ENTER_ID_HERE, etc.)");
+            sb.AppendLine("11. ✗ DO NOT use AVG() on string/text columns - use numeric columns only");
+            sb.AppendLine("12. ✓ Use actual values (1, 2, 3) instead of placeholders");
+            sb.AppendLine("13. ✗ DO NOT reference tables from other databases in JOIN conditions");
             sb.AppendLine();
             sb.AppendLine("EXAMPLES:");
             sb.AppendLine("  ✗ WHERE SUM(Amount) > 100  (WRONG)");
@@ -1561,6 +1602,15 @@ namespace SmartRAG.Services
             sb.AppendLine();
             sb.AppendLine("  ✗ SELECT Col1, Col2, SUM(Col3) GROUP BY Col1  (WRONG - Col2 not in GROUP BY)");
             sb.AppendLine("  ✓ SELECT Col1, SUM(Col3) GROUP BY Col1        (CORRECT)");
+            sb.AppendLine();
+            sb.AppendLine("  ✗ WHERE ID = ENTER_ID_HERE  (WRONG - placeholder)");
+            sb.AppendLine("  ✓ WHERE ID = 1                       (CORRECT - actual value)");
+            sb.AppendLine();
+            sb.AppendLine("  ✗ SELECT AVG(status) FROM TableA  (WRONG - string column)");
+            sb.AppendLine("  ✓ SELECT AVG(capacity) FROM TableA           (CORRECT - numeric column)");
+            sb.AppendLine();
+            sb.AppendLine("  ✗ SELECT TableA.Name FROM TableA JOIN TableB (WRONG - cross-database JOIN)");
+            sb.AppendLine("  ✓ SELECT ID, Name FROM TableA WHERE ID = 1 (CORRECT - single database)");
             sb.AppendLine();
             sb.AppendLine($"User Query: {userQuery}");
             sb.AppendLine($"Purpose: {dbQuery.Purpose}");
@@ -1635,11 +1685,18 @@ namespace SmartRAG.Services
             sb.AppendLine("□ Did I use HAVING for aggregate filtering?");
             sb.AppendLine("□ If using GROUP BY: Are ALL non-aggregate SELECT columns in GROUP BY?");
             sb.AppendLine("□ Are parentheses balanced?");
+            sb.AppendLine("□ Did I avoid placeholder values (ENTER_ID_HERE, etc.)?");
+            sb.AppendLine("□ Did I avoid AVG() on string/text columns?");
+            sb.AppendLine("□ Did I use actual values (1, 2, 3) instead of placeholders?");
+            sb.AppendLine("□ Did I avoid cross-database JOIN references?");
             sb.AppendLine();
             sb.AppendLine("COMMON MISTAKES TO AVOID:");
             sb.AppendLine("  ✗ WHERE SUM(...) > value     → Use HAVING");
             sb.AppendLine("  ✗ WHERE AVG(...) > value     → Use HAVING");
             sb.AppendLine("  ✗ SELECT A, B, SUM(C) GROUP BY A  → Add B to GROUP BY");
+            sb.AppendLine("  ✗ WHERE ID = ENTER_ID_HERE  → Use actual value");
+            sb.AppendLine("  ✗ SELECT AVG(status)  → Use numeric column");
+            sb.AppendLine("  ✗ TableA JOIN TableB  → Cross-database JOIN not allowed");
             sb.AppendLine();
             sb.AppendLine($"Query: {userQuery}");
             sb.AppendLine($"Task: {dbQuery.Purpose}");
@@ -1681,6 +1738,10 @@ namespace SmartRAG.Services
             sb.AppendLine("4. NO aggregates in WHERE (use HAVING if needed)");
             sb.AppendLine("5. NO GROUP BY issues - keep it simple");
             sb.AppendLine("6. Just return basic data for merging");
+            sb.AppendLine("7. NO placeholder values (ENTER_ID_HERE, etc.)");
+            sb.AppendLine("8. NO AVG() on string/text columns");
+            sb.AppendLine("9. Use actual values (1, 2, 3) instead of placeholders");
+            sb.AppendLine("10. NO cross-database JOIN references");
             sb.AppendLine();
             
             sb.AppendLine("Available tables:");
@@ -1823,9 +1884,9 @@ namespace SmartRAG.Services
                     {
                         errors.Add("LIMIT keyword is not valid in SQL Server. Use TOP instead: SELECT TOP 100 ...");
                     }
-                    if (sqlUpper.Contains("FETCH NEXT"))
+                    if (sqlUpper.Contains("FETCH NEXT") || sqlUpper.Contains("FETCH FIRST"))
                     {
-                        errors.Add("FETCH NEXT is not allowed. Use TOP instead: SELECT TOP 100 ...");
+                        errors.Add("FETCH syntax is not allowed. Use TOP instead: SELECT TOP 100 ...");
                     }
                 }
                 else if (databaseType == DatabaseType.SQLite || databaseType == DatabaseType.MySQL || databaseType == DatabaseType.PostgreSQL)

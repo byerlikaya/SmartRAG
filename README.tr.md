@@ -47,7 +47,7 @@ var cevap = await intelligence.QueryIntelligenceAsync(
 SmartRAG, birden fazla veritabanını doğal dille sorgulayıp belge zekasıyla birleştirmenize olanak tanır.
 
 ✅ **Multi-Database RAG** - SQL Server, MySQL, PostgreSQL, SQLite'ı **tek bir doğal dil isteğinde birlikte** sorgulayın  
-✅ **Multi-Modal Zeka** - PDF, Excel, Resim (OCR), Ses (Speech-to-Text) ve Veritabanlarını tek cevapta birleştirin  
+✅ **Multi-Modal Zeka** - PDF, Excel, Resim (OCR), Ses (Whisper.net) ve Veritabanlarını tek cevapta birleştirin  
 ✅ **On-Premise Hazır** - Ollama, LM Studio, Whisper.net ile %100 yerel çalışma → KVKK/GDPR/HIPAA uyumlu  
 ✅ **Üretime Hazır** - Kurumsal düzeyde hata yönetimi, kapsamlı test edilmiş, production-ready  
 ✅ **Konuşma Geçmişi** - Yerleşik otomatik bağlam yönetimi, birden fazla soru arasında süreklilik  
@@ -207,11 +207,6 @@ public class MyService
 - ✅ **GDPR/KVKK/HIPAA**: Yerinde dağıtımlar için tamamen uyumludur
 - ⚙️ **Bağımsız**: Manuel kurulum gerekmez, her şey otomatik olarak indirilir
 
-**☁️ Bulut Transkripsiyonu (Google Cloud Speech-to-Text) - İSTEĞE BAĞLI:**
-- 📤 İşlenmek üzere Google Cloud'a gönderilen ses verileri
-- 💰 Google Cloud API anahtarı ve faturalandırma gerektirir
-- ⚡ Gerçek zamanlı transkripsiyon
-- 🔒 Veri gizliliği kritik öneme sahipse, bunun yerine Whisper.net'i kullanın
 
 #### **OCR (Görüntüden Metne) Sınırlaması**
 **Tesseract OCR kütüphanesi el yazısı metinleri tam olarak destekleyemez (başarı oranı çok düşüktür)**:
@@ -503,7 +498,7 @@ SmartRAG'ın benzersiz çoklu veritabanı ve çoklu mod özelliklerini gösteren
 **SmartRAG'ın Sihirli Gücü**:
 - 📄 500'den fazla özgeçmiş PDF'si (birden çok dil, format)
 - 🗄️ Başvuru sahibi veritabanı (SQL Server - beceriler, deneyim, eğitim)
-- 🖼️ OCR ile taranmış sertifikalar (AWS, Azure, Google Cloud sertifikaları)
+- 🖼️ OCR ile taranmış sertifikalar (AWS, Azure sertifikaları)
 - 🎤 Konuşma-Metin video görüşme transkriptleri
 
 **AI Yanıtı**:
@@ -792,7 +787,7 @@ dotnet add package SmartRAG
 
 ### PackageReference
 ```xml
-<PackageReference Include="SmartRAG" Version="3.0.0" />
+<PackageReference Include="SmartRAG" Version="3.0.2" />
 ```
 
 ## 📄 Desteklenen Belge Biçimleri
@@ -835,13 +830,12 @@ SmartRAG, akıllı ayrıştırma ve metin çıkarma özelliği ile çok çeşitl
 - **🔍 Otomatik Format Algılama**: Desteklenen tüm türlerde otomatik görüntü formatı algılama ve doğrulama
 - **🏗️ Yapılandırılmış Veri Çıktısı**: Görüntüleri aranabilir, sorgulanabilir bilgi tabanı içeriğine dönüştürür
 
-### **🎵 Ses Dosyaları (.mp3, .wav, .m4a, .aac, .ogg, .flac, .wma) - YEREL VE BULUT TRANSCRIPTION**
+### **🎵 Ses Dosyaları (.mp3, .wav, .m4a, .aac, .ogg, .flac, .wma) - YEREL TRANSCRIPTION**
 - **🏠 Whisper.net (Yerel - VARSAYILAN)**: OpenAI'nin Whisper modelini kullanarak %100 gizlilik koruyan yerel transkripsiyon
 - **🌍 Çoklu Dil Desteği**: Türkçe, İngilizce, Almanca, Rusça, Çince, Arapça dahil 99'dan fazla dil
 - **⚙️ Donanım Hızlandırma**: CPU, CUDA (NVIDIA GPU), CoreML (Apple Silicon), OpenVino (Intel)
 - **📦 Model Seçenekleri**: Küçük (75 MB), Temel (142 MB - Önerilen), Küçük (466 MB), Orta (1,5 GB), Büyük-v1/v2/v3 (2,9 GB)
 - **🔄 Otomatik İndirme**: Modeller, Hugging Face'ten ilk kullanımda otomatik olarak indirilir
-- **☁️ Google Cloud (İsteğe Bağlı)**: Kurumsal düzeyde bulut transkripsiyon alternatifi
 - **📊 Güven Puanı**: Ayrıntılı transkripsiyon güven ölçütleri
 - **⏱️ Zaman Damgaları**: İsteğe bağlı kelime düzeyinde ve segment düzeyinde zaman damgası çıkarma
 - **🔍 Format Algılama**: Otomatik ses formatı doğrulama ve içerik türü tanıma
@@ -855,7 +849,7 @@ SmartRAG, akıllı ayrıştırma ve metin çıkarma özelliği ile çok çeşitl
 - **⚡ Performans Optimizasyonu**: Yapılandırılabilir satır sınırları, sorgu zaman aşımları ve bağlantı havuzu
 - **🎯 Akıllı Filtreleme**: Gelişmiş filtreleme seçenekleriyle belirli tabloları dahil etme/hariç tutma
 - **📈 Kurumsal Özellikler**: Bağlantı doğrulama, özel SQL sorgu yürütme ve hata işleme
-- **🌐 Çapraz Platform**: Bulut veritabanlarıyla çalışır (Azure SQL, AWS RDS, Google Cloud SQL)
+- **🌐 Çapraz Platform**: Bulut veritabanlarıyla çalışır (Azure SQL, AWS RDS)
 - **🔍 Meta Veri Çıkarma**: Sütun ayrıntıları, birincil anahtarlar, dizinler ve veritabanı sürüm bilgileri
 - **🏗️ Yapılandırılmış Çıktı**: Veritabanı içeriğini aranabilir, sorgulanabilir bilgi tabanına dönüştürür
 
@@ -1565,14 +1559,14 @@ Katkılarınızı bekliyoruz!
 
 ## 🆕 Yenilikler
 
-### **Son Sürüm (v3.0.0) - 2025-10-18**
+### **Son Sürüm (v3.0.2) - 2025-10-24**
 
 **Önemli Özellikler:**
 - 🚀 **ÖNEMLİ DEĞİŞİKLİK**: `GenerateRagAnswerAsync` → `QueryIntelligenceAsync` (geriye dönük uyumlu)
 - 🔧 **Dil Güvenli SQL Oluşturma**: SQL'de İngilizce olmayan metinleri önleyen otomatik doğrulama
 - 🗄️ **PostgreSQL Tam Desteği**: Çoklu veritabanı sorguları ile tam entegrasyon
 - 🔒 **Yerinde AI Desteği**: Ollama/LM Studio ile tam yerel çalışma
-- ⚠️ **Önemli Sınırlamalar**: Ses için Google Cloud gerekir, OCR el yazısı için sınırlıdır
+- ⚠️ **Önemli Sınırlamalar**: Ses için yerel Whisper.net modelleri gerekir, OCR el yazısı için sınırlıdır
 - 📚 **Geliştirilmiş Belgeler**: Kapsamlı şirket içi dağıtım kılavuzu
 
 **📋 [Tam Değişiklik Günlüğünü Görüntüle](CHANGELOG.md)** ayrıntılı sürüm notları ve geçiş kılavuzu için.
@@ -1611,7 +1605,6 @@ SmartRAG, aşağıdaki mükemmel açık kaynak kütüphaneler ve bulut hizmetler
 
 #### **Konuşmayı Metne Dönüştürme**
 - **🎤 [Whisper.net](https://github.com/sandrohanea/whisper.net)** - Yerel konuşmayı metne dönüştürme (.NET bağlamaları için OpenAI Whisper)
-- **☁️ [Google Cloud Speech-to-Text](https://cloud.google.com/speech-to-text)** - Kurumsal konuşma tanıma API'si (isteğe bağlı)
 
 #### **Vektör Veritabanları ve Depolama**
 - **🗄️ [Qdrant](https://github.com/qdrant/qdrant)** - Vektör benzerlik arama motoru

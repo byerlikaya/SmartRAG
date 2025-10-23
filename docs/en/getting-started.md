@@ -28,7 +28,7 @@ SmartRAG is available as a NuGet package and supports **.NET Standard 2.1**, mak
 </div>
 
 <div class="code-panel" data-tab="xml">
-<pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="3.0.1" /&gt;</code></pre>
+<pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="3.0.2" /&gt;</code></pre>
 </div>
 
 ---

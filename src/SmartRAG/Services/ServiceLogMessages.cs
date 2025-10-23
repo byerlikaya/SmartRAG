@@ -593,12 +593,12 @@ namespace SmartRAG.Services
         public static readonly Action<ILogger, string, Exception> LogAudioServiceInitialized = LoggerMessage.Define<string>(
             LogLevel.Debug,
             new EventId(80004, "AudioServiceInitialized"),
-            "Google Speech-to-Text service initialized with config: {configPath}");
+            "Whisper.net service initialized with config: {configPath}");
 
         public static readonly Action<ILogger, Exception> LogAudioServiceInitializationFailed = LoggerMessage.Define(
             LogLevel.Error,
             new EventId(80005, "AudioServiceInitializationFailed"),
-            "Google Speech-to-Text service initialization failed");
+            "Whisper.net service initialization failed");
 
         public static readonly Action<ILogger, Exception> LogAudioNoMatch = LoggerMessage.Define(
             LogLevel.Warning,

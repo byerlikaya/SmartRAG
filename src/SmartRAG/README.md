@@ -1,15 +1,7 @@
 # 🚀 SmartRAG
 
-<p align="center">
-  <b>Multi-Database RAG Library for .NET</b><br>
-  Ask questions about your data in natural language
-</p>
-
-<p align="center">
-  <a href="https://www.nuget.org/packages/SmartRAG"><img src="https://img.shields.io/nuget/v/SmartRAG.svg?style=for-the-badge&logo=nuget" alt="NuGet Version"/></a>
-  <a href="https://www.nuget.org/packages/SmartRAG"><img src="https://img.shields.io/nuget/dt/SmartRAG?style=for-the-badge&logo=nuget&label=Downloads&color=blue" alt="NuGet Downloads"/></a>
-  <a href="https://github.com/byerlikaya/SmartRAG/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg?style=for-the-badge" alt="License"/></a>
-</p>
+**Multi-Database RAG Library for .NET**  
+Ask questions about your data in natural language
 
 ## ✨ What SmartRAG Does
 
@@ -18,7 +10,7 @@
 ### 🎯 Key Capabilities
 
 - 🗄️ **Multi-Database RAG** - Query SQL Server, MySQL, PostgreSQL, SQLite together
-- 📄 **Multi-Modal Intelligence** - PDF, Word, Excel, Images (OCR), Audio (Speech-to-Text)
+- 📄 **Multi-Modal Intelligence** - PDF, Word, Excel, Images (OCR), Audio (Whisper.net)
 - 🔒 **On-Premise Ready** - 100% local with Ollama, LM Studio, Whisper.net
 - 💬 **Conversation History** - Built-in automatic context management
 - 🤖 **Universal AI Support** - OpenAI, Anthropic, Gemini, Azure, Custom APIs
@@ -55,11 +47,11 @@ var result = await _intelligence.QueryIntelligenceAsync("Your question here");
 - **Local AI Solutions** - On-premise intelligence without cloud dependencies
 - **Multi-Modal Applications** - Text, images, audio, and database integration
 
-## 🆕 What's New in v3.0.0
+## 🆕 What's New in v3.0.2
 
 - 🗄️ **Multi-Database RAG** - Query multiple databases with natural language
 - 🖼️ **OCR Support** - Image processing with Tesseract 5.2.0
-- 🎤 **Audio Support** - Local transcription with Whisper.net (99+ languages)
+- 🎤 **Audio Support** - Local transcription with Whisper.net (99+ languages, Google Speech-to-Text removed)
 - 💬 **Conversation History** - Built-in session management
 - 🔄 **Enhanced API** - Improved intelligence query interface
 
@@ -68,15 +60,15 @@ var result = await _intelligence.QueryIntelligenceAsync("Your question here");
 ## 📞 Support & Contact
 
 - **📧 [Email Support](mailto:b.yerlikaya@outlook.com)**
-- **💼 [LinkedIn](https://www.linkedin.com/in/barisyerlikaya)**
+- **💼 [LinkedIn](https://www.linkedin.com/in/barisyerlikaya/)**
 - **🐙 [GitHub Issues](https://github.com/byerlikaya/SmartRAG/issues)**
 
 ## 📄 License
 
-MIT License - see [LICENSE](LICENSE) for details.
+MIT License - see [LICENSE](https://github.com/byerlikaya/SmartRAG/blob/main/LICENSE) for details.
 
 ---
 
 **Built with ❤️ by Barış Yerlikaya**
 
-Made in Turkey 🇹🇷 | [Contact](mailto:b.yerlikaya@outlook.com) | [LinkedIn](https://www.linkedin.com/in/barisyerlikaya)
+Made in Turkey 🇹🇷 | [Contact](mailto:b.yerlikaya@outlook.com) | [LinkedIn](https://www.linkedin.com/in/barisyerlikaya/) | [Website](https://byerlikaya.github.io/SmartRAG/en/)
