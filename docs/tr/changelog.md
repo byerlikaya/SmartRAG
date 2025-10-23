@@ -10,7 +10,7 @@ SmartRAG'deki tüm önemli değişiklikler burada belgelenmiştir. Proje [Anlams
 
 ---
 
-## [3.0.2] - 2025-10-22
+## [3.0.2] - 2025-10-24
 
 ### 🚀 BREAKING CHANGES - Google Speech-to-Text Kaldırıldı
 

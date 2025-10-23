@@ -1584,7 +1584,7 @@ We welcome contributions!
 
 ## 🆕 What's New
 
-### **Latest Release (v3.0.2) - 2025-10-22**
+### **Latest Release (v3.0.2) - 2025-10-24**
 
 **Major Highlights:**
 - 🚀 **BREAKING CHANGE**: `GenerateRagAnswerAsync` → `QueryIntelligenceAsync` (backward compatible)

@@ -1559,7 +1559,7 @@ Katkılarınızı bekliyoruz!
 
 ## 🆕 Yenilikler
 
-### **Son Sürüm (v3.0.2) - 2025-10-22**
+### **Son Sürüm (v3.0.2) - 2025-10-24**
 
 **Önemli Özellikler:**
 - 🚀 **ÖNEMLİ DEĞİŞİKLİK**: `GenerateRagAnswerAsync` → `QueryIntelligenceAsync` (geriye dönük uyumlu)

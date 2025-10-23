@@ -10,7 +10,7 @@ All notable changes to SmartRAG are documented here. The project adheres to [Sem
 
 ---
 
-## [3.0.2] - 2025-10-22
+## [3.0.2] - 2025-10-24
 
 ### 🚀 BREAKING CHANGES - Google Speech-to-Text Removal
 

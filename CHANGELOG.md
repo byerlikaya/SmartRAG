@@ -6,7 +6,7 @@ All notable changes to SmartRAG will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.0.2] - 2025-10-22
+## [3.0.2] - 2025-10-24
 
 ### 🚀 BREAKING CHANGES - Google Speech-to-Text Removal
 
@@ -328,7 +328,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 
 ## Version History
 
-- **3.0.2** (2025-10-22) - Google Speech-to-Text removal, Whisper.net only
+- **3.0.2** (2025-10-24) - Google Speech-to-Text removal, Whisper.net only
 - **3.0.1** (2025-10-22) - Bug fixes, Logging stability improvements
 - **3.0.0** (2025-10-22) - Intelligence Library Revolution, SQL Generation, On-Premise Support
 - **2.3.1** (2025-10-20) - Bug fixes, Logging stability improvements
