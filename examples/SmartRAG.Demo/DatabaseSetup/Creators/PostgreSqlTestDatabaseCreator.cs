@@ -28,11 +28,11 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
         public PostgreSqlTestDatabaseCreator(IConfiguration? configuration = null)
         {
             _configuration = configuration;
-            _user = "postgres";
             
             // Try to get connection details from configuration first
             string? server = null;
             int port = 5432;
+            string? user = null;
             string? password = null;
             string? databaseName = null;
             
@@ -46,6 +46,7 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
                     var builder = new NpgsqlConnectionStringBuilder(connectionString);
                     server = builder.Host;
                     port = builder.Port;
+                    user = builder.Username;
                     password = builder.Password;
                     databaseName = builder.Database;
                 }
@@ -54,6 +55,7 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
             // Fallback to defaults if not found in config
             _server = server ?? "localhost";
             _port = port;
+            _user = user ?? "postgres";
             _databaseName = databaseName ?? "LogisticsManagement";
             
             // Fallback to environment variable for password

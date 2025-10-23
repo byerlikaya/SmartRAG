@@ -23,11 +23,11 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
         public MySqlTestDatabaseCreator(IConfiguration? configuration = null)
         {
             _configuration = configuration;
-            _user = "root";
             
             // Try to get connection details from configuration first
             string? server = null;
             int port = 3306;
+            string? user = null;
             string? password = null;
             string? databaseName = null;
             
@@ -41,6 +41,7 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
                     var builder = new MySqlConnectionStringBuilder(connectionString);
                     server = builder.Server;
                     port = (int)builder.Port;
+                    user = builder.UserID;
                     password = builder.Password;
                     databaseName = builder.Database;
                 }
@@ -49,6 +50,7 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
             // Fallback to defaults if not found in config
             _server = server ?? "localhost";
             _port = port;
+            _user = user ?? "root";
             _databaseName = databaseName ?? "InventoryManagement";
             
             // Fallback to environment variable for password
