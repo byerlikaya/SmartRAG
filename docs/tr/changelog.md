@@ -318,7 +318,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
         <tbody>
             <tr>
                 <td><strong>3.0.0</strong></td>
-                <td>2025-10-18</td>
+                <td>2025-10-22</td>
                 <td>Zeka Kütüphanesi Devrimi, SQL Üretimi, Yerinde Destek, PostgreSQL</td>
             </tr>
             <tr>

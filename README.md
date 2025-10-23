@@ -812,7 +812,7 @@ dotnet add package SmartRAG
 
 ### PackageReference
 ```xml
-<PackageReference Include="SmartRAG" Version="3.0.0" />
+<PackageReference Include="SmartRAG" Version="3.0.2" />
 ```
 
 ## 📄 Supported Document Formats
@@ -1584,14 +1584,14 @@ We welcome contributions!
 
 ## 🆕 What's New
 
-### **Latest Release (v3.0.0) - 2025-10-18**
+### **Latest Release (v3.0.2) - 2025-10-22**
 
 **Major Highlights:**
 - 🚀 **BREAKING CHANGE**: `GenerateRagAnswerAsync` → `QueryIntelligenceAsync` (backward compatible)
 - 🔧 **Language-Safe SQL Generation**: Automatic validation preventing non-English text in SQL
 - 🗄️ **PostgreSQL Full Support**: Complete integration with multi-database queries
 - 🔒 **On-Premise AI Support**: Full local operation with Ollama/LM Studio
-- ⚠️ **Important Limitations**: Audio requires Google Cloud, OCR limited for handwriting
+- ⚠️ **Important Limitations**: Audio requires local Whisper.net models, OCR limited for handwriting
 - 📚 **Enhanced Documentation**: Comprehensive on-premise deployment guide
 
 **📋 [View Full Changelog](CHANGELOG.md)** for detailed release notes and migration guide.

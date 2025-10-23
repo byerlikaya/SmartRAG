@@ -20,20 +20,25 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Release 3.0.1: Critical Bug Fixes
+    <PackageReleaseNotes>Release 3.0.2: Google Speech-to-Text Removal
 
-BUG FIXES:
-• LoggerMessage Parameter Mismatch - Fixed LogAudioServiceInitialized LoggerMessage definition with missing configPath parameter
-• EventId Conflicts - Resolved duplicate EventId assignments in ServiceLogMessages.cs (6006, 6008, 6009)
-• Logo Display Issue - Removed broken logo references from README files that were causing display issues on NuGet
-• TypeInitializationException - Fixed critical startup error that prevented SmartRAG.Demo from running
+BREAKING CHANGES:
+• Google Speech-to-Text completely removed
+• Whisper.net is now the only audio transcription provider
+• 100% local audio processing
 
-TECHNICAL IMPROVEMENTS:
-• ServiceLogMessages.cs - Updated LoggerMessage definitions to match parameter counts correctly
-• EventId Management - Reassigned conflicting EventIds to ensure unique logging identifiers
-• Documentation - Cleaned up README files for better NuGet package display
+BENEFITS:
+• Enhanced privacy and GDPR/KVKK/HIPAA compliance
+• Simplified configuration
+• Reduced dependencies
+• Better performance with local processing
 
-This release fixes critical runtime errors and improves overall stability.</PackageReleaseNotes>
+MIGRATION:
+• Update AudioProvider to Whisper only
+• Remove GoogleSpeechConfig from appsettings.json
+• Install Whisper.net models for local transcription
+
+This release removes Google Speech-to-Text dependency and focuses on local audio processing.</PackageReleaseNotes>
     
     <!-- Build Configuration -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -44,8 +49,8 @@ This release fixes critical runtime errors and improves overall stability.</Pack
     <AssemblyTitle>SmartRAG</AssemblyTitle>
     <AssemblyDescription>High-performance RAG library with conversation history management for .NET</AssemblyDescription>
     <AssemblyCopyright>Copyright © 2025 Barış Yerlikaya</AssemblyCopyright>
-    <AssemblyVersion>3.0.1.0</AssemblyVersion>
-    <FileVersion>3.0.1.0</FileVersion>
+    <AssemblyVersion>3.0.2.0</AssemblyVersion>
+    <FileVersion>3.0.2.0</FileVersion>
     <NeutralLanguage>en</NeutralLanguage>
     <Culture>en-US</Culture>
   </PropertyGroup>

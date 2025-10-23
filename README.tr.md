@@ -498,7 +498,7 @@ SmartRAG'ın benzersiz çoklu veritabanı ve çoklu mod özelliklerini gösteren
 **SmartRAG'ın Sihirli Gücü**:
 - 📄 500'den fazla özgeçmiş PDF'si (birden çok dil, format)
 - 🗄️ Başvuru sahibi veritabanı (SQL Server - beceriler, deneyim, eğitim)
-- 🖼️ OCR ile taranmış sertifikalar (AWS, Azure, Google Cloud sertifikaları)
+- 🖼️ OCR ile taranmış sertifikalar (AWS, Azure sertifikaları)
 - 🎤 Konuşma-Metin video görüşme transkriptleri
 
 **AI Yanıtı**:
@@ -787,7 +787,7 @@ dotnet add package SmartRAG
 
 ### PackageReference
 ```xml
-<PackageReference Include="SmartRAG" Version="3.0.0" />
+<PackageReference Include="SmartRAG" Version="3.0.2" />
 ```
 
 ## 📄 Desteklenen Belge Biçimleri
@@ -830,13 +830,12 @@ SmartRAG, akıllı ayrıştırma ve metin çıkarma özelliği ile çok çeşitl
 - **🔍 Otomatik Format Algılama**: Desteklenen tüm türlerde otomatik görüntü formatı algılama ve doğrulama
 - **🏗️ Yapılandırılmış Veri Çıktısı**: Görüntüleri aranabilir, sorgulanabilir bilgi tabanı içeriğine dönüştürür
 
-### **🎵 Ses Dosyaları (.mp3, .wav, .m4a, .aac, .ogg, .flac, .wma) - YEREL VE BULUT TRANSCRIPTION**
+### **🎵 Ses Dosyaları (.mp3, .wav, .m4a, .aac, .ogg, .flac, .wma) - YEREL TRANSCRIPTION**
 - **🏠 Whisper.net (Yerel - VARSAYILAN)**: OpenAI'nin Whisper modelini kullanarak %100 gizlilik koruyan yerel transkripsiyon
 - **🌍 Çoklu Dil Desteği**: Türkçe, İngilizce, Almanca, Rusça, Çince, Arapça dahil 99'dan fazla dil
 - **⚙️ Donanım Hızlandırma**: CPU, CUDA (NVIDIA GPU), CoreML (Apple Silicon), OpenVino (Intel)
 - **📦 Model Seçenekleri**: Küçük (75 MB), Temel (142 MB - Önerilen), Küçük (466 MB), Orta (1,5 GB), Büyük-v1/v2/v3 (2,9 GB)
 - **🔄 Otomatik İndirme**: Modeller, Hugging Face'ten ilk kullanımda otomatik olarak indirilir
-- **☁️ Google Cloud (İsteğe Bağlı)**: Kurumsal düzeyde bulut transkripsiyon alternatifi
 - **📊 Güven Puanı**: Ayrıntılı transkripsiyon güven ölçütleri
 - **⏱️ Zaman Damgaları**: İsteğe bağlı kelime düzeyinde ve segment düzeyinde zaman damgası çıkarma
 - **🔍 Format Algılama**: Otomatik ses formatı doğrulama ve içerik türü tanıma
@@ -850,7 +849,7 @@ SmartRAG, akıllı ayrıştırma ve metin çıkarma özelliği ile çok çeşitl
 - **⚡ Performans Optimizasyonu**: Yapılandırılabilir satır sınırları, sorgu zaman aşımları ve bağlantı havuzu
 - **🎯 Akıllı Filtreleme**: Gelişmiş filtreleme seçenekleriyle belirli tabloları dahil etme/hariç tutma
 - **📈 Kurumsal Özellikler**: Bağlantı doğrulama, özel SQL sorgu yürütme ve hata işleme
-- **🌐 Çapraz Platform**: Bulut veritabanlarıyla çalışır (Azure SQL, AWS RDS, Google Cloud SQL)
+- **🌐 Çapraz Platform**: Bulut veritabanlarıyla çalışır (Azure SQL, AWS RDS)
 - **🔍 Meta Veri Çıkarma**: Sütun ayrıntıları, birincil anahtarlar, dizinler ve veritabanı sürüm bilgileri
 - **🏗️ Yapılandırılmış Çıktı**: Veritabanı içeriğini aranabilir, sorgulanabilir bilgi tabanına dönüştürür
 
@@ -1560,14 +1559,14 @@ Katkılarınızı bekliyoruz!
 
 ## 🆕 Yenilikler
 
-### **Son Sürüm (v3.0.0) - 2025-10-18**
+### **Son Sürüm (v3.0.2) - 2025-10-22**
 
 **Önemli Özellikler:**
 - 🚀 **ÖNEMLİ DEĞİŞİKLİK**: `GenerateRagAnswerAsync` → `QueryIntelligenceAsync` (geriye dönük uyumlu)
 - 🔧 **Dil Güvenli SQL Oluşturma**: SQL'de İngilizce olmayan metinleri önleyen otomatik doğrulama
 - 🗄️ **PostgreSQL Tam Desteği**: Çoklu veritabanı sorguları ile tam entegrasyon
 - 🔒 **Yerinde AI Desteği**: Ollama/LM Studio ile tam yerel çalışma
-- ⚠️ **Önemli Sınırlamalar**: Ses için Google Cloud gerekir, OCR el yazısı için sınırlıdır
+- ⚠️ **Önemli Sınırlamalar**: Ses için yerel Whisper.net modelleri gerekir, OCR el yazısı için sınırlıdır
 - 📚 **Geliştirilmiş Belgeler**: Kapsamlı şirket içi dağıtım kılavuzu
 
 **📋 [Tam Değişiklik Günlüğünü Görüntüle](CHANGELOG.md)** ayrıntılı sürüm notları ve geçiş kılavuzu için.

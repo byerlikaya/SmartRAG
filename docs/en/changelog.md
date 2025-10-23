@@ -367,7 +367,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
         <tbody>
             <tr>
                 <td><strong>3.0.0</strong></td>
-                <td>2025-10-18</td>
+                <td>2025-10-22</td>
                 <td>Intelligence Library Revolution, SQL Generation, On-Premise Support, PostgreSQL</td>
             </tr>
             <tr>
