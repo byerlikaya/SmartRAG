@@ -13,33 +13,30 @@ SmartRAG can perform intelligent cross-database queries with multi-database supp
 
 ## Multi-Database Connections
 
-```csharp
-builder.Services.AddSmartRag(configuration, options =>
+Configure databases in `appsettings.json`:
+
+```json
 {
-    options.DatabaseConnections = new List<DatabaseConnectionConfig>
-    {
-        new DatabaseConnectionConfig
-        {
-            Name = "Sales Database",
-            Type = DatabaseType.SqlServer,
-            ConnectionString = "Server=localhost;Database=Sales;...",
-            IncludedTables = new List<string> { "Orders", "Customers" },
-            MaxRowsPerTable = 1000,
-            SanitizeSensitiveData = true
-        },
-        new DatabaseConnectionConfig
-        {
-            Name = "Inventory Database",
-            Type = DatabaseType.MySQL,
-            ConnectionString = "Server=localhost;Database=Inventory;...",
-            MaxRowsPerTable = 1000
-        }
-    };
-    
-    options.EnableAutoSchemaAnalysis = true;
-    options.EnablePeriodicSchemaRefresh = true;
-    options.DefaultSchemaRefreshIntervalMinutes = 60;
-});
+  "SmartRAG": {
+    "DatabaseConnections": [
+      {
+        "Name": "Sales Database",
+        "ConnectionString": "Server=localhost;Database=Sales;...",
+        "DatabaseType": "SqlServer",
+        "IncludedTables": ["Orders", "Customers"],
+        "MaxRowsPerQuery": 1000,
+        "Enabled": true
+      },
+      {
+        "Name": "Inventory Database",
+        "ConnectionString": "Server=localhost;Database=Inventory;...",
+        "DatabaseType": "MySQL",
+        "MaxRowsPerQuery": 1000,
+        "Enabled": true
+      }
+    ]
+  }
+}
 ```
 
 ---
@@ -227,11 +224,11 @@ new DatabaseConnectionConfig
 // Handle connection errors
 try
 {
-    var result = await _multiDatabaseQueryCoordinator.QueryAsync(query);
+    var result = await _multiDatabaseQueryCoordinator.QueryMultipleDatabasesAsync(query);
 }
-catch (DatabaseConnectionException ex)
+catch (Exception ex)
 {
-    _logger.LogError(ex, "Database connection error: {DatabaseName}", ex.DatabaseName);
+    _logger.LogError(ex, "Database connection error");
     // Implement fallback strategy
 }
 ```
@@ -247,7 +244,7 @@ catch (DatabaseConnectionException ex)
                 <i class="fas fa-microphone"></i>
             </div>
             <h3>Audio & OCR</h3>
-            <p>Google Speech-to-Text and Tesseract OCR configuration</p>
+            <p>Whisper.net and Tesseract OCR configuration</p>
             <a href="{{ site.baseurl }}/en/configuration/audio-ocr" class="btn btn-outline-primary btn-sm mt-3">
                 Audio & OCR
             </a>
