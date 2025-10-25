@@ -198,19 +198,29 @@ docker exec -it smartrag-ollama ollama pull nomic-embed-text
 
 | Feature | SmartRAG | LM-Kit.NET | Semantic Kernel | LangChain.NET |
 |---------|----------|------------|----------------|---------------|
-| **Pricing** | ✅ Free & Open Source (MIT) | ✅ Free Community License | ✅ Free & Open Source (MIT) | ✅ Free & Open Source (MIT) |
-| **On-Premise Ready** | ✅ 100% Local | ✅ 100% Local | ❌ Cloud required | ❌ Cloud required |
-| **Production Ready** | ✅ Enterprise-grade Error Handling | ✅ Production-ready | ⚠️ Basic Error Handling | ⚠️ Basic Error Handling |
-| **Local AI Support** | ✅ Ollama/LM Studio Native | ✅ Native Local Models | ❌ Limited Local Support | ❌ Limited Local Support |
-| **Enterprise Features** | ✅ Thread-safe, DI, Logging, Testing | ✅ Comprehensive Framework | ⚠️ Basic Features | ⚠️ Basic Features |
-| **Multi-Modal Support** | ✅ PDF+Excel+Images+Audio+DB | ✅ Text+Images+Audio | ❌ Limited Document Types | ❌ Limited Document Types |
-| **Audio Processing** | ✅ Whisper.net (99+ languages) | ✅ Speech-to-Text | ❌ Not supported | ❌ Not supported |
-| **OCR Capabilities** | ✅ Tesseract 5.2.0 Native | ✅ Image Analysis | ❌ Not supported | ❌ Not supported |
-| **Database Integration** | ✅ SQL Server+MySQL+PostgreSQL+SQLite | ❌ No Database Support | ❌ Manual Connection Setup | ❌ Manual Connection Setup |
-| **Multi-Database RAG** | ✅ Native Cross-DB Queries | ❌ Not supported | ❌ Manual Integration Required | ❌ Manual Integration Required |
-| **Cross-Database Queries** | ✅ Automatic Schema Detection | ❌ Not supported | ❌ Manual SQL Writing | ❌ Manual SQL Writing |
+| **Multi-Modal** | ✅ | ✅ | ❌ | ❌ |
+| **Local AI** | ✅ | ✅ | ❌ | ❌ |
+| **Audio** | ✅ | ✅ | ❌ | ❌ |
+| **OCR** | ✅ | ✅ | ❌ | ❌ |
+| **On-Premise** | ✅ | ✅ | ❌ | ❌ |
+| **Fallback Providers*** | ✅ | ❌ | ❌ | ❌ |
+| **Retry Policies*** | ✅ | ❌ | ❌ | ❌ |
+| **Batch Embeddings*** | ✅ | ❌ | ❌ | ❌ |
+| **Hybrid Search*** | ✅ | ❌ | ❌ | ❌ |
+| **Session Management*** | ✅ | ❌ | ❌ | ❌ |
+| **Cross-DB JOIN*** | ✅ | ❌ | ❌ | ❌ |
+| **Multi-DB RAG*** | ✅ | ❌ | ❌ | ❌ |
+| **Databases*** | ✅ | ❌ | ❌ | ❌ |
 
-**SmartRAG is the ONLY .NET library that provides native multi-database RAG with automatic cross-database query capabilities and enterprise-grade features.**
+**SmartRAG Exclusive Features (*):**
+- **Fallback Providers**: Automatic failover to backup AI providers when primary fails
+- **Retry Policies**: Configurable retry with FixedDelay, LinearBackoff, ExponentialBackoff
+- **Batch Embeddings**: Efficient batch processing for multiple texts simultaneously
+- **Hybrid Search**: Semantic + keyword hybrid algorithm (80% semantic, 20% keyword)
+- **Session Management**: Persistent conversation continuity across app restarts
+- **Cross-DB JOIN**: AI-powered intelligent joins across different databases
+- **Multi-DB RAG**: Native multi-database query coordination
+- **Databases**: Native support for SQL Server, MySQL, PostgreSQL, SQLite
 
 ## 📄 License
 

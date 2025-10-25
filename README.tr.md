@@ -198,19 +198,29 @@ docker exec -it smartrag-ollama ollama pull nomic-embed-text
 
 | Özellik | SmartRAG | LM-Kit.NET | Semantic Kernel | LangChain.NET |
 |---------|----------|------------|----------------|---------------|
-| **Fiyatlandırma** | ✅ Ücretsiz & Açık Kaynak (MIT) | ✅ Ücretsiz Topluluk Lisansı | ✅ Ücretsiz & Açık Kaynak (MIT) | ✅ Ücretsiz & Açık Kaynak (MIT) |
-| **On-Premise Ready** | ✅ %100 Yerel | ✅ %100 Yerel | ❌ Bulut gerekli | ❌ Bulut gerekli |
-| **Production Ready** | ✅ Kurumsal Hata Yönetimi | ✅ Üretim hazır | ⚠️ Temel Hata Yönetimi | ⚠️ Temel Hata Yönetimi |
-| **Yerel AI Desteği** | ✅ Ollama/LM Studio Yerel | ✅ Yerel Modeller | ❌ Sınırlı Yerel Destek | ❌ Sınırlı Yerel Destek |
-| **Kurumsal Özellikler** | ✅ Thread-safe, DI, Logging, Test | ✅ Kapsamlı Framework | ⚠️ Temel Özellikler | ⚠️ Temel Özellikler |
-| **Çoklu Modal Destek** | ✅ PDF+Excel+Görüntü+Ses+DB | ✅ Metin+Görüntü+Ses | ❌ Sınırlı Belge Türleri | ❌ Sınırlı Belge Türleri |
-| **Ses İşleme** | ✅ Whisper.net (99+ dil) | ✅ Konuşma-Metin | ❌ Desteklenmiyor | ❌ Desteklenmiyor |
-| **OCR Yetenekleri** | ✅ Tesseract 5.2.0 Yerel | ✅ Görüntü Analizi | ❌ Desteklenmiyor | ❌ Desteklenmiyor |
-| **Veritabanı Entegrasyonu** | ✅ SQL Server+MySQL+PostgreSQL+SQLite | ❌ Veritabanı Desteği Yok | ❌ Manuel Bağlantı Kurulumu | ❌ Manuel Bağlantı Kurulumu |
-| **Multi-Database RAG** | ✅ Yerel Çapraz-DB Sorguları | ❌ Desteklenmiyor | ❌ Manuel Entegrasyon Gerekli | ❌ Manuel Entegrasyon Gerekli |
-| **Çoklu Veritabanı Sorguları** | ✅ Otomatik Şema Algılama | ❌ Desteklenmiyor | ❌ Manuel SQL Yazma | ❌ Manuel SQL Yazma |
+| **Multi-Modal** | ✅ | ✅ | ❌ | ❌ |
+| **Yerel AI** | ✅ | ✅ | ❌ | ❌ |
+| **Ses** | ✅ | ✅ | ❌ | ❌ |
+| **OCR** | ✅ | ✅ | ❌ | ❌ |
+| **On-Premise** | ✅ | ✅ | ❌ | ❌ |
+| **Fallback Providers*** | ✅ | ❌ | ❌ | ❌ |
+| **Retry Policies*** | ✅ | ❌ | ❌ | ❌ |
+| **Batch Embeddings*** | ✅ | ❌ | ❌ | ❌ |
+| **Hibrit Arama*** | ✅ | ❌ | ❌ | ❌ |
+| **Oturum Yönetimi*** | ✅ | ❌ | ❌ | ❌ |
+| **Cross-DB JOIN*** | ✅ | ❌ | ❌ | ❌ |
+| **Multi-DB RAG*** | ✅ | ❌ | ❌ | ❌ |
+| **Veritabanları*** | ✅ | ❌ | ❌ | ❌ |
 
-**SmartRAG, gerçek çoklu veritabanı RAG ve çapraz veritabanı sorgu yetenekleri sağlayan TEK kütüphanedir.**
+**SmartRAG'a Özel Özellikler (*):**
+- **Fallback Providers**: Ana AI provider başarısız olduğunda otomatik yedek provider'a geçiş
+- **Retry Policies**: FixedDelay, LinearBackoff, ExponentialBackoff ile yapılandırılabilir yeniden deneme
+- **Batch Embeddings**: Birden fazla metin için verimli toplu işleme
+- **Hibrit Arama**: Semantic + keyword hibrit algoritması (%80 semantic, %20 keyword)
+- **Oturum Yönetimi**: Uygulama yeniden başlatmalarında konuşma sürekliliği
+- **Cross-DB JOIN**: Farklı veritabanları arasında AI destekli akıllı JOIN
+- **Multi-DB RAG**: Yerel multi-database sorgu koordinasyonu
+- **Veritabanları**: SQL Server, MySQL, PostgreSQL, SQLite yerel desteği
 
 ## 📄 Lisans
 
