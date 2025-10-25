@@ -41,18 +41,20 @@ Configure databases in `appsettings.json`:
 
 ---
 
-## DatabaseConfig Parameters
+## DatabaseConnectionConfig Parameters
 
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `Name` | `string` | - | Friendly name for database connection |
-| `Type` | `DatabaseType` | - | Database type (SqlServer, MySql, PostgreSql, Sqlite) |
-| `ConnectionString` | `string` | - | Database connection string |
-| `IncludedTables` | `List<string>` | `[]` | Specific tables to include (empty = all tables) |
-| `ExcludedTables` | `List<string>` | `[]` | Tables to exclude from analysis |
-| `MaxRowsPerTable` | `int` | `1000` | Maximum rows to extract per table |
-| `SanitizeSensitiveData` | `bool` | `true` | Automatically sanitize sensitive data (SSN, credit card, etc.) |
-| `SchemaRefreshIntervalMinutes` | `int` | `60` | Schema refresh interval for this database (0 = use default) |
+| `Name` | `string` | - | Friendly name for database connection (auto-generated if not provided) |
+| `ConnectionString` | `string` | - | Database connection string (required) |
+| `DatabaseType` | `DatabaseType` | - | Database type (SqlServer, MySql, PostgreSql, Sqlite) (required) |
+| `Description` | `string` | - | Optional description to help AI understand the database content |
+| `Enabled` | `bool` | `true` | Whether this connection is enabled |
+| `MaxRowsPerQuery` | `int` | `0` | Maximum rows to retrieve per query (0 = use default) |
+| `QueryTimeoutSeconds` | `int` | `0` | Query timeout in seconds (0 = use default) |
+| `SchemaRefreshIntervalMinutes` | `int` | `0` | Auto-refresh interval in minutes (0 = no auto-refresh) |
+| `IncludedTables` | `string[]` | `[]` | Specific tables to include (empty = all tables) |
+| `ExcludedTables` | `string[]` | `[]` | Tables to exclude from analysis |
 
 ---
 
@@ -143,12 +145,34 @@ new DatabaseConnectionConfig
 
 ## Schema Analysis and Refresh
 
-### Automatic Schema Analysis
+### SmartRAG Options for Schema Management
+
+These global options control schema analysis behavior for all databases:
 
 ```csharp
-options.EnableAutoSchemaAnalysis = true;  // Analyze schemas on startup
-options.EnablePeriodicSchemaRefresh = true;  // Refresh periodically
-options.DefaultSchemaRefreshIntervalMinutes = 60;  // Refresh every 60 minutes
+builder.Services.AddSmartRag(configuration, options =>
+{
+    // Automatically analyze database schemas on startup
+    options.EnableAutoSchemaAnalysis = true;
+    
+    // Periodically refresh schemas to detect schema changes
+    options.EnablePeriodicSchemaRefresh = true;
+    
+    // Default refresh interval for all databases (unless overridden per-database)
+    options.DefaultSchemaRefreshIntervalMinutes = 60;
+});
+```
+
+**Configuration in appsettings.json:**
+
+```json
+{
+  "SmartRAG": {
+    "EnableAutoSchemaAnalysis": true,
+    "EnablePeriodicSchemaRefresh": true,
+    "DefaultSchemaRefreshIntervalMinutes": 60
+  }
+}
 ```
 
 ### Manual Schema Refresh

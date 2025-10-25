@@ -13,7 +13,40 @@ SmartRAG provides capabilities for converting audio files to text and extracting
 
 ## Whisper.net (Local Audio Transcription)
 
-### Configuration
+### WhisperConfig Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `ModelPath` | string | `"models/ggml-large-v3.bin"` | Path to Whisper model file |
+| `DefaultLanguage` | string | `"auto"` | Language code for transcription |
+| `MinConfidenceThreshold` | double | `0.3` | Minimum confidence score (0.0-1.0) |
+| `IncludeWordTimestamps` | bool | `false` | Include word-level timestamps |
+| `PromptHint` | string | `""` | Context hint for better accuracy |
+| `MaxThreads` | int | `0` | CPU threads (0 = auto-detect) |
+
+### Whisper Model Sizes
+
+| Model | Size | Speed | Accuracy | Use Case |
+|-------|------|-------|----------|----------|
+| `tiny` | 75MB | ⭐⭐⭐⭐⭐ | ⭐⭐ | Fast prototyping |
+| `base` | 142MB | ⭐⭐⭐⭐ | ⭐⭐⭐ | Balanced performance |
+| `small` | 244MB | ⭐⭐⭐ | ⭐⭐⭐⭐ | Good accuracy |
+| `medium` | 769MB | ⭐⭐ | ⭐⭐⭐⭐⭐ | High accuracy |
+| `large-v3` | 1.5GB | ⭐ | ⭐⭐⭐⭐⭐ | Best accuracy |
+
+### Model Download
+
+Models are automatically downloaded on first use. You can also download manually:
+
+```bash
+# Download specific model
+ollama pull whisper-large-v3
+
+# Or use Whisper.net directly
+# Models are cached in ~/.cache/whisper/
+```
+
+### Configuration Example
 
 ```json
 {
@@ -44,8 +77,6 @@ builder.Services.AddSmartRag(configuration, options =>
     };
 });
 ```
-
-### Supported Languages
 
 - `auto` - Automatic language detection (recommended)
 - `en` - English

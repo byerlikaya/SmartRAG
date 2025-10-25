@@ -350,3 +350,9 @@ models/
 TODO.md
 NOTES.md
 DEVELOPMENT.md
+
+# Documentation publishing scripts
+docs/*.bat
+docs/start-docs.bat
+docs/run.bat
+docs/quick-start.bat

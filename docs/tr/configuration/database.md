@@ -41,18 +41,20 @@ Veritabanlarını `appsettings.json` dosyasında yapılandırın:
 
 ---
 
-## DatabaseConfig Parametreleri
+## DatabaseConnectionConfig Parametreleri
 
 | Parametre | Tip | Varsayılan | Açıklama |
 |-----------|------|---------|-------------|
-| `Name` | `string` | - | Veritabanı bağlantısı için kolay ad |
-| `Type` | `DatabaseType` | - | Veritabanı tipi (SqlServer, MySql, PostgreSql, Sqlite) |
-| `ConnectionString` | `string` | - | Veritabanı bağlantı dizesi |
-| `IncludedTables` | `List<string>` | `[]` | Dahil edilecek spesifik tablolar (boş = tüm tablolar) |
-| `ExcludedTables` | `List<string>` | `[]` | Analizden hariç tutulacak tablolar |
-| `MaxRowsPerTable` | `int` | `1000` | Tablo başına çıkarılacak maksimum satır |
-| `SanitizeSensitiveData` | `bool` | `true` | Hassas verileri otomatik olarak temizle (SSN, kredi kartı vb.) |
-| `SchemaRefreshIntervalMinutes` | `int` | `60` | Bu veritabanı için şema yenileme aralığı (0 = varsayılan) |
+| `Name` | `string` | - | Veritabanı bağlantısı için açıklayıcı isim (sağlanmazsa otomatik oluşturulur) |
+| `ConnectionString` | `string` | - | Veritabanı bağlantı string'i (gerekli) |
+| `DatabaseType` | `DatabaseType` | - | Veritabanı tipi (SqlServer, MySql, PostgreSql, Sqlite) (gerekli) |
+| `Description` | `string` | - | Veritabanı içeriğini anlamaya yardımcı olacak isteğe bağlı açıklama |
+| `Enabled` | `bool` | `true` | Bu bağlantının etkin olup olmadığı |
+| `MaxRowsPerQuery` | `int` | `0` | Sorgu başına alınacak maksimum satır (0 = varsayılan kullan) |
+| `QueryTimeoutSeconds` | `int` | `0` | Sorgu timeout süresi (saniye) (0 = varsayılan kullan) |
+| `SchemaRefreshIntervalMinutes` | `int` | `0` | Otomatik yenileme aralığı (dakika) (0 = otomatik yenileme yok) |
+| `IncludedTables` | `string[]` | `[]` | Dahil edilecek belirli tablolar (boş = tüm tablolar) |
+| `ExcludedTables` | `string[]` | `[]` | Analizden hariç tutulacak tablolar |
 
 ---
 
@@ -143,12 +145,34 @@ new DatabaseConnectionConfig
 
 ## Şema Analizi ve Yenileme
 
-### Otomatik Şema Analizi
+### SmartRAG Seçenekleri - Şema Yönetimi
+
+Bu global seçenekler tüm veritabanları için şema analizi davranışını kontrol eder:
 
 ```csharp
-options.EnableAutoSchemaAnalysis = true;  // Başlangıçta şemaları analiz et
-options.EnablePeriodicSchemaRefresh = true;  // Periyodik olarak yenile
-options.DefaultSchemaRefreshIntervalMinutes = 60;  // 60 dakikada bir yenile
+builder.Services.AddSmartRag(configuration, options =>
+{
+    // Başlangıçta veritabanı şemalarını otomatik olarak analiz et
+    options.EnableAutoSchemaAnalysis = true;
+    
+    // Şema değişikliklerini tespit etmek için şemaları periyodik olarak yenile
+    options.EnablePeriodicSchemaRefresh = true;
+    
+    // Tüm veritabanları için varsayılan yenileme aralığı (veritabanı bazında override edilebilir)
+    options.DefaultSchemaRefreshIntervalMinutes = 60;
+});
+```
+
+**appsettings.json konfigürasyonu:**
+
+```json
+{
+  "SmartRAG": {
+    "EnableAutoSchemaAnalysis": true,
+    "EnablePeriodicSchemaRefresh": true,
+    "DefaultSchemaRefreshIntervalMinutes": 60
+  }
+}
 ```
 
 ### Manuel Şema Yenileme

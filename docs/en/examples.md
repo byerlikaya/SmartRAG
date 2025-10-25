@@ -193,14 +193,14 @@ public class AudioController : ControllerBase
     
     // Upload audio for transcription
     [HttpPost("upload/audio")]
-    public async Task<IActionResult> UploadAudio(IFormFile file, [FromQuery] string language = "en-US")
+    public async Task<IActionResult> UploadAudio(IFormFile file, [FromQuery] string language = "en")
     {
         var document = await _documentService.UploadDocumentAsync(
             file.OpenReadStream(),
             file.FileName,
             file.ContentType,
             "user-123",
-            language: language  // Speech language: en-US, tr-TR, etc.
+            language: language  // Speech language: en, tr, auto, etc.
         );
         
         return Ok(new { 
@@ -224,11 +224,12 @@ public class AudioController : ControllerBase
 - MP3, WAV, M4A, AAC, OGG, FLAC, WMA
 
 **Language Codes:**
-- `en-US` - English
-- `tr-TR` - Turkish
-- `de-DE` - German
-- `fr-FR` - French
-- 100+ languages
+- `en` - English
+- `tr` - Turkish
+- `de` - German
+- `fr` - French
+- `auto` - Automatic detection (recommended)
+- 100+ languages supported
 
 <div class="alert alert-success">
     <h4><i class="fas fa-lock me-2"></i> Privacy Note</h4>
@@ -321,7 +322,7 @@ await _documentService.UploadDocumentAsync(labResultsStream, "labs.xlsx", "appli
 await _documentService.UploadDocumentAsync(prescriptionImage, "prescription.jpg", "image/jpeg", "doctor", language: "eng");
 
 // Upload doctor's voice notes (Audio transcription)
-await _documentService.UploadDocumentAsync(audioStream, "notes.mp3", "audio/mpeg", "doctor", language: "en-US");
+await _documentService.UploadDocumentAsync(audioStream, "notes.mp3", "audio/mpeg", "doctor", language: "en");
 
 // Query across all data sources
 var response = await _searchService.QueryIntelligenceAsync(
@@ -507,7 +508,7 @@ await _documentService.UploadDocumentAsync(
     "interview.mp3",
     "audio/mpeg",
     "hr-team",
-    language: "en-US"
+    language: "en"
 );
 
 // Find best candidates
@@ -568,7 +569,7 @@ Process citizen applications efficiently:
 await _documentService.UploadDocumentAsync(formImage, "building-permit.jpg", "image/jpeg", "clerk", language: "tur");
 
 // Upload audio call center recordings
-await _documentService.UploadDocumentAsync(callAudio, "citizen-call.wav", "audio/wav", "agent", language: "tr-TR");
+await _documentService.UploadDocumentAsync(callAudio, "citizen-call.wav", "audio/wav", "agent", language: "tr");
 
 // Upload PDF regulation documents
 await _documentService.UploadDocumentAsync(regulationPdf, "zoning-law.pdf", "application/pdf", "legal");
