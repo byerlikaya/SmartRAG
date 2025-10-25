@@ -38,6 +38,56 @@ builder.Services.AddSmartRag(configuration, options =>
 | `AIProvider` | `AIProvider` | `OpenAI` | Embedding'ler ve metin üretimi için AI sağlayıcı |
 | `StorageProvider` | `StorageProvider` | `InMemory` | Dokümanlar ve vektörler için depolama backend'i |
 | `ConversationStorageProvider` | `ConversationStorageProvider?` | `null` | Konuşma geçmişi için ayrı depolama (isteğe bağlı) |
+| `EnableAutoSchemaAnalysis` | `bool` | `true` | Başlangıçta veritabanı şemalarını otomatik olarak analiz et |
+| `EnablePeriodicSchemaRefresh` | `bool` | `true` | Veritabanı şemalarını periyodik olarak yenile |
+| `DefaultSchemaRefreshIntervalMinutes` | `int` | `60` | Şema yenileme için varsayılan aralık (dakika) |
+
+---
+
+## ConversationStorageProvider
+
+Konuşma geçmişi için doküman depolamasından bağımsız ayrı depolama konfigürasyonu:
+
+```csharp
+builder.Services.AddSmartRag(configuration, options =>
+{
+    options.AIProvider = AIProvider.OpenAI;
+    options.StorageProvider = StorageProvider.Qdrant;  // Dokümanlar için
+    options.ConversationStorageProvider = ConversationStorageProvider.Redis;  // Konuşmalar için
+});
+```
+
+### Mevcut Seçenekler
+
+| Seçenek | Açıklama |
+|--------|-------------|
+| `Redis` | Konuşmaları Redis'te sakla (yüksek performans önbellek) |
+| `SQLite` | Konuşmaları SQLite veritabanında sakla (gömülü, hafif) |
+| `FileSystem` | Konuşmaları dosya sisteminde sakla (basit, kalıcı) |
+| `InMemory` | Konuşmaları RAM'de sakla (kalıcı değil, sadece geliştirme) |
+
+### Konfigürasyon Örneği
+
+```json
+{
+  "SmartRAG": {
+    "ConversationStorageProvider": "Redis",
+    "RedisConfig": {
+      "ConnectionString": "localhost:6379"
+    }
+  }
+}
+```
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> Konuşma Depolama İpuçları</h4>
+    <ul class="mb-0">
+        <li><strong>Redis:</strong> Üretim için en iyi, yüksek performans önbellekleme</li>
+        <li><strong>SQLite:</strong> Geliştirme ve küçük deployment'lar için iyi</li>
+        <li><strong>FileSystem:</strong> Basit, insan tarafından okunabilir depolama</li>
+        <li><strong>InMemory:</strong> Hızlı, ancak yeniden başlatmada veri kaybolur</li>
+    </ul>
+</div>
 
 ---
 

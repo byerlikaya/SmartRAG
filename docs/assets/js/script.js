@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initCodeTabs();
     initAnimations();
     initMobileDropdown();
+    initMobileMenuClose();
     
     // Initialize Prism.js if available
     if (typeof Prism !== 'undefined') {
@@ -210,49 +211,65 @@ function initSearch() {
 }
 
 // ===== MOBILE MENU CLOSE ON CLICK =====
-document.querySelectorAll('.navbar-nav .nav-link').forEach(link => {
-    link.addEventListener('click', function() {
-        const navbarCollapse = document.querySelector('.navbar-collapse');
-        const bsCollapse = bootstrap.Collapse.getInstance(navbarCollapse);
-        if (bsCollapse && window.innerWidth < 992) {
-            bsCollapse.hide();
-        }
+function initMobileMenuClose() {
+    // Mobile'da sadece gerçek linklere tıklandığında menüyü kapat
+    // Dropdown toggle'ları hariç tut
+    document.querySelectorAll('.navbar-nav > .nav-item:not(.dropdown) > .nav-link').forEach(link => {
+        link.addEventListener('click', function(e) {
+            const navbarCollapse = document.querySelector('.navbar-collapse');
+            const bsCollapse = bootstrap.Collapse.getInstance(navbarCollapse);
+            if (bsCollapse && window.innerWidth < 992) {
+                bsCollapse.hide();
+            }
+        });
     });
-});
+}
 
 // ===== MOBILE DROPDOWN SUPPORT =====
 function initMobileDropdown() {
-    const dropdownToggles = document.querySelectorAll('.dropdown-toggle');
-    
-    dropdownToggles.forEach(toggle => {
+    // Manual dropdown toggle for mobile devices
+    document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
         toggle.addEventListener('click', function(e) {
-            if (window.innerWidth <= 991.98) {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                const dropdown = this.closest('.dropdown');
-                
-                // Close other dropdowns
-                document.querySelectorAll('.dropdown.show').forEach(d => {
-                    if (d !== dropdown) {
-                        d.classList.remove('show');
-                    }
-                });
-                
-                // Toggle current dropdown
-                dropdown.classList.toggle('show');
+            // Only handle on mobile
+            if (window.innerWidth >= 992) return;
+            
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const dropdown = this.closest('.dropdown');
+            const isActive = dropdown.classList.contains('show');
+            
+            // Close all dropdowns
+            document.querySelectorAll('.dropdown').forEach(d => {
+                d.classList.remove('show');
+            });
+            
+            // Toggle current dropdown
+            if (!isActive) {
+                dropdown.classList.add('show');
             }
         });
     });
     
-    // Close dropdowns when clicking outside
-    document.addEventListener('click', function(e) {
-        if (window.innerWidth <= 991.98) {
-            if (!e.target.closest('.dropdown')) {
-                document.querySelectorAll('.dropdown.show').forEach(dropdown => {
-                    dropdown.classList.remove('show');
-                });
+    // Close mobile menu when a dropdown item is clicked
+    document.querySelectorAll('.dropdown-menu .dropdown-item').forEach(item => {
+        item.addEventListener('click', function(e) {
+            const navbarCollapse = document.querySelector('.navbar-collapse');
+            const bsCollapse = bootstrap.Collapse.getInstance(navbarCollapse);
+            if (bsCollapse && window.innerWidth < 992) {
+                bsCollapse.hide();
             }
+        });
+    });
+    
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        if (window.innerWidth >= 992) return;
+        
+        if (!e.target.closest('.dropdown')) {
+            document.querySelectorAll('.dropdown').forEach(d => {
+                d.classList.remove('show');
+            });
         }
     });
 }

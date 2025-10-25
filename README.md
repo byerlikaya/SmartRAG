@@ -198,6 +198,13 @@ docker exec -it smartrag-ollama ollama pull nomic-embed-text
 
 | Feature | SmartRAG | LM-Kit.NET | Semantic Kernel | LangChain.NET |
 |---------|----------|------------|----------------|---------------|
+| **Library Owner** | Barış Yerlikaya | LM-Kit (France) | Microsoft | LangChain Community |
+| **Description** | Multi-database RAG library for .NET | Generative AI SDK for .NET applications | AI orchestration framework | .NET port of LangChain framework |
+| **RAG Support** | ✅ | ✅ | ✅ | ✅ |
+| **Memory Management** | ✅ | ✅ | ✅ | ✅ |
+| **Vector Stores** | ✅ | ✅ | ✅ | ✅ |
+| **AI Model Integration** | ✅ | ✅ | ✅ | ✅ |
+| **Plugin/Extension System** | ✅ | ✅ | ✅ | ✅ |
 | **Multi-Modal** | ✅ | ✅ | ❌ | ❌ |
 | **Local AI** | ✅ | ✅ | ❌ | ❌ |
 | **Audio** | ✅ | ✅ | ❌ | ❌ |

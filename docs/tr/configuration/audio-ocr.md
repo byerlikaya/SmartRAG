@@ -13,7 +13,40 @@ SmartRAG ses dosyalarını metne çevirme ve görsellerden metin çıkarma yeten
 
 ## Whisper.net (Yerel Ses Transkripsiyonu)
 
-### Yapılandırma
+### WhisperConfig Parametreleri
+
+| Parametre | Tip | Varsayılan | Açıklama |
+|-----------|-----|-----------|----------|
+| `ModelPath` | string | `"models/ggml-large-v3.bin"` | Whisper model dosyası yolu |
+| `DefaultLanguage` | string | `"auto"` | Transkripsiyon için dil kodu |
+| `MinConfidenceThreshold` | double | `0.3` | Minimum güven skoru (0.0-1.0) |
+| `IncludeWordTimestamps` | bool | `false` | Kelime bazlı zaman damgaları dahil et |
+| `PromptHint` | string | `""` | Daha iyi doğruluk için bağlam ipucu |
+| `MaxThreads` | int | `0` | CPU thread sayısı (0 = otomatik algılama) |
+
+### Whisper Model Boyutları
+
+| Model | Boyut | Hız | Doğruluk | Kullanım Durumu |
+|-------|-------|-----|----------|-----------------|
+| `tiny` | 75MB | ⭐⭐⭐⭐⭐ | ⭐⭐ | Hızlı prototipleme |
+| `base` | 142MB | ⭐⭐⭐⭐ | ⭐⭐⭐ | Dengeli performans |
+| `small` | 244MB | ⭐⭐⭐ | ⭐⭐⭐⭐ | İyi doğruluk |
+| `medium` | 769MB | ⭐⭐ | ⭐⭐⭐⭐⭐ | Yüksek doğruluk |
+| `large-v3` | 1.5GB | ⭐ | ⭐⭐⭐⭐⭐ | En iyi doğruluk |
+
+### Model İndirme
+
+Modeller ilk kullanımda otomatik olarak indirilir. Manuel olarak da indirebilirsiniz:
+
+```bash
+# Belirli modeli indir
+ollama pull whisper-large-v3
+
+# Veya Whisper.net'i doğrudan kullan
+# Modeller ~/.cache/whisper/ dizininde önbelleğe alınır
+```
+
+### Yapılandırma Örneği
 
 ```json
 {
@@ -44,8 +77,6 @@ builder.Services.AddSmartRag(configuration, options =>
     };
 });
 ```
-
-### Desteklenen Diller
 
 - `auto` - Otomatik dil algılama (önerilen)
 - `tr` - Türkçe

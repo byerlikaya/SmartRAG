@@ -38,6 +38,56 @@ builder.Services.AddSmartRag(configuration, options =>
 | `AIProvider` | `AIProvider` | `OpenAI` | AI provider for embeddings and text generation |
 | `StorageProvider` | `StorageProvider` | `InMemory` | Storage backend for documents and vectors |
 | `ConversationStorageProvider` | `ConversationStorageProvider?` | `null` | Separate storage for conversation history (optional) |
+| `EnableAutoSchemaAnalysis` | `bool` | `true` | Automatically analyze database schemas on startup |
+| `EnablePeriodicSchemaRefresh` | `bool` | `true` | Periodically refresh database schemas |
+| `DefaultSchemaRefreshIntervalMinutes` | `int` | `60` | Default interval in minutes for schema refresh |
+
+---
+
+## ConversationStorageProvider
+
+Separate storage configuration for conversation history, independent from document storage:
+
+```csharp
+builder.Services.AddSmartRag(configuration, options =>
+{
+    options.AIProvider = AIProvider.OpenAI;
+    options.StorageProvider = StorageProvider.Qdrant;  // For documents
+    options.ConversationStorageProvider = ConversationStorageProvider.Redis;  // For conversations
+});
+```
+
+### Available Options
+
+| Option | Description |
+|--------|-------------|
+| `Redis` | Store conversations in Redis (high-performance cache) |
+| `SQLite` | Store conversations in SQLite database (embedded, lightweight) |
+| `FileSystem` | Store conversations in file system (simple, persistent) |
+| `InMemory` | Store conversations in RAM (not persistent, development only) |
+
+### Configuration Example
+
+```json
+{
+  "SmartRAG": {
+    "ConversationStorageProvider": "Redis",
+    "RedisConfig": {
+      "ConnectionString": "localhost:6379"
+    }
+  }
+}
+```
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> Conversation Storage Tips</h4>
+    <ul class="mb-0">
+        <li><strong>Redis:</strong> Best for production, high-performance caching</li>
+        <li><strong>SQLite:</strong> Good for development and small deployments</li>
+        <li><strong>FileSystem:</strong> Simple, human-readable storage</li>
+        <li><strong>InMemory:</strong> Fast, but data lost on restart</li>
+    </ul>
+</div>
 
 ---
 

@@ -711,52 +711,554 @@ public enum RetryPolicy
 
 ### IMultiDatabaseQueryCoordinator
 
-**Purpose:** Coordinate queries across multiple databases
+**Purpose:** Coordinates intelligent multi-database queries using AI
+
+**Namespace:** `SmartRAG.Interfaces`
+
+This interface enables querying across multiple databases simultaneously using natural language. The AI analyzes the query, determines which databases and tables to access, generates optimized SQL queries, and merges results into a coherent response.
+
+#### Methods
+
+##### QueryMultipleDatabasesAsync
+
+Executes a full intelligent query: analyze intent + execute + merge results.
 
 ```csharp
-public interface IMultiDatabaseQueryCoordinator
+Task<RagResponse> QueryMultipleDatabasesAsync(
+    string userQuery, 
+    int maxResults = 5
+)
+```
+
+**Parameters:**
+- `userQuery` (string): Natural language user query
+- `maxResults` (int): Maximum number of results to return (default: 5)
+
+**Returns:** `RagResponse` with AI-generated answer and data from multiple databases
+
+**Example:**
+
+```csharp
+var response = await _coordinator.QueryMultipleDatabasesAsync(
+    "Show records from TableA with their corresponding TableB details"
+);
+
+Console.WriteLine(response.Answer);
+// AI answer combining data from multiple databases
+```
+
+##### AnalyzeQueryIntentAsync
+
+Analyzes user query and determines which databases/tables to query.
+
+```csharp
+Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery)
+```
+
+**Parameters:**
+- `userQuery` (string): Natural language user query
+
+**Returns:** `QueryIntent` with database routing information
+
+**Example:**
+
+```csharp
+var intent = await _coordinator.AnalyzeQueryIntentAsync(
+    "Compare data between Database1 and Database2"
+);
+
+Console.WriteLine($"Confidence: {intent.Confidence}");
+Console.WriteLine($"Requires Cross-DB Join: {intent.RequiresCrossDatabaseJoin}");
+
+foreach (var dbQuery in intent.DatabaseQueries)
 {
-    Task<MultiDatabaseQueryResponse> ExecuteQueryAsync(string naturalLanguageQuery);
-    Task<List<DatabaseInfo>> GetConnectedDatabasesAsync();
+    Console.WriteLine($"Database: {dbQuery.DatabaseName}");
+    Console.WriteLine($"Tables: {string.Join(", ", dbQuery.RequiredTables)}");
 }
 ```
+
+##### ExecuteMultiDatabaseQueryAsync
+
+Executes queries across multiple databases based on query intent.
+
+```csharp
+Task<MultiDatabaseQueryResult> ExecuteMultiDatabaseQueryAsync(
+    QueryIntent queryIntent
+)
+```
+
+**Parameters:**
+- `queryIntent` (QueryIntent): Analyzed query intent
+
+**Returns:** `MultiDatabaseQueryResult` with combined results from all databases
+
+##### GenerateDatabaseQueriesAsync
+
+Generates optimized SQL queries for each database based on intent.
+
+```csharp
+Task<QueryIntent> GenerateDatabaseQueriesAsync(QueryIntent queryIntent)
+```
+
+**Parameters:**
+- `queryIntent` (QueryIntent): Query intent to generate SQL for
+
+**Returns:** Updated `QueryIntent` with generated SQL queries
+
+##### MergeResultsAsync
+
+Merges results from multiple databases into a coherent response.
+
+```csharp
+Task<string> MergeResultsAsync(
+    MultiDatabaseQueryResult queryResults, 
+    string originalQuery
+)
+```
+
+**Parameters:**
+- `queryResults` (MultiDatabaseQueryResult): Results from multiple databases
+- `originalQuery` (string): Original user query
+
+**Returns:** Merged and formatted results as string
+
+---
+
+### IDatabaseConnectionManager
+
+**Purpose:** Manages database connections from configuration
+
+**Namespace:** `SmartRAG.Interfaces`
+
+Handles database connection lifecycle, validation, and runtime management.
+
+#### Methods
+
+##### InitializeAsync
+
+Initializes all database connections from configuration.
+
+```csharp
+Task InitializeAsync()
+```
+
+**Example:**
+
+```csharp
+await _connectionManager.InitializeAsync();
+Console.WriteLine("All database connections initialized");
+```
+
+##### GetAllConnectionsAsync
+
+Gets all configured database connections.
+
+```csharp
+Task<List<DatabaseConnectionConfig>> GetAllConnectionsAsync()
+```
+
+**Returns:** List of all database connection configurations
+
+##### GetConnectionAsync
+
+Gets a specific connection by ID.
+
+```csharp
+Task<DatabaseConnectionConfig> GetConnectionAsync(string databaseId)
+```
+
+**Parameters:**
+- `databaseId` (string): Database identifier
+
+**Returns:** Connection configuration or null if not found
+
+##### ValidateAllConnectionsAsync
+
+Validates all configured connections.
+
+```csharp
+Task<Dictionary<string, bool>> ValidateAllConnectionsAsync()
+```
+
+**Returns:** Dictionary of database IDs and their validation status (true = valid, false = invalid)
+
+**Example:**
+
+```csharp
+var validationResults = await _connectionManager.ValidateAllConnectionsAsync();
+
+foreach (var (databaseId, isValid) in validationResults)
+{
+    Console.WriteLine($"{databaseId}: {(isValid ? "Valid" : "Invalid")}");
+}
+```
+
+##### ValidateConnectionAsync
+
+Validates a specific connection.
+
+```csharp
+Task<bool> ValidateConnectionAsync(string databaseId)
+```
+
+**Parameters:**
+- `databaseId` (string): Database identifier
+
+**Returns:** True if connection is valid, false otherwise
+
+##### GetDatabaseIdAsync
+
+Gets database identifier from connection (auto-generates if Name not provided).
+
+```csharp
+Task<string> GetDatabaseIdAsync(DatabaseConnectionConfig connectionConfig)
+```
+
+**Parameters:**
+- `connectionConfig` (DatabaseConnectionConfig): Connection configuration
+
+**Returns:** Unique database identifier
+
+##### AddConnectionAsync
+
+Adds a new database connection at runtime.
+
+```csharp
+Task<string> AddConnectionAsync(DatabaseConnectionConfig connectionConfig)
+```
+
+**Parameters:**
+- `connectionConfig` (DatabaseConnectionConfig): Connection configuration
+
+**Returns:** Generated database identifier
+
+**Example:**
+
+```csharp
+var config = new DatabaseConnectionConfig
+{
+    Name = "SalesDB",
+    ConnectionString = "Server=localhost;Database=Sales;Trusted_Connection=true;",
+    DatabaseType = DatabaseType.SqlServer,
+    Enabled = true
+};
+
+var databaseId = await _connectionManager.AddConnectionAsync(config);
+Console.WriteLine($"Added database with ID: {databaseId}");
+```
+
+##### RemoveConnectionAsync
+
+Removes a database connection.
+
+```csharp
+Task RemoveConnectionAsync(string databaseId)
+```
+
+**Parameters:**
+- `databaseId` (string): Database identifier to remove
+
+---
 
 ### IDatabaseSchemaAnalyzer
 
-**Purpose:** Analyze and extract database schemas
+**Purpose:** Analyzes database schemas and generates intelligent metadata
+
+**Namespace:** `SmartRAG.Interfaces`
+
+Extracts comprehensive schema information including tables, columns, relationships, and generates AI-powered summaries.
+
+#### Methods
+
+##### AnalyzeDatabaseSchemaAsync
+
+Analyzes a database connection and extracts comprehensive schema information.
 
 ```csharp
-public interface IDatabaseSchemaAnalyzer
+Task<DatabaseSchemaInfo> AnalyzeDatabaseSchemaAsync(
+    DatabaseConnectionConfig connectionConfig
+)
+```
+
+**Parameters:**
+- `connectionConfig` (DatabaseConnectionConfig): Database connection configuration
+
+**Returns:** Complete `DatabaseSchemaInfo` including tables, columns, foreign keys, and AI-generated summaries
+
+**Example:**
+
+```csharp
+var config = new DatabaseConnectionConfig
 {
-    Task<DatabaseSchemaInfo> AnalyzeSchemaAsync(string connectionString, DatabaseType type);
-    Task<List<TableInfo>> GetTablesAsync(string connectionString, DatabaseType type);
-    Task<List<ColumnInfo>> GetColumnsAsync(string connectionString, DatabaseType type, string tableName);
+    ConnectionString = "Server=localhost;Database=Northwind;Trusted_Connection=true;",
+    DatabaseType = DatabaseType.SqlServer
+};
+
+var schemaInfo = await _schemaAnalyzer.AnalyzeDatabaseSchemaAsync(config);
+
+Console.WriteLine($"Database: {schemaInfo.DatabaseName}");
+Console.WriteLine($"Tables: {schemaInfo.Tables.Count}");
+Console.WriteLine($"Total Rows: {schemaInfo.TotalRowCount:N0}");
+Console.WriteLine($"AI Summary: {schemaInfo.AISummary}");
+```
+
+##### RefreshSchemaAsync
+
+Refreshes schema information for a specific database.
+
+```csharp
+Task<DatabaseSchemaInfo> RefreshSchemaAsync(string databaseId)
+```
+
+**Parameters:**
+- `databaseId` (string): Database identifier
+
+**Returns:** Updated schema information
+
+##### GetAllSchemasAsync
+
+Gets all analyzed database schemas.
+
+```csharp
+Task<List<DatabaseSchemaInfo>> GetAllSchemasAsync()
+```
+
+**Returns:** List of all database schemas currently in memory
+
+##### GetSchemaAsync
+
+Gets schema for a specific database.
+
+```csharp
+Task<DatabaseSchemaInfo> GetSchemaAsync(string databaseId)
+```
+
+**Parameters:**
+- `databaseId` (string): Database identifier
+
+**Returns:** Database schema information or null if not found
+
+##### GetSchemasNeedingRefreshAsync
+
+Checks if any schemas need refresh based on configured intervals.
+
+```csharp
+Task<List<string>> GetSchemasNeedingRefreshAsync()
+```
+
+**Returns:** List of database IDs that need schema refresh
+
+**Example:**
+
+```csharp
+var needsRefresh = await _schemaAnalyzer.GetSchemasNeedingRefreshAsync();
+
+if (needsRefresh.Any())
+{
+    Console.WriteLine($"Databases needing refresh: {string.Join(", ", needsRefresh)}");
+    
+    foreach (var databaseId in needsRefresh)
+    {
+        await _schemaAnalyzer.RefreshSchemaAsync(databaseId);
+    }
 }
 ```
+
+##### GenerateAISummaryAsync
+
+Generates AI-powered summary of database content.
+
+```csharp
+Task<string> GenerateAISummaryAsync(DatabaseSchemaInfo schemaInfo)
+```
+
+**Parameters:**
+- `schemaInfo` (DatabaseSchemaInfo): Schema information to summarize
+
+**Returns:** AI-generated summary describing the database purpose and content
+
+---
 
 ### IAudioParserService
 
-**Purpose:** Audio transcription with Whisper.net (local processing)
+**Purpose:** Audio transcription with Whisper.net (100% local processing)
+
+**Namespace:** `SmartRAG.Interfaces`
+
+Provides local audio-to-text transcription using Whisper.net. All processing is done on-premise - no data is sent to external services.
+
+<div class="alert alert-success">
+    <h4><i class="fas fa-lock me-2"></i> Privacy Note</h4>
+    <p class="mb-0">
+        Audio transcription uses <strong>Whisper.net</strong> for 100% local processing. 
+        No audio data is ever sent to external services. GDPR/KVKK/HIPAA compliant.
+    </p>
+</div>
+
+#### Methods
+
+##### TranscribeAudioAsync
+
+Transcribes audio content from a stream to text.
 
 ```csharp
-public interface IAudioParserService
-{
-    Task<AudioTranscriptionResult> TranscribeAudioAsync(Stream audioStream, string language = "en-US");
-    IEnumerable<string> GetSupportedAudioFormats();
-}
+Task<AudioTranscriptionResult> TranscribeAudioAsync(
+    Stream audioStream, 
+    string fileName, 
+    string language = null
+)
 ```
+
+**Parameters:**
+- `audioStream` (Stream): The audio stream to transcribe
+- `fileName` (string): The name of the audio file for format detection
+- `language` (string, optional): Language code for transcription (e.g., "en", "tr", "auto")
+
+**Returns:** `AudioTranscriptionResult` containing transcribed text, confidence score, and metadata
+
+**Example:**
+
+```csharp
+using var audioStream = File.OpenRead("meeting.mp3");
+
+var result = await _audioParser.TranscribeAudioAsync(
+    audioStream, 
+    "meeting.mp3", 
+    language: "en"
+);
+
+Console.WriteLine($"Transcription: {result.Text}");
+Console.WriteLine($"Confidence: {result.Confidence:P}");
+Console.WriteLine($"Language: {result.Language}");
+```
+
+**Supported Audio Formats:**
+- MP3, WAV, M4A, AAC, OGG, FLAC, WMA
+
+**Whisper Models:**
+- `tiny` (75MB) - Fastest, lowest accuracy
+- `base` (142MB) - Good balance (recommended)
+- `small` (466MB) - Better accuracy
+- `medium` (1.5GB) - High accuracy
+- `large-v3` (2.9GB) - Highest accuracy
+
+---
 
 ### IImageParserService
 
-**Purpose:** OCR text extraction from images
+**Purpose:** OCR text extraction from images using Tesseract
+
+**Namespace:** `SmartRAG.Interfaces`
+
+Provides optical character recognition (OCR) for extracting text from images. All processing is local using Tesseract.
+
+#### Methods
+
+##### ExtractTextFromImageAsync
+
+Extracts text from an image using OCR.
 
 ```csharp
-public interface IImageParserService
+Task<string> ExtractTextFromImageAsync(
+    Stream imageStream, 
+    string language = "eng"
+)
+```
+
+**Parameters:**
+- `imageStream` (Stream): The image stream to process
+- `language` (string, optional): Language code for OCR (default: "eng")
+  - English: "eng"
+  - Turkish: "tur"
+  - German: "deu"
+  - Multiple: "eng+tur"
+
+**Returns:** Extracted text as string
+
+**Example:**
+
+```csharp
+using var imageStream = File.OpenRead("document.png");
+
+var text = await _imageParser.ExtractTextFromImageAsync(
+    imageStream, 
+    language: "eng"
+);
+
+Console.WriteLine($"Extracted Text: {text}");
+```
+
+##### ExtractTextWithConfidenceAsync
+
+Extracts text from an image with confidence scores.
+
+```csharp
+Task<OcrResult> ExtractTextWithConfidenceAsync(
+    Stream imageStream, 
+    string language = "eng"
+)
+```
+
+**Parameters:**
+- `imageStream` (Stream): The image stream to process
+- `language` (string, optional): Language code for OCR (default: "eng")
+
+**Returns:** `OcrResult` with extracted text, confidence scores, and text blocks
+
+**Example:**
+
+```csharp
+using var imageStream = File.OpenRead("invoice.jpg");
+
+var result = await _imageParser.ExtractTextWithConfidenceAsync(
+    imageStream, 
+    language: "eng"
+);
+
+Console.WriteLine($"Text: {result.ExtractedText}");
+Console.WriteLine($"Confidence: {result.Confidence:P}");
+
+foreach (var block in result.TextBlocks)
 {
-    Task<OcrResult> ExtractTextFromImageAsync(Stream imageStream, string language = "eng");
-    IEnumerable<string> GetSupportedImageFormats();
+    Console.WriteLine($"Block: {block.Text} (Confidence: {block.Confidence:P})");
 }
 ```
+
+##### PreprocessImageAsync
+
+Preprocesses an image for better OCR results.
+
+```csharp
+Task<Stream> PreprocessImageAsync(Stream imageStream)
+```
+
+**Parameters:**
+- `imageStream` (Stream): The input image stream
+
+**Returns:** Preprocessed image stream
+
+**Preprocessing Steps:**
+- Grayscale conversion
+- Contrast enhancement
+- Noise reduction
+- Binarization
+
+**Example:**
+
+```csharp
+using var originalStream = File.OpenRead("low-quality.jpg");
+using var preprocessedStream = await _imageParser.PreprocessImageAsync(originalStream);
+
+var text = await _imageParser.ExtractTextFromImageAsync(
+    preprocessedStream, 
+    language: "eng"
+);
+
+Console.WriteLine($"Text from preprocessed image: {text}");
+```
+
+**Supported Image Formats:**
+- JPEG, PNG, GIF, BMP, TIFF, WEBP
 
 ---
 
