@@ -19,13 +19,11 @@
   <a href="README.md"><img src="https://img.shields.io/badge/🇺🇸-English_README-blue?style=for-the-badge" alt="English README"/></a>
 </p>
 
----
-
 ## 🚀 **Hızlı Kullanım Senaryoları**
 
 ### **🏦 Bankacılık**
 ```csharp
-var cevap = await intelligence.QueryIntelligenceAsync(
+var cevap = await searchService.QueryIntelligenceAsync(
     "Hangi müşterilerin vadesi geçmiş ödemeleri var ve toplam borçları ne kadar?"
 );
 // → Müşteri DB, Ödeme DB, Hesap DB'yi sorgular ve sonuçları birleştirir
@@ -33,7 +31,7 @@ var cevap = await intelligence.QueryIntelligenceAsync(
 
 ### **🏥 Sağlık**
 ```csharp
-var cevap = await intelligence.QueryIntelligenceAsync(
+var cevap = await searchService.QueryIntelligenceAsync(
     "Diyabet hastalarından HbA1c kontrolü 6 aydır yapılmayanları göster"
 );
 // → Hasta DB, Lab Sonuçları DB, Randevu DB'yi birleştirir ve risk altındaki hastaları belirler
@@ -41,104 +39,57 @@ var cevap = await intelligence.QueryIntelligenceAsync(
 
 ### **📦 Envanter**
 ```csharp
-var cevap = await intelligence.QueryIntelligenceAsync(
+var cevap = await searchService.QueryIntelligenceAsync(
     "Hangi ürünlerin stoku azalıyor ve hangi tedarikçiler en hızlı yeniden stoklayabilir?"
 );
 // → Envanter DB, Tedarikçi DB, Sipariş Geçmişi DB'yi analiz eder ve yeniden stoklama önerileri sağlar
 ```
 
----
-
 ## 🚀 **Hızlı Başlangıç**
 
+### **1. SmartRAG'ı Kur**
+```bash
+dotnet add package SmartRAG
+```
+
+### **2. Kurulum**
 ```csharp
-// 1. Kurulum
 builder.Services.UseSmartRAG(builder.Configuration,
     aiProvider: AIProvider.OpenAI,
     storageProvider: StorageProvider.InMemory
 );
+```
 
-// 2. Veritabanlarını bağla & belgeleri yükle
-await connector.ConnectAsync(sqlServer: "Server=localhost;Database=Satis;");
-await documents.UploadAsync(dosyalar);
+### **3. Veritabanlarını appsettings.json'da yapılandır**
+```json
+{
+  "SmartRAG": {
+    "DatabaseConnections": [
+      {
+        "Name": "Satış",
+        "ConnectionString": "Server=localhost;Database=Satis;...",
+        "DatabaseType": "SqlServer"
+      }
+    ]
+  }
+}
+```
 
-// 3. Sorular sor
-var cevap = await intelligence.QueryIntelligenceAsync(
+### **4. Belgeleri yükle ve sorular sor**
+```csharp
+// Belge yükle
+var belge = await documentService.UploadDocumentAsync(
+    dosyaStream, dosyaAdi, icerikTipi, "kullanici-123"
+);
+
+// Veritabanları ve belgelerde sorgula
+var cevap = await searchService.QueryIntelligenceAsync(
     "Tüm veritabanlarından 100 bin TL üzeri cirosu olan müşterileri göster"
 );
 // → AI otomatik olarak SQL Server, MySQL, PostgreSQL sorgular ve sonuçları birleştirir
 ```
 
----
-
-## 🧪 **Örnekler ve Test**
-
-SmartRAG farklı kullanım senaryoları için kapsamlı örnek uygulamalar sağlar:
-
-### **📁 Mevcut Örnekler**
-```
-examples/
-├── SmartRAG.API/          # Swagger UI ile tam REST API
-└── SmartRAG.Demo/         # Etkileşimli konsol uygulaması
-```
-
-### **🚀 Demo ile Hızlı Test**
-
-SmartRAG'ı hemen görmek ister misiniz? İnteraktif konsol demo'muzu deneyin:
-
-```bash
-# Klonla ve demo'yu çalıştır
-git clone https://github.com/byerlikaya/SmartRAG.git
-cd SmartRAG/examples/SmartRAG.Demo
-dotnet run
-```
-
-**Önkoşullar:** Yerel olarak veritabanları ve AI servisleri çalıştırmanız gerekiyor, veya kolay kurulum için Docker kullanabilirsiniz.
-
-📖 **[SmartRAG.Demo README](examples/SmartRAG.Demo/README.md)** - Tam demo uygulaması rehberi ve kurulum talimatları
-
-#### **🐳 Docker Kurulumu (Önerilen)**
-
-Tüm servislerin önceden yapılandırıldığı en kolay deneyim için:
-
-```bash
-# Tüm servisleri başlat (SQL Server, MySQL, PostgreSQL, Ollama, Qdrant, Redis)
-docker-compose up -d
-
-# AI modellerini kur
-docker exec -it smartrag-ollama ollama pull llama3.2
-docker exec -it smartrag-ollama ollama pull nomic-embed-text
-```
-
-📚 **[Tam Docker Kurulum Rehberi](examples/SmartRAG.Demo/README-Docker.md)** - Detaylı Docker konfigürasyonu, sorun giderme ve yönetim
-
-### **📋 Demo Özellikleri ve Adımları:**
-
-**🔗 Veritabanı Yönetimi:**
-- **Adım 1-2**: Bağlantıları göster ve sistem sağlık kontrolü
-- **Adım 3-5**: Test veritabanları oluştur (SQL Server, MySQL, PostgreSQL)
-- **Adım 6**: Veritabanı şemalarını ve ilişkileri görüntüle
-
-**🤖 AI ve Sorgu Testleri:**
-- **Adım 7**: Sorgu analizi - doğal dilin SQL'e nasıl dönüştüğünü gör
-- **Adım 8**: Otomatik test sorguları - önceden hazırlanmış senaryolar
-- **Adım 9**: Çoklu Veritabanı AI Sorguları - tüm veritabanlarında sorular sor
-
-**🏠 Yerel AI Kurulumu:**
-- **Adım 10**: %100 yerel işleme için Ollama modellerini kur
-- **Adım 11**: Vektör depolarını test et (InMemory, Redis, SQLite, Qdrant)
-
-**📄 Belge İşleme:**
-- **Adım 12**: Belgeleri yükle (PDF, Word, Excel, Görüntüler, Ses)
-- **Adım 13**: Yüklenen belgeleri listele ve yönet
-- **Adım 14**: Çoklu Modal RAG - belgeler + veritabanlarını birleştir
-- **Adım 15**: Temiz test için belgeleri temizle
-
-**İdeal için:** Hızlı değerlendirme, proof-of-concept, ekip demoları, SmartRAG yeteneklerini öğrenme
-
-📚 **[Tam Örnekler ve Test Rehberi](https://byerlikaya.github.io/SmartRAG/tr/examples)** - Adım adım öğreticiler ve test senaryoları
-
----
+**SmartRAG'ı hemen test etmek ister misiniz?** → [Örnekler ve Test'e Git](#-örnekler-ve-test)
 
 ## 🚀 SmartRAG'ı Özel Kılan Nedir?
 
@@ -148,8 +99,6 @@ docker exec -it smartrag-ollama ollama pull nomic-embed-text
 ✅ **Production Ready** - Kurumsal düzeyde hata yönetimi ve test  
 
 📚 **[Tam Teknik Dokümantasyon](https://byerlikaya.github.io/SmartRAG/tr)** - Mimari, API referansı, gelişmiş örnekler
-
----
 
 ## 📦 Kurulum
 
@@ -167,8 +116,6 @@ dotnet add package SmartRAG
 ```powershell
 Install-Package SmartRAG
 ```
-
----
 
 ## 🏆 **Neden SmartRAG?**
 
@@ -196,8 +143,6 @@ Install-Package SmartRAG
 - **Kapsamlı Test**: Geniş test kapsamı ve kalite güvencesi
 - **Profesyonel Destek**: Ticari destek ve danışmanlık mevcut
 
----
-
 ## 🔧 **Konfigürasyon ve Kurulum**
 
 Detaylı konfigürasyon örnekleri, yerel AI kurulumu ve kurumsal dağıtım rehberleri için:
@@ -207,8 +152,6 @@ Detaylı konfigürasyon örnekleri, yerel AI kurulumu ve kurumsal dağıtım reh
 🏢 **[Kurumsal Dağıtım](https://byerlikaya.github.io/SmartRAG/tr/configuration/enterprise)**  
 🎤 **[Ses Konfigürasyonu](https://byerlikaya.github.io/SmartRAG/tr/configuration/audio-ocr)**  
 🗄️ **[Veritabanı Kurulumu](https://byerlikaya.github.io/SmartRAG/tr/configuration/database)**
-
----
 
 ## 📊 **Diğer RAG Kütüphaneleri ile Karşılaştırma**
 
@@ -227,13 +170,11 @@ Detaylı konfigürasyon örnekleri, yerel AI kurulumu ve kurumsal dağıtım reh
 
 **SmartRAG, çoklu veritabanı sorgu yetenekleri ile gerçek multi-database RAG sağlayan TEK kütüphanedir.**
 
----
-
 ## 🎯 **Gerçek Dünya Kullanım Senaryoları**
 
 ### **1. Finansal Hizmetler - Risk Değerlendirmesi**
 ```csharp
-var cevap = await intelligence.QueryIntelligenceAsync(
+var cevap = await searchService.QueryIntelligenceAsync(
     "Kredi skoru 600'ün altında olan ve son 3 ayda ödeme kaçıran müşterileri bul"
 );
 // → Kredi DB, Ödeme Geçmişi DB, Hesap DB ve Risk Değerlendirme DB'yi sorgular
@@ -242,7 +183,7 @@ var cevap = await intelligence.QueryIntelligenceAsync(
 
 ### **2. Sağlık - Önleyici Bakım**
 ```csharp
-var cevap = await intelligence.QueryIntelligenceAsync(
+var cevap = await searchService.QueryIntelligenceAsync(
     "Diyabet hastalarından yıllık göz muayenesi ve ayak kontrolü yaptırmayanları göster"
 );
 // → Hasta DB, Randevu DB, Tanı DB ve Sigorta DB'yi sorgular
@@ -251,7 +192,7 @@ var cevap = await intelligence.QueryIntelligenceAsync(
 
 ### **3. E-ticaret - Envanter Optimizasyonu**
 ```csharp
-var cevap = await intelligence.QueryIntelligenceAsync(
+var cevap = await searchService.QueryIntelligenceAsync(
     "Hangi ürünler birlikte sık iade ediliyor ve yüksek iade oranının nedeni ne?"
 );
 // → Sipariş DB, İade DB, Ürün DB ve Müşteri Geri Bildirimi DB'yi sorgular
@@ -260,7 +201,7 @@ var cevap = await intelligence.QueryIntelligenceAsync(
 
 ### **4. Üretim - Öngörülü Bakım**
 ```csharp
-var cevap = await intelligence.QueryIntelligenceAsync(
+var cevap = await searchService.QueryIntelligenceAsync(
     "Hangi makineler gelecek 30 gün içinde arıza riski gösteren titreşim kalıplarına sahip?"
 );
 // → Sensör DB, Bakım DB, Üretim DB ve Ekipman DB'yi sorgular
@@ -269,7 +210,7 @@ var cevap = await intelligence.QueryIntelligenceAsync(
 
 ### **5. Eğitim - Erken Müdahale**
 ```csharp
-var cevap = await intelligence.QueryIntelligenceAsync(
+var cevap = await searchService.QueryIntelligenceAsync(
     "Hangi öğrencilerin devam durumu düşüyor ve aynı derslerde notları düşüyor?"
 );
 // → Devam DB, Notlar DB, Öğrenci Destek DB ve Aile DB'yi sorgular
@@ -278,7 +219,7 @@ var cevap = await intelligence.QueryIntelligenceAsync(
 
 ### **6. Emlak - Pazar Analizi**
 ```csharp
-var cevap = await intelligence.QueryIntelligenceAsync(
+var cevap = await searchService.QueryIntelligenceAsync(
     "Hangi mahallelerde piyasa değerinin %20 altında satılan ve iyi okul puanları olan mülkler var?"
 );
 // → Mülk DB, Satış DB, Okul DB ve Pazar Trendleri DB'yi sorgular
@@ -287,7 +228,7 @@ var cevap = await intelligence.QueryIntelligenceAsync(
 
 ### **7. Devlet - Dolandırıcılık Tespiti**
 ```csharp
-var cevap = await intelligence.QueryIntelligenceAsync(
+var cevap = await searchService.QueryIntelligenceAsync(
     "Farklı departmanlardan çakışan uygunluk dönemlerinde birden fazla yardım alan vatandaşları bul"
 );
 // → Yardım DB, Vatandaş DB, Uygunluk DB ve Ödeme DB'yi sorgular
@@ -296,7 +237,7 @@ var cevap = await intelligence.QueryIntelligenceAsync(
 
 ### **8. Otomotiv - Güvenlik Analizi**
 ```csharp
-var cevap = await intelligence.QueryIntelligenceAsync(
+var cevap = await searchService.QueryIntelligenceAsync(
     "Hangi araç modellerinin belirli hava koşullarında en yüksek kaza oranları var?"
 );
 // → Kaza DB, Araç DB, Hava Durumu DB ve Sigorta DB'yi sorgular
@@ -305,7 +246,7 @@ var cevap = await intelligence.QueryIntelligenceAsync(
 
 ### **9. Perakende - Müşteri Sadakati**
 ```csharp
-var cevap = await intelligence.QueryIntelligenceAsync(
+var cevap = await searchService.QueryIntelligenceAsync(
     "Premium ürün satın alan müşterilerden 90 gündür alışveriş yapmayanları göster"
 );
 // → Müşteri DB, Satın Alma DB, Ürün DB ve Etkileşim DB'yi sorgular
@@ -314,14 +255,12 @@ var cevap = await intelligence.QueryIntelligenceAsync(
 
 ### **10. Araştırma - Trend Analizi**
 ```csharp
-var cevap = await intelligence.QueryIntelligenceAsync(
+var cevap = await searchService.QueryIntelligenceAsync(
     "Hangi araştırma konuları momentum kazanıyor ama sınırlı fonlama fırsatlarına sahip?"
 );
 // → Yayın DB, Fonlama DB, Atıf DB ve Hibe DB'yi sorgular
 // → Fon tahsisi için gelişmekte olan araştırma alanlarını belirler
 ```
-
----
 
 ## 🎯 **Desteklenen Veri Kaynakları**
 
@@ -354,8 +293,6 @@ var cevap = await intelligence.QueryIntelligenceAsync(
 - **SQLite** - Yerel dosya tabanlı depolama
 - **Dosya Sistemi** - Basit dosya tabanlı belge depolama
 
----
-
 ## 🏆 **Gelişmiş Özellikler**
 
 ### **🧠 Akıllı Sorgu Niyet Algılama**
@@ -384,7 +321,72 @@ SmartRAG sorgunuzun genel konuşma mı yoksa belge arama mı olduğunu otomatik 
 - **Kurumsal Güvenlik**: Veri ve işleme üzerinde tam kontrol
 - **Uyumluluk Hazır**: Yerel veri işleme ile GDPR, KVKK, HIPAA uyumlu
 
----
+## 🧪 **Örnekler ve Test**
+
+SmartRAG farklı kullanım senaryoları için kapsamlı örnek uygulamalar sağlar:
+
+### **📁 Mevcut Örnekler**
+```
+examples/
+├── SmartRAG.API/          # Swagger UI ile tam REST API
+└── SmartRAG.Demo/         # Etkileşimli konsol uygulaması
+```
+
+### **🚀 Demo ile Hızlı Test**
+
+SmartRAG'ı hemen görmek ister misiniz? İnteraktif konsol demo'muzu deneyin:
+
+```bash
+# Klonla ve demo'yu çalıştır
+git clone https://github.com/byerlikaya/SmartRAG.git
+cd SmartRAG/examples/SmartRAG.Demo
+dotnet run
+```
+
+**Önkoşullar:** Yerel olarak veritabanları ve AI servisleri çalıştırmanız gerekiyor, veya kolay kurulum için Docker kullanabilirsiniz.
+
+📖 **[SmartRAG.Demo README](examples/SmartRAG.Demo/README.tr.md)** - Tam demo uygulaması rehberi ve kurulum talimatları
+
+#### **🐳 Docker Kurulumu (Önerilen)**
+
+Tüm servislerin önceden yapılandırıldığı en kolay deneyim için:
+
+```bash
+# Tüm servisleri başlat (SQL Server, MySQL, PostgreSQL, Ollama, Qdrant, Redis)
+docker-compose up -d
+
+# AI modellerini kur
+docker exec -it smartrag-ollama ollama pull llama3.2
+docker exec -it smartrag-ollama ollama pull nomic-embed-text
+```
+
+📚 **[Tam Docker Kurulum Rehberi](examples/SmartRAG.Demo/README-Docker.tr.md)** - Detaylı Docker konfigürasyonu, sorun giderme ve yönetim
+
+### **📋 Demo Özellikleri ve Adımları:**
+
+**🔗 Veritabanı Yönetimi:**
+- **Adım 1-2**: Bağlantıları göster ve sistem sağlık kontrolü
+- **Adım 3-5**: Test veritabanları oluştur (SQL Server, MySQL, PostgreSQL)
+- **Adım 6**: Veritabanı şemalarını ve ilişkileri görüntüle
+
+**🤖 AI ve Sorgu Testleri:**
+- **Adım 7**: Sorgu analizi - doğal dilin SQL'e nasıl dönüştüğünü gör
+- **Adım 8**: Otomatik test sorguları - önceden hazırlanmış senaryolar
+- **Adım 9**: Çoklu Veritabanı AI Sorguları - tüm veritabanlarında sorular sor
+
+**🏠 Yerel AI Kurulumu:**
+- **Adım 10**: %100 yerel işleme için Ollama modellerini kur
+- **Adım 11**: Vektör depolarını test et (InMemory, Redis, SQLite, Qdrant)
+
+**📄 Belge İşleme:**
+- **Adım 12**: Belgeleri yükle (PDF, Word, Excel, Görüntüler, Ses)
+- **Adım 13**: Yüklenen belgeleri listele ve yönet
+- **Adım 14**: Çoklu Modal RAG - belgeler + veritabanlarını birleştir
+- **Adım 15**: Temiz test için belgeleri temizle
+
+**İdeal için:** Hızlı değerlendirme, proof-of-concept, ekip demoları, SmartRAG yeteneklerini öğrenme
+
+📚 **[Tam Örnekler ve Test Rehberi](https://byerlikaya.github.io/SmartRAG/tr/examples)** - Adım adım öğreticiler ve test senaryoları
 
 ## 📄 Lisans
 

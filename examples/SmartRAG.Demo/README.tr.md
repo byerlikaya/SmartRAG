@@ -30,12 +30,6 @@ dotnet run
 - **Docker Desktop** (opsiyonel) - Yerel servisler için (AI, veritabanları, vektör depoları)
 - **VEYA Bulut AI API Anahtarları** (opsiyonel) - Bulut AI sağlayıcıları için
 
-## 📚 **Tam Demo Rehberi**
-
-Kapsamlı demo bilgileri, kurulum talimatları ve tüm özellikler için:
-
-📖 **[Ana README'deki Tam Demo Rehberini Görüntüle](../../README.tr.md#-örnekler-ve-test)**
-
 ## 🐳 **Docker Kurulumu**
 
 Detaylı Docker konfigürasyonu ve yönetimi için:

@@ -30,12 +30,6 @@ dotnet run
 - **Docker Desktop** (optional) - For local services (AI, databases, vector stores)
 - **OR Cloud AI API Keys** (optional) - For cloud AI providers
 
-## 📚 **Complete Demo Guide**
-
-For comprehensive demo information, setup instructions, and all features:
-
-📖 **[View Complete Demo Guide in Main README](../../README.md#-examples--testing)**
-
 ## 🐳 **Docker Setup**
 
 For detailed Docker configuration and management:

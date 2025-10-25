@@ -736,7 +736,7 @@ public interface IDatabaseSchemaAnalyzer
 
 ### IAudioParserService
 
-**Purpose:** Audio transcription with Google Speech-to-Text
+**Purpose:** Audio transcription with Whisper.net (local processing)
 
 ```csharp
 public interface IAudioParserService
