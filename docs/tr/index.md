@@ -362,6 +362,44 @@ Console.WriteLine(answer.Answer);
                     </div>
                 </details>
             </div>
+            
+            <div class="col-lg-6">
+                <details>
+                    <summary>
+                        <h4><i class="fas fa-industry me-2"></i> Üretim Kök Neden Analizi</h4>
+                    </summary>
+                    <div style="margin-top: 1rem;">
+                        <p><strong>Zorluk:</strong> Üretim kalitesinin neden düştüğünü bulun</p>
+                        <p><strong>SmartRAG Çözümü:</strong></p>
+                        <ul>
+                            <li>Excel: Üretim raporları (5 hat, saatlik veri)</li>
+                            <li>PostgreSQL: Sensör verisi (100K+ okuma)</li>
+                            <li>OCR: Müfettiş notlarıyla kalite kontrol fotoğrafları</li>
+                            <li>PDF: Ekipman bakım logları</li>
+                        </ul>
+                        <p><strong>Sonuç:</strong> Yapay zeka, tam kök nedeni belirlemek için milyonlarca veri noktası üzerindeki sıcaklık anomalilerini ilişkilendirir.</p>
+                    </div>
+                </details>
+            </div>
+            
+            <div class="col-lg-6">
+                <details>
+                    <summary>
+                        <h4><i class="fas fa-user-tie me-2"></i> Yapay Zeka Özgeçmiş Taraması</h4>
+                    </summary>
+                    <div style="margin-top: 1rem;">
+                        <p><strong>Zorluk:</strong> 500+ başvurudan en iyi adayları bulun</p>
+                        <p><strong>SmartRAG Çözümü:</strong></p>
+                        <ul>
+                            <li>500+ Özgeçmiş PDF'i (birden fazla dil, format)</li>
+                            <li>SQL Server: Aday veritabanı (yetenekler, deneyim)</li>
+                            <li>OCR: Taranmış sertifikalar (AWS, Azure, Cloud)</li>
+                            <li>Ses: Video görüşme transkriptleri</li>
+                        </ul>
+                        <p><strong>Sonuç:</strong> Yapay zeka adayları birden fazla veri türü arasında dakikalar içinde tarar ve sıralar.</p>
+                    </div>
+                </details>
+            </div>
         </div>
         
         <div class="text-center mt-5">
@@ -401,7 +439,7 @@ Console.WriteLine(answer.Answer);
             <div class="col-lg-3 col-md-6">
                 <div class="feature-card text-center">
                     <div class="feature-icon mx-auto">
-                        <i class="fas fa-shield-check"></i>
+                        <i class="fas fa-home"></i>
                     </div>
                     <h3>%100 On-Premise</h3>
                     <p>Tam veri gizliliği için Ollama/LM Studio ile tamamen on-premise dağıtım</p>

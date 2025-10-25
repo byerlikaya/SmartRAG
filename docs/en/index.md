@@ -439,7 +439,7 @@ Console.WriteLine(answer.Answer);
             <div class="col-lg-3 col-md-6">
                 <div class="feature-card text-center">
                     <div class="feature-icon mx-auto">
-                        <i class="fas fa-shield-check"></i>
+                        <i class="fas fa-home"></i>
                     </div>
                     <h3>100% Local</h3>
                     <p>Complete on-premise deployment with Ollama/LM Studio for total data privacy</p>

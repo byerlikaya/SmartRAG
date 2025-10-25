@@ -223,6 +223,11 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Hata Yönetimi**: Ses transkripsiyonu için geliştirilmiş
 - **Dokümantasyon**: Speech-to-Text örnekleriyle güncellendi
 
+### 📚 Dokümantasyon
+- **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
+- **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
+- **Konfigürasyon Rehberi**: Detaylı ayar seçenekleri ve örnekleri
+
 ---
 
 ## [2.2.0] - 2025-09-15
@@ -236,6 +241,11 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Paket Metadata**: Güncellenmiş proje URL'leri ve sürüm notları
 - **Dokümantasyon Yapısı**: Geliştirilmiş OCR vitrini
 - **Kullanıcı Rehberliği**: İyileştirilmiş görsel işleme iş akışları
+
+### 📚 Dokümantasyon
+- **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
+- **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
+- **Konfigürasyon Rehberi**: Detaylı ayar seçenekleri ve örnekleri
 
 ---
 
@@ -252,6 +262,11 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Format Tutarlılığı**: Depolama sağlayıcıları arasında standardize edildi
 - **Thread Güvenliği**: Geliştirilmiş eşzamanlı erişim yönetimi
 - **Platform Agnostik**: .NET ortamlarında uyumlu
+
+### 📚 Dokümantasyon
+- **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
+- **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
+- **Konfigürasyon Rehberi**: Detaylı ayar seçenekleri ve örnekleri
 
 ---
 
@@ -277,6 +292,21 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Paket Versiyonları**: .NET Standard uyumlu versiyonlara güncellendi
 - **API Uyumluluğu**: Framework uyumluluğu sağlarken işlevselliği korundu
 
+### 📚 Dokümantasyon
+- **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
+- **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
+- **Konfigürasyon Rehberi**: Detaylı ayar seçenekleri ve örnekleri
+
+### 🧪 Test
+- **Unit Testler**: Tüm yeni özellikler için kapsamlı test kapsamı
+- **Entegrasyon Testleri**: Framework uyumluluğu doğrulaması
+- **Performans Testleri**: .NET Standard performans optimizasyonu
+
+### 🔒 Güvenlik
+- **Paket Güvenliği**: Güvenlik açıkları için güncellenmiş bağımlılıklar
+- **API Güvenliği**: Geliştirilmiş giriş doğrulama ve hata yönetimi
+- **Veri Koruma**: Hassas veri işleme için geliştirilmiş güvenlik önlemleri
+
 ---
 
 ## [1.1.0] - 2025-08-22
@@ -293,6 +323,21 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **İçerik İşleme**: Daha sağlam doküman ayrıştırma
 - **Performans**: Optimize edilmiş Excel çıkarma ve doğrulama
 
+### 📚 Dokümantasyon
+- **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
+- **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
+- **Konfigürasyon Rehberi**: Detaylı ayar seçenekleri ve örnekleri
+
+### 🧪 Test
+- **Unit Testler**: Tüm yeni özellikler için kapsamlı test kapsamı
+- **Entegrasyon Testleri**: Framework uyumluluğu doğrulaması
+- **Performans Testleri**: .NET Standard performans optimizasyonu
+
+### 🔒 Güvenlik
+- **Paket Güvenliği**: Güvenlik açıkları için güncellenmiş bağımlılıklar
+- **API Güvenliği**: Geliştirilmiş giriş doğrulama ve hata yönetimi
+- **Veri Koruma**: Hassas veri işleme için geliştirilmiş güvenlik önlemleri
+
 ---
 
 ## [1.0.3] - 2025-08-20
@@ -301,6 +346,11 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - LoggerMessage parametre sayısı uyumsuzlukları
 - Sağlayıcı günlükleme mesajı uygulamaları
 - Servis koleksiyonu kayıt sorunları
+
+### 📚 Dokümantasyon
+- **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
+- **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
+- **Konfigürasyon Rehberi**: Detaylı ayar seçenekleri ve örnekleri
 
 ---
 
@@ -424,13 +474,46 @@ public async Task<IActionResult> Query([FromBody] QueryRequest request)
     </p>
                     </div>
 
+### v1.x'ten v2.0.0'a Taşınma
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> Temel Değişiklikler</h4>
+    <p>Birincil değişiklik, .NET 9.0'dan .NET Standard 2.1'e taşınmasıdır.</p>
+</div>
+
+**Adım 1: Hedef framework'ü güncelleyin**
+
+```xml
+<!-- Önce (.csproj) -->
+<TargetFramework>net9.0</TargetFramework>
+
+<!-- Sonra (.csproj) -->
+<TargetFramework>netstandard2.1</TargetFramework>
+```
+
+**Adım 2: Paket referanslarını kontrol edin**
+
+```xml
+<!-- .NET Standard 2.1 uyumlu paketler -->
+<PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.0" />
+<PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
+```
+
+**Adım 3: Kod değişiklikleri**
+
+```csharp
+// Önce (v1.x)
+using Microsoft.Extensions.DependencyInjection;
+
+// Sonra (v2.0.0) - Aynı
+using Microsoft.Extensions.DependencyInjection;
+```
+
 ---
 
 ## Kullanımdan Kaldırma Bildirimleri
 
 ### v3.0.0'da Kullanımdan Kaldırıldı (v4.0.0'da Kaldırılacak)
-
-<div class="alert alert-warning">
     <h4><i class="fas fa-clock me-2"></i> Kaldırma Planlandı</h4>
     <p>Aşağıdaki metodlar kullanımdan kaldırıldı ve v4.0.0'da kaldırılacak:</p>
     <ul class="mb-0">

@@ -202,14 +202,14 @@ public class AudioController : ControllerBase
     
     // Transkripsiyon için ses yükleme
     [HttpPost("upload/audio")]
-    public async Task<IActionResult> UploadAudio(IFormFile file, [FromQuery] string language = "tr-TR")
+    public async Task<IActionResult> UploadAudio(IFormFile file, [FromQuery] string language = "tr")
     {
         var document = await _documentService.UploadDocumentAsync(
             file.OpenReadStream(),
             file.FileName,
             file.ContentType,
             "kullanici-123",
-            language: language  // Konuşma dili: tr-TR, en-US, vb.
+            language: language  // Konuşma dili: tr, en, auto, vb.
         );
         
         return Ok(new { 
@@ -233,18 +233,19 @@ public class AudioController : ControllerBase
 - MP3, WAV, M4A, AAC, OGG, FLAC, WMA
 
 **Dil Kodları:**
-- `tr-TR` - Türkçe
-- `en-US` - İngilizce
-- `de-DE` - Almanca
-- `fr-FR` - Fransızca
-- 100+ dil
+- `tr` - Türkçe
+- `en` - İngilizce
+- `de` - Almanca
+- `fr` - Fransızca
+- `auto` - Otomatik tespit (önerilen)
+- 100+ dil desteklenir
 
-<div class="alert alert-warning">
-    <h4><i class="fas fa-cloud me-2"></i> Gizlilik Notu</h4>
+<div class="alert alert-success">
+    <h4><i class="fas fa-lock me-2"></i> Gizlilik Notu</h4>
     <p class="mb-0">
-        Ses dosyaları transkripsiyon için Google Cloud'a gönderilir. Diğer tüm formatlar (PDF, Word, Excel, Görseller, Veritabanları) %100 yerel olarak işlenir.
+        Tüm işlem %100 yerel olarak yapılır. Ses transkripsiyonu Whisper.net, OCR Tesseract kullanır. Hiçbir veri harici servislere gönderilmez.
     </p>
-                    </div>
+</div>
 
 ---
 
@@ -318,7 +319,7 @@ await _documentService.UploadDocumentAsync(labSonuclari, "labs.xlsx", "applicati
 await _documentService.UploadDocumentAsync(receteGorsel, "recete.jpg", "image/jpeg", "doktor", language: "tur");
 
 // Doktor ses notlarını yükle (Ses transkripsiyonu)
-await _documentService.UploadDocumentAsync(sesAkis, "notlar.mp3", "audio/mpeg", "doktor", language: "tr-TR");
+await _documentService.UploadDocumentAsync(sesAkis, "notlar.mp3", "audio/mpeg", "doktor", language: "tr");
 
 // Tüm veri kaynaklarında sorgula
 var response = await _searchService.QueryIntelligenceAsync(
@@ -536,7 +537,7 @@ await _documentService.UploadDocumentAsync(
     "mulakat.mp3",
     "audio/mpeg",
     "ik-ekibi",
-    language: "tr-TR"
+    language: "tr"
 );
 
 // En iyi adayları bul
@@ -548,6 +549,45 @@ var response = await _searchService.QueryIntelligenceAsync(
 ```
 
 **Güç:** 4 veri kaynağı birleştirildi → AI, dakikalar içinde adayları tarar ve sıralar (günler yerine).
+
+### 7. Finansal Denetim Otomasyonu
+
+```csharp
+// Denetim sürecini otomatikleştir
+var auditQuery = await _searchService.QueryIntelligenceAsync(
+    "Son 3 aydaki tüm finansal işlemleri analiz et ve şüpheli aktiviteleri tespit et"
+);
+
+// Çoklu veritabanı sorgusu
+var multiDbResponse = await _multiDbCoordinator.QueryMultipleDatabasesAsync(
+    "Hesap bakiyelerini, işlem geçmişini ve müşteri profillerini karşılaştır"
+);
+
+Console.WriteLine($"Denetim Raporu: {auditQuery.Answer}");
+Console.WriteLine($"Şüpheli İşlemler: {multiDbResponse.Results.Count}");
+```
+
+**Güç:** 3 veritabanı birleştirildi → AI, saatler içinde denetim raporu oluşturur (haftalar yerine).
+
+### 8. Akıllı Devlet Hizmetleri
+
+```csharp
+// Vatandaş sorgularını otomatik yanıtla
+var citizenQuery = await _searchService.QueryIntelligenceAsync(
+    "Emeklilik başvurusu için hangi belgeler gerekli?"
+);
+
+// Çoklu kaynak arama
+var response = await _searchService.QueryIntelligenceAsync(
+    "Vergi indirimi nasıl alabilirim?",
+    maxResults: 10
+);
+
+Console.WriteLine($"Vatandaş Yanıtı: {citizenQuery.Answer}");
+Console.WriteLine($"Kaynak Sayısı: {response.Sources.Count}");
+```
+
+**Güç:** 5 veri kaynağı birleştirildi → AI, dakikalar içinde vatandaş sorgularını yanıtlar (günler yerine).
 
 ---
 
@@ -576,6 +616,87 @@ var newConv = await _searchService.QueryIntelligenceAsync(
     "Kargo hakkında konuşalım",
     startNewConversation: true
 );
+```
+
+### Toplu Doküman İşleme
+
+```csharp
+// Birden fazla dokümanı aynı anda yükle
+var files = new List<(Stream, string, string)>
+{
+    (File.OpenRead("rapor1.pdf"), "rapor1.pdf", "application/pdf"),
+    (File.OpenRead("rapor2.docx"), "rapor2.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"),
+    (File.OpenRead("rapor3.xlsx"), "rapor3.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+};
+
+var documents = await _documentService.UploadDocumentsAsync(files, "user-123");
+
+Console.WriteLine($"Yüklenen doküman sayısı: {documents.Count}");
+```
+
+### Özel SQL Çalıştırma
+
+```csharp
+// Belirli bir veritabanında özel SQL sorgusu çalıştır
+var result = await _databaseService.ExecuteQueryAsync(
+    "Server=localhost;Database=Sales;Trusted_Connection=true;",
+    "SELECT TOP 10 CustomerID, CompanyName, TotalOrders FROM CustomerSummary ORDER BY TotalOrders DESC",
+    DatabaseType.SqlServer,
+    maxRows: 10
+);
+
+Console.WriteLine($"SQL Sonucu: {result}");
+```
+
+### Depolama İstatistikleri
+
+```csharp
+// Depolama durumunu kontrol et
+var stats = await _documentService.GetStorageStatisticsAsync();
+
+Console.WriteLine($"Toplam Doküman: {stats["TotalDocuments"]}");
+Console.WriteLine($"Toplam Parça: {stats["TotalChunks"]}");
+Console.WriteLine($"Depolama Boyutu: {stats["StorageSizeMB"]} MB");
+Console.WriteLine($"Son Güncelleme: {stats["LastUpdated"]}");
+```
+
+### Embedding'leri Yeniden Oluştur
+
+```csharp
+// AI provider değiştikten sonra embedding'leri yenile
+var success = await _documentService.RegenerateAllEmbeddingsAsync();
+
+if (success)
+{
+    Console.WriteLine("Tüm embedding'ler başarıyla yenilendi");
+}
+else
+{
+    Console.WriteLine("Embedding yenileme başarısız");
+}
+```
+
+## Test Örnekleri
+
+### Unit Test Örneği
+
+```csharp
+[Test]
+public async Task QueryIntelligenceAsync_ShouldReturnValidResponse_WhenValidQueryProvided()
+{
+    // Arrange
+    var query = "Test sorgusu";
+    var maxResults = 5;
+    
+    // Act
+    var response = await _searchService.QueryIntelligenceAsync(query, maxResults);
+    
+    // Assert
+    Assert.That(response, Is.Not.Null);
+    Assert.That(response.Answer, Is.Not.Empty);
+    Assert.That(response.Sources, Is.Not.Empty);
+    Assert.That(response.Sources.Count, Is.LessThanOrEqualTo(maxResults));
+}
 ```
 
 ---
