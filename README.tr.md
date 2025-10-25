@@ -24,32 +24,6 @@
   <a href="README.md"><img src="https://img.shields.io/badge/🇺🇸-English_README-blue?style=for-the-badge" alt="English README"/></a>
 </p>
 
-## 🚀 **Hızlı Kullanım Senaryoları**
-
-### **🏦 Bankacılık**
-```csharp
-var cevap = await searchService.QueryIntelligenceAsync(
-    "Hangi müşterilerin vadesi geçmiş ödemeleri var ve toplam borçları ne kadar?"
-);
-// → Müşteri DB, Ödeme DB, Hesap DB'yi sorgular ve sonuçları birleştirir
-```
-
-### **🏥 Sağlık**
-```csharp
-var cevap = await searchService.QueryIntelligenceAsync(
-    "Diyabet hastalarından HbA1c kontrolü 6 aydır yapılmayanları göster"
-);
-// → Hasta DB, Lab Sonuçları DB, Randevu DB'yi birleştirir ve risk altındaki hastaları belirler
-```
-
-### **📦 Envanter**
-```csharp
-var cevap = await searchService.QueryIntelligenceAsync(
-    "Hangi ürünlerin stoku azalıyor ve hangi tedarikçiler en hızlı yeniden stoklayabilir?"
-);
-// → Envanter DB, Tedarikçi DB, Sipariş Geçmişi DB'yi analiz eder ve yeniden stoklama önerileri sağlar
-```
-
 ## 🚀 **Hızlı Başlangıç**
 
 ### **1. SmartRAG'ı Kur**
@@ -89,9 +63,10 @@ var belge = await documentService.UploadDocumentAsync(
 
 // Veritabanları ve belgelerde sorgula
 var cevap = await searchService.QueryIntelligenceAsync(
-    "Tüm veritabanlarından 100 bin TL üzeri cirosu olan müşterileri göster"
+    "Son çeyrekte 10.000 TL üzeri alışveriş yapan tüm müşterileri, ödeme geçmişlerini ve verdikleri şikayet veya geri bildirimleri göster"
 );
-// → AI otomatik olarak SQL Server, MySQL, PostgreSQL sorgular ve sonuçları birleştirir
+// → AI otomatik olarak SQL Server (siparişler), MySQL (ödemeler), PostgreSQL (müşteri verileri) sorgular,
+//   yüklenen PDF sözleşmeleri, OCR ile taranmış faturaları ve transkript edilmiş çağrı kayıtlarını analiz eder
 ```
 
 **SmartRAG'ı hemen test etmek ister misiniz?** → [Örnekler ve Test'e Git](#-örnekler-ve-test)
@@ -109,31 +84,31 @@ var cevap = await searchService.QueryIntelligenceAsync(
 
 ## 🎯 **Gerçek Dünya Kullanım Senaryoları**
 
-### **1. Finansal Hizmetler - Risk Değerlendirmesi**
+### **1. Bankacılık - Müşteri Finansal Profili**
 ```csharp
 var cevap = await searchService.QueryIntelligenceAsync(
-    "Kredi skoru 600'ün altında olan ve son 3 ayda ödeme kaçıran müşterileri bul"
+    "Hangi müşterilerin vadesi geçmiş ödemeleri var ve toplam borçları ne kadar?"
 );
-// → Kredi DB, Ödeme Geçmişi DB, Hesap DB ve Risk Değerlendirme DB'yi sorgular
-// → Proaktif müdahale için yüksek riskli müşterileri belirler
+// → Müşteri DB, Ödeme DB, Hesap DB'yi sorgular ve sonuçları birleştirir
+// → Kredi kararları için kapsamlı finansal risk değerlendirmesi sağlar
 ```
 
-### **2. Sağlık - Önleyici Bakım**
+### **2. Sağlık - Hasta Bakım Yönetimi**
 ```csharp
 var cevap = await searchService.QueryIntelligenceAsync(
-    "Diyabet hastalarından yıllık göz muayenesi ve ayak kontrolü yaptırmayanları göster"
+    "Diyabet hastalarından HbA1c kontrolü 6 aydır yapılmayanları göster"
 );
-// → Hasta DB, Randevu DB, Tanı DB ve Sigorta DB'yi sorgular
+// → Hasta DB, Lab Sonuçları DB, Randevu DB'yi birleştirir ve risk altındaki hastaları belirler
 // → Önleyici bakım uyumunu sağlar ve komplikasyonları azaltır
 ```
 
-### **3. Üretim - Öngörülü Bakım**
+### **3. Envanter - Tedarik Zinciri Optimizasyonu**
 ```csharp
 var cevap = await searchService.QueryIntelligenceAsync(
-    "Hangi makineler gelecek 30 gün içinde arıza riski gösteren titreşim kalıplarına sahip?"
+    "Hangi ürünlerin stoku azalıyor ve hangi tedarikçiler en hızlı yeniden stoklayabilir?"
 );
-// → Sensör DB, Bakım DB, Üretim DB ve Ekipman DB'yi sorgular
-// → Planlanmamış duruşları önler ve bakım maliyetlerini azaltır
+// → Envanter DB, Tedarikçi DB, Sipariş Geçmişi DB'yi analiz eder ve yeniden stoklama önerileri sağlar
+// → Stok tükenmesini önler ve tedarik zinciri verimliliğini optimize eder
 ```
 
 ## 🚀 **SmartRAG'ı Özel Kılan Nedir?**

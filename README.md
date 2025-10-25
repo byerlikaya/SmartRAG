@@ -24,33 +24,6 @@
   <a href="README.tr.md"><img src="https://img.shields.io/badge/🇹🇷-Türkçe_README-red?style=for-the-badge" alt="Turkish README"/></a>
 </p>
 
-## 🚀 **Quick Use Cases**
-
-### **🏦 Banking**
-```csharp
-var answer = await searchService.QueryIntelligenceAsync(
-    "Which customers have overdue payments and what's their total outstanding balance?"
-);
-// → Queries Customer DB, Payment DB, Account DB and combines results
-```
-
-### **🏥 Healthcare**
-```csharp
-var answer = await searchService.QueryIntelligenceAsync(
-    "Show me all patients with diabetes who haven't had their HbA1c checked in 6 months"
-);
-// → Combines Patient DB, Lab Results DB, Appointment DB and identifies at-risk patients
-```
-
-### **📦 Inventory**
-```csharp
-var answer = await searchService.QueryIntelligenceAsync(
-    "Which products are running low on stock and which suppliers can restock them fastest?"
-);
-// → Analyzes Inventory DB, Supplier DB, Order History DB and provides restocking recommendations
-```
-
-
 ## 🚀 **Quick Start**
 
 ### **1. Install SmartRAG**
@@ -77,7 +50,7 @@ builder.Services.UseSmartRAG(builder.Configuration,
         "DatabaseType": "SqlServer"
       }
     ]
-  }
+    }
 }
 ```
 
@@ -90,9 +63,10 @@ var document = await documentService.UploadDocumentAsync(
 
 // Query across databases and documents
 var response = await searchService.QueryIntelligenceAsync(
-    "Show me customers with over $100K revenue across all databases"
+    "Show me all customers who made purchases over $10,000 in the last quarter, their payment history, and any complaints or feedback they provided"
 );
-// → AI automatically queries SQL Server, MySQL, PostgreSQL and combines results
+// → AI automatically queries SQL Server (orders), MySQL (payments), PostgreSQL (customer data), 
+//   analyzes uploaded PDF contracts, OCR-scanned invoices, and transcribed call recordings
 ```
 
 **Want to test SmartRAG immediately?** → [Jump to Examples & Testing](#-examples--testing)
@@ -110,31 +84,31 @@ var response = await searchService.QueryIntelligenceAsync(
 
 ## 🎯 **Real-World Use Cases**
 
-### **1. Financial Services - Risk Assessment**
+### **1. Banking - Customer Financial Profile**
 ```csharp
 var answer = await searchService.QueryIntelligenceAsync(
-    "Find customers with credit score below 600 who have missed payments in the last 3 months"
+    "Which customers have overdue payments and what's their total outstanding balance?"
 );
-// → Queries Credit DB, Payment History DB, Account DB, and Risk Assessment DB
-// → Identifies high-risk customers for proactive intervention
+// → Queries Customer DB, Payment DB, Account DB and combines results
+// → Provides comprehensive financial risk assessment for credit decisions
 ```
 
-### **2. Healthcare - Preventive Care**
+### **2. Healthcare - Patient Care Management**
 ```csharp
 var answer = await searchService.QueryIntelligenceAsync(
-    "Which diabetic patients haven't had their annual eye exam and foot check in the past year?"
+    "Show me all patients with diabetes who haven't had their HbA1c checked in 6 months"
 );
-// → Queries Patient DB, Appointment DB, Diagnosis DB, and Insurance DB
+// → Combines Patient DB, Lab Results DB, Appointment DB and identifies at-risk patients
 // → Ensures preventive care compliance and reduces complications
 ```
 
-### **3. Manufacturing - Predictive Maintenance**
+### **3. Inventory - Supply Chain Optimization**
 ```csharp
 var answer = await searchService.QueryIntelligenceAsync(
-    "Which machines show vibration patterns indicating potential failure in the next 30 days?"
+    "Which products are running low on stock and which suppliers can restock them fastest?"
 );
-// → Queries Sensor DB, Maintenance DB, Production DB, and Equipment DB
-// → Prevents unplanned downtime and reduces maintenance costs
+// → Analyzes Inventory DB, Supplier DB, Order History DB and provides restocking recommendations
+// → Prevents stockouts and optimizes supply chain efficiency
 ```
 
 ## 🚀 **What Makes SmartRAG Special?**
