@@ -3,15 +3,20 @@
 </p>
 
 <p align="center">
-  <b>.NET için Multi-DB RAG — birden fazla veritabanı + belgeyi tek NL isteğinde sorgula</b>
+  <b>.NET için Multi-Modal RAG — veritabanları, belgeler, görüntüler ve ses dosyalarını doğal dil ile sorgula</b>
 </p>
 
 <p align="center">
   <a href="https://www.nuget.org/packages/SmartRAG"><img src="https://img.shields.io/nuget/v/SmartRAG.svg?style=for-the-badge&logo=nuget" alt="NuGet Version"/></a>
   <a href="https://www.nuget.org/packages/SmartRAG"><img src="https://img.shields.io/nuget/dt/SmartRAG.svg?style=for-the-badge&logo=nuget" alt="Downloads"/></a>
+  <a href="https://github.com/byerlikaya/SmartRAG/stargazers"><img src="https://img.shields.io/github/stars/byerlikaya/SmartRAG?style=for-the-badge&logo=github" alt="GitHub Stars"/></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green.svg?style=for-the-badge" alt="License"/></a>
+</p>
+
+<p align="center">
   <a href="https://github.com/byerlikaya/SmartRAG/actions"><img src="https://img.shields.io/github/actions/workflow/status/byerlikaya/SmartRAG/build.yml?style=for-the-badge&logo=github" alt="Build Status"/></a>
   <a href="https://codecov.io/gh/byerlikaya/SmartRAG"><img src="https://img.shields.io/codecov/c/github/byerlikaya/SmartRAG?style=for-the-badge&logo=codecov" alt="Code Coverage"/></a>
+  <a href="https://www.nuget.org/packages/SmartRAG"><img src="https://img.shields.io/badge/.NET%20Standard-2.1-blue?style=for-the-badge&logo=.net" alt=".NET Standard 2.1"/></a>
 </p>
 
 <p align="center">
@@ -91,84 +96,16 @@ var cevap = await searchService.QueryIntelligenceAsync(
 
 **SmartRAG'ı hemen test etmek ister misiniz?** → [Örnekler ve Test'e Git](#-örnekler-ve-test)
 
-## 🚀 SmartRAG'ı Özel Kılan Nedir?
-
-✅ **Multi-Database RAG** - Doğal dil ile birden fazla veritabanını sorgula  
-✅ **Çoklu Modal Intelligence** - PDF + Excel + Görüntü + Ses + Veritabanları  
-✅ **On-Premise Ready** - Ollama/LM Studio/Whisper.net ile %100 yerel  
-✅ **Production Ready** - Kurumsal düzeyde hata yönetimi ve test  
-
-📚 **[Tam Teknik Dokümantasyon](https://byerlikaya.github.io/SmartRAG/tr)** - Mimari, API referansı, gelişmiş örnekler
-
-## 📦 Kurulum
-
-### NuGet Package Manager
-```bash
-Install-Package SmartRAG
-```
-
-### .NET CLI
-```bash
-dotnet add package SmartRAG
-```
-
-### Package Manager Console
-```powershell
-Install-Package SmartRAG
-```
 
 ## 🏆 **Neden SmartRAG?**
 
-### **🎯 Multi-Database RAG**
-- **Çoklu Veritabanı Sorguları**: Doğal dil ile birden fazla veritabanını aynı anda sorgula
-- **Akıllı Veri Füzyonu**: Farklı veri kaynaklarından sonuçları otomatik olarak birleştirir
-- **Şema Farkında İşleme**: Veritabanı ilişkilerini ve yabancı anahtarları anlar
-- **Gerçek Zamanlı Veri Erişimi**: Sadece statik dışa aktarımlar değil, canlı veritabanı bağlantıları ile çalışır
+🎯 **Multi-Database RAG** - Birden fazla veritabanını doğal dil ile aynı anda sorgula
 
-### **🧠 Çoklu Modal Intelligence**
-- **Evrensel Belge Desteği**: PDF, Word, Excel, PowerPoint, Görüntüler, Ses ve daha fazlası
-- **Gelişmiş OCR**: Görüntülerden, taranmış belgelerden ve el yazısı notlardan metin çıkarır
-- **Ses Transkripsiyonu**: Whisper.net ile konuşmayı metne dönüştürür (99+ dil)
-- **Akıllı Parçalama**: Bağlamı koruyan akıllı belge segmentasyonu
+🧠 **Çoklu Modal Zeka** - PDF, Word, Excel, Görüntü, Ses ve daha fazlası  
 
-### **🏠 On-Premise Ready**
-- **%100 Yerel İşleme**: Her şeyi kendi altyapınızda çalıştırın
-- **Gizlilik ve Uyumluluk**: Yerel veri işleme ile GDPR, KVKK, HIPAA uyumlu
-- **Bulut Bağımlılığı Yok**: Yerel AI modelleri (Ollama, LM Studio) ile çevrimdışı çalışır
-- **Kurumsal Güvenlik**: Veri ve işleme üzerinde tam kontrol
+🏠 **%100 Yerel İşleme** - GDPR, KVKK, HIPAA uyumlu
 
-### **🚀 Production Ready**
-- **Kurumsal Düzey**: Thread-safe işlemler, kapsamlı hata yönetimi
-- **Yüksek Performans**: Hız ve ölçeklenebilirlik için optimize edilmiş
-- **Kapsamlı Test**: Geniş test kapsamı ve kalite güvencesi
-- **Profesyonel Destek**: Ticari destek ve danışmanlık mevcut
-
-## 🔧 **Konfigürasyon ve Kurulum**
-
-Detaylı konfigürasyon örnekleri, yerel AI kurulumu ve kurumsal dağıtım rehberleri için:
-
-📚 **[Tam Konfigürasyon Rehberi](https://byerlikaya.github.io/SmartRAG/tr/configuration)**  
-🏠 **[Yerel AI Kurulumu](https://byerlikaya.github.io/SmartRAG/tr/configuration/local-ai)**  
-🏢 **[Kurumsal Dağıtım](https://byerlikaya.github.io/SmartRAG/tr/configuration/enterprise)**  
-🎤 **[Ses Konfigürasyonu](https://byerlikaya.github.io/SmartRAG/tr/configuration/audio-ocr)**  
-🗄️ **[Veritabanı Kurulumu](https://byerlikaya.github.io/SmartRAG/tr/configuration/database)**
-
-## 📊 **Diğer RAG Kütüphaneleri ile Karşılaştırma**
-
-| Özellik | SmartRAG | Semantic Kernel | LangChain.NET | Diğer RAG Kütüphaneleri |
-|---------|----------|----------------|---------------|-------------------|
-| **Multi-Database RAG** | ✅ Native | ❌ Manuel | ❌ Manuel | ❌ Desteklenmiyor |
-| **Multi-Modal Destek** | ✅ PDF+Excel+Görüntü+Ses+DB | ❌ Sınırlı | ❌ Sınırlı | ❌ Sınırlı |
-| **On-Premise Ready** | ✅ %100 Yerel | ❌ Bulut gerekli | ❌ Bulut gerekli | ❌ Bulut gerekli |
-| **Production Ready** | ✅ Kurumsal düzey | ⚠️ Temel | ⚠️ Temel | ⚠️ Temel |
-| **Çoklu Veritabanı Sorguları** | ✅ Otomatik | ❌ Desteklenmiyor | ❌ Desteklenmiyor | ❌ Desteklenmiyor |
-| **Yerel AI Desteği** | ✅ Ollama/LM Studio | ❌ Sınırlı | ❌ Sınırlı | ❌ Sınırlı |
-| **Ses İşleme** | ✅ Whisper.net | ❌ Desteklenmiyor | ❌ Desteklenmiyor | ❌ Desteklenmiyor |
-| **OCR Yetenekleri** | ✅ Tesseract 5.2.0 | ❌ Desteklenmiyor | ❌ Desteklenmiyor | ❌ Desteklenmiyor |
-| **Veritabanı Entegrasyonu** | ✅ SQL Server+MySQL+PostgreSQL+SQLite | ❌ Manuel | ❌ Manuel | ❌ Manuel |
-| **Kurumsal Özellikler** | ✅ Thread-safe, DI, Logging | ⚠️ Temel | ⚠️ Temel | ⚠️ Temel |
-
-**SmartRAG, çoklu veritabanı sorgu yetenekleri ile gerçek multi-database RAG sağlayan TEK kütüphanedir.**
+🚀 **Üretim Hazır** - Kurumsal kalite, thread-safe, yüksek performans
 
 ## 🎯 **Gerçek Dünya Kullanım Senaryoları**
 
@@ -190,16 +127,7 @@ var cevap = await searchService.QueryIntelligenceAsync(
 // → Önleyici bakım uyumunu sağlar ve komplikasyonları azaltır
 ```
 
-### **3. E-ticaret - Envanter Optimizasyonu**
-```csharp
-var cevap = await searchService.QueryIntelligenceAsync(
-    "Hangi ürünler birlikte sık iade ediliyor ve yüksek iade oranının nedeni ne?"
-);
-// → Sipariş DB, İade DB, Ürün DB ve Müşteri Geri Bildirimi DB'yi sorgular
-// → Ürün kalite sorunlarını ve paketleme problemlerini belirler
-```
-
-### **4. Üretim - Öngörülü Bakım**
+### **3. Üretim - Öngörülü Bakım**
 ```csharp
 var cevap = await searchService.QueryIntelligenceAsync(
     "Hangi makineler gelecek 30 gün içinde arıza riski gösteren titreşim kalıplarına sahip?"
@@ -208,118 +136,14 @@ var cevap = await searchService.QueryIntelligenceAsync(
 // → Planlanmamış duruşları önler ve bakım maliyetlerini azaltır
 ```
 
-### **5. Eğitim - Erken Müdahale**
-```csharp
-var cevap = await searchService.QueryIntelligenceAsync(
-    "Hangi öğrencilerin devam durumu düşüyor ve aynı derslerde notları düşüyor?"
-);
-// → Devam DB, Notlar DB, Öğrenci Destek DB ve Aile DB'yi sorgular
-// → Öğrenciler okulu bırakmadan önce erken müdahale sağlar
-```
+## 🚀 **SmartRAG'ı Özel Kılan Nedir?**
 
-### **6. Emlak - Pazar Analizi**
-```csharp
-var cevap = await searchService.QueryIntelligenceAsync(
-    "Hangi mahallelerde piyasa değerinin %20 altında satılan ve iyi okul puanları olan mülkler var?"
-);
-// → Mülk DB, Satış DB, Okul DB ve Pazar Trendleri DB'yi sorgular
-// → Büyüme potansiyeli olan değeri düşük mülkleri belirler
-```
-
-### **7. Devlet - Dolandırıcılık Tespiti**
-```csharp
-var cevap = await searchService.QueryIntelligenceAsync(
-    "Farklı departmanlardan çakışan uygunluk dönemlerinde birden fazla yardım alan vatandaşları bul"
-);
-// → Yardım DB, Vatandaş DB, Uygunluk DB ve Ödeme DB'yi sorgular
-// → Çift yardım ödemelerini önler ve dolandırıcılığı azaltır
-```
-
-### **8. Otomotiv - Güvenlik Analizi**
-```csharp
-var cevap = await searchService.QueryIntelligenceAsync(
-    "Hangi araç modellerinin belirli hava koşullarında en yüksek kaza oranları var?"
-);
-// → Kaza DB, Araç DB, Hava Durumu DB ve Sigorta DB'yi sorgular
-// → Güvenlik önerilerini iyileştirir ve sigorta fiyatlandırmasını geliştirir
-```
-
-### **9. Perakende - Müşteri Sadakati**
-```csharp
-var cevap = await searchService.QueryIntelligenceAsync(
-    "Premium ürün satın alan müşterilerden 90 gündür alışveriş yapmayanları göster"
-);
-// → Müşteri DB, Satın Alma DB, Ürün DB ve Etkileşim DB'yi sorgular
-// → Hedefli sadakat kampanyaları için risk altındaki müşterileri belirler
-```
-
-### **10. Araştırma - Trend Analizi**
-```csharp
-var cevap = await searchService.QueryIntelligenceAsync(
-    "Hangi araştırma konuları momentum kazanıyor ama sınırlı fonlama fırsatlarına sahip?"
-);
-// → Yayın DB, Fonlama DB, Atıf DB ve Hibe DB'yi sorgular
-// → Fon tahsisi için gelişmekte olan araştırma alanlarını belirler
-```
-
-## 🎯 **Desteklenen Veri Kaynakları**
-
-### **📄 Belge Türleri**
-- **PDF Dosyaları** - Metin çıkarma ve akıllı parçalama
-- **Word Belgeleri** - Biçimlendirme korunması ile .docx, .doc desteği
-- **Excel Elektronik Tabloları** - Veri analizi yetenekleri ile .xlsx, .xls
-- **PowerPoint Sunumları** - Slayt içerik çıkarma ile .pptx, .ppt
-- **Metin Dosyaları** - Kodlama algılama ile .txt, .md, .csv
-- **Görüntüler** - OCR metin çıkarma ile .jpg, .png, .gif, .bmp, .tiff
-- **Ses Dosyaları** - Whisper.net ile yerel transkripsiyon (99+ dil)
-
-### **🗄️ Veritabanı Türleri**
-- **SQL Server** - Canlı bağlantılarla tam destek
-- **MySQL** - Tüm veri türleri ile tam entegrasyon
-- **PostgreSQL** - JSON ve özel türlerle gelişmiş destek
-- **SQLite** - Dosya tabanlı depolama ile yerel veritabanı desteği
-
-### **🧠 AI Sağlayıcıları**
-- **OpenAI** - Fonksiyon çağırma ile GPT-4, GPT-3.5-turbo
-- **Anthropic** - VoyageAI embeddings ile Claude 3.5 Sonnet
-- **Google** - Gelişmiş akıl yürütme ile Gemini Pro
-- **Azure OpenAI** - Kurumsal düzeyde OpenAI hizmetleri
-- **Özel Sağlayıcılar** - Herhangi bir AI hizmeti için genişletilebilir mimari
-
-### **💾 Depolama Sağlayıcıları**
-- **In-Memory** - Hızlı geliştirme ve test
-- **Redis** - Yüksek performanslı önbellekleme ve depolama
-- **Qdrant** - Semantik arama için vektör veritabanı
-- **SQLite** - Yerel dosya tabanlı depolama
-- **Dosya Sistemi** - Basit dosya tabanlı belge depolama
-
-## 🏆 **Gelişmiş Özellikler**
-
-### **🧠 Akıllı Sorgu Niyet Algılama**
-SmartRAG sorgunuzun genel konuşma mı yoksa belge arama mı olduğunu otomatik olarak algılar:
-
-- **Genel Konuşma**: "Nasılsın?" → Doğrudan AI yanıtı
-- **Belge Arama**: "Ana faydalar neler?" → Belgelerinizi arar
-- **Çoklu Veritabanı Sorgu**: "Satış verilerini göster" → Bağlı veritabanlarını sorgular
-- **Çoklu Veritabanı Analizi**: "Departmanlar arası performansı karşılaştır" → Birden fazla kaynaktan veriyi birleştirir
-
-### **🔍 Gelişmiş Semantik Arama**
-- **Hibrit Puanlama**: Semantik benzerlik (%80) ile anahtar kelime ilgisini (%20) birleştirir
-- **Bağlam Farkındalığı**: Sorgular arası konuşma bağlamını korur
-- **Çok Dilli Destek**: Sabit kodlanmış kalıplar olmadan herhangi bir dilde çalışır
-- **Akıllı Parçalama**: Bağlamı koruyan ve kelime sınırlarını koruyan akıllı belge segmentasyonu
-
-### **🎯 Multi-Modal Intelligence**
-- **Belge İşleme**: PDF, Word, Excel, PowerPoint, Görüntüler, Ses
-- **OCR Yetenekleri**: Görüntülerden, taranmış belgelerden, el yazısı notlardan metin çıkarır
-- **Ses Transkripsiyonu**: Whisper.net ile konuşmayı metne dönüştürür
-- **Akıllı Parçalama**: Bağlamı koruyan akıllı belge segmentasyonu
-
-### **🏠 On-Premise Dağıtım**
-- **Yerel AI Modelleri**: Tam gizlilik için Ollama, LM Studio entegrasyonu
-- **Bulut Bağımlılığı Yok**: Yerel işleme ile çevrimdışı çalışır
-- **Kurumsal Güvenlik**: Veri ve işleme üzerinde tam kontrol
-- **Uyumluluk Hazır**: Yerel veri işleme ile GDPR, KVKK, HIPAA uyumlu
+- **Tek .NET kütüphanesi** gerçek çoklu veritabanı RAG yetenekleri ile
+- **Otomatik şema algılama** farklı veritabanı türleri arasında  
+- **%100 yerel işleme** Ollama ve Whisper.net ile
+- **Kurumsal hazır** kapsamlı hata yönetimi ve loglama ile
+- **Çapraz veritabanı sorguları** manuel SQL yazmadan
+- **Çoklu modal zeka** belgeler, veritabanları ve AI'yı birleştirerek
 
 ## 🧪 **Örnekler ve Test**
 
@@ -387,6 +211,31 @@ docker exec -it smartrag-ollama ollama pull nomic-embed-text
 **İdeal için:** Hızlı değerlendirme, proof-of-concept, ekip demoları, SmartRAG yeteneklerini öğrenme
 
 📚 **[Tam Örnekler ve Test Rehberi](https://byerlikaya.github.io/SmartRAG/tr/examples)** - Adım adım öğreticiler ve test senaryoları
+
+## 🎯 **Desteklenen Veri Kaynakları**
+
+**📊 Veritabanları:** SQL Server, MySQL, PostgreSQL, SQLite  
+**📄 Belgeler:** PDF, Word, Excel, PowerPoint, Görüntü, Ses  
+**🤖 AI Modelleri:** OpenAI, Anthropic, Ollama (yerel), LM Studio  
+**🗄️ Vektör Depoları:** Qdrant, Redis, SQLite, InMemory
+
+## 📊 **Diğer RAG Kütüphaneleri ile Karşılaştırma**
+
+| Özellik | SmartRAG | LM-Kit.NET | Semantic Kernel | LangChain.NET |
+|---------|----------|------------|----------------|---------------|
+| **Fiyatlandırma** | ✅ Ücretsiz & Açık Kaynak (MIT) | ✅ Ücretsiz Topluluk Lisansı | ✅ Ücretsiz & Açık Kaynak (MIT) | ✅ Ücretsiz & Açık Kaynak (MIT) |
+| **On-Premise Ready** | ✅ %100 Yerel | ✅ %100 Yerel | ❌ Bulut gerekli | ❌ Bulut gerekli |
+| **Production Ready** | ✅ Kurumsal Hata Yönetimi | ✅ Üretim hazır | ⚠️ Temel Hata Yönetimi | ⚠️ Temel Hata Yönetimi |
+| **Yerel AI Desteği** | ✅ Ollama/LM Studio Yerel | ✅ Yerel Modeller | ❌ Sınırlı Yerel Destek | ❌ Sınırlı Yerel Destek |
+| **Kurumsal Özellikler** | ✅ Thread-safe, DI, Logging, Test | ✅ Kapsamlı Framework | ⚠️ Temel Özellikler | ⚠️ Temel Özellikler |
+| **Çoklu Modal Destek** | ✅ PDF+Excel+Görüntü+Ses+DB | ✅ Metin+Görüntü+Ses | ❌ Sınırlı Belge Türleri | ❌ Sınırlı Belge Türleri |
+| **Ses İşleme** | ✅ Whisper.net (99+ dil) | ✅ Konuşma-Metin | ❌ Desteklenmiyor | ❌ Desteklenmiyor |
+| **OCR Yetenekleri** | ✅ Tesseract 5.2.0 Yerel | ✅ Görüntü Analizi | ❌ Desteklenmiyor | ❌ Desteklenmiyor |
+| **Veritabanı Entegrasyonu** | ✅ SQL Server+MySQL+PostgreSQL+SQLite | ❌ Veritabanı Desteği Yok | ❌ Manuel Bağlantı Kurulumu | ❌ Manuel Bağlantı Kurulumu |
+| **Multi-Database RAG** | ✅ Yerel Çapraz-DB Sorguları | ❌ Desteklenmiyor | ❌ Manuel Entegrasyon Gerekli | ❌ Manuel Entegrasyon Gerekli |
+| **Çoklu Veritabanı Sorguları** | ✅ Otomatik Şema Algılama | ❌ Desteklenmiyor | ❌ Manuel SQL Yazma | ❌ Manuel SQL Yazma |
+
+**SmartRAG, gerçek çoklu veritabanı RAG ve çapraz veritabanı sorgu yetenekleri sağlayan TEK kütüphanedir.**
 
 ## 📄 Lisans
 
