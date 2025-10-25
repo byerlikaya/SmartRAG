@@ -1345,6 +1345,15 @@ details[open] {
         margin: 0.5rem 0;
     }
     
+    /* Prevent dropdown overflow on mobile */
+    .navbar-nav .dropdown-menu {
+        max-width: 100%;
+        overflow-x: hidden;
+        word-wrap: break-word;
+        max-height: 70vh;
+        overflow-y: auto;
+    }
+    
     .hero-title {
         font-size: 2.5rem;
     }
