@@ -13,33 +13,30 @@ SmartRAG çoklu veritabanı desteği ile akıllı çapraz-veritabanı sorguları
 
 ## Çoklu Veritabanı Bağlantıları
 
-```csharp
-builder.Services.AddSmartRag(configuration, options =>
+Veritabanlarını `appsettings.json` dosyasında yapılandırın:
+
+```json
 {
-    options.DatabaseConnections = new List<DatabaseConnectionConfig>
-    {
-        new DatabaseConnectionConfig
-        {
-            Name = "Satış Veritabanı",
-            Type = DatabaseType.SqlServer,
-            ConnectionString = "Server=localhost;Database=Sales;...",
-            IncludedTables = new List<string> { "Orders", "Customers" },
-            MaxRowsPerTable = 1000,
-            SanitizeSensitiveData = true
-        },
-        new DatabaseConnectionConfig
-        {
-            Name = "Envanter Veritabanı",
-            Type = DatabaseType.MySQL,
-            ConnectionString = "Server=localhost;Database=Inventory;...",
-            MaxRowsPerTable = 1000
-        }
-    };
-    
-    options.EnableAutoSchemaAnalysis = true;
-    options.EnablePeriodicSchemaRefresh = true;
-    options.DefaultSchemaRefreshIntervalMinutes = 60;
-});
+  "SmartRAG": {
+    "DatabaseConnections": [
+      {
+        "Name": "Satış Veritabanı",
+        "ConnectionString": "Server=localhost;Database=Sales;...",
+        "DatabaseType": "SqlServer",
+        "IncludedTables": ["Orders", "Customers"],
+        "MaxRowsPerQuery": 1000,
+        "Enabled": true
+      },
+      {
+        "Name": "Envanter Veritabanı",
+        "ConnectionString": "Server=localhost;Database=Inventory;...",
+        "DatabaseType": "MySQL",
+        "MaxRowsPerQuery": 1000,
+        "Enabled": true
+      }
+    ]
+  }
+}
 ```
 
 ---
@@ -227,7 +224,7 @@ new DatabaseConnectionConfig
 // Bağlantı hatalarını yönetme
 try
 {
-    var result = await _multiDatabaseQueryCoordinator.QueryAsync(query);
+    var result = await _multiDatabaseQueryCoordinator.QueryMultipleDatabasesAsync(query);
 }
 catch (DatabaseConnectionException ex)
 {
@@ -247,7 +244,7 @@ catch (DatabaseConnectionException ex)
                 <i class="fas fa-microphone"></i>
             </div>
             <h3>Ses & OCR</h3>
-            <p>Google Speech-to-Text ve Tesseract OCR yapılandırması</p>
+            <p>Whisper.net ve Tesseract OCR yapılandırması</p>
             <a href="{{ site.baseurl }}/tr/configuration/audio-ocr" class="btn btn-outline-primary btn-sm mt-3">
                 Ses & OCR
             </a>

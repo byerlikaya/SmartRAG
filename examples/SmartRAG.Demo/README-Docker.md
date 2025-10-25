@@ -1,10 +1,56 @@
 # Docker Setup Guide for SmartRAG Demo
 
+<p align="center">
+  <img src="../../icon.svg" alt="SmartRAG Logo" width="100" height="100">
+</p>
+
+<p align="center">
+  <b>Complete Docker setup for SmartRAG Demo with all local services</b>
+</p>
+
+<p align="center">
+  <a href="../../README.md"><img src="https://img.shields.io/badge/📚-Main_README-blue?style=for-the-badge&logo=book" alt="Main README"/></a>
+  <a href="README-Docker.tr.md"><img src="https://img.shields.io/badge/🇹🇷-Türkçe_README-red?style=for-the-badge" alt="Turkish README"/></a>
+</p>
+
+---
+
 Complete guide for running SmartRAG with all local services using Docker.
+
+## 🐳 Docker Compose Configuration
+
+### **Service Details**
+
+| Service | Image | Container | Ports | Volume | Health Check |
+|---------|-------|-----------|-------|--------|--------------|
+| **SQL Server** | `mcr.microsoft.com/mssql/server:2022-latest` | `smartrag-sqlserver-test` | `1433:1433` | `sqlserver-data` | SQL query test |
+| **MySQL** | `mysql:8.0` | `smartrag-mysql-test` | `3306:3306` | `mysql-data` | MySQL ping test |
+| **PostgreSQL** | `postgres:16-alpine` | `smartrag-postgres-test` | `5432:5432` | `postgres-data` | PostgreSQL ready test |
+| **Ollama** | `ollama/ollama:latest` | `smartrag-ollama` | `11434:11434` | `ollama-data` | Ollama list test |
+| **Qdrant** | `qdrant/qdrant:latest` | `smartrag-qdrant` | `6333:6333`, `6334:6334` | `qdrant-data` | HTTP health check |
+| **Redis** | `redis:7-alpine` | `smartrag-redis` | `6379:6379` | `redis-data` | Redis ping test |
+
+### **Volume Persistence**
+All data persists across container restarts using Docker volumes:
+- `sqlserver-data` - SQL Server database files
+- `mysql-data` - MySQL database files  
+- `postgres-data` - PostgreSQL database files
+- `ollama-data` - Ollama AI models and cache
+- `qdrant-data` - Qdrant vector database files
+- `redis-data` - Redis cache and persistence files
+
+### **Health Checks**
+All services include health checks with automatic restart on failure:
+- **Interval**: 10-30 seconds (depending on service)
+- **Timeout**: 5-10 seconds
+- **Retries**: 3-5 attempts
+- **Restart Policy**: `unless-stopped`
+
+---
 
 ## 📦 What Gets Installed
 
-This Docker setup includes **6 services**:
+This Docker setup includes **6 services** for complete SmartRAG functionality:
 
 ### AI & Storage
 - **Ollama** - Local AI models (LLaMA, Phi, Mistral, etc.)
@@ -12,11 +58,13 @@ This Docker setup includes **6 services**:
 - **Redis** - Cache and vector storage
 
 ### Databases
-- **SQL Server 2022 Express** - SalesManagement database
-- **MySQL 8.0** - InventoryManagement database
-- **PostgreSQL 16** - LogisticsManagement database
+- **SQL Server 2022 Express** - Primary database for demo data
+- **MySQL 8.0** - Secondary database for demo data  
+- **PostgreSQL 16** - Tertiary database for demo data
 
 ## 🚀 Quick Start
+
+**Why Docker?** Get SmartRAG running in minutes with zero configuration. All databases, AI models, and vector stores are pre-configured and ready to use.
 
 ### 1. Environment Setup (Recommended)
 
@@ -171,7 +219,7 @@ docker exec -it smartrag-redis redis-cli ping
 - **Host**: localhost,1433
 - **Username**: sa
 - **Password**: `${SQLSERVER_SA_PASSWORD}` (environment variable required)
-- **Database**: SalesManagement (created by app)
+- **Database**: PrimaryDemoDB (created by app)
 - **Container**: smartrag-sqlserver-test
 - **Volume**: sqlserver-data
 
@@ -186,7 +234,7 @@ docker exec -it smartrag-sqlserver-test /opt/mssql-tools18/bin/sqlcmd -S localho
 - **Host**: localhost:3306
 - **Username**: root
 - **Password**: `${MYSQL_ROOT_PASSWORD}` (environment variable required)
-- **Database**: InventoryManagement (created by app)
+- **Database**: SecondaryDemoDB (created by app)
 - **Container**: smartrag-mysql-test
 - **Volume**: mysql-data
 
@@ -199,7 +247,7 @@ docker exec -it smartrag-mysql-test mysql -u root -p${MYSQL_ROOT_PASSWORD} -e "S
 - **Host**: localhost:5432
 - **Username**: postgres
 - **Password**: `${POSTGRES_PASSWORD}` (environment variable required)
-- **Database**: LogisticsManagement (created by app)
+- **Database**: TertiaryDemoDB (created by app)
 - **Container**: smartrag-postgres-test
 - **Volume**: postgres-data
 
@@ -466,4 +514,6 @@ If you prefer not to use Docker:
 For issues or questions:
 - **GitHub**: https://github.com/byerlikaya/SmartRAG
 - **LinkedIn**: https://www.linkedin.com/in/barisyerlikaya/
+- **NuGet**: https://www.nuget.org/packages/SmartRAG
+- **Website**: https://byerlikaya.github.io/SmartRAG/en/
 - **Email**: b.yerlikaya@outlook.com

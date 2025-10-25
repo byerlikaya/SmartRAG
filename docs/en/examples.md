@@ -60,73 +60,56 @@ public class SearchRequest
 
 ### 2. Multi-Database Query
 
-Query multiple databases simultaneously:
+Configure databases in `appsettings.json`, then query them:
 
+**Configuration (appsettings.json):**
+```json
+{
+  "SmartRAG": {
+    "DatabaseConnections": [
+      {
+        "Name": "Sales",
+        "ConnectionString": "Server=localhost;Database=Sales;...",
+        "DatabaseType": "SqlServer"
+      },
+      {
+        "Name": "Inventory",
+        "ConnectionString": "Server=localhost;Database=Inventory;...",
+        "DatabaseType": "MySQL"
+      }
+    ]
+  }
+}
+```
+
+**Query Controller:**
 ```csharp
 public class DatabaseController : ControllerBase
 {
-    private readonly IDatabaseParserService _databaseService;
     private readonly IMultiDatabaseQueryCoordinator _multiDbCoordinator;
     
-    // Connect to SQL Server database
-    [HttpPost("connect/sqlserver")]
-    public async Task<IActionResult> ConnectSqlServer([FromBody] ConnectionRequest request)
+    public DatabaseController(IMultiDatabaseQueryCoordinator multiDbCoordinator)
     {
-        var config = new DatabaseConfig
-        {
-            Type = DatabaseType.SqlServer,
-            ConnectionString = request.ConnectionString,
-            IncludedTables = request.Tables,
-            MaxRowsPerTable = 1000,
-            SanitizeSensitiveData = true
-        };
-        
-        var content = await _databaseService.ParseDatabaseConnectionAsync(
-            request.ConnectionString,
-            config
-        );
-        
-        return Ok(new { message = "Connected successfully", tables = request.Tables });
-    }
-    
-    // Connect to MySQL database
-    [HttpPost("connect/mysql")]
-    public async Task<IActionResult> ConnectMySQL([FromBody] ConnectionRequest request)
-    {
-        var config = new DatabaseConfig
-        {
-            Type = DatabaseType.MySQL,
-            ConnectionString = request.ConnectionString,
-            MaxRowsPerTable = 1000
-        };
-        
-        var content = await _databaseService.ParseDatabaseConnectionAsync(
-            request.ConnectionString,
-            config
-        );
-        
-        return Ok(new { message = "Connected successfully" });
+        _multiDbCoordinator = multiDbCoordinator;
     }
     
     // Query across multiple databases
     [HttpPost("query")]
     public async Task<IActionResult> QueryDatabases([FromBody] MultiDbQueryRequest request)
     {
-        var response = await _multiDbCoordinator.ExecuteQueryAsync(request.Query);
+        var response = await _multiDbCoordinator.QueryMultipleDatabasesAsync(
+            request.Query,
+            maxResults: request.MaxResults
+        );
         
         return Ok(response);
     }
 }
 
-public class ConnectionRequest
-{
-    public string ConnectionString { get; set; } = string.Empty;
-    public List<string> Tables { get; set; } = new();
-}
-
 public class MultiDbQueryRequest
 {
     public string Query { get; set; } = string.Empty;
+    public int MaxResults { get; set; } = 5;
 }
 ```
 
@@ -247,12 +230,12 @@ public class AudioController : ControllerBase
 - `fr-FR` - French
 - 100+ languages
 
-<div class="alert alert-warning">
-    <h4><i class="fas fa-cloud me-2"></i> Privacy Note</h4>
+<div class="alert alert-success">
+    <h4><i class="fas fa-lock me-2"></i> Privacy Note</h4>
     <p class="mb-0">
-        Audio files are sent to Google Cloud for transcription. All other formats (PDF, Word, Excel, Images, Databases) are processed 100% locally.
+        All processing is done 100% locally. Audio transcription uses Whisper.net, OCR uses Tesseract. No data is sent to external services.
     </p>
-                    </div>
+</div>
 
 ---
 
@@ -313,21 +296,24 @@ AI: "Started new conversation. How can I help you?"
 
 Unify patient data across multiple systems:
 
-```csharp
-// Connect to multiple databases
-var postgresConfig = new DatabaseConfig
+**Configuration (appsettings.json):**
+```json
 {
-    Name = "Patient Records",
-    Type = DatabaseType.PostgreSql,
-    ConnectionString = "Host=localhost;Database=Hospital;...",
-    IncludedTables = new List<string> { "Patients", "Admissions", "Discharges" }
-};
+  "SmartRAG": {
+    "DatabaseConnections": [
+      {
+        "Name": "Patient Records",
+        "ConnectionString": "Host=localhost;Database=Hospital;...",
+        "DatabaseType": "PostgreSQL",
+        "IncludedTables": ["Patients", "Admissions", "Discharges"]
+      }
+    ]
+  }
+}
+```
 
-var content1 = await _databaseService.ParseDatabaseConnectionAsync(
-    postgresConfig.ConnectionString, 
-    postgresConfig
-);
-
+**Code:**
+```csharp
 // Upload Excel lab results
 await _documentService.UploadDocumentAsync(labResultsStream, "labs.xlsx", "application/vnd.ms-excel", "lab-tech");
 
@@ -353,36 +339,22 @@ var response = await _searchService.QueryIntelligenceAsync(
 
 Comprehensive financial profile analysis:
 
+**Configuration (appsettings.json):**
+```json
+{
+  "SmartRAG": {
+    "DatabaseConnections": [
+      {"Name": "Transactions", "ConnectionString": "...", "DatabaseType": "SqlServer", "IncludedTables": ["Transactions", "BillPayments", "SalaryDeposits"]},
+      {"Name": "Credit", "ConnectionString": "...", "DatabaseType": "MySQL", "IncludedTables": ["CreditCards", "Spending", "PaymentHistory"]},
+      {"Name": "Loans", "ConnectionString": "...", "DatabaseType": "PostgreSQL", "IncludedTables": ["Loans", "Mortgages", "CreditScores"]},
+      {"Name": "Branches", "ConnectionString": "Data Source=./branches.db", "DatabaseType": "Sqlite", "IncludedTables": ["Visits", "Interactions", "Complaints"]}
+    ]
+  }
+}
+```
+
+**Code:**
 ```csharp
-// Connect to 4 different databases
-var sqlServerConfig = new DatabaseConfig
-{
-    Type = DatabaseType.SqlServer,
-    ConnectionString = "...",
-    IncludedTables = new List<string> { "Transactions", "BillPayments", "SalaryDeposits" }
-};
-
-var mySqlConfig = new DatabaseConfig
-{
-    Type = DatabaseType.MySQL,
-    ConnectionString = "...",
-    IncludedTables = new List<string> { "CreditCards", "Spending", "PaymentHistory" }
-};
-
-var postgresConfig = new DatabaseConfig
-{
-    Type = DatabaseType.PostgreSql,
-    ConnectionString = "...",
-    IncludedTables = new List<string> { "Loans", "Mortgages", "CreditScores" }
-};
-
-var sqliteConfig = new DatabaseConfig
-{
-    Type = DatabaseType.Sqlite,
-    ConnectionString = "Data Source=./branches.db",
-    IncludedTables = new List<string> { "Visits", "Interactions", "Complaints" }
-};
-
 // Upload OCR scanned documents
 await _documentService.UploadDocumentAsync(taxReturnImage, "tax.jpg", "image/jpeg", "rm", language: "eng");
 
@@ -390,7 +362,7 @@ await _documentService.UploadDocumentAsync(taxReturnImage, "tax.jpg", "image/jpe
 await _documentService.UploadDocumentAsync(statementPdf, "statement.pdf", "application/pdf", "rm");
 
 // Comprehensive query
-var response = await _multiDbCoordinator.ExecuteQueryAsync(
+var response = await _multiDbCoordinator.QueryMultipleDatabasesAsync(
     "Should we increase John Smith's credit card limit from $8K to $18K?"
 );
 
@@ -417,15 +389,8 @@ foreach (var legalDoc in legalDocuments)
     );
 }
 
-// Connect to case database
-var caseDbConfig = new DatabaseConfig
-{
-    Type = DatabaseType.SqlServer,
-    ConnectionString = "...",
-    IncludedTables = new List<string> { "Cases", "Outcomes", "Judges", "Clients" }
-};
-
-await _databaseService.ParseDatabaseConnectionAsync(caseDbConfig.ConnectionString, caseDbConfig);
+// Database configured in appsettings.json:
+// {"Name": "Cases", "ConnectionString": "...", "DatabaseType": "SqlServer", "IncludedTables": ["Cases", "Outcomes", "Judges", "Clients"]}
 
 // Upload OCR scanned court orders
 await _documentService.UploadDocumentAsync(courtOrderImage, "order.jpg", "image/jpeg", "clerk", language: "eng");
@@ -447,20 +412,10 @@ var response = await _searchService.QueryIntelligenceAsync(
 Prevent stockouts with cross-database analytics:
 
 ```csharp
-// Setup configuration with 4 databases
-builder.Services.AddSmartRag(configuration, options =>
-{
-    options.DatabaseConnections = new List<DatabaseConnectionConfig>
-    {
-        new() { Name = "Catalog", Type = DatabaseType.Sqlite, ConnectionString = "Data Source=./catalog.db" },
-        new() { Name = "Sales", Type = DatabaseType.SqlServer, ConnectionString = "..." },
-        new() { Name = "Inventory", Type = DatabaseType.MySQL, ConnectionString = "..." },
-        new() { Name = "Suppliers", Type = DatabaseType.PostgreSql, ConnectionString = "..." }
-    };
-});
+// Databases configured in appsettings.json (4 databases: Catalog, Sales, Inventory, Suppliers)
 
 // Query across all databases
-var response = await _multiDbCoordinator.ExecuteQueryAsync(
+var response = await _multiDbCoordinator.QueryMultipleDatabasesAsync(
     "Which products will run out of stock in the next 2 weeks?"
 );
 
@@ -486,16 +441,8 @@ await _documentService.UploadDocumentAsync(
     "quality-manager"
 );
 
-// Connect to PostgreSQL sensor database
-var sensorConfig = new DatabaseConfig
-{
-    Type = DatabaseType.PostgreSql,
-    ConnectionString = "...",
-    IncludedTables = new List<string> { "SensorReadings", "MachineStatus" },
-    MaxRowsPerTable = 100000  // Large sensor data
-};
-
-await _databaseService.ParseDatabaseConnectionAsync(sensorConfig.ConnectionString, sensorConfig);
+// Database configured in appsettings.json:
+// {"Name": "Sensors", "ConnectionString": "...", "DatabaseType": "PostgreSQL", "IncludedTables": ["SensorReadings", "MachineStatus"], "MaxRowsPerQuery": 100000}
 
 // Upload OCR quality control photos
 await _documentService.UploadDocumentAsync(
@@ -542,15 +489,8 @@ foreach (var resume in resumeFiles)
     );
 }
 
-// Connect to applicant database
-var applicantDbConfig = new DatabaseConfig
-{
-    Type = DatabaseType.SqlServer,
-    ConnectionString = "...",
-    IncludedTables = new List<string> { "Applicants", "Skills", "Experience", "Education" }
-};
-
-await _databaseService.ParseDatabaseConnectionAsync(applicantDbConfig.ConnectionString, applicantDbConfig);
+// Database configured in appsettings.json:
+// {"Name": "Applicants", "ConnectionString": "...", "DatabaseType": "SqlServer", "IncludedTables": ["Applicants", "Skills", "Experience", "Education"]}
 
 // Upload OCR scanned certificates
 await _documentService.UploadDocumentAsync(
@@ -595,16 +535,8 @@ await _documentService.UploadDocumentAsync(
     "finance-team"
 );
 
-// Connect to transaction database
-var transactionConfig = new DatabaseConfig
-{
-    Type = DatabaseType.SqlServer,
-    ConnectionString = "...",
-    IncludedTables = new List<string> { "Transactions", "Approvals", "Vendors" },
-    MaxRowsPerTable = 500000
-};
-
-await _databaseService.ParseDatabaseConnectionAsync(transactionConfig.ConnectionString, transactionConfig);
+// Database configured in appsettings.json:
+// {"Name": "Transactions", "ConnectionString": "...", "DatabaseType": "SqlServer", "IncludedTables": ["Transactions", "Approvals", "Vendors"], "MaxRowsPerQuery": 500000}
 
 // Upload OCR vendor invoices
 await _documentService.UploadDocumentAsync(invoiceImage, "invoice.jpg", "image/jpeg", "accountant", language: "eng");
@@ -629,14 +561,8 @@ var response = await _searchService.QueryIntelligenceAsync(
 Process citizen applications efficiently:
 
 ```csharp
-// Connect to citizen database
-var citizenConfig = new DatabaseConfig
-{
-    Type = DatabaseType.PostgreSql,
-    ConnectionString = "...",
-    IncludedTables = new List<string> { "Citizens", "Applications", "Permits" },
-    MaxRowsPerTable = 15000000  // Large citizen database
-};
+// Database configured in appsettings.json:
+// {"Name": "Citizens", "ConnectionString": "...", "DatabaseType": "PostgreSQL", "IncludedTables": ["Citizens", "Applications", "Permits"], "MaxRowsPerQuery": 15000000}
 
 // Upload OCR application forms
 await _documentService.UploadDocumentAsync(formImage, "building-permit.jpg", "image/jpeg", "clerk", language: "tur");

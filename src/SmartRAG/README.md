@@ -51,7 +51,7 @@ var result = await _intelligence.QueryIntelligenceAsync("Your question here");
 
 - 🗄️ **Multi-Database RAG** - Query multiple databases with natural language
 - 🖼️ **OCR Support** - Image processing with Tesseract 5.2.0
-- 🎤 **Audio Support** - Local transcription with Whisper.net (99+ languages, Google Speech-to-Text removed)
+- 🎤 **Audio Support** - Local transcription with Whisper.net (99+ languages)
 - 💬 **Conversation History** - Built-in session management
 - 🔄 **Enhanced API** - Improved intelligence query interface
 

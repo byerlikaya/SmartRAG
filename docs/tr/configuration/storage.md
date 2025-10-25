@@ -241,7 +241,7 @@ options.StorageProvider = StorageProvider.Qdrant;
                 <i class="fas fa-microphone"></i>
             </div>
             <h3>Ses & OCR</h3>
-            <p>Google Speech-to-Text ve Tesseract OCR</p>
+            <p>Whisper.net ve Tesseract OCR</p>
             <a href="{{ site.baseurl }}/tr/configuration/audio-ocr" class="btn btn-outline-primary btn-sm mt-3">
                 Ses & OCR
             </a>

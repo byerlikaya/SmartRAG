@@ -112,7 +112,10 @@ public class DatabaseController : ControllerBase
     [HttpPost("query")]
     public async Task<IActionResult> QueryDatabases([FromBody] MultiDbQueryRequest request)
     {
-        var response = await _multiDbCoordinator.ExecuteQueryAsync(request.Query);
+        var response = await _multiDbCoordinator.QueryMultipleDatabasesAsync(
+            request.Query,
+            maxResults: request.MaxResults
+        );
         
         return Ok(response);
     }
@@ -356,7 +359,7 @@ await _documentService.UploadDocumentAsync(vergiGorsel, "vergi.jpg", "image/jpeg
 await _documentService.UploadDocumentAsync(ozetPdf, "ozet.pdf", "application/pdf", "rm");
 
 // Kapsamlı sorgu
-var response = await _multiDbCoordinator.ExecuteQueryAsync(
+var response = await _multiDbCoordinator.QueryMultipleDatabasesAsync(
     "Mehmet Kaya'nın kredi kartı limitini 8K'dan 18K'ya çıkarmalı mıyız?"
 );
 
@@ -426,7 +429,7 @@ builder.Services.AddSmartRag(configuration, options =>
 });
 
 // Tüm veritabanlarında sorgula
-var response = await _multiDbCoordinator.ExecuteQueryAsync(
+var response = await _multiDbCoordinator.QueryMultipleDatabasesAsync(
     "Önümüzdeki 2 hafta içinde hangi ürünlerin stoku tükenecek?"
 );
 
