@@ -6,6 +6,47 @@ All notable changes to SmartRAG will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.0.3] - 2025-11-06
+
+### 🎯 Package Optimization - Native Libraries
+
+#### **Package Size Reduction**
+- **Native Libraries Excluded**: Whisper.net.Runtime native libraries (ggml-*.dll, libggml-*.so, libggml-*.dylib) are no longer included in SmartRAG NuGet package
+- **Tessdata Excluded**: `tessdata/eng.traineddata` file is no longer included in SmartRAG NuGet package
+- **Reduced Package Size**: Significantly smaller NuGet package footprint
+- **Cleaner Output**: No unnecessary native library files in project output directory
+
+#### **Files Modified**
+- `src/SmartRAG/SmartRAG.csproj` - Added `PrivateAssets="All"` to Whisper.net.Runtime package reference
+- `src/SmartRAG/SmartRAG.csproj` - Added `Pack="false"` to tessdata/eng.traineddata content file
+
+### ✨ Benefits
+- **Smaller Package Size**: Reduced NuGet package size by excluding native libraries
+- **Cleaner Projects**: No unnecessary native library files in project output
+- **Better Dependency Management**: Native libraries come from their respective packages (Whisper.net.Runtime, Tesseract)
+- **Consistent Behavior**: Matches behavior when directly referencing Whisper.net.Runtime package
+
+### 📚 Migration Guide
+If you're using OCR or Audio Transcription features:
+
+**For Audio Transcription (Whisper.net):**
+1. Add `Whisper.net.Runtime` package to your project:
+   ```xml
+   <PackageReference Include="Whisper.net.Runtime" Version="1.8.1" />
+   ```
+2. Native libraries will be automatically included from Whisper.net.Runtime package
+3. No other changes required
+
+**For OCR (Tesseract):**
+1. Add `Tesseract` package to your project:
+   ```xml
+   <PackageReference Include="Tesseract" Version="5.2.0" />
+   ```
+2. Tesseract package includes tessdata files automatically
+3. No other changes required
+
+**Note**: If you're not using OCR or Audio Transcription features, no action is required. The packages are still downloaded as dependencies, but native libraries won't be included unless you explicitly reference the packages.
+
 ## [3.0.2] - 2025-10-24
 
 ### 🚀 BREAKING CHANGES - Google Speech-to-Text Removal
