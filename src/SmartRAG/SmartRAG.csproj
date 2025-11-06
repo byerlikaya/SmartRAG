@@ -5,7 +5,7 @@
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
-    <PackageVersion>3.0.2</PackageVersion>
+    <PackageVersion>3.0.3</PackageVersion>
     <Authors>Barış Yerlikaya</Authors>
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
@@ -20,25 +20,26 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Release 3.0.2: Google Speech-to-Text Removal
+    <PackageReleaseNotes>Release 3.0.3: Package Optimization - Native Libraries
 
-BREAKING CHANGES:
-• Google Speech-to-Text completely removed
-• Whisper.net is now the only audio transcription provider
-• 100% local audio processing
+PACKAGE OPTIMIZATION:
+• Native libraries excluded from SmartRAG package
+• Whisper.net.Runtime native libraries no longer included
+• Tessdata files no longer included in package
+• Significantly reduced package size
 
 BENEFITS:
-• Enhanced privacy and GDPR/KVKK/HIPAA compliance
-• Simplified configuration
-• Reduced dependencies
-• Better performance with local processing
+• Smaller NuGet package footprint
+• Cleaner project output directories
+• Better dependency management
+• Consistent with direct package references
 
 MIGRATION:
-• Update AudioProvider to Whisper only
-• Remove GoogleSpeechConfig from appsettings.json
-• Install Whisper.net models for local transcription
+• For Audio Transcription: Add Whisper.net.Runtime package to your project
+• For OCR: Add Tesseract package to your project
+• No changes required if not using these features
 
-This release removes Google Speech-to-Text dependency and focuses on local audio processing.</PackageReleaseNotes>
+This release optimizes package size by excluding native libraries that should come from their respective packages.</PackageReleaseNotes>
     
     <!-- Build Configuration -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -49,8 +50,8 @@ This release removes Google Speech-to-Text dependency and focuses on local audio
     <AssemblyTitle>SmartRAG</AssemblyTitle>
     <AssemblyDescription>High-performance RAG library with conversation history management for .NET</AssemblyDescription>
     <AssemblyCopyright>Copyright © 2025 Barış Yerlikaya</AssemblyCopyright>
-    <AssemblyVersion>3.0.2.0</AssemblyVersion>
-    <FileVersion>3.0.2.0</FileVersion>
+    <AssemblyVersion>3.0.3.0</AssemblyVersion>
+    <FileVersion>3.0.3.0</FileVersion>
     <NeutralLanguage>en</NeutralLanguage>
     <Culture>en-US</Culture>
   </PropertyGroup>
@@ -95,7 +96,7 @@ This release removes Google Speech-to-Text dependency and focuses on local audio
     <!-- Audio Processing -->
     <!-- Whisper.net (Local transcription) -->
     <PackageReference Include="Whisper.net" Version="1.8.1" />
-    <PackageReference Include="Whisper.net.Runtime" Version="1.8.1" />
+    <PackageReference Include="Whisper.net.Runtime" Version="1.8.1" PrivateAssets="All" />
     <!-- FFMpegCore for cross-platform audio format conversion (MP3, M4A, FLAC → WAV) -->
     <PackageReference Include="FFMpegCore" Version="5.3.0" />
     
@@ -110,9 +111,9 @@ This release removes Google Speech-to-Text dependency and focuses on local audio
     <None Include="icon.png" Pack="true" PackagePath="/" />
   </ItemGroup>
 
-  <!-- Tessdata Files -->
+  <!-- Tessdata Files - NOT included in NuGet package (users should add Tesseract package) -->
   <ItemGroup>
-    <Content Include="tessdata\eng.traineddata">
+    <Content Include="tessdata\eng.traineddata" Pack="false">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
