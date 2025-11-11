@@ -1126,36 +1126,35 @@ namespace SmartRAG.Services
                 return apiLanguage;
             }
 
-            // Priority 2: Filename analysis
+            // Priority 2: Filename analysis using ISO 639-1 language codes
+            // This approach is generic and supports all languages without hardcoded language names
             var fileNameLower = fileName.ToLowerInvariant();
             
-            // Language keywords in filename
-            if (fileNameLower.Contains("turkish") || fileNameLower.Contains("turkce") || fileNameLower.Contains("tr"))
-                return "tr-TR";
-            if (fileNameLower.Contains("english") || fileNameLower.Contains("ingilizce") || fileNameLower.Contains("en"))
-                return "en-US";
-            if (fileNameLower.Contains("german") || fileNameLower.Contains("almanca") || fileNameLower.Contains("de"))
-                return "de-DE";
-            if (fileNameLower.Contains("french") || fileNameLower.Contains("fransizca") || fileNameLower.Contains("fr"))
-                return "fr-FR";
-            if (fileNameLower.Contains("spanish") || fileNameLower.Contains("ispanyolca") || fileNameLower.Contains("es"))
-                return "es-ES";
-            if (fileNameLower.Contains("italian") || fileNameLower.Contains("italyanca") || fileNameLower.Contains("it"))
-                return "it-IT";
-            if (fileNameLower.Contains("portuguese") || fileNameLower.Contains("portekizce") || fileNameLower.Contains("pt"))
-                return "pt-BR";
-            if (fileNameLower.Contains("russian") || fileNameLower.Contains("rusca") || fileNameLower.Contains("ru"))
-                return "ru-RU";
-            if (fileNameLower.Contains("japanese") || fileNameLower.Contains("japonca") || fileNameLower.Contains("ja"))
-                return "ja-JP";
-            if (fileNameLower.Contains("korean") || fileNameLower.Contains("korece") || fileNameLower.Contains("ko"))
-                return "ko-KR";
-            if (fileNameLower.Contains("chinese") || fileNameLower.Contains("cince") || fileNameLower.Contains("zh"))
-                return "zh-CN";
-            if (fileNameLower.Contains("arabic") || fileNameLower.Contains("arapca") || fileNameLower.Contains("ar"))
-                return "ar-SA";
-            if (fileNameLower.Contains("hindi") || fileNameLower.Contains("hintce") || fileNameLower.Contains("hi"))
-                return "hi-IN";
+            // Extract ISO 639-1 language codes (2-letter codes) from filename
+            // Pattern: Look for 2-letter codes that are valid ISO 639-1 language codes
+            // Common patterns: "audio_en.mp3", "recording-tr.wav", "file_ja_audio.mp3"
+            var iso6391Pattern = @"\b([a-z]{2})(?:[-_]([a-z]{2}))?\b";
+            var matches = Regex.Matches(fileNameLower, iso6391Pattern);
+            
+            foreach (Match match in matches)
+            {
+                var languageCode = match.Groups[1].Value;
+                var regionCode = match.Groups[2].Success ? match.Groups[2].Value : null;
+                
+                // Validate: ISO 639-1 codes are 2 letters, check if it's a valid pattern
+                // Common valid codes: en, tr, de, fr, es, it, pt, ru, ja, ko, zh, ar, hi, etc.
+                if (languageCode.Length == 2 && char.IsLetter(languageCode[0]) && char.IsLetter(languageCode[1]))
+                {
+                    // Build locale string: "languageCode-REGION" or "languageCode-REGION" format
+                    // If region code found, use it; otherwise use uppercase language code as region
+                    var locale = regionCode != null && regionCode.Length == 2
+                        ? $"{languageCode}-{regionCode.ToUpperInvariant()}"
+                        : $"{languageCode}-{languageCode.ToUpperInvariant()}";
+                    
+                    // Return first valid ISO 639-1 code found
+                    return locale;
+                }
+            }
 
             // Priority 3: Default fallback locale
             return "en-US";
