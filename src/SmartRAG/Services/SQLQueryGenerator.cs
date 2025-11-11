@@ -469,13 +469,13 @@ namespace SmartRAG.Services
             sb.AppendLine();
             sb.AppendLine("═══════════════════════════════════════════════════════════════════");
             sb.AppendLine();
-            sb.AppendLine("🚨 USER'S QUESTION:");
+            sb.AppendLine("USER'S QUESTION:");
             sb.AppendLine($"   \"{userQuery}\"");
             sb.AppendLine();
-            sb.AppendLine("🚨 YOUR TASK FOR THIS DATABASE:");
+            sb.AppendLine("YOUR TASK FOR THIS DATABASE:");
             sb.AppendLine($"   {dbQuery.Purpose}");
             sb.AppendLine();
-            sb.AppendLine("🚨 YOUR GOAL:");
+            sb.AppendLine("YOUR GOAL:");
             sb.AppendLine("   Write SQL that retrieves the EXACT data needed to answer the question!");
             sb.AppendLine("   - If question asks 'which classification', you must JOIN to get the descriptive text");
             sb.AppendLine("   - If question asks for top/most/highest, you must use GROUP BY + SUM + ORDER BY");
@@ -486,16 +486,16 @@ namespace SmartRAG.Services
             sb.AppendLine("═══════════════════════════════════════");
             sb.AppendLine("1. Use ONLY columns listed in schema below (case-sensitive)");
             sb.AppendLine("2. Use ONLY tables listed in your allowed tables");
-            sb.AppendLine("3. ✅ YOU CAN JOIN tables within THIS database");
-            sb.AppendLine("4. ❌ DO NOT JOIN with tables from OTHER databases");
-            sb.AppendLine("5. ✅ USE WHERE clauses to filter data based on user's question");
-            sb.AppendLine("6. ✅ USE GROUP BY + aggregates (SUM, COUNT, MAX) when needed");
-            sb.AppendLine("7. ✅ USE ORDER BY to sort results (especially for 'top', 'most', 'best')");
+            sb.AppendLine("3. ✓ YOU CAN JOIN tables within THIS database");
+            sb.AppendLine("4. ✗ DO NOT JOIN with tables from OTHER databases");
+            sb.AppendLine("5. ✓ USE WHERE clauses to filter data based on user's question");
+            sb.AppendLine("6. ✓ USE GROUP BY + aggregates (SUM, COUNT, MAX) when needed");
+            sb.AppendLine("7. ✓ USE ORDER BY to sort results (especially for 'top', 'most', 'best')");
             sb.AppendLine("8. DO NOT use parameters (@param, :param) - use actual values");
             sb.AppendLine("9. Match database type syntax (SQL Server=TOP, Others=LIMIT)");
             sb.AppendLine("10. Return SPECIFIC data that answers the question, not just 'SELECT *'");
-            sb.AppendLine("11. 🚨 MAXIMUM 2 levels of subqueries - NO MORE!");
-            sb.AppendLine("12. 🚨 Keep SQL SIMPLE and EFFICIENT - avoid nested loops!");
+            sb.AppendLine("11. MAXIMUM 2 levels of subqueries - NO MORE!");
+            sb.AppendLine("12. Keep SQL SIMPLE and EFFICIENT - avoid nested loops!");
             sb.AppendLine("13. NEVER put aggregates (SUM/COUNT/MAX/MIN) inside WHERE - use HAVING");
             sb.AppendLine("14. Confirm literal values using sample data before using '='; prefer case-insensitive LIKE filters when unsure.");
             sb.AppendLine("15. Always balance parentheses – every '(' must have a matching ')'.");
@@ -505,10 +505,10 @@ namespace SmartRAG.Services
             sb.AppendLine();
             sb.AppendLine($"TARGET DATABASE: {schema.DatabaseName} ({schema.DatabaseType})");
             sb.AppendLine();
-            sb.AppendLine("🚨 TABLES AVAILABLE IN THIS DATABASE (ONLY THESE EXIST):");
+            sb.AppendLine("TABLES AVAILABLE IN THIS DATABASE (ONLY THESE EXIST):");
             sb.AppendLine($"   {string.Join(", ", dbQuery.RequiredTables)}");
             sb.AppendLine();
-            sb.AppendLine("🚨 TABLES NOT AVAILABLE IN THIS DATABASE (DO NOT USE, THEY DON'T EXIST HERE):");
+            sb.AppendLine("TABLES NOT AVAILABLE IN THIS DATABASE (DO NOT USE, THEY DON'T EXIST HERE):");
             var otherTablesFromSchema = schema.Tables
                 .Where(t => !dbQuery.RequiredTables.Contains(t.TableName, StringComparer.OrdinalIgnoreCase))
                 .Select(t => t.TableName)
@@ -570,9 +570,9 @@ namespace SmartRAG.Services
                 sb.AppendLine("THESE KEYWORDS ARE FORBIDDEN IN YOUR SQL:");
                 foreach (var keyword in unmatchedFilterKeywords)
                 {
-                    sb.AppendLine($"  ❌ FORBIDDEN: WHERE ... LIKE '%{keyword}%'");
-                    sb.AppendLine($"  ❌ FORBIDDEN: WHERE ColumnName = '{keyword}'");
-                    sb.AppendLine($"  ❌ FORBIDDEN: Any reference to '{keyword}' in WHERE clause");
+                    sb.AppendLine($"  ✗ FORBIDDEN: WHERE ... LIKE '%{keyword}%'");
+                    sb.AppendLine($"  ✗ FORBIDDEN: WHERE ColumnName = '{keyword}'");
+                    sb.AppendLine($"  ✗ FORBIDDEN: Any reference to '{keyword}' in WHERE clause");
                 }
                 sb.AppendLine();
                 sb.AppendLine("WHY? Because you don't have columns containing these values!");
@@ -612,8 +612,8 @@ namespace SmartRAG.Services
             sb.AppendLine("  Task mentions CLASSIFICATION (type, group, label):");
             sb.AppendLine("  → Find TEXT columns: Search for classification patterns in column names");
             sb.AppendLine();
-            sb.AppendLine("🚨 MATCH CONCEPTS TO COLUMN NAME PATTERNS IN SCHEMA BELOW!");
-            sb.AppendLine("🚨 INCLUDE: All matching columns + ALL foreign keys (ending with 'ID')!");
+            sb.AppendLine("MATCH CONCEPTS TO COLUMN NAME PATTERNS IN SCHEMA BELOW!");
+            sb.AppendLine("INCLUDE: All matching columns + ALL foreign keys (ending with 'ID')!");
             sb.AppendLine();
             sb.AppendLine("═══════════════════════════════════════");
             sb.AppendLine($"TABLES AVAILABLE IN {schema.DatabaseName}:");
@@ -624,7 +624,7 @@ namespace SmartRAG.Services
                 var table = schema.Tables.FirstOrDefault(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase));
                 if (table != null)
                 {
-                    sb.AppendLine($"\n🚨 Table: {table.TableName}");
+                    sb.AppendLine($"\nTable: {table.TableName}");
                     sb.AppendLine("═══════════════════════════════════════");
                     sb.AppendLine($"AVAILABLE COLUMNS (use EXACT names, case-sensitive):");
                     
@@ -632,7 +632,7 @@ namespace SmartRAG.Services
                     sb.AppendLine($"  {columnList}");
                     
                     sb.AppendLine();
-                    sb.AppendLine($"🚨 YOU CAN ONLY USE THESE {table.Columns.Count} COLUMNS FROM {table.TableName}");
+                    sb.AppendLine($"YOU CAN ONLY USE THESE {table.Columns.Count} COLUMNS FROM {table.TableName}");
                     sb.AppendLine("ANY OTHER COLUMN NAME WILL CAUSE ERROR!");
                     
                     if (table.ForeignKeys.Any())
@@ -707,7 +707,7 @@ namespace SmartRAG.Services
             sb.AppendLine($"   → You can use: {string.Join(", ", dbQuery.RequiredTables)}");
             sb.AppendLine($"   → You cannot use: Any other table in {schema.DatabaseName}");
             sb.AppendLine();
-            sb.AppendLine("🚨 CRITICAL CROSS-DATABASE RULE:");
+            sb.AppendLine("CRITICAL CROSS-DATABASE RULE:");
             sb.AppendLine($"   This database ({schema.DatabaseName}) does NOT contain all tables!");
             sb.AppendLine($"   If user query mentions tables that are NOT in your allowed list:");
             sb.AppendLine($"   → DO NOT try to JOIN with tables not in your allowed list!");
@@ -741,7 +741,7 @@ namespace SmartRAG.Services
             sb.AppendLine("   ✓ Use HAVING for filtering aggregated values");
             sb.AppendLine("   ✓ If using GROUP BY: ALL non-aggregate SELECT columns must be in GROUP BY");
             sb.AppendLine("   ✗ If using GROUP BY + ORDER BY: ORDER BY columns must ALSO be in GROUP BY (or use aggregates)");
-            sb.AppendLine("   🚨 CRITICAL: NEVER use more than 3 levels of nested subqueries!");
+            sb.AppendLine("   CRITICAL: NEVER use more than 3 levels of nested subqueries!");
             sb.AppendLine("   ✗ WRONG: SELECT ... WHERE X IN (SELECT ... WHERE Y IN (SELECT ... WHERE Z IN (SELECT ...))))");
             sb.AppendLine("   ✓ CORRECT: Use JOINs and GROUP BY instead of nested subqueries!");
             sb.AppendLine("   ✓ Example: SELECT Col1, SUM(Col2) FROM T GROUP BY Col1 ORDER BY Col1  (CORRECT)");
@@ -788,7 +788,7 @@ namespace SmartRAG.Services
             sb.AppendLine();
             sb.AppendLine("Pattern 2: 'What is the top/most/best X?' (AGGREGATION PATTERN)");
             sb.AppendLine("  → Need: Aggregation (SUM, COUNT, MAX) + GROUP BY + ORDER BY + LIMIT/TOP");
-            sb.AppendLine("  🚨 CRITICAL: If user asks MULTIPLE questions combined:");
+            sb.AppendLine("  CRITICAL: If user asks MULTIPLE questions combined:");
             sb.AppendLine("      → Example: 'highest value' + 'most recent' + 'with specific classification'");
             sb.AppendLine("      → SPLIT THE PROBLEM: Handle ONE concept per database!");
             sb.AppendLine("      → Database1 (with descriptive text columns) handles text-based filters");
@@ -857,11 +857,11 @@ namespace SmartRAG.Services
             sb.AppendLine("  ✗ Reference columns from non-allowed tables");
             sb.AppendLine("  ✗ EXISTS/IN subqueries with non-allowed tables");
             sb.AppendLine("  ✗ ANY reference to tables outside your allowed list");
-            sb.AppendLine("  🚨 More than 3 levels of nested subqueries (SIMPLIFY IMMEDIATELY!)");
-            sb.AppendLine("  🚨 If tables mentioned in user query are NOT in your allowed list, DO NOT reference them!");
+            sb.AppendLine("  More than 3 levels of nested subqueries (SIMPLIFY IMMEDIATELY!)");
+            sb.AppendLine("  If tables mentioned in user query are NOT in your allowed list, DO NOT reference them!");
             sb.AppendLine("  ✗ Aggregate functions (SUM, AVG, COUNT) in WHERE clause (use HAVING instead)");
             sb.AppendLine();
-            sb.AppendLine("🚨 CROSS-DATABASE QUERY STRATEGY:");
+            sb.AppendLine("CROSS-DATABASE QUERY STRATEGY:");
             sb.AppendLine($"   Your allowed tables: {string.Join(", ", dbQuery.RequiredTables)}");
             sb.AppendLine("   If user query needs data from tables that are NOT in your allowed list:");
             sb.AppendLine("   → DO NOT try to JOIN with tables not in your allowed list (they don't exist here!)");
@@ -918,7 +918,7 @@ namespace SmartRAG.Services
             switch (schema.DatabaseType)
             {
                 case DatabaseType.SqlServer:
-                    sb.AppendLine("🚨 SQL SERVER DATABASE - CRITICAL SYNTAX RULES");
+                    sb.AppendLine("SQL SERVER DATABASE - CRITICAL SYNTAX RULES");
                     sb.AppendLine();
                     sb.AppendLine("ABSOLUTELY FORBIDDEN:");
                     sb.AppendLine("✗ LIMIT keyword (does not exist in SQL Server - use TOP instead)");
@@ -947,7 +947,7 @@ namespace SmartRAG.Services
                     break;
                     
                 case DatabaseType.SQLite:
-                    sb.AppendLine("🚨 SQLITE DATABASE - CRITICAL SYNTAX RULES");
+                    sb.AppendLine("SQLITE DATABASE - CRITICAL SYNTAX RULES");
                     sb.AppendLine();
                     sb.AppendLine("ABSOLUTELY FORBIDDEN:");
                     sb.AppendLine("✗ TOP keyword (does not exist in SQLite)");
@@ -968,7 +968,7 @@ namespace SmartRAG.Services
                     break;
                     
                 case DatabaseType.MySQL:
-                    sb.AppendLine("🚨 MYSQL DATABASE - CRITICAL SYNTAX RULES");
+                    sb.AppendLine("MYSQL DATABASE - CRITICAL SYNTAX RULES");
                     sb.AppendLine();
                     sb.AppendLine("ABSOLUTELY FORBIDDEN:");
                     sb.AppendLine("✗ TOP keyword (does not exist in MySQL)");
@@ -993,7 +993,7 @@ namespace SmartRAG.Services
                     break;
                     
                 case DatabaseType.PostgreSQL:
-                    sb.AppendLine("🚨 POSTGRESQL DATABASE - CRITICAL SYNTAX RULES");
+                    sb.AppendLine("POSTGRESQL DATABASE - CRITICAL SYNTAX RULES");
                     sb.AppendLine();
                     sb.AppendLine("ABSOLUTELY FORBIDDEN:");
                     sb.AppendLine("✗ TOP keyword (does not exist in PostgreSQL)");
@@ -1031,17 +1031,15 @@ namespace SmartRAG.Services
             sb.AppendLine("║                   CRITICAL OUTPUT RULES                        ║");
             sb.AppendLine("╚════════════════════════════════════════════════════════════════╝");
             sb.AppendLine();
-            sb.AppendLine("🚨 LANGUAGE-CRITICAL RULE:");
+            sb.AppendLine("LANGUAGE-CRITICAL RULE:");
             sb.AppendLine("   SQL is a COMPUTER LANGUAGE - it ONLY understands SQL keywords!");
-            sb.AppendLine("   ✗ NEVER write Turkish, German, Russian, or any human language in SQL");
+            sb.AppendLine("   ✗ NEVER write any human language text in SQL (regardless of user's language)");
             sb.AppendLine("   ✗ NEVER write comments or explanations in SQL");
             sb.AppendLine("   ✗ NEVER translate SQL keywords to other languages");
             sb.AppendLine("   ✓ ONLY use English SQL keywords: SELECT, FROM, WHERE, JOIN, etc.");
             sb.AppendLine();
             sb.AppendLine("   BAD EXAMPLES (will cause syntax errors):");
-            sb.AppendLine("   ✗ 'Bu sorgu, ürünleri seçer' (Turkish text in SQL)");
-            sb.AppendLine("   ✗ 'Diese Abfrage wählt Produkte' (German text in SQL)");
-            sb.AppendLine("   ✗ 'Этот запрос выбирает продукты' (Russian text in SQL)");
+            sb.AppendLine("   ✗ Any human language text mixed with SQL");
             sb.AppendLine("   ✗ SELECT * FROM TableA -- This selects data");
             sb.AppendLine();
             sb.AppendLine("   GOOD EXAMPLE:");
@@ -1060,7 +1058,7 @@ namespace SmartRAG.Services
             sb.AppendLine("═══════════════════════════════════════");
             sb.AppendLine("FINAL ANSWER CHECKLIST:");
             sb.AppendLine("═══════════════════════════════════════");
-            sb.AppendLine($"❓ User asked: \"{userQuery}\"");
+            sb.AppendLine($"User asked: \"{userQuery}\"");
             sb.AppendLine();
             sb.AppendLine("Before submitting your SQL, verify:");
             sb.AppendLine("✓ Does my SQL directly answer the user's question?");
@@ -1071,10 +1069,10 @@ namespace SmartRAG.Services
             sb.AppendLine("✓ Did I use ORDER BY for 'top', 'most', 'best' queries?");
             sb.AppendLine("✓ Did I use LIMIT/TOP to restrict results?");
             sb.AppendLine("✓ Are all columns verified in the schema above?");
-            sb.AppendLine("🚨 CRITICAL: Did I use JOINs instead of nested subqueries?");
-            sb.AppendLine("🚨 CRITICAL: NO nested SELECT inside WHERE clause!");
-            sb.AppendLine("🚨 Did I check if all tables I reference are in my allowed list?");
-            sb.AppendLine("🚨 If tables mentioned in user query are NOT in my list, did I avoid referencing them?");
+            sb.AppendLine("CRITICAL: Did I use JOINs instead of nested subqueries?");
+            sb.AppendLine("CRITICAL: NO nested SELECT inside WHERE clause!");
+            sb.AppendLine("Did I check if all tables I reference are in my allowed list?");
+            sb.AppendLine("If tables mentioned in user query are NOT in my list, did I avoid referencing them?");
             sb.AppendLine("✓ Is it pure SQL with NO comments or explanations?");
             sb.AppendLine();
             sb.AppendLine("Example of CORRECT output:");
@@ -1134,12 +1132,12 @@ namespace SmartRAG.Services
             sb.AppendLine();
             sb.AppendLine("LANGUAGE ENFORCEMENT:");
             sb.AppendLine("  - SQL is ENGLISH-ONLY computer language");
-            sb.AppendLine("  - Even if user question is in Turkish/German/Russian:");
+            sb.AppendLine("  - Even if user question is in any non-English language:");
             sb.AppendLine("    ✓ SQL must still be pure English SQL");
-            sb.AppendLine("    ✗ NO Turkish/German/Russian text in SQL output");
-            sb.AppendLine("  - Example: User asks 'Müşterileri göster'");
+            sb.AppendLine("    ✗ NO human language text in SQL output (regardless of user's language)");
+            sb.AppendLine("  - Example: User asks in any language");
             sb.AppendLine("    ✓ Correct: SELECT * FROM TableA");
-            sb.AppendLine("    ✗ Wrong: Bu sorgu verileri seçer: SELECT * FROM TableA");
+            sb.AppendLine("    ✗ Wrong: Any human language text followed by SQL");
             sb.AppendLine();
             sb.AppendLine("YOUR RESPONSE = SQL QUERY ONLY (starts with SELECT, pure English SQL, no text!)");
 
@@ -1588,7 +1586,7 @@ namespace SmartRAG.Services
                 }
             }
             
-            // Step 2: Remove ALL non-English lines (Turkish/German/Russian explanations)
+            // Step 2: Remove ALL non-English lines (human language explanations)
             var allLines = aiResponse.Split(new[] { '\r', '\n' }, StringSplitOptions.None);
             var sqlLines = new List<string>();
             
@@ -1676,7 +1674,7 @@ namespace SmartRAG.Services
             sb.AppendLine("║       SQL REGENERATION - PREVIOUS ATTEMPT HAD ERRORS           ║");
             sb.AppendLine("╚════════════════════════════════════════════════════════════════╝");
             sb.AppendLine();
-            sb.AppendLine("🚨 CRITICAL: Your previous SQL had these errors:");
+            sb.AppendLine("CRITICAL: Your previous SQL had these errors:");
             
             // Categorize errors for better understanding
             var columnErrors = previousErrors.Where(e => e.Contains("Column") || e.Contains("column")).ToList();
@@ -1800,12 +1798,12 @@ namespace SmartRAG.Services
             sb.AppendLine("12. ✗ DO NOT use AVG() on string/text columns - use numeric columns only");
             sb.AppendLine("13. ✓ Use actual values (1, 2, 3) instead of placeholders");
             sb.AppendLine("14. ✗ DO NOT reference tables from other databases in JOIN conditions");
-            sb.AppendLine("15. 🚨 NEVER use more than 3 levels of nested subqueries - simplify your query!");
-            sb.AppendLine("16. 🚨 If tables mentioned in user query are NOT in your allowed list - DO NOT reference them!");
+            sb.AppendLine("15. NEVER use more than 3 levels of nested subqueries - simplify your query!");
+            sb.AppendLine("16. If tables mentioned in user query are NOT in your allowed list - DO NOT reference them!");
             sb.AppendLine("17. ✓ For SQL Server: Use TOP instead of LIMIT");
             sb.AppendLine("18. ✓ For SQL Server: JOIN is ALLOWED within same database");
             sb.AppendLine();
-            sb.AppendLine($"🚨 CROSS-DATABASE RULE - YOUR ALLOWED TABLES: {string.Join(", ", dbQuery.RequiredTables)}");
+            sb.AppendLine($"CROSS-DATABASE RULE - YOUR ALLOWED TABLES: {string.Join(", ", dbQuery.RequiredTables)}");
             sb.AppendLine("   If tables mentioned in user query are NOT in this list:");
             sb.AppendLine("   → DO NOT try to JOIN with tables not in your allowed list!");
             sb.AppendLine("   → DO NOT use: WHERE ForeignKeyColumn IN (SELECT ... FROM OtherTable ...)");
@@ -1836,12 +1834,12 @@ namespace SmartRAG.Services
             sb.AppendLine($"Purpose: {dbQuery.Purpose}");
             sb.AppendLine();
             sb.AppendLine("═══════════════════════════════════════");
-            sb.AppendLine("🚨 OUTPUT FORMAT - CRITICAL:");
+            sb.AppendLine("OUTPUT FORMAT - CRITICAL:");
             sb.AppendLine("═══════════════════════════════════════");
             sb.AppendLine("1. Write ONLY the SQL query");
-            sb.AppendLine("2. NO Turkish/German/Russian/Chinese text");
-            sb.AppendLine("3. NO explanations (\"Açıklama:\", \"Bu sorgu\", \"Böylece\")");
-            sb.AppendLine("4. NO descriptions (\"This query\", \"Diese Abfrage\")");
+            sb.AppendLine("2. NO human language text (regardless of language)");
+            sb.AppendLine("3. NO explanations in any language");
+            sb.AppendLine("4. NO descriptions in any language");
             sb.AppendLine("5. NO numbered lists (\"1.\", \"2.\", \"3.\")");
             sb.AppendLine("6. NO comments (-- or /* */)");
             sb.AppendLine("7. ONLY English SQL keywords: SELECT, FROM, WHERE, JOIN, GROUP BY, ORDER BY");
@@ -1857,7 +1855,7 @@ namespace SmartRAG.Services
             sb.AppendLine("  ");
             sb.AppendLine("  Açıklama: Bu sorgu...  ← STOP! DON'T WRITE THIS!");
             sb.AppendLine();
-            sb.AppendLine("🚨 WRITE ONLY SQL - NOTHING ELSE!");
+            sb.AppendLine("WRITE ONLY SQL - NOTHING ELSE!");
             
             return sb.ToString();
         }
@@ -1870,7 +1868,7 @@ namespace SmartRAG.Services
             sb.AppendLine($"║     RETRY ATTEMPT #{attemptNumber} - ULTRA STRICT MODE        ║");
             sb.AppendLine("╚════════════════════════════════════════════════════════════════╝");
             sb.AppendLine();
-            sb.AppendLine("🚨 CRITICAL: ALL previous attempts FAILED with these errors:");
+            sb.AppendLine("CRITICAL: ALL previous attempts FAILED with these errors:");
             foreach (var error in allPreviousErrors)
             {
                 sb.AppendLine($"   ✗ {error}");
@@ -1897,7 +1895,7 @@ namespace SmartRAG.Services
                         sb.AppendLine($"  {i + 1}. {col.ColumnName} ({col.DataType})");
                     }
                     sb.AppendLine();
-                    sb.AppendLine($"🚨 THESE ARE THE ONLY {table.Columns.Count} COLUMNS IN {table.TableName}!");
+                    sb.AppendLine($"THESE ARE THE ONLY {table.Columns.Count} COLUMNS IN {table.TableName}!");
                     sb.AppendLine($"ANY OTHER COLUMN NAME = INSTANT ERROR!");
                 }
             }
@@ -1935,13 +1933,13 @@ namespace SmartRAG.Services
             sb.AppendLine("  ✗ SELECT AVG(TextColumn)  → Use numeric column");
             sb.AppendLine("  ✗ TableA JOIN OtherDB.TableB  → Cross-database JOIN not allowed");
             sb.AppendLine("  ✓ TableA JOIN TableB (same database)  → ALLOWED and CORRECT");
-            sb.AppendLine("  🚨 50 levels of nested SELECT  → MAXIMUM 3 levels allowed! Use JOINs instead!");
-            sb.AppendLine("  🚨 JOIN TableX (if TableX NOT in allowed list)  → TableX doesn't exist here!");
-            sb.AppendLine("  🚨 WHERE ForeignKeyColumn IN (SELECT ... FROM OtherTable ...)  → OtherTable doesn't exist here!");
+            sb.AppendLine("  50 levels of nested SELECT  → MAXIMUM 3 levels allowed! Use JOINs instead!");
+            sb.AppendLine("  JOIN TableX (if TableX NOT in allowed list)  → TableX doesn't exist here!");
+            sb.AppendLine("  WHERE ForeignKeyColumn IN (SELECT ... FROM OtherTable ...)  → OtherTable doesn't exist here!");
             sb.AppendLine("  ✓ SELECT ForeignKeyColumn, SUM(NumericColumn) FROM TableA GROUP BY ForeignKeyColumn  → Return FK for merging");
             sb.AppendLine("  ✗ SELECT ... LIMIT 1 (SQL Server)  → Use SELECT TOP 1");
             sb.AppendLine();
-            sb.AppendLine("🚨 CROSS-DATABASE STRATEGY:");
+            sb.AppendLine("CROSS-DATABASE STRATEGY:");
             sb.AppendLine($"   Your allowed tables: {string.Join(", ", dbQuery.RequiredTables)}");
             sb.AppendLine("   If tables mentioned in user query are NOT in your list:");
             sb.AppendLine("   → DO NOT reference tables not in your allowed list!");
@@ -1951,7 +1949,7 @@ namespace SmartRAG.Services
             sb.AppendLine($"Query: {userQuery}");
             sb.AppendLine($"Task: {dbQuery.Purpose}");
             sb.AppendLine();
-            sb.AppendLine("CRITICAL: SQL must be PURE ENGLISH - NO Turkish/German/Russian text!");
+            sb.AppendLine("CRITICAL: SQL must be PURE ENGLISH - NO human language text!");
             sb.AppendLine("Write the SQL query. Triple-check EVERY column name AND syntax before outputting.");
             sb.AppendLine("Output format: Pure English SQL only, no text, no comments.");
             
@@ -1966,10 +1964,10 @@ namespace SmartRAG.Services
             sb.AppendLine("║    FINAL ATTEMPT - FIX ERRORS & KEEP SQL MEANINGFUL            ║");
             sb.AppendLine("╚════════════════════════════════════════════════════════════════╝");
             sb.AppendLine();
-            sb.AppendLine("🚨 USER'S QUESTION (DON'T FORGET THIS!):");
+            sb.AppendLine("USER'S QUESTION (DON'T FORGET THIS!):");
             sb.AppendLine($"   \"{userQuery}\"");
             sb.AppendLine();
-            sb.AppendLine("🚨 YOUR TASK:");
+            sb.AppendLine("YOUR TASK:");
             sb.AppendLine($"   {dbQuery.Purpose}");
             sb.AppendLine();
             sb.AppendLine("Previous attempts had these SPECIFIC errors:");
@@ -1983,7 +1981,7 @@ namespace SmartRAG.Services
             sb.AppendLine("FIX THE ERRORS - DON'T GIVE UP ON THE QUERY!");
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
             sb.AppendLine();
-            sb.AppendLine("🚨 CRITICAL: Don't write 'SELECT * LIMIT 100' - that doesn't answer the question!");
+            sb.AppendLine("CRITICAL: Don't write 'SELECT * LIMIT 100' - that doesn't answer the question!");
             sb.AppendLine();
             sb.AppendLine("STRATEGY:");
             sb.AppendLine("1. Read the errors above carefully");
@@ -2000,13 +1998,13 @@ namespace SmartRAG.Services
             sb.AppendLine("✗ NO placeholder values (ENTER_ID_HERE, etc.)");
             sb.AppendLine("✗ NO AVG() on string columns");
             sb.AppendLine("✗ NO cross-database JOINs");
-            sb.AppendLine("🚨 MAXIMUM 3 levels of nested subqueries - use JOINs instead!");
-            sb.AppendLine("🚨 If tables mentioned in user query are NOT in allowed list - DO NOT reference them!");
+            sb.AppendLine("MAXIMUM 3 levels of nested subqueries - use JOINs instead!");
+            sb.AppendLine("If tables mentioned in user query are NOT in allowed list - DO NOT reference them!");
             sb.AppendLine("✓ Use ONLY columns that exist in schema");
             sb.AppendLine("✓ Use ONLY tables you're allowed to use");
             sb.AppendLine("✓ Return foreign key columns (columns ending with 'ID') for cross-database merging");
             sb.AppendLine();
-            sb.AppendLine($"🚨 YOUR ALLOWED TABLES: {string.Join(", ", dbQuery.RequiredTables)}");
+            sb.AppendLine($"YOUR ALLOWED TABLES: {string.Join(", ", dbQuery.RequiredTables)}");
             sb.AppendLine("   If tables mentioned in user query are NOT in this list:");
             sb.AppendLine("   → DO NOT JOIN with tables not in your allowed list!");
             sb.AppendLine("   → DO NOT use subqueries referencing tables not in your allowed list!");
@@ -2025,8 +2023,8 @@ namespace SmartRAG.Services
             }
             
             sb.AppendLine();
-            sb.AppendLine("🚨 YOUR GOAL: Write SQL that ANSWERS THE QUESTION and FIXES THE ERRORS!");
-            sb.AppendLine("🚨 Don't give up - fix the specific errors and keep the query meaningful!");
+            sb.AppendLine("YOUR GOAL: Write SQL that ANSWERS THE QUESTION and FIXES THE ERRORS!");
+            sb.AppendLine("Don't give up - fix the specific errors and keep the query meaningful!");
             sb.AppendLine();
             sb.AppendLine("Output: Pure English SQL only, no explanations.");
             
@@ -2046,42 +2044,14 @@ namespace SmartRAG.Services
             {
                 var sqlUpper = sql.ToUpperInvariant();
                 
-                // 0. Check for non-English text in SQL (Turkish, German, Russian, etc.)
-                var nonEnglishPatterns = new[]
+                // 0. Check for non-ASCII characters in SQL (outside string literals)
+                // SQL keywords and identifiers must use ASCII characters only
+                // String literals (quoted values) are excluded from this check
+                // This generic check covers all languages
+                var nonAsciiChar = CheckForNonAsciiCharacters(sql);
+                if (nonAsciiChar.HasValue)
                 {
-                    // Turkish characters
-                    "ç", "ğ", "ı", "ö", "ş", "ü", "Ç", "Ğ", "İ", "Ö", "Ş", "Ü",
-                    // German umlauts
-                    "ä", "ö", "ü", "ß", "Ä", "Ö", "Ü",
-                    // Russian Cyrillic
-                    "а", "б", "в", "г", "д", "е", "ж", "з", "и", "к", "л", "м", "н", "о", "п", "р", "с", "т", "у", "ф", "х", "ц", "ч", "ш", "щ", "ъ", "ы", "ь", "э", "ю", "я",
-                    "А", "Б", "В", "Г", "Д", "Е", "Ж", "З", "И", "К", "Л", "М", "Н", "О", "П", "Р", "С", "Т", "У", "Ф", "Х", "Ц", "Ч", "Ш", "Щ", "Ъ", "Ы", "Ь", "Э", "Ю", "Я"
-                };
-                
-                foreach (var pattern in nonEnglishPatterns)
-                {
-                    if (sql.Contains(pattern))
-                    {
-                        errors.Add($"Non-English character detected in SQL: '{pattern}'. SQL must use only English characters and SQL keywords.");
-                        break;
-                    }
-                }
-                
-                // Also check for common Turkish/German/Russian SQL keywords
-                var nonEnglishKeywords = new[]
-                {
-                    "sorgu", "seçer", "tablo", "kolon", // Turkish
-                    "abfrage", "wählt", "tabelle", "spalte", // German
-                    "запрос", "выбирает", "таблица", "столбец" // Russian
-                };
-                
-                foreach (var keyword in nonEnglishKeywords)
-                {
-                    if (sqlUpper.Contains(keyword.ToUpperInvariant()))
-                    {
-                        errors.Add($"Non-English keyword detected in SQL: '{keyword}'. SQL must use only English SQL keywords (SELECT, FROM, WHERE, etc.).");
-                        break;
-                    }
+                    errors.Add($"Non-ASCII character detected in SQL: '{nonAsciiChar.Value}' (U+{(int)nonAsciiChar.Value:X4}). SQL keywords and identifiers must use only ASCII characters (a-z, A-Z, 0-9, and standard SQL operators).");
                 }
                 
                 // 1. Check for aggregate functions in WHERE clause (common error)
@@ -2214,6 +2184,72 @@ namespace SmartRAG.Services
                 _logger.LogWarning(ex, "Error validating SQL syntax (continuing anyway)");
                 return errors;
             }
+        }
+
+        /// <summary>
+        /// Checks for non-ASCII characters in SQL, excluding string literals (quoted values).
+        /// SQL keywords and identifiers must use ASCII characters only.
+        /// </summary>
+        /// <param name="sql">SQL query to check</param>
+        /// <returns>First non-ASCII character found, or null if all characters are ASCII</returns>
+        private static char? CheckForNonAsciiCharacters(string sql)
+        {
+            if (string.IsNullOrWhiteSpace(sql))
+            {
+                return null;
+            }
+
+            bool inSingleQuote = false;
+            bool inDoubleQuote = false;
+            bool escaped = false;
+
+            for (int i = 0; i < sql.Length; i++)
+            {
+                char c = sql[i];
+
+                // Handle escape sequences
+                if (escaped)
+                {
+                    escaped = false;
+                    continue;
+                }
+
+                if (c == '\\')
+                {
+                    escaped = true;
+                    continue;
+                }
+
+                // Track string literal boundaries
+                if (c == '\'' && !inDoubleQuote)
+                {
+                    inSingleQuote = !inSingleQuote;
+                    continue;
+                }
+
+                if (c == '"' && !inSingleQuote)
+                {
+                    inDoubleQuote = !inDoubleQuote;
+                    continue;
+                }
+
+                // Skip characters inside string literals
+                if (inSingleQuote || inDoubleQuote)
+                {
+                    continue;
+                }
+
+                // Check if character is non-ASCII (outside 0-127 range)
+                // Allow ASCII control characters (0-31) for formatting (newlines, tabs, etc.)
+                // Allow ASCII printable characters (32-126) for SQL syntax
+                // Reject extended ASCII (128-255) and Unicode characters
+                if (c > 127)
+                {
+                    return c;
+                }
+            }
+
+            return null;
         }
 
         private static int GetMaxSubqueryNesting(string sql)

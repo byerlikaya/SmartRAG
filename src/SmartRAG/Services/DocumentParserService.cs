@@ -1157,8 +1157,8 @@ namespace SmartRAG.Services
             if (fileNameLower.Contains("hindi") || fileNameLower.Contains("hintce") || fileNameLower.Contains("hi"))
                 return "hi-IN";
 
-            // Priority 3: Default to Turkish (most common for this project)
-            return "tr-TR";
+            // Priority 3: Default fallback locale
+            return "en-US";
         }
 
         /// <summary>

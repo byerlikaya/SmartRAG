@@ -634,11 +634,11 @@ namespace SmartRAG.API.Controllers
             };
         }
 
-        private async Task<AIProvider> GetActiveProviderAsync()
+        private Task<AIProvider> GetActiveProviderAsync()
         {
             // This would typically get the current provider from configuration or factory
             // For now, return a default - this should be implemented based on your architecture
-            return AIProvider.OpenAI;
+            return Task.FromResult(AIProvider.OpenAI);
         }
 
         private async Task<bool> IsProviderActiveAsync(AIProvider provider)

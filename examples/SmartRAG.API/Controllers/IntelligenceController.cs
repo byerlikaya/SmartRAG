@@ -102,7 +102,7 @@ namespace SmartRAG.API.Controllers
         /// - **High Confidence (>0.7) + Database Queries**: Executes database query only
         /// - **High Confidence (>0.7) + No Database Queries**: Executes document query only
         /// - **Medium Confidence (0.3-0.7)**: Executes both database and document queries, merges results
-        /// - **Low Confidence (<0.3)**: Executes document query only (fallback)
+        /// - **Low Confidence (&lt;0.3)**: Executes document query only (fallback)
         /// 
         /// The unified RAG pipeline automatically:
         /// - Analyzes query intent and complexity using AI
@@ -306,7 +306,7 @@ namespace SmartRAG.API.Controllers
         [HttpGet("conversations")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult> QueryConversations(
+        public Task<ActionResult> QueryConversations(
             [FromQuery] string query,
             [FromQuery] string? userId = null,
             [FromQuery] int limit = 10,
@@ -314,7 +314,7 @@ namespace SmartRAG.API.Controllers
             [FromQuery] DateTime? endDate = null)
         {
             if (string.IsNullOrWhiteSpace(query))
-                return BadRequest("Query cannot be empty");
+                return Task.FromResult<ActionResult>(BadRequest("Query cannot be empty"));
 
             try
             {
@@ -351,7 +351,7 @@ namespace SmartRAG.API.Controllers
                     }
                 };
 
-                return Ok(new
+                return Task.FromResult<ActionResult>(Ok(new
                 {
                     query,
                     userId,
@@ -363,11 +363,11 @@ namespace SmartRAG.API.Controllers
                         endDate,
                         limit
                     }
-                });
+                }));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Error = ex.Message });
+                return Task.FromResult<ActionResult>(StatusCode(500, new { Error = ex.Message }));
             }
         }
 
@@ -395,7 +395,7 @@ namespace SmartRAG.API.Controllers
         /// <returns>Comprehensive intelligence analytics and metrics</returns>
         [HttpGet("analytics")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-        public async Task<ActionResult> GetIntelligenceAnalytics(
+        public Task<ActionResult> GetIntelligenceAnalytics(
             [FromQuery] DateTime? startDate = null,
             [FromQuery] DateTime? endDate = null,
             [FromQuery] string? userId = null)
@@ -441,11 +441,11 @@ namespace SmartRAG.API.Controllers
                     }
                 };
 
-                return Ok(analytics);
+                return Task.FromResult<ActionResult>(Ok(analytics));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Error = ex.Message });
+                return Task.FromResult<ActionResult>(StatusCode(500, new { Error = ex.Message }));
             }
         }
 
@@ -570,7 +570,7 @@ namespace SmartRAG.API.Controllers
         /// - Debugging query issues
         /// - Previewing which data sources will be accessed
         /// </remarks>
-        /// <param name="query">Natural language query to analyze</param>
+        /// <param name="request">Search request containing the query to analyze</param>
         /// <returns>Query intent analysis showing databases and tables that would be queried</returns>
         [HttpPost("analyze-query-intent")]
         [ProducesResponseType(typeof(QueryIntentAnalysisResponseDto), StatusCodes.Status200OK)]

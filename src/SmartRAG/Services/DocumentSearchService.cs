@@ -1283,7 +1283,7 @@ Answer:";
             // Normalize Unicode characters
             var normalized = decoded.Normalize(System.Text.NormalizationForm.FormC);
 
-            // Handle common character variations for multiple languages (Turkish, German, etc.)
+            // Handle common character variations for multiple languages
             var characterMappings = new Dictionary<string, string>
         {
             {"ı", "i"}, {"İ", "I"}, {"ğ", "g"}, {"Ğ", "G"},
@@ -1415,7 +1415,7 @@ Answer:";
                     CultureInfo.InvariantCulture,
 @"You MUST classify the input as CONVERSATION or INFORMATION.
 
-🚨 CRITICAL: Classify as CONVERSATION if:
+CRITICAL: Classify as CONVERSATION if:
 - Greeting (any language): Hello, Hi, Hey, Hola, Bonjour, Merhaba, Selam
 - About the AI: Who are you, What are you, What model, What can you do
 - Small talk: How are you, What's your name, Where are you from, Are you ok

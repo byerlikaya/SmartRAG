@@ -726,7 +726,7 @@ namespace SmartRAG.API.Controllers
             if (request.GenerateResponse)
             {
                 var responseContent = request.UseRAG 
-                    ? (await _documentSearchService.GenerateRagAnswerAsync(request.Content, 5, false)).Answer
+                    ? (await _documentSearchService.QueryIntelligenceAsync(request.Content, 5, false)).Answer
                     : "This is a mock AI response. Replace with actual AI integration.";
 
                 var aiMessage = new ConversationMessage

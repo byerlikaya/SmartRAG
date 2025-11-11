@@ -123,7 +123,7 @@ namespace SmartRAG.Services
             
             // CRITICAL: Show database-table mapping upfront
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
-            sb.AppendLine("🚨 DATABASE-TABLE MAPPING (READ THIS FIRST!)");
+            sb.AppendLine("DATABASE-TABLE MAPPING (READ THIS FIRST!)");
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
             sb.AppendLine();
             
@@ -151,7 +151,7 @@ namespace SmartRAG.Services
             }
             
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
-            sb.AppendLine("🚨 VERIFICATION CHECKLIST - USE THIS BEFORE WRITING JSON:");
+            sb.AppendLine("VERIFICATION CHECKLIST - USE THIS BEFORE WRITING JSON:");
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
             sb.AppendLine();
             sb.AppendLine("For EACH table you want to add to \"requiredTables\":");
@@ -169,9 +169,9 @@ namespace SmartRAG.Services
                 sb.AppendLine($"  - Add to JSON → \"databaseName\": \"{exampleTable.Value}\", \"requiredTables\": [\"{exampleTable.Key}\"]");
             }
             sb.AppendLine();
-            sb.AppendLine("🚨 NEVER add a table to the wrong database!");
-            sb.AppendLine("🚨 Each table exists in EXACTLY ONE database!");
-            sb.AppendLine("🚨 If unsure, leave it out – system will handle missing tables safely.");
+            sb.AppendLine("NEVER add a table to the wrong database!");
+            sb.AppendLine("Each table exists in EXACTLY ONE database!");
+            sb.AppendLine("If unsure, leave it out – system will handle missing tables safely.");
             sb.AppendLine();
             sb.AppendLine("BEFORE YOU RESPOND:");
             sb.AppendLine("✓ Re-check the mapping above for every table you list");
@@ -216,16 +216,16 @@ namespace SmartRAG.Services
                 }
                 
                 sb.AppendLine();
-                sb.AppendLine($"⚠️  IMPORTANT: These tables ONLY exist in {schema.DatabaseName}:");
+                sb.AppendLine($"IMPORTANT: These tables ONLY exist in {schema.DatabaseName}:");
                 sb.AppendLine($"    {string.Join(", ", tableList)}");
                 sb.AppendLine();
             }
 
             sb.AppendLine("═══════════════════════════════════════");
-            sb.AppendLine("🚨 CRITICAL RULES - READ CAREFULLY:");
+            sb.AppendLine("CRITICAL RULES - READ CAREFULLY:");
             sb.AppendLine("═══════════════════════════════════════");
             sb.AppendLine();
-            sb.AppendLine("🚨 RULE #1: VERIFY TABLE LOCATION BEFORE ADDING TO JSON!");
+            sb.AppendLine("RULE #1: VERIFY TABLE LOCATION BEFORE ADDING TO JSON!");
             sb.AppendLine("   Before adding a table to 'requiredTables', SCROLL UP and verify:");
             sb.AppendLine("   - Is this table listed under THIS database's 'TABLES AVAILABLE' section?");
             sb.AppendLine("   - If NO, find which database ACTUALLY contains this table");
@@ -236,7 +236,7 @@ namespace SmartRAG.Services
             sb.AppendLine("   2. Found in Database1? → Add to Database1 requiredTables");
             sb.AppendLine("   3. NOT listed under Database2? → DO NOT add to Database2 requiredTables!");
             sb.AppendLine();
-            sb.AppendLine("🚨 RULE #2: Identify ALL data sources the question needs!");
+            sb.AppendLine("RULE #2: Identify ALL data sources the question needs!");
             sb.AppendLine("   - Does the question mention descriptive attributes (names, classifications)?");
             sb.AppendLine("     → Include the database containing those descriptive tables.");
             sb.AppendLine("   - Does the question mention quantitative events (transactions, measurements, timelines)?");
@@ -258,7 +258,7 @@ namespace SmartRAG.Services
             sb.AppendLine("8. If a query needs data from multiple databases, create separate database entries for each");
             sb.AppendLine();
             sb.AppendLine("═══════════════════════════════════════");
-            sb.AppendLine("🚨 HOW TO WRITE 'PURPOSE' FIELD:");
+            sb.AppendLine("HOW TO WRITE 'PURPOSE' FIELD:");
             sb.AppendLine("═══════════════════════════════════════");
             sb.AppendLine("The 'purpose' field MUST specify WHAT DATA TYPES to retrieve:");
             sb.AppendLine();
@@ -298,7 +298,7 @@ namespace SmartRAG.Services
             sb.AppendLine("PATTERN:");
             sb.AppendLine("  Purpose = 'Get [DATA_TYPE] columns ([description of what to look for]) and foreign keys'");
             sb.AppendLine();
-            sb.AppendLine("🚨 PURPOSE MUST DESCRIBE DATA TYPES TO FIND, NOT SPECIFIC COLUMN NAMES!");
+            sb.AppendLine("PURPOSE MUST DESCRIBE DATA TYPES TO FIND, NOT SPECIFIC COLUMN NAMES!");
             sb.AppendLine();
             sb.AppendLine("═══════════════════════════════════════");
             sb.AppendLine("CROSS-DATABASE DATA REQUIREMENTS:");
