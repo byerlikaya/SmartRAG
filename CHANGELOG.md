@@ -6,6 +6,27 @@ All notable changes to SmartRAG will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Unified Query Intelligence**: `QueryIntelligenceAsync` now supports unified search across databases, documents, images (OCR), and audio (transcription) in a single query
+- **Smart Hybrid Routing**: AI-based intent detection with confidence scoring automatically determines optimal search strategy
+  - High confidence (>0.7) + database queries → Database query only
+  - High confidence (>0.7) + no database queries → Document query only
+  - Medium confidence (0.3-0.7) → Both database and document queries, merged results
+  - Low confidence (<0.3) → Document query only (fallback)
+- **QueryStrategy Enum**: New enum for query execution strategies (DatabaseOnly, DocumentOnly, Hybrid)
+
+### Changed
+- `QueryIntelligenceAsync` method now integrates database queries alongside document queries
+- Improved query routing logic with graceful degradation and fallback mechanisms
+- Enhanced error handling for database query failures
+
+### Notes
+- Backward compatible: Existing `QueryIntelligenceAsync` signature unchanged
+- If database coordinator not available, behavior identical to previous implementation
+- No breaking changes to `RagResponse` model
+
 ## [3.0.3] - 2025-11-06
 
 ### 🎯 Package Optimization - Native Libraries

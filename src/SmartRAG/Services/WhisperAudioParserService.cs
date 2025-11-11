@@ -281,22 +281,29 @@ namespace SmartRAG.Services
                                 totalConfidence += segment.Probability;
                                 segmentCount++;
 
-                                if (_config.IncludeWordTimestamps)
+                                List<AudioSegmentMetadata> typedSegments;
+                                if (result.Metadata.TryGetValue("Segments", out var segmentsMetadata))
                                 {
-                                    if (!result.Metadata.ContainsKey("Segments"))
+                                    typedSegments = segmentsMetadata as List<AudioSegmentMetadata>;
+                                    if (typedSegments == null)
                                     {
-                                        result.Metadata["Segments"] = new List<object>();
+                                        typedSegments = new List<AudioSegmentMetadata>();
+                                        result.Metadata["Segments"] = typedSegments;
                                     }
-
-                                    var segmentsList = (List<object>)result.Metadata["Segments"];
-                                    segmentsList.Add(new
-                                    {
-                                        Start = segment.Start,
-                                        End = segment.End,
-                                        Text = segment.Text,
-                                        Probability = segment.Probability
-                                    });
                                 }
+                                else
+                                {
+                                    typedSegments = new List<AudioSegmentMetadata>();
+                                    result.Metadata["Segments"] = typedSegments;
+                                }
+
+                                typedSegments.Add(new AudioSegmentMetadata
+                                {
+                                    Start = segment.Start.TotalSeconds,
+                                    End = segment.End.TotalSeconds,
+                                    Text = segmentText,
+                                    Probability = segment.Probability
+                                });
                             }
 
                             _logger.LogInformation("Whisper processing completed: {SegmentCount} segments processed, {SkippedLowConf} low-confidence skipped, {SkippedDup} duplicates skipped",

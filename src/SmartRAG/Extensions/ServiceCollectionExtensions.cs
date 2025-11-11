@@ -77,6 +77,10 @@ namespace SmartRAG.Extensions
             // Multi-database services
             services.AddScoped<IDatabaseSchemaAnalyzer, DatabaseSchemaAnalyzer>();
             services.AddScoped<IDatabaseConnectionManager, DatabaseConnectionManager>();
+            services.AddScoped<IQueryIntentAnalyzer, QueryIntentAnalyzer>();
+            services.AddScoped<ISQLQueryGenerator, SQLQueryGenerator>();
+            services.AddScoped<IDatabaseQueryExecutor, DatabaseQueryExecutor>();
+            services.AddScoped<IResultMerger, ResultMerger>();
             services.AddScoped<IMultiDatabaseQueryCoordinator, MultiDatabaseQueryCoordinator>();
             
             // Add memory cache for database operations

@@ -1,3 +1,5 @@
+#nullable enable
+
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -8,7 +10,12 @@ using SmartRAG.Models;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Text;
+using System.Text.Json;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Services
@@ -33,6 +40,7 @@ namespace SmartRAG.Services
         /// <param name="configuration">Application configuration</param>
         /// <param name="options">SmartRAG configuration options</param>
         /// <param name="logger">Logger instance for this service</param>
+        /// <param name="multiDatabaseQueryCoordinator">Optional multi-database query coordinator for database queries</param>
         public DocumentSearchService(
             IDocumentRepository documentRepository,
             IAIService aiService,
@@ -40,7 +48,8 @@ namespace SmartRAG.Services
             SemanticSearchService semanticSearchService,
             IConfiguration configuration,
             IOptions<SmartRagOptions> options,
-            ILogger<DocumentSearchService> logger)
+            ILogger<DocumentSearchService> logger,
+            IMultiDatabaseQueryCoordinator? multiDatabaseQueryCoordinator = null)
         {
             _documentRepository = documentRepository;
             _aiService = aiService;
@@ -49,6 +58,7 @@ namespace SmartRAG.Services
             _configuration = configuration;
             _options = options.Value;
             _logger = logger;
+            _multiDatabaseQueryCoordinator = multiDatabaseQueryCoordinator;
         }
 
         #region Constants
@@ -78,7 +88,6 @@ namespace SmartRAG.Services
 
         // Query processing constants
         private const int MinWordLength = 2;
-        private const int MinNameCount = 2;
         private const int DefaultScore = 0;
         private const double HybridSemanticWeight = 0.8;
         private const double HybridKeywordWeight = 0.2;
@@ -89,13 +98,17 @@ namespace SmartRAG.Services
         private const int MinVectorCount = 0;
         private const int MinChunksWithEmbeddingsCount = 0;
         private const int MinSearchResultsCount = 0;
-        private const int MinRelevantChunksCount = 0;
         private const int MinNameChunksCount = 0;
         private const int MinPotentialNamesCount = 2;
         private const int MinWordCountThreshold = 0;
         // Fallback search and content
         private const int FallbackSearchMaxResults = 5;
         private const int MinSubstantialContentLength = 50;
+
+        // Confidence thresholds for Smart Hybrid approach
+        private const double HighConfidenceThreshold = 0.7;
+        private const double MediumConfidenceMin = 0.3;
+        private const double MediumConfidenceMax = 0.7;
 
         // Generic messages
         private const string ChatUnavailableMessage = "Sorry, I cannot chat right now. Please try again later.";
@@ -108,6 +121,7 @@ namespace SmartRAG.Services
         private readonly SemanticSearchService _semanticSearchService;
         private readonly IConfiguration _configuration;
         private readonly ILogger<DocumentSearchService> _logger;
+        private readonly IMultiDatabaseQueryCoordinator? _multiDatabaseQueryCoordinator;
 
         // Conversation management using existing storage
         private readonly ConcurrentDictionary<string, string> _conversationCache = new ConcurrentDictionary<string, string>();
@@ -147,15 +161,26 @@ namespace SmartRAG.Services
 
         /// <summary>
         /// Process intelligent query with RAG and automatic session management
+        /// Unified approach: searches across documents, images, audio, and databases
         /// </summary>
         /// <param name="query">User query to process</param>
         /// <param name="maxResults">Maximum number of document chunks to use</param>
         /// <param name="startNewConversation">Whether to start a new conversation session</param>
-        /// <returns>RAG response with answer and sources</returns>
+        /// <returns>RAG response with answer and sources from all available data sources</returns>
         public async Task<RagResponse> QueryIntelligenceAsync(string query, int maxResults = 5, bool startNewConversation = false)
         {
             if (string.IsNullOrWhiteSpace(query))
                 throw new ArgumentException("Query cannot be empty", nameof(query));
+
+            var originalQuery = query;
+            var forceConversation = TryExtractConversationCommand(query, out var conversationPayload);
+
+            if (forceConversation)
+            {
+                query = string.IsNullOrWhiteSpace(conversationPayload)
+                    ? string.Empty
+                    : conversationPayload;
+            }
 
             // Check for new conversation command or parameter
             if (startNewConversation || IsNewConversationCommand(query))
@@ -177,29 +202,68 @@ namespace SmartRAG.Services
             // Get conversation history from session
             var conversationHistory = await GetConversationHistoryAsync(sessionId);
 
-            // Universal approach: Check if documents contain relevant information for the query
-            // This approach is language-agnostic and doesn't rely on specific word patterns
-            var canAnswerFromDocuments = await CanAnswerFromDocumentsAsync(query);
+            // Extract clean query without language instructions for conversation detection
+            var cleanQuery = ExtractCleanQuery(query);
 
-            RagResponse response;
-
-            if (!canAnswerFromDocuments)
+            // Handle forced conversation or detected general conversation upfront
+            if (forceConversation || await IsGeneralConversationAsync(cleanQuery, conversationHistory))
             {
                 ServiceLogMessages.LogGeneralConversationQuery(_logger, null);
-                var chatResponse = await HandleGeneralConversationAsync(query, conversationHistory);
-                response = new RagResponse
+                var conversationQuery = string.IsNullOrWhiteSpace(query)
+                    ? originalQuery
+                    : query;
+                var conversationAnswer = await HandleGeneralConversationAsync(conversationQuery, conversationHistory);
+                await AddToConversationAsync(sessionId, conversationQuery, conversationAnswer);
+
+                return new RagResponse
                 {
-                    Query = query,
-                    Answer = chatResponse,
+                    Query = conversationQuery,
+                    Answer = conversationAnswer,
                     Sources = new List<SearchSource>(),
                     SearchedAt = DateTime.UtcNow,
                     Configuration = GetRagConfiguration()
                 };
             }
+
+            RagResponse response;
+
+            // Pre-evaluate document availability for smarter strategy selection
+            var canAnswerFromDocuments = await CanAnswerFromDocumentsAsync(query);
+
+            // Smart Hybrid Approach: Check if database coordinator is available
+            if (_multiDatabaseQueryCoordinator != null)
+            {
+                try
+                {
+                    // Analyze query intent using AI
+                    var queryIntent = await _multiDatabaseQueryCoordinator.AnalyzeQueryIntentAsync(query);
+
+                    var hasDatabaseQueries = queryIntent.DatabaseQueries != null && queryIntent.DatabaseQueries.Count > 0;
+                    var confidence = queryIntent.Confidence;
+
+                    // Determine query strategy using enum
+                    var strategy = DetermineQueryStrategy(confidence, hasDatabaseQueries, canAnswerFromDocuments);
+
+                    // Execute strategy using switch-case (Open/Closed Principle)
+                    response = strategy switch
+                    {
+                        QueryStrategy.DatabaseOnly => await ExecuteDatabaseOnlyStrategyAsync(query, maxResults, conversationHistory, canAnswerFromDocuments),
+                        QueryStrategy.DocumentOnly => await ExecuteDocumentOnlyStrategyAsync(query, maxResults, conversationHistory, canAnswerFromDocuments),
+                        QueryStrategy.Hybrid => await ExecuteHybridStrategyAsync(query, maxResults, conversationHistory, hasDatabaseQueries, canAnswerFromDocuments),
+                        _ => await ExecuteDocumentOnlyStrategyAsync(query, maxResults, conversationHistory, canAnswerFromDocuments) // Fallback
+                    };
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error during query intent analysis, falling back to document-only query");
+                    response = await ExecuteDocumentFallbackAsync(query, maxResults, conversationHistory, canAnswerFromDocuments);
+                }
+            }
             else
             {
-                // Document search query - use our integrated RAG implementation
-                response = await GenerateBasicRagAnswerAsync(query, maxResults, conversationHistory);
+                // Database coordinator not available → Fallback to document-only logic
+                _logger.LogInformation("Database coordinator not available. Using document-only query.");
+                response = await ExecuteDocumentOnlyStrategyAsync(query, maxResults, conversationHistory, canAnswerFromDocuments);
             }
 
             // Add to conversation history
@@ -257,6 +321,278 @@ namespace SmartRAG.Services
         #endregion
 
         #region Private Helper Methods
+
+        /// <summary>
+        /// Determines the query strategy based on confidence score and retrieved signals
+        /// </summary>
+        private QueryStrategy DetermineQueryStrategy(double confidence, bool hasDatabaseQueries, bool hasDocumentMatches)
+        {
+            if (hasDatabaseQueries && hasDocumentMatches)
+                return QueryStrategy.Hybrid;
+
+            if (confidence > HighConfidenceThreshold && hasDatabaseQueries)
+                return QueryStrategy.DatabaseOnly;
+
+            if (confidence > HighConfidenceThreshold && !hasDatabaseQueries)
+                return QueryStrategy.DocumentOnly;
+
+            if (confidence >= MediumConfidenceMin && confidence <= MediumConfidenceMax)
+                return hasDocumentMatches ? QueryStrategy.Hybrid : QueryStrategy.DatabaseOnly;
+
+            if (hasDocumentMatches)
+                return QueryStrategy.DocumentOnly;
+
+            // Low confidence (<0.3) → Fallback to document-only
+            return QueryStrategy.DocumentOnly;
+        }
+
+        /// <summary>
+        /// Creates a fallback response when document query cannot answer the question
+        /// </summary>
+        /// <param name="query">User query</param>
+        /// <param name="conversationHistory">Conversation history</param>
+        /// <returns>Fallback RAG response</returns>
+        private async Task<RagResponse> CreateFallbackResponseAsync(string query, string conversationHistory)
+        {
+            ServiceLogMessages.LogGeneralConversationQuery(_logger, null);
+            var chatResponse = await HandleGeneralConversationAsync(query, conversationHistory);
+            return new RagResponse
+            {
+                Query = query,
+                Answer = chatResponse,
+                Sources = new List<SearchSource>(),
+                SearchedAt = DateTime.UtcNow,
+                Configuration = GetRagConfiguration()
+            };
+        }
+
+        /// <summary>
+        /// Executes a database-only query strategy
+        /// </summary>
+        private async Task<RagResponse> ExecuteDatabaseOnlyStrategyAsync(string query, int maxResults, string conversationHistory, bool canAnswerFromDocuments)
+        {
+            _logger.LogInformation("Executing database-only query strategy");
+            
+            try
+            {
+                var databaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(query, maxResults);
+                if (HasMeaningfulData(databaseResponse))
+                {
+                    return databaseResponse;
+                }
+
+                _logger.LogInformation("Database query returned no meaningful data, falling back to document search");
+                return await ExecuteDocumentFallbackAsync(query, maxResults, conversationHistory, canAnswerFromDocuments);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Database query failed, falling back to document query");
+                return await ExecuteDocumentFallbackAsync(query, maxResults, conversationHistory, canAnswerFromDocuments);
+            }
+        }
+
+        /// <summary>
+        /// Executes a document-only query strategy
+        /// </summary>
+        private async Task<RagResponse> ExecuteDocumentOnlyStrategyAsync(string query, int maxResults, string conversationHistory, bool? canAnswerFromDocuments = null)
+        {
+            _logger.LogInformation("Executing document-only query strategy");
+            
+            var canAnswer = canAnswerFromDocuments ?? await CanAnswerFromDocumentsAsync(query);
+            if (canAnswer)
+            {
+                return await GenerateBasicRagAnswerAsync(query, maxResults, conversationHistory);
+            }
+            
+            return await CreateFallbackResponseAsync(query, conversationHistory);
+        }
+
+        /// <summary>
+        /// Executes a hybrid query strategy (both database and document queries)
+        /// </summary>
+        private async Task<RagResponse> ExecuteHybridStrategyAsync(string query, int maxResults, string conversationHistory, bool hasDatabaseQueries, bool canAnswerFromDocuments)
+        {
+            _logger.LogInformation("Executing hybrid query strategy (database + documents)");
+            
+            RagResponse? databaseResponse = null;
+            RagResponse? documentResponse = null;
+
+            // Execute database query if available
+            if (hasDatabaseQueries)
+            {
+                try
+                {
+                    var candidateDatabaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(query, maxResults);
+
+                    if (HasMeaningfulData(candidateDatabaseResponse))
+                    {
+                        databaseResponse = candidateDatabaseResponse;
+                        _logger.LogInformation("Database query completed successfully with meaningful data");
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Database query completed without meaningful data, excluding from hybrid merge");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Database query failed in hybrid mode, continuing with document query only");
+                }
+            }
+
+            // Execute document query
+            if (canAnswerFromDocuments)
+            {
+                documentResponse = await GenerateBasicRagAnswerAsync(query, maxResults, conversationHistory);
+                _logger.LogInformation("Document query completed successfully");
+            }
+
+            // Merge results if both queries executed
+            if (databaseResponse != null && documentResponse != null)
+            {
+                return await MergeHybridResultsAsync(query, databaseResponse, documentResponse, conversationHistory);
+            }
+
+            // Return available response or fallback
+            if (databaseResponse != null)
+                return databaseResponse;
+
+            if (documentResponse != null)
+                return documentResponse;
+
+            return await CreateFallbackResponseAsync(query, conversationHistory);
+        }
+
+        private static bool HasMeaningfulData(RagResponse? response)
+        {
+            if (response == null)
+            {
+                return false;
+            }
+
+            if (!string.IsNullOrWhiteSpace(response.Answer) && !IndicatesMissingData(response.Answer))
+            {
+                return true;
+            }
+
+            if (response.Sources != null && response.Sources.Any(source =>
+                source.DocumentId != Guid.Empty && !string.IsNullOrWhiteSpace(source.RelevantContent)))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        private static bool IndicatesMissingData(string answer)
+        {
+            if (string.IsNullOrWhiteSpace(answer))
+            {
+                return true;
+            }
+
+            var normalized = answer.ToLowerInvariant();
+            var indicators = new[]
+            {
+                "unable to find",
+                "cannot find",
+                "no data",
+                "no information",
+                "not available",
+                "not found",
+                "sorry",
+                "üzgünüm",
+                "maalesef",
+                "bulunmamaktadır",
+                "bulamadım",
+                "bulamıyorum",
+                "veri bulunamadı",
+                "kayıt yok"
+            };
+
+            return indicators.Any(normalized.Contains);
+        }
+
+        /// <summary>
+        /// Merges results from database and document queries into a unified response
+        /// </summary>
+        /// <param name="query">Original user query</param>
+        /// <param name="databaseResponse">Database query response</param>
+        /// <param name="documentResponse">Document query response</param>
+        /// <param name="conversationHistory">Conversation history</param>
+        /// <returns>Merged RAG response</returns>
+        private async Task<RagResponse> MergeHybridResultsAsync(string query, RagResponse databaseResponse, RagResponse documentResponse, string conversationHistory)
+        {
+            // Combine sources
+            var combinedSources = new List<SearchSource>();
+            combinedSources.AddRange(databaseResponse.Sources);
+            combinedSources.AddRange(documentResponse.Sources);
+
+            // Build combined context for AI
+            var databaseContext = !string.IsNullOrEmpty(databaseResponse.Answer)
+                ? $"=== DATABASE INFORMATION ===\n{databaseResponse.Answer}"
+                : "";
+            var documentContext = !string.IsNullOrEmpty(documentResponse.Answer)
+                ? $"=== DOCUMENT INFORMATION ===\n{documentResponse.Answer}"
+                : "";
+
+            var combinedContext = new List<string>();
+            if (!string.IsNullOrEmpty(databaseContext))
+                combinedContext.Add(databaseContext);
+            if (!string.IsNullOrEmpty(documentContext))
+                combinedContext.Add(documentContext);
+
+            var historyContext = !string.IsNullOrEmpty(conversationHistory)
+                ? $"\n\nRecent context:\n{TruncateConversationHistory(conversationHistory, maxTurns: 2)}\n"
+                : "";
+
+            // Concise prompt for merging results
+            var mergePrompt = $@"Answer the user's question using the provided information.
+
+CRITICAL RULES:
+- Provide DIRECT, CONCISE answer to the question
+- Use information from the sources below (database OR documents)
+- Do NOT explain where information came from
+- Do NOT mention missing information or unavailable data
+- Do NOT add unnecessary explanations
+- Do NOT include irrelevant information
+- Keep response SHORT and TO THE POINT
+
+{historyContext}Question: {query}
+
+Available Information:
+{string.Join("\n\n", combinedContext)}
+
+Direct Answer:";
+
+            var mergedAnswer = await _aiService.GenerateResponseAsync(mergePrompt, combinedContext);
+
+            _logger.LogInformation("Hybrid search completed. Combined {DatabaseSources} database sources and {DocumentSources} document sources",
+                databaseResponse.Sources.Count, documentResponse.Sources.Count);
+
+            return new RagResponse
+            {
+                Query = query,
+                Answer = mergedAnswer,
+                Sources = combinedSources,
+                SearchedAt = DateTime.UtcNow,
+                Configuration = GetRagConfiguration()
+            };
+        }
+
+        /// <summary>
+        /// Executes document fallback when database query fails
+        /// </summary>
+        private async Task<RagResponse> ExecuteDocumentFallbackAsync(string query, int maxResults, string conversationHistory, bool? canAnswerFromDocuments = null)
+        {
+            var canAnswer = canAnswerFromDocuments ?? await CanAnswerFromDocumentsAsync(query);
+            if (canAnswer)
+            {
+                return await GenerateBasicRagAnswerAsync(query, maxResults, conversationHistory);
+            }
+
+            return await CreateFallbackResponseAsync(query, conversationHistory);
+        }
 
         /// <summary>
         /// Gets or creates a session ID automatically for conversation continuity
@@ -331,13 +667,33 @@ namespace SmartRAG.Services
 
             var lowerQuery = query.ToLowerInvariant().Trim();
 
-            // English commands only
             if (lowerQuery == "/new" || lowerQuery == "/reset" || lowerQuery == "/clear")
                 return true;
 
             // Commands with parameters
             if (lowerQuery.StartsWith("/new ") || lowerQuery.StartsWith("/reset ") || lowerQuery.StartsWith("/clear "))
                 return true;
+
+            return false;
+        }
+
+        private static bool TryExtractConversationCommand(string input, out string payload)
+        {
+            payload = string.Empty;
+
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                return false;
+            }
+
+            var trimmed = input.Trim();
+
+            if (trimmed.StartsWith("/chat", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("/talk", StringComparison.OrdinalIgnoreCase))
+            {
+                payload = trimmed.Length > 5 ? trimmed[5..].TrimStart() : string.Empty;
+                return true;
+            }
 
             return false;
         }
@@ -491,31 +847,30 @@ namespace SmartRAG.Services
             return relevantChunks.Take(maxResults).ToList();
         }
 
-        private async Task<RagResponse> GenerateBasicRagAnswerAsync(string query, int maxResults, string conversationHistory = null)
+        private async Task<RagResponse> GenerateBasicRagAnswerAsync(string query, int maxResults, string? conversationHistory = null)
         {
             var chunks = await SearchDocumentsAsync(query, maxResults);
             var context = string.Join("\n\n", chunks.Select(c => c.Content));
 
-            // Build prompt with conversation history if available
+            // Build prompt with LIMITED conversation history (only recent context)
             var historyContext = !string.IsNullOrEmpty(conversationHistory)
-                ? $"\n\nPrevious conversation:\n{conversationHistory}\n"
+                ? $"\n\nRecent conversation context:\n{TruncateConversationHistory(conversationHistory, maxTurns: 2)}\n"
                 : "";
 
-            // Enhanced prompt for better AI understanding with conversation history
-            var enhancedPrompt = $@"You are a helpful document analysis assistant. Answer questions based on the provided document context.
+            // Enhanced prompt for better AI understanding with LIMITED conversation history
+            var enhancedPrompt = $@"You are a helpful document analysis assistant. Answer questions based ONLY on the provided document context.
 
-IMPORTANT: 
-- Carefully analyze the context
-- Look for specific information that answers the question
-- If you find the information, provide a clear answer
-- If you cannot find it, say 'I cannot find this specific information in the provided documents'
+CRITICAL RULES: 
+- Base your answer ONLY on the document context provided below
+- Do NOT use information from previous conversations unless it's in the current document context
+- If you find the information in documents, provide a clear and concise answer
+- If you cannot find it in the documents, simply say 'I cannot find this information in the provided documents'
 - Be precise and use exact information from documents
-- Consider the conversation history when answering follow-up questions
-- If the question refers to previous information, use that context to provide a more relevant answer
+- Keep responses focused on the current question
 
-{historyContext}Question: {query}
+{historyContext}Current question: {query}
 
-Context: {context}
+Document context: {context}
 
 Answer:";
 
@@ -525,16 +880,255 @@ Answer:";
             {
                 Query = query,
                 Answer = answer,
-                Sources = chunks.Select(c => new SearchSource
-                {
-                    DocumentId = c.DocumentId,
-                    FileName = "Document",
-                    RelevantContent = c.Content,
-                    RelevanceScore = c.RelevanceScore ?? 0.0
-                }).ToList(),
+                Sources = await BuildDocumentSourcesAsync(chunks),
                 SearchedAt = DateTime.UtcNow,
                 Configuration = GetRagConfiguration()
             };
+        }
+
+        private async Task<List<SearchSource>> BuildDocumentSourcesAsync(List<DocumentChunk> chunks)
+        {
+            var sources = new List<SearchSource>();
+            if (chunks.Count == 0)
+            {
+                return sources;
+            }
+
+            var documentCache = new Dictionary<Guid, SmartRAG.Entities.Document?>();
+
+            foreach (var chunk in chunks)
+            {
+                var document = await GetDocumentForChunkAsync(chunk.DocumentId, documentCache);
+                var sourceType = DetermineDocumentSourceType(document);
+                var (startTime, endTime) = CalculateAudioTimestampRange(document, chunk);
+                var location = BuildDocumentLocationDescription(chunk, document, startTime, endTime);
+
+                sources.Add(new SearchSource
+                {
+                    SourceType = sourceType,
+                    DocumentId = chunk.DocumentId,
+                    FileName = document?.FileName ?? "Document",
+                    RelevantContent = chunk.Content,
+                    RelevanceScore = chunk.RelevanceScore ?? 0.0,
+                    ChunkIndex = chunk.ChunkIndex,
+                    StartPosition = chunk.StartPosition,
+                    EndPosition = chunk.EndPosition,
+                    StartTimeSeconds = startTime,
+                    EndTimeSeconds = endTime,
+                    Location = location
+                });
+            }
+
+            return sources;
+        }
+
+        private async Task<SmartRAG.Entities.Document?> GetDocumentForChunkAsync(Guid documentId, Dictionary<Guid, SmartRAG.Entities.Document?> cache)
+        {
+            if (cache.TryGetValue(documentId, out var cachedDocument))
+            {
+                return cachedDocument;
+            }
+
+            var document = await _documentRepository.GetByIdAsync(documentId);
+            cache[documentId] = document;
+            return document;
+        }
+
+        private static string DetermineDocumentSourceType(SmartRAG.Entities.Document? document)
+        {
+            if (document == null)
+            {
+                return "Document";
+            }
+
+            if (!string.IsNullOrWhiteSpace(document.ContentType) &&
+                document.ContentType.StartsWith("audio", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Audio";
+            }
+
+            var extension = Path.GetExtension(document.FileName)?.ToLowerInvariant();
+            if (!string.IsNullOrWhiteSpace(extension))
+            {
+                switch (extension)
+                {
+                    case ".wav":
+                    case ".mp3":
+                    case ".m4a":
+                    case ".flac":
+                    case ".ogg":
+                        return "Audio";
+                    case ".jpg":
+                    case ".jpeg":
+                    case ".png":
+                    case ".gif":
+                    case ".bmp":
+                    case ".tiff":
+                    case ".webp":
+                        return "Image";
+                }
+            }
+
+            return "Document";
+        }
+
+        private static (double? Start, double? End) CalculateAudioTimestampRange(SmartRAG.Entities.Document? document, DocumentChunk chunk)
+        {
+            var segments = ExtractAudioSegments(document);
+            if (segments.Count == 0)
+            {
+                return (null, null);
+            }
+
+            var chunkStart = chunk.StartPosition;
+            var chunkEnd = chunk.EndPosition;
+            var chunkNormalized = NormalizeForMatching(chunk.Content);
+
+            var overlappingSegments = new List<AudioSegmentMetadata>();
+
+            foreach (var segment in segments)
+            {
+                var hasCharacterMapping = segment.EndCharIndex > 0;
+                if (hasCharacterMapping &&
+                    segment.StartCharIndex < chunkEnd &&
+                    segment.EndCharIndex > chunkStart)
+                {
+                    overlappingSegments.Add(segment);
+                    continue;
+                }
+
+                var normalizedSegment = !string.IsNullOrWhiteSpace(segment.NormalizedText)
+                    ? segment.NormalizedText
+                    : NormalizeForMatching(segment.Text);
+
+                if (string.IsNullOrWhiteSpace(normalizedSegment) || string.IsNullOrWhiteSpace(chunkNormalized))
+                {
+                    continue;
+                }
+
+                if (chunkNormalized.IndexOf(normalizedSegment, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    overlappingSegments.Add(segment);
+                }
+            }
+
+            if (overlappingSegments.Count == 0)
+            {
+                return (null, null);
+            }
+
+            var start = overlappingSegments.First().Start;
+            var end = overlappingSegments.Last().End;
+
+            return (start, end);
+        }
+
+        private static List<AudioSegmentMetadata> ExtractAudioSegments(SmartRAG.Entities.Document? document)
+        {
+            if (document?.Metadata == null)
+            {
+                return new List<AudioSegmentMetadata>();
+            }
+
+            if (!document.Metadata.TryGetValue("Segments", out var segmentsObj))
+            {
+                return new List<AudioSegmentMetadata>();
+            }
+
+            if (segmentsObj is List<AudioSegmentMetadata> typedList)
+            {
+                return typedList;
+            }
+
+            if (segmentsObj is AudioSegmentMetadata[] typedArray)
+            {
+                return new List<AudioSegmentMetadata>(typedArray);
+            }
+
+            if (segmentsObj is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.Array)
+            {
+                try
+                {
+                    var json = jsonElement.GetRawText();
+                    var deserialized = JsonSerializer.Deserialize<List<AudioSegmentMetadata>>(json);
+                    return deserialized ?? new List<AudioSegmentMetadata>();
+                }
+                catch
+                {
+                    return new List<AudioSegmentMetadata>();
+                }
+            }
+
+            return new List<AudioSegmentMetadata>();
+        }
+
+        private static string NormalizeForMatching(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            var normalized = Regex.Replace(value, @"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]", string.Empty);
+            normalized = Regex.Replace(normalized, @"\s+", " ");
+            return normalized.Trim();
+        }
+
+        private static string BuildDocumentLocationDescription(DocumentChunk chunk, SmartRAG.Entities.Document? document, double? startTimeSeconds, double? endTimeSeconds)
+        {
+            var builder = new StringBuilder();
+            builder.Append($"Chunk #{chunk.ChunkIndex + 1}");
+            builder.Append($" | Characters {chunk.StartPosition}-{chunk.EndPosition}");
+
+            if (startTimeSeconds.HasValue || endTimeSeconds.HasValue)
+            {
+                builder.Append(" | Audio ");
+                builder.Append(FormatTimeRange(startTimeSeconds, endTimeSeconds));
+            }
+
+            if (document != null && !string.IsNullOrWhiteSpace(document.FileName))
+            {
+                builder.Append($" | Source: {document.FileName}");
+            }
+
+            return builder.ToString();
+        }
+
+        private static string FormatTimeRange(double? startSeconds, double? endSeconds)
+        {
+            if (!startSeconds.HasValue && !endSeconds.HasValue)
+            {
+                return "timestamp unavailable";
+            }
+
+            if (startSeconds.HasValue && endSeconds.HasValue)
+            {
+                return $"{FormatSeconds(startSeconds.Value)} - {FormatSeconds(endSeconds.Value)}";
+            }
+
+            if (startSeconds.HasValue)
+            {
+                return $"{FormatSeconds(startSeconds.Value)} →";
+            }
+
+            return $"← {FormatSeconds(endSeconds!.Value)}";
+        }
+
+        private static string FormatSeconds(double seconds)
+        {
+            if (seconds < 0)
+            {
+                seconds = 0;
+            }
+
+            var timeSpan = TimeSpan.FromSeconds(seconds);
+
+            if (timeSpan.TotalHours >= 1)
+            {
+                return string.Format(CultureInfo.InvariantCulture, "{0:D2}:{1:D2}:{2:D2}", (int)timeSpan.TotalHours, timeSpan.Minutes, timeSpan.Seconds);
+            }
+
+            return string.Format(CultureInfo.InvariantCulture, "{0:D2}:{1:D2}", timeSpan.Minutes, timeSpan.Seconds);
         }
 
         private static List<DocumentChunk> ApplyDiversityAndSelect(List<DocumentChunk> chunks, int maxResults)
@@ -779,9 +1373,196 @@ Answer:";
         }
 
         /// <summary>
+        /// Determines whether the query should be treated as general conversation using AI intent detection.
+        /// </summary>
+        private async Task<bool> IsGeneralConversationAsync(string query, string? conversationHistory)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return true;
+            }
+
+            var trimmedQuery = string.IsNullOrWhiteSpace(query) ? string.Empty : query.Trim();
+
+            // Fast pre-check: Obvious information queries (skip AI call)
+            if (IsLikelyInformationQuery(trimmedQuery))
+            {
+                return false;
+            }
+
+            // Fast pre-check: Short simple queries (likely conversation)
+            if (IsObviousConversation(trimmedQuery))
+            {
+                _logger.LogDebug("Query classified as CONVERSATION by fast pre-check: {Query}", trimmedQuery);
+                return true;
+            }
+
+            // AI classification for ambiguous cases
+            _logger.LogDebug("Query passed pre-checks, sending to AI for classification: {Query}", trimmedQuery);
+            try
+            {
+                var historySnippet = string.Empty;
+                if (!string.IsNullOrWhiteSpace(conversationHistory))
+                {
+                    const int maxHistoryLength = 400;
+                    var normalizedHistory = conversationHistory.Trim();
+                    historySnippet = normalizedHistory.Length > maxHistoryLength
+                        ? normalizedHistory.Substring(normalizedHistory.Length - maxHistoryLength, maxHistoryLength)
+                        : normalizedHistory;
+                }
+
+                var classificationPrompt = string.Format(
+                    CultureInfo.InvariantCulture,
+@"You MUST classify the input as CONVERSATION or INFORMATION.
+
+🚨 CRITICAL: Classify as CONVERSATION if:
+- Greeting (any language): Hello, Hi, Hey, Hola, Bonjour, Merhaba, Selam
+- About the AI: Who are you, What are you, What model, What can you do
+- Small talk: How are you, What's your name, Where are you from, Are you ok
+- Polite chat: Thank you, Thanks, Goodbye, See you, Nice to meet you
+
+✓ Classify as INFORMATION ONLY if:
+- Contains data request words: show, list, find, calculate, total, count, sum
+- Contains question words: what IS/WAS, which one, how many, when did
+- Contains numbers/dates: 2023, last year, top 10, over 1000
+- Specific entity queries: record 123, item X, reference number Y
+
+User: ""{0}""
+{1}
+
+CRITICAL: If unsure, default to CONVERSATION. Answer with ONE word only: CONVERSATION or INFORMATION", 
+                    trimmedQuery, 
+                    string.IsNullOrWhiteSpace(historySnippet) ? "" : $"Context: \"{historySnippet}\"");
+
+                var classification = await _aiService.GenerateResponseAsync(classificationPrompt, Array.Empty<string>());
+                _logger.LogDebug("AI classification result: {Classification}", classification);
+
+                if (!string.IsNullOrWhiteSpace(classification))
+                {
+                    var normalizedResult = classification.Trim().ToUpperInvariant();
+
+                    if (normalizedResult.Contains("CONVERSATION", StringComparison.Ordinal))
+                    {
+                        _logger.LogDebug("Query classified as CONVERSATION by AI: {Query}", trimmedQuery);
+                        return true;
+                    }
+
+                    if (normalizedResult.Contains("INFORMATION", StringComparison.Ordinal))
+                    {
+                        _logger.LogDebug("Query classified as INFORMATION by AI: {Query}", trimmedQuery);
+                        return false;
+                    }
+
+                    _logger.LogWarning("AI returned unclear classification: {Classification}", classification);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "AI classification failed. Defaulting to conversation.");
+                return true; // Safe default: treat as conversation
+            }
+
+            // Final fallback: if AI gave unclear response, default to conversation
+            return true;
+        }
+
+        /// <summary>
+        /// Extracts clean query by removing language instruction suffixes
+        /// </summary>
+        private static string ExtractCleanQuery(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return query;
+            }
+
+            // Remove common language instruction patterns
+            var patterns = new[]
+            {
+                "[IMPORTANT: Respond in ",
+                "\n\n[IMPORTANT:",
+                "[CRITICAL: Answer in ",
+                "\n\n[CRITICAL:"
+            };
+
+            var cleanQuery = query;
+            foreach (var pattern in patterns)
+            {
+                var index = cleanQuery.IndexOf(pattern, StringComparison.OrdinalIgnoreCase);
+                if (index >= 0)
+                {
+                    cleanQuery = cleanQuery.Substring(0, index).Trim();
+                    break;
+                }
+            }
+
+            return cleanQuery;
+        }
+
+        /// <summary>
+        /// Fast heuristic check for obvious conversation patterns (no AI call needed)
+        /// </summary>
+        private static bool IsObviousConversation(string query)
+        {
+            var trimmed = query.Trim();
+
+            // Very short input (1-2 chars) is likely conversation
+            if (trimmed.Length <= 2)
+            {
+                return true;
+            }
+
+            var tokens = trimmed.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+            // Short queries (1-2 words) without question mark or numbers are likely chat
+            if (tokens.Length <= 2 &&
+                !trimmed.Contains('?', StringComparison.Ordinal) &&
+                !trimmed.Any(char.IsDigit))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Fast heuristic check for obvious information queries (no AI call needed)
+        /// </summary>
+        private static bool IsLikelyInformationQuery(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return false;
+            }
+
+            var trimmed = query.Trim();
+
+            // Contains question mark → likely information query
+            if (trimmed.Contains('?', StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            // Contains numbers → likely data query (e.g., "record 123", "top 10")
+            if (trimmed.Any(char.IsDigit))
+            {
+                return true;
+            }
+
+            // Long queries (5+ words) are usually information requests
+            var tokens = trimmed.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+            if (tokens.Length >= 5)
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// Handle general conversation queries with conversation history
         /// </summary>
-        private async Task<string> HandleGeneralConversationAsync(string query, string conversationHistory = null)
+        private async Task<string> HandleGeneralConversationAsync(string query, string? conversationHistory = null)
         {
             try
             {
@@ -795,14 +1576,15 @@ Answer:";
                     return ChatUnavailableMessage;
                 }
 
-                // Build prompt with conversation history if available
+                // Build prompt with LIMITED conversation history (only recent messages)
                 var historyContext = !string.IsNullOrEmpty(conversationHistory)
-                    ? $"\n\nPrevious conversation:\n{conversationHistory}\n"
+                    ? $"\n\nRecent conversation context:\n{TruncateConversationHistory(conversationHistory, maxTurns: 3)}\n"
                     : "";
 
                 var prompt = $@"You are a helpful AI assistant. Answer the user's question naturally and friendly.
+Keep responses concise and relevant to the current question.
 
-{historyContext}User: {query}
+{historyContext}Current question: {query}
 
 Answer:";
 
@@ -813,6 +1595,58 @@ Answer:";
                 // Log error using structured logging
                 return ChatUnavailableMessage;
             }
+        }
+        
+        /// <summary>
+        /// Truncates conversation history to keep only the most recent turns
+        /// </summary>
+        private static string TruncateConversationHistory(string history, int maxTurns = 3)
+        {
+            if (string.IsNullOrWhiteSpace(history))
+            {
+                return string.Empty;
+            }
+
+            // Split by conversation turns (User: ... Assistant: ...)
+            var lines = history.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var turns = new List<string>();
+            var currentTurn = new StringBuilder();
+            
+            foreach (var line in lines)
+            {
+                var trimmed = line.Trim();
+                
+                // Detect start of a new turn
+                if (trimmed.StartsWith("User:", StringComparison.OrdinalIgnoreCase) ||
+                    trimmed.StartsWith("Assistant:", StringComparison.OrdinalIgnoreCase) ||
+                    trimmed.StartsWith("A:", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Save previous turn if exists
+                    if (currentTurn.Length > 0)
+                    {
+                        turns.Add(currentTurn.ToString());
+                        currentTurn.Clear();
+                    }
+                }
+                
+                currentTurn.AppendLine(trimmed);
+            }
+            
+            // Add last turn
+            if (currentTurn.Length > 0)
+            {
+                turns.Add(currentTurn.ToString());
+            }
+            
+            // Keep only last N turns
+            var recentTurns = turns.TakeLast(maxTurns * 2).ToList(); // *2 because each turn is User + Assistant
+            
+            if (recentTurns.Count == 0)
+            {
+                return string.Empty;
+            }
+            
+            return string.Join("\n", recentTurns);
         }
 
         #endregion

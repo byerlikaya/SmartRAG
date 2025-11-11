@@ -37,14 +37,6 @@ namespace SmartRAG.Interfaces
         /// <param name="queryIntent">Query intent</param>
         /// <returns>Updated query intent with generated SQL</returns>
         Task<QueryIntent> GenerateDatabaseQueriesAsync(QueryIntent queryIntent);
-
-        /// <summary>
-        /// Merges results from multiple databases into a coherent response
-        /// </summary>
-        /// <param name="queryResults">Results from multiple databases</param>
-        /// <param name="originalQuery">Original user query</param>
-        /// <returns>Merged and ranked results</returns>
-        Task<string> MergeResultsAsync(MultiDatabaseQueryResult queryResults, string originalQuery);
     }
 
     /// <summary>

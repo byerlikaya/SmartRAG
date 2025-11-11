@@ -28,7 +28,7 @@ namespace SmartRAG.Models
 
         /// <summary>
         /// Optional description to help AI understand the database content.
-        /// Example: "Customer data, products, categories"
+        /// Example: "Table A metrics, reference mappings, lookup values"
         /// </summary>
         public string Description { get; set; }
 
