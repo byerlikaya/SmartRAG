@@ -20,12 +20,19 @@ namespace SmartRAG.Extensions
         /// <summary>
         /// Adds SmartRag services with default configuration
         /// </summary>
+        /// <param name="services">Service collection to add services to</param>
+        /// <param name="configuration">Application configuration</param>
+        /// <returns>Service collection for method chaining</returns>
         public static IServiceCollection AddSmartRag(this IServiceCollection services, IConfiguration configuration)
             => services.AddSmartRag(configuration, options => { });
 
         /// <summary>
         /// Adds SmartRag services with custom configuration
         /// </summary>
+        /// <param name="services">Service collection to add services to</param>
+        /// <param name="configuration">Application configuration</param>
+        /// <param name="configureOptions">Action to configure SmartRag options</param>
+        /// <returns>Service collection for method chaining</returns>
         public static IServiceCollection AddSmartRag(this IServiceCollection services, IConfiguration configuration, Action<SmartRagOptions> configureOptions)
         {
             // Configure SmartRagOptions using Options Pattern for non-provider settings
@@ -96,6 +103,11 @@ namespace SmartRAG.Extensions
         /// <summary>
         /// Adds SmartRag services with minimal configuration (just specify providers)
         /// </summary>
+        /// <param name="services">Service collection to add services to</param>
+        /// <param name="configuration">Application configuration</param>
+        /// <param name="storageProvider">Storage provider to use</param>
+        /// <param name="aiProvider">AI provider to use</param>
+        /// <returns>Service collection for method chaining</returns>
         public static IServiceCollection UseSmartRag(this IServiceCollection services,
                                                      IConfiguration configuration,
                                                      StorageProvider storageProvider = StorageProvider.InMemory,
