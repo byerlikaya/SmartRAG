@@ -30,7 +30,7 @@ public class OllamaHandler(IConsoleService console) : IOllamaHandler
             _console.WriteError("Ollama service is not running!");
             System.Console.WriteLine();
             System.Console.WriteLine("Please start Ollama:");
-            System.Console.WriteLine("  • Docker: cd examples/SmartRAG.LocalDemo && docker-compose up -d ollama");
+            System.Console.WriteLine("  • Docker: cd examples/SmartRAG.LocalDemo && docker-compose up -d smartrag-ollama");
             System.Console.WriteLine("  • Or download from: https://ollama.ai");
             return;
         }

@@ -133,14 +133,14 @@ dotnet run
 
 ```bash
 # AI Servisleri
-docker-compose up -d ollama
-docker-compose up -d qdrant
-docker-compose up -d redis
+docker-compose up -d smartrag-ollama
+docker-compose up -d smartrag-qdrant
+docker-compose up -d smartrag-redis
 
 # Veritabanları
-docker-compose up -d sqlserver
-docker-compose up -d mysql
-docker-compose up -d postgres
+docker-compose up -d smartrag-sqlserver
+docker-compose up -d smartrag-mysql
+docker-compose up -d smartrag-postgres
 ```
 
 ### Servisleri Durdur
@@ -150,7 +150,7 @@ docker-compose up -d postgres
 docker-compose stop
 
 # Belirli servisi durdur
-docker-compose stop ollama
+docker-compose stop smartrag-ollama
 ```
 
 ### Servisleri Yeniden Başlat
@@ -160,7 +160,7 @@ docker-compose stop ollama
 docker-compose restart
 
 # Belirli servisi yeniden başlat
-docker-compose restart qdrant
+docker-compose restart smartrag-qdrant
 ```
 
 ### Logları Görüntüle
@@ -170,12 +170,12 @@ docker-compose restart qdrant
 docker-compose logs
 
 # Belirli servis
-docker-compose logs ollama
-docker-compose logs qdrant
-docker-compose logs redis
+docker-compose logs smartrag-ollama
+docker-compose logs smartrag-qdrant
+docker-compose logs smartrag-redis
 
 # Logları takip et (gerçek zamanlı)
-docker-compose logs -f ollama
+docker-compose logs -f smartrag-ollama
 ```
 
 ## 📊 Bağlantı Detayları

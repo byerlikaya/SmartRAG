@@ -133,14 +133,14 @@ Select **"1. LOCAL Environment"** when prompted.
 
 ```bash
 # AI Services
-docker-compose up -d ollama
-docker-compose up -d qdrant
-docker-compose up -d redis
+docker-compose up -d smartrag-ollama
+docker-compose up -d smartrag-qdrant
+docker-compose up -d smartrag-redis
 
 # Databases
-docker-compose up -d sqlserver
-docker-compose up -d mysql
-docker-compose up -d postgres
+docker-compose up -d smartrag-sqlserver
+docker-compose up -d smartrag-mysql
+docker-compose up -d smartrag-postgres
 ```
 
 ### Stop Services
@@ -150,7 +150,7 @@ docker-compose up -d postgres
 docker-compose stop
 
 # Stop specific service
-docker-compose stop ollama
+docker-compose stop smartrag-ollama
 ```
 
 ### Restart Services
@@ -160,7 +160,7 @@ docker-compose stop ollama
 docker-compose restart
 
 # Restart specific
-docker-compose restart qdrant
+docker-compose restart smartrag-qdrant
 ```
 
 ### View Logs
@@ -170,12 +170,12 @@ docker-compose restart qdrant
 docker-compose logs
 
 # Specific service
-docker-compose logs ollama
-docker-compose logs qdrant
-docker-compose logs redis
+docker-compose logs smartrag-ollama
+docker-compose logs smartrag-qdrant
+docker-compose logs smartrag-redis
 
 # Follow logs (real-time)
-docker-compose logs -f ollama
+docker-compose logs -f smartrag-ollama
 ```
 
 ## 📊 Connection Details
@@ -418,7 +418,7 @@ docker exec -it smartrag-redis redis-cli ping  # Redis
 docker logs -f smartrag-ollama
 
 # Restart Ollama
-docker-compose restart ollama
+docker-compose restart smartrag-ollama
 
 # Try pulling again
 docker exec -it smartrag-ollama ollama pull llama3.2
