@@ -22,7 +22,13 @@ SmartRAG tüm işlemler için iyi tanımlanmış interface'ler sağlar. Bu inter
 
 #### QueryIntelligenceAsync
 
-RAG ve otomatik oturum yönetimi ile akıllı sorguları işleyin.
+Birleşik akıllı sorgu işleme ile RAG ve otomatik oturum yönetimi. Smart Hybrid yönlendirme kullanarak tek sorguda veritabanları, belgeler, görüntüler (OCR) ve ses dosyalarını (transkript) arar.
+
+**Akıllı Hibrit Yönlendirme:**
+- **Yüksek Güven (>0.7) + Veritabanı Sorguları**: Sadece veritabanı sorgusu çalıştırır
+- **Yüksek Güven (>0.7) + Veritabanı Sorgusu Yok**: Sadece belge sorgusu çalıştırır
+- **Orta Güven (0.3-0.7)**: Hem veritabanı hem belge sorgularını çalıştırır, sonuçları birleştirir
+- **Düşük Güven (<0.3)**: Sadece belge sorgusu çalıştırır (fallback)
 
 ```csharp
 Task<RagResponse> QueryIntelligenceAsync(
@@ -37,19 +43,26 @@ Task<RagResponse> QueryIntelligenceAsync(
 - `maxResults` (int): Alınacak maksimum doküman parçası sayısı (varsayılan: 5)
 - `startNewConversation` (bool): Yeni bir konuşma oturumu başlat (varsayılan: false)
 
-**Döndürür:** AI cevabı, kaynakları ve metadata ile `RagResponse`
+**Döndürür:** Tüm mevcut veri kaynaklarından (veritabanları, belgeler, görüntüler, ses) AI cevabı, kaynaklar ve metadata içeren `RagResponse`
 
 **Örnek:**
 
 ```csharp
+// Tüm veri kaynaklarında birleşik sorgu
 var response = await _searchService.QueryIntelligenceAsync(
-    "Ana faydalar nelerdir?", 
+    "En iyi müşterileri ve son geri bildirimlerini göster", 
     maxResults: 5
 );
 
 Console.WriteLine(response.Answer);
-// Kaynaklar response.Sources içinde mevcut
+// Kaynaklar hem veritabanı hem belge kaynaklarını içerir
+foreach (var source in response.Sources)
+{
+    Console.WriteLine($"Kaynak: {source.FileName}");
+}
 ```
+
+**Not:** Veritabanı coordinator yapılandırılmamışsa, metod otomatik olarak sadece belge aramasına geri döner, geriye dönük uyumluluğu korur.
 
 #### SearchDocumentsAsync
 

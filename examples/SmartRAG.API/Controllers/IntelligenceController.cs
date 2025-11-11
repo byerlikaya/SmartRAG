@@ -85,26 +85,40 @@ namespace SmartRAG.API.Controllers
         }
 
         /// <summary>
-        /// Intelligent AI query processing with automatic routing and RAG
+        /// Unified intelligent query processing with automatic routing and RAG
         /// </summary>
         /// <remarks>
-        /// Performs intelligent query processing with comprehensive RAG pipeline including:
-        /// - **Query Intent Analysis**: Determines if query requires search, conversation, or both
-        /// - **Multi-Modal Retrieval**: Searches across documents, databases, and conversations
+        /// Performs unified intelligent query processing across all data sources using Smart Hybrid approach:
+        /// - **Unified Search**: Searches across documents, images (OCR), audio (transcription), and databases in a single query
+        /// - **Smart Hybrid Routing**: AI-based intent detection with confidence scoring determines optimal search strategy
+        /// - **Query Intent Analysis**: Determines if query requires database, document, or hybrid search
+        /// - **Multi-Modal Retrieval**: Automatically searches all available sources (documents, images, audio, databases)
         /// - **Context Assembly**: Selects and ranks relevant information from multiple sources
-        /// - **AI Response Generation**: Synthesizes comprehensive answers with citations
-        /// - **Confidence Scoring**: Provides confidence levels for generated responses
-        /// - **Source Attribution**: Links responses to original source materials
+        /// - **AI Response Generation**: Synthesizes comprehensive answers combining all sources
+        /// - **Confidence Scoring**: Uses confidence thresholds to route queries intelligently
+        /// - **Source Attribution**: Links responses to original source materials (documents, databases, etc.)
         /// 
-        /// The RAG pipeline automatically:
-        /// - Analyzes query intent and complexity
-        /// - Retrieves relevant documents and data
-        /// - Assembles contextual information
-        /// - Generates accurate, well-cited responses
+        /// Smart Hybrid Routing Strategy:
+        /// - **High Confidence (>0.7) + Database Queries**: Executes database query only
+        /// - **High Confidence (>0.7) + No Database Queries**: Executes document query only
+        /// - **Medium Confidence (0.3-0.7)**: Executes both database and document queries, merges results
+        /// - **Low Confidence (<0.3)**: Executes document query only (fallback)
+        /// 
+        /// The unified RAG pipeline automatically:
+        /// - Analyzes query intent and complexity using AI
+        /// - Routes to appropriate data sources based on confidence
+        /// - Retrieves relevant information from documents, images, audio, and databases
+        /// - Assembles contextual information from all sources
+        /// - Generates accurate, well-cited responses combining all sources
         /// - Provides source links and confidence metrics
+        /// 
+        /// Example queries:
+        /// - "Show me top records from databases" → Database query
+        /// - "What does the uploaded document say about X?" → Document query
+        /// - "Compare data from databases with information in documents" → Hybrid query
         /// </remarks>
         /// <param name="request">Intelligence request with query and parameters</param>
-        /// <returns>AI-generated response with sources and confidence metrics</returns>
+        /// <returns>AI-generated response with sources from all available data sources</returns>
         [HttpPost("query")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
