@@ -341,8 +341,13 @@ temp-files/
 TestSQLiteData/
 
 # Whisper.net model files
+# Generic model folders kept untracked by default
 models/
 **/models/
+
+# Allow SmartRAG library models to be tracked
+!src/SmartRAG/Models/
+!src/SmartRAG/Models/**
 **/ggml-*.bin
 **/ggml-large-v3.bin
 

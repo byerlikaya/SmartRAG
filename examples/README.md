@@ -9,11 +9,13 @@ This directory contains example projects demonstrating how to use SmartRAG in di
 - **Description**: Complete web API implementation showing document upload, search, and RAG operations
 
 - **Features**: 
+  - **Unified Query Intelligence**: Single endpoint searches across documents, images (OCR), audio (transcription), and databases
   - Multi-document upload (PDF, Word, Excel, text files)
   - Image processing with OCR support (.jpg, .png, .gif, .bmp, .tiff, .webp)
   - Audio processing with Whisper.net (local, 99+ languages)
-  - AI-powered question answering
-  - Smart query intent detection
+  - AI-powered question answering with Smart Hybrid routing
+  - Smart query intent detection with confidence-based routing
+  - Automatic source selection (database, documents, or both)
   - Conversation history management
   - Multiple storage providers (Qdrant, Redis, SQLite, FileSystem, InMemory)
   - Enhanced semantic search with hybrid scoring
@@ -23,8 +25,11 @@ This directory contains example projects demonstrating how to use SmartRAG in di
 - **Location**: `SmartRAG.Demo/`
 - **Description**: Comprehensive demo showcasing SmartRAG's deployment flexibility and multi-database capabilities
 - **Features**:
+  - **Unified Query Intelligence**: Single query searches across documents, images, audio, and databases automatically
   - **Deployment Modes**: 100% Local, 100% Cloud, or Hybrid configurations
+  - **Smart Hybrid Routing**: AI automatically determines whether to search databases, documents, or both
   - **Multi-Database Queries**: Cross-database natural language queries (SQL Server, MySQL, PostgreSQL, SQLite)
+  - **Multi-Modal Support**: Documents (PDF, Word, Excel), Images (OCR), Audio (Speech-to-Text), Databases
   - **Local AI**: Ollama integration for complete on-premise deployment (GDPR/KVKK/HIPAA compliant)
   - **Cloud AI**: Anthropic Claude, OpenAI GPT, Google Gemini support
   - **Docker Orchestration**: Complete containerized environment with docker-compose

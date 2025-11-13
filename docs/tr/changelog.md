@@ -10,6 +10,104 @@ SmartRAG'deki tüm önemli değişiklikler burada belgelenmiştir. Proje [Anlams
 
 ---
 
+## [3.1.0] - 2025-11-11
+
+### ✨ Birleşik Sorgu Zekası
+
+#### **Önemli Özellik: Tüm Veri Kaynaklarında Birleşik Arama**
+- **Birleşik Sorgu Zekası**: `QueryIntelligenceAsync` artık veritabanları, dokümanlar, görseller (OCR) ve ses (transkripsiyon) üzerinde tek bir sorguda birleşik arama destekliyor
+- **Akıllı Hibrit Yönlendirme**: Güven skorlaması ile AI tabanlı niyet tespiti otomatik olarak optimal arama stratejisini belirler
+  - Yüksek güven (>0.7) + veritabanı sorguları → Sadece veritabanı sorgusu
+  - Yüksek güven (>0.7) + veritabanı sorgusu yok → Sadece doküman sorgusu
+  - Orta güven (0.3-0.7) → Hem veritabanı hem doküman sorguları, birleştirilmiş sonuçlar
+  - Düşük güven (<0.3) → Sadece doküman sorgusu (yedek)
+- **QueryStrategy Enum**: Sorgu yürütme stratejileri için yeni enum (DatabaseOnly, DocumentOnly, Hybrid)
+- **Yeni Servis Mimarisi**: QueryIntentAnalyzer, DatabaseQueryExecutor, ResultMerger ve SQLQueryGenerator servisleri ile modüler tasarım
+- **Paralel Sorgu Yürütme**: Daha iyi performans için çoklu-veritabanı sorguları paralel olarak yürütülür
+- **Akıllı Sonuç Birleştirme**: Birden fazla veritabanından gelen sonuçların AI destekli birleştirilmesi
+- **Akıllı Yönlendirme**: Zarif bozulma ve yedek mekanizmalarla geliştirilmiş sorgu yönlendirme mantığı
+- **Geliştirilmiş Hata Yönetimi**: Veritabanı sorgu hataları için daha iyi hata yönetimi
+
+#### **Yeni Servisler & Interface'ler**
+- `QueryIntentAnalyzer` - Kullanıcı sorgularını analiz eder ve hangi veritabanları/tabloları sorgulayacağını AI kullanarak belirler
+- `DatabaseQueryExecutor` - Birden fazla veritabanında paralel sorgu yürütür
+- `ResultMerger` - Birden fazla veritabanından gelen sonuçları AI kullanarak tutarlı yanıtlara birleştirir
+- `SQLQueryGenerator` - Sorgu niyetine göre her veritabanı için optimize edilmiş SQL sorguları üretir
+
+#### **Yeni Modeller**
+- `AudioSegmentMetadata` - Zaman damgaları ve güven skorları ile ses transkripsiyon segmentleri için metadata modeli
+
+#### **Geliştirilmiş Modeller**
+- `SearchSource` - Kaynak tipi farklılaştırması ile geliştirildi (Database, Document, Image, Audio)
+
+### 🔧 Kod Kalitesi & AI Prompt Optimizasyonu
+
+#### **Kod Kalitesi İyileştirmeleri**
+- **Build Kalitesi**: Tüm projelerde 0 hata, 0 uyarı elde edildi
+- **Kod Standartları**: Proje kod standartlarına tam uyumluluk
+
+#### **AI Prompt Optimizasyonu**
+- **Emoji Azaltma**: AI prompt'larındaki emoji kullanımı 235'ten 5'e düşürüldü (sadece kritik: 🚨, ✓, ✗)
+- **Token Verimliliği**: Token verimliliği iyileştirildi (prompt başına ~100 token tasarruf)
+- **Stratejik Kullanım**: Stratejik emoji kullanımı ile daha iyi AI anlayışı
+
+#### **Değiştirilen Dosyalar**
+- `src/SmartRAG/Services/SQLQueryGenerator.cs` - AI prompt'larında emoji optimizasyonu
+- `src/SmartRAG/Services/MultiDatabaseQueryCoordinator.cs` - Emoji optimizasyonu
+- `src/SmartRAG/Services/QueryIntentAnalyzer.cs` - Emoji optimizasyonu
+- `src/SmartRAG/Services/DocumentSearchService.cs` - Emoji optimizasyonu
+
+### ✨ Faydalar
+- **Temiz Kod Tabanı**: Tüm projelerde sıfır uyarı
+- **Daha İyi Performans**: Daha verimli AI prompt işleme
+- **Geliştirilmiş Bakım Kolaylığı**: Daha iyi kod kalitesi ve standart uyumluluğu
+- **Maliyet Verimliliği**: AI prompt'larında azaltılmış token kullanımı
+
+---
+
+## [3.0.3] - 2025-11-06
+
+### 🎯 Paket Optimizasyonu - Native Kütüphaneler
+
+#### **Paket Boyutu Azaltma**
+- **Native Kütüphaneler Hariç**: Whisper.net.Runtime native kütüphaneleri (ggml-*.dll, libggml-*.so, libggml-*.dylib) artık SmartRAG NuGet paketine dahil edilmiyor
+- **Tessdata Hariç**: `tessdata/eng.traineddata` dosyası artık SmartRAG NuGet paketine dahil edilmiyor
+- **Azaltılmış Paket Boyutu**: Önemli ölçüde daha küçük NuGet paket boyutu
+- **Temiz Çıktı**: Proje çıktı dizininde gereksiz native kütüphane dosyaları yok
+
+#### **Değiştirilen Dosyalar**
+- `src/SmartRAG/SmartRAG.csproj` - Whisper.net.Runtime paket referansına `PrivateAssets="All"` eklendi
+- `src/SmartRAG/SmartRAG.csproj` - tessdata/eng.traineddata içerik dosyasına `Pack="false"` eklendi
+
+### ✨ Faydalar
+- **Daha Küçük Paket Boyutu**: Native kütüphaneleri hariç tutarak NuGet paket boyutu azaltıldı
+- **Temiz Projeler**: Proje çıktısında gereksiz native kütüphane dosyaları yok
+- **Daha İyi Bağımlılık Yönetimi**: Native kütüphaneler kendi paketlerinden geliyor (Whisper.net.Runtime, Tesseract)
+- **Tutarlı Davranış**: Whisper.net.Runtime paketini doğrudan referans ederkenki davranışla eşleşiyor
+
+### 📚 Geçiş Rehberi
+OCR veya Ses Transkripsiyonu özelliklerini kullanıyorsanız:
+
+**Ses Transkripsiyonu için (Whisper.net):**
+1. Projenize `Whisper.net.Runtime` paketini ekleyin:
+   ```xml
+   <PackageReference Include="Whisper.net.Runtime" Version="1.8.1" />
+   ```
+2. Native kütüphaneler Whisper.net.Runtime paketinden otomatik olarak dahil edilecek
+3. Başka değişiklik gerekmiyor
+
+**OCR için (Tesseract):**
+1. Projenize `Tesseract` paketini ekleyin:
+   ```xml
+   <PackageReference Include="Tesseract" Version="5.2.0" />
+   ```
+2. Tesseract paketi tessdata dosyalarını otomatik olarak içerir
+3. Başka değişiklik gerekmiyor
+
+**Not**: OCR veya Ses Transkripsiyonu özelliklerini kullanmıyorsanız, herhangi bir işlem gerekmez. Paketler hala bağımlılık olarak indirilir, ancak native kütüphaneler paketleri açıkça referans etmediğiniz sürece dahil edilmez.
+
+---
+
 ## [3.0.2] - 2025-10-24
 
 ### 🚀 BREAKING CHANGES - Google Speech-to-Text Kaldırıldı
@@ -67,7 +165,7 @@ Google Speech-to-Text kullanıyorsanız:
 - **LoggerMessage Parametre Uyumsuzluğu**: `LogAudioServiceInitialized` LoggerMessage tanımında eksik `configPath` parametresi düzeltildi
 - **EventId Çakışmaları**: ServiceLogMessages.cs'deki çakışan EventId atamaları çözüldü (6006, 6008, 6009)
 - **Logo Görüntüleme Sorunu**: NuGet'te görüntüleme sorunlarına neden olan README dosyalarındaki bozuk logo referansları kaldırıldı
-- **TypeInitializationException**: SmartRAG.Demo'nun çalışmasını engelleyen kritik başlatma hatası düzeltildi
+- **TypeInitializationException**: Kritik başlatma hatası düzeltildi
 
 ### 🔧 Teknik İyileştirmeler
 - **ServiceLogMessages.cs**: LoggerMessage tanımları parametre sayılarıyla doğru eşleşecek şekilde güncellendi
@@ -366,6 +464,16 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
             </tr>
         </thead>
         <tbody>
+            <tr>
+                <td><strong>3.1.0</strong></td>
+                <td>2025-11-11</td>
+                <td>Birleşik Sorgu Zekası, Akıllı Hibrit Yönlendirme, Yeni Servis Mimarisi</td>
+            </tr>
+            <tr>
+                <td><strong>3.0.3</strong></td>
+                <td>2025-11-06</td>
+                <td>Paket Optimizasyonu - Native Kütüphaneler Hariç</td>
+            </tr>
             <tr>
                 <td><strong>3.0.0</strong></td>
                 <td>2025-10-22</td>

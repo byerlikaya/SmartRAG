@@ -182,7 +182,7 @@ dotnet --version  # 9.0.x olmalı
 docker ps | grep ollama
 
 # Çalışmıyorsa başlat
-docker-compose up -d ollama
+docker-compose up -d smartrag-ollama
 
 # Logları kontrol et
 docker logs smartrag-ollama
@@ -194,7 +194,7 @@ docker logs smartrag-ollama
 docker ps | grep qdrant
 
 # Yeniden başlat
-docker-compose restart qdrant
+docker-compose restart smartrag-qdrant
 
 # Logları görüntüle
 docker logs smartrag-qdrant
@@ -206,9 +206,9 @@ docker logs smartrag-qdrant
 docker-compose ps
 
 # Belirli veritabanını başlat
-docker-compose up -d sqlserver
-docker-compose up -d mysql
-docker-compose up -d postgres
+docker-compose up -d smartrag-sqlserver
+docker-compose up -d smartrag-mysql
+docker-compose up -d smartrag-postgres
 ```
 
 ### **Konfigürasyon Sorunları**

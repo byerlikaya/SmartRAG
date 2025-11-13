@@ -85,26 +85,40 @@ namespace SmartRAG.API.Controllers
         }
 
         /// <summary>
-        /// Intelligent AI query processing with automatic routing and RAG
+        /// Unified intelligent query processing with automatic routing and RAG
         /// </summary>
         /// <remarks>
-        /// Performs intelligent query processing with comprehensive RAG pipeline including:
-        /// - **Query Intent Analysis**: Determines if query requires search, conversation, or both
-        /// - **Multi-Modal Retrieval**: Searches across documents, databases, and conversations
+        /// Performs unified intelligent query processing across all data sources using Smart Hybrid approach:
+        /// - **Unified Search**: Searches across documents, images (OCR), audio (transcription), and databases in a single query
+        /// - **Smart Hybrid Routing**: AI-based intent detection with confidence scoring determines optimal search strategy
+        /// - **Query Intent Analysis**: Determines if query requires database, document, or hybrid search
+        /// - **Multi-Modal Retrieval**: Automatically searches all available sources (documents, images, audio, databases)
         /// - **Context Assembly**: Selects and ranks relevant information from multiple sources
-        /// - **AI Response Generation**: Synthesizes comprehensive answers with citations
-        /// - **Confidence Scoring**: Provides confidence levels for generated responses
-        /// - **Source Attribution**: Links responses to original source materials
+        /// - **AI Response Generation**: Synthesizes comprehensive answers combining all sources
+        /// - **Confidence Scoring**: Uses confidence thresholds to route queries intelligently
+        /// - **Source Attribution**: Links responses to original source materials (documents, databases, etc.)
         /// 
-        /// The RAG pipeline automatically:
-        /// - Analyzes query intent and complexity
-        /// - Retrieves relevant documents and data
-        /// - Assembles contextual information
-        /// - Generates accurate, well-cited responses
+        /// Smart Hybrid Routing Strategy:
+        /// - **High Confidence (>0.7) + Database Queries**: Executes database query only
+        /// - **High Confidence (>0.7) + No Database Queries**: Executes document query only
+        /// - **Medium Confidence (0.3-0.7)**: Executes both database and document queries, merges results
+        /// - **Low Confidence (&lt;0.3)**: Executes document query only (fallback)
+        /// 
+        /// The unified RAG pipeline automatically:
+        /// - Analyzes query intent and complexity using AI
+        /// - Routes to appropriate data sources based on confidence
+        /// - Retrieves relevant information from documents, images, audio, and databases
+        /// - Assembles contextual information from all sources
+        /// - Generates accurate, well-cited responses combining all sources
         /// - Provides source links and confidence metrics
+        /// 
+        /// Example queries:
+        /// - "Show me top records from databases" → Database query
+        /// - "What does the uploaded document say about X?" → Document query
+        /// - "Compare data from databases with information in documents" → Hybrid query
         /// </remarks>
         /// <param name="request">Intelligence request with query and parameters</param>
-        /// <returns>AI-generated response with sources and confidence metrics</returns>
+        /// <returns>AI-generated response with sources from all available data sources</returns>
         [HttpPost("query")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -292,7 +306,7 @@ namespace SmartRAG.API.Controllers
         [HttpGet("conversations")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
-        public async Task<ActionResult> QueryConversations(
+        public Task<ActionResult> QueryConversations(
             [FromQuery] string query,
             [FromQuery] string? userId = null,
             [FromQuery] int limit = 10,
@@ -300,7 +314,7 @@ namespace SmartRAG.API.Controllers
             [FromQuery] DateTime? endDate = null)
         {
             if (string.IsNullOrWhiteSpace(query))
-                return BadRequest("Query cannot be empty");
+                return Task.FromResult<ActionResult>(BadRequest("Query cannot be empty"));
 
             try
             {
@@ -337,7 +351,7 @@ namespace SmartRAG.API.Controllers
                     }
                 };
 
-                return Ok(new
+                return Task.FromResult<ActionResult>(Ok(new
                 {
                     query,
                     userId,
@@ -349,11 +363,11 @@ namespace SmartRAG.API.Controllers
                         endDate,
                         limit
                     }
-                });
+                }));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Error = ex.Message });
+                return Task.FromResult<ActionResult>(StatusCode(500, new { Error = ex.Message }));
             }
         }
 
@@ -381,7 +395,7 @@ namespace SmartRAG.API.Controllers
         /// <returns>Comprehensive intelligence analytics and metrics</returns>
         [HttpGet("analytics")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-        public async Task<ActionResult> GetIntelligenceAnalytics(
+        public Task<ActionResult> GetIntelligenceAnalytics(
             [FromQuery] DateTime? startDate = null,
             [FromQuery] DateTime? endDate = null,
             [FromQuery] string? userId = null)
@@ -427,11 +441,11 @@ namespace SmartRAG.API.Controllers
                     }
                 };
 
-                return Ok(analytics);
+                return Task.FromResult<ActionResult>(Ok(analytics));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Error = ex.Message });
+                return Task.FromResult<ActionResult>(StatusCode(500, new { Error = ex.Message }));
             }
         }
 
@@ -556,7 +570,7 @@ namespace SmartRAG.API.Controllers
         /// - Debugging query issues
         /// - Previewing which data sources will be accessed
         /// </remarks>
-        /// <param name="query">Natural language query to analyze</param>
+        /// <param name="request">Search request containing the query to analyze</param>
         /// <returns>Query intent analysis showing databases and tables that would be queried</returns>
         [HttpPost("analyze-query-intent")]
         [ProducesResponseType(typeof(QueryIntentAnalysisResponseDto), StatusCodes.Status200OK)]

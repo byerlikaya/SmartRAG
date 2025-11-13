@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -93,6 +94,7 @@ namespace SmartRAG.Services
         private readonly IAudioParserService _audioParserService;
         private readonly IDatabaseParserService _databaseParserService;
         private readonly ILogger<DocumentParserService> _logger;
+        private Dictionary<string, object> _lastParsedMetadata;
 
         #endregion
 
@@ -119,6 +121,7 @@ namespace SmartRAG.Services
             _audioParserService = audioParserService;
             _databaseParserService = databaseParserService;
             _logger = logger;
+            _lastParsedMetadata = null;
         }
 
         #endregion
@@ -132,12 +135,18 @@ namespace SmartRAG.Services
         {
             try
             {
+                _lastParsedMetadata = null;
                 var content = await ExtractTextAsync(fileStream, fileName, contentType, language);
                 var documentId = Guid.NewGuid();
                 var chunks = CreateChunks(content, documentId);
 
                 var document = CreateDocument(documentId, fileName, contentType, content, uploadedBy, chunks);
+                if (_lastParsedMetadata != null && _lastParsedMetadata.Count > 0)
+                {
+                    document.Metadata = new Dictionary<string, object>(_lastParsedMetadata);
+                }
                 PopulateMetadata(document);
+                AnnotateDocumentMetadata(document, content);
 
                 return document;
             }
@@ -184,15 +193,125 @@ namespace SmartRAG.Services
         /// </summary>
         private static void PopulateMetadata(SmartRAG.Entities.Document document)
         {
-            document.Metadata = new Dictionary<string, object>
+            if (document.Metadata == null)
             {
-                ["FileName"] = document.FileName,
-                ["ContentType"] = document.ContentType,
-                ["UploadedBy"] = document.UploadedBy,
-                ["UploadedAt"] = document.UploadedAt,
-                ["ContentLength"] = document.Content?.Length ?? 0,
-                ["ChunkCount"] = document.Chunks?.Count ?? 0
-            };
+                document.Metadata = new Dictionary<string, object>();
+            }
+
+            document.Metadata["FileName"] = document.FileName;
+            document.Metadata["ContentType"] = document.ContentType;
+            document.Metadata["UploadedBy"] = document.UploadedBy;
+            document.Metadata["UploadedAt"] = document.UploadedAt;
+            document.Metadata["ContentLength"] = document.Content?.Length ?? 0;
+            document.Metadata["ChunkCount"] = document.Chunks?.Count ?? 0;
+        }
+
+        private void AnnotateDocumentMetadata(SmartRAG.Entities.Document document, string content)
+        {
+            if (document == null || document.Metadata == null)
+            {
+                return;
+            }
+
+            AnnotateAudioMetadata(document, content);
+        }
+
+        private void AnnotateAudioMetadata(SmartRAG.Entities.Document document, string content)
+        {
+            if (!document.Metadata.TryGetValue("Segments", out var segmentsObj))
+            {
+                return;
+            }
+
+            var segments = ConvertToAudioSegments(segmentsObj);
+            if (segments.Count == 0)
+            {
+                return;
+            }
+
+            var normalizedContent = NormalizeForMatching(content);
+            var searchIndex = 0;
+
+            foreach (var segment in segments)
+            {
+                var normalizedSegment = NormalizeForMatching(segment.Text);
+                segment.NormalizedText = normalizedSegment;
+
+                if (string.IsNullOrEmpty(normalizedSegment))
+                {
+                    continue;
+                }
+
+                var index = FindSegmentPosition(normalizedContent, normalizedSegment, searchIndex);
+                if (index < 0)
+                {
+                    continue;
+                }
+
+                segment.StartCharIndex = index;
+                segment.EndCharIndex = index + normalizedSegment.Length;
+                searchIndex = segment.EndCharIndex;
+            }
+
+            document.Metadata["Segments"] = segments;
+        }
+
+        private static List<AudioSegmentMetadata> ConvertToAudioSegments(object segmentsObj)
+        {
+            if (segmentsObj is List<AudioSegmentMetadata> typedList)
+            {
+                return typedList;
+            }
+
+            if (segmentsObj is AudioSegmentMetadata[] typedArray)
+            {
+                return new List<AudioSegmentMetadata>(typedArray);
+            }
+
+            if (segmentsObj is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.Array)
+            {
+                try
+                {
+                    var json = jsonElement.GetRawText();
+                    var deserialized = JsonSerializer.Deserialize<List<AudioSegmentMetadata>>(json);
+                    return deserialized ?? new List<AudioSegmentMetadata>();
+                }
+                catch
+                {
+                    return new List<AudioSegmentMetadata>();
+                }
+            }
+
+            return new List<AudioSegmentMetadata>();
+        }
+
+        private static string NormalizeForMatching(string value)
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return string.Empty;
+            }
+
+            var normalized = RemoveBinaryCharacters(value);
+            normalized = Regex.Replace(normalized, @"\s+", " ");
+            return normalized.Trim();
+        }
+
+        private static int FindSegmentPosition(string content, string segment, int startingIndex)
+        {
+            if (string.IsNullOrEmpty(content) || string.IsNullOrEmpty(segment))
+            {
+                return -1;
+            }
+
+            var index = content.IndexOf(segment, startingIndex, StringComparison.OrdinalIgnoreCase);
+
+            if (index < 0)
+            {
+                index = content.IndexOf(segment, StringComparison.OrdinalIgnoreCase);
+            }
+
+            return index;
         }
 
         /// <summary>
@@ -1007,39 +1126,38 @@ namespace SmartRAG.Services
                 return apiLanguage;
             }
 
-            // Priority 2: Filename analysis
+            // Priority 2: Filename analysis using ISO 639-1 language codes
+            // This approach is generic and supports all languages without hardcoded language names
             var fileNameLower = fileName.ToLowerInvariant();
             
-            // Language keywords in filename
-            if (fileNameLower.Contains("turkish") || fileNameLower.Contains("turkce") || fileNameLower.Contains("tr"))
-                return "tr-TR";
-            if (fileNameLower.Contains("english") || fileNameLower.Contains("ingilizce") || fileNameLower.Contains("en"))
-                return "en-US";
-            if (fileNameLower.Contains("german") || fileNameLower.Contains("almanca") || fileNameLower.Contains("de"))
-                return "de-DE";
-            if (fileNameLower.Contains("french") || fileNameLower.Contains("fransizca") || fileNameLower.Contains("fr"))
-                return "fr-FR";
-            if (fileNameLower.Contains("spanish") || fileNameLower.Contains("ispanyolca") || fileNameLower.Contains("es"))
-                return "es-ES";
-            if (fileNameLower.Contains("italian") || fileNameLower.Contains("italyanca") || fileNameLower.Contains("it"))
-                return "it-IT";
-            if (fileNameLower.Contains("portuguese") || fileNameLower.Contains("portekizce") || fileNameLower.Contains("pt"))
-                return "pt-BR";
-            if (fileNameLower.Contains("russian") || fileNameLower.Contains("rusca") || fileNameLower.Contains("ru"))
-                return "ru-RU";
-            if (fileNameLower.Contains("japanese") || fileNameLower.Contains("japonca") || fileNameLower.Contains("ja"))
-                return "ja-JP";
-            if (fileNameLower.Contains("korean") || fileNameLower.Contains("korece") || fileNameLower.Contains("ko"))
-                return "ko-KR";
-            if (fileNameLower.Contains("chinese") || fileNameLower.Contains("cince") || fileNameLower.Contains("zh"))
-                return "zh-CN";
-            if (fileNameLower.Contains("arabic") || fileNameLower.Contains("arapca") || fileNameLower.Contains("ar"))
-                return "ar-SA";
-            if (fileNameLower.Contains("hindi") || fileNameLower.Contains("hintce") || fileNameLower.Contains("hi"))
-                return "hi-IN";
+            // Extract ISO 639-1 language codes (2-letter codes) from filename
+            // Pattern: Look for 2-letter codes that are valid ISO 639-1 language codes
+            // Common patterns: "audio_en.mp3", "recording-tr.wav", "file_ja_audio.mp3"
+            var iso6391Pattern = @"\b([a-z]{2})(?:[-_]([a-z]{2}))?\b";
+            var matches = Regex.Matches(fileNameLower, iso6391Pattern);
+            
+            foreach (Match match in matches)
+            {
+                var languageCode = match.Groups[1].Value;
+                var regionCode = match.Groups[2].Success ? match.Groups[2].Value : null;
+                
+                // Validate: ISO 639-1 codes are 2 letters, check if it's a valid pattern
+                // Common valid codes: en, tr, de, fr, es, it, pt, ru, ja, ko, zh, ar, hi, etc.
+                if (languageCode.Length == 2 && char.IsLetter(languageCode[0]) && char.IsLetter(languageCode[1]))
+                {
+                    // Build locale string: "languageCode-REGION" or "languageCode-REGION" format
+                    // If region code found, use it; otherwise use uppercase language code as region
+                    var locale = regionCode != null && regionCode.Length == 2
+                        ? $"{languageCode}-{regionCode.ToUpperInvariant()}"
+                        : $"{languageCode}-{languageCode.ToUpperInvariant()}";
+                    
+                    // Return first valid ISO 639-1 code found
+                    return locale;
+                }
+            }
 
-            // Priority 3: Default to Turkish (most common for this project)
-            return "tr-TR";
+            // Priority 3: Default fallback locale
+            return "en-US";
         }
 
         /// <summary>
@@ -1054,6 +1172,9 @@ namespace SmartRAG.Services
                 
                 // Use Speech-to-Text to extract text from audio with detected language
                 var transcriptionResult = await _audioParserService.TranscribeAudioAsync(fileStream, fileName, detectedLanguage);
+                _lastParsedMetadata = transcriptionResult.Metadata != null
+                    ? new Dictionary<string, object>(transcriptionResult.Metadata)
+                    : new Dictionary<string, object>();
                 
                 if (string.IsNullOrWhiteSpace(transcriptionResult.Text))
                 {

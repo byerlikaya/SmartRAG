@@ -433,7 +433,7 @@ namespace SmartRAG.API.Controllers
         /// <response code="500">If there was an internal server error</response>
         [HttpGet("status")]
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
-        public async Task<ActionResult<object>> GetSystemStatus()
+        public Task<ActionResult<object>> GetSystemStatus()
         {
             try
             {
@@ -462,11 +462,11 @@ namespace SmartRAG.API.Controllers
                     }
                 };
 
-                return Ok(status);
+                return Task.FromResult<ActionResult<object>>(Ok(status));
             }
             catch (Exception ex)
             {
-                return StatusCode(500, new { Error = ex.Message });
+                return Task.FromResult<ActionResult<object>>(StatusCode(500, new { Error = ex.Message }));
             }
         }
 

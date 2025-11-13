@@ -20,10 +20,8 @@ namespace SmartRAG.Services
     {
         #region Constants
 
-        private const double MinimumConfidence = 0.0;
         private const double DefaultConfidence = 0.5;
         private const double FallbackConfidence = 0.3;
-        private const int AiResponseLogLimit = 500;
         private const int MaxTablesInFallback = 5;
         private const int DefaultMaxRows = 100;
         private const int SampleDataLimit = 200;
@@ -37,6 +35,10 @@ namespace SmartRAG.Services
         private readonly IDatabaseParserService _databaseParser;
         private readonly IAIService _aiService;
         private readonly ILogger<MultiDatabaseQueryCoordinator> _logger;
+        private readonly IQueryIntentAnalyzer _queryIntentAnalyzer;
+        private readonly ISQLQueryGenerator _sqlQueryGenerator;
+        private readonly IDatabaseQueryExecutor _databaseQueryExecutor;
+        private readonly IResultMerger _resultMerger;
 
         #endregion
 
@@ -47,13 +49,25 @@ namespace SmartRAG.Services
             IDatabaseSchemaAnalyzer schemaAnalyzer,
             IDatabaseParserService databaseParser,
             IAIService aiService,
-            ILogger<MultiDatabaseQueryCoordinator> logger)
+            ILogger<MultiDatabaseQueryCoordinator> logger,
+            IQueryIntentAnalyzer queryIntentAnalyzer,
+            ISQLQueryGenerator sqlQueryGenerator,
+            IDatabaseQueryExecutor databaseQueryExecutor,
+            IResultMerger resultMerger)
         {
             _connectionManager = connectionManager;
             _schemaAnalyzer = schemaAnalyzer;
             _databaseParser = databaseParser;
             _aiService = aiService;
             _logger = logger;
+            _queryIntentAnalyzer = queryIntentAnalyzer ?? throw new ArgumentNullException(nameof(queryIntentAnalyzer), 
+                "QueryIntentAnalyzer must be provided. Register IQueryIntentAnalyzer in DI container.");
+            _sqlQueryGenerator = sqlQueryGenerator ?? throw new ArgumentNullException(nameof(sqlQueryGenerator),
+                "SQLQueryGenerator must be provided. Register ISQLQueryGenerator in DI container.");
+            _databaseQueryExecutor = databaseQueryExecutor ?? throw new ArgumentNullException(nameof(databaseQueryExecutor),
+                "DatabaseQueryExecutor must be provided. Register IDatabaseQueryExecutor in DI container.");
+            _resultMerger = resultMerger ?? throw new ArgumentNullException(nameof(resultMerger),
+                "ResultMerger must be provided. Register IResultMerger in DI container.");
         }
 
         #endregion
@@ -62,103 +76,16 @@ namespace SmartRAG.Services
 
         public async Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery)
         {
-            _logger.LogInformation("Analyzing query intent for: {Query}", userQuery);
-
-            var queryIntent = new QueryIntent
-            {
-                OriginalQuery = userQuery
-            };
-
-            try
-            {
-                // Get all database schemas
-                var schemas = await _schemaAnalyzer.GetAllSchemasAsync();
-
-                if (schemas.Count == 0)
-                {
-                    _logger.LogWarning("No database schemas available for query analysis");
-                    queryIntent.Confidence = MinimumConfidence;
-                    return queryIntent;
-                }
-
-                // Build AI prompt for query analysis
-                var prompt = BuildQueryAnalysisPrompt(userQuery, schemas);
-
-                // Get AI analysis
-                var aiResponse = await _aiService.GenerateResponseAsync(prompt, new List<string>());
-                
-                // Debug: Log AI response
-                _logger.LogInformation("AI Response (first {Limit} chars): {Response}", 
-                    AiResponseLogLimit,
-                    aiResponse?.Substring(0, Math.Min(AiResponseLogLimit, aiResponse?.Length ?? 0)) ?? "NULL");
-
-                // Parse AI response into QueryIntent
-                queryIntent = ParseAIResponse(aiResponse, userQuery, schemas);
-
-                _logger.LogInformation("Query analysis completed. Confidence: {Confidence}, Databases: {Count}",
-                    queryIntent.Confidence, queryIntent.DatabaseQueries.Count);
-                
-                // Debug: Log which databases and tables were selected
-                _logger.LogInformation("AI selected {Count} database(s) for this query:", queryIntent.DatabaseQueries.Count);
-                foreach (var dbQuery in queryIntent.DatabaseQueries)
-                {
-                    _logger.LogInformation("  ✓ {DbName} → Tables: [{Tables}]", 
-                        dbQuery.DatabaseName, string.Join(", ", dbQuery.RequiredTables));
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error analyzing query intent");
-                queryIntent.Confidence = MinimumConfidence;
-            }
-
-            return queryIntent;
+            return await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(userQuery);
         }
 
         public async Task<MultiDatabaseQueryResult> ExecuteMultiDatabaseQueryAsync(QueryIntent queryIntent)
         {
-            var stopwatch = Stopwatch.StartNew();
-            var result = new MultiDatabaseQueryResult
-            {
-                Success = true
-            };
-
-            _logger.LogInformation("Executing multi-database query across {Count} databases",
-                queryIntent.DatabaseQueries.Count);
-
-            // Execute queries in parallel
-            var tasks = queryIntent.DatabaseQueries.Select(async dbQuery =>
-            {
-                var dbResult = await ExecuteSingleDatabaseQueryAsync(dbQuery);
-                return (dbQuery.DatabaseId, dbResult);
-            });
-
-            var results = await Task.WhenAll(tasks);
-
-            foreach (var (databaseId, dbResult) in results)
-            {
-                result.DatabaseResults[databaseId] = dbResult;
-                
-                if (!dbResult.Success)
-                {
-                    result.Success = false;
-                    result.Errors.Add($"Database {databaseId}: {dbResult.ErrorMessage}");
-                }
-            }
-
-            stopwatch.Stop();
-            result.ExecutionTimeMs = stopwatch.ElapsedMilliseconds;
-
-            _logger.LogInformation("Multi-database query completed in {Ms}ms. Success: {Success}",
-                result.ExecutionTimeMs, result.Success);
-
-            return result;
+            return await _databaseQueryExecutor.ExecuteMultiDatabaseQueryAsync(queryIntent);
         }
 
         public async Task<RagResponse> QueryMultipleDatabasesAsync(string userQuery, int maxResults = 5)
         {
-            _logger.LogInformation("Processing multi-database query: {Query}", userQuery);
-
             try
             {
                 // Step 1: Analyze query intent
@@ -166,11 +93,7 @@ namespace SmartRAG.Services
 
                 if (queryIntent.DatabaseQueries.Count == 0)
                 {
-                return new RagResponse
-                {
-                    Answer = "I couldn't determine which databases to query for your question. Please try rephrasing your query.",
-                    Sources = new List<SearchSource> { new SearchSource { FileName = "No databases matched" } }
-                };
+                    return CreateNoDatabaseMatchResponse();
                 }
                 
                 // Step 1.5: Validate intent - remove invalid database/table combinations
@@ -184,33 +107,37 @@ namespace SmartRAG.Services
 
                 if (!queryResults.Success)
                 {
-                    return new RagResponse
-                    {
-                        Answer = $"Some database queries failed: {string.Join(", ", queryResults.Errors)}",
-                        Sources = new List<SearchSource> { new SearchSource { FileName = "Error in query execution" } }
-                    };
+                    return CreateQueryExecutionErrorResponse(queryResults.Errors);
                 }
 
                 // Step 4: Merge and generate final response
-                var mergedData = await MergeResultsAsync(queryResults, userQuery);
+                var mergedData = await _resultMerger.MergeResultsAsync(queryResults, userQuery);
 
                 // Step 5: Generate AI answer from merged data
-                var finalAnswer = await GenerateFinalAnswerAsync(userQuery, mergedData, queryResults);
+                var finalAnswer = await _resultMerger.GenerateFinalAnswerAsync(userQuery, mergedData, queryResults);
 
                 return finalAnswer;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing multi-database query");
-                return new RagResponse
-                {
-                    Answer = $"An error occurred while processing your query: {ex.Message}",
-                    Sources = new List<SearchSource> { new SearchSource { FileName = "Error" } }
-                };
+                return CreateExceptionResponse(ex);
             }
         }
 
         public async Task<QueryIntent> GenerateDatabaseQueriesAsync(QueryIntent queryIntent)
+        {
+            return await _sqlQueryGenerator.GenerateDatabaseQueriesAsync(queryIntent);
+        }
+
+        #endregion
+
+        #region Private Helper Methods (Legacy - Kept for Reference Only)
+
+        // NOTE: The following methods have been moved to SQLQueryGenerator and ResultMerger services
+        // They are kept here temporarily for reference but should be removed in future cleanup
+
+        private async Task<QueryIntent> GenerateDatabaseQueriesAsync_OLD(QueryIntent queryIntent)
         {
             _logger.LogInformation("Generating SQL queries for {Count} databases", queryIntent.DatabaseQueries.Count);
             
@@ -350,15 +277,10 @@ namespace SmartRAG.Services
                     }
 
                     
-                    // Log the generated SQL result
-                    if (!string.IsNullOrEmpty(dbQuery.GeneratedQuery))
+                    // Log only if SQL generation failed
+                    if (string.IsNullOrEmpty(dbQuery.GeneratedQuery))
                     {
-                        _logger.LogInformation("✓ Generated SQL for {DatabaseId}: {SQL}", 
-                            dbQuery.DatabaseId, dbQuery.GeneratedQuery);
-                    }
-                    else
-                    {
-                        _logger.LogWarning("✗ SQL generation failed validation for {DatabaseId}", dbQuery.DatabaseId);
+                        _logger.LogWarning("SQL generation failed validation for {DatabaseId}", dbQuery.DatabaseId);
                     }
                 }
                 catch (Exception ex)
@@ -370,8 +292,6 @@ namespace SmartRAG.Services
             // Add any additional databases discovered during SQL validation
             if (additionalQueries.Count > 0)
             {
-                _logger.LogInformation("Adding {Count} additional database(s) discovered during SQL generation", additionalQueries.Count);
-                
                 foreach (var additionalQuery in additionalQueries)
                 {
                     queryIntent.DatabaseQueries.Add(additionalQuery);
@@ -383,9 +303,6 @@ namespace SmartRAG.Services
                         if (schema != null)
                         {
                             var prompt = BuildSQLGenerationPrompt(queryIntent.OriginalQuery, additionalQuery, schema);
-                            _logger.LogInformation("=== AI PROMPT FOR ADDITIONAL DATABASE {DatabaseId} ===", additionalQuery.DatabaseId);
-                            _logger.LogInformation("{Prompt}", prompt.Replace(Environment.NewLine, "").Replace("\n", "").Replace("\r", ""));
-                            _logger.LogInformation("=== END ADDITIONAL PROMPT ===");
                             var sql = await _aiService.GenerateResponseAsync(prompt, new List<string>());
                             var extractedSql = ExtractSQLFromAIResponse(sql);
                             
@@ -398,9 +315,6 @@ namespace SmartRAG.Services
                             }
                             
                             additionalQuery.GeneratedQuery = extractedSql;
-                            
-                            _logger.LogInformation("✓ Generated SQL for additional database {DatabaseId}: {SQL}", 
-                                additionalQuery.DatabaseId, additionalQuery.GeneratedQuery);
                         }
                     }
                     catch (Exception ex)
@@ -413,7 +327,7 @@ namespace SmartRAG.Services
             return queryIntent;
         }
 
-        public async Task<string> MergeResultsAsync(MultiDatabaseQueryResult queryResults, string originalQuery)
+        private async Task<string> MergeResultsAsync_OLD(MultiDatabaseQueryResult queryResults, string originalQuery)
         {
             _logger.LogInformation("Merging results from {Count} databases with smart JOIN", queryResults.DatabaseResults.Count);
             
@@ -473,12 +387,105 @@ namespace SmartRAG.Services
 
         #endregion
 
-        #region Private Helper Methods
+        #region Private Helper Methods (Legacy - Kept for Reference Only)
+
+        // NOTE: The following helper methods have been moved to SQLQueryGenerator and ResultMerger services
+        // They are kept here temporarily for reference but should be removed in future cleanup
+
+        /// <summary>
+        /// Creates an error RagResponse with a message and source
+        /// </summary>
+        /// <param name="message">Error message</param>
+        /// <param name="sourceFileName">Source file name for the error</param>
+        /// <returns>RagResponse with error information</returns>
+        private RagResponse CreateErrorResponse(string message, string sourceFileName = "Error")
+        {
+            return new RagResponse
+            {
+                Answer = message,
+                Sources = new List<SearchSource>
+                {
+                    new SearchSource
+                    {
+                        SourceType = "System",
+                        FileName = sourceFileName,
+                        RelevantContent = message,
+                        Location = "System notification"
+                    }
+                }
+            };
+        }
+
+        /// <summary>
+        /// Creates a RagResponse with no database matches
+        /// </summary>
+        /// <returns>RagResponse indicating no databases matched</returns>
+        private RagResponse CreateNoDatabaseMatchResponse()
+        {
+            return new RagResponse
+            {
+                Answer = "I couldn't determine which databases to query for your question. Please try rephrasing your query.",
+                Sources = new List<SearchSource>
+                {
+                    new SearchSource
+                    {
+                        SourceType = "System",
+                        FileName = "No databases matched",
+                        RelevantContent = "No database match for query intent",
+                        Location = "System notification"
+                    }
+                }
+            };
+        }
+
+        /// <summary>
+        /// Creates a RagResponse with query execution errors
+        /// </summary>
+        /// <param name="errors">List of error messages</param>
+        /// <returns>RagResponse with error information</returns>
+        private RagResponse CreateQueryExecutionErrorResponse(List<string> errors)
+        {
+            return new RagResponse
+            {
+                Answer = $"Some database queries failed: {string.Join(", ", errors)}",
+                Sources = new List<SearchSource>
+                {
+                    new SearchSource
+                    {
+                        SourceType = "System",
+                        FileName = "Error in query execution",
+                        RelevantContent = string.Join("; ", errors),
+                        Location = "System notification"
+                    }
+                }
+            };
+        }
+
+        /// <summary>
+        /// Creates a RagResponse with exception information
+        /// </summary>
+        /// <param name="ex">Exception that occurred</param>
+        /// <returns>RagResponse with error information</returns>
+        private RagResponse CreateExceptionResponse(Exception ex)
+        {
+            return new RagResponse
+            {
+                Answer = $"An error occurred while processing your query: {ex.Message}",
+                Sources = new List<SearchSource>
+                {
+                    new SearchSource
+                    {
+                        SourceType = "System",
+                        FileName = "Error",
+                        RelevantContent = ex.Message,
+                        Location = "System notification"
+                    }
+                }
+            };
+        }
 
         private async Task<QueryIntent> ValidateAndCorrectQueryIntentAsync(QueryIntent queryIntent)
         {
-            _logger.LogInformation("Validating query intent for {Count} databases", queryIntent.DatabaseQueries.Count);
-            
             var validQueries = new List<DatabaseQueryIntent>();
             var missingTables = new Dictionary<string, List<string>>(); // table -> databases that need it
             var allSchemas = await _schemaAnalyzer.GetAllSchemasAsync();
@@ -519,7 +526,7 @@ namespace SmartRAG.Services
                 
                 if (invalidTables.Count > 0)
                 {
-                    _logger.LogWarning("⚠️  AI selected invalid tables for {DatabaseName}: {InvalidTables}",
+                    _logger.LogWarning("AI selected invalid tables for {DatabaseName}: {InvalidTables}",
                         dbQuery.DatabaseName, string.Join(", ", invalidTables));
                 }
                 
@@ -527,7 +534,6 @@ namespace SmartRAG.Services
                 {
                     dbQuery.RequiredTables = validTables;
                     validQueries.Add(dbQuery);
-                    _logger.LogInformation("✓ {DatabaseName}: {Tables}", dbQuery.DatabaseName, string.Join(", ", validTables));
                 }
                 else
                 {
@@ -536,12 +542,9 @@ namespace SmartRAG.Services
             }
             
             // Auto-add missing databases for tables AI requested but put in wrong database
-            _logger.LogInformation("Checking for missing tables: {Count} table(s) not found in selected databases", missingTables.Count);
-            
             foreach (var kvp in missingTables)
             {
                 var tableName = kvp.Key;
-                _logger.LogInformation("  Looking for table '{Table}' in all databases...", tableName);
                 
                 // Find which database actually has this table
                 var correctSchema = allSchemas.FirstOrDefault(s => 
@@ -549,16 +552,12 @@ namespace SmartRAG.Services
                 
                 if (correctSchema == null)
                 {
-                    _logger.LogWarning("  ✗ Table '{Table}' not found in any database!", tableName);
+                    _logger.LogWarning("Table '{Table}' not found in any database", tableName);
                     continue;
                 }
                 
-                _logger.LogInformation("  ✓ Found '{Table}' in {Database}", tableName, correctSchema.DatabaseName);
-                
                 if (validQueries.Any(q => q.DatabaseId == correctSchema.DatabaseId))
                 {
-                    _logger.LogInformation("  → {Database} already in query list, checking if table is included...", correctSchema.DatabaseName);
-                    
                     var existingQuery = validQueries.First(q => q.DatabaseId == correctSchema.DatabaseId);
                     if (!existingQuery.RequiredTables.Contains(tableName, StringComparer.OrdinalIgnoreCase))
                     {
@@ -566,16 +565,12 @@ namespace SmartRAG.Services
                             t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)).TableName;
                         
                         existingQuery.RequiredTables.Add(exactTableName);
-                        _logger.LogInformation("  🔧 Added table '{Table}' to existing {Database} query", exactTableName, correctSchema.DatabaseName);
                     }
                 }
                 else
                 {
                     var exactTableName = correctSchema.Tables.First(t => 
                         t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)).TableName;
-                    
-                    _logger.LogInformation("  🔧 Auto-adding {Database} database for table '{Table}'", 
-                        correctSchema.DatabaseName, exactTableName);
                     
                     validQueries.Add(new DatabaseQueryIntent
                     {
@@ -589,7 +584,6 @@ namespace SmartRAG.Services
             }
             
             queryIntent.DatabaseQueries = validQueries;
-            _logger.LogInformation("Validation complete: {Count} databases ready", validQueries.Count);
             
             return queryIntent;
         }
@@ -689,13 +683,13 @@ namespace SmartRAG.Services
                 }
                 
                 sb.AppendLine();
-                sb.AppendLine($"⚠️  IMPORTANT: These tables ONLY exist in {schema.DatabaseName}:");
+                sb.AppendLine($"IMPORTANT: These tables ONLY exist in {schema.DatabaseName}:");
                 sb.AppendLine($"    {string.Join(", ", tableList)}");
                 sb.AppendLine();
             }
 
             sb.AppendLine("═══════════════════════════════════════");
-            sb.AppendLine("🚨 CRITICAL RULES:");
+            sb.AppendLine("CRITICAL RULES:");
             sb.AppendLine("═══════════════════════════════════════");
             sb.AppendLine("1. Each table exists in ONLY ONE database");
             sb.AppendLine("2. Before selecting a table, look at 'TABLES IN THIS DATABASE' section above");
@@ -706,7 +700,7 @@ namespace SmartRAG.Services
             sb.AppendLine("7. If a query needs data from multiple databases, create separate database entries for each");
             sb.AppendLine();
             sb.AppendLine("═══════════════════════════════════════");
-            sb.AppendLine("🚨 HOW TO WRITE 'PURPOSE' FIELD:");
+            sb.AppendLine("HOW TO WRITE 'PURPOSE' FIELD:");
             sb.AppendLine("═══════════════════════════════════════");
             sb.AppendLine("The 'purpose' field MUST specify WHAT DATA TYPES to retrieve:");
             sb.AppendLine();
@@ -746,7 +740,7 @@ namespace SmartRAG.Services
             sb.AppendLine("PATTERN:");
             sb.AppendLine("  Purpose = 'Get [DATA_TYPE] columns ([description of what to look for]) and foreign keys'");
             sb.AppendLine();
-            sb.AppendLine("🚨 PURPOSE MUST DESCRIBE DATA TYPES TO FIND, NOT SPECIFIC COLUMN NAMES!");
+            sb.AppendLine("PURPOSE MUST DESCRIBE DATA TYPES TO FIND, NOT SPECIFIC COLUMN NAMES!");
             sb.AppendLine();
             sb.AppendLine("═══════════════════════════════════════");
             sb.AppendLine("CROSS-DATABASE DATA REQUIREMENTS:");
@@ -849,8 +843,8 @@ namespace SmartRAG.Services
             sb.AppendLine("  Task mentions CLASSIFICATION (type, category, kind):");
             sb.AppendLine("  → Find TEXT columns: Search for classification patterns in column names");
             sb.AppendLine();
-            sb.AppendLine("🚨 MATCH CONCEPTS TO COLUMN NAME PATTERNS IN SCHEMA BELOW!");
-            sb.AppendLine("🚨 INCLUDE: All matching columns + ALL foreign keys (ending with 'ID')!");
+            sb.AppendLine("MATCH CONCEPTS TO COLUMN NAME PATTERNS IN SCHEMA BELOW!");
+            sb.AppendLine("INCLUDE: All matching columns + ALL foreign keys (ending with 'ID')!");
             sb.AppendLine();
             sb.AppendLine("═══════════════════════════════════════");
             sb.AppendLine($"TABLES AVAILABLE IN {schema.DatabaseName}:");
@@ -861,7 +855,7 @@ namespace SmartRAG.Services
                 var table = schema.Tables.FirstOrDefault(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase));
                 if (table != null)
                 {
-                    sb.AppendLine($"\n🚨 Table: {table.TableName}");
+                    sb.AppendLine($"\nTable: {table.TableName}");
                     sb.AppendLine("═══════════════════════════════════════");
                     sb.AppendLine($"AVAILABLE COLUMNS (use EXACT names, case-sensitive):");
                     
@@ -869,7 +863,7 @@ namespace SmartRAG.Services
                     sb.AppendLine($"  {columnList}");
                     
                     sb.AppendLine();
-                    sb.AppendLine($"🚨 YOU CAN ONLY USE THESE {table.Columns.Count} COLUMNS FROM {table.TableName}");
+                    sb.AppendLine($"YOU CAN ONLY USE THESE {table.Columns.Count} COLUMNS FROM {table.TableName}");
                     sb.AppendLine("ANY OTHER COLUMN NAME WILL CAUSE ERROR!");
                     
                     if (table.ForeignKeys.Any())
@@ -1048,7 +1042,7 @@ namespace SmartRAG.Services
             switch (schema.DatabaseType)
             {
                 case DatabaseType.SqlServer:
-                    sb.AppendLine("🚨 SQL SERVER DATABASE - CRITICAL SYNTAX RULES");
+                    sb.AppendLine("SQL SERVER DATABASE - CRITICAL SYNTAX RULES");
                     sb.AppendLine();
                     sb.AppendLine("ABSOLUTELY FORBIDDEN:");
                     sb.AppendLine("✗ LIMIT keyword (does not exist in SQL Server)");
@@ -1074,7 +1068,7 @@ namespace SmartRAG.Services
                     break;
                     
                 case DatabaseType.SQLite:
-                    sb.AppendLine("🚨 SQLITE DATABASE - CRITICAL SYNTAX RULES");
+                    sb.AppendLine("SQLITE DATABASE - CRITICAL SYNTAX RULES");
                     sb.AppendLine();
                     sb.AppendLine("ABSOLUTELY FORBIDDEN:");
                     sb.AppendLine("✗ TOP keyword (does not exist in SQLite)");
@@ -1095,7 +1089,7 @@ namespace SmartRAG.Services
                     break;
                     
                 case DatabaseType.MySQL:
-                    sb.AppendLine("🚨 MYSQL DATABASE - CRITICAL SYNTAX RULES");
+                    sb.AppendLine("MYSQL DATABASE - CRITICAL SYNTAX RULES");
                     sb.AppendLine();
                     sb.AppendLine("ABSOLUTELY FORBIDDEN:");
                     sb.AppendLine("✗ TOP keyword (does not exist in MySQL)");
@@ -1120,7 +1114,7 @@ namespace SmartRAG.Services
                     break;
                     
                 case DatabaseType.PostgreSQL:
-                    sb.AppendLine("🚨 POSTGRESQL DATABASE - CRITICAL SYNTAX RULES");
+                    sb.AppendLine("POSTGRESQL DATABASE - CRITICAL SYNTAX RULES");
                     sb.AppendLine();
                     sb.AppendLine("ABSOLUTELY FORBIDDEN:");
                     sb.AppendLine("✗ TOP keyword (does not exist in PostgreSQL)");
@@ -1158,17 +1152,15 @@ namespace SmartRAG.Services
             sb.AppendLine("║                   CRITICAL OUTPUT RULES                        ║");
             sb.AppendLine("╚════════════════════════════════════════════════════════════════╝");
             sb.AppendLine();
-            sb.AppendLine("🚨 LANGUAGE-CRITICAL RULE:");
+            sb.AppendLine("LANGUAGE-CRITICAL RULE:");
             sb.AppendLine("   SQL is a COMPUTER LANGUAGE - it ONLY understands SQL keywords!");
-            sb.AppendLine("   ✗ NEVER write Turkish, German, Russian, or any human language in SQL");
+            sb.AppendLine("   ✗ NEVER write any human language text in SQL (regardless of user's language)");
             sb.AppendLine("   ✗ NEVER write comments or explanations in SQL");
             sb.AppendLine("   ✗ NEVER translate SQL keywords to other languages");
             sb.AppendLine("   ✓ ONLY use English SQL keywords: SELECT, FROM, WHERE, JOIN, etc.");
             sb.AppendLine();
             sb.AppendLine("   BAD EXAMPLES (will cause syntax errors):");
-            sb.AppendLine("   ✗ 'Bu sorgu, ürünleri seçer' (Turkish text in SQL)");
-            sb.AppendLine("   ✗ 'Diese Abfrage wählt Produkte' (German text in SQL)");
-            sb.AppendLine("   ✗ 'Этот запрос выбирает продукты' (Russian text in SQL)");
+            sb.AppendLine("   ✗ Any human language text mixed with SQL");
             sb.AppendLine("   ✗ SELECT * FROM TableA -- This selects data");
             sb.AppendLine();
             sb.AppendLine("   GOOD EXAMPLE:");
@@ -1218,12 +1210,12 @@ namespace SmartRAG.Services
             sb.AppendLine();
             sb.AppendLine("LANGUAGE ENFORCEMENT:");
             sb.AppendLine("  - SQL is ENGLISH-ONLY computer language");
-            sb.AppendLine("  - Even if user question is in Turkish/German/Russian:");
+            sb.AppendLine("  - Even if user question is in any non-English language:");
             sb.AppendLine("    ✓ SQL must still be pure English SQL");
-            sb.AppendLine("    ✗ NO Turkish/German/Russian text in SQL output");
-            sb.AppendLine("  - Example: User asks 'Müşterileri göster'");
+            sb.AppendLine("    ✗ NO human language text in SQL output (regardless of user's language)");
+            sb.AppendLine("  - Example: User asks in any language");
             sb.AppendLine("    ✓ Correct: SELECT * FROM TableA");
-            sb.AppendLine("    ✗ Wrong: Bu sorgu verileri seçer: SELECT * FROM TableA");
+            sb.AppendLine("    ✗ Wrong: Any human language text followed by SQL");
             sb.AppendLine();
             sb.AppendLine("YOUR RESPONSE = SQL QUERY ONLY (starts with SELECT, pure English SQL, no text!)");
 
@@ -1506,7 +1498,7 @@ namespace SmartRAG.Services
             sb.AppendLine("║       SQL REGENERATION - PREVIOUS ATTEMPT HAD ERRORS           ║");
             sb.AppendLine("╚════════════════════════════════════════════════════════════════╝");
             sb.AppendLine();
-            sb.AppendLine("🚨 CRITICAL: Your previous SQL had these errors:");
+            sb.AppendLine("CRITICAL: Your previous SQL had these errors:");
             
             // Categorize errors for better understanding
             var columnErrors = previousErrors.Where(e => e.Contains("Column") || e.Contains("column")).ToList();
@@ -1571,7 +1563,7 @@ namespace SmartRAG.Services
                     {
                         sb.AppendLine($"  {col.ColumnName} ({col.DataType})");
                     }
-                    sb.AppendLine($"🚨 ANY OTHER COLUMN IN {table.TableName} WILL CAUSE ERROR!");
+                    sb.AppendLine($"ANY OTHER COLUMN IN {table.TableName} WILL CAUSE ERROR!");
                 }
             }
             
@@ -1616,8 +1608,8 @@ namespace SmartRAG.Services
             sb.AppendLine($"Purpose: {dbQuery.Purpose}");
             sb.AppendLine();
             sb.AppendLine("LANGUAGE RULE:");
-            sb.AppendLine("   SQL must be PURE ENGLISH - NO Turkish/German/Russian text!");
-            sb.AppendLine("   ✗ Do NOT write: 'Bu sorgu', 'Diese Abfrage', 'Этот запрос'");
+            sb.AppendLine("   SQL must be PURE ENGLISH - NO human language text!");
+            sb.AppendLine("   ✗ Do NOT write any human language text before or after SQL");
             sb.AppendLine("   ✓ Only write: SELECT, FROM, WHERE, etc. (English SQL keywords)");
             sb.AppendLine();
             sb.AppendLine("Generate a valid SQL query using ONLY the columns listed above.");
@@ -1638,7 +1630,7 @@ namespace SmartRAG.Services
             sb.AppendLine($"║     RETRY ATTEMPT #{attemptNumber} - ULTRA STRICT MODE        ║");
             sb.AppendLine("╚════════════════════════════════════════════════════════════════╝");
             sb.AppendLine();
-            sb.AppendLine("🚨 CRITICAL: ALL previous attempts FAILED with these errors:");
+            sb.AppendLine("CRITICAL: ALL previous attempts FAILED with these errors:");
             foreach (var error in allPreviousErrors)
             {
                 sb.AppendLine($"   ✗ {error}");
@@ -1665,7 +1657,7 @@ namespace SmartRAG.Services
                         sb.AppendLine($"  {i + 1}. {col.ColumnName} ({col.DataType})");
                     }
                     sb.AppendLine();
-                    sb.AppendLine($"🚨 THESE ARE THE ONLY {table.Columns.Count} COLUMNS IN {table.TableName}!");
+                    sb.AppendLine($"THESE ARE THE ONLY {table.Columns.Count} COLUMNS IN {table.TableName}!");
                     sb.AppendLine($"ANY OTHER COLUMN NAME = INSTANT ERROR!");
                 }
             }
@@ -1701,7 +1693,7 @@ namespace SmartRAG.Services
             sb.AppendLine($"Query: {userQuery}");
             sb.AppendLine($"Task: {dbQuery.Purpose}");
             sb.AppendLine();
-            sb.AppendLine("CRITICAL: SQL must be PURE ENGLISH - NO Turkish/German/Russian text!");
+            sb.AppendLine("CRITICAL: SQL must be PURE ENGLISH - NO human language text!");
             sb.AppendLine("Write the SQL query. Triple-check EVERY column name AND syntax before outputting.");
             sb.AppendLine("Output format: Pure English SQL only, no text, no comments.");
             
@@ -1766,7 +1758,7 @@ namespace SmartRAG.Services
             }
             
             sb.AppendLine();
-            sb.AppendLine("🚨 CRITICAL: Write pure ENGLISH SQL - NO Turkish/German/Russian words!");
+            sb.AppendLine("CRITICAL: Write pure ENGLISH SQL - NO human language words!");
             sb.AppendLine("Write a simple query like above. No complexity.");
             sb.AppendLine("Output: Pure English SQL only, no text, no comments.");
             
@@ -1789,42 +1781,14 @@ namespace SmartRAG.Services
             {
                 var sqlUpper = sql.ToUpperInvariant();
                 
-                // 0. Check for non-English text in SQL (Turkish, German, Russian, etc.)
-                var nonEnglishPatterns = new[]
+                // 0. Check for non-ASCII characters in SQL (outside string literals)
+                // SQL keywords and identifiers must use ASCII characters only
+                // String literals (quoted values) are excluded from this check
+                // This generic check covers all languages
+                var nonAsciiChar = CheckForNonAsciiCharacters(sql);
+                if (nonAsciiChar.HasValue)
                 {
-                    // Turkish characters
-                    "ç", "ğ", "ı", "ö", "ş", "ü", "Ç", "Ğ", "İ", "Ö", "Ş", "Ü",
-                    // German umlauts
-                    "ä", "ö", "ü", "ß", "Ä", "Ö", "Ü",
-                    // Russian Cyrillic
-                    "а", "б", "в", "г", "д", "е", "ж", "з", "и", "к", "л", "м", "н", "о", "п", "р", "с", "т", "у", "ф", "х", "ц", "ч", "ш", "щ", "ъ", "ы", "ь", "э", "ю", "я",
-                    "А", "Б", "В", "Г", "Д", "Е", "Ж", "З", "И", "К", "Л", "М", "Н", "О", "П", "Р", "С", "Т", "У", "Ф", "Х", "Ц", "Ч", "Ш", "Щ", "Ъ", "Ы", "Ь", "Э", "Ю", "Я"
-                };
-                
-                foreach (var pattern in nonEnglishPatterns)
-                {
-                    if (sql.Contains(pattern))
-                    {
-                        errors.Add($"Non-English character detected in SQL: '{pattern}'. SQL must use only English characters and SQL keywords.");
-                        break;
-                    }
-                }
-                
-                // Also check for common Turkish/German/Russian SQL keywords
-                var nonEnglishKeywords = new[]
-                {
-                    "sorgu", "seçer", "tablo", "kolon", // Turkish
-                    "abfrage", "wählt", "tabelle", "spalte", // German
-                    "запрос", "выбирает", "таблица", "столбец" // Russian
-                };
-                
-                foreach (var keyword in nonEnglishKeywords)
-                {
-                    if (sqlUpper.Contains(keyword.ToUpperInvariant()))
-                    {
-                        errors.Add($"Non-English keyword detected in SQL: '{keyword}'. SQL must use only English SQL keywords (SELECT, FROM, WHERE, etc.).");
-                        break;
-                    }
+                    errors.Add($"Non-ASCII character detected in SQL: '{nonAsciiChar.Value}' (U+{(int)nonAsciiChar.Value:X4}). SQL keywords and identifiers must use only ASCII characters (a-z, A-Z, 0-9, and standard SQL operators).");
                 }
                 
                 // 1. Check for aggregate functions in WHERE clause (common error)
@@ -1919,6 +1883,72 @@ namespace SmartRAG.Services
                 _logger.LogWarning(ex, "Error validating SQL syntax (continuing anyway)");
                 return errors;
             }
+        }
+
+        /// <summary>
+        /// Checks for non-ASCII characters in SQL, excluding string literals (quoted values).
+        /// SQL keywords and identifiers must use ASCII characters only.
+        /// </summary>
+        /// <param name="sql">SQL query to check</param>
+        /// <returns>First non-ASCII character found, or null if all characters are ASCII</returns>
+        private static char? CheckForNonAsciiCharacters(string sql)
+        {
+            if (string.IsNullOrWhiteSpace(sql))
+            {
+                return null;
+            }
+
+            bool inSingleQuote = false;
+            bool inDoubleQuote = false;
+            bool escaped = false;
+
+            for (int i = 0; i < sql.Length; i++)
+            {
+                char c = sql[i];
+
+                // Handle escape sequences
+                if (escaped)
+                {
+                    escaped = false;
+                    continue;
+                }
+
+                if (c == '\\')
+                {
+                    escaped = true;
+                    continue;
+                }
+
+                // Track string literal boundaries
+                if (c == '\'' && !inDoubleQuote)
+                {
+                    inSingleQuote = !inSingleQuote;
+                    continue;
+                }
+
+                if (c == '"' && !inSingleQuote)
+                {
+                    inDoubleQuote = !inDoubleQuote;
+                    continue;
+                }
+
+                // Skip characters inside string literals
+                if (inSingleQuote || inDoubleQuote)
+                {
+                    continue;
+                }
+
+                // Check if character is non-ASCII (outside 0-127 range)
+                // Allow ASCII control characters (0-31) for formatting (newlines, tabs, etc.)
+                // Allow ASCII printable characters (32-126) for SQL syntax
+                // Reject extended ASCII (128-255) and Unicode characters
+                if (c > 127)
+                {
+                    return c;
+                }
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -2155,17 +2185,25 @@ If data is missing or incomplete, mention it.";
 
                 var sources = queryResults.DatabaseResults
                     .Where(r => r.Value.Success)
-                    .Select(r => new SearchSource 
-                    { 
+                    .Select(r => new SearchSource
+                    {
+                        SourceType = "Database",
+                        DatabaseId = r.Value.DatabaseId,
+                        DatabaseName = r.Value.DatabaseName,
                         FileName = $"{r.Value.DatabaseName} ({r.Value.RowCount} rows)",
-                        RelevantContent = r.Value.ResultData
+                        RelevantContent = r.Value.ResultData,
+                        ExecutedQuery = r.Value.ExecutedQuery,
+                        Tables = ExtractTableNames(r.Value.ExecutedQuery ?? string.Empty),
+                        Location = BuildDatabaseLocationDescription(r.Value.DatabaseName, r.Value.ExecutedQuery ?? string.Empty, r.Value.RowCount)
                     })
                     .ToList();
 
                 return new RagResponse
                 {
+                    Query = userQuery,
                     Answer = answer ?? "Unable to generate answer",
-                    Sources = sources
+                    Sources = sources,
+                    SearchedAt = DateTime.UtcNow
                 };
             }
             catch (Exception ex)
@@ -2174,9 +2212,66 @@ If data is missing or incomplete, mention it.";
                 return new RagResponse
                 {
                     Answer = mergedData,
-                    Sources = new List<SearchSource> { new SearchSource { FileName = "Raw data (AI generation failed)" } }
+                    Sources = new List<SearchSource>
+                    {
+                        new SearchSource
+                        {
+                            SourceType = "System",
+                            FileName = "Raw data (AI generation failed)",
+                            RelevantContent = ex.Message,
+                            Location = "System notification"
+                        }
+                    },
+                    Query = userQuery,
+                    SearchedAt = DateTime.UtcNow
                 };
             }
+        }
+
+        private static List<string> ExtractTableNames(string query)
+        {
+            var tables = new List<string>();
+
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return tables;
+            }
+
+            var matches = Regex.Matches(query, @"\bFROM\s+([^\s,;]+)|\bJOIN\s+([^\s,;]+)", RegexOptions.IgnoreCase);
+
+            foreach (Match match in matches)
+            {
+                var tableName = match.Groups[1].Success ? match.Groups[1].Value : match.Groups[2].Value;
+                tableName = tableName.Trim();
+
+                if (!string.IsNullOrEmpty(tableName) && !tables.Contains(tableName, StringComparer.OrdinalIgnoreCase))
+                {
+                    tables.Add(tableName);
+                }
+            }
+
+            return tables;
+        }
+
+        private static string BuildDatabaseLocationDescription(string databaseName, string query, int rowCount)
+        {
+            var builder = new StringBuilder();
+            builder.Append($"Database: {databaseName}");
+            builder.Append($" | Rows: {rowCount}");
+
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                var sanitizedQuery = Regex.Replace(query, @"\s+", " ").Trim();
+                if (sanitizedQuery.Length > 160)
+                {
+                    sanitizedQuery = sanitizedQuery[..160] + "...";
+                }
+
+                builder.Append(" | Query: ");
+                builder.Append(sanitizedQuery);
+            }
+
+            return builder.ToString();
         }
 
         #endregion

@@ -196,13 +196,13 @@ public class DocumentHandler(
             
             var filePath = _console.ReadLine("Paste file path here: ")?.Trim().Trim('"');
             
-            // Windows Explorer'dan kopyalanan yol genellikle tırnak içinde gelir
+            // Paths copied from Windows Explorer usually come with quotes
             if (!string.IsNullOrEmpty(filePath))
             {
-                // Tırnak işaretlerini temizle
+                // Remove quote marks
                 filePath = filePath.Trim('"');
                 
-                // Windows path'lerini normalize et
+                // Normalize Windows paths
                 if (filePath.Contains("\\"))
                 {
                     filePath = filePath.Replace("\\", Path.DirectorySeparatorChar.ToString());

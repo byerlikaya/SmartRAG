@@ -44,6 +44,11 @@ public static class ConsoleHelper
     /// </summary>
     public static void SetOptimalWindowSize()
     {
+        if (!IsConsoleAvailable())
+        {
+            return;
+        }
+
         try
         {
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -119,6 +124,11 @@ public static class ConsoleHelper
     /// </summary>
     public static void ConfigureForAnimations()
     {
+        if (!IsConsoleAvailable())
+        {
+            return;
+        }
+
         try
         {
             System.Console.CursorVisible = false;
@@ -141,6 +151,11 @@ public static class ConsoleHelper
     /// </summary>
     public static void ResetCursor()
     {
+        if (!IsConsoleAvailable())
+        {
+            return;
+        }
+
         try
         {
             System.Console.CursorVisible = true;
@@ -169,6 +184,36 @@ public static class ConsoleHelper
         catch
         {
             // Ignore errors
+        }
+    }
+
+    /// <summary>
+    /// Indicates whether a console window is available for interactive operations.
+    /// </summary>
+    public static bool IsConsoleAvailable()
+    {
+        if (!Environment.UserInteractive)
+        {
+            return false;
+        }
+
+        try
+        {
+            _ = System.Console.WindowWidth;
+            _ = System.Console.WindowHeight;
+            return true;
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (ObjectDisposedException)
+        {
+            return false;
+        }
+        catch (PlatformNotSupportedException)
+        {
+            return false;
         }
     }
 

@@ -165,6 +165,50 @@ namespace SmartRAG.Services
         #region Private Methods
 
         /// <summary>
+        /// Determines whether the AI provider response indicates an error.
+        /// </summary>
+        private static bool IsErrorResponse(string response)
+        {
+            if (string.IsNullOrWhiteSpace(response))
+            {
+                return true;
+            }
+
+            var trimmed = response.TrimStart();
+            if (trimmed.StartsWith("error", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (trimmed.StartsWith("gemini error", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("anthropic error", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("openai error", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("azureopenai error", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("custom error", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (trimmed.StartsWith("{\"error\"", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (trimmed.Contains(" error:", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.Contains(" error -", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (trimmed.Contains("ServiceUnavailable", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
         /// Generate response with retry logic
         /// </summary>
         private async Task<string> GenerateResponseWithRetryAsync(IAIProvider aiProvider, string query, IEnumerable<string> context, AIProviderConfig providerConfig)
@@ -178,7 +222,15 @@ namespace SmartRAG.Services
                 try
                 {
                     var prompt = BuildPrompt(query, context);
-                    var response = await aiProvider.GenerateTextAsync(prompt, providerConfig);
+                    var response = await aiProvider.GenerateTextAsync(prompt, providerConfig) ?? string.Empty;
+
+                    if (IsErrorResponse(response))
+                    {
+                        throw new InvalidOperationException(string.IsNullOrWhiteSpace(response)
+                            ? "Empty response received from AI provider."
+                            : response);
+                    }
+
                     return response;
                 }
                 catch (Exception ex) when (_options.RetryPolicy != RetryPolicy.None && attempt < maxAttempts - 1)
@@ -237,9 +289,9 @@ namespace SmartRAG.Services
                         continue;
 
                     var prompt = BuildPrompt(query, context);
-                    var response = await aiProvider.GenerateTextAsync(prompt, config);
+                    var response = await aiProvider.GenerateTextAsync(prompt, config) ?? string.Empty;
 
-                    if (!string.IsNullOrEmpty(response))
+                    if (!IsErrorResponse(response) && !string.IsNullOrEmpty(response))
                     {
                         ServiceLogMessages.LogAIServiceFallbackSuccess(_logger, fallbackProvider.ToString(), null);
                         return response;

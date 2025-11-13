@@ -484,12 +484,6 @@ public class StorageController(IStorageFactory storageFactory, IDocumentService 
     }
 }
 
-
-/// <summary>
-/// Change storage provider request
-/// </summary>
-// Removed unused request classes (ChangeStorageProviderRequest, MigrateDataRequest)
-
 /// <summary>
 /// Storage health information
 /// </summary>

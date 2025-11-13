@@ -30,7 +30,7 @@ public class OllamaHandler(IConsoleService console) : IOllamaHandler
             _console.WriteError("Ollama service is not running!");
             System.Console.WriteLine();
             System.Console.WriteLine("Please start Ollama:");
-            System.Console.WriteLine("  • Docker: cd examples/SmartRAG.LocalDemo && docker-compose up -d ollama");
+            System.Console.WriteLine("  • Docker: cd examples/SmartRAG.Demo && docker-compose up -d ollama");
             System.Console.WriteLine("  • Or download from: https://ollama.ai");
             return;
         }
@@ -46,6 +46,12 @@ public class OllamaHandler(IConsoleService console) : IOllamaHandler
         }
         System.Console.WriteLine();
 
+        System.Console.WriteLine("📊 Recommended models for SQL Generation (Best for Database Queries):");
+        System.Console.WriteLine("   ⭐ deepseek-coder:6.7b - Best SQL generation accuracy");
+        System.Console.WriteLine("   ⭐ qwen2.5-coder:7b - Multilingual SQL support");
+        System.Console.WriteLine("   ⭐ codellama:7b - Excellent code/SQL generation");
+        System.Console.WriteLine();
+
         System.Console.WriteLine("Recommended models for SmartRAG:");
         var recommended = OllamaModelManager.GetRecommendedModels();
         var index = 1;
@@ -58,7 +64,7 @@ public class OllamaHandler(IConsoleService console) : IOllamaHandler
         }
         System.Console.WriteLine();
         
-        // Küçük modeller için öneri
+        // Recommendation for small models
         var smallModels = OllamaModelManager.GetSmallModels();
         var hasSmallModels = smallModels.Any(model => !installedModels.Any(installed => installed.Contains(model)));
         if (hasSmallModels)
@@ -93,6 +99,14 @@ public class OllamaHandler(IConsoleService console) : IOllamaHandler
 
                 System.Console.WriteLine();
                 _console.WriteSuccess($"Model {modelToInstall} installed successfully!");
+                
+                // Special message for SQL generation models
+                if (modelToInstall.Contains("coder") || modelToInstall.Contains("codellama"))
+                {
+                    System.Console.WriteLine();
+                    System.Console.WriteLine("💡 Don't forget to update appsettings.Development.json:");
+                    System.Console.WriteLine($"   \"Model\": \"{modelToInstall}\"");
+                }
             }
             catch (InvalidOperationException ex)
             {

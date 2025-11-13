@@ -39,8 +39,8 @@ public class MenuService(IConsoleService console) : IMenuService
         System.Console.WriteLine("11. 📦 Test Vector Store (InMemory/FileSystem/Redis/SQLite/Qdrant)");
         System.Console.WriteLine("12. 📄 Upload Documents (PDF, Word, Excel, Images, Audio)");
         System.Console.WriteLine("13. 📚 List Uploaded Documents");
-        System.Console.WriteLine("14. 🎯 Multi-Modal RAG (Documents + Databases)");
-        System.Console.WriteLine("15. 🗑️ Clear All Documents");
+        System.Console.WriteLine("14. 🗑️ Clear All Documents");
+        System.Console.WriteLine("15. 💬 Conversational Assistant (Databases + Documents + Chat)");
         System.Console.WriteLine("0.  🚪 Exit");
         System.Console.WriteLine();
     }

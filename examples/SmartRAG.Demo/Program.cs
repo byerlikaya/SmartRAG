@@ -36,16 +36,24 @@ internal class Program
 
     private static async Task Main(string[] args)
     {
-        ConsoleHelper.ConfigureForAnimations();
+        var consoleAvailable = ConsoleHelper.IsConsoleAvailable();
+
+        if (consoleAvailable)
+        {
+            ConsoleHelper.ConfigureForAnimations();
+        }
 
         try
         {
-            await ShowWelcomeAnimationAsync();
-            
-            ConsoleHelper.ResetCursor();
-            
-            // Clear console after animation but AFTER buffer is restored
-            System.Console.Clear();
+            if (consoleAvailable)
+            {
+                await ShowWelcomeAnimationAsync();
+                
+                ConsoleHelper.ResetCursor();
+                
+                // Clear console after animation but AFTER buffer is restored
+                System.Console.Clear();
+            }
 
             var configuration = LoadConfiguration();
             var consoleService = new ConsoleService();
@@ -249,14 +257,14 @@ internal class Program
                     break;
 
                 case "14":
-                    await queryHandler.RunMultiModalQueryAsync(
-                        _selectedLanguage,
-                        _useLocalEnvironment,
-                        _selectedAIProvider.ToString());
+                    await documentHandler.ClearAllDocumentsAsync();
                     break;
 
                 case "15":
-                    await documentHandler.ClearAllDocumentsAsync();
+                    await queryHandler.RunConversationalChatAsync(
+                        _selectedLanguage,
+                        _useLocalEnvironment,
+                        _selectedAIProvider.ToString());
                     break;
 
                 case "0":
