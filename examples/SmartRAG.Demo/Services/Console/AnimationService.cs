@@ -28,6 +28,11 @@ public class AnimationService : IAnimationService
 
     public async Task ShowWelcomeAnimationAsync()
     {
+        if (!ConsoleHelper.IsConsoleAvailable())
+        {
+            return;
+        }
+
         System.Console.Clear();
 
         // Phase 1: Logo reveal with colors
@@ -42,6 +47,11 @@ public class AnimationService : IAnimationService
 
     public async Task ShowLoadingAnimationAsync(string message, int durationMs = 2000)
     {
+        if (!ConsoleHelper.IsConsoleAvailable())
+        {
+            return;
+        }
+
         var frames = AIThinkingFrames;
         var startTime = DateTime.Now;
         var index = 0;
@@ -61,6 +71,11 @@ public class AnimationService : IAnimationService
 
     public void ShowBanner()
     {
+        if (!ConsoleHelper.IsConsoleAvailable())
+        {
+            return;
+        }
+
         var windowWidth = System.Console.WindowWidth;
         var logoWidth = SmartRagLogoLines[0].Length;
         var leftPadding = Math.Max(0, (windowWidth - logoWidth) / 2);

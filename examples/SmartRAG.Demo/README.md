@@ -182,7 +182,7 @@ dotnet --version  # Should be 9.0.x
 docker ps | grep ollama
 
 # Start if not running
-docker-compose up -d ollama
+docker-compose up -d smartrag-ollama
 
 # Check logs
 docker logs smartrag-ollama
@@ -194,7 +194,7 @@ docker logs smartrag-ollama
 docker ps | grep qdrant
 
 # Restart
-docker-compose restart qdrant
+docker-compose restart smartrag-qdrant
 
 # View logs
 docker logs smartrag-qdrant
@@ -206,9 +206,9 @@ docker logs smartrag-qdrant
 docker-compose ps
 
 # Start specific database
-docker-compose up -d sqlserver
-docker-compose up -d mysql
-docker-compose up -d postgres
+docker-compose up -d smartrag-sqlserver
+docker-compose up -d smartrag-mysql
+docker-compose up -d smartrag-postgres
 ```
 
 ### **Configuration Issues**

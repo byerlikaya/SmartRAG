@@ -61,12 +61,17 @@ var belge = await documentService.UploadDocumentAsync(
     dosyaStream, dosyaAdi, icerikTipi, "kullanici-123"
 );
 
-// Veritabanları ve belgelerde sorgula
+// Veritabanları, belgeler, görüntüler ve ses dosyalarında birleşik sorgu
 var cevap = await searchService.QueryIntelligenceAsync(
     "Son çeyrekte 10.000 TL üzeri alışveriş yapan tüm müşterileri, ödeme geçmişlerini ve verdikleri şikayet veya geri bildirimleri göster"
 );
-// → AI otomatik olarak SQL Server (siparişler), MySQL (ödemeler), PostgreSQL (müşteri verileri) sorgular,
-//   yüklenen PDF sözleşmeleri, OCR ile taranmış faturaları ve transkript edilmiş çağrı kayıtlarını analiz eder
+// → AI otomatik olarak sorgu intent'ini analiz eder ve akıllıca yönlendirir:
+//   - Yüksek güven + veritabanı sorguları → Sadece veritabanlarını arar
+//   - Yüksek güven + belge sorguları → Sadece belgeleri arar
+//   - Orta güven → Hem veritabanlarını hem belgeleri arar, sonuçları birleştirir
+// → SQL Server (siparişler), MySQL (ödemeler), PostgreSQL (müşteri verileri) sorgular
+// → Yüklenen PDF sözleşmeleri, OCR ile taranmış faturaları ve transkript edilmiş çağrı kayıtlarını analiz eder
+// → Tüm kaynaklardan birleşik cevap sağlar
 ```
 
 **SmartRAG'ı hemen test etmek ister misiniz?** → [Örnekler ve Test'e Git](#-örnekler-ve-test)
@@ -74,9 +79,13 @@ var cevap = await searchService.QueryIntelligenceAsync(
 
 ## 🏆 **Neden SmartRAG?**
 
-🎯 **Multi-Database RAG** - Birden fazla veritabanını doğal dil ile aynı anda sorgula
+🎯 **Birleşik Sorgu Zekası** - Tek sorgu ile veritabanları, belgeler, görüntüler ve ses dosyalarını otomatik olarak arar
 
-🧠 **Çoklu Modal Zeka** - PDF, Word, Excel, Görüntü, Ses ve daha fazlası  
+🧠 **Akıllı Hibrit Yönlendirme** - AI sorgu intent'ini analiz eder ve optimal arama stratejisini otomatik belirler
+
+🗄️ **Multi-Database RAG** - Birden fazla veritabanını doğal dil ile aynı anda sorgula
+
+📄 **Çoklu Modal Zeka** - PDF, Word, Excel, Görüntü (OCR), Ses (Konuşma-Metin), ve daha fazlası  
 
 🏠 **%100 Yerel İşleme** - GDPR, KVKK, HIPAA uyumlu
 

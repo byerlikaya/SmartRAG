@@ -61,12 +61,17 @@ var document = await documentService.UploadDocumentAsync(
     fileStream, fileName, contentType, "user-123"
 );
 
-// Query across databases and documents
+// Unified query across databases, documents, images, and audio
 var response = await searchService.QueryIntelligenceAsync(
     "Show me all customers who made purchases over $10,000 in the last quarter, their payment history, and any complaints or feedback they provided"
 );
-// → AI automatically queries SQL Server (orders), MySQL (payments), PostgreSQL (customer data), 
-//   analyzes uploaded PDF contracts, OCR-scanned invoices, and transcribed call recordings
+// → AI automatically analyzes query intent and routes intelligently:
+//   - High confidence + database queries → Searches databases only
+//   - High confidence + document queries → Searches documents only  
+//   - Medium confidence → Searches both databases and documents, merges results
+// → Queries SQL Server (orders), MySQL (payments), PostgreSQL (customer data)
+// → Analyzes uploaded PDF contracts, OCR-scanned invoices, and transcribed call recordings
+// → Provides unified answer combining all sources
 ```
 
 **Want to test SmartRAG immediately?** → [Jump to Examples & Testing](#-examples--testing)
@@ -74,9 +79,13 @@ var response = await searchService.QueryIntelligenceAsync(
 
 ## 🏆 **Why SmartRAG?**
 
-🎯 **Multi-Database RAG** - Query multiple databases simultaneously with natural language
+🎯 **Unified Query Intelligence** - Single query searches across databases, documents, images, and audio automatically
 
-🧠 **Multi-Modal Intelligence** - PDF, Word, Excel, Images, Audio, and more  
+🧠 **Smart Hybrid Routing** - AI analyzes query intent and automatically determines optimal search strategy
+
+🗄️ **Multi-Database RAG** - Query multiple databases simultaneously with natural language
+
+📄 **Multi-Modal Intelligence** - PDF, Word, Excel, Images (OCR), Audio (Speech-to-Text), and more  
 
 🏠 **100% Local Processing** - GDPR, KVKK, HIPAA compliant
 

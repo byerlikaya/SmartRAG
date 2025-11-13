@@ -207,12 +207,23 @@ public class OllamaModelManager
         {
             return new Dictionary<string, string>
             {
+                // SQL Generation Models (Best for Database Queries)
+                { "deepseek-coder:6.7b", "DeepSeek Coder 6.7B - Best for SQL generation (4.1GB) ⭐ Recommended" },
+                { "qwen2.5-coder:7b", "Qwen2.5 Coder 7B - Multilingual SQL support (4.7GB)" },
+                { "codellama:7b", "CodeLlama 7B - Excellent code generation including SQL (3.8GB)" },
+                
+                // General Purpose Models
+                { "llama3.1:8b", "Llama 3.1 8B - General purpose, good SQL support (4.7GB)" },
                 { "llama3.2:1b", "Llama 3.2 1B - Ultra lightweight (Recommended for slow connections)" },
-                { "phi3", "Microsoft Phi-3 - Compact and fast (Good for testing)" },
-                { "nomic-embed-text", "Text embedding model (Required for RAG)" },
                 { "llama3.2", "Meta's Llama 3.2 - Fast and efficient (Large download)" },
+                
+                // Compact Models
+                { "phi3", "Microsoft Phi-3 - Compact and fast (Good for testing)" },
                 { "mistral", "Mistral 7B - High quality responses (Very large download)" },
-                { "qwen2.5", "Alibaba Qwen 2.5 - Multilingual support (Large download)" }
+                { "qwen2.5", "Alibaba Qwen 2.5 - Multilingual support (Large download)" },
+                
+                // Required for RAG
+                { "nomic-embed-text", "Text embedding model (Required for RAG)" }
             };
         }
 

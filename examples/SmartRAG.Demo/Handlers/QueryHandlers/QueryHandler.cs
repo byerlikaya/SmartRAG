@@ -4,6 +4,10 @@ using SmartRAG.Demo.Services.Console;
 using SmartRAG.Demo.Services.TestQuery;
 using SmartRAG.Enums;
 using SmartRAG.Interfaces;
+using SmartRAG.Models;
+using System.Collections.Generic;
+using System.Globalization;
+using System.Linq;
 using System.Text;
 
 namespace SmartRAG.Demo.Handlers.QueryHandlers;
@@ -138,6 +142,8 @@ public class QueryHandler(
 
             foreach (var dbQuery in intent.DatabaseQueries)
             {
+                _logger.LogDebug("Displaying SQL for {DatabaseName}: {SQL}", dbQuery.DatabaseName, dbQuery.GeneratedQuery);
+                
                 System.Console.ForegroundColor = ConsoleColor.Cyan;
                 System.Console.WriteLine($"📊 {dbQuery.DatabaseName}");
                 System.Console.ResetColor();
@@ -150,6 +156,12 @@ public class QueryHandler(
                     System.Console.ForegroundColor = ConsoleColor.Green;
                     System.Console.WriteLine($"\n   Generated SQL:");
                     System.Console.WriteLine($"   {dbQuery.GeneratedQuery.Replace("\n", "\n   ")}");
+                    System.Console.ResetColor();
+                }
+                else
+                {
+                    System.Console.ForegroundColor = ConsoleColor.Yellow;
+                    System.Console.WriteLine($"\n   ⚠️ SQL generation failed or was skipped");
                     System.Console.ResetColor();
                 }
 
@@ -256,111 +268,78 @@ public class QueryHandler(
         DisplayTestSummary(successCount, testCount, failedQueries);
     }
 
-    public async Task RunMultiModalQueryAsync(string language, bool useLocalEnvironment, string aiProvider)
-    {
-        _console.WriteSectionHeader("🎯 Multi-Modal RAG Query");
 
-        System.Console.ForegroundColor = ConsoleColor.Cyan;
-        System.Console.WriteLine("This feature searches BOTH:");
-        System.Console.WriteLine("  1. 📄 Uploaded documents (PDF, Word, Excel, Images)");
-        System.Console.WriteLine("  2. 🗄️  Connected databases (SQL Server, MySQL, PostgreSQL, SQLite)");
-        System.Console.ResetColor();
-        System.Console.WriteLine();
-        
+    public async Task RunConversationalChatAsync(string language, bool useLocalEnvironment, string aiProvider)
+    {
+        _console.WriteSectionHeader("💬 Conversational Assistant");
+
         System.Console.ForegroundColor = ConsoleColor.DarkGray;
         System.Console.WriteLine($"Language: {language}");
         System.Console.WriteLine($"Environment: {(useLocalEnvironment ? "LOCAL (Ollama)" : $"CLOUD ({aiProvider})")}");
         System.Console.ResetColor();
         System.Console.WriteLine();
 
-        var documents = await _documentService.GetAllDocumentsAsync();
-        System.Console.WriteLine($"📄 Documents available: {documents.Count}");
-
-        var schemas = await _schemaAnalyzer.GetAllSchemasAsync();
-        var totalTables = schemas.Sum(s => s.Tables.Count);
-        System.Console.WriteLine($"🗄️  Database tables: {totalTables} across {schemas.Count} databases");
+        _console.WriteInfo("Type /new to reset the session, /exit to return to the main menu, /help to see available commands.");
         System.Console.WriteLine();
 
-        if (documents.Count == 0 && totalTables == 0)
+        while (true)
         {
-            _console.WriteWarning("No data sources available!");
-            System.Console.WriteLine();
-            System.Console.WriteLine("Please:");
-            System.Console.WriteLine("  • Upload documents (option 12)");
-            System.Console.WriteLine("  • Create test databases (options 3-5)");
-            return;
-        }
+            var userInput = _console.ReadLine("You: ");
 
-        var query = _console.ReadLine($"Your question ({language}): ");
-        if (string.IsNullOrWhiteSpace(query))
-        {
-            _console.WriteError("Empty query entered!");
-            return;
-        }
-
-        try
-        {
-            System.Console.WriteLine();
-            System.Console.ForegroundColor = ConsoleColor.DarkGray;
-            System.Console.WriteLine("⏳ Searching documents and databases...");
-            System.Console.ResetColor();
-
-            var languageInstructedQuery = $"{query}\n\n[IMPORTANT: Respond in {language} language]";
-
-            var documentContext = new List<string>();
-            if (documents.Count > 0)
+            if (userInput == null)
             {
-                System.Console.WriteLine("   → Searching documents...");
-                var docResults = await _documentSearchService.SearchDocumentsAsync(languageInstructedQuery, maxResults: 5);
-
-                foreach (var result in docResults)
-                {
-                    var sourceDoc = documents.FirstOrDefault(d => d.Id == result.DocumentId);
-                    var docName = sourceDoc?.FileName ?? "Unknown";
-                    documentContext.Add($"[Document: {docName}]\n{result.Content}");
-                }
-
-                System.Console.WriteLine($"   ✓ Found {docResults.Count} relevant document chunks");
+                _console.WriteWarning("Input stream closed. Ending conversation.");
+                break;
             }
 
-            string? databaseAnswer = null;
-            if (totalTables > 0)
+            var trimmedInput = userInput.Trim();
+
+            if (string.IsNullOrWhiteSpace(trimmedInput))
             {
-                System.Console.WriteLine("   → Querying databases...");
-                var dbResponse = await _multiDbCoordinator.QueryMultipleDatabasesAsync(languageInstructedQuery, maxResults: 10);
-                databaseAnswer = dbResponse.Answer;
-                System.Console.WriteLine($"   ✓ Database query completed");
+                continue;
             }
 
-            System.Console.WriteLine("   → Generating combined answer...");
-            System.Console.WriteLine();
-
-            var finalAnswer = await GenerateCombinedAnswer(query, documentContext, databaseAnswer, language);
-
-            _console.WriteSuccess("COMBINED ANSWER:");
-            System.Console.WriteLine("─────────────────────────────────────────────────────────────────");
-            System.Console.WriteLine(finalAnswer);
-            System.Console.WriteLine();
-
-            if (documentContext.Any() || !string.IsNullOrEmpty(databaseAnswer))
+            if (IsExitCommand(trimmedInput))
             {
-                System.Console.ForegroundColor = ConsoleColor.DarkGray;
-                System.Console.WriteLine("📚 Sources used:");
-                if (documentContext.Any())
-                {
-                    System.Console.WriteLine($"   • {documentContext.Count} document(s)");
-                }
-                if (!string.IsNullOrEmpty(databaseAnswer))
-                {
-                    System.Console.WriteLine($"   • {schemas.Count} database(s)");
-                }
-                System.Console.ResetColor();
+                _console.WriteInfo("👋 Conversation ended. Returning to main menu.");
+                break;
             }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error during multi-modal query");
-            _console.WriteError($"Error: {ex.Message}");
+
+            if (IsHelpCommand(trimmedInput))
+            {
+                PrintChatHelp();
+                continue;
+            }
+
+            try
+            {
+                var query = IsCommand(trimmedInput)
+                    ? trimmedInput
+                    : string.Format(
+                        CultureInfo.InvariantCulture,
+                        "{0}\n\n[IMPORTANT: Respond in {1} language]",
+                        userInput,
+                        language);
+
+                var response = await _documentSearchService.QueryIntelligenceAsync(query, maxResults: 8);
+
+                System.Console.WriteLine();
+                _console.WriteSuccess("Assistant:");
+                System.Console.WriteLine("─────────────────────────────────────────────────────────────────");
+                System.Console.WriteLine(response.Answer);
+                System.Console.WriteLine();
+
+                if (response.Sources != null && response.Sources.Any())
+                {
+                    PrintSources(response.Sources, maxCount: 5);
+                    System.Console.WriteLine();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error during conversational chat");
+                _console.WriteError($"Error: {ex.Message}", ex);
+            }
         }
     }
 
@@ -532,6 +511,144 @@ public class QueryHandler(
         {
             _console.WriteSuccess("🎉 All tests passed successfully!");
         }
+    }
+
+    private static bool IsCommand(string input)
+    {
+        return input.StartsWith("/", StringComparison.Ordinal);
+    }
+
+    private static bool IsExitCommand(string input)
+    {
+        var normalized = input.Trim().ToLowerInvariant();
+        return normalized is "/exit" or "/quit" or "/q" or "/back";
+    }
+
+    private static bool IsHelpCommand(string input)
+    {
+        var normalized = input.Trim().ToLowerInvariant();
+        return normalized is "/help" or "/h" or "/?";
+    }
+
+    private void PrintChatHelp()
+    {
+        System.Console.WriteLine();
+        System.Console.WriteLine("Available commands:");
+        System.Console.WriteLine("  • /new, /reset, /clear — start a new conversation session");
+        System.Console.WriteLine("  • /help — show this help message");
+        System.Console.WriteLine("  • /exit, /quit, /back — return to the main menu");
+        System.Console.WriteLine();
+        System.Console.WriteLine("Any other text will be processed using SmartRAG's conversational intelligence.");
+        System.Console.WriteLine();
+    }
+
+    private void PrintSources(IReadOnlyCollection<SearchSource> sources, int maxCount)
+    {
+        System.Console.ForegroundColor = ConsoleColor.DarkGray;
+        System.Console.WriteLine("📚 Sources:");
+
+        var displayed = 0;
+
+        foreach (var source in sources)
+        {
+            if (displayed >= maxCount)
+            {
+                break;
+            }
+
+            System.Console.WriteLine($"   • {BuildSourceLine(source)}");
+            displayed++;
+        }
+
+        if (sources.Count > maxCount)
+        {
+            System.Console.WriteLine($"   • … {sources.Count - maxCount} more");
+        }
+
+        System.Console.ResetColor();
+    }
+
+    private static string BuildSourceLine(SearchSource source)
+    {
+        var label = string.IsNullOrWhiteSpace(source.SourceType) ? "Document" : source.SourceType;
+        var name = !string.IsNullOrWhiteSpace(source.FileName)
+            ? source.FileName
+            : !string.IsNullOrWhiteSpace(source.DatabaseName)
+                ? source.DatabaseName
+                : label;
+
+        var details = new List<string>();
+
+        if (source.ChunkIndex.HasValue)
+        {
+            details.Add($"chunk {source.ChunkIndex.Value + 1}");
+        }
+
+        if (source.RowNumber.HasValue)
+        {
+            details.Add($"row {source.RowNumber.Value}");
+        }
+
+        if (source.StartPosition.HasValue && source.EndPosition.HasValue)
+        {
+            details.Add($"chars {source.StartPosition}-{source.EndPosition}");
+        }
+
+        var timeRange = FormatTimeRange(source.StartTimeSeconds, source.EndTimeSeconds);
+        if (!string.IsNullOrEmpty(timeRange))
+        {
+            details.Add($"audio {timeRange}");
+        }
+
+        if (!string.IsNullOrWhiteSpace(source.Location))
+        {
+            details.Add(source.Location);
+        }
+
+        if (source.Tables != null && source.Tables.Any())
+        {
+            var tablePreview = source.Tables.Take(3).ToList();
+            var tableSuffix = source.Tables.Count > tablePreview.Count ? ", …" : string.Empty;
+            details.Add($"tables: {string.Join(", ", tablePreview)}{tableSuffix}");
+        }
+
+        var detailText = details.Count > 0 ? $" ({string.Join(" | ", details)})" : string.Empty;
+
+        return $"[{label}] {name}{detailText}";
+    }
+
+    private static string FormatTimeRange(double? startSeconds, double? endSeconds)
+    {
+        if (!startSeconds.HasValue && !endSeconds.HasValue)
+        {
+            return string.Empty;
+        }
+
+        if (startSeconds.HasValue && endSeconds.HasValue)
+        {
+            return $"{FormatTimestamp(startSeconds.Value)}-{FormatTimestamp(endSeconds.Value)}";
+        }
+
+        if (startSeconds.HasValue)
+        {
+            return $"{FormatTimestamp(startSeconds.Value)}-";
+        }
+
+        return $"-{FormatTimestamp(endSeconds!.Value)}";
+    }
+
+    private static string FormatTimestamp(double seconds)
+    {
+        if (seconds < 0)
+        {
+            seconds = 0;
+        }
+
+        var time = TimeSpan.FromSeconds(seconds);
+
+        return time.TotalHours >= 1
+            ? $"{(int)time.TotalHours:D2}:{time.Minutes:D2}:{time.Seconds:D2}"
+            : $"{time.Minutes:D2}:{time.Seconds:D2}";
     }
 
     private async Task<string> GenerateCombinedAnswer(string query, List<string> documentContext, string? databaseAnswer, string language)

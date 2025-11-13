@@ -15,6 +15,8 @@ namespace SmartRAG.Extensions
         /// Culture-agnostic normalization for international text search
         /// Uses Unicode normalization and invariant culture for consistent results
         /// </summary>
+        /// <param name="input">Input string to normalize</param>
+        /// <returns>Normalized string ready for search operations</returns>
         public static string NormalizeForSearch(this string input)
         {
             if (string.IsNullOrWhiteSpace(input))

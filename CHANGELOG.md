@@ -6,6 +6,102 @@ All notable changes to SmartRAG will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Unified Query Intelligence**: `QueryIntelligenceAsync` now supports unified search across databases, documents, images (OCR), and audio (transcription) in a single query
+- **Smart Hybrid Routing**: AI-based intent detection with confidence scoring automatically determines optimal search strategy
+  - High confidence (>0.7) + database queries → Database query only
+  - High confidence (>0.7) + no database queries → Document query only
+  - Medium confidence (0.3-0.7) → Both database and document queries, merged results
+  - Low confidence (<0.3) → Document query only (fallback)
+- **QueryStrategy Enum**: New enum for query execution strategies (DatabaseOnly, DocumentOnly, Hybrid)
+
+### Changed
+- `QueryIntelligenceAsync` method now integrates database queries alongside document queries
+- Improved query routing logic with graceful degradation and fallback mechanisms
+- Enhanced error handling for database query failures
+
+### Notes
+- Backward compatible: Existing `QueryIntelligenceAsync` signature unchanged
+- If database coordinator not available, behavior identical to previous implementation
+- No breaking changes to `RagResponse` model
+
+## [3.1.0] - 2025-11-11
+
+### ✨ Unified Query Intelligence
+
+#### **Major Feature: Unified Search Across All Data Sources**
+- **Unified Query Intelligence**: `QueryIntelligenceAsync` now supports unified search across databases, documents, images (OCR), and audio (transcription) in a single query
+- **Smart Hybrid Routing**: AI-based intent detection with confidence scoring automatically determines optimal search strategy
+  - High confidence (>0.7) + database queries → Database query only
+  - High confidence (>0.7) + no database queries → Document query only
+  - Medium confidence (0.3-0.7) → Both database and document queries, merged results
+  - Low confidence (<0.3) → Document query only (fallback)
+- **QueryStrategy Enum**: New enum for query execution strategies (DatabaseOnly, DocumentOnly, Hybrid)
+- **Intelligent Routing**: Improved query routing logic with graceful degradation and fallback mechanisms
+- **Enhanced Error Handling**: Better error handling for database query failures
+
+#### **New Services & Interfaces**
+- `src/SmartRAG/Services/QueryIntentAnalyzer.cs` - Analyzes user queries and determines which databases/tables to query using AI
+- `src/SmartRAG/Services/DatabaseQueryExecutor.cs` - Executes queries across multiple databases in parallel for better performance
+- `src/SmartRAG/Services/ResultMerger.cs` - Merges results from multiple databases into coherent responses using AI
+- `src/SmartRAG/Services/SQLQueryGenerator.cs` - Generates optimized SQL queries for each database based on query intent
+- `src/SmartRAG/Interfaces/IQueryIntentAnalyzer.cs` - Interface for query intent analysis
+- `src/SmartRAG/Interfaces/IDatabaseQueryExecutor.cs` - Interface for multi-database query execution
+- `src/SmartRAG/Interfaces/IResultMerger.cs` - Interface for result merging
+- `src/SmartRAG/Interfaces/ISQLQueryGenerator.cs` - Interface for SQL query generation
+
+#### **New Enums**
+- `src/SmartRAG/Enums/QueryStrategy.cs` - New enum for query execution strategies (DatabaseOnly, DocumentOnly, Hybrid)
+
+#### **New Models**
+- `src/SmartRAG/Models/AudioSegmentMetadata.cs` - Metadata model for audio transcription segments with timestamps and confidence scores
+
+#### **Enhanced Models**
+- `src/SmartRAG/Models/SearchSource.cs` - Enhanced with source type differentiation (Database, Document, Image, Audio)
+
+#### **Files Modified**
+- `src/SmartRAG/Services/DocumentSearchService.cs` - Major refactoring: Unified query intelligence implementation with hybrid routing (918+ lines changed)
+- `src/SmartRAG/Services/MultiDatabaseQueryCoordinator.cs` - Refactored to use new service architecture for better separation of concerns (355+ lines changed)
+- `src/SmartRAG/Services/AIService.cs` - Enhanced AI service with better error handling
+- `src/SmartRAG/Services/DocumentParserService.cs` - Improved document parsing with audio segment metadata support
+- `src/SmartRAG/Interfaces/IDocumentSearchService.cs` - Updated interface documentation
+- `src/SmartRAG/Extensions/ServiceCollectionExtensions.cs` - Registered new services in DI container
+
+### 🔧 Code Quality & AI Prompt Optimization
+
+#### **Code Quality Improvements**
+- **Build Quality**: Achieved 0 errors, 0 warnings across all projects
+- **Code Standards**: Full compliance with project coding standards
+
+#### **AI Prompt Optimization**
+- **Emoji Reduction**: Reduced emoji usage in AI prompts from 235 to 5 (only critical: 🚨, ✓, ✗)
+- **Token Efficiency**: Improved token efficiency (~100 tokens saved per prompt)
+- **Strategic Usage**: Better AI comprehension through strategic emoji usage
+
+#### **Files Modified**
+- `src/SmartRAG/Services/SQLQueryGenerator.cs` - Emoji optimization in AI prompts
+- `src/SmartRAG/Services/MultiDatabaseQueryCoordinator.cs` - Emoji optimization
+- `src/SmartRAG/Services/QueryIntentAnalyzer.cs` - Emoji optimization
+- `src/SmartRAG/Services/DocumentSearchService.cs` - Emoji optimization
+
+### ✨ Benefits
+- **Single Query Interface**: Query all data sources (databases, documents, images, audio) with one method
+- **Intelligent Routing**: AI automatically selects the best search strategy based on query intent and confidence scoring
+- **Parallel Execution**: Multi-database queries execute in parallel for better performance
+- **Modular Architecture**: New service-based architecture improves maintainability and testability
+- **Better Separation of Concerns**: Each service has a single responsibility (SOLID principles)
+- **Cleaner Codebase**: Zero warnings across all projects
+- **Better Performance**: More efficient AI prompt processing and parallel query execution
+- **Improved Maintainability**: Better code quality and standards compliance
+- **Cost Efficiency**: Reduced token usage in AI prompts (~100 tokens saved per prompt)
+
+### 📝 Notes
+- Backward compatible: Existing `QueryIntelligenceAsync` signature unchanged
+- If database coordinator not available, behavior identical to previous implementation
+- No breaking changes to `RagResponse` model
+
 ## [3.0.3] - 2025-11-06
 
 ### 🎯 Package Optimization - Native Libraries
@@ -102,7 +198,7 @@ If you were using Google Speech-to-Text:
 - **LoggerMessage Parameter Mismatch**: Fixed `LogAudioServiceInitialized` LoggerMessage definition with missing `configPath` parameter
 - **EventId Conflicts**: Resolved duplicate EventId assignments in ServiceLogMessages.cs (6006, 6008, 6009)
 - **Logo Display Issue**: Removed broken logo references from README files that were causing display issues on NuGet
-- **TypeInitializationException**: Fixed critical startup error that prevented SmartRAG.Demo from running
+- **TypeInitializationException**: Fixed critical startup error
 
 ### 🔧 Technical Improvements
 - **ServiceLogMessages.cs**: Updated LoggerMessage definitions to match parameter counts correctly
@@ -369,6 +465,8 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 
 ## Version History
 
+- **3.1.0** (2025-11-11) - Unified Query Intelligence, Smart Hybrid Routing, New Service Architecture
+- **3.0.3** (2025-11-06) - Package Optimization - Native Libraries Excluded
 - **3.0.2** (2025-10-24) - Google Speech-to-Text removal, Whisper.net only
 - **3.0.1** (2025-10-22) - Bug fixes, Logging stability improvements
 - **3.0.0** (2025-10-22) - Intelligence Library Revolution, SQL Generation, On-Premise Support

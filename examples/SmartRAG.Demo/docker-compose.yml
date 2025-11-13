@@ -1,6 +1,6 @@
 services:
   # SQL Server
-  sqlserver:
+  smartrag-sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: smartrag-sqlserver-test
     env_file:
@@ -21,7 +21,7 @@ services:
     restart: unless-stopped
 
   # MySQL
-  mysql:
+  smartrag-mysql:
     image: mysql:8.0
     container_name: smartrag-mysql-test
     env_file:
@@ -42,7 +42,7 @@ services:
     restart: unless-stopped
 
   # PostgreSQL
-  postgres:
+  smartrag-postgres:
     image: postgres:16-alpine
     container_name: smartrag-postgres-test
     env_file:
@@ -63,7 +63,7 @@ services:
     restart: unless-stopped
 
   # Ollama - Local AI
-  ollama:
+  smartrag-ollama:
     image: ollama/ollama:latest
     container_name: smartrag-ollama
     ports:
@@ -78,7 +78,7 @@ services:
     restart: unless-stopped
 
   # Qdrant - Vector Database
-  qdrant:
+  smartrag-qdrant:
     image: qdrant/qdrant:latest
     container_name: smartrag-qdrant
     ports:
@@ -94,7 +94,7 @@ services:
     restart: unless-stopped
 
   # Redis - Cache & Vector Store
-  redis:
+  smartrag-redis:
     image: redis:7-alpine
     container_name: smartrag-redis
     ports:

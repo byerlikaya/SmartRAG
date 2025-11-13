@@ -22,7 +22,13 @@ SmartRAG provides well-defined interfaces for all operations. Inject these inter
 
 #### QueryIntelligenceAsync
 
-Process intelligent queries with RAG and automatic session management.
+Unified intelligent query processing with RAG and automatic session management. Searches across databases, documents, images (OCR), and audio (transcription) in a single query using Smart Hybrid routing.
+
+**Smart Hybrid Routing:**
+- **High Confidence (>0.7) + Database Queries**: Executes database query only
+- **High Confidence (>0.7) + No Database Queries**: Executes document query only
+- **Medium Confidence (0.3-0.7)**: Executes both database and document queries, merges results
+- **Low Confidence (<0.3)**: Executes document query only (fallback)
 
 ```csharp
 Task<RagResponse> QueryIntelligenceAsync(
@@ -37,19 +43,26 @@ Task<RagResponse> QueryIntelligenceAsync(
 - `maxResults` (int): Maximum number of document chunks to retrieve (default: 5)
 - `startNewConversation` (bool): Start a new conversation session (default: false)
 
-**Returns:** `RagResponse` with AI answer, sources, and metadata
+**Returns:** `RagResponse` with AI answer, sources from all available data sources (databases, documents, images, audio), and metadata
 
 **Example:**
 
 ```csharp
+// Unified query across all data sources
 var response = await _searchService.QueryIntelligenceAsync(
-    "What are the main benefits?", 
+    "Show me top customers and their recent feedback", 
     maxResults: 5
 );
 
 Console.WriteLine(response.Answer);
-// Sources available in response.Sources
+// Sources include both database and document sources
+foreach (var source in response.Sources)
+{
+    Console.WriteLine($"Source: {source.FileName}");
+}
 ```
+
+**Note:** If database coordinator is not configured, the method automatically falls back to document-only search, maintaining backward compatibility.
 
 #### SearchDocumentsAsync
 
