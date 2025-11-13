@@ -43,6 +43,42 @@ namespace SmartRAG.Services
 
         #endregion
 
+        #region Private Methods
+
+        /// <summary>
+        /// Sanitizes user input for safe logging by removing control characters and limiting length.
+        /// Prevents log injection attacks by removing newlines, carriage returns, and other control characters.
+        /// </summary>
+        private static string SanitizeForLog(string input)
+        {
+            if (string.IsNullOrEmpty(input)) return string.Empty;
+            
+            const int maxLogLength = 500;
+            
+            // Remove control characters (including newlines, carriage returns, tabs, etc.)
+            var sanitized = new StringBuilder(input.Length);
+            foreach (var c in input)
+            {
+                // Allow printable characters and common whitespace (space only)
+                if (!char.IsControl(c) || c == ' ')
+                {
+                    sanitized.Append(c);
+                }
+            }
+            
+            var result = sanitized.ToString();
+            
+            // Limit length to prevent log flooding
+            if (result.Length > maxLogLength)
+            {
+                result = result.Substring(0, maxLogLength) + "... (truncated)";
+            }
+            
+            return result;
+        }
+
+        #endregion
+
         #region Public Methods
 
         /// <summary>
@@ -52,7 +88,7 @@ namespace SmartRAG.Services
         /// <returns>Query intent with database routing information</returns>
         public async Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery)
         {
-            _logger.LogInformation("Analyzing query intent for: {Query}", userQuery);
+            _logger.LogInformation("Analyzing query intent for: {Query}", SanitizeForLog(userQuery));
 
             var queryIntent = new QueryIntent
             {

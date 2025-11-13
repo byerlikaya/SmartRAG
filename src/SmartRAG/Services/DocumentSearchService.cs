@@ -732,12 +732,35 @@ Direct Answer:";
         }
 
         /// <summary>
-        /// Sanitizes user input for safe logging by removing newlines and carriage returns.
+        /// Sanitizes user input for safe logging by removing control characters and limiting length.
+        /// Prevents log injection attacks by removing newlines, carriage returns, and other control characters.
         /// </summary>
         private static string SanitizeForLog(string input)
         {
-            if (input == null) return string.Empty;
-            return input.Replace("\r", "").Replace("\n", "");
+            if (string.IsNullOrEmpty(input)) return string.Empty;
+            
+            const int maxLogLength = 500;
+            
+            // Remove control characters (including newlines, carriage returns, tabs, etc.)
+            var sanitized = new StringBuilder(input.Length);
+            foreach (var c in input)
+            {
+                // Allow printable characters and common whitespace (space only)
+                if (!char.IsControl(c) || c == ' ')
+                {
+                    sanitized.Append(c);
+                }
+            }
+            
+            var result = sanitized.ToString();
+            
+            // Limit length to prevent log flooding
+            if (result.Length > maxLogLength)
+            {
+                result = result.Substring(0, maxLogLength) + "... (truncated)";
+            }
+            
+            return result;
         }
 
         /// <summary>
@@ -1393,12 +1416,12 @@ Answer:";
             // Fast pre-check: Short simple queries (likely conversation)
             if (IsObviousConversation(trimmedQuery))
             {
-                _logger.LogDebug("Query classified as CONVERSATION by fast pre-check: {Query}", trimmedQuery);
+                _logger.LogDebug("Query classified as CONVERSATION by fast pre-check: {Query}", SanitizeForLog(trimmedQuery));
                 return true;
             }
 
             // AI classification for ambiguous cases
-            _logger.LogDebug("Query passed pre-checks, sending to AI for classification: {Query}", trimmedQuery);
+            _logger.LogDebug("Query passed pre-checks, sending to AI for classification: {Query}", SanitizeForLog(trimmedQuery));
             try
             {
                 var historySnippet = string.Empty;
@@ -1443,13 +1466,13 @@ CRITICAL: If unsure, default to CONVERSATION. Answer with ONE word only: CONVERS
 
                     if (normalizedResult.Contains("CONVERSATION", StringComparison.Ordinal))
                     {
-                        _logger.LogDebug("Query classified as CONVERSATION by AI: {Query}", trimmedQuery);
+                        _logger.LogDebug("Query classified as CONVERSATION by AI: {Query}", SanitizeForLog(trimmedQuery));
                         return true;
                     }
 
                     if (normalizedResult.Contains("INFORMATION", StringComparison.Ordinal))
                     {
-                        _logger.LogDebug("Query classified as INFORMATION by AI: {Query}", trimmedQuery);
+                        _logger.LogDebug("Query classified as INFORMATION by AI: {Query}", SanitizeForLog(trimmedQuery));
                         return false;
                     }
 
