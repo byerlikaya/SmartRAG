@@ -8,6 +8,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **Code Architecture Refactoring**: Services and interfaces reorganized into modular folder structure for better organization and maintainability
+  - Interfaces organized by category: `AI/`, `Database/`, `Document/`, `Parser/`, `Search/`, `Storage/`, `Support/`
+  - Services organized by category: `AI/`, `Database/`, `Document/`, `Parser/`, `Search/`, `Storage/Qdrant/`, `Support/`, `Shared/`
+  - Namespaces updated: `SmartRAG.Interfaces` → `SmartRAG.Interfaces.{Category}`, `SmartRAG.Services` → `SmartRAG.Services.{Category}`
+  - File paths updated:
+    - `src/SmartRAG/Services/MultiDatabaseQueryCoordinator.cs` → `src/SmartRAG/Services/Database/MultiDatabaseQueryCoordinator.cs`
+    - `src/SmartRAG/Services/DocumentSearchService.cs` → `src/SmartRAG/Services/Document/DocumentSearchService.cs`
+    - `src/SmartRAG/Services/AIService.cs` → `src/SmartRAG/Services/AI/AIService.cs`
+    - `src/SmartRAG/Services/SemanticSearchService.cs` → `src/SmartRAG/Services/Search/SemanticSearchService.cs`
+    - All interfaces moved from `src/SmartRAG/Interfaces/` to `src/SmartRAG/Interfaces/{Category}/`
+  - **Breaking Changes**: Namespace changes may require using statement updates in consuming code
+  - **Benefits**: Better code organization, improved maintainability, clearer separation of concerns
+
 ### Added
 - **Unified Query Intelligence**: `QueryIntelligenceAsync` now supports unified search across databases, documents, images (OCR), and audio (transcription) in a single query
 - **Smart Hybrid Routing**: AI-based intent detection with confidence scoring automatically determines optimal search strategy
@@ -43,14 +57,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Enhanced Error Handling**: Better error handling for database query failures
 
 #### **New Services & Interfaces**
-- `src/SmartRAG/Services/QueryIntentAnalyzer.cs` - Analyzes user queries and determines which databases/tables to query using AI
-- `src/SmartRAG/Services/DatabaseQueryExecutor.cs` - Executes queries across multiple databases in parallel for better performance
-- `src/SmartRAG/Services/ResultMerger.cs` - Merges results from multiple databases into coherent responses using AI
-- `src/SmartRAG/Services/SQLQueryGenerator.cs` - Generates optimized SQL queries for each database based on query intent
-- `src/SmartRAG/Interfaces/IQueryIntentAnalyzer.cs` - Interface for query intent analysis
-- `src/SmartRAG/Interfaces/IDatabaseQueryExecutor.cs` - Interface for multi-database query execution
-- `src/SmartRAG/Interfaces/IResultMerger.cs` - Interface for result merging
-- `src/SmartRAG/Interfaces/ISQLQueryGenerator.cs` - Interface for SQL query generation
+- `src/SmartRAG/Services/Database/QueryIntentAnalyzer.cs` - Analyzes user queries and determines which databases/tables to query using AI
+- `src/SmartRAG/Services/Database/DatabaseQueryExecutor.cs` - Executes queries across multiple databases in parallel for better performance
+- `src/SmartRAG/Services/Database/ResultMerger.cs` - Merges results from multiple databases into coherent responses using AI
+- `src/SmartRAG/Services/Database/SQLQueryGenerator.cs` - Generates optimized SQL queries for each database based on query intent
+- `src/SmartRAG/Interfaces/Database/IQueryIntentAnalyzer.cs` - Interface for query intent analysis
+- `src/SmartRAG/Interfaces/Database/IDatabaseQueryExecutor.cs` - Interface for multi-database query execution
+- `src/SmartRAG/Interfaces/Database/IResultMerger.cs` - Interface for result merging
+- `src/SmartRAG/Interfaces/Database/ISQLQueryGenerator.cs` - Interface for SQL query generation
 
 #### **New Enums**
 - `src/SmartRAG/Enums/QueryStrategy.cs` - New enum for query execution strategies (DatabaseOnly, DocumentOnly, Hybrid)
@@ -62,11 +76,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `src/SmartRAG/Models/SearchSource.cs` - Enhanced with source type differentiation (Database, Document, Image, Audio)
 
 #### **Files Modified**
-- `src/SmartRAG/Services/DocumentSearchService.cs` - Major refactoring: Unified query intelligence implementation with hybrid routing (918+ lines changed)
-- `src/SmartRAG/Services/MultiDatabaseQueryCoordinator.cs` - Refactored to use new service architecture for better separation of concerns (355+ lines changed)
-- `src/SmartRAG/Services/AIService.cs` - Enhanced AI service with better error handling
-- `src/SmartRAG/Services/DocumentParserService.cs` - Improved document parsing with audio segment metadata support
-- `src/SmartRAG/Interfaces/IDocumentSearchService.cs` - Updated interface documentation
+- `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Major refactoring: Unified query intelligence implementation with hybrid routing (918+ lines changed)
+- `src/SmartRAG/Services/Database/MultiDatabaseQueryCoordinator.cs` - Refactored to use new service architecture for better separation of concerns (355+ lines changed)
+- `src/SmartRAG/Services/AI/AIService.cs` - Enhanced AI service with better error handling
+- `src/SmartRAG/Services/Document/DocumentParserService.cs` - Improved document parsing with audio segment metadata support
+- `src/SmartRAG/Interfaces/Document/IDocumentSearchService.cs` - Updated interface documentation
 - `src/SmartRAG/Extensions/ServiceCollectionExtensions.cs` - Registered new services in DI container
 
 ### 🔧 Code Quality & AI Prompt Optimization
@@ -81,10 +95,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Strategic Usage**: Better AI comprehension through strategic emoji usage
 
 #### **Files Modified**
-- `src/SmartRAG/Services/SQLQueryGenerator.cs` - Emoji optimization in AI prompts
-- `src/SmartRAG/Services/MultiDatabaseQueryCoordinator.cs` - Emoji optimization
-- `src/SmartRAG/Services/QueryIntentAnalyzer.cs` - Emoji optimization
-- `src/SmartRAG/Services/DocumentSearchService.cs` - Emoji optimization
+- `src/SmartRAG/Services/Database/SQLQueryGenerator.cs` - Emoji optimization in AI prompts
+- `src/SmartRAG/Services/Database/MultiDatabaseQueryCoordinator.cs` - Emoji optimization
+- `src/SmartRAG/Services/Database/QueryIntentAnalyzer.cs` - Emoji optimization
+- `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Emoji optimization
 
 ### ✨ Benefits
 - **Single Query Interface**: Query all data sources (databases, documents, images, audio) with one method

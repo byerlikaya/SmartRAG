@@ -16,7 +16,7 @@ SmartRAG tüm işlemler için iyi tanımlanmış interface'ler sağlar. Bu inter
 
 **Amaç:** RAG pipeline ve konuşma yönetimi ile AI destekli akıllı sorgu işleme
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Document`
 
 ### Metodlar
 
@@ -117,7 +117,7 @@ Task<RagResponse> GenerateRagAnswerAsync(
 
 **Amaç:** Doküman CRUD işlemleri ve yönetimi
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Document`
 
 ### Metodlar
 
@@ -260,7 +260,7 @@ Task<bool> ClearAllDocumentsAsync()
 
 **Amaç:** Çoklu format doküman ayrıştırma ve metin çıkarma
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Document`
 
 ### Metodlar
 
@@ -308,7 +308,7 @@ IEnumerable<string> GetSupportedContentTypes()
 
 **Amaç:** Canlı bağlantılarla evrensel veritabanı desteği
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Database`
 
 ### Metodlar
 
@@ -464,7 +464,7 @@ void ClearMemoryCache()
 
 **Amaç:** Gelişmiş semantik arama ve benzerlik hesaplama
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Search`
 
 ### Metodlar
 
@@ -498,7 +498,7 @@ Console.WriteLine($"Benzerlik Skoru: {similarity:F2}");
 
 **Amaç:** AI provider'ları ile etkileşim
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.AI`
 
 ### Metodlar
 
@@ -834,7 +834,7 @@ public SearchResult Search(string query)
 
 **Amaç:** AI kullanarak çoklu veritabanı sorgularını koordine eder
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Database`
 
 Bu interface, doğal dil kullanarak birden fazla veritabanına aynı anda sorgu yapmayı sağlar. AI sorguyu analiz eder, hangi veritabanları ve tablolara erişileceğini belirler, optimize edilmiş SQL sorguları oluşturur ve sonuçları tutarlı bir yanıt halinde birleştirir.
 
@@ -957,7 +957,7 @@ Task<MultiDatabaseQueryResult> MergeResultsAsync(
 
 **Amaç:** Konfigürasyondan veritabanı bağlantılarını yönetir
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Document`
 
 Veritabanı bağlantı yaşam döngüsü, doğrulama ve runtime yönetimini ele alır.
 
@@ -1099,7 +1099,7 @@ Task<bool> RemoveConnectionAsync(string databaseId)
 
 **Amaç:** Veritabanı şemalarını analiz eder ve akıllı metadata oluşturur
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Database`
 
 Tabloları, sütunları, ilişkileri içeren kapsamlı şema bilgisini çıkarır ve AI destekli özetler oluşturur.
 
@@ -1218,7 +1218,7 @@ Task<string> GenerateAISummaryAsync(DatabaseSchemaInfo schemaInfo)
 
 **Amaç:** Whisper.net ile ses transkripsiyonu (%100 yerel işleme)
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Parser`
 
 Whisper.net kullanarak yerel ses-metin transkripsiyonu sağlar. Tüm işlem lokalde yapılır.
 
@@ -1272,7 +1272,7 @@ Console.WriteLine($"Güven: {result.Confidence:P}");
 
 **Amaç:** Tesseract kullanarak görüntülerden OCR metin çıkarma
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Parser`
 
 Görüntülerden metin çıkarmak için optik karakter tanıma (OCR) sağlar. Tüm işlem Tesseract kullanarak lokaldir.
 

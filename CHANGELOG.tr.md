@@ -8,6 +8,20 @@ ve bu proje [Semantic Versioning](https://semver.org/spec/v2.0.0.html)'a uymakta
 
 ## [Yayınlanmamış]
 
+### Değiştirilenler
+- **Kod Mimari Refactoring**: Servisler ve interface'ler daha iyi organizasyon ve bakım kolaylığı için modüler klasör yapısına yeniden organize edildi
+  - Interface'ler kategorilere göre organize edildi: `AI/`, `Database/`, `Document/`, `Parser/`, `Search/`, `Storage/`, `Support/`
+  - Servisler kategorilere göre organize edildi: `AI/`, `Database/`, `Document/`, `Parser/`, `Search/`, `Storage/Qdrant/`, `Support/`, `Shared/`
+  - Namespace'ler güncellendi: `SmartRAG.Interfaces` → `SmartRAG.Interfaces.{Category}`, `SmartRAG.Services` → `SmartRAG.Services.{Category}`
+  - Dosya yolları güncellendi:
+    - `src/SmartRAG/Services/MultiDatabaseQueryCoordinator.cs` → `src/SmartRAG/Services/Database/MultiDatabaseQueryCoordinator.cs`
+    - `src/SmartRAG/Services/DocumentSearchService.cs` → `src/SmartRAG/Services/Document/DocumentSearchService.cs`
+    - `src/SmartRAG/Services/AIService.cs` → `src/SmartRAG/Services/AI/AIService.cs`
+    - `src/SmartRAG/Services/SemanticSearchService.cs` → `src/SmartRAG/Services/Search/SemanticSearchService.cs`
+    - Tüm interface'ler `src/SmartRAG/Interfaces/` → `src/SmartRAG/Interfaces/{Category}/` taşındı
+  - **Breaking Changes**: Namespace değişiklikleri tüketen kodda using statement güncellemeleri gerektirebilir
+  - **Faydalar**: Daha iyi kod organizasyonu, geliştirilmiş bakım kolaylığı, daha net separation of concerns
+
 ### Eklenenler
 - **Birleşik Sorgu Zekası**: `QueryIntelligenceAsync` artık veritabanları, dokümanlar, görseller (OCR) ve ses (transkripsiyon) üzerinde tek bir sorguda birleşik arama destekliyor
 - **Akıllı Hibrit Yönlendirme**: Güven skorlaması ile AI tabanlı niyet tespiti otomatik olarak optimal arama stratejisini belirler
@@ -43,14 +57,14 @@ ve bu proje [Semantic Versioning](https://semver.org/spec/v2.0.0.html)'a uymakta
 - **Geliştirilmiş Hata Yönetimi**: Veritabanı sorgu hataları için daha iyi hata yönetimi
 
 #### **Yeni Servisler & Interface'ler**
-- `src/SmartRAG/Services/QueryIntentAnalyzer.cs` - Kullanıcı sorgularını analiz eder ve hangi veritabanları/tabloları sorgulayacağını AI kullanarak belirler
-- `src/SmartRAG/Services/DatabaseQueryExecutor.cs` - Daha iyi performans için birden fazla veritabanında paralel sorgu yürütür
-- `src/SmartRAG/Services/ResultMerger.cs` - Birden fazla veritabanından gelen sonuçları AI kullanarak tutarlı yanıtlara birleştirir
-- `src/SmartRAG/Services/SQLQueryGenerator.cs` - Sorgu niyetine göre her veritabanı için optimize edilmiş SQL sorguları üretir
-- `src/SmartRAG/Interfaces/IQueryIntentAnalyzer.cs` - Sorgu niyet analizi için interface
-- `src/SmartRAG/Interfaces/IDatabaseQueryExecutor.cs` - Çoklu-veritabanı sorgu yürütme için interface
-- `src/SmartRAG/Interfaces/IResultMerger.cs` - Sonuç birleştirme için interface
-- `src/SmartRAG/Interfaces/ISQLQueryGenerator.cs` - SQL sorgu üretimi için interface
+- `src/SmartRAG/Services/Database/QueryIntentAnalyzer.cs` - Kullanıcı sorgularını analiz eder ve hangi veritabanları/tabloları sorgulayacağını AI kullanarak belirler
+- `src/SmartRAG/Services/Database/DatabaseQueryExecutor.cs` - Daha iyi performans için birden fazla veritabanında paralel sorgu yürütür
+- `src/SmartRAG/Services/Database/ResultMerger.cs` - Birden fazla veritabanından gelen sonuçları AI kullanarak tutarlı yanıtlara birleştirir
+- `src/SmartRAG/Services/Database/SQLQueryGenerator.cs` - Sorgu niyetine göre her veritabanı için optimize edilmiş SQL sorguları üretir
+- `src/SmartRAG/Interfaces/Database/IQueryIntentAnalyzer.cs` - Sorgu niyet analizi için interface
+- `src/SmartRAG/Interfaces/Database/IDatabaseQueryExecutor.cs` - Çoklu-veritabanı sorgu yürütme için interface
+- `src/SmartRAG/Interfaces/Database/IResultMerger.cs` - Sonuç birleştirme için interface
+- `src/SmartRAG/Interfaces/Database/ISQLQueryGenerator.cs` - SQL sorgu üretimi için interface
 
 #### **Yeni Enum'lar**
 - `src/SmartRAG/Enums/QueryStrategy.cs` - Sorgu yürütme stratejileri için yeni enum (DatabaseOnly, DocumentOnly, Hybrid)
@@ -62,11 +76,11 @@ ve bu proje [Semantic Versioning](https://semver.org/spec/v2.0.0.html)'a uymakta
 - `src/SmartRAG/Models/SearchSource.cs` - Kaynak tipi farklılaştırması ile geliştirildi (Database, Document, Image, Audio)
 
 #### **Değiştirilen Dosyalar**
-- `src/SmartRAG/Services/DocumentSearchService.cs` - Büyük refactoring: Hibrit yönlendirme ile birleşik sorgu zekası implementasyonu (918+ satır değişiklik)
-- `src/SmartRAG/Services/MultiDatabaseQueryCoordinator.cs` - Daha iyi separation of concerns için yeni servis mimarisini kullanacak şekilde refactor edildi (355+ satır değişiklik)
-- `src/SmartRAG/Services/AIService.cs` - Daha iyi hata yönetimi ile geliştirilmiş AI servisi
-- `src/SmartRAG/Services/DocumentParserService.cs` - Ses segment metadata desteği ile geliştirilmiş doküman ayrıştırma
-- `src/SmartRAG/Interfaces/IDocumentSearchService.cs` - Interface dokümantasyonu güncellendi
+- `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Büyük refactoring: Hibrit yönlendirme ile birleşik sorgu zekası implementasyonu (918+ satır değişiklik)
+- `src/SmartRAG/Services/Database/MultiDatabaseQueryCoordinator.cs` - Daha iyi separation of concerns için yeni servis mimarisini kullanacak şekilde refactor edildi (355+ satır değişiklik)
+- `src/SmartRAG/Services/AI/AIService.cs` - Daha iyi hata yönetimi ile geliştirilmiş AI servisi
+- `src/SmartRAG/Services/Document/DocumentParserService.cs` - Ses segment metadata desteği ile geliştirilmiş doküman ayrıştırma
+- `src/SmartRAG/Interfaces/Document/IDocumentSearchService.cs` - Interface dokümantasyonu güncellendi
 - `src/SmartRAG/Extensions/ServiceCollectionExtensions.cs` - DI container'da yeni servisler kaydedildi
 
 ### 🔧 Kod Kalitesi & AI Prompt Optimizasyonu
@@ -81,10 +95,10 @@ ve bu proje [Semantic Versioning](https://semver.org/spec/v2.0.0.html)'a uymakta
 - **Stratejik Kullanım**: Stratejik emoji kullanımı ile daha iyi AI anlayışı
 
 #### **Değiştirilen Dosyalar**
-- `src/SmartRAG/Services/SQLQueryGenerator.cs` - AI prompt'larında emoji optimizasyonu
-- `src/SmartRAG/Services/MultiDatabaseQueryCoordinator.cs` - Emoji optimizasyonu
-- `src/SmartRAG/Services/QueryIntentAnalyzer.cs` - Emoji optimizasyonu
-- `src/SmartRAG/Services/DocumentSearchService.cs` - Emoji optimizasyonu
+- `src/SmartRAG/Services/Database/SQLQueryGenerator.cs` - AI prompt'larında emoji optimizasyonu
+- `src/SmartRAG/Services/Database/MultiDatabaseQueryCoordinator.cs` - Emoji optimizasyonu
+- `src/SmartRAG/Services/Database/QueryIntentAnalyzer.cs` - Emoji optimizasyonu
+- `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Emoji optimizasyonu
 
 ### ✨ Faydalar
 - **Tek Sorgu Arayüzü**: Tüm veri kaynaklarını (veritabanları, dokümanlar, görseller, ses) tek bir metodla sorgula

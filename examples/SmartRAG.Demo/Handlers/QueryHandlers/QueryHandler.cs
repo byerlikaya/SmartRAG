@@ -313,13 +313,7 @@ public class QueryHandler(
 
             try
             {
-                var query = IsCommand(trimmedInput)
-                    ? trimmedInput
-                    : string.Format(
-                        CultureInfo.InvariantCulture,
-                        "{0}\n\n[IMPORTANT: Respond in {1} language]",
-                        userInput,
-                        language);
+                var query = IsCommand(trimmedInput) ? trimmedInput : userInput;
 
                 var response = await _documentSearchService.QueryIntelligenceAsync(query, maxResults: 8);
 

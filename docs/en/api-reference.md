@@ -16,7 +16,7 @@ SmartRAG provides well-defined interfaces for all operations. Inject these inter
 
 **Purpose:** AI-powered intelligent query processing with RAG pipeline and conversation management
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Document`
 
 ### Methods
 
@@ -117,7 +117,7 @@ Task<RagResponse> GenerateRagAnswerAsync(
 
 **Purpose:** Document CRUD operations and management
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Document`
 
 ### Methods
 
@@ -249,7 +249,7 @@ Task<bool> ClearAllDocumentsAsync()
 
 **Purpose:** Multi-format document parsing and text extraction
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Document`
 
 ### Methods
 
@@ -297,7 +297,7 @@ IEnumerable<string> GetSupportedContentTypes()
 
 **Purpose:** Universal database support with live connections
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Database`
 
 ### Methods
 
@@ -470,7 +470,7 @@ void ClearMemoryCache()
 
 **Purpose:** Advanced semantic search with hybrid scoring
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Search`
 
 ### Methods
 
@@ -506,7 +506,7 @@ Console.WriteLine($"Similarity: {similarity:P}"); // e.g., "Similarity: 85%"
 
 **Purpose:** AI provider communication for text generation and embeddings
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.AI`
 
 ### Methods
 
@@ -726,7 +726,7 @@ public enum RetryPolicy
 
 **Purpose:** Coordinates intelligent multi-database queries using AI
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Database`
 
 This interface enables querying across multiple databases simultaneously using natural language. The AI analyzes the query, determines which databases and tables to access, generates optimized SQL queries, and merges results into a coherent response.
 
@@ -841,7 +841,7 @@ Task<string> MergeResultsAsync(
 
 **Purpose:** Manages database connections from configuration
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Database`
 
 Handles database connection lifecycle, validation, and runtime management.
 
@@ -977,7 +977,7 @@ Task RemoveConnectionAsync(string databaseId)
 
 **Purpose:** Analyzes database schemas and generates intelligent metadata
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Database`
 
 Extracts comprehensive schema information including tables, columns, relationships, and generates AI-powered summaries.
 
@@ -1096,7 +1096,7 @@ Task<string> GenerateAISummaryAsync(DatabaseSchemaInfo schemaInfo)
 
 **Purpose:** Audio transcription with Whisper.net (100% local processing)
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Parser`
 
 Provides local audio-to-text transcription using Whisper.net. All processing is done on-premise - no data is sent to external services.
 
@@ -1161,7 +1161,7 @@ Console.WriteLine($"Language: {result.Language}");
 
 **Purpose:** OCR text extraction from images using Tesseract
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Parser`
 
 Provides optical character recognition (OCR) for extracting text from images. All processing is local using Tesseract.
 
