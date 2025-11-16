@@ -21,16 +21,7 @@ namespace SmartRAG.Interfaces.Document
         /// <param name="language">Language code for document processing (optional)</param>
         /// <returns>Created document entity</returns>
         Task<Entities.Document> UploadDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy, string language = null);
-
-        /// <summary>
-        /// Upload multiple documents
-        /// </summary>
-        /// <param name="fileStreams">Collection of file streams containing document content</param>
-        /// <param name="fileNames">Collection of file names corresponding to streams</param>
-        /// <param name="contentTypes">Collection of MIME content types corresponding to streams</param>
-        /// <param name="uploadedBy">Identifier of the user uploading the documents</param>
-        /// <returns>List of created document entities</returns>
-        Task<List<Entities.Document>> UploadDocumentsAsync(IEnumerable<Stream> fileStreams, IEnumerable<string> fileNames, IEnumerable<string> contentTypes, string uploadedBy);
+       
 
         /// <summary>
         /// Get document by ID

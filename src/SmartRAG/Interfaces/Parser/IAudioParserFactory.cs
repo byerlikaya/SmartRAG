@@ -13,12 +13,6 @@ namespace SmartRAG.Interfaces.Parser
         /// <param name="provider">Audio provider type</param>
         /// <returns>Audio parser service instance</returns>
         IAudioParserService CreateAudioParser(AudioProvider provider);
-        
-        /// <summary>
-        /// Gets currently configured audio provider
-        /// </summary>
-        /// <returns>Current audio provider</returns>
-        AudioProvider GetCurrentProvider();
     }
 }
 

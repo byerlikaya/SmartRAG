@@ -6,14 +6,7 @@ using Microsoft.Extensions.Options;
 using MySql.Data.MySqlClient;
 using Npgsql;
 using SmartRAG.Enums;
-using SmartRAG.Interfaces.AI;
 using SmartRAG.Interfaces.Database;
-using SmartRAG.Interfaces.Document;
-using SmartRAG.Interfaces.Parser;
-using SmartRAG.Interfaces.Search;
-using SmartRAG.Interfaces.Storage;
-using SmartRAG.Interfaces.Storage.Qdrant;
-using SmartRAG.Interfaces.Support;
 using SmartRAG.Models;
 using System;
 using System.Collections.Generic;
@@ -179,46 +172,9 @@ namespace SmartRAG.Services.Database
                 throw new NotSupportedException($"Database type {databaseType} is not supported");
         }
 
-        /// <summary>
-        /// Gets schema information for a specific table
-        /// </summary>
-        public async Task<string> GetTableSchemaAsync(string connectionString, string tableName, DatabaseType databaseType)
-        {
-            if (string.IsNullOrWhiteSpace(connectionString)) throw new ArgumentNullException(nameof(connectionString));
-            if (string.IsNullOrWhiteSpace(tableName)) throw new ArgumentNullException(nameof(tableName));
+      
 
-            if (databaseType == DatabaseType.SQLite)
-                return await GetSQLiteTableSchemaAsync(connectionString, tableName);
-            else if (databaseType == DatabaseType.SqlServer)
-                return await GetSqlServerTableSchemaAsync(connectionString, tableName);
-            else if (databaseType == DatabaseType.MySQL)
-                return await GetMySqlTableSchemaAsync(connectionString, tableName);
-            else if (databaseType == DatabaseType.PostgreSQL)
-                return await GetPostgreSqlTableSchemaAsync(connectionString, tableName);
-            else
-                throw new NotSupportedException($"Database type {databaseType} is not supported");
-        }
-
-        /// <summary>
-        /// Extracts data from a specific table
-        /// </summary>
-        public async Task<string> ExtractTableDataAsync(string connectionString, string tableName, DatabaseType databaseType, int maxRows = DefaultMaxRows)
-        {
-            if (string.IsNullOrWhiteSpace(connectionString)) throw new ArgumentNullException(nameof(connectionString));
-            if (string.IsNullOrWhiteSpace(tableName)) throw new ArgumentNullException(nameof(tableName));
-
-            var config = new DatabaseConfig
-            {
-                Type = databaseType,
-                ConnectionString = connectionString,
-                IncludedTables = new List<string> { tableName },
-                MaxRowsPerTable = maxRows,
-                IncludeSchema = true
-            };
-
-            return await ParseDatabaseConnectionAsync(connectionString, config);
-        }
-
+    
         /// <summary>
         /// Executes a custom SQL query and returns results
         /// </summary>
@@ -290,17 +246,7 @@ namespace SmartRAG.Services.Database
             return DatabaseFileExtensions;
         }
 
-        /// <summary>
-        /// Clears memory cache and disposes resources for memory optimization
-        /// </summary>
-        public void ClearMemoryCache()
-        {
-            _logger.LogInformation("Clearing database parser memory cache");
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
-            _logger.LogInformation("Memory cache cleared successfully");
-        }
+      
 
         #endregion
 
@@ -378,14 +324,6 @@ namespace SmartRAG.Services.Database
             }
         }
 
-        private async Task<string> GetSQLiteTableSchemaAsync(string connectionString, string tableName)
-        {
-            using (var connection = new SqliteConnection(connectionString))
-            {
-                await connection.OpenAsync();
-                return await GetSQLiteTableSchemaInternalAsync(connection, tableName);
-            }
-        }
 
         private async Task<string> GetSQLiteTableSchemaInternalAsync(SqliteConnection connection, string tableName)
         {
@@ -563,30 +501,6 @@ namespace SmartRAG.Services.Database
                 }
 
                 return tables;
-            }
-        }
-
-        private async Task<string> GetSqlServerTableSchemaAsync(string connectionString, string tableName)
-        {
-            try
-            {
-                using (var connection = new SqlConnection(connectionString))
-                {
-                    await connection.OpenAsync();
-                    return await GetSqlServerTableSchemaInternalAsync(connection, tableName);
-                }
-            }
-            catch (SqlException sqlEx)
-            {
-                // If database doesn't exist, return error message
-                if (sqlEx.Number == 4060 || sqlEx.Message.Contains("Cannot open database"))
-                {
-                    _logger.LogWarning($"SQL Server database does not exist yet for table {tableName}");
-                    return $"-- Table: {tableName}\n-- Database does not exist yet\n";
-                }
-                
-                _logger.LogError(sqlEx, $"Error getting SQL Server table schema for {tableName}");
-                throw;
             }
         }
 
@@ -805,15 +719,6 @@ namespace SmartRAG.Services.Database
             }
         }
 
-        private async Task<string> GetMySqlTableSchemaAsync(string connectionString, string tableName)
-        {
-            using (var connection = new MySqlConnection(connectionString))
-            {
-                await connection.OpenAsync();
-                return await GetMySqlTableSchemaInternalAsync(connection, tableName);
-            }
-        }
-
         private async Task<string> GetMySqlTableSchemaInternalAsync(MySqlConnection connection, string tableName)
         {
             using (var command = connection.CreateCommand())
@@ -975,15 +880,6 @@ namespace SmartRAG.Services.Database
                 }
 
                 return tables;
-            }
-        }
-
-        private async Task<string> GetPostgreSqlTableSchemaAsync(string connectionString, string tableName)
-        {
-            using (var connection = new NpgsqlConnection(connectionString))
-            {
-                await connection.OpenAsync();
-                return await GetPostgreSqlTableSchemaInternalAsync(connection, tableName);
             }
         }
 

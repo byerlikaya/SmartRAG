@@ -48,7 +48,7 @@ namespace SmartRAG.Services.Support
 
             // Unified heuristic classification (fast pre-check)
             var heuristic = HeuristicClassify(trimmedQuery, out var heuristicScore);
-            
+
             if (heuristic == HeuristicDecision.Conversation)
             {
                 _logger.LogDebug("Query classified as CONVERSATION by heuristics (score={Score}): {Query}", heuristicScore, _textNormalizationService.SanitizeForLog(trimmedQuery));
@@ -92,8 +92,8 @@ CRITICAL: Classify as CONVERSATION if:
 User: ""{0}""
 {1}
 
-CRITICAL: If unsure, default to CONVERSATION. Answer with ONE word only: CONVERSATION or INFORMATION", 
-                    trimmedQuery, 
+CRITICAL: If unsure, default to CONVERSATION. Answer with ONE word only: CONVERSATION or INFORMATION",
+                    trimmedQuery,
                     string.IsNullOrWhiteSpace(historySnippet) ? "" : $"Context: \"{historySnippet}\"");
 
                 var classification = await _aiService.GenerateResponseAsync(classificationPrompt, Array.Empty<string>());

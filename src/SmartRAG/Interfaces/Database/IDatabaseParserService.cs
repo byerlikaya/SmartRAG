@@ -33,16 +33,7 @@ namespace SmartRAG.Interfaces.Database
         /// <returns>Extracted text content from specified tables</returns>
         Task<string> ParseDatabaseConnectionAsync(string connectionString, DatabaseConfig config);
 
-        /// <summary>
-        /// Extracts data from a specific table
-        /// </summary>
-        /// <param name="connectionString">Database connection string</param>
-        /// <param name="tableName">Name of the table to extract</param>
-        /// <param name="databaseType">Type of database</param>
-        /// <param name="maxRows">Maximum number of rows to extract</param>
-        /// <returns>Extracted table content as text</returns>
-        Task<string> ExtractTableDataAsync(string connectionString, string tableName, DatabaseType databaseType, int maxRows = 1000);
-
+       
         /// <summary>
         /// Executes a custom SQL query and returns results
         /// </summary>
@@ -63,16 +54,7 @@ namespace SmartRAG.Interfaces.Database
         /// <param name="connectionString">Database connection string</param>
         /// <param name="databaseType">Type of database</param>
         /// <returns>List of table names</returns>
-        Task<List<string>> GetTableNamesAsync(string connectionString, DatabaseType databaseType);
-
-        /// <summary>
-        /// Gets schema information for a specific table
-        /// </summary>
-        /// <param name="connectionString">Database connection string</param>
-        /// <param name="tableName">Name of the table</param>
-        /// <param name="databaseType">Type of database</param>
-        /// <returns>Table schema as formatted text</returns>
-        Task<string> GetTableSchemaAsync(string connectionString, string tableName, DatabaseType databaseType);
+        Task<List<string>> GetTableNamesAsync(string connectionString, DatabaseType databaseType);       
 
         #endregion
 
@@ -97,11 +79,6 @@ namespace SmartRAG.Interfaces.Database
         /// </summary>
         /// <returns>List of supported file extensions</returns>
         IEnumerable<string> GetSupportedDatabaseFileExtensions();
-
-        /// <summary>
-        /// Clears memory cache and disposes resources for memory optimization
-        /// </summary>
-        void ClearMemoryCache();
 
         #endregion
     }

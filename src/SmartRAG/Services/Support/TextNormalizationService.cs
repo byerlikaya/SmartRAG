@@ -1,12 +1,5 @@
 #nullable enable
 
-using SmartRAG.Interfaces.AI;
-using SmartRAG.Interfaces.Database;
-using SmartRAG.Interfaces.Document;
-using SmartRAG.Interfaces.Parser;
-using SmartRAG.Interfaces.Search;
-using SmartRAG.Interfaces.Storage;
-using SmartRAG.Interfaces.Storage.Qdrant;
 using SmartRAG.Interfaces.Support;
 using System;
 using System.Linq;
@@ -85,9 +78,9 @@ namespace SmartRAG.Services.Support
         public string SanitizeForLog(string input)
         {
             if (string.IsNullOrEmpty(input)) return string.Empty;
-            
+
             const int maxLogLength = 500;
-            
+
             // Remove control characters (including newlines, carriage returns, tabs, etc.)
             var sanitized = new StringBuilder(input.Length);
             foreach (var c in input)
@@ -98,15 +91,15 @@ namespace SmartRAG.Services.Support
                     sanitized.Append(c);
                 }
             }
-            
+
             var result = sanitized.ToString();
-            
+
             // Limit length to prevent log flooding
             if (result.Length > maxLogLength)
             {
                 result = result.Substring(0, maxLogLength) + "... (truncated)";
             }
-            
+
             return result;
         }
     }

@@ -1,13 +1,6 @@
 using Microsoft.Extensions.Logging;
 using SmartRAG.Entities;
-using SmartRAG.Interfaces.AI;
-using SmartRAG.Interfaces.Database;
-using SmartRAG.Interfaces.Document;
-using SmartRAG.Interfaces.Parser;
-using SmartRAG.Interfaces.Search;
-using SmartRAG.Interfaces.Storage;
 using SmartRAG.Interfaces.Storage.Qdrant;
-using SmartRAG.Interfaces.Support;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -79,7 +72,7 @@ namespace SmartRAG.Services.Storage.Qdrant
                 // Clean up expired cache entries
                 CleanupExpiredCache();
 
-                _logger.LogDebug("Search results cached for query hash: {QueryHash}, cache size: {CacheSize}", 
+                _logger.LogDebug("Search results cached for query hash: {QueryHash}, cache size: {CacheSize}",
                     queryHash, _searchCache.Count);
             }
         }

@@ -28,12 +28,6 @@ namespace SmartRAG.Interfaces.Database
         Task<DatabaseConnectionConfig> GetConnectionAsync(string databaseId);
 
         /// <summary>
-        /// Validates all configured connections
-        /// </summary>
-        /// <returns>Dictionary of database IDs and their validation status</returns>
-        Task<Dictionary<string, bool>> ValidateAllConnectionsAsync();
-
-        /// <summary>
         /// Validates a specific connection
         /// </summary>
         /// <param name="databaseId">Database identifier</param>
@@ -45,20 +39,7 @@ namespace SmartRAG.Interfaces.Database
         /// </summary>
         /// <param name="connectionConfig">Connection configuration</param>
         /// <returns>Unique database identifier</returns>
-        Task<string> GetDatabaseIdAsync(DatabaseConnectionConfig connectionConfig);
-
-        /// <summary>
-        /// Adds a new database connection at runtime
-        /// </summary>
-        /// <param name="connectionConfig">Connection configuration</param>
-        /// <returns>Database identifier</returns>
-        Task<string> AddConnectionAsync(DatabaseConnectionConfig connectionConfig);
-
-        /// <summary>
-        /// Removes a database connection
-        /// </summary>
-        /// <param name="databaseId">Database identifier</param>
-        Task RemoveConnectionAsync(string databaseId);
+        Task<string> GetDatabaseIdAsync(DatabaseConnectionConfig connectionConfig);       
     }
 }
 

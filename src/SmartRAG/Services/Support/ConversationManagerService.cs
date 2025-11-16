@@ -3,13 +3,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartRAG.Enums;
-using SmartRAG.Interfaces.AI;
-using SmartRAG.Interfaces.Database;
 using SmartRAG.Interfaces.Document;
-using SmartRAG.Interfaces.Parser;
-using SmartRAG.Interfaces.Search;
-using SmartRAG.Interfaces.Storage;
-using SmartRAG.Interfaces.Storage.Qdrant;
 using SmartRAG.Interfaces.Support;
 using SmartRAG.Models;
 using SmartRAG.Services.Shared;
@@ -195,11 +189,11 @@ namespace SmartRAG.Services.Support
             var lines = history.Split('\n', StringSplitOptions.RemoveEmptyEntries);
             var turns = new System.Collections.Generic.List<string>();
             var currentTurn = new StringBuilder();
-            
+
             foreach (var line in lines)
             {
                 var trimmed = line.Trim();
-                
+
                 // Detect start of a new turn
                 if (trimmed.StartsWith("User:", StringComparison.OrdinalIgnoreCase) ||
                     trimmed.StartsWith("Assistant:", StringComparison.OrdinalIgnoreCase) ||
@@ -212,24 +206,24 @@ namespace SmartRAG.Services.Support
                         currentTurn.Clear();
                     }
                 }
-                
+
                 currentTurn.AppendLine(trimmed);
             }
-            
+
             // Add last turn
             if (currentTurn.Length > 0)
             {
                 turns.Add(currentTurn.ToString());
             }
-            
+
             // Keep only last N turns
             var recentTurns = turns.TakeLast(maxTurns * 2).ToList(); // *2 because each turn is User + Assistant
-            
+
             if (recentTurns.Count == 0)
             {
                 return string.Empty;
             }
-            
+
             return string.Join("\n", recentTurns);
         }
 

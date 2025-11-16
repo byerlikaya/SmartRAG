@@ -1,13 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using SmartRAG.Interfaces.AI;
 using SmartRAG.Interfaces.Database;
-using SmartRAG.Interfaces.Document;
-using SmartRAG.Interfaces.Parser;
-using SmartRAG.Interfaces.Search;
-using SmartRAG.Interfaces.Storage;
-using SmartRAG.Interfaces.Storage.Qdrant;
-using SmartRAG.Interfaces.Support;
 using SmartRAG.Models;
 using System;
 using System.Collections.Concurrent;
@@ -110,34 +103,7 @@ namespace SmartRAG.Services.Database
         {
             _connections.TryGetValue(databaseId, out var config);
             return await Task.FromResult(config);
-        }
-
-        public async Task<Dictionary<string, bool>> ValidateAllConnectionsAsync()
-        {
-            var results = new Dictionary<string, bool>();
-
-            foreach (var kvp in _connections)
-            {
-                var databaseId = kvp.Key;
-                var config = kvp.Value;
-
-                try
-                {
-                    var isValid = await _databaseParserService.ValidateConnectionAsync(
-                        config.ConnectionString,
-                        config.DatabaseType);
-                    
-                    results[databaseId] = isValid;
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Validation failed for database: {DatabaseId}", databaseId);
-                    results[databaseId] = false;
-                }
-            }
-
-            return results;
-        }
+        }    
 
         public async Task<bool> ValidateConnectionAsync(string databaseId)
         {
@@ -178,52 +144,9 @@ namespace SmartRAG.Services.Database
                 _logger.LogWarning(ex, "Could not extract database name, using GUID");
                 return $"DB_{Guid.NewGuid():N}";
             }
-        }
+        }   
 
-        public async Task<string> AddConnectionAsync(DatabaseConnectionConfig connectionConfig)
-        {
-            var databaseId = await GetDatabaseIdAsync(connectionConfig);
-
-            if (_connections.ContainsKey(databaseId))
-            {
-                throw new InvalidOperationException($"Database connection already exists: {databaseId}");
-            }
-
-            _connections[databaseId] = connectionConfig;
-            _logger.LogInformation("Added new database connection: {DatabaseId}", databaseId);
-
-            // Trigger schema analysis if enabled
-            if (_options.EnableAutoSchemaAnalysis)
-            {
-                _ = Task.Run(async () =>
-                {
-                    try
-                    {
-                        await _schemaAnalyzer.AnalyzeDatabaseSchemaAsync(connectionConfig);
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Schema analysis failed for new connection: {DatabaseId}", databaseId);
-                    }
-                });
-            }
-
-            return databaseId;
-        }
-
-        public async Task RemoveConnectionAsync(string databaseId)
-        {
-            if (_connections.TryRemove(databaseId, out _))
-            {
-                _logger.LogInformation("Removed database connection: {DatabaseId}", databaseId);
-            }
-            else
-            {
-                _logger.LogWarning("Database connection not found for removal: {DatabaseId}", databaseId);
-            }
-
-            await Task.CompletedTask;
-        }
+      
 
         #region Private Helper Methods
 

@@ -2,16 +2,10 @@
 
 using Microsoft.Extensions.Logging;
 using SmartRAG.Entities;
-using SmartRAG.Interfaces.AI;
-using SmartRAG.Interfaces.Database;
 using SmartRAG.Interfaces.Document;
-using SmartRAG.Interfaces.Parser;
 using SmartRAG.Interfaces.Search;
-using SmartRAG.Interfaces.Storage;
-using SmartRAG.Interfaces.Storage.Qdrant;
 using SmartRAG.Interfaces.Support;
 using SmartRAG.Models;
-using DocumentEntity = SmartRAG.Entities.Document;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -20,6 +14,7 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using DocumentEntity = SmartRAG.Entities.Document;
 
 namespace SmartRAG.Services.Search
 {
