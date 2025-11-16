@@ -6,14 +6,9 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using OfficeOpenXml;
 using SmartRAG.Entities;
-using SmartRAG.Interfaces.AI;
 using SmartRAG.Interfaces.Database;
 using SmartRAG.Interfaces.Document;
 using SmartRAG.Interfaces.Parser;
-using SmartRAG.Interfaces.Search;
-using SmartRAG.Interfaces.Storage;
-using SmartRAG.Interfaces.Storage.Qdrant;
-using SmartRAG.Interfaces.Support;
 using SmartRAG.Models;
 using SmartRAG.Services.Shared;
 using System;
@@ -43,9 +38,6 @@ namespace SmartRAG.Services.Document
         private const int DefaultDynamicSearchRange = 500;
         private const int DynamicSearchRangeDivisor = 10;
         private const int UltimateSearchRange = 1000;
-        
-        // Regex pattern constants
-        private const string BinaryCharactersPattern = @"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]";
         
         // String format constants
         private const string WorksheetFormat = "Worksheet: {0}";

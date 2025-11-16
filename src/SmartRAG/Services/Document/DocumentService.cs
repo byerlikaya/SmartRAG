@@ -2,13 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces.AI;
-using SmartRAG.Interfaces.Database;
 using SmartRAG.Interfaces.Document;
-using SmartRAG.Interfaces.Parser;
-using SmartRAG.Interfaces.Search;
-using SmartRAG.Interfaces.Storage;
-using SmartRAG.Interfaces.Storage.Qdrant;
-using SmartRAG.Interfaces.Support;
 using SmartRAG.Models;
 using SmartRAG.Services.Shared;
 using System;
@@ -165,48 +159,7 @@ namespace SmartRAG.Services.Document
 
             return savedDocument;
         }
-
-        public async Task<List<SmartRAG.Entities.Document>> UploadDocumentsAsync(IEnumerable<Stream> fileStreams, IEnumerable<string> fileNames, IEnumerable<string> contentTypes, string uploadedBy)
-        {
-            if (fileStreams == null || !fileStreams.Any())
-                throw new ArgumentException(NoFileStreamsMessage, nameof(fileStreams));
-
-            if (fileNames == null || !fileNames.Any())
-                throw new ArgumentException(NoFileNamesMessage, nameof(fileNames));
-
-            if (contentTypes == null || !contentTypes.Any())
-                throw new ArgumentException(NoContentTypesMessage, nameof(contentTypes));
-
-            var streamList = fileStreams.ToList();
-            var nameList = fileNames.ToList();
-            var typeList = contentTypes.ToList();
-
-            if (streamList.Count != nameList.Count || streamList.Count != typeList.Count)
-                throw new ArgumentException(MismatchedCountsMessage);
-
-            var uploadedDocuments = new List<SmartRAG.Entities.Document>();
-
-            // Parallel document upload for better performance
-            var uploadTasks = streamList.Select(async (stream, index) =>
-            {
-                try
-                {
-                    return await UploadDocumentAsync(stream, nameList[index], typeList[index], uploadedBy);
-                }
-                catch (Exception ex)
-                {
-                    ServiceLogMessages.LogDocumentUploadFailed(_logger, nameList[index], ex);
-                    return null;
-                }
-            });
-
-            var uploadResults = await Task.WhenAll(uploadTasks);
-
-            uploadedDocuments.AddRange(uploadResults.Where(doc => doc != null));
-
-            return uploadedDocuments;
-        }
-
+        
         public async Task<SmartRAG.Entities.Document> GetDocumentAsync(Guid id) => await _documentRepository.GetByIdAsync(id);
 
         public async Task<List<SmartRAG.Entities.Document>> GetAllDocumentsAsync() => await _documentRepository.GetAllAsync();

@@ -19,12 +19,7 @@ namespace SmartRAG.Services.Shared
         public static readonly Action<ILogger, string, Exception> LogDocumentUploadFailed = LoggerMessage.Define<string>(
             LogLevel.Warning,
             new EventId(1002, "DocumentUploadFailed"),
-            "Failed to upload document: {FileName}");
-
-        public static readonly Action<ILogger, string, Exception> LogDocumentDeleted = LoggerMessage.Define<string>(
-            LogLevel.Information,
-            new EventId(1003, "DocumentDeleted"),
-            "Document deleted: {FileName}");
+            "Failed to upload document: {FileName}"); 
 
         #endregion
 
@@ -40,25 +35,11 @@ namespace SmartRAG.Services.Shared
             new EventId(2002, "ChunkEmbeddingFailed"),
             "Chunk {Index}: Failed to generate embedding");
 
-        public static readonly Action<ILogger, int, Exception> LogChunkProcessingFailed = LoggerMessage.Define<int>(
-            LogLevel.Error,
-            new EventId(2003, "ChunkProcessingFailed"),
-            "Chunk {Index}: Failed to process");
-
         public static readonly Action<ILogger, int, int, Exception> LogChunkBatchEmbeddingSuccess = LoggerMessage.Define<int, int>(
             LogLevel.Debug,
             new EventId(2004, "ChunkBatchEmbeddingSuccess"),
             "Chunk {Index}: Batch embedding successful ({Dimensions} dimensions)");
 
-        public static readonly Action<ILogger, int, Exception> LogChunkBatchEmbeddingFailed = LoggerMessage.Define<int>(
-            LogLevel.Debug,
-            new EventId(2005, "ChunkBatchEmbeddingFailed"),
-            "Chunk {Index}: Batch embedding failed, trying individual generation");
-
-        public static readonly Action<ILogger, int, int, Exception> LogChunkIndividualEmbeddingSuccess = LoggerMessage.Define<int, int>(
-            LogLevel.Debug,
-            new EventId(2006, "ChunkIndividualEmbeddingSuccess"),
-            "Chunk {Index}: Individual embedding successful ({Dimensions} dimensions)");
 
         public static readonly Action<ILogger, Exception> LogEmbeddingRegenerationStarted = LoggerMessage.Define(
             LogLevel.Information,
@@ -93,130 +74,18 @@ namespace SmartRAG.Services.Shared
             LogLevel.Debug,
             new EventId(3010, "PartialNameMatches"),
             "Found PARTIAL name matches: [{FoundNames}] in chunk: {ChunkPreview}...");
-
-        public static readonly Action<ILogger, Exception> LogNoVoyageAIKey = LoggerMessage.Define(
-            LogLevel.Debug,
-            new EventId(3013, "NoVoyageAIKey"),
-            "Embedding search: No VoyageAI API key found");
-
-        public static readonly Action<ILogger, Exception> LogFailedQueryEmbedding = LoggerMessage.Define(
-            LogLevel.Debug,
-            new EventId(3014, "FailedQueryEmbedding"),
-            "Embedding search: Failed to generate query embedding");
+    
 
         public static readonly Action<ILogger, Exception> LogEmbeddingSearchFailedError = LoggerMessage.Define(
             LogLevel.Error,
             new EventId(3017, "EmbeddingSearchFailedError"),
             "Embedding search failed");
 
-        public static readonly Action<ILogger, int, int, int, Exception> LogRateLimitedRetry = LoggerMessage.Define<int, int, int>(
-            LogLevel.Debug,
-            new EventId(3018, "RateLimitedRetry"),
-            "Embedding generation rate limited, retrying in {Delay}ms (attempt {Attempt}/{MaxRetries})");
-
-        public static readonly Action<ILogger, int, Exception> LogRateLimitedAfterAttempts = LoggerMessage.Define<int>(
-            LogLevel.Debug,
-            new EventId(3019, "RateLimitedAfterAttempts"),
-            "Embedding generation rate limited after {MaxRetries} attempts");
-
+       
         public static readonly Action<ILogger, Exception> LogCanAnswerFromDocumentsError = LoggerMessage.Define(
             LogLevel.Warning,
             new EventId(3020, "CanAnswerFromDocumentsError"),
             "Error in CanAnswerFromDocumentsAsync, assuming document search for safety");
-
-        #endregion
-
-        #region AI Provider Operations
-
-        public static readonly Action<ILogger, Exception> LogPrimaryAIServiceAttempt = LoggerMessage.Define(
-            LogLevel.Debug,
-            new EventId(4001, "PrimaryAIServiceAttempt"),
-            "Trying primary AI service for embedding generation");
-
-        public static readonly Action<ILogger, int, Exception> LogPrimaryAIServiceSuccess = LoggerMessage.Define<int>(
-            LogLevel.Debug,
-            new EventId(4002, "PrimaryAIServiceSuccess"),
-            "Primary AI service successful: {Dimensions} dimensions");
-
-        public static readonly Action<ILogger, Exception> LogPrimaryAIServiceNull = LoggerMessage.Define(
-            LogLevel.Debug,
-            new EventId(4003, "PrimaryAIServiceNull"),
-            "Primary AI service returned null or empty embedding");
-
-        public static readonly Action<ILogger, Exception> LogPrimaryAIServiceFailed = LoggerMessage.Define(
-            LogLevel.Debug,
-            new EventId(4004, "PrimaryAIServiceFailed"),
-            "Primary AI service failed");
-
-        public static readonly Action<ILogger, string, Exception> LogProviderAttempt = LoggerMessage.Define<string>(
-            LogLevel.Debug,
-            new EventId(4005, "ProviderAttempt"),
-            "Trying {Provider} provider for embedding generation");
-
-        public static readonly Action<ILogger, string, int, Exception> LogProviderSuccessful = LoggerMessage.Define<string, int>(
-            LogLevel.Debug,
-            new EventId(4006, "ProviderSuccessful"),
-            "{Provider} successful: {Dimensions} dimensions");
-
-        public static readonly Action<ILogger, string, Exception> LogProviderFailed = LoggerMessage.Define<string>(
-            LogLevel.Debug,
-            new EventId(4007, "ProviderFailed"),
-            "{Provider} provider failed");
-
-        public static readonly Action<ILogger, Exception> LogAllProvidersFailed = LoggerMessage.Define(
-            LogLevel.Warning,
-            new EventId(4008, "AllProvidersFailed"),
-            "All embedding providers failed");
-
-        public static readonly Action<ILogger, string, string, Exception> LogProviderConfigFound = LoggerMessage.Define<string, string>(
-            LogLevel.Debug,
-            new EventId(4009, "ProviderConfigFound"),
-            "{Provider} config found, API key: {ApiKeyPreview}...");
-
-        public static readonly Action<ILogger, string, Exception> LogProviderReturnedNull = LoggerMessage.Define<string>(
-            LogLevel.Debug,
-            new EventId(4010, "ProviderReturnedNull"),
-            "{Provider} returned null or empty embedding");
-
-        public static readonly Action<ILogger, string, Exception> LogProviderConfigNotFound = LoggerMessage.Define<string>(
-            LogLevel.Debug,
-            new EventId(4011, "ProviderConfigNotFound"),
-            "{Provider} config not found or API key missing");
-
-        public static readonly Action<ILogger, string, Exception> LogAllProvidersFailedText = LoggerMessage.Define<string>(
-            LogLevel.Debug,
-            new EventId(4012, "AllProvidersFailedText"),
-            "All embedding providers failed for text: {TextPreview}...");
-
-        public static readonly Action<ILogger, string, Exception> LogTestingVoyageAI = LoggerMessage.Define<string>(
-            LogLevel.Debug,
-            new EventId(4013, "TestingVoyageAI"),
-            "Testing VoyageAI directly with key: {ApiKeyPreview}...");
-
-        public static readonly Action<ILogger, int, string, Exception> LogVoyageAITestResponse = LoggerMessage.Define<int, string>(
-            LogLevel.Debug,
-            new EventId(4014, "VoyageAITestResponse"),
-            "VoyageAI test response: {StatusCode} - {Response}");
-
-        public static readonly Action<ILogger, Exception> LogVoyageAIWorking = LoggerMessage.Define(
-            LogLevel.Debug,
-            new EventId(4015, "VoyageAIWorking"),
-            "VoyageAI is working! Trying to parse embedding...");
-
-        public static readonly Action<ILogger, int, Exception> LogVoyageAITestEmbedding = LoggerMessage.Define<int>(
-            LogLevel.Debug,
-            new EventId(4016, "VoyageAITestEmbedding"),
-            "VoyageAI test embedding generated: {Dimensions} dimensions");
-
-        public static readonly Action<ILogger, Exception> LogFailedParseVoyageAI = LoggerMessage.Define(
-            LogLevel.Debug,
-            new EventId(4017, "FailedParseVoyageAI"),
-            "Failed to parse VoyageAI response");
-
-        public static readonly Action<ILogger, Exception> LogVoyageAIDirectTestFailed = LoggerMessage.Define(
-            LogLevel.Debug,
-            new EventId(4018, "VoyageAIDirectTestFailed"),
-            "VoyageAI direct test failed");
 
         #endregion
 
@@ -226,11 +95,6 @@ namespace SmartRAG.Services.Shared
             LogLevel.Information,
             new EventId(5001, "BatchProcessing"),
             "Processing {BatchSize} chunks in batch");
-
-        public static readonly Action<ILogger, int, Exception> LogBatchCompleted = LoggerMessage.Define<int>(
-            LogLevel.Information,
-            new EventId(5002, "BatchCompleted"),
-            "Batch completed: {ProcessedCount} chunks processed");
 
         public static readonly Action<ILogger, int, int, Exception> LogBatchProgress = LoggerMessage.Define<int, int>(
             LogLevel.Information,
@@ -266,11 +130,6 @@ namespace SmartRAG.Services.Shared
             new EventId(6004, "NoProcessingNeeded"),
             "All chunks already have valid embeddings. No processing needed.");
 
-        public static readonly Action<ILogger, int, Exception> LogIndividualEmbeddingGeneration = LoggerMessage.Define<int>(
-            LogLevel.Debug,
-            new EventId(6005, "IndividualEmbeddingGeneration"),
-            "Generating individual embeddings for {TextCount} texts");
-
         public static readonly Action<ILogger, int, Exception> LogBatchEmbeddingAttempt = LoggerMessage.Define<int>(
             LogLevel.Debug,
             new EventId(6006, "BatchEmbeddingAttempt"),
@@ -291,14 +150,10 @@ namespace SmartRAG.Services.Shared
             new EventId(6009, "BatchEmbeddingFailed"),
             "Batch embedding failed: {ErrorMessage}");
 
-
-
         public static readonly Action<ILogger, string, int, Exception> LogDocumentProcessing = LoggerMessage.Define<string, int>(
             LogLevel.Information,
             new EventId(6020, "DocumentProcessing"),
             "Document: {FileName} ({ChunkCount} chunks)");
-
-
 
         public static readonly Action<ILogger, Guid, Exception> LogChunkBatchEmbeddingFailedRetry = LoggerMessage.Define<Guid>(
             LogLevel.Warning,
@@ -451,11 +306,6 @@ namespace SmartRAG.Services.Shared
 
         #region Image Processing and OCR Operations (EventId: 70001-70999)
 
-        public static readonly Action<ILogger, Exception> LogImageStreamInvalid = LoggerMessage.Define(
-            LogLevel.Warning,
-            new EventId(70001, "ImageStreamInvalid"),
-            "Image stream is invalid or cannot be read");
-
         public static readonly Action<ILogger, int, Exception> LogImageOcrSuccess = LoggerMessage.Define<int>(
             LogLevel.Debug,
             new EventId(70002, "ImageOcrSuccess"),
@@ -475,17 +325,7 @@ namespace SmartRAG.Services.Shared
             LogLevel.Debug,
             new EventId(70005, "OcrDataPathFound"),
             "OCR engine data path found at: {Path}");
-
-        public static readonly Action<ILogger, string, Exception> LogImageFormatNotSupported = LoggerMessage.Define<string>(
-            LogLevel.Warning,
-            new EventId(70006, "ImageFormatNotSupported"),
-            "Image format not supported: {Format}");
-
-        public static readonly Action<ILogger, string, Exception> LogImageLanguageNotSupported = LoggerMessage.Define<string>(
-            LogLevel.Warning,
-            new EventId(70007, "ImageLanguageNotSupported"),
-            "OCR language not supported: {Language}");
-
+    
         public static readonly Action<ILogger, int, Exception> LogImageProcessingStarted = LoggerMessage.Define<int>(
             LogLevel.Debug,
             new EventId(70008, "ImageProcessingStarted"),
@@ -501,81 +341,7 @@ namespace SmartRAG.Services.Shared
             new EventId(70010, "ImageProcessingFailed"),
             "Image processing failed");
 
-        public static readonly Action<ILogger, string, float, Exception> LogOcrConfidenceLow = LoggerMessage.Define<string, float>(
-            LogLevel.Warning,
-            new EventId(70011, "OcrConfidenceLow"),
-            "OCR confidence is low ({Confidence}) for text: {TextPreview}");
-
-        public static readonly Action<ILogger, int, Exception> LogTableDetectionSuccess = LoggerMessage.Define<int>(
-            LogLevel.Debug,
-            new EventId(70012, "TableDetectionSuccess"),
-            "Table detection successful, found {TableCount} tables");
-
-        public static readonly Action<ILogger, Exception> LogTableDetectionFailed = LoggerMessage.Define(
-            LogLevel.Warning,
-            new EventId(70013, "TableDetectionFailed"),
-            "Table detection failed");
-
         #endregion
 
-        #region Audio Processing and Speech-to-Text Operations (EventId: 80001-80999)
-
-        public static readonly Action<ILogger, long, string, Exception> LogAudioTranscriptionStarted = LoggerMessage.Define<long, string>(
-            LogLevel.Information,
-            new EventId(80001, "AudioTranscriptionStarted"),
-            "Starting audio transcription for {AudioSize} bytes in language {Language}");
-
-        public static readonly Action<ILogger, int, double, Exception> LogAudioTranscriptionCompleted = LoggerMessage.Define<int, double>(
-            LogLevel.Information,
-            new EventId(80002, "AudioTranscriptionCompleted"),
-            "Audio transcription completed: {TextLength} characters with {Confidence} confidence");
-
-        public static readonly Action<ILogger, Exception> LogAudioTranscriptionFailed = LoggerMessage.Define(
-            LogLevel.Error,
-            new EventId(80003, "AudioTranscriptionFailed"),
-            "Audio transcription failed");
-
-        public static readonly Action<ILogger, string, Exception> LogAudioServiceInitialized = LoggerMessage.Define<string>(
-            LogLevel.Debug,
-            new EventId(80004, "AudioServiceInitialized"),
-            "Whisper.net service initialized with config: {configPath}");
-
-        public static readonly Action<ILogger, Exception> LogAudioServiceInitializationFailed = LoggerMessage.Define(
-            LogLevel.Error,
-            new EventId(80005, "AudioServiceInitializationFailed"),
-            "Whisper.net service initialization failed");
-
-        public static readonly Action<ILogger, Exception> LogAudioNoMatch = LoggerMessage.Define(
-            LogLevel.Warning,
-            new EventId(80006, "AudioNoMatch"),
-            "No speech recognized in audio");
-
-        public static readonly Action<ILogger, string, Exception> LogAudioRecognitionFailed = LoggerMessage.Define<string>(
-            LogLevel.Error,
-            new EventId(80007, "AudioRecognitionFailed"),
-            "Audio recognition failed: {Reason}");
-
-        public static readonly Action<ILogger, Exception> LogAudioTranscriptionError = LoggerMessage.Define(
-            LogLevel.Error,
-            new EventId(80008, "AudioTranscriptionError"),
-            "Error during audio transcription");
-
-
-        public static readonly Action<ILogger, string, Exception> LogAudioFormatNotSupported = LoggerMessage.Define<string>(
-            LogLevel.Warning,
-            new EventId(80010, "AudioFormatNotSupported"),
-            "Audio format not supported: {Format}");
-
-        public static readonly Action<ILogger, long, Exception> LogAudioStreamValidationFailed = LoggerMessage.Define<long>(
-            LogLevel.Warning,
-            new EventId(80011, "AudioStreamValidationFailed"),
-            "Audio stream validation failed for {AudioSize} bytes");
-
-        public static readonly Action<ILogger, string, Exception> LogAudioLanguageNotSupported = LoggerMessage.Define<string>(
-            LogLevel.Warning,
-            new EventId(80012, "AudioLanguageNotSupported"),
-            "Audio language not supported: {Language}");
-
-        #endregion
     }
 }

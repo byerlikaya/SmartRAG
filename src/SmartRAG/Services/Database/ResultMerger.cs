@@ -18,7 +18,6 @@ namespace SmartRAG.Services.Database
     {
         #region Fields
 
-        private readonly IDatabaseSchemaAnalyzer _schemaAnalyzer;
         private readonly IAIService _aiService;
         private readonly ILogger<ResultMerger> _logger;
 
@@ -27,11 +26,9 @@ namespace SmartRAG.Services.Database
         #region Constructor
 
         public ResultMerger(
-            IDatabaseSchemaAnalyzer schemaAnalyzer,
             IAIService aiService,
             ILogger<ResultMerger> logger)
         {
-            _schemaAnalyzer = schemaAnalyzer;
             _aiService = aiService;
             _logger = logger;
         }
@@ -51,7 +48,6 @@ namespace SmartRAG.Services.Database
 
             // Parse all database results into structured data
             var parsedResults = new Dictionary<string, ParsedQueryResult>();
-            var allSchemas = await _schemaAnalyzer.GetAllSchemasAsync();
             
             foreach (var kvp in queryResults.DatabaseResults)
             {
@@ -77,7 +73,7 @@ namespace SmartRAG.Services.Database
             // If we have multiple successful databases, try to smart merge them
             if (parsedResults.Count > 1)
             {
-                var mergedData = await SmartMergeResultsAsync(parsedResults, allSchemas);
+                var mergedData = await SmartMergeResultsAsync(parsedResults);
                 if (mergedData != null && mergedData.Rows.Count > 0)
                 {
                     sb.AppendLine("=== SMART MERGED RESULTS (Cross-Database JOIN) ===");
@@ -239,8 +235,7 @@ Direct Answer:";
         }
 
         private async Task<ParsedQueryResult> SmartMergeResultsAsync(
-            Dictionary<string, ParsedQueryResult> parsedResults,
-            List<DatabaseSchemaInfo> allSchemas)
+            Dictionary<string, ParsedQueryResult> parsedResults)
         {
             try
             {
@@ -250,7 +245,7 @@ Direct Answer:";
                 _logger.LogInformation("Attempting smart merge of {Count} databases", parsedResults.Count);
                 
                 // Find foreign key relationships between databases
-                var joinableResults = await FindJoinableTablesAsync(parsedResults, allSchemas);
+                var joinableResults = await FindJoinableTablesAsync(parsedResults);
                 
                 if (joinableResults == null || joinableResults.Count < 2)
                 {
@@ -275,8 +270,7 @@ Direct Answer:";
         }
 
         private async Task<List<(ParsedQueryResult Result, string JoinColumn)>> FindJoinableTablesAsync(
-            Dictionary<string, ParsedQueryResult> parsedResults,
-            List<DatabaseSchemaInfo> allSchemas)
+            Dictionary<string, ParsedQueryResult> parsedResults)
         {
             await Task.CompletedTask;
             

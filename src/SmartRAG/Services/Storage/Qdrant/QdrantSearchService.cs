@@ -19,8 +19,6 @@ namespace SmartRAG.Services.Storage.Qdrant
     {
         #region Constants
 
-        private const int DefaultMaxSearchResults = 5;
-        private const int DefaultScrollBatchSize = 25;
         private const double DefaultTextSearchScore = 0.5;
         private const double MinKeywordMatchScore = 0.1;
         private const int MinWordLength = 2;

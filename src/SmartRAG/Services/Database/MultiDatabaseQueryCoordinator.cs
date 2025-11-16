@@ -17,10 +17,7 @@ namespace SmartRAG.Services.Database
 
         #region Fields
 
-        private readonly IDatabaseConnectionManager _connectionManager;
         private readonly IDatabaseSchemaAnalyzer _schemaAnalyzer;
-        private readonly IDatabaseParserService _databaseParser;
-        private readonly IAIService _aiService;
         private readonly ILogger<MultiDatabaseQueryCoordinator> _logger;
         private readonly IQueryIntentAnalyzer _queryIntentAnalyzer;
         private readonly ISQLQueryGenerator _sqlQueryGenerator;
@@ -32,20 +29,15 @@ namespace SmartRAG.Services.Database
         #region Constructor
 
         public MultiDatabaseQueryCoordinator(
-            IDatabaseConnectionManager connectionManager,
             IDatabaseSchemaAnalyzer schemaAnalyzer,
-            IDatabaseParserService databaseParser,
-            IAIService aiService,
             ILogger<MultiDatabaseQueryCoordinator> logger,
             IQueryIntentAnalyzer queryIntentAnalyzer,
             ISQLQueryGenerator sqlQueryGenerator,
             IDatabaseQueryExecutor databaseQueryExecutor,
             IResultMerger resultMerger)
         {
-            _connectionManager = connectionManager;
             _schemaAnalyzer = schemaAnalyzer;
-            _databaseParser = databaseParser;
-            _aiService = aiService;
+         
             _logger = logger;
             _queryIntentAnalyzer = queryIntentAnalyzer ?? throw new ArgumentNullException(nameof(queryIntentAnalyzer), 
                 "QueryIntentAnalyzer must be provided. Register IQueryIntentAnalyzer in DI container.");
