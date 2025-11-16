@@ -7,11 +7,11 @@ using SmartRAG.Entities;
 using SmartRAG.Enums;
 using SmartRAG.Interfaces.Document;
 using SmartRAG.Interfaces.Search;
-using SmartRAG.Interfaces.Database;
 using SmartRAG.Interfaces.Support;
 using SmartRAG.Interfaces.AI;
 using SmartRAG.Services.Shared;
 using SmartRAG.Models;
+using SmartRAG.Interfaces.Database;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -54,6 +54,7 @@ namespace SmartRAG.Services.Document
         private readonly IConfiguration _configuration;
         private readonly ILogger<DocumentSearchService> _logger;
         private readonly IMultiDatabaseQueryCoordinator? _multiDatabaseQueryCoordinator;
+        private readonly IQueryIntentAnalyzer _queryIntentAnalyzer;
         private readonly IConversationManagerService _conversationManager;
         private readonly IQueryIntentClassifierService _queryIntentClassifier;
         private readonly IPromptBuilderService _promptBuilder;
@@ -72,6 +73,7 @@ namespace SmartRAG.Services.Document
         /// <param name="options">SmartRAG configuration options</param>
         /// <param name="logger">Logger instance for this service</param>
         /// <param name="multiDatabaseQueryCoordinator">Optional multi-database query coordinator for database queries</param>
+        /// <param name="queryIntentAnalyzer">Service for analyzing database query intent</param>
         /// <param name="conversationManager">Service for managing conversation sessions and history</param>
         /// <param name="queryIntentClassifier">Service for classifying query intent</param>
         /// <param name="promptBuilder">Service for building AI prompts</param>
@@ -87,6 +89,7 @@ namespace SmartRAG.Services.Document
             IOptions<SmartRagOptions> options,
             ILogger<DocumentSearchService> logger,
             IMultiDatabaseQueryCoordinator? multiDatabaseQueryCoordinator = null,
+            IQueryIntentAnalyzer? queryIntentAnalyzer = null,
             IConversationManagerService? conversationManager = null,
             IQueryIntentClassifierService? queryIntentClassifier = null,
             IPromptBuilderService? promptBuilder = null,
@@ -102,6 +105,7 @@ namespace SmartRAG.Services.Document
             _options = options.Value;
             _logger = logger;
             _multiDatabaseQueryCoordinator = multiDatabaseQueryCoordinator;
+            _queryIntentAnalyzer = queryIntentAnalyzer ?? throw new ArgumentNullException(nameof(queryIntentAnalyzer));
             _conversationManager = conversationManager ?? throw new ArgumentNullException(nameof(conversationManager));
             _queryIntentClassifier = queryIntentClassifier ?? throw new ArgumentNullException(nameof(queryIntentClassifier));
             _promptBuilder = promptBuilder ?? throw new ArgumentNullException(nameof(promptBuilder));
@@ -195,7 +199,7 @@ namespace SmartRAG.Services.Document
                 try
                 {
                     // Analyze query intent using AI
-                    var queryIntent = await _multiDatabaseQueryCoordinator.AnalyzeQueryIntentAsync(query);
+                    var queryIntent = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(query);
 
                     var hasDatabaseQueries = queryIntent.DatabaseQueries != null && queryIntent.DatabaseQueries.Count > 0;
                     var confidence = queryIntent.Confidence;
@@ -435,13 +439,13 @@ namespace SmartRAG.Services.Document
         }
 
 
-
         /// <summary>
         /// Common method for executing document-based queries (used by both document-only and fallback strategies)
         /// </summary>
         private async Task<RagResponse> ExecuteDocumentQueryAsync(string query, int maxResults, string conversationHistory, bool? canAnswerFromDocuments = null)
         {
             var canAnswer = canAnswerFromDocuments ?? await CanAnswerFromDocumentsAsync(query);
+
             if (canAnswer)
             {
                 return await GenerateBasicRagAnswerAsync(query, maxResults, conversationHistory);
@@ -449,10 +453,6 @@ namespace SmartRAG.Services.Document
 
             return await CreateFallbackResponseAsync(query, conversationHistory);
         }
-
-
-
-
 
         /// <summary>
         /// Enhanced search with intelligent filtering and name detection
@@ -517,9 +517,6 @@ namespace SmartRAG.Services.Document
             return CreateRagResponse(query, answer, await _sourceBuilder.BuildSourcesAsync(chunks, _documentRepository));
         }
 
-
-
-
         private RagConfiguration GetRagConfiguration()
         {
             return new RagConfiguration
@@ -548,8 +545,6 @@ namespace SmartRAG.Services.Document
                 Configuration = GetRagConfiguration()
             };
         }
-
-
 
         /// <summary>
         /// Ultimate language-agnostic approach: ONLY check if documents contain relevant information

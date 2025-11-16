@@ -1,4 +1,5 @@
 using SmartRAG.Models;
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -10,11 +11,8 @@ namespace SmartRAG.Interfaces.Database
     public interface IMultiDatabaseQueryCoordinator
     {
         /// <summary>
-        /// Analyzes user query and determines which databases/tables to query
+        /// Analyzes and executes multi-database queries through a single coordinator facade
         /// </summary>
-        /// <param name="userQuery">Natural language user query</param>
-        /// <returns>Query intent with database routing information</returns>
-        Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery);
 
         /// <summary>
         /// Executes queries across multiple databases based on query intent
@@ -22,6 +20,14 @@ namespace SmartRAG.Interfaces.Database
         /// <param name="queryIntent">Analyzed query intent</param>
         /// <returns>Combined results from all databases</returns>
         Task<MultiDatabaseQueryResult> ExecuteMultiDatabaseQueryAsync(QueryIntent queryIntent);
+
+        /// <summary>
+        /// Legacy: Analyze natural-language query and produce database-intent
+        /// </summary>
+        /// <param name="userQuery">Natural language user query</param>
+        /// <returns>Structured query intent</returns>
+        [Obsolete("Use IQueryIntentAnalyzer.AnalyzeQueryIntentAsync instead. Will be removed in v4.0.0")]
+        Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery);
 
         /// <summary>
         /// Executes a full intelligent query: analyze intent + execute + merge results

@@ -1,17 +1,12 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using MySql.Data.MySqlClient;
 using Npgsql;
 using SmartRAG.Enums;
 using SmartRAG.Interfaces.AI;
 using SmartRAG.Interfaces.Database;
-using SmartRAG.Interfaces.Document;
-using SmartRAG.Interfaces.Parser;
-using SmartRAG.Interfaces.Search;
-using SmartRAG.Interfaces.Storage;
-using SmartRAG.Interfaces.Storage.Qdrant;
-using SmartRAG.Interfaces.Support;
 using SmartRAG.Models;
 using System;
 using System.Collections.Concurrent;
@@ -34,17 +29,20 @@ namespace SmartRAG.Services.Database
         private readonly ILogger<DatabaseSchemaAnalyzer> _logger;
         private readonly ConcurrentDictionary<string, DatabaseSchemaInfo> _schemaCache;
         private readonly ConcurrentDictionary<string, DateTime> _lastRefreshTimes;
+        private readonly SmartRagOptions _options;
 
         public DatabaseSchemaAnalyzer(
             IDatabaseParserService databaseParserService,
             IAIService aiService,
-            ILogger<DatabaseSchemaAnalyzer> logger)
+            ILogger<DatabaseSchemaAnalyzer> logger,
+            IOptions<SmartRagOptions> options)
         {
             _databaseParserService = databaseParserService;
             _aiService = aiService;
             _logger = logger;
             _schemaCache = new ConcurrentDictionary<string, DatabaseSchemaInfo>();
             _lastRefreshTimes = new ConcurrentDictionary<string, DateTime>();
+            _options = options.Value;
         }
 
         public async Task<DatabaseSchemaInfo> AnalyzeDatabaseSchemaAsync(DatabaseConnectionConfig connectionConfig)
@@ -116,23 +114,28 @@ namespace SmartRAG.Services.Database
             return schemaInfo;
         }
 
-        public Task<DatabaseSchemaInfo> RefreshSchemaAsync(string databaseId)
-        {
-            _logger.LogInformation("Refreshing schema for database: {DatabaseId}", databaseId);
-            
-            // Get the original connection config from cache
-            if (!_schemaCache.TryGetValue(databaseId, out var oldSchema))
-            {
-                throw new InvalidOperationException($"Database {databaseId} not found in cache");
-            }
 
-            // We need to store connection configs separately - for now throw error
-            throw new NotImplementedException("Schema refresh requires connection config to be stored");
-        }
 
         public async Task<List<DatabaseSchemaInfo>> GetAllSchemasAsync()
         {
-            return await Task.FromResult(_schemaCache.Values.ToList());
+            // Lazy initialization: if cache is empty, analyze configured connections
+            if (_schemaCache.IsEmpty && _options.DatabaseConnections != null && _options.DatabaseConnections.Count > 0)
+            {
+                foreach (var connection in _options.DatabaseConnections)
+                {
+                    try
+                    {
+                        // Only analyze enabled connections if such a flag exists; otherwise analyze all
+                        await AnalyzeDatabaseSchemaAsync(connection);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to analyze schema for configured database connection");
+                    }
+                }
+            }
+
+            return _schemaCache.Values.ToList();
         }
 
         public Task<DatabaseSchemaInfo> GetSchemaAsync(string databaseId)
@@ -141,26 +144,7 @@ namespace SmartRAG.Services.Database
             return Task.FromResult(schema);
         }
 
-        public Task<List<string>> GetSchemasNeedingRefreshAsync()
-        {
-            var needRefresh = new List<string>();
-            var now = DateTime.UtcNow;
 
-            foreach (var kvp in _lastRefreshTimes)
-            {
-                var databaseId = kvp.Key;
-                var lastRefresh = kvp.Value;
-
-                if (_schemaCache.TryGetValue(databaseId, out var schema))
-                {
-                    // Check if refresh is needed based on configured interval
-                    // This would need connection config to check interval
-                    // For now, just return empty list
-                }
-            }
-
-            return Task.FromResult(needRefresh);
-        }
 
         public async Task<string> GenerateAISummaryAsync(DatabaseSchemaInfo schemaInfo)
         {

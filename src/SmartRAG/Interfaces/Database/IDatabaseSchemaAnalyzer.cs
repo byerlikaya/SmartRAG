@@ -16,12 +16,7 @@ namespace SmartRAG.Interfaces.Database
         /// <returns>Complete schema information including tables, columns, relationships</returns>
         Task<DatabaseSchemaInfo> AnalyzeDatabaseSchemaAsync(DatabaseConnectionConfig connectionConfig);
 
-        /// <summary>
-        /// Refreshes schema information for a specific database
-        /// </summary>
-        /// <param name="databaseId">Database identifier</param>
-        /// <returns>Updated schema information</returns>
-        Task<DatabaseSchemaInfo> RefreshSchemaAsync(string databaseId);
+
 
         /// <summary>
         /// Gets all analyzed database schemas
@@ -36,11 +31,7 @@ namespace SmartRAG.Interfaces.Database
         /// <returns>Database schema information</returns>
         Task<DatabaseSchemaInfo> GetSchemaAsync(string databaseId);
 
-        /// <summary>
-        /// Checks if any schemas need refresh based on configured intervals
-        /// </summary>
-        /// <returns>List of database IDs that need refresh</returns>
-        Task<List<string>> GetSchemasNeedingRefreshAsync();
+
 
         /// <summary>
         /// Generates AI-powered summary of database content

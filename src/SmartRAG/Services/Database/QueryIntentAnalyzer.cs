@@ -1,12 +1,6 @@
 using Microsoft.Extensions.Logging;
 using SmartRAG.Interfaces.AI;
 using SmartRAG.Interfaces.Database;
-using SmartRAG.Interfaces.Document;
-using SmartRAG.Interfaces.Parser;
-using SmartRAG.Interfaces.Search;
-using SmartRAG.Interfaces.Storage;
-using SmartRAG.Interfaces.Storage.Qdrant;
-using SmartRAG.Interfaces.Support;
 using SmartRAG.Models;
 using System;
 using System.Collections.Generic;
@@ -95,7 +89,7 @@ namespace SmartRAG.Services.Database
         /// <returns>Query intent with database routing information</returns>
         public async Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery)
         {
-            _logger.LogInformation("Analyzing query intent for: {Query}", SanitizeForLog(userQuery));
+            _logger.LogDebug("Analyzing query intent for: {Query}", SanitizeForLog(userQuery));
 
             var queryIntent = new QueryIntent
             {
@@ -129,19 +123,8 @@ namespace SmartRAG.Services.Database
                     queryIntent = CreateFallbackQueryIntent(userQuery, schemas);
                 }
 
-                _logger.LogInformation("Query analysis completed. Confidence: {Confidence}, Databases: {Count}",
+                _logger.LogDebug("Query analysis completed. Confidence: {Confidence}, Databases: {Count}",
                     queryIntent.Confidence, queryIntent.DatabaseQueries.Count);
-                
-                // Debug: Log which databases and tables were selected (only in Debug mode)
-                if (_logger.IsEnabled(LogLevel.Debug))
-                {
-                    _logger.LogDebug("AI selected {Count} database(s) for this query:", queryIntent.DatabaseQueries.Count);
-                    foreach (var dbQuery in queryIntent.DatabaseQueries)
-                    {
-                        _logger.LogDebug("  ✓ {DbName} → Tables: [{Tables}]", 
-                            dbQuery.DatabaseName, string.Join(", ", dbQuery.RequiredTables));
-                    }
-                }
             }
             catch (Exception ex)
             {
