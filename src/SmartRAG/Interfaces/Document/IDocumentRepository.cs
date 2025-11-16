@@ -16,20 +16,20 @@ namespace SmartRAG.Interfaces.Document
         /// </summary>
         /// <param name="document">Document entity to add</param>
         /// <returns>Added document entity</returns>
-        Task<Document> AddAsync(Document document);
+        Task<SmartRAG.Entities.Document> AddAsync(SmartRAG.Entities.Document document);
 
         /// <summary>
         /// Retrieves document by unique identifier
         /// </summary>
         /// <param name="id">Unique document identifier</param>
         /// <returns>Document entity or null if not found</returns>
-        Task<Document> GetByIdAsync(Guid id);
+        Task<SmartRAG.Entities.Document> GetByIdAsync(Guid id);
 
         /// <summary>
         /// Retrieves all documents from storage
         /// </summary>
         /// <returns>List of all document entities</returns>
-        Task<List<Document>> GetAllAsync();
+        Task<List<SmartRAG.Entities.Document>> GetAllAsync();
 
         /// <summary>
         /// Removes document from storage by ID
@@ -50,7 +50,7 @@ namespace SmartRAG.Interfaces.Document
         /// <param name="query">Search query string</param>
         /// <param name="maxResults">Maximum number of results to return</param>
         /// <returns>List of relevant document chunks</returns>
-        Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = 5);
+        Task<List<SmartRAG.Entities.DocumentChunk>> SearchAsync(string query, int maxResults = 5);
 
         /// <summary>
         /// Gets conversation history for a session

@@ -2,8 +2,16 @@
 
 using Microsoft.Extensions.Logging;
 using SmartRAG.Entities;
-using SmartRAG.Interfaces;
+using SmartRAG.Interfaces.AI;
+using SmartRAG.Interfaces.Database;
+using SmartRAG.Interfaces.Document;
+using SmartRAG.Interfaces.Parser;
+using SmartRAG.Interfaces.Search;
+using SmartRAG.Interfaces.Storage;
+using SmartRAG.Interfaces.Storage.Qdrant;
+using SmartRAG.Interfaces.Support;
 using SmartRAG.Models;
+using DocumentEntity = SmartRAG.Entities.Document;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -47,7 +55,7 @@ namespace SmartRAG.Services.Search
                 return sources;
             }
 
-            var documentCache = new Dictionary<Guid, Document?>();
+            var documentCache = new Dictionary<Guid, DocumentEntity?>();
 
             foreach (var chunk in chunks)
             {
@@ -75,7 +83,7 @@ namespace SmartRAG.Services.Search
             return sources;
         }
 
-        private async Task<Document?> GetDocumentForChunkAsync(Guid documentId, Dictionary<Guid, Document?> cache, IDocumentRepository documentRepository)
+        private async Task<DocumentEntity?> GetDocumentForChunkAsync(Guid documentId, Dictionary<Guid, DocumentEntity?> cache, IDocumentRepository documentRepository)
         {
             if (cache.TryGetValue(documentId, out var cachedDocument))
             {
@@ -87,7 +95,7 @@ namespace SmartRAG.Services.Search
             return document;
         }
 
-        private static string DetermineDocumentSourceType(Document? document)
+        private static string DetermineDocumentSourceType(DocumentEntity? document)
         {
             if (document == null)
             {
@@ -125,7 +133,7 @@ namespace SmartRAG.Services.Search
             return "Document";
         }
 
-        private (double? Start, double? End) CalculateAudioTimestampRange(Document? document, DocumentChunk chunk)
+        private (double? Start, double? End) CalculateAudioTimestampRange(DocumentEntity? document, DocumentChunk chunk)
         {
             var segments = ExtractAudioSegments(document);
             if (segments.Count == 0)
@@ -176,7 +184,7 @@ namespace SmartRAG.Services.Search
             return (start, end);
         }
 
-        private static List<AudioSegmentMetadata> ExtractAudioSegments(Document? document)
+        private static List<AudioSegmentMetadata> ExtractAudioSegments(DocumentEntity? document)
         {
             if (document?.Metadata == null)
             {
@@ -215,7 +223,7 @@ namespace SmartRAG.Services.Search
             return new List<AudioSegmentMetadata>();
         }
 
-        private static string BuildDocumentLocationDescription(DocumentChunk chunk, Document? document, double? startTimeSeconds, double? endTimeSeconds)
+        private static string BuildDocumentLocationDescription(DocumentChunk chunk, DocumentEntity? document, double? startTimeSeconds, double? endTimeSeconds)
         {
             var builder = new StringBuilder();
             builder.Append($"Chunk #{chunk.ChunkIndex + 1}");

@@ -1,6 +1,7 @@
 #nullable enable
 
 using SmartRAG.Interfaces.Support;
+using SmartRAG.Interfaces.AI;
 
 namespace SmartRAG.Services.AI
 {

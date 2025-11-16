@@ -2,6 +2,7 @@ using SmartRAG.Entities;
 using SmartRAG.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using SmartRAG.Interfaces.Document;
 
 namespace SmartRAG.Interfaces.Search
 {

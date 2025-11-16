@@ -1,4 +1,3 @@
-using SmartRAG.Entities;
 using System;
 using System.Threading.Tasks;
 
@@ -26,7 +25,7 @@ namespace SmartRAG.Interfaces.Storage.Qdrant
         /// </summary>
         /// <param name="collectionName">Name of the document collection</param>
         /// <param name="document">Document to store</param>
-        Task EnsureDocumentCollectionExistsAsync(string collectionName, Document document);
+        Task EnsureDocumentCollectionExistsAsync(string collectionName, SmartRAG.Entities.Document document);
 
         /// <summary>
         /// Gets the vector dimension for collections

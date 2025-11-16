@@ -2,7 +2,14 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Qdrant.Client;
 using SmartRAG.Entities;
-using SmartRAG.Interfaces;
+using SmartRAG.Interfaces.AI;
+using SmartRAG.Interfaces.Database;
+using SmartRAG.Interfaces.Document;
+using SmartRAG.Interfaces.Parser;
+using SmartRAG.Interfaces.Search;
+using SmartRAG.Interfaces.Storage;
+using SmartRAG.Interfaces.Storage.Qdrant;
+using SmartRAG.Interfaces.Support;
 using SmartRAG.Models;
 using System;
 using System.Collections.Generic;
@@ -321,26 +328,26 @@ namespace SmartRAG.Services.Storage.Qdrant
 
         #region Private Methods
 
-        private static string GetPayloadString(Google.Protobuf.Collections.MapField<string, Qdrant.Client.Grpc.Value> payload, string key)
+        private static string GetPayloadString(Google.Protobuf.Collections.MapField<string, global::Qdrant.Client.Grpc.Value> payload, string key)
         {
             if (payload == null) return string.Empty;
 
-            if (!payload.TryGetValue(key, out Qdrant.Client.Grpc.Value value) || value == null)
+            if (!payload.TryGetValue(key, out global::Qdrant.Client.Grpc.Value value) || value == null)
                 return string.Empty;
 
             switch (value.KindCase)
             {
-                case Qdrant.Client.Grpc.Value.KindOneofCase.StringValue:
+                case global::Qdrant.Client.Grpc.Value.KindOneofCase.StringValue:
                     return value.StringValue ?? string.Empty;
-                case Qdrant.Client.Grpc.Value.KindOneofCase.DoubleValue:
+                case global::Qdrant.Client.Grpc.Value.KindOneofCase.DoubleValue:
                     return value.DoubleValue.ToString(CultureInfo.InvariantCulture);
-                case Qdrant.Client.Grpc.Value.KindOneofCase.IntegerValue:
+                case global::Qdrant.Client.Grpc.Value.KindOneofCase.IntegerValue:
                     return value.IntegerValue.ToString(CultureInfo.InvariantCulture);
-                case Qdrant.Client.Grpc.Value.KindOneofCase.BoolValue:
+                case global::Qdrant.Client.Grpc.Value.KindOneofCase.BoolValue:
                     return value.BoolValue.ToString();
-                case Qdrant.Client.Grpc.Value.KindOneofCase.StructValue:
+                case global::Qdrant.Client.Grpc.Value.KindOneofCase.StructValue:
                     return value.StructValue.ToString();
-                case Qdrant.Client.Grpc.Value.KindOneofCase.ListValue:
+                case global::Qdrant.Client.Grpc.Value.KindOneofCase.ListValue:
                     return string.Join(",", value.ListValue.Values.Select(v => v.ToString()));
                 default:
                     return value.ToString();
