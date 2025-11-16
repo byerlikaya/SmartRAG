@@ -1,14 +1,6 @@
 #nullable enable
-
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SmartRAG.Interfaces.AI;
-using SmartRAG.Interfaces.Database;
-using SmartRAG.Interfaces.Document;
-using SmartRAG.Interfaces.Parser;
-using SmartRAG.Interfaces.Search;
-using SmartRAG.Interfaces.Storage;
-using SmartRAG.Interfaces.Storage.Qdrant;
 using SmartRAG.Interfaces.Support;
 using System;
 using System.Globalization;
@@ -54,21 +46,21 @@ namespace SmartRAG.Services.Support
 
             var trimmedQuery = string.IsNullOrWhiteSpace(query) ? string.Empty : query.Trim();
 
-            // Fast pre-check: Obvious information queries (skip AI call)
-            if (IsLikelyInformationQuery(trimmedQuery))
+            // Unified heuristic classification (fast pre-check)
+            var heuristic = HeuristicClassify(trimmedQuery, out var heuristicScore);
+            
+            if (heuristic == HeuristicDecision.Conversation)
             {
+                _logger.LogDebug("Query classified as CONVERSATION by heuristics (score={Score}): {Query}", heuristicScore, _textNormalizationService.SanitizeForLog(trimmedQuery));
+                return true;
+            }
+            if (heuristic == HeuristicDecision.Information)
+            {
+                _logger.LogDebug("Query classified as INFORMATION by heuristics (score={Score}): {Query}", heuristicScore, _textNormalizationService.SanitizeForLog(trimmedQuery));
                 return false;
             }
 
-            // Fast pre-check: Short simple queries (likely conversation)
-            if (IsObviousConversation(trimmedQuery))
-            {
-                _logger.LogDebug("Query classified as CONVERSATION by fast pre-check: {Query}", _textNormalizationService.SanitizeForLog(trimmedQuery));
-                return true;
-            }
-
             // AI classification for ambiguous cases
-            _logger.LogDebug("Query passed pre-checks, sending to AI for classification: {Query}", _textNormalizationService.SanitizeForLog(trimmedQuery));
             try
             {
                 var historySnippet = string.Empty;
@@ -86,16 +78,16 @@ namespace SmartRAG.Services.Support
 @"You MUST classify the input as CONVERSATION or INFORMATION.
 
 CRITICAL: Classify as CONVERSATION if:
-- Greeting (any language): Hello, Hi, Hey, Hola, Bonjour, Merhaba, Selam
-- About the AI: Who are you, What are you, What model, What can you do
-- Small talk: How are you, What's your name, Where are you from, Are you ok
-- Polite chat: Thank you, Thanks, Goodbye, See you, Nice to meet you
+- Greeting in any human language (generic salutations/greetings)
+- About the AI (identity/capabilities, e.g., who/what are you, what can you do)
+- Small talk (well-being, introductions, origin, casual chat)
+- Polite chat (gratitude, farewells, niceties)
 
 ✓ Classify as INFORMATION ONLY if:
-- Contains data request words: show, list, find, calculate, total, count, sum
-- Contains question words: what IS/WAS, which one, how many, when did
-- Contains numbers/dates: 2023, last year, top 10, over 1000
-- Specific entity queries: record 123, item X, reference number Y
+- Contains data-request intent (show, list, find, calculate, total, count, sum)
+- Contains question words with informational intent (what, which, how many, when, how to)
+- Contains numbers/dates indicating data queries (e.g., years, ranges, ""top N"", thresholds)
+- Contains specific entity references (e.g., record identifiers, reference numbers)
 
 User: ""{0}""
 {1}
@@ -105,7 +97,6 @@ CRITICAL: If unsure, default to CONVERSATION. Answer with ONE word only: CONVERS
                     string.IsNullOrWhiteSpace(historySnippet) ? "" : $"Context: \"{historySnippet}\"");
 
                 var classification = await _aiService.GenerateResponseAsync(classificationPrompt, Array.Empty<string>());
-                _logger.LogDebug("AI classification result: {Classification}", classification);
 
                 if (!string.IsNullOrWhiteSpace(classification))
                 {
@@ -113,13 +104,13 @@ CRITICAL: If unsure, default to CONVERSATION. Answer with ONE word only: CONVERS
 
                     if (normalizedResult.Contains("CONVERSATION", StringComparison.Ordinal))
                     {
-                        _logger.LogDebug("Query classified as CONVERSATION by AI: {Query}", _textNormalizationService.SanitizeForLog(trimmedQuery));
+                        _logger.LogDebug("AI classified as CONVERSATION");
                         return true;
                     }
 
                     if (normalizedResult.Contains("INFORMATION", StringComparison.Ordinal))
                     {
-                        _logger.LogDebug("Query classified as INFORMATION by AI: {Query}", _textNormalizationService.SanitizeForLog(trimmedQuery));
+                        _logger.LogDebug("AI classified as INFORMATION");
                         return false;
                     }
 
@@ -128,7 +119,7 @@ CRITICAL: If unsure, default to CONVERSATION. Answer with ONE word only: CONVERS
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "AI classification failed. Defaulting to conversation.");
+                _logger.LogWarning(ex, "AI classification failed; defaulting to conversation.");
                 return true; // Safe default: treat as conversation
             }
 
@@ -179,65 +170,82 @@ CRITICAL: If unsure, default to CONVERSATION. Answer with ONE word only: CONVERS
             return false;
         }
 
-        /// <summary>
-        /// Fast heuristic check for obvious conversation patterns (no AI call needed)
-        /// </summary>
-        private static bool IsObviousConversation(string query)
+        // Unified heuristic classifier with language-agnostic signals
+        private enum HeuristicDecision { Unknown, Conversation, Information }
+
+        private static HeuristicDecision HeuristicClassify(string query, out int score)
         {
+            score = 0;
             var trimmed = query.Trim();
+            var tokens = Tokenize(trimmed);
 
-            // Very short input (1-2 chars) is likely conversation
-            if (trimmed.Length <= 2)
+            // Information signals
+            if (HasQuestionPunctuation(trimmed)) score++;
+            if (HasUnicodeDigits(trimmed)) score++;
+            if (HasMultipleNumericGroups(trimmed)) score++;
+            if (tokens.Length >= 5) score++;
+            if (HasOperatorsOrSymbols(trimmed)) score++;
+            if (HasDateOrTimePattern(trimmed)) score++;
+            if (HasNumericRangeOrList(trimmed)) score++;
+            if (HasIdLikeToken(tokens)) score++;
+
+            // Conversation signals (short, casual)
+            var convoScore = 0;
+            if (trimmed.Length <= 2) convoScore++;
+            if (tokens.Length <= 2 && !HasQuestionPunctuation(trimmed) && !HasUnicodeDigits(trimmed)) convoScore++;
+
+            // Decisions
+            if (convoScore >= 1 && score == 0)
             {
-                return true;
+                return HeuristicDecision.Conversation;
             }
 
-            var tokens = trimmed.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-
-            // Short queries (1-2 words) without question mark or numbers are likely chat
-            if (tokens.Length <= 2 &&
-                !trimmed.Contains('?', StringComparison.Ordinal) &&
-                !trimmed.Any(char.IsDigit))
+            // Require at least 2 information signals
+            if (score >= 2)
             {
-                return true;
+                return HeuristicDecision.Information;
             }
 
-            return false;
+            return HeuristicDecision.Unknown;
         }
 
-        /// <summary>
-        /// Fast heuristic check for obvious information queries (no AI call needed)
-        /// </summary>
-        private static bool IsLikelyInformationQuery(string query)
+        // Helper detectors (language-agnostic)
+        private static string[] Tokenize(string input) =>
+            input.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+        private static bool HasQuestionPunctuation(string input) =>
+            input.IndexOf('?', StringComparison.Ordinal) >= 0 ||
+            input.IndexOf('¿', StringComparison.Ordinal) >= 0 ||
+            input.IndexOf('؟', StringComparison.Ordinal) >= 0;
+
+        private static bool HasUnicodeDigits(string input) =>
+            input.Any(c => char.GetUnicodeCategory(c) == UnicodeCategory.DecimalDigitNumber);
+
+        private static bool HasMultipleNumericGroups(string input)
         {
-            if (string.IsNullOrWhiteSpace(query))
-            {
-                return false;
-            }
-
-            var trimmed = query.Trim();
-
-            // Contains question mark → likely information query
-            if (trimmed.Contains('?', StringComparison.Ordinal))
-            {
-                return true;
-            }
-
-            // Contains numbers → likely data query (e.g., "record 123", "top 10")
-            if (trimmed.Any(char.IsDigit))
-            {
-                return true;
-            }
-
-            // Long queries (5+ words) are usually information requests
-            var tokens = trimmed.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-            if (tokens.Length >= 5)
-            {
-                return true;
-            }
-
-            return false;
+            var matches = System.Text.RegularExpressions.Regex.Matches(input, @"\p{Nd}+");
+            return matches.Count >= 2;
         }
+
+        private static bool HasOperatorsOrSymbols(string input) =>
+            input.IndexOf('>') >= 0 || input.IndexOf('<') >= 0 ||
+            input.IndexOf('=') >= 0 || input.IndexOf('+') >= 0 ||
+            input.IndexOf('-') >= 0 || input.IndexOf('*') >= 0 ||
+            input.IndexOf('/') >= 0 || input.IndexOf('%') >= 0 ||
+            input.IndexOf('€') >= 0 || input.IndexOf('$') >= 0 ||
+            input.IndexOf('£') >= 0 || input.IndexOf('¥') >= 0 ||
+            input.IndexOf('₺') >= 0;
+
+        private static bool HasDateOrTimePattern(string input) =>
+            System.Text.RegularExpressions.Regex.IsMatch(input, @"\b\d{4}[-/\.]\d{1,2}[-/\.]\d{1,2}\b") ||
+            System.Text.RegularExpressions.Regex.IsMatch(input, @"\b\d{1,2}:\d{2}(:\d{2})?\b");
+
+        private static bool HasNumericRangeOrList(string input) =>
+            System.Text.RegularExpressions.Regex.IsMatch(input, @"\b\d+\s*[-–—]\s*\d+\b") ||
+            System.Text.RegularExpressions.Regex.IsMatch(input, @"\b\d+\s*,\s*\d+(\s*,\s*\d+)+\b");
+
+        private static bool HasIdLikeToken(string[] tokens) =>
+            tokens.Any(t => System.Text.RegularExpressions.Regex.IsMatch(t, @"\p{L}*\p{Nd}+\w*"));
     }
 }
 

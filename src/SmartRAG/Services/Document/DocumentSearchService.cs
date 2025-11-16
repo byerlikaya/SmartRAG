@@ -185,6 +185,7 @@ namespace SmartRAG.Services.Document
                     ? originalQuery
                     : query;
                 var conversationAnswer = await HandleGeneralConversationAsync(conversationQuery, conversationHistory);
+
                 await _conversationManager.AddToConversationAsync(sessionId, conversationQuery, conversationAnswer);
 
                 return CreateRagResponse(conversationQuery, conversationAnswer, new List<SearchSource>());
@@ -213,22 +214,22 @@ namespace SmartRAG.Services.Document
                     response = strategy switch
                     {
                         QueryStrategy.DatabaseOnly => await ExecuteDatabaseOnlyStrategyAsync(query, maxResults, conversationHistory, canAnswerFromDocuments),
-                        QueryStrategy.DocumentOnly => await ExecuteDocumentOnlyStrategyAsync(query, maxResults, conversationHistory, canAnswerFromDocuments),
+                        QueryStrategy.DocumentOnly => await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments),
                         QueryStrategy.Hybrid => await ExecuteHybridStrategyAsync(query, maxResults, conversationHistory, hasDatabaseQueries, canAnswerFromDocuments),
-                        _ => await ExecuteDocumentOnlyStrategyAsync(query, maxResults, conversationHistory, canAnswerFromDocuments) // Fallback
+                        _ => await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments) // Fallback
                     };
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error during query intent analysis, falling back to document-only query");
-                    response = await ExecuteDocumentFallbackAsync(query, maxResults, conversationHistory, canAnswerFromDocuments);
+                    response = await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments);
                 }
             }
             else
             {
                 // Database coordinator not available → Fallback to document-only logic
                 _logger.LogInformation("Database coordinator not available. Using document-only query.");
-                response = await ExecuteDocumentOnlyStrategyAsync(query, maxResults, conversationHistory, canAnswerFromDocuments);
+                response = await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments);
             }
 
             // Add to conversation history
@@ -291,23 +292,16 @@ namespace SmartRAG.Services.Document
                 }
 
                 _logger.LogInformation("Database query returned no meaningful data, falling back to document search");
-                return await ExecuteDocumentFallbackAsync(query, maxResults, conversationHistory, canAnswerFromDocuments);
+                return await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Database query failed, falling back to document query");
-                return await ExecuteDocumentFallbackAsync(query, maxResults, conversationHistory, canAnswerFromDocuments);
+                return await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments);
             }
         }
 
-        /// <summary>
-        /// Executes a document-only query strategy
-        /// </summary>
-        private async Task<RagResponse> ExecuteDocumentOnlyStrategyAsync(string query, int maxResults, string conversationHistory, bool? canAnswerFromDocuments = null)
-        {
-            _logger.LogInformation("Executing document-only query strategy");
-            return await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments);
-        }
+
 
         /// <summary>
         /// Executes a hybrid query strategy (both database and document queries)
@@ -447,13 +441,7 @@ namespace SmartRAG.Services.Document
             return CreateRagResponse(query, mergedAnswer, combinedSources);
         }
 
-        /// <summary>
-        /// Executes document fallback when database query fails
-        /// </summary>
-        private async Task<RagResponse> ExecuteDocumentFallbackAsync(string query, int maxResults, string conversationHistory, bool? canAnswerFromDocuments = null)
-        {
-            return await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments);
-        }
+
 
         /// <summary>
         /// Common method for executing document-based queries (used by both document-only and fallback strategies)
@@ -557,7 +545,7 @@ namespace SmartRAG.Services.Document
             {
                 AIProvider = _options.AIProvider.ToString(),
                 StorageProvider = _options.StorageProvider.ToString(),
-                Model = _configuration["AI:OpenAI:Model"] ?? "gpt-3.5-turbo"
+                Model = _configuration["AI:OpenAI:Model"]
             };
         }
 
@@ -639,12 +627,14 @@ namespace SmartRAG.Services.Document
             try
             {
                 var providerConfig = _aiConfiguration.GetAIProviderConfig();
+                
                 if (providerConfig == null)
                 {
                     return ChatUnavailableMessage;
                 }
 
                 var aiProvider = _aiProviderFactory.CreateProvider(_options.AIProvider);
+
                 var prompt = _promptBuilder.BuildConversationPrompt(query, conversationHistory);
 
                 return await aiProvider.GenerateTextAsync(prompt, providerConfig);
