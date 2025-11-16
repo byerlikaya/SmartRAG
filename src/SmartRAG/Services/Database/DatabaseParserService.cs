@@ -1,8 +1,6 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using MySql.Data.MySqlClient;
 using Npgsql;
 using SmartRAG.Enums;
@@ -32,21 +30,11 @@ namespace SmartRAG.Services.Database
         // Database file extensions
         private static readonly string[] DatabaseFileExtensions = { ".db", ".sqlite", ".sqlite3", ".db3" };
 
-        // Sensitive column patterns
-        private static readonly string[] DefaultSensitiveColumns = {
-            "password", "pwd", "pass", "secret", "token", "key",
-            "ssn", "social_security", "social_security_number",
-            "credit_card", "creditcard", "cc_number", "card_number",
-            "email", "email_address", "phone", "phone_number", "mobile"
-        };
-
         #endregion
 
         #region Fields
 
-        private readonly SmartRagOptions _options;
         private readonly ILogger<DatabaseParserService> _logger;
-        private readonly IMemoryCache _cache;
 
         #endregion
 
@@ -56,13 +44,9 @@ namespace SmartRAG.Services.Database
         /// Initializes a new instance of the DatabaseParserService
         /// </summary>
         public DatabaseParserService(
-            IOptions<SmartRagOptions> options,
-            ILogger<DatabaseParserService> logger,
-            IMemoryCache cache)
+            ILogger<DatabaseParserService> logger)
         {
-            _options = options.Value;
             _logger = logger;
-            _cache = cache;
         }
 
         #endregion
@@ -245,8 +229,7 @@ namespace SmartRAG.Services.Database
         {
             return DatabaseFileExtensions;
         }
-
-      
+  
 
         #endregion
 
@@ -994,9 +977,12 @@ namespace SmartRAG.Services.Database
         /// </summary>
         private static bool IsSensitiveColumn(string columnName, List<string> sensitiveColumns)
         {
-            var columnsToCheck = sensitiveColumns?.Any() == true ? sensitiveColumns : DefaultSensitiveColumns.ToList();
+            if (sensitiveColumns == null || !sensitiveColumns.Any())
+            {
+                return false;
+            }
             
-            return columnsToCheck.Any(sensitive => 
+            return sensitiveColumns.Any(sensitive => 
                 columnName.IndexOf(sensitive, StringComparison.OrdinalIgnoreCase) >= 0);
         }
 
