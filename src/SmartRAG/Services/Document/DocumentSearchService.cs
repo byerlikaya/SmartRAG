@@ -127,14 +127,8 @@ namespace SmartRAG.Services.Document
 
             if (searchResults.Count > 0)
             {
-                ServiceLogMessages.LogSearchResults(_logger, searchResults.Count, searchResults.Select(c => c.DocumentId).Distinct().Count(), null);
-
-                // Apply diversity selection to ensure chunks from different documents
-                var diverseResults = ApplyDiversityAndSelect(searchResults, maxResults);
-
-                ServiceLogMessages.LogDiverseResults(_logger, diverseResults.Count, diverseResults.Select(c => c.DocumentId).Distinct().Count(), null);
-
-                return diverseResults;
+                // Apply diversity selection to ensure chunks from different documents (simple cap for now)
+                return searchResults.Take(maxResults).ToList();
             }
 
             return searchResults;
@@ -180,7 +174,6 @@ namespace SmartRAG.Services.Document
             // Handle forced conversation or detected general conversation upfront
             if ((hasCommand && commandType == QueryCommandType.ForceConversation) || await _queryIntentClassifier.IsGeneralConversationAsync(query, conversationHistory))
             {
-                ServiceLogMessages.LogGeneralConversationQuery(_logger, null);
                 var conversationQuery = string.IsNullOrWhiteSpace(query)
                     ? originalQuery
                     : query;
@@ -469,29 +462,23 @@ namespace SmartRAG.Services.Document
             var allDocuments = await _documentRepository.GetAllAsync();
             var allChunks = allDocuments.SelectMany(d => d.Chunks).ToList();
 
-            ServiceLogMessages.LogSearchInDocuments(_logger, allDocuments.Count, allChunks.Count, null);
-
             // Try embedding-based search first if available
             try
             {
                 var embeddingResults = await _embeddingSearch.SearchByEmbeddingAsync(query, allChunks, maxResults);
                 if (embeddingResults.Count > 0)
                 {
-                    ServiceLogMessages.LogEmbeddingSearchSuccessful(_logger, embeddingResults.Count, null);
                     return embeddingResults;
                 }
             }
             catch (Exception)
             {
-                ServiceLogMessages.LogEmbeddingSearchFailed(_logger, null);
+                // Fallback to keyword-based scoring
             }
 
             // Enhanced keyword-based fallback for global content
             var queryWords = QueryTokenizer.TokenizeQuery(query);
             var potentialNames = QueryTokenizer.ExtractPotentialNames(query);
-
-            ServiceLogMessages.LogQueryWords(_logger, string.Join(", ", queryWords), null);
-            ServiceLogMessages.LogPotentialNames(_logger, string.Join(", ", potentialNames), null);
 
             var scoredChunks = _documentScoring.ScoreChunks(allChunks, query, queryWords, potentialNames);
 
@@ -504,8 +491,6 @@ namespace SmartRAG.Services.Document
                 .Take(Math.Max(maxResults * CandidateMultiplier, CandidateMinCount))
                 .ToList();
 
-            ServiceLogMessages.LogRelevantChunksFound(_logger, relevantChunks.Count, null);
-
             // If we found chunks with names, prioritize them
             if (potentialNames.Count >= MinPotentialNamesCount)
             {
@@ -514,7 +499,6 @@ namespace SmartRAG.Services.Document
 
                 if (nameChunks.Count > MinNameChunksCount)
                 {
-                    ServiceLogMessages.LogNameChunksFound(_logger, nameChunks.Count, null);
                     return nameChunks.Take(maxResults).ToList();
                 }
             }
@@ -534,10 +518,7 @@ namespace SmartRAG.Services.Document
         }
 
 
-        private static List<DocumentChunk> ApplyDiversityAndSelect(List<DocumentChunk> chunks, int maxResults)
-        {
-            return chunks.Take(maxResults).ToList();
-        }
+
 
         private RagConfiguration GetRagConfiguration()
         {

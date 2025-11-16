@@ -79,45 +79,10 @@ namespace SmartRAG.Services.Shared
 
         #region Search Operations
 
-        public static readonly Action<ILogger, int, int, Exception> LogSearchResults = LoggerMessage.Define<int, int>(
-            LogLevel.Debug,
-            new EventId(3001, "SearchResults"),
-            "Search returned {ChunkCount} chunks from {DocumentCount} documents");
-
-        public static readonly Action<ILogger, int, int, Exception> LogDiverseResults = LoggerMessage.Define<int, int>(
-            LogLevel.Debug,
-            new EventId(3002, "DiverseResults"),
-            "Final diverse results: {ResultCount} chunks from {DocumentCount} documents");
-
         public static readonly Action<ILogger, Exception> LogGeneralConversationQuery = LoggerMessage.Define(
             LogLevel.Debug,
             new EventId(3003, "GeneralConversationQuery"),
             "Detected general conversation query, handling without document search");
-
-        public static readonly Action<ILogger, int, int, Exception> LogSearchInDocuments = LoggerMessage.Define<int, int>(
-            LogLevel.Debug,
-            new EventId(3004, "SearchInDocuments"),
-            "Searching in {DocumentCount} documents with {ChunkCount} chunks");
-
-        public static readonly Action<ILogger, int, Exception> LogEmbeddingSearchSuccessful = LoggerMessage.Define<int>(
-            LogLevel.Debug,
-            new EventId(3005, "EmbeddingSearchSuccessful"),
-            "Embedding search successful, found {ChunkCount} chunks");
-
-        public static readonly Action<ILogger, Exception> LogEmbeddingSearchFailed = LoggerMessage.Define(
-            LogLevel.Debug,
-            new EventId(3006, "EmbeddingSearchFailed"),
-            "Embedding search failed, using keyword search");
-
-        public static readonly Action<ILogger, string, Exception> LogQueryWords = LoggerMessage.Define<string>(
-            LogLevel.Debug,
-            new EventId(3007, "QueryWords"),
-            "Query words: [{QueryWords}]");
-
-        public static readonly Action<ILogger, string, Exception> LogPotentialNames = LoggerMessage.Define<string>(
-            LogLevel.Debug,
-            new EventId(3008, "PotentialNames"),
-            "Potential names: [{PotentialNames}]");
 
         public static readonly Action<ILogger, string, string, Exception> LogFullNameMatch = LoggerMessage.Define<string, string>(
             LogLevel.Debug,
@@ -129,16 +94,6 @@ namespace SmartRAG.Services.Shared
             new EventId(3010, "PartialNameMatches"),
             "Found PARTIAL name matches: [{FoundNames}] in chunk: {ChunkPreview}...");
 
-        public static readonly Action<ILogger, int, Exception> LogRelevantChunksFound = LoggerMessage.Define<int>(
-            LogLevel.Debug,
-            new EventId(3011, "RelevantChunksFound"),
-            "Found {ChunkCount} relevant chunks with enhanced search");
-
-        public static readonly Action<ILogger, int, Exception> LogNameChunksFound = LoggerMessage.Define<int>(
-            LogLevel.Debug,
-            new EventId(3012, "NameChunksFound"),
-            "Found {NameChunkCount} chunks containing names, prioritizing them");
-
         public static readonly Action<ILogger, Exception> LogNoVoyageAIKey = LoggerMessage.Define(
             LogLevel.Debug,
             new EventId(3013, "NoVoyageAIKey"),
@@ -148,16 +103,6 @@ namespace SmartRAG.Services.Shared
             LogLevel.Debug,
             new EventId(3014, "FailedQueryEmbedding"),
             "Embedding search: Failed to generate query embedding");
-
-        public static readonly Action<ILogger, int, Exception> LogChunksContainingQueryTerms = LoggerMessage.Define<int>(
-            LogLevel.Debug,
-            new EventId(3015, "ChunksContainingQueryTerms"),
-            "Embedding search: Found {ChunkCount} chunks containing query terms");
-
-        public static readonly Action<ILogger, Exception> LogNoChunksContainQueryTerms = LoggerMessage.Define(
-            LogLevel.Debug,
-            new EventId(3016, "NoChunksContainQueryTerms"),
-            "Embedding search: No chunks contain query terms, using similarity only");
 
         public static readonly Action<ILogger, Exception> LogEmbeddingSearchFailedError = LoggerMessage.Define(
             LogLevel.Error,
