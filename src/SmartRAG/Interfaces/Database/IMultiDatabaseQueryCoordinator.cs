@@ -11,10 +11,6 @@ namespace SmartRAG.Interfaces.Database
     public interface IMultiDatabaseQueryCoordinator
     {
         /// <summary>
-        /// Analyzes and executes multi-database queries through a single coordinator facade
-        /// </summary>
-
-        /// <summary>
         /// Executes queries across multiple databases based on query intent
         /// </summary>
         /// <param name="queryIntent">Analyzed query intent</param>
@@ -36,6 +32,15 @@ namespace SmartRAG.Interfaces.Database
         /// <param name="maxResults">Maximum number of results</param>
         /// <returns>RAG response with data from multiple databases</returns>
         Task<RagResponse> QueryMultipleDatabasesAsync(string userQuery, int maxResults = 5);
+
+        /// <summary>
+        /// Executes a full intelligent query using pre-analyzed query intent (avoids redundant AI calls)
+        /// </summary>
+        /// <param name="userQuery">Natural language user query</param>
+        /// <param name="preAnalyzedIntent">Pre-analyzed query intent to avoid redundant AI calls</param>
+        /// <param name="maxResults">Maximum number of results</param>
+        /// <returns>RAG response with data from multiple databases</returns>
+        Task<RagResponse> QueryMultipleDatabasesAsync(string userQuery, QueryIntent preAnalyzedIntent, int maxResults = 5);
 
         /// <summary>
         /// Generates optimized SQL queries for each database based on intent

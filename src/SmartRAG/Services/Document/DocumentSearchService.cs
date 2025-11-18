@@ -208,11 +208,12 @@ namespace SmartRAG.Services.Document
                     var strategy = DetermineQueryStrategy(confidence, hasDatabaseQueries, canAnswerFromDocuments);
 
                     // Execute strategy using switch-case (Open/Closed Principle)
+                    // Pass pre-analyzed queryIntent to avoid redundant AI calls
                     response = strategy switch
                     {
-                        QueryStrategy.DatabaseOnly => await ExecuteDatabaseOnlyStrategyAsync(query, maxResults, conversationHistory, canAnswerFromDocuments),
+                        QueryStrategy.DatabaseOnly => await ExecuteDatabaseOnlyStrategyAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, queryIntent),
                         QueryStrategy.DocumentOnly => await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments),
-                        QueryStrategy.Hybrid => await ExecuteHybridStrategyAsync(query, maxResults, conversationHistory, hasDatabaseQueries, canAnswerFromDocuments),
+                        QueryStrategy.Hybrid => await ExecuteHybridStrategyAsync(query, maxResults, conversationHistory, hasDatabaseQueries, canAnswerFromDocuments, queryIntent),
                         _ => await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments) // Fallback
                     };
                 }
@@ -276,13 +277,13 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// Executes a database-only query strategy
         /// </summary>
-        private async Task<RagResponse> ExecuteDatabaseOnlyStrategyAsync(string query, int maxResults, string conversationHistory, bool canAnswerFromDocuments)
+        private async Task<RagResponse> ExecuteDatabaseOnlyStrategyAsync(string query, int maxResults, string conversationHistory, bool canAnswerFromDocuments, QueryIntent queryIntent)
         {
             _logger.LogInformation("Executing database-only query strategy");
             
             try
             {
-                var databaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(query, maxResults);
+                var databaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(query, queryIntent, maxResults);
                 if (HasMeaningfulData(databaseResponse))
                 {
                     return databaseResponse;
@@ -303,7 +304,7 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// Executes a hybrid query strategy (both database and document queries)
         /// </summary>
-        private async Task<RagResponse> ExecuteHybridStrategyAsync(string query, int maxResults, string conversationHistory, bool hasDatabaseQueries, bool canAnswerFromDocuments)
+        private async Task<RagResponse> ExecuteHybridStrategyAsync(string query, int maxResults, string conversationHistory, bool hasDatabaseQueries, bool canAnswerFromDocuments, QueryIntent queryIntent)
         {
             _logger.LogInformation("Executing hybrid query strategy (database + documents)");
             
@@ -315,7 +316,7 @@ namespace SmartRAG.Services.Document
             {
                 try
                 {
-                    var candidateDatabaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(query, maxResults);
+                    var candidateDatabaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(query, queryIntent, maxResults);
 
                     if (HasMeaningfulData(candidateDatabaseResponse))
                     {

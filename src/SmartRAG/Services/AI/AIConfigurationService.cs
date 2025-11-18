@@ -36,7 +36,7 @@ namespace SmartRAG.Services.AI
             var providerKey = _options.AIProvider.ToString();
             var providerConfig = _configuration.GetSection($"AI:{providerKey}").Get<AIProviderConfig>();
 
-            if (providerConfig == null || string.IsNullOrEmpty(providerConfig.ApiKey))
+            if (providerConfig == null || (_options.AIProvider!=Enums.AIProvider.Custom && string.IsNullOrEmpty(providerConfig.ApiKey)))
             {
                 return null;
             }

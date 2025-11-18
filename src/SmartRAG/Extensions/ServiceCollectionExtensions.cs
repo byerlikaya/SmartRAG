@@ -71,7 +71,7 @@ namespace SmartRAG.Extensions
             services.AddSingleton<IAIProviderFactory, AIProviderFactory>();
             services.AddSingleton<IAIService, AIService>();
             services.AddSingleton<IStorageFactory, StorageFactory>();
-            services.AddScoped<SemanticSearchService>();
+            services.AddScoped<ISemanticSearchService, SemanticSearchService>();
             services.AddScoped<ITextNormalizationService, TextNormalizationService>();
             services.AddScoped<IAIConfigurationService, AIConfigurationService>();
             services.AddScoped<IPromptBuilderService, PromptBuilderService>();

@@ -53,22 +53,64 @@ namespace SmartRAG.Services.Database
 
         #region Public Methods
 
+        /// <summary>
+        /// Legacy: Analyze natural-language query and produce database-intent
+        /// </summary>
+        /// <param name="userQuery">Natural language user query</param>
+        /// <returns>Structured query intent</returns>
+        [Obsolete("Use IQueryIntentAnalyzer.AnalyzeQueryIntentAsync instead. Will be removed in v4.0.0")]
         public async Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery)
         {
             return await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(userQuery);
         }
 
+        /// <summary>
+        /// Executes queries across multiple databases based on query intent
+        /// </summary>
+        /// <param name="queryIntent">Analyzed query intent</param>
+        /// <returns>Combined results from all databases</returns>
         public async Task<MultiDatabaseQueryResult> ExecuteMultiDatabaseQueryAsync(QueryIntent queryIntent)
         {
             return await _databaseQueryExecutor.ExecuteMultiDatabaseQueryAsync(queryIntent);
         }
 
+        /// <summary>
+        /// Executes a full intelligent query: analyze intent + execute + merge results
+        /// </summary>
+        /// <param name="userQuery">Natural language user query</param>
+        /// <param name="maxResults">Maximum number of results</param>
+        /// <returns>RAG response with data from multiple databases</returns>
         public async Task<RagResponse> QueryMultipleDatabasesAsync(string userQuery, int maxResults = 5)
         {
+            if (string.IsNullOrWhiteSpace(userQuery))
+                throw new ArgumentException("User query cannot be null or empty", nameof(userQuery));
+
+            // Analyze query intent
+            var queryIntent = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(userQuery);
+            return await QueryMultipleDatabasesAsync(userQuery, queryIntent, maxResults);
+        }
+
+        /// <summary>
+        /// Executes a full intelligent query using pre-analyzed query intent (avoids redundant AI calls)
+        /// </summary>
+        /// <param name="userQuery">Natural language user query</param>
+        /// <param name="preAnalyzedIntent">Pre-analyzed query intent to avoid redundant AI calls</param>
+        /// <param name="maxResults">Maximum number of results</param>
+        /// <returns>RAG response with data from multiple databases</returns>
+        /// <exception cref="ArgumentException">Thrown when <paramref name="userQuery"/> is null or empty.</exception>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="preAnalyzedIntent"/> is null.</exception>
+        public async Task<RagResponse> QueryMultipleDatabasesAsync(string userQuery, QueryIntent preAnalyzedIntent, int maxResults = 5)
+        {
+            if (string.IsNullOrWhiteSpace(userQuery))
+                throw new ArgumentException("User query cannot be null or empty", nameof(userQuery));
+            
+            if (preAnalyzedIntent == null)
+                throw new ArgumentNullException(nameof(preAnalyzedIntent));
+
             try
             {
-                // Step 1: Analyze query intent
-                var queryIntent = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(userQuery);
+                _logger.LogDebug("Using pre-analyzed query intent to avoid redundant AI call");
+                var queryIntent = preAnalyzedIntent;
 
                 if (queryIntent.DatabaseQueries.Count == 0)
                 {
@@ -104,6 +146,11 @@ namespace SmartRAG.Services.Database
             }
         }
 
+        /// <summary>
+        /// Generates optimized SQL queries for each database based on intent
+        /// </summary>
+        /// <param name="queryIntent">Query intent</param>
+        /// <returns>Updated query intent with generated SQL</returns>
         public async Task<QueryIntent> GenerateDatabaseQueriesAsync(QueryIntent queryIntent)
         {
             return await _sqlQueryGenerator.GenerateDatabaseQueriesAsync(queryIntent);

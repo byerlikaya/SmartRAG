@@ -444,6 +444,40 @@ namespace SmartRAG.Services.Database
             sb.AppendLine("═══════════════════════════════════════════════════════════════════");
             sb.AppendLine();
             sb.AppendLine("╔═══════════════════════════════════════════════════════════════╗");
+            sb.AppendLine($"║  🎯 TARGET DATABASE: {schema.DatabaseName} ({schema.DatabaseType}) 🎯    ║");
+            sb.AppendLine("╚═══════════════════════════════════════════════════════════════╝");
+            sb.AppendLine();
+            sb.AppendLine($"🚨 CRITICAL: You are generating SQL for {schema.DatabaseType} database!");
+            sb.AppendLine($"   Database Name: {schema.DatabaseName}");
+            sb.AppendLine($"   Database Type: {schema.DatabaseType}");
+            sb.AppendLine();
+            sb.AppendLine($"   You MUST use {schema.DatabaseType}-specific SQL syntax:");
+            switch (schema.DatabaseType)
+            {
+                case DatabaseType.SqlServer:
+                    sb.AppendLine("   • Use TOP instead of LIMIT");
+                    sb.AppendLine("   • Use DATEADD() for date arithmetic");
+                    sb.AppendLine("   • Use GETDATE() for current date/time");
+                    break;
+                case DatabaseType.MySQL:
+                    sb.AppendLine("   • Use LIMIT (not TOP)");
+                    sb.AppendLine("   • Use DATE_SUB() for date arithmetic");
+                    sb.AppendLine("   • Use NOW() for current date/time");
+                    sb.AppendLine("   • ALL non-aggregate columns in SELECT must be in GROUP BY");
+                    break;
+                case DatabaseType.PostgreSQL:
+                    sb.AppendLine("   • Use LIMIT (not TOP)");
+                    sb.AppendLine("   • Use INTERVAL 'value' (with quotes!) for date arithmetic");
+                    sb.AppendLine("   • Use CURRENT_DATE or NOW() for current date/time");
+                    break;
+                case DatabaseType.SQLite:
+                    sb.AppendLine("   • Use LIMIT (not TOP)");
+                    sb.AppendLine("   • Use date('now', '-X month') for date arithmetic");
+                    sb.AppendLine("   • Use datetime('now') for current date/time");
+                    break;
+            }
+            sb.AppendLine();
+            sb.AppendLine("╔═══════════════════════════════════════════════════════════════╗");
             sb.AppendLine("║  🚨 MANDATORY: WRITE SIMPLE SQL - NO COMPLEX QUERIES! 🚨    ║");
             sb.AppendLine("╚═══════════════════════════════════════════════════════════════╝");
             sb.AppendLine();
@@ -504,7 +538,9 @@ namespace SmartRAG.Services.Database
             sb.AppendLine("17. If a column or table is not listed below, DO NOT invent it – return the foreign key (ID column) so other databases can enrich the data.");
             sb.AppendLine("═══════════════════════════════════════");
             sb.AppendLine();
-            sb.AppendLine($"TARGET DATABASE: {schema.DatabaseName} ({schema.DatabaseType})");
+            sb.AppendLine("╔═══════════════════════════════════════════════════════════════╗");
+            sb.AppendLine($"║  🎯 TARGET DATABASE: {schema.DatabaseName} ({schema.DatabaseType}) 🎯    ║");
+            sb.AppendLine("╚═══════════════════════════════════════════════════════════════╝");
             sb.AppendLine();
             sb.AppendLine("TABLES AVAILABLE IN THIS DATABASE (ONLY THESE EXIST):");
             sb.AppendLine($"   {string.Join(", ", dbQuery.RequiredTables)}");
@@ -789,14 +825,15 @@ namespace SmartRAG.Services.Database
             sb.AppendLine();
             sb.AppendLine("Pattern 2: 'What is the top/most/best X?' (AGGREGATION PATTERN)");
             sb.AppendLine("  → Need: Aggregation (SUM, COUNT, MAX) + GROUP BY + ORDER BY + LIMIT/TOP");
-            sb.AppendLine("  CRITICAL: If user asks MULTIPLE questions combined:");
-            sb.AppendLine("      → Example: 'highest value' + 'most recent' + 'with specific classification'");
-            sb.AppendLine("      → SPLIT THE PROBLEM: Handle ONE concept per database!");
-            sb.AppendLine("      → Database1 (with descriptive text columns) handles text-based filters");
-            sb.AppendLine("      → Database2 (with numeric/metric columns) handles aggregation");
-            sb.AppendLine("      → Application merges results using foreign keys");
-            sb.AppendLine("  ✓ CORRECT STRATEGY: Return foreign keys + aggregates, let app handle the rest");
-            sb.AppendLine("  ✗ WRONG STRATEGY: Try to answer everything in one complex nested query");
+            sb.AppendLine("  CRITICAL: If user asks about relationships across databases:");
+            sb.AppendLine("      → Example: 'most sold category' requires: Sales data (Database1) + Category names (Database2)");
+            sb.AppendLine("      → Example: 'top customer by revenue' requires: Order totals (Database1) + Customer names (Database2)");
+            sb.AppendLine("      → SPLIT THE PROBLEM: Each database returns what it has!");
+            sb.AppendLine("      → Database with sales/metrics: Return foreign key (ProductID, CustomerID) + aggregate value");
+            sb.AppendLine("      → Database with descriptive text: Return foreign key (ProductID, CustomerID) + descriptive column (CategoryName, CustomerName)");
+            sb.AppendLine("      → Application merges results using foreign keys automatically");
+            sb.AppendLine("  ✓ CORRECT STRATEGY: Return foreign keys + aggregates/descriptions, let app merge");
+            sb.AppendLine("  ✗ WRONG STRATEGY: Try to reference columns from other databases (they don't exist here!)");
             sb.AppendLine();
             if (schema.DatabaseType == DatabaseType.SqlServer)
             {
@@ -1854,7 +1891,7 @@ namespace SmartRAG.Services.Database
             sb.AppendLine("  SELECT col1, col2");
             sb.AppendLine("  FROM table1");
             sb.AppendLine("  ");
-            sb.AppendLine("  Açıklama: Bu sorgu...  ← STOP! DON'T WRITE THIS!");
+            sb.AppendLine("  Description: This query...  ← STOP! DON'T WRITE THIS!");
             sb.AppendLine();
             sb.AppendLine("WRITE ONLY SQL - NOTHING ELSE!");
             
@@ -2137,6 +2174,22 @@ namespace SmartRAG.Services.Database
                         .Select(c => c.Split('.').Last().Trim())
                         .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
+                    // Extract SELECT aliases (e.g., "SUM(Quantity) AS TotalQuantity" → "TotalQuantity")
+                    var selectClause = ExtractTopLevelClause(sql, "SELECT");
+                    var selectAliases = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    if (!string.IsNullOrEmpty(selectClause))
+                    {
+                        var aliasPattern = @"\bAS\s+([a-zA-Z_][a-zA-Z0-9_]*)\b";
+                        var aliasMatches = Regex.Matches(selectClause, aliasPattern, RegexOptions.IgnoreCase);
+                        foreach (Match match in aliasMatches)
+                        {
+                            if (match.Groups.Count >= 2)
+                            {
+                                selectAliases.Add(match.Groups[1].Value.Trim());
+                            }
+                        }
+                    }
+
                     var orderByColumns = orderByClause
                         .Split(',')
                         .Select(c => c.Trim())
@@ -2153,9 +2206,12 @@ namespace SmartRAG.Services.Database
                                           orderCol.Contains("MAX(") ||
                                           orderCol.Contains("MIN(");
 
-                        if (!isAggregate && !groupByColumns.Contains(orderCol))
+                        // Check if it's a valid alias from SELECT clause
+                        var isSelectAlias = selectAliases.Contains(orderCol);
+
+                        if (!isAggregate && !isSelectAlias && !groupByColumns.Contains(orderCol))
                         {
-                            errors.Add($"ORDER BY column '{orderCol}' must be in GROUP BY clause or use an aggregate function. Current GROUP BY: {string.Join(", ", groupByColumns)}");
+                            errors.Add($"ORDER BY column '{orderCol}' must be in GROUP BY clause, use an aggregate function, or be a SELECT alias. Current GROUP BY: {string.Join(", ", groupByColumns)}");
                         }
                     }
                 }

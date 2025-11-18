@@ -8,6 +8,29 @@ ve bu proje [Semantic Versioning](https://semver.org/spec/v2.0.0.html)'a uymakta
 
 ## [Yayınlanmamış]
 
+### Performans İyileştirmeleri
+- **AI Sorgu Niyeti Analizi Optimizasyonu**: Pre-analyzed query intent kabul eden overload method ekleyerek gereksiz AI çağrılarını ortadan kaldırdı
+  - `IMultiDatabaseQueryCoordinator.QueryMultipleDatabasesAsync(string, QueryIntent, int)` - Gereksiz AI analizini önlemek için yeni overload method
+  - `DocumentSearchService` artık pre-analyzed query intent'i `MultiDatabaseQueryCoordinator`'a geçirerek duplicate AI çağrılarını önlüyor
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Interfaces/Database/IMultiDatabaseQueryCoordinator.cs` - Pre-analyzed intent parametreli overload method eklendi
+    - `src/SmartRAG/Services/Database/MultiDatabaseQueryCoordinator.cs` - Null safety validation ile overload method implementasyonu
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Pre-analyzed query intent'i coordinator'a geçirmek için güncellendi
+
+### Düzeltilenler
+- **SQL Sorgu Validasyonu**: GROUP BY sorgularında SELECT alias'larını doğru şekilde işlemek için ORDER BY alias validasyonu düzeltildi
+  - Validasyon artık ORDER BY clause'larında SELECT alias'larını (örn. `SUM(Quantity) AS TotalQuantity`) tanıyor
+  - Önceden ORDER BY'da aggregate alias kullanımını hata olarak işaretliyordu
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/Database/SQLQueryGenerator.cs` - SELECT alias'larını extract ve validate eden geliştirilmiş validasyon mantığı
+
+### İyileştirilenler
+- **Cross-Database Query Prompt İyileştirmesi**: Cross-database query'ler için AI prompt rehberliği iyileştirildi
+  - Veritabanları arası ilişkileri işlemek için daha net örnekler eklendi (örn. "en çok satılan kategori" sales data + category names gerektirir)
+  - Application-level merging için foreign key ve aggregate döndürme rehberliği geliştirildi
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/Database/SQLQueryGenerator.cs` - AI prompt'larında cross-database query pattern örnekleri güncellendi
+
 ### Değiştirilenler
 - **Kod Mimari Refactoring**: Servisler ve interface'ler daha iyi organizasyon ve bakım kolaylığı için modüler klasör yapısına yeniden organize edildi
   - Interface'ler kategorilere göre organize edildi: `AI/`, `Database/`, `Document/`, `Parser/`, `Search/`, `Storage/`, `Support/`

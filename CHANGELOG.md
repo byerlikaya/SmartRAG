@@ -8,6 +8,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Performance Improvements
+- **Optimized AI Query Intent Analysis**: Eliminated redundant AI calls by adding overload method to `QueryMultipleDatabasesAsync` that accepts pre-analyzed query intent
+  - `IMultiDatabaseQueryCoordinator.QueryMultipleDatabasesAsync(string, QueryIntent, int)` - New overload method to avoid redundant AI analysis
+  - `DocumentSearchService` now passes pre-analyzed query intent to `MultiDatabaseQueryCoordinator` to prevent duplicate AI calls
+  - **Files Modified**:
+    - `src/SmartRAG/Interfaces/Database/IMultiDatabaseQueryCoordinator.cs` - Added overload method with pre-analyzed intent parameter
+    - `src/SmartRAG/Services/Database/MultiDatabaseQueryCoordinator.cs` - Implemented overload method with null safety validation
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Updated to pass pre-analyzed query intent to coordinator
+
+### Fixed
+- **SQL Query Validation**: Fixed ORDER BY alias validation to correctly handle SELECT aliases in GROUP BY queries
+  - Validation now recognizes SELECT aliases (e.g., `SUM(Quantity) AS TotalQuantity`) in ORDER BY clauses
+  - Previously flagged valid SQL as errors when using aggregate aliases in ORDER BY
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Database/SQLQueryGenerator.cs` - Enhanced validation logic to extract and validate SELECT aliases
+
+### Improved
+- **Cross-Database Query Prompt Enhancement**: Improved AI prompt guidance for cross-database queries
+  - Added clearer examples for handling relationships across databases (e.g., "most sold category" requires sales data + category names)
+  - Enhanced guidance on returning foreign keys and aggregates for application-level merging
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Database/SQLQueryGenerator.cs` - Updated cross-database query pattern examples in AI prompts
+
 ### Changed
 - **Code Architecture Refactoring**: Services and interfaces reorganized into modular folder structure for better organization and maintainability
   - Interfaces organized by category: `AI/`, `Database/`, `Document/`, `Parser/`, `Search/`, `Storage/`, `Support/`
