@@ -91,6 +91,10 @@ namespace SmartRAG.Repositories
         {
             try
             {
+                // Validate document and chunks
+                SmartRAG.Services.Helpers.DocumentValidator.ValidateDocument(document);
+                SmartRAG.Services.Helpers.DocumentValidator.ValidateChunks(document);
+
                 var documentKey = CreateDocumentKey(document.Id);
                 var metadataKey = CreateMetadataKey(document.Id);
                 var documentJson = JsonSerializer.Serialize(document);
@@ -231,87 +235,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task<string> GetConversationHistoryAsync(string sessionId)
-        {
-            try
-            {
-                var conversationKey = $"conversation:{sessionId}";
-                var conversationJson = await _database.StringGetAsync(conversationKey);
-                
-                if (conversationJson.IsNull)
-                {
-                    RepositoryLogMessages.LogRedisConversationNotFound(Logger, sessionId, null);
-                    return string.Empty;
-                }
 
-                RepositoryLogMessages.LogRedisConversationRetrieved(Logger, sessionId, null);
-                return conversationJson;
-            }
-            catch (Exception ex)
-            {
-                RepositoryLogMessages.LogRedisConversationRetrievalFailed(Logger, sessionId, ex);
-                return string.Empty;
-            }
-        }
-
-        public async Task AddToConversationAsync(string sessionId, string question, string answer)
-        {
-            try
-            {
-                var conversationKey = $"conversation:{sessionId}";
-                
-                // If question is empty, this is a special case (like session-id storage)
-                if (string.IsNullOrEmpty(question))
-                {
-                    await _database.StringSetAsync(conversationKey, answer);
-                    RepositoryLogMessages.LogRedisConversationUpdated(Logger, sessionId, null);
-                    return;
-                }
-                
-                var existingConversation = await GetConversationHistoryAsync(sessionId);
-                
-                var newEntry = string.IsNullOrEmpty(existingConversation) 
-                    ? $"User: {question}\nAssistant: {answer}"
-                    : $"{existingConversation}\nUser: {question}\nAssistant: {answer}";
-                
-                await _database.StringSetAsync(conversationKey, newEntry);
-                RepositoryLogMessages.LogRedisConversationUpdated(Logger, sessionId, null);
-            }
-            catch (Exception ex)
-            {
-                RepositoryLogMessages.LogRedisConversationUpdateFailed(Logger, sessionId, ex);
-            }
-        }
-
-        public async Task ClearConversationAsync(string sessionId)
-        {
-            try
-            {
-                var conversationKey = $"conversation:{sessionId}";
-                await _database.KeyDeleteAsync(conversationKey);
-                RepositoryLogMessages.LogRedisConversationCleared(Logger, sessionId, null);
-            }
-            catch (Exception ex)
-            {
-                RepositoryLogMessages.LogRedisConversationClearFailed(Logger, sessionId, ex);
-            }
-        }
-
-        public async Task<bool> SessionExistsAsync(string sessionId)
-        {
-            try
-            {
-                var conversationKey = $"conversation:{sessionId}";
-                var exists = await _database.KeyExistsAsync(conversationKey);
-                RepositoryLogMessages.LogRedisSessionExistsChecked(Logger, sessionId, exists, null);
-                return exists;
-            }
-            catch (Exception ex)
-            {
-                RepositoryLogMessages.LogRedisSessionExistsCheckFailed(Logger, sessionId, ex);
-                return false;
-            }
-        }
 
         #endregion
 

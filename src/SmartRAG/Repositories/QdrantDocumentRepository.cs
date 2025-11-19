@@ -237,6 +237,10 @@ namespace SmartRAG.Repositories
 
                 await _collectionManager.EnsureDocumentCollectionExistsAsync(documentCollectionName, document);
 
+                // Validate document and chunks
+                SmartRAG.Services.Helpers.DocumentValidator.ValidateDocument(document);
+                SmartRAG.Services.Helpers.DocumentValidator.ValidateChunks(document);
+
                 // Generate embeddings for all chunks in parallel with progress tracking
                 RepositoryLogMessages.LogQdrantEmbeddingsGenerationStarted(Logger, document.Chunks.Count, null);
                 var embeddingTasks = document.Chunks.Select(async (chunk, index) =>
@@ -562,33 +566,7 @@ namespace SmartRAG.Repositories
 
         #endregion
 
-        #region Conversation Methods
 
-        public async Task<string> GetConversationHistoryAsync(string sessionId)
-        {
-            // Qdrant conversation support - simplified implementation
-            return await Task.FromResult(string.Empty);
-        }
-
-        public async Task AddToConversationAsync(string sessionId, string question, string answer)
-        {
-            // Qdrant conversation support - simplified implementation
-            await Task.CompletedTask;
-        }
-
-        public async Task ClearConversationAsync(string sessionId)
-        {
-            // Qdrant conversation support - simplified implementation
-            await Task.CompletedTask;
-        }
-
-        public async Task<bool> SessionExistsAsync(string sessionId)
-        {
-            // Qdrant conversation support - simplified implementation
-            return await Task.FromResult(false);
-        }
-
-        #endregion
 
         public void Dispose()
         {

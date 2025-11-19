@@ -1,5 +1,6 @@
 #nullable enable
 
+using SmartRAG.Enums;
 using SmartRAG.Models;
 
 namespace SmartRAG.Interfaces.AI
@@ -10,10 +11,14 @@ namespace SmartRAG.Interfaces.AI
     public interface IAIConfigurationService
     {
         /// <summary>
-        /// Gets AI provider configuration
+        /// Gets AI provider configuration for the currently configured provider
         /// </summary>
-        /// <returns>AI provider configuration or null if not available</returns>
         AIProviderConfig? GetAIProviderConfig();
+
+        /// <summary>
+        /// Gets AI provider configuration for a specific provider
+        /// </summary>
+        AIProviderConfig? GetProviderConfig(AIProvider provider);
     }
 }
 

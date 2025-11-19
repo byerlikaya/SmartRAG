@@ -19,8 +19,14 @@ using SmartRAG.Services.Database;
 using SmartRAG.Services.Storage.Qdrant;
 using SmartRAG.Services.Parser;
 using SmartRAG.Services.Support;
+using SmartRAG.Services.Database.Strategies;
+using SmartRAG.Services.Search.Strategies;
+using SmartRAG.Interfaces.Database.Strategies;
+using SmartRAG.Interfaces.Search.Strategies;
+using SmartRAG.Repositories;
 using System;
 using System.Collections.Generic;
+
 
 namespace SmartRAG.Extensions
 {
@@ -106,10 +112,24 @@ namespace SmartRAG.Extensions
             services.AddScoped<IDatabaseSchemaAnalyzer, DatabaseSchemaAnalyzer>();
             services.AddScoped<IDatabaseConnectionManager, DatabaseConnectionManager>();
             services.AddScoped<IQueryIntentAnalyzer, QueryIntentAnalyzer>();
+            
+            // Register SQL Strategies
+            services.AddScoped<ISqlDialectStrategy, SqliteDialectStrategy>();
+            services.AddScoped<ISqlDialectStrategy, PostgreSqlDialectStrategy>();
+            services.AddScoped<ISqlDialectStrategy, MySqlDialectStrategy>();
+            services.AddScoped<ISqlDialectStrategy, SqlServerDialectStrategy>();
+            services.AddScoped<ISqlDialectStrategyFactory, SqlDialectStrategyFactory>();
+            
             services.AddScoped<ISQLQueryGenerator, SQLQueryGenerator>();
             services.AddScoped<IDatabaseQueryExecutor, DatabaseQueryExecutor>();
             services.AddScoped<IResultMerger, ResultMerger>();
             services.AddScoped<IMultiDatabaseQueryCoordinator, MultiDatabaseQueryCoordinator>();
+            
+            // Register AI Request Executor
+            services.AddScoped<IAIRequestExecutor, AIRequestExecutor>();
+            
+            // Register Scoring Strategy
+            services.AddScoped<IScoringStrategy, HybridScoringStrategy>();
             
             // Add memory cache for database operations
             services.AddMemoryCache();
@@ -117,6 +137,7 @@ namespace SmartRAG.Extensions
             ConfigureStorageProvider(services, configuration);
 
             services.AddSingleton(sp => sp.GetRequiredService<IStorageFactory>().GetCurrentRepository());
+            services.AddSingleton(sp => sp.GetRequiredService<IStorageFactory>().GetCurrentConversationRepository());
 
             return services;
         }

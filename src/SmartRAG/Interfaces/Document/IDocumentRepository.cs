@@ -52,32 +52,6 @@ namespace SmartRAG.Interfaces.Document
         /// <returns>List of relevant document chunks</returns>
         Task<List<SmartRAG.Entities.DocumentChunk>> SearchAsync(string query, int maxResults = 5);
 
-        /// <summary>
-        /// Gets conversation history for a session
-        /// </summary>
-        /// <param name="sessionId">Unique session identifier</param>
-        /// <returns>Conversation history as formatted text</returns>
-        Task<string> GetConversationHistoryAsync(string sessionId);
 
-        /// <summary>
-        /// Adds a question-answer pair to conversation history
-        /// </summary>
-        /// <param name="sessionId">Unique session identifier</param>
-        /// <param name="question">User question</param>
-        /// <param name="answer">AI-generated answer</param>
-        Task AddToConversationAsync(string sessionId, string question, string answer);
-
-        /// <summary>
-        /// Clears conversation history for a session
-        /// </summary>
-        /// <param name="sessionId">Unique session identifier</param>
-        Task ClearConversationAsync(string sessionId);
-
-        /// <summary>
-        /// Checks if a session exists
-        /// </summary>
-        /// <param name="sessionId">Unique session identifier</param>
-        /// <returns>True if session exists</returns>
-        Task<bool> SessionExistsAsync(string sessionId);
     }
 }

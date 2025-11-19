@@ -111,5 +111,44 @@ namespace SmartRAG.Factories
             }
             return _currentRepository;
         }
+
+        public IConversationRepository CreateConversationRepository(StorageConfig config)
+        {
+            switch (config.Provider)
+            {
+                case StorageProvider.InMemory:
+                    return new InMemoryConversationRepository(_loggerFactory.CreateLogger<InMemoryConversationRepository>());
+                case StorageProvider.FileSystem:
+                    return new FileSystemConversationRepository(config.FileSystemPath, _loggerFactory.CreateLogger<FileSystemConversationRepository>());
+                case StorageProvider.Redis:
+                    return new RedisConversationRepository(Options.Create(config.Redis), _loggerFactory.CreateLogger<RedisConversationRepository>());
+                case StorageProvider.SQLite:
+                    return new SqliteConversationRepository(Options.Create(config.Sqlite), _loggerFactory.CreateLogger<SqliteConversationRepository>());
+                case StorageProvider.Qdrant:
+                    // Qdrant doesn't support conversation storage natively in this implementation, fallback to InMemory or throw
+                    // For now, let's fallback to InMemory to avoid breaking
+                     return new InMemoryConversationRepository(_loggerFactory.CreateLogger<InMemoryConversationRepository>());
+                default:
+                    throw new ArgumentException($"Unsupported storage provider for conversation: {config.Provider}");
+            }
+        }
+
+        public IConversationRepository CreateConversationRepository(StorageProvider provider)
+        {
+            var config = GetStorageConfig();
+            config.Provider = provider;
+            return CreateConversationRepository(config);
+        }
+
+        private IConversationRepository _currentConversationRepository;
+
+        public IConversationRepository GetCurrentConversationRepository()
+        {
+            if (_currentConversationRepository == null)
+            {
+                _currentConversationRepository = CreateConversationRepository(_currentProvider);
+            }
+            return _currentConversationRepository;
+        }
     }
 }

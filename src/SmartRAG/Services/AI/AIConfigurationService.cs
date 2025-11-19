@@ -3,6 +3,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
 using SmartRAG.Interfaces.AI;
+using SmartRAG.Enums;
 using SmartRAG.Models;
 
 namespace SmartRAG.Services.AI
@@ -33,10 +34,18 @@ namespace SmartRAG.Services.AI
         /// </summary>
         public AIProviderConfig? GetAIProviderConfig()
         {
-            var providerKey = _options.AIProvider.ToString();
+            return GetProviderConfig(_options.AIProvider);
+        }
+
+        /// <summary>
+        /// Gets AI provider configuration for a specific provider
+        /// </summary>
+        public AIProviderConfig? GetProviderConfig(AIProvider provider)
+        {
+            var providerKey = provider.ToString();
             var providerConfig = _configuration.GetSection($"AI:{providerKey}").Get<AIProviderConfig>();
 
-            if (providerConfig == null || (_options.AIProvider!=Enums.AIProvider.Custom && string.IsNullOrEmpty(providerConfig.ApiKey)))
+            if (providerConfig == null || (provider != Enums.AIProvider.Custom && string.IsNullOrEmpty(providerConfig.ApiKey)))
             {
                 return null;
             }

@@ -1,7 +1,9 @@
 using Microsoft.Extensions.Logging;
+using SmartRAG.Interfaces.Database;
 using SmartRAG.Interfaces.Parser;
 using SmartRAG.Interfaces.Parser.Strategies;
-using SmartRAG.Services.Helpers;
+using SmartRAG.Models;
+using SmartRAG.Services.Document.Parsers;
 using System;
 using System.IO;
 using System.Linq;

@@ -1,9 +1,11 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SmartRAG.Entities;
+using SmartRAG.Enums;
 using SmartRAG.Interfaces.AI;
 using SmartRAG.Interfaces.Document;
 using SmartRAG.Interfaces.Search;
+using SmartRAG.Interfaces.Search.Strategies;
 using SmartRAG.Models;
 using SmartRAG.Services.Shared;
 using System;
@@ -28,8 +30,6 @@ namespace SmartRAG.Services.Search
         private const int EmptyEmbeddingCount = 0;
         private const int MinChunksWithEmbeddingsCount = 0;
         private const double RelevanceThreshold = 0.1;
-        private const double HybridSemanticWeight = 0.8;
-        private const double HybridKeywordWeight = 0.2;
         private const int MinVectorCount = 0;
         private const double DefaultScoreValue = 0.0;
         private const int DefaultScore = 0;
@@ -37,32 +37,23 @@ namespace SmartRAG.Services.Search
         private readonly IAIProviderFactory _aiProviderFactory;
         private readonly SmartRagOptions _options;
         private readonly IConfiguration _configuration;
-        private readonly ISemanticSearchService _semanticSearchService;
-        private readonly IDocumentScoringService _documentScoringService;
+        private readonly IScoringStrategy _scoringStrategy;
         private readonly ILogger<EmbeddingSearchService> _logger;
 
         /// <summary>
         /// Initializes a new instance of the EmbeddingSearchService
         /// </summary>
-        /// <param name="aiProviderFactory">Factory for AI provider creation</param>
-        /// <param name="options">SmartRAG configuration options</param>
-        /// <param name="configuration">Application configuration</param>
-        /// <param name="semanticSearchService">Service for semantic search operations</param>
-        /// <param name="documentScoringService">Service for scoring document chunks</param>
-        /// <param name="logger">Logger instance for this service</param>
         public EmbeddingSearchService(
             IAIProviderFactory aiProviderFactory,
             SmartRagOptions options,
             IConfiguration configuration,
-            ISemanticSearchService semanticSearchService,
-            IDocumentScoringService documentScoringService,
+            IScoringStrategy scoringStrategy,
             ILogger<EmbeddingSearchService> logger)
         {
             _aiProviderFactory = aiProviderFactory;
             _options = options;
             _configuration = configuration;
-            _semanticSearchService = semanticSearchService;
-            _documentScoringService = documentScoringService;
+            _scoringStrategy = scoringStrategy;
             _logger = logger;
         }
 
@@ -97,17 +88,12 @@ namespace SmartRAG.Services.Search
                     return new List<DocumentChunk>();
                 }
 
-                // Enhanced semantic search with hybrid scoring
+                // Enhanced semantic search with hybrid scoring using strategy
                 var scoredChunks = await Task.WhenAll(chunksWithEmbeddings.Select(async chunk =>
                 {
-                    var semanticSimilarity = CalculateCosineSimilarity(queryEmbedding, chunk.Embedding);
-                    var enhancedSemanticScore = await _semanticSearchService.CalculateEnhancedSemanticSimilarityAsync(query, chunk.Content);
-
-                    // Hybrid scoring: Combine enhanced semantic similarity with keyword matching
-                    var keywordScore = _documentScoringService.CalculateKeywordRelevanceScore(query, chunk.Content);
-                    var hybridScore = (enhancedSemanticScore * HybridSemanticWeight) + (keywordScore * HybridKeywordWeight);
-
-                    chunk.RelevanceScore = hybridScore;
+                    // Calculate score using the injected strategy
+                    var score = await _scoringStrategy.CalculateScoreAsync(query, chunk, queryEmbedding);
+                    chunk.RelevanceScore = score;
                     return chunk;
                 }));
 

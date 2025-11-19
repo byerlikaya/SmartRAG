@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartRAG.Enums;
 using SmartRAG.Interfaces.Document;
+using SmartRAG.Interfaces.Storage;
 using SmartRAG.Interfaces.Support;
 using SmartRAG.Models;
 using SmartRAG.Services.Shared;
@@ -22,7 +23,7 @@ namespace SmartRAG.Services.Support
     {
         private const string PersistentSessionKey = "smartrag-current-session";
 
-        private readonly IDocumentRepository _documentRepository;
+        private readonly IConversationRepository _conversationRepository;
         private readonly SmartRagOptions _options;
         private readonly ILogger<ConversationManagerService> _logger;
 
@@ -32,15 +33,15 @@ namespace SmartRAG.Services.Support
         /// <summary>
         /// Initializes a new instance of the ConversationManagerService
         /// </summary>
-        /// <param name="documentRepository">Repository for document operations</param>
+        /// <param name="conversationRepository">Repository for conversation operations</param>
         /// <param name="options">SmartRAG configuration options</param>
         /// <param name="logger">Logger instance for this service</param>
         public ConversationManagerService(
-            IDocumentRepository documentRepository,
+            IConversationRepository conversationRepository,
             IOptions<SmartRagOptions> options,
             ILogger<ConversationManagerService> logger)
         {
-            _documentRepository = documentRepository;
+            _conversationRepository = conversationRepository;
             _options = options.Value;
             _logger = logger;
         }
@@ -54,7 +55,7 @@ namespace SmartRAG.Services.Support
             // First, try to get existing session from storage
             try
             {
-                var existingSessionData = await _documentRepository.GetConversationHistoryAsync(PersistentSessionKey);
+                var existingSessionData = await _conversationRepository.GetConversationHistoryAsync(PersistentSessionKey);
                 if (!string.IsNullOrEmpty(existingSessionData))
                 {
                     // Extract session ID from stored data (format: "session-id:actual-session-id")
@@ -65,11 +66,11 @@ namespace SmartRAG.Services.Support
                         var sessionId = sessionLine.Substring("session-id:".Length).Trim();
 
                         // Verify session still exists and has conversation data
-                        var sessionExists = await _documentRepository.SessionExistsAsync(sessionId);
+                        var sessionExists = await _conversationRepository.SessionExistsAsync(sessionId);
                         if (sessionExists)
                         {
                             // Get the actual conversation history from the session
-                            var conversationHistory = await _documentRepository.GetConversationHistoryAsync(sessionId);
+                            var conversationHistory = await _conversationRepository.GetConversationHistoryAsync(sessionId);
 
                             // Add to cache for faster access
                             _conversationCache.TryAdd(sessionId, conversationHistory ?? string.Empty);
@@ -105,7 +106,7 @@ namespace SmartRAG.Services.Support
                 // Clear persistent session key
                 try
                 {
-                    await _documentRepository.ClearConversationAsync(PersistentSessionKey);
+                    await _conversationRepository.ClearConversationAsync(PersistentSessionKey);
                 }
                 catch (Exception ex)
                 {
@@ -237,8 +238,8 @@ namespace SmartRAG.Services.Support
             try
             {
                 // Store the session ID in persistent storage
-                await _documentRepository.AddToConversationAsync(PersistentSessionKey, "", $"session-id:{newSessionId}");
-                await _documentRepository.AddToConversationAsync(newSessionId, "", "");
+                await _conversationRepository.AddToConversationAsync(PersistentSessionKey, "", $"session-id:{newSessionId}");
+                await _conversationRepository.AddToConversationAsync(newSessionId, "", "");
 
                 // Add to cache
                 _conversationCache.TryAdd(newSessionId, string.Empty);
@@ -331,7 +332,7 @@ namespace SmartRAG.Services.Support
 
                 if (SupportsConversationHistory(conversationStorageProvider))
                 {
-                    return await _documentRepository.GetConversationHistoryAsync(sessionId);
+                    return await _conversationRepository.GetConversationHistoryAsync(sessionId);
                 }
 
                 return string.Empty;
@@ -354,7 +355,7 @@ namespace SmartRAG.Services.Support
 
                 if (SupportsConversationHistory(conversationStorageProvider))
                 {
-                    await _documentRepository.AddToConversationAsync(sessionId, "", conversation);
+                    await _conversationRepository.AddToConversationAsync(sessionId, "", conversation);
                 }
             }
             catch (Exception ex)
