@@ -778,3 +778,240 @@ public async Task QueryIntelligenceAsync_ShouldReturnValidResponse_WhenValidQuer
     </div>
 </div>
 
+---
+
+## v3.2.0 Yeni Özellik Örnekleri
+
+### Konuşma Yönetimi
+
+**v3.2.0'da Yeni**: `IConversationManagerService` ile özel konuşma yönetimi.
+
+```csharp
+public class ChatController : ControllerBase
+{
+    private readonly IConversationManagerService _conversationManager;
+    private readonly IDocumentSearchService _searchService;
+    
+    public ChatController(
+        IConversationManagerService conversationManager,
+        IDocumentSearchService searchService)
+    {
+        _conversationManager = conversationManager;
+        _searchService = searchService;
+    }
+    
+    // Yeni konuşma başlat
+    [HttpPost("conversations/new")]
+    public async Task<IActionResult> StartNewConversation()
+    {
+        var sessionId = await _conversationManager.StartNewConversationAsync();
+        return Ok(new { sessionId });
+    }
+    
+    // Konuşma context'i ile sohbet
+    [HttpPost("conversations/{sessionId}/chat")]
+    public async Task<IActionResult> Chat(string sessionId, [FromBody] ChatRequest request)
+    {
+        // Context için konuşma geçmişini al
+        var history = await _conversationManager.GetConversationHistoryAsync(sessionId);
+        
+        // Context ile sorgu
+        var response = await _searchService.QueryIntelligenceAsync(request.Message);
+        
+        // Konuşma geçmişine kaydet
+        await _conversationManager.AddToConversationAsync(
+            sessionId,
+            request.Message,
+            response.Answer
+        );
+        
+        return Ok(new
+        {
+            answer = response.Answer,
+            sources = response.Sources,
+            sessionId
+        });
+    }
+    
+    // Konuşma geçmişini al
+    [HttpGet("conversations/{sessionId}/history")]
+    public async Task<IActionResult> GetHistory(string sessionId)
+    {
+        var history = await _conversationManager.GetConversationHistoryAsync(sessionId);
+        return Ok(new { history });
+    }
+}
+```
+
+### Özel SQL Diyalekt Stratejisi
+
+**v3.2.0'da Yeni**: `ISqlDialectStrategy` ile özel veritabanı desteği ekleyin.
+
+```csharp
+// Özel Oracle diyalekt stratejisi
+public class OracleDialectStrategy : BaseSqlDialectStrategy
+{
+    public override DatabaseType DatabaseType => DatabaseType.Oracle;
+    
+    public override string GetDialectName() => "Oracle";
+    
+    public override string BuildSystemPrompt(DatabaseSchemaInfo schema, string userQuery)
+    {
+        var prompt = new StringBuilder();
+        prompt.AppendLine("Oracle SQL uzmanısınız. Oracle'a özgü SQL oluşturun.");
+        prompt.AppendLine($"Kullanıcı Sorgusu: {userQuery}");
+        prompt.AppendLine($"Veritabanı Şeması: {JsonSerializer.Serialize(schema)}");
+        prompt.AppendLine("Kurallar:");
+        prompt.AppendLine("- Oracle sözdizimi kullanın (LIMIT yerine FETCH FIRST)");
+        prompt.AppendLine("- Uygun olduğunda Oracle'a özgü fonksiyonlar kullanın");
+        prompt.AppendLine("- Sadece SQL sorgusunu döndürün, açıklama yok");
+        
+        return prompt.ToString();
+    }
+    
+    public override bool ValidateSyntax(string sql, out string errorMessage)
+    {
+        errorMessage = null;
+        
+        // Oracle'a özgü doğrulama
+        if (sql.Contains("LIMIT", StringComparison.OrdinalIgnoreCase))
+        {
+            errorMessage = "Oracle LIMIT değil FETCH FIRST kullanır";
+            return false;
+        }
+        
+        if (sql.Contains("TOP", StringComparison.OrdinalIgnoreCase))
+        {
+            errorMessage = "Oracle TOP değil FETCH FIRST kullanır";
+            return false;
+        }
+        
+        return true;
+    }
+    
+    public override string FormatSql(string sql)
+    {
+        // Oracle büyük harf anahtar kelimeleri tercih eder
+        return sql.ToUpper();
+    }
+    
+    public override string GetLimitClause(int limit)
+    {
+        return $"FETCH FIRST {limit} ROWS ONLY";
+    }
+}
+
+// DI'a kaydet
+services.AddSingleton<ISqlDialectStrategy, OracleDialectStrategy>();
+```
+
+### Özel Skorlama Stratejisi
+
+**v3.2.0'da Yeni**: `IScoringStrategy` ile özel ilgililik skorlaması uygulayın.
+
+```csharp
+// Sadece semantik skorlama (%100 embedding tabanlı)
+public class SemanticOnlyScoringStrategy : IScoringStrategy
+{
+    public async Task<double> CalculateScoreAsync(
+        string query,
+        DocumentChunk chunk,
+        List<float> queryEmbedding)
+    {
+        if (chunk.Embedding == null || chunk.Embedding.Count == 0)
+            return 0.0;
+        
+        // Saf kosinüs benzerliği
+        return CosineSimilarity(queryEmbedding, chunk.Embedding);
+    }
+    
+    private double CosineSimilarity(List<float> a, List<float> b)
+    {
+        if (a.Count != b.Count) return 0.0;
+        
+        double dotProduct = 0;
+        double normA = 0;
+        double normB = 0;
+        
+        for (int i = 0; i < a.Count; i++)
+        {
+            dotProduct += a[i] * b[i];
+            normA += a[i] * a[i];
+            normB += b[i] * b[i];
+        }
+        
+        if (normA == 0 || normB == 0) return 0.0;
+        
+        return dotProduct / (Math.Sqrt(normA) * Math.Sqrt(normB));
+    }
+}
+
+// DI'a kaydet
+services.AddSingleton<IScoringStrategy, SemanticOnlyScoringStrategy>();
+```
+
+### Özel Dosya Ayrıştırıcı
+
+**v3.2.0'da Yeni**: `IFileParser` ile özel dosya formatları için destek ekleyin.
+
+```csharp
+// Markdown dosya ayrıştırıcı
+public class MarkdownFileParser : IFileParser
+{
+    public bool CanParse(string fileName, string contentType)
+    {
+        return fileName.EndsWith(".md", StringComparison.OrdinalIgnoreCase) ||
+               fileName.EndsWith(".markdown", StringComparison.OrdinalIgnoreCase) ||
+               contentType == "text/markdown";
+    }
+    
+    public async Task<FileParserResult> ParseAsync(Stream fileStream, string fileName)
+    {
+        try
+        {
+            using var reader = new StreamReader(fileStream);
+            var markdown = await reader.ReadToEndAsync();
+            
+            // Düz metin için markdown sözdizimini kaldır
+            var plainText = StripMarkdownSyntax(markdown);
+            
+            return new FileParserResult
+            {
+                Content = plainText,
+                Success = true,
+                FileName = fileName
+            };
+        }
+        catch (Exception ex)
+        {
+            return new FileParserResult
+            {
+                Success = false,
+                ErrorMessage = ex.Message
+            };
+        }
+    }
+    
+    private string StripMarkdownSyntax(string markdown)
+    {
+        // Başlıkları kaldır
+        markdown = Regex.Replace(markdown, @"^#{1,6}\s+", "", RegexOptions.Multiline);
+        
+        // Kalın/italik kaldır
+        markdown = Regex.Replace(markdown, @"\*\*(.+?)\*\*", "$1");
+        markdown = Regex.Replace(markdown, @"\*(.+?)\*", "$1");
+        
+        // Linkleri kaldır ama metni tut
+        markdown = Regex.Replace(markdown, @"\[(.+?)\]\(.+?\)", "$1");
+        
+        // Kod bloklarını kaldır
+        markdown = Regex.Replace(markdown, @"```[\s\S]*?```", "");
+        markdown = Regex.Replace(markdown, @"`(.+?)`", "$1");
+        
+        return markdown.Trim();
+    }
+}
+
+// DI'a kaydet
+services.AddSingleton<IFileParser, MarkdownFileParser>();
+```

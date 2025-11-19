@@ -13,6 +13,7 @@ using SmartRAG.Demo.Services.Translation;
 using SmartRAG.Enums;
 using SmartRAG.Extensions;
 using SmartRAG.Interfaces;
+using SmartRAG.Interfaces.Support;
 
 namespace SmartRAG.Demo;
 
@@ -170,6 +171,7 @@ internal class Program
         var documentSearchService = serviceProvider.GetRequiredService<IDocumentSearchService>();
         var schemaAnalyzer = serviceProvider.GetRequiredService<IDatabaseSchemaAnalyzer>();
         var testQueryGenerator = CreateTestQueryGenerator(serviceProvider);
+        var conversationManager = serviceProvider.GetRequiredService<IConversationManagerService>();
 
         return new QueryHandler(
             logger,
@@ -179,7 +181,9 @@ internal class Program
             documentService,
             documentSearchService,
             schemaAnalyzer,
-            testQueryGenerator);
+            testQueryGenerator,
+            conversationManager,
+            serviceProvider);
     }
 
     private static TestQueryGenerator CreateTestQueryGenerator(IServiceProvider serviceProvider)

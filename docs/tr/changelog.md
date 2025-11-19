@@ -10,6 +10,170 @@ SmartRAG'deki tüm önemli değişiklikler burada belgelenmiştir. Proje [Anlams
 
 ---
 
+## [3.2.0] - 2025-11-19
+
+### 🏗️ Mimari Refactoring - Modüler Tasarım
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> MINOR Sürüm</h4>
+    <p class="mb-0">
+        Bu sürüm, tam geriye dönük uyumluluk sağlarken önemli mimari iyileştirmeler sunar.
+        Mevcut tüm kodlar değişiklik gerektirmeden çalışmaya devam eder.
+    </p>
+</div>
+
+#### **Strategy Pattern Uygulaması**
+
+##### SQL Diyalekt Stratejisi
+- **`ISqlDialectStrategy`**: Veritabanına özgü SQL üretimi için interface
+- **Diyalekt Uygulamaları**: 
+  - `SqliteDialectStrategy` - SQLite için optimize edilmiş SQL üretimi
+  - `PostgreSqlDialectStrategy` - PostgreSQL için optimize edilmiş SQL üretimi
+  - `MySqlDialectStrategy` - MySQL/MariaDB için optimize edilmiş SQL üretimi
+  - `SqlServerDialectStrategy` - SQL Server için optimize edilmiş SQL üretimi
+- **`ISqlDialectStrategyFactory`**: Uygun diyalekt stratejisi oluşturmak için fabrika
+- **Faydalar**: Açık/Kapalı Prensibi (OCP), yeni veritabanı desteği eklemeyi kolaylaştırır
+
+##### Skorlama Stratejisi
+- **`IScoringStrategy`**: Doküman ilgililik skorlaması için interface
+- **`HybridScoringStrategy`**: Semantik ve anahtar kelime tabanlı skorlamayı birleştirir
+- **Faydalar**: Takılabilir skorlama algoritmaları, arama davranışını özelleştirmeyi kolaylaştırır
+
+##### Dosya Ayrıştırıcı Stratejisi
+- **`IFileParser`**: Dosya formatı ayrıştırma için interface
+- **Strateji tabanlı ayrıştırma**: Her dosya türü için özel ayrıştırıcı uygulaması
+- **Faydalar**: Tek Sorumluluk Prensibi (SRP), yeni dosya formatları eklemeyi kolaylaştırır
+
+#### **Repository Katmanı Ayrımı**
+
+##### Konuşma Repository
+- **`IConversationRepository`**: Konuşma veri erişimi için özel interface
+- **Uygulamalar**:
+  - `SqliteConversationRepository` - SQLite tabanlı konuşma depolama
+  - `InMemoryConversationRepository` - Bellekte konuşma depolama
+  - `FileSystemConversationRepository` - Dosya tabanlı konuşma depolama
+  - `RedisConversationRepository` - Redis tabanlı konuşma depolama
+- **`IConversationManagerService`**: Konuşma yönetimi için iş mantığı
+- **Faydalar**: Sorumlulukların Ayrılması (SoC), Interface Ayrımı Prensibi (ISP)
+
+##### Repository Temizliği
+- **`IDocumentRepository`**: Konuşma ile ilgili metodlar kaldırıldı
+- **Net ayrım**: Dokümanlar vs Konuşmalar
+- **Faydalar**: Daha temiz interface'ler, daha iyi test edilebilirlik
+
+#### **Servis Katmanı Refactoring**
+
+##### AI Servis Ayrıştırması
+- **`IAIConfigurationService`**: AI sağlayıcı yapılandırma yönetimi
+- **`IAIRequestExecutor`**: Yeniden deneme/yedekleme ile AI istek yürütme
+- **`IPromptBuilderService`**: Prompt oluşturma ve optimizasyon
+- **`IAIProviderFactory`**: AI sağlayıcı örnekleri oluşturmak için fabrika
+- **Faydalar**: Tek Sorumluluk Prensibi (SRP), daha iyi test edilebilirlik
+
+##### Veritabanı Servisleri
+- **`IQueryIntentAnalyzer`**: Sorgu niyet analizi ve sınıflandırma
+- **`IDatabaseQueryExecutor`**: Veritabanı sorgu yürütme
+- **`IResultMerger`**: Çoklu veritabanı sonuç birleştirme
+- **`ISQLQueryGenerator`**: Doğrulama ile SQL sorgu üretimi
+- **`IDatabaseConnectionManager`**: Veritabanı bağlantı yaşam döngüsü yönetimi
+- **`IDatabaseSchemaAnalyzer`**: Veritabanı şema analizi ve önbellekleme
+
+##### Arama Servisleri
+- **`IEmbeddingSearchService`**: Embedding tabanlı arama işlemleri
+- **`ISourceBuilderService`**: Arama sonucu kaynak oluşturma
+
+##### Ayrıştırıcı Servisleri
+- **`IAudioParserService`**: Ses dosyası ayrıştırma ve transkripsiyon
+- **`IImageParserService`**: Görüntü OCR işleme
+- **`IAudioParserFactory`**: Ses ayrıştırıcı oluşturma fabrikası
+
+##### Destek Servisleri
+- **`IQueryIntentClassifierService`**: Sorgu niyet sınıflandırma
+- **`ITextNormalizationService`**: Metin normalizasyonu ve temizleme
+
+#### **Model Konsolidasyonu**
+
+##### DatabaseSchema Birleşimi
+- **Birleştirilmiş Modeller**: `DatabaseSchema` ve `DatabaseSchemaInfo` tek `DatabaseSchemaInfo`'da birleştirildi
+- **Faydalar**: DRY prensibi, daha basit API, azaltılmış tekrar
+
+#### **Doğrulama İyileştirmeleri**
+
+##### DocumentValidator Çıkarımı
+- **`DocumentValidator`**: Repository'lerden doğrulama mantığı çıkarıldı
+- **Evrensel doğrulama**: Tüm repository uygulamalarında uygulandı
+- **Faydalar**: DRY prensibi, tutarlı doğrulama, daha iyi bakım yapılabilirlik
+
+### 🔧 Kod Kalitesi
+
+#### **Derleme Kalitesi**
+- **Sıfır Uyarı**: Tüm projelerde 0 hata, 0 uyarı korundu
+- **SOLID Uyumu**: SOLID prensiplerine tam uyum
+- **Temiz Mimari**: Katmanlar arasında net sorumluluk ayrımı
+
+#### **Değiştirilen Dosyalar**
+- `src/SmartRAG/Interfaces/` - Strategy Pattern için yeni interface'ler
+- `src/SmartRAG/Services/` - Servis katmanı refactoring
+- `src/SmartRAG/Repositories/` - Repository ayrımı
+- `src/SmartRAG/Models/` - Model konsolidasyonu
+- `src/SmartRAG/Extensions/ServiceCollectionExtensions.cs` - Güncellenmiş DI kayıtları
+
+### ✨ Faydalar
+
+- **Bakım Yapılabilirlik**: Daha temiz, daha modüler kod tabanı
+- **Genişletilebilirlik**: Yeni veritabanları, AI sağlayıcıları, dosya formatları eklemeyi kolaylaştırır
+- **Test Edilebilirlik**: Net interface'lerle daha iyi birim testi
+- **Performans**: Veritabanı diyalektine göre optimize edilmiş SQL üretimi
+- **Esneklik**: Skorlama, ayrıştırma, SQL üretimi için takılabilir stratejiler
+- **Geriye Dönük Uyumluluk**: Mevcut tüm kodlar değişiklik olmadan çalışır
+
+### 📚 Geçiş Rehberi
+
+#### Breaking Change Yok
+Tüm değişiklikler geriye dönük uyumludur. Mevcut kodlar değişiklik gerektirmeden çalışmaya devam eder.
+
+#### İsteğe Bağlı İyileştirmeler
+
+**Yeni Konuşma Yönetimini Kullanın**:
+```csharp
+// Eski yaklaşım (hala çalışır)
+await _documentSearchService.QueryIntelligenceAsync(query);
+
+// Yeni yaklaşım (konuşma takibi için önerilir)
+var sessionId = await _conversationManager.StartNewConversationAsync();
+await _conversationManager.AddToConversationAsync(sessionId, userMessage, aiResponse);
+var history = await _conversationManager.GetConversationHistoryAsync(sessionId);
+```
+
+**Özel SQL Diyalekt Stratejisi** (isteğe bağlı):
+```csharp
+public class OracleDialectStrategy : BaseSqlDialectStrategy
+{
+    public override string GetDialectName() => "Oracle";
+    
+    public override string BuildSelectQuery(
+        DatabaseSchemaInfo schema, 
+        List<string> tables, 
+        int maxRows)
+    {
+        // Oracle'a özgü SQL üretimi
+    }
+}
+```
+
+**Özel Skorlama Stratejisi** (isteğe bağlı):
+```csharp
+public class CustomScoringStrategy : IScoringStrategy
+{
+    public double CalculateScore(DocumentChunk chunk, string query)
+    {
+        // Özel skorlama mantığı
+    }
+}
+```
+
+---
+
 ## [3.1.0] - 2025-11-11
 
 ### ✨ Birleşik Sorgu Zekası

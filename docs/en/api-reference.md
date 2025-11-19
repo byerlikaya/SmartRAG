@@ -245,6 +245,190 @@ Task<bool> ClearAllDocumentsAsync()
 
 ---
 
+## IConversationManagerService
+
+**Purpose:** Conversation session management and history tracking
+
+**Namespace:** `SmartRAG.Interfaces.Support`
+
+**New in v3.2.0**: This interface provides dedicated conversation management, separated from document operations for better separation of concerns.
+
+### Methods
+
+#### StartNewConversationAsync
+
+Start a new conversation session.
+
+```csharp
+Task<string> StartNewConversationAsync()
+```
+
+**Returns:** New session ID (string)
+
+**Example:**
+
+```csharp
+var sessionId = await _conversationManager.StartNewConversationAsync();
+Console.WriteLine($"Started session: {sessionId}");
+```
+
+#### GetOrCreateSessionIdAsync
+
+Get existing session ID or create a new one automatically.
+
+```csharp
+Task<string> GetOrCreateSessionIdAsync()
+```
+
+**Returns:** Session ID (string)
+
+**Use Case:** Automatic session continuity without manual session management
+
+**Example:**
+
+```csharp
+// Automatically manages session - creates new if none exists
+var sessionId = await _conversationManager.GetOrCreateSessionIdAsync();
+```
+
+#### AddToConversationAsync
+
+Add a conversation turn (question + answer) to the session history.
+
+```csharp
+Task AddToConversationAsync(
+    string sessionId, 
+    string question, 
+    string answer
+)
+```
+
+**Parameters:**
+- `sessionId` (string): Session identifier
+- `question` (string): User's question
+- `answer` (string): AI's answer
+
+**Example:**
+
+```csharp
+await _conversationManager.AddToConversationAsync(
+    sessionId,
+    "What is machine learning?",
+    "Machine learning is a subset of AI that enables systems to learn..."
+);
+```
+
+#### GetConversationHistoryAsync
+
+Retrieve full conversation history for a session.
+
+```csharp
+Task<string> GetConversationHistoryAsync(string sessionId)
+```
+
+**Parameters:**
+- `sessionId` (string): Session identifier
+
+**Returns:** Formatted conversation history as string
+
+**Format:**
+```
+User: [question]
+Assistant: [answer]
+User: [next question]
+Assistant: [next answer]
+```
+
+**Example:**
+
+```csharp
+var history = await _conversationManager.GetConversationHistoryAsync(sessionId);
+Console.WriteLine(history);
+```
+
+#### TruncateConversationHistory
+
+Truncate conversation history to keep only recent turns (memory management).
+
+```csharp
+string TruncateConversationHistory(
+    string history, 
+    int maxTurns = 3
+)
+```
+
+**Parameters:**
+- `history` (string): Full conversation history
+- `maxTurns` (int): Maximum number of conversation turns to keep (default: 3)
+
+**Returns:** Truncated conversation history
+
+**Use Case:** Prevent context window overflow in AI prompts
+
+**Example:**
+
+```csharp
+var fullHistory = await _conversationManager.GetConversationHistoryAsync(sessionId);
+var recentHistory = _conversationManager.TruncateConversationHistory(fullHistory, maxTurns: 5);
+```
+
+### Complete Usage Example
+
+```csharp
+public class ChatService
+{
+    private readonly IConversationManagerService _conversationManager;
+    private readonly IDocumentSearchService _searchService;
+    
+    public ChatService(
+        IConversationManagerService conversationManager,
+        IDocumentSearchService searchService)
+    {
+        _conversationManager = conversationManager;
+        _searchService = searchService;
+    }
+    
+    public async Task<string> HandleChatAsync(string userMessage)
+    {
+        // Get or create session
+        var sessionId = await _conversationManager.GetOrCreateSessionIdAsync();
+        
+        // Get conversation history for context
+        var history = await _conversationManager.GetConversationHistoryAsync(sessionId);
+        
+        // Query with context
+        var response = await _searchService.QueryIntelligenceAsync(userMessage);
+        
+        // Save to conversation history
+        await _conversationManager.AddToConversationAsync(
+            sessionId, 
+            userMessage, 
+            response.Answer
+        );
+        
+        return response.Answer;
+    }
+    
+    public async Task<string> StartNewChatAsync()
+    {
+        var newSessionId = await _conversationManager.StartNewConversationAsync();
+        return $"Started new conversation: {newSessionId}";
+    }
+}
+```
+
+### Storage Backends
+
+Conversation history is stored using the configured `IConversationRepository`:
+- **SQLite**: `SqliteConversationRepository` - Persistent file-based storage
+- **InMemory**: `InMemoryConversationRepository` - Fast, non-persistent (development)
+- **FileSystem**: `FileSystemConversationRepository` - JSON file-based storage
+- **Redis**: `RedisConversationRepository` - High-performance distributed storage
+
+Storage backend is automatically selected based on your `StorageProvider` configuration.
+
+---
+
 ## IDocumentParserService
 
 **Purpose:** Multi-format document parsing and text extraction
@@ -1339,6 +1523,446 @@ var result = _searchService.QueryIntelligenceAsync(query).Result;
 
 // ✅ GOOD - ConfigureAwait in library code
 var result = await _searchService.QueryIntelligenceAsync(query).ConfigureAwait(false);
+```
+
+---
+
+## Strategy Pattern Interfaces (v3.2.0)
+
+SmartRAG v3.2.0 introduces Strategy Pattern for extensibility and customization.
+
+### ISqlDialectStrategy
+
+**Purpose:** Database-specific SQL generation and validation
+
+**Namespace:** `SmartRAG.Interfaces.Database.Strategies`
+
+**New in v3.2.0**: Enables database-specific SQL optimization and custom database support.
+
+#### Properties
+
+```csharp
+DatabaseType DatabaseType { get; }
+```
+
+#### Methods
+
+##### BuildSystemPrompt
+
+Build AI system prompt for SQL generation specific to this database dialect.
+
+```csharp
+string BuildSystemPrompt(DatabaseSchemaInfo schema, string userQuery)
+```
+
+##### ValidateSyntax
+
+Validate SQL syntax for this specific dialect.
+
+```csharp
+bool ValidateSyntax(string sql, out string errorMessage)
+```
+
+##### FormatSql
+
+Format SQL query according to dialect-specific rules.
+
+```csharp
+string FormatSql(string sql)
+```
+
+##### GetLimitClause
+
+Get the LIMIT clause format for this dialect.
+
+```csharp
+string GetLimitClause(int limit)
+```
+
+**Returns:**
+- SQLite/MySQL: `LIMIT {limit}`
+- SQL Server: `TOP {limit}`
+- PostgreSQL: `LIMIT {limit}`
+
+#### Built-in Implementations
+
+- `SqliteDialectStrategy` - SQLite-optimized SQL
+- `PostgreSqlDialectStrategy` - PostgreSQL-optimized SQL
+- `MySqlDialectStrategy` - MySQL/MariaDB-optimized SQL
+- `SqlServerDialectStrategy` - SQL Server-optimized SQL
+
+#### Custom Implementation Example
+
+```csharp
+public class OracleDialectStrategy : BaseSqlDialectStrategy
+{
+    public override DatabaseType DatabaseType => DatabaseType.Oracle;
+    
+    public override string BuildSystemPrompt(DatabaseSchemaInfo schema, string userQuery)
+    {
+        return $"Generate Oracle SQL for: {userQuery}\\nSchema: {schema}";
+    }
+    
+    public override bool ValidateSyntax(string sql, out string errorMessage)
+    {
+        // Oracle-specific validation
+        errorMessage = null;
+        return true;
+    }
+    
+    public override string FormatSql(string sql)
+    {
+        // Oracle-specific formatting
+        return sql.ToUpper();
+    }
+    
+    public override string GetLimitClause(int limit)
+    {
+        return $"FETCH FIRST {limit} ROWS ONLY";
+    }
+}
+```
+
+---
+
+### IScoringStrategy
+
+**Purpose:** Customizable document relevance scoring
+
+**Namespace:** `SmartRAG.Interfaces.Search.Strategies`
+
+**New in v3.2.0**: Enables custom scoring algorithms for search results.
+
+#### Methods
+
+##### CalculateScoreAsync
+
+Calculate relevance score for a document chunk.
+
+```csharp
+Task<double> CalculateScoreAsync(
+    string query, 
+    DocumentChunk chunk, 
+    List<float> queryEmbedding
+)
+```
+
+**Parameters:**
+- `query` (string): Search query
+- `chunk` (DocumentChunk): Document chunk to score
+- `queryEmbedding` (List<float>): Query embedding vector
+
+**Returns:** Score between 0.0 and 1.0
+
+#### Built-in Implementation
+
+**HybridScoringStrategy** (default):
+- 80% semantic similarity (cosine similarity of embeddings)
+- 20% keyword matching (BM25-like scoring)
+
+#### Custom Implementation Example
+
+```csharp
+public class SemanticOnlyScoringStrategy : IScoringStrategy
+{
+    public async Task<double> CalculateScoreAsync(
+        string query, 
+        DocumentChunk chunk, 
+        List<float> queryEmbedding)
+    {
+        // Pure semantic similarity (100% embedding-based)
+        return CosineSimilarity(queryEmbedding, chunk.Embedding);
+    }
+    
+    private double CosineSimilarity(List<float> a, List<float> b)
+    {
+        double dotProduct = 0, normA = 0, normB = 0;
+        for (int i = 0; i < a.Count; i++)
+        {
+            dotProduct += a[i] * b[i];
+            normA += a[i] * a[i];
+            normB += b[i] * b[i];
+        }
+        return dotProduct / (Math.Sqrt(normA) * Math.Sqrt(normB));
+    }
+}
+```
+
+---
+
+### IFileParser
+
+**Purpose:** Strategy for parsing specific file formats
+
+**Namespace:** `SmartRAG.Interfaces.Parser.Strategies`
+
+**New in v3.2.0**: Enables custom file format parsers.
+
+#### Methods
+
+##### ParseAsync
+
+Parse a file and extract content.
+
+```csharp
+Task<FileParserResult> ParseAsync(Stream fileStream, string fileName)
+```
+
+##### CanParse
+
+Check if this parser can handle the given file.
+
+```csharp
+bool CanParse(string fileName, string contentType)
+```
+
+#### Built-in Implementations
+
+- `PdfFileParser` - PDF documents
+- `WordFileParser` - Word documents (.docx)
+- `ExcelFileParser` - Excel spreadsheets (.xlsx)
+- `TextFileParser` - Plain text files
+- `ImageFileParser` - Images with OCR
+- `AudioFileParser` - Audio transcription
+- `DatabaseFileParser` - SQLite databases
+
+#### Custom Implementation Example
+
+```csharp
+public class MarkdownFileParser : IFileParser
+{
+    public bool CanParse(string fileName, string contentType)
+    {
+        return fileName.EndsWith(".md", StringComparison.OrdinalIgnoreCase) ||
+               contentType == "text/markdown";
+    }
+    
+    public async Task<FileParserResult> ParseAsync(Stream fileStream, string fileName)
+    {
+        using var reader = new StreamReader(fileStream);
+        var content = await reader.ReadToEndAsync();
+        
+        // Strip markdown syntax for plain text
+        var plainText = StripMarkdownSyntax(content);
+        
+        return new FileParserResult
+        {
+            Content = plainText,
+            Success = true
+        };
+    }
+    
+    private string StripMarkdownSyntax(string markdown)
+    {
+        // Remove markdown formatting
+        return Regex.Replace(markdown, @"[#*`\[\]()]", "");
+    }
+}
+```
+
+---
+
+## Additional Service Interfaces (v3.2.0)
+
+### IConversationRepository
+
+**Purpose:** Data access layer for conversation storage
+
+**Namespace:** `SmartRAG.Interfaces.Storage`
+
+**New in v3.2.0**: Separated from `IDocumentRepository` for better SRP compliance.
+
+#### Methods
+
+```csharp
+Task<string> GetConversationHistoryAsync(string sessionId);
+Task SaveConversationAsync(string sessionId, string history);
+Task DeleteConversationAsync(string sessionId);
+Task<bool> ConversationExistsAsync(string sessionId);
+```
+
+#### Implementations
+
+- `SqliteConversationRepository`
+- `InMemoryConversationRepository`
+- `FileSystemConversationRepository`
+- `RedisConversationRepository`
+
+---
+
+### IAIConfigurationService
+
+**Purpose:** AI provider configuration management
+
+**Namespace:** `SmartRAG.Interfaces.AI`
+
+**New in v3.2.0**: Separated configuration from execution for better SRP.
+
+#### Methods
+
+```csharp
+AIProvider GetProvider();
+string GetModel();
+string GetEmbeddingModel();
+int GetMaxTokens();
+double GetTemperature();
+```
+
+---
+
+### IAIRequestExecutor
+
+**Purpose:** AI request execution with retry/fallback
+
+**Namespace:** `SmartRAG.Interfaces.AI`
+
+**New in v3.2.0**: Handles AI requests with automatic retry and fallback logic.
+
+#### Methods
+
+```csharp
+Task<string> ExecuteRequestAsync(string prompt, CancellationToken cancellationToken = default);
+Task<List<float>> ExecuteEmbeddingRequestAsync(string text, CancellationToken cancellationToken = default);
+```
+
+---
+
+### IQueryIntentAnalyzer
+
+**Purpose:** Query intent analysis for database routing
+
+**Namespace:** `SmartRAG.Interfaces.Database`
+
+**New in v3.2.0**: Analyzes queries to determine database routing strategy.
+
+#### Methods
+
+```csharp
+Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery);
+```
+
+---
+
+### IDatabaseQueryExecutor
+
+**Purpose:** Execute queries across multiple databases
+
+**Namespace:** `SmartRAG.Interfaces.Database`
+
+**New in v3.2.0**: Parallel query execution across databases.
+
+#### Methods
+
+```csharp
+Task<MultiDatabaseQueryResult> ExecuteMultiDatabaseQueryAsync(QueryIntent queryIntent);
+```
+
+---
+
+### IResultMerger
+
+**Purpose:** Merge results from multiple databases
+
+**Namespace:** `SmartRAG.Interfaces.Database`
+
+**New in v3.2.0**: AI-powered result merging.
+
+#### Methods
+
+```csharp
+Task<string> MergeResultsAsync(MultiDatabaseQueryResult queryResult, string userQuery);
+```
+
+---
+
+### ISQLQueryGenerator
+
+**Purpose:** Generate and validate SQL queries
+
+**Namespace:** `SmartRAG.Interfaces.Database`
+
+**New in v3.2.0**: Uses `ISqlDialectStrategy` for database-specific SQL.
+
+#### Methods
+
+```csharp
+Task<string> GenerateSqlAsync(string userQuery, DatabaseSchemaInfo schema, DatabaseType databaseType);
+bool ValidateSql(string sql, DatabaseSchemaInfo schema, out string errorMessage);
+```
+
+---
+
+### IEmbeddingSearchService
+
+**Purpose:** Embedding-based semantic search
+
+**Namespace:** `SmartRAG.Interfaces.Search`
+
+**New in v3.2.0**: Core embedding search functionality.
+
+#### Methods
+
+```csharp
+Task<List<DocumentChunk>> SearchByEmbeddingAsync(List<float> queryEmbedding, int maxResults = 5);
+```
+
+---
+
+### ISourceBuilderService
+
+**Purpose:** Build search result sources
+
+**Namespace:** `SmartRAG.Interfaces.Search`
+
+**New in v3.2.0**: Constructs `SearchSource` objects from chunks.
+
+#### Methods
+
+```csharp
+List<SearchSource> BuildSources(List<DocumentChunk> chunks);
+```
+
+---
+
+### IAudioParserService
+
+**Purpose:** Audio file parsing and transcription
+
+**Namespace:** `SmartRAG.Interfaces.Parser`
+
+#### Methods
+
+```csharp
+Task<string> TranscribeAudioAsync(Stream audioStream, string fileName);
+```
+
+---
+
+### IImageParserService
+
+**Purpose:** Image OCR processing
+
+**Namespace:** `SmartRAG.Interfaces.Parser`
+
+#### Methods
+
+```csharp
+Task<string> ExtractTextFromImageAsync(Stream imageStream, string language = "eng");
+```
+
+---
+
+### ITextNormalizationService
+
+**Purpose:** Text normalization and cleaning
+
+**Namespace:** `SmartRAG.Interfaces.Support`
+
+#### Methods
+
+```csharp
+string NormalizeText(string text);
+string RemoveExtraWhitespace(string text);
 ```
 
 ---

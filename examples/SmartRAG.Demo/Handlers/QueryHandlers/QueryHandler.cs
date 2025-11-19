@@ -1,10 +1,13 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SmartRAG.Demo.Models;
 using SmartRAG.Demo.Services.Console;
 using SmartRAG.Demo.Services.TestQuery;
 using SmartRAG.Enums;
 using SmartRAG.Interfaces;
+using SmartRAG.Interfaces.Support;
 using SmartRAG.Models;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -23,7 +26,9 @@ public class QueryHandler(
     IDocumentService documentService,
     IDocumentSearchService documentSearchService,
     IDatabaseSchemaAnalyzer schemaAnalyzer,
-    ITestQueryGenerator testQueryGenerator) : IQueryHandler
+    ITestQueryGenerator testQueryGenerator,
+    IConversationManagerService conversationManager,
+    IServiceProvider serviceProvider) : IQueryHandler
 {
     #region Fields
 
@@ -35,6 +40,8 @@ public class QueryHandler(
     private readonly IDocumentSearchService _documentSearchService = documentSearchService;
     private readonly IDatabaseSchemaAnalyzer _schemaAnalyzer = schemaAnalyzer;
     private readonly ITestQueryGenerator _testQueryGenerator = testQueryGenerator;
+    private readonly IConversationManagerService _conversationManager = conversationManager;
+    private readonly IServiceProvider _serviceProvider = serviceProvider;
 
     #endregion
 
@@ -120,7 +127,9 @@ public class QueryHandler(
 
             var languageInstructedQuery = $"{query}\n\n[IMPORTANT: Analyze and respond in {language} language]";
 
-            var intent = await _multiDbCoordinator.AnalyzeQueryIntentAsync(languageInstructedQuery);
+            // Use IQueryIntentAnalyzer instead of deprecated method
+            var queryIntentAnalyzer = _serviceProvider.GetRequiredService<IQueryIntentAnalyzer>();
+            var intent = await queryIntentAnalyzer.AnalyzeQueryIntentAsync(languageInstructedQuery);
             intent = await _multiDbCoordinator.GenerateDatabaseQueriesAsync(intent);
 
             System.Console.WriteLine();
@@ -282,6 +291,10 @@ public class QueryHandler(
         _console.WriteInfo("Type /new to reset the session, /exit to return to the main menu, /help to see available commands.");
         System.Console.WriteLine();
 
+        // Start a new conversation session
+        var sessionId = await _conversationManager.StartNewConversationAsync();
+        _console.WriteSuccess($"Started new session: {sessionId}");
+
         while (true)
         {
             var userInput = _console.ReadLine("You: ");
@@ -311,11 +324,23 @@ public class QueryHandler(
                 continue;
             }
 
+            if (trimmedInput.Equals("/new", StringComparison.OrdinalIgnoreCase) || 
+                trimmedInput.Equals("/reset", StringComparison.OrdinalIgnoreCase) || 
+                trimmedInput.Equals("/clear", StringComparison.OrdinalIgnoreCase))
+            {
+                sessionId = await _conversationManager.StartNewConversationAsync();
+                _console.WriteSuccess($"Started new session: {sessionId}");
+                continue;
+            }
+
             try
             {
                 var query = IsCommand(trimmedInput) ? trimmedInput : userInput;
 
                 var response = await _documentSearchService.QueryIntelligenceAsync(query, maxResults: 8);
+
+                // Save to conversation history
+                await _conversationManager.AddToConversationAsync(sessionId, query, response.Answer);
 
                 System.Console.WriteLine();
                 _console.WriteSuccess("Assistant:");

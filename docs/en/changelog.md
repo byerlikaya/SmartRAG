@@ -10,6 +10,170 @@ All notable changes to SmartRAG are documented here. The project adheres to [Sem
 
 ---
 
+## [3.2.0] - 2025-11-19
+
+### 🏗️ Architectural Refactoring - Modular Design
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> MINOR Release</h4>
+    <p class="mb-0">
+        This release introduces significant architectural improvements while maintaining full backward compatibility.
+        All existing code continues to work without changes.
+    </p>
+</div>
+
+#### **Strategy Pattern Implementation**
+
+##### SQL Dialect Strategy
+- **`ISqlDialectStrategy`**: Interface for database-specific SQL generation
+- **Dialect Implementations**: 
+  - `SqliteDialectStrategy` - SQLite-optimized SQL generation
+  - `PostgreSqlDialectStrategy` - PostgreSQL-optimized SQL generation
+  - `MySqlDialectStrategy` - MySQL/MariaDB-optimized SQL generation
+  - `SqlServerDialectStrategy` - SQL Server-optimized SQL generation
+- **`ISqlDialectStrategyFactory`**: Factory for creating appropriate dialect strategies
+- **Benefits**: Open/Closed Principle (OCP), easier to add new database support
+
+##### Scoring Strategy
+- **`IScoringStrategy`**: Interface for document relevance scoring
+- **`HybridScoringStrategy`**: Combines semantic and keyword-based scoring
+- **Benefits**: Pluggable scoring algorithms, easier to customize search behavior
+
+##### File Parser Strategy
+- **`IFileParser`**: Interface for file format parsing
+- **Strategy-based parsing**: Each file type has dedicated parser implementation
+- **Benefits**: Single Responsibility Principle (SRP), easier to add new file formats
+
+#### **Repository Layer Separation**
+
+##### Conversation Repository
+- **`IConversationRepository`**: Dedicated interface for conversation data access
+- **Implementations**:
+  - `SqliteConversationRepository` - SQLite-based conversation storage
+  - `InMemoryConversationRepository` - In-memory conversation storage
+  - `FileSystemConversationRepository` - File-based conversation storage
+  - `RedisConversationRepository` - Redis-based conversation storage
+- **`IConversationManagerService`**: Business logic for conversation management
+- **Benefits**: Separation of Concerns (SoC), Interface Segregation Principle (ISP)
+
+##### Repository Cleanup
+- **`IDocumentRepository`**: Removed conversation-related methods
+- **Clear separation**: Documents vs Conversations
+- **Benefits**: Cleaner interfaces, better testability
+
+#### **Service Layer Refactoring**
+
+##### AI Service Decomposition
+- **`IAIConfigurationService`**: AI provider configuration management
+- **`IAIRequestExecutor`**: AI request execution with retry/fallback
+- **`IPromptBuilderService`**: Prompt construction and optimization
+- **`IAIProviderFactory`**: Factory for creating AI provider instances
+- **Benefits**: Single Responsibility Principle (SRP), better testability
+
+##### Database Services
+- **`IQueryIntentAnalyzer`**: Query intent analysis and classification
+- **`IDatabaseQueryExecutor`**: Database query execution
+- **`IResultMerger`**: Multi-database result merging
+- **`ISQLQueryGenerator`**: SQL query generation with validation
+- **`IDatabaseConnectionManager`**: Database connection lifecycle management
+- **`IDatabaseSchemaAnalyzer`**: Database schema analysis and caching
+
+##### Search Services
+- **`IEmbeddingSearchService`**: Embedding-based search operations
+- **`ISourceBuilderService`**: Search result source building
+
+##### Parser Services
+- **`IAudioParserService`**: Audio file parsing and transcription
+- **`IImageParserService`**: Image OCR processing
+- **`IAudioParserFactory`**: Factory for audio parser creation
+
+##### Support Services
+- **`IQueryIntentClassifierService`**: Query intent classification
+- **`ITextNormalizationService`**: Text normalization and cleaning
+
+#### **Model Consolidation**
+
+##### DatabaseSchema Unification
+- **Merged Models**: `DatabaseSchema` and `DatabaseSchemaInfo` consolidated into single `DatabaseSchemaInfo`
+- **Benefits**: DRY principle, simpler API, reduced duplication
+
+#### **Validation Improvements**
+
+##### DocumentValidator Extraction
+- **`DocumentValidator`**: Extracted validation logic from repositories
+- **Universal validation**: Applied across all repository implementations
+- **Benefits**: DRY principle, consistent validation, better maintainability
+
+### 🔧 Code Quality
+
+#### **Build Quality**
+- **Zero Warnings**: Maintained 0 errors, 0 warnings across all projects
+- **SOLID Compliance**: Full adherence to SOLID principles
+- **Clean Architecture**: Clear separation of concerns across layers
+
+#### **Files Modified**
+- `src/SmartRAG/Interfaces/` - New interfaces for Strategy Pattern
+- `src/SmartRAG/Services/` - Service layer refactoring
+- `src/SmartRAG/Repositories/` - Repository separation
+- `src/SmartRAG/Models/` - Model consolidation
+- `src/SmartRAG/Extensions/ServiceCollectionExtensions.cs` - Updated DI registrations
+
+### ✨ Benefits
+
+- **Maintainability**: Cleaner, more modular codebase
+- **Extensibility**: Easy to add new databases, AI providers, file formats
+- **Testability**: Better unit testing with clear interfaces
+- **Performance**: Optimized SQL generation per database dialect
+- **Flexibility**: Pluggable strategies for scoring, parsing, SQL generation
+- **Backward Compatibility**: All existing code works without changes
+
+### 📚 Migration Guide
+
+#### No Breaking Changes
+All changes are backward compatible. Existing code continues to work without modifications.
+
+#### Optional Enhancements
+
+**Use New Conversation Management**:
+```csharp
+// Old approach (still works)
+await _documentSearchService.QueryIntelligenceAsync(query);
+
+// New approach (recommended for conversation tracking)
+var sessionId = await _conversationManager.StartNewConversationAsync();
+await _conversationManager.AddToConversationAsync(sessionId, userMessage, aiResponse);
+var history = await _conversationManager.GetConversationHistoryAsync(sessionId);
+```
+
+**Custom SQL Dialect Strategy** (optional):
+```csharp
+public class OracleDialectStrategy : BaseSqlDialectStrategy
+{
+    public override string GetDialectName() => "Oracle";
+    
+    public override string BuildSelectQuery(
+        DatabaseSchemaInfo schema, 
+        List<string> tables, 
+        int maxRows)
+    {
+        // Oracle-specific SQL generation
+    }
+}
+```
+
+**Custom Scoring Strategy** (optional):
+```csharp
+public class CustomScoringStrategy : IScoringStrategy
+{
+    public double CalculateScore(DocumentChunk chunk, string query)
+    {
+        // Custom scoring logic
+    }
+}
+```
+
+---
+
 ## [3.1.0] - 2025-11-11
 
 ### ✨ Unified Query Intelligence
