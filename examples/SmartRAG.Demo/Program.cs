@@ -229,42 +229,46 @@ internal class Program
                     break;
 
                 case "6":
-                    await databaseHandler.ShowSchemasAsync();
+                    await databaseHandler.CreateDatabaseAsync(DatabaseType.SQLite);
                     break;
 
                 case "7":
-                    await queryHandler.AnalyzeQueryIntentAsync(_selectedLanguage);
+                    await databaseHandler.ShowSchemasAsync();
                     break;
 
                 case "8":
-                    await queryHandler.RunTestQueriesAsync(_selectedLanguage);
+                    await queryHandler.AnalyzeQueryIntentAsync(_selectedLanguage);
                     break;
 
                 case "9":
-                    await queryHandler.RunMultiDatabaseQueryAsync(_selectedLanguage);
+                    await queryHandler.RunTestQueriesAsync(_selectedLanguage);
                     break;
 
                 case "10":
-                    await ollamaHandler.SetupModelsAsync();
+                    await queryHandler.RunMultiDatabaseQueryAsync(_selectedLanguage);
                     break;
 
                 case "11":
-                    await ollamaHandler.TestVectorStoreAsync(_selectedStorageProvider.ToString());
+                    await ollamaHandler.SetupModelsAsync();
                     break;
 
                 case "12":
-                    await documentHandler.UploadDocumentsAsync(_selectedLanguage);
+                    await ollamaHandler.TestVectorStoreAsync(_selectedStorageProvider.ToString());
                     break;
 
                 case "13":
-                    await documentHandler.ListDocumentsAsync();
+                    await documentHandler.UploadDocumentsAsync(_selectedLanguage);
                     break;
 
                 case "14":
-                    await documentHandler.ClearAllDocumentsAsync();
+                    await documentHandler.ListDocumentsAsync();
                     break;
 
                 case "15":
+                    await documentHandler.ClearAllDocumentsAsync();
+                    break;
+
+                case "16":
                     await queryHandler.RunConversationalChatAsync(
                         _selectedLanguage,
                         _useLocalEnvironment,

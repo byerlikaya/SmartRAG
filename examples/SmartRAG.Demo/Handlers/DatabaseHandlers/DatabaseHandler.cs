@@ -202,6 +202,9 @@ public class DatabaseHandler(
             case DatabaseType.PostgreSQL:
                 await CreatePostgreSqlDatabaseAsync();
                 break;
+            case DatabaseType.SQLite:
+                await CreateSqliteDatabaseAsync();
+                break;
         }
     }
 
@@ -216,8 +219,69 @@ public class DatabaseHandler(
             DatabaseType.SqlServer => "Select option 3 → Create SQL Server Test Database",
             DatabaseType.MySQL => "Select option 4 → Create MySQL Test Database",
             DatabaseType.PostgreSQL => "Select option 5 → Create PostgreSQL Test Database",
+            DatabaseType.SQLite => "Select option 6 → Create SQLite Test Database",
             _ => string.Empty
         };
+    }
+
+    private async Task CreateSqliteDatabaseAsync()
+    {
+        _console.WriteSectionHeader("📦 Create SQLite Test Database");
+
+        try
+        {
+            var creator = new SqliteTestDatabaseCreator(_configuration);
+            var connectionString = creator.GetDefaultConnectionString();
+
+            System.Console.WriteLine("SQLite test database will be created:");
+            System.Console.WriteLine($"Database: ProductCatalog.db");
+            System.Console.WriteLine();
+            _console.WriteWarning("WARNING: If database exists, it will be dropped and recreated!");
+            System.Console.WriteLine();
+
+            var confirm = _console.ReadConfirmation("Do you want to continue?", "Y");
+            if (confirm?.ToUpper() != "Y")
+            {
+                _console.WriteInfo("Cancelled");
+                return;
+            }
+
+            System.Console.WriteLine();
+            creator.CreateSampleDatabase(connectionString);
+
+            System.Console.WriteLine();
+            System.Console.ForegroundColor = ConsoleColor.Cyan;
+            System.Console.WriteLine("💡 Database created! Now:");
+            System.Console.WriteLine("   1. Return to main menu");
+            System.Console.WriteLine("   2. Check connections with option 1");
+            System.Console.WriteLine("   3. Test multi-database queries");
+            System.Console.ResetColor();
+
+            System.Console.WriteLine();
+            System.Console.WriteLine("🔄 Refreshing schema analysis...");
+
+            var connections = await _connectionManager.GetAllConnectionsAsync();
+            var sqliteConn = connections.FirstOrDefault(c => c.DatabaseType == DatabaseType.SQLite);
+
+            if (sqliteConn != null)
+            {
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _schemaAnalyzer.AnalyzeDatabaseSchemaAsync(sqliteConn);
+                    }
+                    catch { }
+                });
+            }
+
+            await Task.Delay(2000);
+            System.Console.WriteLine("   ✓ Schema analysis initiated");
+        }
+        catch (Exception ex)
+        {
+            _console.WriteError($"Error: {ex.Message}");
+        }
     }
 
     private async Task CreateSqlServerDatabaseAsync()
