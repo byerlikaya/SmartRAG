@@ -186,12 +186,19 @@ Direct Answer:";
                 
                 for (int i = 0; i < lines.Length; i++)
                 {
-                    if (lines[i].Contains('\t') && !lines[i].StartsWith("===") && !lines[i].StartsWith("Query:") && !lines[i].StartsWith("Rows"))
+                    // Skip metadata lines and empty lines
+                    if (string.IsNullOrWhiteSpace(lines[i]) || 
+                        lines[i].StartsWith("===") || 
+                        lines[i].StartsWith("Query:") || 
+                        lines[i].StartsWith("Rows"))
                     {
-                        headers = lines[i].Split('\t');
-                        headerIndex = i;
-                        break;
+                        continue;
                     }
+
+                    // The first non-metadata line is the header
+                    headers = lines[i].Split('\t');
+                    headerIndex = i;
+                    break;
                 }
                 
                 if (headers == null || headerIndex == -1)

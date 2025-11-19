@@ -114,6 +114,9 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
 
             try
             {
+                // Clear any existing connection pools to ensure no locks are held
+                NpgsqlConnection.ClearAllPools();
+
                 // 1. Create database
                 Console.WriteLine("1/3 Creating database...");
                 CreateDatabase();

@@ -151,8 +151,38 @@ namespace SmartRAG.Services.Database
                 return 0;
             }
 
-            return resultData.Split(new char[] { '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                .Count(line => !line.StartsWith("---") && !line.StartsWith("Table:"));
+            var lines = resultData.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            foreach (var line in lines)
+            {
+                if (line.StartsWith("Rows extracted:"))
+                {
+                    if (int.TryParse(line.Substring("Rows extracted:".Length).Trim(), out int count))
+                    {
+                        return count;
+                    }
+                }
+            }
+
+            // Fallback: Count lines that look like data (not metadata)
+            // This is an approximation if "Rows extracted" is missing
+            int dataRows = 0;
+            bool headerFound = false;
+            
+            foreach (var line in lines)
+            {
+                if (line.StartsWith("===") || line.StartsWith("Query:") || line.StartsWith("Rows"))
+                    continue;
+                    
+                if (!headerFound)
+                {
+                    headerFound = true; // Skip header
+                    continue;
+                }
+                
+                dataRows++;
+            }
+            
+            return dataRows;
         }
 
         #endregion
