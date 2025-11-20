@@ -80,6 +80,12 @@ namespace SmartRAG.Services.Database.Prompts
             sb.AppendLine("    4. EXAMPLE: SELECT EntityID, DescriptiveColumn FROM ... (allows joining with other databases)");
             sb.AppendLine("    5. This allows the system to merge results with the database that has the missing metric.");
             sb.AppendLine();
+            sb.AppendLine("AMBIGUITY PREVENTION (CRITICAL):");
+            sb.AppendLine("  - ALWAYS use meaningful Table Aliases (e.g., use 't1', 't2' or derived from table name).");
+            sb.AppendLine("  - ALWAYS qualify columns with these aliases (e.g., 't1.ColumnName', 't2.OtherColumn').");
+            sb.AppendLine("  - Example: SELECT t1.Id, t2.Name FROM Table1 t1 JOIN Table2 t2 ON t1.ForeignKey = t2.Id");
+            sb.AppendLine("  - NEVER use column names without table alias when joining tables.");
+            sb.AppendLine();
             sb.AppendLine("ABSOLUTELY FORBIDDEN:");
             sb.AppendLine("  ✗ NO nested subqueries (no SELECT inside WHERE)");
             sb.AppendLine("  ✗ NO complex logic (no multiple levels of nesting)");
