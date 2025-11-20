@@ -59,7 +59,7 @@ namespace SmartRAG.Services.Database.Validation
                 // Skip if it's a keyword (false positive)
                 if (IsSqlKeyword(tableName)) continue;
 
-                // Check if table exists in schema
+                // CRITICAL: Check if table exists in schema (ERROR if not)
                 var tableExists = schema.Tables.Any(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase));
                 if (!tableExists)
                 {
@@ -67,10 +67,16 @@ namespace SmartRAG.Services.Database.Validation
                     continue;
                 }
 
-                // Check if table is allowed for this query
+                // WARNING: Table exists but not in required list (log only, don't block query)
                 if (!requiredTables.Contains(tableName, StringComparer.OrdinalIgnoreCase))
                 {
-                    errors.Add($"Table '{tableName}' is not allowed for this query (not in required tables list)");
+                    _logger.LogWarning(
+                        "Table '{Table}' exists in database '{Database}' but was not in the required tables list. " +
+                        "Allowing query to proceed. This may indicate QueryIntentAnalyzer needs improvement.",
+                        tableName, schema.DatabaseName);
+                    
+                    // Don't add to errors - the table is valid, just not initially planned
+                    // This allows AI to be more flexible while we log for monitoring
                 }
             }
 
@@ -81,34 +87,43 @@ namespace SmartRAG.Services.Database.Validation
         {
             var errors = new List<string>();
             
-            // This is a simplified column validation. 
-            // A full SQL parser would be needed for 100% accuracy, but this catches common hallucinations.
+            // Extract alias to table mapping
+            var aliasToTable = ExtractTableAliases(sql);
             
-            foreach (var table in schema.Tables)
+            // Find all prefix.column patterns (both table names and aliases)
+            var columnMatches = Regex.Matches(sql, @"\b([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\b", RegexOptions.IgnoreCase);
+            
+            foreach (Match match in columnMatches)
             {
-                // Only check tables that are actually used/allowed
-                if (!requiredTables.Contains(table.TableName, StringComparer.OrdinalIgnoreCase)) continue;
-
-                // We can't easily extract columns per table without a full parser.
-                // But we can check if the SQL contains "TableName.ColumnName" patterns that are invalid.
+                var prefix = match.Groups[1].Value;
+                var columnName = match.Groups[2].Value;
                 
-                // Regex to find TableName.ColumnName
-                var columnMatches = Regex.Matches(sql, $@"{table.TableName}\.([a-zA-Z0-9_]+)", RegexOptions.IgnoreCase);
+                // Skip wildcard
+                if (columnName.Equals("*", StringComparison.OrdinalIgnoreCase)) continue;
                 
-                foreach (Match match in columnMatches)
+                // Determine actual table name from prefix (could be alias or direct table name)
+                string tableName = prefix;
+                if (aliasToTable.ContainsKey(prefix))
                 {
-                    var columnName = match.Groups[1].Value;
-                    if (columnName.Equals("*")) continue; // Allow SELECT * (though discouraged)
-
-                    var columnExists = table.Columns.Any(c => c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase));
-                    if (!columnExists)
-                    {
-                        errors.Add($"Column '{columnName}' does not exist in table '{table.TableName}'");
-                    }
+                    tableName = aliasToTable[prefix];
                 }
                 
-                // Also check for aliases if possible, but that's harder without parsing.
-                // For now, we rely on the AI being instructed to use Table.Column format or unique column names.
+                // Find the table in schema
+                var table = schema.Tables.FirstOrDefault(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase));
+                
+                // If table not found in schema, skip (table validation happens elsewhere)
+                if (table == null) continue;
+                
+                // Check if this table is in the required tables list
+                if (!requiredTables.Contains(table.TableName, StringComparer.OrdinalIgnoreCase)) continue;
+                
+                // Validate column exists in the table
+                var columnExists = table.Columns.Any(c => c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase));
+                if (!columnExists)
+                {
+                    var aliasInfo = aliasToTable.ContainsKey(prefix) ? $" (via alias '{prefix}')" : "";
+                    errors.Add($"Column '{columnName}' does not exist in table '{tableName}'{aliasInfo}");
+                }
             }
 
             return errors;
@@ -137,6 +152,34 @@ namespace SmartRAG.Services.Database.Validation
         {
             var keywords = new[] { "SELECT", "FROM", "WHERE", "JOIN", "ON", "AND", "OR", "GROUP", "BY", "ORDER", "LIMIT", "TOP", "AS", "LEFT", "RIGHT", "INNER", "OUTER" };
             return keywords.Contains(word.ToUpperInvariant());
+        }
+
+        /// <summary>
+        /// Extracts table aliases from SQL query (e.g., "FROM Orders t2" -> {"t2": "Orders"})
+        /// </summary>
+        private Dictionary<string, string> ExtractTableAliases(string sql)
+        {
+            var aliasToTable = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            
+            // Pattern: FROM TableName [AS] Alias  or  JOIN TableName [AS] Alias
+            // Matches: FROM Orders t2, JOIN Products AS p1, etc.
+            var aliasMatches = Regex.Matches(sql, 
+                @"(?:FROM|JOIN)\s+([a-zA-Z0-9_]+)(?:\s+(?:AS\s+)?([a-zA-Z0-9_]+))?", 
+                RegexOptions.IgnoreCase);
+            
+            foreach (Match match in aliasMatches)
+            {
+                var tableName = match.Groups[1].Value;
+                var alias = match.Groups[2].Value;
+                
+                // If alias exists and is not a SQL keyword, add to mapping
+                if (!string.IsNullOrWhiteSpace(alias) && !IsSqlKeyword(alias))
+                {
+                    aliasToTable[alias] = tableName;
+                }
+            }
+            
+            return aliasToTable;
         }
     }
 }

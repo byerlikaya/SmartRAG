@@ -200,30 +200,22 @@ public class OllamaModelManager
         }
 
         /// <summary>
-        /// Gets recommended models for SmartRAG Demo
+        /// Gets recommended models for SmartRAG Demo (Optimized for 32GB+ RAM systems)
         /// </summary>
         /// <returns>Dictionary of model names and descriptions</returns>
         public static Dictionary<string, string> GetRecommendedModels()
         {
             return new Dictionary<string, string>
             {
-                // SQL Generation Models (Best for Database Queries)
-                { "deepseek-coder:6.7b", "DeepSeek Coder 6.7B - Best for SQL generation (4.1GB) ⭐ Recommended" },
-                { "qwen2.5-coder:7b", "Qwen2.5 Coder 7B - Multilingual SQL support (4.7GB)" },
-                { "codellama:7b", "CodeLlama 7B - Excellent code generation including SQL (3.8GB)" },
+                // 🏆 Top 5 Models for High-End Systems (32GB+ RAM) - SQL Generation Focus
+                { "deepseek-coder-v2:16b", "⭐ DeepSeek-Coder-V2 16B - Best SQL generation, requires ~12GB RAM" },
+                { "qwen2.5-coder:32b", "🚀 Qwen2.5-Coder 32B - Most powerful for complex SQL, requires ~20GB RAM" },
+                { "codellama:13b-instruct", "💡 CodeLlama 13B Instruct - Meta's SQL specialist, requires ~8GB RAM" },
+                { "qwen2.5-coder:14b", "⚡ Qwen2.5-Coder 14B - Balanced power and speed, requires ~9GB RAM" },
+                { "llama3.1:8b", "📦 Llama 3.1 8B - Lightweight but capable, requires ~5GB RAM" },
                 
-                // General Purpose Models
-                { "llama3.1:8b", "Llama 3.1 8B - General purpose, good SQL support (4.7GB)" },
-                { "llama3.2:1b", "Llama 3.2 1B - Ultra lightweight (Recommended for slow connections)" },
-                { "llama3.2", "Meta's Llama 3.2 - Fast and efficient (Large download)" },
-                
-                // Compact Models
-                { "phi3", "Microsoft Phi-3 - Compact and fast (Good for testing)" },
-                { "mistral", "Mistral 7B - High quality responses (Very large download)" },
-                { "qwen2.5", "Alibaba Qwen 2.5 - Multilingual support (Large download)" },
-                
-                // Required for RAG
-                { "nomic-embed-text", "Text embedding model (Required for RAG)" }
+                // Required for RAG (Embeddings)
+                { "nomic-embed-text", "📊 Nomic Embed - Text embedding model (Required for RAG, ~300MB)" }
             };
         }
 

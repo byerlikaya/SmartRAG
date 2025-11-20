@@ -137,8 +137,9 @@ namespace SmartRAG.Services.Database.Prompts
             }
 
             sb.AppendLine("═══════════════════════════════════════");
-            sb.AppendLine($"TABLES AVAILABLE IN {schema.DatabaseName}:");
+            sb.AppendLine($"TABLES AVAILABLE IN {schema.DatabaseName} (ONLY IN THIS DATABASE):");
             sb.AppendLine("═══════════════════════════════════════");
+            sb.AppendLine("🚨 CRITICAL: You MUST ONLY use tables listed below. DO NOT invent or use tables from other databases. 🚨");
             
             foreach (var tableName in dbQuery.RequiredTables)
             {
@@ -182,12 +183,36 @@ namespace SmartRAG.Services.Database.Prompts
             }
             
             sb.AppendLine();
+            sb.AppendLine("╔═══════════════════════════════════════════════════════════════╗");
+            sb.AppendLine($"║  🚨 TABLE VALIDATION CHECKLIST - VERIFY BEFORE WRITING SQL 🚨  ║");
+            sb.AppendLine("╚═══════════════════════════════════════════════════════════════╝");
+            sb.AppendLine();
+            sb.AppendLine($"BEFORE you write ANY table name in your SQL, CHECK:");
+            sb.AppendLine();
+            sb.AppendLine("1️⃣  Is the table name in the list above?");
+            sb.AppendLine($"    ✓ ALLOWED TABLES: {string.Join(", ", dbQuery.RequiredTables)}");
+            sb.AppendLine($"    ✗ FORBIDDEN: Any table NOT in this list");
+            sb.AppendLine();
+            sb.AppendLine("2️⃣  Are you using the EXACT table name from the list?");
+            sb.AppendLine("    ✓ Use exact spelling and case");
+            sb.AppendLine("    ✗ Do NOT guess or invent similar table names");
+            sb.AppendLine();
+            sb.AppendLine("3️⃣  Does each column exist in that table's column list above?");
+            sb.AppendLine("    ✓ Cross-reference every column with the AVAILABLE COLUMNS list");
+            sb.AppendLine("    ✗ Do NOT use columns from other tables");
+            sb.AppendLine();
+            sb.AppendLine($"🚨 COMMON MISTAKE TO AVOID:");
+            sb.AppendLine($"   If you need 'products' table but it's NOT in the allowed list above,");
+            sb.AppendLine($"   DO NOT write: JOIN products");
+            sb.AppendLine($"   INSTEAD: DO NOT use that table at all - it doesn't exist in {schema.DatabaseName}!");
+            sb.AppendLine();
             sb.AppendLine("═══════════════════════════════════════");
             sb.AppendLine("HOW TO WRITE YOUR SQL QUERY:");
             sb.AppendLine("═══════════════════════════════════════");
             sb.AppendLine();
             sb.AppendLine("STEP 1: Choose your tables");
-            sb.AppendLine($"   → You can use: {string.Join(", ", dbQuery.RequiredTables)}");
+            sb.AppendLine($"   → You can ONLY use: {string.Join(", ", dbQuery.RequiredTables)}");
+            sb.AppendLine($"   → These tables ONLY exist in {schema.DatabaseName}");
             sb.AppendLine();
             sb.AppendLine("STEP 2: Write SELECT clause");
             sb.AppendLine("   → Verify EACH column exists in the table's column list above");
@@ -198,6 +223,7 @@ namespace SmartRAG.Services.Database.Prompts
             sb.AppendLine();
             sb.AppendLine("STEP 4: Write JOIN clause (if needed)");
             sb.AppendLine("   → JOIN between allowed tables only");
+            sb.AppendLine("   → Verify the referenced table is in the allowed list");
             sb.AppendLine();
             sb.AppendLine("STEP 5: Apply filters and ordering");
             sb.AppendLine("   → WHERE, GROUP BY, ORDER BY as needed");
