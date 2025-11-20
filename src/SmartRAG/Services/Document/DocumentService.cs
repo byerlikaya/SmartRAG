@@ -65,6 +65,9 @@ namespace SmartRAG.Services.Document
 
         #region Public Methods
 
+        /// <summary>
+        /// [AI Query] [Document Query] Uploads a document, generates embeddings, and saves it
+        /// </summary>
         public async Task<SmartRAG.Entities.Document> UploadDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy, string language = null)
         {
             var supportedExtensions = _documentParserService.GetSupportedFileTypes();
@@ -160,8 +163,14 @@ namespace SmartRAG.Services.Document
             return savedDocument;
         }
         
+        /// <summary>
+        /// [Document Query] Retrieves a document by ID
+        /// </summary>
         public async Task<SmartRAG.Entities.Document> GetDocumentAsync(Guid id) => await _documentRepository.GetByIdAsync(id);
 
+        /// <summary>
+        /// [Document Query] Retrieves all documents
+        /// </summary>
         public async Task<List<SmartRAG.Entities.Document>> GetAllDocumentsAsync() => await _documentRepository.GetAllAsync();
 
         public async Task<bool> DeleteDocumentAsync(Guid id) => await _documentRepository.DeleteAsync(id);
@@ -180,6 +189,9 @@ namespace SmartRAG.Services.Document
             return Task.FromResult(stats);
         }
 
+        /// <summary>
+        /// [AI Query] [Document Query] Regenerates embeddings for all documents
+        /// </summary>
         public async Task<bool> RegenerateAllEmbeddingsAsync()
         {
             try

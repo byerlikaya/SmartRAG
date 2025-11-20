@@ -82,7 +82,7 @@ namespace SmartRAG.Services.Storage.Qdrant
         #region Public Methods
 
         /// <summary>
-        /// Performs vector search across all document collections
+        /// [Document Query] Performs vector search across all document collections
         /// </summary>
         /// <param name="queryEmbedding">Embedding vector for the search query</param>
         /// <param name="maxResults">Maximum number of results to return</param>
@@ -162,7 +162,7 @@ namespace SmartRAG.Services.Storage.Qdrant
         }
 
         /// <summary>
-        /// Performs fallback text search when vector search fails
+        /// [Document Query] Performs fallback text search when vector search fails
         /// </summary>
         /// <param name="query">Text query to search for</param>
         /// <param name="maxResults">Maximum number of results to return</param>
@@ -244,7 +244,7 @@ namespace SmartRAG.Services.Storage.Qdrant
         }
 
         /// <summary>
-        /// Performs hybrid search combining vector and keyword matching
+        /// [Document Query] Performs hybrid search combining vector and keyword matching
         /// </summary>
         /// <param name="query">Text query to search for</param>
         /// <param name="maxResults">Maximum number of results to return</param>

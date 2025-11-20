@@ -108,7 +108,7 @@ namespace SmartRAG.Services.Database
         }
 
         /// <summary>
-        /// Connects to a live database and extracts content based on configuration
+        /// [DB Query] Connects to a live database and extracts content based on configuration
         /// </summary>
         public async Task<string> ParseDatabaseConnectionAsync(string connectionString, DatabaseConfig config)
         {
@@ -160,7 +160,7 @@ namespace SmartRAG.Services.Database
 
     
         /// <summary>
-        /// Executes a custom SQL query and returns results
+        /// [DB Query] Executes a custom SQL query and returns results
         /// </summary>
         public async Task<string> ExecuteQueryAsync(string connectionString, string query, DatabaseType databaseType, int maxRows = DefaultMaxRows)
         {

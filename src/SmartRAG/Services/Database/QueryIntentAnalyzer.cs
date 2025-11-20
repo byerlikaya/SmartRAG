@@ -83,7 +83,7 @@ namespace SmartRAG.Services.Database
         #region Public Methods
 
         /// <summary>
-        /// Analyzes user query and determines which databases/tables to query
+        /// [AI Query] Analyzes user query and determines which databases/tables to query
         /// </summary>
         /// <param name="userQuery">Natural language user query</param>
         /// <returns>Query intent with database routing information</returns>

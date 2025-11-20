@@ -30,6 +30,9 @@ namespace SmartRAG.Services.AI
             _logger = logger;
         }
 
+        /// <summary>
+        /// [AI Query] Generates a response using the specified AI provider
+        /// </summary>
         public async Task<string> GenerateResponseAsync(AIProvider provider, string query, IEnumerable<string> context)
         {
             var providerConfig = _configService.GetProviderConfig(provider);
@@ -53,6 +56,9 @@ namespace SmartRAG.Services.AI
             return response ?? string.Empty;
         }
 
+        /// <summary>
+        /// [AI Query] Generates embeddings for a single text
+        /// </summary>
         public async Task<List<float>> GenerateEmbeddingsAsync(AIProvider provider, string text)
         {
             var providerConfig = _configService.GetProviderConfig(provider);
@@ -66,6 +72,9 @@ namespace SmartRAG.Services.AI
             return await aiProvider.GenerateEmbeddingAsync(text, providerConfig);
         }
 
+        /// <summary>
+        /// [AI Query] Generates embeddings for a batch of texts
+        /// </summary>
         public async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(AIProvider provider, IEnumerable<string> texts)
         {
             var providerConfig = _configService.GetProviderConfig(provider);

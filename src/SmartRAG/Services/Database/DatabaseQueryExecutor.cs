@@ -44,7 +44,7 @@ namespace SmartRAG.Services.Database
         #region Public Methods
 
         /// <summary>
-        /// Executes queries across multiple databases based on query intent
+        /// [DB Query] Executes queries across multiple databases based on query intent
         /// </summary>
         public async Task<MultiDatabaseQueryResult> ExecuteMultiDatabaseQueryAsync(QueryIntent queryIntent)
         {

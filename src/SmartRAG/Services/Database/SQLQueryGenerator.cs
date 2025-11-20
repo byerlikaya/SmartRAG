@@ -52,7 +52,7 @@ namespace SmartRAG.Services.Database
         #region Public Methods
 
         /// <summary>
-        /// Generates optimized SQL queries for each database based on intent
+        /// [AI Query] Generates optimized SQL queries for each database based on intent
         /// </summary>
         public async Task<QueryIntent> GenerateDatabaseQueriesAsync(QueryIntent queryIntent)
         {

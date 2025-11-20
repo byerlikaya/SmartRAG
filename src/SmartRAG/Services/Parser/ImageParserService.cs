@@ -67,7 +67,7 @@ namespace SmartRAG.Services.Parser
         #region Public Methods
 
         /// <summary>
-        /// Parses an image stream and extracts text using OCR
+        /// [AI Query] Parses an image stream and extracts text using OCR
         /// </summary>
         public async Task<string> ExtractTextFromImageAsync(Stream imageStream, string language = DefaultLanguage)
         {
@@ -85,7 +85,7 @@ namespace SmartRAG.Services.Parser
         }
 
         /// <summary>
-        /// Extracts text from an image with confidence scores
+        /// [AI Query] Extracts text from an image with confidence scores
         /// </summary>
         public async Task<OcrResult> ExtractTextWithConfidenceAsync(Stream imageStream, string language = DefaultLanguage)
         {

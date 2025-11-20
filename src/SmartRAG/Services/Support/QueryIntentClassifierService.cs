@@ -35,7 +35,7 @@ namespace SmartRAG.Services.Support
         }
 
         /// <summary>
-        /// Determines whether the query should be treated as general conversation using AI intent detection
+        /// [AI Query] Determines whether the query should be treated as general conversation using AI intent detection
         /// </summary>
         public async Task<bool> IsGeneralConversationAsync(string query, string? conversationHistory = null)
         {

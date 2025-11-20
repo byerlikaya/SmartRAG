@@ -75,7 +75,7 @@ namespace SmartRAG.Services.Database
         }
 
         /// <summary>
-        /// Executes a full intelligent query: analyze intent + execute + merge results
+        /// [AI Query] [DB Query] Executes a full intelligent query: analyze intent + execute + merge results
         /// </summary>
         /// <param name="userQuery">Natural language user query</param>
         /// <param name="maxResults">Maximum number of results</param>
@@ -91,7 +91,7 @@ namespace SmartRAG.Services.Database
         }
 
         /// <summary>
-        /// Executes a full intelligent query using pre-analyzed query intent (avoids redundant AI calls)
+        /// [AI Query] [DB Query] Executes a full intelligent query using pre-analyzed query intent (avoids redundant AI calls)
         /// </summary>
         /// <param name="userQuery">Natural language user query</param>
         /// <param name="preAnalyzedIntent">Pre-analyzed query intent to avoid redundant AI calls</param>

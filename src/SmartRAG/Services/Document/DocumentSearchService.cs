@@ -116,7 +116,7 @@ namespace SmartRAG.Services.Document
         }
 
         /// <summary>
-        /// Searches for relevant document chunks based on the query
+        /// [Document Query] Searches for relevant document chunks based on the query
         /// </summary>
         /// <param name="query">Search query string</param>
         /// <param name="maxResults">Maximum number of results to return</param>
@@ -139,7 +139,7 @@ namespace SmartRAG.Services.Document
         }
 
         /// <summary>
-        /// Process intelligent query with RAG and automatic session management
+        /// [AI Query] Process intelligent query with RAG and automatic session management
         /// Unified approach: searches across documents, images, audio, and databases
         /// </summary>
         /// <param name="query">User query to process</param>
@@ -275,7 +275,7 @@ namespace SmartRAG.Services.Document
         }
 
         /// <summary>
-        /// Executes a database-only query strategy
+        /// [AI Query] [DB Query] Executes a database-only query strategy
         /// </summary>
         private async Task<RagResponse> ExecuteDatabaseOnlyStrategyAsync(string query, int maxResults, string conversationHistory, bool canAnswerFromDocuments, QueryIntent queryIntent)
         {
@@ -302,7 +302,7 @@ namespace SmartRAG.Services.Document
 
 
         /// <summary>
-        /// Executes a hybrid query strategy (both database and document queries)
+        /// [AI Query] [DB Query] [Document Query] Executes a hybrid query strategy (both database and document queries)
         /// </summary>
         private async Task<RagResponse> ExecuteHybridStrategyAsync(string query, int maxResults, string conversationHistory, bool hasDatabaseQueries, bool canAnswerFromDocuments, QueryIntent queryIntent)
         {
@@ -402,7 +402,7 @@ namespace SmartRAG.Services.Document
         }
 
         /// <summary>
-        /// Merges results from database and document queries into a unified response
+        /// [AI Query] Merges results from database and document queries into a unified response
         /// </summary>
         /// <param name="query">Original user query</param>
         /// <param name="databaseResponse">Database query response</param>
@@ -441,7 +441,7 @@ namespace SmartRAG.Services.Document
 
 
         /// <summary>
-        /// Common method for executing document-based queries (used by both document-only and fallback strategies)
+        /// [Document Query] Common method for executing document-based queries (used by both document-only and fallback strategies)
         /// </summary>
         private async Task<RagResponse> ExecuteDocumentQueryAsync(string query, int maxResults, string conversationHistory, bool? canAnswerFromDocuments = null)
         {
@@ -456,7 +456,7 @@ namespace SmartRAG.Services.Document
         }
 
         /// <summary>
-        /// Enhanced search with intelligent filtering and name detection
+        /// [Document Query] Enhanced search with intelligent filtering and name detection
         /// </summary>
         private async Task<List<DocumentChunk>> PerformBasicSearchAsync(string query, int maxResults)
         {
@@ -507,7 +507,9 @@ namespace SmartRAG.Services.Document
             return relevantChunks.Take(maxResults).ToList();
         }
 
-        private async Task<RagResponse> GenerateBasicRagAnswerAsync(string query, int maxResults, string? conversationHistory = null)
+        /// <summary>
+        /// [AI Query] Generate RAG answer with automatic session management
+        /// </summary>
         {
             var chunks = await SearchDocumentsAsync(query, maxResults);
             var context = string.Join("\n\n", chunks.Select(c => c.Content));
@@ -548,7 +550,7 @@ namespace SmartRAG.Services.Document
         }
 
         /// <summary>
-        /// Ultimate language-agnostic approach: ONLY check if documents contain relevant information
+        /// [Document Query] Ultimate language-agnostic approach: ONLY check if documents contain relevant information
         /// No word patterns, no language detection, no grammar analysis, no greeting detection
         /// Pure content-based decision making
         /// </summary>
@@ -597,7 +599,7 @@ namespace SmartRAG.Services.Document
 
 
         /// <summary>
-        /// Handle general conversation queries with conversation history
+        /// [AI Query] Handle general conversation queries with conversation history
         /// </summary>
         private async Task<string> HandleGeneralConversationAsync(string query, string? conversationHistory = null)
         {

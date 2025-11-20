@@ -40,7 +40,7 @@ namespace SmartRAG.Services.Search
         }
 
         /// <summary>
-        /// Builds search sources from document chunks
+        /// [Document Query] Builds search sources from document chunks
         /// </summary>
         public async Task<List<SearchSource>> BuildSourcesAsync(List<DocumentChunk> chunks, IDocumentRepository documentRepository)
         {

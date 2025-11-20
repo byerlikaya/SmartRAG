@@ -45,6 +45,9 @@ namespace SmartRAG.Services.Database
             _options = options.Value;
         }
 
+        /// <summary>
+        /// [DB Query] Analyzes database schema
+        /// </summary>
         public async Task<DatabaseSchemaInfo> AnalyzeDatabaseSchemaAsync(DatabaseConnectionConfig connectionConfig)
         {
             var databaseId = await GetDatabaseIdAsync(connectionConfig);
@@ -146,6 +149,9 @@ namespace SmartRAG.Services.Database
 
 
 
+        /// <summary>
+        /// [AI Query] Generates an AI summary of the database schema
+        /// </summary>
         public async Task<string> GenerateAISummaryAsync(DatabaseSchemaInfo schemaInfo)
         {
             try

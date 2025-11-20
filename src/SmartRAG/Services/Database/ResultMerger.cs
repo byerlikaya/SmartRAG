@@ -96,7 +96,7 @@ namespace SmartRAG.Services.Database
         }
 
         /// <summary>
-        /// Generates final AI answer from merged database results
+        /// [AI Query] Generates final AI answer from merged database results
         /// </summary>
         public async Task<RagResponse> GenerateFinalAnswerAsync(
             string userQuery, 

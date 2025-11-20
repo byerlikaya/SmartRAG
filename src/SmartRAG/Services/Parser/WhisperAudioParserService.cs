@@ -42,7 +42,7 @@ namespace SmartRAG.Services.Parser
         #region Public Methods
 
         /// <summary>
-        /// Transcribes audio content from a stream using Whisper.net
+        /// [AI Query] Transcribes audio content from a stream using Whisper.net
         /// </summary>
         public async Task<AudioTranscriptionResult> TranscribeAudioAsync(Stream audioStream, string fileName, string language = null)
         {

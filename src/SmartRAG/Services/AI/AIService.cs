@@ -34,6 +34,9 @@ namespace SmartRAG.Services.AI
             _logger = logger;
         }
 
+        /// <summary>
+        /// [AI Query] Generates a response using the configured AI provider with retry logic
+        /// </summary>
         public async Task<string> GenerateResponseAsync(string query, IEnumerable<string> context)
         {
             try
@@ -62,6 +65,9 @@ namespace SmartRAG.Services.AI
             }
         }
 
+        /// <summary>
+        /// [AI Query] Generates embeddings for a single text
+        /// </summary>
         public async Task<List<float>> GenerateEmbeddingsAsync(string text)
         {
             try
@@ -75,6 +81,9 @@ namespace SmartRAG.Services.AI
             }
         }
 
+        /// <summary>
+        /// [AI Query] Generates embeddings for a batch of texts
+        /// </summary>
         public async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts)
         {
             try

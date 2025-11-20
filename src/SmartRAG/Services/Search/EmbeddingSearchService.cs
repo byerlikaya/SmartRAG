@@ -58,7 +58,7 @@ namespace SmartRAG.Services.Search
         }
 
         /// <summary>
-        /// Performs embedding-based search on document chunks
+        /// [AI Query] Performs embedding-based search on document chunks
         /// </summary>
         public async Task<List<DocumentChunk>> SearchByEmbeddingAsync(string query, List<DocumentChunk> allChunks, int maxResults)
         {
