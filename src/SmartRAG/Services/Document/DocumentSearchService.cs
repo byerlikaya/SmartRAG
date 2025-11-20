@@ -510,6 +510,7 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// [AI Query] Generate RAG answer with automatic session management
         /// </summary>
+        private async Task<RagResponse> GenerateBasicRagAnswerAsync(string query, int maxResults, string conversationHistory)
         {
             var chunks = await SearchDocumentsAsync(query, maxResults);
             var context = string.Join("\n\n", chunks.Select(c => c.Content));
