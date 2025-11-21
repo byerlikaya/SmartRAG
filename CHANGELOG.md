@@ -31,6 +31,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Files Modified**:
     - `src/SmartRAG/Services/Database/SQLQueryGenerator.cs` - Updated cross-database query pattern examples in AI prompts
 
+- **Async/Await Pattern Improvements**: Eliminated blocking calls (`.Result`, `.Wait()`) and improved thread safety
+  - `AudioConversionService` now uses `SemaphoreSlim` instead of `lock` for async initialization
+  - `SqliteConversationRepository` now uses `SemaphoreSlim` for thread-safe async operations
+  - `DocumentService.GetStorageStatisticsAsync` properly uses `await` instead of `.Result`
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Parser/AudioConversionService.cs` - Replaced `lock` + `.Wait()` with `SemaphoreSlim`
+    - `src/SmartRAG/Repositories/SqliteConversationRepository.cs` - Replaced `lock` + `.Result` with `SemaphoreSlim`
+    - `src/SmartRAG/Services/Document/DocumentService.cs` - Changed `GetStorageStatisticsAsync` to use `await`
+  - **Benefits**: Better async/await compliance, improved thread safety, no blocking operations
+
+
 ### Changed
 - **Code Architecture Refactoring**: Services and interfaces reorganized into modular folder structure for better organization and maintainability
   - Interfaces organized by category: `AI/`, `Database/`, `Document/`, `Parser/`, `Search/`, `Storage/`, `Support/`

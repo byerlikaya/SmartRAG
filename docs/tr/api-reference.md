@@ -1980,6 +1980,229 @@ Task<string> ExtractTextFromImageAsync(Stream imageStream, string language = "en
 
 ---
 
+### IAIProvider
+
+**Amaç:** Metin üretimi ve embedding'ler için düşük seviye AI sağlayıcı arayüzü
+
+**Namespace:** `SmartRAG.Interfaces.AI`
+
+**v3.2.0'da yeni**: Birden fazla AI backend için sağlayıcı soyutlaması.
+
+#### Metodlar
+
+```csharp
+Task<string> GenerateTextAsync(string prompt, AIProviderConfig config);
+Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config);
+Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config);
+Task<List<string>> ChunkTextAsync(string text, int maxChunkSize = 1000);
+```
+
+---
+
+### IAIProviderFactory
+
+**Amaç:** AI sağlayıcı örnekleri oluşturmak için fabrika
+
+**Namespace:** `SmartRAG.Interfaces.AI`
+
+**v3.2.0'da yeni**: AI sağlayıcı oluşturma için fabrika deseni.
+
+#### Metodlar
+
+```csharp
+IAIProvider CreateProvider(AIProvider providerType);
+```
+
+---
+
+### IPromptBuilderService
+
+**Amaç:** Farklı senaryolar için AI prompt'ları oluşturmak için servis
+
+**Namespace:** `SmartRAG.Interfaces.AI`
+
+**v3.2.0'da yeni**: Konuşma geçmişi desteği ile merkezi prompt oluşturma.
+
+#### Metodlar
+
+```csharp
+string BuildDocumentRagPrompt(string query, string context, string? conversationHistory = null);
+string BuildHybridMergePrompt(string query, string? databaseContext, string? documentContext, string? conversationHistory = null);
+string BuildConversationPrompt(string query, string? conversationHistory = null);
+```
+
+---
+
+### IDocumentRepository
+
+**Amaç:** Doküman depolama işlemleri için repository arayüzü
+
+**Namespace:** `SmartRAG.Interfaces.Document`
+
+**v3.2.0'da yeni**: İş mantığından ayrılmış repository katmanı.
+
+#### Metodlar
+
+```csharp
+Task<Document> AddAsync(Document document);
+Task<Document> GetByIdAsync(Guid id);
+Task<List<Document>> GetAllAsync();
+Task<bool> DeleteAsync(Guid id);
+Task<int> GetCountAsync();
+Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = 5);
+```
+
+---
+
+### IDocumentScoringService
+
+**Amaç:** Sorgu ilgisine göre doküman parçalarını puanlamak için servis
+
+**Namespace:** `SmartRAG.Interfaces.Document`
+
+**v3.2.0'da yeni**: Anahtar kelime ve semantik ilgi ile hibrit puanlama stratejisi.
+
+#### Metodlar
+
+```csharp
+List<DocumentChunk> ScoreChunks(List<DocumentChunk> chunks, string query, List<string> queryWords, List<string> potentialNames);
+double CalculateKeywordRelevanceScore(string query, string content);
+```
+
+---
+
+### IAudioParserFactory
+
+**Amaç:** Ses ayrıştırıcı servis örnekleri oluşturmak için fabrika
+
+**Namespace:** `SmartRAG.Interfaces.Parser`
+
+**v3.2.0'da yeni**: Ses ayrıştırıcı oluşturma için fabrika deseni.
+
+#### Metodlar
+
+```csharp
+IAudioParserService CreateAudioParser(AudioProvider provider);
+```
+
+---
+
+### IStorageFactory
+
+**Amaç:** Doküman ve konuşma depolama repository'leri oluşturmak için fabrika
+
+**Namespace:** `SmartRAG.Interfaces.Storage`
+
+**v3.2.0'da yeni**: Tüm depolama işlemleri için birleşik fabrika.
+
+#### Metodlar
+
+```csharp
+IDocumentRepository CreateRepository(StorageConfig config);
+IDocumentRepository CreateRepository(StorageProvider provider);
+StorageProvider GetCurrentProvider();
+IDocumentRepository GetCurrentRepository();
+IConversationRepository CreateConversationRepository(StorageConfig config);
+IConversationRepository CreateConversationRepository(StorageProvider provider);
+IConversationRepository GetCurrentConversationRepository();
+```
+
+---
+
+### IQdrantCacheManager
+
+**Amaç:** Qdrant işlemlerinde arama sonuçlarını önbelleğe almak için arayüz
+
+**Namespace:** `SmartRAG.Interfaces.Storage.Qdrant`
+
+**v3.2.0'da yeni**: Performans optimizasyonu için arama sonuçlarını önbelleğe alma.
+
+#### Metodlar
+
+```csharp
+List<DocumentChunk> GetCachedResults(string queryHash);
+void CacheResults(string queryHash, List<DocumentChunk> results);
+void CleanupExpiredCache();
+```
+
+---
+
+### IQdrantCollectionManager
+
+**Amaç:** Qdrant koleksiyonlarını ve doküman depolamayı yönetmek için arayüz
+
+**Namespace:** `SmartRAG.Interfaces.Storage.Qdrant`
+
+**v3.2.0'da yeni**: Qdrant vektör veritabanı için koleksiyon yaşam döngüsü yönetimi.
+
+#### Metodlar
+
+```csharp
+Task EnsureCollectionExistsAsync();
+Task CreateCollectionAsync(string collectionName, int vectorDimension);
+Task EnsureDocumentCollectionExistsAsync(string collectionName, Document document);
+Task<int> GetVectorDimensionAsync();
+```
+
+---
+
+### IQdrantEmbeddingService
+
+**Amaç:** Metin içeriği için embedding'ler oluşturmak için arayüz
+
+**Namespace:** `SmartRAG.Interfaces.Storage.Qdrant`
+
+**v3.2.0'da yeni**: Qdrant vektör depolama için embedding oluşturma.
+
+#### Metodlar
+
+```csharp
+Task<List<float>> GenerateEmbeddingAsync(string text);
+Task<int> GetVectorDimensionAsync();
+```
+
+---
+
+### IQdrantSearchService
+
+**Amaç:** Qdrant vektör veritabanında arama yapmak için arayüz
+
+**Namespace:** `SmartRAG.Interfaces.Storage.Qdrant`
+
+**v3.2.0'da yeni**: Qdrant için vektör, metin ve hibrit arama yetenekleri.
+
+#### Metodlar
+
+```csharp
+Task<List<DocumentChunk>> SearchAsync(List<float> queryEmbedding, int maxResults);
+Task<List<DocumentChunk>> FallbackTextSearchAsync(string query, int maxResults);
+Task<List<DocumentChunk>> HybridSearchAsync(string query, int maxResults);
+```
+
+---
+
+### IQueryIntentClassifierService
+
+**Amaç:** Sorgu niyetini sınıflandırmak için servis (konuşma vs bilgi)
+
+**Namespace:** `SmartRAG.Interfaces.Support`
+
+**v3.2.0'da yeni**: Hibrit yönlendirme için AI tabanlı sorgu niyet sınıflandırması.
+
+#### Metodlar
+
+```csharp
+Task<bool> IsGeneralConversationAsync(string query, string? conversationHistory = null);
+bool TryParseCommand(string input, out QueryCommandType commandType, out string payload);
+```
+
+**Komut Türleri:**
+- `QueryCommandType.None`: Komut algılanmadı
+- `QueryCommandType.NewConversation`: `/new` veya `/reset` komutu
+- `QueryCommandType.ForceConversation`: `/conv` komutu
+
+---
+
 ### ITextNormalizationService
 
 **Amaç:** Metin normalizasyonu ve temizleme

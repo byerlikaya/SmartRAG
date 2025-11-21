@@ -54,7 +54,7 @@ namespace SmartRAG.Services.Document
         private readonly IConfiguration _configuration;
         private readonly ILogger<DocumentSearchService> _logger;
         private readonly IMultiDatabaseQueryCoordinator? _multiDatabaseQueryCoordinator;
-        private readonly IQueryIntentAnalyzer _queryIntentAnalyzer;
+        private readonly IQueryIntentAnalyzer? _queryIntentAnalyzer;
         private readonly IConversationManagerService _conversationManager;
         private readonly IQueryIntentClassifierService _queryIntentClassifier;
         private readonly IPromptBuilderService _promptBuilder;
@@ -105,7 +105,7 @@ namespace SmartRAG.Services.Document
             _options = options.Value;
             _logger = logger;
             _multiDatabaseQueryCoordinator = multiDatabaseQueryCoordinator;
-            _queryIntentAnalyzer = queryIntentAnalyzer ?? throw new ArgumentNullException(nameof(queryIntentAnalyzer));
+            _queryIntentAnalyzer = queryIntentAnalyzer; // may be null when database features disabled
             _conversationManager = conversationManager ?? throw new ArgumentNullException(nameof(conversationManager));
             _queryIntentClassifier = queryIntentClassifier ?? throw new ArgumentNullException(nameof(queryIntentClassifier));
             _promptBuilder = promptBuilder ?? throw new ArgumentNullException(nameof(promptBuilder));
@@ -145,11 +145,15 @@ namespace SmartRAG.Services.Document
         /// <param name="query">User query to process</param>
         /// <param name="maxResults">Maximum number of document chunks to use</param>
         /// <param name="startNewConversation">Whether to start a new conversation session</param>
+        /// <param name="options">Optional search options to override global configuration</param>
         /// <returns>RAG response with answer and sources from all available data sources</returns>
-        public async Task<RagResponse> QueryIntelligenceAsync(string query, int maxResults = 5, bool startNewConversation = false)
+        public async Task<RagResponse> QueryIntelligenceAsync(string query, int maxResults = 5, bool startNewConversation = false, SearchOptions? options = null)
         {
             if (string.IsNullOrWhiteSpace(query))
                 throw new ArgumentException("Query cannot be empty", nameof(query));
+
+            // Use provided options or fall back to global config
+            var searchOptions = options ?? SearchOptions.FromConfig(_options);
 
             var originalQuery = query;
             var hasCommand = _queryIntentClassifier.TryParseCommand(query, out var commandType, out var commandPayload);
@@ -191,24 +195,29 @@ namespace SmartRAG.Services.Document
             RagResponse response;
 
             // Pre-evaluate document availability for smarter strategy selection
-            var canAnswerFromDocuments = await CanAnswerFromDocumentsAsync(query);
+            // Only check if document search is enabled
+            var canAnswerFromDocuments = searchOptions.EnableDocumentSearch && await CanAnswerFromDocumentsAsync(query);
 
-            // Smart Hybrid Approach: Check if database coordinator is available
-            if (_multiDatabaseQueryCoordinator != null)
+            // Smart Hybrid Approach: Check if database coordinator is available AND enabled
+            if (_multiDatabaseQueryCoordinator != null && searchOptions.EnableDatabaseSearch)
             {
                 try
                 {
-                    // Analyze query intent using AI
-                    var queryIntent = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(query);
+                    // Analyze query intent using AI if analyzer is available
+                    QueryIntent? queryIntent = null;
+                    if (_queryIntentAnalyzer != null)
+                    {
+                        queryIntent = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(query);
+                    }
 
-                    var hasDatabaseQueries = queryIntent.DatabaseQueries != null && queryIntent.DatabaseQueries.Count > 0;
-                    var confidence = queryIntent.Confidence;
+                    var hasDatabaseQueries = queryIntent?.DatabaseQueries != null && queryIntent.DatabaseQueries.Count > 0;
+                    var confidence = queryIntent?.Confidence ?? 0.0;
 
                     // Determine query strategy using enum
                     var strategy = DetermineQueryStrategy(confidence, hasDatabaseQueries, canAnswerFromDocuments);
 
                     // Execute strategy using switch-case (Open/Closed Principle)
-                    // Pass pre-analyzed queryIntent to avoid redundant AI calls
+                    // Pass pre-analyzed queryIntent (may be null) to avoid redundant AI calls
                     response = strategy switch
                     {
                         QueryStrategy.DatabaseOnly => await ExecuteDatabaseOnlyStrategyAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, queryIntent),
@@ -225,9 +234,19 @@ namespace SmartRAG.Services.Document
             }
             else
             {
-                // Database coordinator not available → Fallback to document-only logic
-                _logger.LogInformation("Database coordinator not available. Using document-only query.");
-                response = await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments);
+                // Database coordinator not available or disabled → Fallback to document-only logic (if enabled)
+                if (searchOptions.EnableDocumentSearch)
+                {
+                    _logger.LogInformation("Database search disabled or coordinator not available. Using document-only query.");
+                    response = await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments);
+                }
+                else
+                {
+                    // Both disabled? Fallback to chat
+                     _logger.LogInformation("Both database and document search disabled. Falling back to general conversation.");
+                    var chatResponse = await HandleGeneralConversationAsync(query, conversationHistory);
+                    response = CreateRagResponse(query, chatResponse, new List<SearchSource>());
+                }
             }
 
             // Add to conversation history
@@ -277,13 +296,18 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// [AI Query] [DB Query] Executes a database-only query strategy
         /// </summary>
-        private async Task<RagResponse> ExecuteDatabaseOnlyStrategyAsync(string query, int maxResults, string conversationHistory, bool canAnswerFromDocuments, QueryIntent queryIntent)
+        private async Task<RagResponse> ExecuteDatabaseOnlyStrategyAsync(string query, int maxResults, string conversationHistory, bool canAnswerFromDocuments, QueryIntent? queryIntent)
         {
             _logger.LogInformation("Executing database-only query strategy");
             
             try
             {
-                var databaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(query, queryIntent, maxResults);
+                if (queryIntent == null)
+            {
+                // No intent analysis, fallback to document query
+                return await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments);
+            }
+            var databaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(query, queryIntent, maxResults);
                 if (HasMeaningfulData(databaseResponse))
                 {
                     return databaseResponse;
@@ -304,7 +328,7 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// [AI Query] [DB Query] [Document Query] Executes a hybrid query strategy (both database and document queries)
         /// </summary>
-        private async Task<RagResponse> ExecuteHybridStrategyAsync(string query, int maxResults, string conversationHistory, bool hasDatabaseQueries, bool canAnswerFromDocuments, QueryIntent queryIntent)
+        private async Task<RagResponse> ExecuteHybridStrategyAsync(string query, int maxResults, string conversationHistory, bool hasDatabaseQueries, bool canAnswerFromDocuments, QueryIntent? queryIntent)
         {
             _logger.LogInformation("Executing hybrid query strategy (database + documents)");
             
@@ -316,16 +340,23 @@ namespace SmartRAG.Services.Document
             {
                 try
                 {
-                    var candidateDatabaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(query, queryIntent, maxResults);
-
-                    if (HasMeaningfulData(candidateDatabaseResponse))
+                    if (queryIntent == null)
                     {
-                        databaseResponse = candidateDatabaseResponse;
-                        _logger.LogInformation("Database query completed successfully with meaningful data");
+                        // No intent, skip database part
+                        // Continue to document query if enabled
                     }
                     else
                     {
-                        _logger.LogInformation("Database query completed without meaningful data, excluding from hybrid merge");
+                        var candidateDatabaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(query, queryIntent, maxResults);
+                        if (HasMeaningfulData(candidateDatabaseResponse))
+                        {
+                            databaseResponse = candidateDatabaseResponse;
+                            _logger.LogInformation("Database query completed successfully with meaningful data");
+                        }
+                        else
+                        {
+                            _logger.LogInformation("Database query completed without meaningful data, excluding from hybrid merge");
+                        }
                     }
                 }
                 catch (Exception ex)

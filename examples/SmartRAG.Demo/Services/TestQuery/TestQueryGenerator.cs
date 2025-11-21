@@ -14,7 +14,7 @@ namespace SmartRAG.Demo.Services.TestQuery;
 /// </summary>
 public class TestQueryGenerator(
     ILogger<TestQueryGenerator> logger,
-    IDatabaseSchemaAnalyzer schemaAnalyzer,
+    IDatabaseSchemaAnalyzer? schemaAnalyzer,
     IAIService aiService,
     ITranslationService translationService) : ITestQueryGenerator
 {
@@ -26,6 +26,12 @@ public class TestQueryGenerator(
 
         try
         {
+            if (schemaAnalyzer == null)
+            {
+                logger.LogWarning("Database schema analyzer is not available. Database search feature is disabled.");
+                return testQueries;
+            }
+
             var schemas = await schemaAnalyzer.GetAllSchemasAsync();
 
             if (schemas.Count < 2)

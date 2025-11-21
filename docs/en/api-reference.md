@@ -1952,6 +1952,229 @@ Task<string> ExtractTextFromImageAsync(Stream imageStream, string language = "en
 
 ---
 
+### IAIProvider
+
+**Purpose:** Low-level AI provider interface for text generation and embeddings
+
+**Namespace:** `SmartRAG.Interfaces.AI`
+
+**New in v3.2.0**: Provider abstraction for multiple AI backends.
+
+#### Methods
+
+```csharp
+Task<string> GenerateTextAsync(string prompt, AIProviderConfig config);
+Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config);
+Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config);
+Task<List<string>> ChunkTextAsync(string text, int maxChunkSize = 1000);
+```
+
+---
+
+### IAIProviderFactory
+
+**Purpose:** Factory for creating AI provider instances
+
+**Namespace:** `SmartRAG.Interfaces.AI`
+
+**New in v3.2.0**: Factory pattern for AI provider creation.
+
+#### Methods
+
+```csharp
+IAIProvider CreateProvider(AIProvider providerType);
+```
+
+---
+
+### IPromptBuilderService
+
+**Purpose:** Service for building AI prompts for different scenarios
+
+**Namespace:** `SmartRAG.Interfaces.AI`
+
+**New in v3.2.0**: Centralized prompt construction with conversation history support.
+
+#### Methods
+
+```csharp
+string BuildDocumentRagPrompt(string query, string context, string? conversationHistory = null);
+string BuildHybridMergePrompt(string query, string? databaseContext, string? documentContext, string? conversationHistory = null);
+string BuildConversationPrompt(string query, string? conversationHistory = null);
+```
+
+---
+
+### IDocumentRepository
+
+**Purpose:** Repository interface for document storage operations
+
+**Namespace:** `SmartRAG.Interfaces.Document`
+
+**New in v3.2.0**: Separated repository layer from business logic.
+
+#### Methods
+
+```csharp
+Task<Document> AddAsync(Document document);
+Task<Document> GetByIdAsync(Guid id);
+Task<List<Document>> GetAllAsync();
+Task<bool> DeleteAsync(Guid id);
+Task<int> GetCountAsync();
+Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = 5);
+```
+
+---
+
+### IDocumentScoringService
+
+**Purpose:** Service for scoring document chunks based on query relevance
+
+**Namespace:** `SmartRAG.Interfaces.Document`
+
+**New in v3.2.0**: Hybrid scoring strategy with keyword and semantic relevance.
+
+#### Methods
+
+```csharp
+List<DocumentChunk> ScoreChunks(List<DocumentChunk> chunks, string query, List<string> queryWords, List<string> potentialNames);
+double CalculateKeywordRelevanceScore(string query, string content);
+```
+
+---
+
+### IAudioParserFactory
+
+**Purpose:** Factory for creating audio parser service instances
+
+**Namespace:** `SmartRAG.Interfaces.Parser`
+
+**New in v3.2.0**: Factory pattern for audio parser creation.
+
+#### Methods
+
+```csharp
+IAudioParserService CreateAudioParser(AudioProvider provider);
+```
+
+---
+
+### IStorageFactory
+
+**Purpose:** Factory for creating document and conversation storage repositories
+
+**Namespace:** `SmartRAG.Interfaces.Storage`
+
+**New in v3.2.0**: Unified factory for all storage operations.
+
+#### Methods
+
+```csharp
+IDocumentRepository CreateRepository(StorageConfig config);
+IDocumentRepository CreateRepository(StorageProvider provider);
+StorageProvider GetCurrentProvider();
+IDocumentRepository GetCurrentRepository();
+IConversationRepository CreateConversationRepository(StorageConfig config);
+IConversationRepository CreateConversationRepository(StorageProvider provider);
+IConversationRepository GetCurrentConversationRepository();
+```
+
+---
+
+### IQdrantCacheManager
+
+**Purpose:** Interface for managing search result caching in Qdrant operations
+
+**Namespace:** `SmartRAG.Interfaces.Storage.Qdrant`
+
+**New in v3.2.0**: Search result caching for performance optimization.
+
+#### Methods
+
+```csharp
+List<DocumentChunk> GetCachedResults(string queryHash);
+void CacheResults(string queryHash, List<DocumentChunk> results);
+void CleanupExpiredCache();
+```
+
+---
+
+### IQdrantCollectionManager
+
+**Purpose:** Interface for managing Qdrant collections and document storage
+
+**Namespace:** `SmartRAG.Interfaces.Storage.Qdrant`
+
+**New in v3.2.0**: Collection lifecycle management for Qdrant vector database.
+
+#### Methods
+
+```csharp
+Task EnsureCollectionExistsAsync();
+Task CreateCollectionAsync(string collectionName, int vectorDimension);
+Task EnsureDocumentCollectionExistsAsync(string collectionName, Document document);
+Task<int> GetVectorDimensionAsync();
+```
+
+---
+
+### IQdrantEmbeddingService
+
+**Purpose:** Interface for generating embeddings for text content
+
+**Namespace:** `SmartRAG.Interfaces.Storage.Qdrant`
+
+**New in v3.2.0**: Embedding generation for Qdrant vector storage.
+
+#### Methods
+
+```csharp
+Task<List<float>> GenerateEmbeddingAsync(string text);
+Task<int> GetVectorDimensionAsync();
+```
+
+---
+
+### IQdrantSearchService
+
+**Purpose:** Interface for performing searches in Qdrant vector database
+
+**Namespace:** `SmartRAG.Interfaces.Storage.Qdrant`
+
+**New in v3.2.0**: Vector, text, and hybrid search capabilities for Qdrant.
+
+#### Methods
+
+```csharp
+Task<List<DocumentChunk>> SearchAsync(List<float> queryEmbedding, int maxResults);
+Task<List<DocumentChunk>> FallbackTextSearchAsync(string query, int maxResults);
+Task<List<DocumentChunk>> HybridSearchAsync(string query, int maxResults);
+```
+
+---
+
+### IQueryIntentClassifierService
+
+**Purpose:** Service for classifying query intent (conversation vs information)
+
+**Namespace:** `SmartRAG.Interfaces.Support`
+
+**New in v3.2.0**: AI-based query intent classification for hybrid routing.
+
+#### Methods
+
+```csharp
+Task<bool> IsGeneralConversationAsync(string query, string? conversationHistory = null);
+bool TryParseCommand(string input, out QueryCommandType commandType, out string payload);
+```
+
+**Command Types:**
+- `QueryCommandType.None`: No command detected
+- `QueryCommandType.NewConversation`: `/new` or `/reset` command
+- `QueryCommandType.ForceConversation`: `/conv` command
+
+---
+
 ### ITextNormalizationService
 
 **Purpose:** Text normalization and cleaning

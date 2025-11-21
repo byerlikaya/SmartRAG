@@ -23,7 +23,7 @@ namespace SmartRAG.Services.Parser
 
         private readonly ILogger<AudioConversionService> _logger;
         private static bool _ffmpegInitialized = false;
-        private static readonly object _ffmpegLock = new object();
+        private static readonly System.Threading.SemaphoreSlim _ffmpegSemaphore = new System.Threading.SemaphoreSlim(1, 1);
 
         #endregion
 
@@ -62,7 +62,7 @@ namespace SmartRAG.Services.Parser
                 _logger.LogInformation("Starting audio conversion: {Extension} → Compatible Format", extension);
 
                 // Ensure FFmpeg is initialized
-                EnsureFfmpegInitialized();
+                await EnsureFfmpegInitializedAsync();
 
                 // Save input stream to temp file
                 using (var tempFileStream = File.Create(tempInputFile))
@@ -204,12 +204,13 @@ namespace SmartRAG.Services.Parser
         /// <summary>
         /// Ensures FFmpeg is initialized and available
         /// </summary>
-        private void EnsureFfmpegInitialized()
+        private async Task EnsureFfmpegInitializedAsync()
         {
             if (_ffmpegInitialized)
                 return;
 
-            lock (_ffmpegLock)
+            await _ffmpegSemaphore.WaitAsync();
+            try
             {
                 if (_ffmpegInitialized)
                     return;
@@ -226,11 +227,7 @@ namespace SmartRAG.Services.Parser
                     }
 
                     // Download FFmpeg if not already present
-                    var task = Task.Run(async () =>
-                    {
-                        await FFmpegDownloader.GetLatestVersion(FFmpegVersion.Official, ffmpegDir);
-                    });
-                    task.Wait();
+                    await FFmpegDownloader.GetLatestVersion(FFmpegVersion.Official, ffmpegDir);
 
                     // Configure FFMpegCore to use downloaded binaries
                     GlobalFFOptions.Configure(new FFOptions { BinaryFolder = ffmpegDir });
@@ -244,6 +241,10 @@ namespace SmartRAG.Services.Parser
                     // Try to use system FFmpeg if download fails
                     _ffmpegInitialized = true;
                 }
+            }
+            finally
+            {
+                _ffmpegSemaphore.Release();
             }
         }
 

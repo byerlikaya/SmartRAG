@@ -21,11 +21,11 @@ namespace SmartRAG.Demo.Handlers.QueryHandlers;
 public class QueryHandler(
     ILogger<QueryHandler> logger,
     IConsoleService console,
-    IMultiDatabaseQueryCoordinator multiDbCoordinator,
+    IMultiDatabaseQueryCoordinator? multiDbCoordinator,
     IAIService aiService,
     IDocumentService documentService,
     IDocumentSearchService documentSearchService,
-    IDatabaseSchemaAnalyzer schemaAnalyzer,
+    IDatabaseSchemaAnalyzer? schemaAnalyzer,
     ITestQueryGenerator testQueryGenerator,
     IConversationManagerService conversationManager,
     IServiceProvider serviceProvider) : IQueryHandler
@@ -34,11 +34,11 @@ public class QueryHandler(
 
     private readonly ILogger<QueryHandler> _logger = logger;
     private readonly IConsoleService _console = console;
-    private readonly IMultiDatabaseQueryCoordinator _multiDbCoordinator = multiDbCoordinator;
+    private readonly IMultiDatabaseQueryCoordinator? _multiDbCoordinator = multiDbCoordinator;
     private readonly IAIService _aiService = aiService;
     private readonly IDocumentService _documentService = documentService;
     private readonly IDocumentSearchService _documentSearchService = documentSearchService;
-    private readonly IDatabaseSchemaAnalyzer _schemaAnalyzer = schemaAnalyzer;
+    private readonly IDatabaseSchemaAnalyzer? _schemaAnalyzer = schemaAnalyzer;
     private readonly ITestQueryGenerator _testQueryGenerator = testQueryGenerator;
     private readonly IConversationManagerService _conversationManager = conversationManager;
     private readonly IServiceProvider _serviceProvider = serviceProvider;
@@ -244,7 +244,7 @@ public class QueryHandler(
                     System.Console.WriteLine($"⚠️  Query Failed: {response.Answer}");
                     System.Console.ResetColor();
 
-                    var schemas = await _schemaAnalyzer.GetAllSchemasAsync();
+                    var schemas = _schemaAnalyzer != null ? await _schemaAnalyzer.GetAllSchemasAsync() : new List<DatabaseSchemaInfo>();
                     var sqlInfo = ExtractSQLFromError(response.Answer, schemas);
                     failedQueries.Add((testQuery, response.Answer, sqlInfo));
                 }
@@ -336,8 +336,17 @@ public class QueryHandler(
             try
             {
                 var query = IsCommand(trimmedInput) ? trimmedInput : userInput;
+                
+                // Parse search options from query flags (e.g., -d, -db, -v)
+                var searchOptions = ParseSearchOptions(query, out var cleanQuery);
+                
+                // If flags were present, use the cleaned query
+                if (searchOptions != null)
+                {
+                    query = cleanQuery;
+                }
 
-                var response = await _documentSearchService.QueryIntelligenceAsync(query, maxResults: 8);
+                var response = await _documentSearchService.QueryIntelligenceAsync(query, maxResults: 8, options: searchOptions);
 
                 // Save to conversation history
                 await _conversationManager.AddToConversationAsync(sessionId, query, response.Answer);
@@ -360,6 +369,44 @@ public class QueryHandler(
                 _console.WriteError($"Error: {ex.Message}", ex);
             }
         }
+    }
+
+    private SearchOptions? ParseSearchOptions(string input, out string cleanQuery)
+    {
+        cleanQuery = input;
+        
+        // Check for flags
+        var hasDocumentFlag = input.Contains("-d ", StringComparison.OrdinalIgnoreCase) || input.EndsWith("-d", StringComparison.OrdinalIgnoreCase);
+        var hasDatabaseFlag = input.Contains("-db ", StringComparison.OrdinalIgnoreCase) || input.EndsWith("-db", StringComparison.OrdinalIgnoreCase);
+        var hasAudioFlag = input.Contains("-a ", StringComparison.OrdinalIgnoreCase) || input.EndsWith("-a", StringComparison.OrdinalIgnoreCase);
+        var hasImageFlag = input.Contains("-i ", StringComparison.OrdinalIgnoreCase) || input.EndsWith("-i", StringComparison.OrdinalIgnoreCase);
+
+        // If no flags, return null to use default configuration
+        if (!hasDocumentFlag && !hasDatabaseFlag && !hasAudioFlag && !hasImageFlag)
+        {
+            return null;
+        }
+
+        // If flags are present, enable only the requested features
+        var options = new SearchOptions
+        {
+            EnableDocumentSearch = hasDocumentFlag,
+            EnableDatabaseSearch = hasDatabaseFlag,
+            EnableAudioSearch = hasAudioFlag,
+            EnableImageSearch = hasImageFlag
+        };
+
+        // Remove flags from query
+        var parts = input.Split(' ');
+        var cleanParts = parts.Where(p => 
+            !p.Equals("-d", StringComparison.OrdinalIgnoreCase) && 
+            !p.Equals("-db", StringComparison.OrdinalIgnoreCase) && 
+            !p.Equals("-a", StringComparison.OrdinalIgnoreCase) && 
+            !p.Equals("-i", StringComparison.OrdinalIgnoreCase));
+            
+        cleanQuery = string.Join(" ", cleanParts);
+        
+        return options;
     }
 
     #endregion

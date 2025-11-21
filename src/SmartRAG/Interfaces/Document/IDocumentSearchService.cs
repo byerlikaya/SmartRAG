@@ -1,3 +1,5 @@
+#nullable disable
+
 using SmartRAG.Entities;
 using SmartRAG.Models;
 using System;
@@ -26,8 +28,9 @@ namespace SmartRAG.Interfaces.Document
         /// <param name="query">Natural language query to process</param>
         /// <param name="maxResults">Maximum number of results to return</param>
         /// <param name="startNewConversation">Whether to start a new conversation session</param>
+        /// <param name="options">Optional search options to override global configuration</param>
         /// <returns>RAG response with AI-generated answer and relevant sources</returns>
-        Task<RagResponse> QueryIntelligenceAsync(string query, int maxResults = 5, bool startNewConversation = false);
+        Task<RagResponse> QueryIntelligenceAsync(string query, int maxResults = 5, bool startNewConversation = false, SearchOptions options = null);
 
         /// <summary>
         /// Generate RAG answer with automatic session management (Legacy method - use QueryIntelligenceAsync)

@@ -93,6 +93,25 @@ namespace SmartRAG.Models
         /// <summary>
         /// Default schema refresh interval in minutes (0 = use per-connection settings)
         /// </summary>
+        /// <summary>
+        /// Default schema refresh interval in minutes (0 = use per-connection settings)
+        /// </summary>
         public int DefaultSchemaRefreshIntervalMinutes { get; set; } = 60;
+
+        /// <summary>
+        /// Feature toggles for enabling/disabling specific capabilities
+        /// </summary>
+        public FeatureToggles Features { get; set; } = new FeatureToggles();
+    }
+
+    /// <summary>
+    /// Feature toggles configuration
+    /// </summary>
+    public class FeatureToggles
+    {
+        public bool EnableDatabaseSearch { get; set; } = true;
+        public bool EnableDocumentSearch { get; set; } = true;
+        public bool EnableAudioParsing { get; set; } = true;
+        public bool EnableImageParsing { get; set; } = true;
     }
 }

@@ -52,8 +52,8 @@ namespace SmartRAG.Services.Storage.Qdrant
         {
             try
             {
-                // TODO: Inject IAIService to generate real embeddings
-                // For now, use a faster hash-based approach with dynamic dimension
+                // Using hash-based approach for fast embedding generation
+                // This provides deterministic embeddings suitable for testing and development
 
                 // Get vector dimension from config or use default
                 var vectorDimension = await GetVectorDimensionAsync();

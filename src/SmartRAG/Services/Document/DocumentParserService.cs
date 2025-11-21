@@ -88,12 +88,12 @@ namespace SmartRAG.Services.Document
 
         public IEnumerable<string> GetSupportedFileTypes()
         {
-            return new[] { ".txt", ".md", ".json", ".xml", ".csv", ".html", ".docx", ".doc", ".pdf", ".xlsx", ".xls", ".jpg", ".png", ".wav", ".mp3", ".db" };
+            return new[] { ".txt", ".md", ".json", ".xml", ".csv", ".html", ".docx", ".doc", ".pdf", ".xlsx", ".xls", ".jpg", ".png", ".wav", ".mp3", ".m4a", ".db" };
         }
 
         public IEnumerable<string> GetSupportedContentTypes()
         {
-            return new[] { "text/", "application/" };
+            return new[] { "text/", "application/", "audio/", "image/" };
         }
 
         #region Private Methods

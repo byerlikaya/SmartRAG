@@ -5,6 +5,7 @@ using SmartRAG.Interfaces.Storage;
 using SmartRAG.Models;
 using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Repositories
@@ -14,7 +15,7 @@ namespace SmartRAG.Repositories
         private readonly string _connectionString;
         private readonly ILogger<SqliteConversationRepository> _logger;
         private SqliteConnection _connection;
-        private readonly object _lock = new object();
+        private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
         private const int MaxConversationLength = 2000;
 
@@ -28,7 +29,8 @@ namespace SmartRAG.Repositories
 
         private void InitializeDatabase()
         {
-            lock (_lock)
+            _semaphore.Wait();
+            try
             {
                 if (_connection == null)
                 {
@@ -45,112 +47,129 @@ namespace SmartRAG.Repositories
                     command.ExecuteNonQuery();
                 }
             }
-        }
-
-        public Task<string> GetConversationHistoryAsync(string sessionId)
-        {
-            lock (_lock)
+            finally
             {
-                try
-                {
-                    var command = _connection.CreateCommand();
-                    command.CommandText = "SELECT History FROM Conversations WHERE SessionId = @sessionId";
-                    command.Parameters.AddWithValue("@sessionId", sessionId);
-
-                    var result = command.ExecuteScalar();
-                    return Task.FromResult(result?.ToString() ?? string.Empty);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error getting conversation history for session {SessionId}", sessionId);
-                    return Task.FromResult(string.Empty);
-                }
+                _semaphore.Release();
             }
         }
 
-        public Task AddToConversationAsync(string sessionId, string question, string answer)
+        public async Task<string> GetConversationHistoryAsync(string sessionId)
         {
-            lock (_lock)
+            await _semaphore.WaitAsync();
+            try
             {
-                try
+                var command = _connection.CreateCommand();
+                command.CommandText = "SELECT History FROM Conversations WHERE SessionId = @sessionId";
+                command.Parameters.AddWithValue("@sessionId", sessionId);
+
+                var result = await command.ExecuteScalarAsync();
+                return result?.ToString() ?? string.Empty;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting conversation history for session {SessionId}", sessionId);
+                return string.Empty;
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
+        }
+
+        public async Task AddToConversationAsync(string sessionId, string question, string answer)
+        {
+            await _semaphore.WaitAsync();
+            try
+            {
+                // If question is empty, this is a special case (like session-id storage)
+                if (string.IsNullOrEmpty(question))
                 {
-                    // If question is empty, this is a special case (like session-id storage)
-                    if (string.IsNullOrEmpty(question))
-                    {
-                        var updateCmd = _connection.CreateCommand();
-                        updateCmd.CommandText = @"
-                            INSERT INTO Conversations (SessionId, History, LastUpdated) 
-                            VALUES (@sessionId, @history, CURRENT_TIMESTAMP)
-                            ON CONFLICT(SessionId) DO UPDATE SET History = @history, LastUpdated = CURRENT_TIMESTAMP";
-                        updateCmd.Parameters.AddWithValue("@sessionId", sessionId);
-                        updateCmd.Parameters.AddWithValue("@history", answer);
-                        updateCmd.ExecuteNonQuery();
-                        return Task.CompletedTask;
-                    }
-
-                    var currentHistory = GetConversationHistoryAsync(sessionId).Result;
-                    var newEntry = string.IsNullOrEmpty(currentHistory)
-                        ? $"User: {question}\nAssistant: {answer}"
-                        : $"{currentHistory}\nUser: {question}\nAssistant: {answer}";
-
-                    if (newEntry.Length > MaxConversationLength)
-                    {
-                        newEntry = TruncateConversation(newEntry);
-                    }
-
-                    var command = _connection.CreateCommand();
-                    command.CommandText = @"
+                    var updateCmd = _connection.CreateCommand();
+                    updateCmd.CommandText = @"
                         INSERT INTO Conversations (SessionId, History, LastUpdated) 
                         VALUES (@sessionId, @history, CURRENT_TIMESTAMP)
                         ON CONFLICT(SessionId) DO UPDATE SET History = @history, LastUpdated = CURRENT_TIMESTAMP";
-                    command.Parameters.AddWithValue("@sessionId", sessionId);
-                    command.Parameters.AddWithValue("@history", newEntry);
-                    command.ExecuteNonQuery();
+                    updateCmd.Parameters.AddWithValue("@sessionId", sessionId);
+                    updateCmd.Parameters.AddWithValue("@history", answer);
+                    await updateCmd.ExecuteNonQueryAsync();
+                    return;
                 }
-                catch (Exception ex)
+
+                // Retrieve current history directly to avoid re-entrance deadlock with GetConversationHistoryAsync
+                var commandHistory = _connection.CreateCommand();
+                commandHistory.CommandText = "SELECT History FROM Conversations WHERE SessionId = @sessionId";
+                commandHistory.Parameters.AddWithValue("@sessionId", sessionId);
+                var result = await commandHistory.ExecuteScalarAsync();
+                var currentHistory = result?.ToString() ?? string.Empty;
+
+                var newEntry = string.IsNullOrEmpty(currentHistory)
+                    ? $"User: {question}\nAssistant: {answer}"
+                    : $"{currentHistory}\nUser: {question}\nAssistant: {answer}";
+
+                if (newEntry.Length > MaxConversationLength)
                 {
-                    _logger.LogError(ex, "Error adding to conversation for session {SessionId}", sessionId);
+                    newEntry = TruncateConversation(newEntry);
                 }
-                return Task.CompletedTask;
+
+                var command = _connection.CreateCommand();
+                command.CommandText = @"
+                    INSERT INTO Conversations (SessionId, History, LastUpdated) 
+                    VALUES (@sessionId, @history, CURRENT_TIMESTAMP)
+                    ON CONFLICT(SessionId) DO UPDATE SET History = @history, LastUpdated = CURRENT_TIMESTAMP";
+                command.Parameters.AddWithValue("@sessionId", sessionId);
+                command.Parameters.AddWithValue("@history", newEntry);
+                await command.ExecuteNonQueryAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error adding to conversation for session {SessionId}", sessionId);
+            }
+            finally
+            {
+                _semaphore.Release();
             }
         }
 
-        public Task ClearConversationAsync(string sessionId)
+        public async Task ClearConversationAsync(string sessionId)
         {
-            lock (_lock)
+            await _semaphore.WaitAsync();
+            try
             {
-                try
-                {
-                    var command = _connection.CreateCommand();
-                    command.CommandText = "DELETE FROM Conversations WHERE SessionId = @sessionId";
-                    command.Parameters.AddWithValue("@sessionId", sessionId);
-                    command.ExecuteNonQuery();
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error clearing conversation for session {SessionId}", sessionId);
-                }
-                return Task.CompletedTask;
+                var command = _connection.CreateCommand();
+                command.CommandText = "DELETE FROM Conversations WHERE SessionId = @sessionId";
+                command.Parameters.AddWithValue("@sessionId", sessionId);
+                await command.ExecuteNonQueryAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error clearing conversation for session {SessionId}", sessionId);
+            }
+            finally
+            {
+                _semaphore.Release();
             }
         }
 
-        public Task<bool> SessionExistsAsync(string sessionId)
+        public async Task<bool> SessionExistsAsync(string sessionId)
         {
-            lock (_lock)
+            await _semaphore.WaitAsync();
+            try
             {
-                try
-                {
-                    var command = _connection.CreateCommand();
-                    command.CommandText = "SELECT COUNT(1) FROM Conversations WHERE SessionId = @sessionId";
-                    command.Parameters.AddWithValue("@sessionId", sessionId);
-                    var count = Convert.ToInt32(command.ExecuteScalar());
-                    return Task.FromResult(count > 0);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error checking session existence for {SessionId}", sessionId);
-                    return Task.FromResult(false);
-                }
+                var command = _connection.CreateCommand();
+                command.CommandText = "SELECT COUNT(1) FROM Conversations WHERE SessionId = @sessionId";
+                command.Parameters.AddWithValue("@sessionId", sessionId);
+                var result = await command.ExecuteScalarAsync();
+                var count = Convert.ToInt32(result);
+                return count > 0;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error checking session existence for {SessionId}", sessionId);
+                return false;
+            }
+            finally
+            {
+                _semaphore.Release();
             }
         }
 
@@ -165,6 +184,7 @@ namespace SmartRAG.Repositories
 
         public void Dispose()
         {
+            _semaphore?.Dispose();
             _connection?.Close();
             _connection?.Dispose();
         }

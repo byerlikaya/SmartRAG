@@ -175,18 +175,19 @@ namespace SmartRAG.Services.Document
 
         public async Task<bool> DeleteDocumentAsync(Guid id) => await _documentRepository.DeleteAsync(id);
 
-        public Task<Dictionary<string, object>> GetStorageStatisticsAsync()
+        public async Task<Dictionary<string, object>> GetStorageStatisticsAsync()
         {
+            var count = await _documentRepository.GetCountAsync();
             var stats = new Dictionary<string, object>
             {
-                ["TotalDocuments"] = _documentRepository.GetCountAsync().Result,
-                ["DocumentCount"] = _documentRepository.GetCountAsync().Result,
+                ["TotalDocuments"] = count,
+                ["DocumentCount"] = count,
                 ["StorageProvider"] = _options.StorageProvider.ToString(),
                 ["MaxChunkSize"] = _options.MaxChunkSize,
                 ["ChunkOverlap"] = _options.ChunkOverlap
             };
 
-            return Task.FromResult(stats);
+            return stats;
         }
 
         /// <summary>
