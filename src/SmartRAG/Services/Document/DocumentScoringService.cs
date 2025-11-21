@@ -17,12 +17,14 @@ namespace SmartRAG.Services.Document
         // Scoring weights
         private const double FullNameMatchScoreBoost = 200.0;
         private const double PartialNameMatchScoreBoost = 100.0;
-        private const double WordMatchScore = 2.0;
+        private const double WordMatchScore = 5.0; // Increased from 2.0 for better relevance
+        private const double MultipleWordMatchBonus = 20.0; // Bonus for chunks matching 3+ query words
         private const double WordCountScoreBoost = 5.0;
         private const double PunctuationScoreBoost = 2.0;
         private const double NumberScoreBoost = 2.0;
         private const double NumberedListScoreBoost = 50.0; // High bonus for numbered lists (for counting questions)
         private const double NumberedListItemBonus = 10.0; // Additional bonus per numbered item
+        private const double TitlePatternBonus = 15.0; // Bonus for chunks that look like titles/headings
 
         // Thresholds
         private const int WordCountMin = 10;
@@ -81,13 +83,66 @@ namespace SmartRAG.Services.Document
                     }
                 }
 
-                // Exact word matches
+                // Exact word matches and substring matches (for agglutinative languages)
+                // This handles cases where query words contain suffixes/prefixes that may not match exact content words
+                var matchedWords = 0;
                 foreach (var word in queryWords)
                 {
-                    if (content.ToLowerInvariant().Contains(word.ToLowerInvariant()))
+                    var wordLower = word.ToLowerInvariant();
+                    var contentLower = content.ToLowerInvariant();
+                    var wordMatched = false;
+                    
+                    // Exact match (higher score)
+                    if (contentLower.Contains(wordLower))
+                    {
                         score += WordMatchScore;
+                        matchedWords++;
+                        wordMatched = true;
+                    }
+                    // Substring match: check if query word contains a meaningful substring from content
+                    // or if content contains a meaningful substring from query word
+                    // This helps with agglutinative languages where words may have suffixes/prefixes
+                    else if (wordLower.Length >= 4) // Only for words 4+ chars to avoid false matches
+                    {
+                        // Try to find meaningful substrings (minimum 4 chars)
+                        for (int len = Math.Min(wordLower.Length, 8); len >= 4; len--)
+                        {
+                            for (int start = 0; start <= wordLower.Length - len; start++)
+                            {
+                                var substring = wordLower.Substring(start, len);
+                                if (contentLower.Contains(substring))
+                                {
+                                    score += WordMatchScore * 0.5; // Partial match, lower score
+                                    matchedWords++;
+                                    wordMatched = true;
+                                    break; // Found a match, no need to check shorter substrings
+                                }
+                            }
+                            if (wordMatched) break;
+                        }
+                    }
+                }
+                
+                // Bonus for chunks matching multiple query words (indicates high relevance)
+                if (matchedWords >= 3)
+                {
+                    score += MultipleWordMatchBonus;
+                }
+                else if (matchedWords >= 2)
+                {
+                    score += MultipleWordMatchBonus * 0.5; // Half bonus for 2 matches
                 }
 
+                // Bonus for chunks that look like titles/headings (often contain key information)
+                // Titles typically have: short length, colon, or are followed by structured content
+                var isTitleLike = chunk.Content.Length < 200 && 
+                    (chunk.Content.Contains(':') || 
+                     chunk.Content.Split(new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length <= 3);
+                if (isTitleLike && matchedWords > 0)
+                {
+                    score += TitlePatternBonus;
+                }
+                
                 // Generic content quality scoring (language and content agnostic)
                 var wordCount = content.Split(new char[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries).Length;
                 if (wordCount >= WordCountMin && wordCount <= WordCountMax) score += WordCountScoreBoost;

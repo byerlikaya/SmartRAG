@@ -21,14 +21,88 @@ namespace SmartRAG.Services.Support
         {
             if (string.IsNullOrEmpty(text)) return text;
 
-            // Decode Unicode escape sequences
-            var decoded = Regex.Unescape(text);
+            string decoded;
+            try
+            {
+                // Decode Unicode escape sequences (e.g., \u0061, \n, \t)
+                // This may fail if text contains invalid escape sequences (e.g., \h from OCR errors)
+                decoded = Regex.Unescape(text);
+            }
+            catch (ArgumentException)
+            {
+                // Fallback: If Regex.Unescape fails (invalid escape sequences in .NET Standard 2.1),
+                // manually decode only valid Unicode escape sequences and leave others as-is
+                decoded = DecodeUnicodeEscapesSafely(text);
+            }
 
             // Normalize Unicode characters using FormC (Canonical Composition)
             // This handles character variations for all languages generically without hardcoded mappings
             var normalized = decoded.Normalize(System.Text.NormalizationForm.FormC);
 
             return normalized;
+        }
+
+        /// <summary>
+        /// Safely decodes Unicode escape sequences (\uXXXX) while leaving invalid escape sequences unchanged
+        /// </summary>
+        private static string DecodeUnicodeEscapesSafely(string text)
+        {
+            if (string.IsNullOrEmpty(text)) return text;
+
+            var result = new StringBuilder(text.Length);
+            var i = 0;
+            while (i < text.Length)
+            {
+                if (text[i] == '\\' && i + 1 < text.Length)
+                {
+                    // Check for Unicode escape sequence \uXXXX
+                    if (text[i + 1] == 'u' && i + 5 < text.Length)
+                    {
+                        var hexString = text.Substring(i + 2, 4);
+                        if (int.TryParse(hexString, System.Globalization.NumberStyles.HexNumber, null, out int codePoint))
+                        {
+                            result.Append((char)codePoint);
+                            i += 6;
+                            continue;
+                        }
+                    }
+                    // Check for common escape sequences
+                    else if (text[i + 1] == 'n')
+                    {
+                        result.Append('\n');
+                        i += 2;
+                        continue;
+                    }
+                    else if (text[i + 1] == 't')
+                    {
+                        result.Append('\t');
+                        i += 2;
+                        continue;
+                    }
+                    else if (text[i + 1] == 'r')
+                    {
+                        result.Append('\r');
+                        i += 2;
+                        continue;
+                    }
+                    else if (text[i + 1] == '\\')
+                    {
+                        result.Append('\\');
+                        i += 2;
+                        continue;
+                    }
+                    // Invalid escape sequence - leave as-is (e.g., \h becomes \h)
+                    result.Append(text[i]);
+                    i++;
+                }
+                else
+                {
+                    result.Append(text[i]);
+                    i++;
+                }
+            }
+
+            return result.ToString();
         }
 
         /// <summary>

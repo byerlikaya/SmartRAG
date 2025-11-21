@@ -68,12 +68,16 @@ SPECIAL INSTRUCTIONS FOR COUNTING/LISTING QUESTIONS (applies to all languages):
 
 CRITICAL RULES: 
 - Base your answer ONLY on the document context provided below
+- The query and context may be in ANY language (English, Turkish, German, etc.) - respond in the SAME language as the query
 - Do NOT use information from previous conversations unless it's in the current document context
 - SEARCH THOROUGHLY through the entire context before concluding information is missing
-- Look for information in ALL forms: paragraphs, lists, tables, numbered items, bullet points
-- If you find ANY relevant information (even partial), provide an answer based on what you found
-- Only say 'I cannot find this information' if you have searched the ENTIRE context and found NOTHING related
+- Look for information in ALL forms: paragraphs, lists, tables, numbered items, bullet points, headings
+- If you find ANY relevant or related information (even if not a perfect match), provide an answer based on what you found
+- If you have partial information, share it and clearly explain what is available and what might be missing
+- Only say 'I cannot find this information' if you have searched the ENTIRE context and found ABSOLUTELY NOTHING related to the question
+- DO NOT say 'cannot find' if there is ANY related information, even if incomplete
 - Be precise and use exact information from documents
+- Synthesize information from multiple parts of the context when needed
 - Keep responses focused on the current question
 {countingInstructions}
 
