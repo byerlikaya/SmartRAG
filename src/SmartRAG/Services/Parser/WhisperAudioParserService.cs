@@ -164,9 +164,12 @@ namespace SmartRAG.Services.Parser
         /// </summary>
         private async Task<AudioTranscriptionResult> PerformTranscriptionAsync(Stream audioStream, string fileName, string language)
         {
+            // Preserve original language value for result (keep "auto" if specified)
+            var originalLanguage = language ?? _config.DefaultLanguage;
+            
             var result = new AudioTranscriptionResult
             {
-                Language = language ?? _config.DefaultLanguage,
+                Language = originalLanguage,
                 Confidence = 0.0,
                 Text = string.Empty,
                 Metadata = new Dictionary<string, object>
@@ -189,8 +192,11 @@ namespace SmartRAG.Services.Parser
                     ? _config.MaxThreads 
                     : Environment.ProcessorCount;
 
+                // Determine language: "auto" or null means auto-detect, otherwise use specified language
+                var languageToUse = GetLanguageForWhisper(language ?? _config.DefaultLanguage);
+
                 var builder = _whisperFactory.CreateBuilder()
-                    .WithLanguage(language ?? _config.DefaultLanguage)
+                    .WithLanguage(languageToUse)
                     .WithThreads(threadCount)
                     .WithProbabilities();
 
@@ -337,6 +343,19 @@ namespace SmartRAG.Services.Parser
                 _logger.LogError(ex, "Whisper transcription processing failed");
                 throw;
             }
+        }
+
+        /// <summary>
+        /// Converts language parameter for Whisper.net: "auto" or null means auto-detect (null)
+        /// </summary>
+        private static string GetLanguageForWhisper(string language)
+        {
+            // Whisper.net uses null for auto-detection
+            if (string.IsNullOrEmpty(language) || language.Equals("auto", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+            return language;
         }
 
         /// <summary>

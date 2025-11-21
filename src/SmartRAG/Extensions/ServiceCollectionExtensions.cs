@@ -83,6 +83,7 @@ namespace SmartRAG.Extensions
             services.AddScoped<IDocumentScoringService, DocumentScoringService>();
             services.AddScoped<IEmbeddingSearchService, EmbeddingSearchService>();
             services.AddScoped<ISourceBuilderService, SourceBuilderService>();
+            services.AddScoped<IContextExpansionService, ContextExpansionService>();
             services.AddScoped<IQueryIntentClassifierService, QueryIntentClassifierService>();
             services.AddScoped<IConversationManagerService, ConversationManagerService>();
             services.AddScoped<IDocumentService, DocumentService>();

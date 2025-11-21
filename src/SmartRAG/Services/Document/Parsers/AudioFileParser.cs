@@ -50,11 +50,11 @@ namespace SmartRAG.Services.Document.Parsers
                    SupportedContentTypes.Any(ct => contentType.Contains(ct));
         }
 
-        public async Task<FileParserResult> ParseAsync(Stream fileStream, string fileName)
+        public async Task<FileParserResult> ParseAsync(Stream fileStream, string fileName, string language = null)
         {
             try
             {
-                var detectedLanguage = DetectAudioLanguage(null, fileName);
+                var detectedLanguage = DetectAudioLanguage(language, fileName);
                 var transcriptionResult = await _audioParserService.TranscribeAudioAsync(fileStream, fileName, detectedLanguage);
                 
                 var result = new FileParserResult
@@ -81,11 +81,18 @@ namespace SmartRAG.Services.Document.Parsers
 
         private string DetectAudioLanguage(string apiLanguage, string fileName)
         {
+            // If language is explicitly provided (including "auto"), use it
             if (!string.IsNullOrEmpty(apiLanguage))
             {
+                // Preserve "auto" for automatic language detection
+                if (apiLanguage.Equals("auto", StringComparison.OrdinalIgnoreCase))
+                {
+                    return "auto";
+                }
                 return apiLanguage;
             }
 
+            // Try to detect language from filename if not provided
             var fileNameLower = fileName.ToLowerInvariant();
             var iso6391Pattern = @"\b([a-z]{2})(?:[-_]([a-z]{2}))?\b";
             var matches = Regex.Matches(fileNameLower, iso6391Pattern);
@@ -104,7 +111,8 @@ namespace SmartRAG.Services.Document.Parsers
                 }
             }
 
-            return "en-US";
+            // Default to auto-detection if no language specified and cannot detect from filename
+            return "auto";
         }
     }
 }

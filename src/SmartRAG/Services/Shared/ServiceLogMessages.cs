@@ -87,6 +87,31 @@ namespace SmartRAG.Services.Shared
             new EventId(3020, "CanAnswerFromDocumentsError"),
             "Error in CanAnswerFromDocumentsAsync, assuming document search for safety");
 
+        public static readonly Action<ILogger, int, int, Exception> LogContextExpansionCompleted = LoggerMessage.Define<int, int>(
+            LogLevel.Debug,
+            new EventId(3021, "ContextExpansionCompleted"),
+            "Context expansion completed: {OriginalCount} chunks expanded to {ExpandedCount} chunks");
+
+        public static readonly Action<ILogger, Exception> LogContextExpansionError = LoggerMessage.Define(
+            LogLevel.Warning,
+            new EventId(3022, "ContextExpansionError"),
+            "Error during context expansion, returning original chunks");
+
+        public static readonly Action<ILogger, int, Exception> LogContextExpansionLimited = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(3023, "ContextExpansionLimited"),
+            "Context expansion limited to {MaxChunks} chunks to prevent timeout");
+
+        public static readonly Action<ILogger, int, int, int, Exception> LogContextSizeLimited = LoggerMessage.Define<int, int, int>(
+            LogLevel.Information,
+            new EventId(3024, "ContextSizeLimited"),
+            "Context size limited: {ChunkCount} chunks, {ActualSize} chars (max: {MaxSize} chars)");
+
+        public static readonly Action<ILogger, int, Exception> LogFallbackSearchUsed = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(3025, "FallbackSearchUsed"),
+            "Fallback keyword search used, found {ChunkCount} chunks");
+
         #endregion
 
         #region Batch Operations

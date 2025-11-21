@@ -5,6 +5,7 @@ using SmartRAG.Services.Shared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace SmartRAG.Services.Document
 {
@@ -20,6 +21,8 @@ namespace SmartRAG.Services.Document
         private const double WordCountScoreBoost = 5.0;
         private const double PunctuationScoreBoost = 2.0;
         private const double NumberScoreBoost = 2.0;
+        private const double NumberedListScoreBoost = 50.0; // High bonus for numbered lists (for counting questions)
+        private const double NumberedListItemBonus = 10.0; // Additional bonus per numbered item
 
         // Thresholds
         private const int WordCountMin = 10;
@@ -96,6 +99,26 @@ namespace SmartRAG.Services.Document
                 // Bonus for chunks with numbers (often indicates factual information)
                 var numberCount = content.Count(c => char.IsDigit(c));
                 if (numberCount >= NumberCountThreshold) score += NumberScoreBoost;
+
+                // HIGH PRIORITY: Bonus for numbered lists (critical for counting/listing questions)
+                // Use multiple patterns to detect numbered lists: "1.", "1)", "1-", "1 ", etc.
+                var numberedListPatterns = new[]
+                {
+                    @"\b\d+\.\s",      // "1. Item"
+                    @"\b\d+\)\s",      // "1) Item"
+                    @"\b\d+-\s",       // "1- Item"
+                    @"\b\d+\s+[A-Z]",  // "1 Item" (number followed by capital letter)
+                    @"^\d+\.\s",       // "1. Item" at start of line
+                };
+                
+                var numberedListCount = numberedListPatterns.Sum(pattern => 
+                    Regex.Matches(chunk.Content, pattern, RegexOptions.Multiline | RegexOptions.IgnoreCase).Count);
+                
+                if (numberedListCount > 0)
+                {
+                    // High base bonus for having numbered list + bonus per item
+                    score += NumberedListScoreBoost + (numberedListCount * NumberedListItemBonus);
+                }
 
                 chunk.RelevanceScore = score;
                 return chunk;

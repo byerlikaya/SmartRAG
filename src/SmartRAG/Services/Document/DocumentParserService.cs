@@ -61,7 +61,7 @@ namespace SmartRAG.Services.Document
                     throw new NotSupportedException($"No parser found for file {fileName} with content type {contentType}");
                 }
 
-                var result = await parser.ParseAsync(fileStream, fileName);
+                var result = await parser.ParseAsync(fileStream, fileName, language);
                 var content = result.Content;
 
                 var documentId = Guid.NewGuid();

@@ -15,6 +15,7 @@ using SmartRAG.Interfaces.Database;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using SmartRAG.Helpers;
 using System.Threading.Tasks;
 
@@ -37,6 +38,10 @@ namespace SmartRAG.Services.Document
         // Fallback search and content
         private const int FallbackSearchMaxResults = 5;
         private const int MinSubstantialContentLength = 50;
+
+        // Context expansion limits to prevent excessive chunk retrieval and timeout
+        private const int MaxExpandedChunks = 50; // Increased for comprehensive list retrieval
+        private const int MaxContextSize = 18000; // Increased to accommodate full numbered lists
 
         // Confidence thresholds for Smart Hybrid approach
         private const double HighConfidenceThreshold = 0.7;
@@ -62,6 +67,7 @@ namespace SmartRAG.Services.Document
         private readonly IEmbeddingSearchService _embeddingSearch;
         private readonly ISourceBuilderService _sourceBuilder;
         private readonly IAIConfigurationService _aiConfiguration;
+        private readonly IContextExpansionService? _contextExpansion;
 
         /// <summary>
         /// Initializes a new instance of the DocumentSearchService
@@ -81,6 +87,7 @@ namespace SmartRAG.Services.Document
         /// <param name="embeddingSearch">Service for embedding-based search</param>
         /// <param name="sourceBuilder">Service for building search sources</param>
         /// <param name="aiConfiguration">Service for AI provider configuration</param>
+        /// <param name="contextExpansion">Service for expanding chunk context with adjacent chunks</param>
         public DocumentSearchService(
             IDocumentRepository documentRepository,
             IAIService aiService,
@@ -96,7 +103,8 @@ namespace SmartRAG.Services.Document
             IDocumentScoringService? documentScoring = null,
             IEmbeddingSearchService? embeddingSearch = null,
             ISourceBuilderService? sourceBuilder = null,
-            IAIConfigurationService? aiConfiguration = null)
+            IAIConfigurationService? aiConfiguration = null,
+            IContextExpansionService? contextExpansion = null)
         {
             _documentRepository = documentRepository;
             _aiService = aiService;
@@ -113,6 +121,7 @@ namespace SmartRAG.Services.Document
             _embeddingSearch = embeddingSearch ?? throw new ArgumentNullException(nameof(embeddingSearch));
             _sourceBuilder = sourceBuilder ?? throw new ArgumentNullException(nameof(sourceBuilder));
             _aiConfiguration = aiConfiguration ?? throw new ArgumentNullException(nameof(aiConfiguration));
+            _contextExpansion = contextExpansion;
         }
 
         /// <summary>
@@ -535,6 +544,60 @@ namespace SmartRAG.Services.Document
                 }
             }
 
+            // For counting/listing questions, prioritize chunks with numbered lists
+            if (RequiresComprehensiveSearch(query))
+            {
+                var numberedListPatterns = new[]
+                {
+                    @"\b\d+\.\s",      // "1. Item"
+                    @"\b\d+\)\s",      // "1) Item"
+                    @"\b\d+-\s",       // "1- Item"
+                    @"\b\d+\s+[A-Z]",  // "1 Item" (number followed by capital letter)
+                    @"^\d+\.\s",       // "1. Item" at start of line
+                };
+                
+                // CRITICAL: Search in ALL chunks, not just relevantChunks
+                // Numbered list chunks might not have high relevance score but contain the answer
+                var allNumberedListChunks = allChunks
+                    .Where(c => numberedListPatterns.Any(pattern => 
+                        Regex.IsMatch(c.Content, pattern, RegexOptions.Multiline | RegexOptions.IgnoreCase)))
+                    .Select(c =>
+                    {
+                        // Count numbered items and calculate score
+                        var numberedListCount = numberedListPatterns.Sum(pattern => 
+                            Regex.Matches(c.Content, pattern, RegexOptions.Multiline | RegexOptions.IgnoreCase).Count);
+                        
+                        var wordMatches = queryWords.Count(word => 
+                            c.Content.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0);
+                        
+                        // Score: numbered list count (high priority) + word matches
+                        c.RelevanceScore = (numberedListCount * 100.0) + (wordMatches * 10.0);
+                        
+                        return new
+                        {
+                            Chunk = c,
+                            NumberedListCount = numberedListCount,
+                            WordMatches = wordMatches
+                        };
+                    })
+                    .OrderByDescending(x => x.NumberedListCount) // More items = higher priority
+                    .ThenByDescending(x => x.WordMatches) // Then by word matches
+                    .Select(x => x.Chunk)
+                    .Take(maxResults * 2) // Take more numbered list chunks
+                    .ToList();
+                
+                if (allNumberedListChunks.Count > 0)
+                {
+                    // Return numbered list chunks first (even if they weren't in relevantChunks)
+                    // Then add relevant chunks that aren't numbered lists
+                    var result = allNumberedListChunks
+                        .Concat(relevantChunks.Except(allNumberedListChunks))
+                        .Take(maxResults)
+                        .ToList();
+                    return result;
+                }
+            }
+
             return relevantChunks.Take(maxResults).ToList();
         }
 
@@ -543,8 +606,412 @@ namespace SmartRAG.Services.Document
         /// </summary>
         private async Task<RagResponse> GenerateBasicRagAnswerAsync(string query, int maxResults, string conversationHistory)
         {
-            var chunks = await SearchDocumentsAsync(query, maxResults);
-            var context = string.Join("\n\n", chunks.Select(c => c.Content));
+            // For questions asking "how many", "which", "where" etc., search for more chunks initially
+            // These questions often need information from multiple chunks (e.g., numbered lists)
+            var searchMaxResults = DetermineInitialSearchCount(query, maxResults);
+            var chunks = await SearchDocumentsAsync(query, searchMaxResults);
+            
+            // If initial search found few chunks OR if this is a counting/listing question, try more aggressive search
+            // This is especially important for "how many" type questions that need list enumeration
+            var needsAggressiveSearch = chunks.Count < 5 || RequiresComprehensiveSearch(query);
+            if (needsAggressiveSearch)
+            {
+                // Try with even more chunks using direct repository search
+                var allDocuments = await _documentRepository.GetAllAsync();
+                var allChunks = allDocuments.SelectMany(d => d.Chunks).ToList();
+                
+                // Use keyword-based fallback search with more aggressive matching
+                var queryWords = QueryTokenizer.TokenizeQuery(query);
+                
+                // For counting questions, prioritize chunks with numbers (likely contain numbered lists)
+                // Use multiple patterns to detect numbered lists: "1.", "1)", "1-", "1 ", etc.
+                var numberedListPatterns = new[]
+                {
+                    @"\b\d+\.\s",      // "1. Item"
+                    @"\b\d+\)\s",      // "1) Item"
+                    @"\b\d+-\s",       // "1- Item"
+                    @"\b\d+\s+[A-Z]",  // "1 Item" (number followed by capital letter)
+                    @"^\d+\.\s",       // "1. Item" at start of line
+                };
+                
+                // CRITICAL: For counting questions, first find ALL chunks with numbered lists
+                // Then filter by query words, prioritizing chunks with both numbered lists AND query words
+                var allChunksWithNumberedLists = allChunks
+                    .Select(c =>
+                    {
+                        // Count how many numbered list items are in this chunk
+                        var numberedListCount = numberedListPatterns.Sum(pattern => 
+                            Regex.Matches(c.Content, pattern, RegexOptions.Multiline | RegexOptions.IgnoreCase).Count);
+                        
+                        var wordMatches = queryWords.Count(word => 
+                            c.Content.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0);
+                        var hasNumbers = c.Content.Any(char.IsDigit);
+                        var hasNumberedList = numberedListCount > 0;
+                        
+                        return new
+                        {
+                            Chunk = c,
+                            WordMatches = wordMatches,
+                            HasNumbers = hasNumbers,
+                            HasNumberedList = hasNumberedList,
+                            NumberedListCount = numberedListCount // Count of numbered items
+                        };
+                    })
+                    .ToList();
+                
+                // If this is a counting question, prioritize numbered list chunks even if they don't match query words perfectly
+                if (RequiresComprehensiveSearch(query))
+                {
+                    // First: Chunks with numbered lists AND query words (highest priority)
+                    var numberedListWithQueryWords = allChunksWithNumberedLists
+                        .Where(x => x.HasNumberedList && x.WordMatches > 0)
+                        .OrderByDescending(x => x.NumberedListCount)
+                        .ThenByDescending(x => x.WordMatches)
+                        .Select(x => x.Chunk)
+                        .Take(searchMaxResults * 3)
+                        .ToList();
+                    
+                    // Second: Chunks with numbered lists even without query words (for comprehensive coverage)
+                    var numberedListOnly = allChunksWithNumberedLists
+                        .Where(x => x.HasNumberedList && x.WordMatches == 0)
+                        .OrderByDescending(x => x.NumberedListCount)
+                        .Select(x => x.Chunk)
+                        .Take(searchMaxResults * 2)
+                        .ToList();
+                    
+                    // Third: Chunks with query words but no numbered lists
+                    var queryWordsOnly = allChunksWithNumberedLists
+                        .Where(x => !x.HasNumberedList && x.WordMatches > 0)
+                        .OrderByDescending(x => x.WordMatches)
+                        .ThenByDescending(x => x.HasNumbers)
+                        .Select(x => x.Chunk)
+                        .Take(searchMaxResults * 2)
+                        .ToList();
+                    
+                    // Combine: numbered lists first, then others
+                    var mergedChunks = new List<DocumentChunk>();
+                    var seenIds = new HashSet<Guid>();
+                    
+                    // Add numbered list chunks with query words first (highest priority)
+                    foreach (var chunk in numberedListWithQueryWords)
+                    {
+                        if (!seenIds.Contains(chunk.Id))
+                        {
+                            mergedChunks.Add(chunk);
+                            seenIds.Add(chunk.Id);
+                        }
+                    }
+                    
+                    // Add numbered list chunks without query words (for comprehensive coverage)
+                    foreach (var chunk in numberedListOnly)
+                    {
+                        if (!seenIds.Contains(chunk.Id) && mergedChunks.Count < searchMaxResults * 4)
+                        {
+                            mergedChunks.Add(chunk);
+                            seenIds.Add(chunk.Id);
+                        }
+                    }
+                    
+                    // Add query word chunks if we still have space
+                    foreach (var chunk in queryWordsOnly)
+                    {
+                        if (!seenIds.Contains(chunk.Id) && mergedChunks.Count < searchMaxResults * 4)
+                        {
+                            mergedChunks.Add(chunk);
+                            seenIds.Add(chunk.Id);
+                        }
+                    }
+                    
+                    // Add original chunks that weren't already included
+                    foreach (var chunk in chunks)
+                    {
+                        if (!seenIds.Contains(chunk.Id) && mergedChunks.Count < searchMaxResults * 4)
+                        {
+                            mergedChunks.Add(chunk);
+                            seenIds.Add(chunk.Id);
+                        }
+                    }
+                    
+                    if (mergedChunks.Count > chunks.Count)
+                    {
+                        chunks = mergedChunks;
+                        ServiceLogMessages.LogFallbackSearchUsed(_logger, chunks.Count, null);
+                    }
+                }
+                else
+                {
+                    // For non-counting questions, use standard fallback search
+                    var fallbackChunks = allChunksWithNumberedLists
+                        .Where(x => x.WordMatches > 0)
+                        .OrderByDescending(x => x.NumberedListCount)
+                        .ThenByDescending(x => x.HasNumberedList)
+                        .ThenByDescending(x => x.HasNumbers)
+                        .ThenByDescending(x => x.WordMatches)
+                        .Select(x => x.Chunk)
+                        .Take(searchMaxResults * 4)
+                        .ToList();
+                    
+                    if (fallbackChunks.Count > chunks.Count)
+                    {
+                        // Merge with original chunks, prioritizing fallback results
+                        var mergedChunks = new List<DocumentChunk>();
+                        var seenIds = new HashSet<Guid>();
+                        
+                        // Add fallback chunks first (they're prioritized)
+                        foreach (var chunk in fallbackChunks)
+                        {
+                            if (!seenIds.Contains(chunk.Id))
+                            {
+                                mergedChunks.Add(chunk);
+                                seenIds.Add(chunk.Id);
+                            }
+                        }
+                        
+                        // Add original chunks that weren't already included
+                        foreach (var chunk in chunks)
+                        {
+                            if (!seenIds.Contains(chunk.Id))
+                            {
+                                mergedChunks.Add(chunk);
+                                seenIds.Add(chunk.Id);
+                            }
+                        }
+                        
+                        chunks = mergedChunks;
+                        ServiceLogMessages.LogFallbackSearchUsed(_logger, chunks.Count, null);
+                    }
+                }
+            }
+            
+            // CRITICAL: For counting/listing questions, find ALL numbered list chunks from the same documents
+            // This ensures we get the complete list even if it's split across multiple chunks
+            var numberedListChunkIds = new HashSet<Guid>();
+            if (RequiresComprehensiveSearch(query) && chunks.Count > 0)
+            {
+                var numberedListPatterns = new[]
+                {
+                    @"\b\d+\.\s",      // "1. Item"
+                    @"\b\d+\)\s",      // "1) Item"
+                    @"\b\d+-\s",       // "1- Item"
+                    @"\b\d+\s+[A-Z]",  // "1 Item" (number followed by capital letter)
+                    @"^\d+\.\s",       // "1. Item" at start of line
+                };
+                
+                // Get all documents that contain the found chunks
+                var documentIds = chunks.Select(c => c.DocumentId).Distinct().ToList();
+                var allNumberedListChunks = new List<DocumentChunk>();
+                
+                foreach (var documentId in documentIds)
+                {
+                    var document = await _documentRepository.GetByIdAsync(documentId);
+                    if (document?.Chunks == null) continue;
+                    
+                    // Find ALL chunks in this document that contain numbered lists
+                    var documentNumberedChunks = document.Chunks
+                        .Where(c => numberedListPatterns.Any(pattern => 
+                            Regex.IsMatch(c.Content, pattern, RegexOptions.Multiline | RegexOptions.IgnoreCase)))
+                        .ToList();
+                    
+                    if (documentNumberedChunks.Count > 0)
+                    {
+                        // Score these chunks based on numbered list count and query word matches
+                        var localQueryWords = QueryTokenizer.TokenizeQuery(query);
+                        
+                        // CRITICAL: Filter and prioritize chunks that contain BOTH numbered lists AND query words
+                        // This prevents including irrelevant numbered lists (like page numbers, references, etc.)
+                        var relevantNumberedChunks = new List<DocumentChunk>();
+                        
+                        foreach (var chunk in documentNumberedChunks)
+                        {
+                            var numberedListCount = numberedListPatterns.Sum(pattern => 
+                                Regex.Matches(chunk.Content, pattern, RegexOptions.Multiline | RegexOptions.IgnoreCase).Count);
+                            
+                            var wordMatches = localQueryWords.Count(word => 
+                                chunk.Content.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0);
+                            
+                            // CRITICAL: Only include chunks that have query word matches OR have many numbered items (likely a list)
+                            // This filters out page numbers, references, etc. that are numbered but not relevant
+                            if (wordMatches > 0 || numberedListCount >= 3)
+                            {
+                                // VERY HIGH score for numbered lists with query words
+                                // Lower score for numbered lists without query words (but still include if many items)
+                                chunk.RelevanceScore = wordMatches > 0
+                                    ? 1000.0 + (numberedListCount * 100.0) + (wordMatches * 50.0) // High priority: numbered list + query words
+                                    : 500.0 + (numberedListCount * 50.0); // Lower priority: numbered list only (but many items)
+                                
+                                numberedListChunkIds.Add(chunk.Id);
+                                relevantNumberedChunks.Add(chunk);
+                            }
+                        }
+                        
+                        allNumberedListChunks.AddRange(relevantNumberedChunks);
+                        _logger.LogInformation("Found {TotalCount} numbered list chunks in document {DocumentId}, {RelevantCount} relevant (with query words or 3+ items)", 
+                            documentNumberedChunks.Count, documentId, relevantNumberedChunks.Count);
+                    }
+                }
+                
+                _logger.LogInformation("Total numbered list chunks found: {Count}", allNumberedListChunks.Count);
+                
+                // CRITICAL: Prioritize chunks with query words - these are most relevant
+                var finalQueryWords = QueryTokenizer.TokenizeQuery(query);
+                var prioritizedNumberedChunks = allNumberedListChunks
+                    .Select(c => new
+                    {
+                        Chunk = c,
+                        HasQueryWords = finalQueryWords.Any(word => 
+                            c.Content.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0),
+                        QueryWordMatches = finalQueryWords.Count(word => 
+                            c.Content.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0),
+                        Score = c.RelevanceScore ?? 0.0
+                    })
+                    .OrderByDescending(x => x.HasQueryWords) // Query words first
+                    .ThenByDescending(x => x.QueryWordMatches) // More matches = better
+                    .ThenByDescending(x => x.Score) // Then by score
+                    .Select(x => x.Chunk)
+                    .ToList();
+                
+                // CRITICAL: Replace chunks with numbered list chunks (they're more relevant for counting questions)
+                // Keep original chunks only if they're not in numbered list chunks
+                var originalChunkIds = new HashSet<Guid>(chunks.Select(c => c.Id));
+                var maxNumberedChunks = 30; // Limit to top 30 numbered list chunks
+                var topNumberedChunks = prioritizedNumberedChunks.Take(maxNumberedChunks).ToList();
+                
+                // Create new chunk list: numbered list chunks first, then original chunks that aren't numbered lists
+                var newChunks = new List<DocumentChunk>();
+                var seenIds = new HashSet<Guid>();
+                
+                // Add numbered list chunks first (highest priority)
+                foreach (var numberedChunk in topNumberedChunks)
+                {
+                    newChunks.Add(numberedChunk);
+                    seenIds.Add(numberedChunk.Id);
+                }
+                
+                // Add original chunks that aren't numbered lists
+                foreach (var originalChunk in chunks)
+                {
+                    if (!seenIds.Contains(originalChunk.Id) && !numberedListChunkIds.Contains(originalChunk.Id))
+                    {
+                        newChunks.Add(originalChunk);
+                        seenIds.Add(originalChunk.Id);
+                    }
+                }
+                
+                chunks = newChunks;
+                
+                _logger.LogInformation("Replaced chunks with {NumberedCount} numbered list chunks + {OriginalCount} original chunks (from {TotalNumbered} found)", 
+                    topNumberedChunks.Count, chunks.Count - topNumberedChunks.Count, allNumberedListChunks.Count);
+            }
+            
+            // Expand context by including adjacent chunks from the same document
+            // This ensures that if a heading is in one chunk and content is in the next, both are included
+            // For questions asking "how many", "which", "where" etc., use larger context window
+            // CRITICAL: If we found numbered list chunks, skip context expansion to preserve them
+            if (_contextExpansion != null && chunks.Count > 0 && numberedListChunkIds.Count == 0)
+            {
+                // Store original chunk IDs and their relevance scores before expansion
+                var originalChunkIds = new HashSet<Guid>(chunks.Select(c => c.Id));
+                var originalScores = chunks.ToDictionary(c => c.Id, c => c.RelevanceScore ?? 0.0);
+                
+                // For counting questions, use smaller context window to avoid too many chunks
+                // We already found all numbered list chunks above, so we just need adjacent context
+                var contextWindow = RequiresComprehensiveSearch(query) 
+                    ? 3 // Smaller window for comprehensive queries (we already have numbered list chunks)
+                    : DetermineContextWindow(chunks, query);
+                chunks = await _contextExpansion.ExpandContextAsync(chunks, contextWindow);
+                
+                // Re-score expanded chunks that don't have scores (adjacent chunks added by expansion)
+                // Use query words to calculate basic relevance for expanded chunks
+                var queryWords = QueryTokenizer.TokenizeQuery(query);
+                foreach (var chunk in chunks)
+                {
+                    if (!originalScores.ContainsKey(chunk.Id))
+                    {
+                        // Calculate basic relevance score for expanded chunks
+                        var content = chunk.Content.ToLowerInvariant();
+                        var wordMatches = queryWords.Count(word => 
+                            content.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0);
+                        var hasNumbers = chunk.Content.Any(char.IsDigit);
+                        
+                        // Use multiple patterns to detect numbered lists
+                        var numberedListPatterns = new[]
+                        {
+                            @"\b\d+\.\s",      // "1. Item"
+                            @"\b\d+\)\s",      // "1) Item"
+                            @"\b\d+-\s",       // "1- Item"
+                            @"\b\d+\s+[A-Z]",  // "1 Item" (number followed by capital letter)
+                            @"^\d+\.\s",       // "1. Item" at start of line
+                        };
+                        
+                        var numberedListCount = numberedListPatterns.Sum(pattern => 
+                            Regex.Matches(chunk.Content, pattern, RegexOptions.Multiline | RegexOptions.IgnoreCase).Count);
+                        var hasNumberedList = numberedListCount > 0;
+                        
+                        // Score: word matches + bonus for numbers + HIGH bonus for numbered lists (especially multiple items)
+                        chunk.RelevanceScore = (wordMatches * 0.1) + 
+                                             (hasNumbers ? 0.2 : 0.0) + 
+                                             (hasNumberedList ? 0.5 + (numberedListCount * 0.1) : 0.0); // Higher bonus for numbered lists, even more for multiple items
+                    }
+                    else
+                    {
+                        // Preserve original score
+                        chunk.RelevanceScore = originalScores[chunk.Id];
+                    }
+                }
+                
+                // CRITICAL: Sort chunks with numbered lists at the top (highest priority)
+                // Then original chunks, then expanded chunks
+                chunks = chunks
+                    .OrderByDescending(c => numberedListChunkIds.Contains(c.Id)) // Numbered list chunks FIRST (highest priority)
+                    .ThenByDescending(c => originalChunkIds.Contains(c.Id)) // Then original chunks
+                    .ThenByDescending(c => c.RelevanceScore ?? 0.0) // Then by relevance score
+                    .ToList();
+                
+                // Limit expanded chunks to prevent excessive context and timeout
+                // But ALWAYS keep numbered list chunks (they're already at the top)
+                if (chunks.Count > MaxExpandedChunks)
+                {
+                    // Count how many numbered list chunks we have
+                    var numberedListCount = chunks.Count(c => numberedListChunkIds.Contains(c.Id));
+                    
+                    // Keep all numbered list chunks + top other chunks
+                    var numberedListChunks = chunks.Where(c => numberedListChunkIds.Contains(c.Id)).ToList();
+                    var otherChunks = chunks.Where(c => !numberedListChunkIds.Contains(c.Id))
+                        .Take(MaxExpandedChunks - numberedListCount)
+                        .ToList();
+                    
+                    chunks = numberedListChunks.Concat(otherChunks).ToList();
+                    ServiceLogMessages.LogContextExpansionLimited(_logger, MaxExpandedChunks, null);
+                }
+            }
+            else if (numberedListChunkIds.Count > 0)
+            {
+                // We have numbered list chunks, skip context expansion to preserve them
+                // Just ensure they're at the top
+                chunks = chunks
+                    .OrderByDescending(c => numberedListChunkIds.Contains(c.Id))
+                    .ThenByDescending(c => c.RelevanceScore ?? 0.0)
+                    .ToList();
+                
+                _logger.LogInformation("Skipped context expansion to preserve {Count} numbered list chunks", numberedListChunkIds.Count);
+                
+                // Limit chunks but keep all numbered list chunks
+                if (chunks.Count > MaxExpandedChunks)
+                {
+                    var numberedListCount = chunks.Count(c => numberedListChunkIds.Contains(c.Id));
+                    var numberedListChunks = chunks.Where(c => numberedListChunkIds.Contains(c.Id)).ToList();
+                    var otherChunks = chunks.Where(c => !numberedListChunkIds.Contains(c.Id))
+                        .Take(MaxExpandedChunks - numberedListCount)
+                        .ToList();
+                    
+                    chunks = numberedListChunks.Concat(otherChunks).ToList();
+                    _logger.LogInformation("Limited to {Count} chunks, kept {NumberedCount} numbered list chunks", 
+                        chunks.Count, numberedListCount);
+                }
+            }
+            
+            // Build context with size limit to prevent timeout
+            var context = BuildLimitedContext(chunks);
 
             var prompt = _promptBuilder.BuildDocumentRagPrompt(query, context, conversationHistory);
             var answer = await _aiService.GenerateResponseAsync(prompt, new List<string> { context });
@@ -629,6 +1096,193 @@ namespace SmartRAG.Services.Document
             }
         }
 
+
+        /// <summary>
+        /// Determines initial search count based on query structure
+        /// Uses language-agnostic pattern detection (question marks, numeric patterns, query complexity)
+        /// </summary>
+        private int DetermineInitialSearchCount(string query, int defaultMaxResults)
+        {
+            // Detect if query needs comprehensive search using structural patterns
+            if (RequiresComprehensiveSearch(query))
+            {
+                // Search for 3x more chunks for comprehensive questions (especially "how many" type questions)
+                // This ensures we find all relevant chunks including numbered lists
+                return defaultMaxResults * 3;
+            }
+
+            return defaultMaxResults;
+        }
+
+        /// <summary>
+        /// Determines appropriate context window based on query structure
+        /// Uses language-agnostic pattern detection
+        /// </summary>
+        private int DetermineContextWindow(List<DocumentChunk> chunks, string query)
+        {
+            // Default context window for regular documents
+            const int DefaultWindow = 2;
+            // Larger context window for questions that need comprehensive information
+            const int ComprehensiveWindow = 8; // Increased to 8 for better list enumeration (to capture full numbered lists)
+
+            // Detect if query needs comprehensive context using structural patterns
+            if (RequiresComprehensiveSearch(query))
+            {
+                return ComprehensiveWindow;
+            }
+
+            // If initial search found few chunks, use larger window to catch more context
+            if (chunks.Count <= 3)
+            {
+                return 3; // Medium window when few chunks found
+            }
+
+            return DefaultWindow;
+        }
+
+        /// <summary>
+        /// Builds context string from chunks with size limit to prevent timeout
+        /// </summary>
+        private string BuildLimitedContext(List<DocumentChunk> chunks)
+        {
+            if (chunks == null || chunks.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            var contextBuilder = new System.Text.StringBuilder();
+            var totalSize = 0;
+
+            foreach (var chunk in chunks)
+            {
+                if (chunk?.Content == null)
+                {
+                    continue;
+                }
+
+                var chunkSize = chunk.Content.Length;
+                var separatorSize = 2; // "\n\n" separator
+
+                // Check if adding this chunk would exceed the limit
+                if (totalSize + chunkSize + separatorSize > MaxContextSize)
+                {
+                    // Try to add partial chunk if there's room
+                    var remainingSize = MaxContextSize - totalSize - separatorSize;
+                    if (remainingSize > 100) // Only add if there's meaningful space (at least 100 chars)
+                    {
+                        var partialContent = chunk.Content.Substring(0, Math.Min(remainingSize, chunk.Content.Length));
+                        if (contextBuilder.Length > 0)
+                        {
+                            contextBuilder.Append("\n\n");
+                        }
+                        contextBuilder.Append(partialContent);
+                        ServiceLogMessages.LogContextSizeLimited(_logger, chunks.Count, totalSize + partialContent.Length, MaxContextSize, null);
+                    }
+                    break;
+                }
+
+                if (contextBuilder.Length > 0)
+                {
+                    contextBuilder.Append("\n\n");
+                    totalSize += separatorSize;
+                }
+
+                contextBuilder.Append(chunk.Content);
+                totalSize += chunkSize;
+            }
+
+            return contextBuilder.ToString();
+        }
+
+        /// <summary>
+        /// Detects if query requires comprehensive search using language-agnostic patterns
+        /// Checks for: question punctuation, numeric patterns, query complexity, list indicators
+        /// </summary>
+        private static bool RequiresComprehensiveSearch(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                return false;
+
+            var trimmed = query.Trim();
+            var tokens = trimmed.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+
+            // Pattern 1: Question punctuation (works for all languages)
+            if (HasQuestionPunctuation(trimmed))
+            {
+                // Check if it's a counting/listing question by structure
+                if (HasNumericPattern(trimmed) || HasListIndicators(trimmed))
+                {
+                    return true;
+                }
+            }
+
+            // Pattern 2: Numeric patterns (numbers, digits) - often indicates counting questions
+            if (HasNumericPattern(trimmed))
+            {
+                return true;
+            }
+
+            // Pattern 3: Query complexity (longer queries often need more context)
+            if (tokens.Length >= 6)
+            {
+                return true;
+            }
+
+            // Pattern 4: List indicators (structural patterns that suggest enumeration)
+            if (HasListIndicators(trimmed))
+            {
+                return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Checks if query contains question punctuation (language-agnostic)
+        /// </summary>
+        private static bool HasQuestionPunctuation(string input)
+        {
+            return input.IndexOf('?', StringComparison.Ordinal) >= 0 ||
+                   input.IndexOf('¿', StringComparison.Ordinal) >= 0 ||
+                   input.IndexOf('؟', StringComparison.Ordinal) >= 0;
+        }
+
+        /// <summary>
+        /// Checks if query contains numeric patterns (digits, numbers)
+        /// </summary>
+        private static bool HasNumericPattern(string input)
+        {
+            // Check for Unicode digits (works for all languages)
+            if (input.Any(c => char.GetUnicodeCategory(c) == System.Globalization.UnicodeCategory.DecimalDigitNumber))
+            {
+                return true;
+            }
+
+            // Check for multiple numeric groups (e.g., "1. Item 2. Item 3. Item")
+            var numericMatches = System.Text.RegularExpressions.Regex.Matches(input, @"\p{Nd}+");
+            return numericMatches.Count >= 2;
+        }
+
+        /// <summary>
+        /// Checks if query has structural patterns indicating list/enumeration needs
+        /// </summary>
+        private static bool HasListIndicators(string input)
+        {
+            // Pattern: Numbered lists (1. 2. 3. or 1) 2) 3))
+            if (System.Text.RegularExpressions.Regex.IsMatch(input, @"\d+[\.\)]\s"))
+            {
+                return true;
+            }
+
+            // Pattern: Multiple question marks or enumeration markers
+            var questionCount = input.Count(c => c == '?' || c == '¿' || c == '؟');
+            if (questionCount >= 2)
+            {
+                return true;
+            }
+
+            return false;
+        }
 
         /// <summary>
         /// [AI Query] Handle general conversation queries with conversation history

@@ -19,7 +19,7 @@ namespace SmartRAG.Services.Document.Parsers
                    SupportedContentTypes.Any(contentType.StartsWith);
         }
 
-        public async Task<FileParserResult> ParseAsync(Stream fileStream, string fileName)
+        public async Task<FileParserResult> ParseAsync(Stream fileStream, string fileName, string language = null)
         {
             try
             {

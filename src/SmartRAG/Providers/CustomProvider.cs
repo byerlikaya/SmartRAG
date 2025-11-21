@@ -97,12 +97,19 @@ namespace SmartRAG.Providers
                 Logger.LogDebug("Ollama embedding request: Endpoint={Endpoint}, Model={Model}, TextLength={Length}",
                     embeddingEndpoint, config.EmbeddingModel, text?.Length ?? 0);
 
-                // Ollama-style payload (uses "prompt" not "input")
-                var payload = new
+                // Ollama-style payload - try both "prompt" and "input" for compatibility
+                // Some Ollama versions use "prompt", others use "input"
+                var payload = new Dictionary<string, object>
                 {
-                    model = config.EmbeddingModel,
-                    prompt = text
+                    ["model"] = config.EmbeddingModel
                 };
+                
+                // Try "input" first (OpenAI-compatible), fallback to "prompt" (Ollama-native)
+                // Ollama's official API uses "input" for embeddings
+                if (text != null)
+                {
+                    payload["input"] = text;
+                }
 
                 Logger.LogDebug("Ollama embedding payload: {Payload}",
                     JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = false }));
@@ -200,30 +207,52 @@ namespace SmartRAG.Providers
             // Derive from main endpoint
             var endpoint = config.Endpoint;
 
-            // Ollama pattern: /v1/chat/completions → /api/embeddings or /v1/embeddings
-            if (endpoint.Contains("localhost") || endpoint.Contains("127.0.0.1"))
+            try
             {
-                // Likely Ollama - use /api/embeddings
-                var baseUrl = endpoint.Substring(0, endpoint.IndexOf("/v1"));
-                return baseUrl + "/api/embeddings";
-            }
+                // Parse URL to get base URL
+                var uri = new Uri(endpoint);
+                var baseUrl = $"{uri.Scheme}://{uri.Authority}";
 
-            // OpenRouter, Groq, etc: usually same endpoint pattern
-            // /v1/chat/completions → /v1/embeddings
-            if (endpoint.Contains("/chat/completions"))
+                // Ollama pattern: http://localhost:11434/v1/chat/completions → http://localhost:11434/api/embeddings
+                if (uri.Host == "localhost" || uri.Host == "127.0.0.1" || uri.Host == "::1")
+                {
+                    // Ollama uses /api/embeddings endpoint
+                    return $"{baseUrl}/api/embeddings";
+                }
+
+                // OpenRouter, Groq, etc: usually same endpoint pattern
+                // /v1/chat/completions → /v1/embeddings
+                if (endpoint.Contains("/chat/completions"))
+                {
+                    return endpoint.Replace("/chat/completions", "/embeddings");
+                }
+
+                // Default: try /v1/embeddings
+                if (endpoint.Contains("/v1/"))
+                {
+                    var v1Index = endpoint.IndexOf("/v1/");
+                    var baseUrlFromEndpoint = endpoint.Substring(0, v1Index + 4);
+                    return $"{baseUrlFromEndpoint}embeddings";
+                }
+
+                // Fallback: append /api/embeddings to base URL
+                return $"{baseUrl}/api/embeddings";
+            }
+            catch
             {
-                return endpoint.Replace("/chat/completions", "/embeddings");
-            }
+                // If URL parsing fails, try simple string replacement
+                if (endpoint.Contains("/chat/completions"))
+                {
+                    return endpoint.Replace("/chat/completions", "/embeddings");
+                }
 
-            // Default: try /v1/embeddings
-            if (endpoint.Contains("/v1/"))
-            {
-                var baseUrl = endpoint.Substring(0, endpoint.IndexOf("/v1/") + 4);
-                return baseUrl + "embeddings";
+                // Last resort: append /api/embeddings
+                if (!endpoint.EndsWith("/"))
+                {
+                    return endpoint + "/api/embeddings";
+                }
+                return endpoint + "api/embeddings";
             }
-
-            // Fallback: use main endpoint
-            return endpoint;
         }
 
         /// <summary>
