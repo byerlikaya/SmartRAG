@@ -4,7 +4,10 @@ using SmartRAG.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Text.Json;
+using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Providers
@@ -73,8 +76,284 @@ namespace SmartRAG.Providers
             }
         }
 
+        /// <summary>
+        /// Override GenerateEmbeddingsBatchAsync with OPTIMIZED approach:
+        /// - Single HttpClient reuse (reduces connection overhead)
+        /// - keep_alive parameter (keeps model loaded in memory)
+        /// - Small concurrency (2) for stability
+        /// </summary>
+        public override async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config)
+        {
+            var textList = texts.ToList();
+            if (textList.Count == 0)
+                return new List<List<float>>();
+
+            var results = new List<List<float>>(new List<float>[textList.Count]);
+            var startTime = DateTime.UtcNow;
+            
+            var (isValid, errorMessage) = ValidateConfig(config, requireApiKey: false, requireEndpoint: true, requireModel: false);
+            if (!isValid)
+            {
+                ProviderLogMessages.LogCustomEmbeddingValidationError(Logger, errorMessage, null);
+                return textList.Select(_ => new List<float>()).ToList();
+            }
+
+            if (string.IsNullOrEmpty(config.EmbeddingModel))
+            {
+                ProviderLogMessages.LogCustomEmbeddingModelMissing(Logger, null);
+                return textList.Select(_ => new List<float>()).ToList();
+            }
+
+            var embeddingEndpoint = GetEmbeddingEndpoint(config);
+            
+            // REUSE single HttpClient for entire batch with LONG timeout
+            var handler = CreateHttpClientHandler();
+            using (var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(10) })
+            {
+                if (!string.IsNullOrEmpty(config.ApiKey))
+                {
+                    client.DefaultRequestHeaders.Add("Authorization", $"Bearer {config.ApiKey}");
+                }
+                
+                // Use Ollama's NATIVE BATCH API - send large batches (200 chunks at a time for maximum speed)
+                // 200 is optimal for speed: with aggressive sanitization, problematic texts are cleaned
+                // Failed batches are automatically retried individually to avoid data loss
+                const int BatchSize = 200;
+                const int MaxConcurrentBatches = 3; // Process 3 batches in parallel for 2-3x speedup
+                
+                Logger.LogInformation("Processing {Count} embeddings in BATCHES of {BatchSize} using Ollama native batch API (parallel: {Concurrency})", 
+                    textList.Count, BatchSize, MaxConcurrentBatches);
+                
+                // Sanitize all texts first - AGGRESSIVE sanitization
+                var sanitizedTexts = textList.Select(t => 
+                {
+                    if (string.IsNullOrEmpty(t))
+                        return "";
+                    
+                    // Remove null bytes
+                    var cleaned = t.Replace("\0", "").Trim();
+                    
+                    // Replace multiple dots/periods with single dot (common in PDFs)
+                    cleaned = Regex.Replace(cleaned, @"\.{3,}", "...");
+                    
+                    // Replace multiple spaces/tabs/newlines with single space
+                    cleaned = Regex.Replace(cleaned, @"\s+", " ");
+                    
+                    // Remove any remaining control characters except newline and tab
+                    cleaned = new string(cleaned.Where(c => !char.IsControl(c) || c == '\n' || c == '\t').ToArray());
+                    
+                    // Limit text length to prevent Ollama crashes (max 8000 characters)
+                    if (cleaned.Length > 8000)
+                    {
+                        Logger.LogWarning("Text truncated from {OriginalLength} to 8000 characters to prevent Ollama crash", cleaned.Length);
+                        cleaned = cleaned.Substring(0, 8000);
+                    }
+                    
+                    return cleaned;
+                }).ToList();
+                
+                // Prepare batch tasks for parallel processing
+                var batchTasks = new List<Task>();
+                var semaphore = new SemaphoreSlim(MaxConcurrentBatches, MaxConcurrentBatches);
+                var lockObject = new object();
+                
+                // Process batches in parallel (controlled by semaphore)
+                for (int batchStart = 0; batchStart < textList.Count; batchStart += BatchSize)
+                {
+                    var currentBatchStart = batchStart; // Capture for closure
+                    var batchEnd = Math.Min(batchStart + BatchSize, textList.Count);
+                    var batch = sanitizedTexts.Skip(batchStart).Take(BatchSize).ToList();
+                    var batchIndices = Enumerable.Range(batchStart, batch.Count).ToList();
+                    var batchNum = (batchStart / BatchSize) + 1;
+                    
+                    // Create parallel task for this batch
+                    var batchTask = Task.Run(async () =>
+                    {
+                        await semaphore.WaitAsync();
+                        try
+                        {
+                            await ProcessBatchAsync(client, embeddingEndpoint, config, batch, batchIndices, batchNum, 
+                                batchStart, batchEnd, textList.Count, results, lockObject);
+                        }
+                        finally
+                        {
+                            semaphore.Release();
+                        }
+                    });
+                    
+                    batchTasks.Add(batchTask);
+                }
+                
+                // Wait for all batches to complete
+                await Task.WhenAll(batchTasks);
+            }
+
+            var successCount = results.Count(r => r != null && r.Count > 0);
+            var totalTime = DateTime.UtcNow - startTime;
+            Logger.LogInformation("Batch embedding completed: {Success}/{Total} successful ({SuccessRate:F1}%) | Total time: {TotalTime:F1}s", 
+                successCount, textList.Count, (successCount * 100.0) / textList.Count, totalTime.TotalSeconds);
+
+            return results;
+        }
+
+        private async Task ProcessBatchAsync(HttpClient client, string embeddingEndpoint, AIProviderConfig config,
+            List<string> batch, List<int> batchIndices, int batchNum, int batchStart, int batchEnd, int totalCount,
+            List<List<float>> results, object lockObject)
+        {
+            var batchStartTime = DateTime.UtcNow;
+            bool shouldLogBatch = batchNum <= 5 || batchNum % 10 == 0;
+            
+            try
+            {
+                if (shouldLogBatch)
+                {
+                    Logger.LogInformation("Sending BATCH {BatchNum} ({Start}-{End}/{Total}) - {Count} texts", 
+                        batchNum, batchStart + 1, batchEnd, totalCount, batch.Count);
+                }
+                
+                var payload = new Dictionary<string, object>
+                {
+                    ["model"] = config.EmbeddingModel,
+                    ["input"] = batch,  // ARRAY of strings - Ollama native batch!
+                    ["keep_alive"] = "10m"  // Keep model loaded in memory longer for faster processing!
+                };
+                
+                // Use Task with timeout wrapper (15 seconds per batch - should be enough for 200 texts)
+                var requestTask = MakeHttpRequestAsync(client, embeddingEndpoint, payload, maxRetries: 2);
+                var timeoutTask = Task.Delay(TimeSpan.FromSeconds(15));
+                var completedTask = await Task.WhenAny(requestTask, timeoutTask);
+                
+                var batchDuration = (DateTime.UtcNow - batchStartTime).TotalSeconds;
+                
+                if (completedTask == timeoutTask)
+                {
+                    Logger.LogWarning("BATCH {BatchNum} TIMEOUT after {Duration:F2}s - Retrying each text individually", batchNum, batchDuration);
+                    await ProcessIndividualTextsOnFailure(client, embeddingEndpoint, config, batch, batchIndices, results, batchNum);
+                }
+                else
+                {
+                    var (success, response, error) = await requestTask;
+                    batchDuration = (DateTime.UtcNow - batchStartTime).TotalSeconds;
+                    
+                    if (success && !string.IsNullOrEmpty(response))
+                    {
+                        try
+                        {
+                            var batchEmbeddings = ParseOllamaBatchEmbeddingResponse(response);
+                            
+                            if (batchEmbeddings.Count == batch.Count)
+                            {
+                                lock (lockObject)
+                                {
+                                    for (int i = 0; i < batch.Count; i++)
+                                    {
+                                        results[batchIndices[i]] = batchEmbeddings[i];
+                                    }
+                                }
+                                
+                                if (shouldLogBatch)
+                                {
+                                    Logger.LogInformation("BATCH {BatchNum} completed in {Duration:F2}s ({Count} embeddings)", 
+                                        batchNum, batchDuration, batch.Count);
+                                }
+                            }
+                            else
+                            {
+                                Logger.LogWarning("BATCH {BatchNum} returned {Returned} embeddings but expected {Expected} - Retrying individually", 
+                                    batchNum, batchEmbeddings.Count, batch.Count);
+                                await ProcessIndividualTextsOnFailure(client, embeddingEndpoint, config, batch, batchIndices, results, batchNum);
+                            }
+                        }
+                        catch (Exception parseEx)
+                        {
+                            Logger.LogError(parseEx, "Failed to parse batch response for batch {BatchNum} - Retrying individually", batchNum);
+                            await ProcessIndividualTextsOnFailure(client, embeddingEndpoint, config, batch, batchIndices, results, batchNum);
+                        }
+                    }
+                    else
+                    {
+                        Logger.LogWarning("BATCH {BatchNum} failed: {Error} - Retrying each text individually", batchNum, error ?? "Unknown error");
+                        await ProcessIndividualTextsOnFailure(client, embeddingEndpoint, config, batch, batchIndices, results, batchNum);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "An unexpected error occurred during BATCH {BatchNum} processing", batchNum);
+                await ProcessIndividualTextsOnFailure(client, embeddingEndpoint, config, batch, batchIndices, results, batchNum);
+            }
+        }
+
+        private async Task ProcessIndividualTextsOnFailure(HttpClient client, string embeddingEndpoint, AIProviderConfig config,
+            List<string> batch, List<int> batchIndices, List<List<float>> results, int batchNum)
+        {
+            for (int i = 0; i < batch.Count; i++)
+            {
+                try
+                {
+                    var text = batch[i];
+                    var textLength = text?.Length ?? 0;
+                    var textPreview = textLength > 100 ? text.Substring(0, 100) + "..." : text;
+                    
+                    var singlePayload = new Dictionary<string, object>
+                    {
+                        ["model"] = config.EmbeddingModel,
+                        ["input"] = text,
+                        ["keep_alive"] = "10m"
+                    };
+                    
+                    var (singleSuccess, singleResponse, singleError) = await MakeHttpRequestAsync(client, embeddingEndpoint, singlePayload, maxRetries: 3);
+                    
+                    if (singleSuccess && !string.IsNullOrEmpty(singleResponse))
+                    {
+                        try
+                        {
+                            var singleEmbeddings = ParseOllamaBatchEmbeddingResponse(singleResponse);
+                            if (singleEmbeddings.Count > 0)
+                            {
+                                results[batchIndices[i]] = singleEmbeddings[0];
+                            }
+                            else
+                            {
+                                results[batchIndices[i]] = new List<float>();
+                            }
+                        }
+                        catch
+                        {
+                            results[batchIndices[i]] = new List<float>();
+                        }
+                    }
+                    else
+                    {
+                        Logger.LogWarning("Individual retry for text {Index} in BATCH {BatchNum} failed after 4 attempts. Text length: {Length}, Preview: {Preview}, Error: {Error}", 
+                            batchIndices[i] + 1, batchNum, textLength, textPreview, singleError ?? "Unknown");
+                        results[batchIndices[i]] = new List<float>();
+                    }
+                    
+                    // Delay between individual retries to give Ollama time to recover
+                    if (i < batch.Count - 1)
+                    {
+                        await Task.Delay(TimeSpan.FromMilliseconds(1000));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.LogError(ex, "An unexpected error occurred during individual retry for text {Index} in BATCH {BatchNum}", 
+                        batchIndices[i] + 1, batchNum);
+                    results[batchIndices[i]] = new List<float>();
+                }
+            }
+        }
+
+        // Override to sanitize text and use custom endpoint for Ollama
         public override async Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config)
         {
+            // Sanitize input text to remove null bytes that might break Ollama
+            if (!string.IsNullOrEmpty(text))
+            {
+                text = text.Replace("\0", "").Trim();
+            }
+
             var (isValid, errorMessage) = ValidateConfig(config, requireApiKey: false, requireEndpoint: true, requireModel: false);
 
             if (!isValid)
@@ -89,27 +368,17 @@ namespace SmartRAG.Providers
                 return new List<float>();
             }
 
+            var embeddingEndpoint = GetEmbeddingEndpoint(config);
+            
             using (var client = CreateHttpClient(config.ApiKey))
             {
-                // Determine embedding endpoint
-                var embeddingEndpoint = GetEmbeddingEndpoint(config);
+                string paramName = embeddingEndpoint.Contains("/api/embeddings") ? "prompt" : "input";
 
-                Logger.LogDebug("Ollama embedding request: Endpoint={Endpoint}, Model={Model}, TextLength={Length}",
-                    embeddingEndpoint, config.EmbeddingModel, text?.Length ?? 0);
-
-                // Ollama-style payload - try both "prompt" and "input" for compatibility
-                // Some Ollama versions use "prompt", others use "input"
                 var payload = new Dictionary<string, object>
                 {
-                    ["model"] = config.EmbeddingModel
+                    ["model"] = config.EmbeddingModel,
+                    [paramName] = text ?? ""
                 };
-                
-                // Try "input" first (OpenAI-compatible), fallback to "prompt" (Ollama-native)
-                // Ollama's official API uses "input" for embeddings
-                if (text != null)
-                {
-                    payload["input"] = text;
-                }
 
                 Logger.LogDebug("Ollama embedding payload: {Payload}",
                     JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = false }));
@@ -186,6 +455,9 @@ namespace SmartRAG.Providers
         #region Private Methods
 
         /// <summary>
+        /// Creates HttpClient with configurable timeout for localhost Ollama
+        /// </summary>
+        /// <summary>
         /// Determine if endpoint uses messages format
         /// </summary>
         private static bool IsMessagesFormat(string endpoint)
@@ -213,11 +485,11 @@ namespace SmartRAG.Providers
                 var uri = new Uri(endpoint);
                 var baseUrl = $"{uri.Scheme}://{uri.Authority}";
 
-                // Ollama pattern: http://localhost:11434/v1/chat/completions → http://localhost:11434/api/embeddings
+                // Ollama pattern: http://localhost:11434/v1/chat/completions → http://localhost:11434/v1/embeddings
                 if (uri.Host == "localhost" || uri.Host == "127.0.0.1" || uri.Host == "::1")
                 {
-                    // Ollama uses /api/embeddings endpoint
-                    return $"{baseUrl}/api/embeddings";
+                    // Use OpenAI-compatible endpoint for better stability with "input" parameter
+                    return $"{baseUrl}/v1/embeddings";
                 }
 
                 // OpenRouter, Groq, etc: usually same endpoint pattern
@@ -337,6 +609,37 @@ namespace SmartRAG.Providers
         /// <summary>
         /// Parse custom AI embedding response with flexible format support
         /// </summary>
+        private static List<List<float>> ParseOllamaBatchEmbeddingResponse(string response)
+        {
+            try
+            {
+                using var document = JsonDocument.Parse(response);
+                var root = document.RootElement;
+
+                // Ollama native /api/embed response: { "embeddings": [[...], [...]] }
+                if (root.TryGetProperty("embeddings", out var embeddingsArray))
+                {
+                    var result = new List<List<float>>();
+                    foreach (var embedding in embeddingsArray.EnumerateArray())
+                    {
+                        var vector = new List<float>();
+                        foreach (var value in embedding.EnumerateArray())
+                        {
+                            vector.Add((float)value.GetDouble());
+                        }
+                        result.Add(vector);
+                    }
+                    return result;
+                }
+
+                return new List<List<float>>();
+            }
+            catch
+            {
+                return new List<List<float>>();
+            }
+        }
+
         private static List<float> ParseCustomEmbeddingResponse(string response)
         {
             var responseData = JsonSerializer.Deserialize<JsonElement>(response);

@@ -97,26 +97,108 @@ namespace SmartRAG.Providers
         #region Virtual Methods
 
         /// <summary>
-        /// Default batch embedding implementation that falls back to individual calls
-        /// Providers can override this for better performance if they support batch operations
+        /// Default batch embedding implementation with parallel processing
+        /// Providers can override this for better performance if they support true batch operations
         /// </summary>
         public virtual async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config)
         {
-            var results = new List<List<float>>();
+            var textList = texts.ToList();
+            var results = new List<List<float>>(new List<float>[textList.Count]);
+            
+            if (textList.Count == 0)
+                return results;
 
-            foreach (var text in texts)
+            // Progress logging for large batches
+            var processedCount = 0;
+            var lockObject = new object();
+            var lastProgressLog = 0;
+            
+            // Dynamic progress interval based on batch size for better feedback
+            // Small batches: every 10, Medium: every 50, Large: every 100
+            int ProgressLogInterval;
+            if (textList.Count < 100)
+                ProgressLogInterval = 10;
+            else if (textList.Count < 1000)
+                ProgressLogInterval = 50;
+            else
+                ProgressLogInterval = 100;
+            
+            var startTime = System.DateTime.UtcNow;
+            
+            // Always log start for better visibility
+            Logger.LogInformation("Starting batch embedding generation: {Total} texts (progress every {Interval})", 
+                textList.Count, ProgressLogInterval);
+            
+            using (var semaphore = new System.Threading.SemaphoreSlim(3)) // Restored concurrency to 3 for performance with stable endpoint
             {
-                try
+                var tasks = textList.Select(async (text, index) =>
                 {
-                    var embedding = await GenerateEmbeddingAsync(text, config);
-                    results.Add(embedding);
-                }
-                catch
-                {
-                    // Add empty embedding on error to maintain index consistency
-                    results.Add(new List<float>());
-                }
+                    await semaphore.WaitAsync();
+                    try
+                    {
+                        var embedding = await GenerateEmbeddingAsync(text, config);
+                        results[index] = embedding;
+                        
+                        // Thread-safe progress tracking
+                        lock (lockObject)
+                        {
+                            processedCount++;
+                            var currentProgress = processedCount;
+
+                            // Log progress at intervals or at specific milestones - VERY frequent for better visibility
+                            bool shouldLog = currentProgress - lastProgressLog >= ProgressLogInterval || 
+                                            currentProgress == 1 || 
+                                            currentProgress == 2 ||
+                                            currentProgress == 3 ||
+                                            currentProgress == 5 || 
+                                            (currentProgress <= 50 && currentProgress % 5 == 0) ||
+                                            (currentProgress <= 100 && currentProgress % 10 == 0) ||
+                                            currentProgress == textList.Count;
+
+                            if (shouldLog)
+                            {
+                                var elapsed = System.DateTime.UtcNow - startTime;
+                                var percentage = (currentProgress * 100.0) / textList.Count;
+                                var avgTimePerEmbedding = elapsed.TotalSeconds / currentProgress;
+                                var remaining = textList.Count - currentProgress;
+                                var estimatedTimeRemaining = TimeSpan.FromSeconds(avgTimePerEmbedding * remaining);
+                                
+                                Logger.LogInformation("Embedding progress: {Processed}/{Total} ({Percentage:F1}%) | Elapsed: {Elapsed:F1}s | ETA: {ETA:F0}s", 
+                                    currentProgress, textList.Count, percentage, elapsed.TotalSeconds, estimatedTimeRemaining.TotalSeconds);
+                                lastProgressLog = currentProgress;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Add empty embedding on error to maintain index consistency
+                        results[index] = new List<float>();
+                        
+                        // Log errors occasionally (every 10th error)
+                        lock (lockObject)
+                        {
+                            processedCount++;
+                            if (processedCount % 10 == 0)
+                            {
+                                Logger.LogWarning("Embedding generation errors: {ErrorCount} errors encountered so far", 
+                                    results.Count(r => r != null && r.Count == 0));
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
+                });
+
+                await Task.WhenAll(tasks);
             }
+
+            // Log completion
+            var successCount = results.Count(r => r != null && r.Count > 0);
+            var totalTime = System.DateTime.UtcNow - startTime;
+            Logger.LogInformation("Batch embedding generation completed: {Success}/{Total} successful ({SuccessRate:F1}%) | Total time: {TotalTime:F1}s", 
+                successCount, textList.Count, (successCount * 100.0) / textList.Count, totalTime.TotalSeconds);
 
             return results;
         }
@@ -186,7 +268,11 @@ namespace SmartRAG.Providers
         protected static HttpClient CreateHttpClient(string apiKey = null, Dictionary<string, string> additionalHeaders = null)
         {
             var handler = CreateHttpClientHandler();
-            var client = new HttpClient(handler);
+            var client = new HttpClient(handler)
+            {
+                // Timeout for embedding operations (60s safety limit)
+                Timeout = TimeSpan.FromSeconds(60)
+            };
 
             if (!string.IsNullOrEmpty(apiKey))
             {
@@ -237,14 +323,21 @@ namespace SmartRAG.Providers
                     if (success)
                         return (true, response, string.Empty);
 
-                    // Handle rate limiting and server overload
-                    if (error.Contains("429") || error.Contains("TooManyRequests") ||
-                        error.Contains("529") || error.Contains("Overloaded"))
+                    // Handle rate limiting, server overload, EOF errors, and Ollama crashes
+                    bool shouldRetry = error.Contains("429") || error.Contains("TooManyRequests") ||
+                        error.Contains("529") || error.Contains("Overloaded") ||
+                        error.Contains("EOF") ||  // Retry EOF errors (Ollama runner crashes)
+                        error.Contains("llama runner process no longer running") ||  // Ollama crash
+                        error.Contains("InternalServerError");  // General server errors
+                        
+                    if (shouldRetry)
                     {
                         attempt++;
                         if (attempt < maxRetries)
                         {
-                            var delayMs = CalculateRetryDelay(attempt);
+                            // For EOF errors (Ollama crashes), use longer delay (1 second) to give Ollama time to recover
+                            // For other errors, use exponential backoff
+                            int delayMs = error.Contains("EOF") ? 1000 : CalculateRetryDelay(attempt);
                             await Task.Delay(delayMs);
                             continue;
                         }
@@ -275,7 +368,7 @@ namespace SmartRAG.Providers
         /// <summary>
         /// Creates HttpClientHandler with SSL/TLS configuration
         /// </summary>
-        private static HttpClientHandler CreateHttpClientHandler()
+        protected static HttpClientHandler CreateHttpClientHandler()
         {
             var handler = new HttpClientHandler();
 

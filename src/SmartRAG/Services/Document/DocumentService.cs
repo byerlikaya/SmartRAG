@@ -96,9 +96,11 @@ namespace SmartRAG.Services.Document
 
             ServiceLogMessages.LogBatchEmbeddingAttempt(_logger, allChunkContents.Count, null);
 
+            var successCount = 0;
+
             try
             {
-                // Delegate embedding generation to AI Service (which will use the appropriate provider)
+                // Generate embeddings using AI Service (BaseAIProvider handles concurrency)
                 var allEmbeddings = await _aiService.GenerateEmbeddingsBatchAsync(allChunkContents);
 
                 if (allEmbeddings != null && allEmbeddings.Count == document.Chunks.Count)
@@ -112,19 +114,19 @@ namespace SmartRAG.Services.Document
                         if (allEmbeddings[i] != null && allEmbeddings[i].Count > 0)
                         {
                             chunk.Embedding = allEmbeddings[i];
-                            ServiceLogMessages.LogChunkEmbeddingSuccess(_logger, i, allEmbeddings[i].Count, null);
+                            successCount++;
                         }
                         else
                         {
-                            chunk.Embedding = new List<float>(); // Create empty list
-                            ServiceLogMessages.LogChunkEmbeddingFailed(_logger, i, null);
+                            chunk.Embedding = new List<float>();
+                            ServiceLogMessages.LogChunkEmbeddingFailed(_logger, i + 1, null);
                         }
 
                         if (chunk.CreatedAt == default)
                             chunk.CreatedAt = DateTime.UtcNow;
                     }
 
-                    ServiceLogMessages.LogBatchEmbeddingSuccess(_logger, allChunkContents.Count, null);
+                    ServiceLogMessages.LogBatchEmbeddingSuccess(_logger, successCount, null);
                 }
                 else
                 {
@@ -290,31 +292,41 @@ namespace SmartRAG.Services.Document
                     {
                         ServiceLogMessages.LogBatchFailed(_logger, batchIndex + 1, null);
 
-                        // Process chunks individually if batch fails
-                        foreach (var chunk in currentBatch)
+                        // Process chunks sequentially (max 1 concurrent) if batch fails to ensure stability
+                        using (var semaphore = new System.Threading.SemaphoreSlim(1)) // Max 1 concurrent
                         {
-                            try
+                            var tasks = currentBatch.Select(async chunk =>
                             {
-                                var newEmbedding = await _aiService.GenerateEmbeddingsAsync(chunk.Content);
-
-                                if (newEmbedding != null && newEmbedding.Count > 0)
+                                await semaphore.WaitAsync();
+                                try
                                 {
-                                    chunk.Embedding = newEmbedding;
-                                    successCount++;
-                                    ServiceLogMessages.LogChunkIndividualEmbeddingSuccessFinal(_logger, chunk.Id, newEmbedding.Count, null);
-                                }
-                                else
-                                {
-                                    ServiceLogMessages.LogChunkEmbeddingGenerationFailed(_logger, chunk.Id, null);
-                                }
+                                    var newEmbedding = await _aiService.GenerateEmbeddingsAsync(chunk.Content);
 
-                                processedChunks++;
-                            }
-                            catch (Exception ex)
-                            {
-                                ServiceLogMessages.LogChunkEmbeddingRegenerationFailed(_logger, chunk.Id, ex);
-                                processedChunks++;
-                            }
+                                    if (newEmbedding != null && newEmbedding.Count > 0)
+                                    {
+                                        chunk.Embedding = newEmbedding;
+                                        System.Threading.Interlocked.Increment(ref successCount);
+                                        ServiceLogMessages.LogChunkIndividualEmbeddingSuccessFinal(_logger, chunk.Id, newEmbedding.Count, null);
+                                    }
+                                    else
+                                    {
+                                        ServiceLogMessages.LogChunkEmbeddingGenerationFailed(_logger, chunk.Id, null);
+                                    }
+
+                                    System.Threading.Interlocked.Increment(ref processedChunks);
+                                }
+                                catch (Exception ex)
+                                {
+                                    ServiceLogMessages.LogChunkEmbeddingRegenerationFailed(_logger, chunk.Id, ex);
+                                    System.Threading.Interlocked.Increment(ref processedChunks);
+                                }
+                                finally
+                                {
+                                    semaphore.Release();
+                                }
+                            });
+
+                            await Task.WhenAll(tasks);
                         }
                     }
 
