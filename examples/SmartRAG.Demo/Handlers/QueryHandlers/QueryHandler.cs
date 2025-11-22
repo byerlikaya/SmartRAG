@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SmartRAG.Demo.Models;
 using SmartRAG.Demo.Services.Console;
 using SmartRAG.Demo.Services.TestQuery;
@@ -381,17 +382,19 @@ public class QueryHandler(
         var hasAudioFlag = input.Contains("-a ", StringComparison.OrdinalIgnoreCase) || input.EndsWith("-a", StringComparison.OrdinalIgnoreCase);
         var hasImageFlag = input.Contains("-i ", StringComparison.OrdinalIgnoreCase) || input.EndsWith("-i", StringComparison.OrdinalIgnoreCase);
 
-        // If no flags, return null to use default configuration but still set language
+        // Get global configuration
+        var smartRagOptions = _serviceProvider.GetRequiredService<IOptions<SmartRagOptions>>().Value;
+
+        // If no flags, use global configuration but override language
         if (!hasDocumentFlag && !hasDatabaseFlag && !hasAudioFlag && !hasImageFlag)
         {
-            return new SearchOptions
-            {
-                PreferredLanguage = language
-            };
+            var options = SearchOptions.FromConfig(smartRagOptions);
+            options.PreferredLanguage = language;
+            return options;
         }
 
         // If flags are present, enable only the requested features
-        var options = new SearchOptions
+        SearchOptions searchOptions = new SearchOptions
         {
             EnableDocumentSearch = hasDocumentFlag,
             EnableDatabaseSearch = hasDatabaseFlag,
@@ -410,7 +413,7 @@ public class QueryHandler(
             
         cleanQuery = string.Join(" ", cleanParts);
         
-        return options;
+        return searchOptions;
     }
 
     #endregion
