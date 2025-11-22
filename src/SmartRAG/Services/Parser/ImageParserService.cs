@@ -3,7 +3,9 @@ using SmartRAG.Interfaces.Parser;
 using SmartRAG.Models;
 using SmartRAG.Services.Shared;
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using Tesseract;
 using SkiaSharp;
@@ -60,6 +62,40 @@ namespace SmartRAG.Services.Parser
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _ocrEngineDataPath = FindOcrEngineDataPath(_logger);
+            
+            // Set DYLD_LIBRARY_PATH on macOS to help Tesseract.NET find native libraries
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            {
+                var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
+                var currentPath = Environment.GetEnvironmentVariable("DYLD_LIBRARY_PATH") ?? string.Empty;
+                
+                // Try multiple possible native library paths
+                var possibleNativePaths = new[]
+                {
+                    Path.Combine(baseDirectory, "runtimes", "osx-arm64", "native"),
+                    Path.Combine(baseDirectory, "runtimes", "osx-x64", "native"),
+                    Path.Combine(baseDirectory, "runtimes", "osx", "native"),
+                    baseDirectory
+                };
+                
+                var validPaths = new List<string> { baseDirectory };
+                foreach (var path in possibleNativePaths)
+                {
+                    if (Directory.Exists(path))
+                    {
+                        validPaths.Add(path);
+                    }
+                }
+                
+                var newPath = string.Join(":", validPaths);
+                if (!string.IsNullOrEmpty(currentPath))
+                {
+                    newPath = $"{newPath}:{currentPath}";
+                }
+                
+                Environment.SetEnvironmentVariable("DYLD_LIBRARY_PATH", newPath);
+                _logger.LogDebug("Set DYLD_LIBRARY_PATH to: {Path}", newPath);
+            }
         }
 
         #endregion
