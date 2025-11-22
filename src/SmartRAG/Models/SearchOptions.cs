@@ -1,3 +1,5 @@
+#nullable enable
+
 namespace SmartRAG.Models
 {
     /// <summary>
@@ -24,6 +26,12 @@ namespace SmartRAG.Models
         /// Enable searching in images (OCR)
         /// </summary>
         public bool EnableImageSearch { get; set; } = true;
+
+        /// <summary>
+        /// Preferred language for AI responses (e.g., "tr" for Turkish, "en" for English, "de" for German)
+        /// If not specified, AI will attempt to detect language from the query
+        /// </summary>
+        public string? PreferredLanguage { get; set; }
 
         /// <summary>
         /// Creates default search options with all features enabled

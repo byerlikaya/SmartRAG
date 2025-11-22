@@ -28,7 +28,7 @@ namespace SmartRAG.Services.AI
         /// <summary>
         /// Builds a prompt for document-based RAG answer generation
         /// </summary>
-        public string BuildDocumentRagPrompt(string query, string context, string? conversationHistory = null)
+        public string BuildDocumentRagPrompt(string query, string context, string? conversationHistory = null, string? preferredLanguage = null)
         {
             var historyContext = !string.IsNullOrEmpty(conversationHistory)
                 ? $"\n\nRecent conversation context:\n{_conversationManager.TruncateConversationHistory(conversationHistory, maxTurns: 2)}\n"
@@ -64,11 +64,16 @@ SPECIAL INSTRUCTIONS FOR COUNTING/LISTING QUESTIONS (applies to all languages):
 - Be thorough - scan the ENTIRE context for related information"
                 : "";
 
+            // Get language-specific instruction
+            var languageInstruction = !string.IsNullOrEmpty(preferredLanguage)
+                ? GetLanguageInstructionForCode(preferredLanguage)
+                : "respond in the SAME language as the query";
+
             return $@"You are a helpful document analysis assistant. Answer questions based ONLY on the provided document context.
 
 CRITICAL RULES: 
 - Base your answer ONLY on the document context provided below
-- The query and context may be in ANY language (English, Turkish, German, etc.) - respond in the SAME language as the query
+- The query and context may be in ANY language (English, Turkish, German, etc.) - {languageInstruction}
 - Do NOT use information from previous conversations unless it's in the current document context
 - SEARCH THOROUGHLY through the entire context before concluding information is missing
 - Look for information in ALL forms: paragraphs, lists, tables, numbered items, bullet points, headings
@@ -91,7 +96,7 @@ Answer:";
         /// <summary>
         /// Builds a prompt for merging hybrid results (database + documents)
         /// </summary>
-        public string BuildHybridMergePrompt(string query, string? databaseContext, string? documentContext, string? conversationHistory = null)
+        public string BuildHybridMergePrompt(string query, string? databaseContext, string? documentContext, string? conversationHistory = null, string? preferredLanguage = null)
         {
             var combinedContext = new System.Collections.Generic.List<string>();
             
@@ -109,10 +114,16 @@ Answer:";
                 ? $"\n\nRecent context:\n{_conversationManager.TruncateConversationHistory(conversationHistory, maxTurns: 2)}\n"
                 : "";
 
+            // Get language-specific instruction
+            var languageInstruction = !string.IsNullOrEmpty(preferredLanguage)
+                ? GetLanguageInstructionForCode(preferredLanguage)
+                : "respond in the same language as the query";
+
             return $@"Answer the user's question using the provided information.
 
 CRITICAL RULES:
 - Provide DIRECT, CONCISE answer to the question
+- {languageInstruction}
 - Use information from the sources below (database OR documents)
 - Do NOT explain where information came from
 - Do NOT mention missing information or unavailable data
@@ -131,14 +142,20 @@ Direct Answer:";
         /// <summary>
         /// Builds a prompt for general conversation
         /// </summary>
-        public string BuildConversationPrompt(string query, string? conversationHistory = null)
+        public string BuildConversationPrompt(string query, string? conversationHistory = null, string? preferredLanguage = null)
         {
             var historyContext = !string.IsNullOrEmpty(conversationHistory)
                 ? $"\n\nRecent conversation context:\n{_conversationManager.TruncateConversationHistory(conversationHistory, maxTurns: 3)}\n"
                 : "";
 
+            // Get language-specific instruction
+            var languageInstruction = !string.IsNullOrEmpty(preferredLanguage)
+                ? GetLanguageInstructionForCode(preferredLanguage)
+                : "respond naturally in the same language as the user's question";
+
             return $@"You are a helpful AI assistant. Answer the user's question naturally and friendly.
 Keep responses concise and relevant to the current question.
+{languageInstruction}
 
 {historyContext}Current question: {query}
 
@@ -146,6 +163,32 @@ Answer:";
         }
 
         #region Private Helper Methods
+
+        /// <summary>
+        /// Gets language-specific instruction for AI prompt
+        /// </summary>
+        /// <param name="languageCode">ISO 639-1 language code (e.g., "tr", "en", "de")</param>
+        /// <returns>Explicit language instruction for AI</returns>
+        private static string GetLanguageInstructionForCode(string languageCode)
+        {
+            return languageCode.ToLowerInvariant() switch
+            {
+                "tr" => "you MUST respond in Turkish (Türkçe). Cevabınızı mutlaka Türkçe olarak yazınız",
+                "en" => "you MUST respond in English",
+                "de" => "you MUST respond in German (Deutsch). Bitte antworten Sie auf Deutsch",
+                "es" => "you MUST respond in Spanish (Español). Debe responder en español",
+                "fr" => "you MUST respond in French (Français). Vous devez répondre en français",
+                "it" => "you MUST respond in Italian (Italiano). Devi rispondere in italiano",
+                "pt" => "you MUST respond in Portuguese (Português). Você deve responder em português",
+                "nl" => "you MUST respond in Dutch (Nederlands). U moet in het Nederlands antwoorden",
+                "ru" => "you MUST respond in Russian (Русский). Вы должны ответить на русском языке",
+                "ja" => "you MUST respond in Japanese (日本語). 日本語で回答してください",
+                "zh" => "you MUST respond in Chinese (中文). 您必须用中文回答",
+                "ko" => "you MUST respond in Korean (한국어). 한국어로 응답해야 합니다",
+                "ar" => "you MUST respond in Arabic (العربية). يجب أن ترد بالعربية",
+                _ => $"you MUST respond in the language with ISO code: {languageCode}"
+            };
+        }
 
         /// <summary>
         /// Detects numeric ranges or lists in query (language-agnostic)

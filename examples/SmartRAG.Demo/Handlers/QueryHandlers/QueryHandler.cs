@@ -337,8 +337,8 @@ public class QueryHandler(
             {
                 var query = IsCommand(trimmedInput) ? trimmedInput : userInput;
                 
-                // Parse search options from query flags (e.g., -d, -db, -v)
-                var searchOptions = ParseSearchOptions(query, out var cleanQuery);
+                // Parse search options from query flags (e.g., -d, -db, -v) and set preferred language
+                var searchOptions = ParseSearchOptions(query, language, out var cleanQuery);
                 
                 // If flags were present, use the cleaned query
                 if (searchOptions != null)
@@ -371,7 +371,7 @@ public class QueryHandler(
         }
     }
 
-    private SearchOptions? ParseSearchOptions(string input, out string cleanQuery)
+    private SearchOptions? ParseSearchOptions(string input, string language, out string cleanQuery)
     {
         cleanQuery = input;
         
@@ -381,10 +381,13 @@ public class QueryHandler(
         var hasAudioFlag = input.Contains("-a ", StringComparison.OrdinalIgnoreCase) || input.EndsWith("-a", StringComparison.OrdinalIgnoreCase);
         var hasImageFlag = input.Contains("-i ", StringComparison.OrdinalIgnoreCase) || input.EndsWith("-i", StringComparison.OrdinalIgnoreCase);
 
-        // If no flags, return null to use default configuration
+        // If no flags, return null to use default configuration but still set language
         if (!hasDocumentFlag && !hasDatabaseFlag && !hasAudioFlag && !hasImageFlag)
         {
-            return null;
+            return new SearchOptions
+            {
+                PreferredLanguage = language
+            };
         }
 
         // If flags are present, enable only the requested features
@@ -393,7 +396,8 @@ public class QueryHandler(
             EnableDocumentSearch = hasDocumentFlag,
             EnableDatabaseSearch = hasDatabaseFlag,
             EnableAudioSearch = hasAudioFlag,
-            EnableImageSearch = hasImageFlag
+            EnableImageSearch = hasImageFlag,
+            PreferredLanguage = language  // CRITICAL: Pass user's selected language to AI
         };
 
         // Remove flags from query

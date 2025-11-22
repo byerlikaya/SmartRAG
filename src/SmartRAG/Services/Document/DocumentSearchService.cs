@@ -164,6 +164,9 @@ namespace SmartRAG.Services.Document
             // Use provided options or fall back to global config
             var searchOptions = options ?? SearchOptions.FromConfig(_options);
 
+            // Extract preferred language from options for consistent AI responses
+            var preferredLanguage = searchOptions.PreferredLanguage;
+
             var originalQuery = query;
             var hasCommand = _queryIntentClassifier.TryParseCommand(query, out var commandType, out var commandPayload);
 
@@ -194,7 +197,7 @@ namespace SmartRAG.Services.Document
                 var conversationQuery = string.IsNullOrWhiteSpace(query)
                     ? originalQuery
                     : query;
-                var conversationAnswer = await HandleGeneralConversationAsync(conversationQuery, conversationHistory);
+                var conversationAnswer = await HandleGeneralConversationAsync(conversationQuery, conversationHistory, preferredLanguage);
 
                 await _conversationManager.AddToConversationAsync(sessionId, conversationQuery, conversationAnswer);
 
@@ -226,19 +229,19 @@ namespace SmartRAG.Services.Document
                     var strategy = DetermineQueryStrategy(confidence, hasDatabaseQueries, canAnswerFromDocuments);
 
                     // Execute strategy using switch-case (Open/Closed Principle)
-                    // Pass pre-analyzed queryIntent (may be null) to avoid redundant AI calls
+                    // Pass pre-analyzed queryIntent (may be null) and preferredLanguage to avoid redundant AI calls
                     response = strategy switch
                     {
-                        QueryStrategy.DatabaseOnly => await ExecuteDatabaseOnlyStrategyAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, queryIntent),
-                        QueryStrategy.DocumentOnly => await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments),
-                        QueryStrategy.Hybrid => await ExecuteHybridStrategyAsync(query, maxResults, conversationHistory, hasDatabaseQueries, canAnswerFromDocuments, queryIntent),
-                        _ => await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments) // Fallback
+                        QueryStrategy.DatabaseOnly => await ExecuteDatabaseOnlyStrategyAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, queryIntent, preferredLanguage),
+                        QueryStrategy.DocumentOnly => await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage),
+                        QueryStrategy.Hybrid => await ExecuteHybridStrategyAsync(query, maxResults, conversationHistory, hasDatabaseQueries, canAnswerFromDocuments, queryIntent, preferredLanguage),
+                        _ => await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage) // Fallback
                     };
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error during query intent analysis, falling back to document-only query");
-                    response = await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments);
+                    response = await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage);
                 }
             }
             else
@@ -247,13 +250,13 @@ namespace SmartRAG.Services.Document
                 if (searchOptions.EnableDocumentSearch)
                 {
                     _logger.LogInformation("Database search disabled or coordinator not available. Using document-only query.");
-                    response = await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments);
+                    response = await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage);
                 }
                 else
                 {
                     // Both disabled? Fallback to chat
                      _logger.LogInformation("Both database and document search disabled. Falling back to general conversation.");
-                    var chatResponse = await HandleGeneralConversationAsync(query, conversationHistory);
+                    var chatResponse = await HandleGeneralConversationAsync(query, conversationHistory, preferredLanguage);
                     response = CreateRagResponse(query, chatResponse, new List<SearchSource>());
                 }
             }
@@ -294,18 +297,19 @@ namespace SmartRAG.Services.Document
         /// </summary>
         /// <param name="query">User query</param>
         /// <param name="conversationHistory">Conversation history</param>
+        /// <param name="preferredLanguage">Optional preferred language code for AI response</param>
         /// <returns>Fallback RAG response</returns>
-        private async Task<RagResponse> CreateFallbackResponseAsync(string query, string conversationHistory)
+        private async Task<RagResponse> CreateFallbackResponseAsync(string query, string conversationHistory, string? preferredLanguage = null)
         {
             ServiceLogMessages.LogGeneralConversationQuery(_logger, null);
-            var chatResponse = await HandleGeneralConversationAsync(query, conversationHistory);
+            var chatResponse = await HandleGeneralConversationAsync(query, conversationHistory, preferredLanguage);
             return CreateRagResponse(query, chatResponse, new List<SearchSource>());
         }
 
         /// <summary>
         /// [AI Query] [DB Query] Executes a database-only query strategy
         /// </summary>
-        private async Task<RagResponse> ExecuteDatabaseOnlyStrategyAsync(string query, int maxResults, string conversationHistory, bool canAnswerFromDocuments, QueryIntent? queryIntent)
+        private async Task<RagResponse> ExecuteDatabaseOnlyStrategyAsync(string query, int maxResults, string conversationHistory, bool canAnswerFromDocuments, QueryIntent? queryIntent, string? preferredLanguage = null)
         {
             _logger.LogInformation("Executing database-only query strategy");
             
@@ -314,7 +318,7 @@ namespace SmartRAG.Services.Document
                 if (queryIntent == null)
             {
                 // No intent analysis, fallback to document query
-                return await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments);
+                return await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage);
             }
             var databaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(query, queryIntent, maxResults);
                 if (HasMeaningfulData(databaseResponse))
@@ -323,12 +327,12 @@ namespace SmartRAG.Services.Document
                 }
 
                 _logger.LogInformation("Database query returned no meaningful data, falling back to document search");
-                return await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments);
+                return await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Database query failed, falling back to document query");
-                return await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments);
+                return await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage);
             }
         }
 
@@ -337,7 +341,7 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// [AI Query] [DB Query] [Document Query] Executes a hybrid query strategy (both database and document queries)
         /// </summary>
-        private async Task<RagResponse> ExecuteHybridStrategyAsync(string query, int maxResults, string conversationHistory, bool hasDatabaseQueries, bool canAnswerFromDocuments, QueryIntent? queryIntent)
+        private async Task<RagResponse> ExecuteHybridStrategyAsync(string query, int maxResults, string conversationHistory, bool hasDatabaseQueries, bool canAnswerFromDocuments, QueryIntent? queryIntent, string? preferredLanguage = null)
         {
             _logger.LogInformation("Executing hybrid query strategy (database + documents)");
             
@@ -377,14 +381,14 @@ namespace SmartRAG.Services.Document
             // Execute document query
             if (canAnswerFromDocuments)
             {
-                documentResponse = await GenerateBasicRagAnswerAsync(query, maxResults, conversationHistory);
+                documentResponse = await GenerateBasicRagAnswerAsync(query, maxResults, conversationHistory, preferredLanguage);
                 _logger.LogInformation("Document query completed successfully");
             }
 
             // Merge results if both queries executed
             if (databaseResponse != null && documentResponse != null)
             {
-                return await MergeHybridResultsAsync(query, databaseResponse, documentResponse, conversationHistory);
+                return await MergeHybridResultsAsync(query, databaseResponse, documentResponse, conversationHistory, preferredLanguage);
             }
 
             // Return available response or fallback
@@ -394,7 +398,7 @@ namespace SmartRAG.Services.Document
             if (documentResponse != null)
                 return documentResponse;
 
-            return await CreateFallbackResponseAsync(query, conversationHistory);
+            return await CreateFallbackResponseAsync(query, conversationHistory, preferredLanguage);
         }
 
         private static bool HasMeaningfulData(RagResponse? response)
@@ -448,8 +452,9 @@ namespace SmartRAG.Services.Document
         /// <param name="databaseResponse">Database query response</param>
         /// <param name="documentResponse">Document query response</param>
         /// <param name="conversationHistory">Conversation history</param>
+        /// <param name="preferredLanguage">Optional preferred language code for AI response</param>
         /// <returns>Merged RAG response</returns>
-        private async Task<RagResponse> MergeHybridResultsAsync(string query, RagResponse databaseResponse, RagResponse documentResponse, string conversationHistory)
+        private async Task<RagResponse> MergeHybridResultsAsync(string query, RagResponse databaseResponse, RagResponse documentResponse, string conversationHistory, string? preferredLanguage = null)
         {
             // Combine sources
             var combinedSources = new List<SearchSource>();
@@ -470,7 +475,7 @@ namespace SmartRAG.Services.Document
             if (!string.IsNullOrEmpty(documentContext))
                 combinedContext.Add(documentContext);
 
-            var mergePrompt = _promptBuilder.BuildHybridMergePrompt(query, databaseContext, documentContext, conversationHistory);
+            var mergePrompt = _promptBuilder.BuildHybridMergePrompt(query, databaseContext, documentContext, conversationHistory, preferredLanguage);
             var mergedAnswer = await _aiService.GenerateResponseAsync(mergePrompt, combinedContext);
 
             _logger.LogInformation("Hybrid search completed. Combined {DatabaseSources} database sources and {DocumentSources} document sources",
@@ -483,16 +488,16 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// [Document Query] Common method for executing document-based queries (used by both document-only and fallback strategies)
         /// </summary>
-        private async Task<RagResponse> ExecuteDocumentQueryAsync(string query, int maxResults, string conversationHistory, bool? canAnswerFromDocuments = null)
+        private async Task<RagResponse> ExecuteDocumentQueryAsync(string query, int maxResults, string conversationHistory, bool? canAnswerFromDocuments = null, string? preferredLanguage = null)
         {
             var canAnswer = canAnswerFromDocuments ?? await CanAnswerFromDocumentsAsync(query);
 
             if (canAnswer)
             {
-                return await GenerateBasicRagAnswerAsync(query, maxResults, conversationHistory);
+                return await GenerateBasicRagAnswerAsync(query, maxResults, conversationHistory, preferredLanguage);
             }
 
-            return await CreateFallbackResponseAsync(query, conversationHistory);
+            return await CreateFallbackResponseAsync(query, conversationHistory, preferredLanguage);
         }
 
         /// <summary>
@@ -844,7 +849,7 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// [AI Query] Generate RAG answer with automatic session management
         /// </summary>
-        private async Task<RagResponse> GenerateBasicRagAnswerAsync(string query, int maxResults, string conversationHistory)
+        private async Task<RagResponse> GenerateBasicRagAnswerAsync(string query, int maxResults, string conversationHistory, string? preferredLanguage = null)
         {
             // For questions asking "how many", "which", "where" etc., search for more chunks initially
             // These questions often need information from multiple chunks (e.g., numbered lists)
@@ -1510,7 +1515,7 @@ namespace SmartRAG.Services.Document
             // Build context with size limit to prevent timeout
             var context = BuildLimitedContext(chunks);
 
-            var prompt = _promptBuilder.BuildDocumentRagPrompt(query, context, conversationHistory);
+            var prompt = _promptBuilder.BuildDocumentRagPrompt(query, context, conversationHistory, preferredLanguage);
             var answer = await _aiService.GenerateResponseAsync(prompt, new List<string> { context });
 
             return CreateRagResponse(query, answer, await _sourceBuilder.BuildSourcesAsync(chunks, _documentRepository));
@@ -1784,7 +1789,7 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// [AI Query] Handle general conversation queries with conversation history
         /// </summary>
-        private async Task<string> HandleGeneralConversationAsync(string query, string? conversationHistory = null)
+        private async Task<string> HandleGeneralConversationAsync(string query, string? conversationHistory = null, string? preferredLanguage = null)
         {
             try
             {
@@ -1797,7 +1802,7 @@ namespace SmartRAG.Services.Document
 
                 var aiProvider = _aiProviderFactory.CreateProvider(_options.AIProvider);
 
-                var prompt = _promptBuilder.BuildConversationPrompt(query, conversationHistory);
+                var prompt = _promptBuilder.BuildConversationPrompt(query, conversationHistory, preferredLanguage);
 
                 return await aiProvider.GenerateTextAsync(prompt, providerConfig);
             }
