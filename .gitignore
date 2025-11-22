@@ -229,6 +229,7 @@ appsettings.Test.json
 # JSON files (but allow appsettings.json)
 *.json
 !appsettings.json
+!**/Properties/launchSettings.json
 
 # User secrets
 secrets.json
