@@ -127,8 +127,7 @@ namespace SmartRAG.Extensions
                 });
             }
 
-            if (options.Features.EnableDatabaseSearch)
-            {
+                // Database services - Always register to allow runtime enabling via flags
                 services.AddScoped<IFileParser, DatabaseFileParser>();
                 services.AddScoped<IDatabaseParserService, DatabaseParserService>();
                 
@@ -148,7 +147,6 @@ namespace SmartRAG.Extensions
                 services.AddScoped<IDatabaseQueryExecutor, DatabaseQueryExecutor>();
                 services.AddScoped<IResultMerger, ResultMerger>();
                 services.AddScoped<IMultiDatabaseQueryCoordinator, MultiDatabaseQueryCoordinator>();
-            }
 
             services.AddScoped<IDocumentParserService, DocumentParserService>();
             services.AddScoped<IDocumentSearchService, DocumentSearchService>();

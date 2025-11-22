@@ -129,14 +129,15 @@ namespace SmartRAG.Services.Document
         /// </summary>
         /// <param name="query">Search query string</param>
         /// <param name="maxResults">Maximum number of results to return</param>
+        /// <param name="options">Optional search options to override global configuration</param>
         /// <returns>List of relevant document chunks</returns>
-        public async Task<List<DocumentChunk>> SearchDocumentsAsync(string query, int maxResults = 5)
+        public async Task<List<DocumentChunk>> SearchDocumentsAsync(string query, int maxResults = 5, SearchOptions? options = null)
         {
             if (string.IsNullOrWhiteSpace(query))
                 throw new ArgumentException("Query cannot be empty", nameof(query));
 
             // Use our integrated search algorithm with diversity selection
-            var searchResults = await PerformBasicSearchAsync(query, maxResults * InitialSearchMultiplier);
+            var searchResults = await PerformBasicSearchAsync(query, maxResults * InitialSearchMultiplier, options);
 
             if (searchResults.Count > 0)
             {
@@ -232,16 +233,16 @@ namespace SmartRAG.Services.Document
                     // Pass pre-analyzed queryIntent (may be null) and preferredLanguage to avoid redundant AI calls
                     response = strategy switch
                     {
-                        QueryStrategy.DatabaseOnly => await ExecuteDatabaseOnlyStrategyAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, queryIntent, preferredLanguage),
-                        QueryStrategy.DocumentOnly => await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage),
-                        QueryStrategy.Hybrid => await ExecuteHybridStrategyAsync(query, maxResults, conversationHistory, hasDatabaseQueries, canAnswerFromDocuments, queryIntent, preferredLanguage),
-                        _ => await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage) // Fallback
+                        QueryStrategy.DatabaseOnly => await ExecuteDatabaseOnlyStrategyAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, queryIntent, preferredLanguage, searchOptions),
+                        QueryStrategy.DocumentOnly => await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage, searchOptions),
+                        QueryStrategy.Hybrid => await ExecuteHybridStrategyAsync(query, maxResults, conversationHistory, hasDatabaseQueries, canAnswerFromDocuments, queryIntent, preferredLanguage, searchOptions),
+                        _ => await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage, searchOptions) // Fallback
                     };
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error during query intent analysis, falling back to document-only query");
-                    response = await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage);
+                    response = await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage, searchOptions);
                 }
             }
             else
@@ -250,7 +251,7 @@ namespace SmartRAG.Services.Document
                 if (searchOptions.EnableDocumentSearch)
                 {
                     _logger.LogInformation("Database search disabled or coordinator not available. Using document-only query.");
-                    response = await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage);
+                    response = await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage, searchOptions);
                 }
                 else
                 {
@@ -309,7 +310,7 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// [AI Query] [DB Query] Executes a database-only query strategy
         /// </summary>
-        private async Task<RagResponse> ExecuteDatabaseOnlyStrategyAsync(string query, int maxResults, string conversationHistory, bool canAnswerFromDocuments, QueryIntent? queryIntent, string? preferredLanguage = null)
+        private async Task<RagResponse> ExecuteDatabaseOnlyStrategyAsync(string query, int maxResults, string conversationHistory, bool canAnswerFromDocuments, QueryIntent? queryIntent, string? preferredLanguage = null, SearchOptions? options = null)
         {
             _logger.LogInformation("Executing database-only query strategy");
             
@@ -318,7 +319,7 @@ namespace SmartRAG.Services.Document
                 if (queryIntent == null)
             {
                 // No intent analysis, fallback to document query
-                return await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage);
+                return await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage, options);
             }
             var databaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(query, queryIntent, maxResults);
                 if (HasMeaningfulData(databaseResponse))
@@ -327,12 +328,12 @@ namespace SmartRAG.Services.Document
                 }
 
                 _logger.LogInformation("Database query returned no meaningful data, falling back to document search");
-                return await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage);
+                return await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage, options);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Database query failed, falling back to document query");
-                return await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage);
+                return await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage, options);
             }
         }
 
@@ -341,7 +342,7 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// [AI Query] [DB Query] [Document Query] Executes a hybrid query strategy (both database and document queries)
         /// </summary>
-        private async Task<RagResponse> ExecuteHybridStrategyAsync(string query, int maxResults, string conversationHistory, bool hasDatabaseQueries, bool canAnswerFromDocuments, QueryIntent? queryIntent, string? preferredLanguage = null)
+        private async Task<RagResponse> ExecuteHybridStrategyAsync(string query, int maxResults, string conversationHistory, bool hasDatabaseQueries, bool canAnswerFromDocuments, QueryIntent? queryIntent, string? preferredLanguage = null, SearchOptions? options = null)
         {
             _logger.LogInformation("Executing hybrid query strategy (database + documents)");
             
@@ -381,7 +382,7 @@ namespace SmartRAG.Services.Document
             // Execute document query
             if (canAnswerFromDocuments)
             {
-                documentResponse = await GenerateBasicRagAnswerAsync(query, maxResults, conversationHistory, preferredLanguage);
+                documentResponse = await GenerateBasicRagAnswerAsync(query, maxResults, conversationHistory, preferredLanguage, options);
                 _logger.LogInformation("Document query completed successfully");
             }
 
@@ -488,13 +489,13 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// [Document Query] Common method for executing document-based queries (used by both document-only and fallback strategies)
         /// </summary>
-        private async Task<RagResponse> ExecuteDocumentQueryAsync(string query, int maxResults, string conversationHistory, bool? canAnswerFromDocuments = null, string? preferredLanguage = null)
+        private async Task<RagResponse> ExecuteDocumentQueryAsync(string query, int maxResults, string conversationHistory, bool? canAnswerFromDocuments = null, string? preferredLanguage = null, SearchOptions? options = null)
         {
-            var canAnswer = canAnswerFromDocuments ?? await CanAnswerFromDocumentsAsync(query);
+            var canAnswer = canAnswerFromDocuments ?? await CanAnswerFromDocumentsAsync(query, options);
 
             if (canAnswer)
             {
-                return await GenerateBasicRagAnswerAsync(query, maxResults, conversationHistory, preferredLanguage);
+                return await GenerateBasicRagAnswerAsync(query, maxResults, conversationHistory, preferredLanguage, options);
             }
 
             return await CreateFallbackResponseAsync(query, conversationHistory, preferredLanguage);
@@ -503,9 +504,9 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// [Document Query] Enhanced search with intelligent filtering and name detection
         /// </summary>
-        private async Task<List<DocumentChunk>> PerformBasicSearchAsync(string query, int maxResults)
+        private async Task<List<DocumentChunk>> PerformBasicSearchAsync(string query, int maxResults, SearchOptions? options = null)
         {
-            var allDocuments = await _documentRepository.GetAllAsync();
+            var allDocuments = await GetAllDocumentsFilteredAsync(options);
             var allChunks = allDocuments.SelectMany(d => d.Chunks).ToList();
 
             // Try embedding-based search first if available
@@ -849,12 +850,12 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// [AI Query] Generate RAG answer with automatic session management
         /// </summary>
-        private async Task<RagResponse> GenerateBasicRagAnswerAsync(string query, int maxResults, string conversationHistory, string? preferredLanguage = null)
+        private async Task<RagResponse> GenerateBasicRagAnswerAsync(string query, int maxResults, string conversationHistory, string? preferredLanguage = null, SearchOptions? options = null)
         {
             // For questions asking "how many", "which", "where" etc., search for more chunks initially
             // These questions often need information from multiple chunks (e.g., numbered lists)
             var searchMaxResults = DetermineInitialSearchCount(query, maxResults);
-            var chunks = await SearchDocumentsAsync(query, searchMaxResults);
+            var chunks = await SearchDocumentsAsync(query, searchMaxResults, options);
             
             // If initial search found few chunks OR if this is a counting/listing question, try more aggressive search
             // This is especially important for "how many" type questions that need list enumeration
@@ -862,7 +863,7 @@ namespace SmartRAG.Services.Document
             if (needsAggressiveSearch)
             {
                 // Try with even more chunks using direct repository search
-                var allDocuments = await _documentRepository.GetAllAsync();
+                var allDocuments = await GetAllDocumentsFilteredAsync(options);
                 var allChunks = allDocuments.SelectMany(d => d.Chunks).ToList();
                 
                 // Use keyword-based fallback search with more aggressive matching
@@ -1555,13 +1556,13 @@ namespace SmartRAG.Services.Document
         /// No word patterns, no language detection, no grammar analysis, no greeting detection
         /// Pure content-based decision making
         /// </summary>
-        private async Task<bool> CanAnswerFromDocumentsAsync(string query)
+        private async Task<bool> CanAnswerFromDocumentsAsync(string query, SearchOptions? options = null)
         {
             try
             {
                 // Step 1: Search documents for any content related to the query
                 // This works regardless of the language of the query
-                var searchResults = await PerformBasicSearchAsync(query, FallbackSearchMaxResults);
+                var searchResults = await PerformBasicSearchAsync(query, FallbackSearchMaxResults, options);
 
                 if (searchResults.Count == MinSearchResultsCount)
                 {
@@ -1854,6 +1855,42 @@ namespace SmartRAG.Services.Document
             }
             
             return false; // No whole word match found
+        }
+        /// <summary>
+        /// Retrieves all documents filtered by the enabled search options (text, audio, image)
+        /// </summary>
+        private async Task<List<Entities.Document>> GetAllDocumentsFilteredAsync(SearchOptions? options)
+        {
+            var allDocuments = await _documentRepository.GetAllAsync();
+            
+            if (options == null)
+            {
+                return allDocuments;
+            }
+
+            return allDocuments.Where(d =>
+                (options.EnableDocumentSearch && IsTextDocument(d)) ||
+                (options.EnableAudioSearch && IsAudioDocument(d)) ||
+                (options.EnableImageSearch && IsImageDocument(d))
+            ).ToList();
+        }
+
+        private static bool IsAudioDocument(Entities.Document doc)
+        {
+            return !string.IsNullOrEmpty(doc.ContentType) && 
+                   doc.ContentType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsImageDocument(Entities.Document doc)
+        {
+            return !string.IsNullOrEmpty(doc.ContentType) && 
+                   doc.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool IsTextDocument(Entities.Document doc)
+        {
+            // If it's not audio and not image, treat as text document
+            return !IsAudioDocument(doc) && !IsImageDocument(doc);
         }
     }
 }
