@@ -79,7 +79,7 @@ public class QueryHandler(
             System.Console.ResetColor();
 
             var languageInstructedQuery = $"{query}\n\n[IMPORTANT: Respond in {language} language]";
-            var response = await _multiDbCoordinator.QueryMultipleDatabasesAsync(languageInstructedQuery, maxResults: 10);
+            var response = await _multiDbCoordinator!.QueryMultipleDatabasesAsync(languageInstructedQuery, maxResults: 10);
 
             System.Console.WriteLine();
             _console.WriteSuccess("ANSWER:");
@@ -131,7 +131,7 @@ public class QueryHandler(
             // Use IQueryIntentAnalyzer instead of deprecated method
             var queryIntentAnalyzer = _serviceProvider.GetRequiredService<IQueryIntentAnalyzer>();
             var intent = await queryIntentAnalyzer.AnalyzeQueryIntentAsync(languageInstructedQuery);
-            intent = await _multiDbCoordinator.GenerateDatabaseQueriesAsync(intent);
+            intent = await _multiDbCoordinator!.GenerateDatabaseQueriesAsync(intent);
 
             System.Console.WriteLine();
             System.Console.ForegroundColor = ConsoleColor.Yellow;
@@ -237,7 +237,7 @@ public class QueryHandler(
             try
             {
                 var languageInstructedQuery = $"{testQuery.Query}\n\n[IMPORTANT: Respond in {language} language]";
-                var response = await _multiDbCoordinator.QueryMultipleDatabasesAsync(languageInstructedQuery, maxResults: 5);
+                var response = await _multiDbCoordinator!.QueryMultipleDatabasesAsync(languageInstructedQuery, maxResults: 5);
 
                 if (IsErrorResponse(response.Answer))
                 {
