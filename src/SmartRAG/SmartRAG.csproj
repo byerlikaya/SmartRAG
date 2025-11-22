@@ -127,10 +127,7 @@ This release introduces unified query intelligence and focuses on code quality i
   </ItemGroup>
 
   <!-- Native Libraries for Tesseract OCR - Included in NuGet package and copied to output -->
-  <!-- macOS libraries will be auto-downloaded during build if Homebrew is available -->
-  <Target Name="DownloadMacOSNativeLibs" BeforeTargets="BeforeBuild" Condition="'$(OS)' == 'Unix' And '$(RuntimeIdentifier)' == ''">
-    <Exec Command="bash runtimes/download-macos-native.sh" ContinueOnError="true" />
-  </Target>
+  <!-- Native libraries are already included in runtimes/ folder, no download needed -->
   
   <ItemGroup>
     <!-- Windows x64 - For NuGet package -->

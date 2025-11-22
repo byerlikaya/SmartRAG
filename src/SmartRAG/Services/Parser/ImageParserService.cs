@@ -4,8 +4,11 @@ using SmartRAG.Models;
 using SmartRAG.Services.Shared;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using Tesseract;
 using SkiaSharp;
@@ -45,6 +48,34 @@ namespace SmartRAG.Services.Parser
 
         // Character whitelist for OCR
         private const string OcrCharacterWhitelist = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,!?;:()[]{}\"'-/\\@#$%&*+=<>|~`";
+        
+        // Universal OCR correction patterns (works for all languages)
+        private const string CurrencyMisreadPatternMain = @"(\d+)\s*%(?=\s*(?:\p{Lu}|\d|$))";
+        private const string CurrencyMisreadPatternCompact = @"(\d+)%(?=\p{Lu}|\s+\p{Lu}|$)";
+        
+        // ISO 639-2 (3-letter) to ISO 639-1 (2-letter) language code mapping
+        private static readonly Dictionary<string, string> LanguageCodeMapping = new Dictionary<string, string>
+        {
+            { "tur", "tr" }, { "eng", "en" }, { "deu", "de" }, { "fra", "fr" },
+            { "spa", "es" }, { "ita", "it" }, { "rus", "ru" }, { "jpn", "ja" },
+            { "kor", "ko" }, { "zho", "zh" }, { "ara", "ar" }, { "hin", "hi" },
+            { "por", "pt" }, { "nld", "nl" }, { "pol", "pl" }, { "swe", "sv" },
+            { "nor", "no" }, { "dan", "da" }, { "fin", "fi" }, { "ell", "el" },
+            { "heb", "he" }, { "tha", "th" }, { "vie", "vi" }, { "ind", "id" },
+            { "ces", "cs" }, { "hun", "hu" }, { "ron", "ro" }, { "ukr", "uk" }
+        };
+        
+        // Reverse mapping: ISO 639-1 (2-letter) to ISO 639-2 (3-letter) for Tesseract
+        private static readonly Dictionary<string, string> ReverseLanguageCodeMapping = new Dictionary<string, string>
+        {
+            { "tr", "tur" }, { "en", "eng" }, { "de", "deu" }, { "fr", "fra" },
+            { "es", "spa" }, { "it", "ita" }, { "ru", "rus" }, { "ja", "jpn" },
+            { "ko", "kor" }, { "zh", "zho" }, { "ar", "ara" }, { "hi", "hin" },
+            { "pt", "por" }, { "nl", "nld" }, { "pl", "pol" }, { "sv", "swe" },
+            { "no", "nor" }, { "da", "dan" }, { "fi", "fin" }, { "el", "ell" },
+            { "he", "heb" }, { "th", "tha" }, { "vi", "vie" }, { "id", "ind" },
+            { "cs", "ces" }, { "hu", "hun" }, { "ro", "ron" }, { "uk", "ukr" }
+        };
 
         #endregion
 
@@ -105,7 +136,7 @@ namespace SmartRAG.Services.Parser
         /// <summary>
         /// [AI Query] Parses an image stream and extracts text using OCR
         /// </summary>
-        public async Task<string> ExtractTextFromImageAsync(Stream imageStream, string language = DefaultLanguage)
+        public async Task<string> ExtractTextFromImageAsync(Stream imageStream, string language = null)
         {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(ImageParserService));
@@ -115,6 +146,9 @@ namespace SmartRAG.Services.Parser
 
             if (!imageStream.CanRead)
                 throw new ArgumentException("Stream cannot be read", nameof(imageStream));
+
+            // Auto-detect language from system locale if not provided
+            language ??= GetDefaultLanguageFromSystemLocale();
 
             var result = await ExtractTextWithConfidenceAsync(imageStream, language);
             return result.Text;
@@ -123,7 +157,7 @@ namespace SmartRAG.Services.Parser
         /// <summary>
         /// [AI Query] Extracts text from an image with confidence scores
         /// </summary>
-        public async Task<OcrResult> ExtractTextWithConfidenceAsync(Stream imageStream, string language = DefaultLanguage)
+        public async Task<OcrResult> ExtractTextWithConfidenceAsync(Stream imageStream, string language = null)
         {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(ImageParserService));
@@ -133,6 +167,9 @@ namespace SmartRAG.Services.Parser
 
             if (!imageStream.CanRead)
                 throw new ArgumentException("Stream cannot be read", nameof(imageStream));
+
+            // Auto-detect language from system locale if not provided
+            language ??= GetDefaultLanguageFromSystemLocale();
 
             var startTime = DateTime.UtcNow;
             
@@ -256,6 +293,58 @@ namespace SmartRAG.Services.Parser
         #region Private Methods
 
         /// <summary>
+        /// Gets the default OCR language from system locale
+        /// </summary>
+        /// <returns>ISO 639-2 (3-letter) language code for Tesseract</returns>
+        private string GetDefaultLanguageFromSystemLocale()
+        {
+            try
+            {
+                var currentCulture = CultureInfo.CurrentCulture;
+                var twoLetterCode = currentCulture.TwoLetterISOLanguageName; // "tr", "en", "de", etc.
+                
+                // Convert 2-letter code to 3-letter code for Tesseract
+                if (ReverseLanguageCodeMapping.TryGetValue(twoLetterCode, out var threeLetterCode))
+                {
+                    // Check if the language data file exists
+                    if (IsLanguageDataAvailable(threeLetterCode))
+                    {
+                        Console.WriteLine($"[OCR Language Detection] System locale: '{currentCulture.Name}' → Language: '{threeLetterCode}' ✓");
+                        return threeLetterCode;
+                    }
+                    else
+                    {
+                        Console.WriteLine($"[OCR Language Detection] System locale: '{currentCulture.Name}' → Language: '{threeLetterCode}' (not available, falling back to 'eng')");
+                        return DefaultLanguage;
+                    }
+                }
+                
+                // Fallback to English if mapping not found
+                Console.WriteLine($"[OCR Language Detection] System locale: '{currentCulture.Name}' → No mapping found, defaulting to 'eng'");
+                return DefaultLanguage;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[OCR Language Detection] Failed to detect system locale: {ex.Message}, defaulting to 'eng'");
+                return DefaultLanguage;
+            }
+        }
+
+        /// <summary>
+        /// Checks if Tesseract language data file exists for the specified language
+        /// </summary>
+        /// <param name="languageCode">ISO 639-2 (3-letter) language code</param>
+        /// <returns>True if language data file exists</returns>
+        private bool IsLanguageDataAvailable(string languageCode)
+        {
+            if (string.IsNullOrEmpty(_ocrEngineDataPath))
+                return false;
+
+            var trainedDataFile = Path.Combine(_ocrEngineDataPath, $"{languageCode}.traineddata");
+            return File.Exists(trainedDataFile);
+        }
+
+        /// <summary>
         /// Performs OCR on the image stream
         /// </summary>
         private async Task<(string Text, float Confidence)> PerformOcrAsync(Stream imageStream, string language)
@@ -278,9 +367,12 @@ namespace SmartRAG.Services.Parser
                             var text = page.GetText();
                             var confidence = page.GetMeanConfidence();
                             
-                            ServiceLogMessages.LogImageOcrSuccess(_logger, text.Length, null);
+                            // Apply OCR post-processing corrections
+                            var correctedText = CorrectCommonOcrMistakes(text, language);
                             
-                            return (text?.Trim() ?? string.Empty, confidence);
+                            ServiceLogMessages.LogImageOcrSuccess(_logger, correctedText.Length, null);
+                            
+                            return (correctedText?.Trim() ?? string.Empty, confidence);
                         }
                     }
                 }
@@ -364,6 +456,140 @@ namespace SmartRAG.Services.Parser
                 return 0;
 
             return text.Split(new char[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length;
+        }
+
+        /// <summary>
+        /// Corrects common OCR mistakes in the extracted text using universal patterns
+        /// </summary>
+        /// <param name="text">OCR extracted text</param>
+        /// <param name="language">Language code for context (e.g., "tur", "en", "de")</param>
+        /// <returns>Corrected text</returns>
+        private static string CorrectCommonOcrMistakes(string text, string language)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return text;
+
+            // Get currency symbol from system locale (NOT from OCR language)
+            // This ensures Turkish system uses ₺ even if OCR is in English
+            var currencySymbol = GetCurrencySymbolFromSystemLocale();
+            
+            if (!string.IsNullOrEmpty(currencySymbol))
+            {
+                // Correct % → currency symbol misreads using context-aware patterns
+                text = CorrectCurrencySymbolMisreads(text, currencySymbol);
+            }
+            
+            return text;
+        }
+
+        /// <summary>
+        /// Gets the currency symbol from system locale (independent of OCR language)
+        /// </summary>
+        /// <returns>Currency symbol or null if not determinable</returns>
+        private static string GetCurrencySymbolFromSystemLocale()
+        {
+            try
+            {
+                var currentCulture = CultureInfo.CurrentCulture;
+                
+                // Create specific culture for RegionInfo
+                var specificCulture = CultureInfo.CreateSpecificCulture(currentCulture.Name);
+                var region = new RegionInfo(specificCulture.Name);
+                var symbol = region.CurrencySymbol;
+                
+                Console.WriteLine($"[OCR Currency Detection] System locale: '{currentCulture.Name}' → Symbol: '{symbol}'");
+                
+                return symbol;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[OCR Currency Detection] Failed to get currency from system locale: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Gets the currency symbol for a given language code using CultureInfo
+        /// </summary>
+        /// <param name="languageCode">ISO 639 language code (e.g., "tur", "en", "de")</param>
+        /// <returns>Currency symbol or null if not determinable</returns>
+        private static string GetCurrencySymbolForLanguage(string languageCode)
+        {
+            if (string.IsNullOrWhiteSpace(languageCode))
+                return null;
+
+            try
+            {                
+                // Determine the culture code to use
+                string cultureCode;
+                
+                if (languageCode.Length == 2)
+                {
+                    // Already 2-letter ISO 639-1 code
+                    cultureCode = languageCode;
+                }
+                else if (languageCode.Contains("-"))
+                {
+                    // Already a full culture code (e.g., "en-US")
+                    cultureCode = languageCode;
+                }
+                else if (LanguageCodeMapping.TryGetValue(languageCode.ToLowerInvariant(), out var twoLetterCode))
+                {
+                    // Map 3-letter ISO 639-2 to 2-letter ISO 639-1
+                    cultureCode = twoLetterCode;
+                }
+                else
+                {
+                    // Try using the code as-is
+                    cultureCode = languageCode;
+                }
+                
+                // Create CultureInfo - use CreateSpecificCulture to get a specific (non-neutral) culture
+                // This is required for RegionInfo which doesn't accept neutral cultures like "en" or "tr"
+                var culture = CultureInfo.CreateSpecificCulture(cultureCode);
+                var region = new RegionInfo(culture.Name);
+                var symbol = region.CurrencySymbol;
+                
+                Console.WriteLine($"[OCR Currency Detection] Language: '{languageCode}' → Culture: '{culture.Name}' → Symbol: '{symbol}'");
+                
+                return symbol;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[OCR Currency Detection] Failed for language '{languageCode}': {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Corrects OCR misreading of currency symbols as percentage signs
+        /// Uses context-aware patterns that work across all languages
+        /// </summary>
+        /// <param name="text">Text to correct</param>
+        /// <param name="currencySymbol">Currency symbol to use (e.g., ₺, $, €, £, ¥)</param>
+        /// <returns>Corrected text</returns>
+        private static string CorrectCurrencySymbolMisreads(string text, string currencySymbol)
+        {
+            // Pattern 1: digit + optional space + % followed by Unicode uppercase letter, digit, or end
+            // Matches price lists: "25% Simit" → "25₺ Simit", "550% 650%" → "550₺ 650₺"
+            // Avoids false positives: "50% indirim" (lowercase after %), "%18 KDV" (% before digit)
+            // \p{Lu} = Unicode uppercase letter (works for Ç, Ö, Ş, А, Я, カ, etc.)
+            text = Regex.Replace(
+                text,
+                CurrencyMisreadPatternMain,
+                $"$1{currencySymbol}",
+                RegexOptions.Multiline
+            );
+            
+            // Pattern 2: digit + % (no space) + uppercase or end
+            // Matches: "12Kisilik550%" → "12Kisilik550₺"
+            text = Regex.Replace(
+                text,
+                CurrencyMisreadPatternCompact,
+                $"$1{currencySymbol}"
+            );
+
+            return text;
         }
 
         // Table processing methods removed - not used in current implementation

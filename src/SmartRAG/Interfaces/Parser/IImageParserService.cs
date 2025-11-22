@@ -16,17 +16,17 @@ namespace SmartRAG.Interfaces.Parser
         /// Extracts text from an image using OCR
         /// </summary>
         /// <param name="imageStream">The image stream to process</param>
-        /// <param name="language">The language code for OCR (e.g., "eng", "tur")</param>
+        /// <param name="language">The language code for OCR (e.g., "eng", "tur"). If null, uses system locale automatically.</param>
         /// <returns>The extracted text from the image</returns>
-        Task<string> ExtractTextFromImageAsync(Stream imageStream, string language = "eng");
+        Task<string> ExtractTextFromImageAsync(Stream imageStream, string language = null);
 
         /// <summary>
         /// Extracts text from an image with confidence scores
         /// </summary>
         /// <param name="imageStream">The image stream to process</param>
-        /// <param name="language">The language code for OCR (e.g., "eng", "tur")</param>
+        /// <param name="language">The language code for OCR (e.g., "eng", "tur"). If null, uses system locale automatically.</param>
         /// <returns>OCR result with text and confidence scores</returns>
-        Task<OcrResult> ExtractTextWithConfidenceAsync(Stream imageStream, string language = "eng");
+        Task<OcrResult> ExtractTextWithConfidenceAsync(Stream imageStream, string language = null);
 
         /// <summary>
         /// Preprocesses an image for better OCR results
