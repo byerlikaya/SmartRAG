@@ -93,16 +93,12 @@ SmartRAG'deki tüm önemli değişiklikler burada belgelenmiştir. Proje [Anlams
 
 #### **Model Konsolidasyonu**
 
-##### DatabaseSchema Birleşimi
-- **Birleştirilmiş Modeller**: `DatabaseSchema` ve `DatabaseSchemaInfo` tek `DatabaseSchemaInfo`'da birleştirildi
-- **Faydalar**: DRY prensibi, daha basit API, azaltılmış tekrar
+#### **Yeni Özellikler: Özelleştirme Desteği**
 
-#### **Doğrulama İyileştirmeleri**
-
-##### DocumentValidator Çıkarımı
-- **`DocumentValidator`**: Repository'lerden doğrulama mantığı çıkarıldı
-- **Evrensel doğrulama**: Tüm repository uygulamalarında uygulandı
-- **Faydalar**: DRY prensibi, tutarlı doğrulama, daha iyi bakım yapılabilirlik
+- **Özel SQL Diyalekt Stratejileri**: Özel veritabanı diyalektleri (örn. Oracle) uygulama desteği
+- **Özel Skorlama Stratejileri**: Özel arama ilgililik mantığı uygulama desteği
+- **Özel Dosya Ayrıştırıcıları**: Özel dosya formatı ayrıştırıcıları uygulama desteği
+- **Özel Konuşma Yönetimi**: Konuşma geçmişini yönetmek için yeni servis
 
 ### 🔧 Kod Kalitesi
 
@@ -145,8 +141,11 @@ await _conversationManager.AddToConversationAsync(sessionId, userMessage, aiResp
 var history = await _conversationManager.GetConversationHistoryAsync(sessionId);
 ```
 
-**Özel SQL Diyalekt Stratejisi** (isteğe bağlı):
+#### Özelleştirme Örnekleri (İsteğe Bağlı)
+
+**Özel SQL Diyalekt Stratejisi**:
 ```csharp
+// Örnek: Oracle desteği ekleme
 public class OracleDialectStrategy : BaseSqlDialectStrategy
 {
     public override string GetDialectName() => "Oracle";
@@ -161,8 +160,9 @@ public class OracleDialectStrategy : BaseSqlDialectStrategy
 }
 ```
 
-**Özel Skorlama Stratejisi** (isteğe bağlı):
+**Özel Skorlama Stratejisi**:
 ```csharp
+// Örnek: Özel skorlama mantığı ekleme
 public class CustomScoringStrategy : IScoringStrategy
 {
     public double CalculateScore(DocumentChunk chunk, string query)

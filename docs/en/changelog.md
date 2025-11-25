@@ -93,16 +93,12 @@ All notable changes to SmartRAG are documented here. The project adheres to [Sem
 
 #### **Model Consolidation**
 
-##### DatabaseSchema Unification
-- **Merged Models**: `DatabaseSchema` and `DatabaseSchemaInfo` consolidated into single `DatabaseSchemaInfo`
-- **Benefits**: DRY principle, simpler API, reduced duplication
+#### **New Features: Customization Support**
 
-#### **Validation Improvements**
-
-##### DocumentValidator Extraction
-- **`DocumentValidator`**: Extracted validation logic from repositories
-- **Universal validation**: Applied across all repository implementations
-- **Benefits**: DRY principle, consistent validation, better maintainability
+- **Custom SQL Dialect Strategies**: Support for implementing custom database dialects (e.g., Oracle)
+- **Custom Scoring Strategies**: Support for implementing custom search relevance logic
+- **Custom File Parsers**: Support for implementing custom file format parsers
+- **Dedicated Conversation Management**: New service for managing conversation history
 
 ### 🔧 Code Quality
 
@@ -145,8 +141,11 @@ await _conversationManager.AddToConversationAsync(sessionId, userMessage, aiResp
 var history = await _conversationManager.GetConversationHistoryAsync(sessionId);
 ```
 
-**Custom SQL Dialect Strategy** (optional):
+#### Customization Examples (Optional)
+
+**Custom SQL Dialect Strategy**:
 ```csharp
+// Example: Implementing Oracle support
 public class OracleDialectStrategy : BaseSqlDialectStrategy
 {
     public override string GetDialectName() => "Oracle";
@@ -161,8 +160,9 @@ public class OracleDialectStrategy : BaseSqlDialectStrategy
 }
 ```
 
-**Custom Scoring Strategy** (optional):
+**Custom Scoring Strategy**:
 ```csharp
+// Example: Implementing custom scoring logic
 public class CustomScoringStrategy : IScoringStrategy
 {
     public double CalculateScore(DocumentChunk chunk, string query)

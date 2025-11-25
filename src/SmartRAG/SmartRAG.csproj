@@ -5,7 +5,7 @@
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
-    <PackageVersion>3.1.0</PackageVersion>
+    <PackageVersion>3.2.0</PackageVersion>
     <Authors>Barış Yerlikaya</Authors>
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
@@ -20,34 +20,26 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Release 3.1.0: Unified Query Intelligence (MINOR Release)
+    <PackageReleaseNotes>Release 3.2.0: Architectural Refactoring &amp; Modular Design (MINOR Release)
 
-UNIFIED QUERY INTELLIGENCE (NEW FEATURES):
-- QueryIntelligenceAsync now supports unified search across databases, documents, images (OCR), and audio (transcription) in a single query
-- Smart Hybrid Routing: AI-based intent detection with confidence scoring automatically determines optimal search strategy
-- New Service Architecture: QueryIntentAnalyzer, DatabaseQueryExecutor, ResultMerger, SQLQueryGenerator services for modular design
-- QueryStrategy Enum: New enum for query execution strategies (DatabaseOnly, DocumentOnly, Hybrid)
-- Parallel Query Execution: Multi-database queries execute in parallel for better performance
-- Intelligent Result Merging: AI-powered merging of results from multiple databases
-- Intelligent query routing with graceful degradation and fallback mechanisms
+ARCHITECTURAL REFACTORING:
+- Strategy Pattern Implementation: ISqlDialectStrategy, IScoringStrategy, IFileParser
+- Repository Layer Separation: IConversationRepository separated from IDocumentRepository
+- Service Layer Refactoring: AI, Database, Search, Parser, and Support services decomposed
+- Model Consolidation: DatabaseSchema and DatabaseSchemaInfo unified
 
-CODE QUALITY IMPROVEMENTS:
-- Achieved 0 errors, 0 warnings across all projects
-- Improved code standards compliance
+NEW FEATURES:
+- Custom SQL Dialect Strategies (Oracle, etc.)
+- Custom Scoring Strategies for search relevance
+- Custom File Parsers for new formats
+- Dedicated Conversation Management Service
 
-AI PROMPT OPTIMIZATION:
-- Reduced emoji usage in AI prompts from 235 to 5 (only critical emojis)
-- Improved token efficiency (~100 tokens saved per prompt)
-- Better AI comprehension through strategic emoji usage
+CODE QUALITY:
+- Maintained 0 errors, 0 warnings
+- Full SOLID compliance
+- Improved testability and extensibility
 
-BENEFITS:
-- Single query interface for all data sources (databases, documents, images, audio)
-- Intelligent routing automatically selects best search strategy
-- Cleaner codebase with zero warnings
-- More efficient AI prompt processing
-- Better maintainability and code quality
-
-This release introduces unified query intelligence and focuses on code quality improvements for better performance and maintainability.</PackageReleaseNotes>
+This release introduces significant architectural improvements while maintaining full backward compatibility.</PackageReleaseNotes>
     
     <!-- Build Configuration -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -58,8 +50,8 @@ This release introduces unified query intelligence and focuses on code quality i
     <AssemblyTitle>SmartRAG</AssemblyTitle>
     <AssemblyDescription>High-performance RAG library with conversation history management for .NET</AssemblyDescription>
     <AssemblyCopyright>Copyright © 2025 Barış Yerlikaya</AssemblyCopyright>
-    <AssemblyVersion>3.1.0.0</AssemblyVersion>
-    <FileVersion>3.1.0.0</FileVersion>
+    <AssemblyVersion>3.2.0.0</AssemblyVersion>
+    <FileVersion>3.2.0.0</FileVersion>
     <NeutralLanguage>en</NeutralLanguage>
     <Culture>en-US</Culture>
   </PropertyGroup>
