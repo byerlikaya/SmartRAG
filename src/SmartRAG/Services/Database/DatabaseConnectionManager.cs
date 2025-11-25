@@ -137,7 +137,6 @@ namespace SmartRAG.Services.Database
         }   
 
       
-
         #region Private Helper Methods
 
         private async Task<string> ExtractDatabaseNameAsync(DatabaseConnectionConfig config)

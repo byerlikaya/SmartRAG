@@ -153,9 +153,7 @@ namespace SmartRAG.Services.Database
                 return await GetPostgreSqlTableNamesAsync(connectionString);
             else
                 throw new NotSupportedException($"Database type {databaseType} is not supported");
-        }
-
-      
+        }     
 
     
         /// <summary>
@@ -305,7 +303,6 @@ namespace SmartRAG.Services.Database
                 return tables;
             }
         }
-
 
         private async Task<string> GetSQLiteTableSchemaInternalAsync(SqliteConnection connection, string tableName)
         {

@@ -89,29 +89,28 @@ namespace SmartRAG.Providers
                 return new List<float>();
             }
 
-            using (var client = CreateHttpClient(config.ApiKey))
+            using var client = CreateHttpClient(config.ApiKey);
+            
+            var payload = CreateOpenAIEmbeddingPayload(text, config.EmbeddingModel);
+
+            var embeddingEndpoint = BuildOpenAIUrl(config.Endpoint, EmbeddingsPath);
+
+            var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
+
+            if (!success)
             {
-                var payload = CreateOpenAIEmbeddingPayload(text, config.EmbeddingModel);
+                ProviderLogMessages.LogOpenAIEmbeddingRequestError(Logger, error, null);
+                return new List<float>();
+            }
 
-                var embeddingEndpoint = BuildOpenAIUrl(config.Endpoint, EmbeddingsPath);
-
-                var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
-
-                if (!success)
-                {
-                    ProviderLogMessages.LogOpenAIEmbeddingRequestError(Logger, error, null);
-                    return new List<float>();
-                }
-
-                try
-                {
-                    return ParseOpenAIEmbeddingResponse(response);
-                }
-                catch (Exception ex)
-                {
-                    ProviderLogMessages.LogOpenAIEmbeddingParsingError(Logger, ex);
-                    return new List<float>();
-                }
+            try
+            {
+                return ParseOpenAIEmbeddingResponse(response);
+            }
+            catch (Exception ex)
+            {
+                ProviderLogMessages.LogOpenAIEmbeddingParsingError(Logger, ex);
+                return new List<float>();
             }
         }
 

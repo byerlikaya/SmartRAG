@@ -45,12 +45,7 @@ namespace SmartRAG.Services.Document
 
         private const int VoyageAIMaxBatchSize = 128;
         private const int RateLimitDelayMs = 1000;
-
-        private const string NoFileStreamsMessage = "No file streams provided";
-        private const string NoFileNamesMessage = "No file names provided";
-        private const string NoContentTypesMessage = "No content types provided";
-        private const string MismatchedCountsMessage = "Number of file streams, names, and content types must match";
-
+     
         private const string UnsupportedFileTypeFormat = "Unsupported file type: {0}. Supported types: {1}";
         private const string UnsupportedContentTypeFormat = "Unsupported content type: {0}. Supported types: {1}";
 

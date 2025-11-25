@@ -1,6 +1,5 @@
 using SmartRAG.Enums;
 using SmartRAG.Models;
-using System.Collections.Generic;
 
 namespace SmartRAG.Interfaces.Database.Strategies
 {

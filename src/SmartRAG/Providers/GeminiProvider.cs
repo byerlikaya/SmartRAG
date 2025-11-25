@@ -89,29 +89,27 @@ namespace SmartRAG.Providers
                 return new List<float>();
             }
 
-            using (var client = CreateGeminiHttpClient(config.ApiKey))
+            using var client = CreateGeminiHttpClient(config.ApiKey);
+            var payload = CreateGeminiEmbeddingPayload(text, config.EmbeddingModel);
+
+            var embeddingEndpoint = BuildGeminiUrl(config.Endpoint, config.EmbeddingModel, "embedContent");
+
+            var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
+
+            if (!success)
             {
-                var payload = CreateGeminiEmbeddingPayload(text, config.EmbeddingModel);
+                ProviderLogMessages.LogGeminiEmbeddingRequestError(Logger, error, null);
+                return new List<float>();
+            }
 
-                var embeddingEndpoint = BuildGeminiUrl(config.Endpoint, config.EmbeddingModel, "embedContent");
-
-                var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
-
-                if (!success)
-                {
-                    ProviderLogMessages.LogGeminiEmbeddingRequestError(Logger, error, null);
-                    return new List<float>();
-                }
-
-                try
-                {
-                    return ParseGeminiEmbeddingResponse(response);
-                }
-                catch (Exception ex)
-                {
-                    ProviderLogMessages.LogGeminiEmbeddingParsingError(Logger, ex);
-                    return new List<float>();
-                }
+            try
+            {
+                return ParseGeminiEmbeddingResponse(response);
+            }
+            catch (Exception ex)
+            {
+                ProviderLogMessages.LogGeminiEmbeddingParsingError(Logger, ex);
+                return new List<float>();
             }
         }
 
@@ -255,23 +253,21 @@ namespace SmartRAG.Providers
         /// </summary>
         private static List<float> ParseGeminiEmbeddingResponse(string response)
         {
-            using (var doc = JsonDocument.Parse(response))
+            using var doc = JsonDocument.Parse(response);
+            if (doc.RootElement.TryGetProperty("embedding", out var embedding) &&
+                embedding.TryGetProperty("values", out var values) &&
+                values.ValueKind == JsonValueKind.Array)
             {
-                if (doc.RootElement.TryGetProperty("embedding", out var embedding) &&
-                    embedding.TryGetProperty("values", out var values) &&
-                    values.ValueKind == JsonValueKind.Array)
+                var floats = new List<float>();
+                foreach (var value in values.EnumerateArray())
                 {
-                    var floats = new List<float>();
-                    foreach (var value in values.EnumerateArray())
-                    {
-                        if (value.TryGetSingle(out var f))
-                            floats.Add(f);
-                    }
-                    return floats;
+                    if (value.TryGetSingle(out var f))
+                        floats.Add(f);
                 }
-
-                return new List<float>();
+                return floats;
             }
+
+            return new List<float>();
         }
 
         /// <summary>

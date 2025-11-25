@@ -317,39 +317,32 @@ namespace SmartRAG.Repositories
                     _connection.Open();
                 }
 
-                using (var command = _connection.CreateCommand())
+                using var command = _connection.CreateCommand();
+                command.CommandText = GetDocumentByIdSql();
+                command.Parameters.AddWithValue("@Id", id.ToString());
+
+                using var reader = command.ExecuteReader();
+                SmartRAG.Entities.Document document = null;
+                var chunks = new List<DocumentChunk>();
+
+                while (await reader.ReadAsync())
                 {
-                    command.CommandText = GetDocumentByIdSql();
-                    command.Parameters.AddWithValue("@Id", id.ToString());
+                    document ??= CreateDocumentFromReader(reader);
 
-                    using (var reader = command.ExecuteReader())
+                    if (!IsDBNullSafe(reader, "ChunkId"))
                     {
-                        SmartRAG.Entities.Document document = null;
-                        var chunks = new List<DocumentChunk>();
-
-                        while (await reader.ReadAsync())
-                        {
-                            if (document == null)
-                            {
-                                document = CreateDocumentFromReader(reader);
-                            }
-
-                            if (!IsDBNullSafe(reader, "ChunkId"))
-                            {
-                                var chunk = CreateChunkFromReader(reader, id);
-                                chunks.Add(chunk);
-                            }
-                        }
-
-                        if (document != null)
-                        {
-                            document.Chunks = chunks;
-                            RepositoryLogMessages.LogSqliteDocumentRetrieved(Logger, id, null);
-                        }
-
-                        return document;
+                        var chunk = CreateChunkFromReader(reader, id);
+                        chunks.Add(chunk);
                     }
                 }
+
+                if (document != null)
+                {
+                    document.Chunks = chunks;
+                    RepositoryLogMessages.LogSqliteDocumentRetrieved(Logger, id, null);
+                }
+
+                return document;
             }
             catch (Exception ex)
             {

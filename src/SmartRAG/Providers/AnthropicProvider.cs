@@ -56,43 +56,41 @@ namespace SmartRAG.Providers
             { "anthropic-version", AnthropicApiVersion }
         };
 
-            using (var client = CreateHttpClientWithoutAuth(additionalHeaders))
+            using var client = CreateHttpClientWithoutAuth(additionalHeaders);
+            var systemMessage = config.SystemMessage;
+
+            var messages = new List<object>();
+
+            if (!string.IsNullOrEmpty(systemMessage))
             {
-                var systemMessage = config.SystemMessage;
+                messages.Add(new { role = "system", content = systemMessage });
+            }
 
-                var messages = new List<object>();
+            messages.Add(new { role = "user", content = prompt });
 
-                if (!string.IsNullOrEmpty(systemMessage))
-                {
-                    messages.Add(new { role = "system", content = systemMessage });
-                }
+            var payload = new
+            {
+                model = config.Model,
+                max_tokens = config.MaxTokens,
+                temperature = config.Temperature,
+                messages = messages.ToArray()
+            };
 
-                messages.Add(new { role = "user", content = prompt });
+            var chatEndpoint = BuildAnthropicUrl(config.Endpoint, "v1/messages");
 
-                var payload = new
-                {
-                    model = config.Model,
-                    max_tokens = config.MaxTokens,
-                    temperature = config.Temperature,
-                    messages = messages.ToArray()
-                };
+            var (success, response, error) = await MakeHttpRequestAsync(client, chatEndpoint, payload);
 
-                var chatEndpoint = BuildAnthropicUrl(config.Endpoint, "v1/messages");
+            if (!success)
+                return error;
 
-                var (success, response, error) = await MakeHttpRequestAsync(client, chatEndpoint, payload);
-
-                if (!success)
-                    return error;
-
-                try
-                {
-                    return ParseAnthropicTextResponse(response);
-                }
-                catch (Exception ex)
-                {
-                    ProviderLogMessages.LogAnthropicResponseParsingError(Logger, ex.Message, ex);
-                    return $"Error parsing response: {ex.Message}";
-                }
+            try
+            {
+                return ParseAnthropicTextResponse(response);
+            }
+            catch (Exception ex)
+            {
+                ProviderLogMessages.LogAnthropicResponseParsingError(Logger, ex.Message, ex);
+                return $"Error parsing response: {ex.Message}";
             }
         }
 
@@ -110,38 +108,36 @@ namespace SmartRAG.Providers
             var voyageModel = config.EmbeddingModel ?? DefaultVoyageModel;
 
             var additionalHeaders = new Dictionary<string, string>
-        {
-            { "Authorization", $"Bearer {voyageApiKey}" }
-        };
-
-            using (var client = CreateHttpClientWithoutAuth(additionalHeaders))
             {
-                var payload = new
-                {
-                    input = new[] { text },
-                    model = voyageModel,
-                    input_type = VoyageInputType
-                };
+                { "Authorization", $"Bearer {voyageApiKey}" }
+            };
 
-                var embeddingEndpoint = BuildVoyageUrl("v1/embeddings");
+            using var client = CreateHttpClientWithoutAuth(additionalHeaders);
+            var payload = new
+            {
+                input = new[] { text },
+                model = voyageModel,
+                input_type = VoyageInputType
+            };
 
-                var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
+            var embeddingEndpoint = BuildVoyageUrl("v1/embeddings");
 
-                if (!success)
-                {
-                    ProviderLogMessages.LogAnthropicEmbeddingRequestError(Logger, error, null);
-                    return new List<float>();
-                }
+            var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
 
-                try
-                {
-                    return ParseVoyageEmbeddingResponse(response);
-                }
-                catch (Exception ex)
-                {
-                    ProviderLogMessages.LogVoyageParsingError(Logger, ex);
-                    return new List<float>();
-                }
+            if (!success)
+            {
+                ProviderLogMessages.LogAnthropicEmbeddingRequestError(Logger, error, null);
+                return new List<float>();
+            }
+
+            try
+            {
+                return ParseVoyageEmbeddingResponse(response);
+            }
+            catch (Exception ex)
+            {
+                ProviderLogMessages.LogVoyageParsingError(Logger, ex);
+                return new List<float>();
             }
         }
 
@@ -263,22 +259,20 @@ namespace SmartRAG.Providers
         /// </summary>
         private static List<float> ParseVoyageEmbeddingResponse(string response)
         {
-            using (var doc = JsonDocument.Parse(response))
+            using var doc = JsonDocument.Parse(response);
+            if (doc.RootElement.TryGetProperty("data", out var dataArray) && dataArray.ValueKind == JsonValueKind.Array)
             {
-                if (doc.RootElement.TryGetProperty("data", out var dataArray) && dataArray.ValueKind == JsonValueKind.Array)
+                var firstEmbedding = dataArray.EnumerateArray().FirstOrDefault();
+
+                if (firstEmbedding.TryGetProperty("embedding", out var embeddingArray) && embeddingArray.ValueKind == JsonValueKind.Array)
                 {
-                    var firstEmbedding = dataArray.EnumerateArray().FirstOrDefault();
-
-                    if (firstEmbedding.TryGetProperty("embedding", out var embeddingArray) && embeddingArray.ValueKind == JsonValueKind.Array)
-                    {
-                        return embeddingArray.EnumerateArray()
-                            .Select(x => x.GetSingle())
-                            .ToList();
-                    }
+                    return embeddingArray.EnumerateArray()
+                        .Select(x => x.GetSingle())
+                        .ToList();
                 }
-
-                return new List<float>();
             }
+
+            return new List<float>();
         }
 
         /// <summary>

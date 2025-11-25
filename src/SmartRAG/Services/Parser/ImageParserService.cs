@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -466,52 +465,6 @@ namespace SmartRAG.Services.Parser
             catch (Exception ex)
             {
                 Console.WriteLine($"[OCR Currency Detection] Failed to get currency from system locale: {ex.Message}");
-                return null;
-            }
-        }
-
-        /// <summary>
-        /// Gets the currency symbol for a given language code using CultureInfo
-        /// </summary>
-        /// <param name="languageCode">ISO 639 language code (e.g., "tur", "en", "de")</param>
-        /// <returns>Currency symbol or null if not determinable</returns>
-        private static string GetCurrencySymbolForLanguage(string languageCode)
-        {
-            if (string.IsNullOrWhiteSpace(languageCode))
-                return null;
-
-            try
-            {                
-                string cultureCode;
-                
-                if (languageCode.Length == 2)
-                {
-                    cultureCode = languageCode;
-                }
-                else if (languageCode.Contains("-"))
-                {
-                    cultureCode = languageCode;
-                }
-                else if (LanguageCodeMapping.TryGetValue(languageCode.ToLowerInvariant(), out var twoLetterCode))
-                {
-                    cultureCode = twoLetterCode;
-                }
-                else
-                {
-                    cultureCode = languageCode;
-                }
-                
-                var culture = CultureInfo.CreateSpecificCulture(cultureCode);
-                var region = new RegionInfo(culture.Name);
-                var symbol = region.CurrencySymbol;
-                
-                Console.WriteLine($"[OCR Currency Detection] Language: '{languageCode}' → Culture: '{culture.Name}' → Symbol: '{symbol}'");
-                
-                return symbol;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[OCR Currency Detection] Failed for language '{languageCode}': {ex.Message}");
                 return null;
             }
         }

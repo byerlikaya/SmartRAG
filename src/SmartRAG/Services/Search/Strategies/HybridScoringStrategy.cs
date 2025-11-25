@@ -2,7 +2,6 @@ using SmartRAG.Entities;
 using SmartRAG.Interfaces.Document;
 using SmartRAG.Interfaces.Search;
 using SmartRAG.Interfaces.Search.Strategies;
-using SmartRAG.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 

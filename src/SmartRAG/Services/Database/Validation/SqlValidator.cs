@@ -1,12 +1,9 @@
 using Microsoft.Extensions.Logging;
-using SmartRAG.Enums;
-using SmartRAG.Interfaces.Database;
 using SmartRAG.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Database.Validation
 {
@@ -90,6 +87,7 @@ namespace SmartRAG.Services.Database.Validation
                 if (columnName.Equals("*", StringComparison.OrdinalIgnoreCase)) continue;
                 
                 string tableName = prefix;
+
                 if (aliasToTable.ContainsKey(prefix))
                 {
                     tableName = aliasToTable[prefix];
@@ -102,6 +100,7 @@ namespace SmartRAG.Services.Database.Validation
                 if (!requiredTables.Contains(table.TableName, StringComparer.OrdinalIgnoreCase)) continue;
                 
                 var columnExists = table.Columns.Any(c => c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase));
+
                 if (!columnExists)
                 {
                     var aliasInfo = aliasToTable.ContainsKey(prefix) ? $" (via alias '{prefix}')" : "";
@@ -122,6 +121,7 @@ namespace SmartRAG.Services.Database.Validation
             }
 
             var selectCount = Regex.Matches(sql, @"SELECT\s", RegexOptions.IgnoreCase).Count;
+            
             if (selectCount > 2)
             {
                 errors.Add("Too many nested subqueries (max 2 levels allowed).");

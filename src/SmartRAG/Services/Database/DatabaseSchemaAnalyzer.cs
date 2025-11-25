@@ -51,7 +51,7 @@ namespace SmartRAG.Services.Database
         public async Task<DatabaseSchemaInfo> AnalyzeDatabaseSchemaAsync(DatabaseConnectionConfig connectionConfig)
         {
             var databaseId = await GetDatabaseIdAsync(connectionConfig);
-            
+
             _logger.LogInformation("Analyzing schema for database: {DatabaseId}", databaseId);
 
             var schemaInfo = new DatabaseSchemaInfo
@@ -68,17 +68,20 @@ namespace SmartRAG.Services.Database
                 schemaInfo.DatabaseName = await ExtractDatabaseNameAsync(connectionConfig);
 
                 var tableNames = await _databaseParserService.GetTableNamesAsync(
-                    connectionConfig.ConnectionString, 
+                    connectionConfig.ConnectionString,
                     connectionConfig.DatabaseType);
 
-                tableNames = FilterTables(tableNames, connectionConfig);                long totalRows = 0;
+                tableNames = FilterTables(tableNames, connectionConfig);
+
+                long totalRows = 0;
+
                 foreach (var tableName in tableNames)
                 {
                     var tableInfo = await AnalyzeTableAsync(
                         connectionConfig.ConnectionString,
                         tableName,
                         connectionConfig.DatabaseType);
-                    
+
                     schemaInfo.Tables.Add(tableInfo);
                     totalRows += tableInfo.RowCount;
                 }
@@ -91,7 +94,7 @@ namespace SmartRAG.Services.Database
                 }
 
                 schemaInfo.Status = SchemaAnalysisStatus.Completed;
-                
+
                 _schemaCache[databaseId] = schemaInfo;
                 _lastRefreshTimes[databaseId] = DateTime.UtcNow;
 
@@ -106,8 +109,6 @@ namespace SmartRAG.Services.Database
 
             return schemaInfo;
         }
-
-
 
         public async Task<List<DatabaseSchemaInfo>> GetAllSchemasAsync()
         {
@@ -134,8 +135,6 @@ namespace SmartRAG.Services.Database
             _schemaCache.TryGetValue(databaseId, out var schema);
             return Task.FromResult(schema);
         }
-
-
 
         /// <summary>
         /// [AI Query] Generates an AI summary of the database schema
@@ -185,19 +184,19 @@ namespace SmartRAG.Services.Database
                         }
                         catch { /* Fall through to connection attempt */ }
                         break;
-                        
+
                     case DatabaseType.SQLite:
                         var match = System.Text.RegularExpressions.Regex.Match(
-                            config.ConnectionString, 
+                            config.ConnectionString,
                             @"Data Source=(.+?)(;|$)");
-                        
+
                         if (match.Success)
                         {
                             var path = match.Groups[1].Value;
                             return System.IO.Path.GetFileNameWithoutExtension(path);
                         }
                         break;
-                        
+
                     case DatabaseType.MySQL:
                         try
                         {
@@ -209,7 +208,7 @@ namespace SmartRAG.Services.Database
                         }
                         catch { /* Fall through to connection attempt */ }
                         break;
-                        
+
                     case DatabaseType.PostgreSQL:
                         try
                         {
@@ -222,14 +221,14 @@ namespace SmartRAG.Services.Database
                         catch { /* Fall through to connection attempt */ }
                         break;
                 }
-                
+
                 try
                 {
                     using (var connection = CreateConnection(config.ConnectionString, config.DatabaseType))
                     {
                         await connection.OpenAsync();
                         var databaseName = connection.Database;
-                        
+
                         if (!string.IsNullOrEmpty(databaseName))
                         {
                             return databaseName;
@@ -240,7 +239,7 @@ namespace SmartRAG.Services.Database
                 {
                     _logger.LogWarning(ex, "Could not open connection to extract database name, using connection string info");
                 }
-                
+
                 return config.Name ?? "UnknownDatabase";
             }
             catch (Exception ex)
@@ -270,8 +269,8 @@ namespace SmartRAG.Services.Database
         }
 
         private async Task<TableSchemaInfo> AnalyzeTableAsync(
-            string connectionString, 
-            string tableName, 
+            string connectionString,
+            string tableName,
             DatabaseType databaseType)
         {
             var tableInfo = new TableSchemaInfo
@@ -283,29 +282,29 @@ namespace SmartRAG.Services.Database
             {
                 using (var connection = CreateConnection(connectionString, databaseType))
                 {
-                await connection.OpenAsync();
+                    await connection.OpenAsync();
 
-                tableInfo.Columns = await GetColumnsAsync(connection, tableName, databaseType);
+                    tableInfo.Columns = await GetColumnsAsync(connection, tableName, databaseType);
 
-                tableInfo.PrimaryKeys = tableInfo.Columns
-                    .Where(c => c.IsPrimaryKey)
-                    .Select(c => c.ColumnName)
-                    .ToList();
+                    tableInfo.PrimaryKeys = tableInfo.Columns
+                        .Where(c => c.IsPrimaryKey)
+                        .Select(c => c.ColumnName)
+                        .ToList();
 
-                tableInfo.ForeignKeys = await GetForeignKeysAsync(connection, tableName, databaseType);
+                    tableInfo.ForeignKeys = await GetForeignKeysAsync(connection, tableName, databaseType);
 
-                foreach (var fk in tableInfo.ForeignKeys)
-                {
-                    var column = tableInfo.Columns.FirstOrDefault(c => c.ColumnName == fk.ColumnName);
-                    if (column != null)
+                    foreach (var fk in tableInfo.ForeignKeys)
                     {
-                        column.IsForeignKey = true;
+                        var column = tableInfo.Columns.FirstOrDefault(c => c.ColumnName == fk.ColumnName);
+                        if (column != null)
+                        {
+                            column.IsForeignKey = true;
+                        }
                     }
-                }
 
-                tableInfo.RowCount = await GetRowCountAsync(connection, tableName);
+                    tableInfo.RowCount = await GetRowCountAsync(connection, tableName);
 
-                tableInfo.SampleData = await GetSampleDataAsync(connection, tableName, databaseType);
+                    tableInfo.SampleData = await GetSampleDataAsync(connection, tableName, databaseType);
                 }
             }
             catch (Microsoft.Data.SqlClient.SqlException sqlEx) when (databaseType == DatabaseType.SqlServer)
@@ -315,7 +314,7 @@ namespace SmartRAG.Services.Database
                     _logger.LogWarning("SQL Server database does not exist yet for table {TableName}", tableName);
                     return tableInfo; // Return empty table info
                 }
-                
+
                 _logger.LogWarning(sqlEx, "Error analyzing SQL Server table {TableName}", tableName);
             }
             catch (Exception ex)
@@ -327,14 +326,14 @@ namespace SmartRAG.Services.Database
         }
 
         private Task<List<ColumnSchemaInfo>> GetColumnsAsync(
-            DbConnection connection, 
-            string tableName, 
+            DbConnection connection,
+            string tableName,
             DatabaseType databaseType)
         {
             var columns = new List<ColumnSchemaInfo>();
 
             DataTable schema;
-            
+
             if (databaseType == DatabaseType.SQLite)
             {
                 return GetColumnsSQLiteAsync(connection, tableName);
@@ -353,7 +352,7 @@ namespace SmartRAG.Services.Database
                     IsNullable = row["IS_NULLABLE"].ToString()?.ToUpper() == "YES"
                 };
 
-                if (row.Table.Columns.Contains("CHARACTER_MAXIMUM_LENGTH") && 
+                if (row.Table.Columns.Contains("CHARACTER_MAXIMUM_LENGTH") &&
                     row["CHARACTER_MAXIMUM_LENGTH"] != DBNull.Value)
                 {
                     column.MaxLength = Convert.ToInt32(row["CHARACTER_MAXIMUM_LENGTH"]);
@@ -431,8 +430,8 @@ namespace SmartRAG.Services.Database
         }
 
         private Task<List<ForeignKeyInfo>> GetForeignKeysAsync(
-            DbConnection connection, 
-            string tableName, 
+            DbConnection connection,
+            string tableName,
             DatabaseType databaseType)
         {
             var foreignKeys = new List<ForeignKeyInfo>();
@@ -561,7 +560,7 @@ namespace SmartRAG.Services.Database
                 {
                     string quotedTable;
                     var connectionType = connection.GetType().Name;
-                    
+
                     if (connectionType == "SqlConnection")
                     {
                         quotedTable = $"[{tableName}]";
@@ -578,7 +577,7 @@ namespace SmartRAG.Services.Database
                     {
                         quotedTable = tableName; // SQLite doesn't require quotes for simple table names
                     }
-                    
+
                     cmd.CommandText = $"SELECT COUNT(*) FROM {quotedTable}";
                     var result = await cmd.ExecuteScalarAsync();
                     return Convert.ToInt64(result);
@@ -592,8 +591,8 @@ namespace SmartRAG.Services.Database
         }
 
         private async Task<string> GetSampleDataAsync(
-            DbConnection connection, 
-            string tableName, 
+            DbConnection connection,
+            string tableName,
             DatabaseType databaseType)
         {
             try
@@ -618,25 +617,25 @@ namespace SmartRAG.Services.Database
 
                 using (var cmd = connection.CreateCommand())
                 {
-                cmd.CommandText = query;
-                
-                using (var reader = await cmd.ExecuteReaderAsync())
-                {
-                var sb = new StringBuilder();
-                var rowCount = 0;
+                    cmd.CommandText = query;
 
-                while (await reader.ReadAsync() && rowCount < 3)
-                {
-                    for (int i = 0; i < reader.FieldCount; i++)
+                    using (var reader = await cmd.ExecuteReaderAsync())
                     {
-                        sb.Append($"{reader.GetName(i)}: {reader.GetValue(i)}, ");
-                    }
-                    sb.AppendLine();
-                    rowCount++;
-                }
+                        var sb = new StringBuilder();
+                        var rowCount = 0;
 
-                return sb.ToString();
-                }
+                        while (await reader.ReadAsync() && rowCount < 3)
+                        {
+                            for (int i = 0; i < reader.FieldCount; i++)
+                            {
+                                sb.Append($"{reader.GetName(i)}: {reader.GetValue(i)}, ");
+                            }
+                            sb.AppendLine();
+                            rowCount++;
+                        }
+
+                        return sb.ToString();
+                    }
                 }
             }
             catch (Exception ex)

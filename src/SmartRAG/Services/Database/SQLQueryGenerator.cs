@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using SmartRAG.Enums;
 using SmartRAG.Interfaces.AI;
 using SmartRAG.Interfaces.Database;
 using SmartRAG.Interfaces.Database.Strategies;
@@ -9,7 +8,6 @@ using SmartRAG.Services.Database.Strategies;
 using SmartRAG.Services.Database.Validation;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
@@ -74,6 +72,7 @@ namespace SmartRAG.Services.Database
                     var systemPrompt = _promptBuilder.Build(queryIntent.OriginalQuery, dbQuery, schema, strategy);
                     
                     var sql = await _aiService.GenerateResponseAsync(systemPrompt, new List<string>());
+                    
                     _logger.LogDebug("AI raw response for {DatabaseId}: {RawSQL}", dbQuery.DatabaseId, sql);
 
                     var extractedSql = ExtractSQLFromAIResponse(sql);

@@ -350,45 +350,43 @@ namespace SmartRAG.Providers
             }
 
             var embeddingEndpoint = GetEmbeddingEndpoint(config);
-            
-            using (var client = CreateHttpClient(config.ApiKey))
+
+            using var client = CreateHttpClient(config.ApiKey);
+            string paramName = embeddingEndpoint.Contains("/api/embeddings") ? "prompt" : "input";
+
+            var payload = new Dictionary<string, object>
             {
-                string paramName = embeddingEndpoint.Contains("/api/embeddings") ? "prompt" : "input";
+                ["model"] = config.EmbeddingModel,
+                [paramName] = text ?? ""
+            };
 
-                var payload = new Dictionary<string, object>
-                {
-                    ["model"] = config.EmbeddingModel,
-                    [paramName] = text ?? ""
-                };
+            Logger.LogDebug("Ollama embedding payload: {Payload}",
+                JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = false }));
 
-                Logger.LogDebug("Ollama embedding payload: {Payload}",
-                    JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = false }));
+            var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
 
-                var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
+            Logger.LogDebug("Ollama embedding response: Success={Success}, ResponseLength={Length}, Error={Error}",
+                success, response?.Length ?? 0, error ?? "None");
 
-                Logger.LogDebug("Ollama embedding response: Success={Success}, ResponseLength={Length}, Error={Error}",
-                    success, response?.Length ?? 0, error ?? "None");
+            if (success && !string.IsNullOrEmpty(response))
+            {
+                Logger.LogDebug("Ollama embedding response content: {Response}", response);
+            }
 
-                if (success && !string.IsNullOrEmpty(response))
-                {
-                    Logger.LogDebug("Ollama embedding response content: {Response}", response);
-                }
+            if (!success)
+            {
+                ProviderLogMessages.LogCustomEmbeddingRequestError(Logger, error, null);
+                return new List<float>();
+            }
 
-                if (!success)
-                {
-                    ProviderLogMessages.LogCustomEmbeddingRequestError(Logger, error, null);
-                    return new List<float>();
-                }
-
-                try
-                {
-                    return ParseCustomEmbeddingResponse(response);
-                }
-                catch (Exception ex)
-                {
-                    ProviderLogMessages.LogCustomEmbeddingParsingError(Logger, ex);
-                    return new List<float>();
-                }
+            try
+            {
+                return ParseCustomEmbeddingResponse(response);
+            }
+            catch (Exception ex)
+            {
+                ProviderLogMessages.LogCustomEmbeddingParsingError(Logger, ex);
+                return new List<float>();
             }
         }
 

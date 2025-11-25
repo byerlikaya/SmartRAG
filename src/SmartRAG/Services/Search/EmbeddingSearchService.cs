@@ -28,9 +28,6 @@ namespace SmartRAG.Services.Search
         private const int EmptyEmbeddingCount = 0;
         private const int MinChunksWithEmbeddingsCount = 0;
         private const double RelevanceThreshold = 0.1;
-        private const int MinVectorCount = 0;
-        private const double DefaultScoreValue = 0.0;
-        private const int DefaultScore = 0;
 
         private readonly IAIProviderFactory _aiProviderFactory;
         private readonly SmartRagOptions _options;
@@ -108,29 +105,7 @@ namespace SmartRAG.Services.Search
                 return new List<DocumentChunk>();
             }
         }
-
-        /// <summary>
-        /// Calculates cosine similarity between two vectors
-        /// </summary>
-        public double CalculateCosineSimilarity(List<float> a, List<float> b)
-        {
-            if (a == null || b == null || a.Count == MinVectorCount || b.Count == MinVectorCount) return DefaultScoreValue;
-
-            var n = Math.Min(a.Count, b.Count);
-            double dot = DefaultScore, na = DefaultScore, nb = DefaultScore;
-
-            for (int i = 0; i < n; i++)
-            {
-                double va = a[i];
-                double vb = b[i];
-                dot += va * vb;
-                na += va * va;
-                nb += vb * vb;
-            }
-
-            if (na == DefaultScore || nb == DefaultScore) return DefaultScoreValue;
-            return dot / (Math.Sqrt(na) * Math.Sqrt(nb));
-        }
+     
     }
 }
 

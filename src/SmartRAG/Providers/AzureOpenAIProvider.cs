@@ -110,32 +110,30 @@ namespace SmartRAG.Providers
                 return new List<float>();
             }
 
-            using (var client = CreateHttpClient(config.ApiKey))
+            using var client = CreateHttpClient(config.ApiKey);
+            var payload = new
             {
-                var payload = new
-                {
-                    input = text
-                };
+                input = text
+            };
 
-                var url = BuildAzureUrl(config.Endpoint, config.EmbeddingModel, "embeddings", config.ApiVersion);
+            var url = BuildAzureUrl(config.Endpoint, config.EmbeddingModel, "embeddings", config.ApiVersion);
 
-                var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, config);
+            var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, config);
 
-                if (!success)
-                {
-                    ProviderLogMessages.LogAzureOpenAIEmbeddingRequestError(Logger, error, null);
-                    return new List<float>();
-                }
+            if (!success)
+            {
+                ProviderLogMessages.LogAzureOpenAIEmbeddingRequestError(Logger, error, null);
+                return new List<float>();
+            }
 
-                try
-                {
-                    return ParseEmbeddingResponse(response);
-                }
-                catch (Exception ex)
-                {
-                    ProviderLogMessages.LogAzureOpenAIEmbeddingParsingError(Logger, ex);
-                    return new List<float>();
-                }
+            try
+            {
+                return ParseEmbeddingResponse(response);
+            }
+            catch (Exception ex)
+            {
+                ProviderLogMessages.LogAzureOpenAIEmbeddingParsingError(Logger, ex);
+                return new List<float>();
             }
         }
 

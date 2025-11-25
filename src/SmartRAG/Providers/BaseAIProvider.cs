@@ -1,13 +1,6 @@
 using Microsoft.Extensions.Logging;
 using SmartRAG.Enums;
 using SmartRAG.Interfaces.AI;
-using SmartRAG.Interfaces.Database;
-using SmartRAG.Interfaces.Document;
-using SmartRAG.Interfaces.Parser;
-using SmartRAG.Interfaces.Search;
-using SmartRAG.Interfaces.Storage;
-using SmartRAG.Interfaces.Storage.Qdrant;
-using SmartRAG.Interfaces.Support;
 using SmartRAG.Models;
 using System;
 using System.Collections.Generic;
@@ -29,7 +22,6 @@ namespace SmartRAG.Providers
         private const int DefaultMaxRetries = 3;
         private const int BaseDelayMs = 1000;
         private const int MinRetryDelayMs = 60000;
-        private const int MaxRetryDelayMs = int.MaxValue;
 
         private const string DefaultDataProperty = "data";
         private const string DefaultEmbeddingProperty = "embedding";
@@ -321,7 +313,7 @@ namespace SmartRAG.Providers
                         attempt++;
                         if (attempt < maxRetries)
                         {
-                            int delayMs = error.Contains("EOF") ? 1000 : CalculateRetryDelay(attempt);
+                            int delayMs = error.Contains("EOF") ? 1000 : MinRetryDelayMs * attempt;
                             await Task.Delay(delayMs);
                             continue;
                         }
@@ -334,7 +326,7 @@ namespace SmartRAG.Providers
                     attempt++;
                     if (attempt < maxRetries)
                     {
-                        var delay = CalculateExponentialBackoffDelay(attempt);
+                        var delay = BaseDelayMs * (int)Math.Pow(2, attempt - 1);;
                         await Task.Delay(delay);
                         continue;
                     }
@@ -354,11 +346,12 @@ namespace SmartRAG.Providers
         /// </summary>
         protected static HttpClientHandler CreateHttpClientHandler()
         {
-            var handler = new HttpClientHandler();
-
-            handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
+            var handler = new HttpClientHandler
             {
-                return true;
+                ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
+                { 
+                    return true;
+                }
             };
 
             return handler;
@@ -384,8 +377,8 @@ namespace SmartRAG.Providers
         private async Task<(bool success, string response, string error)> ExecuteHttpRequestAsync(
             HttpClient client, string endpoint, object payload)
         {
-            var options = GetJsonSerializerOptions();
-            var json = JsonSerializer.Serialize(payload, options);
+            var json = JsonSerializer.Serialize(payload, _jsonOptions);
+
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             var response = await client.PostAsync(endpoint, content);
@@ -397,25 +390,10 @@ namespace SmartRAG.Providers
             }
 
             var errorBody = await response.Content.ReadAsStringAsync();
+            
             return (false, string.Empty, $"{ProviderType} error: {response.StatusCode} - {errorBody}");
         }
-
-        /// <summary>
-        /// Calculates retry delay for rate limiting and server overload
-        /// </summary>
-        private static int CalculateRetryDelay(int attempt)
-        {
-            return MinRetryDelayMs * attempt;
-        }
-
-        /// <summary>
-        /// Calculates exponential backoff delay for retries
-        /// </summary>
-        private static int CalculateExponentialBackoffDelay(int attempt)
-        {
-            return BaseDelayMs * (int)Math.Pow(2, attempt - 1);
-        }
-
+               
         #endregion
 
         #region Static Helper Methods
@@ -425,28 +403,26 @@ namespace SmartRAG.Providers
         /// </summary>
         protected static List<float> ParseEmbeddingResponse(string responseBody, string dataProperty = DefaultDataProperty, string embeddingProperty = DefaultEmbeddingProperty)
         {
-            using (var doc = JsonDocument.Parse(responseBody))
+            using var doc = JsonDocument.Parse(responseBody);
+            if (doc.RootElement.TryGetProperty(dataProperty, out var data) && data.ValueKind == JsonValueKind.Array)
             {
-                if (doc.RootElement.TryGetProperty(dataProperty, out var data) && data.ValueKind == JsonValueKind.Array)
+                var firstData = data.EnumerateArray().FirstOrDefault();
+
+                if (firstData.TryGetProperty(embeddingProperty, out var embedding) && embedding.ValueKind == JsonValueKind.Array)
                 {
-                    var firstData = data.EnumerateArray().FirstOrDefault();
+                    var floats = new List<float>();
 
-                    if (firstData.TryGetProperty(embeddingProperty, out var embedding) && embedding.ValueKind == JsonValueKind.Array)
+                    foreach (var value in embedding.EnumerateArray())
                     {
-                        var floats = new List<float>();
-
-                        foreach (var value in embedding.EnumerateArray())
-                        {
-                            if (value.TryGetSingle(out var f))
-                                floats.Add(f);
-                        }
-
-                        return floats;
+                        if (value.TryGetSingle(out var f))
+                            floats.Add(f);
                     }
-                }
 
-                return new List<float>();
+                    return floats;
+                }
             }
+
+            return new List<float>();
         }
 
         /// <summary>
@@ -517,11 +493,6 @@ namespace SmartRAG.Providers
         {
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
         };
-
-        /// <summary>
-        /// Get shared JsonSerializerOptions instance
-        /// </summary>
-        private static JsonSerializerOptions GetJsonSerializerOptions() => _jsonOptions;
 
         #endregion
     }

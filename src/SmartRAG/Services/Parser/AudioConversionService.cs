@@ -191,6 +191,7 @@ namespace SmartRAG.Services.Parser
                 return;
 
             await _ffmpegSemaphore.WaitAsync();
+            
             try
             {
                 if (_ffmpegInitialized)

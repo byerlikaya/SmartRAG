@@ -16,8 +16,6 @@ namespace SmartRAG.Interfaces.Database
         /// <returns>Complete schema information including tables, columns, relationships</returns>
         Task<DatabaseSchemaInfo> AnalyzeDatabaseSchemaAsync(DatabaseConnectionConfig connectionConfig);
 
-
-
         /// <summary>
         /// Gets all analyzed database schemas
         /// </summary>
@@ -30,8 +28,6 @@ namespace SmartRAG.Interfaces.Database
         /// <param name="databaseId">Database identifier</param>
         /// <returns>Database schema information</returns>
         Task<DatabaseSchemaInfo> GetSchemaAsync(string databaseId);
-
-
 
         /// <summary>
         /// Generates AI-powered summary of database content

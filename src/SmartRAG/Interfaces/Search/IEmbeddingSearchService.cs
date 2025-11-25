@@ -18,13 +18,6 @@ namespace SmartRAG.Interfaces.Search
         /// <returns>List of relevant document chunks</returns>
         Task<List<DocumentChunk>> SearchByEmbeddingAsync(string query, List<DocumentChunk> allChunks, int maxResults);
 
-        /// <summary>
-        /// Calculates cosine similarity between two vectors
-        /// </summary>
-        /// <param name="a">First vector</param>
-        /// <param name="b">Second vector</param>
-        /// <returns>Cosine similarity score</returns>
-        double CalculateCosineSimilarity(List<float> a, List<float> b);
     }
 }
 
