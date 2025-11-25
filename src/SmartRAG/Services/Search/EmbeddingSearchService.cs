@@ -20,13 +20,11 @@ namespace SmartRAG.Services.Search
     /// </summary>
     public class EmbeddingSearchService : IEmbeddingSearchService
     {
-        // Selection multipliers and minimums
         private const int CandidateMultiplier = 3;
         private const int CandidateMinCount = 30;
         private const int FinalTakeMultiplier = 2;
         private const int FinalMinCount = 20;
 
-        // Query processing constants
         private const int EmptyEmbeddingCount = 0;
         private const int MinChunksWithEmbeddingsCount = 0;
         private const double RelevanceThreshold = 0.1;
@@ -73,14 +71,12 @@ namespace SmartRAG.Services.Search
                     return new List<DocumentChunk>();
                 }
 
-                // Generate embedding for query
                 var queryEmbedding = await aiProvider.GenerateEmbeddingAsync(query, providerConfig);
                 if (queryEmbedding == null || queryEmbedding.Count == EmptyEmbeddingCount)
                 {
                     return new List<DocumentChunk>();
                 }
 
-                // Calculate similarity for all chunks that have embeddings
                 var chunksWithEmbeddings = allChunks.Where(c => c.Embedding != null && c.Embedding.Count > EmptyEmbeddingCount).ToList();
 
                 if (chunksWithEmbeddings.Count == MinChunksWithEmbeddingsCount)
@@ -88,16 +84,13 @@ namespace SmartRAG.Services.Search
                     return new List<DocumentChunk>();
                 }
 
-                // Enhanced semantic search with hybrid scoring using strategy
                 var scoredChunks = await Task.WhenAll(chunksWithEmbeddings.Select(async chunk =>
                 {
-                    // Calculate score using the injected strategy
                     var score = await _scoringStrategy.CalculateScoreAsync(query, chunk, queryEmbedding);
                     chunk.RelevanceScore = score;
                     return chunk;
                 }));
 
-                // Get top chunks based on hybrid scoring
                 var relevantChunks = scoredChunks.ToList()
                     .Where(c => c.RelevanceScore > RelevanceThreshold)
                     .OrderByDescending(c => c.RelevanceScore)

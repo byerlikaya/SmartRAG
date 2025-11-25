@@ -45,18 +45,14 @@ namespace SmartRAG.Services.Database.Strategies
 
         public override string GetLimitClause(int limit)
         {
-            // SQL Server uses TOP in SELECT clause, not LIMIT at end
-            // This method might need to be handled differently or return empty string if handled in prompt
             return ""; 
         }
         
         public override string FormatSql(string sql)
         {
             var formatted = base.FormatSql(sql);
-            // Ensure it doesn't end with LIMIT if the AI mistakenly added it
             if (formatted.ToUpper().Contains("LIMIT "))
             {
-                // Simple heuristic to remove LIMIT clause if present at end
                 var index = formatted.LastIndexOf("LIMIT ", System.StringComparison.OrdinalIgnoreCase);
                 if (index > formatted.Length - 20) // Only if near end
                 {

@@ -14,7 +14,6 @@ namespace SmartRAG.Services.Document
     /// </summary>
     public class DocumentScoringService : IDocumentScoringService
     {
-        // Scoring weights
         private const double FullNameMatchScoreBoost = 200.0;
         private const double PartialNameMatchScoreBoost = 100.0;
         private const double WordMatchScore = 5.0; // Increased from 2.0 for better relevance
@@ -26,7 +25,6 @@ namespace SmartRAG.Services.Document
         private const double NumberedListItemBonus = 10.0; // Additional bonus per numbered item
         private const double TitlePatternBonus = 15.0; // Bonus for chunks that look like titles/headings
 
-        // Thresholds
         private const int WordCountMin = 10;
         private const int WordCountMax = 100;
         private const int PunctuationCountThreshold = 3;
@@ -34,7 +32,6 @@ namespace SmartRAG.Services.Document
         private const int MinPotentialNamesCount = 2;
         private const int ChunkPreviewLength = 100;
 
-        // Query processing constants
         private const int MinWordLength = 2;
         private const double DefaultScoreValue = 0.0;
         private const double NormalizedScoreMax = 1.0;
@@ -66,7 +63,6 @@ namespace SmartRAG.Services.Document
                 var score = DefaultScoreValue;
                 var content = chunk.Content.ToLowerInvariant();
 
-                // Special handling for names like "John Smith" - HIGHEST PRIORITY (language agnostic)
                 if (potentialNames.Count >= MinPotentialNamesCount)
                 {
                     var fullName = string.Join(" ", potentialNames);
@@ -83,8 +79,6 @@ namespace SmartRAG.Services.Document
                     }
                 }
 
-                // Exact word matches and substring matches (for agglutinative languages)
-                // This handles cases where query words contain suffixes/prefixes that may not match exact content words
                 var matchedWords = 0;
                 foreach (var word in queryWords)
                 {
@@ -92,19 +86,14 @@ namespace SmartRAG.Services.Document
                     var contentLower = content.ToLowerInvariant();
                     var wordMatched = false;
                     
-                    // Exact match (higher score)
                     if (contentLower.Contains(wordLower))
                     {
                         score += WordMatchScore;
                         matchedWords++;
                         wordMatched = true;
                     }
-                    // Substring match: check if query word contains a meaningful substring from content
-                    // or if content contains a meaningful substring from query word
-                    // This helps with agglutinative languages where words may have suffixes/prefixes
                     else if (wordLower.Length >= 4) // Only for words 4+ chars to avoid false matches
                     {
-                        // Try to find meaningful substrings (minimum 4 chars)
                         for (int len = Math.Min(wordLower.Length, 8); len >= 4; len--)
                         {
                             for (int start = 0; start <= wordLower.Length - len; start++)
@@ -123,7 +112,6 @@ namespace SmartRAG.Services.Document
                     }
                 }
                 
-                // Bonus for chunks matching multiple query words (indicates high relevance)
                 if (matchedWords >= 3)
                 {
                     score += MultipleWordMatchBonus;
@@ -133,8 +121,6 @@ namespace SmartRAG.Services.Document
                     score += MultipleWordMatchBonus * 0.5; // Half bonus for 2 matches
                 }
 
-                // Bonus for chunks that look like titles/headings (often contain key information)
-                // Titles typically have: short length, colon, or are followed by structured content
                 var isTitleLike = chunk.Content.Length < 200 && 
                     (chunk.Content.Contains(':') || 
                      chunk.Content.Split(new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length <= 3);
@@ -143,20 +129,15 @@ namespace SmartRAG.Services.Document
                     score += TitlePatternBonus;
                 }
                 
-                // Generic content quality scoring (language and content agnostic)
                 var wordCount = content.Split(new char[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries).Length;
                 if (wordCount >= WordCountMin && wordCount <= WordCountMax) score += WordCountScoreBoost;
 
-                // Bonus for chunks with punctuation (indicates structured content)
                 var punctuationCount = content.Count(c => ".,;:!?()[]{}".Contains(c));
                 if (punctuationCount >= PunctuationCountThreshold) score += PunctuationScoreBoost;
 
-                // Bonus for chunks with numbers (often indicates factual information)
                 var numberCount = content.Count(c => char.IsDigit(c));
                 if (numberCount >= NumberCountThreshold) score += NumberScoreBoost;
 
-                // HIGH PRIORITY: Bonus for numbered lists (critical for counting/listing questions)
-                // Use multiple patterns to detect numbered lists: "1.", "1)", "1-", "1 ", etc.
                 var numberedListPatterns = new[]
                 {
                     @"\b\d+\.\s",      // "1. Item"
@@ -171,7 +152,6 @@ namespace SmartRAG.Services.Document
                 
                 if (numberedListCount > 0)
                 {
-                    // High base bonus for having numbered list + bonus per item
                     score += NumberedListScoreBoost + (numberedListCount * NumberedListItemBonus);
                 }
 
@@ -201,19 +181,16 @@ namespace SmartRAG.Services.Document
 
             foreach (var word in queryWords)
             {
-                // Exact word match (highest score)
                 if (contentLower.Contains($" {word} ") || contentLower.StartsWith($"{word} ", System.StringComparison.OrdinalIgnoreCase) || contentLower.EndsWith($" {word}", System.StringComparison.OrdinalIgnoreCase))
                 {
                     score += WordMatchScore;
                 }
-                // Partial word match (medium score)
                 else if (contentLower.Contains(word))
                 {
                     score += WordMatchScore / 2;
                 }
             }
 
-            // Normalize score
             return Math.Min(score / queryWords.Count, NormalizedScoreMax);
         }
     }

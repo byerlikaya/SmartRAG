@@ -26,13 +26,10 @@ namespace SmartRAG.Services.Search.Strategies
 
         public async Task<double> CalculateScoreAsync(string query, DocumentChunk chunk, List<float> queryEmbedding)
         {
-            // Calculate enhanced semantic similarity (potentially using LLM or advanced logic)
             var enhancedSemanticScore = await _semanticSearchService.CalculateEnhancedSemanticSimilarityAsync(query, chunk.Content);
 
-            // Calculate keyword relevance
             var keywordScore = _documentScoringService.CalculateKeywordRelevanceScore(query, chunk.Content);
 
-            // Combine scores using weights
             var hybridScore = (enhancedSemanticScore * HybridSemanticWeight) + (keywordScore * HybridKeywordWeight);
 
             return hybridScore;

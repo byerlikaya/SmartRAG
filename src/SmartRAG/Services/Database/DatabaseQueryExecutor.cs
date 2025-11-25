@@ -57,7 +57,6 @@ namespace SmartRAG.Services.Database
             _logger.LogInformation("Executing multi-database query across {Count} databases",
                 queryIntent.DatabaseQueries.Count);
 
-            // Execute queries in parallel
             var tasks = queryIntent.DatabaseQueries.Select(async dbQuery =>
             {
                 var dbResult = await ExecuteSingleDatabaseQueryAsync(dbQuery);
@@ -117,7 +116,6 @@ namespace SmartRAG.Services.Database
                     return result;
                 }
 
-                // Execute the query
                 var maxRows = connection.MaxRowsPerQuery > 0 ? connection.MaxRowsPerQuery : DefaultMaxRows;
                 var queryResult = await _databaseParser.ExecuteQueryAsync(
                     connection.ConnectionString,
@@ -163,8 +161,6 @@ namespace SmartRAG.Services.Database
                 }
             }
 
-            // Fallback: Count lines that look like data (not metadata)
-            // This is an approximation if "Rows extracted" is missing
             int dataRows = 0;
             bool headerFound = false;
             

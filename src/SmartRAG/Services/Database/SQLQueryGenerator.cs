@@ -69,25 +69,19 @@ namespace SmartRAG.Services.Database
                         continue;
                     }
 
-                    // Get strategy for this database type
                     var strategy = _strategyFactory.GetStrategy(schema.DatabaseType);
 
-                    // Build prompt using builder and strategy
                     var systemPrompt = _promptBuilder.Build(queryIntent.OriginalQuery, dbQuery, schema, strategy);
                     
-                    // Generate SQL using AI
                     var sql = await _aiService.GenerateResponseAsync(systemPrompt, new List<string>());
                     _logger.LogDebug("AI raw response for {DatabaseId}: {RawSQL}", dbQuery.DatabaseId, sql);
 
-                    // Extract actual SQL from AI response
                     var extractedSql = ExtractSQLFromAIResponse(sql);
                     
-                    // Format SQL using strategy
                     extractedSql = strategy.FormatSql(extractedSql);
                     
                     _logger.LogDebug("Extracted SQL for {DatabaseId}: {ExtractedSQL}", dbQuery.DatabaseId, extractedSql);
                     
-                    // Validate SQL
                     if (!ValidateSql(extractedSql, schema, dbQuery.RequiredTables, strategy, out var validationErrors))
                     {
                         _logger.LogWarning("Generated SQL failed validation for {DatabaseId}. Errors: {Errors}", dbQuery.DatabaseId, string.Join(", ", validationErrors));
@@ -114,13 +108,11 @@ namespace SmartRAG.Services.Database
         {
             errors = new List<string>();
 
-            // 1. Strategy-specific syntax validation
             if (!strategy.ValidateSyntax(sql, out var syntaxError))
             {
                 errors.Add(syntaxError);
             }
 
-            // 2. General schema validation using SqlValidator
             var schemaErrors = _validator.ValidateQuery(sql, schema, requiredTables);
             errors.AddRange(schemaErrors);
 
@@ -131,21 +123,18 @@ namespace SmartRAG.Services.Database
         {
             if (string.IsNullOrWhiteSpace(response)) return string.Empty;
 
-            // Try to find SQL in code blocks
             var match = Regex.Match(response, @"```sql\s*(.*?)\s*```", RegexOptions.Singleline | RegexOptions.IgnoreCase);
             if (match.Success)
             {
                 return match.Groups[1].Value.Trim();
             }
 
-            // Try generic code block
             match = Regex.Match(response, @"```\s*(.*?)\s*```", RegexOptions.Singleline | RegexOptions.IgnoreCase);
             if (match.Success)
             {
                 return match.Groups[1].Value.Trim();
             }
 
-            // If no code blocks, assume the whole response is SQL if it starts with SELECT
             var trimmed = response.Trim();
             if (trimmed.StartsWith("SELECT", StringComparison.OrdinalIgnoreCase))
             {

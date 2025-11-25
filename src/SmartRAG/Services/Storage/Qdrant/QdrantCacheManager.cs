@@ -69,7 +69,6 @@ namespace SmartRAG.Services.Storage.Qdrant
             {
                 _searchCache[queryHash] = (results.ToList(), DateTime.UtcNow.AddMinutes(CacheExpiryMinutes));
 
-                // Clean up expired cache entries
                 CleanupExpiredCache();
 
                 _logger.LogDebug("Search results cached for query hash: {QueryHash}, cache size: {CacheSize}",

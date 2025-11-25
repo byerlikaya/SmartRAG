@@ -34,8 +34,7 @@ namespace SmartRAG.Services.AI
                 ? $"\n\nRecent conversation context:\n{_conversationManager.TruncateConversationHistory(conversationHistory, maxTurns: 2)}\n"
                 : "";
 
-            // Detect if query asks for counts, lists, or enumerations using language-agnostic structural patterns
-            // Uses ONLY structural patterns (punctuation, numbers, query length) - NO language-specific keywords
+
             var hasQuestionPunctuation = query.IndexOf('?', StringComparison.Ordinal) >= 0 ||
                                        query.IndexOf('¿', StringComparison.Ordinal) >= 0 ||
                                        query.IndexOf('؟', StringComparison.Ordinal) >= 0; // Spanish, Arabic question marks
@@ -43,8 +42,7 @@ namespace SmartRAG.Services.AI
             var queryTokens = query.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
             var queryLength = queryTokens.Length;
             
-            // Structural patterns that indicate counting/listing questions (works for ALL languages)
-            // No language-specific keywords - only structural analysis
+
             var isCountingOrListingQuery = hasQuestionPunctuation && (
                 hasNumbers || // Questions with numbers often ask for counts (universal pattern)
                 queryLength >= 5 || // Longer questions often need comprehensive answers (universal pattern)
@@ -64,7 +62,6 @@ SPECIAL INSTRUCTIONS FOR COUNTING/LISTING QUESTIONS (applies to all languages):
 - Be thorough - scan the ENTIRE context for related information"
                 : "";
 
-            // Get language-specific instruction
             var languageInstruction = !string.IsNullOrEmpty(preferredLanguage)
                 ? GetLanguageInstructionForCode(preferredLanguage)
                 : "respond in the SAME language as the query";
@@ -114,7 +111,6 @@ Answer:";
                 ? $"\n\nRecent context:\n{_conversationManager.TruncateConversationHistory(conversationHistory, maxTurns: 2)}\n"
                 : "";
 
-            // Get language-specific instruction
             var languageInstruction = !string.IsNullOrEmpty(preferredLanguage)
                 ? GetLanguageInstructionForCode(preferredLanguage)
                 : "respond in the same language as the query";
@@ -148,7 +144,6 @@ Direct Answer:";
                 ? $"\n\nRecent conversation context:\n{_conversationManager.TruncateConversationHistory(conversationHistory, maxTurns: 3)}\n"
                 : "";
 
-            // Get language-specific instruction
             var languageInstruction = !string.IsNullOrEmpty(preferredLanguage)
                 ? GetLanguageInstructionForCode(preferredLanguage)
                 : "respond naturally in the same language as the user's question";

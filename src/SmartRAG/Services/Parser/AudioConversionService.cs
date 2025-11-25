@@ -51,7 +51,6 @@ namespace SmartRAG.Services.Parser
 
             var extension = Path.GetExtension(fileName).ToLowerInvariant();
 
-            // Reset stream position
             audioStream.Position = 0;
 
             var tempInputFile = Path.GetTempFileName() + extension;
@@ -61,10 +60,8 @@ namespace SmartRAG.Services.Parser
             {
                 _logger.LogInformation("Starting audio conversion: {Extension} → Compatible Format", extension);
 
-                // Ensure FFmpeg is initialized
                 await EnsureFfmpegInitializedAsync();
 
-                // Save input stream to temp file
                 using (var tempFileStream = File.Create(tempInputFile))
                 {
                     await audioStream.CopyToAsync(tempFileStream).ConfigureAwait(false);
@@ -72,20 +69,14 @@ namespace SmartRAG.Services.Parser
 
                 _logger.LogDebug("Input file saved: {InputFile} ({Size} bytes)", tempInputFile, new FileInfo(tempInputFile).Length);
 
-                // Convert to WAV using FFMpeg
-                // 16kHz, 16-bit, mono - Standard for speech recognition
                 try
                 {
                 _logger.LogInformation("Running FFmpeg conversion: {InputFile} → {OutputFile}", tempInputFile, tempOutputFile);
                 
-                // Try multiple conversion strategies for better compatibility
                 var conversionStrategies = new[]
                 {
-                    // Strategy 1: WAV (Whisper.net preferred)
                     new { Codec = "pcm_s16le", Args = new[] { "-ac 1", "-f wav" }, Ext = ".wav", Name = "WAV" },
-                    // Strategy 2: FLAC (Lossless)
                     new { Codec = "flac", Args = new[] { "-ac 1" }, Ext = ".flac", Name = "FLAC" },
-                    // Strategy 3: MP3 (Fallback)
                     new { Codec = "mp3", Args = new[] { "-ac 1", "-b:a 128k" }, Ext = ".mp3", Name = "MP3" }
                 };
 
@@ -107,7 +98,6 @@ namespace SmartRAG.Services.Parser
                                 .WithCustomArgument(string.Join(" ", strategy.Args)))
                             .ProcessAsynchronously();
                         
-                        // Verify file was created and has content
                         var fileInfo = new FileInfo(strategyOutputFile);
                         if (fileInfo.Exists && fileInfo.Length > 0)
                         {
@@ -134,13 +124,7 @@ namespace SmartRAG.Services.Parser
                     throw new InvalidOperationException("All conversion strategies failed. The audio file may be corrupted or incompatible.");
                 }
 
-                // Update tempOutputFile to the successful conversion
-                tempOutputFile = finalOutputFile;
-                    
-                _logger.LogInformation("FFmpeg conversion completed successfully");
-                
-                // Log converted file details for debugging
-                var outputFileInfo = new FileInfo(tempOutputFile);
+                tempOutputFile = finalOutputFile;                var outputFileInfo = new FileInfo(tempOutputFile);
                 _logger.LogInformation("Converted file created: {Size} bytes, Path: {Path}", outputFileInfo.Length, tempOutputFile);
                 }
                 catch (Exception ffmpegEx)
@@ -152,7 +136,6 @@ namespace SmartRAG.Services.Parser
                         ffmpegEx);
                 }
 
-                // Read converted WAV file into memory stream
                 var outputStream = new MemoryStream();
                 using (var wavFileStream = File.OpenRead(tempOutputFile))
                 {
@@ -173,7 +156,6 @@ namespace SmartRAG.Services.Parser
             }
             finally
             {
-                // Cleanup temp files
                 try
                 {
                     if (File.Exists(tempInputFile))
@@ -183,7 +165,6 @@ namespace SmartRAG.Services.Parser
                 }
                 catch
                 {
-                    // Ignore cleanup errors
                 }
             }
         }
@@ -216,20 +197,14 @@ namespace SmartRAG.Services.Parser
                     return;
 
                 try
-                {
-                    _logger.LogInformation("Initializing FFmpeg for audio conversion...");
-
-                    // Create FFmpeg directory
-                    var ffmpegDir = Path.Combine(Path.GetTempPath(), "SmartRAG", "ffmpeg");
+                {                    var ffmpegDir = Path.Combine(Path.GetTempPath(), "SmartRAG", "ffmpeg");
                     if (!Directory.Exists(ffmpegDir))
                     {
                         Directory.CreateDirectory(ffmpegDir);
                     }
 
-                    // Download FFmpeg if not already present
                     await FFmpegDownloader.GetLatestVersion(FFmpegVersion.Official, ffmpegDir);
 
-                    // Configure FFMpegCore to use downloaded binaries
                     GlobalFFOptions.Configure(new FFOptions { BinaryFolder = ffmpegDir });
 
                     _ffmpegInitialized = true;
@@ -238,7 +213,6 @@ namespace SmartRAG.Services.Parser
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "FFmpeg auto-download failed. Falling back to system FFmpeg.");
-                    // Try to use system FFmpeg if download fails
                     _ffmpegInitialized = true;
                 }
             }

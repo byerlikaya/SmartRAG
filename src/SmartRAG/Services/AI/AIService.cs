@@ -41,14 +41,12 @@ namespace SmartRAG.Services.AI
         {
             try
             {
-                // Primary attempt with retry
                 return await GenerateResponseWithRetryAsync(_options.AIProvider, query, context);
             }
             catch (Exception ex)
             {
                 ServiceLogMessages.LogAIServiceGenerateResponseError(_logger, _options.AIProvider.ToString(), ex);
 
-                // Try fallback providers if enabled
                 if (_options.EnableFallbackProviders && _options.FallbackProviders.Count > 0)
                 {
                     try
@@ -142,7 +140,6 @@ namespace SmartRAG.Services.AI
             {
                 try
                 {
-                    // Try each fallback provider (without internal retry to avoid long waits)
                     var response = await _requestExecutor.GenerateResponseAsync(fallbackProvider, query, context);
                     
                     if (!string.IsNullOrEmpty(response))

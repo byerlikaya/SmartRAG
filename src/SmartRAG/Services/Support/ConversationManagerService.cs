@@ -27,7 +27,6 @@ namespace SmartRAG.Services.Support
         private readonly SmartRagOptions _options;
         private readonly ILogger<ConversationManagerService> _logger;
 
-        // Conversation management using existing storage
         private readonly ConcurrentDictionary<string, string> _conversationCache = new ConcurrentDictionary<string, string>();
 
         /// <summary>
@@ -52,27 +51,22 @@ namespace SmartRAG.Services.Support
         /// </summary>
         public async Task<string> GetOrCreateSessionIdAsync()
         {
-            // First, try to get existing session from storage
             try
             {
                 var existingSessionData = await _conversationRepository.GetConversationHistoryAsync(PersistentSessionKey);
                 if (!string.IsNullOrEmpty(existingSessionData))
                 {
-                    // Extract session ID from stored data (format: "session-id:actual-session-id")
                     var lines = existingSessionData.Split('\n');
                     var sessionLine = lines.FirstOrDefault(l => l.StartsWith("session-id:"));
                     if (sessionLine != null)
                     {
                         var sessionId = sessionLine.Substring("session-id:".Length).Trim();
 
-                        // Verify session still exists and has conversation data
                         var sessionExists = await _conversationRepository.SessionExistsAsync(sessionId);
                         if (sessionExists)
                         {
-                            // Get the actual conversation history from the session
                             var conversationHistory = await _conversationRepository.GetConversationHistoryAsync(sessionId);
 
-                            // Add to cache for faster access
                             _conversationCache.TryAdd(sessionId, conversationHistory ?? string.Empty);
                             ServiceLogMessages.LogSessionRetrieved(_logger, sessionId, null);
                             return sessionId;
@@ -85,7 +79,6 @@ namespace SmartRAG.Services.Support
                 ServiceLogMessages.LogConversationRetrievalFailed(_logger, PersistentSessionKey, ex);
             }
 
-            // Create and persist new session
             return await CreateAndPersistSessionAsync();
         }
 
@@ -96,14 +89,12 @@ namespace SmartRAG.Services.Support
         {
             try
             {
-                // Clear current session from cache
                 var currentSession = _conversationCache.Keys.FirstOrDefault();
                 if (!string.IsNullOrEmpty(currentSession))
                 {
                     _conversationCache.TryRemove(currentSession, out _);
                 }
 
-                // Clear persistent session key
                 try
                 {
                     await _conversationRepository.ClearConversationAsync(PersistentSessionKey);
@@ -113,13 +104,11 @@ namespace SmartRAG.Services.Support
                     ServiceLogMessages.LogConversationStorageFailed(_logger, PersistentSessionKey, ex);
                 }
 
-                // Create and persist new session
                 return await CreateAndPersistSessionAsync();
             }
             catch (Exception ex)
             {
                 ServiceLogMessages.LogConversationStorageFailed(_logger, "new-session", ex);
-                // Fallback: create session without persistence
                 return CreateFallbackSession();
             }
         }
@@ -131,10 +120,8 @@ namespace SmartRAG.Services.Support
         {
             try
             {
-                // Always get fresh data from storage to ensure conversation continuity
                 var history = await GetConversationFromStorageAsync(sessionId);
 
-                // Update cache with fresh data
                 _conversationCache.AddOrUpdate(sessionId, history, (key, oldValue) => history);
 
                 return history;
@@ -153,21 +140,15 @@ namespace SmartRAG.Services.Support
         {
             try
             {
-                // Get current history from storage (not cache)
                 var currentHistory = await GetConversationFromStorageAsync(sessionId);
 
-                // Build new conversation entry
                 var newEntry = string.IsNullOrEmpty(currentHistory)
                     ? $"User: {question}\nAssistant: {answer}"
                     : $"{currentHistory}\nUser: {question}\nAssistant: {answer}";
 
-                // No automatic truncation - keep full conversation history
-                // Conversation will only be cleared when user starts a new session
 
-                // Store in persistent storage first
                 await StoreConversationToStorageAsync(sessionId, newEntry);
 
-                // Then update cache
                 _conversationCache.AddOrUpdate(sessionId, newEntry, (key, oldValue) => newEntry);
             }
             catch (Exception ex)
@@ -186,7 +167,6 @@ namespace SmartRAG.Services.Support
                 return string.Empty;
             }
 
-            // Split by conversation turns (User: ... Assistant: ...)
             var lines = history.Split('\n', StringSplitOptions.RemoveEmptyEntries);
             var turns = new System.Collections.Generic.List<string>();
             var currentTurn = new StringBuilder();
@@ -195,12 +175,10 @@ namespace SmartRAG.Services.Support
             {
                 var trimmed = line.Trim();
 
-                // Detect start of a new turn
                 if (trimmed.StartsWith("User:", StringComparison.OrdinalIgnoreCase) ||
                     trimmed.StartsWith("Assistant:", StringComparison.OrdinalIgnoreCase) ||
                     trimmed.StartsWith("A:", StringComparison.OrdinalIgnoreCase))
                 {
-                    // Save previous turn if exists
                     if (currentTurn.Length > 0)
                     {
                         turns.Add(currentTurn.ToString());
@@ -211,14 +189,12 @@ namespace SmartRAG.Services.Support
                 currentTurn.AppendLine(trimmed);
             }
 
-            // Add last turn
             if (currentTurn.Length > 0)
             {
                 turns.Add(currentTurn.ToString());
             }
 
-            // Keep only last N turns
-            var recentTurns = turns.TakeLast(maxTurns * 2).ToList(); // *2 because each turn is User + Assistant
+            var recentTurns = turns.TakeLast(maxTurns * 2).ToList();
 
             if (recentTurns.Count == 0)
             {
@@ -237,11 +213,9 @@ namespace SmartRAG.Services.Support
 
             try
             {
-                // Store the session ID in persistent storage
                 await _conversationRepository.AddToConversationAsync(PersistentSessionKey, "", $"session-id:{newSessionId}");
                 await _conversationRepository.AddToConversationAsync(newSessionId, "", "");
 
-                // Add to cache
                 _conversationCache.TryAdd(newSessionId, string.Empty);
 
                 ServiceLogMessages.LogSessionCreated(_logger, newSessionId, null);
@@ -279,7 +253,6 @@ namespace SmartRAG.Services.Support
         {
             if (_options.ConversationStorageProvider.HasValue)
             {
-                // Convert ConversationStorageProvider to StorageProvider
                 switch (_options.ConversationStorageProvider.Value)
                 {
                     case ConversationStorageProvider.Redis:
@@ -295,7 +268,6 @@ namespace SmartRAG.Services.Support
                 }
             }
 
-            // If not specified, use StorageProvider but exclude Qdrant
             switch (_options.StorageProvider)
             {
                 case StorageProvider.Qdrant:

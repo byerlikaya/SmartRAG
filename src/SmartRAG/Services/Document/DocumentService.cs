@@ -43,17 +43,14 @@ namespace SmartRAG.Services.Document
 
         #region Constants
 
-        // Batch processing constants
         private const int VoyageAIMaxBatchSize = 128;
         private const int RateLimitDelayMs = 1000;
 
-        // Error messages
         private const string NoFileStreamsMessage = "No file streams provided";
         private const string NoFileNamesMessage = "No file names provided";
         private const string NoContentTypesMessage = "No content types provided";
         private const string MismatchedCountsMessage = "Number of file streams, names, and content types must match";
 
-        // String format constants for repeated formatting
         private const string UnsupportedFileTypeFormat = "Unsupported file type: {0}. Supported types: {1}";
         private const string UnsupportedContentTypeFormat = "Unsupported content type: {0}. Supported types: {1}";
 
@@ -91,7 +88,6 @@ namespace SmartRAG.Services.Document
 
             ServiceLogMessages.LogDocumentUploaded(_logger, fileName, null);
 
-            // Generate embeddings for all chunks in batch using AI Service
             var allChunkContents = document.Chunks.Select(c => c.Content).ToList();
 
             ServiceLogMessages.LogBatchEmbeddingAttempt(_logger, allChunkContents.Count, null);
@@ -100,12 +96,10 @@ namespace SmartRAG.Services.Document
 
             try
             {
-                // Generate embeddings using AI Service (BaseAIProvider handles concurrency)
                 var allEmbeddings = await _aiService.GenerateEmbeddingsBatchAsync(allChunkContents);
 
                 if (allEmbeddings != null && allEmbeddings.Count == document.Chunks.Count)
                 {
-                    // Apply embeddings to chunks
                     for (int i = 0; i < document.Chunks.Count; i++)
                     {
                         var chunk = document.Chunks[i];
@@ -132,7 +126,6 @@ namespace SmartRAG.Services.Document
                 {
                     ServiceLogMessages.LogBatchEmbeddingIncomplete(_logger, allEmbeddings?.Count ?? 0, document.Chunks.Count, null);
 
-                    // Set empty embeddings for all chunks
                     foreach (var chunk in document.Chunks)
                     {
                         chunk.DocumentId = document.Id;
@@ -146,7 +139,6 @@ namespace SmartRAG.Services.Document
             {
                 ServiceLogMessages.LogBatchEmbeddingFailed(_logger, ex.Message, ex);
 
-                // Set empty embeddings for all chunks on error
                 foreach (var chunk in document.Chunks)
                 {
                     chunk.DocumentId = document.Id;
@@ -158,7 +150,6 @@ namespace SmartRAG.Services.Document
 
             ServiceLogMessages.LogDocumentProcessing(_logger, fileName, document.Chunks.Count, null);
 
-            // Save document to repository
             var savedDocument = await _documentRepository.AddAsync(document);
             ServiceLogMessages.LogDocumentUploaded(_logger, fileName, null);
 
@@ -206,7 +197,6 @@ namespace SmartRAG.Services.Document
                 var processedChunks = 0;
                 var successCount = 0;
 
-                // Collect all chunks that need embedding regeneration
                 var chunksToProcess = new List<DocumentChunk>();
                 var documentChunkMap = new Dictionary<DocumentChunk, SmartRAG.Entities.Document>();
 
@@ -216,7 +206,6 @@ namespace SmartRAG.Services.Document
 
                     foreach (var chunk in document.Chunks)
                     {
-                        // Skip if embedding already exists and is valid
                         if (chunk.Embedding != null && chunk.Embedding.Count > 0)
                         {
                             processedChunks++;
@@ -236,7 +225,6 @@ namespace SmartRAG.Services.Document
                     return true;
                 }
 
-                // Process chunks in batches of 128 (VoyageAI max batch size)
                 var totalBatches = (int)Math.Ceiling((double)chunksToProcess.Count / VoyageAIMaxBatchSize);
 
                 ServiceLogMessages.LogBatchProcessing(_logger, totalBatches, null);
@@ -249,13 +237,11 @@ namespace SmartRAG.Services.Document
 
                     ServiceLogMessages.LogBatchProgress(_logger, batchIndex + 1, totalBatches, null);
 
-                    // Generate embeddings for current batch
                     var batchContents = currentBatch.Select(c => c.Content).ToList();
                     var batchEmbeddings = await _aiService.GenerateEmbeddingsBatchAsync(batchContents);
 
                     if (batchEmbeddings != null && batchEmbeddings.Count == currentBatch.Count)
                     {
-                        // Apply embeddings to chunks
                         for (int i = 0; i < currentBatch.Count; i++)
                         {
                             var chunk = currentBatch[i];
@@ -271,7 +257,6 @@ namespace SmartRAG.Services.Document
                             {
                                 ServiceLogMessages.LogChunkBatchEmbeddingFailedRetry(_logger, chunk.Id, null);
 
-                                // Fallback to individual generation
                                 var individualEmbedding = await _aiService.GenerateEmbeddingsAsync(chunk.Content);
                                 if (individualEmbedding != null && individualEmbedding.Count > 0)
                                 {
@@ -292,7 +277,6 @@ namespace SmartRAG.Services.Document
                     {
                         ServiceLogMessages.LogBatchFailed(_logger, batchIndex + 1, null);
 
-                        // Process chunks sequentially (max 1 concurrent) if batch fails to ensure stability
                         using (var semaphore = new System.Threading.SemaphoreSlim(1)) // Max 1 concurrent
                         {
                             var tasks = currentBatch.Select(async chunk =>
@@ -330,17 +314,14 @@ namespace SmartRAG.Services.Document
                         }
                     }
 
-                    // Progress update
                     ServiceLogMessages.LogProgress(_logger, processedChunks, chunksToProcess.Count, successCount, null);
 
-                    // Smart rate limiting
                     if (batchIndex < totalBatches - 1) // Don't wait after last batch
                     {
                         await Task.Delay(RateLimitDelayMs);
                     }
                 }
 
-                // Save all documents with updated embeddings
                 var documentsToUpdate = documentChunkMap.Values.Distinct().ToList();
                 ServiceLogMessages.LogSavingDocuments(_logger, documentsToUpdate.Count, null);
 
@@ -386,7 +367,6 @@ namespace SmartRAG.Services.Document
                         }
                     }
 
-                    // Save document with cleared embeddings
                     await _documentRepository.DeleteAsync(document.Id);
                     await _documentRepository.AddAsync(document);
                 }
@@ -414,7 +394,6 @@ namespace SmartRAG.Services.Document
                 var totalDocuments = allDocuments.Count;
                 var totalChunks = allDocuments.Sum(d => d.Chunks.Count);
 
-                // Delete all documents (this will also clear their embeddings)
                 foreach (var document in allDocuments)
                 {
                     await _documentRepository.DeleteAsync(document.Id);

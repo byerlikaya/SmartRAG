@@ -135,7 +135,6 @@ namespace SmartRAG.Services.Storage.Qdrant
         {
             try
             {
-                // Check if collection already exists (fast check)
                 if (_collectionReady)
                 {
                     var collections = await _client.ListCollectionsAsync();
@@ -143,7 +142,6 @@ namespace SmartRAG.Services.Storage.Qdrant
                         return;
                 }
 
-                // Get vector dimension dynamically
                 var vectorDimension = await GetVectorDimensionAsync();
 
                 await CreateCollectionAsync(collectionName, vectorDimension);
@@ -162,17 +160,14 @@ namespace SmartRAG.Services.Storage.Qdrant
         {
             try
             {
-                // First try to get from config
                 if (_config.VectorSize > 0)
                 {
                     return _config.VectorSize;
                 }
 
-                // If config doesn't have it, detect from existing collections
                 var collections = await _client.ListCollectionsAsync();
                 var documentCollections = collections.Where(c => c.StartsWith(_collectionName + "_doc_", StringComparison.OrdinalIgnoreCase)).ToList();
 
-                // If no document collections, check main collection
                 if (documentCollections.Count == 0 && collections.Contains(_collectionName))
                 {
                     documentCollections.Add(_collectionName);
@@ -180,16 +175,13 @@ namespace SmartRAG.Services.Storage.Qdrant
 
                 if (documentCollections.Count > 0)
                 {
-                    // Get dimension from first available collection
                     var firstCollection = documentCollections.Count > 0 ? documentCollections.First() : _collectionName;
                     var collectionInfo = await _client.GetCollectionInfoAsync(firstCollection);
 
-                    // Try to get dimension from collection info
                     if (collectionInfo.Config?.Params?.VectorsConfig != null)
                     {
                         var config = collectionInfo.Config.Params.VectorsConfig;
 
-                        // Try to access size property (might be named differently)
                         var sizeProperty = config.GetType().GetProperty("Size");
                         if (sizeProperty != null)
                         {
@@ -204,7 +196,6 @@ namespace SmartRAG.Services.Storage.Qdrant
                     }
                 }
 
-                // Default fallback
                 _logger.LogDebug("Using default vector dimension: {Dimension}", DefaultVectorDimension);
                 return DefaultVectorDimension;
             }

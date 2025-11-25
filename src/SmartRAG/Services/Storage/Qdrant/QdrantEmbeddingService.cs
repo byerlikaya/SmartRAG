@@ -52,23 +52,18 @@ namespace SmartRAG.Services.Storage.Qdrant
         {
             try
             {
-                // Using hash-based approach for fast embedding generation
-                // This provides deterministic embeddings suitable for testing and development
 
-                // Get vector dimension from config or use default
                 var vectorDimension = await GetVectorDimensionAsync();
 
                 var hash = text.GetHashCode();
                 var random = new Random(hash);
                 var embedding = new List<float>(vectorDimension);
 
-                // Generate embedding with correct dimension
                 for (int i = 0; i < vectorDimension; i++)
                 {
                     embedding.Add((float)(random.NextDouble() * 2 - 1)); // -1 to 1
                 }
 
-                // Fast normalization using SIMD-friendly approach
                 var sumSquares = 0.0f;
                 for (int i = 0; i < embedding.Count; i++)
                 {
@@ -104,13 +99,11 @@ namespace SmartRAG.Services.Storage.Qdrant
         {
             try
             {
-                // First try to get from config
                 if (_config.VectorSize > 0)
                 {
                     return Task.FromResult(_config.VectorSize);
                 }
 
-                // Default fallback dimensions based on common models
                 _logger.LogDebug("Using default vector dimension: {Dimension}", DefaultVectorDimension);
                 return Task.FromResult(DefaultVectorDimension);
             }

@@ -28,10 +28,8 @@ namespace SmartRAG.Repositories
 
         #region Constants
 
-        // Search constants  
         private const int DefaultMaxSearchResults = 5;
 
-        // Collection constants
         private const int MinDocumentCapacity = 1;
 
         #endregion
@@ -68,7 +66,6 @@ namespace SmartRAG.Repositories
                         RepositoryLogMessages.LogOldDocumentsRemoved(Logger, removedCount, _config.MaxDocuments, null);
                     }
 
-                    // Validate document and chunks
                     SmartRAG.Services.Helpers.DocumentValidator.ValidateDocument(document);
                     SmartRAG.Services.Helpers.DocumentValidator.ValidateChunks(document);
 

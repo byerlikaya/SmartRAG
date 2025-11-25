@@ -28,7 +28,6 @@ namespace SmartRAG.Providers
 
         #region Constants
 
-        // OpenAI API constants
         private const string ChatCompletionsPath = "chat/completions";
         private const string EmbeddingsPath = "embeddings";
         private const string SystemRole = "system";
@@ -306,10 +305,8 @@ namespace SmartRAG.Providers
             }
             catch
             {
-                // Return partial results on error
             }
 
-            // Ensure we return exactly expectedCount embeddings
             return Enumerable.Range(0, expectedCount)
                 .Select(i => i < results.Count ? results[i] : new List<float>())
                 .ToList();

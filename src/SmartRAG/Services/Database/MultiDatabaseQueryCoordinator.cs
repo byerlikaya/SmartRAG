@@ -85,7 +85,6 @@ namespace SmartRAG.Services.Database
             if (string.IsNullOrWhiteSpace(userQuery))
                 throw new ArgumentException("User query cannot be null or empty", nameof(userQuery));
 
-            // Analyze query intent
             var queryIntent = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(userQuery);
             return await QueryMultipleDatabasesAsync(userQuery, queryIntent, maxResults);
         }
@@ -117,13 +116,10 @@ namespace SmartRAG.Services.Database
                     return CreateNoDatabaseMatchResponse();
                 }
                 
-                // Step 1.5: Validate intent - remove invalid database/table combinations
                 queryIntent = await ValidateAndCorrectQueryIntentAsync(queryIntent);
 
-                // Step 2: Generate SQL queries
                 queryIntent = await GenerateDatabaseQueriesAsync(queryIntent);
 
-                // Step 3: Execute queries
                 var queryResults = await ExecuteMultiDatabaseQueryAsync(queryIntent);
 
                 if (!queryResults.Success)
@@ -131,10 +127,8 @@ namespace SmartRAG.Services.Database
                     return CreateQueryExecutionErrorResponse(queryResults.Errors);
                 }
 
-                // Step 4: Merge and generate final response
                 var mergedData = await _resultMerger.MergeResultsAsync(queryResults, userQuery);
 
-                // Step 5: Generate AI answer from merged data
                 var finalAnswer = await _resultMerger.GenerateFinalAnswerAsync(userQuery, mergedData, queryResults);
 
                 return finalAnswer;
@@ -243,7 +237,6 @@ namespace SmartRAG.Services.Database
                     continue;
                 }
                 
-                // Check which tables actually exist in this database
                 var validTables = new List<string>();
                 var invalidTables = new List<string>();
                 
@@ -251,7 +244,6 @@ namespace SmartRAG.Services.Database
                 {
                     if (schema.Tables.Any(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)))
                     {
-                        // Use exact casing from schema
                         var exactTableName = schema.Tables.First(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)).TableName;
                         validTables.Add(exactTableName);
                     }
@@ -259,7 +251,6 @@ namespace SmartRAG.Services.Database
                     {
                         invalidTables.Add(tableName);
                         
-                        // Track this missing table
                         if (!missingTables.ContainsKey(tableName))
                         {
                             missingTables[tableName] = new List<string>();
@@ -285,12 +276,10 @@ namespace SmartRAG.Services.Database
                 }
             }
             
-            // Auto-add missing databases for tables AI requested but put in wrong database
             foreach (var kvp in missingTables)
             {
                 var tableName = kvp.Key;
                 
-                // Find which database actually has this table
                 var correctSchema = allSchemas.FirstOrDefault(s => 
                     s.Tables.Any(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)));
                 

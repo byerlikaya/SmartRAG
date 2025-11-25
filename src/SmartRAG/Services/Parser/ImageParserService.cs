@@ -22,12 +22,9 @@ namespace SmartRAG.Services.Parser
     {
         #region Constants
 
-        // Supported formats are handled dynamically by Tesseract and SkiaSharp
 
-        // Language codes
         private const string DefaultLanguage = "eng";
         
-        // WebP header constants
         private const int WebPHeaderSize = 12;
         private const byte RIFFByte1 = 0x52; // R
         private const byte RIFFByte2 = 0x49; // I
@@ -38,22 +35,17 @@ namespace SmartRAG.Services.Parser
         private const byte WEBPByte3 = 0x42; // B
         private const byte WEBPByte4 = 0x50; // P
         
-        // PNG encoding constants
         private const int PNGQuality = 100;
         
-        // Tesseract path constants
         private const string TesseractPath40 = "/usr/share/tesseract-ocr/4.00/tessdata";
         private const string TesseractPathDefault = "/usr/share/tesseract-ocr/tessdata";
         private const string TesseractPathWindows = "C:\\Program Files\\Tesseract-OCR\\tessdata";
 
-        // Character whitelist for OCR
         private const string OcrCharacterWhitelist = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,!?;:()[]{}\"'-/\\@#$%&*+=<>|~`";
         
-        // Universal OCR correction patterns (works for all languages)
         private const string CurrencyMisreadPatternMain = @"(\d+)\s*%(?=\s*(?:\p{Lu}|\d|$))";
         private const string CurrencyMisreadPatternCompact = @"(\d+)%(?=\p{Lu}|\s+\p{Lu}|$)";
         
-        // ISO 639-2 (3-letter) to ISO 639-1 (2-letter) language code mapping
         private static readonly Dictionary<string, string> LanguageCodeMapping = new Dictionary<string, string>
         {
             { "tur", "tr" }, { "eng", "en" }, { "deu", "de" }, { "fra", "fr" },
@@ -65,7 +57,6 @@ namespace SmartRAG.Services.Parser
             { "ces", "cs" }, { "hun", "hu" }, { "ron", "ro" }, { "ukr", "uk" }
         };
         
-        // Reverse mapping: ISO 639-1 (2-letter) to ISO 639-2 (3-letter) for Tesseract
         private static readonly Dictionary<string, string> ReverseLanguageCodeMapping = new Dictionary<string, string>
         {
             { "tr", "tur" }, { "en", "eng" }, { "de", "deu" }, { "fr", "fra" },
@@ -94,13 +85,11 @@ namespace SmartRAG.Services.Parser
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _ocrEngineDataPath = FindOcrEngineDataPath(_logger);
             
-            // Set DYLD_LIBRARY_PATH on macOS to help Tesseract.NET find native libraries
             if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
                 var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
                 var currentPath = Environment.GetEnvironmentVariable("DYLD_LIBRARY_PATH") ?? string.Empty;
                 
-                // Try multiple possible native library paths
                 var possibleNativePaths = new[]
                 {
                     Path.Combine(baseDirectory, "runtimes", "osx-arm64", "native"),
@@ -147,7 +136,6 @@ namespace SmartRAG.Services.Parser
             if (!imageStream.CanRead)
                 throw new ArgumentException("Stream cannot be read", nameof(imageStream));
 
-            // Auto-detect language from system locale if not provided
             language ??= GetDefaultLanguageFromSystemLocale();
 
             var result = await ExtractTextWithConfidenceAsync(imageStream, language);
@@ -168,20 +156,16 @@ namespace SmartRAG.Services.Parser
             if (!imageStream.CanRead)
                 throw new ArgumentException("Stream cannot be read", nameof(imageStream));
 
-            // Auto-detect language from system locale if not provided
             language ??= GetDefaultLanguageFromSystemLocale();
 
             var startTime = DateTime.UtcNow;
             
             try
             {
-                // Preprocess the image for better OCR results
                 using (var preprocessedStream = await PreprocessImageAsync(imageStream))
                 {
-                    // Reset stream position
                     preprocessedStream.Position = 0;
 
-                    // Perform OCR
                     var extractedText = await PerformOcrAsync(preprocessedStream, language);
                     
                     var processingTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
@@ -221,7 +205,6 @@ namespace SmartRAG.Services.Parser
             {
                 ServiceLogMessages.LogImageProcessingStarted(_logger, (int)imageStream.Length, null);
 
-                // Convert WebP to PNG for Tesseract compatibility
                 var convertedStream = await ConvertToPngIfNeededAsync(imageStream);
                 
                 ServiceLogMessages.LogImageProcessingCompleted(_logger, (int)imageStream.Length, (int)convertedStream.Length, null);
@@ -231,7 +214,6 @@ namespace SmartRAG.Services.Parser
             {
                 ServiceLogMessages.LogImageProcessingFailed(_logger, ex);
                 
-                // Return original stream if preprocessing fails
                 imageStream.Position = 0;
                 return imageStream;
             }
@@ -246,23 +228,19 @@ namespace SmartRAG.Services.Parser
             {
                 imageStream.Position = 0;
                 
-                // Try to detect if it's a WebP image by reading the header
                 var header = new byte[WebPHeaderSize];
                 await imageStream.ReadAsync(header, 0, header.Length);
                 imageStream.Position = 0;
 
-                // Check for WebP signature (RIFF....WEBP)
                 bool isWebP = header.Length >= WebPHeaderSize && 
                              header[0] == RIFFByte1 && header[1] == RIFFByte2 && header[2] == RIFFByte3 && header[3] == RIFFByte4 && // RIFF
                              header[8] == WEBPByte1 && header[9] == WEBPByte2 && header[10] == WEBPByte3 && header[11] == WEBPByte4; // WEBP
 
                 if (!isWebP)
                 {
-                    // Not WebP, return original stream
                     return imageStream;
                 }
 
-                // Convert WebP to PNG using SkiaSharp
                 using (var skImage = SKImage.FromEncodedData(imageStream))
                 {
                     if (skImage == null)
@@ -274,10 +252,7 @@ namespace SmartRAG.Services.Parser
 
                     var pngData = skImage.Encode(SKEncodedImageFormat.Png, PNGQuality);
                     var pngStream = new MemoryStream(pngData.ToArray());
-                    pngStream.Position = 0;
-                    
-                    _logger.LogInformation("Successfully converted WebP to PNG using SkiaSharp");
-                    return pngStream;
+                    pngStream.Position = 0;                    return pngStream;
                 }
             }
             catch (Exception ex)
@@ -303,10 +278,8 @@ namespace SmartRAG.Services.Parser
                 var currentCulture = CultureInfo.CurrentCulture;
                 var twoLetterCode = currentCulture.TwoLetterISOLanguageName; // "tr", "en", "de", etc.
                 
-                // Convert 2-letter code to 3-letter code for Tesseract
                 if (ReverseLanguageCodeMapping.TryGetValue(twoLetterCode, out var threeLetterCode))
                 {
-                    // Check if the language data file exists
                     if (IsLanguageDataAvailable(threeLetterCode))
                     {
                         Console.WriteLine($"[OCR Language Detection] System locale: '{currentCulture.Name}' → Language: '{threeLetterCode}' ✓");
@@ -319,7 +292,6 @@ namespace SmartRAG.Services.Parser
                     }
                 }
                 
-                // Fallback to English if mapping not found
                 Console.WriteLine($"[OCR Language Detection] System locale: '{currentCulture.Name}' → No mapping found, defaulting to 'eng'");
                 return DefaultLanguage;
             }
@@ -353,12 +325,10 @@ namespace SmartRAG.Services.Parser
             {
                 try
                 {
-                    // Use current directory for tessdata if no path is provided
                     var tessdataPath = string.IsNullOrEmpty(_ocrEngineDataPath) ? "." : _ocrEngineDataPath;
                     
                     using (var engine = new TesseractEngine(tessdataPath, language, EngineMode.Default))
                     {
-                        // Configure OCR settings
                         engine.SetVariable("tessedit_char_whitelist", OcrCharacterWhitelist);
                         
                         using (var img = Pix.LoadFromMemory(ReadStreamToByteArray(imageStream)))
@@ -367,7 +337,6 @@ namespace SmartRAG.Services.Parser
                             var text = page.GetText();
                             var confidence = page.GetMeanConfidence();
                             
-                            // Apply OCR post-processing corrections
                             var correctedText = CorrectCommonOcrMistakes(text, language);
                             
                             ServiceLogMessages.LogImageOcrSuccess(_logger, correctedText.Length, null);
@@ -391,7 +360,6 @@ namespace SmartRAG.Services.Parser
         {
             var possiblePaths = new[]
             {
-                // Local tessdata folder (from Content)
                 Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "tessdata"),
                 Path.Combine(Environment.CurrentDirectory, "tessdata"),
                 Path.Combine(Path.GetTempPath(), "tessdata"),
@@ -404,7 +372,6 @@ namespace SmartRAG.Services.Parser
             {
                 if (Directory.Exists(path))
                 {
-                    // Check if eng.traineddata exists in this path
                     var engTrainedDataPath = Path.Combine(path, "eng.traineddata");
                     if (File.Exists(engTrainedDataPath))
                     {
@@ -414,7 +381,6 @@ namespace SmartRAG.Services.Parser
                 }
             }
 
-            // Fallback: Try to find tessdata in any subdirectory
             var baseDir = AppDomain.CurrentDomain.BaseDirectory;
             var tessdataDirs = Directory.GetDirectories(baseDir, "*tessdata*", SearchOption.AllDirectories);
             
@@ -469,13 +435,10 @@ namespace SmartRAG.Services.Parser
             if (string.IsNullOrWhiteSpace(text))
                 return text;
 
-            // Get currency symbol from system locale (NOT from OCR language)
-            // This ensures Turkish system uses ₺ even if OCR is in English
             var currencySymbol = GetCurrencySymbolFromSystemLocale();
             
             if (!string.IsNullOrEmpty(currencySymbol))
             {
-                // Correct % → currency symbol misreads using context-aware patterns
                 text = CorrectCurrencySymbolMisreads(text, currencySymbol);
             }
             
@@ -492,7 +455,6 @@ namespace SmartRAG.Services.Parser
             {
                 var currentCulture = CultureInfo.CurrentCulture;
                 
-                // Create specific culture for RegionInfo
                 var specificCulture = CultureInfo.CreateSpecificCulture(currentCulture.Name);
                 var region = new RegionInfo(specificCulture.Name);
                 var symbol = region.CurrencySymbol;
@@ -520,32 +482,25 @@ namespace SmartRAG.Services.Parser
 
             try
             {                
-                // Determine the culture code to use
                 string cultureCode;
                 
                 if (languageCode.Length == 2)
                 {
-                    // Already 2-letter ISO 639-1 code
                     cultureCode = languageCode;
                 }
                 else if (languageCode.Contains("-"))
                 {
-                    // Already a full culture code (e.g., "en-US")
                     cultureCode = languageCode;
                 }
                 else if (LanguageCodeMapping.TryGetValue(languageCode.ToLowerInvariant(), out var twoLetterCode))
                 {
-                    // Map 3-letter ISO 639-2 to 2-letter ISO 639-1
                     cultureCode = twoLetterCode;
                 }
                 else
                 {
-                    // Try using the code as-is
                     cultureCode = languageCode;
                 }
                 
-                // Create CultureInfo - use CreateSpecificCulture to get a specific (non-neutral) culture
-                // This is required for RegionInfo which doesn't accept neutral cultures like "en" or "tr"
                 var culture = CultureInfo.CreateSpecificCulture(cultureCode);
                 var region = new RegionInfo(culture.Name);
                 var symbol = region.CurrencySymbol;
@@ -570,10 +525,6 @@ namespace SmartRAG.Services.Parser
         /// <returns>Corrected text</returns>
         private static string CorrectCurrencySymbolMisreads(string text, string currencySymbol)
         {
-            // Pattern 1: digit + optional space + % followed by Unicode uppercase letter, digit, or end
-            // Matches price lists: "25% Simit" → "25₺ Simit", "550% 650%" → "550₺ 650₺"
-            // Avoids false positives: "50% indirim" (lowercase after %), "%18 KDV" (% before digit)
-            // \p{Lu} = Unicode uppercase letter (works for Ç, Ö, Ş, А, Я, カ, etc.)
             text = Regex.Replace(
                 text,
                 CurrencyMisreadPatternMain,
@@ -581,8 +532,6 @@ namespace SmartRAG.Services.Parser
                 RegexOptions.Multiline
             );
             
-            // Pattern 2: digit + % (no space) + uppercase or end
-            // Matches: "12Kisilik550%" → "12Kisilik550₺"
             text = Regex.Replace(
                 text,
                 CurrencyMisreadPatternCompact,
@@ -592,7 +541,6 @@ namespace SmartRAG.Services.Parser
             return text;
         }
 
-        // Table processing methods removed - not used in current implementation
 
         #endregion
 
@@ -617,7 +565,6 @@ namespace SmartRAG.Services.Parser
             {
                 if (disposing)
                 {
-                    // Dispose managed resources here if any
                 }
 
                 _disposed = true;

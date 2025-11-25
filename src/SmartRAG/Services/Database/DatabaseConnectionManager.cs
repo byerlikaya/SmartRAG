@@ -41,11 +41,7 @@ namespace SmartRAG.Services.Database
             {
                 _logger.LogWarning("DatabaseConnectionManager already initialized");
                 return;
-            }
-
-            _logger.LogInformation("Initializing database connections...");
-
-            if (_options.DatabaseConnections == null || _options.DatabaseConnections.Count == 0)
+            }            if (_options.DatabaseConnections == null || _options.DatabaseConnections.Count == 0)
             {
                 _logger.LogInformation("No database connections configured");
                 _initialized = true;
@@ -54,11 +50,7 @@ namespace SmartRAG.Services.Database
 
             var enabledConnections = _options.DatabaseConnections
                 .Where(c => c.Enabled)
-                .ToList();
-
-            _logger.LogInformation("Found {Count} enabled database connections", enabledConnections.Count);
-
-            foreach (var config in enabledConnections)
+                .ToList();            foreach (var config in enabledConnections)
             {
                 try
                 {
@@ -67,7 +59,6 @@ namespace SmartRAG.Services.Database
                     
                     _logger.LogInformation("Registered database connection: {DatabaseId}", databaseId);
 
-                    // Perform initial schema analysis if enabled
                     if (_options.EnableAutoSchemaAnalysis)
                     {
                         _logger.LogInformation("Starting schema analysis for: {DatabaseId}", databaseId);
@@ -133,7 +124,6 @@ namespace SmartRAG.Services.Database
                 return connectionConfig.Name;
             }
 
-            // Auto-generate from database name
             try
             {
                 var dbName = await ExtractDatabaseNameAsync(connectionConfig);
@@ -152,7 +142,6 @@ namespace SmartRAG.Services.Database
 
         private async Task<string> ExtractDatabaseNameAsync(DatabaseConnectionConfig config)
         {
-            // Try to extract database name from connection string
             var connectionString = config.ConnectionString.ToLower();
 
             if (connectionString.Contains("database="))
@@ -187,7 +176,6 @@ namespace SmartRAG.Services.Database
 
         private string MaskConnectionString(string connectionString)
         {
-            // Mask sensitive information in connection string
             var masked = System.Text.RegularExpressions.Regex.Replace(
                 connectionString,
                 @"(password|pwd)=([^;]+)",

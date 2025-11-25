@@ -26,13 +26,11 @@ namespace SmartRAG.Providers
     {
         #region Constants
 
-        // HTTP request constants
         private const int DefaultMaxRetries = 3;
         private const int BaseDelayMs = 1000;
         private const int MinRetryDelayMs = 60000;
         private const int MaxRetryDelayMs = int.MaxValue;
 
-        // JSON parsing constants
         private const string DefaultDataProperty = "data";
         private const string DefaultEmbeddingProperty = "embedding";
         private const string DefaultChoicesProperty = "choices";
@@ -108,13 +106,10 @@ namespace SmartRAG.Providers
             if (textList.Count == 0)
                 return results;
 
-            // Progress logging for large batches
             var processedCount = 0;
             var lockObject = new object();
             var lastProgressLog = 0;
             
-            // Dynamic progress interval based on batch size for better feedback
-            // Small batches: every 10, Medium: every 50, Large: every 100
             int ProgressLogInterval;
             if (textList.Count < 100)
                 ProgressLogInterval = 10;
@@ -125,7 +120,6 @@ namespace SmartRAG.Providers
             
             var startTime = System.DateTime.UtcNow;
             
-            // Always log start for better visibility
             Logger.LogInformation("Starting batch embedding generation: {Total} texts (progress every {Interval})", 
                 textList.Count, ProgressLogInterval);
             
@@ -139,13 +133,11 @@ namespace SmartRAG.Providers
                         var embedding = await GenerateEmbeddingAsync(text, config);
                         results[index] = embedding;
                         
-                        // Thread-safe progress tracking
                         lock (lockObject)
                         {
                             processedCount++;
                             var currentProgress = processedCount;
 
-                            // Log progress at intervals or at specific milestones - VERY frequent for better visibility
                             bool shouldLog = currentProgress - lastProgressLog >= ProgressLogInterval || 
                                             currentProgress == 1 || 
                                             currentProgress == 2 ||
@@ -171,10 +163,8 @@ namespace SmartRAG.Providers
                     }
                     catch
                     {
-                        // Add empty embedding on error to maintain index consistency
                         results[index] = new List<float>();
                         
-                        // Log errors occasionally (every 10th error)
                         lock (lockObject)
                         {
                             processedCount++;
@@ -194,7 +184,6 @@ namespace SmartRAG.Providers
                 await Task.WhenAll(tasks);
             }
 
-            // Log completion
             var successCount = results.Count(r => r != null && r.Count > 0);
             var totalTime = System.DateTime.UtcNow - startTime;
             Logger.LogInformation("Batch embedding generation completed: {Success}/{Total} successful ({SuccessRate:F1}%) | Total time: {TotalTime:F1}s", 
@@ -270,13 +259,11 @@ namespace SmartRAG.Providers
             var handler = CreateHttpClientHandler();
             var client = new HttpClient(handler)
             {
-                // Timeout for embedding operations (60s safety limit)
                 Timeout = TimeSpan.FromSeconds(60)
             };
 
             if (!string.IsNullOrEmpty(apiKey))
             {
-                // Generic auth header - providers can override if needed
                 var authHeader = "Authorization";
                 var authValue = $"Bearer {apiKey}";
                 client.DefaultRequestHeaders.Add(authHeader, authValue);
@@ -323,7 +310,6 @@ namespace SmartRAG.Providers
                     if (success)
                         return (true, response, string.Empty);
 
-                    // Handle rate limiting, server overload, EOF errors, and Ollama crashes
                     bool shouldRetry = error.Contains("429") || error.Contains("TooManyRequests") ||
                         error.Contains("529") || error.Contains("Overloaded") ||
                         error.Contains("EOF") ||  // Retry EOF errors (Ollama runner crashes)
@@ -335,8 +321,6 @@ namespace SmartRAG.Providers
                         attempt++;
                         if (attempt < maxRetries)
                         {
-                            // For EOF errors (Ollama crashes), use longer delay (1 second) to give Ollama time to recover
-                            // For other errors, use exponential backoff
                             int delayMs = error.Contains("EOF") ? 1000 : CalculateRetryDelay(attempt);
                             await Task.Delay(delayMs);
                             continue;
@@ -372,11 +356,8 @@ namespace SmartRAG.Providers
         {
             var handler = new HttpClientHandler();
 
-            // Handle SSL/TLS issues for all providers
             handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
             {
-                // For development/testing, you might want to bypass certificate validation
-                // In production, this should be more restrictive
                 return true;
             };
 
@@ -424,7 +405,6 @@ namespace SmartRAG.Providers
         /// </summary>
         private static int CalculateRetryDelay(int attempt)
         {
-            // For server overload (529), use exponential backoff starting from 60 seconds
             return MinRetryDelayMs * attempt;
         }
 
@@ -504,10 +484,8 @@ namespace SmartRAG.Providers
             }
             catch
             {
-                // Return partial results on error
             }
 
-            // Ensure we return the expected number of embeddings
             return Enumerable.Range(0, expectedCount)
                 .Select(i => i < results.Count ? results[i] : new List<float>())
                 .ToList();

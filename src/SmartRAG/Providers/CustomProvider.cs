@@ -31,7 +31,6 @@ namespace SmartRAG.Providers
 
         #region Constants
 
-        // Custom provider constants
         private const int DefaultMaxChunkSize = 1000;
         private const string UserRole = "user";
         private const string SystemRole = "system";
@@ -106,7 +105,6 @@ namespace SmartRAG.Providers
 
             var embeddingEndpoint = GetEmbeddingEndpoint(config);
             
-            // REUSE single HttpClient for entire batch with LONG timeout
             var handler = CreateHttpClientHandler();
             using (var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(10) })
             {
@@ -115,34 +113,25 @@ namespace SmartRAG.Providers
                     client.DefaultRequestHeaders.Add("Authorization", $"Bearer {config.ApiKey}");
                 }
                 
-                // Use Ollama's NATIVE BATCH API - send large batches (200 chunks at a time for maximum speed)
-                // 200 is optimal for speed: with aggressive sanitization, problematic texts are cleaned
-                // Failed batches are automatically retried individually to avoid data loss
                 const int BatchSize = 200;
                 const int MaxConcurrentBatches = 3; // Process 3 batches in parallel for 2-3x speedup
                 
                 Logger.LogInformation("Processing {Count} embeddings in BATCHES of {BatchSize} using Ollama native batch API (parallel: {Concurrency})", 
                     textList.Count, BatchSize, MaxConcurrentBatches);
                 
-                // Sanitize all texts first - AGGRESSIVE sanitization
                 var sanitizedTexts = textList.Select(t => 
                 {
                     if (string.IsNullOrEmpty(t))
                         return "";
                     
-                    // Remove null bytes
                     var cleaned = t.Replace("\0", "").Trim();
                     
-                    // Replace multiple dots/periods with single dot (common in PDFs)
                     cleaned = Regex.Replace(cleaned, @"\.{3,}", "...");
                     
-                    // Replace multiple spaces/tabs/newlines with single space
                     cleaned = Regex.Replace(cleaned, @"\s+", " ");
                     
-                    // Remove any remaining control characters except newline and tab
                     cleaned = new string(cleaned.Where(c => !char.IsControl(c) || c == '\n' || c == '\t').ToArray());
                     
-                    // Limit text length to prevent Ollama crashes (max 8000 characters)
                     if (cleaned.Length > 8000)
                     {
                         Logger.LogWarning("Text truncated from {OriginalLength} to 8000 characters to prevent Ollama crash", cleaned.Length);
@@ -152,12 +141,10 @@ namespace SmartRAG.Providers
                     return cleaned;
                 }).ToList();
                 
-                // Prepare batch tasks for parallel processing
                 var batchTasks = new List<Task>();
                 var semaphore = new SemaphoreSlim(MaxConcurrentBatches, MaxConcurrentBatches);
                 var lockObject = new object();
                 
-                // Process batches in parallel (controlled by semaphore)
                 for (int batchStart = 0; batchStart < textList.Count; batchStart += BatchSize)
                 {
                     var currentBatchStart = batchStart; // Capture for closure
@@ -166,7 +153,6 @@ namespace SmartRAG.Providers
                     var batchIndices = Enumerable.Range(batchStart, batch.Count).ToList();
                     var batchNum = (batchStart / BatchSize) + 1;
                     
-                    // Create parallel task for this batch
                     var batchTask = Task.Run(async () =>
                     {
                         await semaphore.WaitAsync();
@@ -184,7 +170,6 @@ namespace SmartRAG.Providers
                     batchTasks.Add(batchTask);
                 }
                 
-                // Wait for all batches to complete
                 await Task.WhenAll(batchTasks);
             }
 
@@ -218,7 +203,6 @@ namespace SmartRAG.Providers
                     ["keep_alive"] = "10m"  // Keep model loaded in memory longer for faster processing!
                 };
                 
-                // Use Task with timeout wrapper (15 seconds per batch - should be enough for 200 texts)
                 var requestTask = MakeHttpRequestAsync(client, embeddingEndpoint, payload, maxRetries: 2);
                 var timeoutTask = Task.Delay(TimeSpan.FromSeconds(15));
                 var completedTask = await Task.WhenAny(requestTask, timeoutTask);
@@ -330,7 +314,6 @@ namespace SmartRAG.Providers
                         results[batchIndices[i]] = new List<float>();
                     }
                     
-                    // Delay between individual retries to give Ollama time to recover
                     if (i < batch.Count - 1)
                     {
                         await Task.Delay(TimeSpan.FromMilliseconds(1000));
@@ -345,10 +328,8 @@ namespace SmartRAG.Providers
             }
         }
 
-        // Override to sanitize text and use custom endpoint for Ollama
         public override async Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config)
         {
-            // Sanitize input text to remove null bytes that might break Ollama
             if (!string.IsNullOrEmpty(text))
             {
                 text = text.Replace("\0", "").Trim();
@@ -470,36 +451,28 @@ namespace SmartRAG.Providers
         /// </summary>
         private static string GetEmbeddingEndpoint(AIProviderConfig config)
         {
-            // If explicit embedding endpoint provided, use it
             if (!string.IsNullOrEmpty(config.EmbeddingEndpoint))
             {
                 return config.EmbeddingEndpoint;
             }
 
-            // Derive from main endpoint
             var endpoint = config.Endpoint;
 
             try
             {
-                // Parse URL to get base URL
                 var uri = new Uri(endpoint);
                 var baseUrl = $"{uri.Scheme}://{uri.Authority}";
 
-                // Ollama pattern: http://localhost:11434/v1/chat/completions → http://localhost:11434/v1/embeddings
                 if (uri.Host == "localhost" || uri.Host == "127.0.0.1" || uri.Host == "::1")
                 {
-                    // Use OpenAI-compatible endpoint for better stability with "input" parameter
                     return $"{baseUrl}/v1/embeddings";
                 }
 
-                // OpenRouter, Groq, etc: usually same endpoint pattern
-                // /v1/chat/completions → /v1/embeddings
                 if (endpoint.Contains("/chat/completions"))
                 {
                     return endpoint.Replace("/chat/completions", "/embeddings");
                 }
 
-                // Default: try /v1/embeddings
                 if (endpoint.Contains("/v1/"))
                 {
                     var v1Index = endpoint.IndexOf("/v1/");
@@ -507,18 +480,15 @@ namespace SmartRAG.Providers
                     return $"{baseUrlFromEndpoint}embeddings";
                 }
 
-                // Fallback: append /api/embeddings to base URL
                 return $"{baseUrl}/api/embeddings";
             }
             catch
             {
-                // If URL parsing fails, try simple string replacement
                 if (endpoint.Contains("/chat/completions"))
                 {
                     return endpoint.Replace("/chat/completions", "/embeddings");
                 }
 
-                // Last resort: append /api/embeddings
                 if (!endpoint.EndsWith("/"))
                 {
                     return endpoint + "/api/embeddings";
@@ -570,7 +540,6 @@ namespace SmartRAG.Providers
         {
             var responseData = JsonSerializer.Deserialize<JsonElement>(response);
 
-            // Try OpenAI-style response format first (for OpenRouter, etc.)
             if (responseData.TryGetProperty("choices", out var choices) && choices.ValueKind == JsonValueKind.Array)
             {
                 var firstChoice = choices.EnumerateArray().FirstOrDefault();
@@ -581,7 +550,6 @@ namespace SmartRAG.Providers
                 }
             }
 
-            // Try message.content[].text format (some APIs use array-based content)
             if (responseData.TryGetProperty("message", out var messageWithArrayContent) &&
                 messageWithArrayContent.TryGetProperty("content", out var contentArray) &&
                 contentArray.ValueKind == JsonValueKind.Array)
@@ -593,7 +561,6 @@ namespace SmartRAG.Providers
                 }
             }
 
-            // Try other common response field names
             if (responseData.TryGetProperty("text", out var text))
                 return text.GetString() ?? "No response generated";
             if (responseData.TryGetProperty("response", out var responseText))
@@ -616,7 +583,6 @@ namespace SmartRAG.Providers
                 using var document = JsonDocument.Parse(response);
                 var root = document.RootElement;
 
-                // Ollama native /api/embed response: { "embeddings": [[...], [...]] }
                 if (root.TryGetProperty("embeddings", out var embeddingsArray))
                 {
                     var result = new List<List<float>>();
@@ -644,7 +610,6 @@ namespace SmartRAG.Providers
         {
             var responseData = JsonSerializer.Deserialize<JsonElement>(response);
 
-            // Try Ollama format: { "embedding": [0.1, 0.2, ...] }
             if (responseData.TryGetProperty("embedding", out var embedding) && embedding.ValueKind == JsonValueKind.Array)
             {
                 var floats = new List<float>();
@@ -658,7 +623,6 @@ namespace SmartRAG.Providers
                 return floats;
             }
 
-            // Try OpenAI/Ollama format: { "embeddings": [[0.1, 0.2, ...]] }
             if (responseData.TryGetProperty("embeddings", out var embeddings) && embeddings.ValueKind == JsonValueKind.Array)
             {
                 var firstEmbedding = embeddings.EnumerateArray().FirstOrDefault();
@@ -677,7 +641,6 @@ namespace SmartRAG.Providers
                 }
             }
 
-            // Try OpenAI format: { "data": [{ "embedding": [0.1, 0.2, ...] }] }
             if (responseData.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
             {
                 var firstData = data.EnumerateArray().FirstOrDefault();

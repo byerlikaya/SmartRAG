@@ -60,7 +60,6 @@ namespace SmartRAG.Repositories
             var redisConfig = config.Value;
             _logger = logger;
 
-            // Configure connection options
             var options = CreateConnectionOptions(redisConfig);
 
             ConfigureAuthentication(options, redisConfig);
@@ -91,7 +90,6 @@ namespace SmartRAG.Repositories
         {
             try
             {
-                // Validate document and chunks
                 SmartRAG.Services.Helpers.DocumentValidator.ValidateDocument(document);
                 SmartRAG.Services.Helpers.DocumentValidator.ValidateChunks(document);
 

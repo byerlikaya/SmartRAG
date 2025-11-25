@@ -56,7 +56,6 @@ namespace SmartRAG.Services.Database.Prompts
             sb.AppendLine($"   Database Type: {schema.DatabaseType}");
             sb.AppendLine();
             
-            // Inject dialect specific instructions
             sb.AppendLine(strategy.BuildSystemPrompt(schema, userQuery));
             
             sb.AppendLine();
@@ -94,7 +93,6 @@ namespace SmartRAG.Services.Database.Prompts
             sb.AppendLine("  ✗ NO more than 2 JOINs");
             sb.AppendLine();
             
-            // ... (Skipping some generic examples for brevity, but keeping the core logic) ...
             
             sb.AppendLine("═══════════════════════════════════════════════════════════════════");
             sb.AppendLine();

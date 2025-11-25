@@ -29,7 +29,6 @@ namespace SmartRAG.Providers
 
         #region Constants
 
-        // Rate limiting constants
         private const int DefaultMaxRetries = 3;
         private const int DefaultMinIntervalMs = 60000; // 60 seconds
 
@@ -37,7 +36,6 @@ namespace SmartRAG.Providers
 
         #region Fields
 
-        // Azure OpenAI S0 tier rate limiting (3 RPM)
         private readonly SemaphoreSlim _rateLimitSemaphore = new SemaphoreSlim(1, 1);
         private DateTime _lastRequestTime = DateTime.MinValue;
 
@@ -214,7 +212,6 @@ namespace SmartRAG.Providers
         private async Task<(bool success, string response, string error)> MakeHttpRequestAsyncWithRateLimit(
             HttpClient client, string endpoint, object payload, AIProviderConfig config)
         {
-            // S0 tier: 3 RPM - configurable minimum interval
             var minIntervalMs = Math.Max(0, config.EmbeddingMinIntervalMs ?? DefaultMinIntervalMs);
 
             await _rateLimitSemaphore.WaitAsync();
@@ -223,7 +220,6 @@ namespace SmartRAG.Providers
                 await WaitForRateLimit(minIntervalMs);
                 _lastRequestTime = DateTime.UtcNow;
 
-                // Normal request with retry logic
                 return await MakeHttpRequestAsync(client, endpoint, payload, maxRetries: DefaultMaxRetries);
             }
             finally

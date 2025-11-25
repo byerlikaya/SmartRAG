@@ -550,7 +550,6 @@ namespace SmartRAG.Repositories
         {
             try
             {
-                // Validate input
                 if (string.IsNullOrEmpty(query))
                     return Task.FromResult(new List<DocumentChunk>());
 

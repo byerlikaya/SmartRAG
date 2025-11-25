@@ -29,15 +29,12 @@ namespace SmartRAG.Services.Database.Validation
                 return errors;
             }
 
-            // 1. Validate Tables
             var tableErrors = ValidateTables(sql, schema, requiredTables);
             errors.AddRange(tableErrors);
 
-            // 2. Validate Columns
             var columnErrors = ValidateColumns(sql, schema, requiredTables);
             errors.AddRange(columnErrors);
 
-            // 3. Validate Forbidden Keywords/Patterns
             var syntaxErrors = ValidateSyntax(sql);
             errors.AddRange(syntaxErrors);
 
@@ -48,15 +45,12 @@ namespace SmartRAG.Services.Database.Validation
         {
             var errors = new List<string>();
             
-            // Extract table names from SQL (simple regex approach)
-            // Matches FROM TableName, JOIN TableName
             var tableMatches = Regex.Matches(sql, @"(?:FROM|JOIN)\s+([a-zA-Z0-9_]+)", RegexOptions.IgnoreCase);
             
             foreach (Match match in tableMatches)
             {
                 var tableName = match.Groups[1].Value;
                 
-                // Skip if it's a keyword (false positive)
                 if (IsSqlKeyword(tableName)) continue;
 
                 // CRITICAL: Check if table exists in schema (ERROR if not)
@@ -67,7 +61,6 @@ namespace SmartRAG.Services.Database.Validation
                     continue;
                 }
 
-                // WARNING: Table exists but not in required list (log only, don't block query)
                 if (!requiredTables.Contains(tableName, StringComparer.OrdinalIgnoreCase))
                 {
                     _logger.LogWarning(
@@ -75,8 +68,6 @@ namespace SmartRAG.Services.Database.Validation
                         "Allowing query to proceed. This may indicate QueryIntentAnalyzer needs improvement.",
                         tableName, schema.DatabaseName);
                     
-                    // Don't add to errors - the table is valid, just not initially planned
-                    // This allows AI to be more flexible while we log for monitoring
                 }
             }
 
@@ -87,10 +78,8 @@ namespace SmartRAG.Services.Database.Validation
         {
             var errors = new List<string>();
             
-            // Extract alias to table mapping
             var aliasToTable = ExtractTableAliases(sql);
             
-            // Find all prefix.column patterns (both table names and aliases)
             var columnMatches = Regex.Matches(sql, @"\b([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\b", RegexOptions.IgnoreCase);
             
             foreach (Match match in columnMatches)
@@ -98,26 +87,20 @@ namespace SmartRAG.Services.Database.Validation
                 var prefix = match.Groups[1].Value;
                 var columnName = match.Groups[2].Value;
                 
-                // Skip wildcard
                 if (columnName.Equals("*", StringComparison.OrdinalIgnoreCase)) continue;
                 
-                // Determine actual table name from prefix (could be alias or direct table name)
                 string tableName = prefix;
                 if (aliasToTable.ContainsKey(prefix))
                 {
                     tableName = aliasToTable[prefix];
                 }
                 
-                // Find the table in schema
                 var table = schema.Tables.FirstOrDefault(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase));
                 
-                // If table not found in schema, skip (table validation happens elsewhere)
                 if (table == null) continue;
                 
-                // Check if this table is in the required tables list
                 if (!requiredTables.Contains(table.TableName, StringComparer.OrdinalIgnoreCase)) continue;
                 
-                // Validate column exists in the table
                 var columnExists = table.Columns.Any(c => c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase));
                 if (!columnExists)
                 {
@@ -138,7 +121,6 @@ namespace SmartRAG.Services.Database.Validation
                 errors.Add("CROSS JOIN is not allowed. Use explicit INNER JOIN or LEFT JOIN.");
             }
 
-            // Check for nested subqueries (heuristic: multiple SELECTs)
             var selectCount = Regex.Matches(sql, @"SELECT\s", RegexOptions.IgnoreCase).Count;
             if (selectCount > 2)
             {
@@ -161,8 +143,6 @@ namespace SmartRAG.Services.Database.Validation
         {
             var aliasToTable = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             
-            // Pattern: FROM TableName [AS] Alias  or  JOIN TableName [AS] Alias
-            // Matches: FROM Orders t2, JOIN Products AS p1, etc.
             var aliasMatches = Regex.Matches(sql, 
                 @"(?:FROM|JOIN)\s+([a-zA-Z0-9_]+)(?:\s+(?:AS\s+)?([a-zA-Z0-9_]+))?", 
                 RegexOptions.IgnoreCase);
@@ -172,7 +152,6 @@ namespace SmartRAG.Services.Database.Validation
                 var tableName = match.Groups[1].Value;
                 var alias = match.Groups[2].Value;
                 
-                // If alias exists and is not a SQL keyword, add to mapping
                 if (!string.IsNullOrWhiteSpace(alias) && !IsSqlKeyword(alias))
                 {
                     aliasToTable[alias] = tableName;

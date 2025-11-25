@@ -249,9 +249,7 @@ namespace SmartRAG.Services.Document
             {
                 // Database coordinator not available or disabled → Fallback to document-only logic (if enabled)
                 if (searchOptions.EnableDocumentSearch)
-                {
-                    _logger.LogInformation("Database search disabled or coordinator not available. Using document-only query.");
-                    response = await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage, searchOptions);
+                {                    response = await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage, searchOptions);
                 }
                 else
                 {
@@ -311,10 +309,7 @@ namespace SmartRAG.Services.Document
         /// [AI Query] [DB Query] Executes a database-only query strategy
         /// </summary>
         private async Task<RagResponse> ExecuteDatabaseOnlyStrategyAsync(string query, int maxResults, string conversationHistory, bool canAnswerFromDocuments, QueryIntent? queryIntent, string? preferredLanguage = null, SearchOptions? options = null)
-        {
-            _logger.LogInformation("Executing database-only query strategy");
-            
-            try
+        {            try
             {
                 if (queryIntent == null)
             {
@@ -343,10 +338,7 @@ namespace SmartRAG.Services.Document
         /// [AI Query] [DB Query] [Document Query] Executes a hybrid query strategy (both database and document queries)
         /// </summary>
         private async Task<RagResponse> ExecuteHybridStrategyAsync(string query, int maxResults, string conversationHistory, bool hasDatabaseQueries, bool canAnswerFromDocuments, QueryIntent? queryIntent, string? preferredLanguage = null, SearchOptions? options = null)
-        {
-            _logger.LogInformation("Executing hybrid query strategy (database + documents)");
-            
-            RagResponse? databaseResponse = null;
+        {            RagResponse? databaseResponse = null;
             RagResponse? documentResponse = null;
 
             // Execute database query if available
@@ -364,13 +356,9 @@ namespace SmartRAG.Services.Document
                         var candidateDatabaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(query, queryIntent, maxResults);
                         if (HasMeaningfulData(candidateDatabaseResponse))
                         {
-                            databaseResponse = candidateDatabaseResponse;
-                            _logger.LogInformation("Database query completed successfully with meaningful data");
-                        }
+                            databaseResponse = candidateDatabaseResponse;                        }
                         else
-                        {
-                            _logger.LogInformation("Database query completed without meaningful data, excluding from hybrid merge");
-                        }
+                        {                        }
                     }
                 }
                 catch (Exception ex)
@@ -382,9 +370,7 @@ namespace SmartRAG.Services.Document
             // Execute document query
             if (canAnswerFromDocuments)
             {
-                documentResponse = await GenerateBasicRagAnswerAsync(query, maxResults, conversationHistory, preferredLanguage, options);
-                _logger.LogInformation("Document query completed successfully");
-            }
+                documentResponse = await GenerateBasicRagAnswerAsync(query, maxResults, conversationHistory, preferredLanguage, options);            }
 
             // Merge results if both queries executed
             if (databaseResponse != null && documentResponse != null)
@@ -477,12 +463,7 @@ namespace SmartRAG.Services.Document
                 combinedContext.Add(documentContext);
 
             var mergePrompt = _promptBuilder.BuildHybridMergePrompt(query, databaseContext, documentContext, conversationHistory, preferredLanguage);
-            var mergedAnswer = await _aiService.GenerateResponseAsync(mergePrompt, combinedContext);
-
-            _logger.LogInformation("Hybrid search completed. Combined {DatabaseSources} database sources and {DocumentSources} document sources",
-                databaseResponse.Sources.Count, documentResponse.Sources.Count);
-
-            return CreateRagResponse(query, mergedAnswer, combinedSources);
+            var mergedAnswer = await _aiService.GenerateResponseAsync(mergePrompt, combinedContext);            return CreateRagResponse(query, mergedAnswer, combinedSources);
         }
 
 
@@ -754,25 +735,10 @@ namespace SmartRAG.Services.Document
                 };
 
                 if (secondDoc != null)
-                {
-                    _logger.LogInformation("Document scoring: Top={TopDocName} (Score={TopScore:F1}, QueryMatches={TopMatches}/{TotalQueryWords}, UniqueKeywords={TopUnique} [{TopUniqueWords}]), Second={SecondDocName} (Score={SecondScore:F1}, QueryMatches={SecondMatches}/{TotalQueryWords}, UniqueKeywords={SecondUnique} [{SecondUniqueWords}])",
-                        topDocName, topDoc.Score, topDoc.QueryWordMatches, queryWords.Count, topDoc.UniqueKeywords, getUniqueWords(topDoc.Document),
-                        secondDocName, secondDoc.Score, secondDoc.QueryWordMatches, queryWords.Count, secondDoc.UniqueKeywords, getUniqueWords(secondDoc.Document));
-                }
+                {                }
                 else
-                {
-                    _logger.LogInformation("Document scoring: Top={TopDocName} (Score={TopScore:F1}, QueryMatches={TopMatches}/{TotalQueryWords}, UniqueKeywords={TopUnique} [{TopUniqueWords}])",
-                        topDocName, topDoc.Score, topDoc.QueryWordMatches, queryWords.Count, topDoc.UniqueKeywords, getUniqueWords(topDoc.Document));
-                }
-            }
-            
-            _logger.LogInformation("Selected {Count} chunks from {DocCount} documents. Top document: {TopDocId} with {TopCount} chunks (avg score: {TopScore})",
-                relevantChunks.Count, docDistribution.Count, 
-                docDistribution.FirstOrDefault()?.DocId, 
-                docDistribution.FirstOrDefault()?.Count ?? 0,
-                docDistribution.FirstOrDefault()?.AvgScore ?? 0.0);
-
-            // If we found chunks with names, prioritize them
+                {                }
+            }            // If we found chunks with names, prioritize them
             if (potentialNames.Count >= MinPotentialNamesCount)
             {
                 var nameChunks = relevantChunks.Where(c =>
@@ -1325,15 +1291,8 @@ namespace SmartRAG.Services.Document
                             }
                         }
                         
-                        allNumberedListChunks.AddRange(relevantNumberedChunks);
-                        _logger.LogInformation("Found {TotalCount} numbered list chunks in document {DocumentId}, {RelevantCount} relevant (with query words or 3+ items)", 
-                            documentNumberedChunks.Count, documentId, relevantNumberedChunks.Count);
-                    }
-                }
-                
-                _logger.LogInformation("Total numbered list chunks found: {Count}", allNumberedListChunks.Count);
-                
-                // CRITICAL: Prioritize chunks with query words - these are most relevant
+                        allNumberedListChunks.AddRange(relevantNumberedChunks);                    }
+                }                // CRITICAL: Prioritize chunks with query words - these are most relevant
                 // Sort by total score first (includes document-level boost), then by query word matches
                 var finalQueryWords = QueryTokenizer.TokenizeQuery(query);
                 var prioritizedNumberedChunks = allNumberedListChunks
@@ -1391,10 +1350,7 @@ namespace SmartRAG.Services.Document
                     .ToList(); // Don't limit - let the final selection handle it
                 
                 var originalChunksPreserved = chunks.Count(c => originalChunkIds.Contains(c.Id));
-                var newChunksAdded = chunks.Count - originalChunksPreserved;
-                _logger.LogInformation("Preserved {OriginalCount} original chunks + added {NewCount} new numbered list chunks (from {TotalNumbered} found)", 
-                    originalChunksPreserved, newChunksAdded, allNumberedListChunks.Count);
-            }
+                var newChunksAdded = chunks.Count - originalChunksPreserved;            }
             
             // Expand context by including adjacent chunks from the same document
             // This ensures that if a heading is in one chunk and content is in the next, both are included
@@ -1494,11 +1450,7 @@ namespace SmartRAG.Services.Document
                 chunks = chunks
                     .OrderByDescending(c => numberedListChunkIds.Contains(c.Id))
                     .ThenByDescending(c => c.RelevanceScore ?? 0.0)
-                    .ToList();
-                
-                _logger.LogInformation("Skipped context expansion to preserve {Count} numbered list chunks", numberedListChunkIds.Count);
-                
-                // Limit chunks but keep all numbered list chunks
+                    .ToList();                // Limit chunks but keep all numbered list chunks
                 if (chunks.Count > MaxExpandedChunks)
                 {
                     var numberedListCount = chunks.Count(c => numberedListChunkIds.Contains(c.Id));
@@ -1507,10 +1459,7 @@ namespace SmartRAG.Services.Document
                         .Take(MaxExpandedChunks - numberedListCount)
                         .ToList();
                     
-                    chunks = numberedListChunks.Concat(otherChunks).ToList();
-                    _logger.LogInformation("Limited to {Count} chunks, kept {NumberedCount} numbered list chunks", 
-                        chunks.Count, numberedListCount);
-                }
+                    chunks = numberedListChunks.Concat(otherChunks).ToList();                }
             }
             
             // Build context with size limit to prevent timeout

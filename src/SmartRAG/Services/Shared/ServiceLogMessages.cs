@@ -16,19 +16,9 @@ namespace SmartRAG.Services.Shared
             new EventId(1001, "DocumentUploaded"),
             "Document uploaded successfully: {FileName}");
 
-        public static readonly Action<ILogger, string, Exception> LogDocumentUploadFailed = LoggerMessage.Define<string>(
-            LogLevel.Warning,
-            new EventId(1002, "DocumentUploadFailed"),
-            "Failed to upload document: {FileName}"); 
-
         #endregion
 
         #region Embedding Operations
-
-        public static readonly Action<ILogger, int, int, Exception> LogChunkEmbeddingSuccess = LoggerMessage.Define<int, int>(
-            LogLevel.Debug,
-            new EventId(2001, "ChunkEmbeddingSuccess"),
-            "Chunk {Index}: Embedding generated ({Dimensions} dimensions)");
 
         public static readonly Action<ILogger, int, Exception> LogChunkEmbeddingFailed = LoggerMessage.Define<int>(
             LogLevel.Warning,

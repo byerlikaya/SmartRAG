@@ -7,6 +7,9 @@ using System.Linq;
 
 namespace SmartRAG.Services.Helpers
 {
+    /// <summary>
+    /// Provides document and chunk validation for ensuring data integrity
+    /// </summary>
     public static class DocumentValidator
     {
         #region Constants
@@ -23,6 +26,12 @@ namespace SmartRAG.Services.Helpers
         private const int SentenceTransformersDimension = 768;
         #endregion
 
+        /// <summary>
+        /// Validates basic document properties
+        /// </summary>
+        /// <param name="document">Document to validate</param>
+        /// <exception cref="ArgumentNullException">When document is null</exception>
+        /// <exception cref="ArgumentException">When document properties are invalid</exception>
         public static void ValidateDocument(SmartRAG.Entities.Document document)
         {
             if (document == null)
@@ -46,11 +55,15 @@ namespace SmartRAG.Services.Helpers
             }
         }
 
+        /// <summary>
+        /// Validates document chunks including content, embeddings, and metadata
+        /// </summary>
+        /// <param name="document">Document containing chunks to validate</param>
+        /// <exception cref="ArgumentException">When chunk properties are invalid</exception>
         public static void ValidateChunks(SmartRAG.Entities.Document document)
         {
             if (document.Chunks == null || !document.Chunks.Any())
             {
-                // It's valid to have no chunks initially, but if the list is null it should be initialized
                 return;
             }
 
@@ -93,6 +106,12 @@ namespace SmartRAG.Services.Helpers
             }
         }
 
+        /// <summary>
+        /// Validates chunk embedding vector for dimension, range, and validity
+        /// </summary>
+        /// <param name="chunk">Chunk containing embedding to validate</param>
+        /// <param name="document">Parent document for error reporting</param>
+        /// <exception cref="ArgumentException">When embedding is invalid</exception>
         private static void ValidateChunkEmbedding(DocumentChunk chunk, SmartRAG.Entities.Document document)
         {
             if (chunk.Embedding == null) return;

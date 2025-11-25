@@ -27,12 +27,10 @@ namespace SmartRAG.Services.Document
         private readonly ILogger<DocumentParserService> _logger;
 
         #region Constants
-        // Chunk boundary search constants
         private const int DefaultDynamicSearchRange = 500;
         private const int DynamicSearchRangeDivisor = 10;
         private const int UltimateSearchRange = 1000;
 
-        // Sentence ending constants
         private static readonly char[] SentenceEndings = new char[] { '.', '!', '?', ';' };
         private static readonly string[] ParagraphEndings = new string[] { "\n\n", "\r\n\r\n" };
         private static readonly char[] WordBoundaries = new char[] { ' ', '\t', '\n', '\r' };
@@ -302,7 +300,6 @@ namespace SmartRAG.Services.Document
             var contentLength = content.Length;
             var dynamicSearchRange = Math.Min(DefaultDynamicSearchRange, contentLength / DynamicSearchRangeDivisor);
 
-            // Priority 1: End of sentence
             var sentenceEndIndex = FindLastSentenceEnd(content, searchStartFromStart, searchEndFromEnd);
             if (sentenceEndIndex > searchStartFromStart)
             {
@@ -310,7 +307,6 @@ namespace SmartRAG.Services.Document
                 return validatedIndex + 1;
             }
 
-            // Priority 2: End of paragraph
             var paragraphEndIndex = FindLastParagraphEnd(content, searchStartFromStart, searchEndFromEnd);
             if (paragraphEndIndex > searchStartFromStart)
             {
@@ -318,7 +314,6 @@ namespace SmartRAG.Services.Document
                 return validatedIndex;
             }
 
-            // Priority 3: Word boundary
             var wordBoundaryIndex = FindLastWordBoundary(content, searchStartFromStart, searchEndFromEnd);
             if (wordBoundaryIndex > searchStartFromStart)
             {
@@ -326,14 +321,12 @@ namespace SmartRAG.Services.Document
                 return validatedIndex;
             }
 
-            // Priority 4: Punctuation boundary
             var punctuationIndex = FindLastPunctuationBoundary(content, searchStartFromStart, searchEndFromEnd);
             if (punctuationIndex > searchStartFromStart)
             {
                 return punctuationIndex + 1;
             }
 
-            // Priority 5: Dynamic search
             var intelligentSearchStart = Math.Max(startIndex, currentEndIndex - dynamicSearchRange);
             var intelligentSearchEnd = Math.Min(contentLength, currentEndIndex + dynamicSearchRange);
 
@@ -343,7 +336,6 @@ namespace SmartRAG.Services.Document
                 return anyWordBoundary;
             }
 
-            // Priority 6: Ultimate fallback
             var ultimateSearchStart = Math.Max(startIndex, currentEndIndex - UltimateSearchRange);
             var ultimateWordBoundary = FindUltimateWordBoundary(content, ultimateSearchStart, currentEndIndex);
             if (ultimateWordBoundary > ultimateSearchStart)

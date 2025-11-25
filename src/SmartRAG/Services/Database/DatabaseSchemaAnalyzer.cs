@@ -65,21 +65,13 @@ namespace SmartRAG.Services.Database
 
             try
             {
-                // Get database name
                 schemaInfo.DatabaseName = await ExtractDatabaseNameAsync(connectionConfig);
 
-                // Get all tables
                 var tableNames = await _databaseParserService.GetTableNamesAsync(
                     connectionConfig.ConnectionString, 
                     connectionConfig.DatabaseType);
 
-                // Filter tables if needed
-                tableNames = FilterTables(tableNames, connectionConfig);
-
-                _logger.LogInformation("Found {Count} tables in database {DatabaseId}", tableNames.Count, databaseId);
-
-                // Analyze each table
-                long totalRows = 0;
+                tableNames = FilterTables(tableNames, connectionConfig);                long totalRows = 0;
                 foreach (var tableName in tableNames)
                 {
                     var tableInfo = await AnalyzeTableAsync(
@@ -93,7 +85,6 @@ namespace SmartRAG.Services.Database
 
                 schemaInfo.TotalRowCount = totalRows;
 
-                // Generate AI summary if description not provided
                 if (string.IsNullOrEmpty(schemaInfo.Description))
                 {
                     schemaInfo.AISummary = await GenerateAISummaryAsync(schemaInfo);
@@ -101,7 +92,6 @@ namespace SmartRAG.Services.Database
 
                 schemaInfo.Status = SchemaAnalysisStatus.Completed;
                 
-                // Cache the result
                 _schemaCache[databaseId] = schemaInfo;
                 _lastRefreshTimes[databaseId] = DateTime.UtcNow;
 
@@ -121,14 +111,12 @@ namespace SmartRAG.Services.Database
 
         public async Task<List<DatabaseSchemaInfo>> GetAllSchemasAsync()
         {
-            // Lazy initialization: if cache is empty, analyze configured connections
             if (_schemaCache.IsEmpty && _options.DatabaseConnections != null && _options.DatabaseConnections.Count > 0)
             {
                 foreach (var connection in _options.DatabaseConnections)
                 {
                     try
                     {
-                        // Only analyze enabled connections if such a flag exists; otherwise analyze all
                         await AnalyzeDatabaseSchemaAsync(connection);
                     }
                     catch (Exception ex)
@@ -176,7 +164,6 @@ namespace SmartRAG.Services.Database
                 return config.Name;
             }
 
-            // Auto-generate from database name in connection string
             var dbName = await ExtractDatabaseNameAsync(config);
             return $"{config.DatabaseType}_{dbName}";
         }
@@ -185,7 +172,6 @@ namespace SmartRAG.Services.Database
         {
             try
             {
-                // Try to extract database name from connection string first (without opening connection)
                 switch (config.DatabaseType)
                 {
                     case DatabaseType.SqlServer:
@@ -237,7 +223,6 @@ namespace SmartRAG.Services.Database
                         break;
                 }
                 
-                // If we couldn't extract from connection string, try opening connection
                 try
                 {
                     using (var connection = CreateConnection(config.ConnectionString, config.DatabaseType))
@@ -267,7 +252,6 @@ namespace SmartRAG.Services.Database
 
         private List<string> FilterTables(List<string> tableNames, DatabaseConnectionConfig config)
         {
-            // Apply included tables filter
             if (config.IncludedTables != null && config.IncludedTables.Length > 0)
             {
                 tableNames = tableNames
@@ -275,7 +259,6 @@ namespace SmartRAG.Services.Database
                     .ToList();
             }
 
-            // Apply excluded tables filter
             if (config.ExcludedTables != null && config.ExcludedTables.Length > 0)
             {
                 tableNames = tableNames
@@ -302,19 +285,15 @@ namespace SmartRAG.Services.Database
                 {
                 await connection.OpenAsync();
 
-                // Get columns
                 tableInfo.Columns = await GetColumnsAsync(connection, tableName, databaseType);
 
-                // Get primary keys
                 tableInfo.PrimaryKeys = tableInfo.Columns
                     .Where(c => c.IsPrimaryKey)
                     .Select(c => c.ColumnName)
                     .ToList();
 
-                // Get foreign keys
                 tableInfo.ForeignKeys = await GetForeignKeysAsync(connection, tableName, databaseType);
 
-                // Mark foreign key columns
                 foreach (var fk in tableInfo.ForeignKeys)
                 {
                     var column = tableInfo.Columns.FirstOrDefault(c => c.ColumnName == fk.ColumnName);
@@ -324,16 +303,13 @@ namespace SmartRAG.Services.Database
                     }
                 }
 
-                // Get row count
                 tableInfo.RowCount = await GetRowCountAsync(connection, tableName);
 
-                // Get sample data (first 3 rows)
                 tableInfo.SampleData = await GetSampleDataAsync(connection, tableName, databaseType);
                 }
             }
             catch (Microsoft.Data.SqlClient.SqlException sqlEx) when (databaseType == DatabaseType.SqlServer)
             {
-                // If database doesn't exist, log warning and return empty table info
                 if (sqlEx.Number == 4060 || sqlEx.Message.Contains("Cannot open database"))
                 {
                     _logger.LogWarning("SQL Server database does not exist yet for table {TableName}", tableName);
@@ -359,15 +335,12 @@ namespace SmartRAG.Services.Database
 
             DataTable schema;
             
-            // SQLite has different GetSchema behavior - use PRAGMA instead
             if (databaseType == DatabaseType.SQLite)
             {
-                // For SQLite, use direct PRAGMA query
                 return GetColumnsSQLiteAsync(connection, tableName);
             }
             else
             {
-                // For other databases, use GetSchema
                 schema = connection.GetSchema("Columns", new[] { null, null, tableName, null });
             }
 
@@ -380,7 +353,6 @@ namespace SmartRAG.Services.Database
                     IsNullable = row["IS_NULLABLE"].ToString()?.ToUpper() == "YES"
                 };
 
-                // Try to get max length
                 if (row.Table.Columns.Contains("CHARACTER_MAXIMUM_LENGTH") && 
                     row["CHARACTER_MAXIMUM_LENGTH"] != DBNull.Value)
                 {
@@ -390,7 +362,6 @@ namespace SmartRAG.Services.Database
                 columns.Add(column);
             }
 
-            // Get primary keys (only for non-SQLite databases, SQLite already has PK info)
             if (databaseType != DatabaseType.SQLite)
             {
                 try
@@ -466,7 +437,6 @@ namespace SmartRAG.Services.Database
         {
             var foreignKeys = new List<ForeignKeyInfo>();
 
-            // SQLite uses PRAGMA for foreign keys
             if (databaseType == DatabaseType.SQLite)
             {
                 return GetForeignKeysSQLiteAsync(connection, tableName);
@@ -474,7 +444,6 @@ namespace SmartRAG.Services.Database
 
             try
             {
-                // Use SQL query instead of GetSchema for better compatibility
                 using (var cmd = connection.CreateCommand())
                 {
                     if (databaseType == DatabaseType.SqlServer)
@@ -590,7 +559,6 @@ namespace SmartRAG.Services.Database
             {
                 using (var cmd = connection.CreateCommand())
                 {
-                    // Use appropriate identifier quoting based on database type
                     string quotedTable;
                     var connectionType = connection.GetType().Name;
                     
@@ -630,7 +598,6 @@ namespace SmartRAG.Services.Database
         {
             try
             {
-                // Use appropriate identifier quoting and limit syntax based on database type
                 string query;
                 switch (databaseType)
                 {

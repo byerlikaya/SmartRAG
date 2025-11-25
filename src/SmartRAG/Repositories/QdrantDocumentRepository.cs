@@ -22,12 +22,10 @@ namespace SmartRAG.Repositories
     {
         #region Constants
 
-        // Search and batch constants
         private const int DefaultMaxSearchResults = 5;
         private const int DefaultBatchSize = 200;
         private const int DefaultScrollBatchSize = 25;
 
-        // Timeout constants
         private const int DefaultGrpcTimeoutMinutes = 5;
 
         #endregion
@@ -38,9 +36,7 @@ namespace SmartRAG.Repositories
         private readonly QdrantConfig _config;
         private readonly string _collectionName;
         private readonly ILogger<QdrantDocumentRepository> _logger;
-        // Collection management moved to QdrantCollectionManager
 
-        // New injected services
         private readonly IQdrantCollectionManager _collectionManager;
         private readonly IQdrantEmbeddingService _embeddingService;
         private readonly IQdrantCacheManager _cacheManager;
@@ -111,9 +107,7 @@ namespace SmartRAG.Repositories
 
         #region Public Methods
 
-        // Collection management methods moved to QdrantCollectionManager
 
-        // GetDistanceMetric moved to QdrantCollectionManager
 
         private static string GetPayloadString(Google.Protobuf.Collections.MapField<string, Value> payload, string key)
         {
@@ -231,17 +225,14 @@ namespace SmartRAG.Repositories
             {
                 await _collectionManager.EnsureCollectionExistsAsync();
 
-                // Create unique collection name for each document - Qdrant naming rules
                 var documentCollectionName = $"{_collectionName}_doc_{document.Id:N}".Replace("-", ""); // Remove hyphens for Qdrant
                 RepositoryLogMessages.LogQdrantDocumentCollectionCreating(Logger, documentCollectionName, _collectionName, document.Id, null);
 
                 await _collectionManager.EnsureDocumentCollectionExistsAsync(documentCollectionName, document);
 
-                // Validate document and chunks
                 SmartRAG.Services.Helpers.DocumentValidator.ValidateDocument(document);
                 SmartRAG.Services.Helpers.DocumentValidator.ValidateChunks(document);
 
-                // Generate embeddings for all chunks in parallel with progress tracking
                 RepositoryLogMessages.LogQdrantEmbeddingsGenerationStarted(Logger, document.Chunks.Count, null);
                 var embeddingTasks = document.Chunks.Select(async (chunk, index) =>
                 {
@@ -259,7 +250,6 @@ namespace SmartRAG.Repositories
                 await Task.WhenAll(embeddingTasks);
                 RepositoryLogMessages.LogQdrantEmbeddingsGenerationCompleted(Logger, document.Chunks.Count, null);
 
-                // Batch process all chunks with larger batch size
                 var allPoints = new List<PointStruct>();
 
                 RepositoryLogMessages.LogQdrantPointsCreationStarted(Logger, document.Chunks.Count, null);
@@ -277,7 +267,6 @@ namespace SmartRAG.Repositories
                         }
                     };
 
-                    // Add chunk-specific payload with consistent field names
                     point.Payload.Add("chunkId", chunk.Id.ToString());
                     point.Payload.Add("chunkIndex", chunk.ChunkIndex);
                     point.Payload.Add("content", chunk.Content);
@@ -291,7 +280,6 @@ namespace SmartRAG.Repositories
                     allPoints.Add(point);
                 }
 
-                // Process in batches for better performance
                 for (int i = 0; i < allPoints.Count; i += DefaultBatchSize)
                 {
                     var batch = allPoints.Skip(i).Take(DefaultBatchSize).ToList();
@@ -493,7 +481,6 @@ namespace SmartRAG.Repositories
         {
             try
             {
-                // Check cache for duplicate requests
                 var queryHash = $"{query}_{maxResults}";
                 var cachedResults = _cacheManager.GetCachedResults(queryHash);
                 if (cachedResults != null)
@@ -503,33 +490,25 @@ namespace SmartRAG.Repositories
 
                 await _collectionManager.EnsureCollectionExistsAsync();
 
-                // Log that we're processing a new search
                 RepositoryLogMessages.LogQdrantSearchStarted(Logger, query, null);
 
-                // Generate embedding for semantic search
                 var queryEmbedding = await _embeddingService.GenerateEmbeddingAsync(query);
                 if (queryEmbedding == null || queryEmbedding.Count == 0)
                 {
-                    // Fallback to text search if embedding fails
                     return await _searchService.FallbackTextSearchAsync(query, maxResults);
                 }
 
-                // Perform vector search using the search service
                 var vectorResults = await _searchService.SearchAsync(queryEmbedding, maxResults);
 
-                // Also gather keyword-based matches via hybrid search
                 var hybridResults = await _searchService.HybridSearchAsync(query, maxResults * 4);
 
-                // Combine and deduplicate results
                 var allChunks = vectorResults.Concat(hybridResults).ToList();
 
-                // Deduplicate by (DocumentId, ChunkIndex)
                 var deduped = allChunks
                     .GroupBy(c => new { c.DocumentId, c.ChunkIndex })
                     .Select(g => g.OrderByDescending(c => c.RelevanceScore ?? 0.0).First())
                     .ToList();
 
-                // Take top K per document to improve coverage
                 var perDocTopK = Math.Max(1, Math.Min(3, maxResults));
                 var topPerDocument = deduped
                     .GroupBy(c => c.DocumentId)
@@ -551,14 +530,12 @@ namespace SmartRAG.Repositories
 
                 RepositoryLogMessages.LogQdrantFinalResultsReturned(Logger, finalResults.Count, null);
 
-                // Cache the results to prevent duplicate processing
                 _cacheManager.CacheResults(queryHash, finalResults);
 
                 return finalResults;
             }
             catch (Exception ex)
             {
-                // Log error and fallback to text search
                 RepositoryLogMessages.LogQdrantVectorSearchFailed(Logger, ex.Message, null);
                 return await _searchService.FallbackTextSearchAsync(query, maxResults);
             }

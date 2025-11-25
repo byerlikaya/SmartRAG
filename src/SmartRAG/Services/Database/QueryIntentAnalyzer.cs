@@ -56,11 +56,9 @@ namespace SmartRAG.Services.Database
             
             const int maxLogLength = 500;
             
-            // Remove control characters (including newlines, carriage returns, tabs, etc.)
             var sanitized = new StringBuilder(input.Length);
             foreach (var c in input)
             {
-                // Allow printable characters and common whitespace (space only)
                 if (!char.IsControl(c) || c == ' ')
                 {
                     sanitized.Append(c);
@@ -69,7 +67,6 @@ namespace SmartRAG.Services.Database
             
             var result = sanitized.ToString();
             
-            // Limit length to prevent log flooding
             if (result.Length > maxLogLength)
             {
                 result = result.Substring(0, maxLogLength) + "... (truncated)";
@@ -98,7 +95,6 @@ namespace SmartRAG.Services.Database
 
             try
             {
-                // Get all database schemas
                 var schemas = await _schemaAnalyzer.GetAllSchemasAsync();
 
                 if (schemas.Count == 0)
@@ -108,13 +104,10 @@ namespace SmartRAG.Services.Database
                     return queryIntent;
                 }
 
-                // Build AI prompt for query analysis
                 var prompt = BuildQueryAnalysisPrompt(userQuery, schemas);
 
-                // Get AI analysis
                 var aiResponse = await _aiService.GenerateResponseAsync(prompt, new List<string>());
 
-                // Parse AI response into QueryIntent
                 queryIntent = ParseAIResponse(aiResponse, userQuery, schemas);
 
                 if (queryIntent.DatabaseQueries.Count == 0)
@@ -153,7 +146,6 @@ namespace SmartRAG.Services.Database
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
             sb.AppendLine();
             
-            // Build comprehensive table-to-database index
             var tableToDatabase = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var schema in schemas)
             {
@@ -163,7 +155,6 @@ namespace SmartRAG.Services.Database
                 }
             }
             
-            // Show by database WITH COLUMNS (so AI knows which table has which columns)
             foreach (var schema in schemas)
             {
                 sb.AppendLine($"DATABASE: {schema.DatabaseName}");
@@ -374,7 +365,6 @@ namespace SmartRAG.Services.Database
 
             try
             {
-                // Try to extract JSON from response (might have markdown code blocks)
                 var jsonStart = aiResponse.IndexOf('{');
                 var jsonEnd = aiResponse.LastIndexOf('}');
                 
@@ -386,17 +376,14 @@ namespace SmartRAG.Services.Database
 
                 var jsonText = aiResponse.Substring(jsonStart, jsonEnd - jsonStart + 1);
                 
-                // Parse JSON
                 var jsonDoc = JsonDocument.Parse(jsonText);
                 var root = jsonDoc.RootElement;
 
-                // Extract confidence
                 if (root.TryGetProperty("confidence", out var confidenceElement))
                 {
                     queryIntent.Confidence = confidenceElement.GetDouble();
                 }
 
-                // Extract understanding and reasoning
                 if (root.TryGetProperty("understanding", out var understandingElement))
                 {
                     queryIntent.QueryUnderstanding = understandingElement.GetString() ?? string.Empty;
@@ -412,7 +399,6 @@ namespace SmartRAG.Services.Database
                     queryIntent.RequiresCrossDatabaseJoin = crossDbElement.GetBoolean();
                 }
 
-                // Extract databases
                 if (root.TryGetProperty("databases", out var databasesElement) && databasesElement.ValueKind == JsonValueKind.Array)
                 {
                     foreach (var dbElement in databasesElement.EnumerateArray())
@@ -448,7 +434,6 @@ namespace SmartRAG.Services.Database
                             {
                                 var tableName = tableElement.GetString() ?? string.Empty;
                                 
-                                // VALIDATE: Table must exist in this database's schema
                                 if (validTables.Contains(tableName))
                                 {
                                     dbQuery.RequiredTables.Add(tableName);
@@ -460,7 +445,6 @@ namespace SmartRAG.Services.Database
                                 }
                             }
 
-                            // Automatically include foreign-key dependencies so joins have required tables
                             ExpandTablesWithForeignKeyDependencies(dbQuery, targetSchema);
                         }
 
@@ -474,7 +458,6 @@ namespace SmartRAG.Services.Database
                             dbQuery.Priority = priorityElement.GetInt32();
                         }
 
-                        // Validate database exists
                         var schema = schemas.FirstOrDefault(s => s.DatabaseId.Equals(dbQuery.DatabaseId, StringComparison.OrdinalIgnoreCase));
                         if (schema != null)
                         {
@@ -490,13 +473,11 @@ namespace SmartRAG.Services.Database
             catch (JsonException ex)
             {
                 _logger.LogError(ex, "Error parsing AI response JSON");
-                // Fallback: query all databases
                 queryIntent = CreateFallbackQueryIntent(originalQuery, schemas);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Unexpected error parsing AI response");
-                // Fallback: query all databases
                 queryIntent = CreateFallbackQueryIntent(originalQuery, schemas);
             }
 

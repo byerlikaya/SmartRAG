@@ -16,7 +16,6 @@ namespace SmartRAG.Services.Search
     {
         #region Constants
 
-        // Text processing constants
         private const int DefaultMaxChunkSize = 100;
         private const double ContextRelevanceMultiplier = 1.2;
         private const double SemanticCoherenceMultiplier = 1.15;
@@ -24,7 +23,6 @@ namespace SmartRAG.Services.Search
         private const int MinThemeWordLength = 4;
         private const int MaxThemeWords = 3;
 
-        // Array constants for sentence splitting
         private static readonly char[] SentenceEndings = new char[] { '.', '!', '?' };
 
         #endregion
@@ -59,17 +57,14 @@ namespace SmartRAG.Services.Search
         {
             try
             {
-                // Use simple text chunking instead of deprecated TextChunker
                 var queryTokens = SplitIntoChunks(query, DefaultMaxChunkSize);
                 var contentTokens = SplitIntoChunks(content, DefaultMaxChunkSize);
 
                 if (queryTokens.Count == 0 || contentTokens.Count == 0)
                     return 0.0;
 
-                // Calculate semantic similarity using token overlap and semantic analysis
                 var similarity = await CalculateTokenBasedSimilarityAsync(queryTokens, contentTokens);
 
-                // Apply semantic enhancement factors
                 var enhancedScore = ApplySemanticEnhancement(similarity, query, content);
 
                 return Math.Min(enhancedScore, 1.0); // Ensure score is between 0-1
@@ -107,7 +102,6 @@ namespace SmartRAG.Services.Search
                     }
                     else
                     {
-                        // Split long sentences into smaller chunks
                         for (int i = 0; i < trimmed.Length; i += maxChunkSize)
                         {
                             var chunk = trimmed.Substring(i, Math.Min(maxChunkSize, trimmed.Length - i));
@@ -128,7 +122,6 @@ namespace SmartRAG.Services.Search
             var queryText = string.Join(" ", queryTokens).ToLowerInvariant();
             var contentText = string.Join(" ", contentTokens).ToLowerInvariant();
 
-            // Calculate Jaccard similarity
             var queryWords = new HashSet<string>(queryText.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
             var contentWords = new HashSet<string>(contentText.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries));
 
@@ -146,16 +139,12 @@ namespace SmartRAG.Services.Search
         {
             var enhancement = baseScore;
 
-            // Context relevance enhancement
             if (ContainsContextualKeywords(query, content))
                 enhancement *= ContextRelevanceMultiplier;
 
-            // Semantic coherence enhancement
             if (HasSemanticCoherence(query, content))
                 enhancement *= SemanticCoherenceMultiplier;
 
-            // Domain-specific enhancement removed for SOLID and Generic principles
-            // Enhancement factors are now domain-independent and language-agnostic
 
             return enhancement;
         }
@@ -176,7 +165,6 @@ namespace SmartRAG.Services.Search
         /// </summary>
         private static bool HasSemanticCoherence(string query, string content)
         {
-            // Simple semantic coherence check
             var queryTheme = ExtractTheme(query);
             var contentTheme = ExtractTheme(content);
 

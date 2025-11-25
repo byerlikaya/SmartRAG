@@ -27,7 +27,6 @@ namespace SmartRAG.Services.Database
         private const int DefaultQueryTimeout = 30;
         private const string SensitiveDataPlaceholder = "[SENSITIVE_DATA]";
 
-        // Database file extensions
         private static readonly string[] DatabaseFileExtensions = { ".db", ".sqlite", ".sqlite3", ".db3" };
 
         #endregion
@@ -426,7 +425,6 @@ namespace SmartRAG.Services.Database
             }
             catch (SqlException sqlEx)
             {
-                // If database doesn't exist, return error message
                 if (sqlEx.Number == 4060 || sqlEx.Message.Contains("Cannot open database"))
                 {
                     _logger.LogWarning("SQL Server database does not exist yet");
@@ -450,14 +448,12 @@ namespace SmartRAG.Services.Database
             }
             catch (SqlException sqlEx)
             {
-                // If database doesn't exist, return empty list
                 if (sqlEx.Number == 4060 || sqlEx.Message.Contains("Cannot open database"))
                 {
                     _logger.LogInformation($"Database does not exist yet, returning empty table list");
                     return new List<string>();
                 }
                 
-                // Re-throw other SQL errors
                 _logger.LogError(sqlEx, "Error getting SQL Server table names");
                 throw;
             }
@@ -557,7 +553,6 @@ namespace SmartRAG.Services.Database
             }
             catch (SqlException sqlEx)
             {
-                // If database doesn't exist, return error message
                 if (sqlEx.Number == 4060 || sqlEx.Message.Contains("Cannot open database"))
                 {
                     _logger.LogWarning("SQL Server database does not exist yet for query execution");
@@ -573,7 +568,6 @@ namespace SmartRAG.Services.Database
         {
             try
             {
-                // Try to connect - if database doesn't exist, try master
                 using (var connection = new SqlConnection(connectionString))
                 {
                     await connection.OpenAsync();
@@ -582,10 +576,8 @@ namespace SmartRAG.Services.Database
             }
             catch (SqlException sqlEx)
             {
-                // Check if error is related to database not existing (error codes: 4060, 18456)
                 if (sqlEx.Number == 4060 || sqlEx.Message.Contains("Cannot open database"))
                 {
-                    // Database doesn't exist, try connecting to master to verify server is accessible
                     try
                     {
                         var builder = new SqlConnectionStringBuilder(connectionString);
@@ -607,7 +599,6 @@ namespace SmartRAG.Services.Database
                 }
                 else
                 {
-                    // Other SQL errors
                     _logger.LogWarning(sqlEx, $"SQL Server connection validation failed with error {sqlEx.Number}: {sqlEx.Message}");
                     return false;
                 }

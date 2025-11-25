@@ -24,9 +24,7 @@ namespace SmartRAG.Services.Document.Parsers
 
         static ExcelFileParser()
         {
-            // EPPlus 6.x doesn't require explicit license setting for non-commercial use if configured elsewhere,
-            // but good to be safe or rely on the main app config.
-            // Assuming the main app sets the license context.
+
         }
 
         public bool CanParse(string fileName, string contentType)

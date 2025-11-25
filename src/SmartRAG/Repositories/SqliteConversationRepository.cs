@@ -81,7 +81,6 @@ namespace SmartRAG.Repositories
             await _semaphore.WaitAsync();
             try
             {
-                // If question is empty, this is a special case (like session-id storage)
                 if (string.IsNullOrEmpty(question))
                 {
                     var updateCmd = _connection.CreateCommand();
@@ -95,7 +94,6 @@ namespace SmartRAG.Repositories
                     return;
                 }
 
-                // Retrieve current history directly to avoid re-entrance deadlock with GetConversationHistoryAsync
                 var commandHistory = _connection.CreateCommand();
                 commandHistory.CommandText = "SELECT History FROM Conversations WHERE SessionId = @sessionId";
                 commandHistory.Parameters.AddWithValue("@sessionId", sessionId);

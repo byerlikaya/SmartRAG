@@ -19,14 +19,12 @@ namespace SmartRAG.Repositories
     {
         #region Constants
 
-        // File and path constants
         private const string MetadataFileName = "metadata.json";
         private const string DocumentFileExtension = ".json";
 
         // Search constants
         private const int DefaultMaxSearchResults = 5;
 
-        // JSON serialization constants
         private const bool WriteIndented = true;
 
         #endregion
@@ -99,7 +97,6 @@ namespace SmartRAG.Repositories
                         throw new InvalidOperationException($"Document with ID {document.Id} already exists");
                     }
 
-                    // Validate document and chunks
                     SmartRAG.Services.Helpers.DocumentValidator.ValidateDocument(document);
                     SmartRAG.Services.Helpers.DocumentValidator.ValidateChunks(document);
 
@@ -241,7 +238,6 @@ namespace SmartRAG.Repositories
             catch (Exception ex)
             {
                 RepositoryLogMessages.LogMetadataLoadFailed(Logger, ex);
-                // If metadata file is corrupted, return empty list
                 return new List<Document>();
             }
         }

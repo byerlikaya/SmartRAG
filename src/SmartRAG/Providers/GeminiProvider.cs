@@ -29,7 +29,6 @@ namespace SmartRAG.Providers
 
         #region Constants
 
-        // Gemini API constants
         private const string GeminiApiKeyHeader = "x-goog-api-key";
         private const int DefaultMaxBatchSize = 50;
         private const int DefaultDelayBetweenBatchesMs = 1000;
@@ -138,7 +137,6 @@ namespace SmartRAG.Providers
 
             var results = new List<List<float>>();
 
-            // Process texts in batches
             for (int i = 0; i < textList.Count; i += DefaultMaxBatchSize)
             {
                 var batchTexts = textList.Skip(i).Take(DefaultMaxBatchSize).ToList();
@@ -148,7 +146,6 @@ namespace SmartRAG.Providers
                     var batchResults = await ProcessGeminiBatchAsync(batchTexts, config);
                     results.AddRange(batchResults);
 
-                    // Add delay between batches to respect rate limits
                     if (i + DefaultMaxBatchSize < textList.Count)
                     {
                         await Task.Delay(DefaultDelayBetweenBatchesMs);
@@ -158,7 +155,6 @@ namespace SmartRAG.Providers
                 {
                     ProviderLogMessages.LogGeminiBatchFailedFallback(Logger, i / DefaultMaxBatchSize, ex.Message, ex);
 
-                    // Fallback to individual requests for this batch
                     var fallbackResults = await base.GenerateEmbeddingsBatchAsync(batchTexts, config);
                     results.AddRange(fallbackResults);
                 }

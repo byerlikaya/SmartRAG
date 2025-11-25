@@ -46,7 +46,6 @@ namespace SmartRAG.Services.Database
             sb.AppendLine($"Query: {originalQuery}");
             sb.AppendLine();
 
-            // Parse all database results into structured data
             var parsedResults = new Dictionary<string, ParsedQueryResult>();
             
             foreach (var kvp in queryResults.DatabaseResults)
@@ -70,7 +69,6 @@ namespace SmartRAG.Services.Database
                 }
             }
 
-            // If we have multiple successful databases, try to smart merge them
             if (parsedResults.Count > 1)
             {
                 var mergedData = await SmartMergeResultsAsync(parsedResults);
@@ -88,7 +86,6 @@ namespace SmartRAG.Services.Database
             }
             else
             {
-                // Only one database or no successful results - show separately
                 AppendSeparateResults(sb, parsedResults);
             }
 
@@ -180,13 +177,11 @@ Direct Answer:";
             {
                 var lines = resultData.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
                 
-                // Find header line (tab-separated column names)
                 string[] headers = null;
                 int headerIndex = -1;
                 
                 for (int i = 0; i < lines.Length; i++)
                 {
-                    // Skip metadata lines and empty lines
                     if (string.IsNullOrWhiteSpace(lines[i]) || 
                         lines[i].StartsWith("===") || 
                         lines[i].StartsWith("Query:") || 
@@ -195,7 +190,6 @@ Direct Answer:";
                         continue;
                     }
 
-                    // The first non-metadata line is the header
                     headers = lines[i].Split('\t');
                     headerIndex = i;
                     break;
@@ -212,7 +206,6 @@ Direct Answer:";
                     Columns = headers.ToList()
                 };
                 
-                // Parse data rows
                 for (int i = headerIndex + 1; i < lines.Length; i++)
                 {
                     var line = lines[i];
@@ -251,7 +244,6 @@ Direct Answer:";
                 
                 _logger.LogInformation("Attempting smart merge of {Count} databases", parsedResults.Count);
                 
-                // Find foreign key relationships between databases
                 var joinableResults = await FindJoinableTablesAsync(parsedResults);
                 
                 if (joinableResults == null || joinableResults.Count < 2)
@@ -260,7 +252,6 @@ Direct Answer:";
                     return null;
                 }
                 
-                // Perform inner join based on foreign keys
                 var merged = PerformInMemoryJoin(joinableResults);
                 
                 if (_logger.IsEnabled(LogLevel.Debug))
@@ -283,14 +274,12 @@ Direct Answer:";
             
             var joinable = new List<(ParsedQueryResult Result, string JoinColumn)>();
             
-            // Collect all potential join columns from all results
             var allJoinCandidates = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
             
             foreach (var kvp in parsedResults)
             {
                 var result = kvp.Value;
                 
-                // Find columns that end with "id" (any case: ID, Id, id) - generic foreign key pattern
                 var fkColumns = result.Columns.Where(col => 
                     col.EndsWith("id", StringComparison.OrdinalIgnoreCase)).ToList();
                 
@@ -304,7 +293,6 @@ Direct Answer:";
                 }
             }
             
-            // Find join columns that appear in at least 2 databases
             var commonJoinColumns = allJoinCandidates.Where(kvp => kvp.Value.Count >= 2).ToList();
             
             if (commonJoinColumns.Count == 0)
@@ -313,10 +301,8 @@ Direct Answer:";
                 return null;
             }
             
-            // Use the most common join column (appears in most databases)
             var bestJoinColumn = commonJoinColumns.OrderByDescending(kvp => kvp.Value.Count).First().Key;
             
-            // Build joinable list with the selected column
             foreach (var kvp in parsedResults)
             {
                 var result = kvp.Value;
@@ -335,11 +321,9 @@ Direct Answer:";
             if (joinableResults.Count < 2)
                 return null;
             
-            // Start with the first table
             var baseResult = joinableResults[0].Result;
             var baseJoinColumn = joinableResults[0].JoinColumn;
             
-            // Build merged columns (avoid duplicates)
             var mergedColumns = new List<string>(baseResult.Columns);
             
             for (int i = 1; i < joinableResults.Count; i++)
@@ -347,7 +331,6 @@ Direct Answer:";
                 var otherResult = joinableResults[i].Result;
                 foreach (var col in otherResult.Columns)
                 {
-                    // Don't duplicate join column or already existing columns
                     if (!mergedColumns.Contains(col, StringComparer.OrdinalIgnoreCase))
                     {
                         mergedColumns.Add(col);
@@ -361,30 +344,25 @@ Direct Answer:";
                 DatabaseName = "Merged (" + string.Join(" + ", joinableResults.Select(j => j.Result.DatabaseName)) + ")"
             };
             
-            // Perform INNER JOIN: iterate base table and find matching rows in other tables
             foreach (var baseRow in baseResult.Rows)
             {
                 if (!baseRow.TryGetValue(baseJoinColumn, out var joinValue) || string.IsNullOrEmpty(joinValue) || joinValue == "NULL")
                     continue;
                 
-                // Start with base row data
                 var mergedRow = new Dictionary<string, string>(baseRow, StringComparer.OrdinalIgnoreCase);
                 bool allJoinsSuccessful = true;
                 
-                // Try to join with each other table
                 for (int i = 1; i < joinableResults.Count; i++)
                 {
                     var otherResult = joinableResults[i].Result;
                     var otherJoinColumn = joinableResults[i].JoinColumn;
                     
-                    // Find matching row in other table
                     var matchingRow = otherResult.Rows.FirstOrDefault(row =>
                         row.TryGetValue(otherJoinColumn, out var otherJoinValue) &&
                         joinValue.Equals(otherJoinValue, StringComparison.OrdinalIgnoreCase));
                     
                     if (matchingRow != null)
                     {
-                        // Add columns from matching row (skip duplicates)
                         foreach (var kvp in matchingRow)
                         {
                             if (!mergedRow.ContainsKey(kvp.Key))
@@ -400,7 +378,6 @@ Direct Answer:";
                     }
                 }
                 
-                // Add merged row only if all joins were successful (INNER JOIN)
                 if (allJoinsSuccessful)
                 {
                     merged.Rows.Add(mergedRow);
@@ -414,10 +391,8 @@ Direct Answer:";
         {
             var sb = new StringBuilder();
             
-            // Header
             sb.AppendLine(string.Join("\t", result.Columns));
             
-            // Rows
             foreach (var row in result.Rows)
             {
                 var values = result.Columns.Select(col => row.TryGetValue(col, out var val) ? val : "NULL");

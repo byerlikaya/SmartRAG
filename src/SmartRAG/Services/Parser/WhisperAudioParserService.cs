@@ -57,13 +57,10 @@ namespace SmartRAG.Services.Parser
                 _logger.LogInformation("Starting Whisper transcription for {FileName} ({Size} bytes)",
                     SanitizeFileName(fileName), audioStream.Length);
 
-                // Validate audio stream
                 ValidateAudioStream(audioStream);
 
-                // Ensure Whisper factory is initialized
                 await EnsureWhisperFactoryInitializedAsync();
 
-                // Perform transcription
                 var result = await PerformTranscriptionAsync(audioStream, fileName, language);
 
                 _logger.LogInformation("Whisper transcription completed: {Length} characters with {Confidence} confidence",
@@ -92,14 +89,9 @@ namespace SmartRAG.Services.Parser
 
             _logger.LogInformation("Initializing Whisper factory with model: {ModelPath}", _config.ModelPath);
 
-            // Ensure model file exists, download if needed
             await EnsureModelExistsAsync();
 
-            // Create Whisper factory from model file
-            _whisperFactory = WhisperFactory.FromPath(_config.ModelPath);
-
-            _logger.LogInformation("Whisper factory initialized successfully");
-        }
+            _whisperFactory = WhisperFactory.FromPath(_config.ModelPath);        }
 
         /// <summary>
         /// Ensures Whisper model file exists, downloads if necessary
@@ -114,7 +106,6 @@ namespace SmartRAG.Services.Parser
 
             _logger.LogInformation("Whisper model not found at {ModelPath}, downloading...", _config.ModelPath);
 
-            // Create directory if it doesn't exist
             var modelDirectory = Path.GetDirectoryName(_config.ModelPath);
             if (!string.IsNullOrEmpty(modelDirectory) && !Directory.Exists(modelDirectory))
             {
@@ -122,12 +113,10 @@ namespace SmartRAG.Services.Parser
                 _logger.LogDebug("Created model directory: {Directory}", modelDirectory);
             }
 
-            // Determine model type from filename or use default
             var modelType = DetermineModelType(_config.ModelPath);
 
             _logger.LogInformation("Downloading Whisper model: {ModelType}", modelType);
 
-            // Download model from Hugging Face
             using (var modelStream = await WhisperGgmlDownloader.Default.GetGgmlModelAsync(modelType))
             {
                 using (var fileWriter = File.OpenWrite(_config.ModelPath))
@@ -155,7 +144,6 @@ namespace SmartRAG.Services.Parser
             if (fileName.Contains("large-v3")) return GgmlType.LargeV3;
             if (fileName.Contains("large")) return GgmlType.LargeV3; // Default large to v3
 
-            // Default to base model
             return GgmlType.Base;
         }
 
@@ -164,7 +152,6 @@ namespace SmartRAG.Services.Parser
         /// </summary>
         private async Task<AudioTranscriptionResult> PerformTranscriptionAsync(Stream audioStream, string fileName, string language)
         {
-            // Preserve original language value for result (keep "auto" if specified)
             var originalLanguage = language ?? _config.DefaultLanguage;
             
             var result = new AudioTranscriptionResult
@@ -183,16 +170,13 @@ namespace SmartRAG.Services.Parser
 
             try
             {
-                // Build Whisper processor with configuration
                 if (_whisperFactory == null)
                     throw new InvalidOperationException("Whisper factory not initialized");
 
-                // Determine optimal thread count
                 var threadCount = _config.MaxThreads > 0 
                     ? _config.MaxThreads 
                     : Environment.ProcessorCount;
 
-                // Determine language: "auto" or null means auto-detect, otherwise use specified language
                 var languageToUse = GetLanguageForWhisper(language ?? _config.DefaultLanguage);
 
                 var builder = _whisperFactory.CreateBuilder()
@@ -200,7 +184,6 @@ namespace SmartRAG.Services.Parser
                     .WithThreads(threadCount)
                     .WithProbabilities();
 
-                // Add prompt hint if provided (improves accuracy significantly)
                 if (!string.IsNullOrEmpty(_config.PromptHint))
                 {
                     builder = builder.WithPrompt(_config.PromptHint);
@@ -208,7 +191,6 @@ namespace SmartRAG.Services.Parser
 
                 using (var processor = builder.Build())
                 {
-                    // Convert audio to WAV format if needed
                     Stream waveStream = null;
                     var needsConversion = RequiresConversion(fileName);
 
@@ -222,7 +204,6 @@ namespace SmartRAG.Services.Parser
             }
                         else
                         {
-                            // Already WAV, reset position
                             audioStream.Position = 0;
                             waveStream = audioStream;
                         }
@@ -237,7 +218,6 @@ namespace SmartRAG.Services.Parser
 
                         _logger.LogDebug("Starting Whisper processing on WAV stream ({StreamLength} bytes)", waveStream.Length);
 
-                        // Process audio stream
                         var segments = processor.ProcessAsync(waveStream);
                         var enumerator = segments.GetAsyncEnumerator();
                         try
@@ -247,7 +227,6 @@ namespace SmartRAG.Services.Parser
                                 var segment = enumerator.Current;
                                 var segmentText = segment.Text?.Trim() ?? string.Empty;
 
-                                // Skip low-confidence segments (likely non-speech or hallucination)
                                 if (segment.Probability < _config.MinConfidenceThreshold)
                                 {
                                     _logger.LogDebug("Skipping low-confidence segment (P={Probability}): '{Text}'",
@@ -256,7 +235,6 @@ namespace SmartRAG.Services.Parser
                                     continue;
                                 }
 
-                                // Detect and skip duplicate segments (Whisper hallucination pattern)
                                 if (segmentText == lastSegmentText)
                                 {
                                     duplicateCount++;
@@ -317,7 +295,6 @@ namespace SmartRAG.Services.Parser
                         result.Text = transcriptionText.Trim();
                         result.Confidence = segmentCount > 0 ? totalConfidence / segmentCount : 0.0;
 
-                        // Filter by confidence threshold
                         if (result.Confidence < _config.MinConfidenceThreshold)
                         {
                             _logger.LogWarning("Transcription confidence {Confidence} below threshold {Threshold}",
@@ -330,7 +307,6 @@ namespace SmartRAG.Services.Parser
                     }
                     finally
                     {
-                        // Dispose converted stream if it was created
                         if (needsConversion && waveStream != null && waveStream != audioStream)
                         {
                             waveStream.Dispose();
@@ -350,7 +326,6 @@ namespace SmartRAG.Services.Parser
         /// </summary>
         private static string GetLanguageForWhisper(string language)
         {
-            // Whisper.net uses null for auto-detection
             if (string.IsNullOrEmpty(language) || language.Equals("auto", StringComparison.OrdinalIgnoreCase))
             {
                 return null;

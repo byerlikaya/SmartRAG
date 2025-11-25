@@ -49,7 +49,6 @@ namespace SmartRAG.Repositories
 
             try
             {
-                // If question is empty, this is a special case (like session-id storage)
                 if (string.IsNullOrEmpty(question))
                 {
                     var sessionFilePath = GetConversationFilePath(sessionId);

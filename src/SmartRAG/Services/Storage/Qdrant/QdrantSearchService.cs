@@ -96,10 +96,8 @@ namespace SmartRAG.Services.Storage.Qdrant
                 var allChunks = new List<DocumentChunk>();
                 var collections = await _client.ListCollectionsAsync();
 
-                // Look for collections that match our document collection pattern
                 var documentCollections = collections.Where(c => c.StartsWith(_collectionName + "_doc_", StringComparison.OrdinalIgnoreCase)).ToList();
 
-                // If no document collections found, check main collection
                 if (documentCollections.Count == 0)
                 {
                     if (collections.Contains(_collectionName))
@@ -120,7 +118,6 @@ namespace SmartRAG.Services.Storage.Qdrant
 
                         _logger.LogDebug("Found {Count} results in collection {Collection}", searchResults.Count, collectionName);
 
-                        // Convert to DocumentChunk objects
                         foreach (var result in searchResults)
                         {
                             var payload = result.Payload;
@@ -175,7 +172,6 @@ namespace SmartRAG.Services.Storage.Qdrant
                 var queryLower = query.ToLowerInvariant();
                 var relevantChunks = new List<DocumentChunk>();
 
-                // Get all collections to search in
                 var collections = await _client.ListCollectionsAsync();
                 var documentCollections = collections.Where(c => c.StartsWith(_collectionName + "_doc_", StringComparison.OrdinalIgnoreCase)).ToList();
 
@@ -188,7 +184,6 @@ namespace SmartRAG.Services.Storage.Qdrant
                 {
                     try
                     {
-                        // Get all points from collection
                         var scrollResult = await _client.ScrollAsync(collectionName, limit: 1000);
 
                         foreach (var point in scrollResult.Result)
@@ -204,7 +199,6 @@ namespace SmartRAG.Services.Storage.Qdrant
                                 {
                                     var contentStr = content.ToLowerInvariant();
 
-                                    // Simple text matching
                                     if (contentStr.Contains(queryLower))
                                     {
                                         var chunk = new DocumentChunk
@@ -257,7 +251,6 @@ namespace SmartRAG.Services.Storage.Qdrant
             {
                 _logger.LogDebug("Starting hybrid search for query: {Query}", query);
 
-                // Extract meaningful keywords from query
                 var keywords = ExtractImportantKeywords(query);
 
                 if (keywords.Count == 0)
@@ -272,10 +265,8 @@ namespace SmartRAG.Services.Storage.Qdrant
                 {
                     try
                     {
-                        // Use fallback method to get chunks from this collection
                         var chunks = await FallbackTextSearchForCollectionAsync(collectionName, query, maxResults * 2);
 
-                        // Score chunks based on keyword matches
                         foreach (var chunk in chunks)
                         {
                             var score = CalculateKeywordMatchScore(chunk.Content, keywords);
@@ -293,7 +284,6 @@ namespace SmartRAG.Services.Storage.Qdrant
                     }
                 }
 
-                // Sort by keyword match score and return top results
                 return hybridResults
                     .OrderByDescending(c => c.RelevanceScore ?? 0.0)
                     .Take(maxResults)
@@ -352,7 +342,6 @@ namespace SmartRAG.Services.Storage.Qdrant
                 var queryLower = query.ToLowerInvariant();
                 var relevantChunks = new List<DocumentChunk>();
 
-                // Get all points from collection
                 var scrollResult = await _client.ScrollAsync(collectionName, limit: 1000);
 
                 foreach (var point in scrollResult.Result)
@@ -369,7 +358,6 @@ namespace SmartRAG.Services.Storage.Qdrant
                         {
                             var contentStr = content.ToLowerInvariant();
 
-                            // Simple text matching
                             if (contentStr.Contains(queryLower))
                             {
                                 var chunk = new DocumentChunk
@@ -408,7 +396,6 @@ namespace SmartRAG.Services.Storage.Qdrant
 
             foreach (var word in words)
             {
-                // Skip very short words only - no domain-specific stop words
                 if (word.Length > MinWordLength)
                 {
                     keywords.Add(word);
@@ -438,7 +425,6 @@ namespace SmartRAG.Services.Storage.Qdrant
                 }
             }
 
-            // Normalize score by number of keywords
             return totalScore / keywords.Count;
         }
 

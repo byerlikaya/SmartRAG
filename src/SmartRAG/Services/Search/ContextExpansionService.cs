@@ -63,27 +63,22 @@ namespace SmartRAG.Services.Search
                 return new List<DocumentChunk>();
             }
 
-            // Limit context window to prevent excessive expansion
             var effectiveWindow = Math.Min(Math.Max(1, contextWindow), MaxContextWindow);
 
             try
             {
-                // Group chunks by document ID
                 var chunksByDocument = chunks.GroupBy(c => c.DocumentId).ToList();
 
                 var expandedChunks = new HashSet<DocumentChunk>(new DocumentChunkComparer());
 
-                // Process each document separately
                 foreach (var documentGroup in chunksByDocument)
                 {
                     var documentId = documentGroup.Key;
                     var documentChunks = documentGroup.ToList();
 
-                    // Get the full document to access all chunks
                     var document = await _documentRepository.GetByIdAsync(documentId);
                     if (document == null || document.Chunks == null || document.Chunks.Count == 0)
                     {
-                        // Document not found or has no chunks, add original chunks
                         foreach (var chunk in documentChunks)
                         {
                             expandedChunks.Add(chunk);
@@ -91,31 +86,24 @@ namespace SmartRAG.Services.Search
                         continue;
                     }
 
-                    // Sort document chunks by ChunkIndex
                     var sortedDocumentChunks = document.Chunks.OrderBy(c => c.ChunkIndex).ToList();
 
-                    // For each found chunk, add adjacent chunks
                     foreach (var foundChunk in documentChunks)
                     {
-                        // Add the found chunk itself
                         expandedChunks.Add(foundChunk);
 
-                        // Find the index of this chunk in the sorted list
                         var chunkIndex = sortedDocumentChunks.FindIndex(c => c.Id == foundChunk.Id);
                         if (chunkIndex < 0)
                         {
-                            // Chunk not found in document, skip expansion
                             continue;
                         }
 
-                        // Add previous chunks (context before)
                         var startIndex = Math.Max(0, chunkIndex - effectiveWindow);
                         for (int i = startIndex; i < chunkIndex; i++)
                         {
                             expandedChunks.Add(sortedDocumentChunks[i]);
                         }
 
-                        // Add next chunks (context after)
                         var endIndex = Math.Min(sortedDocumentChunks.Count - 1, chunkIndex + effectiveWindow);
                         for (int i = chunkIndex + 1; i <= endIndex; i++)
                         {
@@ -124,7 +112,6 @@ namespace SmartRAG.Services.Search
                     }
                 }
 
-                // Convert to list and sort by document ID and chunk index for consistent ordering
                 var result = expandedChunks.ToList();
                 result = result
                     .OrderBy(c => c.DocumentId)
@@ -138,7 +125,6 @@ namespace SmartRAG.Services.Search
             catch (Exception ex)
             {
                 ServiceLogMessages.LogContextExpansionError(_logger, ex);
-                // Return original chunks if expansion fails
                 return chunks;
             }
         }
