@@ -146,7 +146,7 @@ namespace SmartRAG.Repositories
             var uploadedAtStr = GetPayloadString(payload, "uploadedAt");
             var uploadedBy = GetPayloadString(payload, "uploadedBy");
             var content = GetPayloadString(payload, "content");
-            var idStr = GetPayloadString(payload, "id");
+            var idStr = GetPayloadString(payload, "documentId");  // Changed from "id" to "documentId"
 
             long.TryParse(fileSizeStr, NumberStyles.Any, CultureInfo.InvariantCulture, out long fileSize);
 
@@ -354,80 +354,64 @@ namespace SmartRAG.Repositories
             try
             {
                 var documents = new List<SmartRAG.Entities.Document>();
-                var processedIds = new HashSet<string>();
-                var lastPointId = (PointId)null;
-                var batchCount = 0;
-
-                while (batchCount < 50) // DefaultMaxBatches
+                
+                // List all collections to find document-specific collections
+                var allCollections = await _client.ListCollectionsAsync();
+                var documentCollections = allCollections
+                    .Where(c => c.StartsWith($"{_collectionName}_doc_", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                
+                // Iterate through each document collection
+                foreach (var docCollection in documentCollections)
                 {
                     try
                     {
                         var result = await _client.ScrollAsync(
-                            _collectionName,
-                            limit: DefaultScrollBatchSize,
-                            offset: lastPointId);
-
+                            docCollection,
+                            limit: 1);  // We only need one point to get metadata
+                        
                         if (result.Result.Count == 0)
-                            break;
-
-                        var documentGroups = result.Result.GroupBy(p => GetPayloadString(p.Payload, "id"));
-
-                        foreach (var group in documentGroups)
+                            continue;
+                        
+                        var firstPoint = result.Result.First();
+                        var metadata = ExtractDocumentMetadata(firstPoint.Payload);
+                        
+                        if (metadata.Id == Guid.Empty)
+                            continue;
+                        
+                        var document = CreateDocumentFromMetadata(metadata);
+                        
+                        // Get chunk count from collection info
+                        var collectionInfo = await _client.GetCollectionInfoAsync(docCollection);
+                        var chunkCount = (int)collectionInfo.PointsCount;
+                        
+                        // Create placeholder chunks (we don't need full content for listing)
+                        for (int i = 0; i < chunkCount; i++)
                         {
-                            var documentId = group.Key;
-
-                            if (processedIds.Contains(documentId))
-                                continue;
-
-                            processedIds.Add(documentId);
-
-                            var firstPoint = group.First();
-                            var metadata = ExtractDocumentMetadata(firstPoint.Payload);
-
-                            if (metadata.Id == Guid.Empty)
+                            document.Chunks.Add(new DocumentChunk
                             {
-                                continue;
-                            }
-
-                            var document = CreateDocumentFromMetadata(metadata);
-
-                            foreach (var point in group)
-                            {
-                                var chunk = CreateDocumentChunk(point, document.Id, metadata.UploadedAt);
-                                document.Chunks.Add(chunk);
-                            }
-
-                            documents.Add(document);
+                                Id = Guid.NewGuid(),
+                                DocumentId = document.Id,
+                                Content = string.Empty,
+                                ChunkIndex = i,
+                                CreatedAt = metadata.UploadedAt
+                            });
                         }
-
-
-                        lastPointId = result.Result.Last().Id;
-
-                        if (documents.Count > 1000) // DefaultMaxDocuments
-                        {
-                            break;
-                        }
-
-                        batchCount++;
-
-                        await Task.Delay(100); // DefaultDelayMs
+                        
+                        documents.Add(document);
                     }
-                    catch (Exception ex) when (ex.Message.Contains("ResourceExhausted") || ex.Message.Contains("message size"))
+                    catch (Exception ex)
                     {
-                        batchCount++;
+                        _logger.LogWarning(ex, "Failed to retrieve document from collection: {Collection}", docCollection);
                         continue;
-                    }
-                    catch (Exception)
-                    {
-
-                        break;
                     }
                 }
 
                 return documents;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Failed to retrieve all documents");
                 return new List<SmartRAG.Entities.Document>();
             }
         }
@@ -460,6 +444,46 @@ namespace SmartRAG.Repositories
             }
             catch (Exception)
             {
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// [Document Query] Clear all documents by deleting all document collections and recreating main collection
+        /// </summary>
+        public async Task<bool> ClearAllAsync()
+        {
+            try
+            {
+                // Find all document-specific collections
+                var allCollections = await _client.ListCollectionsAsync();
+                var documentCollections = allCollections
+                    .Where(c => c.StartsWith($"{_collectionName}_doc_", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                
+                // Delete each document collection
+                foreach (var docCollection in documentCollections)
+                {
+                    try
+                    {
+                        await _collectionManager.DeleteCollectionAsync(docCollection);
+                        _logger.LogDebug("Deleted document collection: {Collection}", docCollection);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to delete document collection: {Collection}", docCollection);
+                    }
+                }
+                
+                // Recreate main collection for clean slate
+                await _collectionManager.RecreateCollectionAsync(_collectionName);
+                
+                _logger.LogInformation("Cleared all documents from Qdrant: deleted {Count} document collections and recreated main collection", documentCollections.Count);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to clear all documents from Qdrant");
                 return false;
             }
         }
