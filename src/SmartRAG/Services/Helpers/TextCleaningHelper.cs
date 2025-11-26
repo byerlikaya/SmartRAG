@@ -44,11 +44,19 @@ namespace SmartRAG.Services.Helpers
         }
 
         /// <summary>
-        /// Normalizes whitespace by replacing multiple spaces with single space
+        /// Normalizes whitespace by collapsing multiple spaces/tabs on each line while preserving line breaks
         /// </summary>
         private static string RemoveExcessiveWhitespace(string content)
         {
-            return Regex.Replace(content, @"\s+", " ");
+            // CRITICAL: Preserve line breaks to maintain list structure (e.g., numbered lists)
+            // Split by newlines, clean each line individually, then rejoin
+            var lines = content.Split('\n');
+            for (int i = 0; i < lines.Length; i++)
+            {
+                // Only collapse horizontal whitespace (spaces and tabs) on same line
+                lines[i] = Regex.Replace(lines[i], @"[ \t]+", " ").Trim();
+            }
+            return string.Join("\n", lines);
         }
 
         /// <summary>

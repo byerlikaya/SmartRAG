@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Logging;
 using SmartRAG.Interfaces.AI;
 using SmartRAG.Interfaces.Support;
+using SmartRAG.Models;
 using System;
 using System.Globalization;
 using System.Linq;
@@ -81,16 +82,20 @@ CRITICAL: Classify as CONVERSATION if:
 - Small talk (well-being, introductions, origin, casual chat)
 - Polite chat (gratitude, farewells, niceties)
 
-✓ Classify as INFORMATION ONLY if:
+✓ Classify as INFORMATION if:
+- Contains ANY technical terms, acronyms, or domain-specific vocabulary
+- Asks for definitions, explanations, parts, or features of something
 - Contains data-request intent (show, list, find, calculate, total, count, sum)
 - Contains question words with informational intent (what, which, how many, when, how to)
-- Contains numbers/dates indicating data queries (e.g., years, ranges, ""top N"", thresholds)
-- Contains specific entity references (e.g., record identifiers, reference numbers)
+- Contains numbers/dates indicating data queries
+- Contains specific entity references
 
 User: ""{0}""
 {1}
 
-CRITICAL: If unsure, default to CONVERSATION. Answer with ONE word only: CONVERSATION or INFORMATION",
+CRITICAL: If the user asks about a specific topic, concept, or entity, it is INFORMATION.
+If unsure, default to INFORMATION (it is better to search and find nothing than to chat when user wanted info).
+Answer with ONE word only: CONVERSATION or INFORMATION",
                     trimmedQuery,
                     string.IsNullOrWhiteSpace(historySnippet) ? "" : $"Context: \"{historySnippet}\"");
 
@@ -166,7 +171,7 @@ CRITICAL: If unsure, default to CONVERSATION. Answer with ONE word only: CONVERS
 
         private enum HeuristicDecision { Unknown, Conversation, Information }
 
-        private static HeuristicDecision HeuristicClassify(string query, out int score)
+        private HeuristicDecision HeuristicClassify(string query, out int score)
         {
             score = 0;
             var trimmed = query.Trim();
@@ -180,6 +185,9 @@ CRITICAL: If unsure, default to CONVERSATION. Answer with ONE word only: CONVERS
             if (HasDateOrTimePattern(trimmed)) score++;
             if (HasNumericRangeOrList(trimmed)) score++;
             if (HasIdLikeToken(tokens)) score++;
+            
+            // Removed language-specific keyword check to ensure universal compatibility
+            // We rely on AI for semantic understanding if heuristics are insufficient
 
             var convoScore = 0;
             if (trimmed.Length <= 2) convoScore++;

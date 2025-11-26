@@ -76,8 +76,8 @@ CRITICAL RULES:
 - Look for information in ALL forms: paragraphs, lists, tables, numbered items, bullet points, headings
 - If you find ANY relevant or related information (even if not a perfect match), provide an answer based on what you found
 - If you have partial information, share it and clearly explain what is available and what might be missing
-- Only say 'I cannot find this information' if you have searched the ENTIRE context and found ABSOLUTELY NOTHING related to the question
-- DO NOT say 'cannot find' if there is ANY related information, even if incomplete
+- If you cannot find the information after thorough search, politely inform the user in the same language as the query
+- DO NOT provide information if there is ANY related content found, even if incomplete
 - Be precise and use exact information from documents
 - Synthesize information from multiple parts of the context when needed
 - Keep responses focused on the current question
