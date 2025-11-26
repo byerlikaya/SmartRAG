@@ -22,8 +22,9 @@ namespace SmartRAG.Interfaces.Document
         /// <param name="query">Natural language query to search for</param>
         /// <param name="maxResults">Maximum number of results to return</param>
         /// <param name="options">Optional search options to override global configuration</param>
+        /// <param name="queryTokens">Pre-computed query tokens (optional, for performance)</param>
         /// <returns>List of relevant document chunks</returns>
-        Task<List<DocumentChunk>> SearchDocumentsAsync(string query, int maxResults = 5, SearchOptions? options = null);
+        Task<List<DocumentChunk>> SearchDocumentsAsync(string query, int maxResults = 5, SearchOptions? options = null, List<string>? queryTokens = null);
 
         /// <summary>
         /// Process intelligent query with RAG and automatic session management
