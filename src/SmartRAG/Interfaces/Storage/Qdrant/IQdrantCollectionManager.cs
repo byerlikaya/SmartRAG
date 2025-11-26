@@ -31,5 +31,17 @@ namespace SmartRAG.Interfaces.Storage.Qdrant
         /// Gets the vector dimension for collections
         /// </summary>
         Task<int> GetVectorDimensionAsync();
+
+        /// <summary>
+        /// Deletes a collection completely
+        /// </summary>
+        /// <param name="collectionName">Name of the collection to delete</param>
+        Task DeleteCollectionAsync(string collectionName);
+
+        /// <summary>
+        /// Recreates a collection (deletes and creates anew)
+        /// </summary>
+        /// <param name="collectionName">Name of the collection to recreate</param>
+        Task RecreateCollectionAsync(string collectionName);
     }
 }
