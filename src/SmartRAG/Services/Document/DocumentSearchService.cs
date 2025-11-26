@@ -30,7 +30,7 @@ namespace SmartRAG.Services.Document
         private const int InitialSearchMultiplier = 2;
 
         // Thresholds
-        private const double RelevanceThreshold = 0.1;
+        private const double RelevanceThreshold = 0.03;  // Lowered for Qdrant cosine similarity scores
         private const int MinSearchResultsCount = 0;
         private const int MinNameChunksCount = 0;
         private const int MinPotentialNamesCount = 2;
@@ -51,6 +51,16 @@ namespace SmartRAG.Services.Document
         // Generic messages
         private const string ChatUnavailableMessage = "Sorry, I cannot chat right now. Please try again later.";
 
+        // Compiled Regex Patterns for Performance
+        private static readonly Regex NumberedListPattern1 = new Regex(@"\b\d+\.\s", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+        private static readonly Regex NumberedListPattern2 = new Regex(@"\b\d+\)\s", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+        private static readonly Regex NumberedListPattern3 = new Regex(@"\b\d+-\s", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+        private static readonly Regex NumberedListPattern4 = new Regex(@"\b\d+\s+[A-Z]", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+        private static readonly Regex NumberedListPattern5 = new Regex(@"^\d+\.\s", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
+        
+        private static readonly Regex NumericPattern = new Regex(@"\p{Nd}+", RegexOptions.Compiled);
+        private static readonly Regex ListIndicatorPattern = new Regex(@"\d+[\.\)]\s", RegexOptions.Compiled);
+
 
         private readonly IDocumentRepository _documentRepository;
         private readonly IAIService _aiService;
@@ -64,7 +74,6 @@ namespace SmartRAG.Services.Document
         private readonly IQueryIntentClassifierService _queryIntentClassifier;
         private readonly IPromptBuilderService _promptBuilder;
         private readonly IDocumentScoringService _documentScoring;
-        private readonly IEmbeddingSearchService _embeddingSearch;
         private readonly ISourceBuilderService _sourceBuilder;
         private readonly IAIConfigurationService _aiConfiguration;
         private readonly IContextExpansionService? _contextExpansion;
@@ -84,7 +93,6 @@ namespace SmartRAG.Services.Document
         /// <param name="queryIntentClassifier">Service for classifying query intent</param>
         /// <param name="promptBuilder">Service for building AI prompts</param>
         /// <param name="documentScoring">Service for scoring document chunks</param>
-        /// <param name="embeddingSearch">Service for embedding-based search</param>
         /// <param name="sourceBuilder">Service for building search sources</param>
         /// <param name="aiConfiguration">Service for AI provider configuration</param>
         /// <param name="contextExpansion">Service for expanding chunk context with adjacent chunks</param>
@@ -101,7 +109,6 @@ namespace SmartRAG.Services.Document
             IQueryIntentClassifierService? queryIntentClassifier = null,
             IPromptBuilderService? promptBuilder = null,
             IDocumentScoringService? documentScoring = null,
-            IEmbeddingSearchService? embeddingSearch = null,
             ISourceBuilderService? sourceBuilder = null,
             IAIConfigurationService? aiConfiguration = null,
             IContextExpansionService? contextExpansion = null)
@@ -118,7 +125,6 @@ namespace SmartRAG.Services.Document
             _queryIntentClassifier = queryIntentClassifier ?? throw new ArgumentNullException(nameof(queryIntentClassifier));
             _promptBuilder = promptBuilder ?? throw new ArgumentNullException(nameof(promptBuilder));
             _documentScoring = documentScoring ?? throw new ArgumentNullException(nameof(documentScoring));
-            _embeddingSearch = embeddingSearch ?? throw new ArgumentNullException(nameof(embeddingSearch));
             _sourceBuilder = sourceBuilder ?? throw new ArgumentNullException(nameof(sourceBuilder));
             _aiConfiguration = aiConfiguration ?? throw new ArgumentNullException(nameof(aiConfiguration));
             _contextExpansion = contextExpansion;
@@ -130,22 +136,15 @@ namespace SmartRAG.Services.Document
         /// <param name="query">Search query string</param>
         /// <param name="maxResults">Maximum number of results to return</param>
         /// <param name="options">Optional search options to override global configuration</param>
+        /// <param name="queryTokens">Pre-computed query tokens (optional, for performance)</param>
         /// <returns>List of relevant document chunks</returns>
-        public async Task<List<DocumentChunk>> SearchDocumentsAsync(string query, int maxResults = 5, SearchOptions? options = null)
+        public async Task<List<DocumentChunk>> SearchDocumentsAsync(string query, int maxResults = 5, SearchOptions? options = null, List<string>? queryTokens = null)
         {
             if (string.IsNullOrWhiteSpace(query))
                 throw new ArgumentException("Query cannot be empty", nameof(query));
 
-            // Use our integrated search algorithm with diversity selection
-            var searchResults = await PerformBasicSearchAsync(query, maxResults * InitialSearchMultiplier, options);
-
-            if (searchResults.Count > 0)
-            {
-                // Apply diversity selection to ensure chunks from different documents (simple cap for now)
-                return searchResults.Take(maxResults).ToList();
-            }
-
-            return searchResults;
+            var searchResults = await PerformBasicSearchAsync(query, maxResults * InitialSearchMultiplier, options, queryTokens);
+            return searchResults.Take(maxResults).ToList();
         }
 
         /// <summary>
@@ -203,7 +202,12 @@ namespace SmartRAG.Services.Document
 
             // Pre-evaluate document availability for smarter strategy selection
             // Only check if document search is enabled
-            var canAnswerFromDocuments = searchOptions.EnableDocumentSearch && await CanAnswerFromDocumentsAsync(query);
+            // Compute query tokens once here and pass to all sub-methods to avoid redundant tokenization
+            var queryTokens = searchOptions.EnableDocumentSearch ? QueryTokenizer.TokenizeQuery(query) : null;
+            
+            var canAnswerFromDocuments = searchOptions.EnableDocumentSearch 
+                ? await CanAnswerFromDocumentsAsync(query, searchOptions, queryTokens) 
+                : (CanAnswer: false, Results: new List<DocumentChunk>());
 
             if (_multiDatabaseQueryCoordinator != null && searchOptions.EnableDatabaseSearch)
             {
@@ -220,29 +224,29 @@ namespace SmartRAG.Services.Document
                     var confidence = queryIntent?.Confidence ?? 0.0;
 
                     // Determine query strategy using enum
-                    var strategy = DetermineQueryStrategy(confidence, hasDatabaseQueries, canAnswerFromDocuments);
+                    var strategy = DetermineQueryStrategy(confidence, hasDatabaseQueries, canAnswerFromDocuments.CanAnswer);
 
                     // Execute strategy using switch-case (Open/Closed Principle)
                     // Pass pre-analyzed queryIntent (may be null) and preferredLanguage to avoid redundant AI calls
                     response = strategy switch
                     {
-                        QueryStrategy.DatabaseOnly => await ExecuteDatabaseOnlyStrategyAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, queryIntent, preferredLanguage, searchOptions),
-                        QueryStrategy.DocumentOnly => await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage, searchOptions),
-                        QueryStrategy.Hybrid => await ExecuteHybridStrategyAsync(query, maxResults, conversationHistory, hasDatabaseQueries, canAnswerFromDocuments, queryIntent, preferredLanguage, searchOptions),
-                        _ => await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage, searchOptions) // Fallback
+                        QueryStrategy.DatabaseOnly => await ExecuteDatabaseOnlyStrategyAsync(query, maxResults, conversationHistory, canAnswerFromDocuments.CanAnswer, queryIntent, preferredLanguage, searchOptions, queryTokens),
+                        QueryStrategy.DocumentOnly => await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments.CanAnswer, preferredLanguage, searchOptions, canAnswerFromDocuments.Results, queryTokens),
+                        QueryStrategy.Hybrid => await ExecuteHybridStrategyAsync(query, maxResults, conversationHistory, hasDatabaseQueries, canAnswerFromDocuments.CanAnswer, queryIntent, preferredLanguage, searchOptions, canAnswerFromDocuments.Results, queryTokens),
+                        _ => await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments.CanAnswer, preferredLanguage, searchOptions, canAnswerFromDocuments.Results, queryTokens) // Fallback
                     };
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error during query intent analysis, falling back to document-only query");
-                    response = await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage, searchOptions);
+                    response = await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments.CanAnswer, preferredLanguage, searchOptions, canAnswerFromDocuments.Results, queryTokens);
                 }
             }
             else
             {
                 if (searchOptions.EnableDocumentSearch)
                 {
-                    response = await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage, searchOptions);
+                    response = await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments.CanAnswer, preferredLanguage, searchOptions, canAnswerFromDocuments.Results, queryTokens);
                 }
                 else
                 {
@@ -300,14 +304,14 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// [AI Query] [DB Query] Executes a database-only query strategy
         /// </summary>
-        private async Task<RagResponse> ExecuteDatabaseOnlyStrategyAsync(string query, int maxResults, string conversationHistory, bool canAnswerFromDocuments, QueryIntent? queryIntent, string? preferredLanguage = null, SearchOptions? options = null)
+        private async Task<RagResponse> ExecuteDatabaseOnlyStrategyAsync(string query, int maxResults, string conversationHistory, bool canAnswerFromDocuments, QueryIntent? queryIntent, string? preferredLanguage = null, SearchOptions? options = null, List<string>? queryTokens = null)
         {
             try
             {
                 if (queryIntent == null)
                 {
                     // No intent analysis, fallback to document query
-                    return await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage, options);
+                    return await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage, options, null, queryTokens);
                 }
 
                 var databaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(query, queryIntent, maxResults);
@@ -318,12 +322,12 @@ namespace SmartRAG.Services.Document
                 }
 
                 _logger.LogInformation("Database query returned no meaningful data, falling back to document search");
-                return await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage, options);
+                return await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage, options, null, queryTokens);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Database query failed, falling back to document query");
-                return await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage, options);
+                return await ExecuteDocumentQueryAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage, options, null, queryTokens);
             }
         }
 
@@ -332,7 +336,17 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// [AI Query] [DB Query] [Document Query] Executes a hybrid query strategy (both database and document queries)
         /// </summary>
-        private async Task<RagResponse> ExecuteHybridStrategyAsync(string query, int maxResults, string conversationHistory, bool hasDatabaseQueries, bool canAnswerFromDocuments, QueryIntent? queryIntent, string? preferredLanguage = null, SearchOptions? options = null)
+        private async Task<RagResponse> ExecuteHybridStrategyAsync(
+            string query, 
+            int maxResults, 
+            string conversationHistory, 
+            bool hasDatabaseQueries, 
+            bool canAnswerFromDocuments, 
+            QueryIntent? queryIntent, 
+            string? preferredLanguage = null,
+            SearchOptions? options = null,
+            List<DocumentChunk>? preCalculatedResults = null,
+            List<string>? queryTokens = null)
         {
             RagResponse? databaseResponse = null;
             RagResponse? documentResponse = null;
@@ -367,7 +381,7 @@ namespace SmartRAG.Services.Document
             // Execute document query
             if (canAnswerFromDocuments)
             {
-                documentResponse = await GenerateBasicRagAnswerAsync(query, maxResults, conversationHistory, preferredLanguage, options);
+                documentResponse = await GenerateBasicRagAnswerAsync(query, maxResults, conversationHistory, preferredLanguage, options, preCalculatedResults, queryTokens);
             }
 
             // Merge results if both queries executed
@@ -469,41 +483,68 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// [Document Query] Common method for executing document-based queries (used by both document-only and fallback strategies)
         /// </summary>
-        private async Task<RagResponse> ExecuteDocumentQueryAsync(string query, int maxResults, string conversationHistory, bool? canAnswerFromDocuments = null, string? preferredLanguage = null, SearchOptions? options = null)
+        private async Task<RagResponse> ExecuteDocumentQueryAsync(string query, int maxResults, string conversationHistory, bool? canAnswerFromDocuments = null, string? preferredLanguage = null, SearchOptions? options = null, List<DocumentChunk>? preCalculatedResults = null, List<string>? queryTokens = null)
         {
-            var canAnswer = canAnswerFromDocuments ?? await CanAnswerFromDocumentsAsync(query, options);
+            var canAnswer = false;
+            List<DocumentChunk>? results = preCalculatedResults;
+
+            if (canAnswerFromDocuments.HasValue)
+            {
+                canAnswer = canAnswerFromDocuments.Value;
+            }
+            else
+            {
+                var checkResult = await CanAnswerFromDocumentsAsync(query, options, queryTokens);
+                canAnswer = checkResult.CanAnswer;
+                results = checkResult.Results;
+            }
 
             if (canAnswer)
             {
-                return await GenerateBasicRagAnswerAsync(query, maxResults, conversationHistory, preferredLanguage, options);
+                return await GenerateBasicRagAnswerAsync(query, maxResults, conversationHistory, preferredLanguage, options, results, queryTokens);
             }
 
             return await CreateFallbackResponseAsync(query, conversationHistory, preferredLanguage);
         }
 
         /// <summary>
-        /// [Document Query] Enhanced search with intelligent filtering and name detection
+        /// [Document Query] Searches for relevant document chunks using repository's optimized search
+        /// Uses vector DB search (Qdrant) or keyword search (Redis) depending on repository implementation
         /// </summary>
-        private async Task<List<DocumentChunk>> PerformBasicSearchAsync(string query, int maxResults, SearchOptions? options = null)
+        private async Task<List<DocumentChunk>> PerformBasicSearchAsync(string query, int maxResults, SearchOptions? options = null, List<string>? queryTokens = null)
         {
-            var allDocuments = await GetAllDocumentsFilteredAsync(options);
-            var allChunks = allDocuments.SelectMany(d => d.Chunks).ToList();
-
-            // Try embedding-based search first if available
+            // Use repository's built-in search (vector DB for Qdrant, keyword for Redis)
+            // This eliminates the need to load all chunks into memory
             try
             {
-                var embeddingResults = await _embeddingSearch.SearchByEmbeddingAsync(query, allChunks, maxResults);
-                if (embeddingResults.Count > 0)
-                {
-                    return embeddingResults;
+                var searchResults = await _documentRepository.SearchAsync(query, maxResults * InitialSearchMultiplier);
+                
+                if (searchResults.Count > 0)
+                {   
+                    // Repository returned results - filter by document type if needed
+                    var filteredResults = searchResults;
+                    
+                    if (options != null)
+                    {
+                        var filteredDocs = await GetAllDocumentsFilteredAsync(options);
+                        var allowedDocIds = new HashSet<Guid>(filteredDocs.Select(d => d.Id));
+                        filteredResults = searchResults.Where(c => allowedDocIds.Contains(c.DocumentId)).ToList();
+                    }
+                    
+                    return filteredResults;
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Fallback to keyword-based scoring
+                _logger.LogWarning(ex, "Repository search failed, falling back to keyword scoring");
             }
-
-            var queryWords = QueryTokenizer.TokenizeQuery(query);
+            
+            // Fallback: If repository search failed or returned no results, use keyword-based scoring
+            // This ensures backward compatibility and handles edge cases
+            var allDocuments = await GetAllDocumentsFilteredAsync(options);
+            var allChunks = allDocuments.SelectMany(d => d.Chunks).ToList();
+            
+            var queryWords = queryTokens ?? QueryTokenizer.TokenizeQuery(query);
             var potentialNames = QueryTokenizer.ExtractPotentialNames(query);
 
             var scoredChunks = _documentScoring.ScoreChunks(allChunks, query, queryWords, potentialNames);
@@ -741,8 +782,14 @@ namespace SmartRAG.Services.Document
             }            // If we found chunks with names, prioritize them
             if (potentialNames.Count >= MinPotentialNamesCount)
             {
+                // Pre-compute lowercase names once to avoid repeated conversions in the loop
+                var lowerNames = potentialNames.Select(n => n.ToLowerInvariant()).ToList();
+                
                 var nameChunks = relevantChunks.Where(c =>
-                    potentialNames.Any(name => c.Content.ToLowerInvariant().Contains(name.ToLowerInvariant()))).ToList();
+                {
+                    var contentLower = c.Content.ToLowerInvariant();
+                    return lowerNames.Any(name => contentLower.Contains(name));
+                }).ToList();
 
                 if (nameChunks.Count > MinNameChunksCount)
                 {
@@ -750,24 +797,27 @@ namespace SmartRAG.Services.Document
                 }
             }
 
-            // For counting/listing questions, prioritize chunks with numbered lists
+            // CRITICAL: Prioritize chunks that contain numbered lists (1. 2. 3. etc.)
+            // This is essential for "how many" questions where the answer is a list
+            // Use compiled regex patterns for performance
+            var numberedListPatterns = new[]
+            {
+                NumberedListPattern1,      // "1. Item"
+                NumberedListPattern2,      // "1) Item"
+                NumberedListPattern3,      // "1- Item"
+                NumberedListPattern4,      // "1 Item" (number followed by capital letter)
+                NumberedListPattern5,      // "1. Item" at start of line
+            };
+
             if (RequiresComprehensiveSearch(query))
             {
-                var numberedListPatterns = new[]
-                {
-                    @"\b\d+\.\s",      // "1. Item"
-                    @"\b\d+\)\s",      // "1) Item"
-                    @"\b\d+-\s",       // "1- Item"
-                    @"\b\d+\s+[A-Z]",  // "1 Item" (number followed by capital letter)
-                    @"^\d+\.\s",       // "1. Item" at start of line
-                };
-
+                var comprehensiveQueryWords = QueryTokenizer.TokenizeQuery(query);
                 // CRITICAL: Search in ALL chunks, not just relevantChunks
                 // Numbered list chunks might not have high relevance score but contain the answer
                 // But prioritize chunks from relevant documents
                 var allNumberedListChunks = finalScoredChunks
                     .Where(c => numberedListPatterns.Any(pattern =>
-                        Regex.IsMatch(c.Content, pattern, RegexOptions.Multiline | RegexOptions.IgnoreCase)))
+                        pattern.IsMatch(c.Content)))
                     .Select(c =>
                     {
                         // Preserve existing relevance score (includes document-level boost)
@@ -775,9 +825,9 @@ namespace SmartRAG.Services.Document
 
                         // Count numbered items and calculate additional score
                         var numberedListCount = numberedListPatterns.Sum(pattern =>
-                            Regex.Matches(c.Content, pattern, RegexOptions.Multiline | RegexOptions.IgnoreCase).Count);
+                            pattern.Matches(c.Content).Count);
 
-                        var wordMatches = queryWords.Count(word =>
+                        var wordMatches = comprehensiveQueryWords.Count(word =>
                             c.Content.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0);
 
                         // Add numbered list bonus to existing score (preserves document-level boost)
@@ -816,12 +866,25 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// [AI Query] Generate RAG answer with automatic session management
         /// </summary>
-        private async Task<RagResponse> GenerateBasicRagAnswerAsync(string query, int maxResults, string conversationHistory, string? preferredLanguage = null, SearchOptions? options = null)
+        private async Task<RagResponse> GenerateBasicRagAnswerAsync(string query, int maxResults, string conversationHistory, string? preferredLanguage = null, SearchOptions? options = null, List<DocumentChunk>? preCalculatedResults = null, List<string>? queryTokens = null)
         {
             // For questions asking "how many", "which", "where" etc., search for more chunks initially
             // These questions often need information from multiple chunks (e.g., numbered lists)
             var searchMaxResults = DetermineInitialSearchCount(query, maxResults);
-            var chunks = await SearchDocumentsAsync(query, searchMaxResults, options);
+            
+            List<DocumentChunk> chunks;
+            
+            // Use pre-calculated results if available and sufficient
+            // If we need comprehensive search (e.g. counting), we might need more chunks than what was pre-calculated
+            // But if pre-calculated results are already enough, use them
+            if (preCalculatedResults != null && preCalculatedResults.Count >= searchMaxResults)
+            {
+                chunks = preCalculatedResults.Take(searchMaxResults).ToList();
+            }
+            else
+            {
+                chunks = await SearchDocumentsAsync(query, searchMaxResults, options, queryTokens);
+            }
 
             // If initial search found few chunks OR if this is a counting/listing question, try more aggressive search
             // This is especially important for "how many" type questions that need list enumeration
@@ -833,7 +896,7 @@ namespace SmartRAG.Services.Document
                 var allChunks = allDocuments.SelectMany(d => d.Chunks).ToList();
 
                 // Use keyword-based fallback search with more aggressive matching
-                var queryWords = QueryTokenizer.TokenizeQuery(query);
+                var queryWords = queryTokens ?? QueryTokenizer.TokenizeQuery(query);
                 var potentialNames = QueryTokenizer.ExtractPotentialNames(query);
 
                 // Apply document-level scoring first (same as PerformBasicSearchAsync)
@@ -1038,11 +1101,11 @@ namespace SmartRAG.Services.Document
                 // Use multiple patterns to detect numbered lists: "1.", "1)", "1-", "1 ", etc.
                 var numberedListPatterns = new[]
                 {
-                    @"\b\d+\.\s",      // "1. Item"
-                    @"\b\d+\)\s",      // "1) Item"
-                    @"\b\d+-\s",       // "1- Item"
-                    @"\b\d+\s+[A-Z]",  // "1 Item" (number followed by capital letter)
-                    @"^\d+\.\s",       // "1. Item" at start of line
+                    NumberedListPattern1,      // "1. Item"
+                    NumberedListPattern2,      // "1) Item"
+                    NumberedListPattern3,      // "1- Item"
+                    NumberedListPattern4,      // "1 Item" (number followed by capital letter)
+                    NumberedListPattern5,      // "1. Item" at start of line
                 };
 
                 // CRITICAL: For counting questions, first find ALL chunks with numbered lists
@@ -1052,7 +1115,7 @@ namespace SmartRAG.Services.Document
                     {
                         // Count how many numbered list items are in this chunk
                         var numberedListCount = numberedListPatterns.Sum(pattern =>
-                            Regex.Matches(c.Content, pattern, RegexOptions.Multiline | RegexOptions.IgnoreCase).Count);
+                            pattern.Matches(c.Content).Count);
 
                         var wordMatches = queryWords.Count(word =>
                             c.Content.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0);
@@ -1210,11 +1273,11 @@ namespace SmartRAG.Services.Document
             {
                 var numberedListPatterns = new[]
                 {
-                    @"\b\d+\.\s",      // "1. Item"
-                    @"\b\d+\)\s",      // "1) Item"
-                    @"\b\d+-\s",       // "1- Item"
-                    @"\b\d+\s+[A-Z]",  // "1 Item" (number followed by capital letter)
-                    @"^\d+\.\s",       // "1. Item" at start of line
+                    NumberedListPattern1,      // "1. Item"
+                    NumberedListPattern2,      // "1) Item"
+                    NumberedListPattern3,      // "1- Item"
+                    NumberedListPattern4,      // "1 Item" (number followed by capital letter)
+                    NumberedListPattern5,      // "1. Item" at start of line
                 };
 
                 // Get all documents that contain the found chunks
@@ -1223,12 +1286,12 @@ namespace SmartRAG.Services.Document
 
                 // CRITICAL: First, check chunks that are already in the list (they have document-level boost)
                 var existingChunksMap = chunks.ToDictionary(c => c.Id, c => c);
-                var localQueryWords = QueryTokenizer.TokenizeQuery(query);
+                var localQueryWords = queryTokens ?? QueryTokenizer.TokenizeQuery(query); // Use parameter tokens if available
 
                 foreach (var chunk in chunks)
                 {
                     var numberedListCount = numberedListPatterns.Sum(pattern =>
-                        Regex.Matches(chunk.Content, pattern, RegexOptions.Multiline | RegexOptions.IgnoreCase).Count);
+                        pattern.Matches(chunk.Content).Count);
 
                     if (numberedListCount > 0)
                     {
@@ -1263,7 +1326,7 @@ namespace SmartRAG.Services.Document
                     var documentNumberedChunks = document.Chunks
                         .Where(c => !existingChunksMap.ContainsKey(c.Id) &&
                             numberedListPatterns.Any(pattern =>
-                                Regex.IsMatch(c.Content, pattern, RegexOptions.Multiline | RegexOptions.IgnoreCase)))
+                                pattern.IsMatch(c.Content)))
                         .ToList();
 
                     if (documentNumberedChunks.Count > 0)
@@ -1273,7 +1336,7 @@ namespace SmartRAG.Services.Document
                         foreach (var chunk in documentNumberedChunks)
                         {
                             var numberedListCount = numberedListPatterns.Sum(pattern =>
-                                Regex.Matches(chunk.Content, pattern, RegexOptions.Multiline | RegexOptions.IgnoreCase).Count);
+                                pattern.Matches(chunk.Content).Count);
 
                             var wordMatches = localQueryWords.Count(word =>
                                 chunk.Content.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0);
@@ -1403,15 +1466,15 @@ namespace SmartRAG.Services.Document
                             // Use multiple patterns to detect numbered lists
                             var numberedListPatterns = new[]
                             {
-                            @"\b\d+\.\s",      // "1. Item"
-                            @"\b\d+\)\s",      // "1) Item"
-                            @"\b\d+-\s",       // "1- Item"
-                            @"\b\d+\s+[A-Z]",  // "1 Item" (number followed by capital letter)
-                            @"^\d+\.\s",       // "1. Item" at start of line
-                        };
+                                NumberedListPattern1,      // "1. Item"
+                                NumberedListPattern2,      // "1) Item"
+                                NumberedListPattern3,      // "1- Item"
+                                NumberedListPattern4,      // "1 Item" (number followed by capital letter)
+                                NumberedListPattern5,      // "1. Item" at start of line
+                            };
 
                             var numberedListCount = numberedListPatterns.Sum(pattern =>
-                                Regex.Matches(chunk.Content, pattern, RegexOptions.Multiline | RegexOptions.IgnoreCase).Count);
+                                pattern.Matches(chunk.Content).Count);
                             var hasNumberedList = numberedListCount > 0;
 
                             // Score: word matches + bonus for numbers + HIGH bonus for numbered lists (especially multiple items)
@@ -1509,47 +1572,66 @@ namespace SmartRAG.Services.Document
         /// [Document Query] Ultimate language-agnostic approach: ONLY check if documents contain relevant information
         /// No word patterns, no language detection, no grammar analysis, no greeting detection
         /// Pure content-based decision making
+        /// Returns both the boolean decision and the found chunks to avoid redundant searches
         /// </summary>
-        private async Task<bool> CanAnswerFromDocumentsAsync(string query, SearchOptions? options = null)
+        private async Task<(bool CanAnswer, List<DocumentChunk> Results)> CanAnswerFromDocumentsAsync(string query, SearchOptions? options = null, List<string>? queryTokens = null)
         {
             try
             {
                 // Step 1: Search documents for any content related to the query
                 // This works regardless of the language of the query
-                var searchResults = await PerformBasicSearchAsync(query, FallbackSearchMaxResults, options);
+                var searchResults = await PerformBasicSearchAsync(query, FallbackSearchMaxResults, options, queryTokens);
 
                 if (searchResults.Count == MinSearchResultsCount)
                 {
                     // No content found that matches the query in any way
-                    return false;
+                    return (false, searchResults);
                 }
 
-                // Step 2: Check if we found meaningful content with decent relevance
+                // DEBUG: Log relevance scores to diagnose threshold issues
+                var topScores = searchResults.Take(5).Select(c => c.RelevanceScore ?? 0.0).ToList();
+                _logger.LogDebug("Top 5 relevance scores: {Scores}", string.Join(", ", topScores.Select(s => s.ToString("F4"))));
+
+                // Step 2: Use ADAPTIVE threshold instead of fixed value
+                // Different embedding models produce different score ranges
+                // Take top 40% of results with minimum absolute threshold of 0.01
+                var sortedByScore = searchResults.OrderByDescending(c => c.RelevanceScore ?? 0.0).ToList();
+                var topPercentileCount = Math.Max(1, (int)(sortedByScore.Count * 0.4)); // Top 40%
+                var adaptiveThreshold = Math.Max(0.01, sortedByScore.Skip(topPercentileCount - 1).FirstOrDefault()?.RelevanceScore ?? 0.01);
+
+                _logger.LogDebug("Adaptive threshold: {Threshold:F4} (top {Percentile}% of {Total} results)", 
+                    adaptiveThreshold, 40, sortedByScore.Count);
+
                 var hasRelevantContent = searchResults.Any(chunk =>
-                    chunk.RelevanceScore > RelevanceThreshold);
+                    chunk.RelevanceScore > adaptiveThreshold);
 
                 if (!hasRelevantContent)
                 {
                     // Found some content but it's not relevant enough
-                    return false;
+                    _logger.LogDebug("No chunks exceeded adaptive threshold {Threshold:F4}. Max score: {MaxScore:F4}", 
+                        adaptiveThreshold, searchResults.Max(c => c.RelevanceScore ?? 0.0));
+                    return (false, searchResults);
                 }
 
                 // Step 3: Check if the total content is substantial enough to potentially answer
                 var totalContentLength = searchResults
-                    .Where(c => c.RelevanceScore > RelevanceThreshold)
+                    .Where(c => c.RelevanceScore > adaptiveThreshold)
                     .Sum(c => c.Content.Length);
 
                 var hasSubstantialContent = totalContentLength > MinSubstantialContentLength;
 
+                _logger.LogDebug("Content analysis: relevant={HasRelevant}, contentLength={Length}, threshold={Threshold}", 
+                    hasRelevantContent, totalContentLength, MinSubstantialContentLength);
+
                 // Final decision: If we have relevant and substantial content, use document search
                 // No other checks - let the content decide!
-                return hasRelevantContent && hasSubstantialContent;
+                return (hasRelevantContent && hasSubstantialContent, searchResults);
             }
             catch (Exception ex)
             {
                 // If there's an error, be conservative and assume it's document search
                 ServiceLogMessages.LogCanAnswerFromDocumentsError(_logger, ex);
-                return true;
+                return (true, new List<DocumentChunk>());
             }
         }
 
@@ -1716,7 +1798,7 @@ namespace SmartRAG.Services.Document
             }
 
             // Check for multiple numeric groups (e.g., "1. Item 2. Item 3. Item")
-            var numericMatches = System.Text.RegularExpressions.Regex.Matches(input, @"\p{Nd}+");
+            var numericMatches = NumericPattern.Matches(input);
             return numericMatches.Count >= 2;
         }
 
@@ -1726,7 +1808,7 @@ namespace SmartRAG.Services.Document
         private static bool HasListIndicators(string input)
         {
             // Pattern: Numbered lists (1. 2. 3. or 1) 2) 3))
-            if (System.Text.RegularExpressions.Regex.IsMatch(input, @"\d+[\.\)]\s"))
+            if (ListIndicatorPattern.IsMatch(input))
             {
                 return true;
             }
