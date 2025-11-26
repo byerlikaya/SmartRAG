@@ -163,6 +163,24 @@ namespace SmartRAG.Repositories
             }
         }
 
+        public async Task<bool> ClearAllAsync()
+        {
+            try
+            {
+                var documents = await GetAllAsync();
+                foreach (var doc in documents)
+                {
+                    await DeleteAsync(doc.Id);
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to clear all documents from Redis");
+                return false;
+            }
+        }
+
         public async Task<bool> DeleteAsync(Guid id)
         {
             try

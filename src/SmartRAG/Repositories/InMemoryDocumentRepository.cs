@@ -126,6 +126,15 @@ namespace SmartRAG.Repositories
             }
         }
 
+        public Task<bool> ClearAllAsync()
+        {
+            lock (_lock)
+            {
+                _documents.Clear();
+                return Task.FromResult(true);
+            }
+        }
+
         public Task<bool> DeleteAsync(Guid id)
         {
             lock (_lock)

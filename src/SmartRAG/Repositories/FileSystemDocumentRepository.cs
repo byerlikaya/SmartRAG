@@ -165,6 +165,32 @@ namespace SmartRAG.Repositories
             }
         }
 
+        public Task<bool> ClearAllAsync()
+        {
+            lock (_lock)
+            {
+                try
+                {
+                    var documents = LoadMetadata();
+                    foreach (var doc in documents)
+                    {
+                        var documentPath = GetDocumentPath(doc.Id);
+                        if (File.Exists(documentPath))
+                        {
+                            File.Delete(documentPath);
+                        }
+                    }
+                    SaveMetadata(new List<SmartRAG.Entities.Document>());
+                    return Task.FromResult(true);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to clear all documents from FileSystem");
+                    return Task.FromResult(false);
+                }
+            }
+        }
+
         public Task<bool> DeleteAsync(Guid id)
         {
             lock (_lock)

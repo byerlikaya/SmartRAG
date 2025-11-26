@@ -52,6 +52,11 @@ namespace SmartRAG.Interfaces.Document
         /// <returns>List of relevant document chunks</returns>
         Task<List<SmartRAG.Entities.DocumentChunk>> SearchAsync(string query, int maxResults = 5);
 
+        /// <summary>
+        /// Clear all documents from storage (efficient bulk delete)
+        /// </summary>
+        /// <returns>True if all documents were cleared successfully</returns>
+        Task<bool> ClearAllAsync();
 
     }
 }
