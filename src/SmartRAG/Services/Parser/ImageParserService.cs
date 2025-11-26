@@ -40,7 +40,9 @@ namespace SmartRAG.Services.Parser
         private const string TesseractPathDefault = "/usr/share/tesseract-ocr/tessdata";
         private const string TesseractPathWindows = "C:\\Program Files\\Tesseract-OCR\\tessdata";
 
-        private const string OcrCharacterWhitelist = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz.,!?;:()[]{}\"'-/\\@#$%&*+=<>|~`";
+        // REMOVED: OcrCharacterWhitelist - Using whitelist breaks multi-language support
+        // Tesseract already handles language-specific characters correctly based on the language parameter
+        // Whitelist was filtering out non-ASCII characters (special chars, accented letters, etc.) during OCR
         
         private const string CurrencyMisreadPatternMain = @"(\d+)\s*%(?=\s*(?:\p{Lu}|\d|$))";
         private const string CurrencyMisreadPatternCompact = @"(\d+)%(?=\p{Lu}|\s+\p{Lu}|$)";
@@ -65,6 +67,32 @@ namespace SmartRAG.Services.Parser
             { "no", "nor" }, { "da", "dan" }, { "fi", "fin" }, { "el", "ell" },
             { "he", "heb" }, { "th", "tha" }, { "vi", "vie" }, { "id", "ind" },
             { "cs", "ces" }, { "hu", "hun" }, { "ro", "ron" }, { "uk", "ukr" }
+        };
+        
+        /// <summary>
+        /// Maps ISO 639-1/639-2 language codes to Tesseract language codes
+        /// CRITICAL: Generic mapping - no specific language names (follows Generic Code rule)
+        /// Supports both ISO 639-1 (2-letter: tr, en, de) and ISO 639-2/T (3-letter: tur, eng, deu)
+        /// </summary>
+        private static readonly Dictionary<string, string> LanguageCodeToTesseractCode = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            // ISO 639-1 codes (2-letter) → Tesseract codes (ISO 639-2/T)
+            { "tr", "tur" }, { "en", "eng" }, { "de", "deu" }, { "fr", "fra" },
+            { "es", "spa" }, { "it", "ita" }, { "ru", "rus" }, { "ja", "jpn" },
+            { "ko", "kor" }, { "zh", "zho" }, { "ar", "ara" }, { "hi", "hin" },
+            { "pt", "por" }, { "nl", "nld" }, { "pl", "pol" }, { "sv", "swe" },
+            { "no", "nor" }, { "da", "dan" }, { "fi", "fin" }, { "el", "ell" },
+            { "he", "heb" }, { "th", "tha" }, { "vi", "vie" }, { "id", "ind" },
+            { "cs", "ces" }, { "hu", "hun" }, { "ro", "ron" }, { "uk", "ukr" },
+            
+            // ISO 639-2/T codes (3-letter) - already in Tesseract format (pass-through)
+            { "tur", "tur" }, { "eng", "eng" }, { "deu", "deu" }, { "fra", "fra" },
+            { "spa", "spa" }, { "ita", "ita" }, { "rus", "rus" }, { "jpn", "jpn" },
+            { "kor", "kor" }, { "zho", "zho" }, { "ara", "ara" }, { "hin", "hin" },
+            { "por", "por" }, { "nld", "nld" }, { "pol", "pol" }, { "swe", "swe" },
+            { "nor", "nor" }, { "dan", "dan" }, { "fin", "fin" }, { "ell", "ell" },
+            { "heb", "heb" }, { "tha", "tha" }, { "vie", "vie" }, { "ind", "ind" },
+            { "ces", "ces" }, { "hun", "hun" }, { "ron", "ron" }, { "ukr", "ukr" }
         };
 
         #endregion
@@ -316,19 +344,186 @@ namespace SmartRAG.Services.Parser
         }
 
         /// <summary>
+        /// Normalizes language parameter to Tesseract language code (ISO 639-2/T)
+        /// Supports: "tr" → "tur", "en" → "eng", "tur" → "tur" (pass-through)
+        /// </summary>
+        private string NormalizeTesseractLanguageCode(string language)
+        {
+            if (string.IsNullOrWhiteSpace(language))
+            {
+                return DefaultLanguage;
+            }
+            
+            // Try to map the language code to Tesseract format
+            if (LanguageCodeToTesseractCode.TryGetValue(language, out var tesseractCode))
+            {
+                return tesseractCode;
+            }
+            
+            // If no mapping found, assume it's already in Tesseract format or fallback to default
+            _logger.LogWarning("Unknown language code: '{Language}'. Falling back to default: '{Default}'", language, DefaultLanguage);
+            return DefaultLanguage;
+        }
+        
+        /// <summary>
+        /// Gets available Tesseract language (downloads if missing, falls back to English if download fails)
+        /// Returns null if no language data is available at all
+        /// </summary>
+        private async Task<string> GetAvailableTesseractLanguageAsync(string requestedLanguage)
+        {
+            var tessdataPath = string.IsNullOrEmpty(_ocrEngineDataPath) ? "." : _ocrEngineDataPath;
+            
+            // Ensure tessdata directory exists
+            if (!Directory.Exists(tessdataPath))
+            {
+                try
+                {
+                    Directory.CreateDirectory(tessdataPath);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to create tessdata directory: {Path}", tessdataPath);
+                }
+            }
+            
+            // Check if requested language data exists
+            var requestedFile = Path.Combine(tessdataPath, $"{requestedLanguage}.traineddata");
+            if (File.Exists(requestedFile))
+            {
+                return requestedLanguage;
+            }
+            
+            // Try to download requested language data (on-demand)
+            _logger.LogInformation("Tesseract data for '{Language}' not found. Attempting to download...", requestedLanguage);
+            var downloaded = await TryDownloadTesseractDataAsync(requestedLanguage, tessdataPath);
+            
+            if (downloaded)
+            {
+                _logger.LogInformation("Successfully downloaded Tesseract data for '{Language}'", requestedLanguage);
+                return requestedLanguage;
+            }
+            
+            // Download failed, fallback to English
+            if (requestedLanguage != DefaultLanguage)
+            {
+                var defaultFile = Path.Combine(tessdataPath, $"{DefaultLanguage}.traineddata");
+                
+                // Check if English exists
+                if (File.Exists(defaultFile))
+                {
+                    return DefaultLanguage;
+                }
+                
+                // Try to download English as fallback
+                _logger.LogInformation("Attempting to download fallback language '{Fallback}'...", DefaultLanguage);
+                var fallbackDownloaded = await TryDownloadTesseractDataAsync(DefaultLanguage, tessdataPath);
+                
+                if (fallbackDownloaded)
+                {
+                    _logger.LogInformation("Successfully downloaded fallback Tesseract data for '{Language}'", DefaultLanguage);
+                    return DefaultLanguage;
+                }
+            }
+            
+            // No language data available at all
+            _logger.LogWarning("No Tesseract language data available and download failed. OCR will be skipped.");
+            return null;
+        }
+        
+        /// <summary>
+        /// Attempts to download Tesseract traineddata file from GitHub
+        /// Generic implementation that works for any language (eng, tur, deu, fra, etc.)
+        /// </summary>
+        private async Task<bool> TryDownloadTesseractDataAsync(string languageCode, string tessdataPath)
+        {
+            try
+            {
+                var fileName = $"{languageCode}.traineddata";
+                var targetPath = Path.Combine(tessdataPath, fileName);
+                
+                // GitHub raw URL for Tesseract traineddata (official repository)
+                var downloadUrl = $"https://github.com/tesseract-ocr/tessdata/raw/main/{fileName}";
+                
+                _logger.LogDebug("Downloading Tesseract data from: {Url}", downloadUrl);
+                
+                using (var httpClient = new System.Net.Http.HttpClient())
+                {
+                    // Set timeout to 60 seconds (traineddata files can be 10-20 MB)
+                    httpClient.Timeout = TimeSpan.FromSeconds(60);
+                    
+                    var response = await httpClient.GetAsync(downloadUrl);
+                    
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        _logger.LogWarning("Failed to download Tesseract data for '{Language}': HTTP {StatusCode}", 
+                            languageCode, response.StatusCode);
+                        return false;
+                    }
+                    
+                    var content = await response.Content.ReadAsByteArrayAsync();
+                    
+                    // Write to file
+                    await File.WriteAllBytesAsync(targetPath, content);
+                    
+                    _logger.LogDebug("Downloaded Tesseract data: {File} ({Size} bytes)", fileName, content.Length);
+                    return true;
+                }
+            }
+            catch (System.Net.Http.HttpRequestException ex)
+            {
+                _logger.LogWarning(ex, "Network error while downloading Tesseract data for '{Language}'. OCR will use fallback.", languageCode);
+                return false;
+            }
+            catch (TaskCanceledException ex)
+            {
+                _logger.LogWarning(ex, "Download timeout for Tesseract data '{Language}'. OCR will use fallback.", languageCode);
+                return false;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to download Tesseract data for '{Language}'. OCR will use fallback.", languageCode);
+                return false;
+            }
+        }
+        
+        /// <summary>
         /// Performs OCR on the image stream
         /// </summary>
         private async Task<(string Text, float Confidence)> PerformOcrAsync(Stream imageStream, string language)
         {
+            // Normalize language parameter to Tesseract language code (ISO 639-2/T)
+            // Supports: "tr" → "tur", "en" → "eng", "tur" → "tur" (pass-through)
+            var tesseractLanguageCode = NormalizeTesseractLanguageCode(language);
+            
+            // Find available language data file (fallback to English if requested language is not available)
+            var availableLanguage = await GetAvailableTesseractLanguageAsync(tesseractLanguageCode);
+            
+            if (string.IsNullOrEmpty(availableLanguage))
+            {
+                _logger.LogWarning("No Tesseract language data available. OCR cannot be performed. Skipping OCR.");
+                return (string.Empty, 0f);
+            }
+            
+            if (availableLanguage != tesseractLanguageCode)
+            {
+                _logger.LogInformation("Tesseract data for '{Requested}' not found. Using '{Fallback}' instead.", tesseractLanguageCode, availableLanguage);
+            }
+            else
+            {
+                _logger.LogDebug("Using Tesseract language: '{Language}'", availableLanguage);
+            }
+            
             return await Task.Run(() =>
             {
                 try
                 {
                     var tessdataPath = string.IsNullOrEmpty(_ocrEngineDataPath) ? "." : _ocrEngineDataPath;
                     
-                    using (var engine = new TesseractEngine(tessdataPath, language, EngineMode.Default))
+                    using (var engine = new TesseractEngine(tessdataPath, availableLanguage, EngineMode.Default))
                     {
-                        engine.SetVariable("tessedit_char_whitelist", OcrCharacterWhitelist);
+                        // CRITICAL: Do NOT use tessedit_char_whitelist - it breaks multi-language support
+                        // Tesseract already handles language-specific characters (special chars, accented letters, etc.) correctly
+                        // based on the language parameter. Using whitelist filters out these non-ASCII characters.
                         
                         using (var img = Pix.LoadFromMemory(ReadStreamToByteArray(imageStream)))
                         using (var page = engine.Process(img))
