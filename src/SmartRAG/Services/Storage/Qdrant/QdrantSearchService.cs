@@ -136,7 +136,9 @@ namespace SmartRAG.Services.Storage.Qdrant
                                         DocumentId = Guid.Parse(docId),
                                         Content = content,
                                         ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
-                                        RelevanceScore = result.Score
+                                        RelevanceScore = result.Score,
+                                        StartPosition = 0,  // Qdrant doesn't store positions, content is already extracted
+                                        EndPosition = content.Length
                                     };
                                     allChunks.Add(chunk);
                                 }
@@ -207,7 +209,9 @@ namespace SmartRAG.Services.Storage.Qdrant
                                             DocumentId = Guid.Parse(docId),
                                             Content = content,
                                             ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
-                                            RelevanceScore = DefaultTextSearchScore
+                                            RelevanceScore = DefaultTextSearchScore,
+                                            StartPosition = 0,
+                                            EndPosition = content.Length
                                         };
                                         relevantChunks.Add(chunk);
 
@@ -249,14 +253,7 @@ namespace SmartRAG.Services.Storage.Qdrant
 
             try
             {
-                _logger.LogDebug("Starting hybrid search for query: {Query}", query);
-
-                var keywords = ExtractImportantKeywords(query);
-
-                if (keywords.Count == 0)
-                {
-                    return hybridResults;
-                }
+                _logger.LogDebug("Starting native hybrid search for query: {Query}", query);
 
                 var collections = await _client.ListCollectionsAsync();
                 var documentCollections = collections.Where(c => c.StartsWith($"{_collectionName}_doc_", StringComparison.OrdinalIgnoreCase)).ToList();
@@ -268,15 +265,13 @@ namespace SmartRAG.Services.Storage.Qdrant
                         var chunks = await FallbackTextSearchForCollectionAsync(collectionName, query, maxResults * 2);
 
                         foreach (var chunk in chunks)
-                        {
-                            var score = CalculateKeywordMatchScore(chunk.Content, keywords);
-                            if (score > MinKeywordMatchScore)
-                            {
-                                chunk.RelevanceScore = score;
-                                hybridResults.Add(chunk);
-                                _logger.LogDebug("Hybrid match found in {Collection} with score {Score}", collectionName, score);
-                            }
-                        }
+            {
+                // Use the score calculated during search (based on match count)
+                // We add a base boost because these are text matches
+                chunk.RelevanceScore = chunk.RelevanceScore.HasValue ? chunk.RelevanceScore.Value + 4.0 : 5.0;
+                hybridResults.Add(chunk);
+                _logger.LogDebug("Native text match found in chunk {ChunkIndex} with score {Score}", chunk.ChunkIndex, chunk.RelevanceScore);
+            }
                     }
                     catch (Exception ex)
                     {
@@ -339,10 +334,40 @@ namespace SmartRAG.Services.Storage.Qdrant
         {
             try
             {
-                var queryLower = query.ToLowerInvariant();
                 var relevantChunks = new List<DocumentChunk>();
 
-                var scrollResult = await _client.ScrollAsync(collectionName, limit: 1000);
+                // NATIVE QDRANT TEXT SEARCH (Token-Based OR)
+                // We split the query into tokens and use a 'Should' (OR) filter.
+                // This allows finding documents that contain ANY of the significant words.
+                // We filter out very short words (< 3 chars) to avoid noise (natural stopword filtering).
+                
+                var tokens = query.Split(new[] { ' ', '.', ',', '?', '!', ';', ':' }, StringSplitOptions.RemoveEmptyEntries)
+                                  .Where(t => t.Length >= 3) // Natural stopword filter (skips 've', 'bu', 'ne', etc.)
+                                  .ToList();
+
+                if (tokens.Count == 0)
+                {
+                    return relevantChunks;
+                }
+
+                var shouldConditions = tokens.Select(token => new global::Qdrant.Client.Grpc.Condition
+                {
+                    Field = new global::Qdrant.Client.Grpc.FieldCondition
+                    {
+                        Key = "content",
+                        Match = new global::Qdrant.Client.Grpc.Match { Text = token }
+                    }
+                }).ToList();
+
+                var filter = new global::Qdrant.Client.Grpc.Filter
+                {
+                    Should = { shouldConditions }
+                };
+
+                // Use ScrollAsync with the filter
+                // We fetch more than maxResults to allow for client-side re-ranking if needed,
+                // but for now we trust Qdrant to return matching documents.
+                var scrollResult = await _client.ScrollAsync(collectionName, filter: filter, limit: (uint)maxResults * 2);
 
                 foreach (var point in scrollResult.Result)
                 {
@@ -356,77 +381,42 @@ namespace SmartRAG.Services.Storage.Qdrant
 
                         if (!string.IsNullOrEmpty(content) && !string.IsNullOrEmpty(docId) && !string.IsNullOrEmpty(chunkIndex))
                         {
-                            var contentStr = content.ToLowerInvariant();
-
-                            if (contentStr.Contains(queryLower))
+                            // Simple Re-ranking: Count how many tokens appear in the content
+                            // This helps prioritize chunks that contain "SRS" AND "nedir" over just "nedir"
+                            var matchCount = tokens.Count(t => content.Contains(t, StringComparison.OrdinalIgnoreCase));
+                            
+                            var chunk = new DocumentChunk
                             {
-                                var chunk = new DocumentChunk
-                                {
-                                    Id = Guid.NewGuid(),
-                                    DocumentId = Guid.Parse(docId),
-                                    Content = content,
-                                    ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
-                                    RelevanceScore = DefaultTextSearchScore
-                                };
-                                relevantChunks.Add(chunk);
+                                Id = Guid.NewGuid(),
+                                DocumentId = Guid.Parse(docId),
+                                Content = content,
+                                ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
+                                RelevanceScore = 1.0 + (matchCount * 0.1), // Base score + boost for multiple matches
+                                StartPosition = 0,
+                                EndPosition = content.Length
+                            };
+                            relevantChunks.Add(chunk);
 
-                                if (relevantChunks.Count >= maxResults)
-                                    break;
+                            // DEBUG: Log content of top matches to verify data integrity
+                            if (relevantChunks.Count <= 3)
+                            {
+                                _logger.LogDebug("Native Search Chunk {Index} Content Preview: {Content}", chunk.ChunkIndex, content.Substring(0, Math.Min(content.Length, 200)));
                             }
                         }
                     }
                 }
 
-                return relevantChunks.Take(maxResults).ToList();
+                // Sort by score descending and take maxResults
+                return relevantChunks.OrderByDescending(c => c.RelevanceScore).Take(maxResults).ToList();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Fallback search failed for collection: {Collection}", collectionName);
+                _logger.LogError(ex, "Native text search failed for collection: {Collection}", collectionName);
                 return new List<DocumentChunk>();
             }
         }
 
-        /// <summary>
-        /// Extract important keywords from query (names, technical terms, etc.)
-        /// </summary>
-        private static List<string> ExtractImportantKeywords(string query)
-        {
-            var keywords = new List<string>();
-            var words = query.ToLowerInvariant().Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
-            foreach (var word in words)
-            {
-                if (word.Length > MinWordLength)
-                {
-                    keywords.Add(word);
-                }
-            }
-
-            return keywords;
-        }
-
-        /// <summary>
-        /// Calculate keyword match score for a chunk
-        /// </summary>
-        private static double CalculateKeywordMatchScore(string content, List<string> keywords)
-        {
-            if (keywords.Count == 0) return 0.0;
-
-            var contentLower = content.ToLowerInvariant();
-            var matches = 0;
-            var totalScore = 0.0;
-
-            foreach (var keyword in keywords)
-            {
-                if (contentLower.Contains(keyword))
-                {
-                    matches++;
-                    totalScore += 1.0;
-                }
-            }
-
-            return totalScore / keywords.Count;
-        }
 
         private void Dispose(bool disposing)
         {
