@@ -116,10 +116,19 @@ namespace SmartRAG.Repositories
             if (!payload.TryGetValue(key, out Value value) || value == null)
                 return string.Empty;
 
+            string result;
             switch (value.KindCase)
             {
                 case Value.KindOneofCase.StringValue:
-                    return value.StringValue ?? string.Empty;
+                    result = value.StringValue ?? string.Empty;
+                    // CRITICAL: Ensure UTF-8 encoding is preserved for all languages (Turkish, German, Russian, etc.)
+                    // Protobuf strings are UTF-8 by default, but normalize to ensure consistency
+                    if (!string.IsNullOrEmpty(result))
+                    {
+                        // Normalize Unicode characters to ensure proper encoding (handles Turkish ğ, ü, ş, etc.)
+                        result = result.Normalize(System.Text.NormalizationForm.FormC);
+                    }
+                    return result;
                 case Value.KindOneofCase.DoubleValue:
                     return value.DoubleValue.ToString(CultureInfo.InvariantCulture);
                 case Value.KindOneofCase.IntegerValue:
