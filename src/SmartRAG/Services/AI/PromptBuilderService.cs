@@ -77,7 +77,7 @@ CRITICAL RULES:
 - If you find ANY relevant or related information (even if not a perfect match), provide an answer based on what you found
 - If you have partial information, share it and clearly explain what is available and what might be missing
 - If you cannot find the information after thorough search, politely inform the user in the same language as the query
-- DO NOT provide information if there is ANY related content found, even if incomplete
+- DO provide information if there is ANY related content found, even if incomplete - it's better to share partial information than to say nothing
 - Be precise and use exact information from documents
 - Synthesize information from multiple parts of the context when needed
 - Keep responses focused on the current question
