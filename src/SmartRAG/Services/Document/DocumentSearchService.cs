@@ -36,7 +36,7 @@ namespace SmartRAG.Services.Document
         private const int MinPotentialNamesCount = 2;
         private const int MinWordCountThreshold = 0;
         // Fallback search and content
-        private const int FallbackSearchMaxResults = 5;
+        private const int FallbackSearchMaxResults = 10; // Increased from 5 to get more chunks for better relevance detection
         private const int MinSubstantialContentLength = 50;
 
         // Context expansion limits to prevent excessive chunk retrieval and timeout
@@ -877,13 +877,23 @@ namespace SmartRAG.Services.Document
             // Use pre-calculated results if available and sufficient
             // If we need comprehensive search (e.g. counting), we might need more chunks than what was pre-calculated
             // But if pre-calculated results are already enough, use them
+            // CRITICAL: Sort by relevance score first, then by chunk index (lower index = earlier in document = potentially more important)
             if (preCalculatedResults != null && preCalculatedResults.Count >= searchMaxResults)
             {
-                chunks = preCalculatedResults.Take(searchMaxResults).ToList();
+                chunks = preCalculatedResults
+                    .OrderByDescending(c => c.RelevanceScore ?? 0.0)
+                    .ThenBy(c => c.ChunkIndex) // Lower chunk index = earlier in document = potentially more important
+                    .Take(searchMaxResults)
+                    .ToList();
             }
             else
             {
                 chunks = await SearchDocumentsAsync(query, searchMaxResults, options, queryTokens);
+                // Ensure chunks are sorted by relevance score, then by chunk index
+                chunks = chunks
+                    .OrderByDescending(c => c.RelevanceScore ?? 0.0)
+                    .ThenBy(c => c.ChunkIndex)
+                    .ToList();
             }
 
             // If initial search found few chunks OR if this is a counting/listing question, try more aggressive search
@@ -1411,8 +1421,10 @@ namespace SmartRAG.Services.Document
                 // Re-sort by relevance score to ensure best chunks are first
                 // Keep more chunks to preserve document-level boost
                 // Don't limit too aggressively - preserve all high-scoring chunks
+                // CRITICAL: Sort by relevance score first, then by chunk index (lower index = earlier in document = potentially more important)
                 chunks = newChunks
                     .OrderByDescending(c => c.RelevanceScore ?? 0.0)
+                    .ThenBy(c => c.ChunkIndex) // Lower chunk index = earlier in document = potentially more important
                     .ToList(); // Don't limit - let the final selection handle it
 
                 var originalChunksPreserved = chunks.Count(c => originalChunkIds.Contains(c.Id));
@@ -1507,16 +1519,22 @@ namespace SmartRAG.Services.Document
                 else
                 {
                     // No relevant document chunks to expand, keep original chunks
-                    chunks = chunks.OrderByDescending(c => c.RelevanceScore ?? 0.0).ToList();
+                    // CRITICAL: Sort by relevance score first, then by chunk index (lower index = earlier in document = potentially more important)
+                    chunks = chunks
+                        .OrderByDescending(c => c.RelevanceScore ?? 0.0)
+                        .ThenBy(c => c.ChunkIndex) // Lower chunk index = earlier in document = potentially more important
+                        .ToList();
                 }
             }
             else if (numberedListChunkIds.Count > 0)
             {
                 // We have numbered list chunks, skip context expansion to preserve them
                 // Just ensure they're at the top
+                // CRITICAL: Sort by numbered list first, then by relevance score, then by chunk index
                 chunks = chunks
                     .OrderByDescending(c => numberedListChunkIds.Contains(c.Id))
                     .ThenByDescending(c => c.RelevanceScore ?? 0.0)
+                    .ThenBy(c => c.ChunkIndex) // Lower chunk index = earlier in document = potentially more important
                     .ToList();                // Limit chunks but keep all numbered list chunks
                 if (chunks.Count > MaxExpandedChunks)
                 {
@@ -1529,6 +1547,26 @@ namespace SmartRAG.Services.Document
                     chunks = numberedListChunks.Concat(otherChunks).ToList();
                 }
             }
+
+            // CRITICAL: Prioritize chunk 0 (first chunk) and chunks with high query keyword match count
+            // Chunk 0 often contains document headers, titles, or key information
+            // Prioritize chunks that contain multiple query keywords (more relevant to the query)
+            var queryTokensForPrioritization = queryTokens ?? QueryTokenizer.TokenizeQuery(query);
+            
+            chunks = chunks
+                .OrderByDescending(c => c.ChunkIndex == 0) // Chunk 0 (first chunk) has highest priority - generic for all documents
+                .ThenByDescending(c => 
+                {
+                    // Count how many query tokens appear in this chunk (generic approach - works for any language/domain)
+                    if (queryTokensForPrioritization.Count == 0) return 0;
+                    var contentLower = c.Content?.ToLowerInvariant() ?? string.Empty;
+                    return queryTokensForPrioritization.Count(token => 
+                        token.Length >= 3 && // Only count meaningful tokens (3+ chars)
+                        contentLower.IndexOf(token, StringComparison.OrdinalIgnoreCase) >= 0);
+                }) // Chunks with more query keyword matches are more relevant
+                .ThenByDescending(c => c.RelevanceScore ?? 0.0) // Then by relevance score
+                .ThenBy(c => c.ChunkIndex) // Finally by chunk index (lower = earlier in document)
+                .ToList();
 
             // Build context with size limit to prevent timeout
             var context = BuildLimitedContext(chunks);
@@ -1594,16 +1632,52 @@ namespace SmartRAG.Services.Document
 
                 // Step 2: Use ADAPTIVE threshold instead of fixed value
                 // Different embedding models produce different score ranges
-                // Take top 40% of results with minimum absolute threshold of 0.01
+                // Native text search produces scores 5.0+, vector search produces scores 0.0-1.0
+                // Use different thresholds based on score range
                 var sortedByScore = searchResults.OrderByDescending(c => c.RelevanceScore ?? 0.0).ToList();
-                var topPercentileCount = Math.Max(1, (int)(sortedByScore.Count * 0.4)); // Top 40%
-                var adaptiveThreshold = Math.Max(0.01, sortedByScore.Skip(topPercentileCount - 1).FirstOrDefault()?.RelevanceScore ?? 0.01);
+                var maxScore = sortedByScore.FirstOrDefault()?.RelevanceScore ?? 0.0;
+                
+                double adaptiveThreshold;
+                int percentile;
+                if (maxScore > 3.0)
+                {
+                    // Native text search scores (5.0+ range)
+                    // Use top 70% to be more inclusive, but ensure minimum threshold
+                    // If scores are very close (e.g., all 5.1-5.2), use a lower relative threshold
+                    percentile = 70;
+                    var topPercentileCount = Math.Max(1, (int)(sortedByScore.Count * 0.7)); // Top 70%
+                    var percentileScore = sortedByScore.Skip(topPercentileCount - 1).FirstOrDefault()?.RelevanceScore ?? 4.0;
+                    
+                // If scores are very close together (difference < 0.5), use a more lenient threshold
+                var minScore = sortedByScore.LastOrDefault()?.RelevanceScore ?? 0.0;
+                var scoreRange = maxScore - minScore;
+                if (scoreRange < 0.5 && sortedByScore.Count > 1)
+                {
+                    // Scores are very close, use a lower threshold to include more results
+                    // Use maxScore - 0.5 to ensure we include chunks with score equal to threshold
+                    adaptiveThreshold = Math.Max(4.5, maxScore - 0.5);
+                }
+                else
+                {
+                    // Use percentile score but ensure we include chunks at the threshold boundary
+                    // Subtract a small epsilon to ensure >= comparison works correctly
+                    adaptiveThreshold = Math.Max(4.0, percentileScore - 0.01);
+                }
+                }
+                else
+                {
+                    // Vector search scores (0.0-1.0 range)
+                    // Take top 40% of results with minimum absolute threshold of 0.01
+                    percentile = 40;
+                    var topPercentileCount = Math.Max(1, (int)(sortedByScore.Count * 0.4)); // Top 40%
+                    adaptiveThreshold = Math.Max(0.01, sortedByScore.Skip(topPercentileCount - 1).FirstOrDefault()?.RelevanceScore ?? 0.01);
+                }
 
-                _logger.LogDebug("Adaptive threshold: {Threshold:F4} (top {Percentile}% of {Total} results)", 
-                    adaptiveThreshold, 40, sortedByScore.Count);
+                _logger.LogDebug("Adaptive threshold: {Threshold:F4} (top {Percentile}% of {Total} results, maxScore: {MaxScore:F4})", 
+                    adaptiveThreshold, percentile, sortedByScore.Count, maxScore);
 
                 var hasRelevantContent = searchResults.Any(chunk =>
-                    chunk.RelevanceScore > adaptiveThreshold);
+                    (chunk.RelevanceScore ?? 0.0) >= adaptiveThreshold);
 
                 if (!hasRelevantContent)
                 {
@@ -1615,7 +1689,7 @@ namespace SmartRAG.Services.Document
 
                 // Step 3: Check if the total content is substantial enough to potentially answer
                 var totalContentLength = searchResults
-                    .Where(c => c.RelevanceScore > adaptiveThreshold)
+                    .Where(c => (c.RelevanceScore ?? 0.0) >= adaptiveThreshold)
                     .Sum(c => c.Content.Length);
 
                 var hasSubstantialContent = totalContentLength > MinSubstantialContentLength;
