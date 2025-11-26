@@ -67,7 +67,7 @@ public class InitializationService(
         System.Console.WriteLine("2. 🏠 LOCAL Environment (100% Local - No Cloud Required)");
         System.Console.WriteLine("   • AI: Ollama (running on localhost)");
         System.Console.WriteLine("   • Vector Store: Qdrant (local docker container)");
-        System.Console.WriteLine("   • Cache: Redis (local docker container)");
+        System.Console.WriteLine("   • Document Cache: Redis (optional - local docker container)");
         System.Console.WriteLine("   • Databases: Local SQL Server, MySQL, PostgreSQL, SQLite");
         System.Console.WriteLine("   ✅ GDPR/KVKK compliant - All data stays on your machine");
         System.Console.WriteLine();
@@ -84,16 +84,16 @@ public class InitializationService(
         if (useLocalEnvironment)
         {
             System.Console.WriteLine();
-            _console.WriteSuccess("LOCAL Environment selected");
+            _console.WriteSuccess("✓ LOCAL Environment selected");
             System.Console.WriteLine("  AI Provider: Ollama (via Custom provider)");
-            System.Console.WriteLine("  Storage: Redis (Document storage)");
+            System.Console.WriteLine("  Storage: Qdrant (Vector database)");
             System.Console.WriteLine("  Audio: Whisper.net (Local transcription)");
             System.Console.WriteLine();
-            _console.WriteWarning("Note: Make sure Ollama endpoint is configured in appsettings");
+            _console.WriteWarning("⚠️  Note: Make sure Ollama endpoint is configured in appsettings");
             System.Console.WriteLine("     (AI:Custom:Endpoint = http://localhost:11434)");
             System.Console.WriteLine();
 
-            return (true, AIProvider.Custom, StorageProvider.Redis, AudioProvider.Whisper);
+            return (true, AIProvider.Custom, StorageProvider.Qdrant, AudioProvider.Whisper);
         }
 
         System.Console.WriteLine();

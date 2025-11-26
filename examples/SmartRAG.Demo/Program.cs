@@ -29,7 +29,7 @@ internal class Program
     private static string _selectedLanguage = "English";
     private static bool _useLocalEnvironment = true;
     private static AIProvider _selectedAIProvider = AIProvider.Custom;
-    private static StorageProvider _selectedStorageProvider = StorageProvider.Redis;
+    private static StorageProvider _selectedStorageProvider = StorageProvider.Qdrant;
 
     #endregion
 
