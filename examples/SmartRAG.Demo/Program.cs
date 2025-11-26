@@ -26,7 +26,7 @@ internal class Program
 
     private static IServiceProvider? _serviceProvider;
     private static ILogger<Program>? _logger;
-    private static string _selectedLanguage = "English";
+    private static string _selectedLanguage = "en"; // ISO 639-1 code
     private static bool _useLocalEnvironment = true;
     private static AIProvider _selectedAIProvider = AIProvider.Custom;
     private static StorageProvider _selectedStorageProvider = StorageProvider.Qdrant;
