@@ -34,7 +34,8 @@ Unified intelligent query processing with RAG and automatic session management. 
 Task<RagResponse> QueryIntelligenceAsync(
     string query, 
     int maxResults = 5, 
-    bool startNewConversation = false
+    bool startNewConversation = false,
+    SearchOptions? options = null
 )
 ```
 
@@ -42,6 +43,7 @@ Task<RagResponse> QueryIntelligenceAsync(
 - `query` (string): The user's question or query
 - `maxResults` (int): Maximum number of document chunks to retrieve (default: 5)
 - `startNewConversation` (bool): Start a new conversation session (default: false)
+- `options` (SearchOptions?): Optional search options to override global configuration (default: null)
 
 **Returns:** `RagResponse` with AI answer, sources from all available data sources (databases, documents, images, audio), and metadata
 
@@ -61,6 +63,78 @@ foreach (var source in response.Sources)
     Console.WriteLine($"Source: {source.FileName}");
 }
 ```
+
+**SearchOptions Usage:**
+
+```csharp
+// Enable only database search
+var dbOptions = new SearchOptions
+{
+    EnableDatabaseSearch = true,
+    EnableDocumentSearch = false,
+    EnableAudioSearch = false,
+    EnableImageSearch = false
+};
+
+var dbResponse = await _searchService.QueryIntelligenceAsync(
+    "Show top customers",
+    maxResults: 5,
+    options: dbOptions
+);
+
+// Enable only audio search
+var audioOptions = new SearchOptions
+{
+    EnableDatabaseSearch = false,
+    EnableDocumentSearch = false,
+    EnableAudioSearch = true,
+    EnableImageSearch = false,
+    PreferredLanguage = "en"
+};
+
+var audioResponse = await _searchService.QueryIntelligenceAsync(
+    "What was discussed in the meeting?",
+    maxResults: 5,
+    options: audioOptions
+);
+
+// Use global configuration
+var globalOptions = SearchOptions.FromConfig(_smartRagOptions);
+var response = await _searchService.QueryIntelligenceAsync(
+    "Search everything",
+    maxResults: 5,
+    options: globalOptions
+);
+```
+
+**Flag-Based Filtering (Query String Parsing):**
+
+You can parse flags from query strings for quick search type selection:
+
+```csharp
+// Parse flags from query string
+string userQuery = "-db Show top customers";
+var searchOptions = ParseSearchOptions(userQuery, out string cleanQuery);
+
+// cleanQuery = "Show top customers"
+// searchOptions.EnableDatabaseSearch = true
+// searchOptions.EnableDocumentSearch = false
+// searchOptions.EnableAudioSearch = false
+// searchOptions.EnableImageSearch = false
+
+var response = await _searchService.QueryIntelligenceAsync(
+    cleanQuery,
+    maxResults: 5,
+    options: searchOptions
+);
+```
+
+**Available Flags:**
+- `-db`: Enable database search only
+- `-d`: Enable document (text) search only
+- `-a`: Enable audio search only
+- `-i`: Enable image search only
+- Flags can be combined (e.g., `-db -a` for database + audio search)
 
 **Note:** If database coordinator is not configured, the method automatically falls back to document-only search, maintaining backward compatibility.
 

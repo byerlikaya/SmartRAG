@@ -10,7 +10,7 @@ All notable changes to SmartRAG are documented here. The project adheres to [Sem
 
 ---
 
-## [3.2.0] - 2025-11-19
+## [3.2.0] - 2025-11-27
 
 ### 🏗️ Architectural Refactoring - Modular Design
 
@@ -99,6 +99,89 @@ All notable changes to SmartRAG are documented here. The project adheres to [Sem
 - **Custom Scoring Strategies**: Support for implementing custom search relevance logic
 - **Custom File Parsers**: Support for implementing custom file format parsers
 - **Dedicated Conversation Management**: New service for managing conversation history
+
+### ✨ Added
+
+- **SearchOptions Support**: Per-request search configuration with granular control
+  - `SearchOptions` model with feature flags for database, document, audio, and image search
+  - `PreferredLanguage` property for ISO 639-1 language code support
+  - Conditional service registration based on feature flags
+  - **Flag-Based Document Filtering**: Query string flags (`-db`, `-d`, `-a`, `-i`) for quick search type selection
+  - **Document Type Filtering**: Automatic filtering by content type (text, audio, image)
+
+- **Native Qdrant Text Search**: Token-based filtering for improved search performance
+  - Native Qdrant text search with token-based OR filtering
+  - Automatic stopword filtering and token match counting
+
+- **ClearAllAsync Methods**: Efficient bulk deletion operations
+  - `IDocumentRepository.ClearAllAsync()` - Efficient bulk delete
+  - `IDocumentService.ClearAllDocumentsAsync()` - Clear all documents
+  - `IDocumentService.ClearAllEmbeddingsAsync()` - Clear embeddings only
+
+- **Tesseract On-Demand Language Data Download**: Automatic language support
+  - Automatic download of Tesseract language data files
+  - Support for 30+ languages with ISO 639-1/639-2 code mapping
+
+- **Currency Symbol Correction**: Improved OCR accuracy for financial documents
+  - Automatic correction of common OCR misreads (`%`, `6`, `t`, `&` → currency symbols)
+  - Applied to both OCR and PDF parsing
+
+- **Parallel Batch Processing for Ollama Embeddings**: Performance optimization
+  - Parallel batch processing for embedding generation
+  - Improved throughput for large document sets
+
+- **Query Tokens Parameter**: Pre-computed token support
+  - Optional `queryTokens` parameter to eliminate redundant tokenization
+
+- **FeatureToggles Model**: Global feature flag configuration
+  - `FeatureToggles` class for centralized feature management
+  - `SearchOptions.FromConfig()` static method for easy configuration
+
+- **ContextExpansionService**: Adjacent chunk context expansion
+  - Expands document chunk context by including adjacent chunks
+  - Configurable context window for better AI responses
+
+- **FileParserResult Model**: Standardized parser result structure
+  - Consistent parser output format with content and metadata
+
+- **DatabaseFileParser**: SQLite database file parsing support
+  - Direct database file upload and parsing (.db, .sqlite, .sqlite3, .db3)
+
+- **Native Library Inclusion**: Tesseract OCR native libraries bundled
+  - No manual library installation required
+  - Supports Windows, macOS, and Linux
+
+- **Nullable Reference Types**: Enhanced null safety
+  - Better compile-time null checking across 14+ files
+
+### Improved
+
+- **Unicode Normalization for Qdrant**: Better text retrieval across languages
+- **PDF OCR Encoding Issue Detection**: Automatic fallback handling
+- **Numbered List Chunk Detection**: Improved counting query accuracy
+- **RAG Scoring Improvements**: Enhanced relevance calculation with unique keyword bonus
+- **Document Search Adaptive Threshold**: Dynamic relevance threshold adjustment
+- **Prompt Builder Rules**: Enhanced AI answer generation
+- **QdrantDocumentRepository GetAllAsync**: Performance optimization
+- **Text Processing and AI Prompt Services**: General improvements
+- **Image Parser Service**: Comprehensive improvements
+
+### Fixed
+
+- **Table Alias Enforcement in SQL Generation**: Prevents ambiguous column errors
+- **EnableDatabaseSearch Config Respect**: Proper feature flag handling
+- **macOS Native Libraries**: OCR library inclusion and DYLD_LIBRARY_PATH configuration
+- **Missing Method Signature**: DocumentSearchService restoration
+
+### Changed
+
+- **IEmbeddingSearchService Dependency Removal**: Simplified architecture
+- **Demo Language Selection**: ISO 639-1 code standardization
+- **Demo Project Configuration**: Qdrant as default storage
+- **Code Cleanup**: Inline comments and unused directives removal
+- **Logging Cleanup**: Reduced verbose logging
+- **NuGet Package Updates**: Latest compatible versions
+- **Service Method Annotations**: Better code documentation with `[AI Query]`, `[Document Query]`, `[DB Query]` tags
 
 ### 🔧 Code Quality
 

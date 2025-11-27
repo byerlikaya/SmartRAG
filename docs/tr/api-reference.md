@@ -34,7 +34,8 @@ Birleşik akıllı sorgu işleme ile RAG ve otomatik oturum yönetimi. Smart Hyb
 Task<RagResponse> QueryIntelligenceAsync(
     string query, 
     int maxResults = 5, 
-    bool startNewConversation = false
+    bool startNewConversation = false,
+    SearchOptions? options = null
 )
 ```
 
@@ -42,6 +43,7 @@ Task<RagResponse> QueryIntelligenceAsync(
 - `query` (string): Kullanıcının sorusu veya sorgusu
 - `maxResults` (int): Alınacak maksimum doküman parçası sayısı (varsayılan: 5)
 - `startNewConversation` (bool): Yeni bir konuşma oturumu başlat (varsayılan: false)
+- `options` (SearchOptions?): Global yapılandırmayı geçersiz kılmak için isteğe bağlı arama seçenekleri (varsayılan: null)
 
 **Döndürür:** Tüm mevcut veri kaynaklarından (veritabanları, belgeler, görüntüler, ses) AI cevabı, kaynaklar ve metadata içeren `RagResponse`
 
@@ -61,6 +63,68 @@ foreach (var source in response.Sources)
     Console.WriteLine($"Kaynak: {source.FileName}");
 }
 ```
+
+**SearchOptions Kullanımı:**
+
+```csharp
+// Sadece veritabanı araması
+var dbOptions = new SearchOptions
+{
+    EnableDatabaseSearch = true,
+    EnableDocumentSearch = false,
+    EnableAudioSearch = false,
+    EnableImageSearch = false
+};
+
+var dbResponse = await _searchService.QueryIntelligenceAsync(
+    "En iyi müşterileri göster",
+    maxResults: 5,
+    options: dbOptions
+);
+
+// Sadece ses araması
+var audioOptions = new SearchOptions
+{
+    EnableDatabaseSearch = false,
+    EnableDocumentSearch = false,
+    EnableAudioSearch = true,
+    EnableImageSearch = false,
+    PreferredLanguage = "tr"
+};
+
+var audioResponse = await _searchService.QueryIntelligenceAsync(
+    "Toplantıda ne konuşuldu?",
+    maxResults: 5,
+    options: audioOptions
+);
+```
+
+**Bayrak Tabanlı Filtreleme (Sorgu String Ayrıştırma):**
+
+Sorgu string'lerinden bayrakları ayrıştırarak hızlı arama tipi seçimi yapabilirsiniz:
+
+```csharp
+// Sorgu string'inden bayrakları ayrıştır
+string userQuery = "-db En iyi müşterileri göster";
+var searchOptions = ParseSearchOptions(userQuery, out string cleanQuery);
+
+// cleanQuery = "En iyi müşterileri göster"
+// searchOptions.EnableDatabaseSearch = true
+// Diğerleri = false
+
+var response = await _searchService.QueryIntelligenceAsync(
+    cleanQuery,
+    maxResults: 5,
+    options: searchOptions
+);
+```
+
+**Mevcut Bayraklar:**
+- `-db`: Sadece veritabanı araması
+- `-d`: Sadece doküman (metin) araması
+- `-a`: Sadece ses araması
+- `-i`: Sadece görüntü araması
+- Bayraklar birleştirilebilir (örn: `-db -a` = veritabanı + ses araması)
 
 **Not:** Veritabanı coordinator yapılandırılmamışsa, metod otomatik olarak sadece belge aramasına geri döner, geriye dönük uyumluluğu korur.
 
@@ -782,6 +846,127 @@ Console.WriteLine($"Oluşturulan embedding sayısı: {embeddings.Count}");
 
 ## Veri Modelleri
 
+### SearchOptions
+
+**v3.2.0'da Yeni**: İstek başına arama yapılandırması ile arama tipleri üzerinde detaylı kontrol.
+
+```csharp
+public class SearchOptions
+{
+    public bool EnableDatabaseSearch { get; set; } = true;
+    public bool EnableDocumentSearch { get; set; } = true;
+    public bool EnableAudioSearch { get; set; } = true;
+    public bool EnableImageSearch { get; set; } = true;
+    public string? PreferredLanguage { get; set; }
+    
+    public static SearchOptions Default => new SearchOptions();
+    public static SearchOptions FromConfig(SmartRagOptions options);
+}
+```
+
+**Özellikler:**
+- `EnableDatabaseSearch` (bool): Veritabanlarında arama yapmayı etkinleştir (varsayılan: true)
+- `EnableDocumentSearch` (bool): Metin dokümanlarında arama yapmayı etkinleştir (varsayılan: true)
+- `EnableAudioSearch` (bool): Ses dosyalarında transkripsiyon ile arama yapmayı etkinleştir (varsayılan: true)
+- `EnableImageSearch` (bool): Görüntülerde OCR ile arama yapmayı etkinleştir (varsayılan: true)
+- `PreferredLanguage` (string?): AI yanıtları için ISO 639-1 dil kodu (örn: "tr", "en", "de")
+
+**Statik Metodlar:**
+- `Default`: Tüm özellikler etkin varsayılan arama seçenekleri oluşturur
+- `FromConfig(SmartRagOptions)`: Global yapılandırmadan arama seçenekleri oluşturur
+
+**Örnek:**
+
+```csharp
+// Özel arama seçenekleri
+var options = new SearchOptions
+{
+    EnableDatabaseSearch = true,
+    EnableDocumentSearch = false,
+    EnableAudioSearch = false,
+    EnableImageSearch = false,
+    PreferredLanguage = "tr"
+};
+
+var response = await _searchService.QueryIntelligenceAsync(
+    "En iyi müşterileri göster",
+    maxResults: 5,
+    options: options
+);
+
+// Global yapılandırmayı kullan
+var globalOptions = SearchOptions.FromConfig(_smartRagOptions);
+var response2 = await _searchService.QueryIntelligenceAsync(
+    "Her şeyde ara",
+    maxResults: 5,
+    options: globalOptions
+);
+```
+
+**Bayrak Tabanlı Filtreleme:**
+
+Hızlı arama tipi seçimi için sorgu string bayrak ayrıştırması uygulayabilirsiniz:
+
+```csharp
+private SearchOptions? ParseSearchOptions(string input, out string cleanQuery)
+{
+    cleanQuery = input;
+    
+    var hasDocumentFlag = input.Contains("-d ", StringComparison.OrdinalIgnoreCase) 
+        || input.EndsWith("-d", StringComparison.OrdinalIgnoreCase);
+    var hasDatabaseFlag = input.Contains("-db ", StringComparison.OrdinalIgnoreCase) 
+        || input.EndsWith("-db", StringComparison.OrdinalIgnoreCase);
+    var hasAudioFlag = input.Contains("-a ", StringComparison.OrdinalIgnoreCase) 
+        || input.EndsWith("-a", StringComparison.OrdinalIgnoreCase);
+    var hasImageFlag = input.Contains("-i ", StringComparison.OrdinalIgnoreCase) 
+        || input.EndsWith("-i", StringComparison.OrdinalIgnoreCase);
+    
+    if (!hasDocumentFlag && !hasDatabaseFlag && !hasAudioFlag && !hasImageFlag)
+    {
+        return null; // Varsayılanı kullan
+    }
+    
+    var options = new SearchOptions
+    {
+        EnableDocumentSearch = hasDocumentFlag,
+        EnableDatabaseSearch = hasDatabaseFlag,
+        EnableAudioSearch = hasAudioFlag,
+        EnableImageSearch = hasImageFlag
+    };
+    
+    // Sorgudan bayrakları kaldır
+    var parts = input.Split(' ');
+    var cleanParts = parts.Where(p => 
+        !p.Equals("-d", StringComparison.OrdinalIgnoreCase) && 
+        !p.Equals("-db", StringComparison.OrdinalIgnoreCase) && 
+        !p.Equals("-a", StringComparison.OrdinalIgnoreCase) && 
+        !p.Equals("-i", StringComparison.OrdinalIgnoreCase));
+        
+    cleanQuery = string.Join(" ", cleanParts);
+    
+    return options;
+}
+
+// Kullanım
+string userQuery = "-db En iyi müşterileri göster";
+var searchOptions = ParseSearchOptions(userQuery, out string cleanQuery);
+// cleanQuery = "En iyi müşterileri göster"
+// searchOptions.EnableDatabaseSearch = true, diğerleri = false
+
+var response = await _searchService.QueryIntelligenceAsync(
+    cleanQuery,
+    maxResults: 5,
+    options: searchOptions
+);
+```
+
+**Mevcut Bayraklar:**
+- `-db`: Sadece veritabanı araması
+- `-d`: Sadece doküman (metin) araması
+- `-a`: Sadece ses araması
+- `-i`: Sadece görüntü araması
+- Bayraklar birleştirilebilir (örn: `-db -a` = veritabanı + ses araması)
+
 ### DatabaseConfig
 
 Veritabanı yapılandırma modeli.
@@ -851,6 +1036,66 @@ public class DocumentChunk
     public int ChunkIndex { get; set; }          // Dokümandaki pozisyon
 }
 ```
+
+### SearchOptions
+
+**v3.2.0'da Yeni**: İstek başına arama yapılandırması ile arama tipleri üzerinde detaylı kontrol.
+
+```csharp
+public class SearchOptions
+{
+    public bool EnableDatabaseSearch { get; set; } = true;
+    public bool EnableDocumentSearch { get; set; } = true;
+    public bool EnableAudioSearch { get; set; } = true;
+    public bool EnableImageSearch { get; set; } = true;
+    public string? PreferredLanguage { get; set; }
+    
+    public static SearchOptions Default => new SearchOptions();
+    public static SearchOptions FromConfig(SmartRagOptions options);
+}
+```
+
+**Özellikler:**
+- `EnableDatabaseSearch` (bool): Veritabanlarında arama yapmayı etkinleştir (varsayılan: true)
+- `EnableDocumentSearch` (bool): Metin dokümanlarında arama yapmayı etkinleştir (varsayılan: true)
+- `EnableAudioSearch` (bool): Ses dosyalarında transkripsiyon ile arama yapmayı etkinleştir (varsayılan: true)
+- `EnableImageSearch` (bool): Görüntülerde OCR ile arama yapmayı etkinleştir (varsayılan: true)
+- `PreferredLanguage` (string?): AI yanıtları için ISO 639-1 dil kodu (örn: "tr", "en", "de")
+
+**Statik Metodlar:**
+- `Default`: Tüm özellikler etkin varsayılan arama seçenekleri oluşturur
+- `FromConfig(SmartRagOptions)`: Global yapılandırmadan arama seçenekleri oluşturur
+
+**Örnek:**
+
+```csharp
+// Özel arama seçenekleri
+var options = new SearchOptions
+{
+    EnableDatabaseSearch = true,
+    EnableDocumentSearch = false,
+    EnableAudioSearch = false,
+    EnableImageSearch = false,
+    PreferredLanguage = "tr"
+};
+
+var response = await _searchService.QueryIntelligenceAsync(
+    "En iyi müşterileri göster",
+    maxResults: 5,
+    options: options
+);
+```
+
+**Bayrak Tabanlı Filtreleme:**
+
+Hızlı arama tipi seçimi için sorgu string bayrak ayrıştırması uygulayabilirsiniz. Detaylar için [Examples](/tr/examples) sayfasına bakın.
+
+**Mevcut Bayraklar:**
+- `-db`: Sadece veritabanı araması
+- `-d`: Sadece doküman (metin) araması
+- `-a`: Sadece ses araması
+- `-i`: Sadece görüntü araması
+- Bayraklar birleştirilebilir (örn: `-db -a` = veritabanı + ses araması)
 
 ### Document
 

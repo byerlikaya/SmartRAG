@@ -58,7 +58,103 @@ public class SearchRequest
 
 ---
 
-### 2. Çoklu Veritabanı Sorgusu
+### 2. Arama Seçenekleri ve Bayrak Tabanlı Filtreleme
+
+`SearchOptions` kullanarak hangi veri kaynaklarında arama yapılacağını kontrol edin:
+
+```csharp
+public class IntelligenceController : ControllerBase
+{
+    private readonly IDocumentSearchService _searchService;
+    
+    [HttpPost("ask")]
+    public async Task<IActionResult> Ask([FromBody] QuestionRequest request)
+    {
+        // Seçenek 1: SearchOptions'ı doğrudan kullan
+        var options = new SearchOptions
+        {
+            EnableDatabaseSearch = true,
+            EnableDocumentSearch = false,
+            EnableAudioSearch = false,
+            EnableImageSearch = false,
+            PreferredLanguage = "tr"
+        };
+        
+        var response = await _searchService.QueryIntelligenceAsync(
+            request.Question,
+            maxResults: 5,
+            options: options
+        );
+        
+        return Ok(response);
+    }
+    
+    [HttpPost("ask-with-flags")]
+    public async Task<IActionResult> AskWithFlags([FromBody] string query)
+    {
+        // Seçenek 2: Sorgu string'inden bayrakları ayrıştır
+        var searchOptions = ParseSearchOptions(query, out string cleanQuery);
+        
+        var response = await _searchService.QueryIntelligenceAsync(
+            cleanQuery,
+            maxResults: 5,
+            options: searchOptions
+        );
+        
+        return Ok(response);
+    }
+    
+    private SearchOptions? ParseSearchOptions(string input, out string cleanQuery)
+    {
+        cleanQuery = input;
+        
+        var hasDocumentFlag = input.Contains("-d ", StringComparison.OrdinalIgnoreCase) 
+            || input.EndsWith("-d", StringComparison.OrdinalIgnoreCase);
+        var hasDatabaseFlag = input.Contains("-db ", StringComparison.OrdinalIgnoreCase) 
+            || input.EndsWith("-db", StringComparison.OrdinalIgnoreCase);
+        var hasAudioFlag = input.Contains("-a ", StringComparison.OrdinalIgnoreCase) 
+            || input.EndsWith("-a", StringComparison.OrdinalIgnoreCase);
+        var hasImageFlag = input.Contains("-i ", StringComparison.OrdinalIgnoreCase) 
+            || input.EndsWith("-i", StringComparison.OrdinalIgnoreCase);
+        
+        if (!hasDocumentFlag && !hasDatabaseFlag && !hasAudioFlag && !hasImageFlag)
+        {
+            return null; // Varsayılan seçenekleri kullan
+        }
+        
+        var options = new SearchOptions
+        {
+            EnableDocumentSearch = hasDocumentFlag,
+            EnableDatabaseSearch = hasDatabaseFlag,
+            EnableAudioSearch = hasAudioFlag,
+            EnableImageSearch = hasImageFlag
+        };
+        
+        // Sorgudan bayrakları kaldır
+        var parts = input.Split(' ');
+        var cleanParts = parts.Where(p => 
+            !p.Equals("-d", StringComparison.OrdinalIgnoreCase) && 
+            !p.Equals("-db", StringComparison.OrdinalIgnoreCase) && 
+            !p.Equals("-a", StringComparison.OrdinalIgnoreCase) && 
+            !p.Equals("-i", StringComparison.OrdinalIgnoreCase));
+            
+        cleanQuery = string.Join(" ", cleanParts);
+        
+        return options;
+    }
+}
+```
+
+**Bayrak Örnekleri:**
+- `"-db En iyi müşterileri göster"` → Sadece veritabanı araması
+- `"-a Toplantıda ne konuşuldu?"` → Sadece ses araması
+- `"-i Görselde ne yazıyor?"` → Sadece görüntü OCR araması
+- `"-db -a Müşterileri ve toplantı notlarını göster"` → Veritabanı + ses araması
+- `"Bayrak olmadan normal sorgu"` → Tüm arama tipleri etkin (varsayılan)
+
+---
+
+### 3. Çoklu Veritabanı Sorgusu
 
 Aynı anda birden fazla veritabanını sorgulayın:
 

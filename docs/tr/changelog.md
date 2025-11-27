@@ -10,7 +10,7 @@ SmartRAG'deki tüm önemli değişiklikler burada belgelenmiştir. Proje [Anlams
 
 ---
 
-## [3.2.0] - 2025-11-19
+## [3.2.0] - 2025-11-27
 
 ### 🏗️ Mimari Refactoring - Modüler Tasarım
 
@@ -99,6 +99,89 @@ SmartRAG'deki tüm önemli değişiklikler burada belgelenmiştir. Proje [Anlams
 - **Özel Skorlama Stratejileri**: Özel arama ilgililik mantığı uygulama desteği
 - **Özel Dosya Ayrıştırıcıları**: Özel dosya formatı ayrıştırıcıları uygulama desteği
 - **Özel Konuşma Yönetimi**: Konuşma geçmişini yönetmek için yeni servis
+
+### ✨ Eklenenler
+
+- **SearchOptions Desteği**: İstek başına arama yapılandırması ile detaylı kontrol
+  - Veritabanı, doküman, ses ve görüntü araması için özellik bayrakları
+  - ISO 639-1 dil kodu desteği için `PreferredLanguage` özelliği
+  - Özellik bayraklarına dayalı koşullu servis kaydı
+  - **Bayrak Tabanlı Doküman Filtreleme**: Hızlı arama tipi seçimi için sorgu string bayrakları (`-db`, `-d`, `-a`, `-i`)
+  - **Doküman Tipi Filtreleme**: İçerik tipine göre otomatik filtreleme (metin, ses, görüntü)
+
+- **Native Qdrant Metin Arama**: Geliştirilmiş arama performansı için token tabanlı filtreleme
+  - Token tabanlı OR filtreleme ile native Qdrant metin araması
+  - Otomatik stopword filtreleme ve token eşleşme sayımı
+
+- **ClearAllAsync Metodları**: Verimli toplu silme işlemleri
+  - `IDocumentRepository.ClearAllAsync()` - Verimli toplu silme
+  - `IDocumentService.ClearAllDocumentsAsync()` - Tüm dokümanları temizle
+  - `IDocumentService.ClearAllEmbeddingsAsync()` - Sadece embedding'leri temizle
+
+- **Tesseract İsteğe Bağlı Dil Verisi İndirme**: Otomatik dil desteği
+  - Tesseract dil veri dosyalarının otomatik indirilmesi
+  - ISO 639-1/639-2 kod eşleştirmesi ile 30+ dil desteği
+
+- **Para Birimi Sembolü Düzeltme**: Finansal dokümanlar için geliştirilmiş OCR doğruluğu
+  - Yaygın OCR yanlış okumalarının otomatik düzeltilmesi (`%`, `6`, `t`, `&` → para birimi sembolleri)
+  - Hem OCR hem PDF ayrıştırmaya uygulanır
+
+- **Ollama Embedding'leri için Paralel Toplu İşleme**: Performans optimizasyonu
+  - Embedding üretimi için paralel toplu işleme
+  - Büyük doküman setleri için geliştirilmiş verim
+
+- **Sorgu Token Parametresi**: Önceden hesaplanmış token desteği
+  - Gereksiz tokenizasyonu ortadan kaldırmak için isteğe bağlı `queryTokens` parametresi
+
+- **FeatureToggles Modeli**: Global özellik bayrağı yapılandırması
+  - Merkezi özellik yönetimi için `FeatureToggles` sınıfı
+  - Kolay yapılandırma için `SearchOptions.FromConfig()` statik metodu
+
+- **ContextExpansionService**: Bitişik chunk bağlam genişletme
+  - Bitişik chunk'ları dahil ederek doküman chunk bağlamını genişletir
+  - Daha iyi AI yanıtları için yapılandırılabilir bağlam penceresi
+
+- **FileParserResult Modeli**: Standartlaştırılmış parser sonuç yapısı
+  - İçerik ve metadata ile tutarlı parser çıktı formatı
+
+- **DatabaseFileParser**: SQLite veritabanı dosyası ayrıştırma desteği
+  - Doğrudan veritabanı dosyası yükleme ve ayrıştırma (.db, .sqlite, .sqlite3, .db3)
+
+- **Native Kütüphane Dahil Etme**: Tesseract OCR native kütüphaneleri paketlenmiş
+  - Manuel kütüphane kurulumu gerekmez
+  - Windows, macOS ve Linux desteği
+
+- **Nullable Reference Types**: Geliştirilmiş null güvenliği
+  - 14+ dosyada daha iyi derleme zamanı null kontrolü
+
+### İyileştirmeler
+
+- **Qdrant için Unicode Normalizasyonu**: Tüm dillerde daha iyi metin alımı
+- **PDF OCR Kodlama Sorunu Tespiti**: Otomatik yedekleme işleme
+- **Numaralı Liste Chunk Tespiti**: Geliştirilmiş sayma sorgusu doğruluğu
+- **RAG Skorlama İyileştirmeleri**: Benzersiz anahtar kelime bonusu ile geliştirilmiş ilgililik hesaplama
+- **Doküman Arama Uyarlanabilir Eşiği**: Dinamik ilgililik eşiği ayarlama
+- **Prompt Builder Kuralları**: Geliştirilmiş AI cevap üretimi
+- **QdrantDocumentRepository GetAllAsync**: Performans optimizasyonu
+- **Metin İşleme ve AI Prompt Servisleri**: Genel iyileştirmeler
+- **Görüntü Ayrıştırıcı Servisi**: Kapsamlı iyileştirmeler
+
+### Düzeltmeler
+
+- **SQL Üretiminde Tablo Takma Adı Zorunluluğu**: Belirsiz kolon hatalarını önler
+- **EnableDatabaseSearch Yapılandırma Uyumu**: Uygun özellik bayrağı işleme
+- **macOS Native Kütüphaneleri**: OCR kütüphane dahil etme ve DYLD_LIBRARY_PATH yapılandırması
+- **Eksik Metod İmzası**: DocumentSearchService geri yükleme
+
+### Değişiklikler
+
+- **IEmbeddingSearchService Bağımlılık Kaldırma**: Basitleştirilmiş mimari
+- **Demo Dil Seçimi**: ISO 639-1 kod standardizasyonu
+- **Demo Proje Yapılandırması**: Varsayılan depolama olarak Qdrant
+- **Kod Temizliği**: Satır içi yorumlar ve kullanılmayan direktiflerin kaldırılması
+- **Günlükleme Temizliği**: Azaltılmış ayrıntılı günlükleme
+- **NuGet Paket Güncellemeleri**: En son uyumlu sürümler
+- **Servis Metod Açıklamaları**: `[AI Query]`, `[Document Query]`, `[DB Query]` etiketleri ile daha iyi kod dokümantasyonu
 
 ### 🔧 Kod Kalitesi
 

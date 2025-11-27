@@ -69,7 +69,7 @@ namespace SmartRAG.Services.Database
 
                     var strategy = _strategyFactory.GetStrategy(schema.DatabaseType);
 
-                    var systemPrompt = _promptBuilder.Build(queryIntent.OriginalQuery, dbQuery, schema, strategy);
+                    var systemPrompt = _promptBuilder.Build(queryIntent.OriginalQuery, dbQuery, schema, strategy, queryIntent);
                     
                     var sql = await _aiService.GenerateResponseAsync(systemPrompt, new List<string>());
                     

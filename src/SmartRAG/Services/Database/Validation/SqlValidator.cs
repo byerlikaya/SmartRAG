@@ -137,7 +137,7 @@ namespace SmartRAG.Services.Database.Validation
         }
 
         /// <summary>
-        /// Extracts table aliases from SQL query (e.g., "FROM Orders t2" -> {"t2": "Orders"})
+        /// Extracts table aliases from SQL query (e.g., "FROM TableName t2" -> {"t2": "TableName"})
         /// </summary>
         private Dictionary<string, string> ExtractTableAliases(string sql)
         {

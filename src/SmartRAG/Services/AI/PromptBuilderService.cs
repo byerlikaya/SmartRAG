@@ -70,7 +70,7 @@ SPECIAL INSTRUCTIONS FOR COUNTING/LISTING QUESTIONS (applies to all languages):
 
 CRITICAL RULES: 
 - Base your answer ONLY on the document context provided below
-- The query and context may be in ANY language (English, Turkish, German, etc.) - {languageInstruction}
+- The query and context may be in ANY language - {languageInstruction}
 - Do NOT use information from previous conversations unless it's in the current document context
 - SEARCH THOROUGHLY through the entire context before concluding information is missing
 - Look for information in ALL forms: paragraphs, lists, tables, numbered items, bullet points, headings
@@ -166,22 +166,12 @@ Answer:";
         /// <returns>Explicit language instruction for AI</returns>
         private static string GetLanguageInstructionForCode(string languageCode)
         {
+            // Generic language instruction - works for any language without hardcoding specific language names
+            // The AI model understands ISO 639-1 codes and will respond in the appropriate language
             return languageCode.ToLowerInvariant() switch
             {
-                "tr" => "you MUST respond in Turkish (Türkçe). Cevabınızı mutlaka Türkçe olarak yazınız",
                 "en" => "you MUST respond in English",
-                "de" => "you MUST respond in German (Deutsch). Bitte antworten Sie auf Deutsch",
-                "es" => "you MUST respond in Spanish (Español). Debe responder en español",
-                "fr" => "you MUST respond in French (Français). Vous devez répondre en français",
-                "it" => "you MUST respond in Italian (Italiano). Devi rispondere in italiano",
-                "pt" => "you MUST respond in Portuguese (Português). Você deve responder em português",
-                "nl" => "you MUST respond in Dutch (Nederlands). U moet in het Nederlands antwoorden",
-                "ru" => "you MUST respond in Russian (Русский). Вы должны ответить на русском языке",
-                "ja" => "you MUST respond in Japanese (日本語). 日本語で回答してください",
-                "zh" => "you MUST respond in Chinese (中文). 您必须用中文回答",
-                "ko" => "you MUST respond in Korean (한국어). 한국어로 응답해야 합니다",
-                "ar" => "you MUST respond in Arabic (العربية). يجب أن ترد بالعربية",
-                _ => $"you MUST respond in the language with ISO code: {languageCode}"
+                _ => $"you MUST respond in the language with ISO code: {languageCode}. Use the appropriate language for user queries and responses."
             };
         }
 

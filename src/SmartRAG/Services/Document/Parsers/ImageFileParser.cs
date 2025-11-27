@@ -37,7 +37,7 @@ namespace SmartRAG.Services.Document.Parsers
             try
             {
                 // CRITICAL: Pass language parameter to OCR service for proper character recognition
-                // Language parameter ensures correct handling of Turkish, German, Russian, etc. characters
+                // Language parameter ensures correct handling of all language characters
                 var extractedText = await _imageParserService.ExtractTextFromImageAsync(fileStream, language);
 
                 if (string.IsNullOrWhiteSpace(extractedText))

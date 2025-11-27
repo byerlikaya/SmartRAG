@@ -128,8 +128,8 @@ namespace SmartRAG.Services.Database.Prompts
                     sb.AppendLine("     → The system will match your EntityID with the EntityID from the other database");
                     sb.AppendLine();
                     sb.AppendLine("EXAMPLE SCENARIO:");
-                    sb.AppendLine("  User asks: 'Who has the most orders?'");
-                    sb.AppendLine("  Database A (aggregation): Returns EntityID=123, OrderCount=15");
+                    sb.AppendLine("  User asks: 'Who has the most items?'");
+                    sb.AppendLine("  Database A (aggregation): Returns EntityID=123, CountValue=15");
                     sb.AppendLine("  Database B (lookup): Should return EntityID=123, NameColumn='Value', DescriptionColumn='Value'");
                     sb.AppendLine("  → Database B should NOT filter by CreatedDate - it should return EntityID=123's details");
                     sb.AppendLine();
@@ -258,8 +258,8 @@ namespace SmartRAG.Services.Database.Prompts
             sb.AppendLine("    ✗ Do NOT use columns from other tables");
             sb.AppendLine();
             sb.AppendLine($"🚨 COMMON MISTAKE TO AVOID:");
-            sb.AppendLine($"   If you need 'products' table but it's NOT in the allowed list above,");
-            sb.AppendLine($"   DO NOT write: JOIN products");
+            sb.AppendLine($"   If you need a table but it's NOT in the allowed list above,");
+            sb.AppendLine($"   DO NOT write: JOIN [TableName]");
             sb.AppendLine($"   INSTEAD: DO NOT use that table at all - it doesn't exist in {schema.DatabaseName}!");
             sb.AppendLine();
             sb.AppendLine("═══════════════════════════════════════");

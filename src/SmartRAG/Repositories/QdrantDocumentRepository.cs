@@ -121,11 +121,11 @@ namespace SmartRAG.Repositories
             {
                 case Value.KindOneofCase.StringValue:
                     result = value.StringValue ?? string.Empty;
-                    // CRITICAL: Ensure UTF-8 encoding is preserved for all languages (Turkish, German, Russian, etc.)
+                    // CRITICAL: Ensure UTF-8 encoding is preserved for all languages
                     // Protobuf strings are UTF-8 by default, but normalize to ensure consistency
                     if (!string.IsNullOrEmpty(result))
                     {
-                        // Normalize Unicode characters to ensure proper encoding (handles Turkish ğ, ü, ş, etc.)
+                        // Normalize Unicode characters to ensure proper encoding (handles all language-specific characters)
                         result = result.Normalize(System.Text.NormalizationForm.FormC);
                     }
                     return result;

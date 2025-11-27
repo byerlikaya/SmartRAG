@@ -28,7 +28,7 @@ namespace SmartRAG.Models
         public bool EnableImageSearch { get; set; } = true;
 
         /// <summary>
-        /// Preferred language for AI responses (e.g., "tr" for Turkish, "en" for English, "de" for German)
+        /// Preferred language for AI responses (ISO 639-1 language code, e.g., "tr", "en", "de")
         /// If not specified, AI will attempt to detect language from the query
         /// </summary>
         public string? PreferredLanguage { get; set; }
