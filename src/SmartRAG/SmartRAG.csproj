@@ -20,7 +20,7 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Release 3.2.0: Architectural Refactoring &amp; Modular Design (MINOR Release)
+    <PackageReleaseNotes>Release 3.2.0: Architectural Refactoring &amp; Modular Design (MINOR Release - 2025-11-27)
 
 ARCHITECTURAL REFACTORING:
 - Strategy Pattern Implementation: ISqlDialectStrategy, IScoringStrategy, IFileParser
@@ -29,17 +29,44 @@ ARCHITECTURAL REFACTORING:
 - Model Consolidation: DatabaseSchema and DatabaseSchemaInfo unified
 
 NEW FEATURES:
-- Custom SQL Dialect Strategies (Oracle, etc.)
-- Custom Scoring Strategies for search relevance
-- Custom File Parsers for new formats
-- Dedicated Conversation Management Service
+- SearchOptions: Per-request search configuration with flag-based filtering (-db, -d, -a, -i)
+- FeatureToggles: Global feature flag configuration
+- ContextExpansionService: Adjacent chunk context expansion
+- FileParserResult: Standardized parser result structure
+- DatabaseFileParser: SQLite database file parsing support
+- Native Library Inclusion: Tesseract OCR native libraries bundled (Windows, macOS, Linux)
+- Nullable Reference Types: Enhanced null safety across 14+ files
+- ClearAllAsync Methods: Efficient bulk deletion operations
+- Collection Management: Enhanced Qdrant collection operations
+- Tesseract On-Demand Language Data: Automatic language support (30+ languages)
+- Currency Symbol Correction: Improved OCR accuracy for financial documents
+- Parallel Batch Processing: Ollama embeddings performance optimization
+- Query Tokens Parameter: Pre-computed token support for performance
+- Native Qdrant Text Search: Token-based filtering for improved search performance
+
+IMPROVEMENTS:
+- Language-Agnostic Code: Removed domain-specific and language-specific references
+- Unicode Normalization: Better text retrieval across all languages
+- PDF OCR Encoding: Automatic fallback handling
+- Numbered List Detection: Improved counting query accuracy
+- RAG Scoring: Enhanced relevance calculation with unique keyword bonus
+- Document Search: Adaptive threshold and chunk prioritization
+- Prompt Builder: Enhanced AI answer generation
+- Qdrant Performance: Optimized GetAllAsync implementation
+
+FIXES:
+- Table Alias Enforcement: Prevents ambiguous column errors in SQL generation
+- EnableDatabaseSearch Config: Proper feature flag handling
+- macOS Native Libraries: OCR library inclusion and DYLD_LIBRARY_PATH configuration
+- Missing Method Signature: DocumentSearchService restoration
 
 CODE QUALITY:
 - Maintained 0 errors, 0 warnings
 - Full SOLID compliance
 - Improved testability and extensibility
+- Language-agnostic codebase
 
-This release introduces significant architectural improvements while maintaining full backward compatibility.</PackageReleaseNotes>
+This release introduces significant architectural improvements and new features while maintaining full backward compatibility.</PackageReleaseNotes>
     
     <!-- Build Configuration -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
