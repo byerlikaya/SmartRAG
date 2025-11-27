@@ -71,7 +71,24 @@ jobs:
       run: |
         for package in ./nupkgs/*.nupkg; do
           echo "Publishing $package to NuGet..."
-          dotnet nuget push "$package" --api-key ${{ secrets.NUGET_API_KEY }} --source ${{ env.NUGET_SOURCE }} --skip-duplicate
+          max_retries=5
+          retry_count=0
+          while [ $retry_count -lt $max_retries ]; do
+            if dotnet nuget push "$package" --api-key ${{ secrets.NUGET_API_KEY }} --source ${{ env.NUGET_SOURCE }} --skip-duplicate --timeout 600; then
+              echo "Successfully published $package"
+              break
+            else
+              retry_count=$((retry_count + 1))
+              if [ $retry_count -lt $max_retries ]; then
+                wait_time=$((retry_count * 30))
+                echo "Publish failed (attempt $retry_count/$max_retries). Retrying in ${wait_time}s..."
+                sleep $wait_time
+              else
+                echo "Failed to publish $package after $max_retries attempts"
+                exit 1
+              fi
+            fi
+          done
         done
 
   publish-github-packages:
@@ -99,7 +116,24 @@ jobs:
       run: |
         for package in ./nupkgs/*.nupkg; do
           echo "Publishing $package to GitHub Packages..."
-          dotnet nuget push "$package" --api-key ${{ secrets.GITHUB_TOKEN }} --source ${{ env.GITHUB_PACKAGES_SOURCE }} --skip-duplicate
+          max_retries=5
+          retry_count=0
+          while [ $retry_count -lt $max_retries ]; do
+            if dotnet nuget push "$package" --api-key ${{ secrets.GITHUB_TOKEN }} --source ${{ env.GITHUB_PACKAGES_SOURCE }} --skip-duplicate --timeout 600; then
+              echo "Successfully published $package"
+              break
+            else
+              retry_count=$((retry_count + 1))
+              if [ $retry_count -lt $max_retries ]; then
+                wait_time=$((retry_count * 30))
+                echo "Publish failed (attempt $retry_count/$max_retries). Retrying in ${wait_time}s..."
+                sleep $wait_time
+              else
+                echo "Failed to publish $package after $max_retries attempts"
+                exit 1
+              fi
+            fi
+          done
         done
 
   create-release:
