@@ -35,6 +35,15 @@ namespace SmartRAG.Interfaces.Parser
         /// <returns>Preprocessed image stream</returns>
         Task<Stream> PreprocessImageAsync(Stream imageStream);
 
+        /// <summary>
+        /// Corrects currency symbol misreads in text (e.g., % → ₺, $, €)
+        /// This method applies the same currency correction logic used in OCR results to any text
+        /// </summary>
+        /// <param name="text">Text to correct</param>
+        /// <param name="language">Language code for context (optional, used for logging)</param>
+        /// <returns>Text with corrected currency symbols</returns>
+        string CorrectCurrencySymbols(string text, string language = null);
+
         #endregion
     }
 }

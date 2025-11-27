@@ -44,8 +44,24 @@ namespace SmartRAG.Services.Parser
         // Tesseract already handles language-specific characters correctly based on the language parameter
         // Whitelist was filtering out non-ASCII characters (special chars, accented letters, etc.) during OCR
         
+        // Pattern for currency symbol misreads: % (percentage sign)
         private const string CurrencyMisreadPatternMain = @"(\d+)\s*%(?=\s*(?:\p{Lu}|\d|$))";
         private const string CurrencyMisreadPatternCompact = @"(\d+)%(?=\p{Lu}|\s+\p{Lu}|$)";
+        
+        // Pattern for currency symbol misreads: 6 (digit 6, common OCR mistake for currency symbols)
+        // Context: followed by space, uppercase letter, digit, or end of string
+        private const string CurrencyMisreadPattern6 = @"(\d+)\s*6(?=\s*(?:\p{Lu}|\d|$))";
+        private const string CurrencyMisreadPattern6Compact = @"(\d+)6(?=\s+\p{Lu}|\s+$|$)";
+        
+        // Pattern for currency symbol misreads: t (lowercase t, common OCR mistake for currency symbols)
+        // Context: followed by space, uppercase letter, or end of string (not followed by lowercase letter to avoid false positives)
+        private const string CurrencyMisreadPatternT = @"(\d+)\s*t(?=\s*(?:\p{Lu}|$))";
+        private const string CurrencyMisreadPatternTCompact = @"(\d+)t(?=\s+\p{Lu}|\s+$|$)";
+        
+        // Pattern for currency symbol misreads: & (ampersand, common OCR mistake for currency symbols)
+        // Context: followed by space, uppercase letter, digit, or end of string
+        private const string CurrencyMisreadPatternAmpersand = @"(\d+)\s*&(?=\s*(?:\p{Lu}|\d|$))";
+        private const string CurrencyMisreadPatternAmpersandCompact = @"(\d+)&(?=\p{Lu}|\s+\p{Lu}|$)";
         
         private static readonly Dictionary<string, string> LanguageCodeMapping = new Dictionary<string, string>
         {
@@ -665,14 +681,38 @@ namespace SmartRAG.Services.Parser
         }
 
         /// <summary>
-        /// Corrects OCR misreading of currency symbols as percentage signs
-        /// Uses context-aware patterns that work across all languages
+        /// Corrects currency symbol misreads in text (e.g., % → currency symbol, works for all currencies)
+        /// This method applies the same currency correction logic used in OCR results to any text
         /// </summary>
         /// <param name="text">Text to correct</param>
-        /// <param name="currencySymbol">Currency symbol to use (e.g., ₺, $, €, £, ¥)</param>
+        /// <param name="language">Language code for context (optional, used for logging)</param>
+        /// <returns>Text with corrected currency symbols</returns>
+        public string CorrectCurrencySymbols(string text, string language = null)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return text;
+
+            var currencySymbol = GetCurrencySymbolFromSystemLocale();
+            
+            if (!string.IsNullOrEmpty(currencySymbol))
+            {
+                return CorrectCurrencySymbolMisreads(text, currencySymbol);
+            }
+            
+            return text;
+        }
+
+        /// <summary>
+        /// Corrects OCR misreading of currency symbols as various characters (%, 6, t, &amp;)
+        /// Uses context-aware patterns that work across all languages
+        /// Common OCR mistakes: percentage sign, digit 6, lowercase t, ampersand - all corrected to currency symbol
+        /// </summary>
+        /// <param name="text">Text to correct</param>
+        /// <param name="currencySymbol">Currency symbol to use (determined from system locale, e.g., $, €, £, ¥, etc.)</param>
         /// <returns>Corrected text</returns>
         private static string CorrectCurrencySymbolMisreads(string text, string currencySymbol)
         {
+            // Pattern 1: % (percentage sign) - with space
             text = Regex.Replace(
                 text,
                 CurrencyMisreadPatternMain,
@@ -680,9 +720,55 @@ namespace SmartRAG.Services.Parser
                 RegexOptions.Multiline
             );
             
+            // Pattern 2: % (percentage sign) - compact (no space)
             text = Regex.Replace(
                 text,
                 CurrencyMisreadPatternCompact,
+                $"$1{currencySymbol}"
+            );
+            
+            // Pattern 3: 6 (digit 6) - with space
+            text = Regex.Replace(
+                text,
+                CurrencyMisreadPattern6,
+                $"$1{currencySymbol}",
+                RegexOptions.Multiline
+            );
+            
+            // Pattern 4: 6 (digit 6) - compact (no space)
+            text = Regex.Replace(
+                text,
+                CurrencyMisreadPattern6Compact,
+                $"$1{currencySymbol}"
+            );
+            
+            // Pattern 5: t (lowercase t) - with space
+            text = Regex.Replace(
+                text,
+                CurrencyMisreadPatternT,
+                $"$1{currencySymbol}",
+                RegexOptions.Multiline
+            );
+            
+            // Pattern 6: t (lowercase t) - compact (no space)
+            text = Regex.Replace(
+                text,
+                CurrencyMisreadPatternTCompact,
+                $"$1{currencySymbol}"
+            );
+            
+            // Pattern 7: & (ampersand) - with space
+            text = Regex.Replace(
+                text,
+                CurrencyMisreadPatternAmpersand,
+                $"$1{currencySymbol}",
+                RegexOptions.Multiline
+            );
+            
+            // Pattern 8: & (ampersand) - compact (no space)
+            text = Regex.Replace(
+                text,
+                CurrencyMisreadPatternAmpersandCompact,
                 $"$1{currencySymbol}"
             );
 
