@@ -9,6 +9,7 @@ namespace SmartRAG.Demo.DatabaseSetup.Creators;
 
 /// <summary>
 /// SQLite test database creator implementation
+/// Domain: Product Catalog & Customer Master Data
 /// Follows SOLID principles - Single Responsibility Principle
 /// </summary>
 public class SqliteTestDatabaseCreator : ITestDatabaseCreator
@@ -22,7 +23,7 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
 
         public DatabaseType GetDatabaseType() => DatabaseType.SQLite;
 
-        public string GetDescription() => "SQLite - Embedded, file-based database (No installation required)";
+        public string GetDescription() => "SQLite - Product Catalog & Customer Master Data";
 
         public string GetDefaultConnectionString()
         {
@@ -148,7 +149,7 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
         private void CreateTables(SqliteConnection connection)
         {
             var createTablesSql = @"
-                -- Customers table
+                -- Customers table (Master customer data)
                 CREATE TABLE Customers (
                     CustomerID INTEGER PRIMARY KEY AUTOINCREMENT,
                     FirstName TEXT NOT NULL,
@@ -158,53 +159,62 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
                     Address TEXT,
                     City TEXT,
                     Country TEXT DEFAULT 'Turkey',
+                    CustomerSegment TEXT DEFAULT 'Regular',
                     CreatedDate DATETIME DEFAULT CURRENT_TIMESTAMP
                 );
 
-                -- Categories table
+                -- Categories table (Hierarchical product categories)
                 CREATE TABLE Categories (
                     CategoryID INTEGER PRIMARY KEY AUTOINCREMENT,
                     CategoryName TEXT NOT NULL,
-                    Description TEXT
+                    ParentCategoryID INTEGER,
+                    Description TEXT,
+                    IsActive INTEGER DEFAULT 1,
+                    FOREIGN KEY (ParentCategoryID) REFERENCES Categories(CategoryID)
                 );
 
-                -- Products table
+                -- Suppliers table (NEW)
+                CREATE TABLE Suppliers (
+                    SupplierID INTEGER PRIMARY KEY AUTOINCREMENT,
+                    SupplierName TEXT NOT NULL,
+                    ContactPerson TEXT,
+                    Email TEXT,
+                    Phone TEXT,
+                    Country TEXT,
+                    Rating DECIMAL(3,2) DEFAULT 5.0,
+                    CreatedDate DATETIME DEFAULT CURRENT_TIMESTAMP
+                );
+
+                -- Products table (Enhanced with SupplierID)
                 CREATE TABLE Products (
                     ProductID INTEGER PRIMARY KEY AUTOINCREMENT,
                     ProductName TEXT NOT NULL,
                     CategoryID INTEGER,
+                    SupplierID INTEGER,
                     UnitPrice DECIMAL(10,2) NOT NULL,
                     StockQuantity INTEGER DEFAULT 0,
                     Description TEXT,
+                    SKU TEXT UNIQUE,
+                    IsActive INTEGER DEFAULT 1,
                     CreatedDate DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (CategoryID) REFERENCES Categories(CategoryID)
+                    FOREIGN KEY (CategoryID) REFERENCES Categories(CategoryID),
+                    FOREIGN KEY (SupplierID) REFERENCES Suppliers(SupplierID)
                 );
 
-                -- Orders table
-                CREATE TABLE Orders (
-                    OrderID INTEGER PRIMARY KEY AUTOINCREMENT,
-                    CustomerID INTEGER NOT NULL,
-                    OrderDate DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    TotalAmount DECIMAL(10,2) NOT NULL,
-                    Status TEXT DEFAULT 'Pending',
-                    ShippingAddress TEXT,
-                    FOREIGN KEY (CustomerID) REFERENCES Customers(CustomerID)
-                );
-
-                -- Order details table
-                CREATE TABLE OrderDetails (
-                    OrderDetailID INTEGER PRIMARY KEY AUTOINCREMENT,
-                    OrderID INTEGER NOT NULL,
+                -- ProductPriceHistory table (NEW - Historical pricing)
+                CREATE TABLE ProductPriceHistory (
+                    PriceHistoryID INTEGER PRIMARY KEY AUTOINCREMENT,
                     ProductID INTEGER NOT NULL,
-                    Quantity INTEGER NOT NULL,
-                    UnitPrice DECIMAL(10,2) NOT NULL,
-                    TotalPrice DECIMAL(10,2) NOT NULL,
-                    FOREIGN KEY (OrderID) REFERENCES Orders(OrderID),
+                    EffectiveDate DATETIME NOT NULL,
+                    OldPrice DECIMAL(10,2),
+                    NewPrice DECIMAL(10,2) NOT NULL,
+                    ChangeReason TEXT,
+                    ChangedBy TEXT,
                     FOREIGN KEY (ProductID) REFERENCES Products(ProductID)
                 );
 
-                -- Employees table
-                CREATE TABLE Employees (
+                -- EmployeesReference table (Renamed from Employees for clarity)
+                CREATE TABLE EmployeesReference (
                     EmployeeID INTEGER PRIMARY KEY AUTOINCREMENT,
                     FirstName TEXT NOT NULL,
                     LastName TEXT NOT NULL,
@@ -212,34 +222,67 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
                     Department TEXT NOT NULL,
                     Position TEXT NOT NULL,
                     Salary DECIMAL(10,2),
-                    HireDate DATETIME DEFAULT CURRENT_TIMESTAMP
+                    HireDate DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    IsActive INTEGER DEFAULT 1
                 );
             ";
 
             using var command = new SqliteCommand(createTablesSql, connection);
             command.ExecuteNonQuery();
 
-            Console.WriteLine("[✅ OK] SQLite tables created: Customers, Categories, Products, Orders, OrderDetails, Employees");
+            Console.WriteLine("[✅ OK] SQLite tables created: Customers, Categories, Suppliers, Products, ProductPriceHistory, EmployeesReference");
         }
 
         private void InsertSampleData(SqliteConnection connection)
         {
             var random = new Random(42); // Fixed seed for reproducible data
             
-            // Categories
+            // Insert Categories (15 rows - hierarchical)
             var categoriesSql = @"
-                INSERT INTO Categories (CategoryName, Description) VALUES
-                ('Electronics', 'Electronic products and accessories'),
-                ('Clothing', 'Clothing and textile products'),
-                ('Books', 'Books and publications'),
-                ('Home & Garden', 'Home and garden products'),
-                ('Sports', 'Sports and fitness products');
+                INSERT INTO Categories (CategoryName, ParentCategoryID, Description, IsActive) VALUES
+                ('Electronics', NULL, 'Electronic products and accessories', 1),
+                ('Clothing', NULL, 'Clothing and textile products', 1),
+                ('Books', NULL, 'Books and publications', 1),
+                ('Home & Garden', NULL, 'Home and garden products', 1),
+                ('Sports', NULL, 'Sports and fitness products', 1),
+                ('Computers', 1, 'Desktop and laptop computers', 1),
+                ('Smartphones', 1, 'Mobile phones and tablets', 1),
+                ('Audio', 1, 'Headphones, speakers, and audio equipment', 1),
+                ('Men Clothing', 2, 'Clothing for men', 1),
+                ('Women Clothing', 2, 'Clothing for women', 1),
+                ('Fiction', 3, 'Fiction books and novels', 1),
+                ('Non-Fiction', 3, 'Educational and reference books', 1),
+                ('Furniture', 4, 'Indoor and outdoor furniture', 1),
+                ('Garden Tools', 4, 'Gardening equipment and tools', 1),
+                ('Fitness Equipment', 5, 'Exercise and fitness gear', 1);
             ";
             ExecuteSql(connection, categoriesSql, "Categories");
 
-            // Generate 100 Customers with diverse European names
-            var customersSql = new StringBuilder("INSERT INTO Customers (FirstName, LastName, Email, Phone, Address, City, Country) VALUES \n");
-            for (int i = 0; i < 100; i++)
+            // Insert Suppliers (30 rows)
+            var suppliersSql = new StringBuilder("INSERT INTO Suppliers (SupplierName, ContactPerson, Email, Phone, Country, Rating) VALUES \n");
+            var supplierCompanies = new[] { "Tech Solutions", "Global Traders", "Euro Supplies", "Prime Wholesale", "Quality Imports" };
+            
+            for (int i = 0; i < 30; i++)
+            {
+                var companyName = $"{supplierCompanies[random.Next(supplierCompanies.Length)]} #{i + 1}";
+                var firstName = SampleDataGenerator.GetRandomFirstName(random);
+                var lastName = SampleDataGenerator.GetRandomLastName(random);
+                var contactPerson = $"{firstName} {lastName}";
+                var email = SampleDataGenerator.GenerateEmail(firstName, lastName, random);
+                var phone = SampleDataGenerator.GeneratePhone(random);
+                var country = SampleDataGenerator.GetRandomCountry(random);
+                var rating = Math.Round(random.NextDouble() * 2 + 3, 2); // 3.0-5.0 rating
+
+                suppliersSql.Append($"('{companyName}', '{contactPerson}', '{email}', '{phone}', '{country}', {rating.ToString(System.Globalization.CultureInfo.InvariantCulture)})");
+                suppliersSql.Append(i < 29 ? ",\n" : ";\n");
+            }
+            ExecuteSql(connection, suppliersSql.ToString(), "Suppliers");
+
+            // Generate 150 Customers
+            var customersSql = new StringBuilder("INSERT INTO Customers (FirstName, LastName, Email, Phone, Address, City, Country, CustomerSegment) VALUES \n");
+            var segments = new[] { "Regular", "Premium", "VIP", "Enterprise" };
+            
+            for (int i = 0; i < 150; i++)
             {
                 var firstName = SampleDataGenerator.GetRandomFirstName(random);
                 var lastName = SampleDataGenerator.GetRandomLastName(random);
@@ -248,37 +291,67 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
                 var address = SampleDataGenerator.GenerateAddress(random);
                 var city = SampleDataGenerator.GetRandomCity(random);
                 var country = SampleDataGenerator.GetRandomCountry(random);
+                var segment = segments[random.Next(segments.Length)];
 
-                customersSql.Append($"('{firstName}', '{lastName}', '{email}', '{phone}', '{address}', '{city}', '{country}')");
-                customersSql.Append(i < 99 ? ",\n" : ";\n");
+                customersSql.Append($"('{firstName}', '{lastName}', '{email}', '{phone}', '{address}', '{city}', '{country}', '{segment}')");
+                customersSql.Append(i < 149 ? ",\n" : ";\n");
             }
             ExecuteSql(connection, customersSql.ToString(), "Customers");
 
-            // Generate 100 Products with various prices
+            // Generate 250 Products
             var productNames = new[] 
             {
                 "Laptop", "Smartphone", "Tablet", "Smartwatch", "Wireless Earbuds", "Monitor", "Keyboard", "Mouse",
+                "Desktop PC", "Gaming Console", "Camera", "Printer", "Router", "Smart TV", "Projector", "Scanner",
                 "T-Shirt", "Jeans", "Jacket", "Dress", "Sweater", "Shoes", "Sneakers", "Boots",
+                "Coat", "Shorts", "Skirt", "Hat", "Scarf", "Gloves", "Socks", "Belt",
                 "Programming Guide", "Novel", "Biography", "Cookbook", "Dictionary", "Atlas", "Magazine", "Comic Book",
+                "Textbook", "Journal", "Encyclopedia", "Manual", "Workbook", "Reference Book", "eBook Reader", "Audiobook",
                 "Sofa", "Chair", "Table", "Lamp", "Carpet", "Curtain", "Vase", "Painting",
-                "Football", "Basketball", "Tennis Racket", "Yoga Mat", "Dumbbell", "Bicycle", "Helmet", "Water Bottle"
+                "Bed", "Wardrobe", "Shelf", "Clock", "Mirror", "Plant Pot", "Candle", "Picture Frame",
+                "Football", "Basketball", "Tennis Racket", "Yoga Mat", "Dumbbell", "Bicycle", "Helmet", "Water Bottle",
+                "Treadmill", "Exercise Bike", "Jump Rope", "Boxing Gloves", "Swimming Goggles", "Running Shoes", "Tennis Ball", "Golf Club"
             };
             
-            var productsSql = new StringBuilder("INSERT INTO Products (ProductName, CategoryID, UnitPrice, StockQuantity) VALUES \n");
-            for (int i = 0; i < 100; i++)
+            var productsSql = new StringBuilder("INSERT INTO Products (ProductName, CategoryID, SupplierID, UnitPrice, StockQuantity, SKU, IsActive) VALUES \n");
+            for (int i = 0; i < 250; i++)
             {
-                var categoryId = (i % 5) + 1;
+                var categoryId = (i % 15) + 1;
+                var supplierId = (i % 30) + 1;
                 var baseName = productNames[random.Next(productNames.Length)];
                 var productName = $"{baseName} Model {i + 1}";
                 var price = Math.Round(random.NextDouble() * 10000 + 50, 2);
                 var stock = random.Next(10, 500);
+                var sku = $"SKU-{1000 + i}";
 
-                productsSql.Append($"('{productName}', {categoryId}, {price.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {stock})");
-                productsSql.Append(i < 99 ? ",\n" : ";\n");
+                productsSql.Append($"('{productName}', {categoryId}, {supplierId}, {price.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {stock}, '{sku}', 1)");
+                productsSql.Append(i < 249 ? ",\n" : ";\n");
             }
             ExecuteSql(connection, productsSql.ToString(), "Products");
 
-            // Generate 100 Employees with European names
+            // Generate 500 ProductPriceHistory records
+            var priceHistorySql = new StringBuilder("INSERT INTO ProductPriceHistory (ProductID, EffectiveDate, OldPrice, NewPrice, ChangeReason, ChangedBy) VALUES \n");
+            var changeReasons = new[] { "Market adjustment", "Supplier price change", "Promotion", "Cost increase", "Seasonal discount", "Competitor pricing" };
+            var changedByUsers = new[] { "System", "Product Manager", "Sales Team", "Admin", "Pricing Automation" };
+            
+            for (int i = 0; i < 500; i++)
+            {
+                var productId = (i % 250) + 1;
+                var year = random.Next(2023, 2026);
+                var month = random.Next(1, 13);
+                var day = random.Next(1, 29);
+                var effectiveDate = $"{year}-{month:00}-{day:00}";
+                var oldPrice = Math.Round(random.NextDouble() * 10000 + 50, 2);
+                var newPrice = Math.Round(oldPrice * (0.85 + random.NextDouble() * 0.30), 2); // -15% to +15%
+                var reason = changeReasons[random.Next(changeReasons.Length)];
+                var changedBy = changedByUsers[random.Next(changedByUsers.Length)];
+
+                priceHistorySql.Append($"({productId}, '{effectiveDate}', {oldPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {newPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)}, '{reason}', '{changedBy}')");
+                priceHistorySql.Append(i < 499 ? ",\n" : ";\n");
+            }
+            ExecuteSql(connection, priceHistorySql.ToString(), "ProductPriceHistory");
+
+            // Generate 100 Employees
             var departments = new[] { "IT", "Sales", "Marketing", "Finance", "HR", "Operations", "Support", "R&D" };
             var positions = new[] 
             { 
@@ -286,7 +359,7 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
                 "Engineer", "Consultant", "Administrator", "Supervisor" 
             };
 
-            var employeesSql = new StringBuilder("INSERT INTO Employees (FirstName, LastName, Email, Department, Position, Salary, HireDate) VALUES \n");
+            var employeesSql = new StringBuilder("INSERT INTO EmployeesReference (FirstName, LastName, Email, Department, Position, Salary, HireDate, IsActive) VALUES \n");
             for (int i = 0; i < 100; i++)
             {
                 var firstName = SampleDataGenerator.GetRandomFirstName(random);
@@ -300,47 +373,12 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
                 var hireDay = random.Next(1, 29);
                 var hireDate = $"{hireYear:0000}-{hireMonth:00}-{hireDay:00}";
 
-                employeesSql.Append($"('{firstName}', '{lastName}', '{email}', '{department}', '{position}', {salary.ToString(System.Globalization.CultureInfo.InvariantCulture)}, '{hireDate}')");
+                employeesSql.Append($"('{firstName}', '{lastName}', '{email}', '{department}', '{position}', {salary.ToString(System.Globalization.CultureInfo.InvariantCulture)}, '{hireDate}', 1)");
                 employeesSql.Append(i < 99 ? ",\n" : ";\n");
             }
-            ExecuteSql(connection, employeesSql.ToString(), "Employees");
+            ExecuteSql(connection, employeesSql.ToString(), "EmployeesReference");
 
-            // Generate 100 Orders
-            var statuses = new[] { "Completed", "Shipped", "Pending", "Processing", "Cancelled" };
-            var ordersSql = new StringBuilder("INSERT INTO Orders (CustomerID, OrderDate, TotalAmount, Status, ShippingAddress) VALUES \n");
-            for (int i = 0; i < 100; i++)
-            {
-                var customerId = random.Next(1, 101); // Reference to Customers
-                var orderYear = 2025;
-                var orderMonth = random.Next(1, 11);
-                var orderDay = random.Next(1, 29);
-                var orderDate = $"{orderYear}-{orderMonth:00}-{orderDay:00}";
-                var totalAmount = Math.Round(random.NextDouble() * 50000 + 100, 2);
-                var status = statuses[random.Next(statuses.Length)];
-                var city = SampleDataGenerator.GetRandomCity(random);
-                var shippingAddress = $"{SampleDataGenerator.GenerateAddress(random)}, {city}";
-
-                ordersSql.Append($"({customerId}, '{orderDate}', {totalAmount.ToString(System.Globalization.CultureInfo.InvariantCulture)}, '{status}', '{shippingAddress}')");
-                ordersSql.Append(i < 99 ? ",\n" : ";\n");
-            }
-            ExecuteSql(connection, ordersSql.ToString(), "Orders");
-
-            // Generate 150 Order Details (multiple items per order)
-            var orderDetailsSql = new StringBuilder("INSERT INTO OrderDetails (OrderID, ProductID, Quantity, UnitPrice, TotalPrice) VALUES \n");
-            for (int i = 0; i < 150; i++)
-            {
-                var orderId = random.Next(1, 101); // Reference to Orders
-                var productId = random.Next(1, 101); // Reference to Products
-                var quantity = random.Next(1, 6);
-                var unitPrice = Math.Round(random.NextDouble() * 5000 + 50, 2);
-                var totalPrice = Math.Round(quantity * unitPrice, 2);
-
-                orderDetailsSql.Append($"({orderId}, {productId}, {quantity}, {unitPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {totalPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)})");
-                orderDetailsSql.Append(i < 149 ? ",\n" : ";\n");
-            }
-            ExecuteSql(connection, orderDetailsSql.ToString(), "Order Details");
-
-            Console.WriteLine("[✅ OK] SQLite sample data inserted - Total: 5 categories, 100 customers, 100 products, 100 employees, 100 orders, 150 order details");
+            Console.WriteLine($"[✅ OK] SQLite sample data inserted - Total: 15 categories, 30 suppliers, 150 customers, 250 products, 500 price history records, 100 employees");
         }
 
         private void ExecuteSql(SqliteConnection connection, string sql, string tableName)
@@ -350,3 +388,4 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
             Console.WriteLine($"[✅ OK] {tableName}: {rowsAffected} rows inserted");
         }
 }
+

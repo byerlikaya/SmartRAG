@@ -86,12 +86,12 @@ static void RegisterServices(IServiceCollection services, IConfiguration configu
         options.KeyLengthLimit = int.MaxValue;
     });
 
+   
     // Add SmartRag services with minimal configuration
     services.UseSmartRag(configuration,
-        storageProvider: StorageProvider.Redis,        // Use InMemory as requested
-        aiProvider: AIProvider.Anthropic                     // Use Gemini provider
+        storageProvider: StorageProvider.Redis,
+        aiProvider: AIProvider.Custom
     );
-
 
 
     services.AddCors(options =>
@@ -107,22 +107,19 @@ static void RegisterServices(IServiceCollection services, IConfiguration configu
 
 static void ConfigureMiddleware(WebApplication app, IWebHostEnvironment environment)
 {
-
-    if (environment.IsDevelopment())
+    // Enable Swagger in all environments for API documentation
+    app.MapOpenApi();
+    app.MapSwagger();
+    app.UseSwaggerUI(c =>
     {
-        app.MapOpenApi();
-        app.MapSwagger();
-        app.UseSwaggerUI(c =>
-        {
-            c.SwaggerEndpoint("/swagger/v1/swagger.json", "SmartRAG API v2.4.0");
-            c.DocumentTitle = "SmartRAG API Documentation";
-            c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None); // All endpoints collapsed by default
-            c.DefaultModelsExpandDepth(-1); // Hide schemas section by default
-            c.DisplayRequestDuration(); // Show request duration
-            c.EnableFilter(); // Enable search filter
-            c.EnableDeepLinking(); // Enable deep linking to endpoints
-        });
-    }
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "SmartRAG API v2.4.0");
+        c.DocumentTitle = "SmartRAG API Documentation";
+        c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None); // All endpoints collapsed by default
+        c.DefaultModelsExpandDepth(-1); // Hide schemas section by default
+        c.DisplayRequestDuration(); // Show request duration
+        c.EnableFilter(); // Enable search filter
+        c.EnableDeepLinking(); // Enable deep linking to endpoints
+    });
 
     // Serve static files for simple upload page
     app.UseStaticFiles();

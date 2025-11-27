@@ -28,7 +28,6 @@ namespace SmartRAG.Providers
 
         #region Constants
 
-        // Anthropic API constants
         private const string AnthropicApiVersion = "2023-06-01";
         private const string DefaultVoyageEndpoint = "https://api.voyageai.com";
         private const string DefaultVoyageModel = "voyage-3.5";
@@ -57,50 +56,46 @@ namespace SmartRAG.Providers
             { "anthropic-version", AnthropicApiVersion }
         };
 
-            using (var client = CreateHttpClientWithoutAuth(additionalHeaders))
+            using var client = CreateHttpClientWithoutAuth(additionalHeaders);
+            var systemMessage = config.SystemMessage;
+
+            var messages = new List<object>();
+
+            if (!string.IsNullOrEmpty(systemMessage))
             {
-                var systemMessage = config.SystemMessage;
+                messages.Add(new { role = "system", content = systemMessage });
+            }
 
-                var messages = new List<object>();
+            messages.Add(new { role = "user", content = prompt });
 
-                if (!string.IsNullOrEmpty(systemMessage))
-                {
-                    messages.Add(new { role = "system", content = systemMessage });
-                }
+            var payload = new
+            {
+                model = config.Model,
+                max_tokens = config.MaxTokens,
+                temperature = config.Temperature,
+                messages = messages.ToArray()
+            };
 
-                messages.Add(new { role = "user", content = prompt });
+            var chatEndpoint = BuildAnthropicUrl(config.Endpoint, "v1/messages");
 
-                var payload = new
-                {
-                    model = config.Model,
-                    max_tokens = config.MaxTokens,
-                    temperature = config.Temperature,
-                    messages = messages.ToArray()
-                };
+            var (success, response, error) = await MakeHttpRequestAsync(client, chatEndpoint, payload);
 
-                var chatEndpoint = BuildAnthropicUrl(config.Endpoint, "v1/messages");
+            if (!success)
+                return error;
 
-                var (success, response, error) = await MakeHttpRequestAsync(client, chatEndpoint, payload);
-
-                if (!success)
-                    return error;
-
-                try
-                {
-                    return ParseAnthropicTextResponse(response);
-                }
-                catch (Exception ex)
-                {
-                    ProviderLogMessages.LogAnthropicResponseParsingError(Logger, ex.Message, ex);
-                    return $"Error parsing response: {ex.Message}";
-                }
+            try
+            {
+                return ParseAnthropicTextResponse(response);
+            }
+            catch (Exception ex)
+            {
+                ProviderLogMessages.LogAnthropicResponseParsingError(Logger, ex.Message, ex);
+                return $"Error parsing response: {ex.Message}";
             }
         }
 
         public override async Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config)
         {
-            // Anthropic uses Voyage AI for embeddings as per their documentation
-            // https://docs.anthropic.com/en/docs/build-with-claude/embeddings#how-to-get-embeddings-with-anthropic
 
             var (isValid, errorMessage) = ValidateEmbeddingConfig(config);
             if (!isValid)
@@ -113,44 +108,41 @@ namespace SmartRAG.Providers
             var voyageModel = config.EmbeddingModel ?? DefaultVoyageModel;
 
             var additionalHeaders = new Dictionary<string, string>
-        {
-            { "Authorization", $"Bearer {voyageApiKey}" }
-        };
-
-            using (var client = CreateHttpClientWithoutAuth(additionalHeaders))
             {
-                var payload = new
-                {
-                    input = new[] { text },
-                    model = voyageModel,
-                    input_type = VoyageInputType
-                };
+                { "Authorization", $"Bearer {voyageApiKey}" }
+            };
 
-                var embeddingEndpoint = BuildVoyageUrl("v1/embeddings");
+            using var client = CreateHttpClientWithoutAuth(additionalHeaders);
+            var payload = new
+            {
+                input = new[] { text },
+                model = voyageModel,
+                input_type = VoyageInputType
+            };
 
-                var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
+            var embeddingEndpoint = BuildVoyageUrl("v1/embeddings");
 
-                if (!success)
-                {
-                    ProviderLogMessages.LogAnthropicEmbeddingRequestError(Logger, error, null);
-                    return new List<float>();
-                }
+            var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
 
-                try
-                {
-                    return ParseVoyageEmbeddingResponse(response);
-                }
-                catch (Exception ex)
-                {
-                    ProviderLogMessages.LogVoyageParsingError(Logger, ex);
-                    return new List<float>();
-                }
+            if (!success)
+            {
+                ProviderLogMessages.LogAnthropicEmbeddingRequestError(Logger, error, null);
+                return new List<float>();
+            }
+
+            try
+            {
+                return ParseVoyageEmbeddingResponse(response);
+            }
+            catch (Exception ex)
+            {
+                ProviderLogMessages.LogVoyageParsingError(Logger, ex);
+                return new List<float>();
             }
         }
 
         public override async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config)
         {
-            // Anthropic uses Voyage AI for batch embeddings
             var (isValid, errorMessage) = ValidateEmbeddingConfig(config);
             if (!isValid)
             {
@@ -162,7 +154,6 @@ namespace SmartRAG.Providers
             if (inputList.Count == 0)
                 return new List<List<float>>();
 
-            // Filter out empty or null strings to prevent Voyage AI API errors
             var validInputs = inputList.Where(text => !string.IsNullOrWhiteSpace(text)).ToList();
 
             if (validInputs.Count == 0)
@@ -268,22 +259,20 @@ namespace SmartRAG.Providers
         /// </summary>
         private static List<float> ParseVoyageEmbeddingResponse(string response)
         {
-            using (var doc = JsonDocument.Parse(response))
+            using var doc = JsonDocument.Parse(response);
+            if (doc.RootElement.TryGetProperty("data", out var dataArray) && dataArray.ValueKind == JsonValueKind.Array)
             {
-                if (doc.RootElement.TryGetProperty("data", out var dataArray) && dataArray.ValueKind == JsonValueKind.Array)
+                var firstEmbedding = dataArray.EnumerateArray().FirstOrDefault();
+
+                if (firstEmbedding.TryGetProperty("embedding", out var embeddingArray) && embeddingArray.ValueKind == JsonValueKind.Array)
                 {
-                    var firstEmbedding = dataArray.EnumerateArray().FirstOrDefault();
-
-                    if (firstEmbedding.TryGetProperty("embedding", out var embeddingArray) && embeddingArray.ValueKind == JsonValueKind.Array)
-                    {
-                        return embeddingArray.EnumerateArray()
-                            .Select(x => x.GetSingle())
-                            .ToList();
-                    }
+                    return embeddingArray.EnumerateArray()
+                        .Select(x => x.GetSingle())
+                        .ToList();
                 }
-
-                return new List<float>();
             }
+
+            return new List<float>();
         }
 
         /// <summary>
@@ -318,10 +307,8 @@ namespace SmartRAG.Providers
             }
             catch
             {
-                // Return partial results on error
             }
 
-            // Ensure we return exactly expectedCount embeddings
             return Enumerable.Range(0, expectedCount)
                 .Select(i => i < results.Count ? results[i] : new List<float>())
                 .ToList();
@@ -339,12 +326,10 @@ namespace SmartRAG.Providers
             {
                 if (string.IsNullOrWhiteSpace(originalInputs[i]))
                 {
-                    // Empty input gets empty embedding
                     result.Add(new List<float>());
                 }
                 else
                 {
-                    // Valid input gets corresponding embedding
                     if (validIndex < validEmbeddings.Count)
                     {
                         result.Add(validEmbeddings[validIndex]);
@@ -352,7 +337,6 @@ namespace SmartRAG.Providers
                     }
                     else
                     {
-                        // Fallback: empty embedding if something goes wrong
                         result.Add(new List<float>());
                     }
                 }

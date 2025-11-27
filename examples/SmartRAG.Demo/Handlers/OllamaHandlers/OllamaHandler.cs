@@ -46,10 +46,10 @@ public class OllamaHandler(IConsoleService console) : IOllamaHandler
         }
         System.Console.WriteLine();
 
-        System.Console.WriteLine("📊 Recommended models for SQL Generation (Best for Database Queries):");
-        System.Console.WriteLine("   ⭐ deepseek-coder:6.7b - Best SQL generation accuracy");
-        System.Console.WriteLine("   ⭐ qwen2.5-coder:7b - Multilingual SQL support");
-        System.Console.WriteLine("   ⭐ codellama:7b - Excellent code/SQL generation");
+        System.Console.WriteLine("🎯 Recommended for High-End Systems (32GB+ RAM) - SQL Generation:");
+        System.Console.WriteLine("   ⭐ deepseek-coder-v2:16b - Best SQL accuracy (~12GB RAM)");
+        System.Console.WriteLine("   🚀 qwen2.5-coder:32b - Most powerful for complex queries (~20GB RAM)");
+        System.Console.WriteLine("   💡 codellama:13b-instruct - Excellent instruction following (~8GB RAM)");
         System.Console.WriteLine();
 
         System.Console.WriteLine("Recommended models for SmartRAG:");

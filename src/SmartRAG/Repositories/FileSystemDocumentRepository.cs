@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging;
 using SmartRAG.Entities;
 using SmartRAG.Extensions;
-using SmartRAG.Interfaces;
+using SmartRAG.Interfaces.Document;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -19,16 +19,13 @@ namespace SmartRAG.Repositories
     {
         #region Constants
 
-        // File and path constants
         private const string MetadataFileName = "metadata.json";
         private const string DocumentFileExtension = ".json";
 
         // Search constants
         private const int DefaultMaxSearchResults = 5;
 
-        // JSON serialization constants
         private const bool WriteIndented = true;
-        private const int MaxConversationLength = 2000;
 
         #endregion
 
@@ -36,7 +33,6 @@ namespace SmartRAG.Repositories
 
         private readonly string _basePath;
         private readonly string _metadataFile;
-        private readonly string _conversationsPath;
         private readonly object _lock = new object();
         private readonly ILogger<FileSystemDocumentRepository> _logger;
 
@@ -73,11 +69,9 @@ namespace SmartRAG.Repositories
         {
             _basePath = Path.GetFullPath(basePath);
             _metadataFile = Path.Combine(_basePath, MetadataFileName);
-            _conversationsPath = Path.Combine(_basePath, "Conversations");
             _logger = logger;
 
             Directory.CreateDirectory(_basePath);
-            Directory.CreateDirectory(_conversationsPath);
 
             if (!File.Exists(_metadataFile))
             {
@@ -102,6 +96,9 @@ namespace SmartRAG.Repositories
                         RepositoryLogMessages.LogDocumentAlreadyExists(Logger, document.Id, null);
                         throw new InvalidOperationException($"Document with ID {document.Id} already exists");
                     }
+
+                    SmartRAG.Services.Helpers.DocumentValidator.ValidateDocument(document);
+                    SmartRAG.Services.Helpers.DocumentValidator.ValidateChunks(document);
 
                     var documentPath = GetDocumentPath(document.Id);
                     var documentData = CreateDocumentData(document);
@@ -164,6 +161,32 @@ namespace SmartRAG.Repositories
                 {
                     RepositoryLogMessages.LogDocumentsRetrievalFailed(Logger, ex);
                     throw;
+                }
+            }
+        }
+
+        public Task<bool> ClearAllAsync()
+        {
+            lock (_lock)
+            {
+                try
+                {
+                    var documents = LoadMetadata();
+                    foreach (var doc in documents)
+                    {
+                        var documentPath = GetDocumentPath(doc.Id);
+                        if (File.Exists(documentPath))
+                        {
+                            File.Delete(documentPath);
+                        }
+                    }
+                    SaveMetadata(new List<SmartRAG.Entities.Document>());
+                    return Task.FromResult(true);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to clear all documents from FileSystem");
+                    return Task.FromResult(false);
                 }
             }
         }
@@ -241,7 +264,6 @@ namespace SmartRAG.Repositories
             catch (Exception ex)
             {
                 RepositoryLogMessages.LogMetadataLoadFailed(Logger, ex);
-                // If metadata file is corrupted, return empty list
                 return new List<Document>();
             }
         }
@@ -361,118 +383,6 @@ namespace SmartRAG.Repositories
 
         #endregion
 
-        #region Conversation Methods
 
-        public async Task<string> GetConversationHistoryAsync(string sessionId)
-        {
-            if (string.IsNullOrWhiteSpace(sessionId))
-                return string.Empty;
-
-            try
-            {
-                var filePath = GetConversationFilePath(sessionId);
-                if (!File.Exists(filePath))
-                {
-                    return string.Empty;
-                }
-
-                return await Task.Run(() => File.ReadAllText(filePath));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting conversation history for session {SessionId}", sessionId);
-                return string.Empty;
-            }
-        }
-
-        public async Task AddToConversationAsync(string sessionId, string question, string answer)
-        {
-            if (string.IsNullOrWhiteSpace(sessionId))
-                return;
-
-            try
-            {
-                // If question is empty, this is a special case (like session-id storage)
-                if (string.IsNullOrEmpty(question))
-                {
-                    var sessionFilePath = GetConversationFilePath(sessionId);
-                    await Task.Run(() => File.WriteAllText(sessionFilePath, answer));
-                    return;
-                }
-
-                var currentHistory = await GetConversationHistoryAsync(sessionId);
-                var newEntry = string.IsNullOrEmpty(currentHistory) 
-                    ? $"User: {question}\nAssistant: {answer}"
-                    : $"{currentHistory}\nUser: {question}\nAssistant: {answer}";
-
-                // Limit conversation length to prevent memory issues
-                if (newEntry.Length > MaxConversationLength)
-                {
-                    newEntry = TruncateConversation(newEntry);
-                }
-
-                var filePath = GetConversationFilePath(sessionId);
-                await Task.Run(() => File.WriteAllText(filePath, newEntry));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error adding to conversation for session {SessionId}", sessionId);
-            }
-        }
-
-        public async Task ClearConversationAsync(string sessionId)
-        {
-            if (string.IsNullOrWhiteSpace(sessionId))
-                return;
-
-            try
-            {
-                var filePath = GetConversationFilePath(sessionId);
-                if (File.Exists(filePath))
-                {
-                    await Task.Run(() => File.Delete(filePath));
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error clearing conversation for session {SessionId}", sessionId);
-            }
-        }
-
-        public async Task<bool> SessionExistsAsync(string sessionId)
-        {
-            if (string.IsNullOrWhiteSpace(sessionId))
-                return false;
-
-            try
-            {
-                var filePath = GetConversationFilePath(sessionId);
-                return await Task.Run(() => File.Exists(filePath));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error checking session existence for {SessionId}", sessionId);
-                return false;
-            }
-        }
-
-        private string GetConversationFilePath(string sessionId)
-        {
-            var fileName = $"{sessionId}.txt";
-            return Path.Combine(_conversationsPath, fileName);
-        }
-
-        private static string TruncateConversation(string conversation)
-        {
-            // Keep only the last few exchanges
-            var lines = conversation.Split('\n');
-            if (lines.Length <= 6) // Keep at least 3 exchanges (6 lines)
-                return conversation;
-
-            // Keep last 6 lines (3 exchanges)
-            return string.Join("\n", lines.Skip(lines.Length - 6));
-        }
-
-        #endregion
     }
 }

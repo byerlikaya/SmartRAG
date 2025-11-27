@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 using SmartRAG.Entities;
-using SmartRAG.Interfaces;
+using SmartRAG.Interfaces.Document;
 using SmartRAG.Models;
 using System;
 using System.Collections.Generic;
@@ -28,20 +28,15 @@ namespace SmartRAG.Repositories
 
         #region Constants
 
-        // Search constants  
         private const int DefaultMaxSearchResults = 5;
 
-        // Collection constants
         private const int MinDocumentCapacity = 1;
-        private const int MaxConversationLength = 2000;
-        private const int MaxSessions = 1000;
 
         #endregion
 
         #region Fields
 
         private readonly List<SmartRAG.Entities.Document> _documents = new List<SmartRAG.Entities.Document>();
-        private readonly Dictionary<string, string> _conversations = new Dictionary<string, string>();
         private readonly object _lock = new object();
 
 
@@ -70,6 +65,9 @@ namespace SmartRAG.Repositories
                         var removedCount = RemoveOldestDocuments();
                         RepositoryLogMessages.LogOldDocumentsRemoved(Logger, removedCount, _config.MaxDocuments, null);
                     }
+
+                    SmartRAG.Services.Helpers.DocumentValidator.ValidateDocument(document);
+                    SmartRAG.Services.Helpers.DocumentValidator.ValidateChunks(document);
 
                     _documents.Add(document);
                     RepositoryLogMessages.LogDocumentAdded(Logger, document.FileName, document.Id, null);
@@ -125,6 +123,15 @@ namespace SmartRAG.Repositories
                     RepositoryLogMessages.LogDocumentsRetrievalFailed(Logger, ex);
                     throw;
                 }
+            }
+        }
+
+        public Task<bool> ClearAllAsync()
+        {
+            lock (_lock)
+            {
+                _documents.Clear();
+                return Task.FromResult(true);
             }
         }
 
@@ -247,103 +254,6 @@ namespace SmartRAG.Repositories
 
         #endregion
 
-        #region Conversation Methods
 
-        public Task<string> GetConversationHistoryAsync(string sessionId)
-        {
-            if (string.IsNullOrWhiteSpace(sessionId))
-                return Task.FromResult(string.Empty);
-
-            lock (_lock)
-            {
-                return Task.FromResult(_conversations.TryGetValue(sessionId, out var history) ? history : string.Empty);
-            }
-        }
-
-        public Task AddToConversationAsync(string sessionId, string question, string answer)
-        {
-            if (string.IsNullOrWhiteSpace(sessionId))
-                return Task.CompletedTask;
-
-            lock (_lock)
-            {
-                // Clean up old sessions if we have too many
-                if (_conversations.Count >= MaxSessions)
-                {
-                    CleanupOldSessions();
-                }
-
-                // If question is empty, this is a special case (like session-id storage)
-                if (string.IsNullOrEmpty(question))
-                {
-                    _conversations[sessionId] = answer;
-                    return Task.CompletedTask;
-                }
-
-                var currentHistory = _conversations.TryGetValue(sessionId, out var existing) ? existing : string.Empty;
-                var newEntry = string.IsNullOrEmpty(currentHistory)
-                    ? $"User: {question}\nAssistant: {answer}"
-                    : $"{currentHistory}\nUser: {question}\nAssistant: {answer}";
-
-                // Limit conversation length to prevent memory issues
-                if (newEntry.Length > MaxConversationLength)
-                {
-                    newEntry = TruncateConversation(newEntry);
-                }
-
-                _conversations[sessionId] = newEntry;
-            }
-
-            return Task.CompletedTask;
-        }
-
-        public Task ClearConversationAsync(string sessionId)
-        {
-            if (string.IsNullOrWhiteSpace(sessionId))
-                return Task.CompletedTask;
-
-            lock (_lock)
-            {
-                _conversations.Remove(sessionId);
-            }
-
-            return Task.CompletedTask;
-        }
-
-        public Task<bool> SessionExistsAsync(string sessionId)
-        {
-            if (string.IsNullOrWhiteSpace(sessionId))
-                return Task.FromResult(false);
-
-            lock (_lock)
-            {
-                return Task.FromResult(_conversations.ContainsKey(sessionId));
-            }
-        }
-
-        private void CleanupOldSessions()
-        {
-            // Simple cleanup: remove oldest sessions
-            var sessionsToRemove = _conversations.Count - MaxSessions + 100;
-            var keysToRemove = _conversations.Keys.Take(sessionsToRemove).ToList();
-
-            foreach (var key in keysToRemove)
-            {
-                _conversations.Remove(key);
-            }
-        }
-
-        private static string TruncateConversation(string conversation)
-        {
-            // Keep only the last few exchanges
-            var lines = conversation.Split('\n');
-            if (lines.Length <= 6) // Keep at least 3 exchanges (6 lines)
-                return conversation;
-
-            // Keep last 6 lines (3 exchanges)
-            return string.Join("\n", lines.Skip(lines.Length - 6));
-        }
-
-        #endregion
     }
 }

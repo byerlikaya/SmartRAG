@@ -5,7 +5,7 @@
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
-    <PackageVersion>3.1.0</PackageVersion>
+    <PackageVersion>3.2.0</PackageVersion>
     <Authors>Barış Yerlikaya</Authors>
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
@@ -20,34 +20,53 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Release 3.1.0: Unified Query Intelligence (MINOR Release)
+    <PackageReleaseNotes>Release 3.2.0: Architectural Refactoring &amp; Modular Design (MINOR Release - 2025-11-27)
 
-UNIFIED QUERY INTELLIGENCE (NEW FEATURES):
-- QueryIntelligenceAsync now supports unified search across databases, documents, images (OCR), and audio (transcription) in a single query
-- Smart Hybrid Routing: AI-based intent detection with confidence scoring automatically determines optimal search strategy
-- New Service Architecture: QueryIntentAnalyzer, DatabaseQueryExecutor, ResultMerger, SQLQueryGenerator services for modular design
-- QueryStrategy Enum: New enum for query execution strategies (DatabaseOnly, DocumentOnly, Hybrid)
-- Parallel Query Execution: Multi-database queries execute in parallel for better performance
-- Intelligent Result Merging: AI-powered merging of results from multiple databases
-- Intelligent query routing with graceful degradation and fallback mechanisms
+ARCHITECTURAL REFACTORING:
+- Strategy Pattern Implementation: ISqlDialectStrategy, IScoringStrategy, IFileParser
+- Repository Layer Separation: IConversationRepository separated from IDocumentRepository
+- Service Layer Refactoring: AI, Database, Search, Parser, and Support services decomposed
+- Model Consolidation: DatabaseSchema and DatabaseSchemaInfo unified
 
-CODE QUALITY IMPROVEMENTS:
-- Achieved 0 errors, 0 warnings across all projects
-- Improved code standards compliance
+NEW FEATURES:
+- SearchOptions: Per-request search configuration with flag-based filtering (-db, -d, -a, -i)
+- FeatureToggles: Global feature flag configuration
+- ContextExpansionService: Adjacent chunk context expansion
+- FileParserResult: Standardized parser result structure
+- DatabaseFileParser: SQLite database file parsing support
+- Native Library Inclusion: Tesseract OCR native libraries bundled (Windows, macOS, Linux)
+- Nullable Reference Types: Enhanced null safety across 14+ files
+- ClearAllAsync Methods: Efficient bulk deletion operations
+- Collection Management: Enhanced Qdrant collection operations
+- Tesseract On-Demand Language Data: Automatic language support (30+ languages)
+- Currency Symbol Correction: Improved OCR accuracy for financial documents
+- Parallel Batch Processing: Ollama embeddings performance optimization
+- Query Tokens Parameter: Pre-computed token support for performance
+- Native Qdrant Text Search: Token-based filtering for improved search performance
 
-AI PROMPT OPTIMIZATION:
-- Reduced emoji usage in AI prompts from 235 to 5 (only critical emojis)
-- Improved token efficiency (~100 tokens saved per prompt)
-- Better AI comprehension through strategic emoji usage
+IMPROVEMENTS:
+- Language-Agnostic Code: Removed domain-specific and language-specific references
+- Unicode Normalization: Better text retrieval across all languages
+- PDF OCR Encoding: Automatic fallback handling
+- Numbered List Detection: Improved counting query accuracy
+- RAG Scoring: Enhanced relevance calculation with unique keyword bonus
+- Document Search: Adaptive threshold and chunk prioritization
+- Prompt Builder: Enhanced AI answer generation
+- Qdrant Performance: Optimized GetAllAsync implementation
 
-BENEFITS:
-- Single query interface for all data sources (databases, documents, images, audio)
-- Intelligent routing automatically selects best search strategy
-- Cleaner codebase with zero warnings
-- More efficient AI prompt processing
-- Better maintainability and code quality
+FIXES:
+- Table Alias Enforcement: Prevents ambiguous column errors in SQL generation
+- EnableDatabaseSearch Config: Proper feature flag handling
+- macOS Native Libraries: OCR library inclusion and DYLD_LIBRARY_PATH configuration
+- Missing Method Signature: DocumentSearchService restoration
 
-This release introduces unified query intelligence and focuses on code quality improvements for better performance and maintainability.</PackageReleaseNotes>
+CODE QUALITY:
+- Maintained 0 errors, 0 warnings
+- Full SOLID compliance
+- Improved testability and extensibility
+- Language-agnostic codebase
+
+This release introduces significant architectural improvements and new features while maintaining full backward compatibility.</PackageReleaseNotes>
     
     <!-- Build Configuration -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -58,8 +77,8 @@ This release introduces unified query intelligence and focuses on code quality i
     <AssemblyTitle>SmartRAG</AssemblyTitle>
     <AssemblyDescription>High-performance RAG library with conversation history management for .NET</AssemblyDescription>
     <AssemblyCopyright>Copyright © 2025 Barış Yerlikaya</AssemblyCopyright>
-    <AssemblyVersion>3.1.0.0</AssemblyVersion>
-    <FileVersion>3.1.0.0</FileVersion>
+    <AssemblyVersion>3.2.0.0</AssemblyVersion>
+    <FileVersion>3.2.0.0</FileVersion>
     <NeutralLanguage>en</NeutralLanguage>
     <Culture>en-US</Culture>
   </PropertyGroup>
@@ -82,11 +101,11 @@ This release introduces unified query intelligence and focuses on code quality i
     
     <!-- Vector Database Support -->
     <PackageReference Include="Qdrant.Client" Version="1.15.1" />
-    <PackageReference Include="StackExchange.Redis" Version="2.9.32" />
+    <PackageReference Include="StackExchange.Redis" Version="2.10.1" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.10" />
     
     <!-- Database Connectivity -->
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.2" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.3" />
     <PackageReference Include="MySql.Data" Version="9.5.0" />
     <PackageReference Include="Npgsql" Version="8.0.8" />
     
@@ -94,7 +113,7 @@ This release introduces unified query intelligence and focuses on code quality i
     <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
     <!-- Document Parsing -->
     <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
-    <PackageReference Include="itext" Version="9.3.0" />
+    <PackageReference Include="itext" Version="9.4.0" />
     <PackageReference Include="EPPlus" Version="8.2.1" />
     
     <!-- OCR and Image Processing -->
@@ -106,7 +125,7 @@ This release introduces unified query intelligence and focuses on code quality i
     <PackageReference Include="Whisper.net" Version="1.8.1" />
     <PackageReference Include="Whisper.net.Runtime" Version="1.8.1" PrivateAssets="All" />
     <!-- FFMpegCore for cross-platform audio format conversion (MP3, M4A, FLAC → WAV) -->
-    <PackageReference Include="FFMpegCore" Version="5.3.0" />
+    <PackageReference Include="FFMpegCore" Version="5.4.0" />
     
     <!-- Xabe.FFmpeg for automatic FFmpeg binary download (self-contained) -->
     <PackageReference Include="Xabe.FFmpeg.Downloader" Version="6.0.2" />
@@ -123,6 +142,72 @@ This release introduces unified query intelligence and focuses on code quality i
   <ItemGroup>
     <Content Include="tessdata\eng.traineddata" Pack="false">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <!-- Native Libraries for Tesseract OCR - Included in NuGet package and copied to output -->
+  <!-- Native libraries are already included in runtimes/ folder, no download needed -->
+  
+  <ItemGroup>
+    <!-- Windows x64 - For NuGet package -->
+    <None Include="runtimes\win-x64\native\*.dll" Pack="true" PackagePath="runtimes\win-x64\native\%(Filename)%(Extension)" Condition="Exists('runtimes\win-x64\native')" />
+    
+    <!-- macOS x64 (Intel) - For NuGet package -->
+    <None Include="runtimes/osx-x64/native/*.dylib" Pack="true" PackagePath="runtimes/osx-x64/native/%(Filename)%(Extension)" Condition="Exists('runtimes/osx-x64/native')" />
+    
+    <!-- macOS ARM64 (Apple Silicon) - For NuGet package -->
+    <None Include="runtimes/osx-arm64/native/*.dylib" Pack="true" PackagePath="runtimes/osx-arm64/native/%(Filename)%(Extension)" Condition="Exists('runtimes/osx-arm64/native')" />
+    <!-- Ensure libleptonica-1.82.0.dylib is included (Tesseract.NET expects this name) -->
+    <None Include="runtimes/osx-arm64/native/libleptonica-1.82.0.dylib" Pack="true" PackagePath="runtimes/osx-arm64/native/libleptonica-1.82.0.dylib" Condition="Exists('runtimes/osx-arm64/native/libleptonica-1.82.0.dylib')" />
+    
+    <!-- Linux x64 - For NuGet package -->
+    <None Include="runtimes/linux-x64/native/*.so" Pack="true" PackagePath="runtimes/linux-x64/native/%(Filename)%(Extension)" Condition="Exists('runtimes/linux-x64/native')" />
+    
+    <!-- Copy native libraries to output for project references (development) -->
+    <!-- Copy to runtimes/osx-arm64/native -->
+    <Content Include="runtimes/osx-arm64/native/*.dylib" Condition="Exists('runtimes/osx-arm64/native') And '$(OS)' == 'Unix'">
+      <Link>runtimes/osx-arm64/native/%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Pack>false</Pack>
+    </Content>
+    <!-- Copy to root output directory (Tesseract.NET searches here) -->
+    <Content Include="runtimes/osx-arm64/native/libleptonica-1.82.0.dylib" Condition="Exists('runtimes/osx-arm64/native/libleptonica-1.82.0.dylib') And '$(OS)' == 'Unix'">
+      <Link>%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Pack>false</Pack>
+    </Content>
+    <Content Include="runtimes/osx-arm64/native/libtesseract*.dylib" Condition="Exists('runtimes/osx-arm64/native') And '$(OS)' == 'Unix'">
+      <Link>%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Pack>false</Pack>
+    </Content>
+    <!-- Create libtesseract50.dylib alias (Tesseract.NET expects this name) -->
+    <Content Include="runtimes/osx-arm64/native/libtesseract.5.dylib" Condition="Exists('runtimes/osx-arm64/native/libtesseract.5.dylib') And '$(OS)' == 'Unix'">
+      <Link>libtesseract50.dylib</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Pack>false</Pack>
+    </Content>
+    <!-- Copy to x64 directory (Tesseract.NET searches here for "x64" platform) -->
+    <Content Include="runtimes/osx-arm64/native/libleptonica-1.82.0.dylib" Condition="Exists('runtimes/osx-arm64/native/libleptonica-1.82.0.dylib') And '$(OS)' == 'Unix'">
+      <Link>x64/%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Pack>false</Pack>
+    </Content>
+    <Content Include="runtimes/osx-arm64/native/libtesseract*.dylib" Condition="Exists('runtimes/osx-arm64/native') And '$(OS)' == 'Unix'">
+      <Link>x64/%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Pack>false</Pack>
+    </Content>
+    <!-- Copy to x86 directory (fallback) -->
+    <Content Include="runtimes/osx-arm64/native/libleptonica-1.82.0.dylib" Condition="Exists('runtimes/osx-arm64/native/libleptonica-1.82.0.dylib') And '$(OS)' == 'Unix'">
+      <Link>x86/%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Pack>false</Pack>
+    </Content>
+    <Content Include="runtimes/osx-arm64/native/libtesseract*.dylib" Condition="Exists('runtimes/osx-arm64/native') And '$(OS)' == 'Unix'">
+      <Link>x86/%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <Pack>false</Pack>
     </Content>
   </ItemGroup>
 

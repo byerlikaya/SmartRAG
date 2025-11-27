@@ -2,40 +2,27 @@ using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartRAG.Entities;
-using SmartRAG.Interfaces;
+using SmartRAG.Interfaces.Document;
 using SmartRAG.Models;
+using SmartRAG.Services.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Repositories
 {
-
     /// <summary>
     /// SQLite document repository implementation
     /// </summary>
     public class SqliteDocumentRepository : IDocumentRepository, IDisposable
     {
         #region Constants
-        private const int MaxChunkContentLength = 1000000; // 1MB limit for chunk content
-        private const int MaxChunkIndex = 10000; // Reasonable limit for chunk index
-        private const int MinRelevanceScore = -1;
-        private const int MaxRelevanceScore = 1;
-        private const int MaxEmbeddingVectorSize = 10000; // Reasonable limit for embedding vector size
-        private const int MinEmbeddingValue = -1000;
-        private const int MaxEmbeddingValue = 1000;
-        private const int MaxAbsoluteValue = 100;
-        private const int MinValueThreshold = 0;
-        private const int DefaultMaxSearchResults = 5;
-        private const int OpenAIVectorDimension = 1536;
-        private const int SentenceTransformersDimension = 768;
         private const string DateTimeFormat = "O";
         private const string ForeignKeysEnabled = "Foreign Keys=True";
-        private const int MaxConversationLength = 2000;
+        private const int DefaultMaxSearchResults = 10;
         #endregion
 
         #region Fields
@@ -121,136 +108,7 @@ namespace SmartRAG.Repositories
         CREATE INDEX IF NOT EXISTS IX_Documents_ContentType ON Documents(ContentType);
         CREATE INDEX IF NOT EXISTS IX_Documents_UploadedAt ON Documents(UploadedAt);
         CREATE INDEX IF NOT EXISTS IX_Chunks_DocumentId ON DocumentChunks(DocumentId);
-        
-        CREATE TABLE IF NOT EXISTS Conversations (
-            SessionId TEXT PRIMARY KEY,
-            History TEXT NOT NULL,
-            LastUpdated TEXT NOT NULL
-        );
-        
-        CREATE INDEX IF NOT EXISTS IX_Conversations_LastUpdated ON Conversations(LastUpdated);
     ";
-
-        #region Public Methods
-        public Task<SmartRAG.Entities.Document> AddAsync(SmartRAG.Entities.Document document)
-        {
-            try
-            {
-                ValidateDocument(document);
-                ValidateChunks(document);
-
-                if (_connection.State != System.Data.ConnectionState.Open)
-                {
-                    _connection.Open();
-                }
-
-                using (var transaction = _connection.BeginTransaction())
-                {
-                    try
-                    {
-                        InsertDocument(document);
-                        InsertChunks(document);
-
-                        transaction.Commit();
-                        RepositoryLogMessages.LogSqliteDocumentAdded(Logger, document.FileName, document.Id, null);
-                        return Task.FromResult(document);
-                    }
-                    catch (Exception ex)
-                    {
-                        transaction.Rollback();
-                        RepositoryLogMessages.LogSqliteDocumentAddFailed(Logger, document.FileName, ex);
-                        throw new InvalidOperationException($"Failed to add document '{document.FileName}': {ex.Message}", ex);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                RepositoryLogMessages.LogSqliteDocumentAddFailed(Logger, document?.FileName ?? "Unknown", ex);
-                throw;
-            }
-        }
-
-        private static void ValidateDocument(SmartRAG.Entities.Document document)
-        {
-            if (document == null)
-                throw new ArgumentNullException(nameof(document));
-
-            if (string.IsNullOrEmpty(document.FileName))
-                throw new ArgumentException("FileName cannot be null or empty", nameof(document));
-
-            if (string.IsNullOrEmpty(document.Content))
-                throw new ArgumentException("Content cannot be null or empty", nameof(document));
-
-            if (document.Chunks == null || document.Chunks.Count == 0)
-                throw new ArgumentException("Document must have at least one chunk", nameof(document));
-        }
-
-        private static void ValidateChunks(SmartRAG.Entities.Document document)
-        {
-            foreach (var chunk in document.Chunks)
-            {
-                if (chunk == null)
-                    throw new ArgumentException($"Chunk cannot be null for document {document.FileName} (ID: {document.Id})");
-
-                if (string.IsNullOrEmpty(chunk.Content))
-                    throw new ArgumentException($"Chunk content cannot be null or empty for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-                if (chunk.ChunkIndex < 0)
-                    throw new ArgumentException($"Chunk index cannot be negative for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-                if (chunk.Id == Guid.Empty)
-                    throw new ArgumentException($"Chunk ID cannot be empty for chunk in document {document.FileName} (ID: {document.Id})");
-
-                if (chunk.DocumentId != document.Id)
-                    throw new ArgumentException($"Chunk DocumentId mismatch: chunk has {chunk.DocumentId}, document has {document.Id}");
-
-                if (chunk.CreatedAt == default)
-                    throw new ArgumentException($"Chunk CreatedAt cannot be default for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-                if (chunk.Content.Length > MaxChunkContentLength)
-                    throw new ArgumentException($"Chunk content too large ({chunk.Content.Length} characters) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-                if (chunk.ChunkIndex > MaxChunkIndex)
-                    throw new ArgumentException($"Chunk index too large ({chunk.ChunkIndex}) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-                if (chunk.RelevanceScore < MinRelevanceScore || chunk.RelevanceScore > MaxRelevanceScore)
-                    throw new ArgumentException($"Chunk RelevanceScore must be between {MinRelevanceScore} and {MaxRelevanceScore} for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-                ValidateChunkEmbedding(chunk, document);
-            }
-        }
-
-        private static void ValidateChunkEmbedding(DocumentChunk chunk, SmartRAG.Entities.Document document)
-        {
-            if (chunk.Embedding == null) return;
-
-            if (chunk.Embedding.Count > MaxEmbeddingVectorSize)
-                throw new ArgumentException($"Chunk embedding vector too large ({chunk.Embedding.Count} dimensions) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-            if (chunk.Embedding.Any(f => float.IsNaN(f) || float.IsInfinity(f)))
-                throw new ArgumentException($"Chunk embedding contains invalid values (NaN or Infinity) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-            if (chunk.Embedding.Any(f => f < MinEmbeddingValue || f > MaxEmbeddingValue))
-                throw new ArgumentException($"Chunk embedding contains values outside reasonable range [{MinEmbeddingValue}, {MaxEmbeddingValue}] for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-            if (chunk.Embedding.Count != 0 && chunk.Embedding.Count != SentenceTransformersDimension && chunk.Embedding.Count != OpenAIVectorDimension)
-                throw new ArgumentException($"Chunk embedding vector size must be 0, {SentenceTransformersDimension}, or {OpenAIVectorDimension} dimensions, got {chunk.Embedding.Count} for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-            if (chunk.Embedding.Count > 0 && chunk.Embedding.All(f => f == 0))
-                throw new ArgumentException($"Chunk embedding vector contains only zeros for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-            if (chunk.Embedding.Count > 0 && chunk.Embedding.All(f => Math.Abs(f) < MinValueThreshold))
-                throw new ArgumentException($"Chunk embedding vector contains only very small values (< {MinValueThreshold}) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-            if (chunk.Embedding.Count > 0 && chunk.Embedding.Any(f => Math.Abs(f) > MaxAbsoluteValue))
-                throw new ArgumentException($"Chunk embedding vector contains values with absolute value > {MaxAbsoluteValue} for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-            if (chunk.Embedding.Count > 0 && chunk.Embedding.Any(f => f != 0 && Math.Abs(f) < float.Epsilon))
-                throw new ArgumentException($"Chunk embedding vector contains subnormal values for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-            if (chunk.Embedding.Count > 0 && chunk.Embedding.Any(f => float.IsNegativeInfinity(f) || float.IsPositiveInfinity(f)))
-                throw new ArgumentException($"Chunk embedding vector contains infinity values for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-        }
 
         private void InsertDocument(SmartRAG.Entities.Document document)
         {
@@ -344,65 +202,29 @@ namespace SmartRAG.Repositories
                 : JsonSerializer.Deserialize<List<float>>(GetStringSafe(reader, "Embedding")) ?? new List<float>()
         };
 
-        // Helper methods for safe reading from SQLite reader
         private static string GetStringSafe(SqliteDataReader reader, string columnName)
         {
-            try
-            {
-                return reader.GetString(reader.GetOrdinal(columnName));
-            }
-            catch
-            {
-                return string.Empty;
-            }
+            try { return reader.GetString(reader.GetOrdinal(columnName)); } catch { return string.Empty; }
         }
 
         private static int GetInt32Safe(SqliteDataReader reader, string columnName)
         {
-            try
-            {
-                return reader.GetInt32(reader.GetOrdinal(columnName));
-            }
-            catch
-            {
-                return 0;
-            }
+            try { return reader.GetInt32(reader.GetOrdinal(columnName)); } catch { return 0; }
         }
 
         private static long GetInt64Safe(SqliteDataReader reader, string columnName)
         {
-            try
-            {
-                return reader.GetInt64(reader.GetOrdinal(columnName));
-            }
-            catch
-            {
-                return 0L;
-            }
+            try { return reader.GetInt64(reader.GetOrdinal(columnName)); } catch { return 0L; }
         }
 
         private static double GetDoubleSafe(SqliteDataReader reader, string columnName)
         {
-            try
-            {
-                return reader.GetDouble(reader.GetOrdinal(columnName));
-            }
-            catch
-            {
-                return 0.0;
-            }
+            try { return reader.GetDouble(reader.GetOrdinal(columnName)); } catch { return 0.0; }
         }
 
         private static bool IsDBNullSafe(SqliteDataReader reader, string columnName)
         {
-            try
-            {
-                return reader.IsDBNull(reader.GetOrdinal(columnName));
-            }
-            catch
-            {
-                return true;
-            }
+            try { return reader.IsDBNull(reader.GetOrdinal(columnName)); } catch { return true; }
         }
 
         private static string GetDocumentsWithChunksSql() => @"
@@ -441,6 +263,44 @@ namespace SmartRAG.Repositories
         ORDER BY c.RelevanceScore DESC, c.CreatedAt DESC
         LIMIT @MaxResults
     ";
+        #endregion
+
+        #region Public Methods
+        public async Task<SmartRAG.Entities.Document> AddAsync(SmartRAG.Entities.Document document)
+        {
+            try
+            {
+                DocumentValidator.ValidateDocument(document);
+
+                if (_connection.State != System.Data.ConnectionState.Open)
+                {
+                    _connection.Open();
+                }
+
+                using (var transaction = _connection.BeginTransaction())
+                {
+                    try
+                    {
+                        InsertDocument(document);
+                        InsertChunks(document);
+                        transaction.Commit();
+                        RepositoryLogMessages.LogDocumentAdded(_logger, document.FileName, document.Id, null);
+                        return document;
+                    }
+                    catch (Exception ex)
+                    {
+                        transaction.Rollback();
+                        RepositoryLogMessages.LogSqliteDocumentAddFailed(Logger, document.FileName, ex);
+                        throw new InvalidOperationException($"Failed to add document '{document.FileName}': {ex.Message}", ex);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                RepositoryLogMessages.LogSqliteDocumentAddFailed(Logger, document?.FileName ?? "Unknown", ex);
+                throw;
+            }
+        }
 
         public async Task<SmartRAG.Entities.Document> GetByIdAsync(Guid id)
         {
@@ -457,40 +317,32 @@ namespace SmartRAG.Repositories
                     _connection.Open();
                 }
 
-                using (var command = _connection.CreateCommand())
+                using var command = _connection.CreateCommand();
+                command.CommandText = GetDocumentByIdSql();
+                command.Parameters.AddWithValue("@Id", id.ToString());
+
+                using var reader = command.ExecuteReader();
+                SmartRAG.Entities.Document document = null;
+                var chunks = new List<DocumentChunk>();
+
+                while (await reader.ReadAsync())
                 {
-                    command.CommandText = GetDocumentByIdSql();
+                    document ??= CreateDocumentFromReader(reader);
 
-                    command.Parameters.AddWithValue("@Id", id.ToString());
-
-                    using (var reader = command.ExecuteReader())
+                    if (!IsDBNullSafe(reader, "ChunkId"))
                     {
-                        SmartRAG.Entities.Document document = null;
-                        var chunks = new List<DocumentChunk>();
-
-                        while (await reader.ReadAsync())
-                        {
-                            if (document == null)
-                            {
-                                document = CreateDocumentFromReader(reader);
-                            }
-
-                            if (!IsDBNullSafe(reader, "ChunkId"))
-                            {
-                                var chunk = CreateChunkFromReader(reader, id);
-                                chunks.Add(chunk);
-                            }
-                        }
-
-                        if (document != null)
-                        {
-                            document.Chunks = chunks;
-                            RepositoryLogMessages.LogSqliteDocumentRetrieved(Logger, id, null);
-                        }
-
-                        return document;
+                        var chunk = CreateChunkFromReader(reader, id);
+                        chunks.Add(chunk);
                     }
                 }
+
+                if (document != null)
+                {
+                    document.Chunks = chunks;
+                    RepositoryLogMessages.LogSqliteDocumentRetrieved(Logger, id, null);
+                }
+
+                return document;
             }
             catch (Exception ex)
             {
@@ -557,6 +409,24 @@ namespace SmartRAG.Repositories
             {
                 RepositoryLogMessages.LogSqliteDocumentsRetrievalFailed(Logger, ex);
                 return new List<SmartRAG.Entities.Document>();
+            }
+        }
+
+        public async Task<bool> ClearAllAsync()
+        {
+            try
+            {
+                var documents = await GetAllAsync();
+                foreach (var doc in documents)
+                {
+                    await DeleteAsync(doc.Id);
+                }
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to clear all documents from SQLite");
+                return false;
             }
         }
 
@@ -639,6 +509,7 @@ namespace SmartRAG.Repositories
             }
             return 0;
         }
+
         public async Task<Dictionary<string, object>> GetStatisticsAsync()
         {
             try
@@ -690,7 +561,6 @@ namespace SmartRAG.Repositories
         {
             try
             {
-                // Validate input
                 if (string.IsNullOrEmpty(query))
                     return Task.FromResult(new List<DocumentChunk>());
 
@@ -731,170 +601,6 @@ namespace SmartRAG.Repositories
                 return Task.FromResult(new List<DocumentChunk>());
             }
         }
-        #endregion
-
-        #endregion
-
-        #region Conversation Methods
-
-        public async Task<string> GetConversationHistoryAsync(string sessionId)
-        {
-            if (string.IsNullOrWhiteSpace(sessionId))
-                return string.Empty;
-
-            try
-            {
-                if (_connection.State != System.Data.ConnectionState.Open)
-                {
-                    _connection.Open();
-                }
-
-                using (var command = _connection.CreateCommand())
-                {
-                    command.CommandText = "SELECT History FROM Conversations WHERE SessionId = @SessionId";
-                    command.Parameters.AddWithValue("@SessionId", sessionId);
-
-                    var result = await Task.Run(() => command.ExecuteScalar());
-                    return result?.ToString() ?? string.Empty;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting conversation history for session {SessionId}", sessionId);
-                return string.Empty;
-            }
-        }
-
-        public async Task AddToConversationAsync(string sessionId, string question, string answer)
-        {
-            if (string.IsNullOrWhiteSpace(sessionId))
-                return;
-
-            try
-            {
-                // If question is empty, this is a special case (like session-id storage)
-                if (string.IsNullOrEmpty(question))
-                {
-                    if (_connection.State != System.Data.ConnectionState.Open)
-                    {
-                        _connection.Open();
-                    }
-
-                    using (var command = _connection.CreateCommand())
-                    {
-                        command.CommandText = @"
-                            INSERT OR REPLACE INTO Conversations (SessionId, History, LastUpdated) 
-                            VALUES (@SessionId, @History, @LastUpdated)";
-
-                        command.Parameters.AddWithValue("@SessionId", sessionId);
-                        command.Parameters.AddWithValue("@History", answer);
-                        command.Parameters.AddWithValue("@LastUpdated", DateTime.UtcNow);
-
-                        await Task.Run(() => command.ExecuteNonQuery());
-                    }
-                    return;
-                }
-
-                var currentHistory = await GetConversationHistoryAsync(sessionId);
-                var newEntry = string.IsNullOrEmpty(currentHistory)
-                    ? $"User: {question}\nAssistant: {answer}"
-                    : $"{currentHistory}\nUser: {question}\nAssistant: {answer}";
-
-                // Limit conversation length to prevent memory issues
-                if (newEntry.Length > MaxConversationLength)
-                {
-                    newEntry = TruncateConversation(newEntry);
-                }
-
-                if (_connection.State != System.Data.ConnectionState.Open)
-                {
-                    _connection.Open();
-                }
-
-                using (var command = _connection.CreateCommand())
-                {
-                    command.CommandText = @"
-                        INSERT OR REPLACE INTO Conversations (SessionId, History, LastUpdated) 
-                        VALUES (@SessionId, @History, @LastUpdated)";
-
-                    command.Parameters.AddWithValue("@SessionId", sessionId);
-                    command.Parameters.AddWithValue("@History", newEntry);
-                    command.Parameters.AddWithValue("@LastUpdated", DateTime.UtcNow);
-
-                    await Task.Run(() => command.ExecuteNonQuery());
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error adding to conversation for session {SessionId}", sessionId);
-            }
-        }
-
-        public async Task ClearConversationAsync(string sessionId)
-        {
-            if (string.IsNullOrWhiteSpace(sessionId))
-                return;
-
-            try
-            {
-                if (_connection.State != System.Data.ConnectionState.Open)
-                {
-                    _connection.Open();
-                }
-
-                using (var command = _connection.CreateCommand())
-                {
-                    command.CommandText = "DELETE FROM Conversations WHERE SessionId = @SessionId";
-                    command.Parameters.AddWithValue("@SessionId", sessionId);
-
-                    await Task.Run(() => command.ExecuteNonQuery());
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error clearing conversation for session {SessionId}", sessionId);
-            }
-        }
-
-        public async Task<bool> SessionExistsAsync(string sessionId)
-        {
-            if (string.IsNullOrWhiteSpace(sessionId))
-                return false;
-
-            try
-            {
-                if (_connection.State != System.Data.ConnectionState.Open)
-                {
-                    _connection.Open();
-                }
-
-                using (var command = _connection.CreateCommand())
-                {
-                    command.CommandText = "SELECT COUNT(*) FROM Conversations WHERE SessionId = @SessionId";
-                    command.Parameters.AddWithValue("@SessionId", sessionId);
-
-                    var result = await Task.Run(() => command.ExecuteScalar());
-                    return Convert.ToInt32(result) > 0;
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error checking session existence for {SessionId}", sessionId);
-                return false;
-            }
-        }
-
-        private static string TruncateConversation(string conversation)
-        {
-            // Keep only the last few exchanges
-            var lines = conversation.Split('\n');
-            if (lines.Length <= 6) // Keep at least 3 exchanges (6 lines)
-                return conversation;
-
-            // Keep last 6 lines (3 exchanges)
-            return string.Join("\n", lines.Skip(lines.Length - 6));
-        }
-
         #endregion
 
         #region IDisposable Implementation

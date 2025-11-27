@@ -87,6 +87,8 @@ var response = await searchService.QueryIntelligenceAsync(
 
 📄 **Multi-Modal Intelligence** - PDF, Word, Excel, Images (OCR), Audio (Speech-to-Text), and more  
 
+🧩 **Modular Architecture** - Strategy Pattern for SQL dialects, scoring, and file parsing
+
 🏠 **100% Local Processing** - GDPR, KVKK, HIPAA compliant
 
 🚀 **Production Ready** - Enterprise-grade, thread-safe, high performance

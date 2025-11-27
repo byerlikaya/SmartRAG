@@ -174,50 +174,42 @@ public class DocumentHandler(
     {
         await Task.CompletedTask;
         
-        System.Console.WriteLine("📁 File Selection Options:");
-        System.Console.WriteLine("1. Type file path manually");
-        System.Console.WriteLine("2. Drag & drop file (paste path)");
         System.Console.WriteLine();
+        System.Console.WriteLine("💡 Tip: You can drag and drop a file into the terminal.");
         
-        var choice = _console.ReadLine("Choose option (1-2): ")?.Trim();
+        var filePath = _console.ReadLine("Enter file path: ")?.Trim().Trim('"');
         
-        if (choice == "1")
+        // Paths copied from Windows Explorer usually come with quotes
+        if (!string.IsNullOrEmpty(filePath))
         {
-            return _console.ReadLine("Enter file path: ")?.Trim().Trim('"');
-        }
-        else if (choice == "2")
-        {
-            System.Console.WriteLine();
-            System.Console.WriteLine("💡 Instructions:");
-            System.Console.WriteLine("  1. Select file in Windows Explorer");
-            System.Console.WriteLine("  2. Press Ctrl+C to copy");
-            System.Console.WriteLine("  3. Press Ctrl+V to paste here");
-            System.Console.WriteLine();
+            // Remove quote marks
+            filePath = filePath.Trim('"');
             
-            var filePath = _console.ReadLine("Paste file path here: ")?.Trim().Trim('"');
-            
-            // Paths copied from Windows Explorer usually come with quotes
-            if (!string.IsNullOrEmpty(filePath))
+            // Mac terminal drag & drop fix: remove backslash escapes for spaces
+            // Example: /Users/user/My\ Documents/file.pdf -> /Users/user/My Documents/file.pdf
+            if (!filePath.Contains(":\\")) // Don't do this for Windows paths
             {
-                // Remove quote marks
-                filePath = filePath.Trim('"');
-                
-                // Normalize Windows paths
-                if (filePath.Contains("\\"))
-                {
-                    filePath = filePath.Replace("\\", Path.DirectorySeparatorChar.ToString());
-                }
-                
-                return filePath;
+                filePath = filePath.Replace("\\ ", " ");
+                filePath = filePath.Replace("\\(", "(");
+                filePath = filePath.Replace("\\)", ")");
             }
             
-            return null;
+            // Normalize Windows paths
+            if (filePath.Contains("\\") && !filePath.Contains(":\\")) // Only if not a Windows path
+            {
+                // This might be risky if it's a legitimate backslash in a filename on Linux/Mac, 
+                // but usually it's a separator or escape char.
+                // For now, let's stick to the specific escape replacements above for Mac.
+            }
+            else if (filePath.Contains("\\"))
+            {
+                    filePath = filePath.Replace("\\", Path.DirectorySeparatorChar.ToString());
+            }
+            
+            return filePath;
         }
-        else
-        {
-            _console.WriteError("Invalid choice!");
-            return null;
-        }
+        
+        return null;
     }
 
     private static string GetContentType(string filePath)

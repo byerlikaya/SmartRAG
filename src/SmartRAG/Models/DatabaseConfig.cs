@@ -76,11 +76,15 @@ namespace SmartRAG.Models
         public bool SanitizeSensitiveData { get; set; } = true;
 
         /// <summary>
-        /// List of column names that contain sensitive data
+        /// List of column name patterns that contain sensitive data
+        /// These are generic security patterns applicable to any domain
         /// </summary>
         public List<string> SensitiveColumns { get; set; } = new List<string>
         {
-            "password", "ssn", "social_security", "credit_card", "email", "phone"
+            "password", "pwd", "pass", "secret", "token", "key",
+            "ssn", "social_security", "social_security_number",
+            "credit_card", "creditcard", "cc_number", "card_number",
+            "email", "email_address", "phone", "phone_number", "mobile"
         };
 
         /// <summary>

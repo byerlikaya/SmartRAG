@@ -67,7 +67,7 @@ public class InitializationService(
         System.Console.WriteLine("2. 🏠 LOCAL Environment (100% Local - No Cloud Required)");
         System.Console.WriteLine("   • AI: Ollama (running on localhost)");
         System.Console.WriteLine("   • Vector Store: Qdrant (local docker container)");
-        System.Console.WriteLine("   • Cache: Redis (local docker container)");
+        System.Console.WriteLine("   • Document Cache: Redis (optional - local docker container)");
         System.Console.WriteLine("   • Databases: Local SQL Server, MySQL, PostgreSQL, SQLite");
         System.Console.WriteLine("   ✅ GDPR/KVKK compliant - All data stays on your machine");
         System.Console.WriteLine();
@@ -84,16 +84,16 @@ public class InitializationService(
         if (useLocalEnvironment)
         {
             System.Console.WriteLine();
-            _console.WriteSuccess("LOCAL Environment selected");
+            _console.WriteSuccess("✓ LOCAL Environment selected");
             System.Console.WriteLine("  AI Provider: Ollama (via Custom provider)");
-            System.Console.WriteLine("  Storage: Redis (Document storage)");
+            System.Console.WriteLine("  Storage: Qdrant (Vector database)");
             System.Console.WriteLine("  Audio: Whisper.net (Local transcription)");
             System.Console.WriteLine();
-            _console.WriteWarning("Note: Make sure Ollama endpoint is configured in appsettings");
+            _console.WriteWarning("⚠️  Note: Make sure Ollama endpoint is configured in appsettings");
             System.Console.WriteLine("     (AI:Custom:Endpoint = http://localhost:11434)");
             System.Console.WriteLine();
 
-            return (true, AIProvider.Custom, StorageProvider.Redis, AudioProvider.Whisper);
+            return (true, AIProvider.Custom, StorageProvider.Qdrant, AudioProvider.Whisper);
         }
 
         System.Console.WriteLine();
@@ -137,26 +137,39 @@ public class InitializationService(
         System.Console.WriteLine("2. 🇩🇪 German (Deutsch)");
         System.Console.WriteLine("3. 🇹🇷 Turkish (Türkçe)");
         System.Console.WriteLine("4. 🇷🇺 Russian (Русский)");
-        System.Console.WriteLine("5. 🌐 Other (specify)");
+        System.Console.WriteLine("5. 🌐 Other (specify ISO code)");
         System.Console.WriteLine();
 
         var choice = _console.ReadLine("Selection (default: English): ");
 
-        var selectedLanguage = choice switch
+        // CRITICAL: Return ISO 639-1 codes (2-letter) for language-agnostic support
+        // This follows the Generic Code rule - no hardcoded language names in the codebase
+        var selectedLanguageCode = choice switch
+        {
+            "1" or "" => "en",
+            "2" => "de",
+            "3" => "tr",
+            "4" => "ru",
+            "5" => GetCustomLanguageCode(),
+            _ => "en"
+        };
+        
+        // Display name for user feedback (local to this method, not stored)
+        var displayName = choice switch
         {
             "1" or "" => "English",
             "2" => "German",
             "3" => "Turkish",
             "4" => "Russian",
-            "5" => GetCustomLanguage(),
+            "5" => selectedLanguageCode,
             _ => "English"
         };
 
         System.Console.WriteLine();
-        _console.WriteSuccess($"Language set to: {selectedLanguage}");
+        _console.WriteSuccess($"Language set to: {displayName} (code: {selectedLanguageCode})");
         System.Console.WriteLine();
 
-        return selectedLanguage;
+        return selectedLanguageCode;
     }
 
     public async Task InitializeServicesAsync(AIProvider aiProvider, StorageProvider storageProvider, AudioProvider audioProvider)
@@ -218,11 +231,11 @@ public class InitializationService(
 
     #region Private Methods
 
-    private string GetCustomLanguage()
+    private string GetCustomLanguageCode()
     {
         System.Console.WriteLine();
-        var customLang = _console.ReadLine("Enter language name (e.g., French, Spanish, Italian): ");
-        return string.IsNullOrWhiteSpace(customLang) ? "English" : customLang.Trim();
+        var customCode = _console.ReadLine("Enter ISO 639-1 language code (e.g., fr, es, it, ja, zh): ");
+        return string.IsNullOrWhiteSpace(customCode) ? "en" : customCode.Trim().ToLowerInvariant();
     }
 
     private async Task DisplayDatabaseStatus()

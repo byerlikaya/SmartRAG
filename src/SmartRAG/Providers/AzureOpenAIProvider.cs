@@ -29,7 +29,6 @@ namespace SmartRAG.Providers
 
         #region Constants
 
-        // Rate limiting constants
         private const int DefaultMaxRetries = 3;
         private const int DefaultMinIntervalMs = 60000; // 60 seconds
 
@@ -37,7 +36,6 @@ namespace SmartRAG.Providers
 
         #region Fields
 
-        // Azure OpenAI S0 tier rate limiting (3 RPM)
         private readonly SemaphoreSlim _rateLimitSemaphore = new SemaphoreSlim(1, 1);
         private DateTime _lastRequestTime = DateTime.MinValue;
 
@@ -112,32 +110,30 @@ namespace SmartRAG.Providers
                 return new List<float>();
             }
 
-            using (var client = CreateHttpClient(config.ApiKey))
+            using var client = CreateHttpClient(config.ApiKey);
+            var payload = new
             {
-                var payload = new
-                {
-                    input = text
-                };
+                input = text
+            };
 
-                var url = BuildAzureUrl(config.Endpoint, config.EmbeddingModel, "embeddings", config.ApiVersion);
+            var url = BuildAzureUrl(config.Endpoint, config.EmbeddingModel, "embeddings", config.ApiVersion);
 
-                var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, config);
+            var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, config);
 
-                if (!success)
-                {
-                    ProviderLogMessages.LogAzureOpenAIEmbeddingRequestError(Logger, error, null);
-                    return new List<float>();
-                }
+            if (!success)
+            {
+                ProviderLogMessages.LogAzureOpenAIEmbeddingRequestError(Logger, error, null);
+                return new List<float>();
+            }
 
-                try
-                {
-                    return ParseEmbeddingResponse(response);
-                }
-                catch (Exception ex)
-                {
-                    ProviderLogMessages.LogAzureOpenAIEmbeddingParsingError(Logger, ex);
-                    return new List<float>();
-                }
+            try
+            {
+                return ParseEmbeddingResponse(response);
+            }
+            catch (Exception ex)
+            {
+                ProviderLogMessages.LogAzureOpenAIEmbeddingParsingError(Logger, ex);
+                return new List<float>();
             }
         }
 
@@ -214,7 +210,6 @@ namespace SmartRAG.Providers
         private async Task<(bool success, string response, string error)> MakeHttpRequestAsyncWithRateLimit(
             HttpClient client, string endpoint, object payload, AIProviderConfig config)
         {
-            // S0 tier: 3 RPM - configurable minimum interval
             var minIntervalMs = Math.Max(0, config.EmbeddingMinIntervalMs ?? DefaultMinIntervalMs);
 
             await _rateLimitSemaphore.WaitAsync();
@@ -223,7 +218,6 @@ namespace SmartRAG.Providers
                 await WaitForRateLimit(minIntervalMs);
                 _lastRequestTime = DateTime.UtcNow;
 
-                // Normal request with retry logic
                 return await MakeHttpRequestAsync(client, endpoint, payload, maxRetries: DefaultMaxRetries);
             }
             finally

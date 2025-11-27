@@ -257,6 +257,27 @@ public class SmartRagMetrics
 
 ---
 
+## Özel Stratejiler
+
+SmartRAG v3.2.0, temel bileşenler için Strateji Deseni'ni (Strategy Pattern) sunarak özel mantık enjekte etmenize olanak tanır.
+
+### Özel Stratejilerin Kaydı
+
+İlgili arayüzleri (interface) uygulayarak kendi stratejilerinizi geliştirebilirsiniz. İşte bunları nasıl kaydedebileceğinize dair örnekler:
+
+```csharp
+// Örnek: Özel bir SQL Diyalekti kaydı (örn. OracleDialectStrategy geliştirdiyseniz)
+services.AddSingleton<ISqlDialectStrategy, OracleDialectStrategy>();
+
+// Örnek: Özel bir Skorlama Stratejisi kaydı
+services.AddSingleton<IScoringStrategy, CustomScoringStrategy>();
+
+// Örnek: Özel bir Dosya Ayrıştırıcı kaydı (örn. Markdown dosyaları için)
+services.AddSingleton<IFileParser, MarkdownFileParser>();
+```
+
+---
+
 ## Örnek Yapılandırmalar
 
 ### Geliştirme Ortamı
