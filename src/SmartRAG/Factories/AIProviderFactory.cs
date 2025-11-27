@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 using SmartRAG.Enums;
-using SmartRAG.Interfaces;
+using SmartRAG.Interfaces.AI;
 using SmartRAG.Providers;
 using System;
 using System.Collections.Generic;

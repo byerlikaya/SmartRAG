@@ -524,7 +524,8 @@ namespace SmartRAG.API.Controllers
                 // Include query analysis if requested
                 if (request.IncludeQueryAnalysis)
                 {
-                    var queryIntent = await coordinator.AnalyzeQueryIntentAsync(request.Query);
+                    var queryIntentAnalyzer = HttpContext.RequestServices.GetRequiredService<IQueryIntentAnalyzer>();
+                    var queryIntent = await queryIntentAnalyzer.AnalyzeQueryIntentAsync(request.Query);
                     result.QueryAnalysis = new QueryIntentAnalysisResponseDto
                     {
                         OriginalQuery = queryIntent.OriginalQuery,
@@ -594,7 +595,8 @@ namespace SmartRAG.API.Controllers
 
             try
             {
-                var queryIntent = await coordinator.AnalyzeQueryIntentAsync(query);
+                var queryIntentAnalyzer = HttpContext.RequestServices.GetRequiredService<IQueryIntentAnalyzer>();
+                var queryIntent = await queryIntentAnalyzer.AnalyzeQueryIntentAsync(query);
                 
                 // Generate SQL queries
                 queryIntent = await coordinator.GenerateDatabaseQueriesAsync(queryIntent);

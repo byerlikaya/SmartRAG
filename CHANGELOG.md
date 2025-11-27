@@ -8,24 +8,441 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.0] - 2025-11-27
+
+### 🏗️ Architectural Refactoring - Modular Design
+
+#### **Strategy Pattern Implementation**
+- **`ISqlDialectStrategy`**: Interface for database-specific SQL generation
+- **Dialect Implementations**: SqliteDialectStrategy, PostgreSqlDialectStrategy, MySqlDialectStrategy, SqlServerDialectStrategy
+- **`ISqlDialectStrategyFactory`**: Factory for creating appropriate dialect strategies
+- **`IScoringStrategy`**: Interface for document relevance scoring
+- **`IFileParser`**: Interface for file format parsing
+- **Benefits**: Open/Closed Principle (OCP), easier to add new database support
+
+#### **Repository Layer Separation**
+- **`IConversationRepository`**: Dedicated interface for conversation data access
+- **`IConversationManagerService`**: Business logic for conversation management
+- **Repository Cleanup**: `IDocumentRepository` removed conversation-related methods
+- **Benefits**: Separation of Concerns (SoC), Interface Segregation Principle (ISP)
+
+#### **Service Layer Refactoring**
+- **AI Service Decomposition**: `IAIConfigurationService`, `IAIRequestExecutor`, `IPromptBuilderService`, `IAIProviderFactory`
+- **Database Services**: `IQueryIntentAnalyzer`, `IDatabaseQueryExecutor`, `IResultMerger`, `ISQLQueryGenerator`, `IDatabaseConnectionManager`, `IDatabaseSchemaAnalyzer`
+- **Search Services**: `IEmbeddingSearchService`, `ISourceBuilderService`
+- **Parser Services**: `IAudioParserService`, `IImageParserService`, `IAudioParserFactory`
+- **Support Services**: `IQueryIntentClassifierService`, `ITextNormalizationService`
+- **Benefits**: Single Responsibility Principle (SRP), better testability
+
+#### **Model Consolidation**
+- DatabaseSchema and DatabaseSchemaInfo unified
+
+#### **Files Modified**
+- `src/SmartRAG/Interfaces/` - New interfaces for Strategy Pattern
+- `src/SmartRAG/Services/` - Service layer refactoring
+- `src/SmartRAG/Repositories/` - Repository separation
+- `src/SmartRAG/Models/` - Model consolidation
+- `src/SmartRAG/Extensions/ServiceCollectionExtensions.cs` - Updated DI registrations
+
+### Improved
+- **Language-Agnostic Code Improvements**: Removed domain-specific and language-specific references from codebase
+  - Replaced domain-specific examples ("orders", "products") with generic placeholders ("items", "TableName")
+  - Removed hardcoded language-specific instructions from `PromptBuilderService` (Turkish, German, Russian, etc.)
+  - Updated language handling to use generic ISO 639-1 code-based approach
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Database/Prompts/SqlPromptBuilder.cs` - Generic examples instead of domain-specific
+    - `src/SmartRAG/Services/AI/PromptBuilderService.cs` - Generic language instruction instead of hardcoded languages
+    - `src/SmartRAG/Models/SearchOptions.cs` - Generic language code documentation
+    - `src/SmartRAG/Services/Database/Validation/SqlValidator.cs` - Generic table name in comment
+  - **Benefits**: Full compliance with Rule 1 (Generic Code) and Rule 6 (Language References)
+
+- **FilterStopWords Language-Agnostic Enhancement**: Improved keyword extraction to be fully language-agnostic
+  - Added language-agnostic comments to `FilterStopWords` list
+  - Added XML documentation to `ExtractFilterKeywords` method
+  - Added `IsNumeric` helper to filter pure numeric keywords
+  - Added more delimiters for better word extraction
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Database/Prompts/SqlPromptBuilder.cs` - Enhanced keyword extraction with language-agnostic approach
+  - **Benefits**: Better keyword extraction across all languages, compliance with Rule 6
+
+### Performance Improvements
+- **Optimized AI Query Intent Analysis**: Eliminated redundant AI calls by adding overload method to `QueryMultipleDatabasesAsync` that accepts pre-analyzed query intent
+  - `IMultiDatabaseQueryCoordinator.QueryMultipleDatabasesAsync(string, QueryIntent, int)` - New overload method to avoid redundant AI analysis
+  - `DocumentSearchService` now passes pre-analyzed query intent to `MultiDatabaseQueryCoordinator` to prevent duplicate AI calls
+  - **Files Modified**:
+    - `src/SmartRAG/Interfaces/Database/IMultiDatabaseQueryCoordinator.cs` - Added overload method with pre-analyzed intent parameter
+    - `src/SmartRAG/Services/Database/MultiDatabaseQueryCoordinator.cs` - Implemented overload method with null safety validation
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Updated to pass pre-analyzed query intent to coordinator
+
+### Fixed
+- **SQL Query Validation**: Fixed ORDER BY alias validation to correctly handle SELECT aliases in GROUP BY queries
+  - Validation now recognizes SELECT aliases (e.g., `SUM(Quantity) AS TotalQuantity`) in ORDER BY clauses
+  - Previously flagged valid SQL as errors when using aggregate aliases in ORDER BY
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Database/SQLQueryGenerator.cs` - Enhanced validation logic to extract and validate SELECT aliases
+
+### Improved
+- **Cross-Database Query Prompt Enhancement**: Improved AI prompt guidance for cross-database queries
+  - Added clearer examples for handling relationships across databases (e.g., "most sold category" requires sales data + category names)
+  - Enhanced guidance on returning foreign keys and aggregates for application-level merging
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Database/SQLQueryGenerator.cs` - Updated cross-database query pattern examples in AI prompts
+
+- **Async/Await Pattern Improvements**: Eliminated blocking calls (`.Result`, `.Wait()`) and improved thread safety
+  - `AudioConversionService` now uses `SemaphoreSlim` instead of `lock` for async initialization
+  - `SqliteConversationRepository` now uses `SemaphoreSlim` for thread-safe async operations
+  - `DocumentService.GetStorageStatisticsAsync` properly uses `await` instead of `.Result`
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Parser/AudioConversionService.cs` - Replaced `lock` + `.Wait()` with `SemaphoreSlim`
+    - `src/SmartRAG/Repositories/SqliteConversationRepository.cs` - Replaced `lock` + `.Result` with `SemaphoreSlim`
+    - `src/SmartRAG/Services/Document/DocumentService.cs` - Changed `GetStorageStatisticsAsync` to use `await`
+  - **Benefits**: Better async/await compliance, improved thread safety, no blocking operations
+
+
 ### Added
-- **Unified Query Intelligence**: `QueryIntelligenceAsync` now supports unified search across databases, documents, images (OCR), and audio (transcription) in a single query
-- **Smart Hybrid Routing**: AI-based intent detection with confidence scoring automatically determines optimal search strategy
-  - High confidence (>0.7) + database queries → Database query only
-  - High confidence (>0.7) + no database queries → Document query only
-  - Medium confidence (0.3-0.7) → Both database and document queries, merged results
-  - Low confidence (<0.3) → Document query only (fallback)
-- **QueryStrategy Enum**: New enum for query execution strategies (DatabaseOnly, DocumentOnly, Hybrid)
+- **SearchOptions Support**: Per-request search configuration with granular control
+  - `SearchOptions` model with flags: `EnableDatabaseSearch`, `EnableDocumentSearch`, `EnableAudioSearch`, `EnableImageSearch`
+  - `PreferredLanguage` property for ISO 639-1 language code support
+  - `IDocumentSearchService` methods now accept optional `SearchOptions?` parameter
+  - Conditional service registration based on feature flags
+  - **Flag-Based Document Filtering**: Query string flags for quick search type selection
+    - `-db` flag: Enable database search only
+    - `-d` flag: Enable document (text) search only
+    - `-a` flag: Enable audio search only
+    - `-i` flag: Enable image search only
+    - Flags can be combined (e.g., `-db -a` for database + audio search)
+    - Flags are parsed from query string and converted to `SearchOptions`
+  - **Document Type Filtering**: Automatic filtering by content type
+    - `IsTextDocument()`, `IsAudioDocument()`, `IsImageDocument()` helper methods
+    - `GetAllDocumentsFilteredAsync()` filters documents based on enabled search types
+  - **Files Modified**:
+    - `src/SmartRAG/Models/SearchOptions.cs` - New model with feature flags
+    - `src/SmartRAG/Interfaces/Document/IDocumentSearchService.cs` - Added `SearchOptions?` parameter
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Implemented SearchOptions support with document type filtering
+    - `src/SmartRAG/Models/SmartRagOptions.cs` - Added feature toggles
+  - **Benefits**: Fine-grained control over search behavior, per-request customization, quick flag-based filtering
+
+- **Native Qdrant Text Search**: Token-based filtering for improved search performance
+  - Native Qdrant text search with token-based OR filtering
+  - Automatic stopword filtering (words < 3 characters)
+  - Token match counting for relevance scoring
+  - Fallback to vector search when text search fails
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Storage/Qdrant/QdrantSearchService.cs` - Native text search implementation
+    - `src/SmartRAG/Repositories/QdrantDocumentRepository.cs` - Integrated native text search
+  - **Benefits**: Faster text-based searches, better keyword matching, reduced AI dependency
+
+- **ClearAllAsync Methods**: Efficient bulk deletion operations
+  - `IDocumentRepository.ClearAllAsync()` - Efficient bulk delete for all repositories
+  - `IDocumentService.ClearAllDocumentsAsync()` - Clear all documents and embeddings
+  - `IDocumentService.ClearAllEmbeddingsAsync()` - Clear embeddings while preserving documents
+  - Qdrant implementation uses collection recreation for efficiency
+  - **Files Modified**:
+    - `src/SmartRAG/Interfaces/Document/IDocumentRepository.cs` - Added ClearAllAsync method
+    - `src/SmartRAG/Interfaces/Document/IDocumentService.cs` - Added ClearAll methods
+    - `src/SmartRAG/Repositories/QdrantDocumentRepository.cs` - Efficient collection recreation
+    - `src/SmartRAG/Repositories/SqliteDocumentRepository.cs` - Bulk delete implementation
+    - `src/SmartRAG/Repositories/RedisDocumentRepository.cs` - Pattern-based deletion
+    - `src/SmartRAG/Repositories/InMemoryDocumentRepository.cs` - Clear implementation
+    - `src/SmartRAG/Repositories/FileSystemDocumentRepository.cs` - Directory cleanup
+    - `src/SmartRAG/Services/Document/DocumentService.cs` - Service-level clear methods
+  - **Benefits**: Efficient bulk operations, better resource management
+
+- **Collection Management Methods**: Enhanced Qdrant collection operations
+  - `QdrantCollectionManager.RecreateCollectionAsync()` - Efficient collection recreation
+  - `QdrantCollectionManager.DeleteCollectionAsync()` - Collection deletion
+  - Improved collection initialization and management
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Storage/Qdrant/QdrantCollectionManager.cs` - Collection management methods
+  - **Benefits**: Better collection lifecycle management, efficient cleanup
+
+- **Tesseract On-Demand Language Data Download**: Automatic language data management
+  - Automatic download of Tesseract language data files when needed
+  - Language code mapping (ISO 639-1/639-2 to Tesseract codes)
+  - Support for 30+ languages with automatic detection
+  - Normalized language code handling
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Parser/ImageParserService.cs` - On-demand language download
+  - **Benefits**: Reduced package size, automatic language support, better user experience
+
+- **Currency Symbol Correction**: Improved OCR accuracy for financial documents
+  - Automatic correction of common OCR misreads: `%`, `6`, `t`, `&` → currency symbols
+  - Context-aware pattern matching for accurate correction
+  - Applied to both OCR and PDF parsing
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Parser/ImageParserService.cs` - Currency symbol correction
+    - `src/SmartRAG/Services/Document/Parsers/PdfFileParser.cs` - PDF currency correction
+  - **Benefits**: Better accuracy for financial documents, reduced manual correction
+
+- **Parallel Batch Processing for Ollama Embeddings**: Performance optimization
+  - Parallel batch processing for embedding generation with Ollama
+  - Configurable batch size and parallelism
+  - Improved throughput for large document sets
+  - **Files Modified**:
+    - `src/SmartRAG/Providers/BaseAIProvider.cs` - Parallel batch processing
+    - `src/SmartRAG/Providers/CustomProvider.cs` - Ollama-specific optimizations
+  - **Benefits**: Faster embedding generation, better resource utilization
+
+- **Query Tokens Parameter**: Pre-computed token support for performance
+  - `SearchDocumentsAsync` and `QueryIntelligenceAsync` now accept optional `queryTokens` parameter
+  - Eliminates redundant tokenization when tokens are already computed
+  - **Files Modified**:
+    - `src/SmartRAG/Interfaces/Document/IDocumentSearchService.cs` - Added queryTokens parameter
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Token reuse implementation
+  - **Benefits**: Reduced CPU usage, better performance for repeated queries
+
+- **FeatureToggles Model**: Global feature flag configuration
+  - `FeatureToggles` class for enabling/disabling features at global level
+  - Properties: `EnableDatabaseSearch`, `EnableDocumentSearch`, `EnableAudioParsing`, `EnableImageParsing`
+  - `SmartRagOptions.Features` property for centralized feature control
+  - `SearchOptions.FromConfig()` static method to create SearchOptions from global config
+  - **Files Modified**:
+    - `src/SmartRAG/Models/SmartRagOptions.cs` - Added FeatureToggles class
+    - `src/SmartRAG/Models/SearchOptions.cs` - Added FromConfig static method
+    - `src/SmartRAG/Extensions/ServiceCollectionExtensions.cs` - Conditional service registration
+  - **Benefits**: Centralized feature management, easier configuration
+
+- **ContextExpansionService**: Adjacent chunk context expansion
+  - `IContextExpansionService` interface for expanding document chunk context
+  - Includes adjacent chunks from the same document for better context understanding
+  - Configurable context window (default: 2 chunks before/after)
+  - **Files Modified**:
+    - `src/SmartRAG/Interfaces/Search/IContextExpansionService.cs` - New interface
+    - `src/SmartRAG/Services/Search/ContextExpansionService.cs` - Implementation
+  - **Benefits**: Better context for AI responses, improved answer quality
+
+- **FileParserResult Model**: Standardized parser result structure
+  - `FileParserResult` class for consistent parser output
+  - Contains extracted content and metadata dictionary
+  - Used by all file parsers for uniform result format
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Document/Parsers/FileParserResult.cs` - New model
+  - **Benefits**: Consistent parser interface, easier to extend
+
+- **DatabaseFileParser**: SQLite database file parsing support
+  - `DatabaseFileParser` implements `IFileParser` for SQLite database files
+  - Supports `.db`, `.sqlite`, `.sqlite3`, `.db3` file extensions
+  - Extracts schema and data information from database files
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Document/Parsers/DatabaseFileParser.cs` - New parser
+  - **Benefits**: Direct database file upload and parsing support
+
+- **Native Library Inclusion**: Tesseract OCR native libraries bundled
+  - Native libraries for Tesseract OCR and Leptonica included in NuGet package
+  - Supports Windows (x64), macOS (x64, ARM64), and Linux (x64)
+  - Automatic library loading with proper path configuration
+  - DYLD_LIBRARY_PATH configuration for macOS
+  - **Files Modified**:
+    - `src/SmartRAG/SmartRAG.csproj` - Native library packaging
+    - `src/SmartRAG/runtimes/` - Native library files
+  - **Benefits**: No manual library installation required, works out-of-the-box
+
+- **Nullable Reference Types**: Enhanced null safety
+  - Enabled nullable reference types in 14+ files for better null safety
+  - Improved compile-time null checking and warnings
+  - Better API contracts and documentation
+  - **Files Modified**:
+    - Multiple interface and service files with `#nullable enable`
+  - **Benefits**: Fewer null reference exceptions, better code quality
+
+### Improved
+- **Unicode Normalization for Qdrant**: Better text retrieval across languages
+  - Unicode normalization for Qdrant text retrieval
+  - Proper encoding preservation for all languages
+  - **Files Modified**:
+    - `src/SmartRAG/Repositories/QdrantDocumentRepository.cs` - Unicode normalization
+    - `src/SmartRAG/Services/Storage/Qdrant/QdrantSearchService.cs` - Encoding preservation
+  - **Benefits**: Better search results for non-ASCII characters, improved multilingual support
+
+- **PDF OCR Encoding Issue Detection**: Automatic fallback handling
+  - Automatic detection of PDF OCR encoding issues
+  - Automatic fallback to alternative parsing methods
+  - Better error handling and recovery
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Document/Parsers/PdfFileParser.cs` - Encoding detection and fallback
+  - **Benefits**: More reliable PDF processing, automatic error recovery
+
+- **Numbered List Chunk Detection**: Improved counting query accuracy
+  - Enhanced numbered list pattern detection
+  - Prioritization of chunks containing numbered lists for counting queries
+  - Better context expansion for list-based queries
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Numbered list detection
+    - `src/SmartRAG/Providers/CustomProvider.cs` - List-aware chunk selection
+  - **Benefits**: More accurate counting queries, better list extraction
+
+- **RAG Scoring Improvements**: Enhanced relevance calculation
+  - Unique keyword bonus for better relevance scoring
+  - Dynamic chunk boosting based on query type
+  - Improved keyword matching algorithms
+  - **Files Modified**:
+    - `src/SmartRAG/Services/AI/PromptBuilderService.cs` - Scoring improvements
+    - `src/SmartRAG/Helpers/QueryTokenizer.cs` - Enhanced tokenization
+  - **Benefits**: More relevant search results, better answer quality
+
+- **Document Search Adaptive Threshold**: Dynamic relevance threshold adjustment
+  - Adaptive threshold based on query complexity
+  - Improved chunk prioritization
+  - Better handling of low-confidence results
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Adaptive threshold logic
+  - **Benefits**: Better balance between precision and recall
+
+- **Prompt Builder Rules**: Enhanced AI answer generation
+  - Improved prompt rules for better answer quality
+  - Better context handling and instruction clarity
+  - **Files Modified**:
+    - `src/SmartRAG/Services/AI/PromptBuilderService.cs` - Enhanced prompt rules
+  - **Benefits**: More accurate AI responses, better context understanding
+
+- **QdrantDocumentRepository GetAllAsync**: Performance optimization
+  - Optimized GetAllAsync implementation for Qdrant
+  - Better memory usage and performance
+  - **Files Modified**:
+    - `src/SmartRAG/Repositories/QdrantDocumentRepository.cs` - Optimized GetAllAsync
+  - **Benefits**: Faster document retrieval, lower memory footprint
+
+- **Text Processing and AI Prompt Services**: General improvements
+  - Enhanced text cleaning and normalization
+  - Improved prompt construction
+  - Better error handling
+  - **Files Modified**:
+    - `src/SmartRAG/Services/AI/PromptBuilderService.cs` - Text processing improvements
+    - `src/SmartRAG/Services/Helpers/TextCleaningHelper.cs` - Enhanced cleaning
+  - **Benefits**: Better text quality, improved AI understanding
+
+- **Image Parser Service**: Comprehensive improvements
+  - Better error handling and recovery
+  - Improved configuration management
+  - Enhanced OCR processing pipeline
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Parser/ImageParserService.cs` - Comprehensive improvements
+  - **Benefits**: More reliable OCR, better image processing
+
+### Fixed
+- **Table Alias Enforcement in SQL Generation**: Prevents ambiguous column errors
+  - Enforced table aliases in SQL generation to prevent ambiguous column references
+  - Better SQL validation and error prevention
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Database/Prompts/SqlPromptBuilder.cs` - Table alias enforcement
+  - **Benefits**: More reliable SQL generation, fewer runtime errors
+
+- **EnableDatabaseSearch Config Respect**: Configuration compliance
+  - Fixed issue where `EnableDatabaseSearch` config was not being respected
+  - Proper feature flag handling in conversational assistant
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Config flag handling
+  - **Benefits**: Proper feature control, better configuration compliance
+
+- **macOS Native Libraries**: OCR library inclusion
+  - Fixed macOS native library inclusion for Tesseract OCR
+  - Proper DYLD_LIBRARY_PATH configuration
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Parser/ImageParserService.cs` - macOS library handling
+    - `src/SmartRAG/SmartRAG.csproj` - Native library packaging
+  - **Benefits**: OCR works correctly on macOS, proper library loading
+
+- **Missing Method Signature**: DocumentSearchService restoration
+  - Restored missing method signature in DocumentSearchService
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Method signature restoration
+  - **Benefits**: API completeness, backward compatibility
 
 ### Changed
-- `QueryIntelligenceAsync` method now integrates database queries alongside document queries
-- Improved query routing logic with graceful degradation and fallback mechanisms
-- Enhanced error handling for database query failures
+- **IEmbeddingSearchService Dependency Removal**: Simplified architecture
+  - Removed `IEmbeddingSearchService` dependency from `DocumentSearchService`
+  - Direct embedding search integration
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Dependency removal
+    - `src/SmartRAG/Extensions/ServiceCollectionExtensions.cs` - Registration cleanup
+  - **Benefits**: Simpler architecture, reduced dependencies
 
-### Notes
-- Backward compatible: Existing `QueryIntelligenceAsync` signature unchanged
-- If database coordinator not available, behavior identical to previous implementation
-- No breaking changes to `RagResponse` model
+- **Demo Language Selection**: ISO 639-1 code standardization
+  - Demo project now uses ISO 639-1 language codes
+  - Consistent language handling across the application
+  - **Files Modified**:
+    - `examples/SmartRAG.Demo/` - Language code updates
+  - **Benefits**: Consistent language handling, better internationalization
+
+- **Demo Project Configuration**: Qdrant as default storage
+  - Updated demo project to use Qdrant as default storage provider
+  - Better default configuration for new users
+  - **Files Modified**:
+    - `examples/SmartRAG.Demo/` - Configuration updates
+  - **Benefits**: Better default experience, easier setup
+
+- **Code Cleanup**: Inline comments and unused directives
+  - Removed unnecessary inline comments
+  - Cleaned up unused using directives
+  - Improved code readability
+  - **Files Modified**:
+    - Multiple files across the codebase
+  - **Benefits**: Cleaner codebase, better maintainability
+
+- **Logging Cleanup**: Reduced verbose logging
+  - Removed unnecessary verbose log messages
+  - Improved log message quality
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Shared/ServiceLogMessages.cs` - Log cleanup
+    - Multiple service files - Logging improvements
+  - **Benefits**: Cleaner logs, better performance
+
+- **NuGet Package Updates**: Latest compatible versions
+  - Updated all NuGet packages to latest compatible versions
+  - **Files Modified**:
+    - `src/SmartRAG/SmartRAG.csproj` - Package updates
+  - **Benefits**: Latest features, security fixes, bug fixes
+
+- **Service Method Annotations**: Better code documentation
+  - Added `[AI Query]`, `[Document Query]`, and `[DB Query]` annotations to service methods
+  - Better code organization and understanding
+  - **Files Modified**:
+    - `src/SmartRAG/Services/AI/AIRequestExecutor.cs` - Method annotations
+    - `src/SmartRAG/Services/AI/AIService.cs` - Method annotations
+    - `src/SmartRAG/Services/Document/DocumentService.cs` - Method annotations
+  - **Benefits**: Better code documentation, clearer method purposes
+
+### ✨ Benefits
+- **Maintainability**: Cleaner, more modular codebase
+- **Extensibility**: Easy to add new databases, AI providers, file formats
+- **Testability**: Better unit testing with clear interfaces
+- **Performance**: Optimized SQL generation, parallel processing, native text search
+- **Flexibility**: Pluggable strategies for scoring, parsing, SQL generation
+- **Backward Compatibility**: All existing code works without changes
+- **Better Search**: Native text search, improved scoring, adaptive thresholds
+- **Better OCR**: Currency correction, on-demand language support, encoding fixes
+- **Better Management**: ClearAll methods, collection management, feature flags
+
+### 📚 Migration Guide
+All changes are backward compatible. Existing code continues to work without modifications.
+
+#### Optional Enhancements
+
+**Use SearchOptions for Per-Request Control**:
+```csharp
+// Old approach (still works)
+var response = await _searchService.QueryIntelligenceAsync(query);
+
+// New approach (recommended for fine-grained control)
+var options = new SearchOptions
+{
+    EnableDatabaseSearch = true,
+    EnableDocumentSearch = true,
+    EnableAudioSearch = false,
+    EnableImageSearch = false,
+    PreferredLanguage = "en"
+};
+var response = await _searchService.QueryIntelligenceAsync(query, options: options);
+```
+
+**Use ClearAllAsync for Efficient Cleanup**:
+```csharp
+// Clear all documents efficiently
+await _documentService.ClearAllDocumentsAsync();
+
+// Clear only embeddings
+await _documentService.ClearAllEmbeddingsAsync();
+```
 
 ## [3.1.0] - 2025-11-11
 
@@ -43,14 +460,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Enhanced Error Handling**: Better error handling for database query failures
 
 #### **New Services & Interfaces**
-- `src/SmartRAG/Services/QueryIntentAnalyzer.cs` - Analyzes user queries and determines which databases/tables to query using AI
-- `src/SmartRAG/Services/DatabaseQueryExecutor.cs` - Executes queries across multiple databases in parallel for better performance
-- `src/SmartRAG/Services/ResultMerger.cs` - Merges results from multiple databases into coherent responses using AI
-- `src/SmartRAG/Services/SQLQueryGenerator.cs` - Generates optimized SQL queries for each database based on query intent
-- `src/SmartRAG/Interfaces/IQueryIntentAnalyzer.cs` - Interface for query intent analysis
-- `src/SmartRAG/Interfaces/IDatabaseQueryExecutor.cs` - Interface for multi-database query execution
-- `src/SmartRAG/Interfaces/IResultMerger.cs` - Interface for result merging
-- `src/SmartRAG/Interfaces/ISQLQueryGenerator.cs` - Interface for SQL query generation
+- `src/SmartRAG/Services/Database/QueryIntentAnalyzer.cs` - Analyzes user queries and determines which databases/tables to query using AI
+- `src/SmartRAG/Services/Database/DatabaseQueryExecutor.cs` - Executes queries across multiple databases in parallel for better performance
+- `src/SmartRAG/Services/Database/ResultMerger.cs` - Merges results from multiple databases into coherent responses using AI
+- `src/SmartRAG/Services/Database/SQLQueryGenerator.cs` - Generates optimized SQL queries for each database based on query intent
+- `src/SmartRAG/Interfaces/Database/IQueryIntentAnalyzer.cs` - Interface for query intent analysis
+- `src/SmartRAG/Interfaces/Database/IDatabaseQueryExecutor.cs` - Interface for multi-database query execution
+- `src/SmartRAG/Interfaces/Database/IResultMerger.cs` - Interface for result merging
+- `src/SmartRAG/Interfaces/Database/ISQLQueryGenerator.cs` - Interface for SQL query generation
 
 #### **New Enums**
 - `src/SmartRAG/Enums/QueryStrategy.cs` - New enum for query execution strategies (DatabaseOnly, DocumentOnly, Hybrid)
@@ -62,11 +479,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `src/SmartRAG/Models/SearchSource.cs` - Enhanced with source type differentiation (Database, Document, Image, Audio)
 
 #### **Files Modified**
-- `src/SmartRAG/Services/DocumentSearchService.cs` - Major refactoring: Unified query intelligence implementation with hybrid routing (918+ lines changed)
-- `src/SmartRAG/Services/MultiDatabaseQueryCoordinator.cs` - Refactored to use new service architecture for better separation of concerns (355+ lines changed)
-- `src/SmartRAG/Services/AIService.cs` - Enhanced AI service with better error handling
-- `src/SmartRAG/Services/DocumentParserService.cs` - Improved document parsing with audio segment metadata support
-- `src/SmartRAG/Interfaces/IDocumentSearchService.cs` - Updated interface documentation
+- `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Major refactoring: Unified query intelligence implementation with hybrid routing (918+ lines changed)
+- `src/SmartRAG/Services/Database/MultiDatabaseQueryCoordinator.cs` - Refactored to use new service architecture for better separation of concerns (355+ lines changed)
+- `src/SmartRAG/Services/AI/AIService.cs` - Enhanced AI service with better error handling
+- `src/SmartRAG/Services/Document/DocumentParserService.cs` - Improved document parsing with audio segment metadata support
+- `src/SmartRAG/Interfaces/Document/IDocumentSearchService.cs` - Updated interface documentation
 - `src/SmartRAG/Extensions/ServiceCollectionExtensions.cs` - Registered new services in DI container
 
 ### 🔧 Code Quality & AI Prompt Optimization
@@ -81,10 +498,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Strategic Usage**: Better AI comprehension through strategic emoji usage
 
 #### **Files Modified**
-- `src/SmartRAG/Services/SQLQueryGenerator.cs` - Emoji optimization in AI prompts
-- `src/SmartRAG/Services/MultiDatabaseQueryCoordinator.cs` - Emoji optimization
-- `src/SmartRAG/Services/QueryIntentAnalyzer.cs` - Emoji optimization
-- `src/SmartRAG/Services/DocumentSearchService.cs` - Emoji optimization
+- `src/SmartRAG/Services/Database/SQLQueryGenerator.cs` - Emoji optimization in AI prompts
+- `src/SmartRAG/Services/Database/MultiDatabaseQueryCoordinator.cs` - Emoji optimization
+- `src/SmartRAG/Services/Database/QueryIntentAnalyzer.cs` - Emoji optimization
+- `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Emoji optimization
 
 ### ✨ Benefits
 - **Single Query Interface**: Query all data sources (databases, documents, images, audio) with one method

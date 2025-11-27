@@ -3,11 +3,29 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using SmartRAG.Enums;
 using SmartRAG.Factories;
-using SmartRAG.Interfaces;
+using SmartRAG.Interfaces.AI;
+using SmartRAG.Interfaces.Document;
+using SmartRAG.Interfaces.Search;
+using SmartRAG.Interfaces.Database;
+using SmartRAG.Interfaces.Storage;
+using SmartRAG.Interfaces.Parser;
+using SmartRAG.Interfaces.Parser.Strategies;
+using SmartRAG.Interfaces.Support;
 using SmartRAG.Models;
-using SmartRAG.Services;
+using SmartRAG.Services.AI;
+using SmartRAG.Services.Document;
+using SmartRAG.Services.Search;
+using SmartRAG.Services.Database;
+using SmartRAG.Services.Parser;
+using SmartRAG.Services.Document.Parsers;
+using SmartRAG.Services.Support;
+using SmartRAG.Services.Database.Strategies;
+using SmartRAG.Services.Search.Strategies;
+using SmartRAG.Interfaces.Database.Strategies;
+using SmartRAG.Interfaces.Search.Strategies;
 using System;
 using System.Collections.Generic;
+
 
 namespace SmartRAG.Extensions
 {
@@ -55,40 +73,88 @@ namespace SmartRAG.Extensions
             // Also register as legacy singleton for backward compatibility during transition
             services.AddSingleton(sp => sp.GetRequiredService<IOptions<SmartRagOptions>>().Value);
 
-            services.AddSingleton<IAIProviderFactory, AIProviderFactory>();
-            services.AddSingleton<IAIService, AIService>();
+            services.AddScoped<IAIProviderFactory, AIProviderFactory>();
+            services.AddScoped<IAIService, AIService>();
             services.AddSingleton<IStorageFactory, StorageFactory>();
-            services.AddScoped<SemanticSearchService>();
+            services.AddScoped<ISemanticSearchService, SemanticSearchService>();
+            services.AddScoped<ITextNormalizationService, TextNormalizationService>();
+            services.AddScoped<IAIConfigurationService, AIConfigurationService>();
+            services.AddScoped<IPromptBuilderService, PromptBuilderService>();
+            services.AddScoped<IDocumentScoringService, DocumentScoringService>();
+            services.AddScoped<ISourceBuilderService, SourceBuilderService>();
+            services.AddScoped<IContextExpansionService, ContextExpansionService>();
+            services.AddScoped<IQueryIntentClassifierService, QueryIntentClassifierService>();
+            services.AddScoped<IConversationManagerService, ConversationManagerService>();
             services.AddScoped<IDocumentService, DocumentService>();
+            
+            // Register File Parsers
+            services.AddScoped<IFileParser, TextFileParser>();
+            services.AddScoped<IFileParser, PdfFileParser>();
+            services.AddScoped<IFileParser, WordFileParser>();
+            services.AddScoped<IFileParser, ExcelFileParser>();
+
+            // Conditional registration based on features
+            // Create a temporary options object to read feature flags for conditional registration
+            var options = new SmartRagOptions();
+            configuration.GetSection("SmartRAG").Bind(options);
+            
+            // Apply custom configuration to ensure we get the final feature state
+            configureOptions(options);
+
+            if (options.Features.EnableImageParsing)
+            {
+                services.AddScoped<IFileParser, ImageFileParser>();
+                services.AddScoped<IImageParserService, ImageParserService>();
+            }
+
+            if (options.Features.EnableAudioParsing)
+            {
+                services.AddScoped<IFileParser, AudioFileParser>();
+                // Audio conversion service - shared by audio parser
+                services.AddScoped<AudioConversionService>();
+                
+                // Audio parser service - only Whisper.net
+                services.AddScoped<WhisperAudioParserService>();
+                services.AddScoped<IAudioParserFactory, AudioParserFactory>();
+                
+                // IAudioParserService registration - factory creates based on configuration
+                services.AddScoped<IAudioParserService>(sp =>
+                {
+                    var factory = sp.GetRequiredService<IAudioParserFactory>();
+                    var opts = sp.GetRequiredService<IOptions<SmartRagOptions>>();
+                    return factory.CreateAudioParser(opts.Value.AudioProvider);
+                });
+            }
+
+                // Database services - Always register to allow runtime enabling via flags
+                services.AddScoped<IFileParser, DatabaseFileParser>();
+                services.AddScoped<IDatabaseParserService, DatabaseParserService>();
+                
+                // Multi-database services
+                services.AddScoped<IDatabaseSchemaAnalyzer, DatabaseSchemaAnalyzer>();
+                services.AddScoped<IDatabaseConnectionManager, DatabaseConnectionManager>();
+                services.AddScoped<IQueryIntentAnalyzer, QueryIntentAnalyzer>();
+                
+                // Register SQL Strategies
+                services.AddScoped<ISqlDialectStrategy, SqliteDialectStrategy>();
+                services.AddScoped<ISqlDialectStrategy, PostgreSqlDialectStrategy>();
+                services.AddScoped<ISqlDialectStrategy, MySqlDialectStrategy>();
+                services.AddScoped<ISqlDialectStrategy, SqlServerDialectStrategy>();
+                services.AddScoped<ISqlDialectStrategyFactory, SqlDialectStrategyFactory>();
+                
+                services.AddScoped<ISQLQueryGenerator, SQLQueryGenerator>();
+                services.AddScoped<IDatabaseQueryExecutor, DatabaseQueryExecutor>();
+                services.AddScoped<IResultMerger, ResultMerger>();
+                services.AddScoped<IMultiDatabaseQueryCoordinator, MultiDatabaseQueryCoordinator>();
+
             services.AddScoped<IDocumentParserService, DocumentParserService>();
             services.AddScoped<IDocumentSearchService, DocumentSearchService>();
-            services.AddScoped<IImageParserService, ImageParserService>();
             
-            // Audio conversion service - shared by audio parser
-            services.AddScoped<AudioConversionService>();
+            // Register AI Request Executor
+            services.AddScoped<IAIRequestExecutor, AIRequestExecutor>();
             
-            // Audio parser service - only Whisper.net
-            services.AddScoped<WhisperAudioParserService>();
-            services.AddScoped<IAudioParserFactory, AudioParserFactory>();
-            
-            // IAudioParserService registration - factory creates based on configuration
-            services.AddScoped<IAudioParserService>(sp =>
-            {
-                var factory = sp.GetRequiredService<IAudioParserFactory>();
-                var options = sp.GetRequiredService<IOptions<SmartRagOptions>>();
-                return factory.CreateAudioParser(options.Value.AudioProvider);
-            });
-            
-            services.AddScoped<IDatabaseParserService, DatabaseParserService>();
-            
-            // Multi-database services
-            services.AddScoped<IDatabaseSchemaAnalyzer, DatabaseSchemaAnalyzer>();
-            services.AddScoped<IDatabaseConnectionManager, DatabaseConnectionManager>();
-            services.AddScoped<IQueryIntentAnalyzer, QueryIntentAnalyzer>();
-            services.AddScoped<ISQLQueryGenerator, SQLQueryGenerator>();
-            services.AddScoped<IDatabaseQueryExecutor, DatabaseQueryExecutor>();
-            services.AddScoped<IResultMerger, ResultMerger>();
-            services.AddScoped<IMultiDatabaseQueryCoordinator, MultiDatabaseQueryCoordinator>();
+            // Register Scoring Strategy
+            services.AddScoped<IScoringStrategy, HybridScoringStrategy>();
             
             // Add memory cache for database operations
             services.AddMemoryCache();
@@ -96,6 +162,7 @@ namespace SmartRAG.Extensions
             ConfigureStorageProvider(services, configuration);
 
             services.AddSingleton(sp => sp.GetRequiredService<IStorageFactory>().GetCurrentRepository());
+            services.AddSingleton(sp => sp.GetRequiredService<IStorageFactory>().GetCurrentConversationRepository());
 
             return services;
         }

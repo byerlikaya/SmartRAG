@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 using SmartRAG.Enums;
-using SmartRAG.Interfaces;
+using SmartRAG.Interfaces.AI;
 using SmartRAG.Models;
 using System;
 using System.Collections.Generic;
@@ -19,13 +19,10 @@ namespace SmartRAG.Providers
     {
         #region Constants
 
-        // HTTP request constants
         private const int DefaultMaxRetries = 3;
         private const int BaseDelayMs = 1000;
         private const int MinRetryDelayMs = 60000;
-        private const int MaxRetryDelayMs = int.MaxValue;
 
-        // JSON parsing constants
         private const string DefaultDataProperty = "data";
         private const string DefaultEmbeddingProperty = "embedding";
         private const string DefaultChoicesProperty = "choices";
@@ -90,26 +87,99 @@ namespace SmartRAG.Providers
         #region Virtual Methods
 
         /// <summary>
-        /// Default batch embedding implementation that falls back to individual calls
-        /// Providers can override this for better performance if they support batch operations
+        /// Default batch embedding implementation with parallel processing
+        /// Providers can override this for better performance if they support true batch operations
         /// </summary>
         public virtual async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config)
         {
-            var results = new List<List<float>>();
+            var textList = texts.ToList();
+            var results = new List<List<float>>(new List<float>[textList.Count]);
+            
+            if (textList.Count == 0)
+                return results;
 
-            foreach (var text in texts)
+            var processedCount = 0;
+            var lockObject = new object();
+            var lastProgressLog = 0;
+            
+            int ProgressLogInterval;
+            if (textList.Count < 100)
+                ProgressLogInterval = 10;
+            else if (textList.Count < 1000)
+                ProgressLogInterval = 50;
+            else
+                ProgressLogInterval = 100;
+            
+            var startTime = System.DateTime.UtcNow;
+            
+            Logger.LogInformation("Starting batch embedding generation: {Total} texts (progress every {Interval})", 
+                textList.Count, ProgressLogInterval);
+            
+            using (var semaphore = new System.Threading.SemaphoreSlim(3)) // Restored concurrency to 3 for performance with stable endpoint
             {
-                try
+                var tasks = textList.Select(async (text, index) =>
                 {
-                    var embedding = await GenerateEmbeddingAsync(text, config);
-                    results.Add(embedding);
-                }
-                catch
-                {
-                    // Add empty embedding on error to maintain index consistency
-                    results.Add(new List<float>());
-                }
+                    await semaphore.WaitAsync();
+                    try
+                    {
+                        var embedding = await GenerateEmbeddingAsync(text, config);
+                        results[index] = embedding;
+                        
+                        lock (lockObject)
+                        {
+                            processedCount++;
+                            var currentProgress = processedCount;
+
+                            bool shouldLog = currentProgress - lastProgressLog >= ProgressLogInterval || 
+                                            currentProgress == 1 || 
+                                            currentProgress == 2 ||
+                                            currentProgress == 3 ||
+                                            currentProgress == 5 || 
+                                            (currentProgress <= 50 && currentProgress % 5 == 0) ||
+                                            (currentProgress <= 100 && currentProgress % 10 == 0) ||
+                                            currentProgress == textList.Count;
+
+                            if (shouldLog)
+                            {
+                                var elapsed = System.DateTime.UtcNow - startTime;
+                                var percentage = (currentProgress * 100.0) / textList.Count;
+                                var avgTimePerEmbedding = elapsed.TotalSeconds / currentProgress;
+                                var remaining = textList.Count - currentProgress;
+                                var estimatedTimeRemaining = TimeSpan.FromSeconds(avgTimePerEmbedding * remaining);
+                                
+                                Logger.LogInformation("Embedding progress: {Processed}/{Total} ({Percentage:F1}%) | Elapsed: {Elapsed:F1}s | ETA: {ETA:F0}s", 
+                                    currentProgress, textList.Count, percentage, elapsed.TotalSeconds, estimatedTimeRemaining.TotalSeconds);
+                                lastProgressLog = currentProgress;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        results[index] = new List<float>();
+                        
+                        lock (lockObject)
+                        {
+                            processedCount++;
+                            if (processedCount % 10 == 0)
+                            {
+                                Logger.LogWarning("Embedding generation errors: {ErrorCount} errors encountered so far", 
+                                    results.Count(r => r != null && r.Count == 0));
+                            }
+                        }
+                    }
+                    finally
+                    {
+                        semaphore.Release();
+                    }
+                });
+
+                await Task.WhenAll(tasks);
             }
+
+            var successCount = results.Count(r => r != null && r.Count > 0);
+            var totalTime = System.DateTime.UtcNow - startTime;
+            Logger.LogInformation("Batch embedding generation completed: {Success}/{Total} successful ({SuccessRate:F1}%) | Total time: {TotalTime:F1}s", 
+                successCount, textList.Count, (successCount * 100.0) / textList.Count, totalTime.TotalSeconds);
 
             return results;
         }
@@ -179,11 +249,13 @@ namespace SmartRAG.Providers
         protected static HttpClient CreateHttpClient(string apiKey = null, Dictionary<string, string> additionalHeaders = null)
         {
             var handler = CreateHttpClientHandler();
-            var client = new HttpClient(handler);
+            var client = new HttpClient(handler)
+            {
+                Timeout = TimeSpan.FromSeconds(60)
+            };
 
             if (!string.IsNullOrEmpty(apiKey))
             {
-                // Generic auth header - providers can override if needed
                 var authHeader = "Authorization";
                 var authValue = $"Bearer {apiKey}";
                 client.DefaultRequestHeaders.Add(authHeader, authValue);
@@ -230,14 +302,18 @@ namespace SmartRAG.Providers
                     if (success)
                         return (true, response, string.Empty);
 
-                    // Handle rate limiting and server overload
-                    if (error.Contains("429") || error.Contains("TooManyRequests") ||
-                        error.Contains("529") || error.Contains("Overloaded"))
+                    bool shouldRetry = error.Contains("429") || error.Contains("TooManyRequests") ||
+                        error.Contains("529") || error.Contains("Overloaded") ||
+                        error.Contains("EOF") ||  // Retry EOF errors (Ollama runner crashes)
+                        error.Contains("llama runner process no longer running") ||  // Ollama crash
+                        error.Contains("InternalServerError");  // General server errors
+                        
+                    if (shouldRetry)
                     {
                         attempt++;
                         if (attempt < maxRetries)
                         {
-                            var delayMs = CalculateRetryDelay(attempt);
+                            int delayMs = error.Contains("EOF") ? 1000 : MinRetryDelayMs * attempt;
                             await Task.Delay(delayMs);
                             continue;
                         }
@@ -250,7 +326,7 @@ namespace SmartRAG.Providers
                     attempt++;
                     if (attempt < maxRetries)
                     {
-                        var delay = CalculateExponentialBackoffDelay(attempt);
+                        var delay = BaseDelayMs * (int)Math.Pow(2, attempt - 1);;
                         await Task.Delay(delay);
                         continue;
                     }
@@ -268,16 +344,14 @@ namespace SmartRAG.Providers
         /// <summary>
         /// Creates HttpClientHandler with SSL/TLS configuration
         /// </summary>
-        private static HttpClientHandler CreateHttpClientHandler()
+        protected static HttpClientHandler CreateHttpClientHandler()
         {
-            var handler = new HttpClientHandler();
-
-            // Handle SSL/TLS issues for all providers
-            handler.ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
+            var handler = new HttpClientHandler
             {
-                // For development/testing, you might want to bypass certificate validation
-                // In production, this should be more restrictive
-                return true;
+                ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
+                { 
+                    return true;
+                }
             };
 
             return handler;
@@ -303,8 +377,8 @@ namespace SmartRAG.Providers
         private async Task<(bool success, string response, string error)> ExecuteHttpRequestAsync(
             HttpClient client, string endpoint, object payload)
         {
-            var options = GetJsonSerializerOptions();
-            var json = JsonSerializer.Serialize(payload, options);
+            var json = JsonSerializer.Serialize(payload, _jsonOptions);
+
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
             var response = await client.PostAsync(endpoint, content);
@@ -316,26 +390,10 @@ namespace SmartRAG.Providers
             }
 
             var errorBody = await response.Content.ReadAsStringAsync();
+            
             return (false, string.Empty, $"{ProviderType} error: {response.StatusCode} - {errorBody}");
         }
-
-        /// <summary>
-        /// Calculates retry delay for rate limiting and server overload
-        /// </summary>
-        private static int CalculateRetryDelay(int attempt)
-        {
-            // For server overload (529), use exponential backoff starting from 60 seconds
-            return MinRetryDelayMs * attempt;
-        }
-
-        /// <summary>
-        /// Calculates exponential backoff delay for retries
-        /// </summary>
-        private static int CalculateExponentialBackoffDelay(int attempt)
-        {
-            return BaseDelayMs * (int)Math.Pow(2, attempt - 1);
-        }
-
+               
         #endregion
 
         #region Static Helper Methods
@@ -345,28 +403,26 @@ namespace SmartRAG.Providers
         /// </summary>
         protected static List<float> ParseEmbeddingResponse(string responseBody, string dataProperty = DefaultDataProperty, string embeddingProperty = DefaultEmbeddingProperty)
         {
-            using (var doc = JsonDocument.Parse(responseBody))
+            using var doc = JsonDocument.Parse(responseBody);
+            if (doc.RootElement.TryGetProperty(dataProperty, out var data) && data.ValueKind == JsonValueKind.Array)
             {
-                if (doc.RootElement.TryGetProperty(dataProperty, out var data) && data.ValueKind == JsonValueKind.Array)
+                var firstData = data.EnumerateArray().FirstOrDefault();
+
+                if (firstData.TryGetProperty(embeddingProperty, out var embedding) && embedding.ValueKind == JsonValueKind.Array)
                 {
-                    var firstData = data.EnumerateArray().FirstOrDefault();
+                    var floats = new List<float>();
 
-                    if (firstData.TryGetProperty(embeddingProperty, out var embedding) && embedding.ValueKind == JsonValueKind.Array)
+                    foreach (var value in embedding.EnumerateArray())
                     {
-                        var floats = new List<float>();
-
-                        foreach (var value in embedding.EnumerateArray())
-                        {
-                            if (value.TryGetSingle(out var f))
-                                floats.Add(f);
-                        }
-
-                        return floats;
+                        if (value.TryGetSingle(out var f))
+                            floats.Add(f);
                     }
-                }
 
-                return new List<float>();
+                    return floats;
+                }
             }
+
+            return new List<float>();
         }
 
         /// <summary>
@@ -404,10 +460,8 @@ namespace SmartRAG.Providers
             }
             catch
             {
-                // Return partial results on error
             }
 
-            // Ensure we return the expected number of embeddings
             return Enumerable.Range(0, expectedCount)
                 .Select(i => i < results.Count ? results[i] : new List<float>())
                 .ToList();
@@ -439,11 +493,6 @@ namespace SmartRAG.Providers
         {
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
         };
-
-        /// <summary>
-        /// Get shared JsonSerializerOptions instance
-        /// </summary>
-        private static JsonSerializerOptions GetJsonSerializerOptions() => _jsonOptions;
 
         #endregion
     }

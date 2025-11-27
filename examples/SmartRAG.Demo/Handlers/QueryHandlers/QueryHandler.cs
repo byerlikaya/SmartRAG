@@ -1,10 +1,14 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SmartRAG.Demo.Models;
 using SmartRAG.Demo.Services.Console;
 using SmartRAG.Demo.Services.TestQuery;
 using SmartRAG.Enums;
 using SmartRAG.Interfaces;
+using SmartRAG.Interfaces.Support;
 using SmartRAG.Models;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -18,23 +22,27 @@ namespace SmartRAG.Demo.Handlers.QueryHandlers;
 public class QueryHandler(
     ILogger<QueryHandler> logger,
     IConsoleService console,
-    IMultiDatabaseQueryCoordinator multiDbCoordinator,
+    IMultiDatabaseQueryCoordinator? multiDbCoordinator,
     IAIService aiService,
     IDocumentService documentService,
     IDocumentSearchService documentSearchService,
-    IDatabaseSchemaAnalyzer schemaAnalyzer,
-    ITestQueryGenerator testQueryGenerator) : IQueryHandler
+    IDatabaseSchemaAnalyzer? schemaAnalyzer,
+    ITestQueryGenerator testQueryGenerator,
+    IConversationManagerService conversationManager,
+    IServiceProvider serviceProvider) : IQueryHandler
 {
     #region Fields
 
     private readonly ILogger<QueryHandler> _logger = logger;
     private readonly IConsoleService _console = console;
-    private readonly IMultiDatabaseQueryCoordinator _multiDbCoordinator = multiDbCoordinator;
+    private readonly IMultiDatabaseQueryCoordinator? _multiDbCoordinator = multiDbCoordinator;
     private readonly IAIService _aiService = aiService;
     private readonly IDocumentService _documentService = documentService;
     private readonly IDocumentSearchService _documentSearchService = documentSearchService;
-    private readonly IDatabaseSchemaAnalyzer _schemaAnalyzer = schemaAnalyzer;
+    private readonly IDatabaseSchemaAnalyzer? _schemaAnalyzer = schemaAnalyzer;
     private readonly ITestQueryGenerator _testQueryGenerator = testQueryGenerator;
+    private readonly IConversationManagerService _conversationManager = conversationManager;
+    private readonly IServiceProvider _serviceProvider = serviceProvider;
 
     #endregion
 
@@ -71,7 +79,7 @@ public class QueryHandler(
             System.Console.ResetColor();
 
             var languageInstructedQuery = $"{query}\n\n[IMPORTANT: Respond in {language} language]";
-            var response = await _multiDbCoordinator.QueryMultipleDatabasesAsync(languageInstructedQuery, maxResults: 10);
+            var response = await _multiDbCoordinator!.QueryMultipleDatabasesAsync(languageInstructedQuery, maxResults: 10);
 
             System.Console.WriteLine();
             _console.WriteSuccess("ANSWER:");
@@ -120,8 +128,10 @@ public class QueryHandler(
 
             var languageInstructedQuery = $"{query}\n\n[IMPORTANT: Analyze and respond in {language} language]";
 
-            var intent = await _multiDbCoordinator.AnalyzeQueryIntentAsync(languageInstructedQuery);
-            intent = await _multiDbCoordinator.GenerateDatabaseQueriesAsync(intent);
+            // Use IQueryIntentAnalyzer instead of deprecated method
+            var queryIntentAnalyzer = _serviceProvider.GetRequiredService<IQueryIntentAnalyzer>();
+            var intent = await queryIntentAnalyzer.AnalyzeQueryIntentAsync(languageInstructedQuery);
+            intent = await _multiDbCoordinator!.GenerateDatabaseQueriesAsync(intent);
 
             System.Console.WriteLine();
             System.Console.ForegroundColor = ConsoleColor.Yellow;
@@ -227,7 +237,7 @@ public class QueryHandler(
             try
             {
                 var languageInstructedQuery = $"{testQuery.Query}\n\n[IMPORTANT: Respond in {language} language]";
-                var response = await _multiDbCoordinator.QueryMultipleDatabasesAsync(languageInstructedQuery, maxResults: 5);
+                var response = await _multiDbCoordinator!.QueryMultipleDatabasesAsync(languageInstructedQuery, maxResults: 5);
 
                 if (IsErrorResponse(response.Answer))
                 {
@@ -235,7 +245,7 @@ public class QueryHandler(
                     System.Console.WriteLine($"⚠️  Query Failed: {response.Answer}");
                     System.Console.ResetColor();
 
-                    var schemas = await _schemaAnalyzer.GetAllSchemasAsync();
+                    var schemas = _schemaAnalyzer != null ? await _schemaAnalyzer.GetAllSchemasAsync() : new List<DatabaseSchemaInfo>();
                     var sqlInfo = ExtractSQLFromError(response.Answer, schemas);
                     failedQueries.Add((testQuery, response.Answer, sqlInfo));
                 }
@@ -282,6 +292,10 @@ public class QueryHandler(
         _console.WriteInfo("Type /new to reset the session, /exit to return to the main menu, /help to see available commands.");
         System.Console.WriteLine();
 
+        // Start a new conversation session
+        var sessionId = await _conversationManager.StartNewConversationAsync();
+        _console.WriteSuccess($"Started new session: {sessionId}");
+
         while (true)
         {
             var userInput = _console.ReadLine("You: ");
@@ -311,17 +325,32 @@ public class QueryHandler(
                 continue;
             }
 
+            if (trimmedInput.Equals("/new", StringComparison.OrdinalIgnoreCase) || 
+                trimmedInput.Equals("/reset", StringComparison.OrdinalIgnoreCase) || 
+                trimmedInput.Equals("/clear", StringComparison.OrdinalIgnoreCase))
+            {
+                sessionId = await _conversationManager.StartNewConversationAsync();
+                _console.WriteSuccess($"Started new session: {sessionId}");
+                continue;
+            }
+
             try
             {
-                var query = IsCommand(trimmedInput)
-                    ? trimmedInput
-                    : string.Format(
-                        CultureInfo.InvariantCulture,
-                        "{0}\n\n[IMPORTANT: Respond in {1} language]",
-                        userInput,
-                        language);
+                var query = IsCommand(trimmedInput) ? trimmedInput : userInput;
+                
+                // Parse search options from query flags (e.g., -d, -db, -v) and set preferred language
+                var searchOptions = ParseSearchOptions(query, language, out var cleanQuery);
+                
+                // If flags were present, use the cleaned query
+                if (searchOptions != null)
+                {
+                    query = cleanQuery;
+                }
 
-                var response = await _documentSearchService.QueryIntelligenceAsync(query, maxResults: 8);
+                var response = await _documentSearchService.QueryIntelligenceAsync(query, maxResults: 8, options: searchOptions);
+
+                // Save to conversation history
+                await _conversationManager.AddToConversationAsync(sessionId, query, response.Answer);
 
                 System.Console.WriteLine();
                 _console.WriteSuccess("Assistant:");
@@ -341,6 +370,50 @@ public class QueryHandler(
                 _console.WriteError($"Error: {ex.Message}", ex);
             }
         }
+    }
+
+    private SearchOptions? ParseSearchOptions(string input, string language, out string cleanQuery)
+    {
+        cleanQuery = input;
+        
+        // Check for flags
+        var hasDocumentFlag = input.Contains("-d ", StringComparison.OrdinalIgnoreCase) || input.EndsWith("-d", StringComparison.OrdinalIgnoreCase);
+        var hasDatabaseFlag = input.Contains("-db ", StringComparison.OrdinalIgnoreCase) || input.EndsWith("-db", StringComparison.OrdinalIgnoreCase);
+        var hasAudioFlag = input.Contains("-a ", StringComparison.OrdinalIgnoreCase) || input.EndsWith("-a", StringComparison.OrdinalIgnoreCase);
+        var hasImageFlag = input.Contains("-i ", StringComparison.OrdinalIgnoreCase) || input.EndsWith("-i", StringComparison.OrdinalIgnoreCase);
+
+        // Get global configuration
+        var smartRagOptions = _serviceProvider.GetRequiredService<IOptions<SmartRagOptions>>().Value;
+
+        // If no flags, use global configuration but override language
+        if (!hasDocumentFlag && !hasDatabaseFlag && !hasAudioFlag && !hasImageFlag)
+        {
+            var options = SearchOptions.FromConfig(smartRagOptions);
+            options.PreferredLanguage = language;
+            return options;
+        }
+
+        // If flags are present, enable only the requested features
+        SearchOptions searchOptions = new SearchOptions
+        {
+            EnableDocumentSearch = hasDocumentFlag,
+            EnableDatabaseSearch = hasDatabaseFlag,
+            EnableAudioSearch = hasAudioFlag,
+            EnableImageSearch = hasImageFlag,
+            PreferredLanguage = language  // CRITICAL: Pass user's selected language to AI
+        };
+
+        // Remove flags from query
+        var parts = input.Split(' ');
+        var cleanParts = parts.Where(p => 
+            !p.Equals("-d", StringComparison.OrdinalIgnoreCase) && 
+            !p.Equals("-db", StringComparison.OrdinalIgnoreCase) && 
+            !p.Equals("-a", StringComparison.OrdinalIgnoreCase) && 
+            !p.Equals("-i", StringComparison.OrdinalIgnoreCase));
+            
+        cleanQuery = string.Join(" ", cleanParts);
+        
+        return searchOptions;
     }
 
     #endregion

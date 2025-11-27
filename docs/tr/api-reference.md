@@ -16,7 +16,7 @@ SmartRAG tüm işlemler için iyi tanımlanmış interface'ler sağlar. Bu inter
 
 **Amaç:** RAG pipeline ve konuşma yönetimi ile AI destekli akıllı sorgu işleme
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Document`
 
 ### Metodlar
 
@@ -34,7 +34,8 @@ Birleşik akıllı sorgu işleme ile RAG ve otomatik oturum yönetimi. Smart Hyb
 Task<RagResponse> QueryIntelligenceAsync(
     string query, 
     int maxResults = 5, 
-    bool startNewConversation = false
+    bool startNewConversation = false,
+    SearchOptions? options = null
 )
 ```
 
@@ -42,6 +43,7 @@ Task<RagResponse> QueryIntelligenceAsync(
 - `query` (string): Kullanıcının sorusu veya sorgusu
 - `maxResults` (int): Alınacak maksimum doküman parçası sayısı (varsayılan: 5)
 - `startNewConversation` (bool): Yeni bir konuşma oturumu başlat (varsayılan: false)
+- `options` (SearchOptions?): Global yapılandırmayı geçersiz kılmak için isteğe bağlı arama seçenekleri (varsayılan: null)
 
 **Döndürür:** Tüm mevcut veri kaynaklarından (veritabanları, belgeler, görüntüler, ses) AI cevabı, kaynaklar ve metadata içeren `RagResponse`
 
@@ -61,6 +63,68 @@ foreach (var source in response.Sources)
     Console.WriteLine($"Kaynak: {source.FileName}");
 }
 ```
+
+**SearchOptions Kullanımı:**
+
+```csharp
+// Sadece veritabanı araması
+var dbOptions = new SearchOptions
+{
+    EnableDatabaseSearch = true,
+    EnableDocumentSearch = false,
+    EnableAudioSearch = false,
+    EnableImageSearch = false
+};
+
+var dbResponse = await _searchService.QueryIntelligenceAsync(
+    "En iyi müşterileri göster",
+    maxResults: 5,
+    options: dbOptions
+);
+
+// Sadece ses araması
+var audioOptions = new SearchOptions
+{
+    EnableDatabaseSearch = false,
+    EnableDocumentSearch = false,
+    EnableAudioSearch = true,
+    EnableImageSearch = false,
+    PreferredLanguage = "tr"
+};
+
+var audioResponse = await _searchService.QueryIntelligenceAsync(
+    "Toplantıda ne konuşuldu?",
+    maxResults: 5,
+    options: audioOptions
+);
+```
+
+**Bayrak Tabanlı Filtreleme (Sorgu String Ayrıştırma):**
+
+Sorgu string'lerinden bayrakları ayrıştırarak hızlı arama tipi seçimi yapabilirsiniz:
+
+```csharp
+// Sorgu string'inden bayrakları ayrıştır
+string userQuery = "-db En iyi müşterileri göster";
+var searchOptions = ParseSearchOptions(userQuery, out string cleanQuery);
+
+// cleanQuery = "En iyi müşterileri göster"
+// searchOptions.EnableDatabaseSearch = true
+// Diğerleri = false
+
+var response = await _searchService.QueryIntelligenceAsync(
+    cleanQuery,
+    maxResults: 5,
+    options: searchOptions
+);
+```
+
+**Mevcut Bayraklar:**
+- `-db`: Sadece veritabanı araması
+- `-d`: Sadece doküman (metin) araması
+- `-a`: Sadece ses araması
+- `-i`: Sadece görüntü araması
+- Bayraklar birleştirilebilir (örn: `-db -a` = veritabanı + ses araması)
 
 **Not:** Veritabanı coordinator yapılandırılmamışsa, metod otomatik olarak sadece belge aramasına geri döner, geriye dönük uyumluluğu korur.
 
@@ -117,7 +181,7 @@ Task<RagResponse> GenerateRagAnswerAsync(
 
 **Amaç:** Doküman CRUD işlemleri ve yönetimi
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Document`
 
 ### Metodlar
 
@@ -256,11 +320,195 @@ Task<bool> ClearAllDocumentsAsync()
 
 ---
 
+## IConversationManagerService
+
+**Amaç:** Konuşma oturumu yönetimi ve geçmiş takibi
+
+**Namespace:** `SmartRAG.Interfaces.Support`
+
+**v3.2.0'da Yeni**: Bu interface, daha iyi sorumluluk ayrımı için doküman işlemlerinden ayrılmış özel konuşma yönetimi sağlar.
+
+### Metodlar
+
+#### StartNewConversationAsync
+
+Yeni bir konuşma oturumu başlatır.
+
+```csharp
+Task<string> StartNewConversationAsync()
+```
+
+**Döndürür:** Yeni oturum ID'si (string)
+
+**Örnek:**
+
+```csharp
+var sessionId = await _conversationManager.StartNewConversationAsync();
+Console.WriteLine($"Oturum başlatıldı: {sessionId}");
+```
+
+#### GetOrCreateSessionIdAsync
+
+Mevcut oturum ID'sini alır veya otomatik olarak yeni bir tane oluşturur.
+
+```csharp
+Task<string> GetOrCreateSessionIdAsync()
+```
+
+**Döndürür:** Oturum ID'si (string)
+
+**Kullanım Senaryosu:** Manuel oturum yönetimi olmadan otomatik oturum sürekliliği
+
+**Örnek:**
+
+```csharp
+// Otomatik olarak oturumu yönetir - yoksa yeni oluşturur
+var sessionId = await _conversationManager.GetOrCreateSessionIdAsync();
+```
+
+#### AddToConversationAsync
+
+Oturum geçmişine bir konuşma turu (soru + cevap) ekler.
+
+```csharp
+Task AddToConversationAsync(
+    string sessionId, 
+    string question, 
+    string answer
+)
+```
+
+**Parametreler:**
+- `sessionId` (string): Oturum tanımlayıcısı
+- `question` (string): Kullanıcının sorusu
+- `answer` (string): AI'ın cevabı
+
+**Örnek:**
+
+```csharp
+await _conversationManager.AddToConversationAsync(
+    sessionId,
+    "Makine öğrenimi nedir?",
+    "Makine öğrenimi, sistemlerin öğrenmesini sağlayan AI'ın bir alt kümesidir..."
+);
+```
+
+#### GetConversationHistoryAsync
+
+Bir oturum için tam konuşma geçmişini alır.
+
+```csharp
+Task<string> GetConversationHistoryAsync(string sessionId)
+```
+
+**Parametreler:**
+- `sessionId` (string): Oturum tanımlayıcısı
+
+**Döndürür:** String olarak biçimlendirilmiş konuşma geçmişi
+
+**Format:**
+```
+User: [soru]
+Assistant: [cevap]
+User: [sonraki soru]
+Assistant: [sonraki cevap]
+```
+
+**Örnek:**
+
+```csharp
+var history = await _conversationManager.GetConversationHistoryAsync(sessionId);
+Console.WriteLine(history);
+```
+
+#### TruncateConversationHistory
+
+Sadece son turları tutmak için konuşma geçmişini kısaltır (bellek yönetimi).
+
+```csharp
+string TruncateConversationHistory(
+    string history, 
+    int maxTurns = 3
+)
+```
+
+**Parametreler:**
+- `history` (string): Tam konuşma geçmişi
+- `maxTurns` (int): Tutulacak maksimum konuşma turu sayısı (varsayılan: 3)
+
+**Döndürür:** Kısaltılmış konuşma geçmişi
+
+**Kullanım Senaryosu:** AI prompt'larında context window taşmasını önler
+
+**Örnek:**
+
+```csharp
+var fullHistory = await _conversationManager.GetConversationHistoryAsync(sessionId);
+var recentHistory = _conversationManager.TruncateConversationHistory(fullHistory, maxTurns: 5);
+```
+
+### Tam Kullanım Örneği
+
+```csharp
+public class ChatService
+{
+    private readonly IConversationManagerService _conversationManager;
+    private readonly IDocumentSearchService _searchService;
+    
+    public ChatService(
+        IConversationManagerService conversationManager,
+        IDocumentSearchService searchService)
+    {
+        _conversationManager = conversationManager;
+        _searchService = searchService;
+    }
+    
+    public async Task<string> HandleChatAsync(string userMessage)
+    {
+        // Oturum al veya oluştur
+        var sessionId = await _conversationManager.GetOrCreateSessionIdAsync();
+        
+        // Context için konuşma geçmişini al
+        var history = await _conversationManager.GetConversationHistoryAsync(sessionId);
+        
+        // Context ile sorgu
+        var response = await _searchService.QueryIntelligenceAsync(userMessage);
+        
+        // Konuşma geçmişine kaydet
+        await _conversationManager.AddToConversationAsync(
+            sessionId, 
+            userMessage, 
+            response.Answer
+        );
+        
+        return response.Answer;
+    }
+    
+    public async Task<string> StartNewChatAsync()
+    {
+        var newSessionId = await _conversationManager.StartNewConversationAsync();
+        return $"Yeni konuşma başlatıldı: {newSessionId}";
+    }
+}
+```
+
+### Depolama Backend'leri
+
+Konuşma geçmişi yapılandırılmış `IConversationRepository` kullanılarak depolanır:
+- **SQLite**: `SqliteConversationRepository` - Kalıcı dosya tabanlı depolama
+- **InMemory**: `InMemoryConversationRepository` - Hızlı, kalıcı olmayan (geliştirme)
+- **FileSystem**: `FileSystemConversationRepository` - JSON dosya tabanlı depolama
+- **Redis**: `RedisConversationRepository` - Yüksek performanslı dağıtık depolama
+
+Depolama backend'i `StorageProvider` yapılandırmanıza göre otomatik olarak seçilir.
+
+---
+
 ## IDocumentParserService
 
 **Amaç:** Çoklu format doküman ayrıştırma ve metin çıkarma
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Document`
 
 ### Metodlar
 
@@ -308,7 +556,7 @@ IEnumerable<string> GetSupportedContentTypes()
 
 **Amaç:** Canlı bağlantılarla evrensel veritabanı desteği
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Database`
 
 ### Metodlar
 
@@ -464,7 +712,7 @@ void ClearMemoryCache()
 
 **Amaç:** Gelişmiş semantik arama ve benzerlik hesaplama
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Search`
 
 ### Metodlar
 
@@ -494,11 +742,56 @@ Console.WriteLine($"Benzerlik Skoru: {similarity:F2}");
 
 ---
 
+## IContextExpansionService
+
+**Amaç:** Aynı dokümandaki bitişik chunk'ları dahil ederek doküman chunk context'ini genişletme
+
+**Namespace:** `SmartRAG.Interfaces.Search`
+
+### Metodlar
+
+#### ExpandContextAsync
+
+Aynı dokümandaki bitişik chunk'ları dahil ederek context'i genişletir. Bu, bir başlık bir chunk'ta ve içerik bir sonraki chunk'ta olsa bile, her ikisinin de arama sonuçlarına dahil edilmesini sağlar.
+
+```csharp
+Task<List<DocumentChunk>> ExpandContextAsync(
+    List<DocumentChunk> chunks, 
+    int contextWindow = 2
+)
+```
+
+**Parametreler:**
+- `chunks` (List<DocumentChunk>): Arama ile bulunan başlangıç chunk'ları
+- `contextWindow` (int): Bulunan her chunk'ın öncesi ve sonrasına dahil edilecek bitişik chunk sayısı (varsayılan: 2, maksimum: 5)
+
+**Döndürür:** Context ile genişletilmiş chunk listesi, doküman ID ve chunk index'e göre sıralanmış
+
+**Örnek:**
+
+```csharp
+// İlgili chunk'ları ara
+var chunks = await _searchService.SearchDocumentsAsync("SRS bakımı", maxResults: 5);
+
+// Context'i genişletmek için bitişik chunk'ları dahil et
+var expandedChunks = await _contextExpansion.ExpandContextAsync(chunks, contextWindow: 2);
+
+// Artık expandedChunks başlık chunk'ını VE içerik chunk'larını içeriyor
+foreach (var chunk in expandedChunks)
+{
+    Console.WriteLine($"Chunk {chunk.ChunkIndex}: {chunk.Content.Substring(0, 100)}...");
+}
+```
+
+**Not:** Bu servis, RAG cevapları oluştururken `DocumentSearchService` tarafından otomatik olarak kullanılır. Sadece başlıkların bulunup karşılık gelen içeriğin bulunmadığı durumları önlemeye yardımcı olur.
+
+---
+
 ## IAIService
 
 **Amaç:** AI provider'ları ile etkileşim
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.AI`
 
 ### Metodlar
 
@@ -552,6 +845,127 @@ Console.WriteLine($"Oluşturulan embedding sayısı: {embeddings.Count}");
 ---
 
 ## Veri Modelleri
+
+### SearchOptions
+
+**v3.2.0'da Yeni**: İstek başına arama yapılandırması ile arama tipleri üzerinde detaylı kontrol.
+
+```csharp
+public class SearchOptions
+{
+    public bool EnableDatabaseSearch { get; set; } = true;
+    public bool EnableDocumentSearch { get; set; } = true;
+    public bool EnableAudioSearch { get; set; } = true;
+    public bool EnableImageSearch { get; set; } = true;
+    public string? PreferredLanguage { get; set; }
+    
+    public static SearchOptions Default => new SearchOptions();
+    public static SearchOptions FromConfig(SmartRagOptions options);
+}
+```
+
+**Özellikler:**
+- `EnableDatabaseSearch` (bool): Veritabanlarında arama yapmayı etkinleştir (varsayılan: true)
+- `EnableDocumentSearch` (bool): Metin dokümanlarında arama yapmayı etkinleştir (varsayılan: true)
+- `EnableAudioSearch` (bool): Ses dosyalarında transkripsiyon ile arama yapmayı etkinleştir (varsayılan: true)
+- `EnableImageSearch` (bool): Görüntülerde OCR ile arama yapmayı etkinleştir (varsayılan: true)
+- `PreferredLanguage` (string?): AI yanıtları için ISO 639-1 dil kodu (örn: "tr", "en", "de")
+
+**Statik Metodlar:**
+- `Default`: Tüm özellikler etkin varsayılan arama seçenekleri oluşturur
+- `FromConfig(SmartRagOptions)`: Global yapılandırmadan arama seçenekleri oluşturur
+
+**Örnek:**
+
+```csharp
+// Özel arama seçenekleri
+var options = new SearchOptions
+{
+    EnableDatabaseSearch = true,
+    EnableDocumentSearch = false,
+    EnableAudioSearch = false,
+    EnableImageSearch = false,
+    PreferredLanguage = "tr"
+};
+
+var response = await _searchService.QueryIntelligenceAsync(
+    "En iyi müşterileri göster",
+    maxResults: 5,
+    options: options
+);
+
+// Global yapılandırmayı kullan
+var globalOptions = SearchOptions.FromConfig(_smartRagOptions);
+var response2 = await _searchService.QueryIntelligenceAsync(
+    "Her şeyde ara",
+    maxResults: 5,
+    options: globalOptions
+);
+```
+
+**Bayrak Tabanlı Filtreleme:**
+
+Hızlı arama tipi seçimi için sorgu string bayrak ayrıştırması uygulayabilirsiniz:
+
+```csharp
+private SearchOptions? ParseSearchOptions(string input, out string cleanQuery)
+{
+    cleanQuery = input;
+    
+    var hasDocumentFlag = input.Contains("-d ", StringComparison.OrdinalIgnoreCase) 
+        || input.EndsWith("-d", StringComparison.OrdinalIgnoreCase);
+    var hasDatabaseFlag = input.Contains("-db ", StringComparison.OrdinalIgnoreCase) 
+        || input.EndsWith("-db", StringComparison.OrdinalIgnoreCase);
+    var hasAudioFlag = input.Contains("-a ", StringComparison.OrdinalIgnoreCase) 
+        || input.EndsWith("-a", StringComparison.OrdinalIgnoreCase);
+    var hasImageFlag = input.Contains("-i ", StringComparison.OrdinalIgnoreCase) 
+        || input.EndsWith("-i", StringComparison.OrdinalIgnoreCase);
+    
+    if (!hasDocumentFlag && !hasDatabaseFlag && !hasAudioFlag && !hasImageFlag)
+    {
+        return null; // Varsayılanı kullan
+    }
+    
+    var options = new SearchOptions
+    {
+        EnableDocumentSearch = hasDocumentFlag,
+        EnableDatabaseSearch = hasDatabaseFlag,
+        EnableAudioSearch = hasAudioFlag,
+        EnableImageSearch = hasImageFlag
+    };
+    
+    // Sorgudan bayrakları kaldır
+    var parts = input.Split(' ');
+    var cleanParts = parts.Where(p => 
+        !p.Equals("-d", StringComparison.OrdinalIgnoreCase) && 
+        !p.Equals("-db", StringComparison.OrdinalIgnoreCase) && 
+        !p.Equals("-a", StringComparison.OrdinalIgnoreCase) && 
+        !p.Equals("-i", StringComparison.OrdinalIgnoreCase));
+        
+    cleanQuery = string.Join(" ", cleanParts);
+    
+    return options;
+}
+
+// Kullanım
+string userQuery = "-db En iyi müşterileri göster";
+var searchOptions = ParseSearchOptions(userQuery, out string cleanQuery);
+// cleanQuery = "En iyi müşterileri göster"
+// searchOptions.EnableDatabaseSearch = true, diğerleri = false
+
+var response = await _searchService.QueryIntelligenceAsync(
+    cleanQuery,
+    maxResults: 5,
+    options: searchOptions
+);
+```
+
+**Mevcut Bayraklar:**
+- `-db`: Sadece veritabanı araması
+- `-d`: Sadece doküman (metin) araması
+- `-a`: Sadece ses araması
+- `-i`: Sadece görüntü araması
+- Bayraklar birleştirilebilir (örn: `-db -a` = veritabanı + ses araması)
 
 ### DatabaseConfig
 
@@ -622,6 +1036,66 @@ public class DocumentChunk
     public int ChunkIndex { get; set; }          // Dokümandaki pozisyon
 }
 ```
+
+### SearchOptions
+
+**v3.2.0'da Yeni**: İstek başına arama yapılandırması ile arama tipleri üzerinde detaylı kontrol.
+
+```csharp
+public class SearchOptions
+{
+    public bool EnableDatabaseSearch { get; set; } = true;
+    public bool EnableDocumentSearch { get; set; } = true;
+    public bool EnableAudioSearch { get; set; } = true;
+    public bool EnableImageSearch { get; set; } = true;
+    public string? PreferredLanguage { get; set; }
+    
+    public static SearchOptions Default => new SearchOptions();
+    public static SearchOptions FromConfig(SmartRagOptions options);
+}
+```
+
+**Özellikler:**
+- `EnableDatabaseSearch` (bool): Veritabanlarında arama yapmayı etkinleştir (varsayılan: true)
+- `EnableDocumentSearch` (bool): Metin dokümanlarında arama yapmayı etkinleştir (varsayılan: true)
+- `EnableAudioSearch` (bool): Ses dosyalarında transkripsiyon ile arama yapmayı etkinleştir (varsayılan: true)
+- `EnableImageSearch` (bool): Görüntülerde OCR ile arama yapmayı etkinleştir (varsayılan: true)
+- `PreferredLanguage` (string?): AI yanıtları için ISO 639-1 dil kodu (örn: "tr", "en", "de")
+
+**Statik Metodlar:**
+- `Default`: Tüm özellikler etkin varsayılan arama seçenekleri oluşturur
+- `FromConfig(SmartRagOptions)`: Global yapılandırmadan arama seçenekleri oluşturur
+
+**Örnek:**
+
+```csharp
+// Özel arama seçenekleri
+var options = new SearchOptions
+{
+    EnableDatabaseSearch = true,
+    EnableDocumentSearch = false,
+    EnableAudioSearch = false,
+    EnableImageSearch = false,
+    PreferredLanguage = "tr"
+};
+
+var response = await _searchService.QueryIntelligenceAsync(
+    "En iyi müşterileri göster",
+    maxResults: 5,
+    options: options
+);
+```
+
+**Bayrak Tabanlı Filtreleme:**
+
+Hızlı arama tipi seçimi için sorgu string bayrak ayrıştırması uygulayabilirsiniz. Detaylar için [Examples](/tr/examples) sayfasına bakın.
+
+**Mevcut Bayraklar:**
+- `-db`: Sadece veritabanı araması
+- `-d`: Sadece doküman (metin) araması
+- `-a`: Sadece ses araması
+- `-i`: Sadece görüntü araması
+- Bayraklar birleştirilebilir (örn: `-db -a` = veritabanı + ses araması)
 
 ### Document
 
@@ -834,7 +1308,7 @@ public SearchResult Search(string query)
 
 **Amaç:** AI kullanarak çoklu veritabanı sorgularını koordine eder
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Database`
 
 Bu interface, doğal dil kullanarak birden fazla veritabanına aynı anda sorgu yapmayı sağlar. AI sorguyu analiz eder, hangi veritabanları ve tablolara erişileceğini belirler, optimize edilmiş SQL sorguları oluşturur ve sonuçları tutarlı bir yanıt halinde birleştirir.
 
@@ -957,7 +1431,7 @@ Task<MultiDatabaseQueryResult> MergeResultsAsync(
 
 **Amaç:** Konfigürasyondan veritabanı bağlantılarını yönetir
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Document`
 
 Veritabanı bağlantı yaşam döngüsü, doğrulama ve runtime yönetimini ele alır.
 
@@ -1099,7 +1573,7 @@ Task<bool> RemoveConnectionAsync(string databaseId)
 
 **Amaç:** Veritabanı şemalarını analiz eder ve akıllı metadata oluşturur
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Database`
 
 Tabloları, sütunları, ilişkileri içeren kapsamlı şema bilgisini çıkarır ve AI destekli özetler oluşturur.
 
@@ -1218,7 +1692,7 @@ Task<string> GenerateAISummaryAsync(DatabaseSchemaInfo schemaInfo)
 
 **Amaç:** Whisper.net ile ses transkripsiyonu (%100 yerel işleme)
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Parser`
 
 Whisper.net kullanarak yerel ses-metin transkripsiyonu sağlar. Tüm işlem lokalde yapılır.
 
@@ -1272,7 +1746,7 @@ Console.WriteLine($"Güven: {result.Confidence:P}");
 
 **Amaç:** Tesseract kullanarak görüntülerden OCR metin çıkarma
 
-**Namespace:** `SmartRAG.Interfaces`
+**Namespace:** `SmartRAG.Interfaces.Parser`
 
 Görüntülerden metin çıkarmak için optik karakter tanıma (OCR) sağlar. Tüm işlem Tesseract kullanarak lokaldir.
 
@@ -1367,6 +1841,669 @@ var preprocessedStream = await _imageParser.PreprocessImageAsync(originalStream)
 
 var result = await _imageParser.ExtractTextFromImageAsync(preprocessedStream);
 Console.WriteLine($"Ön işleme sonrası metin: {result}");
+```
+
+---
+
+## Strategy Pattern Interface'leri (v3.2.0)
+
+SmartRAG v3.2.0, genişletilebilirlik ve özelleştirme için Strategy Pattern'i tanıtıyor.
+
+### ISqlDialectStrategy
+
+**Amaç:** Veritabanına özgü SQL üretimi ve doğrulama
+
+**Namespace:** `SmartRAG.Interfaces.Database.Strategies`
+
+**v3.2.0'da Yeni**: Veritabanına özgü SQL optimizasyonu ve özel veritabanı desteği sağlar.
+
+#### Özellikler
+
+```csharp
+DatabaseType DatabaseType { get; }
+```
+
+#### Metodlar
+
+##### BuildSystemPrompt
+
+Bu veritabanı diyalektine özgü SQL üretimi için AI sistem prompt'u oluşturur.
+
+```csharp
+string BuildSystemPrompt(DatabaseSchemaInfo schema, string userQuery)
+```
+
+##### ValidateSyntax
+
+Bu belirli diyalekt için SQL sözdizimini doğrular.
+
+```csharp
+bool ValidateSyntax(string sql, out string errorMessage)
+```
+
+##### FormatSql
+
+SQL sorgusunu diyalekte özgü kurallara göre biçimlendirir.
+
+```csharp
+string FormatSql(string sql)
+```
+
+##### GetLimitClause
+
+Bu diyalekt için LIMIT cümlesi formatını alır.
+
+```csharp
+string GetLimitClause(int limit)
+```
+
+**Döndürür:**
+- SQLite/MySQL: `LIMIT {limit}`
+- SQL Server: `TOP {limit}`
+- PostgreSQL: `LIMIT {limit}`
+
+#### Yerleşik Uygulamalar
+
+- `SqliteDialectStrategy` - SQLite için optimize edilmiş SQL
+- `PostgreSqlDialectStrategy` - PostgreSQL için optimize edilmiş SQL
+- `MySqlDialectStrategy` - MySQL/MariaDB için optimize edilmiş SQL
+- `SqlServerDialectStrategy` - SQL Server için optimize edilmiş SQL
+
+#### Özel Uygulama Örneği
+
+```csharp
+public class OracleDialectStrategy : BaseSqlDialectStrategy
+{
+    public override DatabaseType DatabaseType => DatabaseType.Oracle;
+    
+    public override string BuildSystemPrompt(DatabaseSchemaInfo schema, string userQuery)
+    {
+        return $"Oracle SQL oluştur: {userQuery}\\nŞema: {schema}";
+    }
+    
+    public override bool ValidateSyntax(string sql, out string errorMessage)
+    {
+        // Oracle'a özgü doğrulama
+        errorMessage = null;
+        return true;
+    }
+    
+    public override string FormatSql(string sql)
+    {
+        // Oracle'a özgü biçimlendirme
+        return sql.ToUpper();
+    }
+    
+    public override string GetLimitClause(int limit)
+    {
+        return $"FETCH FIRST {limit} ROWS ONLY";
+    }
+}
+```
+
+---
+
+### IScoringStrategy
+
+**Amaç:** Özelleştirilebilir doküman ilgililik skorlaması
+
+**Namespace:** `SmartRAG.Interfaces.Search.Strategies`
+
+**v3.2.0'da Yeni**: Arama sonuçları için özel skorlama algoritmaları sağlar.
+
+#### Metodlar
+
+##### CalculateScoreAsync
+
+Bir doküman parçası için ilgililik skoru hesaplar.
+
+```csharp
+Task<double> CalculateScoreAsync(
+    string query, 
+    DocumentChunk chunk, 
+    List<float> queryEmbedding
+)
+```
+
+**Parametreler:**
+- `query` (string): Arama sorgusu
+- `chunk` (DocumentChunk): Skorlanacak doküman parçası
+- `queryEmbedding` (List<float>): Sorgu embedding vektörü
+
+**Döndürür:** 0.0 ile 1.0 arasında skor
+
+#### Yerleşik Uygulama
+
+**HybridScoringStrategy** (varsayılan):
+- %80 semantik benzerlik (embedding'lerin kosinüs benzerliği)
+- %20 anahtar kelime eşleşmesi (BM25 benzeri skorlama)
+
+#### Özel Uygulama Örneği
+
+```csharp
+public class SemanticOnlyScoringStrategy : IScoringStrategy
+{
+    public async Task<double> CalculateScoreAsync(
+        string query, 
+        DocumentChunk chunk, 
+        List<float> queryEmbedding)
+    {
+        // Saf semantik benzerlik (%100 embedding tabanlı)
+        return CosineSimilarity(queryEmbedding, chunk.Embedding);
+    }
+    
+    private double CosineSimilarity(List<float> a, List<float> b)
+    {
+        double dotProduct = 0, normA = 0, normB = 0;
+        for (int i = 0; i < a.Count; i++)
+        {
+            dotProduct += a[i] * b[i];
+            normA += a[i] * a[i];
+            normB += b[i] * b[i];
+        }
+        return dotProduct / (Math.Sqrt(normA) * Math.Sqrt(normB));
+    }
+}
+```
+
+---
+
+### IFileParser
+
+**Amaç:** Belirli dosya formatlarını ayrıştırma stratejisi
+
+**Namespace:** `SmartRAG.Interfaces.Parser.Strategies`
+
+**v3.2.0'da Yeni**: Özel dosya formatı ayrıştırıcıları sağlar.
+
+#### Metodlar
+
+##### ParseAsync
+
+Bir dosyayı ayrıştırır ve içeriği çıkarır.
+
+```csharp
+Task<FileParserResult> ParseAsync(Stream fileStream, string fileName)
+```
+
+##### CanParse
+
+Bu ayrıştırıcının verilen dosyayı işleyip işleyemeyeceğini kontrol eder.
+
+```csharp
+bool CanParse(string fileName, string contentType)
+```
+
+#### Yerleşik Uygulamalar
+
+- `PdfFileParser` - PDF dokümanları
+- `WordFileParser` - Word dokümanları (.docx)
+- `ExcelFileParser` - Excel elektronik tabloları (.xlsx)
+- `TextFileParser` - Düz metin dosyaları
+- `ImageFileParser` - OCR ile görseller
+- `AudioFileParser` - Ses transkripsiyon
+- `DatabaseFileParser` - SQLite veritabanları
+
+#### Özel Uygulama Örneği
+
+```csharp
+public class MarkdownFileParser : IFileParser
+{
+    public bool CanParse(string fileName, string contentType)
+    {
+        return fileName.EndsWith(".md", StringComparison.OrdinalIgnoreCase) ||
+               contentType == "text/markdown";
+    }
+    
+    public async Task<FileParserResult> ParseAsync(Stream fileStream, string fileName)
+    {
+        using var reader = new StreamReader(fileStream);
+        var content = await reader.ReadToEndAsync();
+        
+        // Düz metin için markdown sözdizimini kaldır
+        var plainText = StripMarkdownSyntax(content);
+        
+        return new FileParserResult
+        {
+            Content = plainText,
+            Success = true
+        };
+    }
+    
+    private string StripMarkdownSyntax(string markdown)
+    {
+        // Markdown biçimlendirmesini kaldır
+        return Regex.Replace(markdown, @"[#*`\[\]()]", "");
+    }
+}
+```
+
+---
+
+## Ek Servis Interface'leri (v3.2.0)
+
+### IConversationRepository
+
+**Amaç:** Konuşma depolama için veri erişim katmanı
+
+**Namespace:** `SmartRAG.Interfaces.Storage`
+
+**v3.2.0'da Yeni**: Daha iyi SRP uyumu için `IDocumentRepository`'den ayrıldı.
+
+#### Metodlar
+
+```csharp
+Task<string> GetConversationHistoryAsync(string sessionId);
+Task SaveConversationAsync(string sessionId, string history);
+Task DeleteConversationAsync(string sessionId);
+Task<bool> ConversationExistsAsync(string sessionId);
+```
+
+#### Uygulamalar
+
+- `SqliteConversationRepository`
+- `InMemoryConversationRepository`
+- `FileSystemConversationRepository`
+- `RedisConversationRepository`
+
+---
+
+### IAIConfigurationService
+
+**Amaç:** AI sağlayıcı yapılandırma yönetimi
+
+**Namespace:** `SmartRAG.Interfaces.AI`
+
+**v3.2.0'da Yeni**: Daha iyi SRP için yapılandırma yürütmeden ayrıldı.
+
+#### Metodlar
+
+```csharp
+AIProvider GetProvider();
+string GetModel();
+string GetEmbeddingModel();
+int GetMaxTokens();
+double GetTemperature();
+```
+
+---
+
+### IAIRequestExecutor
+
+**Amaç:** Yeniden deneme/yedekleme ile AI istek yürütme
+
+**Namespace:** `SmartRAG.Interfaces.AI`
+
+**v3.2.0'da Yeni**: Otomatik yeniden deneme ve yedekleme mantığı ile AI isteklerini işler.
+
+#### Metodlar
+
+```csharp
+Task<string> ExecuteRequestAsync(string prompt, CancellationToken cancellationToken = default);
+Task<List<float>> ExecuteEmbeddingRequestAsync(string text, CancellationToken cancellationToken = default);
+```
+
+---
+
+### IQueryIntentAnalyzer
+
+**Amaç:** Veritabanı yönlendirmesi için sorgu niyet analizi
+
+**Namespace:** `SmartRAG.Interfaces.Database`
+
+**v3.2.0'da Yeni**: Veritabanı yönlendirme stratejisini belirlemek için sorguları analiz eder.
+
+#### Metodlar
+
+```csharp
+Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery);
+```
+
+---
+
+### IDatabaseQueryExecutor
+
+**Amaç:** Birden fazla veritabanında sorgu yürütme
+
+**Namespace:** `SmartRAG.Interfaces.Database`
+
+**v3.2.0'da Yeni**: Veritabanları arasında paralel sorgu yürütme.
+
+#### Metodlar
+
+```csharp
+Task<MultiDatabaseQueryResult> ExecuteMultiDatabaseQueryAsync(QueryIntent queryIntent);
+```
+
+---
+
+### IResultMerger
+
+**Amaç:** Birden fazla veritabanından sonuçları birleştirme
+
+**Namespace:** `SmartRAG.Interfaces.Database`
+
+**v3.2.0'da Yeni**: AI destekli sonuç birleştirme.
+
+#### Metodlar
+
+```csharp
+Task<string> MergeResultsAsync(MultiDatabaseQueryResult queryResult, string userQuery);
+```
+
+---
+
+### ISQLQueryGenerator
+
+**Amaç:** SQL sorguları oluşturma ve doğrulama
+
+**Namespace:** `SmartRAG.Interfaces.Database`
+
+**v3.2.0'da Yeni**: Veritabanına özgü SQL için `ISqlDialectStrategy` kullanır.
+
+#### Metodlar
+
+```csharp
+Task<string> GenerateSqlAsync(string userQuery, DatabaseSchemaInfo schema, DatabaseType databaseType);
+bool ValidateSql(string sql, DatabaseSchemaInfo schema, out string errorMessage);
+```
+
+---
+
+### IEmbeddingSearchService
+
+**Amaç:** Embedding tabanlı semantik arama
+
+**Namespace:** `SmartRAG.Interfaces.Search`
+
+**v3.2.0'da Yeni**: Temel embedding arama işlevselliği.
+
+#### Metodlar
+
+```csharp
+Task<List<DocumentChunk>> SearchByEmbeddingAsync(List<float> queryEmbedding, int maxResults = 5);
+```
+
+---
+
+### ISourceBuilderService
+
+**Amaç:** Arama sonucu kaynakları oluşturma
+
+**Namespace:** `SmartRAG.Interfaces.Search`
+
+**v3.2.0'da Yeni**: Chunk'lardan `SearchSource` nesneleri oluşturur.
+
+#### Metodlar
+
+```csharp
+List<SearchSource> BuildSources(List<DocumentChunk> chunks);
+```
+
+---
+
+### IAudioParserService
+
+**Amaç:** Ses dosyası ayrıştırma ve transkripsiyon
+
+**Namespace:** `SmartRAG.Interfaces.Parser`
+
+#### Metodlar
+
+```csharp
+Task<string> TranscribeAudioAsync(Stream audioStream, string fileName);
+```
+
+---
+
+### IImageParserService
+
+**Amaç:** Görüntü OCR işleme
+
+**Namespace:** `SmartRAG.Interfaces.Parser`
+
+#### Metodlar
+
+```csharp
+Task<string> ExtractTextFromImageAsync(Stream imageStream, string language = "eng");
+```
+
+---
+
+### IAIProvider
+
+**Amaç:** Metin üretimi ve embedding'ler için düşük seviye AI sağlayıcı arayüzü
+
+**Namespace:** `SmartRAG.Interfaces.AI`
+
+**v3.2.0'da yeni**: Birden fazla AI backend için sağlayıcı soyutlaması.
+
+#### Metodlar
+
+```csharp
+Task<string> GenerateTextAsync(string prompt, AIProviderConfig config);
+Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config);
+Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config);
+Task<List<string>> ChunkTextAsync(string text, int maxChunkSize = 1000);
+```
+
+---
+
+### IAIProviderFactory
+
+**Amaç:** AI sağlayıcı örnekleri oluşturmak için fabrika
+
+**Namespace:** `SmartRAG.Interfaces.AI`
+
+**v3.2.0'da yeni**: AI sağlayıcı oluşturma için fabrika deseni.
+
+#### Metodlar
+
+```csharp
+IAIProvider CreateProvider(AIProvider providerType);
+```
+
+---
+
+### IPromptBuilderService
+
+**Amaç:** Farklı senaryolar için AI prompt'ları oluşturmak için servis
+
+**Namespace:** `SmartRAG.Interfaces.AI`
+
+**v3.2.0'da yeni**: Konuşma geçmişi desteği ile merkezi prompt oluşturma.
+
+#### Metodlar
+
+```csharp
+string BuildDocumentRagPrompt(string query, string context, string? conversationHistory = null);
+string BuildHybridMergePrompt(string query, string? databaseContext, string? documentContext, string? conversationHistory = null);
+string BuildConversationPrompt(string query, string? conversationHistory = null);
+```
+
+---
+
+### IDocumentRepository
+
+**Amaç:** Doküman depolama işlemleri için repository arayüzü
+
+**Namespace:** `SmartRAG.Interfaces.Document`
+
+**v3.2.0'da yeni**: İş mantığından ayrılmış repository katmanı.
+
+#### Metodlar
+
+```csharp
+Task<Document> AddAsync(Document document);
+Task<Document> GetByIdAsync(Guid id);
+Task<List<Document>> GetAllAsync();
+Task<bool> DeleteAsync(Guid id);
+Task<int> GetCountAsync();
+Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = 5);
+```
+
+---
+
+### IDocumentScoringService
+
+**Amaç:** Sorgu ilgisine göre doküman parçalarını puanlamak için servis
+
+**Namespace:** `SmartRAG.Interfaces.Document`
+
+**v3.2.0'da yeni**: Anahtar kelime ve semantik ilgi ile hibrit puanlama stratejisi.
+
+#### Metodlar
+
+```csharp
+List<DocumentChunk> ScoreChunks(List<DocumentChunk> chunks, string query, List<string> queryWords, List<string> potentialNames);
+double CalculateKeywordRelevanceScore(string query, string content);
+```
+
+---
+
+### IAudioParserFactory
+
+**Amaç:** Ses ayrıştırıcı servis örnekleri oluşturmak için fabrika
+
+**Namespace:** `SmartRAG.Interfaces.Parser`
+
+**v3.2.0'da yeni**: Ses ayrıştırıcı oluşturma için fabrika deseni.
+
+#### Metodlar
+
+```csharp
+IAudioParserService CreateAudioParser(AudioProvider provider);
+```
+
+---
+
+### IStorageFactory
+
+**Amaç:** Doküman ve konuşma depolama repository'leri oluşturmak için fabrika
+
+**Namespace:** `SmartRAG.Interfaces.Storage`
+
+**v3.2.0'da yeni**: Tüm depolama işlemleri için birleşik fabrika.
+
+#### Metodlar
+
+```csharp
+IDocumentRepository CreateRepository(StorageConfig config);
+IDocumentRepository CreateRepository(StorageProvider provider);
+StorageProvider GetCurrentProvider();
+IDocumentRepository GetCurrentRepository();
+IConversationRepository CreateConversationRepository(StorageConfig config);
+IConversationRepository CreateConversationRepository(StorageProvider provider);
+IConversationRepository GetCurrentConversationRepository();
+```
+
+---
+
+### IQdrantCacheManager
+
+**Amaç:** Qdrant işlemlerinde arama sonuçlarını önbelleğe almak için arayüz
+
+**Namespace:** `SmartRAG.Interfaces.Storage.Qdrant`
+
+**v3.2.0'da yeni**: Performans optimizasyonu için arama sonuçlarını önbelleğe alma.
+
+#### Metodlar
+
+```csharp
+List<DocumentChunk> GetCachedResults(string queryHash);
+void CacheResults(string queryHash, List<DocumentChunk> results);
+void CleanupExpiredCache();
+```
+
+---
+
+### IQdrantCollectionManager
+
+**Amaç:** Qdrant koleksiyonlarını ve doküman depolamayı yönetmek için arayüz
+
+**Namespace:** `SmartRAG.Interfaces.Storage.Qdrant`
+
+**v3.2.0'da yeni**: Qdrant vektör veritabanı için koleksiyon yaşam döngüsü yönetimi.
+
+#### Metodlar
+
+```csharp
+Task EnsureCollectionExistsAsync();
+Task CreateCollectionAsync(string collectionName, int vectorDimension);
+Task EnsureDocumentCollectionExistsAsync(string collectionName, Document document);
+Task<int> GetVectorDimensionAsync();
+```
+
+---
+
+### IQdrantEmbeddingService
+
+**Amaç:** Metin içeriği için embedding'ler oluşturmak için arayüz
+
+**Namespace:** `SmartRAG.Interfaces.Storage.Qdrant`
+
+**v3.2.0'da yeni**: Qdrant vektör depolama için embedding oluşturma.
+
+#### Metodlar
+
+```csharp
+Task<List<float>> GenerateEmbeddingAsync(string text);
+Task<int> GetVectorDimensionAsync();
+```
+
+---
+
+### IQdrantSearchService
+
+**Amaç:** Qdrant vektör veritabanında arama yapmak için arayüz
+
+**Namespace:** `SmartRAG.Interfaces.Storage.Qdrant`
+
+**v3.2.0'da yeni**: Qdrant için vektör, metin ve hibrit arama yetenekleri.
+
+#### Metodlar
+
+```csharp
+Task<List<DocumentChunk>> SearchAsync(List<float> queryEmbedding, int maxResults);
+Task<List<DocumentChunk>> FallbackTextSearchAsync(string query, int maxResults);
+Task<List<DocumentChunk>> HybridSearchAsync(string query, int maxResults);
+```
+
+---
+
+### IQueryIntentClassifierService
+
+**Amaç:** Sorgu niyetini sınıflandırmak için servis (konuşma vs bilgi)
+
+**Namespace:** `SmartRAG.Interfaces.Support`
+
+**v3.2.0'da yeni**: Hibrit yönlendirme için AI tabanlı sorgu niyet sınıflandırması.
+
+#### Metodlar
+
+```csharp
+Task<bool> IsGeneralConversationAsync(string query, string? conversationHistory = null);
+bool TryParseCommand(string input, out QueryCommandType commandType, out string payload);
+```
+
+**Komut Türleri:**
+- `QueryCommandType.None`: Komut algılanmadı
+- `QueryCommandType.NewConversation`: `/new` veya `/reset` komutu
+- `QueryCommandType.ForceConversation`: `/conv` komutu
+
+---
+
+### ITextNormalizationService
+
+**Amaç:** Metin normalizasyonu ve temizleme
+
+**Namespace:** `SmartRAG.Interfaces.Support`
+
+#### Metodlar
+
+```csharp
+string NormalizeText(string text);
+string RemoveExtraWhitespace(string text);
 ```
 
 ---

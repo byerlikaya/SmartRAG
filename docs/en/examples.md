@@ -58,7 +58,103 @@ public class SearchRequest
 
 ---
 
-### 2. Multi-Database Query
+### 2. Search Options and Flag-Based Filtering
+
+Control which data sources to search using `SearchOptions`:
+
+```csharp
+public class IntelligenceController : ControllerBase
+{
+    private readonly IDocumentSearchService _searchService;
+    
+    [HttpPost("ask")]
+    public async Task<IActionResult> Ask([FromBody] QuestionRequest request)
+    {
+        // Option 1: Use SearchOptions directly
+        var options = new SearchOptions
+        {
+            EnableDatabaseSearch = true,
+            EnableDocumentSearch = false,
+            EnableAudioSearch = false,
+            EnableImageSearch = false,
+            PreferredLanguage = "en"
+        };
+        
+        var response = await _searchService.QueryIntelligenceAsync(
+            request.Question,
+            maxResults: 5,
+            options: options
+        );
+        
+        return Ok(response);
+    }
+    
+    [HttpPost("ask-with-flags")]
+    public async Task<IActionResult> AskWithFlags([FromBody] string query)
+    {
+        // Option 2: Parse flags from query string
+        var searchOptions = ParseSearchOptions(query, out string cleanQuery);
+        
+        var response = await _searchService.QueryIntelligenceAsync(
+            cleanQuery,
+            maxResults: 5,
+            options: searchOptions
+        );
+        
+        return Ok(response);
+    }
+    
+    private SearchOptions? ParseSearchOptions(string input, out string cleanQuery)
+    {
+        cleanQuery = input;
+        
+        var hasDocumentFlag = input.Contains("-d ", StringComparison.OrdinalIgnoreCase) 
+            || input.EndsWith("-d", StringComparison.OrdinalIgnoreCase);
+        var hasDatabaseFlag = input.Contains("-db ", StringComparison.OrdinalIgnoreCase) 
+            || input.EndsWith("-db", StringComparison.OrdinalIgnoreCase);
+        var hasAudioFlag = input.Contains("-a ", StringComparison.OrdinalIgnoreCase) 
+            || input.EndsWith("-a", StringComparison.OrdinalIgnoreCase);
+        var hasImageFlag = input.Contains("-i ", StringComparison.OrdinalIgnoreCase) 
+            || input.EndsWith("-i", StringComparison.OrdinalIgnoreCase);
+        
+        if (!hasDocumentFlag && !hasDatabaseFlag && !hasAudioFlag && !hasImageFlag)
+        {
+            return null; // Use default options
+        }
+        
+        var options = new SearchOptions
+        {
+            EnableDocumentSearch = hasDocumentFlag,
+            EnableDatabaseSearch = hasDatabaseFlag,
+            EnableAudioSearch = hasAudioFlag,
+            EnableImageSearch = hasImageFlag
+        };
+        
+        // Remove flags from query
+        var parts = input.Split(' ');
+        var cleanParts = parts.Where(p => 
+            !p.Equals("-d", StringComparison.OrdinalIgnoreCase) && 
+            !p.Equals("-db", StringComparison.OrdinalIgnoreCase) && 
+            !p.Equals("-a", StringComparison.OrdinalIgnoreCase) && 
+            !p.Equals("-i", StringComparison.OrdinalIgnoreCase));
+            
+        cleanQuery = string.Join(" ", cleanParts);
+        
+        return options;
+    }
+}
+```
+
+**Flag Examples:**
+- `"-db Show top customers"` → Database search only
+- `"-a What was discussed?"` → Audio search only
+- `"-i What text is in the image?"` → Image OCR search only
+- `"-db -a Show customers and meeting notes"` → Database + audio search
+- `"Regular query without flags"` → All search types enabled (default)
+
+---
+
+### 3. Multi-Database Query
 
 Configure databases in `appsettings.json`, then query them:
 
@@ -705,7 +801,7 @@ public class DocumentServiceTests
         // Arrange
         var mockLogger = new Mock<ILogger<DocumentService>>();
         var mockParser = new Mock<IDocumentParserService>();
-        var mockRepository = new Mock<IDocumentRepository>();
+        var mockConversationManager = new Mock<IConversationManagerService>();
         
         var service = new DocumentService(mockLogger.Object, mockParser.Object, mockRepository.Object);
         
@@ -806,4 +902,242 @@ public class DocumentServiceTests
             </div>
     </div>
 </div>
+
+---
+
+## v3.2.0 New Features Examples
+
+### Conversation Management
+
+**New in v3.2.0**: Dedicated conversation management with `IConversationManagerService`.
+
+```csharp
+public class ChatController : ControllerBase
+{
+    private readonly IConversationManagerService _conversationManager;
+    private readonly IDocumentSearchService _searchService;
+    
+    public ChatController(
+        IConversationManagerService conversationManager,
+        IDocumentSearchService searchService)
+    {
+        _conversationManager = conversationManager;
+        _searchService = searchService;
+    }
+    
+    // Start new conversation
+    [HttpPost("conversations/new")]
+    public async Task<IActionResult> StartNewConversation()
+    {
+        var sessionId = await _conversationManager.StartNewConversationAsync();
+        return Ok(new { sessionId });
+    }
+    
+    // Chat with conversation context
+    [HttpPost("conversations/{sessionId}/chat")]
+    public async Task<IActionResult> Chat(string sessionId, [FromBody] ChatRequest request)
+    {
+        // Get conversation history for context
+        var history = await _conversationManager.GetConversationHistoryAsync(sessionId);
+        
+        // Query with context
+        var response = await _searchService.QueryIntelligenceAsync(request.Message);
+        
+        // Save to conversation history
+        await _conversationManager.AddToConversationAsync(
+            sessionId,
+            request.Message,
+            response.Answer
+        );
+        
+        return Ok(new
+        {
+            answer = response.Answer,
+            sources = response.Sources,
+            sessionId
+        });
+    }
+    
+    // Get conversation history
+    [HttpGet("conversations/{sessionId}/history")]
+    public async Task<IActionResult> GetHistory(string sessionId)
+    {
+        var history = await _conversationManager.GetConversationHistoryAsync(sessionId);
+        return Ok(new { history });
+    }
+}
+```
+
+### Custom SQL Dialect Strategy
+
+**New in v3.2.0**: Add support for custom databases with `ISqlDialectStrategy`.
+
+```csharp
+// Custom Oracle dialect strategy
+public class OracleDialectStrategy : BaseSqlDialectStrategy
+{
+    public override DatabaseType DatabaseType => DatabaseType.Oracle;
+    
+    public override string GetDialectName() => "Oracle";
+    
+    public override string BuildSystemPrompt(DatabaseSchemaInfo schema, string userQuery)
+    {
+        var prompt = new StringBuilder();
+        prompt.AppendLine("You are an Oracle SQL expert. Generate Oracle-specific SQL.");
+        prompt.AppendLine($"User Query: {userQuery}");
+        prompt.AppendLine($"Database Schema: {JsonSerializer.Serialize(schema)}");
+        prompt.AppendLine("Rules:");
+        prompt.AppendLine("- Use Oracle syntax (FETCH FIRST instead of LIMIT)");
+        prompt.AppendLine("- Use Oracle-specific functions when appropriate");
+        prompt.AppendLine("- Return only the SQL query, no explanations");
+        
+        return prompt.ToString();
+    }
+    
+    public override bool ValidateSyntax(string sql, out string errorMessage)
+    {
+        errorMessage = null;
+        
+        // Oracle-specific validation
+        if (sql.Contains("LIMIT", StringComparison.OrdinalIgnoreCase))
+        {
+            errorMessage = "Oracle uses FETCH FIRST, not LIMIT";
+            return false;
+        }
+        
+        if (sql.Contains("TOP", StringComparison.OrdinalIgnoreCase))
+        {
+            errorMessage = "Oracle uses FETCH FIRST, not TOP";
+            return false;
+        }
+        
+        return true;
+    }
+    
+    public override string FormatSql(string sql)
+    {
+        // Oracle prefers uppercase keywords
+        return sql.ToUpper();
+    }
+    
+    public override string GetLimitClause(int limit)
+    {
+        return $"FETCH FIRST {limit} ROWS ONLY";
+    }
+}
+
+// Register in DI
+services.AddSingleton<ISqlDialectStrategy, OracleDialectStrategy>();
+```
+
+### Custom Scoring Strategy
+
+**New in v3.2.0**: Implement custom relevance scoring with `IScoringStrategy`.
+
+```csharp
+// Semantic-only scoring (100% embedding-based)
+public class SemanticOnlyScoringStrategy : IScoringStrategy
+{
+    public async Task<double> CalculateScoreAsync(
+        string query,
+        DocumentChunk chunk,
+        List<float> queryEmbedding)
+    {
+        if (chunk.Embedding == null || chunk.Embedding.Count == 0)
+            return 0.0;
+        
+        // Pure cosine similarity
+        return CosineSimilarity(queryEmbedding, chunk.Embedding);
+    }
+    
+    private double CosineSimilarity(List<float> a, List<float> b)
+    {
+        if (a.Count != b.Count) return 0.0;
+        
+        double dotProduct = 0;
+        double normA = 0;
+        double normB = 0;
+        
+        for (int i = 0; i < a.Count; i++)
+        {
+            dotProduct += a[i] * b[i];
+            normA += a[i] * a[i];
+            normB += b[i] * b[i];
+        }
+        
+        if (normA == 0 || normB == 0) return 0.0;
+        
+        return dotProduct / (Math.Sqrt(normA) * Math.Sqrt(normB));
+    }
+}
+
+// Register in DI
+services.AddSingleton<IScoringStrategy, SemanticOnlyScoringStrategy>();
+```
+
+### Custom File Parser
+
+**New in v3.2.0**: Add support for custom file formats with `IFileParser`.
+
+```csharp
+// Markdown file parser
+public class MarkdownFileParser : IFileParser
+{
+    public bool CanParse(string fileName, string contentType)
+    {
+        return fileName.EndsWith(".md", StringComparison.OrdinalIgnoreCase) ||
+               fileName.EndsWith(".markdown", StringComparison.OrdinalIgnoreCase) ||
+               contentType == "text/markdown";
+    }
+    
+    public async Task<FileParserResult> ParseAsync(Stream fileStream, string fileName)
+    {
+        try
+        {
+            using var reader = new StreamReader(fileStream);
+            var markdown = await reader.ReadToEndAsync();
+            
+            // Strip markdown syntax for plain text
+            var plainText = StripMarkdownSyntax(markdown);
+            
+            return new FileParserResult
+            {
+                Content = plainText,
+                Success = true,
+                FileName = fileName
+            };
+        }
+        catch (Exception ex)
+        {
+            return new FileParserResult
+            {
+                Success = false,
+                ErrorMessage = ex.Message
+            };
+        }
+    }
+    
+    private string StripMarkdownSyntax(string markdown)
+    {
+        // Remove headers
+        markdown = Regex.Replace(markdown, @"^#{1,6}\s+", "", RegexOptions.Multiline);
+        
+        // Remove bold/italic
+        markdown = Regex.Replace(markdown, @"\*\*(.+?)\*\*", "$1");
+        markdown = Regex.Replace(markdown, @"\*(.+?)\*", "$1");
+        
+        // Remove links but keep text
+        markdown = Regex.Replace(markdown, @"\[(.+?)\]\(.+?\)", "$1");
+        
+        // Remove code blocks
+        markdown = Regex.Replace(markdown, @"```[\s\S]*?```", "");
+        markdown = Regex.Replace(markdown, @"`(.+?)`", "$1");
+        
+        return markdown.Trim();
+    }
+}
+
+// Register in DI
+services.AddSingleton<IFileParser, MarkdownFileParser>();
+```
 

@@ -10,6 +10,253 @@ SmartRAG'deki tüm önemli değişiklikler burada belgelenmiştir. Proje [Anlams
 
 ---
 
+## [3.2.0] - 2025-11-27
+
+### 🏗️ Mimari Refactoring - Modüler Tasarım
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> MINOR Sürüm</h4>
+    <p class="mb-0">
+        Bu sürüm, tam geriye dönük uyumluluk sağlarken önemli mimari iyileştirmeler sunar.
+        Mevcut tüm kodlar değişiklik gerektirmeden çalışmaya devam eder.
+    </p>
+</div>
+
+#### **Strategy Pattern Uygulaması**
+
+##### SQL Diyalekt Stratejisi
+- **`ISqlDialectStrategy`**: Veritabanına özgü SQL üretimi için interface
+- **Diyalekt Uygulamaları**: 
+  - `SqliteDialectStrategy` - SQLite için optimize edilmiş SQL üretimi
+  - `PostgreSqlDialectStrategy` - PostgreSQL için optimize edilmiş SQL üretimi
+  - `MySqlDialectStrategy` - MySQL/MariaDB için optimize edilmiş SQL üretimi
+  - `SqlServerDialectStrategy` - SQL Server için optimize edilmiş SQL üretimi
+- **`ISqlDialectStrategyFactory`**: Uygun diyalekt stratejisi oluşturmak için fabrika
+- **Faydalar**: Açık/Kapalı Prensibi (OCP), yeni veritabanı desteği eklemeyi kolaylaştırır
+
+##### Skorlama Stratejisi
+- **`IScoringStrategy`**: Doküman ilgililik skorlaması için interface
+- **`HybridScoringStrategy`**: Semantik ve anahtar kelime tabanlı skorlamayı birleştirir
+- **Faydalar**: Takılabilir skorlama algoritmaları, arama davranışını özelleştirmeyi kolaylaştırır
+
+##### Dosya Ayrıştırıcı Stratejisi
+- **`IFileParser`**: Dosya formatı ayrıştırma için interface
+- **Strateji tabanlı ayrıştırma**: Her dosya türü için özel ayrıştırıcı uygulaması
+- **Faydalar**: Tek Sorumluluk Prensibi (SRP), yeni dosya formatları eklemeyi kolaylaştırır
+
+#### **Repository Katmanı Ayrımı**
+
+##### Konuşma Repository
+- **`IConversationRepository`**: Konuşma veri erişimi için özel interface
+- **Uygulamalar**:
+  - `SqliteConversationRepository` - SQLite tabanlı konuşma depolama
+  - `InMemoryConversationRepository` - Bellekte konuşma depolama
+  - `FileSystemConversationRepository` - Dosya tabanlı konuşma depolama
+  - `RedisConversationRepository` - Redis tabanlı konuşma depolama
+- **`IConversationManagerService`**: Konuşma yönetimi için iş mantığı
+- **Faydalar**: Sorumlulukların Ayrılması (SoC), Interface Ayrımı Prensibi (ISP)
+
+##### Repository Temizliği
+- **`IDocumentRepository`**: Konuşma ile ilgili metodlar kaldırıldı
+- **Net ayrım**: Dokümanlar vs Konuşmalar
+- **Faydalar**: Daha temiz interface'ler, daha iyi test edilebilirlik
+
+#### **Servis Katmanı Refactoring**
+
+##### AI Servis Ayrıştırması
+- **`IAIConfigurationService`**: AI sağlayıcı yapılandırma yönetimi
+- **`IAIRequestExecutor`**: Yeniden deneme/yedekleme ile AI istek yürütme
+- **`IPromptBuilderService`**: Prompt oluşturma ve optimizasyon
+- **`IAIProviderFactory`**: AI sağlayıcı örnekleri oluşturmak için fabrika
+- **Faydalar**: Tek Sorumluluk Prensibi (SRP), daha iyi test edilebilirlik
+
+##### Veritabanı Servisleri
+- **`IQueryIntentAnalyzer`**: Sorgu niyet analizi ve sınıflandırma
+- **`IDatabaseQueryExecutor`**: Veritabanı sorgu yürütme
+- **`IResultMerger`**: Çoklu veritabanı sonuç birleştirme
+- **`ISQLQueryGenerator`**: Doğrulama ile SQL sorgu üretimi
+- **`IDatabaseConnectionManager`**: Veritabanı bağlantı yaşam döngüsü yönetimi
+- **`IDatabaseSchemaAnalyzer`**: Veritabanı şema analizi ve önbellekleme
+
+##### Arama Servisleri
+- **`IEmbeddingSearchService`**: Embedding tabanlı arama işlemleri
+- **`ISourceBuilderService`**: Arama sonucu kaynak oluşturma
+
+##### Ayrıştırıcı Servisleri
+- **`IAudioParserService`**: Ses dosyası ayrıştırma ve transkripsiyon
+- **`IImageParserService`**: Görüntü OCR işleme
+- **`IAudioParserFactory`**: Ses ayrıştırıcı oluşturma fabrikası
+
+##### Destek Servisleri
+- **`IQueryIntentClassifierService`**: Sorgu niyet sınıflandırma
+- **`ITextNormalizationService`**: Metin normalizasyonu ve temizleme
+
+#### **Model Konsolidasyonu**
+
+#### **Yeni Özellikler: Özelleştirme Desteği**
+
+- **Özel SQL Diyalekt Stratejileri**: Özel veritabanı diyalektleri (örn. Oracle) uygulama desteği
+- **Özel Skorlama Stratejileri**: Özel arama ilgililik mantığı uygulama desteği
+- **Özel Dosya Ayrıştırıcıları**: Özel dosya formatı ayrıştırıcıları uygulama desteği
+- **Özel Konuşma Yönetimi**: Konuşma geçmişini yönetmek için yeni servis
+
+### ✨ Eklenenler
+
+- **SearchOptions Desteği**: İstek başına arama yapılandırması ile detaylı kontrol
+  - Veritabanı, doküman, ses ve görüntü araması için özellik bayrakları
+  - ISO 639-1 dil kodu desteği için `PreferredLanguage` özelliği
+  - Özellik bayraklarına dayalı koşullu servis kaydı
+  - **Bayrak Tabanlı Doküman Filtreleme**: Hızlı arama tipi seçimi için sorgu string bayrakları (`-db`, `-d`, `-a`, `-i`)
+  - **Doküman Tipi Filtreleme**: İçerik tipine göre otomatik filtreleme (metin, ses, görüntü)
+
+- **Native Qdrant Metin Arama**: Geliştirilmiş arama performansı için token tabanlı filtreleme
+  - Token tabanlı OR filtreleme ile native Qdrant metin araması
+  - Otomatik stopword filtreleme ve token eşleşme sayımı
+
+- **ClearAllAsync Metodları**: Verimli toplu silme işlemleri
+  - `IDocumentRepository.ClearAllAsync()` - Verimli toplu silme
+  - `IDocumentService.ClearAllDocumentsAsync()` - Tüm dokümanları temizle
+  - `IDocumentService.ClearAllEmbeddingsAsync()` - Sadece embedding'leri temizle
+
+- **Tesseract İsteğe Bağlı Dil Verisi İndirme**: Otomatik dil desteği
+  - Tesseract dil veri dosyalarının otomatik indirilmesi
+  - ISO 639-1/639-2 kod eşleştirmesi ile 30+ dil desteği
+
+- **Para Birimi Sembolü Düzeltme**: Finansal dokümanlar için geliştirilmiş OCR doğruluğu
+  - Yaygın OCR yanlış okumalarının otomatik düzeltilmesi (`%`, `6`, `t`, `&` → para birimi sembolleri)
+  - Hem OCR hem PDF ayrıştırmaya uygulanır
+
+- **Ollama Embedding'leri için Paralel Toplu İşleme**: Performans optimizasyonu
+  - Embedding üretimi için paralel toplu işleme
+  - Büyük doküman setleri için geliştirilmiş verim
+
+- **Sorgu Token Parametresi**: Önceden hesaplanmış token desteği
+  - Gereksiz tokenizasyonu ortadan kaldırmak için isteğe bağlı `queryTokens` parametresi
+
+- **FeatureToggles Modeli**: Global özellik bayrağı yapılandırması
+  - Merkezi özellik yönetimi için `FeatureToggles` sınıfı
+  - Kolay yapılandırma için `SearchOptions.FromConfig()` statik metodu
+
+- **ContextExpansionService**: Bitişik chunk bağlam genişletme
+  - Bitişik chunk'ları dahil ederek doküman chunk bağlamını genişletir
+  - Daha iyi AI yanıtları için yapılandırılabilir bağlam penceresi
+
+- **FileParserResult Modeli**: Standartlaştırılmış parser sonuç yapısı
+  - İçerik ve metadata ile tutarlı parser çıktı formatı
+
+- **DatabaseFileParser**: SQLite veritabanı dosyası ayrıştırma desteği
+  - Doğrudan veritabanı dosyası yükleme ve ayrıştırma (.db, .sqlite, .sqlite3, .db3)
+
+- **Native Kütüphane Dahil Etme**: Tesseract OCR native kütüphaneleri paketlenmiş
+  - Manuel kütüphane kurulumu gerekmez
+  - Windows, macOS ve Linux desteği
+
+- **Nullable Reference Types**: Geliştirilmiş null güvenliği
+  - 14+ dosyada daha iyi derleme zamanı null kontrolü
+
+### İyileştirmeler
+
+- **Qdrant için Unicode Normalizasyonu**: Tüm dillerde daha iyi metin alımı
+- **PDF OCR Kodlama Sorunu Tespiti**: Otomatik yedekleme işleme
+- **Numaralı Liste Chunk Tespiti**: Geliştirilmiş sayma sorgusu doğruluğu
+- **RAG Skorlama İyileştirmeleri**: Benzersiz anahtar kelime bonusu ile geliştirilmiş ilgililik hesaplama
+- **Doküman Arama Uyarlanabilir Eşiği**: Dinamik ilgililik eşiği ayarlama
+- **Prompt Builder Kuralları**: Geliştirilmiş AI cevap üretimi
+- **QdrantDocumentRepository GetAllAsync**: Performans optimizasyonu
+- **Metin İşleme ve AI Prompt Servisleri**: Genel iyileştirmeler
+- **Görüntü Ayrıştırıcı Servisi**: Kapsamlı iyileştirmeler
+
+### Düzeltmeler
+
+- **SQL Üretiminde Tablo Takma Adı Zorunluluğu**: Belirsiz kolon hatalarını önler
+- **EnableDatabaseSearch Yapılandırma Uyumu**: Uygun özellik bayrağı işleme
+- **macOS Native Kütüphaneleri**: OCR kütüphane dahil etme ve DYLD_LIBRARY_PATH yapılandırması
+- **Eksik Metod İmzası**: DocumentSearchService geri yükleme
+
+### Değişiklikler
+
+- **IEmbeddingSearchService Bağımlılık Kaldırma**: Basitleştirilmiş mimari
+- **Demo Dil Seçimi**: ISO 639-1 kod standardizasyonu
+- **Demo Proje Yapılandırması**: Varsayılan depolama olarak Qdrant
+- **Kod Temizliği**: Satır içi yorumlar ve kullanılmayan direktiflerin kaldırılması
+- **Günlükleme Temizliği**: Azaltılmış ayrıntılı günlükleme
+- **NuGet Paket Güncellemeleri**: En son uyumlu sürümler
+- **Servis Metod Açıklamaları**: `[AI Query]`, `[Document Query]`, `[DB Query]` etiketleri ile daha iyi kod dokümantasyonu
+
+### 🔧 Kod Kalitesi
+
+#### **Derleme Kalitesi**
+- **Sıfır Uyarı**: Tüm projelerde 0 hata, 0 uyarı korundu
+- **SOLID Uyumu**: SOLID prensiplerine tam uyum
+- **Temiz Mimari**: Katmanlar arasında net sorumluluk ayrımı
+
+#### **Değiştirilen Dosyalar**
+- `src/SmartRAG/Interfaces/` - Strategy Pattern için yeni interface'ler
+- `src/SmartRAG/Services/` - Servis katmanı refactoring
+- `src/SmartRAG/Repositories/` - Repository ayrımı
+- `src/SmartRAG/Models/` - Model konsolidasyonu
+- `src/SmartRAG/Extensions/ServiceCollectionExtensions.cs` - Güncellenmiş DI kayıtları
+
+### ✨ Faydalar
+
+- **Bakım Yapılabilirlik**: Daha temiz, daha modüler kod tabanı
+- **Genişletilebilirlik**: Yeni veritabanları, AI sağlayıcıları, dosya formatları eklemeyi kolaylaştırır
+- **Test Edilebilirlik**: Net interface'lerle daha iyi birim testi
+- **Performans**: Veritabanı diyalektine göre optimize edilmiş SQL üretimi
+- **Esneklik**: Skorlama, ayrıştırma, SQL üretimi için takılabilir stratejiler
+- **Geriye Dönük Uyumluluk**: Mevcut tüm kodlar değişiklik olmadan çalışır
+
+### 📚 Geçiş Rehberi
+
+#### Breaking Change Yok
+Tüm değişiklikler geriye dönük uyumludur. Mevcut kodlar değişiklik gerektirmeden çalışmaya devam eder.
+
+#### İsteğe Bağlı İyileştirmeler
+
+**Yeni Konuşma Yönetimini Kullanın**:
+```csharp
+// Eski yaklaşım (hala çalışır)
+await _documentSearchService.QueryIntelligenceAsync(query);
+
+// Yeni yaklaşım (konuşma takibi için önerilir)
+var sessionId = await _conversationManager.StartNewConversationAsync();
+await _conversationManager.AddToConversationAsync(sessionId, userMessage, aiResponse);
+var history = await _conversationManager.GetConversationHistoryAsync(sessionId);
+```
+
+#### Özelleştirme Örnekleri (İsteğe Bağlı)
+
+**Özel SQL Diyalekt Stratejisi**:
+```csharp
+// Örnek: Oracle desteği ekleme
+public class OracleDialectStrategy : BaseSqlDialectStrategy
+{
+    public override string GetDialectName() => "Oracle";
+    
+    public override string BuildSelectQuery(
+        DatabaseSchemaInfo schema, 
+        List<string> tables, 
+        int maxRows)
+    {
+        // Oracle'a özgü SQL üretimi
+    }
+}
+```
+
+**Özel Skorlama Stratejisi**:
+```csharp
+// Örnek: Özel skorlama mantığı ekleme
+public class CustomScoringStrategy : IScoringStrategy
+{
+    public double CalculateScore(DocumentChunk chunk, string query)
+    {
+        // Özel skorlama mantığı
+    }
+}
+```
+
+---
+
 ## [3.1.0] - 2025-11-11
 
 ### ✨ Birleşik Sorgu Zekası

@@ -257,6 +257,27 @@ public class SmartRagMetrics
 
 ---
 
+## Custom Strategies
+
+SmartRAG v3.2.0 introduces the Strategy Pattern for key components, allowing you to inject custom logic.
+
+### Registering Custom Strategies
+
+You can implement your own strategies by implementing the corresponding interfaces. Here are examples of how you would register them:
+
+```csharp
+// Example: Registering a custom SQL Dialect (e.g., if you implemented OracleDialectStrategy)
+services.AddSingleton<ISqlDialectStrategy, OracleDialectStrategy>();
+
+// Example: Registering a custom Scoring Strategy
+services.AddSingleton<IScoringStrategy, CustomScoringStrategy>();
+
+// Example: Registering a custom File Parser (e.g., for Markdown files)
+services.AddSingleton<IFileParser, MarkdownFileParser>();
+```
+
+---
+
 ## Example Configurations
 
 ### Development Environment

@@ -3,7 +3,8 @@ using Microsoft.Extensions.Options;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
 using SmartRAG.Entities;
-using SmartRAG.Interfaces;
+using SmartRAG.Interfaces.Document;
+using SmartRAG.Interfaces.Storage.Qdrant;
 using SmartRAG.Models;
 using System;
 using System.Collections.Generic;
@@ -21,12 +22,10 @@ namespace SmartRAG.Repositories
     {
         #region Constants
 
-        // Search and batch constants
         private const int DefaultMaxSearchResults = 5;
         private const int DefaultBatchSize = 200;
         private const int DefaultScrollBatchSize = 25;
 
-        // Timeout constants
         private const int DefaultGrpcTimeoutMinutes = 5;
 
         #endregion
@@ -37,9 +36,7 @@ namespace SmartRAG.Repositories
         private readonly QdrantConfig _config;
         private readonly string _collectionName;
         private readonly ILogger<QdrantDocumentRepository> _logger;
-        // Collection management moved to QdrantCollectionManager
 
-        // New injected services
         private readonly IQdrantCollectionManager _collectionManager;
         private readonly IQdrantEmbeddingService _embeddingService;
         private readonly IQdrantCacheManager _cacheManager;
@@ -110,9 +107,7 @@ namespace SmartRAG.Repositories
 
         #region Public Methods
 
-        // Collection management methods moved to QdrantCollectionManager
 
-        // GetDistanceMetric moved to QdrantCollectionManager
 
         private static string GetPayloadString(Google.Protobuf.Collections.MapField<string, Value> payload, string key)
         {
@@ -121,10 +116,19 @@ namespace SmartRAG.Repositories
             if (!payload.TryGetValue(key, out Value value) || value == null)
                 return string.Empty;
 
+            string result;
             switch (value.KindCase)
             {
                 case Value.KindOneofCase.StringValue:
-                    return value.StringValue ?? string.Empty;
+                    result = value.StringValue ?? string.Empty;
+                    // CRITICAL: Ensure UTF-8 encoding is preserved for all languages
+                    // Protobuf strings are UTF-8 by default, but normalize to ensure consistency
+                    if (!string.IsNullOrEmpty(result))
+                    {
+                        // Normalize Unicode characters to ensure proper encoding (handles all language-specific characters)
+                        result = result.Normalize(System.Text.NormalizationForm.FormC);
+                    }
+                    return result;
                 case Value.KindOneofCase.DoubleValue:
                     return value.DoubleValue.ToString(CultureInfo.InvariantCulture);
                 case Value.KindOneofCase.IntegerValue:
@@ -151,7 +155,7 @@ namespace SmartRAG.Repositories
             var uploadedAtStr = GetPayloadString(payload, "uploadedAt");
             var uploadedBy = GetPayloadString(payload, "uploadedBy");
             var content = GetPayloadString(payload, "content");
-            var idStr = GetPayloadString(payload, "id");
+            var idStr = GetPayloadString(payload, "documentId");  // Changed from "id" to "documentId"
 
             long.TryParse(fileSizeStr, NumberStyles.Any, CultureInfo.InvariantCulture, out long fileSize);
 
@@ -230,13 +234,14 @@ namespace SmartRAG.Repositories
             {
                 await _collectionManager.EnsureCollectionExistsAsync();
 
-                // Create unique collection name for each document - Qdrant naming rules
                 var documentCollectionName = $"{_collectionName}_doc_{document.Id:N}".Replace("-", ""); // Remove hyphens for Qdrant
                 RepositoryLogMessages.LogQdrantDocumentCollectionCreating(Logger, documentCollectionName, _collectionName, document.Id, null);
 
                 await _collectionManager.EnsureDocumentCollectionExistsAsync(documentCollectionName, document);
 
-                // Generate embeddings for all chunks in parallel with progress tracking
+                SmartRAG.Services.Helpers.DocumentValidator.ValidateDocument(document);
+                SmartRAG.Services.Helpers.DocumentValidator.ValidateChunks(document);
+
                 RepositoryLogMessages.LogQdrantEmbeddingsGenerationStarted(Logger, document.Chunks.Count, null);
                 var embeddingTasks = document.Chunks.Select(async (chunk, index) =>
                 {
@@ -254,7 +259,6 @@ namespace SmartRAG.Repositories
                 await Task.WhenAll(embeddingTasks);
                 RepositoryLogMessages.LogQdrantEmbeddingsGenerationCompleted(Logger, document.Chunks.Count, null);
 
-                // Batch process all chunks with larger batch size
                 var allPoints = new List<PointStruct>();
 
                 RepositoryLogMessages.LogQdrantPointsCreationStarted(Logger, document.Chunks.Count, null);
@@ -272,7 +276,6 @@ namespace SmartRAG.Repositories
                         }
                     };
 
-                    // Add chunk-specific payload with consistent field names
                     point.Payload.Add("chunkId", chunk.Id.ToString());
                     point.Payload.Add("chunkIndex", chunk.ChunkIndex);
                     point.Payload.Add("content", chunk.Content);
@@ -286,7 +289,6 @@ namespace SmartRAG.Repositories
                     allPoints.Add(point);
                 }
 
-                // Process in batches for better performance
                 for (int i = 0; i < allPoints.Count; i += DefaultBatchSize)
                 {
                     var batch = allPoints.Skip(i).Take(DefaultBatchSize).ToList();
@@ -361,80 +363,64 @@ namespace SmartRAG.Repositories
             try
             {
                 var documents = new List<SmartRAG.Entities.Document>();
-                var processedIds = new HashSet<string>();
-                var lastPointId = (PointId)null;
-                var batchCount = 0;
-
-                while (batchCount < 50) // DefaultMaxBatches
+                
+                // List all collections to find document-specific collections
+                var allCollections = await _client.ListCollectionsAsync();
+                var documentCollections = allCollections
+                    .Where(c => c.StartsWith($"{_collectionName}_doc_", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                
+                // Iterate through each document collection
+                foreach (var docCollection in documentCollections)
                 {
                     try
                     {
                         var result = await _client.ScrollAsync(
-                            _collectionName,
-                            limit: DefaultScrollBatchSize,
-                            offset: lastPointId);
-
+                            docCollection,
+                            limit: 1);  // We only need one point to get metadata
+                        
                         if (result.Result.Count == 0)
-                            break;
-
-                        var documentGroups = result.Result.GroupBy(p => GetPayloadString(p.Payload, "id"));
-
-                        foreach (var group in documentGroups)
+                            continue;
+                        
+                        var firstPoint = result.Result.First();
+                        var metadata = ExtractDocumentMetadata(firstPoint.Payload);
+                        
+                        if (metadata.Id == Guid.Empty)
+                            continue;
+                        
+                        var document = CreateDocumentFromMetadata(metadata);
+                        
+                        // Get chunk count from collection info
+                        var collectionInfo = await _client.GetCollectionInfoAsync(docCollection);
+                        var chunkCount = (int)collectionInfo.PointsCount;
+                        
+                        // Create placeholder chunks (we don't need full content for listing)
+                        for (int i = 0; i < chunkCount; i++)
                         {
-                            var documentId = group.Key;
-
-                            if (processedIds.Contains(documentId))
-                                continue;
-
-                            processedIds.Add(documentId);
-
-                            var firstPoint = group.First();
-                            var metadata = ExtractDocumentMetadata(firstPoint.Payload);
-
-                            if (metadata.Id == Guid.Empty)
+                            document.Chunks.Add(new DocumentChunk
                             {
-                                continue;
-                            }
-
-                            var document = CreateDocumentFromMetadata(metadata);
-
-                            foreach (var point in group)
-                            {
-                                var chunk = CreateDocumentChunk(point, document.Id, metadata.UploadedAt);
-                                document.Chunks.Add(chunk);
-                            }
-
-                            documents.Add(document);
+                                Id = Guid.NewGuid(),
+                                DocumentId = document.Id,
+                                Content = string.Empty,
+                                ChunkIndex = i,
+                                CreatedAt = metadata.UploadedAt
+                            });
                         }
-
-
-                        lastPointId = result.Result.Last().Id;
-
-                        if (documents.Count > 1000) // DefaultMaxDocuments
-                        {
-                            break;
-                        }
-
-                        batchCount++;
-
-                        await Task.Delay(100); // DefaultDelayMs
+                        
+                        documents.Add(document);
                     }
-                    catch (Exception ex) when (ex.Message.Contains("ResourceExhausted") || ex.Message.Contains("message size"))
+                    catch (Exception ex)
                     {
-                        batchCount++;
+                        _logger.LogWarning(ex, "Failed to retrieve document from collection: {Collection}", docCollection);
                         continue;
-                    }
-                    catch (Exception)
-                    {
-
-                        break;
                     }
                 }
 
                 return documents;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "Failed to retrieve all documents");
                 return new List<SmartRAG.Entities.Document>();
             }
         }
@@ -471,6 +457,46 @@ namespace SmartRAG.Repositories
             }
         }
 
+        /// <summary>
+        /// [Document Query] Clear all documents by deleting all document collections and recreating main collection
+        /// </summary>
+        public async Task<bool> ClearAllAsync()
+        {
+            try
+            {
+                // Find all document-specific collections
+                var allCollections = await _client.ListCollectionsAsync();
+                var documentCollections = allCollections
+                    .Where(c => c.StartsWith($"{_collectionName}_doc_", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
+                
+                // Delete each document collection
+                foreach (var docCollection in documentCollections)
+                {
+                    try
+                    {
+                        await _collectionManager.DeleteCollectionAsync(docCollection);
+                        _logger.LogDebug("Deleted document collection: {Collection}", docCollection);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to delete document collection: {Collection}", docCollection);
+                    }
+                }
+                
+                // Recreate main collection for clean slate
+                await _collectionManager.RecreateCollectionAsync(_collectionName);
+                
+                _logger.LogInformation("Cleared all documents from Qdrant: deleted {Count} document collections and recreated main collection", documentCollections.Count);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to clear all documents from Qdrant");
+                return false;
+            }
+        }
+
         public async Task<int> GetCountAsync()
         {
             try
@@ -488,7 +514,6 @@ namespace SmartRAG.Repositories
         {
             try
             {
-                // Check cache for duplicate requests
                 var queryHash = $"{query}_{maxResults}";
                 var cachedResults = _cacheManager.GetCachedResults(queryHash);
                 if (cachedResults != null)
@@ -498,33 +523,25 @@ namespace SmartRAG.Repositories
 
                 await _collectionManager.EnsureCollectionExistsAsync();
 
-                // Log that we're processing a new search
                 RepositoryLogMessages.LogQdrantSearchStarted(Logger, query, null);
 
-                // Generate embedding for semantic search
                 var queryEmbedding = await _embeddingService.GenerateEmbeddingAsync(query);
                 if (queryEmbedding == null || queryEmbedding.Count == 0)
                 {
-                    // Fallback to text search if embedding fails
                     return await _searchService.FallbackTextSearchAsync(query, maxResults);
                 }
 
-                // Perform vector search using the search service
                 var vectorResults = await _searchService.SearchAsync(queryEmbedding, maxResults);
 
-                // Also gather keyword-based matches via hybrid search
                 var hybridResults = await _searchService.HybridSearchAsync(query, maxResults * 4);
 
-                // Combine and deduplicate results
                 var allChunks = vectorResults.Concat(hybridResults).ToList();
 
-                // Deduplicate by (DocumentId, ChunkIndex)
                 var deduped = allChunks
                     .GroupBy(c => new { c.DocumentId, c.ChunkIndex })
                     .Select(g => g.OrderByDescending(c => c.RelevanceScore ?? 0.0).First())
                     .ToList();
 
-                // Take top K per document to improve coverage
                 var perDocTopK = Math.Max(1, Math.Min(3, maxResults));
                 var topPerDocument = deduped
                     .GroupBy(c => c.DocumentId)
@@ -546,14 +563,12 @@ namespace SmartRAG.Repositories
 
                 RepositoryLogMessages.LogQdrantFinalResultsReturned(Logger, finalResults.Count, null);
 
-                // Cache the results to prevent duplicate processing
                 _cacheManager.CacheResults(queryHash, finalResults);
 
                 return finalResults;
             }
             catch (Exception ex)
             {
-                // Log error and fallback to text search
                 RepositoryLogMessages.LogQdrantVectorSearchFailed(Logger, ex.Message, null);
                 return await _searchService.FallbackTextSearchAsync(query, maxResults);
             }
@@ -561,33 +576,7 @@ namespace SmartRAG.Repositories
 
         #endregion
 
-        #region Conversation Methods
 
-        public async Task<string> GetConversationHistoryAsync(string sessionId)
-        {
-            // Qdrant conversation support - simplified implementation
-            return await Task.FromResult(string.Empty);
-        }
-
-        public async Task AddToConversationAsync(string sessionId, string question, string answer)
-        {
-            // Qdrant conversation support - simplified implementation
-            await Task.CompletedTask;
-        }
-
-        public async Task ClearConversationAsync(string sessionId)
-        {
-            // Qdrant conversation support - simplified implementation
-            await Task.CompletedTask;
-        }
-
-        public async Task<bool> SessionExistsAsync(string sessionId)
-        {
-            // Qdrant conversation support - simplified implementation
-            return await Task.FromResult(false);
-        }
-
-        #endregion
 
         public void Dispose()
         {

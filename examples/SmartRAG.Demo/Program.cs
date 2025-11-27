@@ -13,6 +13,7 @@ using SmartRAG.Demo.Services.Translation;
 using SmartRAG.Enums;
 using SmartRAG.Extensions;
 using SmartRAG.Interfaces;
+using SmartRAG.Interfaces.Support;
 
 namespace SmartRAG.Demo;
 
@@ -25,10 +26,10 @@ internal class Program
 
     private static IServiceProvider? _serviceProvider;
     private static ILogger<Program>? _logger;
-    private static string _selectedLanguage = "English";
+    private static string _selectedLanguage = "en"; // ISO 639-1 code
     private static bool _useLocalEnvironment = true;
     private static AIProvider _selectedAIProvider = AIProvider.Custom;
-    private static StorageProvider _selectedStorageProvider = StorageProvider.Redis;
+    private static StorageProvider _selectedStorageProvider = StorageProvider.Qdrant;
 
     #endregion
 
@@ -116,7 +117,7 @@ internal class Program
     private static async Task RunMainMenuAsync(IServiceProvider serviceProvider, IConsoleService console)
     {
         var menuService = new MenuService(console);
-        var databaseHandler = CreateDatabaseHandler(serviceProvider, console);
+        var databaseHandler = CreateDatabaseHandler(serviceProvider, console); // nullable if EnableDatabaseSearch = false
         var documentHandler = CreateDocumentHandler(serviceProvider, console);
         var queryHandler = CreateQueryHandler(serviceProvider, console);
         var ollamaHandler = new OllamaHandler(console);
@@ -144,10 +145,16 @@ internal class Program
         }
     }
 
-    private static DatabaseHandler CreateDatabaseHandler(IServiceProvider serviceProvider, IConsoleService console)
+    private static DatabaseHandler? CreateDatabaseHandler(IServiceProvider serviceProvider, IConsoleService console)
     {
+        // Only create DatabaseHandler if EnableDatabaseSearch is enabled
+        var connectionManager = serviceProvider.GetService<IDatabaseConnectionManager>();
+        if (connectionManager == null)
+        {
+            return null;
+        }
+        
         var configuration = serviceProvider.GetRequiredService<IConfiguration>();
-        var connectionManager = serviceProvider.GetRequiredService<IDatabaseConnectionManager>();
         var schemaAnalyzer = serviceProvider.GetRequiredService<IDatabaseSchemaAnalyzer>();
 
         return new DatabaseHandler(console, configuration, connectionManager, schemaAnalyzer);
@@ -164,12 +171,13 @@ internal class Program
     private static QueryHandler CreateQueryHandler(IServiceProvider serviceProvider, IConsoleService console)
     {
         var logger = serviceProvider.GetRequiredService<ILogger<QueryHandler>>();
-        var multiDbCoordinator = serviceProvider.GetRequiredService<IMultiDatabaseQueryCoordinator>();
+        var multiDbCoordinator = serviceProvider.GetService<IMultiDatabaseQueryCoordinator>(); // may be null
         var aiService = serviceProvider.GetRequiredService<IAIService>();
         var documentService = serviceProvider.GetRequiredService<IDocumentService>();
         var documentSearchService = serviceProvider.GetRequiredService<IDocumentSearchService>();
-        var schemaAnalyzer = serviceProvider.GetRequiredService<IDatabaseSchemaAnalyzer>();
+        var schemaAnalyzer = serviceProvider.GetService<IDatabaseSchemaAnalyzer>(); // may be null if EnableDatabaseSearch is false
         var testQueryGenerator = CreateTestQueryGenerator(serviceProvider);
+        var conversationManager = serviceProvider.GetRequiredService<IConversationManagerService>();
 
         return new QueryHandler(
             logger,
@@ -179,13 +187,15 @@ internal class Program
             documentService,
             documentSearchService,
             schemaAnalyzer,
-            testQueryGenerator);
+            testQueryGenerator,
+            conversationManager,
+            serviceProvider);
     }
 
     private static TestQueryGenerator CreateTestQueryGenerator(IServiceProvider serviceProvider)
     {
         var logger = serviceProvider.GetRequiredService<ILogger<TestQueryGenerator>>();
-        var schemaAnalyzer = serviceProvider.GetRequiredService<IDatabaseSchemaAnalyzer>();
+        var schemaAnalyzer = serviceProvider.GetService<IDatabaseSchemaAnalyzer>(); // may be null if EnableDatabaseSearch is false
         var aiService = serviceProvider.GetRequiredService<IAIService>();
         var translationService = new TranslationService();
 
@@ -194,9 +204,9 @@ internal class Program
 
     private static async Task<bool> HandleMenuChoice(
         string? choice,
-        IDatabaseHandler databaseHandler,
+        IDatabaseHandler? databaseHandler,
         IDocumentHandler documentHandler,
-        IQueryHandler queryHandler,
+        IQueryHandler? queryHandler,
         IOllamaHandler ollamaHandler,
         IConsoleService console)
     {
@@ -205,62 +215,114 @@ internal class Program
             switch (choice)
             {
                 case "1":
+                    if (databaseHandler == null)
+                    {
+                        break; // Database search disabled
+                    }
                     await databaseHandler.ShowConnectionsAsync();
                     break;
 
                 case "2":
+                    if (databaseHandler == null)
+                    {
+                        break; // Database search disabled
+                    }
                     await databaseHandler.RunHealthCheckAsync();
                     break;
 
                 case "3":
+                    if (databaseHandler == null)
+                    {
+                        break; // Database search disabled
+                    }
                     await databaseHandler.CreateDatabaseAsync(DatabaseType.SqlServer);
                     break;
 
                 case "4":
+                    if (databaseHandler == null)
+                    {
+                        console.WriteError("Database search is disabled. Enable 'EnableDatabaseSearch' in appsettings.json");
+                        break;
+                    }
                     await databaseHandler.CreateDatabaseAsync(DatabaseType.MySQL);
                     break;
 
                 case "5":
+                    if (databaseHandler == null)
+                    {
+                        console.WriteError("Database search is disabled. Enable 'EnableDatabaseSearch' in appsettings.json");
+                        break;
+                    }
                     await databaseHandler.CreateDatabaseAsync(DatabaseType.PostgreSQL);
                     break;
 
                 case "6":
-                    await databaseHandler.ShowSchemasAsync();
+                    if (databaseHandler == null)
+                    {
+                        console.WriteError("Database search is disabled. Enable 'EnableDatabaseSearch' in appsettings.json");
+                        break;
+                    }
+                    await databaseHandler.CreateDatabaseAsync(DatabaseType.SQLite);
                     break;
 
                 case "7":
-                    await queryHandler.AnalyzeQueryIntentAsync(_selectedLanguage);
+                    if (databaseHandler == null)
+                    {
+                        console.WriteError("Database search is disabled. Enable 'EnableDatabaseSearch' in appsettings.json");
+                        break;
+                    }
+                    await databaseHandler.ShowSchemasAsync();
                     break;
 
                 case "8":
-                    await queryHandler.RunTestQueriesAsync(_selectedLanguage);
+                    if (queryHandler == null)
+                    {
+                        break; // Database search disabled
+                    }
+                    await queryHandler.AnalyzeQueryIntentAsync(_selectedLanguage);
                     break;
 
                 case "9":
-                    await queryHandler.RunMultiDatabaseQueryAsync(_selectedLanguage);
+                    if (queryHandler == null)
+                    {
+                        break; // Database search disabled
+                    }
+                    await queryHandler.RunTestQueriesAsync(_selectedLanguage);
                     break;
 
                 case "10":
-                    await ollamaHandler.SetupModelsAsync();
+                    if (queryHandler == null)
+                    {
+                        break; // Database search disabled
+                    }
+                    await queryHandler.RunMultiDatabaseQueryAsync(_selectedLanguage);
                     break;
 
                 case "11":
-                    await ollamaHandler.TestVectorStoreAsync(_selectedStorageProvider.ToString());
+                    await ollamaHandler.SetupModelsAsync();
                     break;
 
                 case "12":
-                    await documentHandler.UploadDocumentsAsync(_selectedLanguage);
+                    await ollamaHandler.TestVectorStoreAsync(_selectedStorageProvider.ToString());
                     break;
 
                 case "13":
-                    await documentHandler.ListDocumentsAsync();
+                    await documentHandler.UploadDocumentsAsync(_selectedLanguage);
                     break;
 
                 case "14":
-                    await documentHandler.ClearAllDocumentsAsync();
+                    await documentHandler.ListDocumentsAsync();
                     break;
 
                 case "15":
+                    await documentHandler.ClearAllDocumentsAsync();
+                    break;
+
+                case "16":
+                    if (queryHandler == null)
+                    {
+                        break; // Database search disabled
+                    }
                     await queryHandler.RunConversationalChatAsync(
                         _selectedLanguage,
                         _useLocalEnvironment,
