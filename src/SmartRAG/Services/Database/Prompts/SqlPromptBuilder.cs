@@ -11,18 +11,28 @@ namespace SmartRAG.Services.Database.Prompts
     {
         private const int SampleDataLimit = 200;
         
+        // Language-agnostic stop words: Common function words that are unlikely to be column names
+        // These are generic patterns that appear across multiple languages
+        // Note: This is a minimal set - the length check (w.Length > 2) already filters most short words
         private static readonly HashSet<string> FilterStopWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            "and", "the", "for", "with", "from", "into", "onto", "about", "over", "under", 
-            "between", "within", "without", "will", "would", "could", "should", "have", "has", 
-            "had", "been", "being", "than", "then", "them", "they", "their", "there", "those", 
-            "these", "when", "where", "which", "while", "whose", "what", "that", "this", "each", 
-            "ever", "every", "many", "much", "more", "most", "some", "such", "only", "also", 
-            "just", "like", "make", "take", "give", "need", "want", "time", "date", "question", 
-            "asked", "asking", "show", "list", "tell", "provide", "please"
+            // Common articles and prepositions (appear in many languages)
+            "the", "a", "an", "and", "or", "but", "for", "with", "from", "into", "onto", "about", "over", "under",
+            "between", "within", "without", "through", "during", "before", "after", "above", "below",
+            
+            // Common auxiliary verbs and modals (English patterns, but similar concepts exist in other languages)
+            "will", "would", "could", "should", "have", "has", "had", "been", "being", "is", "are", "was", "were",
+            
+            // Common pronouns and determiners (generic patterns)
+            "than", "then", "them", "they", "their", "there", "those", "these", "this", "that", "each", "every",
+            "when", "where", "which", "while", "whose", "what", "ever", "many", "much", "more", "most", "some", "such",
+            "only", "also", "just", "like", "make", "take", "give", "need", "want",
+            
+            // Common query verbs (language-agnostic patterns)
+            "time", "date", "question", "asked", "asking", "show", "list", "tell", "provide", "please"
         };
 
-        public string Build(string userQuery, DatabaseQueryIntent dbQuery, DatabaseSchemaInfo schema, ISqlDialectStrategy strategy)
+        public string Build(string userQuery, DatabaseQueryIntent dbQuery, DatabaseSchemaInfo schema, ISqlDialectStrategy strategy, QueryIntent fullQueryIntent = null)
         {
             var sb = new StringBuilder();
             var filterKeywords = ExtractFilterKeywords(userQuery);
@@ -78,6 +88,54 @@ namespace SmartRAG.Services.Database.Prompts
             sb.AppendLine("    3. INSTEAD, SELECT the Entity ID (Foreign Key) AND the Descriptive Attribute.");
             sb.AppendLine("    4. EXAMPLE: SELECT EntityID, DescriptiveColumn FROM ... (allows joining with other databases)");
             sb.AppendLine("    5. This allows the system to merge results with the database that has the missing metric.");
+            
+            // Add cross-database context if available
+            if (fullQueryIntent != null && fullQueryIntent.DatabaseQueries.Count > 1 && fullQueryIntent.RequiresCrossDatabaseJoin)
+            {
+                var otherDbQueries = fullQueryIntent.DatabaseQueries
+                    .Where(q => q.DatabaseId != dbQuery.DatabaseId)
+                    .ToList();
+                
+                if (otherDbQueries.Any())
+                {
+                    sb.AppendLine();
+                    sb.AppendLine("╔═══════════════════════════════════════════════════════════════╗");
+                    sb.AppendLine("║  🔗 CROSS-DATABASE CONTEXT - OTHER DATABASES IN THIS QUERY 🔗  ║");
+                    sb.AppendLine("╚═══════════════════════════════════════════════════════════════╝");
+                    sb.AppendLine();
+                    sb.AppendLine("This query is part of a MULTI-DATABASE query. Other databases will also be queried:");
+                    
+                    foreach (var otherDb in otherDbQueries)
+                    {
+                        sb.AppendLine($"  • {otherDb.DatabaseName}: {otherDb.Purpose}");
+                        if (otherDb.RequiredTables.Any())
+                        {
+                            sb.AppendLine($"    Tables: {string.Join(", ", otherDb.RequiredTables)}");
+                        }
+                    }
+                    
+                    sb.AppendLine();
+                    sb.AppendLine("CRITICAL INSTRUCTIONS FOR CROSS-DATABASE QUERIES:");
+                    sb.AppendLine("  1. If another database will return an EntityID (e.g., from aggregation/calculation):");
+                    sb.AppendLine("     → Your query should return ALL rows with EntityID and descriptive columns");
+                    sb.AppendLine("     → DO NOT filter or limit - let the system match EntityIDs after both queries run");
+                    sb.AppendLine("  2. If your database has the EntityID source (e.g., aggregation query):");
+                    sb.AppendLine("     → Return EntityID and the calculated metric");
+                    sb.AppendLine("     → Use ORDER BY and LIMIT/TOP to get the top result");
+                    sb.AppendLine("  3. If your database has descriptive data (e.g., names, details):");
+                    sb.AppendLine("     → Return EntityID and all descriptive columns");
+                    sb.AppendLine("     → DO NOT use ORDER BY CreatedDate or similar - return all matching rows");
+                    sb.AppendLine("     → The system will match your EntityID with the EntityID from the other database");
+                    sb.AppendLine();
+                    sb.AppendLine("EXAMPLE SCENARIO:");
+                    sb.AppendLine("  User asks: 'Who has the most orders?'");
+                    sb.AppendLine("  Database A (aggregation): Returns EntityID=123, OrderCount=15");
+                    sb.AppendLine("  Database B (lookup): Should return EntityID=123, NameColumn='Value', DescriptionColumn='Value'");
+                    sb.AppendLine("  → Database B should NOT filter by CreatedDate - it should return EntityID=123's details");
+                    sb.AppendLine();
+                }
+            }
+            
             sb.AppendLine();
             sb.AppendLine("AMBIGUITY PREVENTION (CRITICAL):");
             sb.AppendLine("  - ALWAYS use meaningful Table Aliases (e.g., use 't1', 't2' or derived from table name).");
@@ -230,16 +288,37 @@ namespace SmartRAG.Services.Database.Prompts
             return sb.ToString();
         }
 
+        /// <summary>
+        /// Extracts meaningful keywords from user query for SQL WHERE clause filtering.
+        /// Filters out common stop words and short words that are unlikely to be column names.
+        /// Language-agnostic: Works with any language by filtering based on length and common patterns.
+        /// </summary>
         private List<string> ExtractFilterKeywords(string query)
         {
             if (string.IsNullOrWhiteSpace(query)) return new List<string>();
 
-            var words = query.Split(new[] { ' ', ',', '.', '?', '!' }, StringSplitOptions.RemoveEmptyEntries);
+            var words = query.Split(new[] { ' ', ',', '.', '?', '!', ';', ':', '-', '_' }, StringSplitOptions.RemoveEmptyEntries);
             
             return words
-                .Where(w => w.Length > 2 && !FilterStopWords.Contains(w))
+                .Where(w => 
+                    w.Length > 2 && // Filter short words (common stop words are usually 1-2 characters)
+                    !FilterStopWords.Contains(w) && // Filter common function words
+                    !IsNumeric(w)) // Filter pure numbers
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
+        }
+
+        /// <summary>
+        /// Checks if a word is purely numeric (e.g., "123", "45.67")
+        /// </summary>
+        private static bool IsNumeric(string word)
+        {
+            if (string.IsNullOrWhiteSpace(word)) return false;
+            
+            // Remove common numeric separators
+            var cleaned = word.Replace(".", "").Replace(",", "").Replace("-", "").Replace("+", "");
+            
+            return cleaned.Length > 0 && cleaned.All(char.IsDigit);
         }
     }
 }
