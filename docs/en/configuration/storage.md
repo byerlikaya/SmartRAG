@@ -54,7 +54,10 @@ builder.Services.AddSmartRag(configuration, options =>
     "Redis": {
       "ConnectionString": "localhost:6379",
       "Database": 0,
-      "KeyPrefix": "smartrag:"
+      "KeyPrefix": "smartrag:",
+      "EnableVectorSearch": true,
+      "DistanceMetric": "COSINE",
+      "VectorDimension": 768
     }
   }
 }
@@ -71,12 +74,20 @@ builder.Services.AddSmartRag(configuration, options =>
 - ⚡ Very fast access
 - 🔄 Automatic expire support
 - 📊 Rich data types
+- 🔍 Vector similarity search with RediSearch
 - 🏢 Suitable for production
 
 **Disadvantages:**
 - 💾 RAM-based (limited capacity)
-- 🔧 Redis installation required
+- 🔧 Redis with RediSearch module required for vector search
 - 💰 Additional cost
+
+<div class="alert alert-warning">
+    <h4><i class="fas fa-exclamation-triangle me-2"></i> RediSearch Module Required</h4>
+    <p class="mb-0"><strong>Vector search requires RediSearch module.</strong> Use <code>redis/redis-stack-server:latest</code> Docker image or install RediSearch module on your Redis server. Without RediSearch, only text search will work (no vector similarity search).</p>
+    <p class="mb-0 mt-2"><strong>Docker example:</strong></p>
+    <pre class="mt-2"><code>docker run -d -p 6379:6379 redis/redis-stack-server:latest</code></pre>
+</div>
 
 ---
 

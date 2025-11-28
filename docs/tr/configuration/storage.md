@@ -54,7 +54,10 @@ builder.Services.AddSmartRag(configuration, options =>
     "Redis": {
       "ConnectionString": "localhost:6379",
       "Database": 0,
-      "KeyPrefix": "smartrag:"
+      "KeyPrefix": "smartrag:",
+      "EnableVectorSearch": true,
+      "DistanceMetric": "COSINE",
+      "VectorDimension": 768
     }
   }
 }
@@ -71,12 +74,20 @@ builder.Services.AddSmartRag(configuration, options =>
 - ⚡ Çok hızlı erişim
 - 🔄 Otomatik expire desteği
 - 📊 Zengin veri tipleri
+- 🔍 RediSearch ile vektör benzerlik araması
 - 🏢 Üretim için uygun
 
 **Dezavantajlar:**
 - 💾 RAM tabanlı (sınırlı kapasite)
-- 🔧 Redis kurulumu gerekli
+- 🔧 Vektör arama için RediSearch modülü gerekli
 - 💰 Ek maliyet
+
+<div class="alert alert-warning">
+    <h4><i class="fas fa-exclamation-triangle me-2"></i> RediSearch Modülü Gerekli</h4>
+    <p class="mb-0"><strong>Vektör arama için RediSearch modülü gereklidir.</strong> <code>redis/redis-stack-server:latest</code> Docker image'ını kullanın veya Redis sunucunuza RediSearch modülünü yükleyin. RediSearch olmadan sadece metin araması çalışır (vektör benzerlik araması çalışmaz).</p>
+    <p class="mb-0 mt-2"><strong>Docker örneği:</strong></p>
+    <pre class="mt-2"><code>docker run -d -p 6379:6379 redis/redis-stack-server:latest</code></pre>
+</div>
 
 ---
 
