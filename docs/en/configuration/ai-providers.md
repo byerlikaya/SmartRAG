@@ -204,7 +204,7 @@ builder.Services.AddSmartRag(configuration, options =>
 
 | Provider | Strengths | Weaknesses | Best Use Case |
 |----------|-----------|------------|---------------|
-| **OpenAI** | Most advanced models, reliable | Expensive, data privacy concerns | Production, critical applications |
+| **OpenAI** | Advanced models, reliable | Expensive, data privacy concerns | Production, critical applications |
 | **Anthropic** | Security-focused, quality output | VoyageAI required, limited access | Security-critical applications |
 | **Google Gemini** | Cost-effective, multimodal | Limited production support | Prototyping, development |
 | **Azure OpenAI** | Enterprise security, SLA | Complex setup | Enterprise applications |

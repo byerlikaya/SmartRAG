@@ -204,7 +204,7 @@ builder.Services.AddSmartRag(configuration, options =>
 
 | Sağlayıcı | Güçlü Yönler | Zayıf Yönler | En İyi Kullanım |
 |-----------|--------------|--------------|-----------------|
-| **OpenAI** | En gelişmiş modeller, güvenilir | Pahalı, veri gizliliği endişeleri | Üretim, kritik uygulamalar |
+| **OpenAI** | Gelişmiş modeller, güvenilir | Pahalı, veri gizliliği endişeleri | Üretim, kritik uygulamalar |
 | **Anthropic** | Güvenlik odaklı, kaliteli çıktı | VoyageAI gerekli, sınırlı erişim | Güvenlik kritik uygulamalar |
 | **Google Gemini** | Uygun maliyetli, çok modlu | Sınırlı üretim desteği | Prototip, geliştirme |
 | **Azure OpenAI** | Kurumsal güvenlik, SLA | Karmaşık kurulum | Kurumsal uygulamalar |
