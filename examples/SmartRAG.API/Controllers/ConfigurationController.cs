@@ -1206,8 +1206,7 @@ namespace SmartRAG.API.Controllers
             {
                 StorageProvider.Qdrant => "Qdrant Vector Database",
                 StorageProvider.Redis => "Redis Cache",
-                StorageProvider.SQLite => "SQLite Database",
-                StorageProvider.FileSystem => "File System Storage",
+                StorageProvider.InMemory => "In-Memory Storage",
                 _ => provider.ToString()
             };
         }
@@ -1218,8 +1217,7 @@ namespace SmartRAG.API.Controllers
             {
                 StorageProvider.Qdrant => "http://localhost:6333",
                 StorageProvider.Redis => "localhost:6379",
-                StorageProvider.SQLite => "Data Source=smartrag.db",
-                StorageProvider.FileSystem => "./storage",
+                StorageProvider.InMemory => "N/A (In-Memory)",
                 _ => ""
             };
         }
