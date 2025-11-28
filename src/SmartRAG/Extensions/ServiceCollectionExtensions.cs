@@ -73,7 +73,15 @@ namespace SmartRAG.Extensions
             // Also register as legacy singleton for backward compatibility during transition
             services.AddSingleton(sp => sp.GetRequiredService<IOptions<SmartRagOptions>>().Value);
 
-            services.AddScoped<IAIProviderFactory, AIProviderFactory>();
+            services.AddSingleton<IAIProviderFactory, AIProviderFactory>();
+            
+            // Register IAIProvider based on configuration
+            services.AddSingleton<IAIProvider>(sp => {
+                var factory = sp.GetRequiredService<IAIProviderFactory>();
+                var options = sp.GetRequiredService<IOptions<SmartRagOptions>>().Value;
+                return factory.CreateProvider(options.AIProvider);
+            });
+
             services.AddScoped<IAIService, AIService>();
             services.AddSingleton<IStorageFactory, StorageFactory>();
             services.AddScoped<ISemanticSearchService, SemanticSearchService>();
