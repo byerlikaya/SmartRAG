@@ -32,8 +32,8 @@ hide_title: true
                             <div class="stat-label">Yapay Zeka Sağlayıcı</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-number">5</div>
-                            <div class="stat-label">Depolama Seçeneği</div>
+                            <div class="stat-number">3</div>
+                            <div class="stat-label">Depolama Sağlayıcıları</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-number">4</div>
@@ -77,7 +77,7 @@ services.UseSmartRag(configuration,
     aiProvider: AIProvider.Gemini
 );
 
-// Doküman yükleyin (PDF, Word, Excel, Görsel, Ses, Veritabanı)
+// Doküman yükleyin (PDF, Word, Excel, Görsel, Ses)
 var document = await documentService.UploadDocumentAsync(
     fileStream, "sozlesme.pdf", "application/pdf", "kullanici-id"
 );
@@ -192,14 +192,14 @@ Console.WriteLine(answer.Answer);
                             <i class="fas fa-brain"></i>
                         </div>
                         <h4>OpenAI</h4>
-                        <p>GPT-4 + Vektör Gösterimleri</p>
+                        <p>GPT Modelleri</p>
                     </div>
                     <div class="provider-card">
                         <div class="provider-logo">
                             <i class="fas fa-robot"></i>
                         </div>
                         <h4>Anthropic</h4>
-                        <p>Claude + VoyageAI</p>
+                        <p>Claude Modelleri</p>
                     </div>
                     <div class="provider-card">
                         <div class="provider-logo">
@@ -213,7 +213,7 @@ Console.WriteLine(answer.Answer);
                             <i class="fas fa-cloud"></i>
                         </div>
                         <h4>Azure OpenAI</h4>
-                        <p>Kurumsal GPT</p>
+                        <p>Kurumsal Modeller</p>
                     </div>
                     <div class="provider-card">
                         <div class="provider-logo">
@@ -226,7 +226,7 @@ Console.WriteLine(answer.Answer);
             </div>
             
             <div class="col-lg-6">
-                <h3 class="text-center mb-4">Depolama & Veritabanları</h3>
+                <h3 class="text-center mb-4">Depolama Sağlayıcıları</h3>
                 <div class="provider-grid">
                     <div class="provider-card">
                         <div class="provider-logo">
@@ -242,6 +242,31 @@ Console.WriteLine(answer.Answer);
                         <h4>Redis</h4>
                         <p>Yüksek Performans Önbellek</p>
                     </div>
+                    <div class="provider-card">
+                        <div class="provider-logo">
+                            <i class="fas fa-memory"></i>
+                        </div>
+                        <h4>InMemory</h4>
+                        <p>Bellek İçi Depolama</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section section-dark">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">Desteklenen Veritabanı Türleri</h2>
+            <p class="section-subtitle">
+                AI destekli koordinasyon ile birden fazla veritabanı türünü aynı anda sorgulayın
+            </p>
+        </div>
+        
+        <div class="row g-5">
+            <div class="col-lg-12">
+                <div class="provider-grid">
                     <div class="provider-card">
                         <div class="provider-logo">
                             <i class="fas fa-database"></i>

@@ -28,8 +28,8 @@ function initThemeToggle() {
     
     if (!themeToggle) return;
     
-    // Load saved theme or default to light
-    const savedTheme = localStorage.getItem('smartrag-theme') || 'light';
+    // Load saved theme or default to dark
+    const savedTheme = localStorage.getItem('smartrag-theme') || 'dark';
     setTheme(savedTheme);
     
     // Theme toggle click handler

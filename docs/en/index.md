@@ -32,8 +32,8 @@ hide_title: true
                             <div class="stat-label">AI Providers</div>
                         </div>
                         <div class="stat-card">
-                            <div class="stat-number">5</div>
-                            <div class="stat-label">Storage Options</div>
+                            <div class="stat-number">3</div>
+                            <div class="stat-label">Storage Providers</div>
                         </div>
                         <div class="stat-card">
                             <div class="stat-number">4</div>
@@ -77,7 +77,7 @@ services.UseSmartRag(configuration,
     aiProvider: AIProvider.Gemini
 );
 
-// Upload document (PDF, Word, Excel, Images, Audio, Database)
+// Upload documents (PDF, Word, Excel, Images, Audio)
 var document = await documentService.UploadDocumentAsync(
     fileStream, "contract.pdf", "application/pdf", "user-id"
 );
@@ -170,8 +170,8 @@ Console.WriteLine(answer.Answer);
                 <h3>Production Ready</h3>
                 <p>Zero warnings policy, SOLID/DRY principles, comprehensive error handling, thread-safe operations, and battle-tested in production.</p>
             </div>
-                         </div>
-                     </div>
+        </div>
+    </div>
 </section>
 
 <section class="section section-dark">
@@ -192,14 +192,14 @@ Console.WriteLine(answer.Answer);
                             <i class="fas fa-brain"></i>
                         </div>
                         <h4>OpenAI</h4>
-                        <p>GPT-4 + Embeddings</p>
+                        <p>GPT Models</p>
                     </div>
                     <div class="provider-card">
                         <div class="provider-logo">
                             <i class="fas fa-robot"></i>
                         </div>
                         <h4>Anthropic</h4>
-                        <p>Claude + VoyageAI</p>
+                        <p>Claude Models</p>
                     </div>
                     <div class="provider-card">
                         <div class="provider-logo">
@@ -213,7 +213,7 @@ Console.WriteLine(answer.Answer);
                             <i class="fas fa-cloud"></i>
                         </div>
                         <h4>Azure OpenAI</h4>
-                        <p>Enterprise GPT</p>
+                        <p>Enterprise Models</p>
                     </div>
                     <div class="provider-card">
                         <div class="provider-logo">
@@ -222,11 +222,11 @@ Console.WriteLine(answer.Answer);
                         <h4>Custom</h4>
                         <p>Ollama / LM Studio</p>
                     </div>
-                         </div>
-                     </div>
+                </div>
+            </div>
             
             <div class="col-lg-6">
-                <h3 class="text-center mb-4">Storage & Databases</h3>
+                <h3 class="text-center mb-4">Storage Providers</h3>
                 <div class="provider-grid">
                     <div class="provider-card">
                         <div class="provider-logo">
@@ -242,6 +242,31 @@ Console.WriteLine(answer.Answer);
                         <h4>Redis</h4>
                         <p>High-Performance Cache</p>
                     </div>
+                    <div class="provider-card">
+                        <div class="provider-logo">
+                            <i class="fas fa-memory"></i>
+                        </div>
+                        <h4>InMemory</h4>
+                        <p>In-Memory Storage</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="section section-dark">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">Supported Database Types</h2>
+            <p class="section-subtitle">
+                Query multiple database types simultaneously with AI-powered coordination
+            </p>
+        </div>
+        
+        <div class="row g-5">
+            <div class="col-lg-12">
+                <div class="provider-grid">
                     <div class="provider-card">
                         <div class="provider-logo">
                             <i class="fas fa-database"></i>
@@ -270,10 +295,10 @@ Console.WriteLine(answer.Answer);
                         <h4>SQLite</h4>
                         <p>Embedded DB</p>
                     </div>
-                         </div>
-                    </div>
                 </div>
             </div>
+        </div>
+    </div>
 </section>
 
 <section class="section section-dark">
