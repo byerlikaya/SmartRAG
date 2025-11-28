@@ -95,6 +95,7 @@ This release introduces significant architectural improvements and new features 
     
     <!-- HTTP Client -->
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.10" />
+    <PackageReference Include="NRedisStack" Version="0.12.0" />
     
     <!-- JSON Processing -->
     <PackageReference Include="System.Text.Json" Version="9.0.10" />
