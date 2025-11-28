@@ -3,6 +3,9 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('SmartRAG Documentation initialized');
     
+    // Wrap Getting Started page sections in card-like containers
+    wrapGettingStartedSections();
+    
     // Initialize all features
     initThemeToggle();
     initLanguagePreference();
@@ -18,6 +21,57 @@ document.addEventListener('DOMContentLoaded', function() {
         Prism.highlightAll();
     }
 });
+
+// ===== GETTING STARTED PAGE SECTIONS =====
+function wrapGettingStartedSections() {
+    const main = document.querySelector('main .page-body, main .container, main .main-content, main');
+    if (!main) return;
+    
+    const targetHeadings = [
+        'Basic Configuration',
+        'Temel Yapılandırma',
+        'Configuration File',
+        'Yapılandırma Dosyası',
+        'Quick Usage Example',
+        'Hızlı Kullanım Örneği',
+        'Conversation History',
+        'Konuşma Geçmişi'
+    ];
+    
+    const h2Elements = main.querySelectorAll('h2');
+    h2Elements.forEach(h2 => {
+        const headingText = h2.textContent.trim();
+        if (targetHeadings.includes(headingText)) {
+            // Find all siblings until next h2 or hr
+            const wrapper = document.createElement('div');
+            wrapper.className = 'config-section';
+            
+            let nextSibling = h2.nextSibling;
+            const elementsToWrap = [];
+            
+            while (nextSibling) {
+                if (nextSibling.nodeType === Node.ELEMENT_NODE) {
+                    const tagName = nextSibling.tagName.toLowerCase();
+                    if (tagName === 'h2' || tagName === 'hr' || nextSibling.classList.contains('row')) {
+                        break;
+                    }
+                    elementsToWrap.push(nextSibling);
+                } else if (nextSibling.nodeType === Node.TEXT_NODE) {
+                    // Skip empty text nodes
+                    if (nextSibling.textContent.trim()) {
+                        // If it's not empty, it might be part of content, but we'll skip it for now
+                    }
+                }
+                nextSibling = nextSibling.nextSibling;
+            }
+            
+            if (elementsToWrap.length > 0) {
+                elementsToWrap.forEach(el => wrapper.appendChild(el));
+                h2.parentNode.insertBefore(wrapper, h2.nextSibling);
+            }
+        }
+    });
+}
 
 // ===== THEME TOGGLE =====
 function initThemeToggle() {

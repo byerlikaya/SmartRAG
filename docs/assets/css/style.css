@@ -199,6 +199,16 @@ body {
     color: var(--primary) !important;
 }
 
+/* ===== SEPARATORS ===== */
+hr,
+separator {
+    display: none;
+    margin: 0;
+    padding: 0;
+    border: none;
+    height: 0;
+}
+
 /* ===== MAIN CONTENT ===== */
 .main-content {
     margin-top: 76px;
@@ -698,6 +708,43 @@ body {
     flex-grow: 1;
 }
 
+/* ===== GETTING STARTED PAGE SECTIONS ===== */
+/* Style config-section divs like feature cards */
+.config-section {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 1.25rem;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    margin-top: 1rem;
+    transition: var(--transition-normal);
+    position: relative;
+    overflow: hidden;
+}
+
+.config-section::before {
+    display: none;
+}
+
+.config-section h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
+.config-section p:first-of-type {
+    margin-top: 0;
+}
+
+.config-section pre,
+.config-section code {
+    margin: 1rem 0;
+}
+
+.config-section .alert {
+    margin-top: 1.5rem;
+    margin-bottom: 0;
+}
+
 /* Make feature cards equal height in Bootstrap grid */
 .col-lg-3.col-md-6,
 .col-md-6.col-lg-3 {
@@ -914,11 +961,13 @@ body {
 
 .code-panel {
     display: none;
-    background: var(--code-bg);
+    background: transparent;
     padding: 1.5rem;
     border: 1px solid var(--border-color);
     border-radius: 0 0 1rem 1rem;
-    overflow-x: auto;
+    overflow-x: visible;
+    overflow-y: visible;
+    position: relative;
 }
 
 .code-panel.active {
@@ -927,11 +976,32 @@ body {
 
 .code-panel pre {
     margin: 0;
-    background: none;
+    background: none !important;
+    padding: 0 !important;
     color: var(--code-text);
     font-family: var(--font-mono);
     font-size: 0.9rem;
     line-height: 1.6;
+    overflow: visible;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    position: relative;
+}
+
+.code-panel code {
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--code-text);
+}
+
+.code-panel pre {
+    position: relative;
+}
+
+.code-panel .copy-code-btn {
+    top: -0.5rem;
+    right: 0.5rem;
 }
 
 /* Inline code */
