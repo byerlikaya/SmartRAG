@@ -433,5 +433,32 @@ namespace SmartRAG.Repositories
             "Removed {RemovedCount} old documents to maintain capacity limit of {MaxDocuments}");
 
         #endregion
+        public static readonly Action<ILogger, string, Exception> LogRedisVectorIndexExists = LoggerMessage.Define<string>(
+            LogLevel.Information,
+            new EventId(35209, "RedisVectorIndexExists"),
+            "Redis vector index '{IndexName}' already exists");
+
+        public static readonly Action<ILogger, string, Exception> LogRedisVectorIndexCreated = LoggerMessage.Define<string>(
+            LogLevel.Information,
+            new EventId(35210, "RedisVectorIndexCreated"),
+            "Created Redis vector index '{IndexName}'");
+
+        public static readonly Action<ILogger, string, Exception> LogRedisVectorIndexCreationFailure = LoggerMessage.Define<string>(
+            LogLevel.Warning,
+            new EventId(35211, "RedisVectorIndexCreationFailure"),
+            "Failed to create Redis vector index '{IndexName}'");
+
+        public static readonly Action<ILogger, string, Exception> LogRedisVectorSearchFailed = LoggerMessage.Define<string>(
+            LogLevel.Error,
+            new EventId(35212, "RedisVectorSearchFailed"),
+            "Redis vector search failed for query '{Query}'. Falling back to text search.");
+
+        public static readonly Action<ILogger, Exception> LogRedisRediSearchModuleMissing = LoggerMessage.Define(
+            LogLevel.Warning,
+            new EventId(35213, "RedisRediSearchModuleMissing"),
+            "Redis RediSearch module is not available. Vector similarity search will be disabled. " +
+            "Redis will still work for document storage and text search. " +
+            "To enable vector search, install Redis with RediSearch module: " +
+            "docker run -d -p 6379:6379 redis/redis-stack-server:latest");
     }
 }
