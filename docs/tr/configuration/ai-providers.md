@@ -19,8 +19,8 @@ SmartRAG çeşitli AI sağlayıcılarını destekler:
     "OpenAI": {
       "ApiKey": "sk-proj-ANAHTARINIZ",
       "Endpoint": "https://api.openai.com/v1",
-      "Model": "gpt-4",
-      "EmbeddingModel": "text-embedding-ada-002",
+      "Model": "gpt-5.1",
+      "EmbeddingModel": "text-embedding-3-small",
       "MaxTokens": 4096,
       "Temperature": 0.7
     }
@@ -36,9 +36,13 @@ builder.Services.AddSmartRag(configuration, options =>
 ```
 
 **Modeller:**
-- `gpt-4`, `gpt-4-turbo`, `gpt-4o` - Gelişmiş akıl yürütme
-- `gpt-3.5-turbo` - Hızlı ve uygun maliyetli
-- `text-embedding-ada-002`, `text-embedding-3-small`, `text-embedding-3-large` - Embedding'ler
+- `gpt-5.1` - En gelişmiş akıl yürütme modeli (önerilen)
+- `gpt-5` - Gelişmiş akıl yürütme yetenekleri
+- `gpt-5-mini` - Uygun maliyetli GPT-5 varyantı
+- `gpt-4o` - Önceki nesil gelişmiş model
+- `gpt-4o-mini` - Uygun maliyetli önceki nesil
+- `text-embedding-3-small`, `text-embedding-3-large` - Embedding'ler (önerilen)
+- `text-embedding-ada-002` - Eski embedding'ler
 
 ---
 
@@ -60,11 +64,11 @@ builder.Services.AddSmartRag(configuration, options =>
   "AI": {
     "Anthropic": {
       "ApiKey": "sk-ant-ANTHROPIC_ANAHTARINIZ",
-      "Model": "claude-3-5-sonnet-20241022",
+      "Model": "claude-sonnet-4-5",
       "MaxTokens": 4096,
       "Temperature": 0.3,
       "EmbeddingApiKey": "pa-VOYAGE_ANAHTARINIZ",
-      "EmbeddingModel": "voyage-large-2"
+      "EmbeddingModel": "voyage-3.5"
     }
   }
 }
@@ -78,12 +82,15 @@ builder.Services.AddSmartRag(configuration, options =>
 ```
 
 **Claude Modelleri:**
-- `claude-3-5-sonnet-20241022` - En akıllı (önerilen)
+- `claude-sonnet-4-5` - En yeni ve en akıllı (önerilen)
+- `claude-3.5-sonnet` - Önceki nesil
+- `claude-3-opus-20240229` - En yüksek yetenek
+- `claude-3-haiku-20240307` - En hızlı
 - `claude-3-opus-20240229` - En yüksek yetenek
 - `claude-3-haiku-20240307` - En hızlı
 
 **VoyageAI Embedding Modelleri:**
-- `voyage-large-2` - Yüksek kalite (önerilen)
+- `voyage-3.5` - Yüksek kalite (önerilen)
 - `voyage-code-2` - Kod için optimize edilmiş
 - `voyage-2` - Genel amaçlı
 
@@ -96,7 +103,7 @@ builder.Services.AddSmartRag(configuration, options =>
   "AI": {
     "Gemini": {
       "ApiKey": "GEMINI_ANAHTARINIZ",
-      "Model": "gemini-pro",
+      "Model": "gemini-3-pro-preview",
       "EmbeddingModel": "embedding-001",
       "MaxTokens": 4096,
       "Temperature": 0.7
@@ -113,8 +120,10 @@ builder.Services.AddSmartRag(configuration, options =>
 ```
 
 **Modeller:**
-- `gemini-pro` - Metin üretimi
-- `gemini-pro-vision` - Çok modlu (metin + görsel)
+- `gemini-3-pro-preview` - En gelişmiş çok modlu model (önerilen)
+- `gemini-2.5-pro` - Gelişmiş akıl yürütme yetenekleri
+- `gemini-2.5-flash` - Hızlı ve uygun maliyetli
+- `gemini-2.0-flash` - Önceki nesil iş modeli
 - `embedding-001` - Metin embedding'leri
 
 ---
@@ -127,9 +136,9 @@ builder.Services.AddSmartRag(configuration, options =>
     "AzureOpenAI": {
       "ApiKey": "AZURE_ANAHTARINIZ",
       "Endpoint": "https://your-resource.openai.azure.com/",
-      "Model": "gpt-4",
-      "EmbeddingModel": "text-embedding-ada-002",
-      "DeploymentName": "gpt-4-deployment",
+      "Model": "gpt-5.1",
+      "EmbeddingModel": "text-embedding-3-small",
+      "DeploymentName": "gpt-5.1-deployment",
       "MaxTokens": 4096,
       "Temperature": 0.7
     }

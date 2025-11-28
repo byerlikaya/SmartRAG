@@ -24,7 +24,7 @@ namespace SmartRAG.API.Contracts
         /// <summary>
         /// Model used for generation
         /// </summary>
-        /// <example>gpt-4</example>
+        /// <example>gpt-5.1</example>
         public string Model { get; set; } = string.Empty;
 
         /// <summary>
@@ -84,7 +84,7 @@ namespace SmartRAG.API.Contracts
         /// <summary>
         /// Model used for embedding generation
         /// </summary>
-        /// <example>text-embedding-ada-002</example>
+        /// <example>text-embedding-3-small</example>
         public string Model { get; set; } = string.Empty;
 
         /// <summary>
@@ -150,13 +150,13 @@ namespace SmartRAG.API.Contracts
         /// <summary>
         /// Available models for this provider
         /// </summary>
-        /// <example>["gpt-4", "gpt-3.5-turbo", "text-embedding-ada-002"]</example>
+        /// <example>["gpt-5.1", "gpt-5", "gpt-4o", "gpt-4o-mini", "text-embedding-3-small", "text-embedding-3-large"]</example>
         public List<string> AvailableModels { get; set; } = new List<string>();
 
         /// <summary>
         /// Current default model
         /// </summary>
-        /// <example>gpt-4</example>
+        /// <example>gpt-5.1</example>
         public string DefaultModel { get; set; } = string.Empty;
 
         /// <summary>

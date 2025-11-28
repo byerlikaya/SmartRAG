@@ -19,8 +19,8 @@ SmartRAG supports various AI providers:
     "OpenAI": {
       "ApiKey": "sk-proj-YOUR_KEY",
       "Endpoint": "https://api.openai.com/v1",
-      "Model": "gpt-4",
-      "EmbeddingModel": "text-embedding-ada-002",
+      "Model": "gpt-5.1",
+      "EmbeddingModel": "text-embedding-3-small",
       "MaxTokens": 4096,
       "Temperature": 0.7
     }
@@ -36,9 +36,12 @@ builder.Services.AddSmartRag(configuration, options =>
 ```
 
 **Models:**
-- `gpt-4`, `gpt-4-turbo`, `gpt-4o` - Advanced reasoning
-- `gpt-3.5-turbo` - Fast and cost-effective
-- `text-embedding-ada-002`, `text-embedding-3-small`, `text-embedding-3-large` - Embeddings
+- `gpt-5.1` - Latest advanced reasoning model (recommended)
+- `gpt-5` - Advanced reasoning capabilities
+- `gpt-4o` - Previous generation advanced model
+- `gpt-4o-mini` - Cost-effective and fast
+- `text-embedding-3-small`, `text-embedding-3-large` - Embeddings (recommended)
+- `text-embedding-ada-002` - Legacy embeddings
 
 ---
 
@@ -60,11 +63,11 @@ builder.Services.AddSmartRag(configuration, options =>
   "AI": {
     "Anthropic": {
       "ApiKey": "sk-ant-ANTHROPIC_KEY",
-      "Model": "claude-3-5-sonnet-20241022",
+      "Model": "claude-sonnet-4-5",
       "MaxTokens": 4096,
       "Temperature": 0.3,
       "EmbeddingApiKey": "pa-VOYAGE_KEY",
-      "EmbeddingModel": "voyage-large-2"
+      "EmbeddingModel": "voyage-3.5"
     }
   }
 }
@@ -78,12 +81,15 @@ builder.Services.AddSmartRag(configuration, options =>
 ```
 
 **Claude Models:**
-- `claude-3-5-sonnet-20241022` - Most intelligent (recommended)
+- `claude-sonnet-4-5` - Latest and most intelligent (recommended)
+- `claude-3.5-sonnet` - Previous generation
+- `claude-3-opus-20240229` - Highest capability
+- `claude-3-haiku-20240307` - Fastest
 - `claude-3-opus-20240229` - Highest capability
 - `claude-3-haiku-20240307` - Fastest
 
 **VoyageAI Embedding Models:**
-- `voyage-large-2` - High quality (recommended)
+- `voyage-3.5` - High quality (recommended)
 - `voyage-code-2` - Optimized for code
 - `voyage-2` - General purpose
 
@@ -96,7 +102,7 @@ builder.Services.AddSmartRag(configuration, options =>
   "AI": {
     "Gemini": {
       "ApiKey": "GEMINI_KEY",
-      "Model": "gemini-pro",
+      "Model": "gemini-2.5-pro",
       "EmbeddingModel": "embedding-001",
       "MaxTokens": 4096,
       "Temperature": 0.7
@@ -113,8 +119,10 @@ builder.Services.AddSmartRag(configuration, options =>
 ```
 
 **Models:**
-- `gemini-pro` - Text generation
-- `gemini-pro-vision` - Multimodal (text + vision)
+- `gemini-2.5-pro` - Advanced reasoning capabilities (recommended)
+- `gemini-2.5-flash` - Fast and cost-effective
+- `gemini-2.0-flash` - Previous generation workhorse
+- `gemini-1.5-pro` - Legacy advanced model
 - `embedding-001` - Text embeddings
 
 ---
@@ -127,9 +135,9 @@ builder.Services.AddSmartRag(configuration, options =>
     "AzureOpenAI": {
       "ApiKey": "AZURE_KEY",
       "Endpoint": "https://your-resource.openai.azure.com/",
-      "Model": "gpt-4",
-      "EmbeddingModel": "text-embedding-ada-002",
-      "DeploymentName": "gpt-4-deployment",
+      "Model": "gpt-5.1",
+      "EmbeddingModel": "text-embedding-3-small",
+      "DeploymentName": "gpt-5.1-deployment",
       "MaxTokens": 4096,
       "Temperature": 0.7
     }

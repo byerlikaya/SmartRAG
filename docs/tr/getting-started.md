@@ -29,7 +29,7 @@ SmartRAG bir NuGet paketi olarak mevcuttur ve **.NET Standard 2.1** destekler, b
 </div>
 
 <div class="code-panel" data-tab="xml">
-<pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="3.2.0" /&gt;</code></pre>
+<pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="3.3.0" /&gt;</code></pre>
 </div>
 
 ---
@@ -104,22 +104,58 @@ app.Run();
 
 ```json
 {
+  "SmartRAG": {
+    "AIProvider": "OpenAI",
+    "StorageProvider": "InMemory",
+    "MaxChunkSize": 1000,
+    "MinChunkSize": 100,
+    "ChunkOverlap": 200,
+    "MaxRetryAttempts": 3,
+    "RetryDelayMs": 1000,
+    "RetryPolicy": "ExponentialBackoff",
+    "EnableFallbackProviders": false
+  },
   "AI": {
     "OpenAI": {
       "ApiKey": "sk-proj-API_ANAHTARINIZ",
-      "Model": "gpt-4",
-      "EmbeddingModel": "text-embedding-ada-002"
+      "Endpoint": "https://api.openai.com/v1",
+      "Model": "gpt-5.1",
+      "EmbeddingModel": "text-embedding-3-small",
+      "MaxTokens": 4096,
+      "Temperature": 0.7
     },
     "Anthropic": {
       "ApiKey": "sk-ant-API_ANAHTARINIZ",
-      "Model": "claude-3-5-sonnet-20241022",
+      "Endpoint": "https://api.anthropic.com",
+      "Model": "claude-sonnet-4-5",
+      "MaxTokens": 4096,
+      "Temperature": 0.3,
       "EmbeddingApiKey": "pa-VOYAGE_ANAHTARINIZ",
-      "EmbeddingModel": "voyage-large-2"
+      "EmbeddingModel": "voyage-3.5"
     },
     "Gemini": {
       "ApiKey": "GEMINI_ANAHTARINIZ",
-      "Model": "gemini-pro",
-      "EmbeddingModel": "embedding-001"
+      "Endpoint": "https://generativelanguage.googleapis.com/v1beta",
+      "Model": "gemini-2.5-pro",
+      "EmbeddingModel": "embedding-001",
+      "MaxTokens": 4096,
+      "Temperature": 0.3
+    },
+    "AzureOpenAI": {
+      "ApiKey": "azure-openai-api-anahtariniz",
+      "Endpoint": "https://your-resource.openai.azure.com/",
+      "Model": "gpt-5.1",
+      "EmbeddingModel": "text-embedding-3-small",
+      "ApiVersion": "2024-10-21",
+      "MaxTokens": 4096,
+      "Temperature": 0.7
+    },
+    "Custom": {
+      "ApiKey": "ozel-api-anahtariniz",
+      "Endpoint": "https://api.yourprovider.com/v1/chat/completions",
+      "Model": "model-adi",
+      "MaxTokens": 4096,
+      "Temperature": 0.7
     }
   },
   "Storage": {
@@ -129,13 +165,19 @@ app.Run();
     "Qdrant": {
       "Host": "localhost:6334",
       "UseHttps": false,
+      "ApiKey": "",
       "CollectionName": "smartrag_documents",
-      "VectorSize": 1536
+      "VectorSize": 1536,
+      "DistanceMetric": "Cosine"
     },
     "Redis": {
       "ConnectionString": "localhost:6379",
+      "Password": "",
+      "Username": "",
       "Database": 0,
-      "KeyPrefix": "smartrag:"
+      "KeyPrefix": "smartrag:doc:",
+      "ConnectionTimeout": 30,
+      "EnableSsl": false
     }
   }
 }
@@ -225,13 +267,20 @@ public class QuestionRequest
   "answer": "Sözleşme belgesine göre ana faydalar şunlardır: 1) 7/24 müşteri desteği, 2) 30 gün para iade garantisi, 3) Ömür boyu ücretsiz güncellemeler...",
   "sources": [
     {
-      "documentId": "abc-123",
+      "sourceType": "Document",
+      "documentId": "00000000-0000-0000-0000-000000000000",
       "fileName": "sozlesme.pdf",
-      "chunkContent": "Hizmetimiz 7/24 müşteri desteği içerir...",
-      "relevanceScore": 0.94
+      "relevantContent": "Hizmetimiz 7/24 müşteri desteği içerir...",
+      "relevanceScore": 0.94,
+      "location": null
     }
   ],
-  "searchedAt": "2025-10-18T14:30:00Z"
+  "searchedAt": "2025-10-18T14:30:00Z",
+  "configuration": {
+    "aiProvider": "OpenAI",
+    "storageProvider": "Redis",
+    "model": "gpt-5.1"
+  }
 }
 ```
 

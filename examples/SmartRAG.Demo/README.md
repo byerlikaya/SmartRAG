@@ -126,7 +126,7 @@ The application supports queries in:
   "AI": {
     "Anthropic": {
       "ApiKey": "your-key",
-      "Model": "claude-3-haiku-20240307"
+      "Model": "claude-sonnet-4-5"
     }
   },
   "Storage": {

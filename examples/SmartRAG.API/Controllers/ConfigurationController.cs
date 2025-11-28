@@ -50,7 +50,7 @@ namespace SmartRAG.API.Controllers
     /// # Update AI provider settings
     /// curl -X PUT "https://localhost:7001/api/configuration/ai-provider" \
     ///   -H "Content-Type: application/json" \
-    ///   -d '{"provider": "OpenAI", "apiKey": "sk-...", "defaultModel": "gpt-4"}'
+    ///   -d '{"provider": "OpenAI", "apiKey": "sk-...", "defaultModel": "gpt-5.1"}'
     /// 
     /// # Validate configuration before applying
     /// curl -X POST "https://localhost:7001/api/configuration/validate" \
@@ -1152,10 +1152,10 @@ namespace SmartRAG.API.Controllers
         {
             return provider switch
             {
-                AIProvider.OpenAI => "gpt-4",
-                AIProvider.Anthropic => "claude-3-sonnet",
-                AIProvider.Gemini => "gemini-pro",
-                AIProvider.AzureOpenAI => "gpt-4",
+                AIProvider.OpenAI => "gpt-5.1",
+                AIProvider.Anthropic => "claude-sonnet-4-5",
+                AIProvider.Gemini => "gemini-2.5-pro",
+                AIProvider.AzureOpenAI => "gpt-5.1",
                 AIProvider.Custom => "custom-model",
                 _ => "default"
             };
@@ -1165,8 +1165,8 @@ namespace SmartRAG.API.Controllers
         {
             return provider switch
             {
-                AIProvider.OpenAI => "text-embedding-ada-002",
-                AIProvider.AzureOpenAI => "text-embedding-ada-002",
+                AIProvider.OpenAI => "text-embedding-3-small",
+                AIProvider.AzureOpenAI => "text-embedding-3-small",
                 AIProvider.Anthropic => "claude-embedding",
                 AIProvider.Gemini => "embedding-001",
                 AIProvider.Custom => "custom-embedding",
@@ -1178,10 +1178,10 @@ namespace SmartRAG.API.Controllers
         {
             return provider switch
             {
-                AIProvider.OpenAI => new List<string> { "gpt-4", "gpt-3.5-turbo", "text-embedding-ada-002" },
-                AIProvider.Anthropic => new List<string> { "claude-3-opus", "claude-3-sonnet", "claude-3-haiku" },
-                AIProvider.Gemini => new List<string> { "gemini-pro", "gemini-pro-vision" },
-                AIProvider.AzureOpenAI => new List<string> { "gpt-4", "gpt-35-turbo", "text-embedding-ada-002" },
+                AIProvider.OpenAI => new List<string> { "gpt-5.1", "gpt-5", "gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "text-embedding-3-small", "text-embedding-3-large" },
+                AIProvider.Anthropic => new List<string> { "claude-sonnet-4-5", "claude-3.5-sonnet", "claude-3-opus-20240229", "claude-3-haiku-20240307" },
+                AIProvider.Gemini => new List<string> { "gemini-2.5-pro", "gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-pro" },
+                AIProvider.AzureOpenAI => new List<string> { "gpt-5.1", "gpt-4o", "gpt-4", "gpt-35-turbo", "text-embedding-3-small", "text-embedding-3-large" },
                 AIProvider.Custom => new List<string> { "custom-model" },
                 _ => new List<string>()
             };
