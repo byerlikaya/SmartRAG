@@ -10,6 +10,83 @@ All notable changes to SmartRAG are documented here. The project adheres to [Sem
 
 ---
 
+## [3.3.0] - 2025-11-28
+
+### Redis Vector Search & Storage Improvements
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> MINOR Release</h4>
+    <p class="mb-0">
+        This release enhances Redis vector search capabilities and removes unused storage implementations.
+        Active storage providers (Qdrant, Redis, InMemory) remain fully functional.
+    </p>
+</div>
+
+### ✨ Added
+
+#### Redis RediSearch Integration
+- **Enhanced Vector Similarity Search**: RediSearch module support for advanced vector search capabilities
+- **Vector Index Configuration**: Algorithm (HNSW), distance metric (COSINE), and dimension (default: 768) configuration
+- **Files Modified**:
+  - `src/SmartRAG/Models/RedisConfig.cs` - Vector search configuration properties
+  - `src/SmartRAG/Repositories/RedisDocumentRepository.cs` - RediSearch vector search implementation
+
+### 🔧 Improved
+
+#### Redis Vector Search Accuracy
+- **Proper Relevance Scoring**: RelevanceScore now correctly calculated and assigned for DocumentSearchService ranking
+- **Similarity Calculation**: Distance metrics from RediSearch properly converted to similarity scores
+- **Debug Logging**: Score verification logging added
+- **Files Modified**:
+  - `src/SmartRAG/Repositories/RedisDocumentRepository.cs` - RelevanceScore assignment
+
+#### Redis Embedding Generation
+- **AI Configuration Handling**: IAIConfigurationService injection for proper config retrieval
+- **Graceful Fallback**: Text search fallback when config unavailable
+- **Files Modified**:
+  - `src/SmartRAG/Repositories/RedisDocumentRepository.cs` - AI config handling
+  - `src/SmartRAG/Factories/StorageFactory.cs` - IAIConfigurationService injection
+
+#### StorageFactory Dependency Injection
+- **Scope Resolution**: Fixed Singleton/Scoped lifetime mismatch using lazy resolution
+- **IServiceProvider Pattern**: Changed to lazy dependency resolution via IServiceProvider
+- **Files Modified**:
+  - `src/SmartRAG/Factories/StorageFactory.cs` - Lazy dependency resolution
+  - `src/SmartRAG/Extensions/ServiceCollectionExtensions.cs` - IAIProvider lifetime adjustment
+
+### 🐛 Fixed
+
+- **StorageFactory DI Scope Issue**: Fixed InvalidOperationException when resolving IAIProvider
+- **Redis Relevance Scoring**: Fixed RelevanceScore being 0.0000 in search results
+- **Redis Embedding Config**: Fixed NullReferenceException when generating embeddings
+
+### 🗑️ Removed
+
+- **FileSystemDocumentRepository**: Removed unused file system storage implementation
+- **SqliteDocumentRepository**: Removed unused SQLite storage implementation
+- **StorageConfig Properties**: Removed FileSystemPath and SqliteConfig (unused)
+
+### 📚 Documentation
+
+- **Redis Storage Documentation**: Updated with RediSearch requirements and setup instructions
+- **InMemory Storage Documentation**: Added configuration examples and use cases
+
+### ⚠️ Breaking Changes
+
+- **FileSystem and SQLite Document Repositories Removed**
+  - These were unused implementations
+  - Active storage providers (Qdrant, Redis, InMemory) remain fully functional
+  - If you were using FileSystem or SQLite, migrate to Qdrant, Redis, or InMemory
+
+### 📝 Notes
+
+- **Redis Requirements**: Vector search requires RediSearch module
+  - Use `redis/redis-stack-server:latest` Docker image
+  - Or install RediSearch module on your Redis server
+  - Without RediSearch, only text search works (no vector search)
+
+---
+
 ## [3.2.0] - 2025-11-27
 
 ### 🏗️ Architectural Refactoring - Modular Design
@@ -176,8 +253,6 @@ All notable changes to SmartRAG are documented here. The project adheres to [Sem
 ### Changed
 
 - **IEmbeddingSearchService Dependency Removal**: Simplified architecture
-- **Demo Language Selection**: ISO 639-1 code standardization
-- **Demo Project Configuration**: Qdrant as default storage
 - **Code Cleanup**: Inline comments and unused directives removal
 - **Logging Cleanup**: Reduced verbose logging
 - **NuGet Package Updates**: Latest compatible versions
@@ -381,7 +456,6 @@ If you're using OCR or Audio Transcription features:
 - **README.md**: Updated to reflect Whisper.net-only audio processing
 - **README.tr.md**: Updated Turkish documentation
 - **docs/**: Updated all documentation files to remove Google Speech references
-- **Examples**: Updated example configurations and documentation
 
 ### ✨ Benefits
 - **100% Local Processing**: All audio transcription happens locally with Whisper.net

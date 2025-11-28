@@ -10,6 +10,83 @@ SmartRAG'deki tüm önemli değişiklikler burada belgelenmiştir. Proje [Anlams
 
 ---
 
+## [3.3.0] - 2025-11-28
+
+### Redis Vector Search & Storage İyileştirmeleri
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> MINOR Sürüm</h4>
+    <p class="mb-0">
+        Bu sürüm Redis vector arama yeteneklerini geliştirir ve kullanılmayan storage implementasyonlarını kaldırır.
+        Aktif storage provider'ları (Qdrant, Redis, InMemory) tam olarak çalışmaya devam eder.
+    </p>
+</div>
+
+### ✨ Eklendi
+
+#### Redis RediSearch Entegrasyonu
+- **Gelişmiş Vector Similarity Search**: RediSearch modülü desteği ile gelişmiş vector arama yetenekleri
+- **Vector Index Configuration**: Algoritma (HNSW), mesafe metriği (COSINE) ve boyut (varsayılan: 768) configuration
+  - **Dosyalar Güncellendi**:
+    - `src/SmartRAG/Models/RedisConfig.cs` - Vector arama configuration özellikleri
+  - `src/SmartRAG/Repositories/RedisDocumentRepository.cs` - RediSearch vector arama implementasyonu
+
+### 🔧 İyileştirildi
+
+#### Redis Vector Search Doğruluğu
+- **Doğru Relevance Scoring**: RelevanceScore artık Doküman Arama Service'i sıralaması için doğru hesaplanıyor ve atanıyor
+- **Similarity Hesaplama**: RediSearch mesafe metrikleri similarity skorlarına doğru şekilde dönüştürülüyor
+- **Debug Logging**: Skor doğrulama logging'i eklendi
+- **Dosyalar Güncellendi**:
+  - `src/SmartRAG/Repositories/RedisDocumentRepository.cs` - RelevanceScore ataması
+
+#### Redis Embedding Üretimi
+- **AI Configuration Yönetimi**: Doğru config almak için IAIConfigurationService injection'ı
+  - **Zarif Geri Dönüş**: Config mevcut olmadığında text arama'ya geri dönüş
+- **Dosyalar Güncellendi**:
+  - `src/SmartRAG/Repositories/RedisDocumentRepository.cs` - AI config yönetimi
+  - `src/SmartRAG/Factories/StorageFactory.cs` - IAIConfigurationService injection
+
+#### StorageFactory Dependency Injection
+- **Scope Çözümleme**: Lazy resolution kullanarak Singleton/Scoped lifetime uyumsuzluğu düzeltildi
+- **IServiceProvider Pattern**: IServiceProvider aracılığıyla lazy dependency resolution'a geçildi
+- **Dosyalar Güncellendi**:
+  - `src/SmartRAG/Factories/StorageFactory.cs` - Lazy dependency resolution
+  - `src/SmartRAG/Extensions/ServiceCollectionExtensions.cs` - IAIProvider lifetime ayarı
+
+### 🐛 Düzeltildi
+
+- **StorageFactory DI Scope Sorunu**: IAIProvider çözümlerken InvalidOperationException düzeltildi
+- **Redis Relevance Scoring**: Arama sonuçlarında RelevanceScore'un 0.0000 olması düzeltildi
+- **Redis Embedding Config**: Embedding üretirken NullReferenceException düzeltildi
+
+### 🗑️ Kaldırıldı
+
+- **FileSystemDocumentRepository**: Kullanılmayan file system storage implementasyonu kaldırıldı
+- **SqliteDocumentRepository**: Kullanılmayan SQLite storage implementasyonu kaldırıldı
+- **StorageConfig Özellikleri**: FileSystemPath ve SqliteConfig kaldırıldı (kullanılmıyor)
+
+### 📚 Dokümantasyon
+
+- **Redis Storage Dokümantasyonu**: RediSearch gereksinimleri ve kurulum talimatları ile güncellendi
+- **InMemory Storage Dokümantasyonu**: Configuration örnekleri ve kullanım senaryoları eklendi
+
+### ⚠️ Breaking Changes
+
+- **FileSystem ve SQLite Doküman Repository'leri Kaldırıldı**
+  - Bunlar kullanılmayan implementasyonlardı
+  - Aktif storage provider'ları (Qdrant, Redis, InMemory) tam olarak çalışmaya devam ediyor
+  - FileSystem veya SQLite kullanıyorsanız, Qdrant, Redis veya InMemory'ye geçin
+
+### 📝 Notlar
+
+- **Redis Gereksinimleri**: Vector arama RediSearch modülü gerektirir
+  - `redis/redis-stack-server:latest` Docker image'ını kullanın
+  - Veya Redis sunucunuza RediSearch modülünü kurun
+  - RediSearch olmadan sadece text arama çalışır (vector arama çalışmaz)
+
+---
+
 ## [3.2.0] - 2025-11-27
 
 ### 🏗️ Mimari Refactoring - Modüler Tasarım
@@ -64,7 +141,7 @@ SmartRAG'deki tüm önemli değişiklikler burada belgelenmiştir. Proje [Anlams
 #### **Servis Katmanı Refactoring**
 
 ##### AI Servis Ayrıştırması
-- **`IAIConfigurationService`**: AI sağlayıcı yapılandırma yönetimi
+- **`IAIConfigurationService`**: AI sağlayıcı configuration yönetimi
 - **`IAIRequestExecutor`**: Yeniden deneme/yedekleme ile AI istek yürütme
 - **`IPromptBuilderService`**: Prompt oluşturma ve optimizasyon
 - **`IAIProviderFactory`**: AI sağlayıcı örnekleri oluşturmak için fabrika
@@ -102,7 +179,7 @@ SmartRAG'deki tüm önemli değişiklikler burada belgelenmiştir. Proje [Anlams
 
 ### ✨ Eklenenler
 
-- **SearchOptions Desteği**: İstek başına arama yapılandırması ile detaylı kontrol
+- **SearchOptions Desteği**: İstek başına arama configuration'ı ile detaylı kontrol
   - Veritabanı, doküman, ses ve görüntü araması için özellik bayrakları
   - ISO 639-1 dil kodu desteği için `PreferredLanguage` özelliği
   - Özellik bayraklarına dayalı koşullu servis kaydı
@@ -133,9 +210,9 @@ SmartRAG'deki tüm önemli değişiklikler burada belgelenmiştir. Proje [Anlams
 - **Sorgu Token Parametresi**: Önceden hesaplanmış token desteği
   - Gereksiz tokenizasyonu ortadan kaldırmak için isteğe bağlı `queryTokens` parametresi
 
-- **FeatureToggles Modeli**: Global özellik bayrağı yapılandırması
+- **FeatureToggles Modeli**: Global özellik bayrağı configuration'ı
   - Merkezi özellik yönetimi için `FeatureToggles` sınıfı
-  - Kolay yapılandırma için `SearchOptions.FromConfig()` statik metodu
+  - Kolay configuration için `SearchOptions.FromConfig()` statik metodu
 
 - **ContextExpansionService**: Bitişik chunk bağlam genişletme
   - Bitişik chunk'ları dahil ederek doküman chunk bağlamını genişletir
@@ -169,15 +246,13 @@ SmartRAG'deki tüm önemli değişiklikler burada belgelenmiştir. Proje [Anlams
 ### Düzeltmeler
 
 - **SQL Üretiminde Tablo Takma Adı Zorunluluğu**: Belirsiz kolon hatalarını önler
-- **EnableDatabaseSearch Yapılandırma Uyumu**: Uygun özellik bayrağı işleme
-- **macOS Native Kütüphaneleri**: OCR kütüphane dahil etme ve DYLD_LIBRARY_PATH yapılandırması
-- **Eksik Metod İmzası**: DocumentSearchService geri yükleme
+- **EnableDatabaseSearch Configuration Uyumu**: Uygun özellik bayrağı işleme
+- **macOS Native Kütüphaneleri**: OCR kütüphane dahil etme ve DYLD_LIBRARY_PATH configuration'ı
+- **Eksik Metod İmzası**: Doküman Arama Service'i geri yükleme
 
 ### Değişiklikler
 
 - **IEmbeddingSearchService Bağımlılık Kaldırma**: Basitleştirilmiş mimari
-- **Demo Dil Seçimi**: ISO 639-1 kod standardizasyonu
-- **Demo Proje Yapılandırması**: Varsayılan depolama olarak Qdrant
 - **Kod Temizliği**: Satır içi yorumlar ve kullanılmayan direktiflerin kaldırılması
 - **Günlükleme Temizliği**: Azaltılmış ayrıntılı günlükleme
 - **NuGet Paket Güncellemeleri**: En son uyumlu sürümler
@@ -363,11 +438,11 @@ OCR veya Ses Transkripsiyonu özelliklerini kullanıyorsanız:
 - **Google Speech-to-Text Kaldırıldı**: Google Cloud Speech-to-Text entegrasyonunun tamamen kaldırılması
 - **Sadece Whisper.net**: Ses transkripsiyonu artık sadece Whisper.net kullanıyor, %100 yerel işleme
 - **Veri Gizliliği**: Tüm ses işleme artık tamamen yerel, GDPR/KVKK/HIPAA uyumluluğu sağlanıyor
-- **Basitleştirilmiş Yapılandırma**: GoogleSpeechConfig ve ilgili yapılandırma seçenekleri kaldırıldı
+- **Basitleştirilmiş Configuration**: GoogleSpeechConfig ve ilgili configuration seçenekleri kaldırıldı
 
 #### **Kaldırılan Dosyalar**
 - `src/SmartRAG/Services/GoogleAudioParserService.cs` - Google Speech-to-Text servisi
-- `src/SmartRAG/Models/GoogleSpeechConfig.cs` - Google Speech yapılandırma modeli
+- `src/SmartRAG/Models/GoogleSpeechConfig.cs` - Google Speech configuration modeli
 
 #### **Değiştirilen Dosyalar**
 - `src/SmartRAG/SmartRAG.csproj` - Google.Cloud.Speech.V1 NuGet paketi kaldırıldı
@@ -381,7 +456,6 @@ OCR veya Ses Transkripsiyonu özelliklerini kullanıyorsanız:
 - **README.md**: Whisper.net-only ses işleme için güncellendi
 - **README.tr.md**: Türkçe dokümantasyon güncellendi
 - **docs/**: Tüm dokümantasyon dosyalarından Google Speech referansları kaldırıldı
-- **Examples**: Örnek yapılandırmalar ve dokümantasyon güncellendi
 
 ### ✨ Faydalar
 - **%100 Yerel İşleme**: Tüm ses transkripsiyonu Whisper.net ile yerel olarak yapılıyor
@@ -399,7 +473,7 @@ OCR veya Ses Transkripsiyonu özelliklerini kullanıyorsanız:
 
 ### 📚 Geçiş Rehberi
 Google Speech-to-Text kullanıyorsanız:
-1. Yapılandırmanızdan GoogleSpeechConfig'i kaldırın
+1. Configuration'ınızdan GoogleSpeechConfig'i kaldırın
 2. WhisperConfig'in doğru yapılandırıldığından emin olun
 3. Özel ses işleme kodunuzu Whisper.net kullanacak şekilde güncelleyin
 4. Yerel Whisper.net modelleri ile ses transkripsiyonunu test edin
@@ -432,7 +506,7 @@ Google Speech-to-Text kullanıyorsanız:
 
 #### Önemli API Değişiklikleri
 - **`GenerateRagAnswerAsync` → `QueryIntelligenceAsync`**: Akıllı sorgu işlemeyi daha iyi temsil etmek için metod yeniden adlandırıldı
-- **Geliştirilmiş `IDocumentSearchService` interface'i**: Gelişmiş RAG pipeline ile yeni akıllı sorgu işleme
+- **Geliştirilmiş `IDocumentSearchService` interface'i**: Gelişmiş RAG pipeline ile yeni akıllı doküman sorgu işleme
 - **Servis katmanı iyileştirmeleri**: Gelişmiş anlamsal arama ve konuşma yönetimi
 - **Geriye dönük uyumluluk korundu**: Eski metodlar kullanımdan kaldırıldı olarak işaretlendi (v4.0.0'da kaldırılacak)
 
@@ -490,7 +564,7 @@ Google Speech-to-Text kullanıyorsanız:
 - **Çok dilli README**: İngilizce, Türkçe, Almanca ve Rusça'da mevcut
 - **Çok dilli CHANGELOG**: 4 dilde mevcut
 - **Geliştirilmiş dokümantasyon**: Kapsamlı yerinde dağıtım dokümantasyonu
-- **Yerel AI kurulum örnekleri**: Ollama ve LM Studio için yapılandırma
+- **Yerel AI kurulum örnekleri**: Ollama ve LM Studio için configuration
 - **Kurumsal kullanım senaryoları**: Bankacılık, Sağlık, Hukuk, Devlet, Üretim
 
 ### 🔧 İyileştirmeler
@@ -564,14 +638,14 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 
 ### 🔧 İyileştirmeler
 - **Ses İşleme Pipeline**: Google Cloud AI ile geliştirilmiş
-- **Yapılandırma Yönetimi**: GoogleSpeechConfig kullanacak şekilde güncellendi
+- **Configuration Yönetimi**: GoogleSpeechConfig kullanacak şekilde güncellendi
 - **Hata Yönetimi**: Ses transkripsiyonu için geliştirilmiş
 - **Dokümantasyon**: Speech-to-Text örnekleriyle güncellendi
 
 ### 📚 Dokümantasyon
 - **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
 - **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Konfigürasyon Rehberi**: Detaylı ayar seçenekleri ve örnekleri
+- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
 
 ---
 
@@ -590,7 +664,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 ### 📚 Dokümantasyon
 - **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
 - **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Konfigürasyon Rehberi**: Detaylı ayar seçenekleri ve örnekleri
+- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
 
 ---
 
@@ -611,7 +685,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 ### 📚 Dokümantasyon
 - **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
 - **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Konfigürasyon Rehberi**: Detaylı ayar seçenekleri ve örnekleri
+- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
 
 ---
 
@@ -640,7 +714,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 ### 📚 Dokümantasyon
 - **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
 - **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Konfigürasyon Rehberi**: Detaylı ayar seçenekleri ve örnekleri
+- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
 
 ### 🧪 Test
 - **Unit Testler**: Tüm yeni özellikler için kapsamlı test kapsamı
@@ -671,7 +745,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 ### 📚 Dokümantasyon
 - **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
 - **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Konfigürasyon Rehberi**: Detaylı ayar seçenekleri ve örnekleri
+- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
 
 ### 🧪 Test
 - **Unit Testler**: Tüm yeni özellikler için kapsamlı test kapsamı
@@ -695,7 +769,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 ### 📚 Dokümantasyon
 - **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
 - **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Konfigürasyon Rehberi**: Detaylı ayar seçenekleri ve örnekleri
+- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
 
 ---
 
