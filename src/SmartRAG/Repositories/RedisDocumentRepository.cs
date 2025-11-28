@@ -386,7 +386,6 @@ namespace SmartRAG.Repositories
                                 Content = content.ToString(),
                                 ChunkIndex = chunkIndex,
                                 Embedding = new List<float>(), // We don't return embedding to save bandwidth
-                                Similarity = similarity,
                                 RelevanceScore = relevanceScore // Set RelevanceScore for DocumentSearchService (0-100 scale)
                             });
                         }
