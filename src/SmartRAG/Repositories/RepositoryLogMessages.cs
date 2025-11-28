@@ -3,7 +3,6 @@ using System;
 
 namespace SmartRAG.Repositories
 {
-
     /// <summary>
     /// Centralized LoggerMessage delegates for repository operations
     /// </summary>
@@ -20,11 +19,6 @@ namespace SmartRAG.Repositories
             LogLevel.Error,
             new EventId(30002, "DocumentAddFailed"),
             "Failed to add document: {FileName}");
-
-        public static readonly Action<ILogger, Guid, Exception> LogDocumentAlreadyExists = LoggerMessage.Define<Guid>(
-            LogLevel.Warning,
-            new EventId(30003, "DocumentAlreadyExists"),
-            "Document with ID {DocumentId} already exists");
 
         public static readonly Action<ILogger, string, Guid, Exception> LogDocumentRetrieved = LoggerMessage.Define<string, Guid>(
             LogLevel.Debug,
@@ -76,16 +70,6 @@ namespace SmartRAG.Repositories
             new EventId(30013, "DocumentCountRetrievalFailed"),
             "Failed to retrieve document count");
 
-        public static readonly Action<ILogger, long, Exception> LogTotalSizeRetrieved = LoggerMessage.Define<long>(
-            LogLevel.Debug,
-            new EventId(30014, "TotalSizeRetrieved"),
-            "Total size retrieved: {TotalSize} bytes");
-
-        public static readonly Action<ILogger, Exception> LogTotalSizeRetrievalFailed = LoggerMessage.Define(
-            LogLevel.Error,
-            new EventId(30015, "TotalSizeRetrievalFailed"),
-            "Failed to retrieve total size");
-
         #endregion
 
         #region Search Operations (EventId: 31001-31999)
@@ -99,25 +83,6 @@ namespace SmartRAG.Repositories
             LogLevel.Error,
             new EventId(31002, "SearchFailed"),
             "Search failed for query '{Query}'");
-
-        #endregion
-
-        #region Metadata Operations (EventId: 32001-32999)
-
-        public static readonly Action<ILogger, Exception> LogMetadataLoadFailed = LoggerMessage.Define(
-            LogLevel.Warning,
-            new EventId(32001, "MetadataLoadFailed"),
-            "Failed to load metadata, returning empty list");
-
-        public static readonly Action<ILogger, int, Exception> LogMetadataSaved = LoggerMessage.Define<int>(
-            LogLevel.Debug,
-            new EventId(32002, "MetadataSaved"),
-            "Metadata saved for {Count} documents");
-
-        public static readonly Action<ILogger, Exception> LogMetadataSaveFailed = LoggerMessage.Define(
-            LogLevel.Error,
-            new EventId(32003, "MetadataSaveFailed"),
-            "Failed to save metadata");
 
         #endregion
 
@@ -168,115 +133,20 @@ namespace SmartRAG.Repositories
             new EventId(34009, "QdrantDocumentUploadFailed"),
             "Failed to upload document: {FileName}");
 
-        public static readonly Action<ILogger, string, Exception> LogQdrantCollectionCreationFailed = LoggerMessage.Define<string>(
-            LogLevel.Error,
-            new EventId(34010, "QdrantCollectionCreationFailed"),
-            "Failed to create Qdrant collection: {CollectionName}");
-
-        public static readonly Action<ILogger, string, int, Exception> LogQdrantCollectionCreated = LoggerMessage.Define<string, int>(
-            LogLevel.Information,
-            new EventId(34011, "QdrantCollectionCreated"),
-            "Created Qdrant collection: {CollectionName} with vector dimension: {VectorDimension}");
-
         public static readonly Action<ILogger, string, Exception> LogQdrantSearchStarted = LoggerMessage.Define<string>(
             LogLevel.Information,
             new EventId(34012, "QdrantSearchStarted"),
             "Started Qdrant search for query: {Query}");
-
-        public static readonly Action<ILogger, string, int, Exception> LogQdrantSearchResultsFound = LoggerMessage.Define<string, int>(
-            LogLevel.Information,
-            new EventId(34013, "QdrantSearchResultsFound"),
-            "Found {ResultCount} search results in collection: {CollectionName}");
-
-        public static readonly Action<ILogger, string, Exception> LogQdrantSearchFailed = LoggerMessage.Define<string>(
-            LogLevel.Warning,
-            new EventId(34014, "QdrantSearchFailed"),
-            "Qdrant search failed in collection: {CollectionName}");
-
-        public static readonly Action<ILogger, string, Exception> LogQdrantFallbackSearchStarted = LoggerMessage.Define<string>(
-            LogLevel.Information,
-            new EventId(34015, "QdrantFallbackSearchStarted"),
-            "Started fallback text search for collection: {CollectionName}");
-
-        public static readonly Action<ILogger, int, Exception> LogQdrantFallbackSearchResults = LoggerMessage.Define<int>(
-            LogLevel.Information,
-            new EventId(34016, "QdrantFallbackSearchResults"),
-            "Fallback text search found {ChunkCount} chunks");
-
-        public static readonly Action<ILogger, string, Exception> LogQdrantFallbackSearchFailed = LoggerMessage.Define<string>(
-            LogLevel.Error,
-            new EventId(34017, "QdrantFallbackSearchFailed"),
-            "Fallback text search failed for collection: {CollectionId}");
-
-        public static readonly Action<ILogger, int, Exception> LogQdrantVectorDimensionDetected = LoggerMessage.Define<int>(
-            LogLevel.Information,
-            new EventId(34018, "QdrantVectorDimensionDetected"),
-            "Detected vector dimension: {VectorDimension} from collection");
-
-        public static readonly Action<ILogger, int, Exception> LogQdrantDefaultVectorDimensionUsed = LoggerMessage.Define<int>(
-            LogLevel.Information,
-            new EventId(34019, "QdrantDefaultVectorDimensionUsed"),
-            "Using default vector dimension: {VectorDimension}");
-
-        public static readonly Action<ILogger, Exception> LogQdrantVectorDimensionDetectionFailed = LoggerMessage.Define(
-            LogLevel.Warning,
-            new EventId(34020, "QdrantVectorDimensionDetectionFailed"),
-            "Failed to detect vector dimension, using default");
-
-        public static readonly Action<ILogger, string, Exception> LogQdrantHybridSearchStarted = LoggerMessage.Define<string>(
-            LogLevel.Debug,
-            new EventId(34021, "QdrantHybridSearchStarted"),
-            "Started hybrid search for query: {Query}");
-
-        public static readonly Action<ILogger, string, double, Exception> LogQdrantHybridMatchFound = LoggerMessage.Define<string, double>(
-            LogLevel.Debug,
-            new EventId(34022, "QdrantHybridMatchFound"),
-            "Hybrid match found in {CollectionName} with score {Score:F3}");
-
-        public static readonly Action<ILogger, string, Exception> LogQdrantHybridSearchFailed = LoggerMessage.Define<string>(
-            LogLevel.Warning,
-            new EventId(34023, "QdrantHybridSearchFailed"),
-            "Hybrid search failed for collection: {CollectionName}");
-
-        public static readonly Action<ILogger, int, Exception> LogQdrantTotalChunksFound = LoggerMessage.Define<int>(
-            LogLevel.Information,
-            new EventId(34024, "QdrantTotalChunksFound"),
-            "Total chunks found across all collections: {ChunkCount}");
 
         public static readonly Action<ILogger, int, Exception> LogQdrantFinalResultsReturned = LoggerMessage.Define<int>(
             LogLevel.Information,
             new EventId(34025, "QdrantFinalResultsReturned"),
             "Returning {ChunkCount} chunks to DocumentService for final selection");
 
-        public static readonly Action<ILogger, int, Exception> LogQdrantUniqueDocumentsFound = LoggerMessage.Define<int>(
-            LogLevel.Debug,
-            new EventId(34026, "QdrantUniqueDocumentsFound"),
-            "Repository final unique documents: {DocumentCount}");
-
-        public static readonly Action<ILogger, string, int, Exception> LogQdrantSearchResultsCached = LoggerMessage.Define<string, int>(
-            LogLevel.Information,
-            new EventId(34027, "QdrantSearchResultsCached"),
-            "Cached search results for query: {Query} (Cache size: {CacheSize})");
-
         public static readonly Action<ILogger, string, Exception> LogQdrantVectorSearchFailed = LoggerMessage.Define<string>(
             LogLevel.Warning,
             new EventId(34028, "QdrantVectorSearchFailed"),
             "Vector search failed: {ErrorMessage}, falling back to text search");
-
-        public static readonly Action<ILogger, string, Exception> LogQdrantGlobalFallbackStarted = LoggerMessage.Define<string>(
-            LogLevel.Information,
-            new EventId(34029, "QdrantGlobalFallbackStarted"),
-            "Using global fallback text search for query: {Query}");
-
-        public static readonly Action<ILogger, int, Exception> LogQdrantGlobalFallbackResults = LoggerMessage.Define<int>(
-            LogLevel.Information,
-            new EventId(34030, "QdrantGlobalFallbackResults"),
-            "Global fallback text search found {ChunkCount} chunks");
-
-        public static readonly Action<ILogger, Exception> LogQdrantGlobalFallbackFailed = LoggerMessage.Define(
-            LogLevel.Error,
-            new EventId(34031, "QdrantGlobalFallbackFailed"),
-            "Global fallback text search failed");
 
         #endregion
 
@@ -402,27 +272,6 @@ namespace SmartRAG.Repositories
             new EventId(35024, "RedisSessionExistsCheckFailed"),
             "Failed to check session existence in Redis for session: {SessionId}");
 
-        #endregion
-
-        #region SQLite Operations (EventId: 36001-36999)
-        public static readonly Action<ILogger, string, Exception> LogSqliteRepositoryInitialized = LoggerMessage.Define<string>(LogLevel.Information, new EventId(36001, "SqliteRepositoryInitialized"), "SQLite repository initialized successfully with database: {DatabasePath}");
-        public static readonly Action<ILogger, string, Exception> LogSqliteRepositoryInitFailed = LoggerMessage.Define<string>(LogLevel.Error, new EventId(36002, "SqliteRepositoryInitFailed"), "Failed to initialize SQLite repository with database: {DatabasePath}");
-        public static readonly Action<ILogger, Exception> LogSqliteDatabaseInitFailed = LoggerMessage.Define(LogLevel.Error, new EventId(36003, "SqliteDatabaseInitFailed"), "Failed to initialize SQLite database");
-        public static readonly Action<ILogger, string, Guid, Exception> LogSqliteDocumentAdded = LoggerMessage.Define<string, Guid>(LogLevel.Information, new EventId(36004, "SqliteDocumentAdded"), "Document added successfully to SQLite: {FileName} (ID: {DocumentId})");
-        public static readonly Action<ILogger, string, Exception> LogSqliteDocumentAddFailed = LoggerMessage.Define<string>(LogLevel.Error, new EventId(36005, "SqliteDocumentAddFailed"), "Failed to add document to SQLite: {FileName}");
-        public static readonly Action<ILogger, Guid, Exception> LogSqliteDocumentNotFound = LoggerMessage.Define<Guid>(LogLevel.Warning, new EventId(36006, "SqliteDocumentNotFound"), "Document not found in SQLite: {DocumentId}");
-        public static readonly Action<ILogger, Guid, Exception> LogSqliteDocumentRetrieved = LoggerMessage.Define<Guid>(LogLevel.Information, new EventId(36007, "SqliteDocumentRetrieved"), "Document retrieved from SQLite: {DocumentId}");
-        public static readonly Action<ILogger, Guid, Exception> LogSqliteDocumentRetrievalFailed = LoggerMessage.Define<Guid>(LogLevel.Error, new EventId(36008, "SqliteDocumentRetrievalFailed"), "Failed to retrieve document from SQLite: {DocumentId}");
-        public static readonly Action<ILogger, int, Exception> LogSqliteDocumentsRetrieved = LoggerMessage.Define<int>(LogLevel.Information, new EventId(36009, "SqliteDocumentsRetrieved"), "Retrieved {Count} documents from SQLite");
-        public static readonly Action<ILogger, Exception> LogSqliteDocumentsRetrievalFailed = LoggerMessage.Define(LogLevel.Error, new EventId(36010, "SqliteDocumentsRetrievalFailed"), "Failed to retrieve documents from SQLite");
-        public static readonly Action<ILogger, Guid, Exception> LogSqliteDocumentDeleted = LoggerMessage.Define<Guid>(LogLevel.Information, new EventId(36011, "SqliteDocumentDeleted"), "Document deleted from SQLite: {DocumentId}");
-        public static readonly Action<ILogger, Guid, Exception> LogSqliteDocumentDeleteFailed = LoggerMessage.Define<Guid>(LogLevel.Error, new EventId(36012, "SqliteDocumentDeleteFailed"), "Failed to delete document from SQLite: {DocumentId}");
-        public static readonly Action<ILogger, int, Exception> LogSqliteDocumentCountRetrieved = LoggerMessage.Define<int>(LogLevel.Information, new EventId(36013, "SqliteDocumentCountRetrieved"), "Document count retrieved from SQLite: {Count}");
-        public static readonly Action<ILogger, Exception> LogSqliteDocumentCountRetrievalFailed = LoggerMessage.Define(LogLevel.Error, new EventId(36014, "SqliteDocumentCountRetrievalFailed"), "Failed to retrieve document count from SQLite");
-        public static readonly Action<ILogger, string, int, int, Exception> LogSqliteSearchCompleted = LoggerMessage.Define<string, int, int>(LogLevel.Information, new EventId(36015, "SqliteSearchCompleted"), "Search completed in SQLite for query '{Query}': {ResultCount}/{MaxResults} results");
-        public static readonly Action<ILogger, string, Exception> LogSqliteSearchFailed = LoggerMessage.Define<string>(LogLevel.Error, new EventId(36016, "SqliteSearchFailed"), "Search failed in SQLite for query '{Query}'");
-        public static readonly Action<ILogger, Exception> LogSqliteStatisticsRetrieved = LoggerMessage.Define(LogLevel.Information, new EventId(36017, "SqliteStatisticsRetrieved"), "Statistics retrieved successfully from SQLite");
-        public static readonly Action<ILogger, Exception> LogSqliteStatisticsRetrievalFailed = LoggerMessage.Define(LogLevel.Error, new EventId(36018, "SqliteStatisticsRetrievalFailed"), "Failed to retrieve statistics from SQLite");
         #endregion
 
         #region InMemory Operations (EventId: 33001-33999)

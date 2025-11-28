@@ -53,20 +53,16 @@ namespace SmartRAG.Extensions
         /// <returns>Service collection for method chaining</returns>
         public static IServiceCollection AddSmartRag(this IServiceCollection services, IConfiguration configuration, Action<SmartRagOptions> configureOptions)
         {
-            // Configure SmartRagOptions using Options Pattern for non-provider settings
             services.Configure<SmartRagOptions>(options =>
             {
-                // Bind from configuration first
                 configuration.GetSection("SmartRAG").Bind(options);
                 
-                // Bind DatabaseConnections from root level
                 var dbConnectionsSection = configuration.GetSection("DatabaseConnections");
                 if (dbConnectionsSection.Exists())
                 {
                     options.DatabaseConnections = dbConnectionsSection.Get<List<DatabaseConnectionConfig>>() ?? new List<DatabaseConnectionConfig>();
                 }
                 
-                // Then apply custom configuration
                 configureOptions(options);
             });
 
@@ -75,7 +71,6 @@ namespace SmartRAG.Extensions
 
             services.AddSingleton<IAIProviderFactory, AIProviderFactory>();
             
-            // Register IAIProvider based on configuration
             services.AddSingleton<IAIProvider>(sp => {
                 var factory = sp.GetRequiredService<IAIProviderFactory>();
                 var options = sp.GetRequiredService<IOptions<SmartRagOptions>>().Value;
@@ -95,18 +90,13 @@ namespace SmartRAG.Extensions
             services.AddScoped<IConversationManagerService, ConversationManagerService>();
             services.AddScoped<IDocumentService, DocumentService>();
             
-            // Register File Parsers
             services.AddScoped<IFileParser, TextFileParser>();
             services.AddScoped<IFileParser, PdfFileParser>();
             services.AddScoped<IFileParser, WordFileParser>();
             services.AddScoped<IFileParser, ExcelFileParser>();
 
-            // Conditional registration based on features
-            // Create a temporary options object to read feature flags for conditional registration
             var options = new SmartRagOptions();
             configuration.GetSection("SmartRAG").Bind(options);
-            
-            // Apply custom configuration to ensure we get the final feature state
             configureOptions(options);
 
             if (options.Features.EnableImageParsing)
@@ -118,14 +108,10 @@ namespace SmartRAG.Extensions
             if (options.Features.EnableAudioParsing)
             {
                 services.AddScoped<IFileParser, AudioFileParser>();
-                // Audio conversion service - shared by audio parser
                 services.AddScoped<AudioConversionService>();
-                
-                // Audio parser service - only Whisper.net
                 services.AddScoped<WhisperAudioParserService>();
                 services.AddScoped<IAudioParserFactory, AudioParserFactory>();
                 
-                // IAudioParserService registration - factory creates based on configuration
                 services.AddScoped<IAudioParserService>(sp =>
                 {
                     var factory = sp.GetRequiredService<IAudioParserFactory>();
@@ -134,17 +120,12 @@ namespace SmartRAG.Extensions
                 });
             }
 
-                // Database services - Always register to allow runtime enabling via flags
-                services.AddScoped<IFileParser, DatabaseFileParser>();
-                services.AddScoped<IDatabaseParserService, DatabaseParserService>();
-                
-                // Multi-database services
-                services.AddScoped<IDatabaseSchemaAnalyzer, DatabaseSchemaAnalyzer>();
-                services.AddScoped<IDatabaseConnectionManager, DatabaseConnectionManager>();
-                services.AddScoped<IQueryIntentAnalyzer, QueryIntentAnalyzer>();
-                
-                // Register SQL Strategies
-                services.AddScoped<ISqlDialectStrategy, SqliteDialectStrategy>();
+            services.AddScoped<IFileParser, DatabaseFileParser>();
+            services.AddScoped<IDatabaseParserService, DatabaseParserService>();
+            services.AddScoped<IDatabaseSchemaAnalyzer, DatabaseSchemaAnalyzer>();
+            services.AddScoped<IDatabaseConnectionManager, DatabaseConnectionManager>();
+            services.AddScoped<IQueryIntentAnalyzer, QueryIntentAnalyzer>();
+            services.AddScoped<ISqlDialectStrategy, SqliteDialectStrategy>();
                 services.AddScoped<ISqlDialectStrategy, PostgreSqlDialectStrategy>();
                 services.AddScoped<ISqlDialectStrategy, MySqlDialectStrategy>();
                 services.AddScoped<ISqlDialectStrategy, SqlServerDialectStrategy>();
@@ -157,14 +138,8 @@ namespace SmartRAG.Extensions
 
             services.AddScoped<IDocumentParserService, DocumentParserService>();
             services.AddScoped<IDocumentSearchService, DocumentSearchService>();
-            
-            // Register AI Request Executor
             services.AddScoped<IAIRequestExecutor, AIRequestExecutor>();
-            
-            // Register Scoring Strategy
             services.AddScoped<IScoringStrategy, HybridScoringStrategy>();
-            
-            // Add memory cache for database operations
             services.AddMemoryCache();
 
             ConfigureStorageProvider(services, configuration);
@@ -195,19 +170,10 @@ namespace SmartRAG.Extensions
 
         private static void ConfigureStorageProvider(IServiceCollection services, IConfiguration configuration)
         {
-            // Configure Redis storage
             services.Configure<RedisConfig>(options => configuration.GetSection("Storage:Redis").Bind(options));
-
-            // Configure Qdrant storage
             services.Configure<QdrantConfig>(options => configuration.GetSection("Storage:Qdrant").Bind(options));
-
-            // Configure SQLite storage
             services.Configure<SqliteConfig>(options => configuration.GetSection("Storage:Sqlite").Bind(options));
-
-            // Configure InMemory storage
             services.Configure<InMemoryConfig>(options => configuration.GetSection("Storage:InMemory").Bind(options));
-
-            // Configure FileSystem storage
             services.Configure<StorageConfig>(options => configuration.GetSection("Storage:FileSystem").Bind(options));
         }
     }

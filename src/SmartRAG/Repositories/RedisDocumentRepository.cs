@@ -100,7 +100,6 @@ namespace SmartRAG.Repositories
 
                 ValidateConnection();
                 
-                // Ensure vector index exists if enabled
                 if (_config.EnableVectorSearch)
                 {
                     _ = EnsureVectorIndexExistsAsync();
@@ -131,10 +130,8 @@ namespace SmartRAG.Repositories
                 var documentJson = JsonSerializer.Serialize(document);
                 var metadata = CreateDocumentMetadata(document);
 
-                // Store document metadata and JSON
                 await ExecuteDocumentAddBatch(documentKey, metadataKey, documentJson, metadata, document.Id);
 
-                // Store chunks for vector search if enabled
                 if (_config.EnableVectorSearch)
                 {
                     await EnsureVectorIndexExistsAsync();
@@ -147,7 +144,6 @@ namespace SmartRAG.Repositories
                         var chunkKey = $"{_config.KeyPrefix}{ChunkKeySuffix}{chunk.Id}";
                         var embedding = chunk.Embedding;
 
-                        // If embedding is missing, generate it
                         if (embedding == null || embedding.Count == 0)
                         {
                             try 
@@ -177,7 +173,6 @@ namespace SmartRAG.Repositories
                     batch.Execute();
                     await Task.WhenAll(tasks);
                     
-                    // Update document JSON with embeddings if they were generated
                     await _database.StringSetAsync(documentKey, JsonSerializer.Serialize(document));
                 }
 
@@ -299,7 +294,6 @@ namespace SmartRAG.Repositories
 
         public async Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = DefaultMaxSearchResults)
         {
-            // Fallback to text search if vector search is disabled
             if (!_config.EnableVectorSearch)
             {
                 return await FallbackTextSearchAsync(query, maxResults);
@@ -307,7 +301,6 @@ namespace SmartRAG.Repositories
 
             try
             {
-                // Get AI provider config for embedding generation
                 var aiConfig = _aiConfigurationService.GetAIProviderConfig();
                 if (aiConfig == null)
                 {
@@ -315,10 +308,8 @@ namespace SmartRAG.Repositories
                     return await FallbackTextSearchAsync(query, maxResults);
                 }
 
-                // Generate query embedding
                 var queryEmbedding = await _aiProvider.GenerateEmbeddingAsync(query, aiConfig);
                 
-                // Prepare vector search query
                 // KNN search syntax: *=>[KNN {k} @vector_field $query_vector AS score]
                 var searchQuery = new Query($"*=>[KNN {maxResults} @embedding $vec AS score]")
                     .AddParam("vec", SerializeEmbedding(queryEmbedding))
@@ -349,7 +340,6 @@ namespace SmartRAG.Repositories
                                 score = parsedScore;
                             }
                             
-                            // Convert distance to similarity based on distance metric
                             float similarity;
                             var distanceMetric = _config.DistanceMetric?.ToUpperInvariant() ?? "COSINE";
                             
@@ -357,26 +347,21 @@ namespace SmartRAG.Repositories
                             {
                                 case "COSINE":
                                     // Cosine distance: 0 = identical, 2 = opposite
-                                    // Convert to similarity: similarity = 1 - (distance / 2)
                                     similarity = (float)Math.Max(0.0, Math.Min(1.0, 1.0 - (score / 2.0)));
                                     break;
                                 case "L2":
                                     // L2 distance: 0 = identical, larger = more different
-                                    // Convert to similarity: similarity = 1 / (1 + distance)
                                     similarity = (float)(1.0 / (1.0 + score));
                                     break;
                                 case "IP":
                                     // Inner product: higher = more similar (can be negative)
-                                    // Normalize to 0-1 range: similarity = (score + 1) / 2
                                     similarity = (float)Math.Max(0.0, Math.Min(1.0, (score + 1.0) / 2.0));
                                     break;
                                 default:
-                                    // Default: assume distance, convert to similarity
                                     similarity = (float)Math.Max(0.0, Math.Min(1.0, 1.0 - score));
                                     break;
                             }
                             
-                            // Use similarity as relevance score (multiply by 100 for better scaling)
                             var relevanceScore = similarity * 100.0;
                             
                             results.Add(new DocumentChunk
@@ -398,7 +383,6 @@ namespace SmartRAG.Repositories
             catch (Exception ex)
             {
                 RepositoryLogMessages.LogRedisVectorSearchFailed(Logger, query, ex);
-                // Fallback to text search on failure
                 return await FallbackTextSearchAsync(query, maxResults);
             }
         }
@@ -516,7 +500,6 @@ namespace SmartRAG.Repositories
             }
             catch (Exception)
             {
-                // Index does not exist, create it
                 await CreateVectorIndexAsync();
             }
         }
@@ -555,15 +538,12 @@ namespace SmartRAG.Repositories
             {
                 RepositoryLogMessages.LogRedisVectorIndexCreationFailure(Logger, _config.VectorIndexName, ex);
                 
-                // Check if the error is due to missing RediSearch module
                 var errorMessage = ex.Message ?? string.Empty;
                 if (errorMessage.Contains("unknown command 'FT.CREATE'", StringComparison.OrdinalIgnoreCase) ||
                     errorMessage.Contains("FT.CREATE", StringComparison.OrdinalIgnoreCase))
                 {
                     RepositoryLogMessages.LogRedisRediSearchModuleMissing(Logger, null);
                 }
-                
-                // Non-critical failure, we can still use text search and basic Redis operations
             }
         }
 
@@ -595,16 +575,8 @@ namespace SmartRAG.Repositories
             allTasks.Add(batch.ListRemoveAsync(_documentsKey, documentId.ToString()));
             allTasks.Add(batch.KeyDeleteAsync(metadataKey));
 
-            // Also delete chunks
             // Note: This is a simplified deletion. Ideally we should track chunk keys and delete them explicitly
             // or use a tag-based deletion if RediSearch supports it efficiently.
-            // For now, we rely on the fact that chunks are stored with a specific prefix pattern.
-            // Deleting by pattern is expensive in Redis, so we might need a better strategy later.
-            // However, for this implementation, we will assume chunks are managed via the index or expiration if set.
-            // A better approach for chunks would be to store chunk IDs in the document metadata or a separate set.
-            
-            // Let's implement a best-effort chunk deletion by searching for chunks with this documentId tag
-            // This requires the index to be present.
             if (_config.EnableVectorSearch)
             {
                try 
@@ -620,7 +592,6 @@ namespace SmartRAG.Repositories
                }
                catch
                {
-                   // Ignore search errors during deletion
                }
             }
 

@@ -118,8 +118,6 @@ namespace SmartRAG.Services.Storage.Qdrant
                     collectionName, vectorDimension);
 
                 await _client.CreateCollectionAsync(collectionName, vectorParams);
-
-                // Create text index for content field to enable native full-text search
                 await _client.CreatePayloadIndexAsync(collectionName, "content", global::Qdrant.Client.Grpc.PayloadSchemaType.Text);
                 _logger.LogInformation("Created text index for 'content' field in collection: {CollectionName}", collectionName);
             }
@@ -244,14 +242,12 @@ namespace SmartRAG.Services.Storage.Qdrant
                 }
                 else
                 {
-                    // Ensure index exists even for existing collections
                     try 
                     {
                         await _client.CreatePayloadIndexAsync(_collectionName, "content", global::Qdrant.Client.Grpc.PayloadSchemaType.Text);
                     }
                     catch (Exception ex)
                     {
-                        // Ignore if index already exists or other minor errors, but log it
                         _logger.LogDebug(ex, "Attempted to ensure text index on existing collection");
                     }
                 }
@@ -294,7 +290,6 @@ namespace SmartRAG.Services.Storage.Qdrant
                 await _client.DeleteCollectionAsync(collectionName);
                 _logger.LogInformation("Deleted Qdrant collection: {CollectionName}", collectionName);
                 
-                // Reset ready flag if deleting the main collection
                 if (collectionName == _collectionName)
                 {
                     _collectionReady = false;
@@ -314,10 +309,7 @@ namespace SmartRAG.Services.Storage.Qdrant
         {
             try
             {
-                // Delete existing collection
                 await DeleteCollectionAsync(collectionName);
-                
-                // Get vector dimension and recreate
                 var vectorDimension = await GetVectorDimensionAsync();
                 await CreateCollectionAsync(collectionName, vectorDimension);
                 

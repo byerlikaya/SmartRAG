@@ -69,7 +69,6 @@ namespace SmartRAG.Factories
                     var aiConfigService = _serviceProvider.GetRequiredService<IAIConfigurationService>();
                     return new RedisDocumentRepository(Options.Create(config.Redis), _loggerFactory.CreateLogger<RedisDocumentRepository>(), _aiProvider, aiConfigService);
                 case StorageProvider.Qdrant:
-                    // Create required services for QdrantDocumentRepository
                     var collectionManager = new QdrantCollectionManager(Options.Create(config.Qdrant), _loggerFactory.CreateLogger<QdrantCollectionManager>());
                     var embeddingService = new QdrantEmbeddingService(Options.Create(config.Qdrant), _loggerFactory.CreateLogger<QdrantEmbeddingService>());
                     var cacheManager = new QdrantCacheManager(_loggerFactory.CreateLogger<QdrantCacheManager>());

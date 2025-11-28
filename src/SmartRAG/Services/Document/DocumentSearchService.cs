@@ -390,7 +390,6 @@ namespace SmartRAG.Services.Document
                 return await MergeHybridResultsAsync(query, databaseResponse, documentResponse, conversationHistory, preferredLanguage);
             }
 
-            // Return available response or fallback
             if (databaseResponse != null)
                 return databaseResponse;
 
@@ -513,15 +512,12 @@ namespace SmartRAG.Services.Document
         /// </summary>
         private async Task<List<DocumentChunk>> PerformBasicSearchAsync(string query, int maxResults, SearchOptions? options = null, List<string>? queryTokens = null)
         {
-            // Use repository's built-in search (vector DB for Qdrant, keyword for Redis)
-            // This eliminates the need to load all chunks into memory
             try
             {
                 var searchResults = await _documentRepository.SearchAsync(query, maxResults * InitialSearchMultiplier);
                 
                 if (searchResults.Count > 0)
                 {   
-                    // Repository returned results - filter by document type if needed
                     var filteredResults = searchResults;
                     
                     if (options != null)
@@ -582,8 +578,6 @@ namespace SmartRAG.Services.Document
                 {
                     var wordLower = word.ToLowerInvariant();
 
-                    // Use word boundary check instead of simple Contains()
-                    // This avoids false matches like "kasko" matching "kaskoda"
                     if (IsWordInText(docContent, wordLower))
                     {
                         queryWordDocumentMap[word].Add(doc.Id);
@@ -598,18 +592,12 @@ namespace SmartRAG.Services.Document
                 if (docChunks.Count == 0)
                     return new { Document = doc, Score = 0.0, QueryWordMatches = 0, UniqueKeywords = 0 };
 
-                // Use average of top N chunks as document relevance score
                 var topChunks = docChunks
                     .OrderByDescending(c => c.RelevanceScore ?? 0.0)
                     .Take(TopChunksPerDocument)
                     .ToList();
 
                 var avgScore = topChunks.Average(c => c.RelevanceScore ?? 0.0);
-
-                // Count how many unique query words are matched in this document's TOP CHUNKS
-                // CRITICAL: Use only top chunks content, NOT all chunks
-                // This prevents large documents from getting unfair advantage due to size
-                // and ensures we're measuring relevance based on the most relevant content
                 var docContent = string.Join(" ", topChunks.Select(c => c.Content)).ToLowerInvariant();
                 var queryWordMatches = 0;
                 var totalQueryWordOccurrences = 0;
@@ -619,8 +607,6 @@ namespace SmartRAG.Services.Document
                     var wordLower = word.ToLowerInvariant();
                     var wordFound = false;
                     var occurrences = 0;
-
-                    // Count exact matches
                     var exactMatches = (docContent.Length - docContent.Replace(wordLower, "").Length) / wordLower.Length;
                     if (exactMatches > 0)
                     {
@@ -628,7 +614,6 @@ namespace SmartRAG.Services.Document
                         occurrences += exactMatches;
                     }
 
-                    // Also check for substring matches (for agglutinative languages)
                     if (wordLower.Length >= 4)
                     {
                         for (int len = Math.Min(wordLower.Length, 8); len >= 4; len--)
@@ -667,14 +652,11 @@ namespace SmartRAG.Services.Document
                 var queryCoverageBonus = queryCoverageRatio * queryCoverageRatio * 5000.0;
 
                 // CRITICAL: Document-specific keyword bonus
-                // Count how many query words are UNIQUE to this document (discriminators)
-                // Example: "kasko" appears only in KASKO doc, not in IONIQ5 manual → very valuable!
                 var uniqueKeywordCount = 0;
                 foreach (var word in queryWords)
                 {
                     if (queryWordDocumentMap.TryGetValue(word, out var docsWithWord))
                     {
-                        // Check if this query word appears ONLY in this document
                         if (docsWithWord.Count == 1 && docsWithWord.Contains(doc.Id))
                         {
                             uniqueKeywordCount++;
@@ -682,14 +664,8 @@ namespace SmartRAG.Services.Document
                     }
                 }
 
-                // HUGE bonus for unique keywords: 2500 points per unique keyword (Increased from 1500)
-                // This ensures "kasko" in KASKO doc gives advantage but doesn't completely dominate high-frequency matches
                 var uniqueKeywordBonus = uniqueKeywordCount * 2500.0;
-
-                // High bonus for word frequency (helps with high-frequency terms like "hava yastığı")
                 var frequencyBonus = totalQueryWordOccurrences * 75.0;
-
-                // Combine: unique keywords FIRST, coverage SECOND, frequency THIRD
                 var queryWordMatchBonus = uniqueKeywordBonus + queryCoverageBonus + frequencyBonus;
                 var finalScore = avgScore + queryWordMatchBonus;
 
@@ -698,9 +674,6 @@ namespace SmartRAG.Services.Document
             .OrderByDescending(x => x.Score)
             .ToList();
 
-            // Prioritize chunks from most relevant documents
-            // CRITICAL: Take top document if it has significantly higher score than others
-            // This ensures the most relevant document is always selected
             var topDocument = documentScores.FirstOrDefault();
             var secondDocument = documentScores.Skip(1).FirstOrDefault();
 
@@ -709,8 +682,6 @@ namespace SmartRAG.Services.Document
             {
                 relevantDocuments.Add(topDocument.Document);
 
-                // Only add second document if its score is close to top document (within 20%)
-                // This prevents irrelevant documents from being included
                 if (secondDocument != null && secondDocument.Score > 0 &&
                     secondDocument.Score >= topDocument.Score * 0.8)
                 {
@@ -727,22 +698,17 @@ namespace SmartRAG.Services.Document
                 .SelectMany(d => scoredChunks.Where(c => c.DocumentId == d.Id))
                 .ToList();
 
-            // Apply document-level boost to chunks from relevant documents
-            // CRITICAL: Very high boost to ensure relevant documents are strongly prioritized
-            const double DocumentRelevanceBoost = 200.0; // Significantly increased from 50.0
+            const double DocumentRelevanceBoost = 200.0;
             foreach (var chunk in relevantDocumentChunks)
             {
                 chunk.RelevanceScore = (chunk.RelevanceScore ?? 0.0) + DocumentRelevanceBoost;
             }
 
-            // Combine: relevant document chunks first, then others
             var finalScoredChunks = relevantDocumentChunks.Concat(otherDocumentChunks).ToList();
 
-            const int CandidateMultiplier = 20; // Significantly increased to get many more chunks from relevant documents
-            const int CandidateMinCount = 200; // Significantly increased to get many more chunks
+            const int CandidateMultiplier = 20;
+            const int CandidateMinCount = 200;
 
-            // CRITICAL: Prioritize chunks from relevant documents (they have document-level boost)
-            // Take more chunks from relevant documents to ensure we get the right content
             var relevantChunks = finalScoredChunks
                 .Where(c => c.RelevanceScore > MinWordCountThreshold)
                 .OrderByDescending(c => c.RelevanceScore)
@@ -797,33 +763,24 @@ namespace SmartRAG.Services.Document
                 }
             }
 
-            // CRITICAL: Prioritize chunks that contain numbered lists (1. 2. 3. etc.)
-            // This is essential for "how many" questions where the answer is a list
-            // Use compiled regex patterns for performance
             var numberedListPatterns = new[]
             {
-                NumberedListPattern1,      // "1. Item"
-                NumberedListPattern2,      // "1) Item"
-                NumberedListPattern3,      // "1- Item"
-                NumberedListPattern4,      // "1 Item" (number followed by capital letter)
-                NumberedListPattern5,      // "1. Item" at start of line
+                NumberedListPattern1,
+                NumberedListPattern2,
+                NumberedListPattern3,
+                NumberedListPattern4,
+                NumberedListPattern5,
             };
 
             if (RequiresComprehensiveSearch(query))
             {
                 var comprehensiveQueryWords = QueryTokenizer.TokenizeQuery(query);
-                // CRITICAL: Search in ALL chunks, not just relevantChunks
-                // Numbered list chunks might not have high relevance score but contain the answer
-                // But prioritize chunks from relevant documents
                 var allNumberedListChunks = finalScoredChunks
                     .Where(c => numberedListPatterns.Any(pattern =>
                         pattern.IsMatch(c.Content)))
                     .Select(c =>
                     {
-                        // Preserve existing relevance score (includes document-level boost)
                         var baseScore = c.RelevanceScore ?? 0.0;
-
-                        // Count numbered items and calculate additional score
                         var numberedListCount = numberedListPatterns.Sum(pattern =>
                             pattern.Matches(c.Content).Count);
 
@@ -841,17 +798,15 @@ namespace SmartRAG.Services.Document
                             TotalScore = c.RelevanceScore ?? 0.0
                         };
                     })
-                    .OrderByDescending(x => x.TotalScore) // Sort by total score (includes document-level boost)
-                    .ThenByDescending(x => x.NumberedListCount) // Then by numbered list count
-                    .ThenByDescending(x => x.WordMatches) // Then by word matches
+                    .OrderByDescending(x => x.TotalScore)
+                    .ThenByDescending(x => x.NumberedListCount)
+                    .ThenByDescending(x => x.WordMatches)
                     .Select(x => x.Chunk)
-                    .Take(maxResults * 2) // Take more numbered list chunks
+                    .Take(maxResults * 2)
                     .ToList();
 
                 if (allNumberedListChunks.Count > 0)
                 {
-                    // Return numbered list chunks first (even if they weren't in relevantChunks)
-                    // Then add relevant chunks that aren't numbered lists
                     var result = allNumberedListChunks
                         .Concat(relevantChunks.Except(allNumberedListChunks))
                         .Take(maxResults)
@@ -868,58 +823,39 @@ namespace SmartRAG.Services.Document
         /// </summary>
         private async Task<RagResponse> GenerateBasicRagAnswerAsync(string query, int maxResults, string conversationHistory, string? preferredLanguage = null, SearchOptions? options = null, List<DocumentChunk>? preCalculatedResults = null, List<string>? queryTokens = null)
         {
-            // For questions asking "how many", "which", "where" etc., search for more chunks initially
-            // These questions often need information from multiple chunks (e.g., numbered lists)
             var searchMaxResults = DetermineInitialSearchCount(query, maxResults);
             
             List<DocumentChunk> chunks;
             
-            // Use pre-calculated results if available and sufficient
-            // If we need comprehensive search (e.g. counting), we might need more chunks than what was pre-calculated
-            // But if pre-calculated results are already enough, use them
-            // CRITICAL: Sort by relevance score first, then by chunk index (lower index = earlier in document = potentially more important)
             if (preCalculatedResults != null && preCalculatedResults.Count >= searchMaxResults)
             {
                 chunks = preCalculatedResults
                     .OrderByDescending(c => c.RelevanceScore ?? 0.0)
-                    .ThenBy(c => c.ChunkIndex) // Lower chunk index = earlier in document = potentially more important
+                    .ThenBy(c => c.ChunkIndex)
                     .Take(searchMaxResults)
                     .ToList();
             }
             else
             {
                 chunks = await SearchDocumentsAsync(query, searchMaxResults, options, queryTokens);
-                // Ensure chunks are sorted by relevance score, then by chunk index
                 chunks = chunks
                     .OrderByDescending(c => c.RelevanceScore ?? 0.0)
                     .ThenBy(c => c.ChunkIndex)
                     .ToList();
             }
 
-            // If initial search found few chunks OR if this is a counting/listing question, try more aggressive search
-            // This is especially important for "how many" type questions that need list enumeration
             var needsAggressiveSearch = chunks.Count < 5 || RequiresComprehensiveSearch(query);
             if (needsAggressiveSearch)
             {
-                // Try with even more chunks using direct repository search
                 var allDocuments = await GetAllDocumentsFilteredAsync(options);
                 var allChunks = allDocuments.SelectMany(d => d.Chunks).ToList();
-
-                // Use keyword-based fallback search with more aggressive matching
                 var queryWords = queryTokens ?? QueryTokenizer.TokenizeQuery(query);
                 var potentialNames = QueryTokenizer.ExtractPotentialNames(query);
-
-                // Apply document-level scoring first (same as PerformBasicSearchAsync)
                 var scoredChunks = _documentScoring.ScoreChunks(allChunks, query, queryWords, potentialNames);
 
-                // Calculate document-level relevance: average of top N chunks per document
-                // Also consider how many query words are matched across the document
-                // CRITICAL: This must match PerformBasicSearchAsync logic for consistency
-                // CRITICAL: Count document-specific keywords (words that appear in only one document)
                 const int TopChunksPerDocument = 5;
-                const int ChunksToCheckForKeywords = 30; // Check top 30 chunks per document for unique keywords
+                const int ChunksToCheckForKeywords = 30;
 
-                // First, identify which query words appear in which documents
                 var queryWordDocumentMap = new Dictionary<string, HashSet<Guid>>();
                 foreach (var word in queryWords)
                 {
@@ -983,7 +919,6 @@ namespace SmartRAG.Services.Document
                         var wordFound = false;
                         var occurrences = 0;
 
-                        // Count exact matches
                         var exactMatches = (docContent.Length - docContent.Replace(wordLower, "").Length) / wordLower.Length;
                         if (exactMatches > 0)
                         {
@@ -991,7 +926,6 @@ namespace SmartRAG.Services.Document
                             occurrences += exactMatches;
                         }
 
-                        // Also check for substring matches (for agglutinative languages)
                         if (wordLower.Length >= 4)
                         {
                             for (int len = Math.Min(wordLower.Length, 8); len >= 4; len--)
@@ -1004,10 +938,10 @@ namespace SmartRAG.Services.Document
                                     {
                                         wordFound = true;
                                         occurrences += substringMatches;
-                                        break; // Found a match, no need to check shorter substrings
+                                        break;
                                     }
                                 }
-                                if (wordFound && exactMatches == 0) break; // Found substring match, stop
+                                if (wordFound && exactMatches == 0) break;
                             }
                         }
 
@@ -1030,14 +964,11 @@ namespace SmartRAG.Services.Document
                     var queryCoverageBonus = queryCoverageRatio * queryCoverageRatio * 5000.0;
 
                     // CRITICAL: Document-specific keyword bonus
-                    // Count how many query words are UNIQUE to this document (discriminators)
-                    // Example: "kasko" appears only in KASKO doc, not in IONIQ5 manual → very valuable!
                     var uniqueKeywordCount = 0;
                     foreach (var word in queryWords)
                     {
                         if (queryWordDocumentMap.TryGetValue(word, out var docsWithWord))
                         {
-                            // Check if this query word appears ONLY in this document
                             if (docsWithWord.Count == 1 && docsWithWord.Contains(doc.Id))
                             {
                                 uniqueKeywordCount++;
@@ -1087,43 +1018,33 @@ namespace SmartRAG.Services.Document
 
                 // Apply document-level boost to chunks from relevant documents
                 // CRITICAL: Use the ACTUAL document score (which includes unique keyword bonuses)
-                // This ensures that if a document has a huge bonus (e.g. 2500 for unique keyword),
-                // its chunks get that same advantage and aren't crowded out by other docs' chunks
                 var docScoreMap = relevantDocuments.ToDictionary(d => d.Id, d => documentScores.First(ds => ds.Document.Id == d.Id).Score);
 
                 foreach (var chunk in relevantDocumentChunks)
                 {
                     if (docScoreMap.TryGetValue(chunk.DocumentId, out var docScore))
                     {
-                        // Add the full document score to the chunk score
-                        // This makes the chunk score effectively: LocalRelevance + DocumentRelevance
                         chunk.RelevanceScore = (chunk.RelevanceScore ?? 0.0) + docScore;
                     }
                 }
 
-                // Use scored chunks with document-level boost
                 allChunks = relevantDocumentChunks.Concat(
                     allDocuments.Except(relevantDocuments)
                         .SelectMany(d => scoredChunks.Where(c => c.DocumentId == d.Id))
                 ).ToList();
 
-                // For counting questions, prioritize chunks with numbers (likely contain numbered lists)
-                // Use multiple patterns to detect numbered lists: "1.", "1)", "1-", "1 ", etc.
                 var numberedListPatterns = new[]
                 {
-                    NumberedListPattern1,      // "1. Item"
-                    NumberedListPattern2,      // "1) Item"
-                    NumberedListPattern3,      // "1- Item"
-                    NumberedListPattern4,      // "1 Item" (number followed by capital letter)
-                    NumberedListPattern5,      // "1. Item" at start of line
+                    NumberedListPattern1,
+                    NumberedListPattern2,
+                    NumberedListPattern3,
+                    NumberedListPattern4,
+                    NumberedListPattern5,
                 };
 
-                // CRITICAL: For counting questions, first find ALL chunks with numbered lists
-                // Then filter by query words, prioritizing chunks with both numbered lists AND query words
                 var allChunksWithNumberedLists = allChunks
                     .Select(c =>
                     {
-                        // Count how many numbered list items are in this chunk
                         var numberedListCount = numberedListPatterns.Sum(pattern =>
                             pattern.Matches(c.Content).Count);
 
@@ -1143,33 +1064,28 @@ namespace SmartRAG.Services.Document
                     })
                     .ToList();
 
-                // If this is a counting question, prioritize numbered list chunks even if they don't match query words perfectly
                 if (RequiresComprehensiveSearch(query))
                 {
-                    // First: Chunks with numbered lists AND query words (highest priority)
-                    // Sort by relevance score (includes document-level boost) first, then by numbered list count
                     var numberedListWithQueryWords = allChunksWithNumberedLists
                         .Where(x => x.HasNumberedList && x.WordMatches > 0)
-                        .OrderByDescending(x => x.Chunk.RelevanceScore ?? 0.0) // Document-level boost preserved
+                        .OrderByDescending(x => x.Chunk.RelevanceScore ?? 0.0)
                         .ThenByDescending(x => x.NumberedListCount)
                         .ThenByDescending(x => x.WordMatches)
                         .Select(x => x.Chunk)
                         .Take(searchMaxResults * 3)
                         .ToList();
 
-                    // Second: Chunks with numbered lists even without query words (for comprehensive coverage)
                     var numberedListOnly = allChunksWithNumberedLists
                         .Where(x => x.HasNumberedList && x.WordMatches == 0)
-                        .OrderByDescending(x => x.Chunk.RelevanceScore ?? 0.0) // Document-level boost preserved
+                        .OrderByDescending(x => x.Chunk.RelevanceScore ?? 0.0)
                         .ThenByDescending(x => x.NumberedListCount)
                         .Select(x => x.Chunk)
                         .Take(searchMaxResults * 2)
                         .ToList();
 
-                    // Third: Chunks with query words but no numbered lists
                     var queryWordsOnly = allChunksWithNumberedLists
                         .Where(x => !x.HasNumberedList && x.WordMatches > 0)
-                        .OrderByDescending(x => x.Chunk.RelevanceScore ?? 0.0) // Document-level boost preserved
+                        .OrderByDescending(x => x.Chunk.RelevanceScore ?? 0.0)
                         .ThenByDescending(x => x.WordMatches)
                         .ThenByDescending(x => x.HasNumbers)
                         .Select(x => x.Chunk)
@@ -1180,7 +1096,6 @@ namespace SmartRAG.Services.Document
                     var mergedChunks = new List<DocumentChunk>();
                     var seenIds = new HashSet<Guid>();
 
-                    // Add numbered list chunks with query words first (highest priority)
                     foreach (var chunk in numberedListWithQueryWords)
                     {
                         if (!seenIds.Contains(chunk.Id))
@@ -1190,7 +1105,6 @@ namespace SmartRAG.Services.Document
                         }
                     }
 
-                    // Add numbered list chunks without query words (for comprehensive coverage)
                     foreach (var chunk in numberedListOnly)
                     {
                         if (!seenIds.Contains(chunk.Id) && mergedChunks.Count < searchMaxResults * 4)
@@ -1200,7 +1114,6 @@ namespace SmartRAG.Services.Document
                         }
                     }
 
-                    // Add query word chunks if we still have space
                     foreach (var chunk in queryWordsOnly)
                     {
                         if (!seenIds.Contains(chunk.Id) && mergedChunks.Count < searchMaxResults * 4)
@@ -1210,7 +1123,6 @@ namespace SmartRAG.Services.Document
                         }
                     }
 
-                    // Add original chunks that weren't already included
                     foreach (var chunk in chunks)
                     {
                         if (!seenIds.Contains(chunk.Id) && mergedChunks.Count < searchMaxResults * 4)
@@ -1368,8 +1280,6 @@ namespace SmartRAG.Services.Document
                     }
                 }
 
-                // CRITICAL: Prioritize chunks with query words - these are most relevant
-                // Sort by total score first (includes document-level boost), then by query word matches
                 var finalQueryWords = QueryTokenizer.TokenizeQuery(query);
                 var prioritizedNumberedChunks = allNumberedListChunks
                     .Select(c => new
@@ -1437,8 +1347,6 @@ namespace SmartRAG.Services.Document
             // This prevents expanding chunks from wrong documents
             if (_contextExpansion != null && chunks.Count > 0 && numberedListChunkIds.Count == 0)
             {
-                // Identify chunks from relevant documents (they have higher scores due to document-level boost)
-                // Document-level boost is 200.0, so chunks with score > 200 are from relevant documents
                 const double DocumentBoostThreshold = 200.0;
                 var relevantDocumentChunks = chunks
                     .Where(c => (c.RelevanceScore ?? 0.0) >= DocumentBoostThreshold)
@@ -1448,10 +1356,8 @@ namespace SmartRAG.Services.Document
                     .Where(c => (c.RelevanceScore ?? 0.0) < DocumentBoostThreshold)
                     .ToList();
 
-                // Only expand context for relevant document chunks
                 if (relevantDocumentChunks.Count > 0)
                 {
-                    // Store original chunk IDs and their relevance scores before expansion
                     var originalChunkIds = new HashSet<Guid>(relevantDocumentChunks.Select(c => c.Id));
                     var originalScores = relevantDocumentChunks.ToDictionary(c => c.Id, c => c.RelevanceScore ?? 0.0);
 
@@ -1469,17 +1375,15 @@ namespace SmartRAG.Services.Document
                     {
                         if (!originalScores.ContainsKey(chunk.Id))
                         {
-                            // Calculate basic relevance score for expanded chunks
                             var content = chunk.Content.ToLowerInvariant();
                             var wordMatches = queryWords.Count(word =>
                                 content.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0);
                             var hasNumbers = chunk.Content.Any(char.IsDigit);
 
-                            // Use multiple patterns to detect numbered lists
                             var numberedListPatterns = new[]
                             {
-                                NumberedListPattern1,      // "1. Item"
-                                NumberedListPattern2,      // "1) Item"
+                                NumberedListPattern1,
+                                NumberedListPattern2,
                                 NumberedListPattern3,      // "1- Item"
                                 NumberedListPattern4,      // "1 Item" (number followed by capital letter)
                                 NumberedListPattern5,      // "1. Item" at start of line
@@ -1616,24 +1520,16 @@ namespace SmartRAG.Services.Document
         {
             try
             {
-                // Step 1: Search documents for any content related to the query
-                // This works regardless of the language of the query
                 var searchResults = await PerformBasicSearchAsync(query, FallbackSearchMaxResults, options, queryTokens);
 
                 if (searchResults.Count == MinSearchResultsCount)
                 {
-                    // No content found that matches the query in any way
                     return (false, searchResults);
                 }
 
-                // DEBUG: Log relevance scores to diagnose threshold issues
                 var topScores = searchResults.Take(5).Select(c => c.RelevanceScore ?? 0.0).ToList();
                 _logger.LogDebug("Top 5 relevance scores: {Scores}", string.Join(", ", topScores.Select(s => s.ToString("F4"))));
 
-                // Step 2: Use ADAPTIVE threshold instead of fixed value
-                // Different embedding models produce different score ranges
-                // Native text search produces scores 5.0+, vector search produces scores 0.0-1.0
-                // Use different thresholds based on score range
                 var sortedByScore = searchResults.OrderByDescending(c => c.RelevanceScore ?? 0.0).ToList();
                 var maxScore = sortedByScore.FirstOrDefault()?.RelevanceScore ?? 0.0;
                 

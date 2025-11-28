@@ -40,26 +40,12 @@ namespace SmartRAG.Services.Parser
         private const string TesseractPathDefault = "/usr/share/tesseract-ocr/tessdata";
         private const string TesseractPathWindows = "C:\\Program Files\\Tesseract-OCR\\tessdata";
 
-        // REMOVED: OcrCharacterWhitelist - Using whitelist breaks multi-language support
-        // Tesseract already handles language-specific characters correctly based on the language parameter
-        // Whitelist was filtering out non-ASCII characters (special chars, accented letters, etc.) during OCR
-        
-        // Pattern for currency symbol misreads: % (percentage sign)
         private const string CurrencyMisreadPatternMain = @"(\d+)\s*%(?=\s*(?:\p{Lu}|\d|$))";
         private const string CurrencyMisreadPatternCompact = @"(\d+)%(?=\p{Lu}|\s+\p{Lu}|$)";
-        
-        // Pattern for currency symbol misreads: 6 (digit 6, common OCR mistake for currency symbols)
-        // Context: followed by space, uppercase letter, digit, or end of string
         private const string CurrencyMisreadPattern6 = @"(\d+)\s*6(?=\s*(?:\p{Lu}|\d|$))";
         private const string CurrencyMisreadPattern6Compact = @"(\d+)6(?=\s+\p{Lu}|\s+$|$)";
-        
-        // Pattern for currency symbol misreads: t (lowercase t, common OCR mistake for currency symbols)
-        // Context: followed by space, uppercase letter, or end of string (not followed by lowercase letter to avoid false positives)
         private const string CurrencyMisreadPatternT = @"(\d+)\s*t(?=\s*(?:\p{Lu}|$))";
         private const string CurrencyMisreadPatternTCompact = @"(\d+)t(?=\s+\p{Lu}|\s+$|$)";
-        
-        // Pattern for currency symbol misreads: & (ampersand, common OCR mistake for currency symbols)
-        // Context: followed by space, uppercase letter, digit, or end of string
         private const string CurrencyMisreadPatternAmpersand = @"(\d+)\s*&(?=\s*(?:\p{Lu}|\d|$))";
         private const string CurrencyMisreadPatternAmpersandCompact = @"(\d+)&(?=\p{Lu}|\s+\p{Lu}|$)";
         
@@ -92,7 +78,6 @@ namespace SmartRAG.Services.Parser
         /// </summary>
         private static readonly Dictionary<string, string> LanguageCodeToTesseractCode = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            // ISO 639-1 codes (2-letter) → Tesseract codes (ISO 639-2/T)
             { "tr", "tur" }, { "en", "eng" }, { "de", "deu" }, { "fr", "fra" },
             { "es", "spa" }, { "it", "ita" }, { "ru", "rus" }, { "ja", "jpn" },
             { "ko", "kor" }, { "zh", "zho" }, { "ar", "ara" }, { "hi", "hin" },
@@ -100,8 +85,6 @@ namespace SmartRAG.Services.Parser
             { "no", "nor" }, { "da", "dan" }, { "fi", "fin" }, { "el", "ell" },
             { "he", "heb" }, { "th", "tha" }, { "vi", "vie" }, { "id", "ind" },
             { "cs", "ces" }, { "hu", "hun" }, { "ro", "ron" }, { "uk", "ukr" },
-            
-            // ISO 639-2/T codes (3-letter) - already in Tesseract format (pass-through)
             { "tur", "tur" }, { "eng", "eng" }, { "deu", "deu" }, { "fra", "fra" },
             { "spa", "spa" }, { "ita", "ita" }, { "rus", "rus" }, { "jpn", "jpn" },
             { "kor", "kor" }, { "zho", "zho" }, { "ara", "ara" }, { "hin", "hin" },
@@ -370,13 +353,11 @@ namespace SmartRAG.Services.Parser
                 return DefaultLanguage;
             }
             
-            // Try to map the language code to Tesseract format
             if (LanguageCodeToTesseractCode.TryGetValue(language, out var tesseractCode))
             {
                 return tesseractCode;
             }
             
-            // If no mapping found, assume it's already in Tesseract format or fallback to default
             _logger.LogWarning("Unknown language code: '{Language}'. Falling back to default: '{Default}'", language, DefaultLanguage);
             return DefaultLanguage;
         }
@@ -389,7 +370,6 @@ namespace SmartRAG.Services.Parser
         {
             var tessdataPath = string.IsNullOrEmpty(_ocrEngineDataPath) ? "." : _ocrEngineDataPath;
             
-            // Ensure tessdata directory exists
             if (!Directory.Exists(tessdataPath))
             {
                 try
@@ -402,14 +382,12 @@ namespace SmartRAG.Services.Parser
                 }
             }
             
-            // Check if requested language data exists
             var requestedFile = Path.Combine(tessdataPath, $"{requestedLanguage}.traineddata");
             if (File.Exists(requestedFile))
             {
                 return requestedLanguage;
             }
             
-            // Try to download requested language data (on-demand)
             _logger.LogInformation("Tesseract data for '{Language}' not found. Attempting to download...", requestedLanguage);
             var downloaded = await TryDownloadTesseractDataAsync(requestedLanguage, tessdataPath);
             
@@ -419,18 +397,15 @@ namespace SmartRAG.Services.Parser
                 return requestedLanguage;
             }
             
-            // Download failed, fallback to English
             if (requestedLanguage != DefaultLanguage)
             {
                 var defaultFile = Path.Combine(tessdataPath, $"{DefaultLanguage}.traineddata");
                 
-                // Check if English exists
                 if (File.Exists(defaultFile))
                 {
                     return DefaultLanguage;
                 }
                 
-                // Try to download English as fallback
                 _logger.LogInformation("Attempting to download fallback language '{Fallback}'...", DefaultLanguage);
                 var fallbackDownloaded = await TryDownloadTesseractDataAsync(DefaultLanguage, tessdataPath);
                 
@@ -441,7 +416,6 @@ namespace SmartRAG.Services.Parser
                 }
             }
             
-            // No language data available at all
             _logger.LogWarning("No Tesseract language data available and download failed. OCR will be skipped.");
             return null;
         }
@@ -456,15 +430,12 @@ namespace SmartRAG.Services.Parser
             {
                 var fileName = $"{languageCode}.traineddata";
                 var targetPath = Path.Combine(tessdataPath, fileName);
-                
-                // GitHub raw URL for Tesseract traineddata (official repository)
                 var downloadUrl = $"https://github.com/tesseract-ocr/tessdata/raw/main/{fileName}";
                 
                 _logger.LogDebug("Downloading Tesseract data from: {Url}", downloadUrl);
                 
                 using (var httpClient = new System.Net.Http.HttpClient())
                 {
-                    // Set timeout to 60 seconds (traineddata files can be 10-20 MB)
                     httpClient.Timeout = TimeSpan.FromSeconds(60);
                     
                     var response = await httpClient.GetAsync(downloadUrl);
@@ -477,8 +448,6 @@ namespace SmartRAG.Services.Parser
                     }
                     
                     var content = await response.Content.ReadAsByteArrayAsync();
-                    
-                    // Write to file
                     await File.WriteAllBytesAsync(targetPath, content);
                     
                     _logger.LogDebug("Downloaded Tesseract data: {File} ({Size} bytes)", fileName, content.Length);
@@ -507,11 +476,7 @@ namespace SmartRAG.Services.Parser
         /// </summary>
         private async Task<(string Text, float Confidence)> PerformOcrAsync(Stream imageStream, string language)
         {
-            // Normalize language parameter to Tesseract language code (ISO 639-2/T)
-            // Supports: "tr" → "tur", "en" → "eng", "tur" → "tur" (pass-through)
             var tesseractLanguageCode = NormalizeTesseractLanguageCode(language);
-            
-            // Find available language data file (fallback to English if requested language is not available)
             var availableLanguage = await GetAvailableTesseractLanguageAsync(tesseractLanguageCode);
             
             if (string.IsNullOrEmpty(availableLanguage))
@@ -712,7 +677,6 @@ namespace SmartRAG.Services.Parser
         /// <returns>Corrected text</returns>
         private static string CorrectCurrencySymbolMisreads(string text, string currencySymbol)
         {
-            // Pattern 1: % (percentage sign) - with space
             text = Regex.Replace(
                 text,
                 CurrencyMisreadPatternMain,
@@ -720,14 +684,12 @@ namespace SmartRAG.Services.Parser
                 RegexOptions.Multiline
             );
             
-            // Pattern 2: % (percentage sign) - compact (no space)
             text = Regex.Replace(
                 text,
                 CurrencyMisreadPatternCompact,
                 $"$1{currencySymbol}"
             );
             
-            // Pattern 3: 6 (digit 6) - with space
             text = Regex.Replace(
                 text,
                 CurrencyMisreadPattern6,
@@ -735,14 +697,12 @@ namespace SmartRAG.Services.Parser
                 RegexOptions.Multiline
             );
             
-            // Pattern 4: 6 (digit 6) - compact (no space)
             text = Regex.Replace(
                 text,
                 CurrencyMisreadPattern6Compact,
                 $"$1{currencySymbol}"
             );
             
-            // Pattern 5: t (lowercase t) - with space
             text = Regex.Replace(
                 text,
                 CurrencyMisreadPatternT,
@@ -750,14 +710,12 @@ namespace SmartRAG.Services.Parser
                 RegexOptions.Multiline
             );
             
-            // Pattern 6: t (lowercase t) - compact (no space)
             text = Regex.Replace(
                 text,
                 CurrencyMisreadPatternTCompact,
                 $"$1{currencySymbol}"
             );
             
-            // Pattern 7: & (ampersand) - with space
             text = Regex.Replace(
                 text,
                 CurrencyMisreadPatternAmpersand,
