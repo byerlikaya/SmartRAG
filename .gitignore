@@ -255,6 +255,9 @@ config.json
 .cursorignore
 .cursor/
 
+.agent/
+.agent/rules/
+
 # Database
 *.db
 *.sqlite
