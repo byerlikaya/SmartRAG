@@ -108,27 +108,26 @@ namespace SmartRAG.Factories
             return _currentRepository;
         }
 
-        public IConversationRepository CreateConversationRepository(StorageConfig config)
+        public IConversationRepository CreateConversationRepository(ConversationStorageProvider provider)
         {
-            switch (config.Provider)
+            switch (provider)
             {
-                case StorageProvider.InMemory:
+                case ConversationStorageProvider.InMemory:
                     return new InMemoryConversationRepository(_loggerFactory.CreateLogger<InMemoryConversationRepository>());
-                case StorageProvider.Redis:
-                    return new RedisConversationRepository(Options.Create(config.Redis), _loggerFactory.CreateLogger<RedisConversationRepository>());
-                case StorageProvider.Qdrant:
-                    // Qdrant doesn't support conversation storage natively in this implementation, fallback to InMemory
-                    return new InMemoryConversationRepository(_loggerFactory.CreateLogger<InMemoryConversationRepository>());
+                case ConversationStorageProvider.Redis:
+                    var redisConfig = new RedisConfig();
+                    _configuration.GetSection("Storage:Redis").Bind(redisConfig);
+                    return new RedisConversationRepository(Options.Create(redisConfig), _loggerFactory.CreateLogger<RedisConversationRepository>());
+                case ConversationStorageProvider.SQLite:
+                    var sqliteConfig = new SqliteConfig();
+                    _configuration.GetSection("Storage:Sqlite").Bind(sqliteConfig);
+                    return new SqliteConversationRepository(Options.Create(sqliteConfig), _loggerFactory.CreateLogger<SqliteConversationRepository>());
+                case ConversationStorageProvider.FileSystem:
+                    var fileSystemPath = _configuration["Storage:FileSystem:BasePath"] ?? "Documents";
+                    return new FileSystemConversationRepository(fileSystemPath, _loggerFactory.CreateLogger<FileSystemConversationRepository>());
                 default:
-                    throw new ArgumentException($"Unsupported storage provider for conversation: {config.Provider}");
+                    throw new ArgumentException($"Unsupported conversation storage provider: {provider}");
             }
-        }
-
-        public IConversationRepository CreateConversationRepository(StorageProvider provider)
-        {
-            var config = GetStorageConfig();
-            config.Provider = provider;
-            return CreateConversationRepository(config);
         }
 
         private IConversationRepository _currentConversationRepository;
@@ -137,7 +136,9 @@ namespace SmartRAG.Factories
         {
             if (_currentConversationRepository == null)
             {
-                _currentConversationRepository = CreateConversationRepository(_currentProvider);
+                // Use ConversationStorageProvider if specified, otherwise fallback to InMemory
+                var conversationProvider = _options.ConversationStorageProvider ?? ConversationStorageProvider.InMemory;
+                _currentConversationRepository = CreateConversationRepository(conversationProvider);
             }
             return _currentConversationRepository;
         }

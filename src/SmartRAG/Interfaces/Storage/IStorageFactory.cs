@@ -37,18 +37,11 @@ namespace SmartRAG.Interfaces.Storage
         IDocumentRepository GetCurrentRepository();
 
         /// <summary>
-        /// Creates conversation repository using storage configuration
+        /// Creates conversation repository using conversation storage provider type
         /// </summary>
-        /// <param name="config">Storage configuration settings</param>
+        /// <param name="provider">Conversation storage provider type</param>
         /// <returns>Conversation repository instance</returns>
-        IConversationRepository CreateConversationRepository(StorageConfig config);
-
-        /// <summary>
-        /// Creates conversation repository using storage provider type
-        /// </summary>
-        /// <param name="provider">Storage provider type</param>
-        /// <returns>Conversation repository instance</returns>
-        IConversationRepository CreateConversationRepository(StorageProvider provider);
+        IConversationRepository CreateConversationRepository(ConversationStorageProvider provider);
 
         /// <summary>
         /// Gets the currently active conversation repository instance
