@@ -16,7 +16,7 @@ SmartRAG'deki tüm sürümler ve değişiklikler burada belgelenmiştir.
                 <strong>v3.3.0</strong> - 2025-11-28
             </button>
         </h2>
-        <div id="collapseversion330" class="accordion-collapse collapse show" aria-labelledby="headingversion330" data-bs-parent="#versionAccordion">
+        <div id="collapseversion330" class="accordion-collapse collapse show" aria-labelledby="headingversion330" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -74,11 +74,6 @@ SmartRAG'deki tüm sürümler ve değişiklikler burada belgelenmiştir.
 - **SqliteDocumentRepository**: Kullanılmayan SQLite storage implementasyonu kaldırıldı
 - **StorageConfig Özellikleri**: FileSystemPath ve SqliteConfig kaldırıldı (kullanılmıyor)
 
-### 📚 Dokümantasyon
-
-- **Redis Storage Dokümantasyonu**: RediSearch gereksinimleri ve kurulum talimatları ile güncellendi
-- **InMemory Storage Dokümantasyonu**: Configuration örnekleri ve kullanım senaryoları eklendi
-
 ### ⚠️ Breaking Changes
 
 - **FileSystem ve SQLite Doküman Repository'leri Kaldırıldı**
@@ -105,7 +100,7 @@ SmartRAG'deki tüm sürümler ve değişiklikler burada belgelenmiştir.
                 <strong>v3.2.0</strong> - 2025-11-27
             </button>
         </h2>
-        <div id="collapseversion320" class="accordion-collapse collapse" aria-labelledby="headingversion320" data-bs-parent="#versionAccordion">
+        <div id="collapseversion320" class="accordion-collapse collapse" aria-labelledby="headingversion320" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -364,7 +359,7 @@ public class CustomScoringStrategy : IScoringStrategy
                 <strong>v3.1.0</strong> - 2025-11-11
             </button>
         </h2>
-        <div id="collapseversion310" class="accordion-collapse collapse" aria-labelledby="headingversion310" data-bs-parent="#versionAccordion">
+        <div id="collapseversion310" class="accordion-collapse collapse" aria-labelledby="headingversion310" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -431,7 +426,7 @@ public class CustomScoringStrategy : IScoringStrategy
                 <strong>v3.0.3</strong> - 2025-11-06
             </button>
         </h2>
-        <div id="collapseversion303" class="accordion-collapse collapse" aria-labelledby="headingversion303" data-bs-parent="#versionAccordion">
+        <div id="collapseversion303" class="accordion-collapse collapse" aria-labelledby="headingversion303" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -486,7 +481,7 @@ OCR veya Ses Transkripsiyonu özelliklerini kullanıyorsanız:
                 <strong>v3.0.2</strong> - 2025-10-24
             </button>
         </h2>
-        <div id="collapseversion302" class="accordion-collapse collapse" aria-labelledby="headingversion302" data-bs-parent="#versionAccordion">
+        <div id="collapseversion302" class="accordion-collapse collapse" aria-labelledby="headingversion302" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -509,11 +504,6 @@ OCR veya Ses Transkripsiyonu özelliklerini kullanıyorsanız:
 - `src/SmartRAG/Models/SmartRagOptions.cs` - GoogleSpeechConfig özelliği kaldırıldı
 - `src/SmartRAG/Enums/AudioProvider.cs` - GoogleCloud enum değeri kaldırıldı
 - `src/SmartRAG/Services/ServiceLogMessages.cs` - Whisper.net için log mesajları güncellendi
-
-#### **Dokümantasyon Güncellemeleri**
-- **README.md**: Whisper.net-only ses işleme için güncellendi
-- **README.tr.md**: Türkçe dokümantasyon güncellendi
-- **docs/**: Tüm dokümantasyon dosyalarından Google Speech referansları kaldırıldı
 
 ### ✨ Faydalar
 - **%100 Yerel İşleme**: Tüm ses transkripsiyonu Whisper.net ile yerel olarak yapılıyor
@@ -548,7 +538,7 @@ Google Speech-to-Text kullanıyorsanız:
                 <strong>v3.0.1</strong> - 2025-10-22
             </button>
         </h2>
-        <div id="collapseversion301" class="accordion-collapse collapse" aria-labelledby="headingversion301" data-bs-parent="#versionAccordion">
+        <div id="collapseversion301" class="accordion-collapse collapse" aria-labelledby="headingversion301" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -561,7 +551,6 @@ Google Speech-to-Text kullanıyorsanız:
 ### 🔧 Teknik İyileştirmeler
 - **ServiceLogMessages.cs**: LoggerMessage tanımları parametre sayılarıyla doğru eşleşecek şekilde güncellendi
 - **EventId Yönetimi**: Benzersiz log tanımlayıcıları için çakışan EventId'ler yeniden atandı
-- **Dokümantasyon**: Daha iyi NuGet paket görüntüleme için README dosyaları temizlendi
 
 ---
 {% endcapture %}
@@ -575,7 +564,7 @@ Google Speech-to-Text kullanıyorsanız:
                 <strong>v3.0.0</strong> - 2025-10-22
             </button>
         </h2>
-        <div id="collapseversion300" class="accordion-collapse collapse" aria-labelledby="headingversion300" data-bs-parent="#versionAccordion">
+        <div id="collapseversion300" class="accordion-collapse collapse" aria-labelledby="headingversion300" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -643,25 +632,14 @@ Google Speech-to-Text kullanıyorsanız:
 - **100+ dil**: [Desteklenen tüm dilleri görüntüle](https://github.com/tesseract-ocr/tessdata)
 
 ### ✨ Eklenenler
-- **Çok dilli README**: İngilizce, Türkçe, Almanca ve Rusça'da mevcut
-- **Çok dilli CHANGELOG**: 4 dilde mevcut
-- **Geliştirilmiş dokümantasyon**: Kapsamlı yerinde dağıtım dokümantasyonu
 - **Yerel AI kurulum örnekleri**: Ollama ve LM Studio için configuration
 - **Kurumsal kullanım senaryoları**: Bankacılık, Sağlık, Hukuk, Devlet, Üretim
 
 ### 🔧 İyileştirmeler
 - **Yeniden deneme mekanizması**: Dile özgü talimatlarla geliştirilmiş yeniden deneme istekleri
 - **Hata yönetimi**: Veritabanı tipi bilgisiyle daha iyi hata mesajları
-- **Dokümantasyon yapısı**: CHANGELOG bağlantılarıyla daha temiz README
 - **Kod kalitesi**: Boyunca sürdürülen SOLID/DRY prensipleri
 - **Performans**: Optimize edilmiş çoklu-veritabanı sorgu koordinasyonu
-
-### 📚 Dokümantasyon
-- **Yerinde kılavuz**: Kapsamlı dağıtım dokümantasyonu
-- **Gizlilik kılavuzu**: Veri gizliliği ve uyumluluk dokümantasyonu
-- **OCR kısıtlamaları**: Net yetenekler ve kısıtlamalar
-- **Ses işleme**: Net gereksinimler ve kısıtlamalar
-- **Kurumsal senaryolar**: Gerçek dünya kullanım senaryoları
 
 ### ✅ Kalite Güvencesi
 - **Sıfır Uyarı Politikası**: 0 hata, 0 uyarı standardı korundu
@@ -701,7 +679,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
                 <strong>v2.3.1</strong> - 2025-10-20
             </button>
         </h2>
-        <div id="collapseversion231" class="accordion-collapse collapse" aria-labelledby="headingversion231" data-bs-parent="#versionAccordion">
+        <div id="collapseversion231" class="accordion-collapse collapse" aria-labelledby="headingversion231" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -727,7 +705,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
                 <strong>v2.3.0</strong> - 2025-09-16
             </button>
         </h2>
-        <div id="collapseversion230" class="accordion-collapse collapse" aria-labelledby="headingversion230" data-bs-parent="#versionAccordion">
+        <div id="collapseversion230" class="accordion-collapse collapse" aria-labelledby="headingversion230" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -746,12 +724,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Ses İşleme Pipeline**: Google Cloud AI ile geliştirilmiş
 - **Configuration Yönetimi**: GoogleSpeechConfig kullanacak şekilde güncellendi
 - **Hata Yönetimi**: Ses transkripsiyonu için geliştirilmiş
-- **Dokümantasyon**: Speech-to-Text örnekleriyle güncellendi
-
-### 📚 Dokümantasyon
-- **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
-- **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
 
 ---
 {% endcapture %}
@@ -765,24 +737,15 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
                 <strong>v2.2.0</strong> - 2025-09-15
             </button>
         </h2>
-        <div id="collapseversion220" class="accordion-collapse collapse" aria-labelledby="headingversion220" data-bs-parent="#versionAccordion">
+        <div id="collapseversion220" class="accordion-collapse collapse" aria-labelledby="headingversion220" >
             <div class="accordion-body">
 {% capture version_content %}
 
 ### ✨ Eklenenler
-- **Geliştirilmiş OCR Dokümantasyonu**: Gerçek dünya kullanım senaryolarıyla kapsamlı
-- **İyileştirilmiş README**: Detaylı görsel işleme özellikleri
 - **Kullanım Senaryosu Örnekleri**: Taranmış dokümanlar, makbuzlar, görsel içeriği
 
 ### 🔧 İyileştirmeler
 - **Paket Metadata**: Güncellenmiş proje URL'leri ve sürüm notları
-- **Dokümantasyon Yapısı**: Geliştirilmiş OCR vitrini
-- **Kullanıcı Rehberliği**: İyileştirilmiş görsel işleme iş akışları
-
-### 📚 Dokümantasyon
-- **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
-- **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
 
 ---
 {% endcapture %}
@@ -796,7 +759,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
                 <strong>v2.1.0</strong> - 2025-09-05
             </button>
         </h2>
-        <div id="collapseversion210" class="accordion-collapse collapse" aria-labelledby="headingversion210" data-bs-parent="#versionAccordion">
+        <div id="collapseversion210" class="accordion-collapse collapse" aria-labelledby="headingversion210" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -812,11 +775,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Thread Güvenliği**: Geliştirilmiş eşzamanlı erişim yönetimi
 - **Platform Agnostik**: .NET ortamlarında uyumlu
 
-### 📚 Dokümantasyon
-- **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
-- **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
-
 ---
 {% endcapture %}
 {{ version_content | markdownify }}
@@ -829,7 +787,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
                 <strong>v2.0.0</strong> - 2025-08-27
             </button>
         </h2>
-        <div id="collapseversion200" class="accordion-collapse collapse" aria-labelledby="headingversion200" data-bs-parent="#versionAccordion">
+        <div id="collapseversion200" class="accordion-collapse collapse" aria-labelledby="headingversion200" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -853,11 +811,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Paket Versiyonları**: .NET Standard uyumlu versiyonlara güncellendi
 - **API Uyumluluğu**: Framework uyumluluğu sağlarken işlevselliği korundu
 
-### 📚 Dokümantasyon
-- **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
-- **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
-
 ### 🧪 Test
 - **Unit Testler**: Tüm yeni özellikler için kapsamlı test kapsamı
 - **Entegrasyon Testleri**: Framework uyumluluğu doğrulaması
@@ -880,7 +833,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
                 <strong>v1.1.0</strong> - 2025-08-22
             </button>
         </h2>
-        <div id="collapseversion110" class="accordion-collapse collapse" aria-labelledby="headingversion110" data-bs-parent="#versionAccordion">
+        <div id="collapseversion110" class="accordion-collapse collapse" aria-labelledby="headingversion110" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -895,11 +848,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **API Hata Yönetimi**: Hız sınırlama için daha iyi yeniden deneme mantığı
 - **İçerik İşleme**: Daha sağlam doküman ayrıştırma
 - **Performans**: Optimize edilmiş Excel çıkarma ve doğrulama
-
-### 📚 Dokümantasyon
-- **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
-- **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
 
 ### 🧪 Test
 - **Unit Testler**: Tüm yeni özellikler için kapsamlı test kapsamı
@@ -923,7 +871,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
                 <strong>v1.0.3</strong> - 2025-08-20
             </button>
         </h2>
-        <div id="collapseversion103" class="accordion-collapse collapse" aria-labelledby="headingversion103" data-bs-parent="#versionAccordion">
+        <div id="collapseversion103" class="accordion-collapse collapse" aria-labelledby="headingversion103" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -932,10 +880,80 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - Sağlayıcı günlükleme mesajı uygulamaları
 - Servis koleksiyonu kayıt sorunları
 
-### 📚 Dokümantasyon
-- **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
-- **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
+---
+{% endcapture %}
+{{ version_content | markdownify }}
+            </div>
+        </div>
+    </div>
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingversion102">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion102" aria-expanded="false" aria-controls="collapseversion102">
+                <strong>v1.0.2</strong> - 2025-08-19
+            </button>
+        </h2>
+        <div id="collapseversion102" class="accordion-collapse collapse" aria-labelledby="headingversion102" >
+            <div class="accordion-body">
+{% capture version_content %}
+
+### 📦 Paket Sürümü
+
+#### **Sürüm Notları**
+- **Versiyon Güncellemesi**: Paket versiyonu 1.0.2'ye güncellendi
+- **Paket Metadata**: v1.0.2 özellikleri ile sürüm notları güncellendi
+
+---
+{% endcapture %}
+{{ version_content | markdownify }}
+            </div>
+        </div>
+    </div>
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingversion101">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion101" aria-expanded="false" aria-controls="collapseversion101">
+                <strong>v1.0.1</strong> - 2025-08-17
+            </button>
+        </h2>
+        <div id="collapseversion101" class="accordion-collapse collapse" aria-labelledby="headingversion101" >
+            <div class="accordion-body">
+{% capture version_content %}
+
+### 🔧 İyileştirildi
+
+- **Akıllı Sorgu Niyeti Tespiti**: Chat ve doküman arama arasında geliştirilmiş sorgu yönlendirme
+- **Dil-Agnostik Tasarım**: Global uyumluluk için tüm hardcoded dil pattern'leri kaldırıldı
+- **Geliştirilmiş Arama İlgililiği**: İsim tespiti ve içerik skorlama algoritmaları iyileştirildi
+- **Unicode Normalizasyonu**: Özel karakter işleme sorunları düzeltildi (örn., Türkçe karakterler)
+- **Hız Sınırlama & Yeniden Deneme Mantığı**: Exponential backoff ile sağlam API işleme
+- **VoyageAI Entegrasyonu**: Optimize edilmiş Anthropic embedding desteği
+
+---
+{% endcapture %}
+{{ version_content | markdownify }}
+            </div>
+        </div>
+    </div>
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingversion100">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion100" aria-expanded="false" aria-controls="collapseversion100">
+                <strong>v1.0.0</strong> - 2025-08-15
+            </button>
+        </h2>
+        <div id="collapseversion100" class="accordion-collapse collapse" aria-labelledby="headingversion100" >
+            <div class="accordion-body">
+{% capture version_content %}
+
+### 🚀 İlk Sürüm
+
+#### **Özellikler**
+- **Yüksek Performanslı RAG**: Çoklu sağlayıcı AI desteği implementasyonu
+- **5 AI Sağlayıcı**: OpenAI, Anthropic, Gemini, Azure OpenAI, Custom
+- **5 Depolama Backend**: Qdrant, Redis, SQLite, FileSystem, InMemory
+- **Doküman Formatları**: Akıllı ayrıştırma ile PDF, Word, Metin
+- **Kurumsal Mimari**: Dependency injection ve temiz mimari
+- **CI/CD Pipeline**: Eksiksiz GitHub Actions iş akışı
+- **Güvenlik**: CodeQL analizi ve Codecov kapsam raporlama
+- **NuGet Paketi**: Modern metadata ile profesyonel paket
 
 ---
 {% endcapture %}
@@ -987,7 +1005,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
             <tr>
                 <td><strong>2.2.0</strong></td>
                 <td>2025-09-15</td>
-                <td>Geliştirilmiş OCR dokümantasyonu</td>
+                <td>OCR özellikleri iyileştirmeleri</td>
             </tr>
             <tr>
                 <td><strong>2.1.0</strong></td>

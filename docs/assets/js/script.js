@@ -65,13 +65,7 @@ function wrapAccordionButtons() {
         const wrapper = document.createElement('div');
         wrapper.className = 'config-section config-section-accordion';
         
-        // Remove button from header
-        accordionHeader.removeChild(button);
-        
-        // Put button directly in wrapper (without accordion-header)
-        wrapper.appendChild(button);
-        
-        // Function to recursively remove config-section wrappers
+        // Function to recursively remove config-section wrappers (define first)
         const removeConfigSections = (container) => {
             if (!container) return;
             
@@ -103,20 +97,55 @@ function wrapAccordionButtons() {
             });
         };
         
+        // Pre-move content to wrapper (but keep it hidden until accordion opens)
+        // This prevents the lag where content appears before background extends
+        let contentContainer = null;
+        if (accordionBody && accordionBody.children.length > 0) {
+            // Create a container for content that can be hidden/shown
+            contentContainer = document.createElement('div');
+            contentContainer.className = 'accordion-content-container';
+            contentContainer.style.display = accordionCollapse.classList.contains('show') ? 'block' : 'none';
+            
+            // Pre-move content to content container
+            const fragment = document.createDocumentFragment();
+            while (accordionBody.firstChild) {
+                fragment.appendChild(accordionBody.firstChild);
+            }
+            contentContainer.appendChild(fragment);
+            
+            // Remove config-sections from pre-moved content
+            removeConfigSections(contentContainer);
+            
+            // Add content container to wrapper
+            wrapper.appendChild(contentContainer);
+        }
+        
+        // Hide accordion-body since content is now in wrapper
+        if (accordionBody) {
+            accordionBody.style.display = 'none';
+        }
+        
+        // Remove button from header
+        accordionHeader.removeChild(button);
+        
+        // Put button directly in wrapper (without accordion-header)
+        wrapper.insertBefore(button, wrapper.firstChild);
+        
         // Function to move body content to wrapper when expanded
-        const moveBodyContent = () => {
+        const moveBodyContent = (optimize = false) => {
+            if (!contentContainer) {
+                contentContainer = wrapper.querySelector('.accordion-content-container');
+            }
+            
             if (accordionBody && accordionCollapse.classList.contains('show')) {
-                // First, remove all config-section wrappers from accordion-body
-                removeConfigSections(accordionBody);
-                
-                // Move all children from accordion-body to wrapper (after button)
-                while (accordionBody.firstChild) {
-                    wrapper.appendChild(accordionBody.firstChild);
+                // Content is already in wrapper (pre-moved), just make it visible
+                if (contentContainer) {
+                    contentContainer.style.display = 'block';
                 }
                 
-                // Remove any config-section wrappers that were moved to wrapper
-                // Do this multiple times to catch nested config-sections
-                for (let i = 0; i < 10; i++) {
+                // Remove any remaining config-section wrappers
+                const maxIterations = optimize ? 5 : 10;
+                for (let i = 0; i < maxIterations; i++) {
                     const beforeCount = wrapper.querySelectorAll('.config-section:not(.config-section-accordion)').length;
                     removeConfigSections(wrapper);
                     const afterCount = wrapper.querySelectorAll('.config-section:not(.config-section-accordion)').length;
@@ -125,26 +154,180 @@ function wrapAccordionButtons() {
                     }
                 }
             } else if (accordionBody && !accordionCollapse.classList.contains('show')) {
-                // When collapsed, move content back to accordion-body
-                const wrapperContent = Array.from(wrapper.childNodes).filter(node => 
-                    node !== button && !node.classList?.contains('accordion-button')
-                );
-                wrapperContent.forEach(node => {
-                    accordionBody.appendChild(node);
-                });
+                // When collapsed, hide content container
+                if (contentContainer) {
+                    contentContainer.style.display = 'none';
+                }
             }
         };
         
-        // Move content if already expanded
-        moveBodyContent();
+        // Initialize content position based on current state
+        if (accordionCollapse && accordionCollapse.classList.contains('show')) {
+            if (contentContainer) {
+                contentContainer.style.display = 'block';
+            }
+        } else {
+            if (contentContainer) {
+                contentContainer.style.display = 'none';
+            }
+        }
         
         // Listen for accordion show/hide events
         if (accordionCollapse) {
+            let savedScrollTop = null;
+            let buttonViewportTop = null; // Button's position relative to viewport
+            let scrollRestoreInterval = null;
+            let isRestoringScroll = false;
+            let scrollRestoreTimeout = null;
+            
+            // Save scroll position and button viewport position when button is clicked
+            button.addEventListener('click', (e) => {
+                savedScrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                const buttonRect = button.getBoundingClientRect();
+                buttonViewportTop = buttonRect.top; // Position relative to viewport
+                
+                // Clear any existing intervals/timeouts
+                if (scrollRestoreInterval) {
+                    clearInterval(scrollRestoreInterval);
+                }
+                if (scrollRestoreTimeout) {
+                    clearTimeout(scrollRestoreTimeout);
+                }
+                
+                
+                // Start aggressive scroll restoration
+                isRestoringScroll = true;
+                
+                // Immediate restore
+                const restoreScroll = () => {
+                    if (savedScrollTop !== null && buttonViewportTop !== null && isRestoringScroll) {
+                        const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
+                        const currentButtonRect = button.getBoundingClientRect();
+                        const currentButtonViewportTop = currentButtonRect.top;
+                        const viewportDiff = currentButtonViewportTop - buttonViewportTop;
+                        
+                        // If scroll position changed or button moved, restore it
+                        if (Math.abs(currentScroll - savedScrollTop) > 1 || Math.abs(viewportDiff) > 1) {
+                            if (Math.abs(viewportDiff) > 1) {
+                                // Adjust scroll to compensate for button movement
+                                const newScrollTop = savedScrollTop - viewportDiff;
+                                window.scrollTo(0, newScrollTop);
+                            } else {
+                                // Just restore scroll position
+                                window.scrollTo(0, savedScrollTop);
+                            }
+                        }
+                    }
+                };
+                
+                // Restore immediately
+                restoreScroll();
+                
+                // Start interval for continuous restoration
+                scrollRestoreInterval = setInterval(restoreScroll, 8); // ~120fps for more aggressive restoration
+                
+                // Also use requestAnimationFrame for smooth restoration
+                const rafRestore = () => {
+                    if (isRestoringScroll) {
+                        restoreScroll();
+                        requestAnimationFrame(rafRestore);
+                    }
+                };
+                requestAnimationFrame(rafRestore);
+            }, { capture: true });
+            
+            // Use 'show.bs.collapse' to reveal content before animation starts
+            accordionCollapse.addEventListener('show.bs.collapse', () => {
+                // Save scroll position if not already saved
+                if (savedScrollTop === null) {
+                    savedScrollTop = window.pageYOffset || document.documentElement.scrollTop;
+                    const buttonRect = button.getBoundingClientRect();
+                    buttonViewportTop = buttonRect.top;
+                }
+                
+                // Reveal content immediately (it's already in wrapper, just hidden)
+                // This prevents the lag where content appears before background extends
+                const contentContainer = wrapper.querySelector('.accordion-content-container');
+                if (contentContainer) {
+                    contentContainer.style.display = 'block';
+                }
+                
+                // Clean up any config-sections
+                moveBodyContent(true);
+                
+                // Restore scroll position to keep button in same viewport position
+                const restoreScroll = () => {
+                    if (savedScrollTop !== null && buttonViewportTop !== null) {
+                        const currentButtonRect = button.getBoundingClientRect();
+                        const currentButtonViewportTop = currentButtonRect.top;
+                        const viewportDiff = currentButtonViewportTop - buttonViewportTop;
+                        
+                        if (Math.abs(viewportDiff) > 1) {
+                            // Adjust scroll to compensate for button movement
+                            const newScrollTop = savedScrollTop - viewportDiff;
+                            window.scrollTo({
+                                top: newScrollTop,
+                                behavior: 'auto'
+                            });
+                        } else {
+                            // Even if button hasn't moved, ensure scroll position is maintained
+                            const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
+                            if (Math.abs(currentScroll - savedScrollTop) > 1) {
+                                window.scrollTo({
+                                    top: savedScrollTop,
+                                    behavior: 'auto'
+                                });
+                            }
+                        }
+                    }
+                };
+                
+                // Restore immediately and multiple times
+                restoreScroll();
+                requestAnimationFrame(restoreScroll);
+                requestAnimationFrame(() => requestAnimationFrame(restoreScroll));
+                requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(restoreScroll)));
+            });
+            
             accordionCollapse.addEventListener('shown.bs.collapse', () => {
-                moveBodyContent();
-                // Also remove config-sections after a short delay to catch any dynamically added ones
-                setTimeout(() => {
-                    // Remove multiple times to catch nested ones
+                // Final cleanup after accordion is fully shown
+                moveBodyContent(true); // Use optimized version
+                
+                // Stop aggressive scroll restoration after animation completes
+                scrollRestoreTimeout = setTimeout(() => {
+                    isRestoringScroll = false;
+                    if (scrollRestoreInterval) {
+                        clearInterval(scrollRestoreInterval);
+                        scrollRestoreInterval = null;
+                    }
+                    
+                    // Final scroll position restore (multiple times to ensure it sticks)
+                    const finalRestore = () => {
+                        if (savedScrollTop !== null && buttonViewportTop !== null) {
+                            const currentScroll = window.pageYOffset || document.documentElement.scrollTop;
+                            const currentButtonRect = button.getBoundingClientRect();
+                            const currentButtonViewportTop = currentButtonRect.top;
+                            const viewportDiff = currentButtonViewportTop - buttonViewportTop;
+                            
+                            if (Math.abs(viewportDiff) > 1) {
+                                const newScrollTop = savedScrollTop - viewportDiff;
+                                window.scrollTo(0, newScrollTop);
+                            } else if (Math.abs(currentScroll - savedScrollTop) > 1) {
+                                window.scrollTo(0, savedScrollTop);
+                            }
+                        }
+                    };
+                    
+                    // Restore multiple times to ensure it sticks
+                    finalRestore();
+                    requestAnimationFrame(() => {
+                        finalRestore();
+                        requestAnimationFrame(() => {
+                            finalRestore();
+                        });
+                    });
+                    
+                    // Also remove config-sections after a short delay to catch any dynamically added ones
                     for (let i = 0; i < 10; i++) {
                         const beforeCount = wrapper.querySelectorAll('.config-section:not(.config-section-accordion)').length;
                         removeConfigSections(wrapper);
@@ -153,9 +336,26 @@ function wrapAccordionButtons() {
                             break; // No more config-sections to remove
                         }
                     }
-                }, 100);
+                    
+                    savedScrollTop = null; // Reset after use
+                    buttonViewportTop = null;
+                }, 400); // Wait for animation to complete (increased from 300ms)
             });
-            accordionCollapse.addEventListener('hidden.bs.collapse', moveBodyContent);
+            
+            accordionCollapse.addEventListener('hidden.bs.collapse', () => {
+                moveBodyContent();
+                savedScrollTop = null; // Reset when closed
+                buttonViewportTop = null;
+                isRestoringScroll = false;
+                if (scrollRestoreInterval) {
+                    clearInterval(scrollRestoreInterval);
+                    scrollRestoreInterval = null;
+                }
+                if (scrollRestoreTimeout) {
+                    clearTimeout(scrollRestoreTimeout);
+                    scrollRestoreTimeout = null;
+                }
+            });
         }
         
         // Also remove config-sections immediately after wrapper is created (for already expanded accordions)

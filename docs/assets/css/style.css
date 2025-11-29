@@ -824,26 +824,56 @@ separator {
 
 /* Special styling for config-section containing accordion-button */
 .config-section.config-section-accordion {
-    padding: 0.75rem !important;
+    padding: 0 !important; /* Remove padding, button and content will handle their own */
     border: 1px solid var(--border-color) !important;
     background: var(--bg-primary) !important;
-    margin-bottom: 1rem !important;
-    margin-top: 0 !important;
+    margin-bottom: 1rem !important; /* Reduced spacing between accordion items */
+    margin-top: 0 !important; /* No top margin for accordion items */
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
     border-radius: 1.25rem !important;
+    transition: var(--transition-normal);
+    position: relative;
+    overflow: hidden !important; /* Hide overflow to maintain border-radius */
+    display: flex;
+    flex-direction: column;
 }
 
 .config-section.config-section-accordion > .accordion-button {
-    border-radius: 0.875rem;
-    margin: 0;
+    border-radius: 1.25rem 1.25rem 0 0 !important; /* Rounded top corners only */
+    margin: 0 !important;
     width: 100%;
     border: none;
+    padding: 1.5rem 2rem !important; /* Match config-section padding */
+    flex-shrink: 0; /* Don't shrink button */
+}
+
+/* Accordion content container styling */
+.config-section.config-section-accordion > .accordion-content-container {
+    padding: 0 2rem 2rem 2rem !important; /* Add padding to content container */
+    flex: 1; /* Take remaining space */
+}
+
+/* Add top margin to first heading in accordion content */
+.config-section.config-section-accordion > .accordion-content-container > h2:first-child,
+.config-section.config-section-accordion > .accordion-content-container > h3:first-child,
+.config-section.config-section-accordion > .accordion-content-container > h4:first-child {
+    margin-top: 1.5rem !important; /* Add top spacing for headings */
+}
+
+.config-section.config-section-accordion > .accordion-content-container > *:last-child {
+    margin-bottom: 0 !important;
 }
 
 /* Keep accordion-body functional for Bootstrap, but hide it visually when content is moved */
 .accordion-body {
     padding: 0 !important;
     min-height: 0 !important;
+    display: none !important; /* Hide accordion-body since content is in wrapper */
+}
+
+/* Accordion content container styling */
+.accordion-content-container {
+    width: 100%;
 }
 
 /* Exclude paragraphs with no-config-section class from border styling */

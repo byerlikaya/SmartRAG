@@ -16,7 +16,7 @@ All releases and changes to SmartRAG are documented here.
                 <strong>v3.3.0</strong> - 2025-11-28
             </button>
         </h2>
-        <div id="collapseversion330" class="accordion-collapse collapse show" aria-labelledby="headingversion330" data-bs-parent="#versionAccordion">
+        <div id="collapseversion330" class="accordion-collapse collapse show" aria-labelledby="headingversion330" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -74,11 +74,6 @@ All releases and changes to SmartRAG are documented here.
 - **SqliteDocumentRepository**: Removed unused SQLite storage implementation
 - **StorageConfig Properties**: Removed FileSystemPath and SqliteConfig (unused)
 
-### 📚 Documentation
-
-- **Redis Storage Documentation**: Updated with RediSearch requirements and setup instructions
-- **InMemory Storage Documentation**: Added configuration examples and use cases
-
 ### ⚠️ Breaking Changes
 
 - **FileSystem and SQLite Document Repositories Removed**
@@ -105,7 +100,7 @@ All releases and changes to SmartRAG are documented here.
                 <strong>v3.2.0</strong> - 2025-11-27
             </button>
         </h2>
-        <div id="collapseversion320" class="accordion-collapse collapse" aria-labelledby="headingversion320" data-bs-parent="#versionAccordion">
+        <div id="collapseversion320" class="accordion-collapse collapse" aria-labelledby="headingversion320" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -364,7 +359,7 @@ public class CustomScoringStrategy : IScoringStrategy
                 <strong>v3.1.0</strong> - 2025-11-11
             </button>
         </h2>
-        <div id="collapseversion310" class="accordion-collapse collapse" aria-labelledby="headingversion310" data-bs-parent="#versionAccordion">
+        <div id="collapseversion310" class="accordion-collapse collapse" aria-labelledby="headingversion310" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -431,7 +426,7 @@ public class CustomScoringStrategy : IScoringStrategy
                 <strong>v3.0.3</strong> - 2025-11-06
             </button>
         </h2>
-        <div id="collapseversion303" class="accordion-collapse collapse" aria-labelledby="headingversion303" data-bs-parent="#versionAccordion">
+        <div id="collapseversion303" class="accordion-collapse collapse" aria-labelledby="headingversion303" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -486,7 +481,7 @@ If you're using OCR or Audio Transcription features:
                 <strong>v3.0.2</strong> - 2025-10-24
             </button>
         </h2>
-        <div id="collapseversion302" class="accordion-collapse collapse" aria-labelledby="headingversion302" data-bs-parent="#versionAccordion">
+        <div id="collapseversion302" class="accordion-collapse collapse" aria-labelledby="headingversion302" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -509,11 +504,6 @@ If you're using OCR or Audio Transcription features:
 - `src/SmartRAG/Models/SmartRagOptions.cs` - Removed GoogleSpeechConfig property
 - `src/SmartRAG/Enums/AudioProvider.cs` - Removed GoogleCloud enum value
 - `src/SmartRAG/Services/ServiceLogMessages.cs` - Updated log messages for Whisper.net
-
-#### **Documentation Updates**
-- **README.md**: Updated to reflect Whisper.net-only audio processing
-- **README.tr.md**: Updated Turkish documentation
-- **docs/**: Updated all documentation files to remove Google Speech references
 
 ### ✨ Benefits
 - **100% Local Processing**: All audio transcription happens locally with Whisper.net
@@ -548,7 +538,7 @@ If you were using Google Speech-to-Text:
                 <strong>v3.0.1</strong> - 2025-10-22
             </button>
         </h2>
-        <div id="collapseversion301" class="accordion-collapse collapse" aria-labelledby="headingversion301" data-bs-parent="#versionAccordion">
+        <div id="collapseversion301" class="accordion-collapse collapse" aria-labelledby="headingversion301" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -561,7 +551,6 @@ If you were using Google Speech-to-Text:
 ### 🔧 Technical Improvements
 - **ServiceLogMessages.cs**: Updated LoggerMessage definitions to match parameter counts correctly
 - **EventId Management**: Reassigned conflicting EventIds to ensure unique logging identifiers
-- **Documentation**: Cleaned up README files for better NuGet package display
 
 ---
 {% endcapture %}
@@ -575,7 +564,7 @@ If you were using Google Speech-to-Text:
                 <strong>v3.0.0</strong> - 2025-10-22
             </button>
         </h2>
-        <div id="collapseversion300" class="accordion-collapse collapse" aria-labelledby="headingversion300" data-bs-parent="#versionAccordion">
+        <div id="collapseversion300" class="accordion-collapse collapse" aria-labelledby="headingversion300" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -643,25 +632,14 @@ If you were using Google Speech-to-Text:
 - **100+ languages**: [View all supported languages](https://github.com/tesseract-ocr/tessdata)
 
 ### ✨ Added
-- **Multi-language README**: Available in English, Turkish, German, and Russian
-- **Multi-language CHANGELOG**: Available in 4 languages
-- **Enhanced documentation**: Comprehensive on-premise deployment docs
 - **Local AI setup examples**: Configuration for Ollama and LM Studio
 - **Enterprise use cases**: Banking, Healthcare, Legal, Government, Manufacturing
 
 ### 🔧 Improved
 - **Retry mechanism**: Enhanced retry prompts with language-specific instructions
 - **Error handling**: Better error messages with database type information
-- **Documentation structure**: Cleaner README with CHANGELOG links
 - **Code quality**: SOLID/DRY principles maintained
 - **Performance**: Optimized multi-database query coordination
-
-### 📚 Documentation
-- **On-Premise guide**: Comprehensive deployment documentation
-- **Privacy guide**: Data privacy and compliance documentation
-- **OCR limitations**: Clear capabilities and limitations
-- **Audio processing**: Clear requirements and limitations
-- **Enterprise scenarios**: Real-world use cases
 
 ### ✅ Quality Assurance
 - **Zero Warnings Policy**: Maintained 0 errors, 0 warnings standard
@@ -701,7 +679,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
                 <strong>v2.3.1</strong> - 2025-10-20
             </button>
         </h2>
-        <div id="collapseversion231" class="accordion-collapse collapse" aria-labelledby="headingversion231" data-bs-parent="#versionAccordion">
+        <div id="collapseversion231" class="accordion-collapse collapse" aria-labelledby="headingversion231" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -727,7 +705,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
                 <strong>v2.3.0</strong> - 2025-09-16
             </button>
         </h2>
-        <div id="collapseversion230" class="accordion-collapse collapse" aria-labelledby="headingversion230" data-bs-parent="#versionAccordion">
+        <div id="collapseversion230" class="accordion-collapse collapse" aria-labelledby="headingversion230" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -746,13 +724,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Audio Processing Pipeline**: Enhanced with Google Cloud AI
 - **Configuration Management**: Updated to use GoogleSpeechConfig
 - **Error Handling**: Enhanced for audio transcription
-- **Documentation**: Updated with Speech-to-Text examples
-
-### 📚 Documentation
-- **Audio Processing**: Comprehensive feature documentation
-- **Google Speech-to-Text**: Enhanced README with capabilities
-- **Multi-language Support**: Highlighted 100+ language support
-- **Developer Experience**: Better feature visibility
 
 ---
 {% endcapture %}
@@ -766,25 +737,15 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
                 <strong>v2.2.0</strong> - 2025-09-15
             </button>
         </h2>
-        <div id="collapseversion220" class="accordion-collapse collapse" aria-labelledby="headingversion220" data-bs-parent="#versionAccordion">
+        <div id="collapseversion220" class="accordion-collapse collapse" aria-labelledby="headingversion220" >
             <div class="accordion-body">
 {% capture version_content %}
 
 ### ✨ Added
-- **Enhanced OCR Documentation**: Comprehensive with real-world use cases
-- **Improved README**: Detailed image processing features
 - **Use Case Examples**: Scanned documents, receipts, image content
 
 ### 🔧 Improved
 - **Package Metadata**: Updated project URLs and release notes
-- **Documentation Structure**: Enhanced OCR showcase
-- **User Guidance**: Improved image processing workflows
-
-### 📚 Documentation
-- **OCR Capabilities**: Comprehensive with real-world examples
-- **Image Processing**: Enhanced capabilities documentation
-- **WebP Support**: Highlighted WebP to PNG conversion
-- **Developer Experience**: Better visibility of features
 
 ---
 {% endcapture %}
@@ -798,7 +759,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
                 <strong>v2.1.0</strong> - 2025-09-05
             </button>
         </h2>
-        <div id="collapseversion210" class="accordion-collapse collapse" aria-labelledby="headingversion210" data-bs-parent="#versionAccordion">
+        <div id="collapseversion210" class="accordion-collapse collapse" aria-labelledby="headingversion210" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -814,10 +775,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Thread Safety**: Enhanced concurrent access handling
 - **Platform Agnostic**: Compatible across .NET environments
 
-### 📚 Documentation
-- **Multi-language Updates**: All languages (EN, TR, DE, RU) updated
-- **100% Compliance**: All established rules maintained
-
 ---
 {% endcapture %}
 {{ version_content | markdownify }}
@@ -830,7 +787,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
                 <strong>v2.0.0</strong> - 2025-08-27
             </button>
         </h2>
-        <div id="collapseversion200" class="accordion-collapse collapse" aria-labelledby="headingversion200" data-bs-parent="#versionAccordion">
+        <div id="collapseversion200" class="accordion-collapse collapse" aria-labelledby="headingversion200" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -854,11 +811,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Package Versions**: Updated to .NET Standard compatible versions
 - **API Compatibility**: Maintained functionality while ensuring framework compatibility
 
-### 📚 Documentation
-- **Framework Requirements**: Updated for .NET Standard
-- **Installation Guide**: Updated package references
-- **Migration Guide**: Comprehensive guide for .NET 9.0 users
-
 ### 🧪 Testing
 - **Framework Compatibility**: Verified .NET Standard 2.1 compatibility
 - **Backward Compatibility**: All functionality remains intact
@@ -881,7 +833,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
                 <strong>v1.1.0</strong> - 2025-08-22
             </button>
         </h2>
-        <div id="collapseversion110" class="accordion-collapse collapse" aria-labelledby="headingversion110" data-bs-parent="#versionAccordion">
+        <div id="collapseversion110" class="accordion-collapse collapse" aria-labelledby="headingversion110" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -896,11 +848,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **API Error Handling**: Better retry logic for rate limiting
 - **Content Processing**: More robust document parsing
 - **Performance**: Optimized Excel extraction and validation
-
-### 📚 Documentation
-- **Excel Format Support**: Comprehensive Excel processing documentation
-- **API Reliability**: Updated error handling documentation
-- **Installation Guide**: Updated package references
 
 ### 🧪 Testing
 - **Excel Parsing**: Verified with various Excel formats
@@ -923,7 +870,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
                 <strong>v1.0.3</strong> - 2025-08-20
             </button>
         </h2>
-        <div id="collapseversion103" class="accordion-collapse collapse" aria-labelledby="headingversion103" data-bs-parent="#versionAccordion">
+        <div id="collapseversion103" class="accordion-collapse collapse" aria-labelledby="headingversion103" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -932,9 +879,80 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - Provider logging message implementations
 - Service collection registration issues
 
-### 📚 Documentation
-- Updated README with latest features
-- Improved installation instructions
+---
+{% endcapture %}
+{{ version_content | markdownify }}
+            </div>
+        </div>
+    </div>
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingversion102">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion102" aria-expanded="false" aria-controls="collapseversion102">
+                <strong>v1.0.2</strong> - 2025-08-19
+            </button>
+        </h2>
+        <div id="collapseversion102" class="accordion-collapse collapse" aria-labelledby="headingversion102" >
+            <div class="accordion-body">
+{% capture version_content %}
+
+### 📦 Package Release
+
+#### **Release Notes**
+- **Version Update**: Package version updated to 1.0.2
+- **Package Metadata**: Updated release notes with v1.0.2 features
+
+---
+{% endcapture %}
+{{ version_content | markdownify }}
+            </div>
+        </div>
+    </div>
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingversion101">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion101" aria-expanded="false" aria-controls="collapseversion101">
+                <strong>v1.0.1</strong> - 2025-08-17
+            </button>
+        </h2>
+        <div id="collapseversion101" class="accordion-collapse collapse" aria-labelledby="headingversion101" >
+            <div class="accordion-body">
+{% capture version_content %}
+
+### 🔧 Improved
+
+- **Smart Query Intent Detection**: Enhanced query routing between chat and document search
+- **Language-Agnostic Design**: Removed all hardcoded language patterns for global compatibility
+- **Enhanced Search Relevance**: Improved name detection and content scoring algorithms
+- **Unicode Normalization**: Fixed special character handling issues (e.g., Turkish characters)
+- **Rate Limiting & Retry Logic**: Robust API handling with exponential backoff
+- **VoyageAI Integration**: Optimized Anthropic embedding support
+
+---
+{% endcapture %}
+{{ version_content | markdownify }}
+            </div>
+        </div>
+    </div>
+    <div class="accordion-item">
+        <h2 class="accordion-header" id="headingversion100">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion100" aria-expanded="false" aria-controls="collapseversion100">
+                <strong>v1.0.0</strong> - 2025-08-15
+            </button>
+        </h2>
+        <div id="collapseversion100" class="accordion-collapse collapse" aria-labelledby="headingversion100" >
+            <div class="accordion-body">
+{% capture version_content %}
+
+### 🚀 Initial Release
+
+#### **Features**
+- **High-Performance RAG**: Multi-provider AI support implementation
+- **5 AI Providers**: OpenAI, Anthropic, Gemini, Azure OpenAI, Custom
+- **5 Storage Backends**: Qdrant, Redis, SQLite, FileSystem, InMemory
+- **Document Formats**: PDF, Word, Text with intelligent parsing
+- **Enterprise Architecture**: Dependency injection and clean architecture
+- **CI/CD Pipeline**: Complete GitHub Actions workflow
+- **Security**: CodeQL analysis and Codecov coverage reporting
+- **NuGet Package**: Professional package with modern metadata
 
 ---
 {% endcapture %}
@@ -986,7 +1004,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
             <tr>
                 <td><strong>2.2.0</strong></td>
                 <td>2025-09-15</td>
-                <td>Enhanced OCR documentation</td>
+                <td>OCR feature improvements</td>
             </tr>
             <tr>
                 <td><strong>2.1.0</strong></td>
