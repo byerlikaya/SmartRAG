@@ -9,8 +9,6 @@ lang: tr
 
 SmartRAG çeşitli AI sağlayıcılarını destekler:
 
----
-
 ## OpenAI
 
 ```json
@@ -43,8 +41,6 @@ builder.Services.AddSmartRag(configuration, options =>
 - `gpt-4o-mini` - Uygun maliyetli önceki nesil
 - `text-embedding-3-small`, `text-embedding-3-large` - Embedding'ler (önerilen)
 - `text-embedding-ada-002` - Eski embedding'ler
-
----
 
 ## Anthropic (Claude)
 
@@ -94,8 +90,6 @@ builder.Services.AddSmartRag(configuration, options =>
 - `voyage-code-2` - Kod için optimize edilmiş
 - `voyage-2` - Genel amaçlı
 
----
-
 ## Google Gemini
 
 ```json
@@ -126,8 +120,6 @@ builder.Services.AddSmartRag(configuration, options =>
 - `gemini-2.0-flash` - Önceki nesil iş modeli
 - `embedding-001` - Metin embedding'leri
 
----
-
 ## Azure OpenAI
 
 ```json
@@ -152,8 +144,6 @@ builder.Services.AddSmartRag(configuration, options =>
     options.AIProvider = AIProvider.AzureOpenAI;
 });
 ```
-
----
 
 ## Özel Sağlayıcı (Ollama / LM Studio)
 
@@ -207,26 +197,61 @@ builder.Services.AddSmartRag(configuration, options =>
 - 🌐 Together AI - Açık kaynak modeller
 - Herhangi bir OpenAI-uyumlu API
 
----
-
 ## Sağlayıcı Karşılaştırması
 
-| Sağlayıcı | Güçlü Yönler | Zayıf Yönler | En İyi Kullanım |
-|-----------|--------------|--------------|-----------------|
-| **OpenAI** | Gelişmiş modeller, güvenilir | Pahalı, veri gizliliği endişeleri | Üretim, kritik uygulamalar |
-| **Anthropic** | Güvenlik odaklı, kaliteli çıktı | VoyageAI gerekli, sınırlı erişim | Güvenlik kritik uygulamalar |
-| **Google Gemini** | Uygun maliyetli, çok modlu | Sınırlı üretim desteği | Prototip, geliştirme |
-| **Azure OpenAI** | Kurumsal güvenlik, SLA | Karmaşık kurulum | Kurumsal uygulamalar |
-| **Ollama/LM Studio** | %100 on-premise, ücretsiz | Performans sınırları | Veri gizliliği kritik |
+<p>Kullanım durumunuz için en iyi seçeneği seçmek üzere AI sağlayıcılarını karşılaştırın:</p>
 
----
+<div class="table-responsive">
+<table class="table">
+<thead>
+<tr>
+<th>Sağlayıcı</th>
+<th>Güçlü Yönler</th>
+<th>Zayıf Yönler</th>
+<th>En İyi Kullanım</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>OpenAI</strong></td>
+<td>Gelişmiş modeller, güvenilir</td>
+<td>Pahalı, veri gizliliği endişeleri</td>
+<td>Üretim, kritik uygulamalar</td>
+</tr>
+<tr>
+<td><strong>Anthropic</strong></td>
+<td>Güvenlik odaklı, kaliteli çıktı</td>
+<td>VoyageAI gerekli, sınırlı erişim</td>
+<td>Güvenlik kritik uygulamalar</td>
+</tr>
+<tr>
+<td><strong>Google Gemini</strong></td>
+<td>Uygun maliyetli, çok modlu</td>
+<td>Sınırlı üretim desteği</td>
+<td>Prototip, geliştirme</td>
+</tr>
+<tr>
+<td><strong>Azure OpenAI</strong></td>
+<td>Kurumsal güvenlik, SLA</td>
+<td>Karmaşık kurulum</td>
+<td>Kurumsal uygulamalar</td>
+</tr>
+<tr>
+<td><strong>Ollama/LM Studio</strong></td>
+<td>%100 on-premise, ücretsiz</td>
+<td>Performans sınırları</td>
+<td>Veri gizliliği kritik</td>
+</tr>
+</tbody>
+</table>
+</div>
 
 ## Sonraki Adımlar
 
 <div class="row g-4 mt-4">
     <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-database"></i>
             </div>
             <h3>Depolama Sağlayıcıları</h3>
@@ -238,8 +263,8 @@ builder.Services.AddSmartRag(configuration, options =>
     </div>
     
     <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-server"></i>
             </div>
             <h3>Veritabanı Yapılandırması</h3>

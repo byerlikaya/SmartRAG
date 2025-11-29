@@ -9,9 +9,9 @@ lang: tr
 
 SmartRAG çoklu veritabanı desteği ile akıllı çapraz-veritabanı sorguları yapabilir:
 
----
-
 ## Çoklu Veritabanı Bağlantıları
+
+Çoklu veritabanı bağlantılarını yapılandırarak çapraz-veritabanı sorgularını etkinleştirin:
 
 Veritabanlarını `appsettings.json` dosyasında yapılandırın:
 
@@ -39,8 +39,6 @@ Veritabanlarını `appsettings.json` dosyasında yapılandırın:
 }
 ```
 
----
-
 ## DatabaseConnectionConfig Parametreleri
 
 | Parametre | Tip | Varsayılan | Açıklama |
@@ -56,9 +54,9 @@ Veritabanlarını `appsettings.json` dosyasında yapılandırın:
 | `IncludedTables` | `string[]` | `[]` | Dahil edilecek belirli tablolar (boş = tüm tablolar) |
 | `ExcludedTables` | `string[]` | `[]` | Analizden hariç tutulacak tablolar |
 
----
-
 ## Desteklenen Veritabanları
+
+SmartRAG aşağıdaki veritabanı türlerini destekler:
 
 ### SQL Server
 
@@ -116,8 +114,6 @@ Veritabanlarını `appsettings.json` dosyasında yapılandırın:
 }
 ```
 
----
-
 ## Güvenlik ve Hassas Veri Temizleme
 
 SmartRAG otomatik olarak hassas veri tiplerini tespit eder ve temizler:
@@ -140,8 +136,6 @@ new DatabaseConnectionConfig
     SanitizeSensitiveData = false  // Dikkatli kullanın!
 }
 ```
-
----
 
 ## Şema Analizi ve Yenileme
 
@@ -188,29 +182,6 @@ new DatabaseConnectionConfig
 }
 ```
 
----
-
-## Çapraz Veritabanı Sorgu Örnekleri
-
-SmartRAG çoklu veritabanından veri çekerek akıllı sorgular yapabilir:
-
-### Örnek 1: Satış ve Envanter Analizi
-```
-"Son 3 ayda hangi ürünlerin stoku tükendi ve bunların satış performansı nasıl?"
-```
-
-### Örnek 2: Müşteri ve Sipariş Analizi
-```
-"En çok sipariş veren müşterilerin demografik bilgileri neler?"
-```
-
-### Örnek 3: Finansal Raporlama
-```
-"Muhasebe ve satış veritabanlarından bu ayın gelir raporunu oluştur"
-```
-
----
-
 ## Performans Optimizasyonu
 
 ### Tablo Filtreleme
@@ -240,8 +211,6 @@ new DatabaseConnectionConfig
 }
 ```
 
----
-
 ## Hata Yönetimi
 
 ```csharp
@@ -257,14 +226,12 @@ catch (DatabaseConnectionException ex)
 }
 ```
 
----
-
 ## Sonraki Adımlar
 
 <div class="row g-4 mt-4">
     <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-microphone"></i>
             </div>
             <h3>Ses & OCR</h3>
@@ -276,8 +243,8 @@ catch (DatabaseConnectionException ex)
     </div>
     
     <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-cogs"></i>
             </div>
             <h3>Gelişmiş Yapılandırma</h3>

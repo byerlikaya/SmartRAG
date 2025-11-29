@@ -7,11 +7,15 @@ lang: en
 
 ## Installation
 
-SmartRAG is available as a NuGet package and supports **.NET Standard 2.1**, making it compatible with:
-- ✅ .NET Core 3.0+
-- ✅ .NET 5, 6, 7, 8, 9+
+<div class="card">
+    <div class="card-body">
+        <p>SmartRAG is available as a NuGet package and supports <strong>.NET Standard 2.1</strong>, making it compatible with:</p>
+        <ul>
+            <li>✅ .NET Core 3.0+</li>
+            <li>✅ .NET 5, 6, 7, 8, 9+</li>
+        </ul>
 
-### Installation Methods
+        <h3 class="card-title">Installation Methods</h3>
 
 <div class="code-tabs">
     <button class="code-tab active" data-tab="cli">.NET CLI</button>
@@ -30,12 +34,12 @@ SmartRAG is available as a NuGet package and supports **.NET Standard 2.1**, mak
 <div class="code-panel" data-tab="xml">
 <pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="3.3.0" /&gt;</code></pre>
 </div>
-
----
+    </div>
+</div>
 
 ## Basic Configuration
 
-Configure SmartRAG in your `Program.cs` or `Startup.cs`:
+<p>Configure SmartRAG in your <code>Program.cs</code> or <code>Startup.cs</code>:</p>
 
 ### Quick Setup (Recommended)
 
@@ -95,11 +99,9 @@ var app = builder.Build();
 app.Run();
 ```
 
----
-
 ## Configuration File
 
-Create `appsettings.json` or `appsettings.Development.json`:
+<p>Create <code>appsettings.json</code> or <code>appsettings.Development.json</code>:</p>
 
 ```json
 {
@@ -191,8 +193,6 @@ Create `appsettings.json` or `appsettings.Development.json`:
     </p>
 </div>
 
----
-
 ## Quick Usage Example
 
 ### 1. Upload Documents
@@ -283,11 +283,9 @@ public class QuestionRequest
 }
 ```
 
----
-
 ## Conversation History
 
-SmartRAG automatically manages conversation history:
+<p>SmartRAG automatically manages conversation history:</p>
 
 ```csharp
 // First question
@@ -311,14 +309,12 @@ var newConv = await _searchService.QueryIntelligenceAsync(
     </p>
 </div>
 
----
-
 ## Next Steps
 
 <div class="row g-4 mt-4">
     <div class="col-md-6">
-        <div class="feature-card">
-            <div class="feature-icon">
+        <div class="card card-accent">
+            <div class="icon icon-lg icon-gradient">
                 <i class="fas fa-cog"></i>
             </div>
             <h3>Configuration</h3>
@@ -330,8 +326,8 @@ var newConv = await _searchService.QueryIntelligenceAsync(
     </div>
     
     <div class="col-md-6">
-        <div class="feature-card">
-            <div class="feature-icon">
+        <div class="card card-accent">
+            <div class="icon icon-lg icon-gradient">
                 <i class="fas fa-code"></i>
             </div>
             <h3>API Reference</h3>
@@ -343,8 +339,8 @@ var newConv = await _searchService.QueryIntelligenceAsync(
     </div>
     
     <div class="col-md-6">
-        <div class="feature-card">
-            <div class="feature-icon">
+        <div class="card card-accent">
+            <div class="icon icon-lg icon-gradient">
                 <i class="fas fa-lightbulb"></i>
             </div>
             <h3>Examples</h3>
@@ -356,8 +352,8 @@ var newConv = await _searchService.QueryIntelligenceAsync(
     </div>
     
     <div class="col-md-6">
-        <div class="feature-card">
-            <div class="feature-icon">
+        <div class="card card-accent">
+            <div class="icon icon-lg icon-gradient">
                 <i class="fas fa-history"></i>
             </div>
             <h3>Changelog</h3>
@@ -368,8 +364,6 @@ var newConv = await _searchService.QueryIntelligenceAsync(
         </div>
     </div>
 </div>
-
----
 
 ## Need Help?
 

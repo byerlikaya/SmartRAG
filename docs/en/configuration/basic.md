@@ -7,7 +7,7 @@ lang: en
 
 ## Basic Configuration
 
-SmartRAG offers two configuration methods:
+<p>SmartRAG offers two configuration methods:</p>
 
 ### Method 1: UseSmartRag (Simple)
 
@@ -29,9 +29,9 @@ builder.Services.AddSmartRag(configuration, options =>
 });
 ```
 
----
-
 ## SmartRagOptions - Core Options
+
+<p>Core configuration options available in SmartRagOptions:</p>
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
@@ -42,11 +42,9 @@ builder.Services.AddSmartRag(configuration, options =>
 | `EnablePeriodicSchemaRefresh` | `bool` | `true` | Periodically refresh database schemas |
 | `DefaultSchemaRefreshIntervalMinutes` | `int` | `60` | Default interval in minutes for schema refresh |
 
----
-
 ## ConversationStorageProvider
 
-Separate storage configuration for conversation history, independent from document storage:
+<p>Separate storage configuration for conversation history, independent from document storage:</p>
 
 ```csharp
 builder.Services.AddSmartRag(configuration, options =>
@@ -89,8 +87,6 @@ builder.Services.AddSmartRag(configuration, options =>
     </ul>
 </div>
 
----
-
 ## Chunking Options
 
 | Option | Type | Default | Description |
@@ -109,8 +105,6 @@ builder.Services.AddSmartRag(configuration, options =>
     </ul>
 </div>
 
----
-
 ## Retry & Resilience Options
 
 | Option | Type | Default | Description |
@@ -126,8 +120,6 @@ builder.Services.AddSmartRag(configuration, options =>
 - `RetryPolicy.FixedDelay` - Fixed delay between retries
 - `RetryPolicy.LinearBackoff` - Linearly increasing delay
 - `RetryPolicy.ExponentialBackoff` - Exponentially increasing delay (recommended)
-
----
 
 ## Example Configurations
 
@@ -161,14 +153,12 @@ builder.Services.AddSmartRag(configuration, options =>
 });
 ```
 
----
-
 ## Next Steps
 
 <div class="row g-4 mt-4">
     <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-brain"></i>
             </div>
             <h3>AI Providers</h3>
@@ -180,8 +170,8 @@ builder.Services.AddSmartRag(configuration, options =>
     </div>
     
     <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-database"></i>
             </div>
             <h3>Storage Providers</h3>

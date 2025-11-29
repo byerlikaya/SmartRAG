@@ -9,9 +9,9 @@ lang: en
 
 SmartRAG provides capabilities for converting audio files to text and extracting text from images:
 
----
-
 ## Whisper.net (Local Audio Transcription)
+
+<p>Whisper.net provides local, on-premise audio transcription with support for 99+ languages:</p>
 
 ### WhisperConfig Parameters
 
@@ -36,15 +36,36 @@ SmartRAG provides capabilities for converting audio files to text and extracting
 
 ### Model Download
 
-Models are automatically downloaded on first use. You can also download manually:
+Whisper.net automatically downloads GGML models from Hugging Face on first use. Models are saved to the path specified in `ModelPath` configuration:
 
-```bash
-# Download specific model
-ollama pull whisper-large-v3
+**Automatic Download:**
+- Models are downloaded automatically when first used via `WhisperGgmlDownloader`
+- Downloaded from Hugging Face repository
+- Saved to the path specified in `ModelPath` (default: `models/ggml-large-v3.bin`)
+- No manual download required
 
-# Or use Whisper.net directly
-# Models are cached in ~/.cache/whisper/
+**Model Files:**
+- Format: `ggml-{model-name}.bin` (e.g., `ggml-base.bin`, `ggml-large-v3.bin`)
+- Available models: `tiny`, `base`, `small`, `medium`, `large-v3`
+- First use downloads the model automatically (~5-10 minutes depending on connection and model size)
+
+**Configuration:**
+```json
+{
+  "SmartRAG": {
+    "WhisperConfig": {
+      "ModelPath": "models/ggml-large-v3.bin"
+    }
+  }
+}
 ```
+
+**Important Notes:**
+- Whisper.net uses its own GGML model format and download system
+- This is **independent** of Ollama, LM Studio, or cloud services
+- Models are stored locally at the `ModelPath` location
+- For on-premise deployments, ensure the application has write access to the model directory
+- For cloud deployments, consider pre-downloading models or using persistent storage volumes
 
 ### Configuration Example
 
@@ -116,9 +137,9 @@ var response = await _aiService.AskAsync(
     </p>
 </div>
 
----
-
 ## OCR Configuration
+
+<p>Tesseract OCR enables text extraction from images and PDFs with support for 100+ languages:</p>
 
 ### Tesseract Language Support
 
@@ -187,8 +208,6 @@ var info = await _aiService.AskAsync(
 );
 ```
 
----
-
 ## OCR Capabilities
 
 <div class="alert alert-info">
@@ -234,20 +253,53 @@ var info = await _aiService.AskAsync(
 3. **Correct Language:** Specify the correct language of text in image
 4. **Contrast:** Prefer high-contrast, black-and-white images
 
----
-
 ## Audio and OCR Comparison
 
-| Feature | Whisper.net | Tesseract OCR |
-|---------|-------------|---------------|
-| **Data Privacy** | ✅ 100% On-premise | ✅ 100% On-premise |
-| **Accuracy** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
-| **Language Support** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
-| **Setup** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **Cost** | 🆓 Free | 🆓 Free |
-| **Performance** | ⭐⭐⭐⭐ | ⭐⭐⭐ |
+<p>Compare Whisper.net and Tesseract OCR capabilities:</p>
 
----
+<div class="table-responsive">
+<table class="table">
+<thead>
+<tr>
+<th>Feature</th>
+<th>Whisper.net</th>
+<th>Tesseract OCR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Data Privacy</strong></td>
+<td><span class="badge bg-success">100% On-premise</span></td>
+<td><span class="badge bg-success">100% On-premise</span></td>
+</tr>
+<tr>
+<td><strong>Accuracy</strong></td>
+<td>⭐⭐⭐⭐⭐</td>
+<td>⭐⭐⭐⭐</td>
+</tr>
+<tr>
+<td><strong>Language Support</strong></td>
+<td>⭐⭐⭐⭐⭐ (99+ languages)</td>
+<td>⭐⭐⭐⭐ (100+ languages)</td>
+</tr>
+<tr>
+<td><strong>Setup</strong></td>
+<td>⭐⭐⭐⭐</td>
+<td>⭐⭐⭐⭐⭐</td>
+</tr>
+<tr>
+<td><strong>Cost</strong></td>
+<td><span class="badge bg-secondary">Free</span></td>
+<td><span class="badge bg-secondary">Free</span></td>
+</tr>
+<tr>
+<td><strong>Performance</strong></td>
+<td>⭐⭐⭐⭐</td>
+<td>⭐⭐⭐</td>
+</tr>
+</tbody>
+</table>
+</div>
 
 ## Security and Privacy
 
@@ -278,14 +330,12 @@ var document = await _documentService.UploadDocumentAsync(
 );
 ```
 
----
-
 ## Next Steps
 
 <div class="row g-4 mt-4">
     <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-cogs"></i>
             </div>
             <h3>Advanced Configuration</h3>
@@ -297,8 +347,8 @@ var document = await _documentService.UploadDocumentAsync(
     </div>
     
     <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-code"></i>
             </div>
             <h3>Examples</h3>

@@ -3,10 +3,12 @@ layout: default
 title: Örnekler
 description: SmartRAG için pratik kod örnekleri ve gerçek dünya kullanım senaryoları
 lang: tr
+redirect_from: /tr/examples.html
 ---
 
-
-## Hızlı Örnekler
+<script>
+    window.location.href = "{{ site.baseurl }}/tr/examples/";
+</script>
 
 ### 1. Basit Doküman Arama
 
@@ -835,8 +837,8 @@ public async Task QueryIntelligenceAsync_ShouldReturnValidResponse_WhenValidQuer
 
 <div class="row g-4 mt-4">
     <div class="col-md-4">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-rocket"></i>
             </div>
             <h3>Başlangıç</h3>
@@ -848,8 +850,8 @@ public async Task QueryIntelligenceAsync_ShouldReturnValidResponse_WhenValidQuer
     </div>
     
     <div class="col-md-4">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-cog"></i>
             </div>
             <h3>Yapılandırma</h3>
@@ -861,8 +863,8 @@ public async Task QueryIntelligenceAsync_ShouldReturnValidResponse_WhenValidQuer
     </div>
     
     <div class="col-md-4">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-history"></i>
             </div>
             <h3>Changelog</h3>
@@ -876,11 +878,11 @@ public async Task QueryIntelligenceAsync_ShouldReturnValidResponse_WhenValidQuer
 
 ---
 
-## v3.2.0 Yeni Özellik Örnekleri
+## Gelişmiş Özellikler Örnekleri
 
 ### Konuşma Yönetimi
 
-**v3.2.0'da Yeni**: `IConversationManagerService` ile özel konuşma yönetimi.
+`IConversationManagerService` ile özel konuşma yönetimi.
 
 ```csharp
 public class ChatController : ControllerBase
@@ -941,26 +943,27 @@ public class ChatController : ControllerBase
 
 ### Özel SQL Diyalekt Stratejisi
 
-**v3.2.0'da Yeni**: `ISqlDialectStrategy` ile özel veritabanı desteği ekleyin.
+`ISqlDialectStrategy` ile özel veritabanı desteği ekleyin.
 
 ```csharp
-// Özel Oracle diyalekt stratejisi
-public class OracleDialectStrategy : BaseSqlDialectStrategy
+// Gelişmiş PostgreSQL diyalekt stratejisi
+public class EnhancedPostgreSqlDialectStrategy : BaseSqlDialectStrategy
 {
-    public override DatabaseType DatabaseType => DatabaseType.Oracle;
+    public override DatabaseType DatabaseType => DatabaseType.PostgreSQL;
     
-    public override string GetDialectName() => "Oracle";
+    public override string GetDialectName() => "Gelişmiş PostgreSQL";
     
     public override string BuildSystemPrompt(DatabaseSchemaInfo schema, string userQuery)
     {
         var prompt = new StringBuilder();
-        prompt.AppendLine("Oracle SQL uzmanısınız. Oracle'a özgü SQL oluşturun.");
+        prompt.AppendLine("PostgreSQL SQL uzmanısınız. PostgreSQL'e özgü SQL oluşturun.");
         prompt.AppendLine($"Kullanıcı Sorgusu: {userQuery}");
         prompt.AppendLine($"Veritabanı Şeması: {JsonSerializer.Serialize(schema)}");
         prompt.AppendLine("Kurallar:");
-        prompt.AppendLine("- Oracle sözdizimi kullanın (LIMIT yerine FETCH FIRST)");
-        prompt.AppendLine("- Uygun olduğunda Oracle'a özgü fonksiyonlar kullanın");
-        prompt.AppendLine("- Sadece SQL sorgusunu döndürün, açıklama yok");
+        prompt.AppendLine("- PostgreSQL sözdizimi kullanın (sayfalama için LIMIT/OFFSET)");
+        prompt.AppendLine("- Uygun olduğunda PostgreSQL'e özgü fonksiyonlar kullanın (örn. ARRAY_AGG, JSON fonksiyonları)");
+        prompt.AppendLine("- Doğru PostgreSQL veri tiplerini kullanın");
+        prompt.AppendLine("- Sadece SQL sorgusunu döndürün, açıklama yapmayın");
         
         return prompt.ToString();
     }
@@ -969,16 +972,16 @@ public class OracleDialectStrategy : BaseSqlDialectStrategy
     {
         errorMessage = null;
         
-        // Oracle'a özgü doğrulama
-        if (sql.Contains("LIMIT", StringComparison.OrdinalIgnoreCase))
+        // PostgreSQL'e özgü doğrulama
+        if (sql.Contains("TOP", StringComparison.OrdinalIgnoreCase))
         {
-            errorMessage = "Oracle LIMIT değil FETCH FIRST kullanır";
+            errorMessage = "PostgreSQL TOP değil LIMIT kullanır";
             return false;
         }
         
-        if (sql.Contains("TOP", StringComparison.OrdinalIgnoreCase))
+        if (sql.Contains("FETCH FIRST", StringComparison.OrdinalIgnoreCase))
         {
-            errorMessage = "Oracle TOP değil FETCH FIRST kullanır";
+            errorMessage = "PostgreSQL FETCH FIRST değil LIMIT kullanır";
             return false;
         }
         
@@ -987,23 +990,23 @@ public class OracleDialectStrategy : BaseSqlDialectStrategy
     
     public override string FormatSql(string sql)
     {
-        // Oracle büyük harf anahtar kelimeleri tercih eder
-        return sql.ToUpper();
+        // PostgreSQL'e özgü biçimlendirme (opsiyonel)
+        return sql;
     }
     
     public override string GetLimitClause(int limit)
     {
-        return $"FETCH FIRST {limit} ROWS ONLY";
+        return $"LIMIT {limit}";
     }
 }
 
 // DI'a kaydet
-services.AddSingleton<ISqlDialectStrategy, OracleDialectStrategy>();
+services.AddSingleton<ISqlDialectStrategy, EnhancedPostgreSqlDialectStrategy>();
 ```
 
 ### Özel Skorlama Stratejisi
 
-**v3.2.0'da Yeni**: `IScoringStrategy` ile özel ilgililik skorlaması uygulayın.
+`IScoringStrategy` ile özel ilgililik skorlaması uygulayın.
 
 ```csharp
 // Sadece semantik skorlama (%100 embedding tabanlı)
@@ -1048,7 +1051,7 @@ services.AddSingleton<IScoringStrategy, SemanticOnlyScoringStrategy>();
 
 ### Özel Dosya Ayrıştırıcı
 
-**v3.2.0'da Yeni**: `IFileParser` ile özel dosya formatları için destek ekleyin.
+`IFileParser` ile özel dosya formatları için destek ekleyin.
 
 ```csharp
 // Markdown dosya ayrıştırıcı

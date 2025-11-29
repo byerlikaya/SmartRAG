@@ -7,11 +7,11 @@ lang: en
 
 ## AI Provider Configuration
 
-SmartRAG supports various AI providers:
-
----
+<p>SmartRAG supports various AI providers:</p>
 
 ## OpenAI
+
+<p>OpenAI provides advanced language models and embeddings for production-ready applications:</p>
 
 ```json
 {
@@ -42,8 +42,6 @@ builder.Services.AddSmartRag(configuration, options =>
 - `gpt-4o-mini` - Cost-effective and fast
 - `text-embedding-3-small`, `text-embedding-3-large` - Embeddings (recommended)
 - `text-embedding-ada-002` - Legacy embeddings
-
----
 
 ## Anthropic (Claude)
 
@@ -85,17 +83,15 @@ builder.Services.AddSmartRag(configuration, options =>
 - `claude-3.5-sonnet` - Previous generation
 - `claude-3-opus-20240229` - Highest capability
 - `claude-3-haiku-20240307` - Fastest
-- `claude-3-opus-20240229` - Highest capability
-- `claude-3-haiku-20240307` - Fastest
 
 **VoyageAI Embedding Models:**
 - `voyage-3.5` - High quality (recommended)
 - `voyage-code-2` - Optimized for code
 - `voyage-2` - General purpose
 
----
-
 ## Google Gemini
+
+<p>Google Gemini offers cost-effective AI models with multimodal capabilities:</p>
 
 ```json
 {
@@ -125,9 +121,9 @@ builder.Services.AddSmartRag(configuration, options =>
 - `gemini-1.5-pro` - Legacy advanced model
 - `embedding-001` - Text embeddings
 
----
-
 ## Azure OpenAI
+
+<p>Azure OpenAI provides enterprise-grade AI services with enhanced security and compliance:</p>
 
 ```json
 {
@@ -151,8 +147,6 @@ builder.Services.AddSmartRag(configuration, options =>
     options.AIProvider = AIProvider.AzureOpenAI;
 });
 ```
-
----
 
 ## Custom Provider (Ollama / LM Studio)
 
@@ -206,26 +200,61 @@ builder.Services.AddSmartRag(configuration, options =>
 - 🌐 Together AI - Open source models
 - Any OpenAI-compatible API
 
----
-
 ## Provider Comparison
 
-| Provider | Strengths | Weaknesses | Best Use Case |
-|----------|-----------|------------|---------------|
-| **OpenAI** | Advanced models, reliable | Expensive, data privacy concerns | Production, critical applications |
-| **Anthropic** | Security-focused, quality output | VoyageAI required, limited access | Security-critical applications |
-| **Google Gemini** | Cost-effective, multimodal | Limited production support | Prototyping, development |
-| **Azure OpenAI** | Enterprise security, SLA | Complex setup | Enterprise applications |
-| **Ollama/LM Studio** | 100% on-premise, free | Performance limitations | Data privacy critical |
+<p>Compare AI providers to choose the best option for your use case:</p>
 
----
+<div class="table-responsive">
+<table class="table">
+<thead>
+<tr>
+<th>Provider</th>
+<th>Strengths</th>
+<th>Weaknesses</th>
+<th>Best Use Case</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>OpenAI</strong></td>
+<td>Advanced models, reliable</td>
+<td>Expensive, data privacy concerns</td>
+<td>Production, critical applications</td>
+</tr>
+<tr>
+<td><strong>Anthropic</strong></td>
+<td>Security-focused, quality output</td>
+<td>VoyageAI required, limited access</td>
+<td>Security-critical applications</td>
+</tr>
+<tr>
+<td><strong>Google Gemini</strong></td>
+<td>Cost-effective, multimodal</td>
+<td>Limited production support</td>
+<td>Prototyping, development</td>
+</tr>
+<tr>
+<td><strong>Azure OpenAI</strong></td>
+<td>Enterprise security, SLA</td>
+<td>Complex setup</td>
+<td>Enterprise applications</td>
+</tr>
+<tr>
+<td><strong>Ollama/LM Studio</strong></td>
+<td>100% on-premise, free</td>
+<td>Performance limitations</td>
+<td>Data privacy critical</td>
+</tr>
+</tbody>
+</table>
+</div>
 
 ## Next Steps
 
 <div class="row g-4 mt-4">
     <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-database"></i>
             </div>
             <h3>Storage Providers</h3>
@@ -237,8 +266,8 @@ builder.Services.AddSmartRag(configuration, options =>
     </div>
     
     <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-server"></i>
             </div>
             <h3>Database Configuration</h3>

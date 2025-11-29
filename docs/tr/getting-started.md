@@ -32,8 +32,6 @@ SmartRAG bir NuGet paketi olarak mevcuttur ve **.NET Standard 2.1** destekler, b
 <pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="3.3.0" /&gt;</code></pre>
 </div>
 
----
-
 ## Temel Yapılandırma
 
 SmartRAG'i `Program.cs` veya `Startup.cs` dosyanızda yapılandırın:
@@ -95,8 +93,6 @@ builder.Services.AddSmartRag(builder.Configuration, options =>
 var app = builder.Build();
 app.Run();
 ```
-
----
 
 ## Yapılandırma Dosyası
 
@@ -192,8 +188,6 @@ app.Run();
     </p>
 </div>
 
----
-
 ## Hızlı Kullanım Örneği
 
 ### 1. Doküman Yükleme
@@ -284,8 +278,6 @@ public class QuestionRequest
 }
 ```
 
----
-
 ## Konuşma Geçmişi
 
 SmartRAG otomatik olarak konuşma geçmişini yönetir:
@@ -312,14 +304,12 @@ var newConv = await _searchService.QueryIntelligenceAsync(
     </p>
 </div>
 
----
-
 ## Sonraki Adımlar
 
 <div class="row g-4 mt-4">
     <div class="col-md-6">
-        <div class="feature-card">
-            <div class="feature-icon">
+        <div class="card card-accent">
+            <div class="icon icon-lg icon-gradient">
                 <i class="fas fa-cog"></i>
             </div>
             <h3>Yapılandırma</h3>
@@ -331,8 +321,8 @@ var newConv = await _searchService.QueryIntelligenceAsync(
     </div>
     
     <div class="col-md-6">
-        <div class="feature-card">
-            <div class="feature-icon">
+        <div class="card card-accent">
+            <div class="icon icon-lg icon-gradient">
                 <i class="fas fa-code"></i>
             </div>
             <h3>API Referans</h3>
@@ -344,8 +334,8 @@ var newConv = await _searchService.QueryIntelligenceAsync(
     </div>
     
     <div class="col-md-6">
-        <div class="feature-card">
-            <div class="feature-icon">
+        <div class="card card-accent">
+            <div class="icon icon-lg icon-gradient">
                 <i class="fas fa-lightbulb"></i>
             </div>
             <h3>Örnekler</h3>
@@ -357,8 +347,8 @@ var newConv = await _searchService.QueryIntelligenceAsync(
     </div>
     
     <div class="col-md-6">
-        <div class="feature-card">
-            <div class="feature-icon">
+        <div class="card card-accent">
+            <div class="icon icon-lg icon-gradient">
                 <i class="fas fa-history"></i>
             </div>
             <h3>Değişiklikler</h3>
@@ -369,8 +359,6 @@ var newConv = await _searchService.QueryIntelligenceAsync(
         </div>
     </div>
 </div>
-
----
 
 ## Yardıma İhtiyacınız Var mı?
 

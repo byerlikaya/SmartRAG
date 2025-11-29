@@ -9,9 +9,9 @@ lang: en
 
 SmartRAG can perform intelligent cross-database queries with multi-database support:
 
----
-
 ## Multi-Database Connections
+
+<p>Configure multiple database connections to enable cross-database queries:</p>
 
 Configure databases in `appsettings.json`:
 
@@ -39,8 +39,6 @@ Configure databases in `appsettings.json`:
 }
 ```
 
----
-
 ## DatabaseConnectionConfig Parameters
 
 | Parameter | Type | Default | Description |
@@ -56,9 +54,9 @@ Configure databases in `appsettings.json`:
 | `IncludedTables` | `string[]` | `[]` | Specific tables to include (empty = all tables) |
 | `ExcludedTables` | `string[]` | `[]` | Tables to exclude from analysis |
 
----
-
 ## Supported Databases
+
+<p>SmartRAG supports the following database types:</p>
 
 ### SQL Server
 
@@ -116,8 +114,6 @@ Configure databases in `appsettings.json`:
 }
 ```
 
----
-
 ## Security and Sensitive Data Sanitization
 
 SmartRAG automatically detects and sanitizes sensitive data types:
@@ -140,8 +136,6 @@ new DatabaseConnectionConfig
     SanitizeSensitiveData = false  // Use with caution!
 }
 ```
-
----
 
 ## Schema Analysis and Refresh
 
@@ -188,29 +182,6 @@ new DatabaseConnectionConfig
 }
 ```
 
----
-
-## Cross-Database Query Examples
-
-SmartRAG can perform intelligent queries across multiple databases:
-
-### Example 1: Sales and Inventory Analysis
-```
-"What products ran out of stock in the last 3 months and how did they perform in sales?"
-```
-
-### Example 2: Customer and Order Analysis
-```
-"What are the demographic details of customers who place the most orders?"
-```
-
-### Example 3: Financial Reporting
-```
-"Generate this month's revenue report from accounting and sales databases"
-```
-
----
-
 ## Performance Optimization
 
 ### Table Filtering
@@ -240,8 +211,6 @@ new DatabaseConnectionConfig
 }
 ```
 
----
-
 ## Error Handling
 
 ```csharp
@@ -257,14 +226,12 @@ catch (Exception ex)
 }
 ```
 
----
-
 ## Next Steps
 
 <div class="row g-4 mt-4">
     <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-microphone"></i>
             </div>
             <h3>Audio & OCR</h3>
@@ -276,8 +243,8 @@ catch (Exception ex)
     </div>
     
     <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-cogs"></i>
             </div>
             <h3>Advanced Configuration</h3>

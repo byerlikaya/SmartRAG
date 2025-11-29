@@ -7,9 +7,7 @@ lang: en
 
 ## Advanced Configuration
 
-Use SmartRAG's advanced features to create more reliable and performant systems:
-
----
+<p>Use SmartRAG's advanced features to create more reliable and performant systems:</p>
 
 ## Fallback Providers
 
@@ -47,20 +45,25 @@ options.FallbackProviders = new List<AIProvider>
     AIProvider.Gemini
 };
 
-// Scenario 2: Cloud → On-premise
+// Scenario 2: Azure OpenAI → OpenAI → Anthropic
+options.FallbackProviders = new List<AIProvider>
+{
+    AIProvider.OpenAI,
+    AIProvider.Anthropic
+};
+
+// Scenario 3: Cloud → On-premise
 options.FallbackProviders = new List<AIProvider>
 {
     AIProvider.Custom  // Ollama/LM Studio
 };
 
-// Scenario 3: Premium → Budget
+// Scenario 4: Premium → Budget
 options.FallbackProviders = new List<AIProvider>
 {
     AIProvider.Gemini  // More cost-effective
 };
 ```
-
----
 
 ## Retry Policies
 
@@ -97,8 +100,6 @@ options.RetryDelayMs = 1000;
 options.RetryPolicy = RetryPolicy.FixedDelay;
 ```
 
----
-
 ## Performance Optimization
 
 ### Chunk Size Optimization
@@ -128,15 +129,13 @@ options.StorageProvider = StorageProvider.Qdrant;
 options.ConversationStorageProvider = ConversationStorageProvider.Redis;
 
 // Scenario 2: Cost optimization
-options.StorageProvider = StorageProvider.SQLite;
+options.StorageProvider = StorageProvider.Redis;
 options.ConversationStorageProvider = ConversationStorageProvider.InMemory;
 
 // Scenario 3: Hybrid approach
 options.StorageProvider = StorageProvider.Redis;
 options.ConversationStorageProvider = ConversationStorageProvider.SQLite;
 ```
-
----
 
 ## Security Configuration
 
@@ -160,24 +159,29 @@ builder.Services.AddSmartRag(configuration, options =>
 }
 ```
 
-### Sensitive Data Sanitization
+### Database Connection Configuration
 
 ```csharp
-// Sensitive data sanitization for databases
+// Database connection configuration
 options.DatabaseConnections = new List<DatabaseConnectionConfig>
 {
     new DatabaseConnectionConfig
     {
         Name = "Secure Database",
-        Type = DatabaseType.SqlServer,
+        DatabaseType = DatabaseType.SqlServer,
         ConnectionString = "Server=localhost;Database=SecureDB;...",
-        SanitizeSensitiveData = true,  // Sanitize SSN, credit card, etc.
-        MaxRowsPerTable = 1000
+        Description = "Production database with sensitive data",
+        Enabled = true,
+        MaxRowsPerQuery = 1000,
+        QueryTimeoutSeconds = 30,
+        SchemaRefreshIntervalMinutes = 60,
+        IncludedTables = new string[] { "Orders", "Customers" },
+        ExcludedTables = new string[] { "Logs", "TempData" }
     }
 };
 ```
 
----
+**Note:** `SanitizeSensitiveData` and `MaxRowsPerTable` are configured in `DatabaseConfig`, not in `DatabaseConnectionConfig`. These settings apply globally to all database connections.
 
 ## Monitoring and Logging
 
@@ -212,8 +216,6 @@ public class SmartRagMetrics
 }
 ```
 
----
-
 ## Best Practices
 
 ### Security
@@ -223,7 +225,7 @@ public class SmartRagMetrics
     <ul class="mb-0">
         <li>Never commit API keys to source control</li>
         <li>Use environment variables for production</li>
-        <li>Enable SanitizeSensitiveData for databases</li>
+        <li>Configure database connections securely</li>
         <li>Use HTTPS for external services</li>
         <li>Prefer on-premise AI providers for sensitive data</li>
     </ul>
@@ -237,7 +239,7 @@ public class SmartRagMetrics
         <li>Use Qdrant or Redis for production</li>
         <li>Configure appropriate chunk sizes</li>
         <li>Enable fallback providers for reliability</li>
-        <li>Set reasonable MaxRowsPerTable limits</li>
+        <li>Set reasonable MaxRowsPerQuery limits for database connections</li>
         <li>Use ExponentialBackoff retry policy</li>
     </ul>
 </div>
@@ -248,26 +250,24 @@ public class SmartRagMetrics
     <h4><i class="fas fa-dollar-sign me-2"></i> Cost Optimization</h4>
     <ul class="mb-0">
         <li>Use Gemini or Custom providers for development</li>
-        <li>Prefer OpenAI or Anthropic for production</li>
+        <li>Prefer OpenAI, Azure OpenAI, or Anthropic for production</li>
         <li>Use InMemory storage only for testing</li>
-        <li>SQLite is ideal for small-scale applications</li>
+        <li>Use Redis for cost-effective production storage</li>
         <li>Ollama/LM Studio for 100% on-premise solutions</li>
     </ul>
 </div>
 
----
-
 ## Custom Strategies
 
-SmartRAG v3.2.0 introduces the Strategy Pattern for key components, allowing you to inject custom logic.
+SmartRAG provides the Strategy Pattern for key components, allowing you to inject custom logic.
 
 ### Registering Custom Strategies
 
 You can implement your own strategies by implementing the corresponding interfaces. Here are examples of how you would register them:
 
 ```csharp
-// Example: Registering a custom SQL Dialect (e.g., if you implemented OracleDialectStrategy)
-services.AddSingleton<ISqlDialectStrategy, OracleDialectStrategy>();
+// Example: Registering a custom SQL Dialect (e.g., if you implemented EnhancedPostgreSqlDialectStrategy)
+services.AddSingleton<ISqlDialectStrategy, EnhancedPostgreSqlDialectStrategy>();
 
 // Example: Registering a custom Scoring Strategy
 services.AddSingleton<IScoringStrategy, CustomScoringStrategy>();
@@ -275,8 +275,6 @@ services.AddSingleton<IScoringStrategy, CustomScoringStrategy>();
 // Example: Registering a custom File Parser (e.g., for Markdown files)
 services.AddSingleton<IFileParser, MarkdownFileParser>();
 ```
-
----
 
 ## Example Configurations
 
@@ -302,7 +300,8 @@ builder.Services.AddSmartRag(configuration, options =>
 {
     // Reliable configuration for testing
     options.AIProvider = AIProvider.OpenAI;
-    options.StorageProvider = StorageProvider.SQLite;
+    options.StorageProvider = StorageProvider.Redis;
+    options.ConversationStorageProvider = ConversationStorageProvider.SQLite;
     options.MaxChunkSize = 1000;
     options.ChunkOverlap = 200;
     options.MaxRetryAttempts = 3;
@@ -328,33 +327,35 @@ builder.Services.AddSmartRag(configuration, options =>
     options.EnableFallbackProviders = true;
     options.FallbackProviders = new List<AIProvider> 
     { 
-        AIProvider.Anthropic, 
-        AIProvider.Custom 
+        AIProvider.AzureOpenAI,  // First fallback (Azure)
+        AIProvider.Anthropic,    // Second fallback
+        AIProvider.Custom        // Last fallback (Ollama)
     };
     
-    // Database security
+    // Database configuration
     options.DatabaseConnections = new List<DatabaseConnectionConfig>
     {
         new DatabaseConnectionConfig
         {
             Name = "Production DB",
-            Type = DatabaseType.SqlServer,
+            DatabaseType = DatabaseType.SqlServer,
             ConnectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING"),
-            SanitizeSensitiveData = true,
-            MaxRowsPerTable = 5000
+            Description = "Production database",
+            Enabled = true,
+            MaxRowsPerQuery = 5000,
+            QueryTimeoutSeconds = 30,
+            SchemaRefreshIntervalMinutes = 60
         }
     };
 });
 ```
 
----
-
 ## Next Steps
 
 <div class="row g-4 mt-4">
     <div class="col-md-4">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-rocket"></i>
             </div>
             <h3>Getting Started</h3>
@@ -366,8 +367,8 @@ builder.Services.AddSmartRag(configuration, options =>
     </div>
     
     <div class="col-md-4">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-code"></i>
             </div>
             <h3>Examples</h3>
@@ -379,8 +380,8 @@ builder.Services.AddSmartRag(configuration, options =>
     </div>
     
     <div class="col-md-4">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-book"></i>
             </div>
             <h3>API Reference</h3>

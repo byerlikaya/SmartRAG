@@ -9,9 +9,9 @@ lang: tr
 
 SmartRAG ses dosyalarını metne çevirme ve görsellerden metin çıkarma yetenekleri sunar:
 
----
-
 ## Whisper.net (Yerel Ses Transkripsiyonu)
+
+Whisper.net, 99+ dil desteğiyle yerel, on-premise ses transkripsiyonu sağlar:
 
 ### WhisperConfig Parametreleri
 
@@ -36,15 +36,36 @@ SmartRAG ses dosyalarını metne çevirme ve görsellerden metin çıkarma yeten
 
 ### Model İndirme
 
-Modeller ilk kullanımda otomatik olarak indirilir. Manuel olarak da indirebilirsiniz:
+Whisper.net, ilk kullanımda Hugging Face'den GGML modellerini otomatik olarak indirir. Modeller `ModelPath` yapılandırmasında belirtilen yola kaydedilir:
 
-```bash
-# Belirli modeli indir
-ollama pull whisper-large-v3
+**Otomatik İndirme:**
+- Modeller ilk kullanıldığında `WhisperGgmlDownloader` aracılığıyla otomatik indirilir
+- Hugging Face deposundan indirilir
+- `ModelPath` içinde belirtilen yola kaydedilir (varsayılan: `models/ggml-large-v3.bin`)
+- Manuel indirme gerekmez
 
-# Veya Whisper.net'i doğrudan kullan
-# Modeller ~/.cache/whisper/ dizininde önbelleğe alınır
+**Model Dosyaları:**
+- Format: `ggml-{model-adı}.bin` (örn., `ggml-base.bin`, `ggml-large-v3.bin`)
+- Mevcut modeller: `tiny`, `base`, `small`, `medium`, `large-v3`
+- İlk kullanımda model otomatik indirilir (~5-10 dakika, bağlantı ve model boyutuna bağlı)
+
+**Yapılandırma:**
+```json
+{
+  "SmartRAG": {
+    "WhisperConfig": {
+      "ModelPath": "models/ggml-large-v3.bin"
+    }
+  }
+}
 ```
+
+**Önemli Notlar:**
+- Whisper.net kendi GGML model formatını ve indirme sistemini kullanır
+- Bu, Ollama, LM Studio veya cloud servislerinden **bağımsızdır**
+- Modeller `ModelPath` konumunda yerel olarak saklanır
+- On-premise dağıtımlar için, uygulamanın model dizinine yazma erişimi olduğundan emin olun
+- Cloud dağıtımlar için, modelleri önceden indirmeyi veya kalıcı depolama birimleri kullanmayı düşünün
 
 ### Yapılandırma Örneği
 
@@ -116,9 +137,9 @@ var response = await _aiService.AskAsync(
     </p>
 </div>
 
----
-
 ## OCR Yapılandırması
+
+Tesseract OCR, 100+ dil desteğiyle görsellerden ve PDF'lerden metin çıkarma sağlar:
 
 ### Tesseract Dil Desteği
 
@@ -187,8 +208,6 @@ var info = await _aiService.AskAsync(
 );
 ```
 
----
-
 ## OCR Yetenekleri
 
 <div class="alert alert-info">
@@ -234,20 +253,53 @@ var info = await _aiService.AskAsync(
 3. **Doğru Dil:** Görüntüdeki metnin dilini doğru belirtin
 4. **Kontrast:** Yüksek kontrastlı, siyah-beyaz görüntüler tercih edin
 
----
-
 ## Ses ve OCR Karşılaştırması
 
-| Özellik | Whisper.net | Tesseract OCR |
-|---------|-------------|---------------|
-| **Veri Gizliliği** | ✅ %100 On-premise | ✅ %100 On-premise |
-| **Doğruluk** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
-| **Dil Desteği** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
-| **Kurulum** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **Maliyet** | 🆓 Ücretsiz | 🆓 Ücretsiz |
-| **Performans** | ⭐⭐⭐⭐ | ⭐⭐⭐ |
+<p>Whisper.net ve Tesseract OCR yeteneklerini karşılaştırın:</p>
 
----
+<div class="table-responsive">
+<table class="table">
+<thead>
+<tr>
+<th>Özellik</th>
+<th>Whisper.net</th>
+<th>Tesseract OCR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Veri Gizliliği</strong></td>
+<td><span class="badge bg-success">%100 On-premise</span></td>
+<td><span class="badge bg-success">%100 On-premise</span></td>
+</tr>
+<tr>
+<td><strong>Doğruluk</strong></td>
+<td>⭐⭐⭐⭐⭐</td>
+<td>⭐⭐⭐⭐</td>
+</tr>
+<tr>
+<td><strong>Dil Desteği</strong></td>
+<td>⭐⭐⭐⭐⭐ (99+ dil)</td>
+<td>⭐⭐⭐⭐ (100+ dil)</td>
+</tr>
+<tr>
+<td><strong>Kurulum</strong></td>
+<td>⭐⭐⭐⭐</td>
+<td>⭐⭐⭐⭐⭐</td>
+</tr>
+<tr>
+<td><strong>Maliyet</strong></td>
+<td><span class="badge bg-secondary">Ücretsiz</span></td>
+<td><span class="badge bg-secondary">Ücretsiz</span></td>
+</tr>
+<tr>
+<td><strong>Performans</strong></td>
+<td>⭐⭐⭐⭐</td>
+<td>⭐⭐⭐</td>
+</tr>
+</tbody>
+</table>
+</div>
 
 ## Güvenlik ve Gizlilik
 
@@ -278,14 +330,12 @@ var document = await _documentService.UploadDocumentAsync(
 );
 ```
 
----
-
 ## Sonraki Adımlar
 
 <div class="row g-4 mt-4">
     <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-cogs"></i>
             </div>
             <h3>Gelişmiş Yapılandırma</h3>
@@ -297,8 +347,8 @@ var document = await _documentService.UploadDocumentAsync(
     </div>
     
     <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-code"></i>
             </div>
             <h3>Örnekler</h3>

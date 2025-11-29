@@ -3,10 +3,12 @@ layout: default
 title: Examples
 description: Practical code examples and real-world use cases for SmartRAG
 lang: en
+redirect_from: /en/examples.html
 ---
 
-
-## Quick Examples
+<script>
+    window.location.href = "{{ site.baseurl }}/en/examples/";
+</script>
 
 ### 1. Simple Document Search
 
@@ -864,8 +866,8 @@ public class DocumentServiceTests
 
 <div class="row g-4 mt-4">
     <div class="col-md-4">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-rocket"></i>
                     </div>
             <h3>Getting Started</h3>
@@ -877,8 +879,8 @@ public class DocumentServiceTests
             </div>
     
     <div class="col-md-4">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-cog"></i>
             </div>
             <h3>Configuration</h3>
@@ -890,8 +892,8 @@ public class DocumentServiceTests
                 </div>
     
     <div class="col-md-4">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-history"></i>
             </div>
             <h3>Changelog</h3>
@@ -905,11 +907,11 @@ public class DocumentServiceTests
 
 ---
 
-## v3.2.0 New Features Examples
+## Advanced Features Examples
 
 ### Conversation Management
 
-**New in v3.2.0**: Dedicated conversation management with `IConversationManagerService`.
+Dedicated conversation management with `IConversationManagerService`.
 
 ```csharp
 public class ChatController : ControllerBase
@@ -970,25 +972,26 @@ public class ChatController : ControllerBase
 
 ### Custom SQL Dialect Strategy
 
-**New in v3.2.0**: Add support for custom databases with `ISqlDialectStrategy`.
+Add support for custom database dialects with `ISqlDialectStrategy`. SmartRAG supports SQLite, SQL Server, MySQL, and PostgreSQL out of the box. You can extend these or create custom variants.
 
 ```csharp
-// Custom Oracle dialect strategy
-public class OracleDialectStrategy : BaseSqlDialectStrategy
+// Custom PostgreSQL dialect strategy with enhanced validation
+public class EnhancedPostgreSqlDialectStrategy : BaseSqlDialectStrategy
 {
-    public override DatabaseType DatabaseType => DatabaseType.Oracle;
+    public override DatabaseType DatabaseType => DatabaseType.PostgreSQL;
     
-    public override string GetDialectName() => "Oracle";
+    public override string GetDialectName() => "Enhanced PostgreSQL";
     
     public override string BuildSystemPrompt(DatabaseSchemaInfo schema, string userQuery)
     {
         var prompt = new StringBuilder();
-        prompt.AppendLine("You are an Oracle SQL expert. Generate Oracle-specific SQL.");
+        prompt.AppendLine("You are a PostgreSQL SQL expert. Generate PostgreSQL-specific SQL.");
         prompt.AppendLine($"User Query: {userQuery}");
         prompt.AppendLine($"Database Schema: {JsonSerializer.Serialize(schema)}");
         prompt.AppendLine("Rules:");
-        prompt.AppendLine("- Use Oracle syntax (FETCH FIRST instead of LIMIT)");
-        prompt.AppendLine("- Use Oracle-specific functions when appropriate");
+        prompt.AppendLine("- Use PostgreSQL syntax (LIMIT/OFFSET for pagination)");
+        prompt.AppendLine("- Use PostgreSQL-specific functions when appropriate (e.g., ARRAY_AGG, JSON functions)");
+        prompt.AppendLine("- Use proper PostgreSQL data types");
         prompt.AppendLine("- Return only the SQL query, no explanations");
         
         return prompt.ToString();
@@ -998,16 +1001,16 @@ public class OracleDialectStrategy : BaseSqlDialectStrategy
     {
         errorMessage = null;
         
-        // Oracle-specific validation
-        if (sql.Contains("LIMIT", StringComparison.OrdinalIgnoreCase))
+        // PostgreSQL-specific validation
+        if (sql.Contains("TOP", StringComparison.OrdinalIgnoreCase))
         {
-            errorMessage = "Oracle uses FETCH FIRST, not LIMIT";
+            errorMessage = "PostgreSQL uses LIMIT, not TOP";
             return false;
         }
         
-        if (sql.Contains("TOP", StringComparison.OrdinalIgnoreCase))
+        if (sql.Contains("FETCH FIRST", StringComparison.OrdinalIgnoreCase))
         {
-            errorMessage = "Oracle uses FETCH FIRST, not TOP";
+            errorMessage = "PostgreSQL uses LIMIT, not FETCH FIRST";
             return false;
         }
         
@@ -1016,23 +1019,23 @@ public class OracleDialectStrategy : BaseSqlDialectStrategy
     
     public override string FormatSql(string sql)
     {
-        // Oracle prefers uppercase keywords
-        return sql.ToUpper();
+        // PostgreSQL-specific formatting (optional)
+        return sql;
     }
     
     public override string GetLimitClause(int limit)
     {
-        return $"FETCH FIRST {limit} ROWS ONLY";
+        return $"LIMIT {limit}";
     }
 }
 
 // Register in DI
-services.AddSingleton<ISqlDialectStrategy, OracleDialectStrategy>();
+services.AddSingleton<ISqlDialectStrategy, EnhancedPostgreSqlDialectStrategy>();
 ```
 
 ### Custom Scoring Strategy
 
-**New in v3.2.0**: Implement custom relevance scoring with `IScoringStrategy`.
+Implement custom relevance scoring with `IScoringStrategy`.
 
 ```csharp
 // Semantic-only scoring (100% embedding-based)
@@ -1077,7 +1080,7 @@ services.AddSingleton<IScoringStrategy, SemanticOnlyScoringStrategy>();
 
 ### Custom File Parser
 
-**New in v3.2.0**: Add support for custom file formats with `IFileParser`.
+Add support for custom file formats with `IFileParser`.
 
 ```csharp
 // Markdown file parser

@@ -10,9 +10,9 @@ lang: en
 SmartRAG configuration is organized into the following categories:
 
 <div class="row g-4 mt-4">
-    <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+    <div class="col-md-4">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-cog"></i>
             </div>
             <h3>Basic Configuration</h3>
@@ -23,9 +23,9 @@ SmartRAG configuration is organized into the following categories:
         </div>
     </div>
     
-    <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+    <div class="col-md-4">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-brain"></i>
             </div>
             <h3>AI Providers</h3>
@@ -36,22 +36,22 @@ SmartRAG configuration is organized into the following categories:
         </div>
     </div>
     
-    <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+    <div class="col-md-4">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-database"></i>
             </div>
             <h3>Storage Providers</h3>
-            <p>Qdrant, Redis, SQLite, FileSystem and InMemory storage options</p>
+            <p>Qdrant, Redis and InMemory storage options</p>
             <a href="{{ site.baseurl }}/en/configuration/storage" class="btn btn-outline-primary btn-sm mt-3">
                 Storage Providers
             </a>
         </div>
     </div>
     
-    <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+    <div class="col-md-4">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-server"></i>
             </div>
             <h3>Database Configuration</h3>
@@ -62,9 +62,9 @@ SmartRAG configuration is organized into the following categories:
         </div>
     </div>
     
-    <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+    <div class="col-md-4">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-microphone"></i>
             </div>
             <h3>Audio & OCR</h3>
@@ -75,9 +75,9 @@ SmartRAG configuration is organized into the following categories:
         </div>
     </div>
     
-    <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+    <div class="col-md-4">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-cogs"></i>
             </div>
             <h3>Advanced Configuration</h3>
@@ -89,36 +89,74 @@ SmartRAG configuration is organized into the following categories:
     </div>
 </div>
 
-## Quick Start
+## Basic Configuration
 
-### Simple Configuration
+<p>Configure SmartRAG in your <code>Program.cs</code> or <code>Startup.cs</code>:</p>
+
+### Quick Setup (Recommended)
 
 ```csharp
-builder.Services.UseSmartRag(configuration,
-    storageProvider: StorageProvider.InMemory,
-    aiProvider: AIProvider.Gemini
+using SmartRAG.Extensions;
+using SmartRAG.Enums;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Simple one-line configuration
+builder.Services.UseSmartRag(builder.Configuration,
+    storageProvider: StorageProvider.InMemory,  // Start with in-memory
+    aiProvider: AIProvider.Gemini               // Choose your AI provider
 );
+
+var app = builder.Build();
+app.Run();
 ```
 
-### Advanced Configuration
+### Advanced Setup
 
 ```csharp
-builder.Services.AddSmartRag(configuration, options =>
+using SmartRAG.Extensions;
+using SmartRAG.Enums;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Advanced configuration with options
+builder.Services.AddSmartRag(builder.Configuration, options =>
 {
+    // AI Provider
     options.AIProvider = AIProvider.OpenAI;
+    
+    // Storage Provider
     options.StorageProvider = StorageProvider.Qdrant;
+    
+    // Chunking Configuration
     options.MaxChunkSize = 1000;
+    options.MinChunkSize = 100;
     options.ChunkOverlap = 200;
+    
+    // Retry Configuration
     options.MaxRetryAttempts = 3;
+    options.RetryDelayMs = 1000;
+    options.RetryPolicy = RetryPolicy.ExponentialBackoff;
+    
+    // Fallback Providers
+    options.EnableFallbackProviders = true;
+    options.FallbackProviders = new List<AIProvider> 
+    { 
+        AIProvider.Anthropic, 
+        AIProvider.Gemini 
+    };
 });
+
+var app = builder.Build();
+app.Run();
 ```
 
 ## Next Steps
 
 <div class="row g-4 mt-4">
     <div class="col-md-4">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-rocket"></i>
             </div>
             <h3>Getting Started</h3>
@@ -130,8 +168,8 @@ builder.Services.AddSmartRag(configuration, options =>
     </div>
     
     <div class="col-md-4">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-code"></i>
             </div>
             <h3>Examples</h3>
@@ -143,8 +181,8 @@ builder.Services.AddSmartRag(configuration, options =>
     </div>
     
     <div class="col-md-4">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-book"></i>
             </div>
             <h3>API Reference</h3>

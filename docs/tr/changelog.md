@@ -3,12 +3,14 @@ layout: default
 title: Değişiklikler
 description: SmartRAG için eksiksiz versiyon geçmişi, breaking change'ler ve taşınma kılavuzları
 lang: tr
+redirect_from: /tr/changelog.html
 ---
 
+<script>
+    window.location.href = "{{ site.baseurl }}/tr/changelog/";
+</script>
 
-SmartRAG'deki tüm önemli değişiklikler burada belgelenmiştir. Proje [Anlamsal Versiyonlama](https://semver.org/spec/v2.0.0.html)'ya uymaktadır.
-
----
+Bu sayfa taşındı. Lütfen [Değişiklikler Ana Sayfası]({{ site.baseurl }}/tr/changelog/)'nı ziyaret edin.
 
 ## [3.3.0] - 2025-11-28
 
@@ -172,7 +174,7 @@ SmartRAG'deki tüm önemli değişiklikler burada belgelenmiştir. Proje [Anlams
 
 #### **Yeni Özellikler: Özelleştirme Desteği**
 
-- **Özel SQL Diyalekt Stratejileri**: Özel veritabanı diyalektleri (örn. Oracle) uygulama desteği
+- **Özel SQL Diyalekt Stratejileri**: Özel veritabanı diyalektleri uygulama ve mevcut olanları genişletme desteği (SQLite, SQL Server, MySQL, PostgreSQL)
 - **Özel Skorlama Stratejileri**: Özel arama ilgililik mantığı uygulama desteği
 - **Özel Dosya Ayrıştırıcıları**: Özel dosya formatı ayrıştırıcıları uygulama desteği
 - **Özel Konuşma Yönetimi**: Konuşma geçmişini yönetmek için yeni servis
@@ -303,17 +305,19 @@ var history = await _conversationManager.GetConversationHistoryAsync(sessionId);
 
 **Özel SQL Diyalekt Stratejisi**:
 ```csharp
-// Örnek: Oracle desteği ekleme
-public class OracleDialectStrategy : BaseSqlDialectStrategy
+// Örnek: Özel doğrulama ile PostgreSQL desteğini genişletme
+public class EnhancedPostgreSqlDialectStrategy : BaseSqlDialectStrategy
 {
-    public override string GetDialectName() => "Oracle";
+    public override DatabaseType DatabaseType => DatabaseType.PostgreSQL;
     
-    public override string BuildSelectQuery(
+    public override string GetDialectName() => "Gelişmiş PostgreSQL";
+    
+    public override string BuildSystemPrompt(
         DatabaseSchemaInfo schema, 
-        List<string> tables, 
-        int maxRows)
+        string userQuery)
     {
-        // Oracle'a özgü SQL üretimi
+        // Gelişmiş PostgreSQL'e özgü SQL üretimi
+        return $"PostgreSQL SQL oluştur: {userQuery}\\nŞema: {schema}";
     }
 }
 ```
@@ -500,7 +504,7 @@ Google Speech-to-Text kullanıyorsanız:
 <div class="alert alert-warning">
     <h4><i class="fas fa-exclamation-triangle me-2"></i> BREAKING CHANGE'LER</h4>
     <p class="mb-0">Bu sürüm breaking API değişiklikleri içerir. Aşağıdaki taşınma kılavuzuna bakın.</p>
-                    </div>
+</div>
 
 ### 🚀 Zeka Kütüphanesi Devrimi
 
@@ -691,10 +695,10 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 
 ## [2.0.0] - 2025-08-27
 
-                    <div class="alert alert-warning">
+<div class="alert alert-warning">
     <h4><i class="fas fa-exclamation-triangle me-2"></i> BREAKING CHANGE</h4>
     <p class="mb-0">.NET 9.0'dan .NET Standard 2.1'e taşındı</p>
-                    </div>
+</div>
 
 ### 🔄 .NET Standard Taşınması
 - **Hedef Framework**: .NET 9.0'dan .NET Standard 2.1'e taşındı
@@ -852,7 +856,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
             </tr>
         </tbody>
     </table>
-                    </div>
+</div>
 
 ---
 
@@ -862,8 +866,8 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 
 <div class="alert alert-info">
     <h4><i class="fas fa-info-circle me-2"></i> Temel Değişiklikler</h4>
-    <p>Birincil değişiklik, <code>GenerateRagAnswerAsync</code>'in <code>QueryIntelligenceAsync</code> olarak yeniden adlandırılmasıdır.</p>
-                    </div>
+    <p class="mb-0">Birincil değişiklik, <code>GenerateRagAnswerAsync</code>'in <code>QueryIntelligenceAsync</code> olarak yeniden adlandırılmasıdır.</p>
+</div>
 
 **Adım 1: Metod çağrılarını güncelleyin**
 
@@ -877,8 +881,10 @@ var response = await _searchService.QueryIntelligenceAsync(query, maxResults);
 
 **Adım 2: API endpoint'lerini güncelleyin (Web API kullanıyorsanız)**
 
+Web API controller'ınız varsa, sadece service method çağrısını güncelleyin:
+
 ```csharp
-// Önce
+// Önce (v2.x)
 [HttpPost("generate-answer")]
 public async Task<IActionResult> GenerateAnswer([FromBody] QueryRequest request)
 {
@@ -886,13 +892,16 @@ public async Task<IActionResult> GenerateAnswer([FromBody] QueryRequest request)
     return Ok(response);
 }
 
-// Sonra
-[HttpPost("query")]
-public async Task<IActionResult> Query([FromBody] QueryRequest request)
+// Sonra (v3.0.0) - Sadece method adı değişti
+[HttpPost("generate-answer")]
+public async Task<IActionResult> GenerateAnswer([FromBody] QueryRequest request)
 {
     var response = await _searchService.QueryIntelligenceAsync(request.Query);
     return Ok(response);
 }
+```
+
+**Not:** Mevcut endpoint yollarınızı ve controller method adlarınızı koruyabilirsiniz. Sadece service method çağrısını güncellemeniz yeterlidir.
 ```
 
 <div class="alert alert-success">
@@ -956,8 +965,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 <div class="row g-4 mt-4">
     <div class="col-md-6">
-        <div class="feature-card">
-            <div class="feature-icon">
+        <div class="card card-accent">
+            <div class="icon icon-lg icon-gradient">
                 <i class="fas fa-rocket"></i>
                             </div>
             <h3>Başlangıç</h3>
@@ -969,8 +978,8 @@ using Microsoft.Extensions.DependencyInjection;
                     </div>
 
                         <div class="col-md-6">
-        <div class="feature-card">
-            <div class="feature-icon">
+        <div class="card card-accent">
+            <div class="icon icon-lg icon-gradient">
                 <i class="fab fa-github"></i>
                                 </div>
             <h3>GitHub Repository</h3>

@@ -3,12 +3,10 @@ layout: default
 title: API Reference
 description: Complete API documentation for SmartRAG interfaces, methods, and models
 lang: en
+redirect_from: /en/api-reference.html
 ---
 
-
-## Core Interfaces
-
-SmartRAG provides well-defined interfaces for all operations. Inject these interfaces via dependency injection.
+This page has been moved. Please visit the [API Reference Index]({{ site.baseurl }}/en/api-reference/).
 
 ---
 
@@ -145,25 +143,52 @@ Search documents semantically without generating an AI answer.
 ```csharp
 Task<List<DocumentChunk>> SearchDocumentsAsync(
     string query, 
-    int maxResults = 5
+    int maxResults = 5,
+    SearchOptions? options = null,
+    List<string>? queryTokens = null
 )
 ```
 
 **Parameters:**
 - `query` (string): Search query
 - `maxResults` (int): Maximum chunks to return (default: 5)
+- `options` (SearchOptions?, optional): Optional search options to override global configuration (default: null)
+- `queryTokens` (List<string>?, optional): Pre-computed query tokens for performance optimization (default: null)
 
 **Returns:** `List<DocumentChunk>` with relevant document chunks
 
 **Example:**
 
 ```csharp
+// Basic usage
 var chunks = await _searchService.SearchDocumentsAsync("machine learning", maxResults: 10);
 
 foreach (var chunk in chunks)
 {
     Console.WriteLine($"Score: {chunk.RelevanceScore}, Content: {chunk.Content}");
 }
+
+// With search options
+var options = new SearchOptions
+{
+    EnableDocumentSearch = true,
+    EnableAudioSearch = false,
+    EnableImageSearch = false
+};
+
+var filteredChunks = await _searchService.SearchDocumentsAsync(
+    "machine learning", 
+    maxResults: 10,
+    options: options
+);
+
+// With pre-computed tokens (performance optimization)
+var tokens = new List<string> { "machine", "learning", "algorithms" };
+var optimizedChunks = await _searchService.SearchDocumentsAsync(
+    "machine learning",
+    maxResults: 10,
+    queryTokens: tokens
+);
 ```
 
 #### GenerateRagAnswerAsync (Deprecated)
@@ -325,7 +350,7 @@ Task<bool> ClearAllDocumentsAsync()
 
 **Namespace:** `SmartRAG.Interfaces.Support`
 
-**New in v3.2.0**: This interface provides dedicated conversation management, separated from document operations for better separation of concerns.
+This interface provides dedicated conversation management, separated from document operations for better separation of concerns.
 
 ### Methods
 
@@ -699,10 +724,10 @@ IEnumerable<DatabaseType> GetSupportedDatabaseTypes()
 ```
 
 **Returns:**
+- `DatabaseType.SQLite`
 - `DatabaseType.SqlServer`
 - `DatabaseType.MySQL`
-- `DatabaseType.PostgreSql`
-- `DatabaseType.Sqlite`
+- `DatabaseType.PostgreSQL`
 
 #### GetSupportedDatabaseFileExtensions
 
@@ -980,18 +1005,18 @@ public enum AIProvider
 
 ### StorageProvider
 
-Supported storage backends.
+Supported storage backends for document and vector data persistence.
 
 ```csharp
 public enum StorageProvider
 {
-    Qdrant,       // Vector database
-    Redis,        // High-performance cache
-    Sqlite,       // Embedded database
-    FileSystem,   // File-based storage
-    InMemory      // RAM storage (development only)
+    InMemory,    // RAM storage (non-persistent, for testing and development)
+    Redis,       // High-performance cache and storage
+    Qdrant       // Vector database for advanced vector search capabilities
 }
 ```
+
+**Note:** `SQLite` and `FileSystem` are not available as `StorageProvider` options. They are only available as `ConversationStorageProvider` options for conversation history storage.
 
 ### DatabaseType
 
@@ -1000,10 +1025,10 @@ Supported database types.
 ```csharp
 public enum DatabaseType
 {
+    SQLite,       // SQLite embedded database
     SqlServer,    // Microsoft SQL Server
     MySQL,        // MySQL / MariaDB
-    PostgreSql,   // PostgreSQL
-    Sqlite        // SQLite
+    PostgreSQL    // PostgreSQL
 }
 ```
 
@@ -1039,6 +1064,8 @@ This interface enables querying across multiple databases simultaneously using n
 
 Executes a full intelligent query: analyze intent + execute + merge results.
 
+**Overload 1:** Full query with automatic intent analysis
+
 ```csharp
 Task<RagResponse> QueryMultipleDatabasesAsync(
     string userQuery, 
@@ -1046,13 +1073,24 @@ Task<RagResponse> QueryMultipleDatabasesAsync(
 )
 ```
 
+**Overload 2:** Query with pre-analyzed intent (avoids redundant AI calls)
+
+```csharp
+Task<RagResponse> QueryMultipleDatabasesAsync(
+    string userQuery, 
+    QueryIntent preAnalyzedIntent,
+    int maxResults = 5
+)
+```
+
 **Parameters:**
 - `userQuery` (string): Natural language user query
+- `preAnalyzedIntent` (QueryIntent, optional): Pre-analyzed query intent to avoid redundant AI calls
 - `maxResults` (int): Maximum number of results to return (default: 5)
 
 **Returns:** `RagResponse` with AI-generated answer and data from multiple databases
 
-**Example:**
+**Example 1 - Automatic Intent Analysis:**
 
 ```csharp
 var response = await _coordinator.QueryMultipleDatabasesAsync(
@@ -1063,11 +1101,37 @@ Console.WriteLine(response.Answer);
 // AI answer combining data from multiple databases
 ```
 
-##### AnalyzeQueryIntentAsync
-
-Analyzes user query and determines which databases/tables to query.
+**Example 2 - Pre-analyzed Intent (Performance Optimization):**
 
 ```csharp
+// Analyze intent once
+var intent = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(
+    "Show records from TableA with their corresponding TableB details"
+);
+
+// Use pre-analyzed intent to avoid redundant AI calls
+var response = await _coordinator.QueryMultipleDatabasesAsync(
+    "Show records from TableA with their corresponding TableB details",
+    intent,
+    maxResults: 10
+);
+
+Console.WriteLine(response.Answer);
+```
+
+##### AnalyzeQueryIntentAsync (Deprecated)
+
+<div class="alert alert-warning">
+    <h4><i class="fas fa-exclamation-triangle me-2"></i> Deprecated in </h4>
+    <p class="mb-0">
+        Use <code>IQueryIntentAnalyzer.AnalyzeQueryIntentAsync</code> instead. This method will be removed in v4.0.0.
+    </p>
+</div>
+
+Legacy method for analyzing user query and determining which databases/tables to query.
+
+```csharp
+[Obsolete("Use IQueryIntentAnalyzer.AnalyzeQueryIntentAsync instead. Will be removed in v4.0.0")]
 Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery)
 ```
 
@@ -1076,10 +1140,11 @@ Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery)
 
 **Returns:** `QueryIntent` with database routing information
 
-**Example:**
+**Recommended Usage:**
 
 ```csharp
-var intent = await _coordinator.AnalyzeQueryIntentAsync(
+// Use IQueryIntentAnalyzer instead
+var intent = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(
     "Compare data between Database1 and Database2"
 );
 
@@ -1121,22 +1186,7 @@ Task<QueryIntent> GenerateDatabaseQueriesAsync(QueryIntent queryIntent)
 
 **Returns:** Updated `QueryIntent` with generated SQL queries
 
-##### MergeResultsAsync
-
-Merges results from multiple databases into a coherent response.
-
-```csharp
-Task<string> MergeResultsAsync(
-    MultiDatabaseQueryResult queryResults, 
-    string originalQuery
-)
-```
-
-**Parameters:**
-- `queryResults` (MultiDatabaseQueryResult): Results from multiple databases
-- `originalQuery` (string): Original user query
-
-**Returns:** Merged and formatted results as string
+**Note:** `MergeResultsAsync` is available in `IResultMerger` interface, not in `IMultiDatabaseQueryCoordinator`. The coordinator automatically uses the result merger internally.
 
 ---
 
@@ -1188,27 +1238,6 @@ Task<DatabaseConnectionConfig> GetConnectionAsync(string databaseId)
 
 **Returns:** Connection configuration or null if not found
 
-##### ValidateAllConnectionsAsync
-
-Validates all configured connections.
-
-```csharp
-Task<Dictionary<string, bool>> ValidateAllConnectionsAsync()
-```
-
-**Returns:** Dictionary of database IDs and their validation status (true = valid, false = invalid)
-
-**Example:**
-
-```csharp
-var validationResults = await _connectionManager.ValidateAllConnectionsAsync();
-
-foreach (var (databaseId, isValid) in validationResults)
-{
-    Console.WriteLine($"{databaseId}: {(isValid ? "Valid" : "Invalid")}");
-}
-```
-
 ##### ValidateConnectionAsync
 
 Validates a specific connection.
@@ -1221,6 +1250,17 @@ Task<bool> ValidateConnectionAsync(string databaseId)
 - `databaseId` (string): Database identifier
 
 **Returns:** True if connection is valid, false otherwise
+
+**Example:**
+
+```csharp
+bool isValid = await _connectionManager.ValidateConnectionAsync("database-1");
+
+if (isValid)
+{
+    Console.WriteLine("Connection is valid");
+}
+```
 
 ##### GetDatabaseIdAsync
 
@@ -1235,19 +1275,6 @@ Task<string> GetDatabaseIdAsync(DatabaseConnectionConfig connectionConfig)
 
 **Returns:** Unique database identifier
 
-##### AddConnectionAsync
-
-Adds a new database connection at runtime.
-
-```csharp
-Task<string> AddConnectionAsync(DatabaseConnectionConfig connectionConfig)
-```
-
-**Parameters:**
-- `connectionConfig` (DatabaseConnectionConfig): Connection configuration
-
-**Returns:** Generated database identifier
-
 **Example:**
 
 ```csharp
@@ -1255,24 +1282,12 @@ var config = new DatabaseConnectionConfig
 {
     Name = "SalesDB",
     ConnectionString = "Server=localhost;Database=Sales;Trusted_Connection=true;",
-    DatabaseType = DatabaseType.SqlServer,
-    Enabled = true
+    DatabaseType = DatabaseType.SqlServer
 };
 
-var databaseId = await _connectionManager.AddConnectionAsync(config);
-Console.WriteLine($"Added database with ID: {databaseId}");
+var databaseId = await _connectionManager.GetDatabaseIdAsync(config);
+Console.WriteLine($"Database ID: {databaseId}");
 ```
-
-##### RemoveConnectionAsync
-
-Removes a database connection.
-
-```csharp
-Task RemoveConnectionAsync(string databaseId)
-```
-
-**Parameters:**
-- `databaseId` (string): Database identifier to remove
 
 ---
 
@@ -1318,19 +1333,6 @@ Console.WriteLine($"Total Rows: {schemaInfo.TotalRowCount:N0}");
 Console.WriteLine($"AI Summary: {schemaInfo.AISummary}");
 ```
 
-##### RefreshSchemaAsync
-
-Refreshes schema information for a specific database.
-
-```csharp
-Task<DatabaseSchemaInfo> RefreshSchemaAsync(string databaseId)
-```
-
-**Parameters:**
-- `databaseId` (string): Database identifier
-
-**Returns:** Updated schema information
-
 ##### GetAllSchemasAsync
 
 Gets all analyzed database schemas.
@@ -1353,32 +1355,6 @@ Task<DatabaseSchemaInfo> GetSchemaAsync(string databaseId)
 - `databaseId` (string): Database identifier
 
 **Returns:** Database schema information or null if not found
-
-##### GetSchemasNeedingRefreshAsync
-
-Checks if any schemas need refresh based on configured intervals.
-
-```csharp
-Task<List<string>> GetSchemasNeedingRefreshAsync()
-```
-
-**Returns:** List of database IDs that need schema refresh
-
-**Example:**
-
-```csharp
-var needsRefresh = await _schemaAnalyzer.GetSchemasNeedingRefreshAsync();
-
-if (needsRefresh.Any())
-{
-    Console.WriteLine($"Databases needing refresh: {string.Join(", ", needsRefresh)}");
-    
-    foreach (var databaseId in needsRefresh)
-    {
-        await _schemaAnalyzer.RefreshSchemaAsync(databaseId);
-    }
-}
-```
 
 ##### GenerateAISummaryAsync
 
@@ -1428,7 +1404,7 @@ Task<AudioTranscriptionResult> TranscribeAudioAsync(
 **Parameters:**
 - `audioStream` (Stream): The audio stream to transcribe
 - `fileName` (string): The name of the audio file for format detection
-- `language` (string, optional): Language code for transcription (e.g., "en", "tr", "auto")
+- `language` (string, optional): Language code for transcription (e.g., "tr-TR", "en-US", "auto")
 
 **Returns:** `AudioTranscriptionResult` containing transcribed text, confidence score, and metadata
 
@@ -1511,13 +1487,13 @@ Extracts text from an image with confidence scores.
 ```csharp
 Task<OcrResult> ExtractTextWithConfidenceAsync(
     Stream imageStream, 
-    string language = "eng"
+    string language = null
 )
 ```
 
 **Parameters:**
 - `imageStream` (Stream): The image stream to process
-- `language` (string, optional): Language code for OCR (default: "eng")
+- `language` (string, optional): Language code for OCR (e.g., "eng", "tur"). If null, uses system locale automatically
 
 **Returns:** `OcrResult` with extracted text, confidence scores, and text blocks
 
@@ -1571,6 +1547,27 @@ var text = await _imageParser.ExtractTextFromImageAsync(
 );
 
 Console.WriteLine($"Text from preprocessed image: {text}");
+```
+
+##### CorrectCurrencySymbols
+
+Corrects currency symbol misreads in text (e.g., % → ₺, $, €). This method applies the same currency correction logic used in OCR results to any text.
+
+```csharp
+string CorrectCurrencySymbols(string text, string language = null)
+```
+
+**Parameters:**
+- `text` (string): Text to correct
+- `language` (string, optional): Language code for context (used for logging)
+
+**Returns:** Text with corrected currency symbols
+
+**Example:**
+
+```csharp
+var correctedText = _imageParser.CorrectCurrencySymbols("Price: 100%", "tr");
+Console.WriteLine(correctedText); // "Price: 100₺"
 ```
 
 **Supported Image Formats:**
@@ -1646,9 +1643,9 @@ var result = await _searchService.QueryIntelligenceAsync(query).ConfigureAwait(f
 
 ---
 
-## Strategy Pattern Interfaces (v3.2.0)
+## Strategy Pattern Interfaces 
 
-SmartRAG v3.2.0 introduces Strategy Pattern for extensibility and customization.
+SmartRAG provides Strategy Pattern for extensibility and customization.
 
 ### ISqlDialectStrategy
 
@@ -1656,7 +1653,7 @@ SmartRAG v3.2.0 introduces Strategy Pattern for extensibility and customization.
 
 **Namespace:** `SmartRAG.Interfaces.Database.Strategies`
 
-**New in v3.2.0**: Enables database-specific SQL optimization and custom database support.
+Enables database-specific SQL optimization and custom database support.
 
 #### Properties
 
@@ -1712,32 +1709,39 @@ string GetLimitClause(int limit)
 
 #### Custom Implementation Example
 
+**Note:** This is a conceptual example. To add support for a new database type, you would need to:
+1. Add the database type to the `DatabaseType` enum
+2. Implement `ISqlDialectStrategy` for that database
+3. Register the strategy in dependency injection
+
 ```csharp
-public class OracleDialectStrategy : BaseSqlDialectStrategy
+// Example: Custom database dialect strategy
+public class CustomDialectStrategy : BaseSqlDialectStrategy
 {
-    public override DatabaseType DatabaseType => DatabaseType.Oracle;
+    public override DatabaseType DatabaseType => DatabaseType.Custom; // Assuming Custom is added to enum
     
     public override string BuildSystemPrompt(DatabaseSchemaInfo schema, string userQuery)
     {
-        return $"Generate Oracle SQL for: {userQuery}\\nSchema: {schema}";
+        return $"Generate SQL for: {userQuery}\\nSchema: {schema}";
     }
     
     public override bool ValidateSyntax(string sql, out string errorMessage)
     {
-        // Oracle-specific validation
+        // Database-specific validation
         errorMessage = null;
         return true;
     }
     
     public override string FormatSql(string sql)
     {
-        // Oracle-specific formatting
-        return sql.ToUpper();
+        // Database-specific formatting
+        return sql;
     }
     
     public override string GetLimitClause(int limit)
     {
-        return $"FETCH FIRST {limit} ROWS ONLY";
+        // Database-specific LIMIT clause format
+        return $"LIMIT {limit}";
     }
 }
 ```
@@ -1750,7 +1754,7 @@ public class OracleDialectStrategy : BaseSqlDialectStrategy
 
 **Namespace:** `SmartRAG.Interfaces.Search.Strategies`
 
-**New in v3.2.0**: Enables custom scoring algorithms for search results.
+Enables custom scoring algorithms for search results.
 
 #### Methods
 
@@ -1815,7 +1819,7 @@ public class SemanticOnlyScoringStrategy : IScoringStrategy
 
 **Namespace:** `SmartRAG.Interfaces.Parser.Strategies`
 
-**New in v3.2.0**: Enables custom file format parsers.
+Enables custom file format parsers.
 
 #### Methods
 
@@ -1881,7 +1885,7 @@ public class MarkdownFileParser : IFileParser
 
 ---
 
-## Additional Service Interfaces (v3.2.0)
+## Additional Service Interfaces 
 
 ### IConversationRepository
 
@@ -1889,7 +1893,7 @@ public class MarkdownFileParser : IFileParser
 
 **Namespace:** `SmartRAG.Interfaces.Storage`
 
-**New in v3.2.0**: Separated from `IDocumentRepository` for better SRP compliance.
+Separated from `IDocumentRepository` for better SRP compliance.
 
 #### Methods
 
@@ -1915,7 +1919,7 @@ Task<bool> ConversationExistsAsync(string sessionId);
 
 **Namespace:** `SmartRAG.Interfaces.AI`
 
-**New in v3.2.0**: Separated configuration from execution for better SRP.
+Separated configuration from execution for better SRP.
 
 #### Methods
 
@@ -1935,7 +1939,7 @@ double GetTemperature();
 
 **Namespace:** `SmartRAG.Interfaces.AI`
 
-**New in v3.2.0**: Handles AI requests with automatic retry and fallback logic.
+Handles AI requests with automatic retry and fallback logic.
 
 #### Methods
 
@@ -1952,7 +1956,7 @@ Task<List<float>> ExecuteEmbeddingRequestAsync(string text, CancellationToken ca
 
 **Namespace:** `SmartRAG.Interfaces.Database`
 
-**New in v3.2.0**: Analyzes queries to determine database routing strategy.
+Analyzes queries to determine database routing strategy.
 
 #### Methods
 
@@ -1968,7 +1972,7 @@ Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery);
 
 **Namespace:** `SmartRAG.Interfaces.Database`
 
-**New in v3.2.0**: Parallel query execution across databases.
+Parallel query execution across databases.
 
 #### Methods
 
@@ -1984,13 +1988,42 @@ Task<MultiDatabaseQueryResult> ExecuteMultiDatabaseQueryAsync(QueryIntent queryI
 
 **Namespace:** `SmartRAG.Interfaces.Database`
 
-**New in v3.2.0**: AI-powered result merging.
+AI-powered result merging.
 
 #### Methods
 
+##### MergeResultsAsync
+
+Merges results from multiple databases into a coherent response.
+
 ```csharp
-Task<string> MergeResultsAsync(MultiDatabaseQueryResult queryResult, string userQuery);
+Task<string> MergeResultsAsync(MultiDatabaseQueryResult queryResults, string originalQuery)
 ```
+
+**Parameters:**
+- `queryResults` (MultiDatabaseQueryResult): Results from multiple databases
+- `originalQuery` (string): Original user query
+
+**Returns:** Merged and formatted results as string
+
+##### GenerateFinalAnswerAsync
+
+Generates final AI answer from merged database results.
+
+```csharp
+Task<RagResponse> GenerateFinalAnswerAsync(
+    string userQuery, 
+    string mergedData, 
+    MultiDatabaseQueryResult queryResults
+)
+```
+
+**Parameters:**
+- `userQuery` (string): Original user query
+- `mergedData` (string): Merged data from databases
+- `queryResults` (MultiDatabaseQueryResult): Query results
+
+**Returns:** `RagResponse` with AI-generated answer
 
 ---
 
@@ -2000,7 +2033,7 @@ Task<string> MergeResultsAsync(MultiDatabaseQueryResult queryResult, string user
 
 **Namespace:** `SmartRAG.Interfaces.Database`
 
-**New in v3.2.0**: Uses `ISqlDialectStrategy` for database-specific SQL.
+Uses `ISqlDialectStrategy` for database-specific SQL.
 
 #### Methods
 
@@ -2017,7 +2050,7 @@ bool ValidateSql(string sql, DatabaseSchemaInfo schema, out string errorMessage)
 
 **Namespace:** `SmartRAG.Interfaces.Search`
 
-**New in v3.2.0**: Core embedding search functionality.
+Core embedding search functionality.
 
 #### Methods
 
@@ -2033,7 +2066,7 @@ Task<List<DocumentChunk>> SearchByEmbeddingAsync(List<float> queryEmbedding, int
 
 **Namespace:** `SmartRAG.Interfaces.Search`
 
-**New in v3.2.0**: Constructs `SearchSource` objects from chunks.
+Constructs `SearchSource` objects from chunks.
 
 #### Methods
 
@@ -2052,8 +2085,15 @@ List<SearchSource> BuildSources(List<DocumentChunk> chunks);
 #### Methods
 
 ```csharp
-Task<string> TranscribeAudioAsync(Stream audioStream, string fileName);
+Task<AudioTranscriptionResult> TranscribeAudioAsync(Stream audioStream, string fileName, string language = null);
 ```
+
+**Parameters:**
+- `audioStream` (Stream): The audio stream to transcribe
+- `fileName` (string): The name of the audio file for format detection
+- `language` (string, optional): Language code for transcription (e.g., "tr-TR", "en-US", "auto")
+
+**Returns:** `AudioTranscriptionResult` containing transcribed text, confidence score, and metadata
 
 ---
 
@@ -2066,8 +2106,22 @@ Task<string> TranscribeAudioAsync(Stream audioStream, string fileName);
 #### Methods
 
 ```csharp
-Task<string> ExtractTextFromImageAsync(Stream imageStream, string language = "eng");
+Task<string> ExtractTextFromImageAsync(Stream imageStream, string language = null);
+Task<OcrResult> ExtractTextWithConfidenceAsync(Stream imageStream, string language = null);
+Task<Stream> PreprocessImageAsync(Stream imageStream);
+string CorrectCurrencySymbols(string text, string language = null);
 ```
+
+**Parameters:**
+- `imageStream` (Stream): The image stream to process
+- `language` (string, optional): Language code for OCR (e.g., "eng", "tur"). If null, uses system locale automatically
+- `text` (string): Text to correct currency symbols in
+
+**Returns:**
+- `ExtractTextFromImageAsync`: Extracted text as string
+- `ExtractTextWithConfidenceAsync`: `OcrResult` with text, confidence scores, and text blocks
+- `PreprocessImageAsync`: Preprocessed image stream
+- `CorrectCurrencySymbols`: Text with corrected currency symbols (e.g., % → ₺, $, €)
 
 ---
 
@@ -2077,7 +2131,7 @@ Task<string> ExtractTextFromImageAsync(Stream imageStream, string language = "en
 
 **Namespace:** `SmartRAG.Interfaces.AI`
 
-**New in v3.2.0**: Provider abstraction for multiple AI backends.
+Provider abstraction for multiple AI backends.
 
 #### Methods
 
@@ -2096,7 +2150,7 @@ Task<List<string>> ChunkTextAsync(string text, int maxChunkSize = 1000);
 
 **Namespace:** `SmartRAG.Interfaces.AI`
 
-**New in v3.2.0**: Factory pattern for AI provider creation.
+Factory pattern for AI provider creation.
 
 #### Methods
 
@@ -2112,15 +2166,23 @@ IAIProvider CreateProvider(AIProvider providerType);
 
 **Namespace:** `SmartRAG.Interfaces.AI`
 
-**New in v3.2.0**: Centralized prompt construction with conversation history support.
+Centralized prompt construction with conversation history support.
 
 #### Methods
 
 ```csharp
-string BuildDocumentRagPrompt(string query, string context, string? conversationHistory = null);
-string BuildHybridMergePrompt(string query, string? databaseContext, string? documentContext, string? conversationHistory = null);
-string BuildConversationPrompt(string query, string? conversationHistory = null);
+string BuildDocumentRagPrompt(string query, string context, string? conversationHistory = null, string? preferredLanguage = null);
+string BuildHybridMergePrompt(string query, string? databaseContext, string? documentContext, string? conversationHistory = null, string? preferredLanguage = null);
+string BuildConversationPrompt(string query, string? conversationHistory = null, string? preferredLanguage = null);
 ```
+
+**Parameters:**
+- `query` (string): User query
+- `context` (string): Document context (for BuildDocumentRagPrompt)
+- `databaseContext` (string?, optional): Database query results (for BuildHybridMergePrompt)
+- `documentContext` (string?, optional): Document search results (for BuildHybridMergePrompt)
+- `conversationHistory` (string?, optional): Previous conversation turns
+- `preferredLanguage` (string?, optional): Preferred language code (e.g., "tr", "en") for explicit AI response language
 
 ---
 
@@ -2130,18 +2192,73 @@ string BuildConversationPrompt(string query, string? conversationHistory = null)
 
 **Namespace:** `SmartRAG.Interfaces.Document`
 
-**New in v3.2.0**: Separated repository layer from business logic.
+Separated repository layer from business logic.
 
 #### Methods
 
+##### AddAsync
+
+Adds a new document to storage.
+
 ```csharp
-Task<Document> AddAsync(Document document);
-Task<Document> GetByIdAsync(Guid id);
-Task<List<Document>> GetAllAsync();
-Task<bool> DeleteAsync(Guid id);
-Task<int> GetCountAsync();
-Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = 5);
+Task<Document> AddAsync(Document document)
 ```
+
+##### GetByIdAsync
+
+Retrieves document by unique identifier.
+
+```csharp
+Task<Document> GetByIdAsync(Guid id)
+```
+
+##### GetAllAsync
+
+Retrieves all documents from storage.
+
+```csharp
+Task<List<Document>> GetAllAsync()
+```
+
+##### DeleteAsync
+
+Removes document from storage by ID.
+
+```csharp
+Task<bool> DeleteAsync(Guid id)
+```
+
+##### GetCountAsync
+
+Gets total count of documents in storage.
+
+```csharp
+Task<int> GetCountAsync()
+```
+
+##### SearchAsync
+
+Searches documents using query string.
+
+```csharp
+Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = 5)
+```
+
+**Parameters:**
+- `query` (string): Search query string
+- `maxResults` (int): Maximum number of results to return (default: 5)
+
+**Returns:** List of relevant document chunks
+
+##### ClearAllAsync
+
+Clear all documents from storage (efficient bulk delete).
+
+```csharp
+Task<bool> ClearAllAsync()
+```
+
+**Returns:** True if all documents were cleared successfully
 
 ---
 
@@ -2151,7 +2268,7 @@ Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = 5);
 
 **Namespace:** `SmartRAG.Interfaces.Document`
 
-**New in v3.2.0**: Hybrid scoring strategy with keyword and semantic relevance.
+Hybrid scoring strategy with keyword and semantic relevance.
 
 #### Methods
 
@@ -2168,7 +2285,7 @@ double CalculateKeywordRelevanceScore(string query, string content);
 
 **Namespace:** `SmartRAG.Interfaces.Parser`
 
-**New in v3.2.0**: Factory pattern for audio parser creation.
+Factory pattern for audio parser creation.
 
 #### Methods
 
@@ -2184,7 +2301,7 @@ IAudioParserService CreateAudioParser(AudioProvider provider);
 
 **Namespace:** `SmartRAG.Interfaces.Storage`
 
-**New in v3.2.0**: Unified factory for all storage operations.
+Unified factory for all storage operations.
 
 #### Methods
 
@@ -2206,7 +2323,7 @@ IConversationRepository GetCurrentConversationRepository();
 
 **Namespace:** `SmartRAG.Interfaces.Storage.Qdrant`
 
-**New in v3.2.0**: Search result caching for performance optimization.
+Search result caching for performance optimization.
 
 #### Methods
 
@@ -2224,7 +2341,7 @@ void CleanupExpiredCache();
 
 **Namespace:** `SmartRAG.Interfaces.Storage.Qdrant`
 
-**New in v3.2.0**: Collection lifecycle management for Qdrant vector database.
+Collection lifecycle management for Qdrant vector database.
 
 #### Methods
 
@@ -2243,7 +2360,7 @@ Task<int> GetVectorDimensionAsync();
 
 **Namespace:** `SmartRAG.Interfaces.Storage.Qdrant`
 
-**New in v3.2.0**: Embedding generation for Qdrant vector storage.
+Embedding generation for Qdrant vector storage.
 
 #### Methods
 
@@ -2260,7 +2377,7 @@ Task<int> GetVectorDimensionAsync();
 
 **Namespace:** `SmartRAG.Interfaces.Storage.Qdrant`
 
-**New in v3.2.0**: Vector, text, and hybrid search capabilities for Qdrant.
+Vector, text, and hybrid search capabilities for Qdrant.
 
 #### Methods
 
@@ -2278,7 +2395,7 @@ Task<List<DocumentChunk>> HybridSearchAsync(string query, int maxResults);
 
 **Namespace:** `SmartRAG.Interfaces.Support`
 
-**New in v3.2.0**: AI-based query intent classification for hybrid routing.
+AI-based query intent classification for hybrid routing.
 
 #### Methods
 
@@ -2329,8 +2446,8 @@ string RemoveExtraWhitespace(string text);
 
 <div class="row g-4 mt-4">
     <div class="col-md-6">
-        <div class="feature-card">
-            <div class="feature-icon">
+        <div class="card card-accent">
+            <div class="icon icon-lg icon-gradient">
                 <i class="fas fa-lightbulb"></i>
             </div>
             <h3>Examples</h3>
@@ -2342,8 +2459,8 @@ string RemoveExtraWhitespace(string text);
             </div>
     
     <div class="col-md-6">
-        <div class="feature-card">
-            <div class="feature-icon">
+        <div class="card card-accent">
+            <div class="icon icon-lg icon-gradient">
                 <i class="fas fa-rocket"></i>
             </div>
             <h3>Getting Started</h3>

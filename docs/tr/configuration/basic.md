@@ -29,9 +29,9 @@ builder.Services.AddSmartRag(configuration, options =>
 });
 ```
 
----
-
 ## SmartRagOptions - Temel Seçenekler
+
+SmartRagOptions'da mevcut temel yapılandırma seçenekleri:
 
 | Seçenek | Tip | Varsayılan | Açıklama |
 |--------|------|---------|-------------|
@@ -41,8 +41,6 @@ builder.Services.AddSmartRag(configuration, options =>
 | `EnableAutoSchemaAnalysis` | `bool` | `true` | Başlangıçta veritabanı şemalarını otomatik olarak analiz et |
 | `EnablePeriodicSchemaRefresh` | `bool` | `true` | Veritabanı şemalarını periyodik olarak yenile |
 | `DefaultSchemaRefreshIntervalMinutes` | `int` | `60` | Şema yenileme için varsayılan aralık (dakika) |
-
----
 
 ## ConversationStorageProvider
 
@@ -89,8 +87,6 @@ builder.Services.AddSmartRag(configuration, options =>
     </ul>
 </div>
 
----
-
 ## Parçalama Seçenekleri
 
 | Seçenek | Tip | Varsayılan | Açıklama |
@@ -109,8 +105,6 @@ builder.Services.AddSmartRag(configuration, options =>
     </ul>
 </div>
 
----
-
 ## Yeniden Deneme & Dayanıklılık Seçenekleri
 
 | Seçenek | Tip | Varsayılan | Açıklama |
@@ -126,8 +120,6 @@ builder.Services.AddSmartRag(configuration, options =>
 - `RetryPolicy.FixedDelay` - Sabit bekleme süresi
 - `RetryPolicy.LinearBackoff` - Doğrusal artan bekleme
 - `RetryPolicy.ExponentialBackoff` - Üssel artan bekleme (önerilen)
-
----
 
 ## Örnek Yapılandırma
 
@@ -161,14 +153,12 @@ builder.Services.AddSmartRag(configuration, options =>
 });
 ```
 
----
-
 ## Sonraki Adımlar
 
 <div class="row g-4 mt-4">
     <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-brain"></i>
             </div>
             <h3>AI Sağlayıcıları</h3>
@@ -180,8 +170,8 @@ builder.Services.AddSmartRag(configuration, options =>
     </div>
     
     <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-database"></i>
             </div>
             <h3>Depolama Sağlayıcıları</h3>

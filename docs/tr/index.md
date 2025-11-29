@@ -27,19 +27,19 @@ hide_title: true
                         Dokümanlarınızı, veritabanlarınızı, görsellerinizi ve ses dosyalarınızı konuşmalı yapay zeka sistemine dönüştürün.
                     </p>
                     <div class="hero-stats">
-                        <div class="stat-card">
+                        <div class="card card-sm">
                             <div class="stat-number">5</div>
                             <div class="stat-label">Yapay Zeka Sağlayıcı</div>
                         </div>
-                        <div class="stat-card">
+                        <div class="card card-sm">
                             <div class="stat-number">3</div>
                             <div class="stat-label">Depolama Sağlayıcıları</div>
                         </div>
-                        <div class="stat-card">
+                        <div class="card card-sm">
                             <div class="stat-number">4</div>
                             <div class="stat-label">Veritabanı Tipi</div>
                         </div>
-                        <div class="stat-card">
+                        <div class="card card-sm">
                             <div class="stat-number">7</div>
                             <div class="stat-label">Doküman Formatı</div>
                         </div>
@@ -106,65 +106,65 @@ Console.WriteLine(answer.Answer);
             </p>
         </div>
         
-        <div class="feature-grid">
-            <div class="feature-card">
-                <div class="feature-icon">
+        <div class="grid grid-auto">
+            <div class="card card-accent">
+                <div class="icon icon-lg icon-gradient">
                     <i class="fas fa-database"></i>
                 </div>
                 <h3>Çok Veritabanlı RAG</h3>
                 <p>Aynı anda birden fazla veritabanı sorgulayın - SQL Server, MySQL, PostgreSQL, SQLite. Yapay zeka destekli çapraz veritabanı birleştirmeleri ve akıllı sorgu koordinasyonu.</p>
             </div>
             
-            <div class="feature-card">
-                <div class="feature-icon">
+            <div class="card card-accent">
+                <div class="icon icon-lg icon-gradient">
                     <i class="fas fa-layer-group"></i>
                 </div>
                 <h3>Çok Modlu Zeka</h3>
                 <p>PDF, Excel, Word dokümanları, Görseller (OCR), Ses dosyaları (Konuşmadan Metne) ve Veritabanları - hepsi tek bir akıllı platformda birleştirildi.</p>
             </div>
             
-            <div class="feature-card">
-                <div class="feature-icon">
+            <div class="card card-accent">
+                <div class="icon icon-lg icon-gradient">
                     <i class="fas fa-shield-alt"></i>
                 </div>
                 <h3>On-Premise & Şirket İçi AI</h3>
                 <p>Ollama, LM Studio desteğiyle %100 on-premise çalışma. GDPR/KVKK/HIPAA uyumlu. Verileriniz asla altyapınızdan ayrılmaz.</p>
             </div>
             
-            <div class="feature-card">
-                <div class="feature-icon">
+            <div class="card card-accent">
+                <div class="icon icon-lg icon-gradient">
                     <i class="fas fa-comments"></i>
                 </div>
                 <h3>Konuşma Geçmişi</h3>
                 <p>Bağlam farkındalığıyla otomatik oturum tabanlı konuşma yönetimi. Yapay zeka, doğal etkileşimler için önceki soruları hatırlar.</p>
             </div>
             
-            <div class="feature-card">
-                <div class="feature-icon">
+            <div class="card card-accent">
+                <div class="icon icon-lg icon-gradient">
                     <i class="fas fa-search"></i>
                 </div>
                 <h3>Gelişmiş Anlamsal Arama</h3>
                 <p>Üstün arama sonuçları için bağlam farkındalığı ve akıllı sıralamayla hibrit puanlama sistemi (%80 anlamsal + %20 anahtar kelime).</p>
             </div>
             
-            <div class="feature-card">
-                <div class="feature-icon">
+            <div class="card card-accent">
+                <div class="icon icon-lg icon-gradient">
                     <i class="fas fa-route"></i>
                 </div>
                 <h3>Akıllı Sorgu Amacı</h3>
                 <p>Sorguları niyet tespitine göre otomatik olarak sohbet veya doküman aramasına yönlendirir. Dil-agnostik tasarım küresel olarak çalışır.</p>
             </div>
             
-            <div class="feature-card">
-                <div class="feature-icon">
+            <div class="card card-accent">
+                <div class="icon icon-lg icon-gradient">
                     <i class="fas fa-lock"></i>
                 </div>
                 <h3>Kurumsal Güvenlik</h3>
                 <p>Otomatik hassas veri temizleme, şifreleme desteği, yapılandırılabilir veri koruması ve uyumluluk-hazır dağıtımlar.</p>
             </div>
             
-            <div class="feature-card">
-                <div class="feature-icon">
+            <div class="card card-accent">
+                <div class="icon icon-lg icon-gradient">
                     <i class="fas fa-check-circle"></i>
                 </div>
                 <h3>Üretime Hazır</h3>
@@ -183,40 +183,40 @@ Console.WriteLine(answer.Answer);
             </p>
         </div>
         
-        <div class="row g-5">
-            <div class="col-lg-6">
+        <div class="grid grid-2" style="gap: 3rem;">
+            <div>
                 <h3 class="text-center mb-4">Yapay Zeka Sağlayıcıları</h3>
-                <div class="provider-grid">
-                    <div class="provider-card">
-                        <div class="provider-logo">
+                <div class="grid grid-auto">
+                    <div class="card card-sm">
+                        <div class="icon icon-md">
                             <i class="fas fa-brain"></i>
                         </div>
                         <h4>OpenAI</h4>
                         <p>GPT Modelleri</p>
                     </div>
-                    <div class="provider-card">
-                        <div class="provider-logo">
+                    <div class="card card-sm">
+                        <div class="icon icon-md">
                             <i class="fas fa-robot"></i>
                         </div>
                         <h4>Anthropic</h4>
                         <p>Claude Modelleri</p>
                     </div>
-                    <div class="provider-card">
-                        <div class="provider-logo">
+                    <div class="card card-sm">
+                        <div class="icon icon-md">
                             <i class="fab fa-google"></i>
                         </div>
                         <h4>Gemini</h4>
                         <p>Google Yapay Zeka Modelleri</p>
                     </div>
-                    <div class="provider-card">
-                        <div class="provider-logo">
+                    <div class="card card-sm">
+                        <div class="icon icon-md">
                             <i class="fas fa-cloud"></i>
                         </div>
                         <h4>Azure OpenAI</h4>
                         <p>Kurumsal Modeller</p>
                     </div>
-                    <div class="provider-card">
-                        <div class="provider-logo">
+                    <div class="card card-sm">
+                        <div class="icon icon-md">
                             <i class="fas fa-server"></i>
                         </div>
                         <h4>Özel</h4>
@@ -225,25 +225,25 @@ Console.WriteLine(answer.Answer);
                 </div>
             </div>
             
-            <div class="col-lg-6">
+            <div>
                 <h3 class="text-center mb-4">Depolama Sağlayıcıları</h3>
-                <div class="provider-grid">
-                    <div class="provider-card">
-                        <div class="provider-logo">
+                <div class="grid grid-auto">
+                    <div class="card card-sm">
+                        <div class="icon icon-md">
                             <i class="fas fa-cube"></i>
                         </div>
                         <h4>Qdrant</h4>
                         <p>Vektör Veritabanı</p>
                     </div>
-                    <div class="provider-card">
-                        <div class="provider-logo">
+                    <div class="card card-sm">
+                        <div class="icon icon-md">
                             <i class="fas fa-bolt"></i>
                         </div>
                         <h4>Redis</h4>
                         <p>Yüksek Performans Önbellek</p>
                     </div>
-                    <div class="provider-card">
-                        <div class="provider-logo">
+                    <div class="card card-sm">
+                        <div class="icon icon-md">
                             <i class="fas fa-memory"></i>
                         </div>
                         <h4>InMemory</h4>
@@ -264,38 +264,34 @@ Console.WriteLine(answer.Answer);
             </p>
         </div>
         
-        <div class="row g-5">
-            <div class="col-lg-12">
-                <div class="provider-grid">
-                    <div class="provider-card">
-                        <div class="provider-logo">
-                            <i class="fas fa-database"></i>
-                        </div>
-                        <h4>SQL Server</h4>
-                        <p>Kurumsal Veritabanı</p>
-                    </div>
-                    <div class="provider-card">
-                        <div class="provider-logo">
-                            <i class="fas fa-leaf"></i>
-                        </div>
-                        <h4>MySQL</h4>
-                        <p>Açık Kaynak Veritabanı</p>
-                    </div>
-                    <div class="provider-card">
-                        <div class="provider-logo">
-                            <i class="fas fa-database"></i>
-                        </div>
-                        <h4>PostgreSQL</h4>
-                        <p>Gelişmiş Veritabanı</p>
-                    </div>
-                    <div class="provider-card">
-                        <div class="provider-logo">
-                            <i class="fas fa-feather"></i>
-                        </div>
-                        <h4>SQLite</h4>
-                        <p>Gömülü Veritabanı</p>
-                    </div>
+        <div class="grid grid-auto">
+            <div class="card card-sm">
+                <div class="icon icon-md">
+                    <i class="fas fa-database"></i>
                 </div>
+                <h4>SQL Server</h4>
+                <p>Kurumsal Veritabanı</p>
+            </div>
+            <div class="card card-sm">
+                <div class="icon icon-md">
+                    <i class="fas fa-leaf"></i>
+                </div>
+                <h4>MySQL</h4>
+                <p>Açık Kaynak Veritabanı</p>
+            </div>
+            <div class="card card-sm">
+                <div class="icon icon-md">
+                    <i class="fas fa-database"></i>
+                </div>
+                <h4>PostgreSQL</h4>
+                <p>Gelişmiş Veritabanı</p>
+            </div>
+            <div class="card card-sm">
+                <div class="icon icon-md">
+                    <i class="fas fa-feather"></i>
+                </div>
+                <h4>SQLite</h4>
+                <p>Gömülü Veritabanı</p>
             </div>
         </div>
     </div>
@@ -444,8 +440,8 @@ Console.WriteLine(answer.Answer);
         
         <div class="row g-4">
             <div class="col-lg-3 col-md-6">
-                <div class="feature-card text-center">
-                    <div class="feature-icon mx-auto">
+                <div class="card card-accent text-center">
+                    <div class="icon icon-lg icon-gradient mx-auto">
                         <i class="fas fa-database"></i>
                     </div>
                     <h3>Çok Veritabanlı RAG</h3>
@@ -453,8 +449,8 @@ Console.WriteLine(answer.Answer);
                 </div>
             </div>
             <div class="col-lg-3 col-md-6">
-                <div class="feature-card text-center">
-                    <div class="feature-icon mx-auto">
+                <div class="card card-accent text-center">
+                    <div class="icon icon-lg icon-gradient mx-auto">
                         <i class="fas fa-layer-group"></i>
                     </div>
                     <h3>Çok Modlu</h3>
@@ -462,8 +458,8 @@ Console.WriteLine(answer.Answer);
                 </div>
             </div>
             <div class="col-lg-3 col-md-6">
-                <div class="feature-card text-center">
-                    <div class="feature-icon mx-auto">
+                <div class="card card-accent text-center">
+                    <div class="icon icon-lg icon-gradient mx-auto">
                         <i class="fas fa-home"></i>
                     </div>
                     <h3>%100 On-Premise</h3>
@@ -471,8 +467,8 @@ Console.WriteLine(answer.Answer);
                 </div>
             </div>
             <div class="col-lg-3 col-md-6">
-                <div class="feature-card text-center">
-                    <div class="feature-icon mx-auto">
+                <div class="card card-accent text-center">
+                    <div class="icon icon-lg icon-gradient mx-auto">
                         <i class="fas fa-globe"></i>
                     </div>
                     <h3>Dil Agnostik</h3>
