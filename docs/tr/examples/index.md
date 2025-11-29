@@ -52,19 +52,6 @@ SmartRAG için pratik kod örnekleri ve gerçek dünya kullanım senaryoları. A
     <div class="col-md-4">
         <div class="card card-accent text-center">
             <div class="icon icon-lg icon-gradient mx-auto">
-                <i class="fas fa-vial"></i>
-            </div>
-            <h3>Test Örnekleri</h3>
-            <p>Test stratejileri ve örnekleri</p>
-            <a href="{{ site.baseurl }}/tr/examples/testing" class="btn btn-outline-primary btn-sm mt-3">
-                Test Örnekleri
-            </a>
-        </div>
-    </div>
-    
-    <div class="col-md-4">
-        <div class="card card-accent text-center">
-            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-star"></i>
             </div>
             <h3>En İyi Pratikler</h3>

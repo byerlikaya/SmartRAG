@@ -474,6 +474,11 @@ function wrapGettingStartedSections() {
             return;
         }
         
+        // Skip if inside a card (category cards on index pages)
+        if (h2.closest('.card')) {
+            return;
+        }
+        
         // Skip if already wrapped or should be excluded
         if (h2.parentElement.classList.contains('config-section') || 
             excludeHeadings.includes(headingText)) {
@@ -512,6 +517,11 @@ function wrapGettingStartedSections() {
         const isChangelogIndexPage = window.location.pathname.match(/\/changelog\/?$/);
         const shouldWrap = (isConfigPage || isApiReferencePage || isExamplesPage || (isChangelogPage && !isChangelogIndexPage)) ? true : gettingStartedHeadings.includes(headingText);
         
+        // Skip if h2 is inside a card (category cards on index pages)
+        if (h2.closest('.card')) {
+            return;
+        }
+        
         if (shouldWrap) {
             // Find all siblings until next h2 or hr or row
             const wrapper = document.createElement('div');
@@ -528,12 +538,17 @@ function wrapGettingStartedSections() {
                         nextSibling = nextSibling.nextSibling;
                         continue;
                     }
+                    // Skip if inside a card or if it's a card/row element
+                    if (nextSibling.classList.contains('card') || 
+                        nextSibling.classList.contains('row') ||
+                        nextSibling.closest('.card')) {
+                        break;
+                    }
                     // For examples page, stop at h3 headings (they will be wrapped separately)
                     if (isExamplesPage && tagName === 'h3') {
                         break;
                     }
                     if (tagName === 'h2' || tagName === 'hr' || 
-                        nextSibling.classList.contains('row') ||
                         nextSibling.classList.contains('config-section')) {
                         break;
                     }
@@ -563,6 +578,11 @@ function wrapGettingStartedSections() {
                 h3.closest('.config-section-accordion') || 
                 h3.closest('.accordion-item') || 
                 h3.closest('.accordion-collapse')) {
+                return;
+            }
+            
+            // Skip if inside a card (category cards on index pages)
+            if (h3.closest('.card')) {
                 return;
             }
             

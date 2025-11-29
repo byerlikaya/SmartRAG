@@ -96,6 +96,7 @@ body {
     backdrop-filter: blur(10px);
     transition: var(--transition-normal);
     padding: 0.75rem 0;
+    min-height: 3.5rem;
 }
 
 /* ===== DROPDOWN MENU IMPROVEMENTS ===== */
@@ -124,6 +125,7 @@ body {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
+    min-height: 3.5rem;
 }
 
 .navbar-brand {
@@ -134,9 +136,10 @@ body {
     align-items: center;
     line-height: 1.5;
     margin-right: 1rem;
-    padding: 0;
-    min-height: 2.5rem;
-    height: 2.5rem;
+    padding: 0.5rem 0 !important;
+    height: auto;
+    margin-bottom: 0;
+    vertical-align: middle;
 }
 
 .brand-gradient {
@@ -215,12 +218,13 @@ body {
     padding: 0.5rem 1rem !important;
     border-radius: 0.5rem;
     transition: var(--transition-fast);
-    font-size: 0.95rem;
     display: flex;
     align-items: center;
     line-height: 1.5;
-    min-height: 2.5rem;
-    height: 2.5rem;
+    font-size: 0.95rem;
+    height: auto;
+    margin-bottom: 0;
+    margin-top: 12px;
 }
 
 .nav-link:hover {

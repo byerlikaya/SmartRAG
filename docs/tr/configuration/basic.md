@@ -5,28 +5,68 @@ description: SmartRAG temel yapılandırma seçenekleri - yapılandırma yöntem
 lang: tr
 ---
 
-## Temel Yapılandırma
+## Yapılandırma Yöntemleri
 
-SmartRAG iki yapılandırma yöntemi sunar:
+<p>SmartRAG iki yapılandırma yöntemi sunar:</p>
 
-### Yöntem 1: UseSmartRag (Basit)
+### Hızlı Kurulum (Önerilen)
+
+<p><code>Program.cs</code> veya <code>Startup.cs</code> dosyanızda SmartRAG'i yapılandırın:</p>
 
 ```csharp
-builder.Services.UseSmartRag(configuration,
-    storageProvider: StorageProvider.InMemory,
-    aiProvider: AIProvider.Gemini
+using SmartRAG.Extensions;
+using SmartRAG.Enums;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Tek satırda basit yapılandırma
+builder.Services.UseSmartRag(builder.Configuration,
+    storageProvider: StorageProvider.InMemory,  // In-memory ile başlayın
+    aiProvider: AIProvider.Gemini               // AI sağlayıcınızı seçin
 );
+
+var app = builder.Build();
+app.Run();
 ```
 
-### Yöntem 2: AddSmartRag (Gelişmiş)
+### Gelişmiş Kurulum
 
 ```csharp
-builder.Services.AddSmartRag(configuration, options =>
+using SmartRAG.Extensions;
+using SmartRAG.Enums;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Seçeneklerle gelişmiş yapılandırma
+builder.Services.AddSmartRag(builder.Configuration, options =>
 {
+    // AI Sağlayıcı
     options.AIProvider = AIProvider.OpenAI;
+    
+    // Depolama Sağlayıcı
     options.StorageProvider = StorageProvider.Qdrant;
-    // ... ek seçenekler
+    
+    // Parçalama Yapılandırması
+    options.MaxChunkSize = 1000;
+    options.MinChunkSize = 100;
+    options.ChunkOverlap = 200;
+    
+    // Yeniden Deneme Yapılandırması
+    options.MaxRetryAttempts = 3;
+    options.RetryDelayMs = 1000;
+    options.RetryPolicy = RetryPolicy.ExponentialBackoff;
+    
+    // Yedek Sağlayıcılar
+    options.EnableFallbackProviders = true;
+    options.FallbackProviders = new List<AIProvider> 
+    { 
+        AIProvider.Anthropic, 
+        AIProvider.Gemini 
+    };
 });
+
+var app = builder.Build();
+app.Run();
 ```
 
 ## SmartRagOptions - Temel Seçenekler

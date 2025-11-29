@@ -52,19 +52,6 @@ Practical code examples and real-world use cases for SmartRAG. Learn how to inte
     <div class="col-md-4">
         <div class="card card-accent text-center">
             <div class="icon icon-lg icon-gradient mx-auto">
-                <i class="fas fa-vial"></i>
-            </div>
-            <h3>Testing Examples</h3>
-            <p>Testing strategies and examples</p>
-            <a href="{{ site.baseurl }}/en/examples/testing" class="btn btn-outline-primary btn-sm mt-3">
-                Testing Examples
-            </a>
-        </div>
-    </div>
-    
-    <div class="col-md-4">
-        <div class="card card-accent text-center">
-            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-star"></i>
             </div>
             <h3>Best Practices</h3>

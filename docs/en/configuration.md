@@ -89,68 +89,6 @@ SmartRAG configuration is organized into the following categories:
     </div>
 </div>
 
-## Basic Configuration
-
-<p>Configure SmartRAG in your <code>Program.cs</code> or <code>Startup.cs</code>:</p>
-
-### Quick Setup (Recommended)
-
-```csharp
-using SmartRAG.Extensions;
-using SmartRAG.Enums;
-
-var builder = WebApplication.CreateBuilder(args);
-
-// Simple one-line configuration
-builder.Services.UseSmartRag(builder.Configuration,
-    storageProvider: StorageProvider.InMemory,  // Start with in-memory
-    aiProvider: AIProvider.Gemini               // Choose your AI provider
-);
-
-var app = builder.Build();
-app.Run();
-```
-
-### Advanced Setup
-
-```csharp
-using SmartRAG.Extensions;
-using SmartRAG.Enums;
-
-var builder = WebApplication.CreateBuilder(args);
-
-// Advanced configuration with options
-builder.Services.AddSmartRag(builder.Configuration, options =>
-{
-    // AI Provider
-    options.AIProvider = AIProvider.OpenAI;
-    
-    // Storage Provider
-    options.StorageProvider = StorageProvider.Qdrant;
-    
-    // Chunking Configuration
-    options.MaxChunkSize = 1000;
-    options.MinChunkSize = 100;
-    options.ChunkOverlap = 200;
-    
-    // Retry Configuration
-    options.MaxRetryAttempts = 3;
-    options.RetryDelayMs = 1000;
-    options.RetryPolicy = RetryPolicy.ExponentialBackoff;
-    
-    // Fallback Providers
-    options.EnableFallbackProviders = true;
-    options.FallbackProviders = new List<AIProvider> 
-    { 
-        AIProvider.Anthropic, 
-        AIProvider.Gemini 
-    };
-});
-
-var app = builder.Build();
-app.Run();
-```
-
 ## Next Steps
 
 <div class="row g-4 mt-4">
