@@ -3,9 +3,6 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('SmartRAG Documentation initialized');
     
-    // Wrap Getting Started page sections in card-like containers
-    wrapGettingStartedSections();
-    
     // Initialize all features
     initThemeToggle();
     initLanguagePreference();
@@ -15,19 +12,200 @@ document.addEventListener('DOMContentLoaded', function() {
     initAnimations();
     initMobileDropdown();
     initMobileMenuClose();
+    initDesktopDropdown();
     
     // Initialize Prism.js if available
     if (typeof Prism !== 'undefined') {
         Prism.highlightAll();
     }
+    
+    // Wrap accordion buttons in config-section for better styling (do this first)
+    wrapAccordionButtons();
+    
+    // Wrap Getting Started page sections in card-like containers (do this after accordion wrapping)
+    // This ensures accordion content is not wrapped by wrapGettingStartedSections
+    setTimeout(() => {
+        wrapGettingStartedSections();
+    }, 100);
 });
+
+// ===== ACCORDION BUTTONS WRAPPER =====
+function wrapAccordionButtons() {
+    // Only apply to version history page
+    const pathname = window.location.pathname;
+    if (!pathname.includes('changelog/version-history') && !pathname.includes('changelog')) {
+        return;
+    }
+    
+    const accordionButtons = document.querySelectorAll('.accordion-button:not(.config-section-accordion *)');
+    
+    accordionButtons.forEach(button => {
+        // Skip if already wrapped
+        if (button.closest('.config-section-accordion')) {
+            return;
+        }
+        
+        // Get the parent accordion-header
+        const accordionHeader = button.closest('.accordion-header');
+        if (!accordionHeader) {
+            return;
+        }
+        
+        // Get the parent accordion-item
+        const accordionItem = button.closest('.accordion-item');
+        if (!accordionItem) {
+            return;
+        }
+        
+        // Get the accordion-collapse and accordion-body
+        const accordionCollapse = accordionItem.querySelector('.accordion-collapse');
+        const accordionBody = accordionCollapse ? accordionCollapse.querySelector('.accordion-body') : null;
+        
+        // Create wrapper for the button and body content
+        const wrapper = document.createElement('div');
+        wrapper.className = 'config-section config-section-accordion';
+        
+        // Remove button from header
+        accordionHeader.removeChild(button);
+        
+        // Put button directly in wrapper (without accordion-header)
+        wrapper.appendChild(button);
+        
+        // Function to recursively remove config-section wrappers
+        const removeConfigSections = (container) => {
+            if (!container) return;
+            
+            // Get all config-sections that are NOT the accordion wrapper itself
+            const allConfigSections = Array.from(container.querySelectorAll('.config-section')).filter(section => 
+                !section.classList.contains('config-section-accordion') && 
+                section !== wrapper
+            );
+            
+            // Process in reverse order to handle nested sections correctly
+            allConfigSections.reverse().forEach(section => {
+                // Skip if this section is inside another config-section that will be removed
+                const parentConfigSection = section.parentElement?.closest('.config-section:not(.config-section-accordion)');
+                if (parentConfigSection && allConfigSections.includes(parentConfigSection)) {
+                    return; // Will be handled when parent is processed
+                }
+                
+                // Move all children out of config-section
+                const fragment = document.createDocumentFragment();
+                while (section.firstChild) {
+                    fragment.appendChild(section.firstChild);
+                }
+                // Insert children before the section
+                if (section.parentNode) {
+                    section.parentNode.insertBefore(fragment, section);
+                    // Remove the empty config-section
+                    section.remove();
+                }
+            });
+        };
+        
+        // Function to move body content to wrapper when expanded
+        const moveBodyContent = () => {
+            if (accordionBody && accordionCollapse.classList.contains('show')) {
+                // First, remove all config-section wrappers from accordion-body
+                removeConfigSections(accordionBody);
+                
+                // Move all children from accordion-body to wrapper (after button)
+                while (accordionBody.firstChild) {
+                    wrapper.appendChild(accordionBody.firstChild);
+                }
+                
+                // Remove any config-section wrappers that were moved to wrapper
+                // Do this multiple times to catch nested config-sections
+                for (let i = 0; i < 10; i++) {
+                    const beforeCount = wrapper.querySelectorAll('.config-section:not(.config-section-accordion)').length;
+                    removeConfigSections(wrapper);
+                    const afterCount = wrapper.querySelectorAll('.config-section:not(.config-section-accordion)').length;
+                    if (beforeCount === afterCount) {
+                        break; // No more config-sections to remove
+                    }
+                }
+            } else if (accordionBody && !accordionCollapse.classList.contains('show')) {
+                // When collapsed, move content back to accordion-body
+                const wrapperContent = Array.from(wrapper.childNodes).filter(node => 
+                    node !== button && !node.classList?.contains('accordion-button')
+                );
+                wrapperContent.forEach(node => {
+                    accordionBody.appendChild(node);
+                });
+            }
+        };
+        
+        // Move content if already expanded
+        moveBodyContent();
+        
+        // Listen for accordion show/hide events
+        if (accordionCollapse) {
+            accordionCollapse.addEventListener('shown.bs.collapse', () => {
+                moveBodyContent();
+                // Also remove config-sections after a short delay to catch any dynamically added ones
+                setTimeout(() => {
+                    // Remove multiple times to catch nested ones
+                    for (let i = 0; i < 10; i++) {
+                        const beforeCount = wrapper.querySelectorAll('.config-section:not(.config-section-accordion)').length;
+                        removeConfigSections(wrapper);
+                        const afterCount = wrapper.querySelectorAll('.config-section:not(.config-section-accordion)').length;
+                        if (beforeCount === afterCount) {
+                            break; // No more config-sections to remove
+                        }
+                    }
+                }, 100);
+            });
+            accordionCollapse.addEventListener('hidden.bs.collapse', moveBodyContent);
+        }
+        
+        // Also remove config-sections immediately after wrapper is created (for already expanded accordions)
+        // Use multiple timeouts to catch any that are added later
+        setTimeout(() => {
+            if (accordionCollapse && accordionCollapse.classList.contains('show')) {
+                for (let i = 0; i < 5; i++) {
+                    removeConfigSections(wrapper);
+                }
+            }
+        }, 200);
+        
+        setTimeout(() => {
+            if (accordionCollapse && accordionCollapse.classList.contains('show')) {
+                for (let i = 0; i < 5; i++) {
+                    removeConfigSections(wrapper);
+                }
+            }
+        }, 500);
+        
+        setTimeout(() => {
+            if (accordionCollapse && accordionCollapse.classList.contains('show')) {
+                for (let i = 0; i < 5; i++) {
+                    removeConfigSections(wrapper);
+                }
+            }
+        }, 1000);
+        
+        // Insert wrapper before accordion-header in accordion-item
+        accordionItem.insertBefore(wrapper, accordionHeader);
+        
+        // Hide accordion-header but keep it for Bootstrap structure (aria-labelledby reference)
+        accordionHeader.style.display = 'none';
+        
+        // Keep accordion-collapse and accordion-body functional for Bootstrap
+        // Content will be moved to wrapper, but Bootstrap still needs the structure
+    });
+}
 
 // ===== GETTING STARTED PAGE SECTIONS =====
 function wrapGettingStartedSections() {
     const main = document.querySelector('main .page-body, main .container, main .main-content, main');
     if (!main) return;
     
-    const targetHeadings = [
+    // Check if we're on a configuration page or API reference page
+    const isConfigPage = window.location.pathname.includes('/configuration/');
+    const isApiReferencePage = window.location.pathname.includes('/api-reference');
+    
+    // Target headings for Getting Started page
+    const gettingStartedHeadings = [
         'Basic Configuration',
         'Temel Yapılandırma',
         'Configuration File',
@@ -38,11 +216,104 @@ function wrapGettingStartedSections() {
         'Konuşma Geçmişi'
     ];
     
+    // Exclude headings that should NOT be wrapped (main page title, comparison tables, next steps)
+    const excludeHeadings = [
+        'AI Provider Configuration',
+        'AI Provider Yapılandırması',
+        'Storage Provider Configuration',
+        'Depolama Sağlayıcı Yapılandırması',
+        'Database Configuration',
+        'Veritabanı Yapılandırması',
+        'Audio & OCR Configuration',
+        'Ses ve OCR Yapılandırması',
+        'Advanced Configuration',
+        'Gelişmiş Yapılandırma',
+        'Configuration Categories',
+        'Yapılandırma Kategorileri',
+        'Provider Comparison',
+        'Sağlayıcı Karşılaştırması',
+        'Storage Provider Comparison',
+        'Depolama Sağlayıcı Karşılaştırması',
+        'Audio and OCR Comparison',
+        'Ses ve OCR Karşılaştırması',
+        'Next Steps',
+        'Sonraki Adımlar',
+        'Related Categories',
+        'İlgili Kategoriler',
+        'Core Interfaces',
+        'Temel Arayüzler',
+        'API Reference Categories',
+        'API Referans Kategorileri',
+        'Strategy Pattern Interfaces',
+        'Strateji Deseni Arayüzleri',
+        'Examples',
+        'Örnekler',
+        'Examples Categories',
+        'Örnekler Kategorileri',
+        'Changelog Categories',
+        'Değişiklikler Kategorileri',
+        'Changelog',
+        'Değişiklikler',
+        'Version History',
+        'Versiyon Geçmişi',
+        'Migration Guides',
+        'Taşınma Kılavuzları',
+        'Deprecation Notices',
+        'Kullanımdan Kaldırma Bildirimleri'
+    ];
+    
     const h2Elements = main.querySelectorAll('h2');
     h2Elements.forEach(h2 => {
         const headingText = h2.textContent.trim();
-        if (targetHeadings.includes(headingText)) {
-            // Find all siblings until next h2 or hr
+        
+        // Skip if inside accordion-body, config-section-accordion, or any accordion-related element (version history page)
+        if (h2.closest('.accordion-body') || 
+            h2.closest('.config-section-accordion') || 
+            h2.closest('.accordion-item') || 
+            h2.closest('.accordion-collapse')) {
+            return;
+        }
+        
+        // Skip if already wrapped or should be excluded
+        if (h2.parentElement.classList.contains('config-section') || 
+            excludeHeadings.includes(headingText)) {
+            return;
+        }
+        
+        // Special handling for "Core Interfaces", "API Reference Categories", "Strategy Pattern Interfaces", "Examples", and "Changelog" - don't wrap the paragraph after it
+        if (headingText === 'Core Interfaces' || headingText === 'Temel Arayüzler' ||
+            headingText === 'API Reference Categories' || headingText === 'API Referans Kategorileri' ||
+            headingText === 'Strategy Pattern Interfaces' || headingText === 'Strateji Deseni Arayüzleri' ||
+            headingText === 'Examples' || headingText === 'Örnekler' ||
+            headingText === 'Changelog Categories' || headingText === 'Değişiklikler Kategorileri' ||
+            headingText === 'Version History' || headingText === 'Versiyon Geçmişi' ||
+            headingText === 'Migration Guides' || headingText === 'Taşınma Kılavuzları' ||
+            headingText === 'Deprecation Notices' || headingText === 'Kullanımdan Kaldırma Bildirimleri') {
+            // Find all siblings until next h2 or hr and mark them to not be wrapped
+            let nextSibling = h2.nextSibling;
+            while (nextSibling) {
+                if (nextSibling.nodeType === Node.ELEMENT_NODE) {
+                    const tagName = nextSibling.tagName.toLowerCase();
+                    // Mark all elements until hr or next h2 to not be wrapped
+                    if (tagName === 'h2' || tagName === 'hr') {
+                        break;
+                    }
+                    nextSibling.classList.add('no-config-section');
+                }
+                nextSibling = nextSibling.nextSibling;
+            }
+            return;
+        }
+        
+        // For Getting Started page, only wrap specific headings
+        // For configuration pages, API reference pages, examples pages, and changelog pages, wrap all h2 except excluded ones
+        const isExamplesPage = window.location.pathname.includes('/examples');
+        const isChangelogPage = window.location.pathname.includes('/changelog');
+        const isChangelogIndexPage = window.location.pathname.match(/\/changelog\/?$/);
+        const shouldWrap = (isConfigPage || isApiReferencePage || isExamplesPage || (isChangelogPage && !isChangelogIndexPage)) ? true : gettingStartedHeadings.includes(headingText);
+        
+        if (shouldWrap) {
+            // Find all siblings until next h2 or hr or row
             const wrapper = document.createElement('div');
             wrapper.className = 'config-section';
             
@@ -52,7 +323,18 @@ function wrapGettingStartedSections() {
             while (nextSibling) {
                 if (nextSibling.nodeType === Node.ELEMENT_NODE) {
                     const tagName = nextSibling.tagName.toLowerCase();
-                    if (tagName === 'h2' || tagName === 'hr' || nextSibling.classList.contains('row')) {
+                    // Skip elements with no-config-section class
+                    if (nextSibling.classList.contains('no-config-section')) {
+                        nextSibling = nextSibling.nextSibling;
+                        continue;
+                    }
+                    // For examples page, stop at h3 headings (they will be wrapped separately)
+                    if (isExamplesPage && tagName === 'h3') {
+                        break;
+                    }
+                    if (tagName === 'h2' || tagName === 'hr' || 
+                        nextSibling.classList.contains('row') ||
+                        nextSibling.classList.contains('config-section')) {
                         break;
                     }
                     elementsToWrap.push(nextSibling);
@@ -71,6 +353,61 @@ function wrapGettingStartedSections() {
             }
         }
     });
+    
+    // For examples page, also wrap h3 headings
+    if (window.location.pathname.includes('/examples')) {
+        const h3Elements = main.querySelectorAll('h3');
+        h3Elements.forEach(h3 => {
+            // Skip if inside accordion-body, config-section-accordion, or any accordion-related element (version history page)
+            if (h3.closest('.accordion-body') || 
+                h3.closest('.config-section-accordion') || 
+                h3.closest('.accordion-item') || 
+                h3.closest('.accordion-collapse')) {
+                return;
+            }
+            
+            // Skip if already wrapped or inside a config-section
+            if (h3.parentElement.classList.contains('config-section') || 
+                h3.closest('.config-section')) {
+                return;
+            }
+            
+            // Find all siblings until next h2, h3, or hr
+            const wrapper = document.createElement('div');
+            wrapper.className = 'config-section';
+            
+            let nextSibling = h3.nextSibling;
+            const elementsToWrap = [];
+            
+            while (nextSibling) {
+                if (nextSibling.nodeType === Node.ELEMENT_NODE) {
+                    const tagName = nextSibling.tagName.toLowerCase();
+                    // Skip elements with no-config-section class
+                    if (nextSibling.classList.contains('no-config-section')) {
+                        nextSibling = nextSibling.nextSibling;
+                        continue;
+                    }
+                    if (tagName === 'h2' || tagName === 'h3' || tagName === 'hr' || 
+                        nextSibling.classList.contains('row') ||
+                        nextSibling.classList.contains('config-section')) {
+                        break;
+                    }
+                    elementsToWrap.push(nextSibling);
+                } else if (nextSibling.nodeType === Node.TEXT_NODE) {
+                    // Skip empty text nodes
+                    if (nextSibling.textContent.trim()) {
+                        // If it's not empty, it might be part of content, but we'll skip it for now
+                    }
+                }
+                nextSibling = nextSibling.nextSibling;
+            }
+            
+            if (elementsToWrap.length > 0) {
+                elementsToWrap.forEach(el => wrapper.appendChild(el));
+                h3.parentNode.insertBefore(wrapper, h3.nextSibling);
+            }
+        });
+    }
 }
 
 // ===== THEME TOGGLE =====
@@ -325,6 +662,92 @@ function initMobileDropdown() {
                 d.classList.remove('show');
             });
         }
+    });
+}
+
+// ===== DESKTOP DROPDOWN HOVER HANDLING =====
+function initDesktopDropdown() {
+    // Only apply to desktop (>= 992px)
+    if (window.innerWidth < 992) return;
+    
+    const dropdowns = document.querySelectorAll('.nav-item.dropdown');
+    let hoverTimeouts = new Map();
+    let closeTimeouts = new Map();
+    
+    dropdowns.forEach(dropdown => {
+        const toggle = dropdown.querySelector('.dropdown-toggle');
+        const menu = dropdown.querySelector('.dropdown-menu');
+        
+        if (!toggle || !menu) return;
+        
+        // Show dropdown on hover (with small delay to prevent accidental opens)
+        dropdown.addEventListener('mouseenter', function() {
+            const dropdownId = dropdown.id || Math.random().toString(36);
+            clearTimeout(closeTimeouts.get(dropdownId));
+            
+            hoverTimeouts.set(dropdownId, setTimeout(() => {
+                const bsDropdown = bootstrap.Dropdown.getInstance(toggle);
+                if (bsDropdown) {
+                    bsDropdown.show();
+                } else {
+                    // Create new dropdown instance if it doesn't exist
+                    new bootstrap.Dropdown(toggle, { autoClose: false }).show();
+                }
+            }, 100)); // Small delay to prevent accidental opens
+        });
+        
+        // Keep dropdown open when mouse is over dropdown or menu
+        dropdown.addEventListener('mouseleave', function(e) {
+            const dropdownId = dropdown.id || Math.random().toString(36);
+            clearTimeout(hoverTimeouts.get(dropdownId));
+            
+            // Check if mouse is moving to the menu
+            const relatedTarget = e.relatedTarget;
+            if (relatedTarget && (dropdown.contains(relatedTarget) || menu.contains(relatedTarget))) {
+                return; // Mouse is still within dropdown area
+            }
+            
+            // Close with delay to allow mouse to move to menu
+            closeTimeouts.set(dropdownId, setTimeout(() => {
+                const bsDropdown = bootstrap.Dropdown.getInstance(toggle);
+                if (bsDropdown) {
+                    bsDropdown.hide();
+                }
+            }, 300)); // Delay to allow mouse movement to menu
+        });
+        
+        // Also handle menu mouseenter/leave
+        menu.addEventListener('mouseenter', function() {
+            const dropdownId = dropdown.id || Math.random().toString(36);
+            clearTimeout(closeTimeouts.get(dropdownId));
+        });
+        
+        menu.addEventListener('mouseleave', function(e) {
+            const dropdownId = dropdown.id || Math.random().toString(36);
+            const relatedTarget = e.relatedTarget;
+            if (relatedTarget && dropdown.contains(relatedTarget)) {
+                return; // Mouse is moving back to dropdown
+            }
+            
+            closeTimeouts.set(dropdownId, setTimeout(() => {
+                const bsDropdown = bootstrap.Dropdown.getInstance(toggle);
+                if (bsDropdown) {
+                    bsDropdown.hide();
+                }
+            }, 300));
+        });
+    });
+    
+    // Re-initialize on window resize
+    let resizeTimeout;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            if (window.innerWidth >= 992) {
+                // Remove old event listeners by re-initializing
+                initDesktopDropdown();
+            }
+        }, 250);
     });
 }
 
