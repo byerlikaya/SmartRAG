@@ -7,11 +7,11 @@ lang: tr
 
 ## Ses & OCR Yapılandırması
 
-SmartRAG ses dosyalarını metne çevirme ve görsellerden metin çıkarma yetenekleri sunar:
+<p>SmartRAG ses dosyalarını metne çevirme ve görsellerden metin çıkarma yetenekleri sunar:</p>
 
 ## Whisper.net (Yerel Ses Transkripsiyonu)
 
-Whisper.net, 99+ dil desteğiyle yerel, on-premise ses transkripsiyonu sağlar:
+<p>Whisper.net, 99+ dil desteğiyle yerel, on-premise ses transkripsiyonu sağlar:</p>
 
 ### WhisperConfig Parametreleri
 

@@ -7,11 +7,11 @@ lang: tr
 
 ## Depolama Sağlayıcı Yapılandırması
 
-SmartRAG çeşitli depolama sağlayıcılarını destekler:
+<p>SmartRAG çeşitli depolama sağlayıcılarını destekler:</p>
 
 ## Qdrant (Vektör Veritabanı)
 
-Qdrant, milyonlarca vektörle üretim kullanımı için tasarlanmış yüksek performanslı bir vektör veritabanıdır:
+<p>Qdrant, milyonlarca vektörle üretim kullanımı için tasarlanmış yüksek performanslı bir vektör veritabanıdır:</p>
 
 ```json
 {
@@ -48,7 +48,7 @@ builder.Services.AddSmartRag(configuration, options =>
 
 ## Redis (Yüksek Performanslı Önbellek)
 
-Redis, RediSearch kullanarak vektör benzerlik araması yetenekleriyle hızlı bellek içi depolama sağlar:
+<p>Redis, RediSearch kullanarak vektör benzerlik araması yetenekleriyle hızlı bellek içi depolama sağlar:</p>
 
 ```json
 {

@@ -8,11 +8,15 @@ lang: tr
 
 ## Kurulum
 
-SmartRAG bir NuGet paketi olarak mevcuttur ve **.NET Standard 2.1** destekler, bu da şunlarla uyumlu olduğu anlamına gelir:
-- ✅ .NET Core 3.0+
-- ✅ .NET 5, 6, 7, 8, 9+
+<div class="card">
+    <div class="card-body">
+        <p>SmartRAG bir NuGet paketi olarak mevcuttur ve <strong>.NET Standard 2.1</strong> destekler, bu da şunlarla uyumlu olduğu anlamına gelir:</p>
+        <ul>
+            <li>✅ .NET Core 3.0+</li>
+            <li>✅ .NET 5, 6, 7, 8, 9+</li>
+        </ul>
 
-### Kurulum Yöntemleri
+        <h3 class="card-title">Kurulum Yöntemleri</h3>
 
 <div class="code-tabs">
     <button class="code-tab active" data-tab="cli">.NET CLI</button>
@@ -31,10 +35,12 @@ SmartRAG bir NuGet paketi olarak mevcuttur ve **.NET Standard 2.1** destekler, b
 <div class="code-panel" data-tab="xml">
 <pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="3.3.0" /&gt;</code></pre>
 </div>
+    </div>
+</div>
 
 ## Temel Yapılandırma
 
-SmartRAG'i `Program.cs` veya `Startup.cs` dosyanızda yapılandırın:
+<p>SmartRAG'i <code>Program.cs</code> veya <code>Startup.cs</code> dosyanızda yapılandırın:</p>
 
 ### Hızlı Kurulum (Önerilen)
 
@@ -96,7 +102,7 @@ app.Run();
 
 ## Yapılandırma Dosyası
 
-`appsettings.json` veya `appsettings.Development.json` oluşturun:
+<p><code>appsettings.json</code> veya <code>appsettings.Development.json</code> oluşturun:</p>
 
 ```json
 {
@@ -280,7 +286,7 @@ public class QuestionRequest
 
 ## Konuşma Geçmişi
 
-SmartRAG otomatik olarak konuşma geçmişini yönetir:
+<p>SmartRAG otomatik olarak konuşma geçmişini yönetir:</p>
 
 ```csharp
 // İlk soru

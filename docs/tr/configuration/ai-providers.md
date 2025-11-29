@@ -7,9 +7,11 @@ lang: tr
 
 ## AI Sağlayıcı Yapılandırması
 
-SmartRAG çeşitli AI sağlayıcılarını destekler:
+<p>SmartRAG çeşitli AI sağlayıcılarını destekler:</p>
 
 ## OpenAI
+
+<p>OpenAI, üretime hazır uygulamalar için gelişmiş dil modelleri ve embedding'ler sağlar:</p>
 
 ```json
 {
@@ -82,8 +84,6 @@ builder.Services.AddSmartRag(configuration, options =>
 - `claude-3.5-sonnet` - Önceki nesil
 - `claude-3-opus-20240229` - En yüksek yetenek
 - `claude-3-haiku-20240307` - En hızlı
-- `claude-3-opus-20240229` - En yüksek yetenek
-- `claude-3-haiku-20240307` - En hızlı
 
 **VoyageAI Embedding Modelleri:**
 - `voyage-3.5` - Yüksek kalite (önerilen)
@@ -91,6 +91,8 @@ builder.Services.AddSmartRag(configuration, options =>
 - `voyage-2` - Genel amaçlı
 
 ## Google Gemini
+
+<p>Google Gemini, çok modlu yeteneklerle uygun maliyetli AI modelleri sunar:</p>
 
 ```json
 {
@@ -121,6 +123,8 @@ builder.Services.AddSmartRag(configuration, options =>
 - `embedding-001` - Metin embedding'leri
 
 ## Azure OpenAI
+
+<p>Azure OpenAI, gelişmiş güvenlik ve uyumluluk ile kurumsal düzeyde AI hizmetleri sağlar:</p>
 
 ```json
 {

@@ -7,13 +7,13 @@ lang: tr
 
 ## Veritabanı Yapılandırması
 
-SmartRAG çoklu veritabanı desteği ile akıllı çapraz-veritabanı sorguları yapabilir:
+<p>SmartRAG çoklu veritabanı desteği ile akıllı çapraz-veritabanı sorguları yapabilir:</p>
 
 ## Çoklu Veritabanı Bağlantıları
 
-Çoklu veritabanı bağlantılarını yapılandırarak çapraz-veritabanı sorgularını etkinleştirin:
+<p>Çoklu veritabanı bağlantılarını yapılandırarak çapraz-veritabanı sorgularını etkinleştirin:</p>
 
-Veritabanlarını `appsettings.json` dosyasında yapılandırın:
+<p>Veritabanlarını <code>appsettings.json</code> dosyasında yapılandırın:</p>
 
 ```json
 {
