@@ -66,5 +66,5 @@ theme_toggle: true
 default_theme: "light"
 
 # Cache busting
-cache_bust: "2025-11-06-v3.0.3"
+cache_bust: "2025-11-29-v3.3.0-desktop-logo-fix"
 

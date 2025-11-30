@@ -85,13 +85,39 @@
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top shadow-sm">
         <div class="container">
-            <a class="navbar-brand d-flex align-items-center" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/">
-                <span class="brand-gradient fw-bold">SmartRAG</span>
-            </a>
-            
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+            <!-- Top row: Logo, Controls, Hamburger (always together) -->
+            <div class="navbar-top-row">
+                <a class="navbar-brand d-flex align-items-center" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/">
+                    <span class="brand-gradient fw-bold">SmartRAG</span>
+                </a>
+                
+                <!-- Language & Theme Controls - Mobile (shown on mobile, in navbar top) -->
+                <div class="d-flex align-items-center gap-2 mobile-controls">
+                    <!-- Language Selector -->
+                    <div class="btn-group" role="group">
+                        <a href="{{ site.baseurl }}/en{{ page.url | remove: '/tr' | remove: '/en' }}" 
+                           class="btn btn-sm {% if page.lang == 'en' or page.lang == null %}btn-primary{% else %}btn-outline-primary{% endif %} language-btn" 
+                           data-lang="en">
+                            EN
+                        </a>
+                        <a href="{{ site.baseurl }}/tr{{ page.url | remove: '/tr' | remove: '/en' }}" 
+                           class="btn btn-sm {% if page.lang == 'tr' %}btn-primary{% else %}btn-outline-primary{% endif %} language-btn" 
+                           data-lang="tr">
+                            TR
+                        </a>
+                    </div>
+                    
+                    <!-- Theme Toggle -->
+                    <button id="themeToggleMobile" class="btn btn-sm btn-outline-secondary theme-toggle" title="Toggle theme">
+                        <i class="fas fa-moon theme-icon-dark" style="display: none;"></i>
+                        <i class="fas fa-sun theme-icon-light"></i>
+                    </button>
+                </div>
+                
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+            </div>
             
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
@@ -241,8 +267,8 @@
                     </li>
                 </ul>
                 
-                <!-- Language & Theme Controls -->
-                <div class="d-flex align-items-center gap-2">
+                <!-- Language & Theme Controls - Desktop (shown on desktop, hidden on mobile) -->
+                <div class="d-flex align-items-center gap-2 desktop-controls">
                     <!-- Language Selector -->
                     <div class="btn-group" role="group">
                         <a href="{{ site.baseurl }}/en{{ page.url | remove: '/tr' | remove: '/en' }}" 

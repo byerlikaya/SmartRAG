@@ -227,6 +227,30 @@ body {
     margin-top: 12px;
 }
 
+/* Override for mobile dropdown toggles - must come after .nav-link */
+@media (max-width: 991.98px) {
+    /* Override .nav-link styles for dropdown toggles on mobile */
+    .navbar-nav .nav-item.dropdown > .nav-link.dropdown-toggle {
+        padding: 1rem 1.25rem !important;
+        font-size: 1rem !important;
+        min-height: 48px !important;
+        margin-top: 0 !important;
+        margin-bottom: 0.5rem !important;
+        width: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        border: 1px solid var(--border-color) !important;
+        background-color: var(--bg-secondary) !important;
+    }
+    
+    .navbar-nav .nav-item.dropdown > .nav-link.dropdown-toggle:hover,
+    .navbar-nav .nav-item.dropdown > .nav-link.dropdown-toggle:focus {
+        background-color: var(--bg-tertiary) !important;
+        border-color: var(--primary) !important;
+    }
+}
+
 .nav-link:hover {
     color: var(--primary) !important;
     background-color: var(--bg-tertiary);
@@ -247,6 +271,56 @@ body {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+}
+
+/* Hide mobile controls on desktop (outside navbar-collapse) */
+@media (min-width: 992px) {
+    .mobile-controls {
+        display: none !important;
+    }
+    
+    /* On desktop, show navbar-top-row but only display logo */
+    .navbar-top-row {
+        display: flex !important;
+        align-items: center !important;
+        width: auto !important;
+    }
+    
+    .navbar-top-row .mobile-controls {
+        display: none !important;
+    }
+    
+    .navbar-top-row .navbar-toggler {
+        display: none !important;
+    }
+    
+    /* Show logo on desktop */
+    .navbar-top-row .navbar-brand {
+        display: flex !important;
+        margin-left: 0 !important;
+        margin-right: 1rem !important;
+        order: 0 !important;
+    }
+}
+
+/* Desktop controls - show on desktop, hide on mobile */
+@media (min-width: 992px) {
+    .desktop-controls {
+        display: flex !important;
+    }
+    
+    /* Hide mobile controls inside menu on desktop */
+    .navbar-collapse .mobile-controls {
+        display: none !important;
+    }
+}
+
+/* Mobile controls - hide on desktop */
+@media (max-width: 991.98px) {
+    /* Hide desktop controls on mobile */
+    .desktop-controls {
+        display: none !important;
+    }
 }
 
 .language-btn {
@@ -1854,15 +1928,18 @@ details[open] {
 }
 
 /* ===== DROPDOWN HOVER MENU ===== */
-.navbar-nav .dropdown:hover .dropdown-menu {
-    display: block;
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
+/* Only show on desktop (>= 992px) */
+@media (min-width: 992px) {
+    .navbar-nav .dropdown:hover .dropdown-menu {
+        display: block !important;
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
 }
 
 .navbar-nav .dropdown-menu {
-    display: none;
+    display: none !important; /* Hidden by default */
     opacity: 0;
     visibility: hidden;
     transform: translateY(-10px);
@@ -1875,14 +1952,11 @@ details[open] {
     margin-top: 0 !important; /* Remove gap between toggle and menu */
     border-top: none; /* Remove top border to connect with toggle */
     border-radius: 0 0 8px 8px; /* Only round bottom corners */
-    margin-top: 0 !important; /* Remove gap between toggle and menu */
     position: absolute;
     top: 100%;
     left: 0;
     min-width: 250px;
     z-index: 1000;
-    border-top: none; /* Remove top border to connect with toggle */
-    border-radius: 0 0 8px 8px; /* Only round bottom corners */
 }
 
 /* Create invisible bridge between button and menu to prevent gap */
@@ -1930,37 +2004,233 @@ details[open] {
 
 /* Mobile responsive - disable hover on touch devices */
 @media (max-width: 991.98px) {
+    /* Hide desktop controls everywhere on mobile */
+    .desktop-controls {
+        display: none !important;
+    }
+    
+    /* Navbar container - ensure proper flex layout */
+    .navbar .container {
+        display: flex !important;
+        flex-direction: column !important; /* Stack top row and menu vertically */
+        align-items: stretch !important;
+        position: relative !important;
+    }
+    
+    /* Top row wrapper - keeps logo, controls, hamburger together */
+    .navbar-top-row {
+        display: flex !important;
+        align-items: center !important;
+        width: 100% !important;
+        flex-wrap: nowrap !important; /* Never wrap - always same row */
+        position: relative !important;
+        z-index: 1001 !important; /* Above menu */
+    }
+    
+    /* Mobile controls - align to left */
+    .navbar-top-row .mobile-controls {
+        display: flex !important;
+        flex-direction: row !important; /* Horizontal layout - buttons side by side */
+        align-items: center !important;
+        gap: 0.5rem !important;
+        margin-left: 0 !important; /* Align to left */
+        margin-right: auto !important; /* Push logo to center */
+        flex-shrink: 0 !important;
+        position: relative !important;
+        order: 1 !important; /* First element */
+    }
+    
+    /* Logo - center */
+    .navbar-top-row .navbar-brand {
+        flex-shrink: 0 !important;
+        margin-left: auto !important; /* Center logo */
+        margin-right: auto !important; /* Center logo */
+        order: 2 !important; /* Second element */
+    }
+    
+    /* Hamburger button - keep in place */
+    .navbar-top-row .navbar-toggler {
+        flex-shrink: 0 !important;
+        margin-left: auto !important; /* Push to right */
+        order: 3 !important; /* Third element */
+    }
+    
+    /* Ensure mobile controls are properly sized */
+    .mobile-controls .btn-group {
+        display: flex !important;
+    }
+    
+    .mobile-controls .language-btn,
+    .mobile-controls .theme-toggle {
+        font-size: 0.85rem !important;
+        padding: 0.4rem 0.8rem !important;
+        min-height: 36px !important; /* Touch-friendly but compact */
+    }
+    
+    /* Hide mobile controls inside navbar-collapse */
+    .navbar-collapse .mobile-controls {
+        display: none !important;
+    }
+    
+    /* Navbar collapse - full width below top row */
+    .navbar-collapse {
+        width: 100% !important;
+        margin-top: 0.5rem !important;
+    }
+    
+    /* Hide original navbar-brand and navbar-toggler when top-row exists */
+    .navbar .container > .navbar-brand:not(.navbar-top-row .navbar-brand),
+    .navbar .container > .navbar-toggler:not(.navbar-top-row .navbar-toggler) {
+        display: none !important;
+    }
+    
+    /* Ensure navbar container uses flexbox for proper ordering */
+    .navbar .container {
+        display: flex !important;
+        align-items: center !important;
+        flex-wrap: wrap !important;
+    }
+    
+    /* Order: logo (1), mobile-controls (2), hamburger (3) */
+    .navbar-brand {
+        order: 1 !important;
+    }
+    
+    .navbar-toggler {
+        order: 3 !important;
+    }
+    /* Disable hover on mobile - dropdowns should only open via click */
     .navbar-nav .dropdown:hover .dropdown-menu {
-        display: none;
+        display: none !important;
     }
     
-    .navbar-nav .dropdown-menu {
-        display: none;
-        opacity: 1;
-        visibility: visible;
-        transform: none;
-        transition: none;
-        position: static;
-        float: none;
-        width: 100%;
-        margin-top: 0.5rem;
-        background-color: var(--bg-primary);
-        border: 1px solid var(--border-color);
-        border-radius: 0.5rem;
-        box-shadow: var(--shadow-lg);
+    /* Ensure dropdowns are hidden by default on mobile - MUST be more specific than .show */
+    /* This rule must come BEFORE the .show rule to ensure proper specificity */
+    .navbar-nav .nav-item.dropdown .dropdown-menu {
+        display: none !important;
     }
     
-    .navbar-nav .dropdown.show .dropdown-menu {
-        display: block;
+    /* Force hide all dropdowns on page load - even if they have .show class */
+    /* This ensures dropdowns start closed on mobile */
+    .navbar-nav .nav-item.dropdown .dropdown-menu:not(.force-show) {
+        display: none !important;
     }
     
-    .navbar-nav .dropdown-menu .dropdown-item {
-        padding: 0.75rem 1rem;
-        border-bottom: 1px solid var(--border-color);
+    /* Mobile dropdown toggle buttons - larger and more touch-friendly */
+    .navbar-nav .nav-item.dropdown .nav-link.dropdown-toggle {
+        padding: 0.75rem 1.25rem !important; /* Reduced padding to match regular nav-links */
+        font-size: 1rem !important;
+        min-height: 44px !important; /* Slightly reduced to match regular nav-links */
+        height: 44px !important; /* Fixed height for consistency */
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+        border-radius: 0.5rem !important;
+        transition: var(--transition-fast) !important;
+        margin-bottom: 0.25rem !important; /* Reduced margin between items */
+        background-color: transparent !important;
     }
     
-    .navbar-nav .dropdown-menu .dropdown-item:last-child {
-        border-bottom: none;
+    .navbar-nav .nav-item.dropdown .nav-link.dropdown-toggle:hover,
+    .navbar-nav .nav-item.dropdown .nav-link.dropdown-toggle:focus {
+        background-color: var(--bg-tertiary) !important;
+    }
+    
+    .navbar-nav .nav-item.dropdown .nav-link.dropdown-toggle::after {
+        margin-left: auto !important;
+        transition: transform 0.3s ease !important;
+        flex-shrink: 0 !important;
+    }
+    
+    .navbar-nav .nav-item.dropdown.show .nav-link.dropdown-toggle::after {
+        transform: rotate(180deg) !important;
+    }
+    
+    /* Dropdown menu styling - hidden by default */
+    /* Force dropdown to be below the toggle button, not to the side */
+    .navbar-nav .nav-item.dropdown {
+        position: relative !important;
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important; /* Stretch children to full width */
+        margin-bottom: 0.25rem !important; /* Reduced margin to match regular nav items */
+    }
+    
+    .navbar-nav .nav-item.dropdown .dropdown-menu {
+        display: none !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: none !important;
+        transition: none !important;
+        position: static !important; /* Static position - flows naturally below toggle */
+        float: none !important;
+        width: 100% !important;
+        left: auto !important; /* Remove any left positioning */
+        right: auto !important; /* Remove any right positioning */
+        top: auto !important; /* Remove any top positioning */
+        bottom: auto !important; /* Remove any bottom positioning */
+        margin-top: 0.5rem !important; /* Small margin below toggle button */
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        margin-bottom: 0 !important;
+        background-color: var(--bg-primary) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 0.5rem !important;
+        box-shadow: var(--shadow-lg) !important;
+        padding: 0.5rem 0 !important;
+        max-height: 70vh !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important; /* Smooth scrolling on iOS */
+        min-width: 100% !important; /* Ensure full width */
+        max-width: 100% !important; /* Prevent overflow */
+        /* Override Bootstrap's default dropdown positioning */
+        inset: auto !important; /* Reset all inset values */
+    }
+    
+    /* Only show dropdown when .show class is present AND we're on mobile AND has force-show */
+    .navbar-nav .nav-item.dropdown.show .dropdown-menu.force-show {
+        display: block !important;
+    }
+    
+    /* Mobile dropdown items - larger padding for touch-friendly interaction */
+    .navbar-nav .nav-item.dropdown .dropdown-menu .dropdown-item {
+        padding: 1rem 1.5rem !important;
+        border-bottom: 1px solid var(--border-color) !important;
+        font-size: 0.95rem !important;
+        min-height: 48px !important; /* Touch-friendly minimum size */
+        display: flex !important;
+        align-items: center !important;
+        transition: var(--transition-fast) !important;
+        color: var(--text-primary) !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+    }
+    
+    .navbar-nav .nav-item.dropdown .dropdown-menu .dropdown-item:hover,
+    .navbar-nav .nav-item.dropdown .dropdown-menu .dropdown-item:focus,
+    .navbar-nav .nav-item.dropdown .dropdown-menu .dropdown-item:active {
+        background-color: var(--primary) !important;
+        color: white !important;
+        transform: none !important; /* Remove transform on mobile for better touch experience */
+    }
+    
+    .navbar-nav .nav-item.dropdown .dropdown-menu .dropdown-item:first-child {
+        border-top-left-radius: 0.5rem !important;
+        border-top-right-radius: 0.5rem !important;
+    }
+    
+    .navbar-nav .nav-item.dropdown .dropdown-menu .dropdown-item:last-child {
+        border-bottom: none !important;
+        border-bottom-left-radius: 0.5rem !important;
+        border-bottom-right-radius: 0.5rem !important;
+    }
+    
+    /* Dropdown divider on mobile */
+    .navbar-nav .nav-item.dropdown .dropdown-menu .dropdown-divider {
+        margin: 0.5rem 0 !important;
+        border-color: var(--border-color) !important;
     }
     
     /* Hero premise badge mobile positioning */
@@ -1987,13 +2257,52 @@ details[open] {
         margin: 0.5rem 0;
     }
     
-    /* Prevent dropdown overflow on mobile */
+    /* Ensure dropdown items are properly spaced on mobile */
+    .navbar-nav .nav-item.dropdown {
+        width: 100% !important;
+        margin-bottom: 0.25rem !important; /* Reduced margin to match regular nav items */
+        position: relative !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    
+    /* Prevent dropdown overflow on mobile - already defined above, but ensure consistency */
     .navbar-nav .dropdown-menu {
-        max-width: 100%;
-        overflow-x: hidden;
-        word-wrap: break-word;
-        max-height: 70vh;
-        overflow-y: auto;
+        max-width: 100% !important;
+        min-width: 100% !important;
+        width: 100% !important;
+        overflow-x: hidden !important;
+        word-wrap: break-word !important;
+        position: static !important; /* Ensure static positioning */
+        left: auto !important;
+        right: auto !important;
+        top: auto !important;
+    }
+    
+    /* Ensure navbar-nav uses column layout on mobile */
+    .navbar-nav {
+        flex-direction: column !important;
+        width: 100% !important;
+        align-items: stretch !important; /* Stretch all children to full width */
+    }
+    
+    /* Ensure nav-item takes full width on mobile */
+    .navbar-nav .nav-item {
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important; /* Stretch dropdown menu to full width */
+    }
+    
+    /* Override Bootstrap's dropdown positioning completely on mobile */
+    .navbar-nav .nav-item.dropdown .dropdown-menu[style*="position"] {
+        position: static !important;
+        left: auto !important;
+        right: auto !important;
+        top: auto !important;
+        bottom: auto !important;
+        transform: none !important;
+        inset: auto !important;
     }
     
     .hero-title {

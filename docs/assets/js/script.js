@@ -3,6 +3,17 @@
 document.addEventListener('DOMContentLoaded', function() {
     console.log('SmartRAG Documentation initialized');
     
+    // Close all dropdowns by default (both mobile and desktop)
+    // Force remove .show class and ensure dropdowns are hidden
+    document.querySelectorAll('.nav-item.dropdown').forEach(dropdown => {
+        dropdown.classList.remove('show');
+        const menu = dropdown.querySelector('.dropdown-menu');
+        if (menu) {
+            menu.style.display = 'none';
+            menu.classList.remove('force-show');
+        }
+    });
+    
     // Initialize all features
     initThemeToggle();
     initLanguagePreference();
@@ -633,34 +644,44 @@ function wrapGettingStartedSections() {
 // ===== THEME TOGGLE =====
 function initThemeToggle() {
     const themeToggle = document.getElementById('themeToggle');
+    const themeToggleMobile = document.getElementById('themeToggleMobile');
     const htmlElement = document.documentElement;
-    const iconDark = document.querySelector('.theme-icon-dark');
-    const iconLight = document.querySelector('.theme-icon-light');
-    
-    if (!themeToggle) return;
+    const iconDark = document.querySelectorAll('.theme-icon-dark');
+    const iconLight = document.querySelectorAll('.theme-icon-light');
     
     // Load saved theme or default to dark
     const savedTheme = localStorage.getItem('smartrag-theme') || 'dark';
     setTheme(savedTheme);
     
-    // Theme toggle click handler
-    themeToggle.addEventListener('click', function() {
-        const currentTheme = htmlElement.getAttribute('data-theme');
-        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-        setTheme(newTheme);
-    });
+    // Theme toggle click handler for desktop
+    if (themeToggle) {
+        themeToggle.addEventListener('click', function() {
+            const currentTheme = htmlElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            setTheme(newTheme);
+        });
+    }
+    
+    // Theme toggle click handler for mobile
+    if (themeToggleMobile) {
+        themeToggleMobile.addEventListener('click', function() {
+            const currentTheme = htmlElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            setTheme(newTheme);
+        });
+    }
     
     function setTheme(theme) {
         htmlElement.setAttribute('data-theme', theme);
         localStorage.setItem('smartrag-theme', theme);
         
-        // Update toggle button icons
+        // Update toggle button icons (both desktop and mobile)
         if (theme === 'dark') {
-            if (iconDark) iconDark.style.display = 'none';
-            if (iconLight) iconLight.style.display = 'inline-block';
+            iconDark.forEach(icon => icon.style.display = 'none');
+            iconLight.forEach(icon => icon.style.display = 'inline-block');
         } else {
-            if (iconDark) iconDark.style.display = 'inline-block';
-            if (iconLight) iconLight.style.display = 'none';
+            iconDark.forEach(icon => icon.style.display = 'inline-block');
+            iconLight.forEach(icon => icon.style.display = 'none');
         }
     }
 }
@@ -858,6 +879,17 @@ function initMobileDropdown() {
             // Toggle current dropdown
             if (!isActive) {
                 dropdown.classList.add('show');
+                const menu = dropdown.querySelector('.dropdown-menu');
+                if (menu) {
+                    menu.classList.add('force-show');
+                    menu.style.display = 'block';
+                }
+            } else {
+                const menu = dropdown.querySelector('.dropdown-menu');
+                if (menu) {
+                    menu.classList.remove('force-show');
+                    menu.style.display = 'none';
+                }
             }
         });
     });
