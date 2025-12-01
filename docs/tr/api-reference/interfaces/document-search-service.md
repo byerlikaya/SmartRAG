@@ -90,6 +90,14 @@ var audioResponse = await _searchService.QueryIntelligenceAsync(
     maxResults: 5,
     options: audioOptions
 );
+
+// Global yapılandırmayı kullan
+var globalOptions = SearchOptions.FromConfig(_smartRagOptions);
+var response = await _searchService.QueryIntelligenceAsync(
+    "Her şeyi ara",
+    maxResults: 5,
+    options: globalOptions
+);
 ```
 
 **Bayrak Tabanlı Filtreleme (Sorgu String Ayrıştırma):**
@@ -145,12 +153,35 @@ Task<List<DocumentChunk>> SearchDocumentsAsync(
 **Örnek:**
 
 ```csharp
+// Temel kullanım
 var chunks = await _searchService.SearchDocumentsAsync("makine öğrenimi", maxResults: 10);
 
 foreach (var chunk in chunks)
 {
     Console.WriteLine($"Skor: {chunk.RelevanceScore}, İçerik: {chunk.Content}");
 }
+
+// Arama seçenekleri ile
+var options = new SearchOptions
+{
+    EnableDocumentSearch = true,
+    EnableAudioSearch = false,
+    EnableImageSearch = false
+};
+
+var filteredChunks = await _searchService.SearchDocumentsAsync(
+    "makine öğrenimi", 
+    maxResults: 10,
+    options: options
+);
+
+// Önceden hesaplanmış token'lar ile (performans optimizasyonu)
+var tokens = new List<string> { "makine", "öğrenimi", "algoritmalar" };
+var optimizedChunks = await _searchService.SearchDocumentsAsync(
+    "makine öğrenimi",
+    maxResults: 10,
+    queryTokens: tokens
+);
 ```
 
 #### GenerateRagAnswerAsync (Kullanımdan Kaldırıldı)

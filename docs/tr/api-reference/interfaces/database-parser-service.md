@@ -21,6 +21,15 @@ Bir veritabanı dosyasını ayrıştırın (SQLite).
 Task<string> ParseDatabaseFileAsync(Stream dbStream, string fileName)
 ```
 
+**Örnek:**
+
+```csharp
+using var dbStream = File.OpenRead("catalog.db");
+var content = await _databaseService.ParseDatabaseFileAsync(dbStream, "catalog.db");
+
+Console.WriteLine(content); // Çıkarılan tablo verileri metin olarak
+```
+
 #### ParseDatabaseConnectionAsync
 
 Canlı veritabanına bağlanın ve içeriği çıkarın.
@@ -117,6 +126,12 @@ Desteklenen veritabanı türlerinin listesini alın.
 ```csharp
 IEnumerable<DatabaseType> GetSupportedDatabaseTypes()
 ```
+
+**Döndürür:**
+- `DatabaseType.SqlServer`
+- `DatabaseType.MySQL`
+- `DatabaseType.PostgreSql`
+- `DatabaseType.Sqlite`
 
 #### GetSupportedDatabaseFileExtensions
 

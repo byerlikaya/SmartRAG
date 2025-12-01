@@ -87,7 +87,7 @@ Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery)
 **Parametreler:**
 - `userQuery` (string): Doğal dil kullanıcı sorgusu
 
-**Dönen Değer:** `QueryIntent` veritabanı yönlendirme bilgileri ile
+**Döndürür:** `QueryIntent` veritabanı yönlendirme bilgileri ile
 
 **Not:** Bu metod kullanımdan kaldırılmıştır. Yerine `IQueryIntentAnalyzer.AnalyzeQueryIntentAsync` kullanın.
 
@@ -104,7 +104,7 @@ Task<MultiDatabaseQueryResult> ExecuteMultiDatabaseQueryAsync(
 **Parametreler:**
 - `queryIntent` (QueryIntent): Analiz edilmiş sorgu intent'i
 
-**Dönen Değer:** `MultiDatabaseQueryResult` tüm veritabanlarından birleştirilmiş sonuçlarla
+**Döndürür:** `MultiDatabaseQueryResult` tüm veritabanlarından birleştirilmiş sonuçlarla
 
 ##### GenerateDatabaseQueriesAsync
 
@@ -117,7 +117,7 @@ Task<QueryIntent> GenerateDatabaseQueriesAsync(QueryIntent queryIntent)
 **Parametreler:**
 - `queryIntent` (QueryIntent): SQL oluşturulacak sorgu intent'i
 
-**Dönen Değer:** Üretilmiş SQL sorguları ile güncellenmiş `QueryIntent`
+**Döndürür:** Üretilmiş SQL sorguları ile güncellenmiş `QueryIntent`
 
 ##### MultiDatabaseQueryResult
 
@@ -150,14 +150,6 @@ public class DatabaseQueryResult
     public long ExecutionTimeMs { get; set; }
 }
 ```
-
-<div class="alert alert-info">
-    <h4><i class="fas fa-info-circle me-2"></i> Generic Sorgu Örnekleri</h4>
-    <p class="mb-0">
-        Tüm örnekler <strong>generic placeholder</strong> isimler kullanır (TableA, TableB, Database1).
-        Asla domain-specific isimler kullanılmaz (Products, Orders, Customers gibi).
-    </p>
-</div>
 
 
 ## İlgili Arayüzler
