@@ -51,7 +51,15 @@ Task<DatabaseConnectionConfig> GetConnectionAsync(string databaseId)
 **Parametreler:**
 - `databaseId` (string): Veritabanı tanımlayıcısı
 
-**Dönen Değer:** Bağlantı yapılandırması veya bulunamazsa null
+**Döndürür:** Bağlantı yapılandırması veya bulunamazsa null
+
+##### ValidateAllConnectionsAsync
+
+Konfigüre edilmiş tüm bağlantıları doğrular.
+
+```csharp
+Task<Dictionary<string, bool>> ValidateAllConnectionsAsync()
+```
 
 ##### ValidateConnectionAsync
 
@@ -64,7 +72,7 @@ Task<bool> ValidateConnectionAsync(string databaseId)
 **Parametreler:**
 - `databaseId` (string): Veritabanı tanımlayıcısı
 
-**Dönen Değer:** Bağlantı geçerliyse true, aksi takdirde false
+**Döndürür:** Bağlantı geçerliyse true, aksi takdirde false
 
 ##### GetDatabaseIdAsync
 
@@ -77,7 +85,7 @@ Task<string> GetDatabaseIdAsync(DatabaseConnectionConfig connectionConfig)
 **Parametreler:**
 - `connectionConfig` (DatabaseConnectionConfig): Bağlantı yapılandırması
 
-**Dönen Değer:** Benzersiz veritabanı tanımlayıcısı
+**Döndürür:** Benzersiz veritabanı tanımlayıcısı
 
 
 ## İlgili Arayüzler
