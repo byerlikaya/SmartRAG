@@ -26,7 +26,7 @@ namespace SmartRAG.API.Contracts
         /// <summary>
         /// Model name to use with the provider (optional, uses default if not specified)
         /// </summary>
-        /// <example>gpt-4</example>
+        /// <example>gpt-5.1</example>
         public string ModelName { get; set; } = string.Empty;
 
         /// <summary>

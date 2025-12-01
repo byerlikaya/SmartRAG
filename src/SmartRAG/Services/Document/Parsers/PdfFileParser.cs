@@ -83,35 +83,15 @@ namespace SmartRAG.Services.Document.Parsers
             for (int i = 1; i <= pageCount; i++)
             {
                 var page = pdfDocument.GetPage(i);
-                
-                // Try multiple extraction strategies to handle different PDF encoding issues
-                // Strategy 1: LocationTextExtractionStrategy (preserves layout, better for complex PDFs)
                 var locationStrategy = new LocationTextExtractionStrategy();
                 var locationText = PdfTextExtractor.GetTextFromPage(page, locationStrategy);
-                
-                // Strategy 2: SimpleTextExtractionStrategy (simpler, sometimes handles encoding better)
                 var simpleStrategy = new SimpleTextExtractionStrategy();
                 var simpleText = PdfTextExtractor.GetTextFromPage(page, simpleStrategy);
-                
-                // Choose the best extracted text (prefer longer, more complete text)
                 var rawText = string.IsNullOrWhiteSpace(locationText) ? simpleText :
                              string.IsNullOrWhiteSpace(simpleText) ? locationText :
                              locationText.Length >= simpleText.Length ? locationText : simpleText;
-                
-                // Apply encoding fixes to extracted text
                 var text = FixPdfTextEncoding(rawText);
-                
-                // Check if page has embedded images (scanned PDF indicator)
-                // OCR only works for scanned PDFs with embedded images
-                // For text-based PDFs, we must use extracted text (even if it has encoding issues)
                 var hasEmbeddedImages = HasEmbeddedImages(page);
-                
-                // Decision logic:
-                // 1. If text is good (substantial length, no encoding issues) → use it
-                // 2. If text is missing/short AND page has embedded images → use OCR
-                // 3. If text has encoding issues BUT page has embedded images → use OCR
-                // 4. If text has encoding issues BUT page is text-based → use extracted text (best we can do)
-                // 5. If text is missing/short AND page is text-based → use extracted text (empty or short)
                 
                 var hasEncodingIssues = !string.IsNullOrWhiteSpace(text) && HasTextEncodingIssues(text);
                 var textIsSubstantial = !string.IsNullOrWhiteSpace(text) && text.Trim().Length >= MinTextLengthForOcrFallback;
@@ -268,16 +248,11 @@ namespace SmartRAG.Services.Document.Parsers
             {
                 if (char.IsLower(text[i]) && char.IsUpper(text[i + 1]))
                 {
-                    // Check if this looks like a broken word (not an abbreviation or proper noun)
                     var before = i > 0 ? text[i - 1] : ' ';
                     var after = i + 2 < text.Length ? text[i + 2] : ' ';
                     
-                    // Skip if it's a common pattern (e.g., "iPhone", "McDonald" - uppercase after lowercase is valid)
-                    // Only flag if surrounded by letters (not punctuation) AND it's not a single-character prefix
                     if (char.IsLetter(before) && char.IsLetter(after))
                     {
-                        // Check if this is a common abbreviation pattern (single lowercase + uppercase)
-                        // If the lowercase char is at the start of a word, it might be valid (e.g., "iPhone")
                         var isAtWordStart = i == 0 || !char.IsLetter(text[i - 1]);
                         if (!isAtWordStart)
                         {
@@ -295,12 +270,6 @@ namespace SmartRAG.Services.Document.Parsers
                 }
             }
             
-            // Pattern 2: Check for unusual consonant clusters that suggest missing characters
-            // Generic approach: Only ASCII consonants are considered consonants
-            // Non-ASCII letters (accented characters, special letters) are treated as non-consonants
-            // This works for all languages because legitimate words contain non-ASCII letters
-            // However, some languages (e.g., Polish, Czech) have legitimate consonant clusters
-            // So we only flag this if combined with other issues (broken spacing or broken words)
             var hasUnusualConsonantClusters = false;
             var asciiConsonants = "bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ";
             var consecutiveConsonants = 0;
@@ -308,16 +277,11 @@ namespace SmartRAG.Services.Document.Parsers
             for (int i = 0; i < text.Length; i++)
             {
                 var c = text[i];
-                // Only ASCII consonants count as consonants
-                // Non-ASCII letters (vowels, accented characters, special letters) break the cluster
                 if (asciiConsonants.Contains(c))
                 {
                     consecutiveConsonants++;
-                    // Only flag if 4+ consecutive ASCII consonants (some languages have 3-consonant clusters)
                     if (consecutiveConsonants >= 4)
                     {
-                        // Only flag if this is part of a broken word pattern (not a legitimate cluster)
-                        // Check if surrounded by letters (likely a broken word)
                         var before = i - consecutiveConsonants >= 0 ? text[i - consecutiveConsonants] : ' ';
                         var after = i + 1 < text.Length ? text[i + 1] : ' ';
                         if (char.IsLetter(before) && char.IsLetter(after))
@@ -335,13 +299,7 @@ namespace SmartRAG.Services.Document.Parsers
                 }
             }
             
-            // Pattern 3: Removed broken word pattern detection
-            // This was causing too many false positives for legitimate words in various languages
-            // Broken spacing and consonant cluster detection are sufficient for encoding issue detection
             var hasBrokenWordPatterns = false;
-            
-            // Pattern 4: Check if text has very few non-ASCII characters but context suggests it should
-            // This works for all languages that use special characters (non-ASCII characters)
             // However, English-only text is valid, so we need to be careful not to flag it
             var nonAsciiCharCount = text.Count(c => c > 127); // Non-ASCII characters
             var totalCharCount = text.Count(char.IsLetter);
@@ -385,18 +343,12 @@ namespace SmartRAG.Services.Document.Parsers
             {
                 try
                 {
-                    // Extract embedded images from PDF page (works for scanned PDFs)
-                    // This is the only reliable way to get images from PDFs with current libraries
                     var embeddedImageResult = RenderPdfPageUsingEmbeddedImages(page);
                     if (embeddedImageResult != null)
                     {
                         return embeddedImageResult;
                     }
                     
-                    // No embedded images found - this is a text-based PDF
-                    // We cannot render text-based PDF pages to images with current libraries
-                    // (iText7 .NET doesn't have bitmap rendering, SkiaSharp doesn't support PDF)
-                    // OCR fallback will use extracted text instead
                     _logger.LogDebug("No embedded images found in PDF page - text-based PDF cannot be rendered to image for OCR with current libraries");
                     return null;
                 }
@@ -415,35 +367,25 @@ namespace SmartRAG.Services.Document.Parsers
         {
             try
             {
-                // Get page dimensions
                 var pageSize = page.GetPageSize();
                 var width = (float)pageSize.GetWidth();
                 var height = (float)pageSize.GetHeight();
-                
-                // Scale for better OCR quality (2x resolution for clearer text)
                 var scale = 2.0f;
                 var scaledWidth = (int)(width * scale);
                 var scaledHeight = (int)(height * scale);
 
-                // Create SkiaSharp bitmap with white background
                 using (var bitmap = new SKBitmap(scaledWidth, scaledHeight))
                 {
                     using (var canvas = new SKCanvas(bitmap))
                     {
-                        // White background for better OCR contrast
                         canvas.Clear(SKColors.White);
-                        
-                        // Try to extract embedded images from PDF page
-                        // This works for scanned PDFs (image-based PDFs)
                         var imagesExtracted = ExtractImagesFromPdfPage(page, canvas, scale);
                         
-                        // If no embedded images found, return null
                         if (!imagesExtracted)
                         {
                             return null;
                         }
                         
-                        // Encode bitmap as PNG stream
                         var image = SKImage.FromBitmap(bitmap);
                         var pngData = image.Encode(SKEncodedImageFormat.Png, 100);
                         var pngStream = new MemoryStream(pngData.ToArray());
@@ -495,26 +437,18 @@ namespace SmartRAG.Services.Document.Parsers
                                 {
                                     using (var imageStream = new MemoryStream(imageBytes))
                                     {
-                                        // Try to decode image with SkiaSharp
                                         using (var skImage = SKImage.FromEncodedData(imageStream))
                                         {
                                             if (skImage != null)
                                             {
-                                                // Get image dimensions from PDF
                                                 var imageWidth = pdfImage.GetWidth();
                                                 var imageHeight = pdfImage.GetHeight();
-                                                
-                                                // Calculate scaling to fit page
                                                 var pageSize = page.GetPageSize();
                                                 var pageWidth = (float)pageSize.GetWidth();
                                                 var pageHeight = (float)pageSize.GetHeight();
-                                                
-                                                // Scale image to fit page while maintaining aspect ratio
                                                 var scaleX = (pageWidth * scale) / imageWidth;
                                                 var scaleY = (pageHeight * scale) / imageHeight;
                                                 var finalScale = Math.Min(scaleX, scaleY);
-                                                
-                                                // Draw image on canvas (centered and scaled)
                                                 var destWidth = imageWidth * finalScale;
                                                 var destHeight = imageHeight * finalScale;
                                                 var x = (pageWidth * scale - destWidth) / 2;
@@ -609,8 +543,6 @@ namespace SmartRAG.Services.Document.Parsers
             var result = new StringBuilder(text.Length);
             foreach (var c in text)
             {
-                // Keep valid Unicode characters (including all language-specific characters)
-                // Remove only control characters (except common ones like newline, tab)
                 if (!char.IsControl(c) || c == '\n' || c == '\r' || c == '\t')
                 {
                     result.Append(c);

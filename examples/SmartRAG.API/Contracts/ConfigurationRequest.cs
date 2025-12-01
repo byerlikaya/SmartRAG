@@ -34,13 +34,13 @@ namespace SmartRAG.API.Contracts
         /// <summary>
         /// Default model to use with this provider
         /// </summary>
-        /// <example>gpt-4</example>
+        /// <example>gpt-5.1</example>
         public string DefaultModel { get; set; } = string.Empty;
 
         /// <summary>
         /// Default embedding model for this provider
         /// </summary>
-        /// <example>text-embedding-ada-002</example>
+        /// <example>text-embedding-3-small</example>
         public string DefaultEmbeddingModel { get; set; } = string.Empty;
 
         /// <summary>

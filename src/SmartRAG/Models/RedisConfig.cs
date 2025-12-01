@@ -41,6 +41,40 @@ namespace SmartRAG.Models
         public bool EnableSsl { get; set; }
 
         /// <summary>
+        /// Whether to use SSL for secure connections (alias for EnableSsl)
+        /// </summary>
+        public bool UseSsl
+        {
+            get => EnableSsl;
+            set => EnableSsl = value;
+        }
+
+        /// <summary>
+        /// Whether to enable vector search with RediSearch module
+        /// </summary>
+        public bool EnableVectorSearch { get; set; } = true;
+
+        /// <summary>
+        /// Vector index algorithm for RediSearch (default: HNSW)
+        /// </summary>
+        public string VectorIndexAlgorithm { get; set; } = "HNSW";
+
+        /// <summary>
+        /// Distance metric for vector similarity calculation (COSINE, IP, L2)
+        /// </summary>
+        public string DistanceMetric { get; set; } = "COSINE";
+
+        /// <summary>
+        /// Dimension size of the vector embeddings
+        /// </summary>
+        public int VectorDimension { get; set; } = 768;
+
+        /// <summary>
+        /// Name of the RediSearch vector index
+        /// </summary>
+        public string VectorIndexName { get; set; } = "smartrag_vector_idx";
+
+        /// <summary>
         /// Number of retry attempts for failed operations
         /// </summary>
         public int RetryCount { get; set; } = 3;

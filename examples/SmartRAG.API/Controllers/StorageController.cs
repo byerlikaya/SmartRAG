@@ -143,19 +143,6 @@ public class StorageController(IStorageFactory storageFactory, IDocumentService 
                     }
                     break;
 
-                case StorageProvider.SQLite:
-                    if (stats.ContainsKey("DatabasePath"))
-                    {
-                        health.IsHealthy = System.IO.File.Exists(stats["DatabasePath"].ToString());
-                    }
-                    break;
-
-                case StorageProvider.FileSystem:
-                    if (stats.ContainsKey("StoragePath"))
-                    {
-                        health.IsHealthy = Directory.Exists(stats["StoragePath"].ToString());
-                    }
-                    break;
             }
 
             return Ok(health);

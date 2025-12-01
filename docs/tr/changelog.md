@@ -3,10 +3,89 @@ layout: default
 title: Değişiklikler
 description: SmartRAG için eksiksiz versiyon geçmişi, breaking change'ler ve taşınma kılavuzları
 lang: tr
+redirect_from: /tr/changelog.html
 ---
 
+<script>
+    window.location.href = "{{ site.baseurl }}/tr/changelog/";
+</script>
 
-SmartRAG'deki tüm önemli değişiklikler burada belgelenmiştir. Proje [Anlamsal Versiyonlama](https://semver.org/spec/v2.0.0.html)'ya uymaktadır.
+Bu sayfa taşındı. Lütfen [Değişiklikler Ana Sayfası]({{ site.baseurl }}/tr/changelog/)'nı ziyaret edin.
+
+## [3.3.0] - 2025-12-01
+
+### Redis Vector Search & Storage İyileştirmeleri
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> MINOR Sürüm</h4>
+    <p class="mb-0">
+        Bu sürüm Redis vector arama yeteneklerini geliştirir ve kullanılmayan storage implementasyonlarını kaldırır.
+        Aktif storage provider'ları (Qdrant, Redis, InMemory) tam olarak çalışmaya devam eder.
+    </p>
+</div>
+
+### ✨ Eklendi
+
+#### Redis RediSearch Entegrasyonu
+- **Gelişmiş Vector Similarity Search**: RediSearch modülü desteği ile gelişmiş vector arama yetenekleri
+- **Vector Index Configuration**: Algoritma (HNSW), mesafe metriği (COSINE) ve boyut (varsayılan: 768) configuration
+  - **Dosyalar Güncellendi**:
+    - `src/SmartRAG/Models/RedisConfig.cs` - Vector arama configuration özellikleri
+  - `src/SmartRAG/Repositories/RedisDocumentRepository.cs` - RediSearch vector arama implementasyonu
+
+### 🔧 İyileştirildi
+
+#### Redis Vector Search Doğruluğu
+- **Doğru Relevance Scoring**: RelevanceScore artık Doküman Arama Service'i sıralaması için doğru hesaplanıyor ve atanıyor
+- **Similarity Hesaplama**: RediSearch mesafe metrikleri similarity skorlarına doğru şekilde dönüştürülüyor
+- **Debug Logging**: Skor doğrulama logging'i eklendi
+- **Dosyalar Güncellendi**:
+  - `src/SmartRAG/Repositories/RedisDocumentRepository.cs` - RelevanceScore ataması
+
+#### Redis Embedding Üretimi
+- **AI Configuration Yönetimi**: Doğru config almak için IAIConfigurationService injection'ı
+  - **Zarif Geri Dönüş**: Config mevcut olmadığında text arama'ya geri dönüş
+- **Dosyalar Güncellendi**:
+  - `src/SmartRAG/Repositories/RedisDocumentRepository.cs` - AI config yönetimi
+  - `src/SmartRAG/Factories/StorageFactory.cs` - IAIConfigurationService injection
+
+#### StorageFactory Dependency Injection
+- **Scope Çözümleme**: Lazy resolution kullanarak Singleton/Scoped lifetime uyumsuzluğu düzeltildi
+- **IServiceProvider Pattern**: IServiceProvider aracılığıyla lazy dependency resolution'a geçildi
+- **Dosyalar Güncellendi**:
+  - `src/SmartRAG/Factories/StorageFactory.cs` - Lazy dependency resolution
+  - `src/SmartRAG/Extensions/ServiceCollectionExtensions.cs` - IAIProvider lifetime ayarı
+
+### 🐛 Düzeltildi
+
+- **StorageFactory DI Scope Sorunu**: IAIProvider çözümlerken InvalidOperationException düzeltildi
+- **Redis Relevance Scoring**: Arama sonuçlarında RelevanceScore'un 0.0000 olması düzeltildi
+- **Redis Embedding Config**: Embedding üretirken NullReferenceException düzeltildi
+
+### 🗑️ Kaldırıldı
+
+- **FileSystemDocumentRepository**: Kullanılmayan file system storage implementasyonu kaldırıldı
+- **SqliteDocumentRepository**: Kullanılmayan SQLite storage implementasyonu kaldırıldı
+- **StorageConfig Özellikleri**: FileSystemPath ve SqliteConfig kaldırıldı (kullanılmıyor)
+
+### 📚 Dokümantasyon
+
+- **Redis Storage Dokümantasyonu**: RediSearch gereksinimleri ve kurulum talimatları ile güncellendi
+- **InMemory Storage Dokümantasyonu**: Configuration örnekleri ve kullanım senaryoları eklendi
+
+### ⚠️ Breaking Changes
+
+- **FileSystem ve SQLite Doküman Repository'leri Kaldırıldı**
+  - Bunlar kullanılmayan implementasyonlardı
+  - Aktif storage provider'ları (Qdrant, Redis, InMemory) tam olarak çalışmaya devam ediyor
+  - FileSystem veya SQLite kullanıyorsanız, Qdrant, Redis veya InMemory'ye geçin
+
+### 📝 Notlar
+
+- **Redis Gereksinimleri**: Vector arama RediSearch modülü gerektirir
+  - `redis/redis-stack-server:latest` Docker image'ını kullanın
+  - Veya Redis sunucunuza RediSearch modülünü kurun
+  - RediSearch olmadan sadece text arama çalışır (vector arama çalışmaz)
 
 ---
 
@@ -64,7 +143,7 @@ SmartRAG'deki tüm önemli değişiklikler burada belgelenmiştir. Proje [Anlams
 #### **Servis Katmanı Refactoring**
 
 ##### AI Servis Ayrıştırması
-- **`IAIConfigurationService`**: AI sağlayıcı yapılandırma yönetimi
+- **`IAIConfigurationService`**: AI sağlayıcı configuration yönetimi
 - **`IAIRequestExecutor`**: Yeniden deneme/yedekleme ile AI istek yürütme
 - **`IPromptBuilderService`**: Prompt oluşturma ve optimizasyon
 - **`IAIProviderFactory`**: AI sağlayıcı örnekleri oluşturmak için fabrika
@@ -95,14 +174,14 @@ SmartRAG'deki tüm önemli değişiklikler burada belgelenmiştir. Proje [Anlams
 
 #### **Yeni Özellikler: Özelleştirme Desteği**
 
-- **Özel SQL Diyalekt Stratejileri**: Özel veritabanı diyalektleri (örn. Oracle) uygulama desteği
+- **Özel SQL Diyalekt Stratejileri**: Özel veritabanı diyalektleri uygulama ve mevcut olanları genişletme desteği (SQLite, SQL Server, MySQL, PostgreSQL)
 - **Özel Skorlama Stratejileri**: Özel arama ilgililik mantığı uygulama desteği
 - **Özel Dosya Ayrıştırıcıları**: Özel dosya formatı ayrıştırıcıları uygulama desteği
 - **Özel Konuşma Yönetimi**: Konuşma geçmişini yönetmek için yeni servis
 
 ### ✨ Eklenenler
 
-- **SearchOptions Desteği**: İstek başına arama yapılandırması ile detaylı kontrol
+- **SearchOptions Desteği**: İstek başına arama configuration'ı ile detaylı kontrol
   - Veritabanı, doküman, ses ve görüntü araması için özellik bayrakları
   - ISO 639-1 dil kodu desteği için `PreferredLanguage` özelliği
   - Özellik bayraklarına dayalı koşullu servis kaydı
@@ -133,9 +212,9 @@ SmartRAG'deki tüm önemli değişiklikler burada belgelenmiştir. Proje [Anlams
 - **Sorgu Token Parametresi**: Önceden hesaplanmış token desteği
   - Gereksiz tokenizasyonu ortadan kaldırmak için isteğe bağlı `queryTokens` parametresi
 
-- **FeatureToggles Modeli**: Global özellik bayrağı yapılandırması
+- **FeatureToggles Modeli**: Global özellik bayrağı configuration'ı
   - Merkezi özellik yönetimi için `FeatureToggles` sınıfı
-  - Kolay yapılandırma için `SearchOptions.FromConfig()` statik metodu
+  - Kolay configuration için `SearchOptions.FromConfig()` statik metodu
 
 - **ContextExpansionService**: Bitişik chunk bağlam genişletme
   - Bitişik chunk'ları dahil ederek doküman chunk bağlamını genişletir
@@ -169,15 +248,13 @@ SmartRAG'deki tüm önemli değişiklikler burada belgelenmiştir. Proje [Anlams
 ### Düzeltmeler
 
 - **SQL Üretiminde Tablo Takma Adı Zorunluluğu**: Belirsiz kolon hatalarını önler
-- **EnableDatabaseSearch Yapılandırma Uyumu**: Uygun özellik bayrağı işleme
-- **macOS Native Kütüphaneleri**: OCR kütüphane dahil etme ve DYLD_LIBRARY_PATH yapılandırması
-- **Eksik Metod İmzası**: DocumentSearchService geri yükleme
+- **EnableDatabaseSearch Configuration Uyumu**: Uygun özellik bayrağı işleme
+- **macOS Native Kütüphaneleri**: OCR kütüphane dahil etme ve DYLD_LIBRARY_PATH configuration'ı
+- **Eksik Metod İmzası**: Doküman Arama Service'i geri yükleme
 
 ### Değişiklikler
 
 - **IEmbeddingSearchService Bağımlılık Kaldırma**: Basitleştirilmiş mimari
-- **Demo Dil Seçimi**: ISO 639-1 kod standardizasyonu
-- **Demo Proje Yapılandırması**: Varsayılan depolama olarak Qdrant
 - **Kod Temizliği**: Satır içi yorumlar ve kullanılmayan direktiflerin kaldırılması
 - **Günlükleme Temizliği**: Azaltılmış ayrıntılı günlükleme
 - **NuGet Paket Güncellemeleri**: En son uyumlu sürümler
@@ -228,17 +305,19 @@ var history = await _conversationManager.GetConversationHistoryAsync(sessionId);
 
 **Özel SQL Diyalekt Stratejisi**:
 ```csharp
-// Örnek: Oracle desteği ekleme
-public class OracleDialectStrategy : BaseSqlDialectStrategy
+// Örnek: Özel doğrulama ile PostgreSQL desteğini genişletme
+public class EnhancedPostgreSqlDialectStrategy : BaseSqlDialectStrategy
 {
-    public override string GetDialectName() => "Oracle";
+    public override DatabaseType DatabaseType => DatabaseType.PostgreSQL;
     
-    public override string BuildSelectQuery(
+    public override string GetDialectName() => "Gelişmiş PostgreSQL";
+    
+    public override string BuildSystemPrompt(
         DatabaseSchemaInfo schema, 
-        List<string> tables, 
-        int maxRows)
+        string userQuery)
     {
-        // Oracle'a özgü SQL üretimi
+        // Gelişmiş PostgreSQL'e özgü SQL üretimi
+        return $"PostgreSQL SQL oluştur: {userQuery}\\nŞema: {schema}";
     }
 }
 ```
@@ -363,11 +442,11 @@ OCR veya Ses Transkripsiyonu özelliklerini kullanıyorsanız:
 - **Google Speech-to-Text Kaldırıldı**: Google Cloud Speech-to-Text entegrasyonunun tamamen kaldırılması
 - **Sadece Whisper.net**: Ses transkripsiyonu artık sadece Whisper.net kullanıyor, %100 yerel işleme
 - **Veri Gizliliği**: Tüm ses işleme artık tamamen yerel, GDPR/KVKK/HIPAA uyumluluğu sağlanıyor
-- **Basitleştirilmiş Yapılandırma**: GoogleSpeechConfig ve ilgili yapılandırma seçenekleri kaldırıldı
+- **Basitleştirilmiş Configuration**: GoogleSpeechConfig ve ilgili configuration seçenekleri kaldırıldı
 
 #### **Kaldırılan Dosyalar**
 - `src/SmartRAG/Services/GoogleAudioParserService.cs` - Google Speech-to-Text servisi
-- `src/SmartRAG/Models/GoogleSpeechConfig.cs` - Google Speech yapılandırma modeli
+- `src/SmartRAG/Models/GoogleSpeechConfig.cs` - Google Speech configuration modeli
 
 #### **Değiştirilen Dosyalar**
 - `src/SmartRAG/SmartRAG.csproj` - Google.Cloud.Speech.V1 NuGet paketi kaldırıldı
@@ -381,7 +460,6 @@ OCR veya Ses Transkripsiyonu özelliklerini kullanıyorsanız:
 - **README.md**: Whisper.net-only ses işleme için güncellendi
 - **README.tr.md**: Türkçe dokümantasyon güncellendi
 - **docs/**: Tüm dokümantasyon dosyalarından Google Speech referansları kaldırıldı
-- **Examples**: Örnek yapılandırmalar ve dokümantasyon güncellendi
 
 ### ✨ Faydalar
 - **%100 Yerel İşleme**: Tüm ses transkripsiyonu Whisper.net ile yerel olarak yapılıyor
@@ -399,7 +477,7 @@ OCR veya Ses Transkripsiyonu özelliklerini kullanıyorsanız:
 
 ### 📚 Geçiş Rehberi
 Google Speech-to-Text kullanıyorsanız:
-1. Yapılandırmanızdan GoogleSpeechConfig'i kaldırın
+1. Configuration'ınızdan GoogleSpeechConfig'i kaldırın
 2. WhisperConfig'in doğru yapılandırıldığından emin olun
 3. Özel ses işleme kodunuzu Whisper.net kullanacak şekilde güncelleyin
 4. Yerel Whisper.net modelleri ile ses transkripsiyonunu test edin
@@ -426,13 +504,13 @@ Google Speech-to-Text kullanıyorsanız:
 <div class="alert alert-warning">
     <h4><i class="fas fa-exclamation-triangle me-2"></i> BREAKING CHANGE'LER</h4>
     <p class="mb-0">Bu sürüm breaking API değişiklikleri içerir. Aşağıdaki taşınma kılavuzuna bakın.</p>
-                    </div>
+</div>
 
 ### 🚀 Zeka Kütüphanesi Devrimi
 
 #### Önemli API Değişiklikleri
 - **`GenerateRagAnswerAsync` → `QueryIntelligenceAsync`**: Akıllı sorgu işlemeyi daha iyi temsil etmek için metod yeniden adlandırıldı
-- **Geliştirilmiş `IDocumentSearchService` interface'i**: Gelişmiş RAG pipeline ile yeni akıllı sorgu işleme
+- **Geliştirilmiş `IDocumentSearchService` interface'i**: Gelişmiş RAG pipeline ile yeni akıllı doküman sorgu işleme
 - **Servis katmanı iyileştirmeleri**: Gelişmiş anlamsal arama ve konuşma yönetimi
 - **Geriye dönük uyumluluk korundu**: Eski metodlar kullanımdan kaldırıldı olarak işaretlendi (v4.0.0'da kaldırılacak)
 
@@ -490,7 +568,7 @@ Google Speech-to-Text kullanıyorsanız:
 - **Çok dilli README**: İngilizce, Türkçe, Almanca ve Rusça'da mevcut
 - **Çok dilli CHANGELOG**: 4 dilde mevcut
 - **Geliştirilmiş dokümantasyon**: Kapsamlı yerinde dağıtım dokümantasyonu
-- **Yerel AI kurulum örnekleri**: Ollama ve LM Studio için yapılandırma
+- **Yerel AI kurulum örnekleri**: Ollama ve LM Studio için configuration
 - **Kurumsal kullanım senaryoları**: Bankacılık, Sağlık, Hukuk, Devlet, Üretim
 
 ### 🔧 İyileştirmeler
@@ -564,14 +642,14 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 
 ### 🔧 İyileştirmeler
 - **Ses İşleme Pipeline**: Google Cloud AI ile geliştirilmiş
-- **Yapılandırma Yönetimi**: GoogleSpeechConfig kullanacak şekilde güncellendi
+- **Configuration Yönetimi**: GoogleSpeechConfig kullanacak şekilde güncellendi
 - **Hata Yönetimi**: Ses transkripsiyonu için geliştirilmiş
 - **Dokümantasyon**: Speech-to-Text örnekleriyle güncellendi
 
 ### 📚 Dokümantasyon
 - **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
 - **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Konfigürasyon Rehberi**: Detaylı ayar seçenekleri ve örnekleri
+- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
 
 ---
 
@@ -590,7 +668,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 ### 📚 Dokümantasyon
 - **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
 - **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Konfigürasyon Rehberi**: Detaylı ayar seçenekleri ve örnekleri
+- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
 
 ---
 
@@ -611,16 +689,16 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 ### 📚 Dokümantasyon
 - **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
 - **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Konfigürasyon Rehberi**: Detaylı ayar seçenekleri ve örnekleri
+- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
 
 ---
 
 ## [2.0.0] - 2025-08-27
 
-                    <div class="alert alert-warning">
+<div class="alert alert-warning">
     <h4><i class="fas fa-exclamation-triangle me-2"></i> BREAKING CHANGE</h4>
     <p class="mb-0">.NET 9.0'dan .NET Standard 2.1'e taşındı</p>
-                    </div>
+</div>
 
 ### 🔄 .NET Standard Taşınması
 - **Hedef Framework**: .NET 9.0'dan .NET Standard 2.1'e taşındı
@@ -640,7 +718,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 ### 📚 Dokümantasyon
 - **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
 - **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Konfigürasyon Rehberi**: Detaylı ayar seçenekleri ve örnekleri
+- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
 
 ### 🧪 Test
 - **Unit Testler**: Tüm yeni özellikler için kapsamlı test kapsamı
@@ -671,7 +749,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 ### 📚 Dokümantasyon
 - **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
 - **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Konfigürasyon Rehberi**: Detaylı ayar seçenekleri ve örnekleri
+- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
 
 ### 🧪 Test
 - **Unit Testler**: Tüm yeni özellikler için kapsamlı test kapsamı
@@ -695,7 +773,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 ### 📚 Dokümantasyon
 - **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
 - **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Konfigürasyon Rehberi**: Detaylı ayar seçenekleri ve örnekleri
+- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
 
 ---
 
@@ -778,7 +856,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
             </tr>
         </tbody>
     </table>
-                    </div>
+</div>
 
 ---
 
@@ -788,8 +866,8 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 
 <div class="alert alert-info">
     <h4><i class="fas fa-info-circle me-2"></i> Temel Değişiklikler</h4>
-    <p>Birincil değişiklik, <code>GenerateRagAnswerAsync</code>'in <code>QueryIntelligenceAsync</code> olarak yeniden adlandırılmasıdır.</p>
-                    </div>
+    <p class="mb-0">Birincil değişiklik, <code>GenerateRagAnswerAsync</code>'in <code>QueryIntelligenceAsync</code> olarak yeniden adlandırılmasıdır.</p>
+</div>
 
 **Adım 1: Metod çağrılarını güncelleyin**
 
@@ -803,8 +881,10 @@ var response = await _searchService.QueryIntelligenceAsync(query, maxResults);
 
 **Adım 2: API endpoint'lerini güncelleyin (Web API kullanıyorsanız)**
 
+Web API controller'ınız varsa, sadece service method çağrısını güncelleyin:
+
 ```csharp
-// Önce
+// Önce (v2.x)
 [HttpPost("generate-answer")]
 public async Task<IActionResult> GenerateAnswer([FromBody] QueryRequest request)
 {
@@ -812,13 +892,16 @@ public async Task<IActionResult> GenerateAnswer([FromBody] QueryRequest request)
     return Ok(response);
 }
 
-// Sonra
-[HttpPost("query")]
-public async Task<IActionResult> Query([FromBody] QueryRequest request)
+// Sonra (v3.0.0) - Sadece method adı değişti
+[HttpPost("generate-answer")]
+public async Task<IActionResult> GenerateAnswer([FromBody] QueryRequest request)
 {
     var response = await _searchService.QueryIntelligenceAsync(request.Query);
     return Ok(response);
 }
+```
+
+**Not:** Mevcut endpoint yollarınızı ve controller method adlarınızı koruyabilirsiniz. Sadece service method çağrısını güncellemeniz yeterlidir.
 ```
 
 <div class="alert alert-success">
@@ -882,8 +965,8 @@ using Microsoft.Extensions.DependencyInjection;
 
 <div class="row g-4 mt-4">
     <div class="col-md-6">
-        <div class="feature-card">
-            <div class="feature-icon">
+        <div class="card card-accent">
+            <div class="icon icon-lg icon-gradient">
                 <i class="fas fa-rocket"></i>
                             </div>
             <h3>Başlangıç</h3>
@@ -895,8 +978,8 @@ using Microsoft.Extensions.DependencyInjection;
                     </div>
 
                         <div class="col-md-6">
-        <div class="feature-card">
-            <div class="feature-icon">
+        <div class="card card-accent">
+            <div class="icon icon-lg icon-gradient">
                 <i class="fab fa-github"></i>
                                 </div>
             <h3>GitHub Repository</h3>

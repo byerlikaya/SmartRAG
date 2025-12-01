@@ -185,9 +185,6 @@ Answer with ONE word only: CONVERSATION or INFORMATION",
             if (HasDateOrTimePattern(trimmed)) score++;
             if (HasNumericRangeOrList(trimmed)) score++;
             if (HasIdLikeToken(tokens)) score++;
-            
-            // Removed language-specific keyword check to ensure universal compatibility
-            // We rely on AI for semantic understanding if heuristics are insufficient
 
             var convoScore = 0;
             if (trimmed.Length <= 2) convoScore++;

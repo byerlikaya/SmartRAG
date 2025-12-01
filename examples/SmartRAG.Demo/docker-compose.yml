@@ -93,15 +93,16 @@ services:
       retries: 5
     restart: unless-stopped
 
-  # Redis - Cache & Vector Store
+  # Redis - Cache & Vector Store (with RediSearch module)
   smartrag-redis:
-    image: redis:7-alpine
+    image: redis/redis-stack-server:latest
     container_name: smartrag-redis
     ports:
       - "6379:6379"
+      - "8001:8001"  # RedisInsight (optional web UI)
     volumes:
       - redis-data:/data
-    command: redis-server --appendonly yes
+    command: redis-stack-server --appendonly yes
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s

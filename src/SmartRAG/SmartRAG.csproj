@@ -5,7 +5,7 @@
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
-    <PackageVersion>3.2.0</PackageVersion>
+    <PackageVersion>3.3.0</PackageVersion>
     <Authors>Barış Yerlikaya</Authors>
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
@@ -20,53 +20,37 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Release 3.2.0: Architectural Refactoring &amp; Modular Design (MINOR Release - 2025-11-27)
-
-ARCHITECTURAL REFACTORING:
-- Strategy Pattern Implementation: ISqlDialectStrategy, IScoringStrategy, IFileParser
-- Repository Layer Separation: IConversationRepository separated from IDocumentRepository
-- Service Layer Refactoring: AI, Database, Search, Parser, and Support services decomposed
-- Model Consolidation: DatabaseSchema and DatabaseSchemaInfo unified
+    <PackageReleaseNotes>Release 3.3.0: Redis Vector Search &amp; Storage Improvements (MINOR Release - 2025-12-01)
 
 NEW FEATURES:
-- SearchOptions: Per-request search configuration with flag-based filtering (-db, -d, -a, -i)
-- FeatureToggles: Global feature flag configuration
-- ContextExpansionService: Adjacent chunk context expansion
-- FileParserResult: Standardized parser result structure
-- DatabaseFileParser: SQLite database file parsing support
-- Native Library Inclusion: Tesseract OCR native libraries bundled (Windows, macOS, Linux)
-- Nullable Reference Types: Enhanced null safety across 14+ files
-- ClearAllAsync Methods: Efficient bulk deletion operations
-- Collection Management: Enhanced Qdrant collection operations
-- Tesseract On-Demand Language Data: Automatic language support (30+ languages)
-- Currency Symbol Correction: Improved OCR accuracy for financial documents
-- Parallel Batch Processing: Ollama embeddings performance optimization
-- Query Tokens Parameter: Pre-computed token support for performance
-- Native Qdrant Text Search: Token-based filtering for improved search performance
+- ConversationStorageProvider Separation: Separated conversation storage from document storage for better architecture
+- Redis RediSearch Integration: Enhanced vector similarity search with RediSearch module support
+- Redis Vector Search Configuration: Vector index algorithm, distance metric, and dimension configuration
+- RedisInsight UI Support: Docker Compose setup includes RedisInsight for Redis management
+- InMemory Storage Option: Added to demo initialization menu for easy testing
 
 IMPROVEMENTS:
-- Language-Agnostic Code: Removed domain-specific and language-specific references
-- Unicode Normalization: Better text retrieval across all languages
-- PDF OCR Encoding: Automatic fallback handling
-- Numbered List Detection: Improved counting query accuracy
-- RAG Scoring: Enhanced relevance calculation with unique keyword bonus
-- Document Search: Adaptive threshold and chunk prioritization
-- Prompt Builder: Enhanced AI answer generation
-- Qdrant Performance: Optimized GetAllAsync implementation
+- Redis Vector Search: Proper relevance score calculation and assignment for DocumentSearchService
+- Redis Embedding Generation: Correct AIProviderConfig passing for embedding generation
+- StorageFactory DI: Resolved dependency injection scope issues with IAIProvider
+- Redis Docker Setup: Updated to redis/redis-stack-server:latest image (includes RediSearch)
 
 FIXES:
-- Table Alias Enforcement: Prevents ambiguous column errors in SQL generation
-- EnableDatabaseSearch Config: Proper feature flag handling
-- macOS Native Libraries: OCR library inclusion and DYLD_LIBRARY_PATH configuration
-- Missing Method Signature: DocumentSearchService restoration
+- StorageFactory Dependency Injection: Fixed IAIProvider scope issue using lazy resolution
+- Redis Relevance Scoring: Fixed RelevanceScore assignment in RedisDocumentRepository for vector search
+- Redis Embedding Config: Fixed NullReferenceException when generating embeddings
+
+REMOVED:
+- FileSystemDocumentRepository: Removed unused file system storage implementation
+- SqliteDocumentRepository: Removed unused SQLite storage implementation
+- StorageConfig Properties: Removed FileSystemPath and SqliteConfig (unused)
 
 CODE QUALITY:
 - Maintained 0 errors, 0 warnings
-- Full SOLID compliance
-- Improved testability and extensibility
-- Language-agnostic codebase
+- Removed unused code and dependencies
+- Improved Redis vector search accuracy
 
-This release introduces significant architectural improvements and new features while maintaining full backward compatibility.</PackageReleaseNotes>
+This release enhances Redis vector search capabilities and removes unused storage implementations while maintaining backward compatibility for actively used features.</PackageReleaseNotes>
     
     <!-- Build Configuration -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -77,8 +61,8 @@ This release introduces significant architectural improvements and new features 
     <AssemblyTitle>SmartRAG</AssemblyTitle>
     <AssemblyDescription>High-performance RAG library with conversation history management for .NET</AssemblyDescription>
     <AssemblyCopyright>Copyright © 2025 Barış Yerlikaya</AssemblyCopyright>
-    <AssemblyVersion>3.2.0.0</AssemblyVersion>
-    <FileVersion>3.2.0.0</FileVersion>
+    <AssemblyVersion>3.3.0.0</AssemblyVersion>
+    <FileVersion>3.3.0.0</FileVersion>
     <NeutralLanguage>en</NeutralLanguage>
     <Culture>en-US</Culture>
   </PropertyGroup>
@@ -95,6 +79,7 @@ This release introduces significant architectural improvements and new features 
     
     <!-- HTTP Client -->
     <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.10" />
+    <PackageReference Include="NRedisStack" Version="0.12.0" />
     
     <!-- JSON Processing -->
     <PackageReference Include="System.Text.Json" Version="9.0.10" />

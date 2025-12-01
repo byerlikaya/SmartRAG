@@ -7,9 +7,7 @@ lang: tr
 
 ## Gelişmiş Yapılandırma
 
-SmartRAG'in gelişmiş özelliklerini kullanarak daha güvenilir ve performanslı sistemler oluşturun:
-
----
+<p>SmartRAG'in gelişmiş özelliklerini kullanarak daha güvenilir ve performanslı sistemler oluşturun:</p>
 
 ## Yedek Sağlayıcılar
 
@@ -47,20 +45,25 @@ options.FallbackProviders = new List<AIProvider>
     AIProvider.Gemini
 };
 
-// Senaryo 2: Cloud → On-premise
+// Senaryo 2: Azure OpenAI → OpenAI → Anthropic
+options.FallbackProviders = new List<AIProvider>
+{
+    AIProvider.OpenAI,
+    AIProvider.Anthropic
+};
+
+// Senaryo 3: Cloud → On-premise
 options.FallbackProviders = new List<AIProvider>
 {
     AIProvider.Custom  // Ollama/LM Studio
 };
 
-// Senaryo 3: Premium → Budget
+// Senaryo 4: Premium → Budget
 options.FallbackProviders = new List<AIProvider>
 {
     AIProvider.Gemini  // Daha uygun maliyetli
 };
 ```
-
----
 
 ## Yeniden Deneme Politikaları
 
@@ -97,8 +100,6 @@ options.RetryDelayMs = 1000;
 options.RetryPolicy = RetryPolicy.FixedDelay;
 ```
 
----
-
 ## Performans Optimizasyonu
 
 ### Chunk Boyutu Optimizasyonu
@@ -128,15 +129,13 @@ options.StorageProvider = StorageProvider.Qdrant;
 options.ConversationStorageProvider = ConversationStorageProvider.Redis;
 
 // Senaryo 2: Maliyet optimizasyonu
-options.StorageProvider = StorageProvider.SQLite;
+options.StorageProvider = StorageProvider.Redis;
 options.ConversationStorageProvider = ConversationStorageProvider.InMemory;
 
 // Senaryo 3: Hibrit yaklaşım
 options.StorageProvider = StorageProvider.Redis;
 options.ConversationStorageProvider = ConversationStorageProvider.SQLite;
 ```
-
----
 
 ## Güvenlik Yapılandırması
 
@@ -160,24 +159,29 @@ builder.Services.AddSmartRag(configuration, options =>
 }
 ```
 
-### Hassas Veri Temizleme
+### Veritabanı Bağlantı Yapılandırması
 
 ```csharp
-// Veritabanları için hassas veri temizleme
+// Veritabanı bağlantı yapılandırması
 options.DatabaseConnections = new List<DatabaseConnectionConfig>
 {
     new DatabaseConnectionConfig
     {
         Name = "Güvenli Veritabanı",
-        Type = DatabaseType.SqlServer,
+        DatabaseType = DatabaseType.SqlServer,
         ConnectionString = "Server=localhost;Database=SecureDB;...",
-        SanitizeSensitiveData = true,  // SSN, kredi kartı vb. temizle
-        MaxRowsPerTable = 1000
+        Description = "Hassas veri içeren üretim veritabanı",
+        Enabled = true,
+        MaxRowsPerQuery = 1000,
+        QueryTimeoutSeconds = 30,
+        SchemaRefreshIntervalMinutes = 60,
+        IncludedTables = new string[] { "Orders", "Customers" },
+        ExcludedTables = new string[] { "Logs", "TempData" }
     }
 };
 ```
 
----
+**Not:** `SanitizeSensitiveData` ve `MaxRowsPerTable` ayarları `DatabaseConfig` içinde yapılandırılır, `DatabaseConnectionConfig` içinde değil. Bu ayarlar tüm veritabanı bağlantılarına global olarak uygulanır.
 
 ## Monitoring ve Logging
 
@@ -212,8 +216,6 @@ public class SmartRagMetrics
 }
 ```
 
----
-
 ## En İyi Pratikler
 
 ### Güvenlik
@@ -223,7 +225,7 @@ public class SmartRagMetrics
     <ul class="mb-0">
         <li>API anahtarlarını asla kaynak kontrolüne commit etmeyin</li>
         <li>Üretim için environment variables kullanın</li>
-        <li>Veritabanları için SanitizeSensitiveData'yı etkinleştirin</li>
+        <li>Veritabanı bağlantılarını güvenli şekilde yapılandırın</li>
         <li>Dış servisler için HTTPS kullanın</li>
         <li>Hassas veriler için on-premise AI sağlayıcıları tercih edin</li>
     </ul>
@@ -237,7 +239,7 @@ public class SmartRagMetrics
         <li>Üretim için Qdrant veya Redis kullanın</li>
         <li>Uygun chunk boyutları yapılandırın</li>
         <li>Güvenilirlik için yedek sağlayıcıları etkinleştirin</li>
-        <li>Makul MaxRowsPerTable limitleri ayarlayın</li>
+        <li>Veritabanı bağlantıları için makul MaxRowsPerQuery limitleri ayarlayın</li>
         <li>ExponentialBackoff retry policy kullanın</li>
     </ul>
 </div>
@@ -248,26 +250,24 @@ public class SmartRagMetrics
     <h4><i class="fas fa-dollar-sign me-2"></i> Maliyet Optimizasyonu</h4>
     <ul class="mb-0">
         <li>Geliştirme için Gemini veya Custom sağlayıcıları kullanın</li>
-        <li>Üretim için OpenAI veya Anthropic tercih edin</li>
+        <li>Üretim için OpenAI, Azure OpenAI veya Anthropic tercih edin</li>
         <li>InMemory depolama sadece test için kullanın</li>
-        <li>SQLite küçük ölçekli uygulamalar için idealdir</li>
+        <li>Maliyet etkin üretim depolaması için Redis kullanın</li>
         <li>Ollama/LM Studio ile %100 on-premise çözümler</li>
     </ul>
 </div>
 
----
-
 ## Özel Stratejiler
 
-SmartRAG v3.2.0, temel bileşenler için Strateji Deseni'ni (Strategy Pattern) sunarak özel mantık enjekte etmenize olanak tanır.
+SmartRAG, temel bileşenler için Strateji Deseni'ni (Strategy Pattern) sunarak özel mantık enjekte etmenize olanak tanır.
 
 ### Özel Stratejilerin Kaydı
 
 İlgili arayüzleri (interface) uygulayarak kendi stratejilerinizi geliştirebilirsiniz. İşte bunları nasıl kaydedebileceğinize dair örnekler:
 
 ```csharp
-// Örnek: Özel bir SQL Diyalekti kaydı (örn. OracleDialectStrategy geliştirdiyseniz)
-services.AddSingleton<ISqlDialectStrategy, OracleDialectStrategy>();
+// Örnek: Özel bir SQL Diyalekti kaydı (örn. EnhancedPostgreSqlDialectStrategy geliştirdiyseniz)
+services.AddSingleton<ISqlDialectStrategy, EnhancedPostgreSqlDialectStrategy>();
 
 // Örnek: Özel bir Skorlama Stratejisi kaydı
 services.AddSingleton<IScoringStrategy, CustomScoringStrategy>();
@@ -275,8 +275,6 @@ services.AddSingleton<IScoringStrategy, CustomScoringStrategy>();
 // Örnek: Özel bir Dosya Ayrıştırıcı kaydı (örn. Markdown dosyaları için)
 services.AddSingleton<IFileParser, MarkdownFileParser>();
 ```
-
----
 
 ## Örnek Yapılandırmalar
 
@@ -302,7 +300,8 @@ builder.Services.AddSmartRag(configuration, options =>
 {
     // Test için güvenilir yapılandırma
     options.AIProvider = AIProvider.OpenAI;
-    options.StorageProvider = StorageProvider.SQLite;
+    options.StorageProvider = StorageProvider.Redis;
+    options.ConversationStorageProvider = ConversationStorageProvider.SQLite;
     options.MaxChunkSize = 1000;
     options.ChunkOverlap = 200;
     options.MaxRetryAttempts = 3;
@@ -328,46 +327,48 @@ builder.Services.AddSmartRag(configuration, options =>
     options.EnableFallbackProviders = true;
     options.FallbackProviders = new List<AIProvider> 
     { 
-        AIProvider.Anthropic, 
-        AIProvider.Custom 
+        AIProvider.AzureOpenAI,  // İlk yedek (Azure)
+        AIProvider.Anthropic,    // İkinci yedek
+        AIProvider.Custom       // Son yedek (Ollama)
     };
     
-    // Veritabanı güvenliği
+    // Veritabanı yapılandırması
     options.DatabaseConnections = new List<DatabaseConnectionConfig>
     {
         new DatabaseConnectionConfig
         {
-            Name = "Production DB",
-            Type = DatabaseType.SqlServer,
+            Name = "Üretim DB",
+            DatabaseType = DatabaseType.SqlServer,
             ConnectionString = Environment.GetEnvironmentVariable("DB_CONNECTION_STRING"),
-            SanitizeSensitiveData = true,
-            MaxRowsPerTable = 5000
+            Description = "Üretim veritabanı",
+            Enabled = true,
+            MaxRowsPerQuery = 5000,
+            QueryTimeoutSeconds = 30,
+            SchemaRefreshIntervalMinutes = 60
         }
     };
 });
 ```
 
----
-
 ## Sonraki Adımlar
 
 <div class="row g-4 mt-4">
     <div class="col-md-4">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
-                <i class="fas fa-rocket"></i>
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
+                <i class="fas fa-book"></i>
             </div>
-            <h3>Başlangıç</h3>
-            <p>SmartRAG'ı projenize entegre edin</p>
-            <a href="{{ site.baseurl }}/tr/getting-started" class="btn btn-outline-primary btn-sm mt-3">
-                Başlangıç Kılavuzu
+            <h3>API Referansı</h3>
+            <p>Detaylı API dokümantasyonu ve metod referansları</p>
+            <a href="{{ site.baseurl }}/tr/api-reference" class="btn btn-outline-primary btn-sm mt-3">
+                API Referansı
             </a>
         </div>
     </div>
     
     <div class="col-md-4">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-code"></i>
             </div>
             <h3>Örnekler</h3>
@@ -379,14 +380,14 @@ builder.Services.AddSmartRag(configuration, options =>
     </div>
     
     <div class="col-md-4">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
-                <i class="fas fa-book"></i>
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
+                <i class="fas fa-history"></i>
             </div>
-            <h3>API Referansı</h3>
-            <p>Detaylı API dokümantasyonu ve metod referansları</p>
-            <a href="{{ site.baseurl }}/tr/api-reference" class="btn btn-outline-primary btn-sm mt-3">
-                API Referansı
+            <h3>Changelog</h3>
+            <p>Tüm versiyonlardaki yeni özellikleri, iyileştirmeleri ve breaking change'leri takip edin.</p>
+            <a href="{{ site.baseurl }}/tr/changelog" class="btn btn-outline-primary btn-sm mt-3">
+                Changelog'u Görüntüle
             </a>
         </div>
     </div>

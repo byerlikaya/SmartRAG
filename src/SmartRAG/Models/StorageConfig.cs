@@ -14,19 +14,9 @@ namespace SmartRAG.Models
         public StorageProvider Provider { get; set; } = StorageProvider.InMemory;
 
         /// <summary>
-        /// File system path for file-based storage
-        /// </summary>
-        public string FileSystemPath { get; set; } = "Documents";
-
-        /// <summary>
         /// Redis storage configuration
         /// </summary>
         public RedisConfig Redis { get; set; } = new RedisConfig();
-
-        /// <summary>
-        /// SQLite storage configuration
-        /// </summary>
-        public SqliteConfig Sqlite { get; set; } = new SqliteConfig();
 
         /// <summary>
         /// In-memory storage configuration

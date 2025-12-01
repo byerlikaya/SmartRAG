@@ -3,10 +3,89 @@ layout: default
 title: Changelog
 description: Complete version history, breaking changes, and migration guides for SmartRAG
 lang: en
+redirect_from: /en/changelog.html
 ---
 
+<script>
+    window.location.href = "{{ site.baseurl }}/en/changelog/";
+</script>
 
-All notable changes to SmartRAG are documented here. The project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+This page has been moved. Please visit the [Changelog Index]({{ site.baseurl }}/en/changelog/).
+
+## [3.3.0] - 2025-12-01
+
+### Redis Vector Search & Storage Improvements
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> MINOR Release</h4>
+    <p class="mb-0">
+        This release enhances Redis vector search capabilities and removes unused storage implementations.
+        Active storage providers (Qdrant, Redis, InMemory) remain fully functional.
+    </p>
+</div>
+
+### ✨ Added
+
+#### Redis RediSearch Integration
+- **Enhanced Vector Similarity Search**: RediSearch module support for advanced vector search capabilities
+- **Vector Index Configuration**: Algorithm (HNSW), distance metric (COSINE), and dimension (default: 768) configuration
+- **Files Modified**:
+  - `src/SmartRAG/Models/RedisConfig.cs` - Vector search configuration properties
+  - `src/SmartRAG/Repositories/RedisDocumentRepository.cs` - RediSearch vector search implementation
+
+### 🔧 Improved
+
+#### Redis Vector Search Accuracy
+- **Proper Relevance Scoring**: RelevanceScore now correctly calculated and assigned for DocumentSearchService ranking
+- **Similarity Calculation**: Distance metrics from RediSearch properly converted to similarity scores
+- **Debug Logging**: Score verification logging added
+- **Files Modified**:
+  - `src/SmartRAG/Repositories/RedisDocumentRepository.cs` - RelevanceScore assignment
+
+#### Redis Embedding Generation
+- **AI Configuration Handling**: IAIConfigurationService injection for proper config retrieval
+- **Graceful Fallback**: Text search fallback when config unavailable
+- **Files Modified**:
+  - `src/SmartRAG/Repositories/RedisDocumentRepository.cs` - AI config handling
+  - `src/SmartRAG/Factories/StorageFactory.cs` - IAIConfigurationService injection
+
+#### StorageFactory Dependency Injection
+- **Scope Resolution**: Fixed Singleton/Scoped lifetime mismatch using lazy resolution
+- **IServiceProvider Pattern**: Changed to lazy dependency resolution via IServiceProvider
+- **Files Modified**:
+  - `src/SmartRAG/Factories/StorageFactory.cs` - Lazy dependency resolution
+  - `src/SmartRAG/Extensions/ServiceCollectionExtensions.cs` - IAIProvider lifetime adjustment
+
+### 🐛 Fixed
+
+- **StorageFactory DI Scope Issue**: Fixed InvalidOperationException when resolving IAIProvider
+- **Redis Relevance Scoring**: Fixed RelevanceScore being 0.0000 in search results
+- **Redis Embedding Config**: Fixed NullReferenceException when generating embeddings
+
+### 🗑️ Removed
+
+- **FileSystemDocumentRepository**: Removed unused file system storage implementation
+- **SqliteDocumentRepository**: Removed unused SQLite storage implementation
+- **StorageConfig Properties**: Removed FileSystemPath and SqliteConfig (unused)
+
+### 📚 Documentation
+
+- **Redis Storage Documentation**: Updated with RediSearch requirements and setup instructions
+- **InMemory Storage Documentation**: Added configuration examples and use cases
+
+### ⚠️ Breaking Changes
+
+- **FileSystem and SQLite Document Repositories Removed**
+  - These were unused implementations
+  - Active storage providers (Qdrant, Redis, InMemory) remain fully functional
+  - If you were using FileSystem or SQLite, migrate to Qdrant, Redis, or InMemory
+
+### 📝 Notes
+
+- **Redis Requirements**: Vector search requires RediSearch module
+  - Use `redis/redis-stack-server:latest` Docker image
+  - Or install RediSearch module on your Redis server
+  - Without RediSearch, only text search works (no vector search)
 
 ---
 
@@ -95,7 +174,7 @@ All notable changes to SmartRAG are documented here. The project adheres to [Sem
 
 #### **New Features: Customization Support**
 
-- **Custom SQL Dialect Strategies**: Support for implementing custom database dialects (e.g., Oracle)
+- **Custom SQL Dialect Strategies**: Support for implementing custom database dialects and extending existing ones (SQLite, SQL Server, MySQL, PostgreSQL)
 - **Custom Scoring Strategies**: Support for implementing custom search relevance logic
 - **Custom File Parsers**: Support for implementing custom file format parsers
 - **Dedicated Conversation Management**: New service for managing conversation history
@@ -176,8 +255,6 @@ All notable changes to SmartRAG are documented here. The project adheres to [Sem
 ### Changed
 
 - **IEmbeddingSearchService Dependency Removal**: Simplified architecture
-- **Demo Language Selection**: ISO 639-1 code standardization
-- **Demo Project Configuration**: Qdrant as default storage
 - **Code Cleanup**: Inline comments and unused directives removal
 - **Logging Cleanup**: Reduced verbose logging
 - **NuGet Package Updates**: Latest compatible versions
@@ -228,17 +305,19 @@ var history = await _conversationManager.GetConversationHistoryAsync(sessionId);
 
 **Custom SQL Dialect Strategy**:
 ```csharp
-// Example: Implementing Oracle support
-public class OracleDialectStrategy : BaseSqlDialectStrategy
+// Example: Extending PostgreSQL support with custom validation
+public class EnhancedPostgreSqlDialectStrategy : BaseSqlDialectStrategy
 {
-    public override string GetDialectName() => "Oracle";
+    public override DatabaseType DatabaseType => DatabaseType.PostgreSQL;
     
-    public override string BuildSelectQuery(
+    public override string GetDialectName() => "Enhanced PostgreSQL";
+    
+    public override string BuildSystemPrompt(
         DatabaseSchemaInfo schema, 
-        List<string> tables, 
-        int maxRows)
+        string userQuery)
     {
-        // Oracle-specific SQL generation
+        // Enhanced PostgreSQL-specific SQL generation
+        return $"Generate PostgreSQL SQL for: {userQuery}\\nSchema: {schema}";
     }
 }
 ```
@@ -381,7 +460,6 @@ If you're using OCR or Audio Transcription features:
 - **README.md**: Updated to reflect Whisper.net-only audio processing
 - **README.tr.md**: Updated Turkish documentation
 - **docs/**: Updated all documentation files to remove Google Speech references
-- **Examples**: Updated example configurations and documentation
 
 ### ✨ Benefits
 - **100% Local Processing**: All audio transcription happens locally with Whisper.net
@@ -426,7 +504,7 @@ If you were using Google Speech-to-Text:
 <div class="alert alert-warning">
     <h4><i class="fas fa-exclamation-triangle me-2"></i> BREAKING CHANGES</h4>
     <p class="mb-0">This release includes breaking API changes. See migration guide below.</p>
-                    </div>
+</div>
 
 ### 🚀 Intelligence Library Revolution
 
@@ -621,7 +699,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 <div class="alert alert-warning">
     <h4><i class="fas fa-exclamation-triangle me-2"></i> BREAKING CHANGE</h4>
     <p class="mb-0">Migrated from .NET 9.0 to .NET Standard 2.1</p>
-                    </div>
+</div>
 
 ### 🔄 .NET Standard Migration
 - **Target Framework**: Migrated from .NET 9.0 to .NET Standard 2.1
@@ -777,7 +855,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
             </tr>
         </tbody>
     </table>
-            </div>
+</div>
 
 ---
 
@@ -785,10 +863,10 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 
 ### Migrating from v2.x to v3.0.0
                     
-                    <div class="alert alert-info">
+<div class="alert alert-info">
     <h4><i class="fas fa-info-circle me-2"></i> Key Changes</h4>
-    <p>The primary change is the renaming of <code>GenerateRagAnswerAsync</code> to <code>QueryIntelligenceAsync</code>.</p>
-                    </div>
+    <p class="mb-0">The primary change is the renaming of <code>GenerateRagAnswerAsync</code> to <code>QueryIntelligenceAsync</code>.</p>
+</div>
 
 **Step 1: Update method calls**
 
@@ -802,8 +880,10 @@ var response = await _searchService.QueryIntelligenceAsync(query, maxResults);
 
 **Step 2: Update API endpoints (if using Web API)**
 
+If you have a Web API controller, simply update the service method call:
+
 ```csharp
-// Before
+// Before (v2.x)
 [HttpPost("generate-answer")]
 public async Task<IActionResult> GenerateAnswer([FromBody] QueryRequest request)
 {
@@ -811,13 +891,16 @@ public async Task<IActionResult> GenerateAnswer([FromBody] QueryRequest request)
     return Ok(response);
 }
 
-// After
-[HttpPost("query")]
-public async Task<IActionResult> Query([FromBody] QueryRequest request)
+// After (v3.0.0) - Only the method name changed
+[HttpPost("generate-answer")]
+public async Task<IActionResult> GenerateAnswer([FromBody] QueryRequest request)
 {
     var response = await _searchService.QueryIntelligenceAsync(request.Query);
     return Ok(response);
 }
+```
+
+**Note:** You can keep your existing endpoint paths and controller method names. Only the service method call needs to be updated.
 ```
 
 **Step 3: Update client code (if applicable)**
@@ -836,14 +919,14 @@ const response = await fetch('/api/intelligence/query', { ... });
         The old <code>GenerateRagAnswerAsync</code> method still works (marked as deprecated). 
         You can migrate gradually before v4.0.0 is released.
     </p>
-                    </div>
+</div>
 
 ### Migrating from v1.x to v2.0.0
 
 <div class="alert alert-warning">
     <h4><i class="fas fa-exclamation-triangle me-2"></i> Framework Change</h4>
     <p class="mb-0">Version 2.0.0 migrated from .NET 9.0 to .NET Standard 2.1</p>
-                </div>
+</div>
 
 **Step 1: Verify framework compatibility**
 
@@ -881,8 +964,8 @@ No API changes - all functionality remains the same. Just ensure your project ta
     <p>The following methods are deprecated and will be removed in v4.0.0:</p>
     <ul class="mb-0">
         <li><code>IDocumentSearchService.GenerateRagAnswerAsync()</code> - Use <code>QueryIntelligenceAsync()</code> instead</li>
-                    </ul>
-                </div>
+    </ul>
+</div>
 
 ---
 
@@ -890,8 +973,8 @@ No API changes - all functionality remains the same. Just ensure your project ta
 
 <div class="row g-4 mt-4">
     <div class="col-md-6">
-        <div class="feature-card">
-            <div class="feature-icon">
+        <div class="card card-accent">
+            <div class="icon icon-lg icon-gradient">
                 <i class="fas fa-rocket"></i>
                     </div>
             <h3>Getting Started</h3>
@@ -903,8 +986,8 @@ No API changes - all functionality remains the same. Just ensure your project ta
             </div>
     
     <div class="col-md-6">
-        <div class="feature-card">
-            <div class="feature-icon">
+        <div class="card card-accent">
+            <div class="icon icon-lg icon-gradient">
                 <i class="fab fa-github"></i>
             </div>
             <h3>GitHub Repository</h3>

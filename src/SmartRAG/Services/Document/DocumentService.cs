@@ -385,12 +385,9 @@ namespace SmartRAG.Services.Document
             {
                 ServiceLogMessages.LogDocumentDeletionStarted(_logger, null);
 
-                // Get counts before deletion for logging
                 var allDocuments = await _documentRepository.GetAllAsync();
                 var totalDocuments = allDocuments.Count;
                 var totalChunks = allDocuments.Sum(d => d.Chunks.Count);
-
-                // Use repository's efficient bulk delete (recreates collection)
                 var success = await _documentRepository.ClearAllAsync();
 
                 if (success)

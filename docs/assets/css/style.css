@@ -96,12 +96,50 @@ body {
     backdrop-filter: blur(10px);
     transition: var(--transition-normal);
     padding: 0.75rem 0;
+    min-height: 3.5rem;
+}
+
+/* ===== DROPDOWN MENU IMPROVEMENTS ===== */
+.nav-item.dropdown {
+    position: relative;
+}
+
+/* Add invisible bridge between toggle and menu to prevent gap */
+.nav-item.dropdown::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    height: 8px;
+    background: transparent;
+    z-index: 1001;
+    pointer-events: none;
+}
+
+.nav-item.dropdown:hover::after {
+    pointer-events: auto;
+}
+
+.navbar .container {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    min-height: 3.5rem;
 }
 
 .navbar-brand {
     font-size: 1.5rem;
     font-weight: 700;
     transition: var(--transition-fast);
+    display: flex;
+    align-items: center;
+    line-height: 1.5;
+    margin-right: 1rem;
+    padding: 0.5rem 0 !important;
+    height: auto;
+    margin-bottom: 0;
+    vertical-align: middle;
 }
 
 .brand-gradient {
@@ -109,6 +147,69 @@ body {
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
+    line-height: 1.5;
+    display: inline-block;
+}
+
+/* Hamburger Menu Button - Light Theme */
+.navbar-toggler {
+    border: 2px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--bg-primary);
+    transition: var(--transition-fast);
+}
+
+.navbar-toggler:hover {
+    border-color: var(--primary);
+    background: var(--bg-tertiary);
+}
+
+.navbar-toggler:focus {
+    box-shadow: 0 0 0 0.25rem rgba(99, 102, 241, 0.25);
+    outline: none;
+}
+
+.navbar-toggler-icon {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%2833, 37, 41, 0.75%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+    width: 1.5em;
+    height: 1.5em;
+    transition: var(--transition-fast);
+}
+
+/* Hamburger Menu Button - Dark Theme */
+[data-theme="dark"] .navbar-toggler {
+    border-color: var(--border-color);
+    background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .navbar-toggler:hover {
+    border-color: var(--primary);
+    background: var(--bg-primary);
+    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+}
+
+[data-theme="dark"] .navbar-toggler-icon {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28241, 245, 249, 0.9%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2.5' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+}
+
+.navbar-collapse {
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+    justify-content: space-between;
+}
+
+.navbar-nav {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 0;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
 }
 
 .nav-link {
@@ -117,7 +218,37 @@ body {
     padding: 0.5rem 1rem !important;
     border-radius: 0.5rem;
     transition: var(--transition-fast);
+    display: flex;
+    align-items: center;
+    line-height: 1.5;
     font-size: 0.95rem;
+    height: auto;
+    margin-bottom: 0;
+    margin-top: 12px;
+}
+
+/* Override for mobile dropdown toggles - must come after .nav-link */
+@media (max-width: 991.98px) {
+    /* Override .nav-link styles for dropdown toggles on mobile */
+    .navbar-nav .nav-item.dropdown > .nav-link.dropdown-toggle {
+        padding: 1rem 1.25rem !important;
+        font-size: 1rem !important;
+        min-height: 48px !important;
+        margin-top: 0 !important;
+        margin-bottom: 0.5rem !important;
+        width: 100% !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        border: 1px solid var(--border-color) !important;
+        background-color: var(--bg-secondary) !important;
+    }
+    
+    .navbar-nav .nav-item.dropdown > .nav-link.dropdown-toggle:hover,
+    .navbar-nav .nav-item.dropdown > .nav-link.dropdown-toggle:focus {
+        background-color: var(--bg-tertiary) !important;
+        border-color: var(--primary) !important;
+    }
 }
 
 .nav-link:hover {
@@ -136,11 +267,70 @@ body {
 }
 
 /* Language & Theme Buttons */
+.navbar .d-flex.align-items-center {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Hide mobile controls on desktop (outside navbar-collapse) */
+@media (min-width: 992px) {
+    .mobile-controls {
+        display: none !important;
+    }
+    
+    /* On desktop, show navbar-top-row but only display logo */
+    .navbar-top-row {
+        display: flex !important;
+        align-items: center !important;
+        width: auto !important;
+    }
+    
+    .navbar-top-row .mobile-controls {
+        display: none !important;
+    }
+    
+    .navbar-top-row .navbar-toggler {
+        display: none !important;
+    }
+    
+    /* Show logo on desktop */
+    .navbar-top-row .navbar-brand {
+        display: flex !important;
+        margin-left: 0 !important;
+        margin-right: 1rem !important;
+        order: 0 !important;
+    }
+}
+
+/* Desktop controls - show on desktop, hide on mobile */
+@media (min-width: 992px) {
+    .desktop-controls {
+        display: flex !important;
+    }
+    
+    /* Hide mobile controls inside menu on desktop */
+    .navbar-collapse .mobile-controls {
+        display: none !important;
+    }
+}
+
+/* Mobile controls - hide on desktop */
+@media (max-width: 991.98px) {
+    /* Hide desktop controls on mobile */
+    .desktop-controls {
+        display: none !important;
+    }
+}
+
 .language-btn {
     font-size: 0.85rem !important;
     font-weight: 600 !important;
     padding: 0.4rem 0.8rem !important;
     transition: var(--transition-fast) !important;
+    display: flex;
+    align-items: center;
+    line-height: 1.5;
 }
 
 .theme-toggle {
@@ -149,12 +339,25 @@ body {
     transition: var(--transition-fast) !important;
     border-color: var(--border-color) !important;
     color: var(--text-primary) !important;
+    display: flex;
+    align-items: center;
+    line-height: 1.5;
 }
 
 .theme-toggle:hover {
     background-color: var(--bg-tertiary) !important;
     border-color: var(--primary) !important;
     color: var(--primary) !important;
+}
+
+/* ===== SEPARATORS ===== */
+hr,
+separator {
+    display: none;
+    margin: 0;
+    padding: 0;
+    border: none;
+    height: 0;
 }
 
 /* ===== MAIN CONTENT ===== */
@@ -166,7 +369,7 @@ body {
 
 .page-header {
     background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-primary) 100%);
-    padding: 3rem 0;
+    padding: 1.5rem 0;
     text-align: center;
     border-bottom: 1px solid var(--border-color);
 }
@@ -370,6 +573,9 @@ body {
     position: relative;
     z-index: 2;
     padding: 0.5rem 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .hero-badge {
@@ -429,6 +635,29 @@ body {
     flex-wrap: wrap;
 }
 
+/* Hero stats cards */
+.hero-stats .card.card-sm {
+    flex: 1;
+    min-width: 120px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 0.75rem;
+    padding: 1rem;
+    text-align: center;
+    transition: var(--transition-normal);
+    box-shadow: var(--shadow-sm);
+    display: block;
+    margin-bottom: 0;
+    overflow: visible;
+}
+
+.hero-stats .card.card-sm:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--primary);
+}
+
+/* Legacy: .stat-card maps to .card .card-sm */
 .stat-card {
     flex: 1;
     min-width: 120px;
@@ -465,12 +694,17 @@ body {
 
 .hero-buttons {
     display: flex;
-    gap: 1rem;
-    flex-wrap: nowrap;
-    justify-content: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: flex-start;
     align-items: flex-start;
     margin-top: 0;
     padding-top: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin-left: 0;
+    margin-right: 0;
 }
 
 .hero-buttons .btn {
@@ -479,6 +713,21 @@ body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    flex: 1 1 0;
+    min-width: 120px;
+    max-width: calc(33.333% - 0.5rem);
+    box-sizing: border-box;
+    padding: 0.875rem 1rem !important;
+    font-size: 0.95rem !important;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Override btn-lg for hero buttons */
+.hero-buttons .btn.btn-lg {
+    padding: 0.875rem 1rem !important;
+    font-size: 0.95rem !important;
+    height: 48px;
 }
 
 /* ===== BUTTONS ===== */
@@ -548,22 +797,26 @@ body {
 
 /* ===== SECTIONS ===== */
 .section {
-    padding: 5rem 0;
+    padding: 2rem 0;
 }
 
+/* Legacy: .section-light and .section-dark map to .section */
 .section-light {
+    background: var(--bg-secondary);
+}
+
+/* Dark theme: Make section-light match section-dark for consistency */
+[data-theme="dark"] .section-light {
     background: var(--bg-secondary);
 }
 
 .section-dark {
     background: var(--bg-secondary);
-    border-top: 1px solid var(--border-color);
-    border-bottom: 1px solid var(--border-color);
 }
 
 .section-header {
     text-align: center;
-    margin-bottom: 3rem;
+    margin-bottom: 2rem;
 }
 
 .section-title {
@@ -578,9 +831,12 @@ body {
     color: var(--text-secondary);
     max-width: 700px;
     margin: 0 auto;
+    border-bottom: none;
+    padding-bottom: 0;
 }
 
-/* ===== FEATURE CARDS ===== */
+/* ===== FEATURE CARDS (Legacy - Use .card .card-accent instead) ===== */
+/* Legacy: .feature-grid maps to .grid .grid-auto */
 .feature-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
@@ -588,6 +844,7 @@ body {
     margin: 2rem 0;
 }
 
+/* Legacy: .feature-card maps to .card .card-accent */
 .feature-card {
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
@@ -623,6 +880,7 @@ body {
     transform: scaleX(1);
 }
 
+/* Legacy: .feature-icon maps to .icon .icon-lg .icon-gradient */
 .feature-icon {
     width: 64px;
     height: 64px;
@@ -651,13 +909,125 @@ body {
     flex-grow: 1;
 }
 
+/* ===== GETTING STARTED PAGE SECTIONS (Legacy - Use .card instead) ===== */
+/* Legacy: .config-section maps to .card */
+.config-section {
+    background: var(--bg-primary);
+    border: none !important;
+    border-radius: 1.25rem;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    margin-top: 1rem;
+    transition: var(--transition-normal);
+    position: relative;
+    /* Allow inner content like responsive tables to scroll horizontally */
+    overflow: visible;
+}
+
+/* Override any border from .card class or other sources */
+.config-section:not(.config-section-accordion),
+.card.config-section:not(.config-section-accordion),
+.config-section.card:not(.config-section-accordion) {
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+
+/* Special styling for config-section containing accordion-button */
+.config-section.config-section-accordion {
+    padding: 0 !important; /* Remove padding, button and content will handle their own */
+    border: 1px solid var(--border-color) !important;
+    background: var(--bg-primary) !important;
+    margin-bottom: 1rem !important; /* Reduced spacing between accordion items */
+    margin-top: 0 !important; /* No top margin for accordion items */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+    border-radius: 1.25rem !important;
+    transition: var(--transition-normal);
+    position: relative;
+    overflow: hidden !important; /* Hide overflow to maintain border-radius */
+    display: flex;
+    flex-direction: column;
+}
+
+.config-section.config-section-accordion > .accordion-button {
+    border-radius: 1.25rem 1.25rem 0 0 !important; /* Rounded top corners only */
+    margin: 0 !important;
+    width: 100%;
+    border: none;
+    padding: 1.5rem 2rem !important; /* Match config-section padding */
+    flex-shrink: 0; /* Don't shrink button */
+}
+
+/* Accordion content container styling */
+.config-section.config-section-accordion > .accordion-content-container {
+    padding: 0 2rem 2rem 2rem !important; /* Add padding to content container */
+    flex: 1; /* Take remaining space */
+}
+
+/* Add top margin to first heading in accordion content */
+.config-section.config-section-accordion > .accordion-content-container > h2:first-child,
+.config-section.config-section-accordion > .accordion-content-container > h3:first-child,
+.config-section.config-section-accordion > .accordion-content-container > h4:first-child {
+    margin-top: 1.5rem !important; /* Add top spacing for headings */
+}
+
+.config-section.config-section-accordion > .accordion-content-container > *:last-child {
+    margin-bottom: 0 !important;
+}
+
+/* Keep accordion-body functional for Bootstrap, but hide it visually when content is moved */
+.accordion-body {
+    padding: 0 !important;
+    min-height: 0 !important;
+    display: none !important; /* Hide accordion-body since content is in wrapper */
+}
+
+/* Accordion content container styling */
+.accordion-content-container {
+    width: 100%;
+}
+
+/* Exclude paragraphs with no-config-section class from border styling */
+.config-section .no-config-section,
+.no-config-section {
+    border: none !important;
+    background: transparent !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+}
+
+.config-section::before {
+    display: none;
+}
+
+.config-section h3 {
+    margin-top: 0;
+    margin-bottom: 1rem;
+}
+
+.config-section p:first-of-type {
+    margin-top: 0;
+}
+
+.config-section pre,
+.config-section code {
+    margin: 1rem 0;
+}
+
+.config-section .alert {
+    margin-top: 1.5rem;
+    margin-bottom: 0;
+}
+
 /* Make feature cards equal height in Bootstrap grid */
 .col-lg-3.col-md-6,
 .col-md-6.col-lg-3 {
     display: flex;
 }
 
-/* ===== PROVIDER CARDS ===== */
+/* ===== PROVIDER CARDS (Legacy - Use .card .card-sm instead) ===== */
+/* Legacy: .provider-grid maps to .grid .grid-auto */
 .provider-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -665,6 +1035,7 @@ body {
     margin: 2rem 0;
 }
 
+/* Legacy: .provider-card maps to .card .card-sm */
 .provider-card {
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
@@ -680,6 +1051,7 @@ body {
     border-color: var(--primary);
 }
 
+/* Legacy: .provider-logo maps to .icon .icon-md */
 .provider-logo {
     width: 56px;
     height: 56px;
@@ -714,6 +1086,7 @@ body {
     border-radius: 0.5rem;
     margin: 1.5rem 0;
     position: relative;
+    overflow: visible;
 }
 
 .highlighter-rouge pre,
@@ -723,9 +1096,11 @@ body {
     padding: 1.5rem;
     margin: 0;
     overflow-x: auto;
+    overflow-y: visible;
     border-radius: 0.5rem;
     max-width: none;
     width: 100%;
+    position: static;
 }
 
 .highlighter-rouge code,
@@ -740,8 +1115,8 @@ body {
 /* Copy Code Button */
 .copy-code-btn {
     position: absolute;
-    top: 0.75rem;
-    right: 0.75rem;
+    top: 1rem;
+    right: 1rem;
     background: var(--bg-tertiary);
     color: var(--text-secondary);
     border: 1px solid var(--border-color);
@@ -750,10 +1125,19 @@ body {
     font-size: 0.875rem;
     cursor: pointer;
     transition: all 0.2s ease;
-    z-index: 10;
+    z-index: 20;
     display: inline-flex;
     align-items: center;
     gap: 0.375rem;
+}
+
+/* Copy button in highlighter containers - positioned relative to container, not pre */
+.highlighter-rouge .copy-code-btn,
+.highlight .copy-code-btn {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    z-index: 20;
 }
 
 .copy-code-btn:hover {
@@ -867,11 +1251,12 @@ body {
 
 .code-panel {
     display: none;
-    background: var(--code-bg);
+    background: transparent;
     padding: 1.5rem;
     border: 1px solid var(--border-color);
     border-radius: 0 0 1rem 1rem;
-    overflow-x: auto;
+    overflow: hidden;
+    position: relative;
 }
 
 .code-panel.active {
@@ -880,11 +1265,32 @@ body {
 
 .code-panel pre {
     margin: 0;
-    background: none;
+    background: none !important;
+    padding: 0 !important;
     color: var(--code-text);
     font-family: var(--font-mono);
     font-size: 0.9rem;
     line-height: 1.6;
+    overflow-x: auto;
+    overflow-y: visible;
+    white-space: pre;
+    word-wrap: normal;
+    position: static;
+    max-width: 100%;
+}
+
+.code-panel code {
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--code-text);
+}
+
+.code-panel .copy-code-btn {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    z-index: 20;
 }
 
 /* Inline code */
@@ -921,6 +1327,85 @@ h2 {
 
 h3 {
     font-size: 1.5rem;
+}
+
+/* Allow long identifier-style headings to wrap on small screens */
+@media (max-width: 575.98px) {
+    .page-title {
+        font-size: 1.5rem;
+        word-break: break-word;
+        overflow-wrap: break-word;
+        hyphens: auto;
+        line-height: 1.4;
+    }
+    
+    h1 {
+        font-size: 1.5rem;
+        word-break: break-word;
+        overflow-wrap: break-word;
+        hyphens: auto;
+        line-height: 1.4;
+    }
+    
+    h2 {
+        font-size: 1.5rem;
+        word-break: break-word;
+        overflow-wrap: break-word;
+        hyphens: auto;
+        line-height: 1.4;
+    }
+    
+    h2[id],
+    h3[id],
+    h4[id] {
+        font-size: 1.4rem;
+        word-break: break-word;
+        overflow-wrap: break-word;
+        hyphens: auto;
+        line-height: 1.4;
+    }
+    
+    h3 {
+        font-size: 1.25rem;
+    }
+    
+    h4 {
+        font-size: 1.1rem;
+        word-break: break-word;
+        overflow-wrap: break-word;
+        hyphens: auto;
+        line-height: 1.4;
+    }
+    
+    /* Inline code mobile improvements */
+    code {
+        font-size: 0.8rem !important;
+        padding: 0.3rem 0.5rem !important;
+        word-break: break-all;
+        overflow-wrap: break-word;
+        display: inline-block;
+        max-width: 100%;
+        white-space: pre-wrap;
+        line-height: 1.5;
+        min-height: 1.5rem;
+    }
+    
+    code.highlighter-rouge,
+    code.language-plaintext,
+    .highlighter-rouge code,
+    .language-plaintext code {
+        font-size: 0.8rem !important;
+        padding: 0.3rem 0.5rem !important;
+        word-break: break-all;
+        overflow-wrap: break-word;
+        display: inline-block;
+        max-width: 100%;
+        white-space: pre-wrap;
+        line-height: 1.5;
+        min-height: 1.5rem;
+        background: var(--bg-tertiary) !important;
+        color: var(--primary) !important;
+    }
 }
 
 h4 {
@@ -968,6 +1453,20 @@ li {
     border: 1px solid;
 }
 
+/* Increase spacing when alert is followed by h3, h2, strong, or p */
+.alert + h3,
+.alert + h2,
+.alert + strong,
+.alert + p {
+    margin-top: 2.5rem;
+}
+
+/* Also handle when alert is followed by text node then element */
+.alert ~ strong:first-of-type,
+.alert ~ p:first-of-type {
+    margin-top: 2.5rem;
+}
+
 .alert-info {
     background: rgba(99, 102, 241, 0.1);
     border-color: var(--primary);
@@ -991,6 +1490,125 @@ li {
     margin-bottom: 1rem;
 }
 
+/* ===== ACCORDION ===== */
+.accordion {
+    margin: 2rem 0;
+}
+
+.accordion-item {
+    border: none;
+    border-radius: 0.5rem;
+    margin-bottom: 0.5rem;
+    overflow: hidden;
+    background: transparent;
+    box-shadow: none;
+    transition: all 0.2s ease;
+}
+
+.accordion-item:hover {
+    box-shadow: none;
+}
+
+.accordion-button {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 0.5rem;
+    padding: 1rem 1.25rem;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    position: relative;
+    width: 100%;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+}
+
+.accordion-button:hover {
+    background: var(--bg-secondary);
+    color: var(--primary);
+    border-color: var(--primary);
+}
+
+.accordion-button.collapsed {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+.accordion-button:not(.collapsed) {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+    border-radius: 0.5rem 0.5rem 0 0;
+    box-shadow: none;
+}
+
+.accordion-header {
+    margin: 0;
+    padding: 0;
+}
+
+.accordion-button:focus {
+    box-shadow: 0 0 0 0.25rem rgba(99, 102, 241, 0.25);
+    border-color: var(--primary);
+}
+
+.accordion-button::after {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ffffff'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+    flex-shrink: 0;
+    width: 1.25rem;
+    height: 1.25rem;
+    margin-left: auto;
+    content: "";
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: 1.25rem;
+    transition: transform 0.2s ease-in-out;
+}
+
+.accordion-button.collapsed::after {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23636363'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+}
+
+.accordion-button:not(.collapsed)::after {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ffffff'%3e%3cpath fill-rule='evenodd' d='M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+    transform: rotate(180deg);
+}
+
+.accordion-body {
+    padding: 1.5rem;
+    background: var(--bg-primary);
+    border: none;
+}
+
+.accordion-body h3,
+.accordion-body h4 {
+    margin-top: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.accordion-body h3:first-child,
+.accordion-body h4:first-child {
+    margin-top: 0;
+}
+
+.accordion-body ul,
+.accordion-body ol {
+    margin: 1rem 0;
+    padding-left: 2rem;
+}
+
+.accordion-body p {
+    margin: 0.75rem 0;
+}
+
+.accordion-body .alert {
+    margin: 1.5rem 0;
+}
+
 /* ===== TABLES ===== */
 .table {
     width: 100%;
@@ -1001,6 +1619,9 @@ li {
 .table-responsive {
     overflow-x: auto;
     margin: 2rem 0;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-color);
+    background: var(--bg-primary);
 }
 
 .table th {
@@ -1015,11 +1636,218 @@ li {
 .table td {
     padding: 1rem;
     border-bottom: 1px solid var(--border-color);
-    color: var(--text-secondary);
+    color: var(--text-primary);
 }
 
 .table tbody tr:hover {
     background: var(--bg-secondary);
+}
+
+/* Dark theme table improvements */
+[data-theme="dark"] .table-responsive {
+    background: var(--bg-secondary);
+    border-color: var(--border-color);
+}
+
+[data-theme="dark"] .table {
+    background: var(--bg-secondary);
+}
+
+[data-theme="dark"] .table th {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border-bottom-color: var(--border-color);
+    border-right: 1px solid var(--border-color);
+}
+
+[data-theme="dark"] .table th:last-child {
+    border-right: none;
+}
+
+[data-theme="dark"] .table td {
+    color: var(--text-primary);
+    border-bottom-color: var(--border-color);
+    border-right: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+}
+
+[data-theme="dark"] .table td:last-child {
+    border-right: none;
+}
+
+[data-theme="dark"] .table tbody tr:hover {
+    background: var(--bg-tertiary);
+}
+
+[data-theme="dark"] .table tbody tr:hover td {
+    background: var(--bg-tertiary);
+}
+
+/* Light theme table improvements */
+[data-theme="light"] .table-responsive {
+    background: #ffffff;
+    border-color: #dee2e6;
+}
+
+[data-theme="light"] .table th {
+    background: #f8f9fa;
+    color: #1a1a1a;
+    border-bottom-color: #dee2e6;
+}
+
+[data-theme="light"] .table td {
+    color: #2d2d2d;
+    border-bottom-color: #e9ecef;
+}
+
+[data-theme="light"] .table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+/* Table styling within config-section for better readability */
+.config-section table {
+    width: 100%;
+    margin: 1.5rem 0;
+    border-collapse: collapse;
+    background: var(--bg-primary);
+}
+
+.config-section table th {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-weight: 600;
+    padding: 0.875rem 1rem;
+    text-align: left;
+    border-bottom: 2px solid var(--border-color);
+    font-size: 0.95rem;
+}
+
+.config-section table td {
+    padding: 0.875rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+.config-section table tbody tr:hover {
+    background: var(--bg-secondary);
+}
+
+/* Mobile-friendly tables */
+@media (max-width: 575.98px) {
+    .table-responsive {
+        margin: 1.5rem 0;
+    }
+    
+    .table {
+        font-size: 0.85rem;
+    }
+    
+    .table th,
+    .table td {
+        padding: 0.75rem 0.75rem;
+        white-space: nowrap;
+    }
+    
+    /* Config-section tables mobile improvements */
+    .config-section .table-responsive {
+        margin: 1rem 0;
+        border-radius: 0.5rem;
+    }
+    
+    .config-section table {
+        font-size: 0.8rem;
+    }
+    
+    .config-section table th,
+    .config-section table td {
+        padding: 0.625rem 0.5rem;
+        white-space: nowrap;
+        font-size: 0.8rem;
+    }
+}
+
+/* Storage Provider Comparison Table and general responsive tables */
+.table-responsive {
+    margin: 2rem 0;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border-color);
+}
+
+.table-responsive .table {
+    margin-bottom: 0;
+}
+
+.table-responsive .table thead th {
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.table-responsive .table tbody td {
+    vertical-align: middle;
+}
+
+.table-responsive .table tbody td strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+.config-section table code {
+    background: var(--bg-tertiary);
+    color: var(--primary);
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    font-size: 0.85em;
+    font-weight: 500;
+}
+
+/* Storage Provider Comparison Table */
+.table-responsive {
+    margin: 2rem 0;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border-color);
+}
+
+.table-responsive .table {
+    margin-bottom: 0;
+}
+
+.table-responsive .table thead th {
+    font-weight: 600;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.table-responsive .table tbody td {
+    vertical-align: middle;
+}
+
+.table-responsive .table tbody td strong {
+    color: var(--text-primary);
+    font-weight: 600;
+}
+
+/* Light theme specific table improvements */
+[data-theme="light"] .config-section table th {
+    background: #f8f9fa;
+    color: #1a1a1a;
+    border-bottom-color: #dee2e6;
+}
+
+[data-theme="light"] .config-section table td {
+    color: #2d2d2d;
+    border-bottom-color: #e9ecef;
+}
+
+[data-theme="light"] .config-section table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+[data-theme="light"] .config-section table code {
+    background: #e9ecef;
+    color: #0066cc;
 }
 
 /* ===== FOOTER ===== */
@@ -1174,8 +2002,14 @@ details summary {
     color: var(--text-primary);
     list-style: none;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 0.75rem;
+    padding: 0.5rem 0;
+    transition: var(--transition-fast);
+}
+
+details summary:hover {
+    color: var(--primary);
 }
 
 details summary::-webkit-details-marker {
@@ -1192,7 +2026,23 @@ details summary::before {
     text-align: center;
     flex-shrink: 0;
     line-height: 1;
-    margin-top: 10px;
+    margin-top: 0.25rem;
+}
+
+details summary h4 {
+    margin: 0;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    transition: var(--transition-fast);
+}
+
+details summary:hover h4 {
+    color: var(--primary);
+}
+
+details[open] summary h4 {
+    color: var(--primary);
 }
 
 details[open] summary::before {
@@ -1233,24 +2083,30 @@ details[open] {
 }
 
 /* ===== DROPDOWN HOVER MENU ===== */
-.navbar-nav .dropdown:hover .dropdown-menu {
-    display: block;
-    opacity: 1;
-    visibility: visible;
-    transform: translateY(0);
+/* Only show on desktop (>= 992px) */
+@media (min-width: 992px) {
+    .navbar-nav .dropdown:hover .dropdown-menu {
+        display: block !important;
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+    }
 }
 
 .navbar-nav .dropdown-menu {
-    display: none;
+    display: none !important; /* Hidden by default */
     opacity: 0;
     visibility: hidden;
     transform: translateY(-10px);
     transition: all 0.3s ease;
-    border: none;
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-primary);
     box-shadow: var(--shadow-lg);
     border-radius: 8px;
     padding: 0.5rem 0;
-    margin-top: 0.8rem;
+    margin-top: 0 !important; /* Remove gap between toggle and menu */
+    border-top: none; /* Remove top border to connect with toggle */
+    border-radius: 0 0 8px 8px; /* Only round bottom corners */
     position: absolute;
     top: 100%;
     left: 0;
@@ -1258,26 +2114,28 @@ details[open] {
     z-index: 1000;
 }
 
-/* Create invisible bridge between button and menu */
+/* Create invisible bridge between button and menu to prevent gap */
 .navbar-nav .dropdown::before {
     content: '';
     position: absolute;
     top: 100%;
     left: 0;
     right: 0;
-    height: 10px;
+    height: 12px;
     background: transparent;
-    z-index: 999;
+    z-index: 1001;
+    pointer-events: none;
 }
 
 /* Ensure menu stays open when hovering over the bridge */
 .navbar-nav .dropdown:hover::before {
-    display: block;
+    pointer-events: auto;
 }
 
 .navbar-nav .dropdown-menu .dropdown-item {
     padding: 0.5rem 1rem;
     color: var(--text-primary);
+    background-color: transparent;
     transition: var(--transition-fast);
     border-radius: 4px;
     margin: 0 0.5rem;
@@ -1301,37 +2159,233 @@ details[open] {
 
 /* Mobile responsive - disable hover on touch devices */
 @media (max-width: 991.98px) {
+    /* Hide desktop controls everywhere on mobile */
+    .desktop-controls {
+        display: none !important;
+    }
+    
+    /* Navbar container - ensure proper flex layout */
+    .navbar .container {
+        display: flex !important;
+        flex-direction: column !important; /* Stack top row and menu vertically */
+        align-items: stretch !important;
+        position: relative !important;
+    }
+    
+    /* Top row wrapper - keeps logo, controls, hamburger together */
+    .navbar-top-row {
+        display: flex !important;
+        align-items: center !important;
+        width: 100% !important;
+        flex-wrap: nowrap !important; /* Never wrap - always same row */
+        position: relative !important;
+        z-index: 1001 !important; /* Above menu */
+    }
+    
+    /* Mobile controls - align to left */
+    .navbar-top-row .mobile-controls {
+        display: flex !important;
+        flex-direction: row !important; /* Horizontal layout - buttons side by side */
+        align-items: center !important;
+        gap: 0.5rem !important;
+        margin-left: 0 !important; /* Align to left */
+        margin-right: auto !important; /* Push logo to center */
+        flex-shrink: 0 !important;
+        position: relative !important;
+        order: 1 !important; /* First element */
+    }
+    
+    /* Logo - center */
+    .navbar-top-row .navbar-brand {
+        flex-shrink: 0 !important;
+        margin-left: auto !important; /* Center logo */
+        margin-right: auto !important; /* Center logo */
+        order: 2 !important; /* Second element */
+    }
+    
+    /* Hamburger button - keep in place */
+    .navbar-top-row .navbar-toggler {
+        flex-shrink: 0 !important;
+        margin-left: auto !important; /* Push to right */
+        order: 3 !important; /* Third element */
+    }
+    
+    /* Ensure mobile controls are properly sized */
+    .mobile-controls .btn-group {
+        display: flex !important;
+    }
+    
+    .mobile-controls .language-btn,
+    .mobile-controls .theme-toggle {
+        font-size: 0.85rem !important;
+        padding: 0.4rem 0.8rem !important;
+        min-height: 36px !important; /* Touch-friendly but compact */
+    }
+    
+    /* Hide mobile controls inside navbar-collapse */
+    .navbar-collapse .mobile-controls {
+        display: none !important;
+    }
+    
+    /* Navbar collapse - full width below top row */
+    .navbar-collapse {
+        width: 100% !important;
+        margin-top: 0.5rem !important;
+    }
+    
+    /* Hide original navbar-brand and navbar-toggler when top-row exists */
+    .navbar .container > .navbar-brand:not(.navbar-top-row .navbar-brand),
+    .navbar .container > .navbar-toggler:not(.navbar-top-row .navbar-toggler) {
+        display: none !important;
+    }
+    
+    /* Ensure navbar container uses flexbox for proper ordering */
+    .navbar .container {
+        display: flex !important;
+        align-items: center !important;
+        flex-wrap: wrap !important;
+    }
+    
+    /* Order: logo (1), mobile-controls (2), hamburger (3) */
+    .navbar-brand {
+        order: 1 !important;
+    }
+    
+    .navbar-toggler {
+        order: 3 !important;
+    }
+    /* Disable hover on mobile - dropdowns should only open via click */
     .navbar-nav .dropdown:hover .dropdown-menu {
-        display: none;
+        display: none !important;
     }
     
-    .navbar-nav .dropdown-menu {
-        display: none;
-        opacity: 1;
-        visibility: visible;
-        transform: none;
-        transition: none;
-        position: static;
-        float: none;
-        width: 100%;
-        margin-top: 0.5rem;
-        background-color: var(--bg-primary);
-        border: 1px solid var(--border-color);
-        border-radius: 0.5rem;
-        box-shadow: var(--shadow-lg);
+    /* Ensure dropdowns are hidden by default on mobile - MUST be more specific than .show */
+    /* This rule must come BEFORE the .show rule to ensure proper specificity */
+    .navbar-nav .nav-item.dropdown .dropdown-menu {
+        display: none !important;
     }
     
-    .navbar-nav .dropdown.show .dropdown-menu {
-        display: block;
+    /* Force hide all dropdowns on page load - even if they have .show class */
+    /* This ensures dropdowns start closed on mobile */
+    .navbar-nav .nav-item.dropdown .dropdown-menu:not(.force-show) {
+        display: none !important;
     }
     
-    .navbar-nav .dropdown-menu .dropdown-item {
-        padding: 0.75rem 1rem;
-        border-bottom: 1px solid var(--border-color);
+    /* Mobile dropdown toggle buttons - larger and more touch-friendly */
+    .navbar-nav .nav-item.dropdown .nav-link.dropdown-toggle {
+        padding: 0.75rem 1.25rem !important; /* Reduced padding to match regular nav-links */
+        font-size: 1rem !important;
+        min-height: 44px !important; /* Slightly reduced to match regular nav-links */
+        height: 44px !important; /* Fixed height for consistency */
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        width: 100% !important;
+        border-radius: 0.5rem !important;
+        transition: var(--transition-fast) !important;
+        margin-bottom: 0.25rem !important; /* Reduced margin between items */
+        background-color: transparent !important;
     }
     
-    .navbar-nav .dropdown-menu .dropdown-item:last-child {
-        border-bottom: none;
+    .navbar-nav .nav-item.dropdown .nav-link.dropdown-toggle:hover,
+    .navbar-nav .nav-item.dropdown .nav-link.dropdown-toggle:focus {
+        background-color: var(--bg-tertiary) !important;
+    }
+    
+    .navbar-nav .nav-item.dropdown .nav-link.dropdown-toggle::after {
+        margin-left: auto !important;
+        transition: transform 0.3s ease !important;
+        flex-shrink: 0 !important;
+    }
+    
+    .navbar-nav .nav-item.dropdown.show .nav-link.dropdown-toggle::after {
+        transform: rotate(180deg) !important;
+    }
+    
+    /* Dropdown menu styling - hidden by default */
+    /* Force dropdown to be below the toggle button, not to the side */
+    .navbar-nav .nav-item.dropdown {
+        position: relative !important;
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important; /* Stretch children to full width */
+        margin-bottom: 0.25rem !important; /* Reduced margin to match regular nav items */
+    }
+    
+    .navbar-nav .nav-item.dropdown .dropdown-menu {
+        display: none !important;
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: none !important;
+        transition: none !important;
+        position: static !important; /* Static position - flows naturally below toggle */
+        float: none !important;
+        width: 100% !important;
+        left: auto !important; /* Remove any left positioning */
+        right: auto !important; /* Remove any right positioning */
+        top: auto !important; /* Remove any top positioning */
+        bottom: auto !important; /* Remove any bottom positioning */
+        margin-top: 0.5rem !important; /* Small margin below toggle button */
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        margin-bottom: 0 !important;
+        background-color: var(--bg-primary) !important;
+        border: 1px solid var(--border-color) !important;
+        border-radius: 0.5rem !important;
+        box-shadow: var(--shadow-lg) !important;
+        padding: 0.5rem 0 !important;
+        max-height: 70vh !important;
+        overflow-y: auto !important;
+        -webkit-overflow-scrolling: touch !important; /* Smooth scrolling on iOS */
+        min-width: 100% !important; /* Ensure full width */
+        max-width: 100% !important; /* Prevent overflow */
+        /* Override Bootstrap's default dropdown positioning */
+        inset: auto !important; /* Reset all inset values */
+    }
+    
+    /* Only show dropdown when .show class is present AND we're on mobile AND has force-show */
+    .navbar-nav .nav-item.dropdown.show .dropdown-menu.force-show {
+        display: block !important;
+    }
+    
+    /* Mobile dropdown items - larger padding for touch-friendly interaction */
+    .navbar-nav .nav-item.dropdown .dropdown-menu .dropdown-item {
+        padding: 1rem 1.5rem !important;
+        border-bottom: 1px solid var(--border-color) !important;
+        font-size: 0.95rem !important;
+        min-height: 48px !important; /* Touch-friendly minimum size */
+        display: flex !important;
+        align-items: center !important;
+        transition: var(--transition-fast) !important;
+        color: var(--text-primary) !important;
+        margin: 0 !important;
+        border-radius: 0 !important;
+    }
+    
+    .navbar-nav .nav-item.dropdown .dropdown-menu .dropdown-item:hover,
+    .navbar-nav .nav-item.dropdown .dropdown-menu .dropdown-item:focus,
+    .navbar-nav .nav-item.dropdown .dropdown-menu .dropdown-item:active {
+        background-color: var(--primary) !important;
+        color: white !important;
+        transform: none !important; /* Remove transform on mobile for better touch experience */
+    }
+    
+    .navbar-nav .nav-item.dropdown .dropdown-menu .dropdown-item:first-child {
+        border-top-left-radius: 0.5rem !important;
+        border-top-right-radius: 0.5rem !important;
+    }
+    
+    .navbar-nav .nav-item.dropdown .dropdown-menu .dropdown-item:last-child {
+        border-bottom: none !important;
+        border-bottom-left-radius: 0.5rem !important;
+        border-bottom-right-radius: 0.5rem !important;
+    }
+    
+    /* Dropdown divider on mobile */
+    .navbar-nav .nav-item.dropdown .dropdown-menu .dropdown-divider {
+        margin: 0.5rem 0 !important;
+        border-color: var(--border-color) !important;
     }
     
     /* Hero premise badge mobile positioning */
@@ -1358,13 +2412,52 @@ details[open] {
         margin: 0.5rem 0;
     }
     
-    /* Prevent dropdown overflow on mobile */
+    /* Ensure dropdown items are properly spaced on mobile */
+    .navbar-nav .nav-item.dropdown {
+        width: 100% !important;
+        margin-bottom: 0.25rem !important; /* Reduced margin to match regular nav items */
+        position: relative !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    
+    /* Prevent dropdown overflow on mobile - already defined above, but ensure consistency */
     .navbar-nav .dropdown-menu {
-        max-width: 100%;
-        overflow-x: hidden;
-        word-wrap: break-word;
-        max-height: 70vh;
-        overflow-y: auto;
+        max-width: 100% !important;
+        min-width: 100% !important;
+        width: 100% !important;
+        overflow-x: hidden !important;
+        word-wrap: break-word !important;
+        position: static !important; /* Ensure static positioning */
+        left: auto !important;
+        right: auto !important;
+        top: auto !important;
+    }
+    
+    /* Ensure navbar-nav uses column layout on mobile */
+    .navbar-nav {
+        flex-direction: column !important;
+        width: 100% !important;
+        align-items: stretch !important; /* Stretch all children to full width */
+    }
+    
+    /* Ensure nav-item takes full width on mobile */
+    .navbar-nav .nav-item {
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        align-items: stretch !important; /* Stretch dropdown menu to full width */
+    }
+    
+    /* Override Bootstrap's dropdown positioning completely on mobile */
+    .navbar-nav .nav-item.dropdown .dropdown-menu[style*="position"] {
+        position: static !important;
+        left: auto !important;
+        right: auto !important;
+        top: auto !important;
+        bottom: auto !important;
+        transform: none !important;
+        inset: auto !important;
     }
     
     .hero-title {
@@ -1376,7 +2469,23 @@ details[open] {
     }
     
     .hero-buttons {
-        justify-content: center;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+        width: 100%;
+        gap: 0.5rem;
+    }
+    
+    .hero-buttons .btn {
+        flex: 1 1 0;
+        min-width: 0;
+        max-width: calc(33.333% - 0.334rem);
+        padding: 0.75rem 1rem !important;
+        font-size: 0.95rem !important;
+    }
+    
+    .hero-buttons .btn.btn-lg {
+        padding: 0.75rem 1rem !important;
+        font-size: 0.95rem !important;
     }
 }
 
@@ -1389,12 +2498,33 @@ details[open] {
         font-size: 1.1rem;
     }
     
+    .section {
+        padding: 1.5rem 0 !important;
+    }
+    
+    .section-header {
+        margin-bottom: 1rem !important;
+    }
+    
     .section-title {
         font-size: 2rem;
+        margin-bottom: 0.5rem !important;
+    }
+    
+    .section-subtitle {
+        font-size: 1rem;
+        margin-bottom: 0 !important;
     }
     
     .feature-grid {
         grid-template-columns: 1fr;
+        gap: 1rem !important;
+        margin: 0 !important;
+    }
+    
+    .feature-card {
+        padding: 1.25rem !important;
+        margin-bottom: 0 !important;
     }
     
     .provider-grid {
@@ -1403,6 +2533,16 @@ details[open] {
     
     .stat-card {
         min-width: 100%;
+    }
+    
+    /* Code tabs tablet improvements */
+    .code-tab {
+        padding: 0.875rem 1rem;
+        font-size: 0.9rem;
+    }
+    
+    .code-panel {
+        padding: 1.25rem;
     }
 }
 
@@ -1421,23 +2561,629 @@ details[open] {
     
     .hero-buttons {
         flex-wrap: wrap;
-        gap: 0.75rem;
+        gap: 0.5rem;
+        width: 100%;
+        justify-content: flex-start;
     }
     
     .hero-buttons .btn {
-        flex: 1;
-        min-width: 200px;
+        flex: 1 1 0;
+        min-width: 0;
+        max-width: calc(50% - 0.25rem);
         justify-content: center;
+        font-size: 0.875rem !important;
+        padding: 0.625rem 0.875rem !important;
+        height: 44px;
+    }
+    
+    .hero-buttons .btn.btn-lg {
+        padding: 0.625rem 0.875rem !important;
+        font-size: 0.875rem !important;
+        height: 44px;
+    }
+    
+    /* Very small screens - stack buttons */
+    @media (max-width: 400px) {
+        .hero-buttons {
+            gap: 0.5rem;
+        }
+        
+        .hero-buttons .btn {
+            flex: 1 1 100%;
+            max-width: 100%;
+            width: 100%;
+        }
+    }
+    
+    /* Code tabs mobile improvements */
+    .code-tabs {
+        flex-wrap: wrap;
+        border-radius: 1rem 1rem 0 0;
+    }
+    
+    .code-tab {
+        flex: 1 1 auto;
+        min-width: 0;
+        padding: 0.75rem 0.5rem;
+        font-size: 0.875rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .code-panel {
+        padding: 1rem;
+    }
+    
+    .code-panel pre {
+        font-size: 0.8rem;
+    }
+    
+    /* Copy code button - mobile adjustments */
+    .code-panel .copy-code-btn {
+        top: 0.4rem;
+        right: 0.4rem;
+        padding: 0.35rem 0.5rem;
+        font-size: 0.75rem;
     }
 }
 
+/* ===== COMPONENT SYSTEM ===== */
+/* Universal Card Component - Use for all card-like elements */
+.card {
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 1.25rem;
+    padding: 2rem;
+    margin-bottom: 2rem;
+    transition: var(--transition-normal);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Remove border from .config-section even if it has .card class */
+.config-section.card,
+.card.config-section {
+    border: none !important;
+    box-shadow: none !important;
+    outline: none !important;
+}
+}
+
+.card-sm {
+    padding: 1.25rem;
+    border-radius: 1rem;
+    text-align: center;
+}
+
+/* Provider/Technology cards - smaller, compact design */
+.card.card-sm {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: auto;
+    padding: 1rem;
+}
+
+.card.card-sm .icon {
+    margin: 0 auto 0.75rem;
+    display: flex;
+}
+
+.card.card-sm .icon.icon-md {
+    width: 40px;
+    height: 40px;
+    font-size: 1.25rem;
+    margin-bottom: 0.75rem;
+}
+
+.card.card-sm h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0 0 0.25rem 0;
+    line-height: 1.3;
+}
+
+.card.card-sm p {
+    font-size: 0.875rem;
+    margin: 0;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.card-lg {
+    padding: 2.5rem;
+    border-radius: 1.5rem;
+}
+
+.card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--primary);
+}
+
+.card-header {
+    margin-bottom: 1.5rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.card-title {
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem 0;
+    color: var(--text-primary);
+}
+
+.card-subtitle {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin: 0;
+}
+
+.card-body {
+    flex-grow: 1;
+    color: var(--text-secondary);
+    line-height: 1.7;
+}
+
+.card-footer {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--border-color);
+}
+
+/* Card with top accent border */
+.card-accent::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    transform: scaleX(0);
+    transition: var(--transition-normal);
+}
+
+.card-accent:hover::before {
+    transform: scaleX(1);
+}
+
+/* Compact cards for Configuration Categories section */
+.row .card.card-accent {
+    padding: 1.25rem;
+    border-radius: 1rem;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.row .card.card-accent .icon.icon-lg {
+    width: 48px;
+    height: 48px;
+    font-size: 1.5rem;
+    margin-bottom: 1.25rem;
+    flex-shrink: 0;
+}
+
+.row .card.card-accent h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem 0;
+    line-height: 1.3;
+    flex-shrink: 0;
+}
+
+.row .card.card-accent p {
+    font-size: 0.875rem;
+    margin: 0;
+    color: var(--text-secondary);
+    line-height: 1.4;
+    flex-grow: 1;
+}
+
+.row .card.card-accent .btn {
+    margin-top: 0.5rem !important;
+    flex-shrink: 0;
+}
+
+/* Section Component - Universal section wrapper */
+.section {
+    padding: 2rem 0;
+    background: var(--bg-secondary);
+}
+
+.section-sm {
+    padding: 2rem 0;
+}
+
+.section-lg {
+    padding: 4rem 0;
+}
+
+.section-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.section-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin-bottom: 1rem;
+    color: var(--text-primary);
+}
+
+.section-subtitle {
+    font-size: 1.2rem;
+    color: var(--text-secondary);
+    max-width: 700px;
+    margin: 0 auto;
+}
+
+/* Grid System - Universal grid layouts */
+.grid {
+    display: grid;
+    gap: 2rem;
+    margin: 2rem 0;
+}
+
+.grid-auto {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+}
+
+.grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.grid-4 {
+    grid-template-columns: repeat(4, 1fr);
+}
+
+@media (max-width: 991.98px) {
+    .grid-3,
+    .grid-4 {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+@media (max-width: 767.98px) {
+    .grid-2,
+    .grid-3,
+    .grid-4 {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Badge Component */
+.badge {
+    display: inline-block;
+    padding: 0.35em 0.65em;
+    font-size: 0.875em;
+    font-weight: 600;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 0.375rem;
+    transition: var(--transition-fast);
+}
+
+.badge.bg-success {
+    background-color: #10b981 !important;
+    color: white !important;
+}
+
+.badge.bg-warning {
+    background-color: #f59e0b !important;
+    color: #1f2937 !important;
+}
+
+.badge.bg-danger {
+    background-color: #ef4444 !important;
+    color: white !important;
+}
+
+.badge.bg-secondary {
+    background-color: #6b7280 !important;
+    color: white !important;
+}
+
+[data-theme="dark"] .badge.bg-success {
+    background-color: #059669 !important;
+    color: white !important;
+}
+
+[data-theme="dark"] .badge.bg-warning {
+    background-color: #d97706 !important;
+    color: white !important;
+}
+
+[data-theme="dark"] .badge.bg-danger {
+    background-color: #dc2626 !important;
+    color: white !important;
+}
+
+[data-theme="dark"] .badge.bg-secondary {
+    background-color: #4b5563 !important;
+    color: white !important;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.35em 0.65em;
+    font-size: 0.875em;
+    font-weight: 600;
+    line-height: 1;
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: baseline;
+    border-radius: 0.375rem;
+    transition: var(--transition-fast);
+}
+
+.badge.bg-success {
+    background-color: #10b981 !important;
+    color: white !important;
+}
+
+.badge.bg-warning {
+    background-color: #f59e0b !important;
+    color: #1f2937 !important;
+}
+
+.badge.bg-danger {
+    background-color: #ef4444 !important;
+    color: white !important;
+}
+
+.badge.bg-secondary {
+    background-color: #6b7280 !important;
+    color: white !important;
+}
+
+[data-theme="dark"] .badge.bg-success {
+    background-color: #059669 !important;
+    color: white !important;
+}
+
+[data-theme="dark"] .badge.bg-warning {
+    background-color: #d97706 !important;
+    color: white !important;
+}
+
+[data-theme="dark"] .badge.bg-danger {
+    background-color: #dc2626 !important;
+    color: white !important;
+}
+
+[data-theme="dark"] .badge.bg-secondary {
+    background-color: #4b5563 !important;
+    color: white !important;
+}
+
+.badge-primary {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    color: white;
+    box-shadow: var(--shadow-lg);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1.25rem;
+    border-radius: 2rem;
+    font-size: 0.9rem;
+}
+
+.badge-secondary {
+    background: var(--bg-tertiary);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+}
+
+/* Icon Component */
+.icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--primary);
+    margin: 0 auto;
+}
+
+.icon:not(.icon-gradient) {
+    background: var(--bg-tertiary);
+    border-radius: 0.75rem;
+}
+
+.icon-sm {
+    width: 32px;
+    height: 32px;
+    font-size: 1rem;
+}
+
+.icon-md {
+    width: 48px;
+    height: 48px;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.icon-lg {
+    width: 64px;
+    height: 64px;
+    font-size: 1.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.icon-gradient {
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    border-radius: 1rem;
+    color: white;
+    box-shadow: var(--shadow-md);
+}
+
+/* Code Block Component - Universal code block styling */
+.code-block {
+    background: var(--code-bg);
+    border-radius: 0.5rem;
+    margin: 1.5rem 0;
+    position: relative;
+    border: 1px solid var(--border-color);
+}
+
+.code-block pre {
+    background: var(--code-bg) !important;
+    color: var(--code-text) !important;
+    padding: 1.5rem;
+    margin: 0;
+    overflow-x: auto;
+    border-radius: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+.code-block code {
+    background: none !important;
+    color: var(--code-text) !important;
+    font-family: var(--font-mono);
+}
+
+/* Alert Component - Universal alert styling */
+.alert {
+    border-radius: 1rem;
+    padding: 1.5rem;
+    margin: 2rem 0;
+    border: 1px solid;
+}
+
+.alert-info {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: var(--primary);
+    color: var(--text-primary);
+}
+
+.alert-success {
+    background: rgba(16, 185, 129, 0.1);
+    border-color: var(--secondary);
+    color: var(--text-primary);
+}
+
+.alert-warning {
+    background: rgba(245, 158, 11, 0.1);
+    border-color: var(--accent);
+    color: var(--text-primary);
+}
+
+.alert-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    margin: 0 0 0.5rem 0;
+    color: var(--text-primary);
+}
+
 /* ===== UTILITIES ===== */
+/* Text Utilities */
 .text-gradient {
     background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
 }
+
+.text-center {
+    text-align: center;
+}
+
+.text-left {
+    text-align: left;
+}
+
+.text-right {
+    text-align: right;
+}
+
+/* Spacing Utilities */
+.mt-0 { margin-top: 0 !important; }
+.mt-1 { margin-top: 0.5rem !important; }
+.mt-2 { margin-top: 1rem !important; }
+.mt-3 { margin-top: 1.5rem !important; }
+.mt-4 { margin-top: 2rem !important; }
+.mt-5 { margin-top: 3rem !important; }
+
+.mb-0 { margin-bottom: 0 !important; }
+.mb-1 { margin-bottom: 0.5rem !important; }
+.mb-2 { margin-bottom: 1rem !important; }
+.mb-3 { margin-bottom: 1.5rem !important; }
+.mb-4 { margin-bottom: 2rem !important; }
+.mb-5 { margin-bottom: 3rem !important; }
+
+.pt-0 { padding-top: 0 !important; }
+.pt-1 { padding-top: 0.5rem !important; }
+.pt-2 { padding-top: 1rem !important; }
+.pt-3 { padding-top: 1.5rem !important; }
+.pt-4 { padding-top: 2rem !important; }
+.pt-5 { padding-top: 3rem !important; }
+
+.pb-0 { padding-bottom: 0 !important; }
+.pb-1 { padding-bottom: 0.5rem !important; }
+.pb-2 { padding-bottom: 1rem !important; }
+.pb-3 { padding-bottom: 1.5rem !important; }
+.pb-4 { padding-bottom: 2rem !important; }
+.pb-5 { padding-bottom: 3rem !important; }
+
+/* Display Utilities */
+.d-flex {
+    display: flex;
+}
+
+.d-grid {
+    display: grid;
+}
+
+.d-block {
+    display: block;
+}
+
+.d-inline {
+    display: inline;
+}
+
+.d-none {
+    display: none;
+}
+
+/* Flexbox Utilities */
+.flex-column {
+    flex-direction: column;
+}
+
+.flex-row {
+    flex-direction: row;
+}
+
+.align-items-center {
+    align-items: center;
+}
+
+.justify-content-center {
+    justify-content: center;
+}
+
+.justify-content-between {
+    justify-content: space-between;
+}
+
+.gap-1 { gap: 0.5rem; }
+.gap-2 { gap: 1rem; }
+.gap-3 { gap: 1.5rem; }
+.gap-4 { gap: 2rem; }
 
 /* Override Bootstrap default backgrounds */
 .container-fluid,
@@ -1552,5 +3298,19 @@ details[open] {
     .main-content {
         margin-top: 0 !important;
     }
+}
+
+/* ===== CONFIG-SECTION BORDER OVERRIDE ===== */
+/* Force remove border from .config-section - must be at the end to override all other rules */
+.config-section,
+.config-section.card,
+.card.config-section,
+div.config-section,
+div.config-section.card,
+div.card.config-section {
+    border: none !important;
+    border-width: 0 !important;
+    box-shadow: none !important;
+    outline: none !important;
 }
 

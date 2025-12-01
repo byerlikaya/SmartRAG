@@ -28,7 +28,7 @@ Complete guide for running SmartRAG with all local services using Docker.
 | **PostgreSQL** | `postgres:16-alpine` | `smartrag-postgres-test` | `5432:5432` | `postgres-data` | PostgreSQL ready test |
 | **Ollama** | `ollama/ollama:latest` | `smartrag-ollama` | `11434:11434` | `ollama-data` | Ollama list test |
 | **Qdrant** | `qdrant/qdrant:latest` | `smartrag-qdrant` | `6333:6333`, `6334:6334` | `qdrant-data` | HTTP health check |
-| **Redis** | `redis:7-alpine` | `smartrag-redis` | `6379:6379` | `redis-data` | Redis ping test |
+| **Redis** | `redis/redis-stack-server:latest` | `smartrag-redis` | `6379:6379`, `8001:8001` | `redis-data` | Redis ping test |
 
 ### **Volume Persistence**
 All data persists across container restarts using Docker volumes:
@@ -203,16 +203,22 @@ curl http://localhost:11434/api/tags
 curl http://localhost:6333/health
 ```
 
-### Redis (Cache)
+### Redis (Cache & Vector Store)
 - **Host**: localhost:6379
+- **RedisInsight UI**: http://localhost:8001 (optional web UI)
 - **Container**: smartrag-redis
 - **Volume**: redis-data
 - **Persistence**: AOF (Append Only File) enabled
+- **RediSearch**: Included (vector similarity search enabled)
 
 **Test Connection:**
 ```bash
 docker exec -it smartrag-redis redis-cli ping
 # Should return: PONG
+
+# Verify RediSearch module
+docker exec -it smartrag-redis redis-cli MODULE LIST
+# Should show: search
 ```
 
 ### SQL Server
@@ -498,9 +504,12 @@ If you prefer not to use Docker:
 - Or use Qdrant Cloud: https://cloud.qdrant.io
 
 ### Redis
-- Windows: https://github.com/microsoftarchive/redis/releases
-- Linux: `sudo apt install redis-server`
-- macOS: `brew install redis`
+- **Important**: For vector search, use `redis/redis-stack-server` (includes RediSearch module)
+- Docker: `docker run -d -p 6379:6379 redis/redis-stack-server:latest`
+- Windows: https://github.com/microsoftarchive/redis/releases (requires RediSearch module installation)
+- Linux: `sudo apt install redis-server` (requires RediSearch module installation)
+- macOS: `brew install redis` (requires RediSearch module installation)
+- **Note**: Standard Redis does not include RediSearch. Without RediSearch, only text search will work (no vector similarity search).
 
 ## 📚 Additional Resources
 

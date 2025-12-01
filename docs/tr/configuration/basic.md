@@ -5,44 +5,124 @@ description: SmartRAG temel yapılandırma seçenekleri - yapılandırma yöntem
 lang: tr
 ---
 
-## Temel Yapılandırma
+## Yapılandırma Yöntemleri
 
-SmartRAG iki yapılandırma yöntemi sunar:
+<p>SmartRAG iki yapılandırma yöntemi sunar:</p>
 
-### Yöntem 1: UseSmartRag (Basit)
+### Hızlı Kurulum (Önerilen)
+
+<p><code>Program.cs</code> veya <code>Startup.cs</code> dosyanızda SmartRAG'i yapılandırın:</p>
 
 ```csharp
-builder.Services.UseSmartRag(configuration,
-    storageProvider: StorageProvider.InMemory,
-    aiProvider: AIProvider.Gemini
+using SmartRAG.Extensions;
+using SmartRAG.Enums;
+
+var builder = WebApplication.CreateBuilder(args);
+
+// Tek satırda basit yapılandırma
+builder.Services.UseSmartRag(builder.Configuration,
+    storageProvider: StorageProvider.InMemory,  // In-memory ile başlayın
+    aiProvider: AIProvider.Gemini               // AI sağlayıcınızı seçin
 );
+
+var app = builder.Build();
+app.Run();
 ```
 
-### Yöntem 2: AddSmartRag (Gelişmiş)
+### Gelişmiş Kurulum
 
 ```csharp
-builder.Services.AddSmartRag(configuration, options =>
-{
-    options.AIProvider = AIProvider.OpenAI;
-    options.StorageProvider = StorageProvider.Qdrant;
-    // ... ek seçenekler
-});
-```
+using SmartRAG.Extensions;
+using SmartRAG.Enums;
 
----
+var builder = WebApplication.CreateBuilder(args);
+
+// Seçeneklerle gelişmiş yapılandırma
+builder.Services.AddSmartRag(builder.Configuration, options =>
+{
+    // AI Sağlayıcı
+    options.AIProvider = AIProvider.OpenAI;
+    
+    // Depolama Sağlayıcı
+    options.StorageProvider = StorageProvider.Qdrant;
+    
+    // Parçalama Yapılandırması
+    options.MaxChunkSize = 1000;
+    options.MinChunkSize = 100;
+    options.ChunkOverlap = 200;
+    
+    // Yeniden Deneme Yapılandırması
+    options.MaxRetryAttempts = 3;
+    options.RetryDelayMs = 1000;
+    options.RetryPolicy = RetryPolicy.ExponentialBackoff;
+    
+    // Yedek Sağlayıcılar
+    options.EnableFallbackProviders = true;
+    options.FallbackProviders = new List<AIProvider> 
+    { 
+        AIProvider.Anthropic, 
+        AIProvider.Gemini 
+    };
+});
+
+var app = builder.Build();
+app.Run();
+```
 
 ## SmartRagOptions - Temel Seçenekler
 
-| Seçenek | Tip | Varsayılan | Açıklama |
-|--------|------|---------|-------------|
-| `AIProvider` | `AIProvider` | `OpenAI` | Embedding'ler ve metin üretimi için AI sağlayıcı |
-| `StorageProvider` | `StorageProvider` | `InMemory` | Dokümanlar ve vektörler için depolama backend'i |
-| `ConversationStorageProvider` | `ConversationStorageProvider?` | `null` | Konuşma geçmişi için ayrı depolama (isteğe bağlı) |
-| `EnableAutoSchemaAnalysis` | `bool` | `true` | Başlangıçta veritabanı şemalarını otomatik olarak analiz et |
-| `EnablePeriodicSchemaRefresh` | `bool` | `true` | Veritabanı şemalarını periyodik olarak yenile |
-| `DefaultSchemaRefreshIntervalMinutes` | `int` | `60` | Şema yenileme için varsayılan aralık (dakika) |
+SmartRagOptions'da mevcut temel yapılandırma seçenekleri:
 
----
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Seçenek</th>
+                <th>Tip</th>
+                <th>Varsayılan</th>
+                <th>Açıklama</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>AIProvider</code></td>
+                <td><code>AIProvider</code></td>
+                <td><code>OpenAI</code></td>
+                <td>Embedding'ler ve metin üretimi için AI sağlayıcı</td>
+            </tr>
+            <tr>
+                <td><code>StorageProvider</code></td>
+                <td><code>StorageProvider</code></td>
+                <td><code>InMemory</code></td>
+                <td>Dokümanlar ve vektörler için depolama backend'i</td>
+            </tr>
+            <tr>
+                <td><code>ConversationStorageProvider</code></td>
+                <td><code>ConversationStorageProvider?</code></td>
+                <td><code>null</code></td>
+                <td>Konuşma geçmişi için ayrı depolama (isteğe bağlı)</td>
+            </tr>
+            <tr>
+                <td><code>EnableAutoSchemaAnalysis</code></td>
+                <td><code>bool</code></td>
+                <td><code>true</code></td>
+                <td>Başlangıçta veritabanı şemalarını otomatik olarak analiz et</td>
+            </tr>
+            <tr>
+                <td><code>EnablePeriodicSchemaRefresh</code></td>
+                <td><code>bool</code></td>
+                <td><code>true</code></td>
+                <td>Veritabanı şemalarını periyodik olarak yenile</td>
+            </tr>
+            <tr>
+                <td><code>DefaultSchemaRefreshIntervalMinutes</code></td>
+                <td><code>int</code></td>
+                <td><code>60</code></td>
+                <td>Şema yenileme için varsayılan aralık (dakika)</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
 
 ## ConversationStorageProvider
 
@@ -89,15 +169,40 @@ builder.Services.AddSmartRag(configuration, options =>
     </ul>
 </div>
 
----
-
 ## Parçalama Seçenekleri
 
-| Seçenek | Tip | Varsayılan | Açıklama |
-|--------|------|---------|-------------|
-| `MaxChunkSize` | `int` | `1000` | Her doküman parçasının karakter cinsinden maksimum boyutu |
-| `MinChunkSize` | `int` | `100` | Her doküman parçasının karakter cinsinden minimum boyutu |
-| `ChunkOverlap` | `int` | `200` | Bitişik parçalar arasında örtüşecek karakter sayısı |
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Seçenek</th>
+                <th>Tip</th>
+                <th>Varsayılan</th>
+                <th>Açıklama</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>MaxChunkSize</code></td>
+                <td><code>int</code></td>
+                <td><code>1000</code></td>
+                <td>Her doküman parçasının karakter cinsinden maksimum boyutu</td>
+            </tr>
+            <tr>
+                <td><code>MinChunkSize</code></td>
+                <td><code>int</code></td>
+                <td><code>100</code></td>
+                <td>Her doküman parçasının karakter cinsinden minimum boyutu</td>
+            </tr>
+            <tr>
+                <td><code>ChunkOverlap</code></td>
+                <td><code>int</code></td>
+                <td><code>200</code></td>
+                <td>Bitişik parçalar arasında örtüşecek karakter sayısı</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
 
 <div class="alert alert-info">
     <h4><i class="fas fa-info-circle me-2"></i> Parçalama En İyi Pratikleri</h4>
@@ -109,25 +214,58 @@ builder.Services.AddSmartRag(configuration, options =>
     </ul>
 </div>
 
----
-
 ## Yeniden Deneme & Dayanıklılık Seçenekleri
 
-| Seçenek | Tip | Varsayılan | Açıklama |
-|--------|------|---------|-------------|
-| `MaxRetryAttempts` | `int` | `3` | AI sağlayıcı istekleri için maksimum yeniden deneme sayısı |
-| `RetryDelayMs` | `int` | `1000` | Yeniden denemeler arası bekleme süresi (milisaniye) |
-| `RetryPolicy` | `RetryPolicy` | `ExponentialBackoff` | Başarısız istekler için yeniden deneme politikası |
-| `EnableFallbackProviders` | `bool` | `false` | Hata durumunda alternatif AI sağlayıcılarına geçiş |
-| `FallbackProviders` | `List<AIProvider>` | `[]` | Sırayla denenecek yedek AI sağlayıcıları listesi |
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Seçenek</th>
+                <th>Tip</th>
+                <th>Varsayılan</th>
+                <th>Açıklama</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>MaxRetryAttempts</code></td>
+                <td><code>int</code></td>
+                <td><code>3</code></td>
+                <td>AI sağlayıcı istekleri için maksimum yeniden deneme sayısı</td>
+            </tr>
+            <tr>
+                <td><code>RetryDelayMs</code></td>
+                <td><code>int</code></td>
+                <td><code>1000</code></td>
+                <td>Yeniden denemeler arası bekleme süresi (milisaniye)</td>
+            </tr>
+            <tr>
+                <td><code>RetryPolicy</code></td>
+                <td><code>RetryPolicy</code></td>
+                <td><code>ExponentialBackoff</code></td>
+                <td>Başarısız istekler için yeniden deneme politikası</td>
+            </tr>
+            <tr>
+                <td><code>EnableFallbackProviders</code></td>
+                <td><code>bool</code></td>
+                <td><code>false</code></td>
+                <td>Hata durumunda alternatif AI sağlayıcılarına geçiş</td>
+            </tr>
+            <tr>
+                <td><code>FallbackProviders</code></td>
+                <td><code>List&lt;AIProvider&gt;</code></td>
+                <td><code>[]</code></td>
+                <td>Sırayla denenecek yedek AI sağlayıcıları listesi</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
 
 **RetryPolicy Enum Değerleri:**
 - `RetryPolicy.None` - Yeniden deneme yok
 - `RetryPolicy.FixedDelay` - Sabit bekleme süresi
 - `RetryPolicy.LinearBackoff` - Doğrusal artan bekleme
 - `RetryPolicy.ExponentialBackoff` - Üssel artan bekleme (önerilen)
-
----
 
 ## Örnek Yapılandırma
 
@@ -161,14 +299,12 @@ builder.Services.AddSmartRag(configuration, options =>
 });
 ```
 
----
-
 ## Sonraki Adımlar
 
 <div class="row g-4 mt-4">
     <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-brain"></i>
             </div>
             <h3>AI Sağlayıcıları</h3>
@@ -180,8 +316,8 @@ builder.Services.AddSmartRag(configuration, options =>
     </div>
     
     <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-database"></i>
             </div>
             <h3>Depolama Sağlayıcıları</h3>

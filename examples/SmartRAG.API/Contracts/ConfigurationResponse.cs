@@ -18,7 +18,7 @@ namespace SmartRAG.API.Contracts
         /// <summary>
         /// Configuration data (sensitive values may be masked)
         /// </summary>
-        /// <example>{"provider": "OpenAI", "apiKey": "sk-***", "model": "gpt-4"}</example>
+        /// <example>{"provider": "OpenAI", "apiKey": "sk-***", "model": "gpt-5.1"}</example>
         public Dictionary<string, object> Data { get; set; } = new Dictionary<string, object>();
 
         /// <summary>
@@ -89,19 +89,19 @@ namespace SmartRAG.API.Contracts
         /// <summary>
         /// Default model for this provider
         /// </summary>
-        /// <example>gpt-4</example>
+        /// <example>gpt-5.1</example>
         public string DefaultModel { get; set; } = string.Empty;
 
         /// <summary>
         /// Default embedding model
         /// </summary>
-        /// <example>text-embedding-ada-002</example>
+        /// <example>text-embedding-3-small</example>
         public string DefaultEmbeddingModel { get; set; } = string.Empty;
 
         /// <summary>
         /// Available models for this provider
         /// </summary>
-        /// <example>["gpt-4", "gpt-3.5-turbo", "text-embedding-ada-002"]</example>
+        /// <example>["gpt-5.1", "gpt-5", "gpt-4o", "gpt-4o-mini", "text-embedding-3-small", "text-embedding-3-large"]</example>
         public List<string> AvailableModels { get; set; } = new List<string>();
 
         /// <summary>

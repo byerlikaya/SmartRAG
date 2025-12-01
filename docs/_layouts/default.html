@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}" data-theme="light">
+<html lang="{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}" data-theme="dark">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
@@ -85,13 +85,39 @@
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-light bg-white fixed-top shadow-sm">
         <div class="container">
-            <a class="navbar-brand d-flex align-items-center" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/">
-                <span class="brand-gradient fw-bold">SmartRAG</span>
-            </a>
-            
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
+            <!-- Top row: Logo, Controls, Hamburger (always together) -->
+            <div class="navbar-top-row">
+                <a class="navbar-brand d-flex align-items-center" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/">
+                    <span class="brand-gradient fw-bold">SmartRAG</span>
+                </a>
+                
+                <!-- Language & Theme Controls - Mobile (shown on mobile, in navbar top) -->
+                <div class="d-flex align-items-center gap-2 mobile-controls">
+                    <!-- Language Selector -->
+                    <div class="btn-group" role="group">
+                        <a href="{{ site.baseurl }}/en{{ page.url | remove: '/tr' | remove: '/en' }}" 
+                           class="btn btn-sm {% if page.lang == 'en' or page.lang == null %}btn-primary{% else %}btn-outline-primary{% endif %} language-btn" 
+                           data-lang="en">
+                            EN
+                        </a>
+                        <a href="{{ site.baseurl }}/tr{{ page.url | remove: '/tr' | remove: '/en' }}" 
+                           class="btn btn-sm {% if page.lang == 'tr' %}btn-primary{% else %}btn-outline-primary{% endif %} language-btn" 
+                           data-lang="tr">
+                            TR
+                        </a>
+                    </div>
+                    
+                    <!-- Theme Toggle -->
+                    <button id="themeToggleMobile" class="btn btn-sm btn-outline-secondary theme-toggle" title="Toggle theme">
+                        <i class="fas fa-moon theme-icon-dark" style="display: none;"></i>
+                        <i class="fas fa-sun theme-icon-light"></i>
+                    </button>
+                </div>
+                
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+            </div>
             
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
@@ -144,28 +170,105 @@
                             </a></li>
                         </ul>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link{% if page.url contains '/api-reference' %} active{% endif %}" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/api-reference">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle{% if page.url contains '/api-reference' %} active{% endif %}" href="#" id="apiReferenceDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-code me-1"></i>
                             {% if page.lang == 'tr' %}API Referans{% else %}API Reference{% endif %}
                         </a>
+                        <ul class="dropdown-menu" aria-labelledby="apiReferenceDropdown">
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/api-reference">
+                                <i class="fas fa-list me-2"></i>
+                                {% if page.lang == 'tr' %}Tüm Kategoriler{% else %}All Categories{% endif %}
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/api-reference/core">
+                                <i class="fas fa-cube me-2"></i>
+                                {% if page.lang == 'tr' %}Temel Arayüzler{% else %}Core Interfaces{% endif %}
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/api-reference/advanced">
+                                <i class="fas fa-rocket me-2"></i>
+                                {% if page.lang == 'tr' %}Gelişmiş Arayüzler{% else %}Advanced Interfaces{% endif %}
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/api-reference/strategies">
+                                <i class="fas fa-puzzle-piece me-2"></i>
+                                {% if page.lang == 'tr' %}Strateji Arayüzleri{% else %}Strategy Interfaces{% endif %}
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/api-reference/services">
+                                <i class="fas fa-cogs me-2"></i>
+                                {% if page.lang == 'tr' %}Servis Arayüzleri{% else %}Service Interfaces{% endif %}
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/api-reference/models">
+                                <i class="fas fa-database me-2"></i>
+                                {% if page.lang == 'tr' %}Veri Modelleri{% else %}Data Models{% endif %}
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/api-reference/enums">
+                                <i class="fas fa-list me-2"></i>
+                                {% if page.lang == 'tr' %}Numaralandırmalar{% else %}Enumerations{% endif %}
+                            </a></li>
+                        </ul>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link{% if page.url contains '/examples' %} active{% endif %}" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/examples">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle{% if page.url contains '/examples' %} active{% endif %}" href="#" id="examplesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-lightbulb me-1"></i>
                             {% if page.lang == 'tr' %}Örnekler{% else %}Examples{% endif %}
                         </a>
+                        <ul class="dropdown-menu" aria-labelledby="examplesDropdown">
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/examples">
+                                <i class="fas fa-list me-2"></i>
+                                {% if page.lang == 'tr' %}Tüm Kategoriler{% else %}All Categories{% endif %}
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/examples/quick">
+                                <i class="fas fa-rocket me-2"></i>
+                                {% if page.lang == 'tr' %}Hızlı Örnekler{% else %}Quick Examples{% endif %}
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/examples/real-world">
+                                <i class="fas fa-building me-2"></i>
+                                {% if page.lang == 'tr' %}Gerçek Dünya Senaryoları{% else %}Real-World Use Cases{% endif %}
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/examples/advanced">
+                                <i class="fas fa-cogs me-2"></i>
+                                {% if page.lang == 'tr' %}Gelişmiş Örnekler{% else %}Advanced Examples{% endif %}
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/examples/best-practices">
+                                <i class="fas fa-star me-2"></i>
+                                {% if page.lang == 'tr' %}En İyi Pratikler{% else %}Best Practices{% endif %}
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/examples/advanced-features">
+                                <i class="fas fa-magic me-2"></i>
+                                {% if page.lang == 'tr' %}Gelişmiş Özellikler{% else %}Advanced Features{% endif %}
+                            </a></li>
+                        </ul>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link{% if page.url contains '/changelog' %} active{% endif %}" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/changelog">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle{% if page.url contains '/changelog' %} active{% endif %}" href="#" id="changelogDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-history me-1"></i>
                             {% if page.lang == 'tr' %}Değişiklikler{% else %}Changelog{% endif %}
                         </a>
+                        <ul class="dropdown-menu" aria-labelledby="changelogDropdown">
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/changelog">
+                                <i class="fas fa-list me-2"></i>
+                                {% if page.lang == 'tr' %}Tüm Kategoriler{% else %}All Categories{% endif %}
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/changelog/version-history">
+                                <i class="fas fa-history me-2"></i>
+                                {% if page.lang == 'tr' %}Versiyon Geçmişi{% else %}Version History{% endif %}
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/changelog/migration-guides">
+                                <i class="fas fa-route me-2"></i>
+                                {% if page.lang == 'tr' %}Taşınma Kılavuzları{% else %}Migration Guides{% endif %}
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/changelog/deprecation">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                {% if page.lang == 'tr' %}Kullanımdan Kaldırma Bildirimleri{% else %}Deprecation Notices{% endif %}
+                            </a></li>
+                        </ul>
                     </li>
                 </ul>
                 
-                <!-- Language & Theme Controls -->
-                <div class="d-flex align-items-center gap-2">
+                <!-- Language & Theme Controls - Desktop (shown on desktop, hidden on mobile) -->
+                <div class="d-flex align-items-center gap-2 desktop-controls">
                     <!-- Language Selector -->
                     <div class="btn-group" role="group">
                         <a href="{{ site.baseurl }}/en{{ page.url | remove: '/tr' | remove: '/en' }}" 
@@ -182,8 +285,8 @@
                     
                     <!-- Theme Toggle -->
                     <button id="themeToggle" class="btn btn-sm btn-outline-secondary theme-toggle" title="Toggle theme">
-                        <i class="fas fa-moon theme-icon-dark"></i>
-                        <i class="fas fa-sun theme-icon-light" style="display: none;"></i>
+                        <i class="fas fa-moon theme-icon-dark" style="display: none;"></i>
+                        <i class="fas fa-sun theme-icon-light"></i>
                     </button>
                 </div>
             </div>

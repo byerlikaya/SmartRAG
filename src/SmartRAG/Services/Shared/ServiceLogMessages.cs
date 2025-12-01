@@ -3,7 +3,6 @@ using System;
 
 namespace SmartRAG.Services.Shared
 {
-
     /// <summary>
     /// Centralized LoggerMessage delegates for performance optimization
     /// </summary>
@@ -29,7 +28,6 @@ namespace SmartRAG.Services.Shared
             LogLevel.Debug,
             new EventId(2004, "ChunkBatchEmbeddingSuccess"),
             "Chunk {Index}: Batch embedding successful ({Dimensions} dimensions)");
-
 
         public static readonly Action<ILogger, Exception> LogEmbeddingRegenerationStarted = LoggerMessage.Define(
             LogLevel.Information,
@@ -64,14 +62,12 @@ namespace SmartRAG.Services.Shared
             LogLevel.Debug,
             new EventId(3010, "PartialNameMatches"),
             "Found PARTIAL name matches: [{FoundNames}] in chunk: {ChunkPreview}...");
-    
 
         public static readonly Action<ILogger, Exception> LogEmbeddingSearchFailedError = LoggerMessage.Define(
             LogLevel.Error,
             new EventId(3017, "EmbeddingSearchFailedError"),
             "Embedding search failed");
 
-       
         public static readonly Action<ILogger, Exception> LogCanAnswerFromDocumentsError = LoggerMessage.Define(
             LogLevel.Warning,
             new EventId(3020, "CanAnswerFromDocumentsError"),
@@ -340,7 +336,7 @@ namespace SmartRAG.Services.Shared
             LogLevel.Debug,
             new EventId(70005, "OcrDataPathFound"),
             "OCR engine data path found at: {Path}");
-    
+
         public static readonly Action<ILogger, int, Exception> LogImageProcessingStarted = LoggerMessage.Define<int>(
             LogLevel.Debug,
             new EventId(70008, "ImageProcessingStarted"),

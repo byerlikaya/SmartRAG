@@ -10,9 +10,9 @@ lang: tr
 SmartRAG yapılandırması aşağıdaki kategorilere ayrılmıştır:
 
 <div class="row g-4 mt-4">
-    <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+    <div class="col-md-4">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-cog"></i>
             </div>
             <h3>Temel Yapılandırma</h3>
@@ -23,9 +23,9 @@ SmartRAG yapılandırması aşağıdaki kategorilere ayrılmıştır:
         </div>
     </div>
     
-    <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+    <div class="col-md-4">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-brain"></i>
             </div>
             <h3>AI Sağlayıcıları</h3>
@@ -36,22 +36,22 @@ SmartRAG yapılandırması aşağıdaki kategorilere ayrılmıştır:
         </div>
     </div>
     
-    <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+    <div class="col-md-4">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-database"></i>
             </div>
             <h3>Depolama Sağlayıcıları</h3>
-            <p>Qdrant, Redis, SQLite, FileSystem ve InMemory depolama seçenekleri</p>
+            <p>Qdrant, Redis ve InMemory depolama seçenekleri</p>
             <a href="{{ site.baseurl }}/tr/configuration/storage" class="btn btn-outline-primary btn-sm mt-3">
                 Depolama Sağlayıcıları
             </a>
         </div>
     </div>
     
-    <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+    <div class="col-md-4">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-server"></i>
             </div>
             <h3>Veritabanı Yapılandırması</h3>
@@ -62,9 +62,9 @@ SmartRAG yapılandırması aşağıdaki kategorilere ayrılmıştır:
         </div>
     </div>
     
-    <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+    <div class="col-md-4">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-microphone"></i>
             </div>
             <h3>Ses & OCR</h3>
@@ -75,9 +75,9 @@ SmartRAG yapılandırması aşağıdaki kategorilere ayrılmıştır:
         </div>
     </div>
     
-    <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+    <div class="col-md-4">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-cogs"></i>
             </div>
             <h3>Gelişmiş Yapılandırma</h3>
@@ -89,49 +89,25 @@ SmartRAG yapılandırması aşağıdaki kategorilere ayrılmıştır:
     </div>
 </div>
 
-## Hızlı Başlangıç
-
-### Basit Yapılandırma
-
-```csharp
-builder.Services.UseSmartRag(configuration,
-    storageProvider: StorageProvider.InMemory,
-    aiProvider: AIProvider.Gemini
-);
-```
-
-### Gelişmiş Yapılandırma
-
-```csharp
-builder.Services.AddSmartRag(configuration, options =>
-{
-    options.AIProvider = AIProvider.OpenAI;
-    options.StorageProvider = StorageProvider.Qdrant;
-    options.MaxChunkSize = 1000;
-    options.ChunkOverlap = 200;
-    options.MaxRetryAttempts = 3;
-});
-```
-
 ## Sonraki Adımlar
 
 <div class="row g-4 mt-4">
     <div class="col-md-4">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
-                <i class="fas fa-rocket"></i>
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
+                <i class="fas fa-book"></i>
             </div>
-            <h3>Başlangıç</h3>
-            <p>SmartRAG'ı projenize entegre edin</p>
-            <a href="{{ site.baseurl }}/tr/getting-started" class="btn btn-outline-primary btn-sm mt-3">
-                Başlangıç Kılavuzu
+            <h3>API Referansı</h3>
+            <p>Detaylı API dokümantasyonu ve metod referansları</p>
+            <a href="{{ site.baseurl }}/tr/api-reference" class="btn btn-outline-primary btn-sm mt-3">
+                API Referansı
             </a>
         </div>
     </div>
     
     <div class="col-md-4">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-code"></i>
             </div>
             <h3>Örnekler</h3>
@@ -143,14 +119,14 @@ builder.Services.AddSmartRag(configuration, options =>
     </div>
     
     <div class="col-md-4">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
-                <i class="fas fa-book"></i>
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
+                <i class="fas fa-history"></i>
             </div>
-            <h3>API Referansı</h3>
-            <p>Detaylı API dokümantasyonu ve metod referansları</p>
-            <a href="{{ site.baseurl }}/tr/api-reference" class="btn btn-outline-primary btn-sm mt-3">
-                API Referansı
+            <h3>Değişiklikler</h3>
+            <p>Tüm versiyonlardaki yeni özellikleri, iyileştirmeleri ve breaking change'leri takip edin.</p>
+            <a href="{{ site.baseurl }}/tr/changelog" class="btn btn-outline-primary btn-sm mt-3">
+                Changelog'u Görüntüle
             </a>
         </div>
     </div>
