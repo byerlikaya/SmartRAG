@@ -20,8 +20,19 @@ lang: tr
 Bir dosyayı ayrıştırır ve içeriği çıkarır.
 
 ```csharp
-Task<FileParserResult> ParseAsync(Stream fileStream, string fileName)
+Task<FileParserResult> ParseAsync(
+    Stream fileStream, 
+    string fileName, 
+    string language = null
+)
 ```
+
+**Parametreler:**
+- `fileStream` (Stream): Ayrıştırılacak dosya akışı
+- `fileName` (string): Dosya adı
+- `language` (string, isteğe bağlı): İşleme için dil kodu (isteğe bağlı)
+
+**Döndürür:** Çıkarılan içerik ile `FileParserResult`
 
 ##### CanParse
 

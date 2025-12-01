@@ -15,15 +15,74 @@ Tüm depolama işlemleri için birleşik fabrika.
 
 #### Metodlar
 
+##### CreateRepository (StorageConfig)
+
+Depolama yapılandırmasını kullanarak repository oluşturur.
+
 ```csharp
-IDocumentRepository CreateRepository(StorageConfig config);
-IDocumentRepository CreateRepository(StorageProvider provider);
-StorageProvider GetCurrentProvider();
-IDocumentRepository GetCurrentRepository();
-IConversationRepository CreateConversationRepository(StorageConfig config);
-IConversationRepository CreateConversationRepository(StorageProvider provider);
-IConversationRepository GetCurrentConversationRepository();
+IDocumentRepository CreateRepository(StorageConfig config)
 ```
+
+**Parametreler:**
+- `config` (StorageConfig): Depolama yapılandırma ayarları
+
+**Döndürür:** Doküman repository örneği
+
+##### CreateRepository (StorageProvider)
+
+Depolama sağlayıcı tipini kullanarak repository oluşturur.
+
+```csharp
+IDocumentRepository CreateRepository(StorageProvider provider)
+```
+
+**Parametreler:**
+- `provider` (StorageProvider): Depolama sağlayıcı tipi
+
+**Döndürür:** Doküman repository örneği
+
+##### GetCurrentProvider
+
+Şu anda aktif olan depolama sağlayıcısını alır.
+
+```csharp
+StorageProvider GetCurrentProvider()
+```
+
+**Döndürür:** Şu anda aktif olan depolama sağlayıcısı
+
+##### GetCurrentRepository
+
+Şu anda aktif olan repository örneğini alır.
+
+```csharp
+IDocumentRepository GetCurrentRepository()
+```
+
+**Döndürür:** Şu anda aktif olan doküman repository örneği
+
+##### CreateConversationRepository
+
+Konuşma depolama sağlayıcı tipini kullanarak konuşma repository'si oluşturur.
+
+```csharp
+IConversationRepository CreateConversationRepository(ConversationStorageProvider provider)
+```
+
+**Parametreler:**
+- `provider` (ConversationStorageProvider): Konuşma depolama sağlayıcı tipi
+
+**Döndürür:** Konuşma repository örneği
+
+##### GetCurrentConversationRepository
+
+Şu anda aktif olan konuşma repository örneğini alır.
+
+```csharp
+IConversationRepository GetCurrentConversationRepository()
+```
+
+**Döndürür:** Şu anda aktif olan konuşma repository örneği
 
 
 ## İlgili Arayüzler

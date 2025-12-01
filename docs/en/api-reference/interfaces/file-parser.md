@@ -19,8 +19,19 @@ Enables custom file format parsers.
 Parse a file and extract content.
 
 ```csharp
-Task<FileParserResult> ParseAsync(Stream fileStream, string fileName)
+Task<FileParserResult> ParseAsync(
+    Stream fileStream, 
+    string fileName, 
+    string language = null
+)
 ```
+
+**Parameters:**
+- `fileStream` (Stream): File stream to parse
+- `fileName` (string): Name of the file
+- `language` (string, optional): Language code for processing (optional)
+
+**Returns:** `FileParserResult` with extracted content
 
 ##### CanParse
 
