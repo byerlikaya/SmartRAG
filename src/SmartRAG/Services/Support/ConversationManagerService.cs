@@ -246,67 +246,13 @@ namespace SmartRAG.Services.Support
         }
 
         /// <summary>
-        /// Gets the conversation storage provider (uses ConversationStorageProvider if specified, otherwise StorageProvider with fallback)
-        /// </summary>
-        private StorageProvider GetConversationStorageProvider()
-        {
-            if (_options.ConversationStorageProvider.HasValue)
-            {
-                switch (_options.ConversationStorageProvider.Value)
-                {
-                    case ConversationStorageProvider.Redis:
-                        return StorageProvider.Redis;
-                    case ConversationStorageProvider.SQLite:
-                        return StorageProvider.SQLite;
-                    case ConversationStorageProvider.FileSystem:
-                        return StorageProvider.FileSystem;
-                    case ConversationStorageProvider.InMemory:
-                        return StorageProvider.InMemory;
-                    default:
-                        return StorageProvider.InMemory; // Fallback
-                }
-            }
-
-            switch (_options.StorageProvider)
-            {
-                case StorageProvider.Qdrant:
-                    return StorageProvider.InMemory; // Fallback for Qdrant
-                default:
-                    return _options.StorageProvider;
-            }
-        }
-
-        /// <summary>
-        /// Checks if the storage provider supports conversation history
-        /// </summary>
-        private static bool SupportsConversationHistory(StorageProvider provider)
-        {
-            return provider switch
-            {
-                StorageProvider.Redis => true,
-                StorageProvider.SQLite => true,
-                StorageProvider.InMemory => true,
-                StorageProvider.FileSystem => true,
-                StorageProvider.Qdrant => false,
-                _ => false
-            };
-        }
-
-        /// <summary>
         /// Get conversation from storage based on conversation storage provider
         /// </summary>
         private async Task<string> GetConversationFromStorageAsync(string sessionId)
         {
             try
             {
-                var conversationStorageProvider = GetConversationStorageProvider();
-
-                if (SupportsConversationHistory(conversationStorageProvider))
-                {
-                    return await _conversationRepository.GetConversationHistoryAsync(sessionId);
-                }
-
-                return string.Empty;
+                return await _conversationRepository.GetConversationHistoryAsync(sessionId);
             }
             catch (Exception ex)
             {
@@ -322,12 +268,7 @@ namespace SmartRAG.Services.Support
         {
             try
             {
-                var conversationStorageProvider = GetConversationStorageProvider();
-
-                if (SupportsConversationHistory(conversationStorageProvider))
-                {
-                    await _conversationRepository.AddToConversationAsync(sessionId, "", conversation);
-                }
+                await _conversationRepository.AddToConversationAsync(sessionId, "", conversation);
             }
             catch (Exception ex)
             {

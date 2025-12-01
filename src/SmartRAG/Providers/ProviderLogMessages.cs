@@ -3,7 +3,6 @@ using System;
 
 namespace SmartRAG.Providers
 {
-
     /// <summary>
     /// Centralized LoggerMessage delegates for AI providers performance optimization
     /// </summary>

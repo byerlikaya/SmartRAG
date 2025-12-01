@@ -31,7 +31,7 @@ namespace SmartRAG.API.Contracts
         /// <summary>
         /// Embedding model to use (optional, uses provider default)
         /// </summary>
-        /// <example>text-embedding-ada-002</example>
+        /// <example>text-embedding-3-small</example>
         public string Model { get; set; } = string.Empty;
     }
 }

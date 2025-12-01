@@ -266,8 +266,6 @@ namespace SmartRAG.Services.Storage.Qdrant
 
                         foreach (var chunk in chunks)
             {
-                // Use the score calculated during search (based on match count)
-                // We add a base boost because these are text matches
                 chunk.RelevanceScore = chunk.RelevanceScore.HasValue ? chunk.RelevanceScore.Value + 4.0 : 5.0;
                 hybridResults.Add(chunk);
                 _logger.LogDebug("Native text match found in chunk {ChunkIndex} with score {Score}", chunk.ChunkIndex, chunk.RelevanceScore);
@@ -316,11 +314,8 @@ namespace SmartRAG.Services.Storage.Qdrant
             {
                 case global::Qdrant.Client.Grpc.Value.KindOneofCase.StringValue:
                     result = value.StringValue ?? string.Empty;
-                    // CRITICAL: Ensure UTF-8 encoding is preserved for all languages
-                    // Protobuf strings are UTF-8 by default, but normalize to ensure consistency
                     if (!string.IsNullOrEmpty(result))
                     {
-                        // Normalize Unicode characters to ensure proper encoding (handles all language-specific characters)
                         result = result.Normalize(System.Text.NormalizationForm.FormC);
                     }
                     return result;
@@ -344,14 +339,9 @@ namespace SmartRAG.Services.Storage.Qdrant
             try
             {
                 var relevantChunks = new List<DocumentChunk>();
-
-                // NATIVE QDRANT TEXT SEARCH (Token-Based OR)
-                // We split the query into tokens and use a 'Should' (OR) filter.
-                // This allows finding documents that contain ANY of the significant words.
-                // We filter out very short words (< 3 chars) to avoid noise (natural stopword filtering).
                 
                 var tokens = query.Split(new[] { ' ', '.', ',', '?', '!', ';', ':' }, StringSplitOptions.RemoveEmptyEntries)
-                                  .Where(t => t.Length >= 3) // Natural stopword filter (skips 've', 'bu', 'ne', etc.)
+                                  .Where(t => t.Length >= 3)
                                   .ToList();
 
                 if (tokens.Count == 0)
@@ -373,9 +363,6 @@ namespace SmartRAG.Services.Storage.Qdrant
                     Should = { shouldConditions }
                 };
 
-                // Use ScrollAsync with the filter
-                // We fetch more than maxResults to allow for client-side re-ranking if needed,
-                // but for now we trust Qdrant to return matching documents.
                 var scrollResult = await _client.ScrollAsync(collectionName, filter: filter, limit: (uint)maxResults * 2);
 
                 foreach (var point in scrollResult.Result)
@@ -390,8 +377,6 @@ namespace SmartRAG.Services.Storage.Qdrant
 
                         if (!string.IsNullOrEmpty(content) && !string.IsNullOrEmpty(docId) && !string.IsNullOrEmpty(chunkIndex))
                         {
-                            // Simple Re-ranking: Count how many tokens appear in the content
-                            // This helps prioritize chunks that contain "SRS" AND "nedir" over just "nedir"
                             var matchCount = tokens.Count(t => content.Contains(t, StringComparison.OrdinalIgnoreCase));
                             
                             var chunk = new DocumentChunk
@@ -400,13 +385,12 @@ namespace SmartRAG.Services.Storage.Qdrant
                                 DocumentId = Guid.Parse(docId),
                                 Content = content,
                                 ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
-                                RelevanceScore = 1.0 + (matchCount * 0.1), // Base score + boost for multiple matches
+                                RelevanceScore = 1.0 + (matchCount * 0.1),
                                 StartPosition = 0,
                                 EndPosition = content.Length
                             };
                             relevantChunks.Add(chunk);
 
-                            // DEBUG: Log content of top matches to verify data integrity
                             if (relevantChunks.Count <= 3)
                             {
                                 _logger.LogDebug("Native Search Chunk {Index} Content Preview: {Content}", chunk.ChunkIndex, content.Substring(0, Math.Min(content.Length, 200)));
@@ -415,7 +399,6 @@ namespace SmartRAG.Services.Storage.Qdrant
                     }
                 }
 
-                // Sort by score descending and take maxResults
                 return relevantChunks.OrderByDescending(c => c.RelevanceScore).Take(maxResults).ToList();
             }
             catch (Exception ex)

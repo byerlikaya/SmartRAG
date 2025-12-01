@@ -7,44 +7,150 @@ lang: tr
 
 ## Ses & OCR Yapılandırması
 
-SmartRAG ses dosyalarını metne çevirme ve görsellerden metin çıkarma yetenekleri sunar:
-
----
+<p>SmartRAG ses dosyalarını metne çevirme ve görsellerden metin çıkarma yetenekleri sunar:</p>
 
 ## Whisper.net (Yerel Ses Transkripsiyonu)
 
+<p>Whisper.net, 99+ dil desteğiyle yerel, on-premise ses transkripsiyonu sağlar:</p>
+
 ### WhisperConfig Parametreleri
 
-| Parametre | Tip | Varsayılan | Açıklama |
-|-----------|-----|-----------|----------|
-| `ModelPath` | string | `"models/ggml-large-v3.bin"` | Whisper model dosyası yolu |
-| `DefaultLanguage` | string | `"auto"` | Transkripsiyon için dil kodu |
-| `MinConfidenceThreshold` | double | `0.3` | Minimum güven skoru (0.0-1.0) |
-| `IncludeWordTimestamps` | bool | `false` | Kelime bazlı zaman damgaları dahil et |
-| `PromptHint` | string | `""` | Daha iyi doğruluk için bağlam ipucu |
-| `MaxThreads` | int | `0` | CPU thread sayısı (0 = otomatik algılama) |
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Parametre</th>
+                <th>Tip</th>
+                <th>Varsayılan</th>
+                <th>Açıklama</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>ModelPath</code></td>
+                <td><code>string</code></td>
+                <td><code>"models/ggml-large-v3.bin"</code></td>
+                <td>Whisper model dosyası yolu</td>
+            </tr>
+            <tr>
+                <td><code>DefaultLanguage</code></td>
+                <td><code>string</code></td>
+                <td><code>"auto"</code></td>
+                <td>Transkripsiyon için dil kodu</td>
+            </tr>
+            <tr>
+                <td><code>MinConfidenceThreshold</code></td>
+                <td><code>double</code></td>
+                <td><code>0.3</code></td>
+                <td>Minimum güven skoru (0.0-1.0)</td>
+            </tr>
+            <tr>
+                <td><code>IncludeWordTimestamps</code></td>
+                <td><code>bool</code></td>
+                <td><code>false</code></td>
+                <td>Kelime bazlı zaman damgaları dahil et</td>
+            </tr>
+            <tr>
+                <td><code>PromptHint</code></td>
+                <td><code>string</code></td>
+                <td><code>""</code></td>
+                <td>Daha iyi doğruluk için bağlam ipucu</td>
+            </tr>
+            <tr>
+                <td><code>MaxThreads</code></td>
+                <td><code>int</code></td>
+                <td><code>0</code></td>
+                <td>CPU thread sayısı (0 = otomatik algılama)</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
 
 ### Whisper Model Boyutları
 
-| Model | Boyut | Hız | Doğruluk | Kullanım Durumu |
-|-------|-------|-----|----------|-----------------|
-| `tiny` | 75MB | ⭐⭐⭐⭐⭐ | ⭐⭐ | Hızlı prototipleme |
-| `base` | 142MB | ⭐⭐⭐⭐ | ⭐⭐⭐ | Dengeli performans |
-| `small` | 244MB | ⭐⭐⭐ | ⭐⭐⭐⭐ | İyi doğruluk |
-| `medium` | 769MB | ⭐⭐ | ⭐⭐⭐⭐⭐ | Yüksek doğruluk |
-| `large-v3` | 1.5GB | ⭐ | ⭐⭐⭐⭐⭐ | En iyi doğruluk |
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Model</th>
+                <th>Boyut</th>
+                <th>Hız</th>
+                <th>Doğruluk</th>
+                <th>Kullanım Durumu</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>tiny</code></td>
+                <td>75MB</td>
+                <td>⭐⭐⭐⭐⭐</td>
+                <td>⭐⭐</td>
+                <td>Hızlı prototipleme</td>
+            </tr>
+            <tr>
+                <td><code>base</code></td>
+                <td>142MB</td>
+                <td>⭐⭐⭐⭐</td>
+                <td>⭐⭐⭐</td>
+                <td>Dengeli performans</td>
+            </tr>
+            <tr>
+                <td><code>small</code></td>
+                <td>244MB</td>
+                <td>⭐⭐⭐</td>
+                <td>⭐⭐⭐⭐</td>
+                <td>İyi doğruluk</td>
+            </tr>
+            <tr>
+                <td><code>medium</code></td>
+                <td>769MB</td>
+                <td>⭐⭐</td>
+                <td>⭐⭐⭐⭐⭐</td>
+                <td>Yüksek doğruluk</td>
+            </tr>
+            <tr>
+                <td><code>large-v3</code></td>
+                <td>1.5GB</td>
+                <td>⭐</td>
+                <td>⭐⭐⭐⭐⭐</td>
+                <td>En iyi doğruluk</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
 
 ### Model İndirme
 
-Modeller ilk kullanımda otomatik olarak indirilir. Manuel olarak da indirebilirsiniz:
+Whisper.net, ilk kullanımda Hugging Face'den GGML modellerini otomatik olarak indirir. Modeller `ModelPath` yapılandırmasında belirtilen yola kaydedilir:
 
-```bash
-# Belirli modeli indir
-ollama pull whisper-large-v3
+**Otomatik İndirme:**
+- Modeller ilk kullanıldığında `WhisperGgmlDownloader` aracılığıyla otomatik indirilir
+- Hugging Face deposundan indirilir
+- `ModelPath` içinde belirtilen yola kaydedilir (varsayılan: `models/ggml-large-v3.bin`)
+- Manuel indirme gerekmez
 
-# Veya Whisper.net'i doğrudan kullan
-# Modeller ~/.cache/whisper/ dizininde önbelleğe alınır
+**Model Dosyaları:**
+- Format: `ggml-{model-adı}.bin` (örn., `ggml-base.bin`, `ggml-large-v3.bin`)
+- Mevcut modeller: `tiny`, `base`, `small`, `medium`, `large-v3`
+- İlk kullanımda model otomatik indirilir (~5-10 dakika, bağlantı ve model boyutuna bağlı)
+
+**Yapılandırma:**
+```json
+{
+  "SmartRAG": {
+    "WhisperConfig": {
+      "ModelPath": "models/ggml-large-v3.bin"
+    }
+  }
+}
 ```
+
+**Önemli Notlar:**
+- Whisper.net kendi GGML model formatını ve indirme sistemini kullanır
+- Bu, Ollama, LM Studio veya cloud servislerinden **bağımsızdır**
+- Modeller `ModelPath` konumunda yerel olarak saklanır
+- On-premise dağıtımlar için, uygulamanın model dizinine yazma erişimi olduğundan emin olun
+- Cloud dağıtımlar için, modelleri önceden indirmeyi veya kalıcı depolama birimleri kullanmayı düşünün
 
 ### Yapılandırma Örneği
 
@@ -116,9 +222,9 @@ var response = await _aiService.AskAsync(
     </p>
 </div>
 
----
-
 ## OCR Yapılandırması
+
+Tesseract OCR, 100+ dil desteğiyle görsellerden ve PDF'lerden metin çıkarma sağlar:
 
 ### Tesseract Dil Desteği
 
@@ -187,8 +293,6 @@ var info = await _aiService.AskAsync(
 );
 ```
 
----
-
 ## OCR Yetenekleri
 
 <div class="alert alert-info">
@@ -234,20 +338,53 @@ var info = await _aiService.AskAsync(
 3. **Doğru Dil:** Görüntüdeki metnin dilini doğru belirtin
 4. **Kontrast:** Yüksek kontrastlı, siyah-beyaz görüntüler tercih edin
 
----
-
 ## Ses ve OCR Karşılaştırması
 
-| Özellik | Whisper.net | Tesseract OCR |
-|---------|-------------|---------------|
-| **Veri Gizliliği** | ✅ %100 On-premise | ✅ %100 On-premise |
-| **Doğruluk** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
-| **Dil Desteği** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ |
-| **Kurulum** | ⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ |
-| **Maliyet** | 🆓 Ücretsiz | 🆓 Ücretsiz |
-| **Performans** | ⭐⭐⭐⭐ | ⭐⭐⭐ |
+<p>Whisper.net ve Tesseract OCR yeteneklerini karşılaştırın:</p>
 
----
+<div class="table-responsive">
+<table class="table">
+<thead>
+<tr>
+<th>Özellik</th>
+<th>Whisper.net</th>
+<th>Tesseract OCR</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Veri Gizliliği</strong></td>
+<td><span class="badge bg-success">%100 On-premise</span></td>
+<td><span class="badge bg-success">%100 On-premise</span></td>
+</tr>
+<tr>
+<td><strong>Doğruluk</strong></td>
+<td>⭐⭐⭐⭐⭐</td>
+<td>⭐⭐⭐⭐</td>
+</tr>
+<tr>
+<td><strong>Dil Desteği</strong></td>
+<td>⭐⭐⭐⭐⭐ (99+ dil)</td>
+<td>⭐⭐⭐⭐ (100+ dil)</td>
+</tr>
+<tr>
+<td><strong>Kurulum</strong></td>
+<td>⭐⭐⭐⭐</td>
+<td>⭐⭐⭐⭐⭐</td>
+</tr>
+<tr>
+<td><strong>Maliyet</strong></td>
+<td><span class="badge bg-secondary">Ücretsiz</span></td>
+<td><span class="badge bg-secondary">Ücretsiz</span></td>
+</tr>
+<tr>
+<td><strong>Performans</strong></td>
+<td>⭐⭐⭐⭐</td>
+<td>⭐⭐⭐</td>
+</tr>
+</tbody>
+</table>
+</div>
 
 ## Güvenlik ve Gizlilik
 
@@ -278,14 +415,12 @@ var document = await _documentService.UploadDocumentAsync(
 );
 ```
 
----
-
 ## Sonraki Adımlar
 
 <div class="row g-4 mt-4">
     <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-cogs"></i>
             </div>
             <h3>Gelişmiş Yapılandırma</h3>
@@ -297,8 +432,8 @@ var document = await _documentService.UploadDocumentAsync(
     </div>
     
     <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-code"></i>
             </div>
             <h3>Örnekler</h3>

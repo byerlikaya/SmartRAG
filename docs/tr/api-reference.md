@@ -3,14 +3,13 @@ layout: default
 title: API Referans
 description: SmartRAG interface'leri, metodları ve modelleri için eksiksiz API dokümantasyonu
 lang: tr
+redirect_from: /tr/api-reference.html
 ---
 
+<script>
+    window.location.href = "{{ site.baseurl }}/tr/api-reference/";
+</script>
 
-## Temel Interface'ler
-
-SmartRAG tüm işlemler için iyi tanımlanmış interface'ler sağlar. Bu interface'leri dependency injection ile enjekte edin.
-
----
 
 ## IDocumentSearchService
 
@@ -135,25 +134,52 @@ AI cevabı üretmeden dokümanları anlamsal olarak arayın.
 ```csharp
 Task<List<DocumentChunk>> SearchDocumentsAsync(
     string query, 
-    int maxResults = 5
+    int maxResults = 5,
+    SearchOptions? options = null,
+    List<string>? queryTokens = null
 )
 ```
 
 **Parametreler:**
 - `query` (string): Arama sorgusu
 - `maxResults` (int): Döndürülecek maksimum parça sayısı (varsayılan: 5)
+- `options` (SearchOptions?, opsiyonel): Global yapılandırmayı geçersiz kılmak için isteğe bağlı arama seçenekleri (varsayılan: null)
+- `queryTokens` (List<string>?, opsiyonel): Performans optimizasyonu için önceden hesaplanmış sorgu token'ları (varsayılan: null)
 
 **Döndürür:** İlgili doküman parçalarıyla `List<DocumentChunk>`
 
 **Örnek:**
 
 ```csharp
+// Temel kullanım
 var chunks = await _searchService.SearchDocumentsAsync("makine öğrenimi", maxResults: 10);
 
 foreach (var chunk in chunks)
 {
     Console.WriteLine($"Skor: {chunk.RelevanceScore}, İçerik: {chunk.Content}");
 }
+
+// Arama seçenekleri ile
+var options = new SearchOptions
+{
+    EnableDocumentSearch = true,
+    EnableAudioSearch = false,
+    EnableImageSearch = false
+};
+
+var filteredChunks = await _searchService.SearchDocumentsAsync(
+    "makine öğrenimi", 
+    maxResults: 10,
+    options: options
+);
+
+// Önceden hesaplanmış token'lar ile (performans optimizasyonu)
+var tokens = new List<string> { "makine", "öğrenimi", "algoritmalar" };
+var optimizedChunks = await _searchService.SearchDocumentsAsync(
+    "makine öğrenimi",
+    maxResults: 10,
+    queryTokens: tokens
+);
 ```
 
 #### GenerateRagAnswerAsync (Kullanımdan Kaldırıldı)
@@ -326,7 +352,7 @@ Task<bool> ClearAllDocumentsAsync()
 
 **Namespace:** `SmartRAG.Interfaces.Support`
 
-**v3.2.0'da Yeni**: Bu interface, daha iyi sorumluluk ayrımı için doküman işlemlerinden ayrılmış özel konuşma yönetimi sağlar.
+Bu interface, daha iyi sorumluluk ayrımı için doküman işlemlerinden ayrılmış özel konuşma yönetimi sağlar.
 
 ### Metodlar
 
@@ -848,7 +874,7 @@ Console.WriteLine($"Oluşturulan embedding sayısı: {embeddings.Count}");
 
 ### SearchOptions
 
-**v3.2.0'da Yeni**: İstek başına arama yapılandırması ile arama tipleri üzerinde detaylı kontrol.
+İstek başına arama yapılandırması ile arama tipleri üzerinde detaylı kontrol.
 
 ```csharp
 public class SearchOptions
@@ -1039,7 +1065,7 @@ public class DocumentChunk
 
 ### SearchOptions
 
-**v3.2.0'da Yeni**: İstek başına arama yapılandırması ile arama tipleri üzerinde detaylı kontrol.
+İstek başına arama yapılandırması ile arama tipleri üzerinde detaylı kontrol.
 
 ```csharp
 public class SearchOptions
@@ -1136,18 +1162,18 @@ public enum AIProvider
 
 ### StorageProvider
 
-Desteklenen depolama backend'leri.
+Doküman ve vektör verisi kalıcılığı için desteklenen depolama backend'leri.
 
 ```csharp
 public enum StorageProvider
 {
-    Qdrant,       // Vektör veritabanı
-    Redis,        // Yüksek performanslı önbellek
-    Sqlite,       // Gömülü veritabanı
-    FileSystem,   // Dosya tabanlı depolama
-    InMemory      // RAM depolama (sadece geliştirme)
+    InMemory,    // RAM depolama (kalıcı değil, test ve geliştirme için)
+    Redis,       // Yüksek performanslı önbellek ve depolama
+    Qdrant       // Gelişmiş vektör arama yetenekleri için vektör veritabanı
 }
 ```
+
+**Not:** `SQLite` ve `FileSystem`, `StorageProvider` seçenekleri olarak mevcut değildir. Bunlar yalnızca konuşma geçmişi depolama için `ConversationStorageProvider` seçenekleri olarak mevcuttur.
 
 ### DatabaseType
 
@@ -1156,10 +1182,10 @@ Desteklenen veritabanı tipleri.
 ```csharp
 public enum DatabaseType
 {
+    SQLite,       // SQLite gömülü veritabanı
     SqlServer,    // Microsoft SQL Server
     MySQL,        // MySQL / MariaDB
-    PostgreSql,   // PostgreSQL
-    Sqlite        // SQLite
+    PostgreSQL    // PostgreSQL
 }
 ```
 
@@ -1274,31 +1300,31 @@ public SearchResult Search(string query)
 
 <div class="row g-4 mt-4">
     <div class="col-md-6">
-        <div class="feature-card">
-            <div class="feature-icon">
-                <i class="fas fa-lightbulb"></i>
+        <div class="card card-accent">
+            <div class="icon icon-lg icon-gradient">
+                <i class="fas fa-code"></i>
             </div>
             <h3>Örnekler</h3>
             <p>Pratik kod örneklerini ve gerçek dünya uygulamalarını görün</p>
             <a href="{{ site.baseurl }}/tr/examples" class="btn btn-outline-primary btn-sm mt-3">
                 Örnekleri Görüntüle
             </a>
-                </div>
-            </div>
+        </div>
+    </div>
     
     <div class="col-md-6">
-        <div class="feature-card">
-            <div class="feature-icon">
-                <i class="fas fa-rocket"></i>
+        <div class="card card-accent">
+            <div class="icon icon-lg icon-gradient">
+                <i class="fas fa-history"></i>
             </div>
-            <h3>Başlangıç</h3>
-            <p>Hızlı kurulum ve yapılandırma kılavuzu</p>
-            <a href="{{ site.baseurl }}/tr/getting-started" class="btn btn-outline-primary btn-sm mt-3">
-                Başlayın
+            <h3>Changelog</h3>
+            <p>Tüm versiyonlardaki yeni özellikleri, iyileştirmeleri ve breaking change'leri takip edin.</p>
+            <a href="{{ site.baseurl }}/tr/changelog" class="btn btn-outline-primary btn-sm mt-3">
+                Changelog'u Görüntüle
             </a>
-                    </div>
-                </div>
-            </div>
+        </div>
+    </div>
+</div>
 
 ---
 
@@ -1318,6 +1344,8 @@ Bu interface, doğal dil kullanarak birden fazla veritabanına aynı anda sorgu 
 
 Tam bir akıllı sorguyu çalıştırır: intent analizi + yürütme + sonuç birleştirme.
 
+**Overload 1:** Otomatik intent analizi ile tam sorgu
+
 ```csharp
 Task<RagResponse> QueryMultipleDatabasesAsync(
     string userQuery, 
@@ -1325,13 +1353,24 @@ Task<RagResponse> QueryMultipleDatabasesAsync(
 )
 ```
 
+**Overload 2:** Önceden analiz edilmiş intent ile sorgu (gereksiz AI çağrılarını önler)
+
+```csharp
+Task<RagResponse> QueryMultipleDatabasesAsync(
+    string userQuery, 
+    QueryIntent preAnalyzedIntent,
+    int maxResults = 5
+)
+```
+
 **Parametreler:**
 - `userQuery` (string): Doğal dil kullanıcı sorgusu
+- `preAnalyzedIntent` (QueryIntent, opsiyonel): Gereksiz AI çağrılarını önlemek için önceden analiz edilmiş sorgu intent'i
 - `maxResults` (int): Döndürülecek maksimum sonuç sayısı (varsayılan: 5)
 
 **Döndürür:** Birden fazla veritabanından verilerle AI üretilmiş yanıt içeren `RagResponse`
 
-**Örnek:**
+**Örnek 1 - Otomatik Intent Analizi:**
 
 ```csharp
 var response = await _coordinator.QueryMultipleDatabasesAsync(
@@ -1342,11 +1381,37 @@ Console.WriteLine(response.Answer);
 // Birden fazla veritabanından gelen veriler birleştirilmiş AI cevabı
 ```
 
-##### AnalyzeQueryIntentAsync
-
-Kullanıcı sorgusunu analiz eder ve hangi veritabanları/tabloları sorgulayacağını belirler.
+**Örnek 2 - Önceden Analiz Edilmiş Intent (Performans Optimizasyonu):**
 
 ```csharp
+// Intent'i bir kez analiz et
+var intent = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(
+    "TableA kayıtlarını ve bunların Database1'den gelen TableB detaylarını göster"
+);
+
+// Gereksiz AI çağrılarını önlemek için önceden analiz edilmiş intent'i kullan
+var response = await _coordinator.QueryMultipleDatabasesAsync(
+    "TableA kayıtlarını ve bunların Database1'den gelen TableB detaylarını göster",
+    intent,
+    maxResults: 10
+);
+
+Console.WriteLine(response.Answer);
+```
+
+##### AnalyzeQueryIntentAsync (Deprecated)
+
+<div class="alert alert-warning">
+    <h4><i class="fas fa-exclamation-triangle me-2"></i> 'da Deprecated</h4>
+    <p class="mb-0">
+        Bunun yerine <code>IQueryIntentAnalyzer.AnalyzeQueryIntentAsync</code> kullanın. Bu method v4.0.0'da kaldırılacak.
+    </p>
+</div>
+
+Kullanıcı sorgusunu analiz eden ve hangi veritabanları/tabloları sorgulayacağını belirleyen eski method.
+
+```csharp
+[Obsolete("Use IQueryIntentAnalyzer.AnalyzeQueryIntentAsync instead. Will be removed in v4.0.0")]
 Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery)
 ```
 
@@ -1355,10 +1420,11 @@ Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery)
 
 **Dönen Değer:** `QueryIntent` veritabanı yönlendirme bilgileri ile
 
-**Örnek:**
+**Önerilen Kullanım:**
 
 ```csharp
-var intent = await _coordinator.AnalyzeQueryIntentAsync(
+// Bunun yerine IQueryIntentAnalyzer kullanın
+var intent = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(
     "Database1 ve Database2 arasındaki verileri karşılaştır"
 );
 
@@ -1392,30 +1458,15 @@ Task<MultiDatabaseQueryResult> ExecuteMultiDatabaseQueryAsync(
 Intent'e göre her veritabanı için optimize edilmiş SQL sorguları oluşturur.
 
 ```csharp
-Task<List<DatabaseQuery>> GenerateDatabaseQueriesAsync(
-    QueryIntent queryIntent
-)
+Task<QueryIntent> GenerateDatabaseQueriesAsync(QueryIntent queryIntent)
 ```
 
 **Parametreler:**
-- `queryIntent` (QueryIntent): Analiz edilmiş sorgu intent'i
+- `queryIntent` (QueryIntent): SQL oluşturulacak sorgu intent'i
 
-**Dönen Değer:** `List<DatabaseQuery>` her veritabanı için SQL sorguları
+**Dönen Değer:** Oluşturulmuş SQL sorguları ile güncellenmiş `QueryIntent`
 
-##### MergeResultsAsync
-
-Birden fazla veritabanından gelen sonuçları birleştirir.
-
-```csharp
-Task<MultiDatabaseQueryResult> MergeResultsAsync(
-    List<DatabaseQueryResult> results
-)
-```
-
-**Parametreler:**
-- `results` (List<DatabaseQueryResult>): Veritabanı sorgu sonuçları
-
-**Dönen Değer:** `MultiDatabaseQueryResult` birleştirilmiş sonuçlar
+**Not:** `MergeResultsAsync`, `IMultiDatabaseQueryCoordinator` interface'inde değil, `IResultMerger` interface'inde mevcuttur. Coordinator, result merger'ı dahili olarak otomatik kullanır.
 
 <div class="alert alert-info">
     <h4><i class="fas fa-info-circle me-2"></i> Generic Sorgu Örnekleri</h4>
@@ -1475,27 +1526,6 @@ Task<DatabaseConnectionConfig> GetConnectionAsync(string databaseId)
 
 **Dönen Değer:** Bağlantı yapılandırması veya bulunamazsa null
 
-##### ValidateAllConnectionsAsync
-
-Konfigüre edilmiş tüm bağlantıları doğrular.
-
-```csharp
-Task<Dictionary<string, bool>> ValidateAllConnectionsAsync()
-```
-
-**Döndürür:** Veritabanı ID'leri ve doğrulama durumları sözlüğü
-
-**Örnek:**
-
-```csharp
-var validationResults = await _connectionManager.ValidateAllConnectionsAsync();
-
-foreach (var (databaseId, isValid) in validationResults)
-{
-    Console.WriteLine($"{databaseId}: {(isValid ? "Geçerli" : "Geçersiz")}");
-}
-```
-
 ##### ValidateConnectionAsync
 
 Belirli bir bağlantıyı doğrular.
@@ -1509,63 +1539,43 @@ Task<bool> ValidateConnectionAsync(string databaseId)
 
 **Dönen Değer:** Bağlantı geçerliyse true, aksi takdirde false
 
+**Örnek:**
+
+```csharp
+bool isValid = await _connectionManager.ValidateConnectionAsync("database-1");
+
+if (isValid)
+{
+    Console.WriteLine("Bağlantı geçerli");
+}
+```
+
 ##### GetDatabaseIdAsync
 
-Bağlantı dizesinden veritabanı ID'sini alır.
+Bağlantıdan veritabanı ID'sini alır (Name sağlanmamışsa otomatik oluşturur).
 
 ```csharp
-string GetDatabaseIdAsync(string connectionString)
+Task<string> GetDatabaseIdAsync(DatabaseConnectionConfig connectionConfig)
 ```
 
 **Parametreler:**
-- `connectionString` (string): Veritabanı bağlantı dizesi
+- `connectionConfig` (DatabaseConnectionConfig): Bağlantı yapılandırması
 
-**Dönen Değer:** Veritabanı ID'si
-
-##### AddConnectionAsync
-
-Runtime'da yeni bir bağlantı ekler.
-
-```csharp
-Task<bool> AddConnectionAsync(DatabaseConnectionConfig config)
-```
-
-**Parametreler:**
-- `config` (DatabaseConnectionConfig): Yeni bağlantı yapılandırması
-
-**Dönen Değer:** Başarılıysa true, aksi takdirde false
+**Dönen Değer:** Benzersiz veritabanı tanımlayıcısı
 
 **Örnek:**
 
 ```csharp
-var newConfig = new DatabaseConnectionConfig
+var config = new DatabaseConnectionConfig
 {
-    Name = "NewDatabase",
-    ConnectionString = "Server=localhost;Database=NewDb;Trusted_Connection=true;",
-    DatabaseType = DatabaseType.SqlServer,
-    Description = "Yeni veritabanı",
-    Enabled = true
+    Name = "SalesDB",
+    ConnectionString = "Server=localhost;Database=Sales;Trusted_Connection=true;",
+    DatabaseType = DatabaseType.SqlServer
 };
 
-bool success = await _connectionManager.AddConnectionAsync(newConfig);
-if (success)
-{
-    Console.WriteLine("Yeni bağlantı eklendi");
-}
+var databaseId = await _connectionManager.GetDatabaseIdAsync(config);
+Console.WriteLine($"Veritabanı ID: {databaseId}");
 ```
-
-##### RemoveConnectionAsync
-
-Runtime'da bir bağlantıyı kaldırır.
-
-```csharp
-Task<bool> RemoveConnectionAsync(string databaseId)
-```
-
-**Parametreler:**
-- `databaseId` (string): Kaldırılacak veritabanı ID'si
-
-**Dönen Değer:** Başarılıysa true, aksi takdirde false
 
 ---
 
@@ -1607,21 +1617,9 @@ var schemaInfo = await _schemaAnalyzer.AnalyzeDatabaseSchemaAsync(config);
 
 Console.WriteLine($"Veritabanı: {schemaInfo.DatabaseName}");
 Console.WriteLine($"Tablo Sayısı: {schemaInfo.Tables.Count}");
+Console.WriteLine($"Toplam Satır: {schemaInfo.TotalRowCount:N0}");
 Console.WriteLine($"AI Özeti: {schemaInfo.AISummary}");
 ```
-
-##### RefreshSchemaAsync
-
-Belirli bir veritabanı için şema bilgilerini yeniler.
-
-```csharp
-Task<DatabaseSchemaInfo> RefreshSchemaAsync(string databaseId)
-```
-
-**Parametreler:**
-- `databaseId` (string): Veritabanı tanımlayıcısı
-
-**Dönen Değer:** Güncellenmiş şema bilgisi
 
 ##### GetAllSchemasAsync
 
@@ -1645,33 +1643,6 @@ Task<DatabaseSchemaInfo> GetSchemaAsync(string databaseId)
 - `databaseId` (string): Veritabanı tanımlayıcısı
 
 **Dönen Değer:** Veritabanı şema bilgisi veya bulunamazsa null
-
-##### GetSchemasNeedingRefreshAsync
-
-Yapılandırılmış aralıklara göre herhangi bir şemanın yenilenmesi gerekip gerekmediğini kontrol eder.
-
-```csharp
-Task<List<string>> GetSchemasNeedingRefreshAsync()
-```
-
-**Dönen Değer:** Şema yenilemesi gereken veritabanı ID'lerinin listesi
-
-**Örnek:**
-
-```csharp
-var databasesNeedingRefresh = await _schemaAnalyzer.GetSchemasNeedingRefreshAsync();
-
-if (databasesNeedingRefresh.Any())
-{
-    Console.WriteLine($"Yenilenmesi gereken veritabanları: {string.Join(", ", databasesNeedingRefresh)}");
-    
-    foreach (var dbId in databasesNeedingRefresh)
-    {
-        await _schemaAnalyzer.RefreshSchemaAsync(dbId);
-        Console.WriteLine($"{dbId} şeması yenilendi");
-    }
-}
-```
 
 ##### GenerateAISummaryAsync
 
@@ -1759,13 +1730,13 @@ OCR kullanarak bir görüntüden metin çıkarır.
 ```csharp
 Task<string> ExtractTextFromImageAsync(
     Stream imageStream, 
-    string language = "eng"
+    string language = null
 )
 ```
 
 **Parametreler:**
 - `imageStream` (Stream): İşlenecek görüntü akışı
-- `language` (string, isteğe bağlı): OCR için dil kodu (varsayılan: "eng")
+- `language` (string, opsiyonel): OCR için dil kodu (örn: "eng", "tur"). Null ise sistem yerel ayarını otomatik kullanır
 
 **Döndürür:** Çıkarılan metin (string)
 
@@ -1789,13 +1760,13 @@ Güven skorlarıyla görüntüden metin çıkarır.
 ```csharp
 Task<OcrResult> ExtractTextWithConfidenceAsync(
     Stream imageStream, 
-    string language = "eng"
+    string language = null
 )
 ```
 
 **Parametreler:**
 - `imageStream` (Stream): İşlenecek görüntü akışı
-- `language` (string, isteğe bağlı): OCR için dil kodu (varsayılan: "eng")
+- `language` (string, opsiyonel): OCR için dil kodu (örn: "eng", "tur"). Null ise sistem yerel ayarını otomatik kullanır
 
 **Döndürür:** Çıkarılan metin, güven skorları ve metin bloklarıyla `OcrResult`
 
@@ -1843,11 +1814,35 @@ var result = await _imageParser.ExtractTextFromImageAsync(preprocessedStream);
 Console.WriteLine($"Ön işleme sonrası metin: {result}");
 ```
 
+##### CorrectCurrencySymbols
+
+Metindeki para birimi sembolü yanlış okumalarını düzeltir (örn: % → ₺, $, €). Bu method, OCR sonuçlarında kullanılan aynı para birimi düzeltme mantığını herhangi bir metne uygular.
+
+```csharp
+string CorrectCurrencySymbols(string text, string language = null)
+```
+
+**Parametreler:**
+- `text` (string): Düzeltilecek metin
+- `language` (string, opsiyonel): Context için dil kodu (loglama için kullanılır)
+
+**Döndürür:** Düzeltilmiş para birimi sembolleri ile metin
+
+**Örnek:**
+
+```csharp
+var correctedText = _imageParser.CorrectCurrencySymbols("Fiyat: 100%", "tr");
+Console.WriteLine(correctedText); // "Fiyat: 100₺"
+```
+
+**Desteklenen Görüntü Formatları:**
+- JPEG, PNG, GIF, BMP, TIFF, WEBP
+
 ---
 
-## Strategy Pattern Interface'leri (v3.2.0)
+## Strategy Pattern Interface'leri 
 
-SmartRAG v3.2.0, genişletilebilirlik ve özelleştirme için Strategy Pattern'i tanıtıyor.
+SmartRAG , genişletilebilirlik ve özelleştirme için Strategy Pattern'i tanıtıyor.
 
 ### ISqlDialectStrategy
 
@@ -1855,7 +1850,7 @@ SmartRAG v3.2.0, genişletilebilirlik ve özelleştirme için Strategy Pattern'i
 
 **Namespace:** `SmartRAG.Interfaces.Database.Strategies`
 
-**v3.2.0'da Yeni**: Veritabanına özgü SQL optimizasyonu ve özel veritabanı desteği sağlar.
+Veritabanına özgü SQL optimizasyonu ve özel veritabanı desteği sağlar.
 
 #### Özellikler
 
@@ -1911,32 +1906,39 @@ string GetLimitClause(int limit)
 
 #### Özel Uygulama Örneği
 
+**Not:** Bu kavramsal bir örnektir. Yeni bir veritabanı tipi desteği eklemek için:
+1. `DatabaseType` enum'ına veritabanı tipini ekleyin
+2. O veritabanı için `ISqlDialectStrategy` implementasyonu yapın
+3. Dependency injection'da stratejiyi kaydedin
+
 ```csharp
-public class OracleDialectStrategy : BaseSqlDialectStrategy
+// Örnek: Özel veritabanı diyalekt stratejisi
+public class CustomDialectStrategy : BaseSqlDialectStrategy
 {
-    public override DatabaseType DatabaseType => DatabaseType.Oracle;
+    public override DatabaseType DatabaseType => DatabaseType.Custom; // Custom'ın enum'a eklendiği varsayılıyor
     
     public override string BuildSystemPrompt(DatabaseSchemaInfo schema, string userQuery)
     {
-        return $"Oracle SQL oluştur: {userQuery}\\nŞema: {schema}";
+        return $"SQL oluştur: {userQuery}\\nŞema: {schema}";
     }
     
     public override bool ValidateSyntax(string sql, out string errorMessage)
     {
-        // Oracle'a özgü doğrulama
+        // Veritabanına özgü doğrulama
         errorMessage = null;
         return true;
     }
     
     public override string FormatSql(string sql)
     {
-        // Oracle'a özgü biçimlendirme
-        return sql.ToUpper();
+        // Veritabanına özgü biçimlendirme
+        return sql;
     }
     
     public override string GetLimitClause(int limit)
     {
-        return $"FETCH FIRST {limit} ROWS ONLY";
+        // Veritabanına özgü LIMIT clause formatı
+        return $"LIMIT {limit}";
     }
 }
 ```
@@ -1949,7 +1951,7 @@ public class OracleDialectStrategy : BaseSqlDialectStrategy
 
 **Namespace:** `SmartRAG.Interfaces.Search.Strategies`
 
-**v3.2.0'da Yeni**: Arama sonuçları için özel skorlama algoritmaları sağlar.
+Arama sonuçları için özel skorlama algoritmaları sağlar.
 
 #### Metodlar
 
@@ -2014,7 +2016,7 @@ public class SemanticOnlyScoringStrategy : IScoringStrategy
 
 **Namespace:** `SmartRAG.Interfaces.Parser.Strategies`
 
-**v3.2.0'da Yeni**: Özel dosya formatı ayrıştırıcıları sağlar.
+Özel dosya formatı ayrıştırıcıları sağlar.
 
 #### Metodlar
 
@@ -2080,7 +2082,7 @@ public class MarkdownFileParser : IFileParser
 
 ---
 
-## Ek Servis Interface'leri (v3.2.0)
+## Ek Servis Interface'leri 
 
 ### IConversationRepository
 
@@ -2088,7 +2090,7 @@ public class MarkdownFileParser : IFileParser
 
 **Namespace:** `SmartRAG.Interfaces.Storage`
 
-**v3.2.0'da Yeni**: Daha iyi SRP uyumu için `IDocumentRepository`'den ayrıldı.
+Daha iyi SRP uyumu için `IDocumentRepository`'den ayrıldı.
 
 #### Metodlar
 
@@ -2114,7 +2116,7 @@ Task<bool> ConversationExistsAsync(string sessionId);
 
 **Namespace:** `SmartRAG.Interfaces.AI`
 
-**v3.2.0'da Yeni**: Daha iyi SRP için yapılandırma yürütmeden ayrıldı.
+Daha iyi SRP için yapılandırma yürütmeden ayrıldı.
 
 #### Metodlar
 
@@ -2134,7 +2136,7 @@ double GetTemperature();
 
 **Namespace:** `SmartRAG.Interfaces.AI`
 
-**v3.2.0'da Yeni**: Otomatik yeniden deneme ve yedekleme mantığı ile AI isteklerini işler.
+Otomatik yeniden deneme ve yedekleme mantığı ile AI isteklerini işler.
 
 #### Metodlar
 
@@ -2151,7 +2153,7 @@ Task<List<float>> ExecuteEmbeddingRequestAsync(string text, CancellationToken ca
 
 **Namespace:** `SmartRAG.Interfaces.Database`
 
-**v3.2.0'da Yeni**: Veritabanı yönlendirme stratejisini belirlemek için sorguları analiz eder.
+Veritabanı yönlendirme stratejisini belirlemek için sorguları analiz eder.
 
 #### Metodlar
 
@@ -2167,7 +2169,7 @@ Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery);
 
 **Namespace:** `SmartRAG.Interfaces.Database`
 
-**v3.2.0'da Yeni**: Veritabanları arasında paralel sorgu yürütme.
+Veritabanları arasında paralel sorgu yürütme.
 
 #### Metodlar
 
@@ -2183,13 +2185,42 @@ Task<MultiDatabaseQueryResult> ExecuteMultiDatabaseQueryAsync(QueryIntent queryI
 
 **Namespace:** `SmartRAG.Interfaces.Database`
 
-**v3.2.0'da Yeni**: AI destekli sonuç birleştirme.
+AI destekli sonuç birleştirme.
 
 #### Metodlar
 
+##### MergeResultsAsync
+
+Birden fazla veritabanından gelen sonuçları tutarlı bir yanıta birleştirir.
+
 ```csharp
-Task<string> MergeResultsAsync(MultiDatabaseQueryResult queryResult, string userQuery);
+Task<string> MergeResultsAsync(MultiDatabaseQueryResult queryResults, string originalQuery)
 ```
+
+**Parametreler:**
+- `queryResults` (MultiDatabaseQueryResult): Birden fazla veritabanından gelen sonuçlar
+- `originalQuery` (string): Orijinal kullanıcı sorgusu
+
+**Döndürür:** Birleştirilmiş ve formatlanmış sonuçlar string olarak
+
+##### GenerateFinalAnswerAsync
+
+Birleştirilmiş veritabanı sonuçlarından nihai AI yanıtı oluşturur.
+
+```csharp
+Task<RagResponse> GenerateFinalAnswerAsync(
+    string userQuery, 
+    string mergedData, 
+    MultiDatabaseQueryResult queryResults
+)
+```
+
+**Parametreler:**
+- `userQuery` (string): Orijinal kullanıcı sorgusu
+- `mergedData` (string): Veritabanlarından birleştirilmiş veri
+- `queryResults` (MultiDatabaseQueryResult): Sorgu sonuçları
+
+**Döndürür:** AI üretilmiş yanıt içeren `RagResponse`
 
 ---
 
@@ -2199,7 +2230,7 @@ Task<string> MergeResultsAsync(MultiDatabaseQueryResult queryResult, string user
 
 **Namespace:** `SmartRAG.Interfaces.Database`
 
-**v3.2.0'da Yeni**: Veritabanına özgü SQL için `ISqlDialectStrategy` kullanır.
+Veritabanına özgü SQL için `ISqlDialectStrategy` kullanır.
 
 #### Metodlar
 
@@ -2216,7 +2247,7 @@ bool ValidateSql(string sql, DatabaseSchemaInfo schema, out string errorMessage)
 
 **Namespace:** `SmartRAG.Interfaces.Search`
 
-**v3.2.0'da Yeni**: Temel embedding arama işlevselliği.
+Temel embedding arama işlevselliği.
 
 #### Metodlar
 
@@ -2232,7 +2263,7 @@ Task<List<DocumentChunk>> SearchByEmbeddingAsync(List<float> queryEmbedding, int
 
 **Namespace:** `SmartRAG.Interfaces.Search`
 
-**v3.2.0'da Yeni**: Chunk'lardan `SearchSource` nesneleri oluşturur.
+Chunk'lardan `SearchSource` nesneleri oluşturur.
 
 #### Metodlar
 
@@ -2251,8 +2282,15 @@ List<SearchSource> BuildSources(List<DocumentChunk> chunks);
 #### Metodlar
 
 ```csharp
-Task<string> TranscribeAudioAsync(Stream audioStream, string fileName);
+Task<AudioTranscriptionResult> TranscribeAudioAsync(Stream audioStream, string fileName, string language = null);
 ```
+
+**Parametreler:**
+- `audioStream` (Stream): Transkripsiyon yapılacak ses stream'i
+- `fileName` (string): Format algılama için ses dosyasının adı
+- `language` (string, opsiyonel): Transkripsiyon için dil kodu (örn: "tr-TR", "en-US", "auto")
+
+**Döndürür:** Transkripsiyon edilmiş metin, güven skoru ve metadata içeren `AudioTranscriptionResult`
 
 ---
 
@@ -2265,8 +2303,22 @@ Task<string> TranscribeAudioAsync(Stream audioStream, string fileName);
 #### Metodlar
 
 ```csharp
-Task<string> ExtractTextFromImageAsync(Stream imageStream, string language = "eng");
+Task<string> ExtractTextFromImageAsync(Stream imageStream, string language = null);
+Task<OcrResult> ExtractTextWithConfidenceAsync(Stream imageStream, string language = null);
+Task<Stream> PreprocessImageAsync(Stream imageStream);
+string CorrectCurrencySymbols(string text, string language = null);
 ```
+
+**Parametreler:**
+- `imageStream` (Stream): İşlenecek görüntü stream'i
+- `language` (string, opsiyonel): OCR için dil kodu (örn: "eng", "tur"). Null ise sistem yerel ayarını otomatik kullanır
+- `text` (string): Para birimi sembollerini düzeltilecek metin
+
+**Döndürür:**
+- `ExtractTextFromImageAsync`: String olarak çıkarılmış metin
+- `ExtractTextWithConfidenceAsync`: Metin, güven skorları ve metin blokları içeren `OcrResult`
+- `PreprocessImageAsync`: Ön işlenmiş görüntü stream'i
+- `CorrectCurrencySymbols`: Düzeltilmiş para birimi sembolleri ile metin (örn: % → ₺, $, €)
 
 ---
 
@@ -2276,7 +2328,7 @@ Task<string> ExtractTextFromImageAsync(Stream imageStream, string language = "en
 
 **Namespace:** `SmartRAG.Interfaces.AI`
 
-**v3.2.0'da yeni**: Birden fazla AI backend için sağlayıcı soyutlaması.
+Birden fazla AI backend için sağlayıcı soyutlaması.
 
 #### Metodlar
 
@@ -2295,7 +2347,7 @@ Task<List<string>> ChunkTextAsync(string text, int maxChunkSize = 1000);
 
 **Namespace:** `SmartRAG.Interfaces.AI`
 
-**v3.2.0'da yeni**: AI sağlayıcı oluşturma için fabrika deseni.
+AI sağlayıcı oluşturma için fabrika deseni.
 
 #### Metodlar
 
@@ -2311,15 +2363,23 @@ IAIProvider CreateProvider(AIProvider providerType);
 
 **Namespace:** `SmartRAG.Interfaces.AI`
 
-**v3.2.0'da yeni**: Konuşma geçmişi desteği ile merkezi prompt oluşturma.
+Konuşma geçmişi desteği ile merkezi prompt oluşturma.
 
 #### Metodlar
 
 ```csharp
-string BuildDocumentRagPrompt(string query, string context, string? conversationHistory = null);
-string BuildHybridMergePrompt(string query, string? databaseContext, string? documentContext, string? conversationHistory = null);
-string BuildConversationPrompt(string query, string? conversationHistory = null);
+string BuildDocumentRagPrompt(string query, string context, string? conversationHistory = null, string? preferredLanguage = null);
+string BuildHybridMergePrompt(string query, string? databaseContext, string? documentContext, string? conversationHistory = null, string? preferredLanguage = null);
+string BuildConversationPrompt(string query, string? conversationHistory = null, string? preferredLanguage = null);
 ```
+
+**Parametreler:**
+- `query` (string): Kullanıcı sorgusu
+- `context` (string): Doküman context'i (BuildDocumentRagPrompt için)
+- `databaseContext` (string?, opsiyonel): Veritabanı sorgu sonuçları (BuildHybridMergePrompt için)
+- `documentContext` (string?, opsiyonel): Doküman arama sonuçları (BuildHybridMergePrompt için)
+- `conversationHistory` (string?, opsiyonel): Önceki konuşma turları
+- `preferredLanguage` (string?, opsiyonel): AI yanıt dili için tercih edilen dil kodu (örn: "tr", "en")
 
 ---
 
@@ -2329,18 +2389,73 @@ string BuildConversationPrompt(string query, string? conversationHistory = null)
 
 **Namespace:** `SmartRAG.Interfaces.Document`
 
-**v3.2.0'da yeni**: İş mantığından ayrılmış repository katmanı.
+İş mantığından ayrılmış repository katmanı.
 
 #### Metodlar
 
+##### AddAsync
+
+Depolamaya yeni bir doküman ekler.
+
 ```csharp
-Task<Document> AddAsync(Document document);
-Task<Document> GetByIdAsync(Guid id);
-Task<List<Document>> GetAllAsync();
-Task<bool> DeleteAsync(Guid id);
-Task<int> GetCountAsync();
-Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = 5);
+Task<Document> AddAsync(Document document)
 ```
+
+##### GetByIdAsync
+
+Benzersiz tanımlayıcıya göre dokümanı alır.
+
+```csharp
+Task<Document> GetByIdAsync(Guid id)
+```
+
+##### GetAllAsync
+
+Depolamadan tüm dokümanları alır.
+
+```csharp
+Task<List<Document>> GetAllAsync()
+```
+
+##### DeleteAsync
+
+ID'ye göre depolamadan dokümanı kaldırır.
+
+```csharp
+Task<bool> DeleteAsync(Guid id)
+```
+
+##### GetCountAsync
+
+Depolamadaki toplam doküman sayısını alır.
+
+```csharp
+Task<int> GetCountAsync()
+```
+
+##### SearchAsync
+
+Sorgu string'i kullanarak dokümanları arar.
+
+```csharp
+Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = 5)
+```
+
+**Parametreler:**
+- `query` (string): Arama sorgu string'i
+- `maxResults` (int): Döndürülecek maksimum sonuç sayısı (varsayılan: 5)
+
+**Döndürür:** İlgili doküman chunk'larının listesi
+
+##### ClearAllAsync
+
+Depolamadan tüm dokümanları temizler (verimli toplu silme).
+
+```csharp
+Task<bool> ClearAllAsync()
+```
+
+**Döndürür:** Tüm dokümanlar başarıyla temizlendiyse true
 
 ---
 
@@ -2350,7 +2465,7 @@ Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = 5);
 
 **Namespace:** `SmartRAG.Interfaces.Document`
 
-**v3.2.0'da yeni**: Anahtar kelime ve semantik ilgi ile hibrit puanlama stratejisi.
+Anahtar kelime ve semantik ilgi ile hibrit puanlama stratejisi.
 
 #### Metodlar
 
@@ -2367,7 +2482,7 @@ double CalculateKeywordRelevanceScore(string query, string content);
 
 **Namespace:** `SmartRAG.Interfaces.Parser`
 
-**v3.2.0'da yeni**: Ses ayrıştırıcı oluşturma için fabrika deseni.
+Ses ayrıştırıcı oluşturma için fabrika deseni.
 
 #### Metodlar
 
@@ -2383,7 +2498,7 @@ IAudioParserService CreateAudioParser(AudioProvider provider);
 
 **Namespace:** `SmartRAG.Interfaces.Storage`
 
-**v3.2.0'da yeni**: Tüm depolama işlemleri için birleşik fabrika.
+Tüm depolama işlemleri için birleşik fabrika.
 
 #### Metodlar
 
@@ -2405,7 +2520,7 @@ IConversationRepository GetCurrentConversationRepository();
 
 **Namespace:** `SmartRAG.Interfaces.Storage.Qdrant`
 
-**v3.2.0'da yeni**: Performans optimizasyonu için arama sonuçlarını önbelleğe alma.
+Performans optimizasyonu için arama sonuçlarını önbelleğe alma.
 
 #### Metodlar
 
@@ -2423,7 +2538,7 @@ void CleanupExpiredCache();
 
 **Namespace:** `SmartRAG.Interfaces.Storage.Qdrant`
 
-**v3.2.0'da yeni**: Qdrant vektör veritabanı için koleksiyon yaşam döngüsü yönetimi.
+Qdrant vektör veritabanı için koleksiyon yaşam döngüsü yönetimi.
 
 #### Metodlar
 
@@ -2442,7 +2557,7 @@ Task<int> GetVectorDimensionAsync();
 
 **Namespace:** `SmartRAG.Interfaces.Storage.Qdrant`
 
-**v3.2.0'da yeni**: Qdrant vektör depolama için embedding oluşturma.
+Qdrant vektör depolama için embedding oluşturma.
 
 #### Metodlar
 
@@ -2459,7 +2574,7 @@ Task<int> GetVectorDimensionAsync();
 
 **Namespace:** `SmartRAG.Interfaces.Storage.Qdrant`
 
-**v3.2.0'da yeni**: Qdrant için vektör, metin ve hibrit arama yetenekleri.
+Qdrant için vektör, metin ve hibrit arama yetenekleri.
 
 #### Metodlar
 
@@ -2477,7 +2592,7 @@ Task<List<DocumentChunk>> HybridSearchAsync(string query, int maxResults);
 
 **Namespace:** `SmartRAG.Interfaces.Support`
 
-**v3.2.0'da yeni**: Hibrit yönlendirme için AI tabanlı sorgu niyet sınıflandırması.
+Hibrit yönlendirme için AI tabanlı sorgu niyet sınıflandırması.
 
 #### Metodlar
 

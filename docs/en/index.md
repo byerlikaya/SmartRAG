@@ -27,19 +27,15 @@ hide_title: true
                         Turn your documents, databases, images and audio into a conversational AI system.
                     </p>
                     <div class="hero-stats">
-                        <div class="stat-card">
+                        <div class="card card-sm">
                             <div class="stat-number">5</div>
                             <div class="stat-label">AI Providers</div>
                         </div>
-                        <div class="stat-card">
-                            <div class="stat-number">5</div>
-                            <div class="stat-label">Storage Options</div>
-                        </div>
-                        <div class="stat-card">
+                        <div class="card card-sm">
                             <div class="stat-number">4</div>
                             <div class="stat-label">Database Types</div>
                         </div>
-                        <div class="stat-card">
+                        <div class="card card-sm">
                             <div class="stat-number">7</div>
                             <div class="stat-label">Document Formats</div>
                         </div>
@@ -77,7 +73,7 @@ services.UseSmartRag(configuration,
     aiProvider: AIProvider.Gemini
 );
 
-// Upload document (PDF, Word, Excel, Images, Audio, Database)
+// Upload documents (PDF, Word, Excel, Images, Audio)
 var document = await documentService.UploadDocumentAsync(
     fileStream, "contract.pdf", "application/pdf", "user-id"
 );
@@ -106,72 +102,72 @@ Console.WriteLine(answer.Answer);
                      </p>
         </div>
         
-        <div class="feature-grid">
-            <div class="feature-card">
-                <div class="feature-icon">
+        <div class="grid grid-auto">
+            <div class="card card-accent">
+                <div class="icon icon-lg icon-gradient">
                     <i class="fas fa-database"></i>
                 </div>
                 <h3>Multi-Database RAG</h3>
                 <p>Query multiple database types simultaneously - SQL Server, MySQL, PostgreSQL, SQLite. AI-powered cross-database joins and intelligent query coordination.</p>
             </div>
             
-            <div class="feature-card">
-                <div class="feature-icon">
+            <div class="card card-accent">
+                <div class="icon icon-lg icon-gradient">
                     <i class="fas fa-layer-group"></i>
                 </div>
                 <h3>Multi-Modal Intelligence</h3>
                 <p>Process PDF, Excel, Word documents, Images (OCR), Audio files (Speech-to-Text), and Databases - all unified in a single intelligent platform.</p>
             </div>
             
-            <div class="feature-card">
-                <div class="feature-icon">
+            <div class="card card-accent">
+                <div class="icon icon-lg icon-gradient">
                     <i class="fas fa-shield-alt"></i>
                 </div>
                 <h3>On-Premise & Local AI</h3>
                 <p>100% local operation with Ollama, LM Studio support. GDPR/KVKK/HIPAA compliant. Your data never leaves your infrastructure.</p>
             </div>
             
-            <div class="feature-card">
-                <div class="feature-icon">
+            <div class="card card-accent">
+                <div class="icon icon-lg icon-gradient">
                     <i class="fas fa-comments"></i>
                 </div>
                 <h3>Conversation History</h3>
                 <p>Automatic session-based conversation management with context awareness. AI remembers previous questions for natural interactions.</p>
             </div>
             
-            <div class="feature-card">
-                <div class="feature-icon">
+            <div class="card card-accent">
+                <div class="icon icon-lg icon-gradient">
                     <i class="fas fa-search"></i>
                 </div>
                 <h3>Advanced Semantic Search</h3>
                 <p>Hybrid scoring system (80% semantic + 20% keyword) with context awareness and intelligent ranking for superior search results.</p>
             </div>
             
-            <div class="feature-card">
-                <div class="feature-icon">
+            <div class="card card-accent">
+                <div class="icon icon-lg icon-gradient">
                     <i class="fas fa-route"></i>
                 </div>
                 <h3>Smart Query Intent</h3>
                 <p>Automatically routes queries to chat or document search based on intent detection. Language-agnostic design works globally.</p>
             </div>
             
-            <div class="feature-card">
-                <div class="feature-icon">
+            <div class="card card-accent">
+                <div class="icon icon-lg icon-gradient">
                     <i class="fas fa-lock"></i>
                 </div>
                 <h3>Enterprise Security</h3>
                 <p>Automatic sensitive data sanitization, encryption support, configurable data protection, and compliance-ready deployments.</p>
             </div>
             
-            <div class="feature-card">
-                <div class="feature-icon">
+            <div class="card card-accent">
+                <div class="icon icon-lg icon-gradient">
                     <i class="fas fa-check-circle"></i>
                 </div>
                 <h3>Production Ready</h3>
                 <p>Zero warnings policy, SOLID/DRY principles, comprehensive error handling, thread-safe operations, and battle-tested in production.</p>
             </div>
-                         </div>
-                     </div>
+        </div>
+    </div>
 </section>
 
 <section class="section section-dark">
@@ -183,97 +179,118 @@ Console.WriteLine(answer.Answer);
             </p>
         </div>
         
-        <div class="row g-5">
-            <div class="col-lg-6">
+        <div class="grid grid-2" style="gap: 3rem;">
+            <div>
                 <h3 class="text-center mb-4">AI Providers</h3>
-                <div class="provider-grid">
-                    <div class="provider-card">
-                        <div class="provider-logo">
+                <div class="grid grid-auto">
+                    <div class="card card-sm">
+                        <div class="icon icon-md">
                             <i class="fas fa-brain"></i>
                         </div>
                         <h4>OpenAI</h4>
-                        <p>GPT-4 + Embeddings</p>
+                        <p>GPT Models</p>
                     </div>
-                    <div class="provider-card">
-                        <div class="provider-logo">
+                    <div class="card card-sm">
+                        <div class="icon icon-md">
                             <i class="fas fa-robot"></i>
                         </div>
                         <h4>Anthropic</h4>
-                        <p>Claude + VoyageAI</p>
+                        <p>Claude Models</p>
                     </div>
-                    <div class="provider-card">
-                        <div class="provider-logo">
+                    <div class="card card-sm">
+                        <div class="icon icon-md">
                             <i class="fab fa-google"></i>
                         </div>
                         <h4>Gemini</h4>
                         <p>Google AI Models</p>
                     </div>
-                    <div class="provider-card">
-                        <div class="provider-logo">
+                    <div class="card card-sm">
+                        <div class="icon icon-md">
                             <i class="fas fa-cloud"></i>
                         </div>
                         <h4>Azure OpenAI</h4>
-                        <p>Enterprise GPT</p>
+                        <p>Enterprise Models</p>
                     </div>
-                    <div class="provider-card">
-                        <div class="provider-logo">
+                    <div class="card card-sm">
+                        <div class="icon icon-md">
                             <i class="fas fa-server"></i>
                         </div>
                         <h4>Custom</h4>
                         <p>Ollama / LM Studio</p>
                     </div>
-                         </div>
-                     </div>
+                </div>
+            </div>
             
-            <div class="col-lg-6">
-                <h3 class="text-center mb-4">Storage & Databases</h3>
-                <div class="provider-grid">
-                    <div class="provider-card">
-                        <div class="provider-logo">
+            <div>
+                <h3 class="text-center mb-4">Storage Providers</h3>
+                <div class="grid grid-auto">
+                    <div class="card card-sm">
+                        <div class="icon icon-md">
                             <i class="fas fa-cube"></i>
                         </div>
                         <h4>Qdrant</h4>
                         <p>Vector Database</p>
                     </div>
-                    <div class="provider-card">
-                        <div class="provider-logo">
+                    <div class="card card-sm">
+                        <div class="icon icon-md">
                             <i class="fas fa-bolt"></i>
                         </div>
                         <h4>Redis</h4>
                         <p>High-Performance Cache</p>
                     </div>
-                    <div class="provider-card">
-                        <div class="provider-logo">
-                            <i class="fas fa-database"></i>
+                    <div class="card card-sm">
+                        <div class="icon icon-md">
+                            <i class="fas fa-memory"></i>
                         </div>
-                        <h4>SQL Server</h4>
-                        <p>Enterprise Database</p>
-                    </div>
-                    <div class="provider-card">
-                        <div class="provider-logo">
-                            <i class="fas fa-leaf"></i>
-                        </div>
-                        <h4>MySQL</h4>
-                        <p>Open Source DB</p>
-                    </div>
-                    <div class="provider-card">
-                        <div class="provider-logo">
-                            <i class="fas fa-database"></i>
-                        </div>
-                        <h4>PostgreSQL</h4>
-                        <p>Advanced DB</p>
-                    </div>
-                    <div class="provider-card">
-                        <div class="provider-logo">
-                            <i class="fas fa-feather"></i>
-                        </div>
-                        <h4>SQLite</h4>
-                        <p>Embedded DB</p>
-                    </div>
-                         </div>
+                        <h4>InMemory</h4>
+                        <p>In-Memory Storage</p>
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+</section>
+
+<section class="section section-dark">
+    <div class="container">
+        <div class="section-header">
+            <h2 class="section-title">Supported Database Types</h2>
+            <p class="section-subtitle">
+                Query multiple database types simultaneously with AI-powered coordination
+            </p>
+        </div>
+        
+        <div class="grid grid-auto">
+            <div class="card card-sm">
+                <div class="icon icon-md">
+                    <i class="fas fa-database"></i>
+                </div>
+                <h4>SQL Server</h4>
+                <p>Enterprise Database</p>
+            </div>
+            <div class="card card-sm">
+                <div class="icon icon-md">
+                    <i class="fas fa-leaf"></i>
+                </div>
+                <h4>MySQL</h4>
+                <p>Open Source DB</p>
+            </div>
+            <div class="card card-sm">
+                <div class="icon icon-md">
+                    <i class="fas fa-database"></i>
+                </div>
+                <h4>PostgreSQL</h4>
+                <p>Advanced DB</p>
+            </div>
+            <div class="card card-sm">
+                <div class="icon icon-md">
+                    <i class="fas fa-feather"></i>
+                </div>
+                <h4>SQLite</h4>
+                <p>Embedded DB</p>
+            </div>
+        </div>
+    </div>
 </section>
 
 <section class="section section-dark">
@@ -419,8 +436,8 @@ Console.WriteLine(answer.Answer);
         
         <div class="row g-4">
             <div class="col-lg-3 col-md-6">
-                <div class="feature-card text-center">
-                    <div class="feature-icon mx-auto">
+                <div class="card card-accent text-center">
+                    <div class="icon icon-lg icon-gradient mx-auto">
                         <i class="fas fa-database"></i>
                     </div>
                     <h3>Multi-Database RAG</h3>
@@ -428,8 +445,8 @@ Console.WriteLine(answer.Answer);
                     </div>
             </div>
             <div class="col-lg-3 col-md-6">
-                <div class="feature-card text-center">
-                    <div class="feature-icon mx-auto">
+                <div class="card card-accent text-center">
+                    <div class="icon icon-lg icon-gradient mx-auto">
                         <i class="fas fa-layer-group"></i>
                     </div>
                     <h3>Multi-Modal</h3>
@@ -437,8 +454,8 @@ Console.WriteLine(answer.Answer);
                     </div>
             </div>
             <div class="col-lg-3 col-md-6">
-                <div class="feature-card text-center">
-                    <div class="feature-icon mx-auto">
+                <div class="card card-accent text-center">
+                    <div class="icon icon-lg icon-gradient mx-auto">
                         <i class="fas fa-home"></i>
                     </div>
                     <h3>100% Local</h3>
@@ -446,8 +463,8 @@ Console.WriteLine(answer.Answer);
                     </div>
             </div>
             <div class="col-lg-3 col-md-6">
-                <div class="feature-card text-center">
-                    <div class="feature-icon mx-auto">
+                <div class="card card-accent text-center">
+                    <div class="icon icon-lg icon-gradient mx-auto">
                         <i class="fas fa-globe"></i>
                     </div>
                     <h3>Language Agnostic</h3>

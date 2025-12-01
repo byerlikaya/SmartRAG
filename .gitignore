@@ -255,6 +255,9 @@ config.json
 .cursorignore
 .cursor/
 
+.agent/
+.agent/rules/
+
 # Database
 *.db
 *.sqlite
@@ -360,3 +363,5 @@ docs/*.bat
 docs/start-docs.bat
 docs/run.bat
 docs/quick-start.bat
+docs/*.sh
+docs/start-server.sh

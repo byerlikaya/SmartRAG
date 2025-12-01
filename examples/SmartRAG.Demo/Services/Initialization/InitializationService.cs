@@ -86,14 +86,40 @@ public class InitializationService(
             System.Console.WriteLine();
             _console.WriteSuccess("✓ LOCAL Environment selected");
             System.Console.WriteLine("  AI Provider: Ollama (via Custom provider)");
-            System.Console.WriteLine("  Storage: Qdrant (Vector database)");
+            
+            System.Console.WriteLine();
+            System.Console.WriteLine("Select Storage Provider:");
+            System.Console.WriteLine("1. Qdrant (Vector Database)");
+            System.Console.WriteLine("2. Redis (Key-Value + Vector Search)");
+            System.Console.WriteLine("3. InMemory (Non-persistent, for testing)");
+            
+            var storageChoice = _console.ReadLine("Selection (default: Qdrant): ");
+            var selectedStorage = storageChoice switch
+            {
+                "1" or "" => StorageProvider.Qdrant,
+                "2" => StorageProvider.Redis,
+                "3" => StorageProvider.InMemory,
+                _ => StorageProvider.Qdrant
+            };
+
+            System.Console.WriteLine($"  Storage: {selectedStorage}");
             System.Console.WriteLine("  Audio: Whisper.net (Local transcription)");
             System.Console.WriteLine();
+            
+            if (selectedStorage == StorageProvider.Redis)
+            {
+                _console.WriteWarning("⚠️  IMPORTANT: Redis with RediSearch module required for vector search");
+                System.Console.WriteLine("     • Use 'redis/redis-stack-server:latest' Docker image");
+                System.Console.WriteLine("     • Or install RediSearch module on your Redis server");
+                System.Console.WriteLine("     • Without RediSearch: Only text search will work (no vector search)");
+                System.Console.WriteLine();
+            }
+            
             _console.WriteWarning("⚠️  Note: Make sure Ollama endpoint is configured in appsettings");
             System.Console.WriteLine("     (AI:Custom:Endpoint = http://localhost:11434)");
             System.Console.WriteLine();
 
-            return (true, AIProvider.Custom, StorageProvider.Qdrant, AudioProvider.Whisper);
+            return (true, AIProvider.Custom, selectedStorage, AudioProvider.Whisper);
         }
 
         System.Console.WriteLine();

@@ -9,9 +9,9 @@ lang: en
 
 SmartRAG can perform intelligent cross-database queries with multi-database support:
 
----
-
 ## Multi-Database Connections
+
+<p>Configure multiple database connections to enable cross-database queries:</p>
 
 Configure databases in `appsettings.json`:
 
@@ -39,26 +39,86 @@ Configure databases in `appsettings.json`:
 }
 ```
 
----
-
 ## DatabaseConnectionConfig Parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `Name` | `string` | - | Friendly name for database connection (auto-generated if not provided) |
-| `ConnectionString` | `string` | - | Database connection string (required) |
-| `DatabaseType` | `DatabaseType` | - | Database type (SqlServer, MySql, PostgreSql, Sqlite) (required) |
-| `Description` | `string` | - | Optional description to help AI understand the database content |
-| `Enabled` | `bool` | `true` | Whether this connection is enabled |
-| `MaxRowsPerQuery` | `int` | `0` | Maximum rows to retrieve per query (0 = use default) |
-| `QueryTimeoutSeconds` | `int` | `0` | Query timeout in seconds (0 = use default) |
-| `SchemaRefreshIntervalMinutes` | `int` | `0` | Auto-refresh interval in minutes (0 = no auto-refresh) |
-| `IncludedTables` | `string[]` | `[]` | Specific tables to include (empty = all tables) |
-| `ExcludedTables` | `string[]` | `[]` | Tables to exclude from analysis |
-
----
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Parameter</th>
+                <th>Type</th>
+                <th>Default</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>Name</code></td>
+                <td><code>string</code></td>
+                <td><code>-</code></td>
+                <td>Friendly name for database connection (auto-generated if not provided)</td>
+            </tr>
+            <tr>
+                <td><code>ConnectionString</code></td>
+                <td><code>string</code></td>
+                <td><code>-</code></td>
+                <td>Database connection string (required)</td>
+            </tr>
+            <tr>
+                <td><code>DatabaseType</code></td>
+                <td><code>DatabaseType</code></td>
+                <td><code>-</code></td>
+                <td>Database type (SqlServer, MySql, PostgreSql, Sqlite) (required)</td>
+            </tr>
+            <tr>
+                <td><code>Description</code></td>
+                <td><code>string</code></td>
+                <td><code>-</code></td>
+                <td>Optional description to help AI understand the database content</td>
+            </tr>
+            <tr>
+                <td><code>Enabled</code></td>
+                <td><code>bool</code></td>
+                <td><code>true</code></td>
+                <td>Whether this connection is enabled</td>
+            </tr>
+            <tr>
+                <td><code>MaxRowsPerQuery</code></td>
+                <td><code>int</code></td>
+                <td><code>0</code></td>
+                <td>Maximum rows to retrieve per query (0 = use default)</td>
+            </tr>
+            <tr>
+                <td><code>QueryTimeoutSeconds</code></td>
+                <td><code>int</code></td>
+                <td><code>0</code></td>
+                <td>Query timeout in seconds (0 = use default)</td>
+            </tr>
+            <tr>
+                <td><code>SchemaRefreshIntervalMinutes</code></td>
+                <td><code>int</code></td>
+                <td><code>0</code></td>
+                <td>Auto-refresh interval in minutes (0 = no auto-refresh)</td>
+            </tr>
+            <tr>
+                <td><code>IncludedTables</code></td>
+                <td><code>string[]</code></td>
+                <td><code>[]</code></td>
+                <td>Specific tables to include (empty = all tables)</td>
+            </tr>
+            <tr>
+                <td><code>ExcludedTables</code></td>
+                <td><code>string[]</code></td>
+                <td><code>[]</code></td>
+                <td>Tables to exclude from analysis</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
 
 ## Supported Databases
+
+<p>SmartRAG supports the following database types:</p>
 
 ### SQL Server
 
@@ -116,8 +176,6 @@ Configure databases in `appsettings.json`:
 }
 ```
 
----
-
 ## Security and Sensitive Data Sanitization
 
 SmartRAG automatically detects and sanitizes sensitive data types:
@@ -140,8 +198,6 @@ new DatabaseConnectionConfig
     SanitizeSensitiveData = false  // Use with caution!
 }
 ```
-
----
 
 ## Schema Analysis and Refresh
 
@@ -188,29 +244,6 @@ new DatabaseConnectionConfig
 }
 ```
 
----
-
-## Cross-Database Query Examples
-
-SmartRAG can perform intelligent queries across multiple databases:
-
-### Example 1: Sales and Inventory Analysis
-```
-"What products ran out of stock in the last 3 months and how did they perform in sales?"
-```
-
-### Example 2: Customer and Order Analysis
-```
-"What are the demographic details of customers who place the most orders?"
-```
-
-### Example 3: Financial Reporting
-```
-"Generate this month's revenue report from accounting and sales databases"
-```
-
----
-
 ## Performance Optimization
 
 ### Table Filtering
@@ -240,8 +273,6 @@ new DatabaseConnectionConfig
 }
 ```
 
----
-
 ## Error Handling
 
 ```csharp
@@ -257,14 +288,12 @@ catch (Exception ex)
 }
 ```
 
----
-
 ## Next Steps
 
 <div class="row g-4 mt-4">
     <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-microphone"></i>
             </div>
             <h3>Audio & OCR</h3>
@@ -276,8 +305,8 @@ catch (Exception ex)
     </div>
     
     <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-cogs"></i>
             </div>
             <h3>Advanced Configuration</h3>

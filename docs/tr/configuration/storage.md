@@ -1,26 +1,28 @@
 ---
 layout: default
 title: Depolama Sağlayıcıları
-description: SmartRAG depolama sağlayıcı yapılandırması - Qdrant, Redis, SQLite, FileSystem ve InMemory depolama seçenekleri
+description: SmartRAG depolama sağlayıcı yapılandırması - Qdrant, Redis ve InMemory depolama seçenekleri
 lang: tr
 ---
 
 ## Depolama Sağlayıcı Yapılandırması
 
-SmartRAG çeşitli depolama sağlayıcılarını destekler:
-
----
+<p>SmartRAG çeşitli depolama sağlayıcılarını destekler:</p>
 
 ## Qdrant (Vektör Veritabanı)
+
+<p>Qdrant, milyonlarca vektörle üretim kullanımı için tasarlanmış yüksek performanslı bir vektör veritabanıdır:</p>
 
 ```json
 {
   "Storage": {
     "Qdrant": {
-      "Host": "localhost:6334",
+      "Host": "localhost",
       "UseHttps": false,
-      "ApiKey": "qdrant-anahtariniz",
-      "CollectionName": "smartrag_documents"
+      "ApiKey": "",
+      "CollectionName": "smartrag_documents",
+      "VectorSize": 768,
+      "DistanceMetric": "Cosine"
     }
   }
 }
@@ -44,17 +46,28 @@ builder.Services.AddSmartRag(configuration, options =>
 - 💾 Ek kaynak kullanımı
 - 🔧 Kurulum karmaşıklığı
 
----
-
 ## Redis (Yüksek Performanslı Önbellek)
+
+<p>Redis, RediSearch kullanarak vektör benzerlik araması yetenekleriyle hızlı bellek içi depolama sağlar:</p>
 
 ```json
 {
   "Storage": {
     "Redis": {
       "ConnectionString": "localhost:6379",
+      "Password": "",
+      "Username": "",
       "Database": 0,
-      "KeyPrefix": "smartrag:"
+      "KeyPrefix": "smartrag:local:",
+      "ConnectionTimeout": 30,
+      "EnableSsl": false,
+      "RetryCount": 3,
+      "RetryDelay": 1000,
+      "EnableVectorSearch": true,
+      "VectorIndexAlgorithm": "HNSW",
+      "DistanceMetric": "COSINE",
+      "VectorDimension": 768,
+      "VectorIndexName": "smartrag_vector_idx"
     }
   }
 }
@@ -71,89 +84,30 @@ builder.Services.AddSmartRag(configuration, options =>
 - ⚡ Çok hızlı erişim
 - 🔄 Otomatik expire desteği
 - 📊 Zengin veri tipleri
+- 🔍 RediSearch ile vektör benzerlik araması
 - 🏢 Üretim için uygun
 
 **Dezavantajlar:**
 - 💾 RAM tabanlı (sınırlı kapasite)
-- 🔧 Redis kurulumu gerekli
+- 🔧 Vektör arama için RediSearch modülü gerekli
 - 💰 Ek maliyet
 
----
-
-## SQLite (Gömülü Veritabanı)
-
-```json
-{
-  "Storage": {
-    "SQLite": {
-      "ConnectionString": "Data Source=./smartrag.db",
-      "EnableWAL": true
-    }
-  }
-}
-```
-
-```csharp
-builder.Services.AddSmartRag(configuration, options =>
-{
-    options.StorageProvider = StorageProvider.SQLite;
-});
-```
-
-**Avantajlar:**
-- 📁 Tek dosya veritabanı
-- 🔒 Veri gizliliği (yerel)
-- 🚀 Hızlı kurulum
-- 💰 Maliyet yok
-
-**Dezavantajlar:**
-- 📊 Sınırlı eşzamanlı erişim
-- 🔄 Backup gerektirir
-- 📈 Ölçeklenebilirlik sınırları
-
----
-
-## FileSystem (Dosya Tabanlı Depolama)
-
-```json
-{
-  "Storage": {
-    "FileSystem": {
-      "BasePath": "./documents",
-      "EnableCompression": true
-    }
-  }
-}
-```
-
-```csharp
-builder.Services.AddSmartRag(configuration, options =>
-{
-    options.StorageProvider = StorageProvider.FileSystem;
-});
-```
-
-**Avantajlar:**
-- 📁 Basit dosya sistemi
-- 🔍 Kolay debug ve inceleme
-- 💾 Sınırsız kapasite
-- 🔒 Tam kontrol
-
-**Dezavantajlar:**
-- 🐌 Yavaş arama performansı
-- 📊 Metadata sınırları
-- 🔄 Manuel backup
-
----
+<div class="alert alert-warning">
+    <h4><i class="fas fa-exclamation-triangle me-2"></i> RediSearch Modülü Gerekli</h4>
+    <p class="mb-0"><strong>Vektör arama için RediSearch modülü gereklidir.</strong> <code>redis/redis-stack-server:latest</code> Docker image'ını kullanın veya Redis sunucunuza RediSearch modülünü yükleyin. RediSearch olmadan sadece metin araması çalışır (vektör benzerlik araması çalışmaz).</p>
+    <p class="mb-0 mt-2"><strong>Docker örneği:</strong></p>
+    <pre class="mt-2"><code>docker run -d -p 6379:6379 redis/redis-stack-server:latest</code></pre>
+</div>
 
 ## InMemory (RAM Depolama)
+
+InMemory depolama, test ve geliştirme için idealdir, tüm verileri RAM'de saklar:
 
 ```json
 {
   "Storage": {
     "InMemory": {
-      "MaxDocuments": 10000,
-      "EnablePersistence": false
+      "MaxDocuments": 1000
     }
   }
 }
@@ -177,54 +131,77 @@ builder.Services.AddSmartRag(configuration, options =>
     <p class="mb-0">InMemory depolama, uygulama yeniden başlatıldığında tüm verileri kaybeder. Üretim için uygun değil!</p>
 </div>
 
----
-
 ## Depolama Sağlayıcı Karşılaştırması
 
-| Sağlayıcı | Performans | Ölçeklenebilirlik | Kurulum | Maliyet | Üretim Uygunluğu |
-|-----------|------------|-------------------|---------|---------|------------------|
-| **Qdrant** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ | ✅ Mükemmel |
-| **Redis** | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐ | ✅ İyi |
-| **SQLite** | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⚠️ Sınırlı |
-| **FileSystem** | ⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ❌ Uygun değil |
-| **InMemory** | ⭐⭐⭐⭐⭐ | ⭐ | ⭐⭐⭐⭐⭐ | ⭐⭐⭐⭐⭐ | ❌ Test only |
+<p>Kullanım durumunuz için en iyi seçeneği seçmek üzere depolama sağlayıcılarını karşılaştırın:</p>
 
----
+<div class="table-responsive">
+<table class="table">
+<thead>
+<tr>
+<th>Sağlayıcı</th>
+<th>Performans</th>
+<th>Ölçeklenebilirlik</th>
+<th>Kurulum</th>
+<th>Maliyet</th>
+<th>Üretim Uygunluğu</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Qdrant</strong></td>
+<td>⭐⭐⭐⭐⭐</td>
+<td>⭐⭐⭐⭐⭐</td>
+<td>⭐⭐⭐</td>
+<td>⭐⭐⭐</td>
+<td><span class="badge bg-success">Mükemmel</span></td>
+</tr>
+<tr>
+<td><strong>Redis</strong></td>
+<td>⭐⭐⭐⭐⭐</td>
+<td>⭐⭐⭐⭐</td>
+<td>⭐⭐⭐</td>
+<td>⭐⭐⭐</td>
+<td><span class="badge bg-success">İyi</span></td>
+</tr>
+<tr>
+<td><strong>InMemory</strong></td>
+<td>⭐⭐⭐⭐⭐</td>
+<td>⭐</td>
+<td>⭐⭐⭐⭐⭐</td>
+<td>⭐⭐⭐⭐⭐</td>
+<td><span class="badge bg-secondary">Sadece test</span></td>
+</tr>
+</tbody>
+</table>
+</div>
 
 ## Önerilen Kullanım Senaryoları
 
 ### Geliştirme ve Test
 ```csharp
-// Hızlı geliştirme için
+// Hızlı geliştirme ve test için
 options.StorageProvider = StorageProvider.InMemory;
-```
-
-### Küçük Ölçekli Uygulamalar
-```csharp
-// Basit ve güvenilir
-options.StorageProvider = StorageProvider.SQLite;
 ```
 
 ### Orta Ölçekli Uygulamalar
 ```csharp
-// Hızlı ve ölçeklenebilir
+// RediSearch ile hızlı ve ölçeklenebilir
 options.StorageProvider = StorageProvider.Redis;
 ```
 
-### Büyük Ölçekli Uygulamalar
+### Büyük Ölçekli Üretim Uygulamaları
 ```csharp
-// Maksimum performans ve ölçeklenebilirlik
+// Milyonlarca vektör için maksimum performans ve ölçeklenebilirlik
 options.StorageProvider = StorageProvider.Qdrant;
 ```
-
----
 
 ## Sonraki Adımlar
 
 <div class="row g-4 mt-4">
     <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-server"></i>
             </div>
             <h3>Veritabanı Yapılandırması</h3>
@@ -236,8 +213,8 @@ options.StorageProvider = StorageProvider.Qdrant;
     </div>
     
     <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-microphone"></i>
             </div>
             <h3>Ses & OCR</h3>

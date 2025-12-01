@@ -7,13 +7,13 @@ lang: tr
 
 ## Veritabanı Yapılandırması
 
-SmartRAG çoklu veritabanı desteği ile akıllı çapraz-veritabanı sorguları yapabilir:
-
----
+<p>SmartRAG çoklu veritabanı desteği ile akıllı çapraz-veritabanı sorguları yapabilir:</p>
 
 ## Çoklu Veritabanı Bağlantıları
 
-Veritabanlarını `appsettings.json` dosyasında yapılandırın:
+<p>Çoklu veritabanı bağlantılarını yapılandırarak çapraz-veritabanı sorgularını etkinleştirin:</p>
+
+<p>Veritabanlarını <code>appsettings.json</code> dosyasında yapılandırın:</p>
 
 ```json
 {
@@ -39,26 +39,86 @@ Veritabanlarını `appsettings.json` dosyasında yapılandırın:
 }
 ```
 
----
-
 ## DatabaseConnectionConfig Parametreleri
 
-| Parametre | Tip | Varsayılan | Açıklama |
-|-----------|------|---------|-------------|
-| `Name` | `string` | - | Veritabanı bağlantısı için açıklayıcı isim (sağlanmazsa otomatik oluşturulur) |
-| `ConnectionString` | `string` | - | Veritabanı bağlantı string'i (gerekli) |
-| `DatabaseType` | `DatabaseType` | - | Veritabanı tipi (SqlServer, MySql, PostgreSql, Sqlite) (gerekli) |
-| `Description` | `string` | - | Veritabanı içeriğini anlamaya yardımcı olacak isteğe bağlı açıklama |
-| `Enabled` | `bool` | `true` | Bu bağlantının etkin olup olmadığı |
-| `MaxRowsPerQuery` | `int` | `0` | Sorgu başına alınacak maksimum satır (0 = varsayılan kullan) |
-| `QueryTimeoutSeconds` | `int` | `0` | Sorgu timeout süresi (saniye) (0 = varsayılan kullan) |
-| `SchemaRefreshIntervalMinutes` | `int` | `0` | Otomatik yenileme aralığı (dakika) (0 = otomatik yenileme yok) |
-| `IncludedTables` | `string[]` | `[]` | Dahil edilecek belirli tablolar (boş = tüm tablolar) |
-| `ExcludedTables` | `string[]` | `[]` | Analizden hariç tutulacak tablolar |
-
----
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Parametre</th>
+                <th>Tip</th>
+                <th>Varsayılan</th>
+                <th>Açıklama</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>Name</code></td>
+                <td><code>string</code></td>
+                <td><code>-</code></td>
+                <td>Veritabanı bağlantısı için açıklayıcı isim (sağlanmazsa otomatik oluşturulur)</td>
+            </tr>
+            <tr>
+                <td><code>ConnectionString</code></td>
+                <td><code>string</code></td>
+                <td><code>-</code></td>
+                <td>Veritabanı bağlantı string'i (gerekli)</td>
+            </tr>
+            <tr>
+                <td><code>DatabaseType</code></td>
+                <td><code>DatabaseType</code></td>
+                <td><code>-</code></td>
+                <td>Veritabanı tipi (SqlServer, MySql, PostgreSql, Sqlite) (gerekli)</td>
+            </tr>
+            <tr>
+                <td><code>Description</code></td>
+                <td><code>string</code></td>
+                <td><code>-</code></td>
+                <td>Veritabanı içeriğini anlamaya yardımcı olacak isteğe bağlı açıklama</td>
+            </tr>
+            <tr>
+                <td><code>Enabled</code></td>
+                <td><code>bool</code></td>
+                <td><code>true</code></td>
+                <td>Bu bağlantının etkin olup olmadığı</td>
+            </tr>
+            <tr>
+                <td><code>MaxRowsPerQuery</code></td>
+                <td><code>int</code></td>
+                <td><code>0</code></td>
+                <td>Sorgu başına alınacak maksimum satır (0 = varsayılan kullan)</td>
+            </tr>
+            <tr>
+                <td><code>QueryTimeoutSeconds</code></td>
+                <td><code>int</code></td>
+                <td><code>0</code></td>
+                <td>Sorgu timeout süresi (saniye) (0 = varsayılan kullan)</td>
+            </tr>
+            <tr>
+                <td><code>SchemaRefreshIntervalMinutes</code></td>
+                <td><code>int</code></td>
+                <td><code>0</code></td>
+                <td>Otomatik yenileme aralığı (dakika) (0 = otomatik yenileme yok)</td>
+            </tr>
+            <tr>
+                <td><code>IncludedTables</code></td>
+                <td><code>string[]</code></td>
+                <td><code>[]</code></td>
+                <td>Dahil edilecek belirli tablolar (boş = tüm tablolar)</td>
+            </tr>
+            <tr>
+                <td><code>ExcludedTables</code></td>
+                <td><code>string[]</code></td>
+                <td><code>[]</code></td>
+                <td>Analizden hariç tutulacak tablolar</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
 
 ## Desteklenen Veritabanları
+
+SmartRAG aşağıdaki veritabanı türlerini destekler:
 
 ### SQL Server
 
@@ -116,8 +176,6 @@ Veritabanlarını `appsettings.json` dosyasında yapılandırın:
 }
 ```
 
----
-
 ## Güvenlik ve Hassas Veri Temizleme
 
 SmartRAG otomatik olarak hassas veri tiplerini tespit eder ve temizler:
@@ -140,8 +198,6 @@ new DatabaseConnectionConfig
     SanitizeSensitiveData = false  // Dikkatli kullanın!
 }
 ```
-
----
 
 ## Şema Analizi ve Yenileme
 
@@ -188,29 +244,6 @@ new DatabaseConnectionConfig
 }
 ```
 
----
-
-## Çapraz Veritabanı Sorgu Örnekleri
-
-SmartRAG çoklu veritabanından veri çekerek akıllı sorgular yapabilir:
-
-### Örnek 1: Satış ve Envanter Analizi
-```
-"Son 3 ayda hangi ürünlerin stoku tükendi ve bunların satış performansı nasıl?"
-```
-
-### Örnek 2: Müşteri ve Sipariş Analizi
-```
-"En çok sipariş veren müşterilerin demografik bilgileri neler?"
-```
-
-### Örnek 3: Finansal Raporlama
-```
-"Muhasebe ve satış veritabanlarından bu ayın gelir raporunu oluştur"
-```
-
----
-
 ## Performans Optimizasyonu
 
 ### Tablo Filtreleme
@@ -240,8 +273,6 @@ new DatabaseConnectionConfig
 }
 ```
 
----
-
 ## Hata Yönetimi
 
 ```csharp
@@ -257,14 +288,12 @@ catch (DatabaseConnectionException ex)
 }
 ```
 
----
-
 ## Sonraki Adımlar
 
 <div class="row g-4 mt-4">
     <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-microphone"></i>
             </div>
             <h3>Ses & OCR</h3>
@@ -276,8 +305,8 @@ catch (DatabaseConnectionException ex)
     </div>
     
     <div class="col-md-6">
-        <div class="feature-card text-center">
-            <div class="feature-icon mx-auto">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-cogs"></i>
             </div>
             <h3>Gelişmiş Yapılandırma</h3>

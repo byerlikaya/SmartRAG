@@ -121,11 +121,8 @@ namespace SmartRAG.Repositories
             {
                 case Value.KindOneofCase.StringValue:
                     result = value.StringValue ?? string.Empty;
-                    // CRITICAL: Ensure UTF-8 encoding is preserved for all languages
-                    // Protobuf strings are UTF-8 by default, but normalize to ensure consistency
                     if (!string.IsNullOrEmpty(result))
                     {
-                        // Normalize Unicode characters to ensure proper encoding (handles all language-specific characters)
                         result = result.Normalize(System.Text.NormalizationForm.FormC);
                     }
                     return result;
@@ -363,14 +360,11 @@ namespace SmartRAG.Repositories
             try
             {
                 var documents = new List<SmartRAG.Entities.Document>();
-                
-                // List all collections to find document-specific collections
                 var allCollections = await _client.ListCollectionsAsync();
                 var documentCollections = allCollections
                     .Where(c => c.StartsWith($"{_collectionName}_doc_", StringComparison.OrdinalIgnoreCase))
                     .ToList();
                 
-                // Iterate through each document collection
                 foreach (var docCollection in documentCollections)
                 {
                     try
@@ -389,12 +383,9 @@ namespace SmartRAG.Repositories
                             continue;
                         
                         var document = CreateDocumentFromMetadata(metadata);
-                        
-                        // Get chunk count from collection info
                         var collectionInfo = await _client.GetCollectionInfoAsync(docCollection);
                         var chunkCount = (int)collectionInfo.PointsCount;
                         
-                        // Create placeholder chunks (we don't need full content for listing)
                         for (int i = 0; i < chunkCount; i++)
                         {
                             document.Chunks.Add(new DocumentChunk
@@ -464,13 +455,11 @@ namespace SmartRAG.Repositories
         {
             try
             {
-                // Find all document-specific collections
                 var allCollections = await _client.ListCollectionsAsync();
                 var documentCollections = allCollections
                     .Where(c => c.StartsWith($"{_collectionName}_doc_", StringComparison.OrdinalIgnoreCase))
                     .ToList();
                 
-                // Delete each document collection
                 foreach (var docCollection in documentCollections)
                 {
                     try
@@ -484,7 +473,6 @@ namespace SmartRAG.Repositories
                     }
                 }
                 
-                // Recreate main collection for clean slate
                 await _collectionManager.RecreateCollectionAsync(_collectionName);
                 
                 _logger.LogInformation("Cleared all documents from Qdrant: deleted {Count} document collections and recreated main collection", documentCollections.Count);
@@ -575,8 +563,6 @@ namespace SmartRAG.Repositories
         }
 
         #endregion
-
-
 
         public void Dispose()
         {

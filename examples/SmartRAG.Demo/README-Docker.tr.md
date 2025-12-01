@@ -28,7 +28,7 @@ Docker kullanarak tüm yerel servislerle SmartRAG'ı çalıştırmak için tam r
 | **PostgreSQL** | `postgres:16-alpine` | `smartrag-postgres-test` | `5432:5432` | `postgres-data` | PostgreSQL hazır testi |
 | **Ollama** | `ollama/ollama:latest` | `smartrag-ollama` | `11434:11434` | `ollama-data` | Ollama liste testi |
 | **Qdrant** | `qdrant/qdrant:latest` | `smartrag-qdrant` | `6333:6333`, `6334:6334` | `qdrant-data` | HTTP sağlık kontrolü |
-| **Redis** | `redis:7-alpine` | `smartrag-redis` | `6379:6379` | `redis-data` | Redis ping testi |
+| **Redis** | `redis/redis-stack-server:latest` | `smartrag-redis` | `6379:6379`, `8001:8001` | `redis-data` | Redis ping testi |
 
 ### **Volume Kalıcılığı**
 Tüm veriler Docker volume'ları kullanarak container yeniden başlatmalarında korunur:
@@ -203,16 +203,22 @@ curl http://localhost:11434/api/tags
 curl http://localhost:6333/health
 ```
 
-### Redis (Önbellek)
+### Redis (Önbellek & Vektör Deposu)
 - **Host**: localhost:6379
+- **RedisInsight UI**: http://localhost:8001 (opsiyonel web arayüzü)
 - **Container**: smartrag-redis
 - **Volume**: redis-data
 - **Kalıcılık**: AOF (Append Only File) etkin
+- **RediSearch**: Dahil (vektör benzerlik araması etkin)
 
 **Bağlantı Testi:**
 ```bash
 docker exec -it smartrag-redis redis-cli ping
 # PONG döndürmeli
+
+# RediSearch modülünü doğrula
+docker exec -it smartrag-redis redis-cli MODULE LIST
+# search modülünü göstermeli
 ```
 
 ### SQL Server
@@ -498,9 +504,12 @@ Docker kullanmayı tercih etmiyorsanız:
 - Veya Qdrant Cloud kullan: https://cloud.qdrant.io
 
 ### Redis
-- Windows: https://github.com/microsoftarchive/redis/releases
-- Linux: `sudo apt install redis-server`
-- macOS: `brew install redis`
+- **Önemli**: Vektör arama için `redis/redis-stack-server` kullanın (RediSearch modülü dahil)
+- Docker: `docker run -d -p 6379:6379 redis/redis-stack-server:latest`
+- Windows: https://github.com/microsoftarchive/redis/releases (RediSearch modülü kurulumu gerekli)
+- Linux: `sudo apt install redis-server` (RediSearch modülü kurulumu gerekli)
+- macOS: `brew install redis` (RediSearch modülü kurulumu gerekli)
+- **Not**: Standart Redis RediSearch içermez. RediSearch olmadan sadece metin araması çalışır (vektör benzerlik araması çalışmaz).
 
 ## 📚 Ek Kaynaklar
 

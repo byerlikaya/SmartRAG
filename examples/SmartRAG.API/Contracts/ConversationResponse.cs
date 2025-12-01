@@ -129,7 +129,7 @@ namespace SmartRAG.API.Contracts
         /// <summary>
         /// Model used for this message (if applicable)
         /// </summary>
-        /// <example>gpt-4</example>
+        /// <example>gpt-5.1</example>
         public string Model { get; set; } = string.Empty;
 
         /// <summary>
