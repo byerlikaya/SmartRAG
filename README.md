@@ -176,22 +176,23 @@ docker exec -it smartrag-ollama ollama pull nomic-embed-text
 **🔗 Database Management:**
 - **Step 1-2**: Show connections & health check
 - **Step 3-5**: Create test databases (SQL Server, MySQL, PostgreSQL)
-- **Step 6**: View database schemas and relationships
+- **Step 6**: Create SQLite test database
+- **Step 7**: View database schemas and relationships
 
 **🤖 AI & Query Testing:**
-- **Step 7**: Query analysis - see how natural language converts to SQL
-- **Step 8**: Automatic test queries - pre-built scenarios
-- **Step 9**: Multi-database AI queries - ask questions across all databases
+- **Step 8**: Query analysis - see how natural language converts to SQL
+- **Step 9**: Automatic test queries - pre-built scenarios
+- **Step 10**: Multi-database AI queries - ask questions across all databases
 
 **🏠 Local AI Setup:**
-- **Step 10**: Setup Ollama models for 100% local processing
-- **Step 11**: Test vector stores (InMemory, Redis, Qdrant)
+- **Step 11**: Setup Ollama models for 100% local processing
+- **Step 12**: Test vector stores (InMemory, FileSystem, Redis, SQLite, Qdrant)
 
 **📄 Document Processing:**
-- **Step 12**: Upload documents (PDF, Word, Excel, Images, Audio)
-- **Step 13**: List and manage uploaded documents
-- **Step 14**: Multi-modal RAG - combine documents + databases
+- **Step 13**: Upload documents (PDF, Word, Excel, Images, Audio)
+- **Step 14**: List and manage uploaded documents
 - **Step 15**: Clear documents for fresh testing
+- **Step 16**: Conversational Assistant - combine databases + documents + chat
 
 **Perfect for:** Quick evaluation, proof-of-concept, team demos, learning SmartRAG capabilities
 

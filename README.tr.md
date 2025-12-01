@@ -174,22 +174,23 @@ docker exec -it smartrag-ollama ollama pull nomic-embed-text
 **🔗 Veritabanı Yönetimi:**
 - **Adım 1-2**: Bağlantıları göster ve sistem sağlık kontrolü
 - **Adım 3-5**: Test veritabanları oluştur (SQL Server, MySQL, PostgreSQL)
-- **Adım 6**: Veritabanı şemalarını ve ilişkileri görüntüle
+- **Adım 6**: SQLite test veritabanı oluştur
+- **Adım 7**: Veritabanı şemalarını ve ilişkileri görüntüle
 
 **🤖 AI ve Sorgu Testleri:**
-- **Adım 7**: Sorgu analizi - doğal dilin SQL'e nasıl dönüştüğünü gör
-- **Adım 8**: Otomatik test sorguları - önceden hazırlanmış senaryolar
-- **Adım 9**: Çoklu Veritabanı AI Sorguları - tüm veritabanlarında sorular sor
+- **Adım 8**: Sorgu analizi - doğal dilin SQL'e nasıl dönüştüğünü gör
+- **Adım 9**: Otomatik test sorguları - önceden hazırlanmış senaryolar
+- **Adım 10**: Çoklu Veritabanı AI Sorguları - tüm veritabanlarında sorular sor
 
 **🏠 Yerel AI Kurulumu:**
-- **Adım 10**: %100 yerel işleme için Ollama modellerini kur
-- **Adım 11**: Vektör depolarını test et (InMemory, Redis, Qdrant)
+- **Adım 11**: %100 yerel işleme için Ollama modellerini kur
+- **Adım 12**: Vektör depolarını test et (InMemory, FileSystem, Redis, SQLite, Qdrant)
 
 **📄 Belge İşleme:**
-- **Adım 12**: Belgeleri yükle (PDF, Word, Excel, Görüntüler, Ses)
-- **Adım 13**: Yüklenen belgeleri listele ve yönet
-- **Adım 14**: Çoklu Modal RAG - belgeler + veritabanlarını birleştir
+- **Adım 13**: Belgeleri yükle (PDF, Word, Excel, Görüntüler, Ses)
+- **Adım 14**: Yüklenen belgeleri listele ve yönet
 - **Adım 15**: Temiz test için belgeleri temizle
+- **Adım 16**: Konuşma Asistanı - veritabanları + belgeler + sohbet birleştir
 
 **İdeal için:** Hızlı değerlendirme, proof-of-concept, ekip demoları, SmartRAG yeteneklerini öğrenme
 
