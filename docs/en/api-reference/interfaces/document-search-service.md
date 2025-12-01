@@ -137,13 +137,17 @@ Search documents semantically without generating an AI answer.
 ```csharp
 Task<List<DocumentChunk>> SearchDocumentsAsync(
     string query, 
-    int maxResults = 5
+    int maxResults = 5,
+    SearchOptions? options = null,
+    List<string>? queryTokens = null
 )
 ```
 
 **Parameters:**
 - `query` (string): Search query
 - `maxResults` (int): Maximum chunks to return (default: 5)
+- `options` (SearchOptions?, optional): Optional search options to override global configuration (default: null)
+- `queryTokens` (List<string>?, optional): Pre-computed query tokens for performance optimization (default: null)
 
 **Returns:** `List<DocumentChunk>` with relevant document chunks
 

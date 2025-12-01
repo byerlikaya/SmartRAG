@@ -18,6 +18,8 @@ This interface enables querying across multiple databases simultaneously using n
 
 Executes a full intelligent query: analyze intent + execute + merge results.
 
+**Overload 1:** Analyze query intent and execute query.
+
 ```csharp
 Task<RagResponse> QueryMultipleDatabasesAsync(
     string userQuery, 
@@ -25,8 +27,19 @@ Task<RagResponse> QueryMultipleDatabasesAsync(
 )
 ```
 
+**Overload 2:** Execute query using pre-analyzed query intent (avoids redundant AI calls).
+
+```csharp
+Task<RagResponse> QueryMultipleDatabasesAsync(
+    string userQuery, 
+    QueryIntent preAnalyzedIntent,
+    int maxResults = 5
+)
+```
+
 **Parameters:**
 - `userQuery` (string): Natural language user query
+- `preAnalyzedIntent` (QueryIntent, optional): Pre-analyzed query intent to avoid redundant AI calls
 - `maxResults` (int): Maximum number of results to return (default: 5)
 
 **Returns:** `RagResponse` with AI-generated answer and data from multiple databases
@@ -42,11 +55,31 @@ Console.WriteLine(response.Answer);
 // AI answer combining data from multiple databases
 ```
 
-##### AnalyzeQueryIntentAsync
+**Example with pre-analyzed intent:**
+
+```csharp
+// Pre-analyze intent once
+var intent = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(userQuery);
+
+// Use pre-analyzed intent for multiple queries
+var response1 = await _coordinator.QueryMultipleDatabasesAsync(userQuery, intent);
+var response2 = await _coordinator.QueryMultipleDatabasesAsync(userQuery, intent);
+```
+
+##### AnalyzeQueryIntentAsync (Deprecated)
+
+<div class="alert alert-warning">
+    <h4><i class="fas fa-exclamation-triangle me-2"></i> Deprecated</h4>
+    <p class="mb-0">
+        Use <code>IQueryIntentAnalyzer.AnalyzeQueryIntentAsync</code> instead. This method will be removed in v4.0.0.
+        Legacy method provided for backward compatibility.
+    </p>
+</div>
 
 Analyzes user query and determines which databases/tables to query.
 
 ```csharp
+[Obsolete("Use IQueryIntentAnalyzer.AnalyzeQueryIntentAsync instead")]
 Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery)
 ```
 
@@ -55,22 +88,7 @@ Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery)
 
 **Returns:** `QueryIntent` with database routing information
 
-**Example:**
-
-```csharp
-var intent = await _coordinator.AnalyzeQueryIntentAsync(
-    "Compare data between Database1 and Database2"
-);
-
-Console.WriteLine($"Confidence: {intent.Confidence}");
-Console.WriteLine($"Requires Cross-DB Join: {intent.RequiresCrossDatabaseJoin}");
-
-foreach (var dbQuery in intent.DatabaseQueries)
-{
-    Console.WriteLine($"Database: {dbQuery.DatabaseName}");
-    Console.WriteLine($"Tables: {string.Join(", ", dbQuery.RequiredTables)}");
-}
-```
+**Note:** This method is deprecated. Use `IQueryIntentAnalyzer.AnalyzeQueryIntentAsync` instead.
 
 ##### ExecuteMultiDatabaseQueryAsync
 
@@ -100,22 +118,37 @@ Task<QueryIntent> GenerateDatabaseQueriesAsync(QueryIntent queryIntent)
 
 **Returns:** Updated `QueryIntent` with generated SQL queries
 
-##### MergeResultsAsync
+##### MultiDatabaseQueryResult
 
-Merges results from multiple databases into a coherent response.
+Results from multi-database query execution.
 
 ```csharp
-Task<string> MergeResultsAsync(
-    MultiDatabaseQueryResult queryResults, 
-    string originalQuery
-)
+public class MultiDatabaseQueryResult
+{
+    public Dictionary<string, DatabaseQueryResult> DatabaseResults { get; set; }
+    public bool Success { get; set; }
+    public List<string> Errors { get; set; }
+    public long ExecutionTimeMs { get; set; }
+}
 ```
 
-**Parameters:**
-- `queryResults` (MultiDatabaseQueryResult): Results from multiple databases
-- `originalQuery` (string): Original user query
+##### DatabaseQueryResult
 
-**Returns:** Merged and formatted results as string
+Results from a single database query.
+
+```csharp
+public class DatabaseQueryResult
+{
+    public string DatabaseId { get; set; }
+    public string DatabaseName { get; set; }
+    public string ExecutedQuery { get; set; }
+    public string ResultData { get; set; }
+    public int RowCount { get; set; }
+    public bool Success { get; set; }
+    public string ErrorMessage { get; set; }
+    public long ExecutionTimeMs { get; set; }
+}
+```
 
 
 ## Related Interfaces

@@ -37,6 +37,22 @@ public enum StorageProvider
 
 **Not:** `SQLite` ve `FileSystem`, `StorageProvider` seçenekleri olarak mevcut değildir. Bunlar yalnızca konuşma geçmişi depolama için `ConversationStorageProvider` seçenekleri olarak mevcuttur.
 
+### ConversationStorageProvider
+
+Konuşma geçmişi için mevcut depolama sağlayıcıları.
+
+```csharp
+public enum ConversationStorageProvider
+{
+    Redis,       // Konuşmaları Redis'te depola
+    SQLite,      // Konuşmaları SQLite veritabanında depola
+    FileSystem,  // Konuşmaları dosya sisteminde depola
+    InMemory     // Konuşmaları bellekte depola (kalıcı değil)
+}
+```
+
+**Not:** `SmartRagOptions` içinde `ConversationStorageProvider` belirtilmezse, sistem `StorageProvider` ile aynı sağlayıcıyı kullanır (konuşma depolamayı desteklemeyen Qdrant hariç).
+
 ### DatabaseType
 
 Desteklenen veritabanı tipleri.
@@ -62,6 +78,32 @@ public enum RetryPolicy
     FixedDelay,         // Yeniden denemeler arasında sabit gecikme
     LinearBackoff,      // Doğrusal artan gecikme
     ExponentialBackoff  // Üssel artan gecikme (önerilen)
+}
+```
+
+### AudioProvider
+
+Desteklenen ses transkripsiyon sağlayıcıları.
+
+```csharp
+public enum AudioProvider
+{
+    Whisper     // Whisper.net (Yerel transkripsiyon - tek desteklenen sağlayıcı)
+}
+```
+
+**Not:** Şu anda yalnızca Whisper.net yerel ses transkripsiyonu için desteklenmektedir. Google Speech-to-Text yapılandırması mevcut ancak henüz uygulanmamıştır.
+
+### QueryStrategy
+
+Sorgu çalıştırma stratejisi.
+
+```csharp
+public enum QueryStrategy
+{
+    DatabaseOnly,    // Sadece veritabanı sorgusu çalıştır
+    DocumentOnly,    // Sadece doküman sorgusu çalıştır
+    Hybrid           // Hem veritabanı hem doküman sorgularını çalıştır
 }
 ```
 
@@ -94,4 +136,3 @@ public enum RetryPolicy
         </div>
     </div>
 </div>
-

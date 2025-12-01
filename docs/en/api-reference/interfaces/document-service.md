@@ -56,19 +56,6 @@ var document = await _documentService.UploadDocumentAsync(
 Console.WriteLine($"Uploaded: {document.FileName}, Chunks: {document.Chunks.Count}");
 ```
 
-#### UploadDocumentsAsync
-
-Upload and process multiple documents in batch.
-
-```csharp
-Task<List<Document>> UploadDocumentsAsync(
-    IEnumerable<Stream> fileStreams, 
-    IEnumerable<string> fileNames, 
-    IEnumerable<string> contentTypes, 
-    string uploadedBy
-)
-```
-
 #### GetDocumentAsync
 
 Get a document by its ID.

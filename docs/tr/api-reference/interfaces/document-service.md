@@ -57,30 +57,6 @@ var document = await _documentService.UploadDocumentAsync(
 Console.WriteLine($"Yüklendi: {document.FileName}, Parçalar: {document.Chunks.Count}");
 ```
 
-#### UploadDocumentsAsync
-
-Birden fazla dokümanı toplu olarak yükleyin.
-
-```csharp
-Task<List<Document>> UploadDocumentsAsync(
-    List<(Stream Stream, string FileName, string ContentType)> files,
-    string uploadedBy,
-    string language = null
-)
-```
-
-**Örnek:**
-
-```csharp
-var files = new List<(Stream, string, string)>
-{
-    (File.OpenRead("doc1.pdf"), "doc1.pdf", "application/pdf"),
-    (File.OpenRead("doc2.docx"), "doc2.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-};
-
-var documents = await _documentService.UploadDocumentsAsync(files, "user-123");
-```
-
 #### GetDocumentAsync
 
 ID'sine göre bir doküman alın.

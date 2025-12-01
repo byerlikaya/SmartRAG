@@ -37,6 +37,22 @@ public enum StorageProvider
 
 **Note:** `SQLite` and `FileSystem` are not available as `StorageProvider` options. They are only available as `ConversationStorageProvider` options for conversation history storage.
 
+### ConversationStorageProvider
+
+Available storage providers for conversation history.
+
+```csharp
+public enum ConversationStorageProvider
+{
+    Redis,       // Store conversations in Redis
+    SQLite,      // Store conversations in SQLite database
+    FileSystem,  // Store conversations in file system
+    InMemory     // Store conversations in memory (not persistent)
+}
+```
+
+**Note:** If `ConversationStorageProvider` is not specified in `SmartRagOptions`, the system uses the same provider as `StorageProvider` (excluding Qdrant, which doesn't support conversation storage).
+
 ### DatabaseType
 
 Supported database types.
@@ -62,6 +78,32 @@ public enum RetryPolicy
     FixedDelay,         // Fixed delay between retries
     LinearBackoff,      // Linearly increasing delay
     ExponentialBackoff  // Exponentially increasing delay (recommended)
+}
+```
+
+### AudioProvider
+
+Supported audio transcription providers.
+
+```csharp
+public enum AudioProvider
+{
+    Whisper     // Whisper.net (Local transcription - only supported provider)
+}
+```
+
+**Note:** Currently, only Whisper.net is supported for local audio transcription. Google Speech-to-Text configuration exists but is not yet implemented.
+
+### QueryStrategy
+
+Strategy for query execution.
+
+```csharp
+public enum QueryStrategy
+{
+    DatabaseOnly,    // Execute database query only
+    DocumentOnly,    // Execute document query only
+    Hybrid           // Execute both database and document queries
 }
 ```
 
@@ -94,4 +136,3 @@ public enum RetryPolicy
         </div>
     </div>
 </div>
-

@@ -128,13 +128,17 @@ AI cevabı üretmeden dokümanları anlamsal olarak arayın.
 ```csharp
 Task<List<DocumentChunk>> SearchDocumentsAsync(
     string query, 
-    int maxResults = 5
+    int maxResults = 5,
+    SearchOptions? options = null,
+    List<string>? queryTokens = null
 )
 ```
 
 **Parametreler:**
 - `query` (string): Arama sorgusu
 - `maxResults` (int): Döndürülecek maksimum parça sayısı (varsayılan: 5)
+- `options` (SearchOptions?, isteğe bağlı): Global yapılandırmayı geçersiz kılmak için isteğe bağlı arama seçenekleri (varsayılan: null)
+- `queryTokens` (List<string>?, isteğe bağlı): Performans optimizasyonu için önceden hesaplanmış sorgu token'ları (varsayılan: null)
 
 **Döndürür:** İlgili doküman parçalarıyla `List<DocumentChunk>`
 
