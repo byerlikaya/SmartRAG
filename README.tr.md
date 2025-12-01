@@ -14,8 +14,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/byerlikaya/SmartRAG/actions"><img src="https://img.shields.io/github/actions/workflow/status/byerlikaya/SmartRAG/build.yml?style=for-the-badge&logo=github" alt="Build Status"/></a>
-  <a href="https://codecov.io/gh/byerlikaya/SmartRAG"><img src="https://img.shields.io/codecov/c/github/byerlikaya/SmartRAG?style=for-the-badge&logo=codecov" alt="Code Coverage"/></a>
+  <a href="https://github.com/byerlikaya/SmartRAG/actions"><img src="https://img.shields.io/github/actions/workflow/status/byerlikaya/SmartRAG/ci.yml?style=for-the-badge&logo=github" alt="Build Status"/></a>
   <a href="https://www.nuget.org/packages/SmartRAG"><img src="https://img.shields.io/badge/.NET%20Standard-2.1-blue?style=for-the-badge&logo=.net" alt=".NET Standard 2.1"/></a>
 </p>
 
@@ -33,7 +32,7 @@ dotnet add package SmartRAG
 
 ### **2. Kurulum**
 ```csharp
-builder.Services.UseSmartRAG(builder.Configuration,
+builder.Services.UseSmartRag(builder.Configuration,
     aiProvider: AIProvider.OpenAI,
     storageProvider: StorageProvider.InMemory
 );
@@ -184,7 +183,7 @@ docker exec -it smartrag-ollama ollama pull nomic-embed-text
 
 **🏠 Yerel AI Kurulumu:**
 - **Adım 10**: %100 yerel işleme için Ollama modellerini kur
-- **Adım 11**: Vektör depolarını test et (InMemory, Redis, SQLite, Qdrant)
+- **Adım 11**: Vektör depolarını test et (InMemory, Redis, Qdrant)
 
 **📄 Belge İşleme:**
 - **Adım 12**: Belgeleri yükle (PDF, Word, Excel, Görüntüler, Ses)
@@ -200,43 +199,9 @@ docker exec -it smartrag-ollama ollama pull nomic-embed-text
 
 **📊 Veritabanları:** SQL Server, MySQL, PostgreSQL, SQLite  
 **📄 Belgeler:** PDF, Word, Excel, PowerPoint, Görüntü, Ses  
-**🤖 AI Modelleri:** OpenAI, Anthropic, Ollama (yerel), LM Studio  
-**🗄️ Vektör Depoları:** Qdrant, Redis, SQLite, InMemory
-
-## 📊 **Diğer RAG Kütüphaneleri ile Karşılaştırma**
-
-| Özellik | SmartRAG | LM-Kit.NET | Semantic Kernel | LangChain.NET |
-|---------|----------|------------|----------------|---------------|
-| **Kütüphane Sahibi** | Barış Yerlikaya | LM-Kit (Fransa) | Microsoft | LangChain Topluluğu |
-| **Açıklama** | .NET için çoklu veritabanı RAG kütüphanesi | .NET uygulamaları için Generative AI SDK | AI orkestrasyon çerçevesi | LangChain çerçevesinin .NET portu |
-| **RAG Desteği** | ✅ | ✅ | ✅ | ✅ |
-| **Bellek Yönetimi** | ✅ | ✅ | ✅ | ✅ |
-| **Vektör Depoları** | ✅ | ✅ | ✅ | ✅ |
-| **AI Model Entegrasyonu** | ✅ | ✅ | ✅ | ✅ |
-| **Eklenti/Genişletme Sistemi** | ✅ | ✅ | ✅ | ✅ |
-| **Multi-Modal** | ✅ | ✅ | ❌ | ❌ |
-| **Yerel AI** | ✅ | ✅ | ❌ | ❌ |
-| **Ses** | ✅ | ✅ | ❌ | ❌ |
-| **OCR** | ✅ | ✅ | ❌ | ❌ |
-| **On-Premise** | ✅ | ✅ | ❌ | ❌ |
-| **Fallback Providers*** | ✅ | ❌ | ❌ | ❌ |
-| **Retry Policies*** | ✅ | ❌ | ❌ | ❌ |
-| **Batch Embeddings*** | ✅ | ❌ | ❌ | ❌ |
-| **Hibrit Arama*** | ✅ | ❌ | ❌ | ❌ |
-| **Oturum Yönetimi*** | ✅ | ❌ | ❌ | ❌ |
-| **Cross-DB JOIN*** | ✅ | ❌ | ❌ | ❌ |
-| **Multi-DB RAG*** | ✅ | ❌ | ❌ | ❌ |
-| **Veritabanları*** | ✅ | ❌ | ❌ | ❌ |
-
-**SmartRAG'a Özel Özellikler (*):**
-- **Fallback Providers**: Ana AI provider başarısız olduğunda otomatik yedek provider'a geçiş
-- **Retry Policies**: FixedDelay, LinearBackoff, ExponentialBackoff ile yapılandırılabilir yeniden deneme
-- **Batch Embeddings**: Birden fazla metin için verimli toplu işleme
-- **Hibrit Arama**: Semantic + keyword hibrit algoritması (%80 semantic, %20 keyword)
-- **Oturum Yönetimi**: Uygulama yeniden başlatmalarında konuşma sürekliliği
-- **Cross-DB JOIN**: Farklı veritabanları arasında AI destekli akıllı JOIN
-- **Multi-DB RAG**: Yerel multi-database sorgu koordinasyonu
-- **Veritabanları**: SQL Server, MySQL, PostgreSQL, SQLite yerel desteği
+**🤖 AI Modelleri:** OpenAI, Anthropic, Gemini, Azure OpenAI, Ollama (yerel), LM Studio  
+**🗄️ Vektör Depoları:** Qdrant, Redis, InMemory  
+**💬 Konuşma Depolama:** Redis, SQLite, FileSystem, InMemory (belge depolamadan bağımsız)
 
 ## 📄 Lisans
 

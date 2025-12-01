@@ -14,8 +14,7 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/byerlikaya/SmartRAG/actions"><img src="https://img.shields.io/github/actions/workflow/status/byerlikaya/SmartRAG/build.yml?style=for-the-badge&logo=github" alt="Build Status"/></a>
-  <a href="https://codecov.io/gh/byerlikaya/SmartRAG"><img src="https://img.shields.io/codecov/c/github/byerlikaya/SmartRAG?style=for-the-badge&logo=codecov" alt="Code Coverage"/></a>
+  <a href="https://github.com/byerlikaya/SmartRAG/actions"><img src="https://img.shields.io/github/actions/workflow/status/byerlikaya/SmartRAG/ci.yml?style=for-the-badge&logo=github" alt="Build Status"/></a>
   <a href="https://www.nuget.org/packages/SmartRAG"><img src="https://img.shields.io/badge/.NET%20Standard-2.1-blue?style=for-the-badge&logo=.net" alt=".NET Standard 2.1"/></a>
 </p>
 
@@ -33,7 +32,7 @@ dotnet add package SmartRAG
 
 ### **2. Setup**
 ```csharp
-builder.Services.UseSmartRAG(builder.Configuration,
+builder.Services.UseSmartRag(builder.Configuration,
     aiProvider: AIProvider.OpenAI,
     storageProvider: StorageProvider.InMemory
 );
@@ -186,7 +185,7 @@ docker exec -it smartrag-ollama ollama pull nomic-embed-text
 
 **🏠 Local AI Setup:**
 - **Step 10**: Setup Ollama models for 100% local processing
-- **Step 11**: Test vector stores (InMemory, Redis, SQLite, Qdrant)
+- **Step 11**: Test vector stores (InMemory, Redis, Qdrant)
 
 **📄 Document Processing:**
 - **Step 12**: Upload documents (PDF, Word, Excel, Images, Audio)
@@ -202,43 +201,9 @@ docker exec -it smartrag-ollama ollama pull nomic-embed-text
 
 **📊 Databases:** SQL Server, MySQL, PostgreSQL, SQLite  
 **📄 Documents:** PDF, Word, Excel, PowerPoint, Images, Audio  
-**🤖 AI Models:** OpenAI, Anthropic, Ollama (local), LM Studio  
-**🗄️ Vector Stores:** Qdrant, Redis, SQLite, InMemory
-
-## 📊 **Comparison with Other RAG Libraries**
-
-| Feature | SmartRAG | LM-Kit.NET | Semantic Kernel | LangChain.NET |
-|---------|----------|------------|----------------|---------------|
-| **Library Owner** | Barış Yerlikaya | LM-Kit (France) | Microsoft | LangChain Community |
-| **Description** | Multi-database RAG library for .NET | Generative AI SDK for .NET applications | AI orchestration framework | .NET port of LangChain framework |
-| **RAG Support** | ✅ | ✅ | ✅ | ✅ |
-| **Memory Management** | ✅ | ✅ | ✅ | ✅ |
-| **Vector Stores** | ✅ | ✅ | ✅ | ✅ |
-| **AI Model Integration** | ✅ | ✅ | ✅ | ✅ |
-| **Plugin/Extension System** | ✅ | ✅ | ✅ | ✅ |
-| **Multi-Modal** | ✅ | ✅ | ❌ | ❌ |
-| **Local AI** | ✅ | ✅ | ❌ | ❌ |
-| **Audio** | ✅ | ✅ | ❌ | ❌ |
-| **OCR** | ✅ | ✅ | ❌ | ❌ |
-| **On-Premise** | ✅ | ✅ | ❌ | ❌ |
-| **Fallback Providers*** | ✅ | ❌ | ❌ | ❌ |
-| **Retry Policies*** | ✅ | ❌ | ❌ | ❌ |
-| **Batch Embeddings*** | ✅ | ❌ | ❌ | ❌ |
-| **Hybrid Search*** | ✅ | ❌ | ❌ | ❌ |
-| **Session Management*** | ✅ | ❌ | ❌ | ❌ |
-| **Cross-DB JOIN*** | ✅ | ❌ | ❌ | ❌ |
-| **Multi-DB RAG*** | ✅ | ❌ | ❌ | ❌ |
-| **Databases*** | ✅ | ❌ | ❌ | ❌ |
-
-**SmartRAG Exclusive Features (*):**
-- **Fallback Providers**: Automatic failover to backup AI providers when primary fails
-- **Retry Policies**: Configurable retry with FixedDelay, LinearBackoff, ExponentialBackoff
-- **Batch Embeddings**: Efficient batch processing for multiple texts simultaneously
-- **Hybrid Search**: Semantic + keyword hybrid algorithm (80% semantic, 20% keyword)
-- **Session Management**: Persistent conversation continuity across app restarts
-- **Cross-DB JOIN**: AI-powered intelligent joins across different databases
-- **Multi-DB RAG**: Native multi-database query coordination
-- **Databases**: Native support for SQL Server, MySQL, PostgreSQL, SQLite
+**🤖 AI Models:** OpenAI, Anthropic, Gemini, Azure OpenAI, Ollama (local), LM Studio  
+**🗄️ Vector Stores:** Qdrant, Redis, InMemory  
+**💬 Conversation Storage:** Redis, SQLite, FileSystem, InMemory (independent from document storage)
 
 ## 📄 License
 
