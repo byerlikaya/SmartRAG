@@ -7,7 +7,7 @@ lang: tr
 
 ## IAIService
 
-**Amaç:** AI provider'ları ile etkileşim
+**Amaç:** Metin üretimi ve embedding'ler için AI sağlayıcı iletişimi
 
 **Namespace:** `SmartRAG.Interfaces.AI`
 
@@ -15,49 +15,60 @@ lang: tr
 
 #### GenerateResponseAsync
 
-AI'dan yanıt oluşturun.
+Sorgu ve bağlam temelinde AI yanıtı üretir.
 
 ```csharp
 Task<string> GenerateResponseAsync(
-    string prompt, 
-    CancellationToken cancellationToken = default
-)
-```
-
-#### GenerateEmbeddingsAsync
-
-Tek bir metin için embedding oluşturun.
-
-```csharp
-Task<float[]> GenerateEmbeddingsAsync(
-    string text, 
-    CancellationToken cancellationToken = default
-)
-```
-
-#### GenerateEmbeddingsBatchAsync
-
-Birden fazla metin için toplu embedding oluşturun.
-
-```csharp
-Task<List<float[]>> GenerateEmbeddingsBatchAsync(
-    List<string> texts, 
-    CancellationToken cancellationToken = default
+    string query, 
+    IEnumerable<string> context
 )
 ```
 
 **Örnek:**
 
 ```csharp
-var texts = new List<string>
+var contextChunks = new List<string>
 {
-    "Machine learning is fascinating",
-    "AI will change the world",
-    "Deep learning models are powerful"
+    "Doküman parçası 1...",
+    "Doküman parçası 2...",
+    "Doküman parçası 3..."
 };
 
+var response = await _aiService.GenerateResponseAsync(
+    "Ana konular nelerdir?",
+    contextChunks
+);
+
+Console.WriteLine(response);
+```
+
+#### GenerateEmbeddingsAsync
+
+Metin için embedding vektörü üretir.
+
+```csharp
+Task<List<float>> GenerateEmbeddingsAsync(string text)
+```
+
+**Döndürür:** Embedding vektörü (genellikle 768 veya 1536 boyut)
+
+#### GenerateEmbeddingsBatchAsync
+
+Birden fazla metin için toplu embedding üretir.
+
+```csharp
+Task<List<List<float>>> GenerateEmbeddingsBatchAsync(
+    IEnumerable<string> texts
+)
+```
+
+**Örnek:**
+
+```csharp
+var texts = new List<string> { "Metin 1", "Metin 2", "Metin 3" };
 var embeddings = await _aiService.GenerateEmbeddingsBatchAsync(texts);
-Console.WriteLine($"Oluşturulan embedding sayısı: {embeddings.Count}");
+
+Console.WriteLine($"Oluşturulan {embeddings.Count} embedding");
 ```
 
 
@@ -65,4 +76,3 @@ Console.WriteLine($"Oluşturulan embedding sayısı: {embeddings.Count}");
 
 - [Temel Arayüzler]({{ site.baseurl }}/tr/api-reference/core) - Tüm temel arayüzleri görüntüle
 - [API Referans]({{ site.baseurl }}/tr/api-reference) - API Referans ana sayfasına dön
-
