@@ -78,6 +78,6 @@ public class MarkdownFileParser : IFileParser
 
 ## İlgili Arayüzler
 
-- [Temel Arayüzler]({{ site.baseurl }}/tr/api-reference/core) - Tüm temel arayüzleri görüntüle
+- [Strateji Arayüzleri]({{ site.baseurl }}/tr/api-reference/strategies) - Tüm strateji arayüzlerini görüntüle
 - [API Referans]({{ site.baseurl }}/tr/api-reference) - API Referans ana sayfasına dön
 

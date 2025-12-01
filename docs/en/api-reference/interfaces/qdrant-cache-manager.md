@@ -23,6 +23,6 @@ void CleanupExpiredCache();
 
 ## Related Interfaces
 
-- [Core Interfaces]({{ site.baseurl }}/en/api-reference/core) - Browse all core interfaces
+- [Service Interfaces]({{ site.baseurl }}/en/api-reference/services) - Browse all service interfaces
 - [API Reference]({{ site.baseurl }}/en/api-reference) - Back to API Reference index
 

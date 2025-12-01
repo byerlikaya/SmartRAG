@@ -865,20 +865,20 @@ public class DocumentServiceTests
 ## Next Steps
 
 <div class="row g-4 mt-4">
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card card-accent text-center">
             <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-rocket"></i>
-                    </div>
+            </div>
             <h3>Getting Started</h3>
             <p>Quick installation and setup guide</p>
             <a href="{{ site.baseurl }}/en/getting-started" class="btn btn-outline-primary btn-sm mt-3">
                 Get Started
             </a>
-                </div>
-            </div>
+        </div>
+    </div>
     
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card card-accent text-center">
             <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-cog"></i>
@@ -888,20 +888,33 @@ public class DocumentServiceTests
             <a href="{{ site.baseurl }}/en/configuration" class="btn btn-outline-primary btn-sm mt-3">
                 Configure
             </a>
-                    </div>
-                </div>
+        </div>
+    </div>
     
-    <div class="col-md-4">
+    <div class="col-md-3">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
+                <i class="fas fa-book"></i>
+            </div>
+            <h3>API Reference</h3>
+            <p>Detailed API documentation and method references</p>
+            <a href="{{ site.baseurl }}/en/api-reference" class="btn btn-outline-primary btn-sm mt-3">
+                API Reference
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
         <div class="card card-accent text-center">
             <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-history"></i>
             </div>
             <h3>Changelog</h3>
-            <p>Version history and updates</p>
+            <p>Track new features, improvements, and breaking changes across all versions.</p>
             <a href="{{ site.baseurl }}/en/changelog" class="btn btn-outline-primary btn-sm mt-3">
                 View Changelog
             </a>
-            </div>
+        </div>
     </div>
 </div>
 

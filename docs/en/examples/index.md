@@ -88,7 +88,7 @@ Practical code examples and real-world use cases for SmartRAG. Learn how to inte
 ## Next Steps
 
 <div class="row g-4 mt-4">
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card card-accent text-center">
             <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-rocket"></i>
@@ -101,7 +101,7 @@ Practical code examples and real-world use cases for SmartRAG. Learn how to inte
         </div>
     </div>
     
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card card-accent text-center">
             <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-cog"></i>
@@ -114,15 +114,28 @@ Practical code examples and real-world use cases for SmartRAG. Learn how to inte
         </div>
     </div>
     
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card card-accent text-center">
             <div class="icon icon-lg icon-gradient mx-auto">
-                <i class="fas fa-code"></i>
+                <i class="fas fa-book"></i>
             </div>
             <h3>API Reference</h3>
-            <p>Detailed API documentation</p>
+            <p>Detailed API documentation and method references</p>
             <a href="{{ site.baseurl }}/en/api-reference" class="btn btn-outline-primary btn-sm mt-3">
                 API Reference
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
+                <i class="fas fa-history"></i>
+            </div>
+            <h3>Changelog</h3>
+            <p>Track new features, improvements, and breaking changes across all versions.</p>
+            <a href="{{ site.baseurl }}/en/changelog" class="btn btn-outline-primary btn-sm mt-3">
+                View Changelog
             </a>
         </div>
     </div>

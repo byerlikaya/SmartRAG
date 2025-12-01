@@ -22,6 +22,6 @@ Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery);
 
 ## İlgili Arayüzler
 
-- [Temel Arayüzler]({{ site.baseurl }}/tr/api-reference/core) - Tüm temel arayüzleri görüntüle
+- [Servis Arayüzleri]({{ site.baseurl }}/tr/api-reference/services) - Tüm servis arayüzlerini görüntüle
 - [API Referans]({{ site.baseurl }}/tr/api-reference) - API Referans ana sayfasına dön
 

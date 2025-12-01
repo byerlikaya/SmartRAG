@@ -32,10 +32,6 @@ hide_title: true
                             <div class="stat-label">Yapay Zeka Sağlayıcı</div>
                         </div>
                         <div class="card card-sm">
-                            <div class="stat-number">3</div>
-                            <div class="stat-label">Depolama Sağlayıcıları</div>
-                        </div>
-                        <div class="card card-sm">
                             <div class="stat-number">4</div>
                             <div class="stat-label">Veritabanı Tipi</div>
                         </div>

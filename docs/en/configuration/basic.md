@@ -73,14 +73,56 @@ app.Run();
 
 <p>Core configuration options available in SmartRagOptions:</p>
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `AIProvider` | `AIProvider` | `OpenAI` | AI provider for embeddings and text generation |
-| `StorageProvider` | `StorageProvider` | `InMemory` | Storage backend for documents and vectors |
-| `ConversationStorageProvider` | `ConversationStorageProvider?` | `null` | Separate storage for conversation history (optional) |
-| `EnableAutoSchemaAnalysis` | `bool` | `true` | Automatically analyze database schemas on startup |
-| `EnablePeriodicSchemaRefresh` | `bool` | `true` | Periodically refresh database schemas |
-| `DefaultSchemaRefreshIntervalMinutes` | `int` | `60` | Default interval in minutes for schema refresh |
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Option</th>
+                <th>Type</th>
+                <th>Default</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>AIProvider</code></td>
+                <td><code>AIProvider</code></td>
+                <td><code>OpenAI</code></td>
+                <td>AI provider for embeddings and text generation</td>
+            </tr>
+            <tr>
+                <td><code>StorageProvider</code></td>
+                <td><code>StorageProvider</code></td>
+                <td><code>InMemory</code></td>
+                <td>Storage backend for documents and vectors</td>
+            </tr>
+            <tr>
+                <td><code>ConversationStorageProvider</code></td>
+                <td><code>ConversationStorageProvider?</code></td>
+                <td><code>null</code></td>
+                <td>Separate storage for conversation history (optional)</td>
+            </tr>
+            <tr>
+                <td><code>EnableAutoSchemaAnalysis</code></td>
+                <td><code>bool</code></td>
+                <td><code>true</code></td>
+                <td>Automatically analyze database schemas on startup</td>
+            </tr>
+            <tr>
+                <td><code>EnablePeriodicSchemaRefresh</code></td>
+                <td><code>bool</code></td>
+                <td><code>true</code></td>
+                <td>Periodically refresh database schemas</td>
+            </tr>
+            <tr>
+                <td><code>DefaultSchemaRefreshIntervalMinutes</code></td>
+                <td><code>int</code></td>
+                <td><code>60</code></td>
+                <td>Default interval in minutes for schema refresh</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
 
 ## ConversationStorageProvider
 
@@ -129,11 +171,38 @@ builder.Services.AddSmartRag(configuration, options =>
 
 ## Chunking Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `MaxChunkSize` | `int` | `1000` | Maximum size of each document chunk in characters |
-| `MinChunkSize` | `int` | `100` | Minimum size of each document chunk in characters |
-| `ChunkOverlap` | `int` | `200` | Number of characters to overlap between adjacent chunks |
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Option</th>
+                <th>Type</th>
+                <th>Default</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>MaxChunkSize</code></td>
+                <td><code>int</code></td>
+                <td><code>1000</code></td>
+                <td>Maximum size of each document chunk in characters</td>
+            </tr>
+            <tr>
+                <td><code>MinChunkSize</code></td>
+                <td><code>int</code></td>
+                <td><code>100</code></td>
+                <td>Minimum size of each document chunk in characters</td>
+            </tr>
+            <tr>
+                <td><code>ChunkOverlap</code></td>
+                <td><code>int</code></td>
+                <td><code>200</code></td>
+                <td>Number of characters to overlap between adjacent chunks</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
 
 <div class="alert alert-info">
     <h4><i class="fas fa-info-circle me-2"></i> Chunking Best Practices</h4>
@@ -147,13 +216,50 @@ builder.Services.AddSmartRag(configuration, options =>
 
 ## Retry & Resilience Options
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `MaxRetryAttempts` | `int` | `3` | Maximum number of retry attempts for AI provider requests |
-| `RetryDelayMs` | `int` | `1000` | Delay between retry attempts in milliseconds |
-| `RetryPolicy` | `RetryPolicy` | `ExponentialBackoff` | Retry policy for failed requests |
-| `EnableFallbackProviders` | `bool` | `false` | Enable fallback to alternative AI providers on failure |
-| `FallbackProviders` | `List<AIProvider>` | `[]` | List of fallback AI providers to try sequentially |
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Option</th>
+                <th>Type</th>
+                <th>Default</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>MaxRetryAttempts</code></td>
+                <td><code>int</code></td>
+                <td><code>3</code></td>
+                <td>Maximum number of retry attempts for AI provider requests</td>
+            </tr>
+            <tr>
+                <td><code>RetryDelayMs</code></td>
+                <td><code>int</code></td>
+                <td><code>1000</code></td>
+                <td>Delay between retry attempts in milliseconds</td>
+            </tr>
+            <tr>
+                <td><code>RetryPolicy</code></td>
+                <td><code>RetryPolicy</code></td>
+                <td><code>ExponentialBackoff</code></td>
+                <td>Retry policy for failed requests</td>
+            </tr>
+            <tr>
+                <td><code>EnableFallbackProviders</code></td>
+                <td><code>bool</code></td>
+                <td><code>false</code></td>
+                <td>Enable fallback to alternative AI providers on failure</td>
+            </tr>
+            <tr>
+                <td><code>FallbackProviders</code></td>
+                <td><code>List&lt;AIProvider&gt;</code></td>
+                <td><code>[]</code></td>
+                <td>List of fallback AI providers to try sequentially</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
 
 **RetryPolicy Enum Values:**
 - `RetryPolicy.None` - No retries

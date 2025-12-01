@@ -7,7 +7,7 @@ lang: en
 
 ## Advanced Features
 
-SmartRAG provides extensibility and customization through strategy patterns and advanced interfaces.
+<p>SmartRAG provides extensibility and customization through strategy patterns and advanced interfaces.</p>
 
 ### Conversation Management
 

@@ -836,7 +836,7 @@ public async Task QueryIntelligenceAsync_ShouldReturnValidResponse_WhenValidQuer
 ## Sonraki Adımlar
 
 <div class="row g-4 mt-4">
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card card-accent text-center">
             <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-rocket"></i>
@@ -849,7 +849,7 @@ public async Task QueryIntelligenceAsync_ShouldReturnValidResponse_WhenValidQuer
         </div>
     </div>
     
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card card-accent text-center">
             <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-cog"></i>
@@ -862,13 +862,26 @@ public async Task QueryIntelligenceAsync_ShouldReturnValidResponse_WhenValidQuer
         </div>
     </div>
     
-    <div class="col-md-4">
+    <div class="col-md-3">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
+                <i class="fas fa-book"></i>
+            </div>
+            <h3>API Referans</h3>
+            <p>Detaylı API dokümantasyonu ve metod referansları</p>
+            <a href="{{ site.baseurl }}/tr/api-reference" class="btn btn-outline-primary btn-sm mt-3">
+                API Referans
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
         <div class="card card-accent text-center">
             <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-history"></i>
             </div>
             <h3>Changelog</h3>
-            <p>Versiyon geçmişi ve güncellemeler</p>
+            <p>Tüm versiyonlardaki yeni özellikleri, iyileştirmeleri ve breaking change'leri takip edin.</p>
             <a href="{{ site.baseurl }}/tr/changelog" class="btn btn-outline-primary btn-sm mt-3">
                 Changelog'u Görüntüle
             </a>

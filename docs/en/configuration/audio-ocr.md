@@ -15,24 +15,109 @@ SmartRAG provides capabilities for converting audio files to text and extracting
 
 ### WhisperConfig Parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `ModelPath` | string | `"models/ggml-large-v3.bin"` | Path to Whisper model file |
-| `DefaultLanguage` | string | `"auto"` | Language code for transcription |
-| `MinConfidenceThreshold` | double | `0.3` | Minimum confidence score (0.0-1.0) |
-| `IncludeWordTimestamps` | bool | `false` | Include word-level timestamps |
-| `PromptHint` | string | `""` | Context hint for better accuracy |
-| `MaxThreads` | int | `0` | CPU threads (0 = auto-detect) |
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Parameter</th>
+                <th>Type</th>
+                <th>Default</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>ModelPath</code></td>
+                <td><code>string</code></td>
+                <td><code>"models/ggml-large-v3.bin"</code></td>
+                <td>Path to Whisper model file</td>
+            </tr>
+            <tr>
+                <td><code>DefaultLanguage</code></td>
+                <td><code>string</code></td>
+                <td><code>"auto"</code></td>
+                <td>Language code for transcription</td>
+            </tr>
+            <tr>
+                <td><code>MinConfidenceThreshold</code></td>
+                <td><code>double</code></td>
+                <td><code>0.3</code></td>
+                <td>Minimum confidence score (0.0-1.0)</td>
+            </tr>
+            <tr>
+                <td><code>IncludeWordTimestamps</code></td>
+                <td><code>bool</code></td>
+                <td><code>false</code></td>
+                <td>Include word-level timestamps</td>
+            </tr>
+            <tr>
+                <td><code>PromptHint</code></td>
+                <td><code>string</code></td>
+                <td><code>""</code></td>
+                <td>Context hint for better accuracy</td>
+            </tr>
+            <tr>
+                <td><code>MaxThreads</code></td>
+                <td><code>int</code></td>
+                <td><code>0</code></td>
+                <td>CPU threads (0 = auto-detect)</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
 
 ### Whisper Model Sizes
 
-| Model | Size | Speed | Accuracy | Use Case |
-|-------|------|-------|----------|----------|
-| `tiny` | 75MB | ⭐⭐⭐⭐⭐ | ⭐⭐ | Fast prototyping |
-| `base` | 142MB | ⭐⭐⭐⭐ | ⭐⭐⭐ | Balanced performance |
-| `small` | 244MB | ⭐⭐⭐ | ⭐⭐⭐⭐ | Good accuracy |
-| `medium` | 769MB | ⭐⭐ | ⭐⭐⭐⭐⭐ | High accuracy |
-| `large-v3` | 1.5GB | ⭐ | ⭐⭐⭐⭐⭐ | Best accuracy |
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Model</th>
+                <th>Size</th>
+                <th>Speed</th>
+                <th>Accuracy</th>
+                <th>Use Case</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>tiny</code></td>
+                <td>75MB</td>
+                <td>⭐⭐⭐⭐⭐</td>
+                <td>⭐⭐</td>
+                <td>Fast prototyping</td>
+            </tr>
+            <tr>
+                <td><code>base</code></td>
+                <td>142MB</td>
+                <td>⭐⭐⭐⭐</td>
+                <td>⭐⭐⭐</td>
+                <td>Balanced performance</td>
+            </tr>
+            <tr>
+                <td><code>small</code></td>
+                <td>244MB</td>
+                <td>⭐⭐⭐</td>
+                <td>⭐⭐⭐⭐</td>
+                <td>Good accuracy</td>
+            </tr>
+            <tr>
+                <td><code>medium</code></td>
+                <td>769MB</td>
+                <td>⭐⭐</td>
+                <td>⭐⭐⭐⭐⭐</td>
+                <td>High accuracy</td>
+            </tr>
+            <tr>
+                <td><code>large-v3</code></td>
+                <td>1.5GB</td>
+                <td>⭐</td>
+                <td>⭐⭐⭐⭐⭐</td>
+                <td>Best accuracy</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
 
 ### Model Download
 

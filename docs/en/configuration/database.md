@@ -41,18 +41,80 @@ Configure databases in `appsettings.json`:
 
 ## DatabaseConnectionConfig Parameters
 
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `Name` | `string` | - | Friendly name for database connection (auto-generated if not provided) |
-| `ConnectionString` | `string` | - | Database connection string (required) |
-| `DatabaseType` | `DatabaseType` | - | Database type (SqlServer, MySql, PostgreSql, Sqlite) (required) |
-| `Description` | `string` | - | Optional description to help AI understand the database content |
-| `Enabled` | `bool` | `true` | Whether this connection is enabled |
-| `MaxRowsPerQuery` | `int` | `0` | Maximum rows to retrieve per query (0 = use default) |
-| `QueryTimeoutSeconds` | `int` | `0` | Query timeout in seconds (0 = use default) |
-| `SchemaRefreshIntervalMinutes` | `int` | `0` | Auto-refresh interval in minutes (0 = no auto-refresh) |
-| `IncludedTables` | `string[]` | `[]` | Specific tables to include (empty = all tables) |
-| `ExcludedTables` | `string[]` | `[]` | Tables to exclude from analysis |
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Parameter</th>
+                <th>Type</th>
+                <th>Default</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>Name</code></td>
+                <td><code>string</code></td>
+                <td><code>-</code></td>
+                <td>Friendly name for database connection (auto-generated if not provided)</td>
+            </tr>
+            <tr>
+                <td><code>ConnectionString</code></td>
+                <td><code>string</code></td>
+                <td><code>-</code></td>
+                <td>Database connection string (required)</td>
+            </tr>
+            <tr>
+                <td><code>DatabaseType</code></td>
+                <td><code>DatabaseType</code></td>
+                <td><code>-</code></td>
+                <td>Database type (SqlServer, MySql, PostgreSql, Sqlite) (required)</td>
+            </tr>
+            <tr>
+                <td><code>Description</code></td>
+                <td><code>string</code></td>
+                <td><code>-</code></td>
+                <td>Optional description to help AI understand the database content</td>
+            </tr>
+            <tr>
+                <td><code>Enabled</code></td>
+                <td><code>bool</code></td>
+                <td><code>true</code></td>
+                <td>Whether this connection is enabled</td>
+            </tr>
+            <tr>
+                <td><code>MaxRowsPerQuery</code></td>
+                <td><code>int</code></td>
+                <td><code>0</code></td>
+                <td>Maximum rows to retrieve per query (0 = use default)</td>
+            </tr>
+            <tr>
+                <td><code>QueryTimeoutSeconds</code></td>
+                <td><code>int</code></td>
+                <td><code>0</code></td>
+                <td>Query timeout in seconds (0 = use default)</td>
+            </tr>
+            <tr>
+                <td><code>SchemaRefreshIntervalMinutes</code></td>
+                <td><code>int</code></td>
+                <td><code>0</code></td>
+                <td>Auto-refresh interval in minutes (0 = no auto-refresh)</td>
+            </tr>
+            <tr>
+                <td><code>IncludedTables</code></td>
+                <td><code>string[]</code></td>
+                <td><code>[]</code></td>
+                <td>Specific tables to include (empty = all tables)</td>
+            </tr>
+            <tr>
+                <td><code>ExcludedTables</code></td>
+                <td><code>string[]</code></td>
+                <td><code>[]</code></td>
+                <td>Tables to exclude from analysis</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
 
 ## Supported Databases
 

@@ -356,12 +356,12 @@ builder.Services.AddSmartRag(configuration, options =>
     <div class="col-md-4">
         <div class="card card-accent text-center">
             <div class="icon icon-lg icon-gradient mx-auto">
-                <i class="fas fa-rocket"></i>
+                <i class="fas fa-book"></i>
             </div>
-            <h3>Başlangıç</h3>
-            <p>SmartRAG'ı projenize entegre edin</p>
-            <a href="{{ site.baseurl }}/tr/getting-started" class="btn btn-outline-primary btn-sm mt-3">
-                Başlangıç Kılavuzu
+            <h3>API Referansı</h3>
+            <p>Detaylı API dokümantasyonu ve metod referansları</p>
+            <a href="{{ site.baseurl }}/tr/api-reference" class="btn btn-outline-primary btn-sm mt-3">
+                API Referansı
             </a>
         </div>
     </div>
@@ -382,12 +382,12 @@ builder.Services.AddSmartRag(configuration, options =>
     <div class="col-md-4">
         <div class="card card-accent text-center">
             <div class="icon icon-lg icon-gradient mx-auto">
-                <i class="fas fa-book"></i>
+                <i class="fas fa-history"></i>
             </div>
-            <h3>API Referansı</h3>
-            <p>Detaylı API dokümantasyonu ve metod referansları</p>
-            <a href="{{ site.baseurl }}/tr/api-reference" class="btn btn-outline-primary btn-sm mt-3">
-                API Referansı
+            <h3>Changelog</h3>
+            <p>Tüm versiyonlardaki yeni özellikleri, iyileştirmeleri ve breaking change'leri takip edin.</p>
+            <a href="{{ site.baseurl }}/tr/changelog" class="btn btn-outline-primary btn-sm mt-3">
+                Changelog'u Görüntüle
             </a>
         </div>
     </div>

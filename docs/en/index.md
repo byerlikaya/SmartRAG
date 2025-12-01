@@ -32,10 +32,6 @@ hide_title: true
                             <div class="stat-label">AI Providers</div>
                         </div>
                         <div class="card card-sm">
-                            <div class="stat-number">3</div>
-                            <div class="stat-label">Storage Providers</div>
-                        </div>
-                        <div class="card card-sm">
                             <div class="stat-number">4</div>
                             <div class="stat-label">Database Types</div>
                         </div>

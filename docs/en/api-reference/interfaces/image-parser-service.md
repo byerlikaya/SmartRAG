@@ -123,6 +123,6 @@ Console.WriteLine($"Text from preprocessed image: {text}");
 
 ## Related Interfaces
 
-- [Core Interfaces]({{ site.baseurl }}/en/api-reference/core) - Browse all core interfaces
+- [Advanced Interfaces]({{ site.baseurl }}/en/api-reference/advanced) - Browse all advanced interfaces
 - [API Reference]({{ site.baseurl }}/en/api-reference) - Back to API Reference index
 

@@ -134,12 +134,12 @@ SmartRAG provides well-defined interfaces for all operations. Inject these inter
     <div class="col-md-4">
         <div class="card card-accent text-center">
             <div class="icon icon-lg icon-gradient mx-auto">
-                <i class="fas fa-database"></i>
+                <i class="fas fa-cogs"></i>
             </div>
-            <h3>Data Models</h3>
-            <p>RagResponse, Document, DocumentChunk and other data structures</p>
-            <a href="{{ site.baseurl }}/en/api-reference/models" class="btn btn-outline-primary btn-sm mt-3">
-                Data Models
+            <h3>Strategy Interfaces</h3>
+            <p>Extensible strategy pattern interfaces for customization</p>
+            <a href="{{ site.baseurl }}/en/api-reference/strategies" class="btn btn-outline-primary btn-sm mt-3">
+                Strategy Interfaces
             </a>
         </div>
     </div>
@@ -147,12 +147,12 @@ SmartRAG provides well-defined interfaces for all operations. Inject these inter
     <div class="col-md-4">
         <div class="card card-accent text-center">
             <div class="icon icon-lg icon-gradient mx-auto">
-                <i class="fas fa-list"></i>
+                <i class="fas fa-tools"></i>
             </div>
-            <h3>Enumerations</h3>
-            <p>AIProvider, StorageProvider, DatabaseType and other enums</p>
-            <a href="{{ site.baseurl }}/en/api-reference/enums" class="btn btn-outline-primary btn-sm mt-3">
-                Enumerations
+            <h3>Service Interfaces</h3>
+            <p>Additional service interfaces for advanced operations</p>
+            <a href="{{ site.baseurl }}/en/api-reference/services" class="btn btn-outline-primary btn-sm mt-3">
+                Service Interfaces
             </a>
         </div>
     </div>

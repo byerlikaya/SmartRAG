@@ -95,12 +95,12 @@ SmartRAG configuration is organized into the following categories:
     <div class="col-md-4">
         <div class="card card-accent text-center">
             <div class="icon icon-lg icon-gradient mx-auto">
-                <i class="fas fa-rocket"></i>
+                <i class="fas fa-book"></i>
             </div>
-            <h3>Getting Started</h3>
-            <p>Integrate SmartRAG into your project</p>
-            <a href="{{ site.baseurl }}/en/getting-started" class="btn btn-outline-primary btn-sm mt-3">
-                Getting Started Guide
+            <h3>API Reference</h3>
+            <p>Detailed API documentation and method references</p>
+            <a href="{{ site.baseurl }}/en/api-reference" class="btn btn-outline-primary btn-sm mt-3">
+                API Reference
             </a>
         </div>
     </div>
@@ -121,12 +121,12 @@ SmartRAG configuration is organized into the following categories:
     <div class="col-md-4">
         <div class="card card-accent text-center">
             <div class="icon icon-lg icon-gradient mx-auto">
-                <i class="fas fa-book"></i>
+                <i class="fas fa-history"></i>
             </div>
-            <h3>API Reference</h3>
-            <p>Detailed API documentation and method references</p>
-            <a href="{{ site.baseurl }}/en/api-reference" class="btn btn-outline-primary btn-sm mt-3">
-                API Reference
+            <h3>Changelog</h3>
+            <p>Track new features, improvements, and breaking changes across all versions.</p>
+            <a href="{{ site.baseurl }}/en/changelog" class="btn btn-outline-primary btn-sm mt-3">
+                View Changelog
             </a>
         </div>
     </div>

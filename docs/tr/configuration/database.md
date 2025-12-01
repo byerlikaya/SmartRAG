@@ -41,18 +41,80 @@ lang: tr
 
 ## DatabaseConnectionConfig Parametreleri
 
-| Parametre | Tip | Varsayılan | Açıklama |
-|-----------|------|---------|-------------|
-| `Name` | `string` | - | Veritabanı bağlantısı için açıklayıcı isim (sağlanmazsa otomatik oluşturulur) |
-| `ConnectionString` | `string` | - | Veritabanı bağlantı string'i (gerekli) |
-| `DatabaseType` | `DatabaseType` | - | Veritabanı tipi (SqlServer, MySql, PostgreSql, Sqlite) (gerekli) |
-| `Description` | `string` | - | Veritabanı içeriğini anlamaya yardımcı olacak isteğe bağlı açıklama |
-| `Enabled` | `bool` | `true` | Bu bağlantının etkin olup olmadığı |
-| `MaxRowsPerQuery` | `int` | `0` | Sorgu başına alınacak maksimum satır (0 = varsayılan kullan) |
-| `QueryTimeoutSeconds` | `int` | `0` | Sorgu timeout süresi (saniye) (0 = varsayılan kullan) |
-| `SchemaRefreshIntervalMinutes` | `int` | `0` | Otomatik yenileme aralığı (dakika) (0 = otomatik yenileme yok) |
-| `IncludedTables` | `string[]` | `[]` | Dahil edilecek belirli tablolar (boş = tüm tablolar) |
-| `ExcludedTables` | `string[]` | `[]` | Analizden hariç tutulacak tablolar |
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Parametre</th>
+                <th>Tip</th>
+                <th>Varsayılan</th>
+                <th>Açıklama</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>Name</code></td>
+                <td><code>string</code></td>
+                <td><code>-</code></td>
+                <td>Veritabanı bağlantısı için açıklayıcı isim (sağlanmazsa otomatik oluşturulur)</td>
+            </tr>
+            <tr>
+                <td><code>ConnectionString</code></td>
+                <td><code>string</code></td>
+                <td><code>-</code></td>
+                <td>Veritabanı bağlantı string'i (gerekli)</td>
+            </tr>
+            <tr>
+                <td><code>DatabaseType</code></td>
+                <td><code>DatabaseType</code></td>
+                <td><code>-</code></td>
+                <td>Veritabanı tipi (SqlServer, MySql, PostgreSql, Sqlite) (gerekli)</td>
+            </tr>
+            <tr>
+                <td><code>Description</code></td>
+                <td><code>string</code></td>
+                <td><code>-</code></td>
+                <td>Veritabanı içeriğini anlamaya yardımcı olacak isteğe bağlı açıklama</td>
+            </tr>
+            <tr>
+                <td><code>Enabled</code></td>
+                <td><code>bool</code></td>
+                <td><code>true</code></td>
+                <td>Bu bağlantının etkin olup olmadığı</td>
+            </tr>
+            <tr>
+                <td><code>MaxRowsPerQuery</code></td>
+                <td><code>int</code></td>
+                <td><code>0</code></td>
+                <td>Sorgu başına alınacak maksimum satır (0 = varsayılan kullan)</td>
+            </tr>
+            <tr>
+                <td><code>QueryTimeoutSeconds</code></td>
+                <td><code>int</code></td>
+                <td><code>0</code></td>
+                <td>Sorgu timeout süresi (saniye) (0 = varsayılan kullan)</td>
+            </tr>
+            <tr>
+                <td><code>SchemaRefreshIntervalMinutes</code></td>
+                <td><code>int</code></td>
+                <td><code>0</code></td>
+                <td>Otomatik yenileme aralığı (dakika) (0 = otomatik yenileme yok)</td>
+            </tr>
+            <tr>
+                <td><code>IncludedTables</code></td>
+                <td><code>string[]</code></td>
+                <td><code>[]</code></td>
+                <td>Dahil edilecek belirli tablolar (boş = tüm tablolar)</td>
+            </tr>
+            <tr>
+                <td><code>ExcludedTables</code></td>
+                <td><code>string[]</code></td>
+                <td><code>[]</code></td>
+                <td>Analizden hariç tutulacak tablolar</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
 
 ## Desteklenen Veritabanları
 

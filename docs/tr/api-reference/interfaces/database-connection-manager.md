@@ -148,6 +148,6 @@ Task<bool> RemoveConnectionAsync(string databaseId)
 
 ## İlgili Arayüzler
 
-- [Temel Arayüzler]({{ site.baseurl }}/tr/api-reference/core) - Tüm temel arayüzleri görüntüle
+- [Gelişmiş Arayüzler]({{ site.baseurl }}/tr/api-reference/advanced) - Tüm gelişmiş arayüzleri görüntüle
 - [API Referans]({{ site.baseurl }}/tr/api-reference) - API Referans ana sayfasına dön
 

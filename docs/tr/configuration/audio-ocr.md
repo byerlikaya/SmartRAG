@@ -15,24 +15,109 @@ lang: tr
 
 ### WhisperConfig Parametreleri
 
-| Parametre | Tip | Varsayılan | Açıklama |
-|-----------|-----|-----------|----------|
-| `ModelPath` | string | `"models/ggml-large-v3.bin"` | Whisper model dosyası yolu |
-| `DefaultLanguage` | string | `"auto"` | Transkripsiyon için dil kodu |
-| `MinConfidenceThreshold` | double | `0.3` | Minimum güven skoru (0.0-1.0) |
-| `IncludeWordTimestamps` | bool | `false` | Kelime bazlı zaman damgaları dahil et |
-| `PromptHint` | string | `""` | Daha iyi doğruluk için bağlam ipucu |
-| `MaxThreads` | int | `0` | CPU thread sayısı (0 = otomatik algılama) |
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Parametre</th>
+                <th>Tip</th>
+                <th>Varsayılan</th>
+                <th>Açıklama</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>ModelPath</code></td>
+                <td><code>string</code></td>
+                <td><code>"models/ggml-large-v3.bin"</code></td>
+                <td>Whisper model dosyası yolu</td>
+            </tr>
+            <tr>
+                <td><code>DefaultLanguage</code></td>
+                <td><code>string</code></td>
+                <td><code>"auto"</code></td>
+                <td>Transkripsiyon için dil kodu</td>
+            </tr>
+            <tr>
+                <td><code>MinConfidenceThreshold</code></td>
+                <td><code>double</code></td>
+                <td><code>0.3</code></td>
+                <td>Minimum güven skoru (0.0-1.0)</td>
+            </tr>
+            <tr>
+                <td><code>IncludeWordTimestamps</code></td>
+                <td><code>bool</code></td>
+                <td><code>false</code></td>
+                <td>Kelime bazlı zaman damgaları dahil et</td>
+            </tr>
+            <tr>
+                <td><code>PromptHint</code></td>
+                <td><code>string</code></td>
+                <td><code>""</code></td>
+                <td>Daha iyi doğruluk için bağlam ipucu</td>
+            </tr>
+            <tr>
+                <td><code>MaxThreads</code></td>
+                <td><code>int</code></td>
+                <td><code>0</code></td>
+                <td>CPU thread sayısı (0 = otomatik algılama)</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
 
 ### Whisper Model Boyutları
 
-| Model | Boyut | Hız | Doğruluk | Kullanım Durumu |
-|-------|-------|-----|----------|-----------------|
-| `tiny` | 75MB | ⭐⭐⭐⭐⭐ | ⭐⭐ | Hızlı prototipleme |
-| `base` | 142MB | ⭐⭐⭐⭐ | ⭐⭐⭐ | Dengeli performans |
-| `small` | 244MB | ⭐⭐⭐ | ⭐⭐⭐⭐ | İyi doğruluk |
-| `medium` | 769MB | ⭐⭐ | ⭐⭐⭐⭐⭐ | Yüksek doğruluk |
-| `large-v3` | 1.5GB | ⭐ | ⭐⭐⭐⭐⭐ | En iyi doğruluk |
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Model</th>
+                <th>Boyut</th>
+                <th>Hız</th>
+                <th>Doğruluk</th>
+                <th>Kullanım Durumu</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>tiny</code></td>
+                <td>75MB</td>
+                <td>⭐⭐⭐⭐⭐</td>
+                <td>⭐⭐</td>
+                <td>Hızlı prototipleme</td>
+            </tr>
+            <tr>
+                <td><code>base</code></td>
+                <td>142MB</td>
+                <td>⭐⭐⭐⭐</td>
+                <td>⭐⭐⭐</td>
+                <td>Dengeli performans</td>
+            </tr>
+            <tr>
+                <td><code>small</code></td>
+                <td>244MB</td>
+                <td>⭐⭐⭐</td>
+                <td>⭐⭐⭐⭐</td>
+                <td>İyi doğruluk</td>
+            </tr>
+            <tr>
+                <td><code>medium</code></td>
+                <td>769MB</td>
+                <td>⭐⭐</td>
+                <td>⭐⭐⭐⭐⭐</td>
+                <td>Yüksek doğruluk</td>
+            </tr>
+            <tr>
+                <td><code>large-v3</code></td>
+                <td>1.5GB</td>
+                <td>⭐</td>
+                <td>⭐⭐⭐⭐⭐</td>
+                <td>En iyi doğruluk</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
 
 ### Model İndirme
 

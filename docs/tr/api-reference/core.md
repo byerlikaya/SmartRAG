@@ -134,12 +134,12 @@ SmartRAG tüm işlemler için iyi tanımlanmış interface'ler sağlar. Bu inter
     <div class="col-md-4">
         <div class="card card-accent text-center">
             <div class="icon icon-lg icon-gradient mx-auto">
-                <i class="fas fa-database"></i>
+                <i class="fas fa-cogs"></i>
             </div>
-            <h3>Veri Modelleri</h3>
-            <p>RagResponse, Document, DocumentChunk ve diğer veri yapıları</p>
-            <a href="{{ site.baseurl }}/tr/api-reference/models" class="btn btn-outline-primary btn-sm mt-3">
-                Veri Modelleri
+            <h3>Strateji Arayüzleri</h3>
+            <p>Özelleştirme için genişletilebilir strateji deseni arayüzleri</p>
+            <a href="{{ site.baseurl }}/tr/api-reference/strategies" class="btn btn-outline-primary btn-sm mt-3">
+                Strateji Arayüzleri
             </a>
         </div>
     </div>
@@ -147,12 +147,12 @@ SmartRAG tüm işlemler için iyi tanımlanmış interface'ler sağlar. Bu inter
     <div class="col-md-4">
         <div class="card card-accent text-center">
             <div class="icon icon-lg icon-gradient mx-auto">
-                <i class="fas fa-list"></i>
+                <i class="fas fa-tools"></i>
             </div>
-            <h3>Numaralandırmalar</h3>
-            <p>AIProvider, StorageProvider, DatabaseType ve diğer enum'lar</p>
-            <a href="{{ site.baseurl }}/tr/api-reference/enums" class="btn btn-outline-primary btn-sm mt-3">
-                Numaralandırmalar
+            <h3>Servis Arayüzleri</h3>
+            <p>Gelişmiş işlemler için ek servis arayüzleri</p>
+            <a href="{{ site.baseurl }}/tr/api-reference/services" class="btn btn-outline-primary btn-sm mt-3">
+                Servis Arayüzleri
             </a>
         </div>
     </div>

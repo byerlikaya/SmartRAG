@@ -1302,29 +1302,29 @@ public SearchResult Search(string query)
     <div class="col-md-6">
         <div class="card card-accent">
             <div class="icon icon-lg icon-gradient">
-                <i class="fas fa-lightbulb"></i>
+                <i class="fas fa-code"></i>
             </div>
             <h3>Örnekler</h3>
             <p>Pratik kod örneklerini ve gerçek dünya uygulamalarını görün</p>
             <a href="{{ site.baseurl }}/tr/examples" class="btn btn-outline-primary btn-sm mt-3">
                 Örnekleri Görüntüle
             </a>
-                </div>
-            </div>
+        </div>
+    </div>
     
     <div class="col-md-6">
         <div class="card card-accent">
             <div class="icon icon-lg icon-gradient">
-                <i class="fas fa-rocket"></i>
+                <i class="fas fa-history"></i>
             </div>
-            <h3>Başlangıç</h3>
-            <p>Hızlı kurulum ve yapılandırma kılavuzu</p>
-            <a href="{{ site.baseurl }}/tr/getting-started" class="btn btn-outline-primary btn-sm mt-3">
-                Başlayın
+            <h3>Changelog</h3>
+            <p>Tüm versiyonlardaki yeni özellikleri, iyileştirmeleri ve breaking change'leri takip edin.</p>
+            <a href="{{ site.baseurl }}/tr/changelog" class="btn btn-outline-primary btn-sm mt-3">
+                Changelog'u Görüntüle
             </a>
-                    </div>
-                </div>
-            </div>
+        </div>
+    </div>
+</div>
 
 ---
 

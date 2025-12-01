@@ -88,20 +88,20 @@ SmartRAG için pratik kod örnekleri ve gerçek dünya kullanım senaryoları. A
 ## Sonraki Adımlar
 
 <div class="row g-4 mt-4">
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card card-accent text-center">
             <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-rocket"></i>
             </div>
             <h3>Başlangıç</h3>
-            <p>Hızlı kurulum ve kurulum rehberi</p>
+            <p>Hızlı kurulum ve yapılandırma kılavuzu</p>
             <a href="{{ site.baseurl }}/tr/getting-started" class="btn btn-outline-primary btn-sm mt-3">
-                Başlangıç
+                Başlayın
             </a>
         </div>
     </div>
     
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card card-accent text-center">
             <div class="icon icon-lg icon-gradient mx-auto">
                 <i class="fas fa-cog"></i>
@@ -114,15 +114,28 @@ SmartRAG için pratik kod örnekleri ve gerçek dünya kullanım senaryoları. A
         </div>
     </div>
     
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card card-accent text-center">
             <div class="icon icon-lg icon-gradient mx-auto">
-                <i class="fas fa-code"></i>
+                <i class="fas fa-book"></i>
             </div>
             <h3>API Referans</h3>
-            <p>Detaylı API dokümantasyonu</p>
+            <p>Detaylı API dokümantasyonu ve metod referansları</p>
             <a href="{{ site.baseurl }}/tr/api-reference" class="btn btn-outline-primary btn-sm mt-3">
                 API Referans
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
+                <i class="fas fa-history"></i>
+            </div>
+            <h3>Changelog</h3>
+            <p>Tüm versiyonlardaki yeni özellikleri, iyileştirmeleri ve breaking change'leri takip edin.</p>
+            <a href="{{ site.baseurl }}/tr/changelog" class="btn btn-outline-primary btn-sm mt-3">
+                Changelog'u Görüntüle
             </a>
         </div>
     </div>

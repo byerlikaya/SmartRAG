@@ -7,7 +7,7 @@ lang: tr
 
 ## Gelişmiş Özellikler
 
-SmartRAG, strateji desenleri ve gelişmiş arayüzler aracılığıyla genişletilebilirlik ve özelleştirme sağlar.
+<p>SmartRAG, strateji desenleri ve gelişmiş arayüzler aracılığıyla genişletilebilirlik ve özelleştirme sağlar.</p>
 
 ### Konuşma Yönetimi
 
