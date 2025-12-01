@@ -20,9 +20,10 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Release 3.3.0: Redis Vector Search &amp; Storage Improvements (MINOR Release - 2025-11-28)
+    <PackageReleaseNotes>Release 3.3.0: Redis Vector Search &amp; Storage Improvements (MINOR Release - 2025-12-01)
 
 NEW FEATURES:
+- ConversationStorageProvider Separation: Separated conversation storage from document storage for better architecture
 - Redis RediSearch Integration: Enhanced vector similarity search with RediSearch module support
 - Redis Vector Search Configuration: Vector index algorithm, distance metric, and dimension configuration
 - RedisInsight UI Support: Docker Compose setup includes RedisInsight for Redis management
