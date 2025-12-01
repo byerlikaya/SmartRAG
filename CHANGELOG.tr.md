@@ -6,7 +6,100 @@ SmartRAG'deki tüm önemli değişiklikler bu dosyada belgelenecektir.
 Format [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)'a dayanmaktadır
 ve bu proje [Semantic Versioning](https://semver.org/spec/v2.0.0.html)'a uymaktadır.
 
-## [Yayınlanmamış]
+## [3.3.0] - 2025-12-01
+
+### ✨ Eklenenler
+- **ConversationStorageProvider Ayrımı**: Konuşma depolaması doküman depolamasından ayrıldı
+  - Konuşma geçmişi depolaması için yeni `ConversationStorageProvider` enum'u (Redis, SQLite, FileSystem, InMemory)
+  - `StorageProvider` artık sadece doküman/vektör depolaması için kullanılıyor (InMemory, Redis, Qdrant)
+  - Konuşma ve doküman depolaması için bağımsız yapılandırma
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Enums/ConversationStorageProvider.cs` - Konuşma depolaması için yeni enum
+    - `src/SmartRAG/Enums/StorageProvider.cs` - Konuşma ile ilgili provider'lar kaldırıldı (SQLite, FileSystem)
+    - `src/SmartRAG/Models/SmartRagOptions.cs` - ConversationStorageProvider özelliği eklendi
+    - `src/SmartRAG/Factories/StorageFactory.cs` - Konuşma ve doküman repository'leri için ayrı metodlar
+    - `src/SmartRAG/Interfaces/Storage/IStorageFactory.cs` - CreateConversationRepository metodu eklendi
+    - `src/SmartRAG/Services/Support/ConversationManagerService.cs` - ConversationStorageProvider kullanımı için güncellendi
+  - **Faydalar**: Net separation of concerns, bağımsız ölçeklendirme, daha iyi mimari
+- **Redis RediSearch Entegrasyonu**: RediSearch modül desteği ile geliştirilmiş vektör benzerlik araması
+  - Gelişmiş vektör arama yetenekleri için RediSearch modül desteği
+  - Vektör indeks algoritması yapılandırması (HNSW)
+  - Mesafe metrik yapılandırması (COSINE)
+  - Vektör boyut yapılandırması (varsayılan: 768)
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Models/RedisConfig.cs` - Vektör arama yapılandırma özellikleri eklendi
+    - `src/SmartRAG/Repositories/RedisDocumentRepository.cs` - RediSearch vektör arama implementasyonu
+
+### 🔧 İyileştirilenler
+- **Redis Vektör Arama**: DocumentSearchService için doğru relevance score hesaplama ve atama
+  - RelevanceScore artık RedisDocumentRepository'de doğru şekilde ranking için ayarlanıyor
+  - RediSearch mesafe metriklerinden benzerlik skoru hesaplama
+  - Skor doğrulama için debug logging
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Repositories/RedisDocumentRepository.cs` - RelevanceScore atama
+
+- **Redis Embedding Üretimi**: Embedding üretimi için doğru AIProviderConfig geçişi
+  - Doğru config alımı için IAIConfigurationService injection
+  - Config eksik olduğunda null kontrolü ve text search'e fallback
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Repositories/RedisDocumentRepository.cs` - AI config handling
+    - `src/SmartRAG/Factories/StorageFactory.cs` - IAIConfigurationService injection
+
+- **StorageFactory Dependency Injection**: IAIProvider ile scope sorunları çözüldü
+  - Lazy resolution için IServiceProvider kullanımına geçildi
+  - Singleton/Scoped lifetime uyumsuzluğunu önler
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Factories/StorageFactory.cs` - Lazy dependency resolution
+    - `src/SmartRAG/Extensions/ServiceCollectionExtensions.cs` - IAIProvider lifetime ayarlaması
+
+### 🐛 Düzeltilenler
+- **StorageFactory DI Scope Sorunu**: IAIProvider çözülürken InvalidOperationException düzeltildi
+  - Doğrudan injection'dan IServiceProvider aracılığıyla lazy resolution'a geçildi
+  - Singleton factory'nin Scoped service inject etmeye çalışmasını önler
+
+- **Redis Relevance Scoring**: Arama sonuçlarında RelevanceScore'un 0.0000 olması düzeltildi
+  - RelevanceScore artık benzerlik hesaplamasından doğru şekilde atanıyor
+  - DocumentSearchService sonuçları doğru şekilde sıralayabiliyor
+
+- **Redis Embedding Config**: Embedding üretirken NullReferenceException düzeltildi
+  - AIProviderConfig artık doğru şekilde alınıyor ve GenerateEmbeddingAsync'e geçiriliyor
+  - Config mevcut olmadığında zarif text search fallback'i
+
+### 🗑️ Kaldırılanlar
+- **FileSystemDocumentRepository**: Kullanılmayan dosya sistemi depolama implementasyonu kaldırıldı
+  - Repository dosyası silindi (388 satır kaldırıldı)
+  - **Kaldırılan Dosyalar**:
+    - `src/SmartRAG/Repositories/FileSystemDocumentRepository.cs`
+
+- **SqliteDocumentRepository**: Kullanılmayan SQLite depolama implementasyonu kaldırıldı
+  - Repository dosyası silindi (618 satır kaldırıldı)
+  - **Kaldırılan Dosyalar**:
+    - `src/SmartRAG/Repositories/SqliteDocumentRepository.cs`
+
+- **StorageConfig Özellikleri**: Kullanılmayan yapılandırma özellikleri kaldırıldı
+  - FileSystemPath özelliği kaldırıldı
+  - SqliteConfig özelliği kaldırıldı
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Models/StorageConfig.cs` - Özellik kaldırma
+
+### ✨ Faydalar
+- **Geliştirilmiş Redis Vektör Arama**: Doğru benzerlik skorlama ve relevance ranking
+- **Daha İyi Geliştirici Deneyimi**: RediSearch gereksinimleri için net uyarılar ve dokümantasyon
+- **Daha Temiz Kod Tabanı**: 1000+ satır kullanılmayan kod kaldırıldı
+- **Geliştirilmiş Güvenilirlik**: DI scope sorunları ve null reference exception'ları düzeltildi
+
+### 📝 Notlar
+- **Breaking Changes**: FileSystem ve SQLite doküman repository'leri kaldırıldı
+  - Bunlar kullanılmayan implementasyonlardı
+  - Aktif depolama provider'ları (Qdrant, Redis, InMemory) tamamen çalışır durumda
+  - FileSystem veya SQLite kullanıyorsanız, Qdrant, Redis veya InMemory'ye geçin
+
+- **Redis Gereksinimleri**: Vektör arama RediSearch modülü gerektirir
+  - `redis/redis-stack-server:latest` Docker image'ını kullanın
+  - Veya Redis sunucunuza RediSearch modülünü kurun
+  - RediSearch olmadan sadece text search çalışır (vektör arama çalışmaz)
+
+## [3.2.0] - 2025-11-27
 
 ### Performans İyileştirmeleri
 - **AI Sorgu Niyeti Analizi Optimizasyonu**: Pre-analyzed query intent kabul eden overload method ekleyerek gereksiz AI çağrılarını ortadan kaldırdı

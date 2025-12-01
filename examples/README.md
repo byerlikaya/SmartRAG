@@ -17,7 +17,7 @@ This directory contains example projects demonstrating how to use SmartRAG in di
   - Smart query intent detection with confidence-based routing
   - Automatic source selection (database, documents, or both)
   - Conversation history management
-  - Multiple storage providers (Qdrant, Redis, SQLite, FileSystem, InMemory)
+  - Multiple storage providers (Qdrant, Redis, InMemory for documents; Redis, SQLite, FileSystem, InMemory for conversations)
   - Enhanced semantic search with hybrid scoring
   - Comprehensive API documentation
 

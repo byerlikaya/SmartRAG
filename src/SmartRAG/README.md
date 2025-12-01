@@ -14,7 +14,7 @@ SmartRAG is a comprehensive Retrieval-Augmented Generation (RAG) library that en
 - **On-Premise Ready** - 100% local with Ollama, LM Studio, Whisper.net
 - **Conversation History** - Built-in automatic context management
 - **Universal AI Support** - OpenAI, Anthropic, Gemini, Azure, Custom APIs
-- **Enterprise Storage** - Qdrant, Redis, SQLite, FileSystem, In-Memory
+- **Enterprise Storage** - Qdrant, Redis, InMemory (documents); Redis, SQLite, FileSystem, InMemory (conversations)
 
 ## Getting Started
 
@@ -34,7 +34,7 @@ dotnet add package SmartRAG
 
 ```csharp
 // Program.cs
-builder.Services.AddSmartRAG(builder.Configuration);
+builder.Services.AddSmartRag(builder.Configuration);
 ```
 
 ### Configuration
@@ -131,8 +131,9 @@ var answer = await documentSearchService.QueryIntelligenceAsync(
 
 **Databases:** SQL Server, MySQL, PostgreSQL, SQLite  
 **Documents:** PDF, Word, Excel, PowerPoint, Images, Audio  
-**AI Models:** OpenAI, Anthropic, Ollama (local), LM Studio  
-**Vector Stores:** Qdrant, Redis, SQLite, InMemory
+**AI Models:** OpenAI, Anthropic, Gemini, Azure OpenAI, Ollama (local), LM Studio  
+**Vector Stores:** Qdrant, Redis, InMemory  
+**Conversation Storage:** Redis, SQLite, FileSystem, InMemory (independent from document storage)
 
 ## Comparison with Other RAG Libraries
 
