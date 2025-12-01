@@ -12,7 +12,7 @@ redirect_from: /tr/changelog.html
 
 Bu sayfa taşındı. Lütfen [Değişiklikler Ana Sayfası]({{ site.baseurl }}/tr/changelog/)'nı ziyaret edin.
 
-## [3.3.0] - 2025-11-28
+## [3.3.0] - 2025-12-01
 
 ### Redis Vector Search & Storage İyileştirmeleri
 

@@ -13,7 +13,7 @@ All releases and changes to SmartRAG are documented here.
     <div class="accordion-item">
         <h2 class="accordion-header" id="headingversion330">
             <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion330" aria-expanded="true" aria-controls="collapseversion330">
-                <strong>v3.3.0</strong> - 2025-11-28
+                <strong>v3.3.0</strong> - 2025-12-01
             </button>
         </h2>
         <div id="collapseversion330" class="accordion-collapse collapse show" aria-labelledby="headingversion330" >
