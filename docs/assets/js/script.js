@@ -538,6 +538,9 @@ function wrapGettingStartedSections() {
             const wrapper = document.createElement('div');
             wrapper.className = 'config-section';
             
+            // Add h2 to wrapper first
+            wrapper.appendChild(h2.cloneNode(true));
+            
             let nextSibling = h2.nextSibling;
             const elementsToWrap = [];
             
@@ -555,8 +558,8 @@ function wrapGettingStartedSections() {
                         nextSibling.closest('.card')) {
                         break;
                     }
-                    // For examples page, stop at h3 headings (they will be wrapped separately)
-                    if (isExamplesPage && tagName === 'h3') {
+                    // For examples page and migration guides page, stop at h3 headings (they will be wrapped separately)
+                    if ((isExamplesPage || window.location.pathname.includes('/migration-guides')) && tagName === 'h3') {
                         break;
                     }
                     if (tagName === 'h2' || tagName === 'hr' || 
@@ -573,15 +576,16 @@ function wrapGettingStartedSections() {
                 nextSibling = nextSibling.nextSibling;
             }
             
-            if (elementsToWrap.length > 0) {
-                elementsToWrap.forEach(el => wrapper.appendChild(el));
-                h2.parentNode.insertBefore(wrapper, h2.nextSibling);
-            }
+            // Add all elements to wrapper
+            elementsToWrap.forEach(el => wrapper.appendChild(el));
+            
+            // Replace h2 with wrapper
+            h2.parentNode.replaceChild(wrapper, h2);
         }
     });
     
-    // For examples page, also wrap h3 headings
-    if (window.location.pathname.includes('/examples')) {
+    // For examples page and migration guides page, also wrap h3 headings
+    if (window.location.pathname.includes('/examples') || window.location.pathname.includes('/migration-guides')) {
         const h3Elements = main.querySelectorAll('h3');
         h3Elements.forEach(h3 => {
             // Skip if inside accordion-body, config-section-accordion, or any accordion-related element (version history page)
@@ -607,8 +611,12 @@ function wrapGettingStartedSections() {
             const wrapper = document.createElement('div');
             wrapper.className = 'config-section';
             
+            // Add h3 to wrapper first
+            wrapper.appendChild(h3.cloneNode(true));
+            
             let nextSibling = h3.nextSibling;
             const elementsToWrap = [];
+            const isMigrationGuidesPage = window.location.pathname.includes('/migration-guides');
             
             while (nextSibling) {
                 if (nextSibling.nodeType === Node.ELEMENT_NODE) {
@@ -617,6 +625,10 @@ function wrapGettingStartedSections() {
                     if (nextSibling.classList.contains('no-config-section')) {
                         nextSibling = nextSibling.nextSibling;
                         continue;
+                    }
+                    // For migration guides page, stop at h3 (next migration section) or hr
+                    if (isMigrationGuidesPage && (tagName === 'h3' || tagName === 'hr')) {
+                        break;
                     }
                     if (tagName === 'h2' || tagName === 'h3' || tagName === 'hr' || 
                         nextSibling.classList.contains('row') ||
@@ -633,10 +645,11 @@ function wrapGettingStartedSections() {
                 nextSibling = nextSibling.nextSibling;
             }
             
-            if (elementsToWrap.length > 0) {
-                elementsToWrap.forEach(el => wrapper.appendChild(el));
-                h3.parentNode.insertBefore(wrapper, h3.nextSibling);
-            }
+            // Add all elements to wrapper
+            elementsToWrap.forEach(el => wrapper.appendChild(el));
+            
+            // Replace h3 with wrapper
+            h3.parentNode.replaceChild(wrapper, h3);
         });
     }
 }
@@ -801,6 +814,13 @@ function addCopyButtons() {
     
     codeBlocks.forEach((codeBlock) => {
         const pre = codeBlock.parentElement;
+        // Find the code-panel container (if exists)
+        const codePanel = pre.closest('.code-panel');
+        // Find highlighter-rouge or highlight container (for non-code-panel blocks)
+        const highlightContainer = pre.closest('.highlighter-rouge, .highlight');
+        // Determine the best container: code-panel > highlight container > pre
+        const container = codePanel || highlightContainer || pre;
+        
         const button = document.createElement('button');
         button.className = 'copy-code-btn';
         button.innerHTML = '<i class="fas fa-copy"></i>';
@@ -822,8 +842,17 @@ function addCopyButtons() {
             }
         });
         
-        pre.style.position = 'relative';
-        pre.appendChild(button);
+        // Add button to the appropriate container
+        if (codePanel) {
+            codePanel.style.position = 'relative';
+            codePanel.appendChild(button);
+        } else if (highlightContainer) {
+            // highlightContainer already has position: relative from CSS
+            highlightContainer.appendChild(button);
+        } else {
+            pre.style.position = 'relative';
+            pre.appendChild(button);
+        }
     });
 }
 
