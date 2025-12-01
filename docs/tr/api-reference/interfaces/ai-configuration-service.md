@@ -15,13 +15,28 @@ Daha iyi SRP için yapılandırma yürütmeden ayrıldı.
 
 #### Metodlar
 
+##### GetAIProviderConfig
+
+Şu anda yapılandırılmış sağlayıcı için AI sağlayıcı yapılandırmasını alır.
+
 ```csharp
-AIProvider GetProvider();
-string GetModel();
-string GetEmbeddingModel();
-int GetMaxTokens();
-double GetTemperature();
+AIProviderConfig? GetAIProviderConfig()
 ```
+
+**Döndürür:** AI sağlayıcı yapılandırması veya yapılandırılmamışsa null
+
+##### GetProviderConfig
+
+Belirli bir sağlayıcı için AI sağlayıcı yapılandırmasını alır.
+
+```csharp
+AIProviderConfig? GetProviderConfig(AIProvider provider)
+```
+
+**Parametreler:**
+- `provider` (AIProvider): Yapılandırması alınacak AI sağlayıcı
+
+**Döndürür:** AI sağlayıcı yapılandırması veya bulunamazsa null
 
 
 ## İlgili Arayüzler

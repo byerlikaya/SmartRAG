@@ -13,10 +13,58 @@ lang: tr
 
 #### Metodlar
 
+##### NormalizeText
+
+Daha iyi arama eşleştirmesi için metni normalleştirir (Unicode encoding sorunlarını ele alır).
+
 ```csharp
-string NormalizeText(string text);
-string RemoveExtraWhitespace(string text);
+string NormalizeText(string text)
 ```
+
+**Parametreler:**
+- `text` (string): Normalleştirilecek metin
+
+**Döndürür:** Normalleştirilmiş metin
+
+##### NormalizeForMatching
+
+Eşleştirme amaçlı metni normalleştirir (kontrol karakterlerini kaldırır ve boşlukları normalleştirir).
+
+```csharp
+string NormalizeForMatching(string value)
+```
+
+**Parametreler:**
+- `value` (string): Normalleştirilecek metin
+
+**Döndürür:** Normalleştirilmiş metin
+
+##### ContainsNormalizedName
+
+İçeriğin normalleştirilmiş isim içerip içermediğini kontrol eder (encoding sorunlarını ele alır).
+
+```csharp
+bool ContainsNormalizedName(string content, string searchName)
+```
+
+**Parametreler:**
+- `content` (string): Aranacak içerik
+- `searchName` (string): Aranacak isim
+
+**Döndürür:** İçerikte isim bulunursa true
+
+##### SanitizeForLog
+
+Güvenli loglama için kullanıcı girdisini temizler (kontrol karakterlerini kaldırır ve uzunluğu sınırlar).
+
+```csharp
+string SanitizeForLog(string input)
+```
+
+**Parametreler:**
+- `input` (string): Temizlenecek girdi
+
+**Döndürür:** Temizlenmiş girdi
 
 
 ## İlgili Arayüzler

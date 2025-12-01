@@ -14,13 +14,28 @@ Separated configuration from execution for better SRP.
 
 #### Methods
 
+##### GetAIProviderConfig
+
+Gets AI provider configuration for the currently configured provider.
+
 ```csharp
-AIProvider GetProvider();
-string GetModel();
-string GetEmbeddingModel();
-int GetMaxTokens();
-double GetTemperature();
+AIProviderConfig? GetAIProviderConfig()
 ```
+
+**Returns:** AI provider configuration or null if not configured
+
+##### GetProviderConfig
+
+Gets AI provider configuration for a specific provider.
+
+```csharp
+AIProviderConfig? GetProviderConfig(AIProvider provider)
+```
+
+**Parameters:**
+- `provider` (AIProvider): AI provider to get configuration for
+
+**Returns:** AI provider configuration or null if not found
 
 
 ## Related Interfaces

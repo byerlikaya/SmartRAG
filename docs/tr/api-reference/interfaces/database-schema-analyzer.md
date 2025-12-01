@@ -46,19 +46,6 @@ Console.WriteLine($"Tablo Sayısı: {schemaInfo.Tables.Count}");
 Console.WriteLine($"AI Özeti: {schemaInfo.AISummary}");
 ```
 
-##### RefreshSchemaAsync
-
-Belirli bir veritabanı için şema bilgilerini yeniler.
-
-```csharp
-Task<DatabaseSchemaInfo> RefreshSchemaAsync(string databaseId)
-```
-
-**Parametreler:**
-- `databaseId` (string): Veritabanı tanımlayıcısı
-
-**Dönen Değer:** Güncellenmiş şema bilgisi
-
 ##### GetAllSchemasAsync
 
 Tüm analiz edilmiş veritabanı şemalarını alır.
@@ -81,33 +68,6 @@ Task<DatabaseSchemaInfo> GetSchemaAsync(string databaseId)
 - `databaseId` (string): Veritabanı tanımlayıcısı
 
 **Dönen Değer:** Veritabanı şema bilgisi veya bulunamazsa null
-
-##### GetSchemasNeedingRefreshAsync
-
-Yapılandırılmış aralıklara göre herhangi bir şemanın yenilenmesi gerekip gerekmediğini kontrol eder.
-
-```csharp
-Task<List<string>> GetSchemasNeedingRefreshAsync()
-```
-
-**Dönen Değer:** Şema yenilemesi gereken veritabanı ID'lerinin listesi
-
-**Örnek:**
-
-```csharp
-var databasesNeedingRefresh = await _schemaAnalyzer.GetSchemasNeedingRefreshAsync();
-
-if (databasesNeedingRefresh.Any())
-{
-    Console.WriteLine($"Yenilenmesi gereken veritabanları: {string.Join(", ", databasesNeedingRefresh)}");
-    
-    foreach (var dbId in databasesNeedingRefresh)
-    {
-        await _schemaAnalyzer.RefreshSchemaAsync(dbId);
-        Console.WriteLine($"{dbId} şeması yenilendi");
-    }
-}
-```
 
 ##### GenerateAISummaryAsync
 

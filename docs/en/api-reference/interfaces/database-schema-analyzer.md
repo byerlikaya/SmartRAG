@@ -46,19 +46,6 @@ Console.WriteLine($"Total Rows: {schemaInfo.TotalRowCount:N0}");
 Console.WriteLine($"AI Summary: {schemaInfo.AISummary}");
 ```
 
-##### RefreshSchemaAsync
-
-Refreshes schema information for a specific database.
-
-```csharp
-Task<DatabaseSchemaInfo> RefreshSchemaAsync(string databaseId)
-```
-
-**Parameters:**
-- `databaseId` (string): Database identifier
-
-**Returns:** Updated schema information
-
 ##### GetAllSchemasAsync
 
 Gets all analyzed database schemas.
@@ -81,32 +68,6 @@ Task<DatabaseSchemaInfo> GetSchemaAsync(string databaseId)
 - `databaseId` (string): Database identifier
 
 **Returns:** Database schema information or null if not found
-
-##### GetSchemasNeedingRefreshAsync
-
-Checks if any schemas need refresh based on configured intervals.
-
-```csharp
-Task<List<string>> GetSchemasNeedingRefreshAsync()
-```
-
-**Returns:** List of database IDs that need schema refresh
-
-**Example:**
-
-```csharp
-var needsRefresh = await _schemaAnalyzer.GetSchemasNeedingRefreshAsync();
-
-if (needsRefresh.Any())
-{
-    Console.WriteLine($"Databases needing refresh: {string.Join(", ", needsRefresh)}");
-    
-    foreach (var databaseId in needsRefresh)
-    {
-        await _schemaAnalyzer.RefreshSchemaAsync(databaseId);
-    }
-}
-```
 
 ##### GenerateAISummaryAsync
 

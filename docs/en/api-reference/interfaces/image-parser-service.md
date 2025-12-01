@@ -63,7 +63,7 @@ Task<OcrResult> ExtractTextWithConfidenceAsync(
 - `imageStream` (Stream): The image stream to process
 - `language` (string, optional): Language code for OCR (default: "eng")
 
-**Returns:** `OcrResult` with extracted text, confidence scores, and text blocks
+**Returns:** `OcrResult` with extracted text, confidence score, processing time, word count, and language
 
 **Example:**
 
@@ -75,13 +75,11 @@ var result = await _imageParser.ExtractTextWithConfidenceAsync(
     language: "eng"
 );
 
-Console.WriteLine($"Text: {result.ExtractedText}");
+Console.WriteLine($"Text: {result.Text}");
 Console.WriteLine($"Confidence: {result.Confidence:P}");
-
-foreach (var block in result.TextBlocks)
-{
-    Console.WriteLine($"Block: {block.Text} (Confidence: {block.Confidence:P})");
-}
+Console.WriteLine($"Processing Time: {result.ProcessingTimeMs}ms");
+Console.WriteLine($"Word Count: {result.WordCount}");
+Console.WriteLine($"Language: {result.Language}");
 ```
 
 ##### PreprocessImageAsync
@@ -116,6 +114,20 @@ var text = await _imageParser.ExtractTextFromImageAsync(
 
 Console.WriteLine($"Text from preprocessed image: {text}");
 ```
+
+##### CorrectCurrencySymbols
+
+Corrects currency symbol misreads in text (e.g., % → ₺, $, €).
+
+```csharp
+string CorrectCurrencySymbols(string text, string language = null)
+```
+
+**Parameters:**
+- `text` (string): Text to correct
+- `language` (string, optional): Language code for context (optional, used for logging)
+
+**Returns:** Text with corrected currency symbols
 
 **Supported Image Formats:**
 - JPEG, PNG, GIF, BMP, TIFF, WEBP

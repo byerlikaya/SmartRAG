@@ -60,19 +60,6 @@ Validates all configured connections.
 Task<Dictionary<string, bool>> ValidateAllConnectionsAsync()
 ```
 
-**Returns:** Dictionary of database IDs and their validation status (true = valid, false = invalid)
-
-**Example:**
-
-```csharp
-var validationResults = await _connectionManager.ValidateAllConnectionsAsync();
-
-foreach (var (databaseId, isValid) in validationResults)
-{
-    Console.WriteLine($"{databaseId}: {(isValid ? "Valid" : "Invalid")}");
-}
-```
-
 ##### ValidateConnectionAsync
 
 Validates a specific connection.
@@ -98,45 +85,6 @@ Task<string> GetDatabaseIdAsync(DatabaseConnectionConfig connectionConfig)
 - `connectionConfig` (DatabaseConnectionConfig): Connection configuration
 
 **Returns:** Unique database identifier
-
-##### AddConnectionAsync
-
-Adds a new database connection at runtime.
-
-```csharp
-Task<string> AddConnectionAsync(DatabaseConnectionConfig connectionConfig)
-```
-
-**Parameters:**
-- `connectionConfig` (DatabaseConnectionConfig): Connection configuration
-
-**Returns:** Generated database identifier
-
-**Example:**
-
-```csharp
-var config = new DatabaseConnectionConfig
-{
-    Name = "SalesDB",
-    ConnectionString = "Server=localhost;Database=Sales;Trusted_Connection=true;",
-    DatabaseType = DatabaseType.SqlServer,
-    Enabled = true
-};
-
-var databaseId = await _connectionManager.AddConnectionAsync(config);
-Console.WriteLine($"Added database with ID: {databaseId}");
-```
-
-##### RemoveConnectionAsync
-
-Removes a database connection.
-
-```csharp
-Task RemoveConnectionAsync(string databaseId)
-```
-
-**Parameters:**
-- `databaseId` (string): Database identifier to remove
 
 
 ## Related Interfaces

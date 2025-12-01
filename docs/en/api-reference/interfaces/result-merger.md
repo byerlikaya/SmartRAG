@@ -14,9 +14,41 @@ AI-powered result merging.
 
 #### Methods
 
+##### MergeResultsAsync
+
+Merges results from multiple databases into a coherent response.
+
 ```csharp
-Task<string> MergeResultsAsync(MultiDatabaseQueryResult queryResult, string userQuery);
+Task<string> MergeResultsAsync(
+    MultiDatabaseQueryResult queryResults, 
+    string originalQuery
+)
 ```
+
+**Parameters:**
+- `queryResults` (MultiDatabaseQueryResult): Results from multiple databases
+- `originalQuery` (string): Original user query
+
+**Returns:** Merged and ranked results as formatted string
+
+##### GenerateFinalAnswerAsync
+
+Generates final AI answer from merged database results.
+
+```csharp
+Task<RagResponse> GenerateFinalAnswerAsync(
+    string userQuery, 
+    string mergedData, 
+    MultiDatabaseQueryResult queryResults
+)
+```
+
+**Parameters:**
+- `userQuery` (string): Original user query
+- `mergedData` (string): Merged data from databases
+- `queryResults` (MultiDatabaseQueryResult): Query results
+
+**Returns:** RAG response with AI-generated answer
 
 
 ## Related Interfaces

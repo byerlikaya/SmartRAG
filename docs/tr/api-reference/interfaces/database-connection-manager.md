@@ -9,7 +9,7 @@ lang: tr
 
 **Amaç:** Konfigürasyondan veritabanı bağlantılarını yönetir
 
-**Namespace:** `SmartRAG.Interfaces.Document`
+**Namespace:** `SmartRAG.Interfaces.Database`
 
 Veritabanı bağlantı yaşam döngüsü, doğrulama ve runtime yönetimini ele alır.
 
@@ -53,27 +53,6 @@ Task<DatabaseConnectionConfig> GetConnectionAsync(string databaseId)
 
 **Dönen Değer:** Bağlantı yapılandırması veya bulunamazsa null
 
-##### ValidateAllConnectionsAsync
-
-Konfigüre edilmiş tüm bağlantıları doğrular.
-
-```csharp
-Task<Dictionary<string, bool>> ValidateAllConnectionsAsync()
-```
-
-**Döndürür:** Veritabanı ID'leri ve doğrulama durumları sözlüğü
-
-**Örnek:**
-
-```csharp
-var validationResults = await _connectionManager.ValidateAllConnectionsAsync();
-
-foreach (var (databaseId, isValid) in validationResults)
-{
-    Console.WriteLine($"{databaseId}: {(isValid ? "Geçerli" : "Geçersiz")}");
-}
-```
-
 ##### ValidateConnectionAsync
 
 Belirli bir bağlantıyı doğrular.
@@ -89,61 +68,16 @@ Task<bool> ValidateConnectionAsync(string databaseId)
 
 ##### GetDatabaseIdAsync
 
-Bağlantı dizesinden veritabanı ID'sini alır.
+Bağlantıdan veritabanı ID'sini alır (Name belirtilmemişse otomatik oluşturur).
 
 ```csharp
-string GetDatabaseIdAsync(string connectionString)
+Task<string> GetDatabaseIdAsync(DatabaseConnectionConfig connectionConfig)
 ```
 
 **Parametreler:**
-- `connectionString` (string): Veritabanı bağlantı dizesi
+- `connectionConfig` (DatabaseConnectionConfig): Bağlantı yapılandırması
 
-**Dönen Değer:** Veritabanı ID'si
-
-##### AddConnectionAsync
-
-Runtime'da yeni bir bağlantı ekler.
-
-```csharp
-Task<bool> AddConnectionAsync(DatabaseConnectionConfig config)
-```
-
-**Parametreler:**
-- `config` (DatabaseConnectionConfig): Yeni bağlantı yapılandırması
-
-**Dönen Değer:** Başarılıysa true, aksi takdirde false
-
-**Örnek:**
-
-```csharp
-var newConfig = new DatabaseConnectionConfig
-{
-    Name = "NewDatabase",
-    ConnectionString = "Server=localhost;Database=NewDb;Trusted_Connection=true;",
-    DatabaseType = DatabaseType.SqlServer,
-    Description = "Yeni veritabanı",
-    Enabled = true
-};
-
-bool success = await _connectionManager.AddConnectionAsync(newConfig);
-if (success)
-{
-    Console.WriteLine("Yeni bağlantı eklendi");
-}
-```
-
-##### RemoveConnectionAsync
-
-Runtime'da bir bağlantıyı kaldırır.
-
-```csharp
-Task<bool> RemoveConnectionAsync(string databaseId)
-```
-
-**Parametreler:**
-- `databaseId` (string): Kaldırılacak veritabanı ID'si
-
-**Dönen Değer:** Başarılıysa true, aksi takdirde false
+**Dönen Değer:** Benzersiz veritabanı tanımlayıcısı
 
 
 ## İlgili Arayüzler

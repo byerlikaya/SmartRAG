@@ -14,10 +14,58 @@ Handles AI requests with automatic retry and fallback logic.
 
 #### Methods
 
+##### GenerateResponseAsync
+
+Generates a response using the specified provider.
+
 ```csharp
-Task<string> ExecuteRequestAsync(string prompt, CancellationToken cancellationToken = default);
-Task<List<float>> ExecuteEmbeddingRequestAsync(string text, CancellationToken cancellationToken = default);
+Task<string> GenerateResponseAsync(
+    AIProvider provider, 
+    string query, 
+    IEnumerable<string> context
+)
 ```
+
+**Parameters:**
+- `provider` (AIProvider): AI provider to use
+- `query` (string): User query
+- `context` (IEnumerable<string>): Context strings
+
+**Returns:** AI-generated text response
+
+##### GenerateEmbeddingsAsync
+
+Generates embeddings using the specified provider.
+
+```csharp
+Task<List<float>> GenerateEmbeddingsAsync(
+    AIProvider provider, 
+    string text
+)
+```
+
+**Parameters:**
+- `provider` (AIProvider): AI provider to use
+- `text` (string): Text to generate embedding for
+
+**Returns:** Embedding vector
+
+##### GenerateEmbeddingsBatchAsync
+
+Generates batch embeddings using the specified provider.
+
+```csharp
+Task<List<List<float>>> GenerateEmbeddingsBatchAsync(
+    AIProvider provider, 
+    IEnumerable<string> texts
+)
+```
+
+**Parameters:**
+- `provider` (AIProvider): AI provider to use
+- `texts` (IEnumerable<string>): Collection of texts
+
+**Returns:** List of embedding vectors
 
 
 ## Related Interfaces

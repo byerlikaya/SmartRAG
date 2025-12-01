@@ -15,12 +15,55 @@ Daha iyi SRP uyumu için `IDocumentRepository`'den ayrıldı.
 
 #### Metodlar
 
+##### GetConversationHistoryAsync
+
+Bir oturum için konuşma geçmişini alır.
+
 ```csharp
-Task<string> GetConversationHistoryAsync(string sessionId);
-Task SaveConversationAsync(string sessionId, string history);
-Task DeleteConversationAsync(string sessionId);
-Task<bool> ConversationExistsAsync(string sessionId);
+Task<string> GetConversationHistoryAsync(string sessionId)
 ```
+
+**Parametreler:**
+- `sessionId` (string): Oturum tanımlayıcısı
+
+**Döndürür:** Formatlanmış string olarak konuşma geçmişi
+
+##### AddToConversationAsync
+
+Oturum geçmişine bir konuşma turu ekler.
+
+```csharp
+Task AddToConversationAsync(string sessionId, string question, string answer)
+```
+
+**Parametreler:**
+- `sessionId` (string): Oturum tanımlayıcısı
+- `question` (string): Kullanıcı sorusu
+- `answer` (string): Asistan cevabı
+
+##### ClearConversationAsync
+
+Bir oturum için konuşma geçmişini temizler.
+
+```csharp
+Task ClearConversationAsync(string sessionId)
+```
+
+**Parametreler:**
+- `sessionId` (string): Oturum tanımlayıcısı
+
+##### SessionExistsAsync
+
+Bir oturumun var olup olmadığını kontrol eder.
+
+```csharp
+Task<bool> SessionExistsAsync(string sessionId)
+```
+
+**Parametreler:**
+- `sessionId` (string): Oturum tanımlayıcısı
+
+**Döndürür:** Oturum varsa true, aksi takdirde false
 
 #### Uygulamalar
 

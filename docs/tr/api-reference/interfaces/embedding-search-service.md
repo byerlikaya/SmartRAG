@@ -15,9 +15,24 @@ Temel embedding arama işlevselliği.
 
 #### Metodlar
 
+##### SearchByEmbeddingAsync
+
+Doküman chunk'larında embedding tabanlı arama yapar.
+
 ```csharp
-Task<List<DocumentChunk>> SearchByEmbeddingAsync(List<float> queryEmbedding, int maxResults = 5);
+Task<List<DocumentChunk>> SearchByEmbeddingAsync(
+    string query, 
+    List<DocumentChunk> allChunks, 
+    int maxResults
+)
 ```
+
+**Parametreler:**
+- `query` (string): Arama sorgusu
+- `allChunks` (List<DocumentChunk>): Tüm mevcut doküman chunk'ları
+- `maxResults` (int): Döndürülecek maksimum sonuç sayısı
+
+**Döndürür:** İlgili skora göre sıralanmış ilgili doküman chunk'ları listesi
 
 
 ## İlgili Arayüzler

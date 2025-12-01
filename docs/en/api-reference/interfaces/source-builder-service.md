@@ -14,9 +14,22 @@ Constructs `SearchSource` objects from chunks.
 
 #### Methods
 
+##### BuildSourcesAsync
+
+Builds search sources from document chunks.
+
 ```csharp
-List<SearchSource> BuildSources(List<DocumentChunk> chunks);
+Task<List<SearchSource>> BuildSourcesAsync(
+    List<DocumentChunk> chunks, 
+    IDocumentRepository documentRepository
+)
 ```
+
+**Parameters:**
+- `chunks` (List<DocumentChunk>): Document chunks to build sources from
+- `documentRepository` (IDocumentRepository): Repository for document operations
+
+**Returns:** List of search sources with metadata
 
 
 ## Related Interfaces

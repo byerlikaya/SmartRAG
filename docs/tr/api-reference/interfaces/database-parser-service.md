@@ -50,19 +50,6 @@ var content = await _databaseService.ParseDatabaseConnectionAsync(
 );
 ```
 
-#### ExtractTableDataAsync
-
-Belirli bir tablodan veri çıkarın.
-
-```csharp
-Task<string> ExtractTableDataAsync(
-    string connectionString, 
-    string tableName, 
-    DatabaseType databaseType, 
-    int maxRows = 1000
-)
-```
-
 #### ExecuteQueryAsync
 
 Özel SQL sorgusu çalıştırın.
@@ -94,18 +81,6 @@ Veritabanından tablo isimlerinin listesini alın.
 ```csharp
 Task<List<string>> GetTableNamesAsync(
     string connectionString, 
-    DatabaseType databaseType
-)
-```
-
-#### GetTableSchemaAsync
-
-Belirli bir tablo için şema bilgilerini alın.
-
-```csharp
-Task<string> GetTableSchemaAsync(
-    string connectionString, 
-    string tableName, 
     DatabaseType databaseType
 )
 ```
@@ -151,13 +126,7 @@ Desteklenen veritabanı dosya uzantılarının listesini alın.
 IEnumerable<string> GetSupportedDatabaseFileExtensions()
 ```
 
-#### ClearMemoryCache
-
-Bellek önbelleğini temizleyin.
-
-```csharp
-void ClearMemoryCache()
-```
+**Döndürür:** `.db`, `.sqlite`, `.sqlite3`
 
 
 ## İlgili Arayüzler

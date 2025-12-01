@@ -14,9 +14,24 @@ Core embedding search functionality.
 
 #### Methods
 
+##### SearchByEmbeddingAsync
+
+Performs embedding-based search on document chunks.
+
 ```csharp
-Task<List<DocumentChunk>> SearchByEmbeddingAsync(List<float> queryEmbedding, int maxResults = 5);
+Task<List<DocumentChunk>> SearchByEmbeddingAsync(
+    string query, 
+    List<DocumentChunk> allChunks, 
+    int maxResults
+)
 ```
+
+**Parameters:**
+- `query` (string): Search query
+- `allChunks` (List<DocumentChunk>): All available document chunks
+- `maxResults` (int): Maximum number of results to return
+
+**Returns:** List of relevant document chunks sorted by relevance
 
 
 ## Related Interfaces

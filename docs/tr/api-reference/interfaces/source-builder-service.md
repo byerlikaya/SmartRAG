@@ -15,9 +15,22 @@ Chunk'lardan `SearchSource` nesneleri oluşturur.
 
 #### Metodlar
 
+##### BuildSourcesAsync
+
+Doküman chunk'larından arama kaynakları oluşturur.
+
 ```csharp
-List<SearchSource> BuildSources(List<DocumentChunk> chunks);
+Task<List<SearchSource>> BuildSourcesAsync(
+    List<DocumentChunk> chunks, 
+    IDocumentRepository documentRepository
+)
 ```
+
+**Parametreler:**
+- `chunks` (List<DocumentChunk>): Kaynak oluşturulacak doküman chunk'ları
+- `documentRepository` (IDocumentRepository): Doküman işlemleri için repository
+
+**Döndürür:** Metadata ile arama kaynakları listesi
 
 
 ## İlgili Arayüzler

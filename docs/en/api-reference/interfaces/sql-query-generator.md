@@ -14,10 +14,18 @@ Uses `ISqlDialectStrategy` for database-specific SQL.
 
 #### Methods
 
+##### GenerateDatabaseQueriesAsync
+
+Generates optimized SQL queries for each database based on intent.
+
 ```csharp
-Task<string> GenerateSqlAsync(string userQuery, DatabaseSchemaInfo schema, DatabaseType databaseType);
-bool ValidateSql(string sql, DatabaseSchemaInfo schema, out string errorMessage);
+Task<QueryIntent> GenerateDatabaseQueriesAsync(QueryIntent queryIntent)
 ```
+
+**Parameters:**
+- `queryIntent` (QueryIntent): Query intent to generate SQL for
+
+**Returns:** Updated `QueryIntent` with generated SQL queries
 
 
 ## Related Interfaces

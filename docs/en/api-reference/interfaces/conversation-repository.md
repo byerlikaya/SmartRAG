@@ -14,12 +14,55 @@ Separated from `IDocumentRepository` for better SRP compliance.
 
 #### Methods
 
+##### GetConversationHistoryAsync
+
+Gets conversation history for a session.
+
 ```csharp
-Task<string> GetConversationHistoryAsync(string sessionId);
-Task SaveConversationAsync(string sessionId, string history);
-Task DeleteConversationAsync(string sessionId);
-Task<bool> ConversationExistsAsync(string sessionId);
+Task<string> GetConversationHistoryAsync(string sessionId)
 ```
+
+**Parameters:**
+- `sessionId` (string): Session identifier
+
+**Returns:** Conversation history as formatted string
+
+##### AddToConversationAsync
+
+Adds a conversation turn to the session.
+
+```csharp
+Task AddToConversationAsync(string sessionId, string question, string answer)
+```
+
+**Parameters:**
+- `sessionId` (string): Session identifier
+- `question` (string): User question
+- `answer` (string): Assistant answer
+
+##### ClearConversationAsync
+
+Clears conversation history for a session.
+
+```csharp
+Task ClearConversationAsync(string sessionId)
+```
+
+**Parameters:**
+- `sessionId` (string): Session identifier
+
+##### SessionExistsAsync
+
+Checks if a session exists.
+
+```csharp
+Task<bool> SessionExistsAsync(string sessionId)
+```
+
+**Parameters:**
+- `sessionId` (string): Session identifier
+
+**Returns:** True if session exists, false otherwise
 
 #### Implementations
 

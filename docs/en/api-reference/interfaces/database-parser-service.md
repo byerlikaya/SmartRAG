@@ -58,19 +58,6 @@ var content = await _databaseService.ParseDatabaseConnectionAsync(
 );
 ```
 
-#### ExtractTableDataAsync
-
-Extract data from a specific table.
-
-```csharp
-Task<string> ExtractTableDataAsync(
-    string connectionString, 
-    string tableName, 
-    DatabaseType databaseType, 
-    int maxRows = 1000
-)
-```
-
 #### ExecuteQueryAsync
 
 Execute custom SQL query.
@@ -102,18 +89,6 @@ Get list of table names from database.
 ```csharp
 Task<List<string>> GetTableNamesAsync(
     string connectionString, 
-    DatabaseType databaseType
-)
-```
-
-#### GetTableSchemaAsync
-
-Get schema information for a specific table.
-
-```csharp
-Task<string> GetTableSchemaAsync(
-    string connectionString, 
-    string tableName, 
     DatabaseType databaseType
 )
 ```
@@ -166,14 +141,6 @@ IEnumerable<string> GetSupportedDatabaseFileExtensions()
 ```
 
 **Returns:** `.db`, `.sqlite`, `.sqlite3`
-
-#### ClearMemoryCache
-
-Clear memory cache and dispose resources.
-
-```csharp
-void ClearMemoryCache()
-```
 
 
 ## Related Interfaces

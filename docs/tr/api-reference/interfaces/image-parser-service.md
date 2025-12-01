@@ -60,7 +60,7 @@ Task<OcrResult> ExtractTextWithConfidenceAsync(
 - `imageStream` (Stream): İşlenecek görüntü akışı
 - `language` (string, isteğe bağlı): OCR için dil kodu (varsayılan: "eng")
 
-**Döndürür:** Çıkarılan metin, güven skorları ve metin bloklarıyla `OcrResult`
+**Döndürür:** Çıkarılan metin, güven skoru, işleme süresi, kelime sayısı ve dil ile `OcrResult`
 
 **Örnek:**
 
@@ -72,8 +72,11 @@ var result = await _imageParser.ExtractTextWithConfidenceAsync(
     language: "tur"
 );
 
-Console.WriteLine($"Metin: {result.ExtractedText}");
+Console.WriteLine($"Metin: {result.Text}");
 Console.WriteLine($"Güven: {result.Confidence:P}");
+Console.WriteLine($"İşleme Süresi: {result.ProcessingTimeMs}ms");
+Console.WriteLine($"Kelime Sayısı: {result.WordCount}");
+Console.WriteLine($"Dil: {result.Language}");
 ```
 
 ##### PreprocessImageAsync
@@ -102,9 +105,29 @@ using var originalStream = File.OpenRead("dusuk-kalite.jpg");
 
 var preprocessedStream = await _imageParser.PreprocessImageAsync(originalStream);
 
-var result = await _imageParser.ExtractTextFromImageAsync(preprocessedStream);
-Console.WriteLine($"Ön işleme sonrası metin: {result}");
+var text = await _imageParser.ExtractTextFromImageAsync(
+    preprocessedStream, 
+    language: "tur"
+);
+Console.WriteLine($"Ön işleme sonrası metin: {text}");
 ```
+
+##### CorrectCurrencySymbols
+
+Metindeki para birimi sembolü yanlış okumalarını düzeltir (örn. % → ₺, $, €).
+
+```csharp
+string CorrectCurrencySymbols(string text, string language = null)
+```
+
+**Parametreler:**
+- `text` (string): Düzeltilecek metin
+- `language` (string, isteğe bağlı): Bağlam için dil kodu (isteğe bağlı, loglama için kullanılır)
+
+**Döndürür:** Düzeltilmiş para birimi sembolleri ile metin
+
+**Desteklenen Görüntü Formatları:**
+- JPEG, PNG, GIF, BMP, TIFF, WEBP
 
 
 ## İlgili Arayüzler
