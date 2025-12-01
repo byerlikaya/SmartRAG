@@ -70,36 +70,36 @@ This release enhances Redis vector search capabilities and removes unused storag
   <!-- Package References -->
   <ItemGroup>
     <!-- Microsoft Extensions -->
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.10" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.10" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.10" />
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="9.0.10" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="9.0.10" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.0" />
     
     <!-- HTTP Client -->
-    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.10" />
-    <PackageReference Include="NRedisStack" Version="0.12.0" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
+    <PackageReference Include="Npgsql" Version="8.0.8" />
+    <PackageReference Include="NRedisStack" Version="1.1.1" />
+    <PackageReference Include="Qdrant.Client" Version="1.15.1" />
     
     <!-- JSON Processing -->
-    <PackageReference Include="System.Text.Json" Version="9.0.10" />
+    <PackageReference Include="System.Text.Json" Version="10.0.0" />
     
     <!-- Vector Database Support -->
-    <PackageReference Include="Qdrant.Client" Version="1.15.1" />
     <PackageReference Include="StackExchange.Redis" Version="2.10.1" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.10" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
     
     <!-- Database Connectivity -->
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.3" />
     <PackageReference Include="MySql.Data" Version="9.5.0" />
-    <PackageReference Include="Npgsql" Version="8.0.8" />
     
     <!-- Validation -->
     <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
     <!-- Document Parsing -->
     <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
     <PackageReference Include="itext" Version="9.4.0" />
-    <PackageReference Include="EPPlus" Version="8.2.1" />
+    <PackageReference Include="EPPlus" Version="8.3.1" />
     
     <!-- OCR and Image Processing -->
     <PackageReference Include="Tesseract" Version="5.2.0" />
@@ -107,8 +107,8 @@ This release enhances Redis vector search capabilities and removes unused storag
     
     <!-- Audio Processing -->
     <!-- Whisper.net (Local transcription) -->
-    <PackageReference Include="Whisper.net" Version="1.8.1" />
-    <PackageReference Include="Whisper.net.Runtime" Version="1.8.1" PrivateAssets="All" />
+    <PackageReference Include="Whisper.net" Version="1.9.0" />
+    <PackageReference Include="Whisper.net.Runtime" Version="1.9.0" PrivateAssets="All" />
     <!-- FFMpegCore for cross-platform audio format conversion (MP3, M4A, FLAC → WAV) -->
     <PackageReference Include="FFMpegCore" Version="5.4.0" />
     
