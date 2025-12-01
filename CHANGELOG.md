@@ -8,9 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [3.3.0] - 2025-11-28
+## [3.3.0] - 2025-12-01
 
 ### ✨ Added
+- **ConversationStorageProvider Separation**: Separated conversation storage from document storage
+  - New `ConversationStorageProvider` enum for conversation history storage (Redis, SQLite, FileSystem, InMemory)
+  - `StorageProvider` now only used for document/vector storage (InMemory, Redis, Qdrant)
+  - Independent configuration for conversation and document storage
+  - **Files Modified**:
+    - `src/SmartRAG/Enums/ConversationStorageProvider.cs` - New enum for conversation storage
+    - `src/SmartRAG/Enums/StorageProvider.cs` - Removed conversation-related providers (SQLite, FileSystem)
+    - `src/SmartRAG/Models/SmartRagOptions.cs` - Added ConversationStorageProvider property
+    - `src/SmartRAG/Factories/StorageFactory.cs` - Separate methods for conversation and document repositories
+    - `src/SmartRAG/Interfaces/Storage/IStorageFactory.cs` - Added CreateConversationRepository method
+    - `src/SmartRAG/Services/Support/ConversationManagerService.cs` - Updated to use ConversationStorageProvider
+  - **Benefits**: Clear separation of concerns, independent scaling, better architecture
 - **Redis RediSearch Integration**: Enhanced vector similarity search with RediSearch module support
   - RediSearch module support for advanced vector search capabilities
   - Vector index algorithm configuration (HNSW)
