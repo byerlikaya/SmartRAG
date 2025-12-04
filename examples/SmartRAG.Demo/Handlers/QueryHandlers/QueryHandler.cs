@@ -8,6 +8,7 @@ using SmartRAG.Enums;
 using SmartRAG.Interfaces;
 using SmartRAG.Interfaces.Support;
 using SmartRAG.Models;
+using SmartRAG.Mcp.Integration;
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -369,6 +370,89 @@ public class QueryHandler(
                 _logger.LogError(ex, "Error during conversational chat");
                 _console.WriteError($"Error: {ex.Message}", ex);
             }
+        }
+    }
+
+    public async Task RunMcpQueryAsync(string language)
+    {
+        _console.WriteSectionHeader("🔌 MCP Integration Test");
+
+        var mcpIntegration = _serviceProvider.GetService<IMcpIntegrationService>();
+
+        if (mcpIntegration == null)
+        {
+            _console.WriteWarning("MCP integration service is not available. Ensure Features.EnableMcpClient is true in configuration.");
+            return;
+        }
+
+        try
+        {
+            System.Console.WriteLine("Listing available MCP tools from connected servers...");
+            System.Console.WriteLine();
+
+            var tools = await mcpIntegration.GetAvailableToolsAsync();
+
+            if (tools == null || tools.Count == 0)
+            {
+                _console.WriteWarning("No MCP tools found. Check MCP server configuration and connectivity.");
+                return;
+            }
+
+            var grouped = tools
+                .GroupBy(t => string.IsNullOrWhiteSpace(t.ServerId) ? "Unknown" : t.ServerId)
+                .ToList();
+
+            foreach (var group in grouped)
+            {
+                _console.WriteInfo($"Server: {group.Key}");
+                foreach (var tool in group)
+                {
+                    System.Console.WriteLine($"  • {tool.Name} - {tool.Description}");
+                }
+                System.Console.WriteLine();
+            }
+
+            var serverId = _console.ReadLine("ServerId (exact as listed above): ");
+            var toolName = _console.ReadLine("Tool name: ");
+
+            if (string.IsNullOrWhiteSpace(serverId) || string.IsNullOrWhiteSpace(toolName))
+            {
+                _console.WriteError("ServerId and tool name are required.");
+                return;
+            }
+
+            var query = _console.ReadLine($"Natural language query for MCP tool ({language}): ");
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                _console.WriteError("Empty query entered.");
+                return;
+            }
+
+            var parameters = new Dictionary<string, object>
+            {
+                { "query", query },
+                { "language", language }
+            };
+
+            _console.WriteInfo("Calling MCP tool...");
+
+            var result = await mcpIntegration.CallToolAsync(serverId, toolName, parameters);
+
+            if (!result.IsSuccess)
+            {
+                _console.WriteError($"MCP tool call failed: {result.ErrorMessage}");
+                return;
+            }
+
+            _console.WriteSuccess("MCP Tool Result:");
+            System.Console.WriteLine("─────────────────────────────────────────────────────────────────");
+            System.Console.WriteLine(result.Content);
+            System.Console.WriteLine();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during MCP query");
+            _console.WriteError($"Error: {ex.Message}", ex);
         }
     }
 

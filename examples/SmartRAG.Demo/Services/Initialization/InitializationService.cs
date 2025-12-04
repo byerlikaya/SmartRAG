@@ -227,6 +227,11 @@ public class InitializationService(
             System.Console.WriteLine("   → Building service provider...");
             _serviceProvider = services.BuildServiceProvider();
 
+            if (_serviceProvider != null)
+            {
+                await _serviceProvider.InitializeSmartRagAsync();
+            }
+
             System.Console.WriteLine();
             _console.WriteSuccess("Services initialized successfully");
             System.Console.WriteLine($"  AI Provider: {aiProvider}");

@@ -329,6 +329,15 @@ internal class Program
                         _selectedAIProvider.ToString());
                     break;
 
+                case "17":
+                    if (queryHandler == null)
+                    {
+                        console.WriteError("Query handler is not available.");
+                        break;
+                    }
+                    await queryHandler.RunMcpQueryAsync(_selectedLanguage);
+                    break;
+
                 case "0":
                     return true;
 

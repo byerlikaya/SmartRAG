@@ -42,6 +42,7 @@ public class MenuService(IConsoleService console) : IMenuService
         System.Console.WriteLine("14. 📚 List Uploaded Documents");
         System.Console.WriteLine("15. 🗑️ Clear All Documents");
         System.Console.WriteLine("16. 💬 Conversational Assistant (Databases + Documents + Chat)");
+        System.Console.WriteLine("17. 🔌 MCP Integration (List Tools & Run MCP Query)");
         System.Console.WriteLine("0.  🚪 Exit");
         System.Console.WriteLine();
     }
