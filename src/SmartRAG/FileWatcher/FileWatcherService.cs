@@ -339,7 +339,7 @@ namespace SmartRAG.FileWatcher
                         ["FilePath"] = filePath
                     };
 
-                    var document = await _documentService.UploadDocumentAsync(fileStream, fileName, contentType, config.UserId, null, fileInfo.Length, additionalMetadata);
+                    var document = await _documentService.UploadDocumentAsync(fileStream, fileName, contentType, config.UserId, config.Language, fileInfo.Length, additionalMetadata);
 
                     _logger.LogInformation("Auto-uploaded file: {FilePath} (size: {Size} bytes, hash: {Hash})", filePath, fileInfo.Length, fileHash);
                     return;
