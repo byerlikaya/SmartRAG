@@ -922,8 +922,10 @@ namespace SmartRAG.Services.Document
 
                 if (allNumberedListChunks.Count > 0)
                 {
-                    var chunk0 = finalScoredChunks.FirstOrDefault(c => c.ChunkIndex == 0);
+                    var chunk0 = allNumberedListChunks.FirstOrDefault(c => c.ChunkIndex == 0)
+                        ?? finalScoredChunks.FirstOrDefault(c => c.ChunkIndex == 0);
                     var otherChunks = allNumberedListChunks
+                        .Where(c => c.ChunkIndex != 0)
                         .Concat(relevantChunks.Except(allNumberedListChunks).Where(c => c.ChunkIndex != 0))
                         .Take(maxResults - (chunk0 != null ? 1 : 0))
                         .ToList();
