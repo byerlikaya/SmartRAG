@@ -152,7 +152,7 @@ namespace SmartRAG.Repositories
             var uploadedAtStr = GetPayloadString(payload, "uploadedAt");
             var uploadedBy = GetPayloadString(payload, "uploadedBy");
             var content = GetPayloadString(payload, "content");
-            var idStr = GetPayloadString(payload, "documentId");  // Changed from "id" to "documentId"
+            var idStr = GetPayloadString(payload, "documentId");
 
             long.TryParse(fileSizeStr, NumberStyles.Any, CultureInfo.InvariantCulture, out long fileSize);
 
@@ -174,11 +174,32 @@ namespace SmartRAG.Repositories
             };
         }
 
+        private static Dictionary<string, object> ExtractAdditionalMetadata(Google.Protobuf.Collections.MapField<string, Value> payload)
+        {
+            var metadata = new Dictionary<string, object>();
+
+            foreach (var item in payload)
+            {
+                if (item.Key.StartsWith("metadata_", StringComparison.OrdinalIgnoreCase))
+                {
+                    var key = item.Key["metadata_".Length..];
+                    var value = GetPayloadString(payload, item.Key);
+                    if (!string.IsNullOrEmpty(value))
+                    {
+                        metadata[key] = value;
+                    }
+                }
+            }
+
+            return metadata;
+        }
+
         /// <summary>
         /// Create Document from metadata
         /// </summary>
-        private static SmartRAG.Entities.Document CreateDocumentFromMetadata(DocumentMetadata metadata)
-            => new SmartRAG.Entities.Document()
+        private static SmartRAG.Entities.Document CreateDocumentFromMetadata(DocumentMetadata metadata, Dictionary<string, object> additionalMetadata = null)
+        {
+            var document = new SmartRAG.Entities.Document()
             {
                 Id = metadata.Id,
                 FileName = metadata.FileName,
@@ -189,6 +210,14 @@ namespace SmartRAG.Repositories
                 Content = metadata.Content,
                 Chunks = new List<DocumentChunk>()
             };
+
+            if (additionalMetadata != null && additionalMetadata.Count > 0)
+            {
+                document.Metadata = new Dictionary<string, object>(additionalMetadata);
+            }
+
+            return document;
+        }
 
         /// <summary>
         /// Create DocumentChunk from Qdrant point
@@ -283,6 +312,17 @@ namespace SmartRAG.Repositories
                     point.Payload.Add("uploadedAt", document.UploadedAt.ToString("O"));
                     point.Payload.Add("uploadedBy", document.UploadedBy);
 
+                    if (document.Metadata != null)
+                    {
+                        foreach (var metadataItem in document.Metadata)
+                        {
+                            if (metadataItem.Value != null)
+                            {
+                                point.Payload.Add($"metadata_{metadataItem.Key}", metadataItem.Value.ToString());
+                            }
+                        }
+                    }
+
                     allPoints.Add(point);
                 }
 
@@ -333,13 +373,14 @@ namespace SmartRAG.Repositories
 
                 var firstPoint = result.Result.First();
                 var metadata = ExtractDocumentMetadata(firstPoint.Payload);
+                var additionalMetadata = ExtractAdditionalMetadata(firstPoint.Payload);
 
                 if (metadata.Id == Guid.Empty)
                 {
                     return null;
                 }
 
-                var document = CreateDocumentFromMetadata(metadata);
+                var document = CreateDocumentFromMetadata(metadata, additionalMetadata);
 
                 foreach (var point in result.Result)
                 {
@@ -364,7 +405,7 @@ namespace SmartRAG.Repositories
                 var documentCollections = allCollections
                     .Where(c => c.StartsWith($"{_collectionName}_doc_", StringComparison.OrdinalIgnoreCase))
                     .ToList();
-                
+
                 foreach (var docCollection in documentCollections)
                 {
                     try
@@ -372,20 +413,21 @@ namespace SmartRAG.Repositories
                         var result = await _client.ScrollAsync(
                             docCollection,
                             limit: 1);  // We only need one point to get metadata
-                        
+
                         if (result.Result.Count == 0)
                             continue;
-                        
+
                         var firstPoint = result.Result.First();
                         var metadata = ExtractDocumentMetadata(firstPoint.Payload);
-                        
+                        var additionalMetadata = ExtractAdditionalMetadata(firstPoint.Payload);
+
                         if (metadata.Id == Guid.Empty)
                             continue;
-                        
-                        var document = CreateDocumentFromMetadata(metadata);
+
+                        var document = CreateDocumentFromMetadata(metadata, additionalMetadata);
                         var collectionInfo = await _client.GetCollectionInfoAsync(docCollection);
                         var chunkCount = (int)collectionInfo.PointsCount;
-                        
+
                         for (int i = 0; i < chunkCount; i++)
                         {
                             document.Chunks.Add(new DocumentChunk
@@ -397,7 +439,7 @@ namespace SmartRAG.Repositories
                                 CreatedAt = metadata.UploadedAt
                             });
                         }
-                        
+
                         documents.Add(document);
                     }
                     catch (Exception ex)
@@ -459,7 +501,7 @@ namespace SmartRAG.Repositories
                 var documentCollections = allCollections
                     .Where(c => c.StartsWith($"{_collectionName}_doc_", StringComparison.OrdinalIgnoreCase))
                     .ToList();
-                
+
                 foreach (var docCollection in documentCollections)
                 {
                     try
@@ -472,9 +514,9 @@ namespace SmartRAG.Repositories
                         _logger.LogWarning(ex, "Failed to delete document collection: {Collection}", docCollection);
                     }
                 }
-                
+
                 await _collectionManager.RecreateCollectionAsync(_collectionName);
-                
+
                 _logger.LogInformation("Cleared all documents from Qdrant: deleted {Count} document collections and recreated main collection", documentCollections.Count);
                 return true;
             }
@@ -506,7 +548,14 @@ namespace SmartRAG.Repositories
                 var cachedResults = _cacheManager.GetCachedResults(queryHash);
                 if (cachedResults != null)
                 {
-                    return cachedResults;
+                    var cachedChunk0 = cachedResults.FirstOrDefault(c => c.ChunkIndex == 0);
+                    if (cachedChunk0 != null)
+                    {
+                        Logger.LogDebug("Cached results contain chunk 0. Returning cached results: {Count}", cachedResults.Count);
+                        return cachedResults;
+                    }
+                    Logger.LogWarning("Cached results missing chunk 0, invalidating cache and performing fresh search");
+                    cachedResults = null;
                 }
 
                 await _collectionManager.EnsureCollectionExistsAsync();
@@ -530,6 +579,8 @@ namespace SmartRAG.Repositories
                     .Select(g => g.OrderByDescending(c => c.RelevanceScore ?? 0.0).First())
                     .ToList();
 
+                var chunk0 = deduped.FirstOrDefault(c => c.ChunkIndex == 0);
+
                 var perDocTopK = Math.Max(1, Math.Min(3, maxResults));
                 var topPerDocument = deduped
                     .GroupBy(c => c.DocumentId)
@@ -548,6 +599,12 @@ namespace SmartRAG.Repositories
                     .Distinct()
                     .OrderByDescending(c => c.RelevanceScore ?? 0.0)
                     .ToList();
+
+                if (chunk0 != null && !finalResults.Any(c => c.ChunkIndex == 0))
+                {
+                    finalResults = new List<DocumentChunk> { chunk0 }.Concat(finalResults).ToList();
+                    Logger.LogDebug("Chunk 0 was missing from finalResults, re-added. Total results: {Count}", finalResults.Count);
+                }
 
                 RepositoryLogMessages.LogQdrantFinalResultsReturned(Logger, finalResults.Count, null);
 

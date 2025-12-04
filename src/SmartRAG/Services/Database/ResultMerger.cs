@@ -47,11 +47,11 @@ namespace SmartRAG.Services.Database
             sb.AppendLine();
 
             var parsedResults = new Dictionary<string, ParsedQueryResult>();
-            
+
             foreach (var kvp in queryResults.DatabaseResults)
             {
                 var dbResult = kvp.Value;
-                
+
                 if (!dbResult.Success || string.IsNullOrWhiteSpace(dbResult.ResultData))
                 {
                     sb.AppendLine($"=== {dbResult.DatabaseName} ===");
@@ -59,7 +59,7 @@ namespace SmartRAG.Services.Database
                     sb.AppendLine();
                     continue;
                 }
-                
+
                 var parsedData = ParseQueryResult(dbResult.ResultData);
                 if (parsedData != null && parsedData.Rows.Count > 0)
                 {
@@ -96,15 +96,15 @@ namespace SmartRAG.Services.Database
         /// [AI Query] Generates final AI answer from merged database results
         /// </summary>
         public async Task<RagResponse> GenerateFinalAnswerAsync(
-            string userQuery, 
-            string mergedData, 
+            string userQuery,
+            string mergedData,
             MultiDatabaseQueryResult queryResults)
         {
             try
             {
                 var hasMultipleDatabases = queryResults.DatabaseResults.Count(r => r.Value.Success) > 1;
                 var hasMergedResults = mergedData.Contains("SMART MERGED RESULTS");
-                
+
                 var promptBuilder = new StringBuilder();
                 promptBuilder.AppendLine("Answer the user's question using ONLY the database information provided.");
                 promptBuilder.AppendLine();
@@ -116,7 +116,7 @@ namespace SmartRAG.Services.Database
                 promptBuilder.AppendLine("- Do NOT add unnecessary context or background");
                 promptBuilder.AppendLine("- Do NOT repeat the question");
                 promptBuilder.AppendLine("- Keep response SHORT and TO THE POINT");
-                
+
                 if (hasMultipleDatabases && !hasMergedResults)
                 {
                     promptBuilder.AppendLine();
@@ -138,7 +138,7 @@ namespace SmartRAG.Services.Database
                     promptBuilder.AppendLine("  → Answer: Value1 Value2 (EntityID 123) has CountValue 5");
                     promptBuilder.AppendLine();
                 }
-                
+
                 promptBuilder.AppendLine();
                 promptBuilder.AppendLine($"User Question: {userQuery}");
                 promptBuilder.AppendLine();
@@ -205,15 +205,15 @@ namespace SmartRAG.Services.Database
             try
             {
                 var lines = resultData.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-                
+
                 string[] headers = null;
                 int headerIndex = -1;
-                
+
                 for (int i = 0; i < lines.Length; i++)
                 {
-                    if (string.IsNullOrWhiteSpace(lines[i]) || 
-                        lines[i].StartsWith("===") || 
-                        lines[i].StartsWith("Query:") || 
+                    if (string.IsNullOrWhiteSpace(lines[i]) ||
+                        lines[i].StartsWith("===") ||
+                        lines[i].StartsWith("Query:") ||
                         lines[i].StartsWith("Rows"))
                     {
                         continue;
@@ -223,24 +223,24 @@ namespace SmartRAG.Services.Database
                     headerIndex = i;
                     break;
                 }
-                
+
                 if (headers == null || headerIndex == -1)
                 {
                     _logger.LogWarning("Could not parse query result - no header found");
                     return null;
                 }
-                
+
                 var result = new ParsedQueryResult
                 {
                     Columns = headers.ToList()
                 };
-                
+
                 for (int i = headerIndex + 1; i < lines.Length; i++)
                 {
                     var line = lines[i];
                     if (line.StartsWith("Rows extracted:") || line.StartsWith("==="))
                         break;
-                    
+
                     var values = line.Split('\t');
                     if (values.Length == headers.Length)
                     {
@@ -252,7 +252,7 @@ namespace SmartRAG.Services.Database
                         result.Rows.Add(row);
                     }
                 }
-                
+
                 _logger.LogInformation("Parsed {RowCount} rows with {ColumnCount} columns", result.Rows.Count, result.Columns.Count);
                 return result;
             }
@@ -270,19 +270,19 @@ namespace SmartRAG.Services.Database
             {
                 if (parsedResults.Count < 2)
                     return null;
-                
+
                 _logger.LogInformation("Attempting smart merge of {Count} databases", parsedResults.Count);
-                
+
                 var joinableResults = await FindJoinableTablesAsync(parsedResults);
-                
+
                 if (joinableResults == null || joinableResults.Count < 2)
                 {
                     _logger.LogWarning("No joinable relationships found between databases");
                     return null;
                 }
-                
+
                 var merged = PerformInMemoryJoin(joinableResults);
-                
+
                 if (_logger.IsEnabled(LogLevel.Debug))
                 {
                     _logger.LogDebug("Smart merge completed: {RowCount} merged rows", merged?.Rows.Count ?? 0);
@@ -300,18 +300,18 @@ namespace SmartRAG.Services.Database
             Dictionary<string, ParsedQueryResult> parsedResults)
         {
             await Task.CompletedTask;
-            
+
             var joinable = new List<(ParsedQueryResult Result, string JoinColumn)>();
-            
+
             var allJoinCandidates = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
-            
+
             foreach (var kvp in parsedResults)
             {
                 var result = kvp.Value;
-                
-                var fkColumns = result.Columns.Where(col => 
+
+                var fkColumns = result.Columns.Where(col =>
                     col.EndsWith("id", StringComparison.OrdinalIgnoreCase)).ToList();
-                
+
                 foreach (var fkCol in fkColumns)
                 {
                     if (!allJoinCandidates.ContainsKey(fkCol))
@@ -321,27 +321,27 @@ namespace SmartRAG.Services.Database
                     allJoinCandidates[fkCol].Add(result.DatabaseId);
                 }
             }
-            
+
             var commonJoinColumns = allJoinCandidates.Where(kvp => kvp.Value.Count >= 2).ToList();
-            
+
             if (commonJoinColumns.Count == 0)
             {
                 _logger.LogWarning("No common join columns found across databases");
                 return null;
             }
-            
+
             var bestJoinColumn = commonJoinColumns.OrderByDescending(kvp => kvp.Value.Count).First().Key;
-            
+
             foreach (var kvp in parsedResults)
             {
                 var result = kvp.Value;
-                
+
                 if (result.Columns.Any(col => col.Equals(bestJoinColumn, StringComparison.OrdinalIgnoreCase)))
                 {
                     joinable.Add((result, bestJoinColumn));
                 }
             }
-            
+
             return joinable.Count >= 2 ? joinable : null;
         }
 
@@ -349,12 +349,12 @@ namespace SmartRAG.Services.Database
         {
             if (joinableResults.Count < 2)
                 return null;
-            
+
             var baseResult = joinableResults[0].Result;
             var baseJoinColumn = joinableResults[0].JoinColumn;
-            
+
             var mergedColumns = new List<string>(baseResult.Columns);
-            
+
             for (int i = 1; i < joinableResults.Count; i++)
             {
                 var otherResult = joinableResults[i].Result;
@@ -366,48 +366,48 @@ namespace SmartRAG.Services.Database
                     }
                 }
             }
-            
+
             var merged = new ParsedQueryResult
             {
                 Columns = mergedColumns,
                 DatabaseName = "Merged (" + string.Join(" + ", joinableResults.Select(j => j.Result.DatabaseName)) + ")"
             };
-            
+
             foreach (var baseRow in baseResult.Rows)
             {
                 if (!baseRow.TryGetValue(baseJoinColumn, out var joinValue) || string.IsNullOrEmpty(joinValue) || joinValue == "NULL")
                     continue;
-                
+
                 var mergedRow = new Dictionary<string, string>(baseRow, StringComparer.OrdinalIgnoreCase);
                 bool allJoinsSuccessful = true;
-                
+
                 for (int i = 1; i < joinableResults.Count; i++)
                 {
                     var otherResult = joinableResults[i].Result;
                     var otherJoinColumn = joinableResults[i].JoinColumn;
-                    
+
                     var matchingRow = otherResult.Rows.FirstOrDefault(row =>
                     {
                         if (!row.TryGetValue(otherJoinColumn, out var otherJoinValue) || string.IsNullOrEmpty(otherJoinValue) || otherJoinValue == "NULL")
                             return false;
-                        
+
                         // Try exact string match first (case-insensitive)
                         if (joinValue.Equals(otherJoinValue, StringComparison.OrdinalIgnoreCase))
                             return true;
-                        
+
                         // Try numeric comparison (handles "123" vs "123.0" vs "123 ")
                         if (TryParseNumeric(joinValue, out var baseNum) && TryParseNumeric(otherJoinValue, out var otherNum))
                         {
                             return baseNum == otherNum;
                         }
-                        
+
                         // Try trimmed comparison (handles whitespace differences)
                         if (joinValue.Trim().Equals(otherJoinValue.Trim(), StringComparison.OrdinalIgnoreCase))
                             return true;
-                        
+
                         return false;
                     });
-                    
+
                     if (matchingRow != null)
                     {
                         foreach (var kvp in matchingRow)
@@ -424,30 +424,30 @@ namespace SmartRAG.Services.Database
                         break; // No match - skip this base row (INNER JOIN behavior)
                     }
                 }
-                
+
                 if (allJoinsSuccessful)
                 {
                     merged.Rows.Add(mergedRow);
                 }
             }
-            
+
             return merged;
         }
 
         private string FormatParsedResult(ParsedQueryResult result)
         {
             var sb = new StringBuilder();
-            
+
             sb.AppendLine(string.Join("\t", result.Columns));
-            
+
             foreach (var row in result.Rows)
             {
                 var values = result.Columns.Select(col => row.TryGetValue(col, out var val) ? val : "NULL");
                 sb.AppendLine(string.Join("\t", values));
             }
-            
+
             sb.AppendLine($"\nMerged rows: {result.Rows.Count}");
-            
+
             return sb.ToString();
         }
 
@@ -466,13 +466,13 @@ namespace SmartRAG.Services.Database
         {
             // Find common ID columns that could be used for joining
             var allIdColumns = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
-            
+
             foreach (var kvp in parsedResults)
             {
                 var result = kvp.Value;
                 foreach (var col in result.Columns)
                 {
-                    if (col.EndsWith("id", StringComparison.OrdinalIgnoreCase) || 
+                    if (col.EndsWith("id", StringComparison.OrdinalIgnoreCase) ||
                         col.EndsWith("ID", StringComparison.OrdinalIgnoreCase))
                     {
                         if (!allIdColumns.ContainsKey(col))
@@ -483,19 +483,19 @@ namespace SmartRAG.Services.Database
                     }
                 }
             }
-            
+
             var commonIdColumns = allIdColumns
                 .Where(kvp => kvp.Value.Count >= 2)
                 .Select(kvp => kvp.Key)
                 .ToList();
-            
+
             // Collect all ID values from all results for matching
             var idValueMap = new Dictionary<string, Dictionary<string, List<string>>>(StringComparer.OrdinalIgnoreCase);
-            
+
             foreach (var idCol in commonIdColumns)
             {
                 idValueMap[idCol] = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
-                
+
                 foreach (var kvp in parsedResults)
                 {
                     var result = kvp.Value;
@@ -515,7 +515,7 @@ namespace SmartRAG.Services.Database
                     }
                 }
             }
-            
+
             // Find matching ID values across databases
             var matchingIds = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
             foreach (var idCol in commonIdColumns)
@@ -532,25 +532,25 @@ namespace SmartRAG.Services.Database
                     }
                 }
             }
-            
+
             foreach (var kvp in parsedResults.OrderBy(x => x.Value.DatabaseName))
             {
                 var result = kvp.Value;
                 sb.AppendLine($"=== {result.DatabaseName} ===");
                 sb.AppendLine(FormatParsedResult(result));
-                
+
                 // Add join hints if common ID columns exist
                 if (commonIdColumns.Any())
                 {
                     var resultIdColumns = result.Columns
                         .Where(col => commonIdColumns.Contains(col, StringComparer.OrdinalIgnoreCase))
                         .ToList();
-                    
+
                     if (resultIdColumns.Any())
                     {
                         sb.AppendLine();
                         sb.AppendLine($"⚠️ JOIN HINT: This result contains ID column(s): {string.Join(", ", resultIdColumns)}");
-                        
+
                         // Show actual ID values from this result
                         if (result.Rows.Any())
                         {
@@ -559,7 +559,7 @@ namespace SmartRAG.Services.Database
                                 .Where(idCol => firstRow.ContainsKey(idCol))
                                 .Select(idCol => $"{idCol}={firstRow[idCol]}")
                                 .ToList();
-                            
+
                             if (idValues.Any())
                             {
                                 sb.AppendLine($"   ID value(s) in this result: {string.Join(", ", idValues)}");
@@ -567,10 +567,10 @@ namespace SmartRAG.Services.Database
                         }
                     }
                 }
-                
+
                 sb.AppendLine();
             }
-            
+
             if (commonIdColumns.Any())
             {
                 sb.AppendLine("═══════════════════════════════════════════════════════════════");
@@ -578,7 +578,7 @@ namespace SmartRAG.Services.Database
                 sb.AppendLine("═══════════════════════════════════════════════════════════════");
                 sb.AppendLine($"Common ID columns found: {string.Join(", ", commonIdColumns)}");
                 sb.AppendLine();
-                
+
                 // Show matching ID values if found
                 if (matchingIds.Any())
                 {
@@ -609,7 +609,7 @@ namespace SmartRAG.Services.Database
                     sb.AppendLine("If one result has an ID (e.g., EntityID=123), use that ID to filter the other database.");
                     sb.AppendLine("For example: If Database1 has EntityID=123, Database2 should query WHERE EntityID=123");
                 }
-                
+
                 sb.AppendLine();
                 sb.AppendLine("To answer the question correctly:");
                 sb.AppendLine("1. Find matching ID values across different database results");
@@ -627,12 +627,12 @@ namespace SmartRAG.Services.Database
             numericValue = 0;
             if (string.IsNullOrWhiteSpace(value))
                 return false;
-            
+
             // Remove whitespace and try parsing
             var trimmed = value.Trim();
             if (double.TryParse(trimmed, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out numericValue))
                 return true;
-            
+
             return false;
         }
 

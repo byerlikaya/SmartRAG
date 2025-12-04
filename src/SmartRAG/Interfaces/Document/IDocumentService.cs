@@ -19,9 +19,11 @@ namespace SmartRAG.Interfaces.Document
         /// <param name="contentType">MIME content type of the file</param>
         /// <param name="uploadedBy">Identifier of the user uploading the document</param>
         /// <param name="language">Language code for document processing (optional)</param>
+        /// <param name="fileSize">File size in bytes (optional, will be calculated from stream if not provided)</param>
+        /// <param name="additionalMetadata">Additional metadata to add to document (optional)</param>
         /// <returns>Created document entity</returns>
-        Task<Entities.Document> UploadDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy, string language = null);
-       
+        Task<Entities.Document> UploadDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy, string language = null, long? fileSize = null, Dictionary<string, object> additionalMetadata = null);
+
 
         /// <summary>
         /// Get document by ID

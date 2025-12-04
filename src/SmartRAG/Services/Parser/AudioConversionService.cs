@@ -71,61 +71,61 @@ namespace SmartRAG.Services.Parser
 
                 try
                 {
-                _logger.LogInformation("Running FFmpeg conversion: {InputFile} → {OutputFile}", tempInputFile, tempOutputFile);
-                
-                var conversionStrategies = new[]
-                {
+                    _logger.LogInformation("Running FFmpeg conversion: {InputFile} → {OutputFile}", tempInputFile, tempOutputFile);
+
+                    var conversionStrategies = new[]
+                    {
                     new { Codec = "pcm_s16le", Args = new[] { "-ac 1", "-f wav" }, Ext = ".wav", Name = "WAV" },
                     new { Codec = "flac", Args = new[] { "-ac 1" }, Ext = ".flac", Name = "FLAC" },
                     new { Codec = "mp3", Args = new[] { "-ac 1", "-b:a 128k" }, Ext = ".mp3", Name = "MP3" }
                 };
 
-                bool conversionSuccessful = false;
-                string finalOutputFile = tempOutputFile;
+                    bool conversionSuccessful = false;
+                    string finalOutputFile = tempOutputFile;
 
-                foreach (var strategy in conversionStrategies)
-                {
-                    try
+                    foreach (var strategy in conversionStrategies)
                     {
-                        var strategyOutputFile = Path.GetTempFileName() + strategy.Ext;
-                        _logger.LogInformation("Trying conversion strategy: {Strategy} ({Codec})", strategy.Name, strategy.Codec);
-                        
-                        await FFMpegArguments
-                            .FromFileInput(tempInputFile)
-                            .OutputToFile(strategyOutputFile, overwrite: true, options => options
-                                .WithAudioCodec(strategy.Codec)
-                                .WithAudioSamplingRate(16000)
-                                .WithCustomArgument(string.Join(" ", strategy.Args)))
-                            .ProcessAsynchronously();
-                        
-                        var fileInfo = new FileInfo(strategyOutputFile);
-                        if (fileInfo.Exists && fileInfo.Length > 0)
+                        try
                         {
-                            _logger.LogInformation("✓ Conversion successful: {Strategy} ({Size} bytes)", strategy.Name, fileInfo.Length);
-                            finalOutputFile = strategyOutputFile;
-                            conversionSuccessful = true;
-                            break;
+                            var strategyOutputFile = Path.GetTempFileName() + strategy.Ext;
+                            _logger.LogInformation("Trying conversion strategy: {Strategy} ({Codec})", strategy.Name, strategy.Codec);
+
+                            await FFMpegArguments
+                                .FromFileInput(tempInputFile)
+                                .OutputToFile(strategyOutputFile, overwrite: true, options => options
+                                    .WithAudioCodec(strategy.Codec)
+                                    .WithAudioSamplingRate(16000)
+                                    .WithCustomArgument(string.Join(" ", strategy.Args)))
+                                .ProcessAsynchronously();
+
+                            var fileInfo = new FileInfo(strategyOutputFile);
+                            if (fileInfo.Exists && fileInfo.Length > 0)
+                            {
+                                _logger.LogInformation("✓ Conversion successful: {Strategy} ({Size} bytes)", strategy.Name, fileInfo.Length);
+                                finalOutputFile = strategyOutputFile;
+                                conversionSuccessful = true;
+                                break;
+                            }
+                            else
+                            {
+                                _logger.LogWarning("✗ Conversion failed: {Strategy} - Empty or missing file", strategy.Name);
+                                if (File.Exists(strategyOutputFile))
+                                    File.Delete(strategyOutputFile);
+                            }
                         }
-                        else
+                        catch (Exception ex)
                         {
-                            _logger.LogWarning("✗ Conversion failed: {Strategy} - Empty or missing file", strategy.Name);
-                            if (File.Exists(strategyOutputFile))
-                                File.Delete(strategyOutputFile);
+                            _logger.LogWarning("✗ Conversion strategy {Strategy} failed: {Error}", strategy.Name, ex.Message);
                         }
                     }
-                    catch (Exception ex)
+
+                    if (!conversionSuccessful)
                     {
-                        _logger.LogWarning("✗ Conversion strategy {Strategy} failed: {Error}", strategy.Name, ex.Message);
+                        throw new InvalidOperationException("All conversion strategies failed. The audio file may be corrupted or incompatible.");
                     }
-                }
 
-                if (!conversionSuccessful)
-                {
-                    throw new InvalidOperationException("All conversion strategies failed. The audio file may be corrupted or incompatible.");
-                }
-
-                tempOutputFile = finalOutputFile;                var outputFileInfo = new FileInfo(tempOutputFile);
-                _logger.LogInformation("Converted file created: {Size} bytes, Path: {Path}", outputFileInfo.Length, tempOutputFile);
+                    tempOutputFile = finalOutputFile; var outputFileInfo = new FileInfo(tempOutputFile);
+                    _logger.LogInformation("Converted file created: {Size} bytes, Path: {Path}", outputFileInfo.Length, tempOutputFile);
                 }
                 catch (Exception ffmpegEx)
                 {
@@ -191,14 +191,15 @@ namespace SmartRAG.Services.Parser
                 return;
 
             await _ffmpegSemaphore.WaitAsync();
-            
+
             try
             {
                 if (_ffmpegInitialized)
                     return;
 
                 try
-                {                    var ffmpegDir = Path.Combine(Path.GetTempPath(), "SmartRAG", "ffmpeg");
+                {
+                    var ffmpegDir = Path.Combine(Path.GetTempPath(), "SmartRAG", "ffmpeg");
                     if (!Directory.Exists(ffmpegDir))
                     {
                         Directory.CreateDirectory(ffmpegDir);

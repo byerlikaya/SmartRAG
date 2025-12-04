@@ -69,13 +69,13 @@ namespace SmartRAG.Services.Document
                     if (_textNormalizationService.ContainsNormalizedName(content, fullName))
                     {
                         score += FullNameMatchScoreBoost;
-                        ServiceLogMessages.LogFullNameMatch(_logger, _textNormalizationService.SanitizeForLog(fullName), chunk.Content.Substring(0, Math.Min(ChunkPreviewLength, chunk.Content.Length)), null);
+                        ServiceLogMessages.LogFullNameMatch(_logger, _textNormalizationService.SanitizeForLog(fullName), chunk.Content[..Math.Min(ChunkPreviewLength, chunk.Content.Length)], null);
                     }
                     else if (potentialNames.Any(name => _textNormalizationService.ContainsNormalizedName(content, name)))
                     {
                         score += PartialNameMatchScoreBoost;
                         var foundNames = potentialNames.Where(name => _textNormalizationService.ContainsNormalizedName(content, name)).ToList();
-                        ServiceLogMessages.LogPartialNameMatches(_logger, string.Join(", ", foundNames.Select(_textNormalizationService.SanitizeForLog)), chunk.Content.Substring(0, Math.Min(ChunkPreviewLength, chunk.Content.Length)), null);
+                        ServiceLogMessages.LogPartialNameMatches(_logger, string.Join(", ", foundNames.Select(_textNormalizationService.SanitizeForLog)), chunk.Content[..Math.Min(ChunkPreviewLength, chunk.Content.Length)], null);
                     }
                 }
 
@@ -85,7 +85,7 @@ namespace SmartRAG.Services.Document
                     var wordLower = word.ToLowerInvariant();
                     var contentLower = content.ToLowerInvariant();
                     var wordMatched = false;
-                    
+
                     if (contentLower.Contains(wordLower))
                     {
                         score += WordMatchScore;
@@ -111,7 +111,7 @@ namespace SmartRAG.Services.Document
                         }
                     }
                 }
-                
+
                 if (matchedWords >= 3)
                 {
                     score += MultipleWordMatchBonus;
@@ -121,14 +121,14 @@ namespace SmartRAG.Services.Document
                     score += MultipleWordMatchBonus * 0.5; // Half bonus for 2 matches
                 }
 
-                var isTitleLike = chunk.Content.Length < 200 && 
-                    (chunk.Content.Contains(':') || 
+                var isTitleLike = chunk.Content.Length < 200 &&
+                    (chunk.Content.Contains(':') ||
                      chunk.Content.Split(new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length <= 3);
                 if (isTitleLike && matchedWords > 0)
                 {
                     score += TitlePatternBonus;
                 }
-                
+
                 var wordCount = content.Split(new char[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries).Length;
                 if (wordCount >= WordCountMin && wordCount <= WordCountMax) score += WordCountScoreBoost;
 
@@ -146,10 +146,10 @@ namespace SmartRAG.Services.Document
                     @"\b\d+\s+[A-Z]",  // "1 Item" (number followed by capital letter)
                     @"^\d+\.\s",       // "1. Item" at start of line
                 };
-                
-                var numberedListCount = numberedListPatterns.Sum(pattern => 
+
+                var numberedListCount = numberedListPatterns.Sum(pattern =>
                     Regex.Matches(chunk.Content, pattern, RegexOptions.Multiline | RegexOptions.IgnoreCase).Count);
-                
+
                 if (numberedListCount > 0)
                 {
                     score += NumberedListScoreBoost + (numberedListCount * NumberedListItemBonus);

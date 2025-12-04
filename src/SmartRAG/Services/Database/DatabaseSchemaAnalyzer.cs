@@ -224,15 +224,13 @@ namespace SmartRAG.Services.Database
 
                 try
                 {
-                    using (var connection = CreateConnection(config.ConnectionString, config.DatabaseType))
-                    {
-                        await connection.OpenAsync();
-                        var databaseName = connection.Database;
+                    using var connection = CreateConnection(config.ConnectionString, config.DatabaseType);
+                    await connection.OpenAsync();
+                    var databaseName = connection.Database;
 
-                        if (!string.IsNullOrEmpty(databaseName))
-                        {
-                            return databaseName;
-                        }
+                    if (!string.IsNullOrEmpty(databaseName))
+                    {
+                        return databaseName;
                     }
                 }
                 catch (Exception ex)
@@ -280,32 +278,30 @@ namespace SmartRAG.Services.Database
 
             try
             {
-                using (var connection = CreateConnection(connectionString, databaseType))
+                using var connection = CreateConnection(connectionString, databaseType);
+                await connection.OpenAsync();
+
+                tableInfo.Columns = await GetColumnsAsync(connection, tableName, databaseType);
+
+                tableInfo.PrimaryKeys = tableInfo.Columns
+                    .Where(c => c.IsPrimaryKey)
+                    .Select(c => c.ColumnName)
+                    .ToList();
+
+                tableInfo.ForeignKeys = await GetForeignKeysAsync(connection, tableName, databaseType);
+
+                foreach (var fk in tableInfo.ForeignKeys)
                 {
-                    await connection.OpenAsync();
-
-                    tableInfo.Columns = await GetColumnsAsync(connection, tableName, databaseType);
-
-                    tableInfo.PrimaryKeys = tableInfo.Columns
-                        .Where(c => c.IsPrimaryKey)
-                        .Select(c => c.ColumnName)
-                        .ToList();
-
-                    tableInfo.ForeignKeys = await GetForeignKeysAsync(connection, tableName, databaseType);
-
-                    foreach (var fk in tableInfo.ForeignKeys)
+                    var column = tableInfo.Columns.FirstOrDefault(c => c.ColumnName == fk.ColumnName);
+                    if (column != null)
                     {
-                        var column = tableInfo.Columns.FirstOrDefault(c => c.ColumnName == fk.ColumnName);
-                        if (column != null)
-                        {
-                            column.IsForeignKey = true;
-                        }
+                        column.IsForeignKey = true;
                     }
-
-                    tableInfo.RowCount = await GetRowCountAsync(connection, tableName);
-
-                    tableInfo.SampleData = await GetSampleDataAsync(connection, tableName, databaseType);
                 }
+
+                tableInfo.RowCount = await GetRowCountAsync(connection, tableName);
+
+                tableInfo.SampleData = await GetSampleDataAsync(connection, tableName, databaseType);
             }
             catch (Microsoft.Data.SqlClient.SqlException sqlEx) when (databaseType == DatabaseType.SqlServer)
             {
@@ -401,24 +397,20 @@ namespace SmartRAG.Services.Database
 
             try
             {
-                using (var cmd = connection.CreateCommand())
+                using var cmd = connection.CreateCommand();
+                cmd.CommandText = $"PRAGMA table_info('{tableName}')";
+                using var reader = cmd.ExecuteReader();
+                while (reader.Read())
                 {
-                    cmd.CommandText = $"PRAGMA table_info('{tableName}')";
-                    using (var reader = cmd.ExecuteReader())
+                    var column = new ColumnSchemaInfo
                     {
-                        while (reader.Read())
-                        {
-                            var column = new ColumnSchemaInfo
-                            {
-                                ColumnName = reader["name"].ToString() ?? string.Empty,
-                                DataType = reader["type"].ToString() ?? string.Empty,
-                                IsNullable = reader["notnull"].ToString() == "0",
-                                IsPrimaryKey = reader["pk"].ToString() != "0"
-                            };
+                        ColumnName = reader["name"].ToString() ?? string.Empty,
+                        DataType = reader["type"].ToString() ?? string.Empty,
+                        IsNullable = reader["notnull"].ToString() == "0",
+                        IsPrimaryKey = reader["pk"].ToString() != "0"
+                    };
 
-                            columns.Add(column);
-                        }
-                    }
+                    columns.Add(column);
                 }
             }
             catch (Exception ex)
@@ -443,11 +435,10 @@ namespace SmartRAG.Services.Database
 
             try
             {
-                using (var cmd = connection.CreateCommand())
+                using var cmd = connection.CreateCommand();
+                if (databaseType == DatabaseType.SqlServer)
                 {
-                    if (databaseType == DatabaseType.SqlServer)
-                    {
-                        cmd.CommandText = $@"
+                    cmd.CommandText = $@"
                             SELECT 
                                 fk.name AS ForeignKeyName,
                                 COL_NAME(fkc.parent_object_id, fkc.parent_column_id) AS ColumnName,
@@ -456,10 +447,10 @@ namespace SmartRAG.Services.Database
                             FROM sys.foreign_keys AS fk
                             INNER JOIN sys.foreign_key_columns AS fkc ON fk.object_id = fkc.constraint_object_id
                             WHERE OBJECT_NAME(fk.parent_object_id) = '{tableName}'";
-                    }
-                    else if (databaseType == DatabaseType.MySQL)
-                    {
-                        cmd.CommandText = $@"
+                }
+                else if (databaseType == DatabaseType.MySQL)
+                {
+                    cmd.CommandText = $@"
                             SELECT 
                                 CONSTRAINT_NAME AS ForeignKeyName,
                                 COLUMN_NAME AS ColumnName,
@@ -468,10 +459,10 @@ namespace SmartRAG.Services.Database
                             FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
                             WHERE TABLE_NAME = '{tableName}' 
                             AND REFERENCED_TABLE_NAME IS NOT NULL";
-                    }
-                    else if (databaseType == DatabaseType.PostgreSQL)
-                    {
-                        cmd.CommandText = $@"
+                }
+                else if (databaseType == DatabaseType.PostgreSQL)
+                {
+                    cmd.CommandText = $@"
                             SELECT 
                                 tc.constraint_name AS ForeignKeyName,
                                 kcu.column_name AS ColumnName,
@@ -481,29 +472,26 @@ namespace SmartRAG.Services.Database
                             JOIN information_schema.key_column_usage AS kcu ON tc.constraint_name = kcu.constraint_name
                             JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name
                             WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_name = '{tableName}'";
-                    }
-                    else
-                    {
-                        return Task.FromResult(foreignKeys);
-                    }
+                }
+                else
+                {
+                    return Task.FromResult(foreignKeys);
+                }
 
-                    using (var reader = cmd.ExecuteReader())
+                using var reader = cmd.ExecuteReader();
+                while (reader.Read())
+                {
+                    var fk = new ForeignKeyInfo
                     {
-                        while (reader.Read())
-                        {
-                            var fk = new ForeignKeyInfo
-                            {
-                                ForeignKeyName = reader["ForeignKeyName"]?.ToString() ?? string.Empty,
-                                ColumnName = reader["ColumnName"]?.ToString() ?? string.Empty,
-                                ReferencedTable = reader["ReferencedTable"]?.ToString() ?? string.Empty,
-                                ReferencedColumn = reader["ReferencedColumn"]?.ToString() ?? string.Empty
-                            };
+                        ForeignKeyName = reader["ForeignKeyName"]?.ToString() ?? string.Empty,
+                        ColumnName = reader["ColumnName"]?.ToString() ?? string.Empty,
+                        ReferencedTable = reader["ReferencedTable"]?.ToString() ?? string.Empty,
+                        ReferencedColumn = reader["ReferencedColumn"]?.ToString() ?? string.Empty
+                    };
 
-                            if (!string.IsNullOrEmpty(fk.ColumnName) && !string.IsNullOrEmpty(fk.ReferencedTable))
-                            {
-                                foreignKeys.Add(fk);
-                            }
-                        }
+                    if (!string.IsNullOrEmpty(fk.ColumnName) && !string.IsNullOrEmpty(fk.ReferencedTable))
+                    {
+                        foreignKeys.Add(fk);
                     }
                 }
             }
@@ -521,26 +509,22 @@ namespace SmartRAG.Services.Database
 
             try
             {
-                using (var cmd = connection.CreateCommand())
+                using var cmd = connection.CreateCommand();
+                cmd.CommandText = $"PRAGMA foreign_key_list('{tableName}')";
+                using var reader = cmd.ExecuteReader();
+                while (reader.Read())
                 {
-                    cmd.CommandText = $"PRAGMA foreign_key_list('{tableName}')";
-                    using (var reader = cmd.ExecuteReader())
+                    var fk = new ForeignKeyInfo
                     {
-                        while (reader.Read())
-                        {
-                            var fk = new ForeignKeyInfo
-                            {
-                                ForeignKeyName = $"FK_{tableName}_{reader["from"]}",
-                                ColumnName = reader["from"].ToString() ?? string.Empty,
-                                ReferencedTable = reader["table"].ToString() ?? string.Empty,
-                                ReferencedColumn = reader["to"].ToString() ?? string.Empty
-                            };
+                        ForeignKeyName = $"FK_{tableName}_{reader["from"]}",
+                        ColumnName = reader["from"].ToString() ?? string.Empty,
+                        ReferencedTable = reader["table"].ToString() ?? string.Empty,
+                        ReferencedColumn = reader["to"].ToString() ?? string.Empty
+                    };
 
-                            if (!string.IsNullOrEmpty(fk.ColumnName) && !string.IsNullOrEmpty(fk.ReferencedTable))
-                            {
-                                foreignKeys.Add(fk);
-                            }
-                        }
+                    if (!string.IsNullOrEmpty(fk.ColumnName) && !string.IsNullOrEmpty(fk.ReferencedTable))
+                    {
+                        foreignKeys.Add(fk);
                     }
                 }
             }
@@ -556,32 +540,30 @@ namespace SmartRAG.Services.Database
         {
             try
             {
-                using (var cmd = connection.CreateCommand())
+                using var cmd = connection.CreateCommand();
+                string quotedTable;
+                var connectionType = connection.GetType().Name;
+
+                if (connectionType == "SqlConnection")
                 {
-                    string quotedTable;
-                    var connectionType = connection.GetType().Name;
-
-                    if (connectionType == "SqlConnection")
-                    {
-                        quotedTable = $"[{tableName}]";
-                    }
-                    else if (connectionType == "MySqlConnection")
-                    {
-                        quotedTable = $"`{tableName}`";
-                    }
-                    else if (connectionType == "NpgsqlConnection")
-                    {
-                        quotedTable = $"\"{tableName}\"";
-                    }
-                    else
-                    {
-                        quotedTable = tableName; // SQLite doesn't require quotes for simple table names
-                    }
-
-                    cmd.CommandText = $"SELECT COUNT(*) FROM {quotedTable}";
-                    var result = await cmd.ExecuteScalarAsync();
-                    return Convert.ToInt64(result);
+                    quotedTable = $"[{tableName}]";
                 }
+                else if (connectionType == "MySqlConnection")
+                {
+                    quotedTable = $"`{tableName}`";
+                }
+                else if (connectionType == "NpgsqlConnection")
+                {
+                    quotedTable = $"\"{tableName}\"";
+                }
+                else
+                {
+                    quotedTable = tableName; // SQLite doesn't require quotes for simple table names
+                }
+
+                cmd.CommandText = $"SELECT COUNT(*) FROM {quotedTable}";
+                var result = await cmd.ExecuteScalarAsync();
+                return Convert.ToInt64(result);
             }
             catch (Exception ex)
             {
@@ -597,46 +579,31 @@ namespace SmartRAG.Services.Database
         {
             try
             {
-                string query;
-                switch (databaseType)
+                string query = databaseType switch
                 {
-                    case DatabaseType.SqlServer:
-                        query = $"SELECT TOP 3 * FROM [{tableName}]";
-                        break;
-                    case DatabaseType.MySQL:
-                        query = $"SELECT * FROM `{tableName}` LIMIT 3";
-                        break;
-                    case DatabaseType.PostgreSQL:
-                        query = $"SELECT * FROM \"{tableName}\" LIMIT 3";
-                        break;
-                    case DatabaseType.SQLite:
-                    default:
-                        query = $"SELECT * FROM {tableName} LIMIT 3";
-                        break;
-                }
+                    DatabaseType.SqlServer => $"SELECT TOP 3 * FROM [{tableName}]",
+                    DatabaseType.MySQL => $"SELECT * FROM `{tableName}` LIMIT 3",
+                    DatabaseType.PostgreSQL => $"SELECT * FROM \"{tableName}\" LIMIT 3",
+                    _ => $"SELECT * FROM {tableName} LIMIT 3",
+                };
+                using var cmd = connection.CreateCommand();
+                cmd.CommandText = query;
 
-                using (var cmd = connection.CreateCommand())
+                using var reader = await cmd.ExecuteReaderAsync();
+                var sb = new StringBuilder();
+                var rowCount = 0;
+
+                while (await reader.ReadAsync() && rowCount < 3)
                 {
-                    cmd.CommandText = query;
-
-                    using (var reader = await cmd.ExecuteReaderAsync())
+                    for (int i = 0; i < reader.FieldCount; i++)
                     {
-                        var sb = new StringBuilder();
-                        var rowCount = 0;
-
-                        while (await reader.ReadAsync() && rowCount < 3)
-                        {
-                            for (int i = 0; i < reader.FieldCount; i++)
-                            {
-                                sb.Append($"{reader.GetName(i)}: {reader.GetValue(i)}, ");
-                            }
-                            sb.AppendLine();
-                            rowCount++;
-                        }
-
-                        return sb.ToString();
+                        sb.Append($"{reader.GetName(i)}: {reader.GetValue(i)}, ");
                     }
+                    sb.AppendLine();
+                    rowCount++;
                 }
+
+                return sb.ToString();
             }
             catch (Exception ex)
             {
@@ -647,19 +614,14 @@ namespace SmartRAG.Services.Database
 
         private DbConnection CreateConnection(string connectionString, DatabaseType databaseType)
         {
-            switch (databaseType)
+            return databaseType switch
             {
-                case DatabaseType.SQLite:
-                    return new SqliteConnection(connectionString);
-                case DatabaseType.SqlServer:
-                    return new SqlConnection(connectionString);
-                case DatabaseType.MySQL:
-                    return new MySqlConnection(connectionString);
-                case DatabaseType.PostgreSQL:
-                    return new NpgsqlConnection(connectionString);
-                default:
-                    throw new NotSupportedException($"Database type {databaseType} is not supported");
-            }
+                DatabaseType.SQLite => new SqliteConnection(connectionString),
+                DatabaseType.SqlServer => new SqlConnection(connectionString),
+                DatabaseType.MySQL => new MySqlConnection(connectionString),
+                DatabaseType.PostgreSQL => new NpgsqlConnection(connectionString),
+                _ => throw new NotSupportedException($"Database type {databaseType} is not supported"),
+            };
         }
 
         private string BuildSummaryPrompt(DatabaseSchemaInfo schemaInfo)

@@ -55,7 +55,7 @@ namespace SmartRAG.Services.Database
         public async Task<QueryIntent> GenerateDatabaseQueriesAsync(QueryIntent queryIntent)
         {
             _logger.LogInformation("Generating SQL queries for {Count} databases", queryIntent.DatabaseQueries.Count);
-            
+
             foreach (var dbQuery in queryIntent.DatabaseQueries)
             {
                 try
@@ -70,24 +70,24 @@ namespace SmartRAG.Services.Database
                     var strategy = _strategyFactory.GetStrategy(schema.DatabaseType);
 
                     var systemPrompt = _promptBuilder.Build(queryIntent.OriginalQuery, dbQuery, schema, strategy, queryIntent);
-                    
+
                     var sql = await _aiService.GenerateResponseAsync(systemPrompt, new List<string>());
-                    
+
                     _logger.LogDebug("AI raw response for {DatabaseId}: {RawSQL}", dbQuery.DatabaseId, sql);
 
                     var extractedSql = ExtractSQLFromAIResponse(sql);
-                    
+
                     extractedSql = strategy.FormatSql(extractedSql);
-                    
+
                     _logger.LogDebug("Extracted SQL for {DatabaseId}: {ExtractedSQL}", dbQuery.DatabaseId, extractedSql);
-                    
+
                     if (!ValidateSql(extractedSql, schema, dbQuery.RequiredTables, strategy, out var validationErrors))
                     {
                         _logger.LogWarning("Generated SQL failed validation for {DatabaseId}. Errors: {Errors}", dbQuery.DatabaseId, string.Join(", ", validationErrors));
                         dbQuery.GeneratedQuery = null;
                         continue;
                     }
-                    
+
                     dbQuery.GeneratedQuery = extractedSql;
                 }
                 catch (Exception ex)

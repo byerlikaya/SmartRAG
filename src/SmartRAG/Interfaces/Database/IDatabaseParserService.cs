@@ -33,7 +33,7 @@ namespace SmartRAG.Interfaces.Database
         /// <returns>Extracted text content from specified tables</returns>
         Task<string> ParseDatabaseConnectionAsync(string connectionString, DatabaseConfig config);
 
-       
+
         /// <summary>
         /// Executes a custom SQL query and returns results
         /// </summary>
@@ -54,7 +54,7 @@ namespace SmartRAG.Interfaces.Database
         /// <param name="connectionString">Database connection string</param>
         /// <param name="databaseType">Type of database</param>
         /// <returns>List of table names</returns>
-        Task<List<string>> GetTableNamesAsync(string connectionString, DatabaseType databaseType);       
+        Task<List<string>> GetTableNamesAsync(string connectionString, DatabaseType databaseType);
 
         #endregion
 

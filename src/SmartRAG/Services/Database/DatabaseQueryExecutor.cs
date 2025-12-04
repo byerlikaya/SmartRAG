@@ -68,7 +68,7 @@ namespace SmartRAG.Services.Database
             foreach (var (databaseId, dbResult) in results)
             {
                 result.DatabaseResults[databaseId] = dbResult;
-                
+
                 if (!dbResult.Success)
                 {
                     result.Success = false;
@@ -154,7 +154,7 @@ namespace SmartRAG.Services.Database
             {
                 if (line.StartsWith("Rows extracted:"))
                 {
-                    if (int.TryParse(line.Substring("Rows extracted:".Length).Trim(), out int count))
+                    if (int.TryParse(line["Rows extracted:".Length..].Trim(), out int count))
                     {
                         return count;
                     }
@@ -163,21 +163,21 @@ namespace SmartRAG.Services.Database
 
             int dataRows = 0;
             bool headerFound = false;
-            
+
             foreach (var line in lines)
             {
                 if (line.StartsWith("===") || line.StartsWith("Query:") || line.StartsWith("Rows"))
                     continue;
-                    
+
                 if (!headerFound)
                 {
                     headerFound = true; // Skip header
                     continue;
                 }
-                
+
                 dataRows++;
             }
-            
+
             return dataRows;
         }
 

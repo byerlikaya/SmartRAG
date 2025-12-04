@@ -10,7 +10,7 @@ namespace SmartRAG.Services.Database.Prompts
     public class SqlPromptBuilder
     {
         private const int SampleDataLimit = 200;
-        
+
         // Language-agnostic stop words: Common function words that are unlikely to be column names
         // These are generic patterns that appear across multiple languages
         // Note: This is a minimal set - the length check (w.Length > 2) already filters most short words
@@ -52,7 +52,7 @@ namespace SmartRAG.Services.Database.Prompts
                 .Where(keyword => !ContainsColumnFragment(keyword))
                 .Take(5)
                 .ToList();
-            
+
             sb.AppendLine("═══════════════════════════════════════════════════════════════════");
             sb.AppendLine("          SQL QUERY GENERATION - ANSWER THE USER'S QUESTION              ");
             sb.AppendLine("═══════════════════════════════════════════════════════════════════");
@@ -65,9 +65,9 @@ namespace SmartRAG.Services.Database.Prompts
             sb.AppendLine($"   Database Name: {schema.DatabaseName}");
             sb.AppendLine($"   Database Type: {schema.DatabaseType}");
             sb.AppendLine();
-            
+
             sb.AppendLine(strategy.BuildSystemPrompt(schema, userQuery));
-            
+
             sb.AppendLine();
             sb.AppendLine("╔═══════════════════════════════════════════════════════════════╗");
             sb.AppendLine("║  🚨 MANDATORY: WRITE SIMPLE SQL - NO COMPLEX QUERIES! 🚨    ║");
@@ -88,14 +88,14 @@ namespace SmartRAG.Services.Database.Prompts
             sb.AppendLine("    3. INSTEAD, SELECT the Entity ID (Foreign Key) AND the Descriptive Attribute.");
             sb.AppendLine("    4. EXAMPLE: SELECT EntityID, DescriptiveColumn FROM ... (allows joining with other databases)");
             sb.AppendLine("    5. This allows the system to merge results with the database that has the missing metric.");
-            
+
             // Add cross-database context if available
             if (fullQueryIntent != null && fullQueryIntent.DatabaseQueries.Count > 1 && fullQueryIntent.RequiresCrossDatabaseJoin)
             {
                 var otherDbQueries = fullQueryIntent.DatabaseQueries
                     .Where(q => q.DatabaseId != dbQuery.DatabaseId)
                     .ToList();
-                
+
                 if (otherDbQueries.Any())
                 {
                     sb.AppendLine();
@@ -104,7 +104,7 @@ namespace SmartRAG.Services.Database.Prompts
                     sb.AppendLine("╚═══════════════════════════════════════════════════════════════╝");
                     sb.AppendLine();
                     sb.AppendLine("This query is part of a MULTI-DATABASE query. Other databases will also be queried:");
-                    
+
                     foreach (var otherDb in otherDbQueries)
                     {
                         sb.AppendLine($"  • {otherDb.DatabaseName}: {otherDb.Purpose}");
@@ -113,7 +113,7 @@ namespace SmartRAG.Services.Database.Prompts
                             sb.AppendLine($"    Tables: {string.Join(", ", otherDb.RequiredTables)}");
                         }
                     }
-                    
+
                     sb.AppendLine();
                     sb.AppendLine("CRITICAL INSTRUCTIONS FOR CROSS-DATABASE QUERIES:");
                     sb.AppendLine("  1. If another database will return an EntityID (e.g., from aggregation/calculation):");
@@ -135,7 +135,7 @@ namespace SmartRAG.Services.Database.Prompts
                     sb.AppendLine();
                 }
             }
-            
+
             sb.AppendLine();
             sb.AppendLine("AMBIGUITY PREVENTION (CRITICAL):");
             sb.AppendLine("  - ALWAYS use meaningful Table Aliases (e.g., use 't1', 't2' or derived from table name).");
@@ -150,8 +150,8 @@ namespace SmartRAG.Services.Database.Prompts
             sb.AppendLine("  ✗ NO using aggregate functions (COUNT, SUM, etc.) without a GROUP BY clause");
             sb.AppendLine("  ✗ NO more than 2 JOINs");
             sb.AppendLine();
-            
-            
+
+
             sb.AppendLine("═══════════════════════════════════════════════════════════════════");
             sb.AppendLine();
             sb.AppendLine("USER'S QUESTION:");
@@ -160,7 +160,7 @@ namespace SmartRAG.Services.Database.Prompts
             sb.AppendLine("YOUR TASK FOR THIS DATABASE:");
             sb.AppendLine($"   {dbQuery.Purpose}");
             sb.AppendLine();
-            
+
             if (filterKeywords.Count > 0)
             {
                 sb.AppendLine("TEXT FILTER KEYWORDS FROM QUESTION (use case-insensitive LIKE):");
@@ -196,7 +196,7 @@ namespace SmartRAG.Services.Database.Prompts
             sb.AppendLine($"TABLES AVAILABLE IN {schema.DatabaseName} (ONLY IN THIS DATABASE):");
             sb.AppendLine("═══════════════════════════════════════");
             sb.AppendLine("🚨 CRITICAL: You MUST ONLY use tables listed below. DO NOT invent or use tables from other databases. 🚨");
-            
+
             foreach (var tableName in dbQuery.RequiredTables)
             {
                 var table = schema.Tables.FirstOrDefault(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase));
@@ -205,10 +205,10 @@ namespace SmartRAG.Services.Database.Prompts
                     sb.AppendLine($"\nTable: {table.TableName}");
                     sb.AppendLine("═══════════════════════════════════════");
                     sb.AppendLine($"AVAILABLE COLUMNS (use EXACT names, case-sensitive):");
-                    
+
                     var columnList = string.Join(", ", table.Columns.Select(c => c.ColumnName));
                     sb.AppendLine($"  {columnList}");
-                    
+
                     if (table.ForeignKeys.Any())
                     {
                         sb.AppendLine();
@@ -222,12 +222,12 @@ namespace SmartRAG.Services.Database.Prompts
                             sb.AppendLine($"  {fk.ColumnName} → {referencedTarget}");
                         }
                     }
-                    
+
                     if (!string.IsNullOrEmpty(table.SampleData))
                     {
                         sb.AppendLine();
                         sb.AppendLine($"  Sample Data (first few rows):");
-                        var sampleLines = table.SampleData.Substring(0, Math.Min(SampleDataLimit, table.SampleData.Length))
+                        var sampleLines = table.SampleData[..Math.Min(SampleDataLimit, table.SampleData.Length)]
                             .Split('\n')
                             .Take(3);
                         foreach (var sampleLine in sampleLines)
@@ -237,7 +237,7 @@ namespace SmartRAG.Services.Database.Prompts
                     }
                 }
             }
-            
+
             sb.AppendLine();
             sb.AppendLine("╔═══════════════════════════════════════════════════════════════╗");
             sb.AppendLine($"║  🚨 TABLE VALIDATION CHECKLIST - VERIFY BEFORE WRITING SQL 🚨  ║");
@@ -284,7 +284,7 @@ namespace SmartRAG.Services.Database.Prompts
             sb.AppendLine("STEP 5: Apply filters and ordering");
             sb.AppendLine("   → WHERE, GROUP BY, ORDER BY as needed");
             sb.AppendLine();
-            
+
             return sb.ToString();
         }
 
@@ -298,9 +298,9 @@ namespace SmartRAG.Services.Database.Prompts
             if (string.IsNullOrWhiteSpace(query)) return new List<string>();
 
             var words = query.Split(new[] { ' ', ',', '.', '?', '!', ';', ':', '-', '_' }, StringSplitOptions.RemoveEmptyEntries);
-            
+
             return words
-                .Where(w => 
+                .Where(w =>
                     w.Length > 2 && // Filter short words (common stop words are usually 1-2 characters)
                     !FilterStopWords.Contains(w) && // Filter common function words
                     !IsNumeric(w)) // Filter pure numbers
@@ -314,10 +314,10 @@ namespace SmartRAG.Services.Database.Prompts
         private static bool IsNumeric(string word)
         {
             if (string.IsNullOrWhiteSpace(word)) return false;
-            
+
             // Remove common numeric separators
             var cleaned = word.Replace(".", "").Replace(",", "").Replace("-", "").Replace("+", "");
-            
+
             return cleaned.Length > 0 && cleaned.All(char.IsDigit);
         }
     }

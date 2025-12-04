@@ -22,11 +22,7 @@ namespace SmartRAG.Services.Database.Strategies
 
         public ISqlDialectStrategy GetStrategy(DatabaseType databaseType)
         {
-            var strategy = _strategies.FirstOrDefault(s => s.DatabaseType == databaseType);
-            if (strategy == null)
-            {
-                throw new NotSupportedException($"No SQL dialect strategy found for database type: {databaseType}");
-            }
+            var strategy = _strategies.FirstOrDefault(s => s.DatabaseType == databaseType) ?? throw new NotSupportedException($"No SQL dialect strategy found for database type: {databaseType}");
             return strategy;
         }
     }

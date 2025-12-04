@@ -41,7 +41,7 @@ namespace SmartRAG.Services.AI
             var hasNumbers = query.Any(char.IsDigit);
             var queryTokens = query.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
             var queryLength = queryTokens.Length;
-            
+
 
             var isCountingOrListingQuery = hasQuestionPunctuation && (
                 hasNumbers || // Questions with numbers often ask for counts (universal pattern)
@@ -73,6 +73,7 @@ CRITICAL RULES:
 - The query and context may be in ANY language - {languageInstruction}
 - Do NOT use information from previous conversations unless it's in the current document context
 - SEARCH THOROUGHLY through the entire context before concluding information is missing
+- IMPORTANT: The FIRST part of the context (beginning) often contains key document information like headers, titles, key-value pairs, structured data, and important metadata - pay special attention to it
 - Look for information in ALL forms: paragraphs, lists, tables, numbered items, bullet points, headings
 - If you find ANY relevant or related information (even if not a perfect match), provide an answer based on what you found
 - If you have partial information, share it and clearly explain what is available and what might be missing
@@ -96,12 +97,12 @@ Answer:";
         public string BuildHybridMergePrompt(string query, string? databaseContext, string? documentContext, string? conversationHistory = null, string? preferredLanguage = null)
         {
             var combinedContext = new System.Collections.Generic.List<string>();
-            
+
             if (!string.IsNullOrEmpty(databaseContext))
             {
                 combinedContext.Add($"=== DATABASE INFORMATION ===\n{databaseContext}");
             }
-            
+
             if (!string.IsNullOrEmpty(documentContext))
             {
                 combinedContext.Add($"=== DOCUMENT INFORMATION ===\n{documentContext}");

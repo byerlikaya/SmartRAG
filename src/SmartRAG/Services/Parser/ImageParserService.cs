@@ -23,7 +23,7 @@ namespace SmartRAG.Services.Parser
 
 
         private const string DefaultLanguage = "eng";
-        
+
         private const int WebPHeaderSize = 12;
         private const byte RIFFByte1 = 0x52; // R
         private const byte RIFFByte2 = 0x49; // I
@@ -33,9 +33,9 @@ namespace SmartRAG.Services.Parser
         private const byte WEBPByte2 = 0x45; // E
         private const byte WEBPByte3 = 0x42; // B
         private const byte WEBPByte4 = 0x50; // P
-        
+
         private const int PNGQuality = 100;
-        
+
         private const string TesseractPath40 = "/usr/share/tesseract-ocr/4.00/tessdata";
         private const string TesseractPathDefault = "/usr/share/tesseract-ocr/tessdata";
         private const string TesseractPathWindows = "C:\\Program Files\\Tesseract-OCR\\tessdata";
@@ -48,7 +48,7 @@ namespace SmartRAG.Services.Parser
         private const string CurrencyMisreadPatternTCompact = @"(\d+)t(?=\s+\p{Lu}|\s+$|$)";
         private const string CurrencyMisreadPatternAmpersand = @"(\d+)\s*&(?=\s*(?:\p{Lu}|\d|$))";
         private const string CurrencyMisreadPatternAmpersandCompact = @"(\d+)&(?=\p{Lu}|\s+\p{Lu}|$)";
-        
+
         private static readonly Dictionary<string, string> LanguageCodeMapping = new Dictionary<string, string>
         {
             { "tur", "tr" }, { "eng", "en" }, { "deu", "de" }, { "fra", "fr" },
@@ -59,7 +59,7 @@ namespace SmartRAG.Services.Parser
             { "heb", "he" }, { "tha", "th" }, { "vie", "vi" }, { "ind", "id" },
             { "ces", "cs" }, { "hun", "hu" }, { "ron", "ro" }, { "ukr", "uk" }
         };
-        
+
         private static readonly Dictionary<string, string> ReverseLanguageCodeMapping = new Dictionary<string, string>
         {
             { "tr", "tur" }, { "en", "eng" }, { "de", "deu" }, { "fr", "fra" },
@@ -70,7 +70,7 @@ namespace SmartRAG.Services.Parser
             { "he", "heb" }, { "th", "tha" }, { "vi", "vie" }, { "id", "ind" },
             { "cs", "ces" }, { "hu", "hun" }, { "ro", "ron" }, { "uk", "ukr" }
         };
-        
+
         /// <summary>
         /// Maps ISO 639-1/639-2 language codes to Tesseract language codes
         /// CRITICAL: Generic mapping - no specific language names (follows Generic Code rule)
@@ -110,12 +110,12 @@ namespace SmartRAG.Services.Parser
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _ocrEngineDataPath = FindOcrEngineDataPath(_logger);
-            
+
             if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
                 var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
                 var currentPath = Environment.GetEnvironmentVariable("DYLD_LIBRARY_PATH") ?? string.Empty;
-                
+
                 var possibleNativePaths = new[]
                 {
                     Path.Combine(baseDirectory, "runtimes", "osx-arm64", "native"),
@@ -123,7 +123,7 @@ namespace SmartRAG.Services.Parser
                     Path.Combine(baseDirectory, "runtimes", "osx", "native"),
                     baseDirectory
                 };
-                
+
                 var validPaths = new List<string> { baseDirectory };
                 foreach (var path in possibleNativePaths)
                 {
@@ -132,13 +132,13 @@ namespace SmartRAG.Services.Parser
                         validPaths.Add(path);
                     }
                 }
-                
+
                 var newPath = string.Join(":", validPaths);
                 if (!string.IsNullOrEmpty(currentPath))
                 {
                     newPath = $"{newPath}:{currentPath}";
                 }
-                
+
                 Environment.SetEnvironmentVariable("DYLD_LIBRARY_PATH", newPath);
                 _logger.LogDebug("Set DYLD_LIBRARY_PATH to: {Path}", newPath);
             }
@@ -185,31 +185,29 @@ namespace SmartRAG.Services.Parser
             language ??= GetDefaultLanguageFromSystemLocale();
 
             var startTime = DateTime.UtcNow;
-            
+
             try
             {
-                using (var preprocessedStream = await PreprocessImageAsync(imageStream))
-                {
-                    preprocessedStream.Position = 0;
+                using var preprocessedStream = await PreprocessImageAsync(imageStream);
+                preprocessedStream.Position = 0;
 
-                    var extractedText = await PerformOcrAsync(preprocessedStream, language);
-                    
-                    var processingTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
-                
-                    return new OcrResult
-                    {
-                        Text = extractedText.Text,
-                        Confidence = extractedText.Confidence,
-                        ProcessingTimeMs = (long)processingTime,
-                        WordCount = CountWords(extractedText.Text),
-                        Language = language
-                    };
-                }
+                var (Text, Confidence) = await PerformOcrAsync(preprocessedStream, language);
+
+                var processingTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
+
+                return new OcrResult
+                {
+                    Text = Text,
+                    Confidence = Confidence,
+                    ProcessingTimeMs = (long)processingTime,
+                    WordCount = CountWords(Text),
+                    Language = language
+                };
             }
             catch (Exception ex)
             {
                 ServiceLogMessages.LogImageOcrFailed(_logger, ex);
-                
+
                 return new OcrResult
                 {
                     Text = string.Empty,
@@ -232,14 +230,14 @@ namespace SmartRAG.Services.Parser
                 ServiceLogMessages.LogImageProcessingStarted(_logger, (int)imageStream.Length, null);
 
                 var convertedStream = await ConvertToPngIfNeededAsync(imageStream);
-                
+
                 ServiceLogMessages.LogImageProcessingCompleted(_logger, (int)imageStream.Length, (int)convertedStream.Length, null);
                 return convertedStream;
             }
             catch (Exception ex)
             {
                 ServiceLogMessages.LogImageProcessingFailed(_logger, ex);
-                
+
                 imageStream.Position = 0;
                 return imageStream;
             }
@@ -253,12 +251,12 @@ namespace SmartRAG.Services.Parser
             try
             {
                 imageStream.Position = 0;
-                
+
                 var header = new byte[WebPHeaderSize];
                 await imageStream.ReadAsync(header, 0, header.Length);
                 imageStream.Position = 0;
 
-                bool isWebP = header.Length >= WebPHeaderSize && 
+                bool isWebP = header.Length >= WebPHeaderSize &&
                              header[0] == RIFFByte1 && header[1] == RIFFByte2 && header[2] == RIFFByte3 && header[3] == RIFFByte4 && // RIFF
                              header[8] == WEBPByte1 && header[9] == WEBPByte2 && header[10] == WEBPByte3 && header[11] == WEBPByte4; // WEBP
 
@@ -267,19 +265,17 @@ namespace SmartRAG.Services.Parser
                     return imageStream;
                 }
 
-                using (var skImage = SKImage.FromEncodedData(imageStream))
+                using var skImage = SKImage.FromEncodedData(imageStream);
+                if (skImage == null)
                 {
-                    if (skImage == null)
-                    {
-                        _logger.LogWarning("Failed to decode WebP image with SkiaSharp");
-                        imageStream.Position = 0;
-                        return imageStream;
-                    }
-
-                    var pngData = skImage.Encode(SKEncodedImageFormat.Png, PNGQuality);
-                    var pngStream = new MemoryStream(pngData.ToArray());
-                    pngStream.Position = 0;                    return pngStream;
+                    _logger.LogWarning("Failed to decode WebP image with SkiaSharp");
+                    imageStream.Position = 0;
+                    return imageStream;
                 }
+
+                var pngData = skImage.Encode(SKEncodedImageFormat.Png, PNGQuality);
+                var pngStream = new MemoryStream(pngData.ToArray()) { Position = 0 };
+                return pngStream;
             }
             catch (Exception ex)
             {
@@ -303,7 +299,7 @@ namespace SmartRAG.Services.Parser
             {
                 var currentCulture = CultureInfo.CurrentCulture;
                 var twoLetterCode = currentCulture.TwoLetterISOLanguageName; // "tr", "en", "de", etc.
-                
+
                 if (ReverseLanguageCodeMapping.TryGetValue(twoLetterCode, out var threeLetterCode))
                 {
                     if (IsLanguageDataAvailable(threeLetterCode))
@@ -317,7 +313,7 @@ namespace SmartRAG.Services.Parser
                         return DefaultLanguage;
                     }
                 }
-                
+
                 Console.WriteLine($"[OCR Language Detection] System locale: '{currentCulture.Name}' → No mapping found, defaulting to 'eng'");
                 return DefaultLanguage;
             }
@@ -352,16 +348,16 @@ namespace SmartRAG.Services.Parser
             {
                 return DefaultLanguage;
             }
-            
+
             if (LanguageCodeToTesseractCode.TryGetValue(language, out var tesseractCode))
             {
                 return tesseractCode;
             }
-            
+
             _logger.LogWarning("Unknown language code: '{Language}'. Falling back to default: '{Default}'", language, DefaultLanguage);
             return DefaultLanguage;
         }
-        
+
         /// <summary>
         /// Gets available Tesseract language (downloads if missing, falls back to English if download fails)
         /// Returns null if no language data is available at all
@@ -369,7 +365,7 @@ namespace SmartRAG.Services.Parser
         private async Task<string> GetAvailableTesseractLanguageAsync(string requestedLanguage)
         {
             var tessdataPath = string.IsNullOrEmpty(_ocrEngineDataPath) ? "." : _ocrEngineDataPath;
-            
+
             if (!Directory.Exists(tessdataPath))
             {
                 try
@@ -381,45 +377,45 @@ namespace SmartRAG.Services.Parser
                     _logger.LogWarning(ex, "Failed to create tessdata directory: {Path}", tessdataPath);
                 }
             }
-            
+
             var requestedFile = Path.Combine(tessdataPath, $"{requestedLanguage}.traineddata");
             if (File.Exists(requestedFile))
             {
                 return requestedLanguage;
             }
-            
+
             _logger.LogInformation("Tesseract data for '{Language}' not found. Attempting to download...", requestedLanguage);
             var downloaded = await TryDownloadTesseractDataAsync(requestedLanguage, tessdataPath);
-            
+
             if (downloaded)
             {
                 _logger.LogInformation("Successfully downloaded Tesseract data for '{Language}'", requestedLanguage);
                 return requestedLanguage;
             }
-            
+
             if (requestedLanguage != DefaultLanguage)
             {
                 var defaultFile = Path.Combine(tessdataPath, $"{DefaultLanguage}.traineddata");
-                
+
                 if (File.Exists(defaultFile))
                 {
                     return DefaultLanguage;
                 }
-                
+
                 _logger.LogInformation("Attempting to download fallback language '{Fallback}'...", DefaultLanguage);
                 var fallbackDownloaded = await TryDownloadTesseractDataAsync(DefaultLanguage, tessdataPath);
-                
+
                 if (fallbackDownloaded)
                 {
                     _logger.LogInformation("Successfully downloaded fallback Tesseract data for '{Language}'", DefaultLanguage);
                     return DefaultLanguage;
                 }
             }
-            
+
             _logger.LogWarning("No Tesseract language data available and download failed. OCR will be skipped.");
             return null;
         }
-        
+
         /// <summary>
         /// Attempts to download Tesseract traineddata file from GitHub
         /// Generic implementation that works for any language (eng, tur, deu, fra, etc.)
@@ -431,28 +427,26 @@ namespace SmartRAG.Services.Parser
                 var fileName = $"{languageCode}.traineddata";
                 var targetPath = Path.Combine(tessdataPath, fileName);
                 var downloadUrl = $"https://github.com/tesseract-ocr/tessdata/raw/main/{fileName}";
-                
+
                 _logger.LogDebug("Downloading Tesseract data from: {Url}", downloadUrl);
-                
-                using (var httpClient = new System.Net.Http.HttpClient())
+
+                using var httpClient = new System.Net.Http.HttpClient();
+                httpClient.Timeout = TimeSpan.FromSeconds(60);
+
+                var response = await httpClient.GetAsync(downloadUrl);
+
+                if (!response.IsSuccessStatusCode)
                 {
-                    httpClient.Timeout = TimeSpan.FromSeconds(60);
-                    
-                    var response = await httpClient.GetAsync(downloadUrl);
-                    
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        _logger.LogWarning("Failed to download Tesseract data for '{Language}': HTTP {StatusCode}", 
-                            languageCode, response.StatusCode);
-                        return false;
-                    }
-                    
-                    var content = await response.Content.ReadAsByteArrayAsync();
-                    await File.WriteAllBytesAsync(targetPath, content);
-                    
-                    _logger.LogDebug("Downloaded Tesseract data: {File} ({Size} bytes)", fileName, content.Length);
-                    return true;
+                    _logger.LogWarning("Failed to download Tesseract data for '{Language}': HTTP {StatusCode}",
+                        languageCode, response.StatusCode);
+                    return false;
                 }
+
+                var content = await response.Content.ReadAsByteArrayAsync();
+                await File.WriteAllBytesAsync(targetPath, content);
+
+                _logger.LogDebug("Downloaded Tesseract data: {File} ({Size} bytes)", fileName, content.Length);
+                return true;
             }
             catch (System.Net.Http.HttpRequestException ex)
             {
@@ -470,7 +464,7 @@ namespace SmartRAG.Services.Parser
                 return false;
             }
         }
-        
+
         /// <summary>
         /// Performs OCR on the image stream
         /// </summary>
@@ -478,13 +472,13 @@ namespace SmartRAG.Services.Parser
         {
             var tesseractLanguageCode = NormalizeTesseractLanguageCode(language);
             var availableLanguage = await GetAvailableTesseractLanguageAsync(tesseractLanguageCode);
-            
+
             if (string.IsNullOrEmpty(availableLanguage))
             {
                 _logger.LogWarning("No Tesseract language data available. OCR cannot be performed. Skipping OCR.");
                 return (string.Empty, 0f);
             }
-            
+
             if (availableLanguage != tesseractLanguageCode)
             {
                 _logger.LogInformation("Tesseract data for '{Requested}' not found. Using '{Fallback}' instead.", tesseractLanguageCode, availableLanguage);
@@ -493,32 +487,28 @@ namespace SmartRAG.Services.Parser
             {
                 _logger.LogDebug("Using Tesseract language: '{Language}'", availableLanguage);
             }
-            
+
             return await Task.Run(() =>
             {
                 try
                 {
                     var tessdataPath = string.IsNullOrEmpty(_ocrEngineDataPath) ? "." : _ocrEngineDataPath;
-                    
-                    using (var engine = new TesseractEngine(tessdataPath, availableLanguage, EngineMode.Default))
-                    {
-                        // CRITICAL: Do NOT use tessedit_char_whitelist - it breaks multi-language support
-                        // Tesseract already handles language-specific characters (special chars, accented letters, etc.) correctly
-                        // based on the language parameter. Using whitelist filters out these non-ASCII characters.
-                        
-                        using (var img = Pix.LoadFromMemory(ReadStreamToByteArray(imageStream)))
-                        using (var page = engine.Process(img))
-                        {
-                            var text = page.GetText();
-                            var confidence = page.GetMeanConfidence();
-                            
-                            var correctedText = CorrectCommonOcrMistakes(text, language);
-                            
-                            ServiceLogMessages.LogImageOcrSuccess(_logger, correctedText.Length, null);
-                            
-                            return (correctedText?.Trim() ?? string.Empty, confidence);
-                        }
-                    }
+
+                    using var engine = new TesseractEngine(tessdataPath, availableLanguage, EngineMode.Default);
+                    // CRITICAL: Do NOT use tessedit_char_whitelist - it breaks multi-language support
+                    // Tesseract already handles language-specific characters (special chars, accented letters, etc.) correctly
+                    // based on the language parameter. Using whitelist filters out these non-ASCII characters.
+
+                    using var img = Pix.LoadFromMemory(ReadStreamToByteArray(imageStream));
+                    using var page = engine.Process(img);
+                    var text = page.GetText();
+                    var confidence = page.GetMeanConfidence();
+
+                    var correctedText = CorrectCommonOcrMistakes(text, language);
+
+                    ServiceLogMessages.LogImageOcrSuccess(_logger, correctedText.Length, null);
+
+                    return (correctedText?.Trim() ?? string.Empty, confidence);
                 }
                 catch (Exception ex)
                 {
@@ -558,7 +548,7 @@ namespace SmartRAG.Services.Parser
 
             var baseDir = AppDomain.CurrentDomain.BaseDirectory;
             var tessdataDirs = Directory.GetDirectories(baseDir, "*tessdata*", SearchOption.AllDirectories);
-            
+
             foreach (var dir in tessdataDirs)
             {
                 if (Directory.Exists(dir))
@@ -581,11 +571,9 @@ namespace SmartRAG.Services.Parser
         /// </summary>
         private static byte[] ReadStreamToByteArray(Stream stream)
         {
-            using (var memoryStream = new MemoryStream())
-            {
-                stream.CopyTo(memoryStream);
-                return memoryStream.ToArray();
-            }
+            using var memoryStream = new MemoryStream();
+            stream.CopyTo(memoryStream);
+            return memoryStream.ToArray();
         }
 
         /// <summary>
@@ -611,12 +599,12 @@ namespace SmartRAG.Services.Parser
                 return text;
 
             var currencySymbol = GetCurrencySymbolFromSystemLocale();
-            
+
             if (!string.IsNullOrEmpty(currencySymbol))
             {
                 text = CorrectCurrencySymbolMisreads(text, currencySymbol);
             }
-            
+
             return text;
         }
 
@@ -629,13 +617,13 @@ namespace SmartRAG.Services.Parser
             try
             {
                 var currentCulture = CultureInfo.CurrentCulture;
-                
+
                 var specificCulture = CultureInfo.CreateSpecificCulture(currentCulture.Name);
                 var region = new RegionInfo(specificCulture.Name);
                 var symbol = region.CurrencySymbol;
-                
+
                 Console.WriteLine($"[OCR Currency Detection] System locale: '{currentCulture.Name}' → Symbol: '{symbol}'");
-                
+
                 return symbol;
             }
             catch (Exception ex)
@@ -658,12 +646,12 @@ namespace SmartRAG.Services.Parser
                 return text;
 
             var currencySymbol = GetCurrencySymbolFromSystemLocale();
-            
+
             if (!string.IsNullOrEmpty(currencySymbol))
             {
                 return CorrectCurrencySymbolMisreads(text, currencySymbol);
             }
-            
+
             return text;
         }
 
@@ -683,46 +671,46 @@ namespace SmartRAG.Services.Parser
                 $"$1{currencySymbol}",
                 RegexOptions.Multiline
             );
-            
+
             text = Regex.Replace(
                 text,
                 CurrencyMisreadPatternCompact,
                 $"$1{currencySymbol}"
             );
-            
+
             text = Regex.Replace(
                 text,
                 CurrencyMisreadPattern6,
                 $"$1{currencySymbol}",
                 RegexOptions.Multiline
             );
-            
+
             text = Regex.Replace(
                 text,
                 CurrencyMisreadPattern6Compact,
                 $"$1{currencySymbol}"
             );
-            
+
             text = Regex.Replace(
                 text,
                 CurrencyMisreadPatternT,
                 $"$1{currencySymbol}",
                 RegexOptions.Multiline
             );
-            
+
             text = Regex.Replace(
                 text,
                 CurrencyMisreadPatternTCompact,
                 $"$1{currencySymbol}"
             );
-            
+
             text = Regex.Replace(
                 text,
                 CurrencyMisreadPatternAmpersand,
                 $"$1{currencySymbol}",
                 RegexOptions.Multiline
             );
-            
+
             // Pattern 8: & (ampersand) - compact (no space)
             text = Regex.Replace(
                 text,

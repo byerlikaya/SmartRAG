@@ -47,7 +47,7 @@ namespace SmartRAG.Models
             {
                 EnableDatabaseSearch = options.Features.EnableDatabaseSearch,
                 EnableDocumentSearch = options.Features.EnableDocumentSearch,
-                EnableAudioSearch = options.Features.EnableAudioParsing, 
+                EnableAudioSearch = options.Features.EnableAudioParsing,
                 EnableImageSearch = options.Features.EnableImageParsing
             };
         }

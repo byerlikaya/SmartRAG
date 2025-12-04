@@ -99,6 +99,16 @@ namespace SmartRAG.Models
         /// Feature toggles for enabling/disabling specific capabilities
         /// </summary>
         public FeatureToggles Features { get; set; } = new FeatureToggles();
+
+        /// <summary>
+        /// MCP Server configurations for external MCP server connections
+        /// </summary>
+        public List<McpServerConfig> McpServers { get; set; } = new List<McpServerConfig>();
+
+        /// <summary>
+        /// Watched folder configurations for automatic document indexing
+        /// </summary>
+        public List<WatchedFolderConfig> WatchedFolders { get; set; } = new List<WatchedFolderConfig>();
     }
 
     /// <summary>
@@ -110,20 +120,30 @@ namespace SmartRAG.Models
         /// Enable database search functionality
         /// </summary>
         public bool EnableDatabaseSearch { get; set; } = true;
-        
+
         /// <summary>
         /// Enable document search functionality
         /// </summary>
         public bool EnableDocumentSearch { get; set; } = true;
-        
+
         /// <summary>
         /// Enable audio file parsing and transcription
         /// </summary>
         public bool EnableAudioParsing { get; set; } = true;
-        
+
         /// <summary>
         /// Enable image parsing with OCR
         /// </summary>
         public bool EnableImageParsing { get; set; } = true;
+
+        /// <summary>
+        /// Enable MCP Client support
+        /// </summary>
+        public bool EnableMcpClient { get; set; } = true;
+
+        /// <summary>
+        /// Enable File Watcher support
+        /// </summary>
+        public bool EnableFileWatcher { get; set; } = true;
     }
 }

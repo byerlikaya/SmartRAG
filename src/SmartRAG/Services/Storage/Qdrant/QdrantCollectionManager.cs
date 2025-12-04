@@ -242,7 +242,7 @@ namespace SmartRAG.Services.Storage.Qdrant
                 }
                 else
                 {
-                    try 
+                    try
                     {
                         await _client.CreatePayloadIndexAsync(_collectionName, "content", global::Qdrant.Client.Grpc.PayloadSchemaType.Text);
                     }
@@ -267,17 +267,13 @@ namespace SmartRAG.Services.Storage.Qdrant
         private static Distance GetDistanceMetric(string metric)
         {
             var lowerMetric = metric.ToLower(CultureInfo.InvariantCulture);
-            switch (lowerMetric)
+            return lowerMetric switch
             {
-                case "cosine":
-                    return Distance.Cosine;
-                case "dot":
-                    return Distance.Dot;
-                case "euclidean":
-                    return Distance.Euclid;
-                default:
-                    throw new ArgumentException($"Unknown distance metric: {metric}", nameof(metric));
-            }
+                "cosine" => Distance.Cosine,
+                "dot" => Distance.Dot,
+                "euclidean" => Distance.Euclid,
+                _ => throw new ArgumentException($"Unknown distance metric: {metric}", nameof(metric)),
+            };
         }
 
         /// <summary>
@@ -289,7 +285,7 @@ namespace SmartRAG.Services.Storage.Qdrant
             {
                 await _client.DeleteCollectionAsync(collectionName);
                 _logger.LogInformation("Deleted Qdrant collection: {CollectionName}", collectionName);
-                
+
                 if (collectionName == _collectionName)
                 {
                     _collectionReady = false;
@@ -312,7 +308,7 @@ namespace SmartRAG.Services.Storage.Qdrant
                 await DeleteCollectionAsync(collectionName);
                 var vectorDimension = await GetVectorDimensionAsync();
                 await CreateCollectionAsync(collectionName, vectorDimension);
-                
+
                 _logger.LogInformation("Recreated Qdrant collection: {CollectionName}", collectionName);
             }
             catch (Exception ex)

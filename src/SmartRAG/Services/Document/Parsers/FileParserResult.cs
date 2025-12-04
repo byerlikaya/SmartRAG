@@ -11,7 +11,7 @@ namespace SmartRAG.Services.Document.Parsers
         /// Extracted text content from the file
         /// </summary>
         public string Content { get; set; }
-        
+
         /// <summary>
         /// Additional metadata extracted from the file (page counts, creation date, etc.)
         /// </summary>

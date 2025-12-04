@@ -28,7 +28,7 @@ namespace SmartRAG.Helpers
                 .Split(new char[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries)
                 .Where(w => w.Length > MinWordLength)
                 .ToList();
-            
+
             // For agglutinative languages: extract root words from suffixed words
             // This helps match words with suffixes to their root forms in content
             var expandedWords = new HashSet<string>(words);
@@ -40,7 +40,7 @@ namespace SmartRAG.Helpers
                     // This is a simple heuristic for agglutinative languages
                     for (int suffixLen = 2; suffixLen <= Math.Min(4, word.Length - 4); suffixLen++)
                     {
-                        var potentialRoot = word.Substring(0, word.Length - suffixLen);
+                        var potentialRoot = word[..^suffixLen];
                         if (potentialRoot.Length >= 4) // Root must be at least 4 chars
                         {
                             expandedWords.Add(potentialRoot);
@@ -48,7 +48,7 @@ namespace SmartRAG.Helpers
                     }
                 }
             }
-            
+
             return expandedWords.ToList();
         }
 

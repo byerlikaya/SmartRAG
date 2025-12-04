@@ -39,7 +39,7 @@ namespace SmartRAG.Interfaces.Database
         /// </summary>
         /// <param name="connectionConfig">Connection configuration</param>
         /// <returns>Unique database identifier</returns>
-        Task<string> GetDatabaseIdAsync(DatabaseConnectionConfig connectionConfig);       
+        Task<string> GetDatabaseIdAsync(DatabaseConnectionConfig connectionConfig);
     }
 }
 

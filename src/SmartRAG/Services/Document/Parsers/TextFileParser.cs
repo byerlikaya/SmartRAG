@@ -23,11 +23,9 @@ namespace SmartRAG.Services.Document.Parsers
         {
             try
             {
-                using (var reader = new StreamReader(fileStream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true))
-                {
-                    var content = await reader.ReadToEndAsync();
-                    return new FileParserResult { Content = TextCleaningHelper.CleanContent(content) };
-                }
+                using var reader = new StreamReader(fileStream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+                var content = await reader.ReadToEndAsync();
+                return new FileParserResult { Content = TextCleaningHelper.CleanContent(content) };
             }
             catch (Exception)
             {

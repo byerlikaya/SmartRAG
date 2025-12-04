@@ -99,12 +99,12 @@ namespace SmartRAG.Repositories
                 _documentPrefix = redisConfig.KeyPrefix;
 
                 ValidateConnection();
-                
+
                 if (_config.EnableVectorSearch)
                 {
                     _ = EnsureVectorIndexExistsAsync();
                 }
-                
+
                 RepositoryLogMessages.LogRedisConnectionEstablished(Logger, redisConfig.ConnectionString, null);
             }
             catch (Exception ex)
@@ -135,7 +135,7 @@ namespace SmartRAG.Repositories
                 if (_config.EnableVectorSearch)
                 {
                     await EnsureVectorIndexExistsAsync();
-                    
+
                     var batch = _database.CreateBatch();
                     var tasks = new List<Task>();
 
@@ -146,7 +146,7 @@ namespace SmartRAG.Repositories
 
                         if (embedding == null || embedding.Count == 0)
                         {
-                            try 
+                            try
                             {
                                 embedding = await _aiProvider.GenerateEmbeddingAsync(chunk.Content, null);
                                 chunk.Embedding = embedding; // Update chunk with generated embedding
@@ -172,7 +172,7 @@ namespace SmartRAG.Repositories
 
                     batch.Execute();
                     await Task.WhenAll(tasks);
-                    
+
                     await _database.StringSetAsync(documentKey, JsonSerializer.Serialize(document));
                 }
 
@@ -309,7 +309,7 @@ namespace SmartRAG.Repositories
                 }
 
                 var queryEmbedding = await _aiProvider.GenerateEmbeddingAsync(query, aiConfig);
-                
+
                 // KNN search syntax: *=>[KNN {k} @vector_field $query_vector AS score]
                 var searchQuery = new Query($"*=>[KNN {maxResults} @embedding $vec AS score]")
                     .AddParam("vec", SerializeEmbedding(queryEmbedding))
@@ -318,7 +318,7 @@ namespace SmartRAG.Repositories
                     .Dialect(2); // Dialect 2 is required for vector search
 
                 var searchResult = await _searchCommands.SearchAsync(_config.VectorIndexName, searchQuery);
-                
+
                 var results = new List<DocumentChunk>();
 
                 foreach (var doc in searchResult.Documents)
@@ -339,31 +339,19 @@ namespace SmartRAG.Repositories
                             {
                                 score = parsedScore;
                             }
-                            
-                            float similarity;
+
                             var distanceMetric = _config.DistanceMetric?.ToUpperInvariant() ?? "COSINE";
-                            
-                            switch (distanceMetric)
-                            {
-                                case "COSINE":
+                            var
                                     // Cosine distance: 0 = identical, 2 = opposite
-                                    similarity = (float)Math.Max(0.0, Math.Min(1.0, 1.0 - (score / 2.0)));
-                                    break;
-                                case "L2":
-                                    // L2 distance: 0 = identical, larger = more different
-                                    similarity = (float)(1.0 / (1.0 + score));
-                                    break;
-                                case "IP":
-                                    // Inner product: higher = more similar (can be negative)
-                                    similarity = (float)Math.Max(0.0, Math.Min(1.0, (score + 1.0) / 2.0));
-                                    break;
-                                default:
-                                    similarity = (float)Math.Max(0.0, Math.Min(1.0, 1.0 - score));
-                                    break;
-                            }
-                            
+                                    similarity = distanceMetric switch
+                                    {
+                                        "COSINE" => (float)Math.Max(0.0, Math.Min(1.0, 1.0 - (score / 2.0))),// Cosine distance: 0 = identical, 2 = opposite
+                                        "L2" => (float)(1.0 / (1.0 + score)),// L2 distance: 0 = identical, larger = more different
+                                        "IP" => (float)Math.Max(0.0, Math.Min(1.0, (score + 1.0) / 2.0)),// Inner product: higher = more similar (can be negative)
+                                        _ => (float)Math.Max(0.0, Math.Min(1.0, 1.0 - score)),
+                                    };
                             var relevanceScore = similarity * 100.0;
-                            
+
                             results.Add(new DocumentChunk
                             {
                                 Id = Guid.Parse(doc.Id.Replace($"{_config.KeyPrefix}{ChunkKeySuffix}", "")), // Extract GUID from key if possible, or generate new
@@ -479,7 +467,7 @@ namespace SmartRAG.Repositories
 
         private static HashEntry[] CreateDocumentMetadata(SmartRAG.Entities.Document document)
         {
-            return new HashEntry[]
+            var entries = new List<HashEntry>
             {
             new HashEntry("id", document.Id.ToString()),
             new HashEntry("fileName", document.FileName),
@@ -489,6 +477,19 @@ namespace SmartRAG.Repositories
             new HashEntry("uploadedBy", document.UploadedBy),
             new HashEntry("chunkCount", document.Chunks.Count.ToString(CultureInfo.InvariantCulture))
             };
+
+            if (document.Metadata != null)
+            {
+                foreach (var metadataItem in document.Metadata)
+                {
+                    if (metadataItem.Value != null)
+                    {
+                        entries.Add(new HashEntry($"metadata_{metadataItem.Key}", metadataItem.Value.ToString()));
+                    }
+                }
+            }
+
+            return entries.ToArray();
         }
 
         private async Task EnsureVectorIndexExistsAsync()
@@ -537,7 +538,7 @@ namespace SmartRAG.Repositories
             catch (Exception ex)
             {
                 RepositoryLogMessages.LogRedisVectorIndexCreationFailure(Logger, _config.VectorIndexName, ex);
-                
+
                 var errorMessage = ex.Message ?? string.Empty;
                 if (errorMessage.Contains("unknown command 'FT.CREATE'", StringComparison.OrdinalIgnoreCase) ||
                     errorMessage.Contains("FT.CREATE", StringComparison.OrdinalIgnoreCase))
@@ -569,30 +570,31 @@ namespace SmartRAG.Repositories
         private async Task ExecuteDocumentDeleteBatch(string documentKey, string metadataKey, Guid documentId)
         {
             var batch = _database.CreateBatch();
-            var allTasks = new List<Task>();
-
-            allTasks.Add(batch.KeyDeleteAsync(documentKey));
-            allTasks.Add(batch.ListRemoveAsync(_documentsKey, documentId.ToString()));
-            allTasks.Add(batch.KeyDeleteAsync(metadataKey));
+            var allTasks = new List<Task>
+            {
+                batch.KeyDeleteAsync(documentKey),
+                batch.ListRemoveAsync(_documentsKey, documentId.ToString()),
+                batch.KeyDeleteAsync(metadataKey)
+            };
 
             // Note: This is a simplified deletion. Ideally we should track chunk keys and delete them explicitly
             // or use a tag-based deletion if RediSearch supports it efficiently.
             if (_config.EnableVectorSearch)
             {
-               try 
-               {
-                   var query = new Query($"@documentId:{{{documentId}}}").ReturnFields("id");
-                   var result = await _searchCommands.SearchAsync(_config.VectorIndexName, query);
-                   
-                   foreach (var doc in result.Documents)
-                   {
-                       var chunkKey = doc.Id;
-                       allTasks.Add(batch.KeyDeleteAsync(chunkKey));
-                   }
-               }
-               catch
-               {
-               }
+                try
+                {
+                    var query = new Query($"@documentId:{{{documentId}}}").ReturnFields("id");
+                    var result = await _searchCommands.SearchAsync(_config.VectorIndexName, query);
+
+                    foreach (var doc in result.Documents)
+                    {
+                        var chunkKey = doc.Id;
+                        allTasks.Add(batch.KeyDeleteAsync(chunkKey));
+                    }
+                }
+                catch
+                {
+                }
             }
 
             batch.Execute();

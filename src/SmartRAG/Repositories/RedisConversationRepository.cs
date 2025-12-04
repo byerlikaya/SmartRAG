@@ -45,7 +45,7 @@ namespace SmartRAG.Repositories
             {
                 var conversationKey = $"conversation:{sessionId}";
                 var conversationJson = await _database.StringGetAsync(conversationKey);
-                
+
                 if (conversationJson.IsNull)
                 {
                     return string.Empty;
@@ -65,19 +65,19 @@ namespace SmartRAG.Repositories
             try
             {
                 var conversationKey = $"conversation:{sessionId}";
-                
+
                 if (string.IsNullOrEmpty(question))
                 {
                     await _database.StringSetAsync(conversationKey, answer);
                     return;
                 }
-                
+
                 var existingConversation = await GetConversationHistoryAsync(sessionId);
-                
-                var newEntry = string.IsNullOrEmpty(existingConversation) 
+
+                var newEntry = string.IsNullOrEmpty(existingConversation)
                     ? $"User: {question}\nAssistant: {answer}"
                     : $"{existingConversation}\nUser: {question}\nAssistant: {answer}";
-                
+
                 await _database.StringSetAsync(conversationKey, newEntry);
             }
             catch (Exception ex)

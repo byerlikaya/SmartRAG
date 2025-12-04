@@ -20,7 +20,7 @@ namespace SmartRAG.Services.Document.Parsers
         private static readonly string[] SupportedContentTypes = {
             "audio/wav", "audio/mpeg", "audio/mp4", "audio/x-m4a", "audio/flac", "audio/ogg"
         };
-        
+
         public AudioFileParser(IAudioParserService audioParserService, ILogger<AudioFileParser> logger)
         {
             _audioParserService = audioParserService;
@@ -39,12 +39,12 @@ namespace SmartRAG.Services.Document.Parsers
             {
                 var detectedLanguage = DetectAudioLanguage(language, fileName);
                 var transcriptionResult = await _audioParserService.TranscribeAudioAsync(fileStream, fileName, detectedLanguage);
-                
+
                 var result = new FileParserResult
                 {
                     Content = string.Empty,
-                    Metadata = transcriptionResult.Metadata != null 
-                        ? new Dictionary<string, object>(transcriptionResult.Metadata) 
+                    Metadata = transcriptionResult.Metadata != null
+                        ? new Dictionary<string, object>(transcriptionResult.Metadata)
                         : new Dictionary<string, object>()
                 };
 
@@ -76,12 +76,12 @@ namespace SmartRAG.Services.Document.Parsers
             var fileNameLower = fileName.ToLowerInvariant();
             var iso6391Pattern = @"\b([a-z]{2})(?:[-_]([a-z]{2}))?\b";
             var matches = Regex.Matches(fileNameLower, iso6391Pattern);
-            
+
             foreach (Match match in matches)
             {
                 var languageCode = match.Groups[1].Value;
                 var regionCode = match.Groups[2].Success ? match.Groups[2].Value : null;
-                
+
                 if (languageCode.Length == 2 && char.IsLetter(languageCode[0]) && char.IsLetter(languageCode[1]))
                 {
                     var locale = regionCode != null && regionCode.Length == 2

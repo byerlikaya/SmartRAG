@@ -50,26 +50,24 @@ namespace SmartRAG.Providers
             if (!isValid)
                 return errorMessage;
 
-            using (var client = CreateGeminiHttpClient(config.ApiKey))
+            using var client = CreateGeminiHttpClient(config.ApiKey);
+            var payload = CreateGeminiTextPayload(prompt, config);
+
+            var modelEndpoint = BuildGeminiUrl(config.Endpoint, config.Model, "generateContent");
+
+            var (success, response, error) = await MakeHttpRequestAsync(client, modelEndpoint, payload);
+
+            if (!success)
+                return error;
+
+            try
             {
-                var payload = CreateGeminiTextPayload(prompt, config);
-
-                var modelEndpoint = BuildGeminiUrl(config.Endpoint, config.Model, "generateContent");
-
-                var (success, response, error) = await MakeHttpRequestAsync(client, modelEndpoint, payload);
-
-                if (!success)
-                    return error;
-
-                try
-                {
-                    return ParseGeminiTextResponse(response);
-                }
-                catch (Exception ex)
-                {
-                    ProviderLogMessages.LogGeminiTextParsingError(Logger, ex);
-                    return $"Error parsing Gemini response: {ex.Message}";
-                }
+                return ParseGeminiTextResponse(response);
+            }
+            catch (Exception ex)
+            {
+                ProviderLogMessages.LogGeminiTextParsingError(Logger, ex);
+                return $"Error parsing Gemini response: {ex.Message}";
             }
         }
 
@@ -217,7 +215,7 @@ namespace SmartRAG.Providers
                 model = $"models/{model}",
                 content = new
                 {
-                    parts = new[] { new { text = text } }
+                    parts = new[] { new { text } }
                 }
             };
         }
@@ -227,25 +225,23 @@ namespace SmartRAG.Providers
         /// </summary>
         private static string ParseGeminiTextResponse(string response)
         {
-            using (var doc = JsonDocument.Parse(response))
+            using var doc = JsonDocument.Parse(response);
+            if (doc.RootElement.TryGetProperty("candidates", out var candidates) &&
+                candidates.ValueKind == JsonValueKind.Array)
             {
-                if (doc.RootElement.TryGetProperty("candidates", out var candidates) &&
-                    candidates.ValueKind == JsonValueKind.Array)
+                var firstCandidate = candidates.EnumerateArray().FirstOrDefault();
+
+                if (firstCandidate.TryGetProperty("content", out var contentProp) &&
+                    contentProp.TryGetProperty("parts", out var parts) &&
+                    parts.ValueKind == JsonValueKind.Array)
                 {
-                    var firstCandidate = candidates.EnumerateArray().FirstOrDefault();
-
-                    if (firstCandidate.TryGetProperty("content", out var contentProp) &&
-                        contentProp.TryGetProperty("parts", out var parts) &&
-                        parts.ValueKind == JsonValueKind.Array)
-                    {
-                        var firstPart = parts.EnumerateArray().FirstOrDefault();
-                        if (firstPart.TryGetProperty("text", out var text))
-                            return text.GetString() ?? "No response generated";
-                    }
+                    var firstPart = parts.EnumerateArray().FirstOrDefault();
+                    if (firstPart.TryGetProperty("text", out var text))
+                        return text.GetString() ?? "No response generated";
                 }
-
-                return "No response generated";
             }
+
+            return "No response generated";
         }
 
         /// <summary>
@@ -275,39 +271,37 @@ namespace SmartRAG.Providers
         /// </summary>
         private async Task<List<List<float>>> ProcessGeminiBatchAsync(List<string> batchTexts, AIProviderConfig config)
         {
-            using (var client = CreateGeminiHttpClient(config.ApiKey))
+            using var client = CreateGeminiHttpClient(config.ApiKey);
+            var payload = new
             {
-                var payload = new
+                requests = batchTexts.Select(text => new
                 {
-                    requests = batchTexts.Select(text => new
+                    model = $"models/{config.EmbeddingModel}",
+                    content = new
                     {
-                        model = $"models/{config.EmbeddingModel}",
-                        content = new
-                        {
-                            parts = new[] { new { text = text } }
-                        }
-                    }).ToArray()
-                };
+                        parts = new[] { new { text } }
+                    }
+                }).ToArray()
+            };
 
-                var batchEndpoint = BuildGeminiUrl(config.Endpoint, config.EmbeddingModel, "batchEmbedContents");
+            var batchEndpoint = BuildGeminiUrl(config.Endpoint, config.EmbeddingModel, "batchEmbedContents");
 
-                var (success, response, error) = await MakeHttpRequestAsync(client, batchEndpoint, payload);
+            var (success, response, error) = await MakeHttpRequestAsync(client, batchEndpoint, payload);
 
-                if (!success)
-                {
-                    ProviderLogMessages.LogGeminiBatchEmbeddingRequestError(Logger, error, null);
-                    throw new InvalidOperationException($"Batch embedding failed: {error}");
-                }
+            if (!success)
+            {
+                ProviderLogMessages.LogGeminiBatchEmbeddingRequestError(Logger, error, null);
+                throw new InvalidOperationException($"Batch embedding failed: {error}");
+            }
 
-                try
-                {
-                    return ParseGeminiBatchEmbeddingResponse(response);
-                }
-                catch (Exception ex)
-                {
-                    ProviderLogMessages.LogGeminiBatchEmbeddingParsingError(Logger, ex);
-                    throw;
-                }
+            try
+            {
+                return ParseGeminiBatchEmbeddingResponse(response);
+            }
+            catch (Exception ex)
+            {
+                ProviderLogMessages.LogGeminiBatchEmbeddingParsingError(Logger, ex);
+                throw;
             }
         }
 

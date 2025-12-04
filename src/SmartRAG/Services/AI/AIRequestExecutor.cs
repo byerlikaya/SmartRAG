@@ -34,17 +34,12 @@ namespace SmartRAG.Services.AI
         /// </summary>
         public async Task<string> GenerateResponseAsync(AIProvider provider, string query, IEnumerable<string> context)
         {
-            var providerConfig = _configService.GetProviderConfig(provider);
-            if (providerConfig == null)
-            {
-                throw new InvalidOperationException($"AI provider configuration not found for '{provider}'");
-            }
-
+            var providerConfig = _configService.GetProviderConfig(provider) ?? throw new InvalidOperationException($"AI provider configuration not found for '{provider}'");
             var aiProvider = _aiProviderFactory.CreateProvider(provider);
             var prompt = BuildPrompt(query, context);
-            
+
             var response = await aiProvider.GenerateTextAsync(prompt, providerConfig);
-            
+
             if (IsErrorResponse(response))
             {
                 throw new InvalidOperationException(string.IsNullOrWhiteSpace(response)
@@ -85,10 +80,10 @@ namespace SmartRAG.Services.AI
 
             var aiProvider = _aiProviderFactory.CreateProvider(provider);
             var embeddings = await aiProvider.GenerateEmbeddingsBatchAsync(texts, providerConfig);
-            
+
             var filteredEmbeddings = embeddings?.Where(e => e != null && e.Count > 0).ToList() ?? new List<List<float>>();
             ServiceLogMessages.LogAIServiceBatchEmbeddingsGenerated(_logger, filteredEmbeddings.Count, provider.ToString(), null);
-            
+
             return filteredEmbeddings;
         }
 

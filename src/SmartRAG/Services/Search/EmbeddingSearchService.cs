@@ -105,7 +105,7 @@ namespace SmartRAG.Services.Search
                 return new List<DocumentChunk>();
             }
         }
-     
+
     }
 }
 

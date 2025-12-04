@@ -53,25 +53,45 @@ namespace SmartRAG.Services.Document
         {
             try
             {
-                var parser = _parsers.FirstOrDefault(p => p.CanParse(fileName, contentType));
-                if (parser == null)
+                long fileSize = 0;
+                var originalPosition = 0L;
+                var canSeek = fileStream.CanSeek;
+
+                if (canSeek)
                 {
-                    throw new NotSupportedException($"No parser found for file {fileName} with content type {contentType}");
+                    originalPosition = fileStream.Position;
+                    fileStream.Position = 0;
+                    fileSize = fileStream.Length;
+                }
+                else if (fileStream.CanRead)
+                {
+                    fileSize = fileStream.Length;
                 }
 
+                var parser = _parsers.FirstOrDefault(p => p.CanParse(fileName, contentType)) ?? throw new NotSupportedException($"No parser found for file {fileName} with content type {contentType}");
                 var result = await parser.ParseAsync(fileStream, fileName, language);
                 var content = result.Content;
+
+                if (canSeek && fileStream.CanSeek)
+                {
+                    fileStream.Position = originalPosition;
+                    if (fileSize == 0)
+                    {
+                        fileSize = fileStream.Length;
+                    }
+                }
 
                 var documentId = Guid.NewGuid();
                 var chunks = CreateChunks(content, documentId);
 
                 var document = CreateDocument(documentId, fileName, contentType, content, uploadedBy, chunks);
-                
+                document.FileSize = fileSize;
+
                 if (result.Metadata != null && result.Metadata.Count > 0)
                 {
                     document.Metadata = new Dictionary<string, object>(result.Metadata);
                 }
-                
+
                 PopulateMetadata(document);
                 AnnotateDocumentMetadata(document, content);
 
@@ -112,10 +132,7 @@ namespace SmartRAG.Services.Document
 
         private static void PopulateMetadata(SmartRAG.Entities.Document document)
         {
-            if (document.Metadata == null)
-            {
-                document.Metadata = new Dictionary<string, object>();
-            }
+            document.Metadata ??= new Dictionary<string, object>();
 
             document.Metadata["FileName"] = document.FileName;
             document.Metadata["ContentType"] = document.ContentType;
@@ -128,7 +145,7 @@ namespace SmartRAG.Services.Document
         private void AnnotateDocumentMetadata(SmartRAG.Entities.Document document, string content)
         {
             if (document == null || document.Metadata == null) return;
-            
+
             AnnotateAudioMetadata(document, content);
         }
 
@@ -265,7 +282,7 @@ namespace SmartRAG.Services.Document
                 }
 
                 var (validatedStart, validatedEnd) = ValidateChunkBoundaries(content, startIndex, endIndex);
-                var chunkContent = content.Substring(validatedStart, validatedEnd - validatedStart).Trim();
+                var chunkContent = content[validatedStart..validatedEnd].Trim();
 
                 if (!string.IsNullOrWhiteSpace(chunkContent))
                 {

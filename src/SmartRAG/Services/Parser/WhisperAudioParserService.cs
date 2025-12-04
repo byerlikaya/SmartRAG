@@ -91,7 +91,8 @@ namespace SmartRAG.Services.Parser
 
             await EnsureModelExistsAsync();
 
-            _whisperFactory = WhisperFactory.FromPath(_config.ModelPath);        }
+            _whisperFactory = WhisperFactory.FromPath(_config.ModelPath);
+        }
 
         /// <summary>
         /// Ensures Whisper model file exists, downloads if necessary
@@ -119,10 +120,8 @@ namespace SmartRAG.Services.Parser
 
             using (var modelStream = await WhisperGgmlDownloader.Default.GetGgmlModelAsync(modelType))
             {
-                using (var fileWriter = File.OpenWrite(_config.ModelPath))
-                {
-                    await modelStream.CopyToAsync(fileWriter);
-                }
+                using var fileWriter = File.OpenWrite(_config.ModelPath);
+                await modelStream.CopyToAsync(fileWriter);
             }
 
             _logger.LogInformation("Whisper model downloaded successfully to {ModelPath}", _config.ModelPath);
@@ -153,7 +152,7 @@ namespace SmartRAG.Services.Parser
         private async Task<AudioTranscriptionResult> PerformTranscriptionAsync(Stream audioStream, string fileName, string language)
         {
             var originalLanguage = language ?? _config.DefaultLanguage;
-            
+
             var result = new AudioTranscriptionResult
             {
                 Language = originalLanguage,
@@ -173,8 +172,8 @@ namespace SmartRAG.Services.Parser
                 if (_whisperFactory == null)
                     throw new InvalidOperationException("Whisper factory not initialized");
 
-                var threadCount = _config.MaxThreads > 0 
-                    ? _config.MaxThreads 
+                var threadCount = _config.MaxThreads > 0
+                    ? _config.MaxThreads
                     : Environment.ProcessorCount;
 
                 var languageToUse = GetLanguageForWhisper(language ?? _config.DefaultLanguage);
@@ -189,128 +188,126 @@ namespace SmartRAG.Services.Parser
                     builder = builder.WithPrompt(_config.PromptHint);
                 }
 
-                using (var processor = builder.Build())
-                {
-                    Stream waveStream = null;
-                    var needsConversion = RequiresConversion(fileName);
+                using var processor = builder.Build();
+                Stream waveStream = null;
+                var needsConversion = RequiresConversion(fileName);
 
+                try
+                {
+                    if (needsConversion)
+                    {
+                        _logger.LogDebug("Converting audio file to WAV format: {FileName}", SanitizeFileName(fileName));
+                        var (convertedStream, _) = await _audioConversionService.ConvertToCompatibleFormatAsync(audioStream, fileName);
+                        waveStream = convertedStream;
+                    }
+                    else
+                    {
+                        audioStream.Position = 0;
+                        waveStream = audioStream;
+                    }
+
+                    var transcriptionText = string.Empty;
+                    var totalConfidence = 0.0;
+                    var segmentCount = 0;
+                    var lastSegmentText = string.Empty;
+                    var duplicateCount = 0;
+                    var skippedLowConfidence = 0;
+                    var skippedDuplicates = 0;
+
+                    _logger.LogDebug("Starting Whisper processing on WAV stream ({StreamLength} bytes)", waveStream.Length);
+
+                    var segments = processor.ProcessAsync(waveStream);
+                    var enumerator = segments.GetAsyncEnumerator();
                     try
                     {
-            if (needsConversion)
-            {
-                _logger.LogDebug("Converting audio file to WAV format: {FileName}", SanitizeFileName(fileName));
-                var (convertedStream, _) = await _audioConversionService.ConvertToCompatibleFormatAsync(audioStream, fileName);
-                waveStream = convertedStream;
-            }
-                        else
+                        while (await enumerator.MoveNextAsync().ConfigureAwait(false))
                         {
-                            audioStream.Position = 0;
-                            waveStream = audioStream;
-                        }
+                            var segment = enumerator.Current;
+                            var segmentText = segment.Text?.Trim() ?? string.Empty;
 
-                        var transcriptionText = string.Empty;
-                        var totalConfidence = 0.0;
-                        var segmentCount = 0;
-                        var lastSegmentText = string.Empty;
-                        var duplicateCount = 0;
-                        var skippedLowConfidence = 0;
-                        var skippedDuplicates = 0;
-
-                        _logger.LogDebug("Starting Whisper processing on WAV stream ({StreamLength} bytes)", waveStream.Length);
-
-                        var segments = processor.ProcessAsync(waveStream);
-                        var enumerator = segments.GetAsyncEnumerator();
-                        try
-                        {
-                            while (await enumerator.MoveNextAsync().ConfigureAwait(false))
+                            if (segment.Probability < _config.MinConfidenceThreshold)
                             {
-                                var segment = enumerator.Current;
-                                var segmentText = segment.Text?.Trim() ?? string.Empty;
+                                _logger.LogDebug("Skipping low-confidence segment (P={Probability}): '{Text}'",
+                                    segment.Probability, segmentText);
+                                skippedLowConfidence++;
+                                continue;
+                            }
 
-                                if (segment.Probability < _config.MinConfidenceThreshold)
+                            if (segmentText == lastSegmentText)
+                            {
+                                duplicateCount++;
+                                if (duplicateCount > 2)
                                 {
-                                    _logger.LogDebug("Skipping low-confidence segment (P={Probability}): '{Text}'",
-                                        segment.Probability, segmentText);
-                                    skippedLowConfidence++;
+                                    _logger.LogDebug("Skipping duplicate segment (#{Count}): '{Text}'",
+                                        duplicateCount, segmentText);
+                                    skippedDuplicates++;
                                     continue;
                                 }
+                            }
+                            else
+                            {
+                                duplicateCount = 0;
+                                lastSegmentText = segmentText;
+                            }
 
-                                if (segmentText == lastSegmentText)
-                                {
-                                    duplicateCount++;
-                                    if (duplicateCount > 2)
-                                    {
-                                        _logger.LogDebug("Skipping duplicate segment (#{Count}): '{Text}'",
-                                            duplicateCount, segmentText);
-                                        skippedDuplicates++;
-                                        continue;
-                                    }
-                                }
-                                else
-                                {
-                                    duplicateCount = 0;
-                                    lastSegmentText = segmentText;
-                                }
+                            _logger.LogDebug("Whisper segment: Start={Start}, End={End}, Text='{Text}', Probability={Probability}",
+                                segment.Start, segment.End, segment.Text, segment.Probability);
 
-                                _logger.LogDebug("Whisper segment: Start={Start}, End={End}, Text='{Text}', Probability={Probability}",
-                                    segment.Start, segment.End, segment.Text, segment.Probability);
+                            transcriptionText += segment.Text + " ";
+                            totalConfidence += segment.Probability;
+                            segmentCount++;
 
-                                transcriptionText += segment.Text + " ";
-                                totalConfidence += segment.Probability;
-                                segmentCount++;
-
-                                List<AudioSegmentMetadata> typedSegments;
-                                if (result.Metadata.TryGetValue("Segments", out var segmentsMetadata))
-                                {
-                                    typedSegments = segmentsMetadata as List<AudioSegmentMetadata>;
-                                    if (typedSegments == null)
-                                    {
-                                        typedSegments = new List<AudioSegmentMetadata>();
-                                        result.Metadata["Segments"] = typedSegments;
-                                    }
-                                }
-                                else
+                            List<AudioSegmentMetadata> typedSegments;
+                            if (result.Metadata.TryGetValue("Segments", out var segmentsMetadata))
+                            {
+                                typedSegments = segmentsMetadata as List<AudioSegmentMetadata>;
+                                if (typedSegments == null)
                                 {
                                     typedSegments = new List<AudioSegmentMetadata>();
                                     result.Metadata["Segments"] = typedSegments;
                                 }
-
-                                typedSegments.Add(new AudioSegmentMetadata
-                                {
-                                    Start = segment.Start.TotalSeconds,
-                                    End = segment.End.TotalSeconds,
-                                    Text = segmentText,
-                                    Probability = segment.Probability
-                                });
+                            }
+                            else
+                            {
+                                typedSegments = new List<AudioSegmentMetadata>();
+                                result.Metadata["Segments"] = typedSegments;
                             }
 
-                            _logger.LogInformation("Whisper processing completed: {SegmentCount} segments processed, {SkippedLowConf} low-confidence skipped, {SkippedDup} duplicates skipped",
-                                segmentCount, skippedLowConfidence, skippedDuplicates);
-                        }
-                        finally
-                        {
-                            await enumerator.DisposeAsync().ConfigureAwait(false);
-                        }
-
-                        result.Text = transcriptionText.Trim();
-                        result.Confidence = segmentCount > 0 ? totalConfidence / segmentCount : 0.0;
-
-                        if (result.Confidence < _config.MinConfidenceThreshold)
-                        {
-                            _logger.LogWarning("Transcription confidence {Confidence} below threshold {Threshold}",
-                                result.Confidence, _config.MinConfidenceThreshold);
-                            result.Text = string.Empty;
-                            result.Confidence = 0.0;
+                            typedSegments.Add(new AudioSegmentMetadata
+                            {
+                                Start = segment.Start.TotalSeconds,
+                                End = segment.End.TotalSeconds,
+                                Text = segmentText,
+                                Probability = segment.Probability
+                            });
                         }
 
-                        return result;
+                        _logger.LogInformation("Whisper processing completed: {SegmentCount} segments processed, {SkippedLowConf} low-confidence skipped, {SkippedDup} duplicates skipped",
+                            segmentCount, skippedLowConfidence, skippedDuplicates);
                     }
                     finally
                     {
-                        if (needsConversion && waveStream != null && waveStream != audioStream)
-                        {
-                            waveStream.Dispose();
-                        }
+                        await enumerator.DisposeAsync().ConfigureAwait(false);
+                    }
+
+                    result.Text = transcriptionText.Trim();
+                    result.Confidence = segmentCount > 0 ? totalConfidence / segmentCount : 0.0;
+
+                    if (result.Confidence < _config.MinConfidenceThreshold)
+                    {
+                        _logger.LogWarning("Transcription confidence {Confidence} below threshold {Threshold}",
+                            result.Confidence, _config.MinConfidenceThreshold);
+                        result.Text = string.Empty;
+                        result.Confidence = 0.0;
+                    }
+
+                    return result;
+                }
+                finally
+                {
+                    if (needsConversion && waveStream != null && waveStream != audioStream)
+                    {
+                        waveStream.Dispose();
                     }
                 }
             }
@@ -372,12 +369,8 @@ namespace SmartRAG.Services.Parser
         {
             if (_disposed)
                 return;
-
-            if (_whisperFactory != null)
-            {
-                _whisperFactory.Dispose();
-                _whisperFactory = null;
-            }
+            _whisperFactory?.Dispose();
+            _whisperFactory = null;
 
             _disposed = true;
 

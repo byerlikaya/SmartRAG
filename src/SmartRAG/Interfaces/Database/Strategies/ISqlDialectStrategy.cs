@@ -27,7 +27,7 @@ namespace SmartRAG.Interfaces.Database.Strategies
         /// Formats the SQL query according to dialect rules
         /// </summary>
         string FormatSql(string sql);
-        
+
         /// <summary>
         /// Gets the limit clause format for this dialect
         /// </summary>

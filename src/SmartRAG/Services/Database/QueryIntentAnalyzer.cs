@@ -53,9 +53,9 @@ namespace SmartRAG.Services.Database
         private static string SanitizeForLog(string input)
         {
             if (string.IsNullOrEmpty(input)) return string.Empty;
-            
+
             const int maxLogLength = 500;
-            
+
             var sanitized = new StringBuilder(input.Length);
             foreach (var c in input)
             {
@@ -64,14 +64,14 @@ namespace SmartRAG.Services.Database
                     sanitized.Append(c);
                 }
             }
-            
+
             var result = sanitized.ToString();
-            
+
             if (result.Length > maxLogLength)
             {
-                result = result.Substring(0, maxLogLength) + "... (truncated)";
+                result = result[..maxLogLength] + "... (truncated)";
             }
-            
+
             return result;
         }
 
@@ -139,13 +139,13 @@ namespace SmartRAG.Services.Database
             sb.AppendLine();
             sb.AppendLine($"User Query: {userQuery}");
             sb.AppendLine();
-            
+
             // CRITICAL: Show database-table mapping upfront
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
             sb.AppendLine("DATABASE-TABLE MAPPING (READ THIS FIRST!)");
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
             sb.AppendLine();
-            
+
             var tableToDatabase = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (var schema in schemas)
             {
@@ -154,7 +154,7 @@ namespace SmartRAG.Services.Database
                     tableToDatabase[table.TableName] = schema.DatabaseName;
                 }
             }
-            
+
             foreach (var schema in schemas)
             {
                 sb.AppendLine($"DATABASE: {schema.DatabaseName}");
@@ -166,7 +166,7 @@ namespace SmartRAG.Services.Database
                 }
                 sb.AppendLine();
             }
-            
+
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
             sb.AppendLine("VERIFICATION CHECKLIST - USE THIS BEFORE WRITING JSON:");
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
@@ -209,7 +209,7 @@ namespace SmartRAG.Services.Database
                 sb.AppendLine("═══════════════════════════════════════");
                 sb.AppendLine($"Database ID: {schema.DatabaseId}");
                 sb.AppendLine($"Database Type: {schema.DatabaseType}");
-                
+
                 if (!string.IsNullOrEmpty(schema.Description))
                 {
                     sb.AppendLine($"Description: {schema.Description}");
@@ -217,7 +217,7 @@ namespace SmartRAG.Services.Database
 
                 sb.AppendLine();
                 sb.AppendLine($"TABLES AVAILABLE IN {schema.DatabaseName.ToUpperInvariant()} DATABASE:");
-                
+
                 var tableList = new List<string>();
                 foreach (var table in schema.Tables.Take(20))
                 {
@@ -225,13 +225,13 @@ namespace SmartRAG.Services.Database
                     sb.AppendLine($"  [{table.TableName}]");
                     sb.AppendLine($"    • {table.RowCount} rows");
                     sb.AppendLine($"    • Columns: {string.Join(", ", table.Columns.Take(8).Select(c => c.ColumnName))}");
-                    
+
                     if (table.ForeignKeys.Any())
                     {
                         sb.AppendLine($"    • Links to: {string.Join(", ", table.ForeignKeys.Select(fk => fk.ReferencedTable).Distinct())}");
                     }
                 }
-                
+
                 sb.AppendLine();
                 sb.AppendLine($"IMPORTANT: These tables ONLY exist in {schema.DatabaseName}:");
                 sb.AppendLine($"    {string.Join(", ", tableList)}");
@@ -367,7 +367,7 @@ namespace SmartRAG.Services.Database
             {
                 var jsonStart = aiResponse.IndexOf('{');
                 var jsonEnd = aiResponse.LastIndexOf('}');
-                
+
                 if (jsonStart < 0 || jsonEnd < jsonStart)
                 {
                     _logger.LogWarning("Could not find JSON in AI response");
@@ -375,7 +375,7 @@ namespace SmartRAG.Services.Database
                 }
 
                 var jsonText = aiResponse.Substring(jsonStart, jsonEnd - jsonStart + 1);
-                
+
                 var jsonDoc = JsonDocument.Parse(jsonText);
                 var root = jsonDoc.RootElement;
 
@@ -418,29 +418,29 @@ namespace SmartRAG.Services.Database
                         if (dbElement.TryGetProperty("requiredTables", out var tablesElement) && tablesElement.ValueKind == JsonValueKind.Array)
                         {
                             // CRITICAL: Validate each table exists in THIS database's schema
-                            var targetSchema = schemas.FirstOrDefault(s => 
+                            var targetSchema = schemas.FirstOrDefault(s =>
                                 s.DatabaseId.Equals(dbQuery.DatabaseId, StringComparison.OrdinalIgnoreCase) ||
                                 s.DatabaseName.Equals(dbQuery.DatabaseName, StringComparison.OrdinalIgnoreCase));
-                            
+
                             if (targetSchema == null)
                             {
                                 _logger.LogWarning("Schema not found for database: {DatabaseName}", dbQuery.DatabaseName);
                                 continue;
                             }
-                            
+
                             var validTables = targetSchema.Tables.Select(t => t.TableName).ToHashSet(StringComparer.OrdinalIgnoreCase);
-                            
+
                             foreach (var tableElement in tablesElement.EnumerateArray())
                             {
                                 var tableName = tableElement.GetString() ?? string.Empty;
-                                
+
                                 if (validTables.Contains(tableName))
                                 {
                                     dbQuery.RequiredTables.Add(tableName);
                                 }
                                 else
                                 {
-                                    _logger.LogWarning("AI attempted to add table '{Table}' to '{Database}', but it doesn't exist there. Skipping.", 
+                                    _logger.LogWarning("AI attempted to add table '{Table}' to '{Database}', but it doesn't exist there. Skipping.",
                                         tableName, dbQuery.DatabaseName);
                                 }
                             }
@@ -525,7 +525,7 @@ namespace SmartRAG.Services.Database
             while (processingQueue.Count > 0)
             {
                 var currentTableName = processingQueue.Dequeue();
-                var tableSchema = schema.Tables.FirstOrDefault(t => 
+                var tableSchema = schema.Tables.FirstOrDefault(t =>
                     t.TableName.Equals(currentTableName, StringComparison.OrdinalIgnoreCase));
 
                 if (tableSchema == null || tableSchema.ForeignKeys.Count == 0)
@@ -540,7 +540,7 @@ namespace SmartRAG.Services.Database
                         continue;
                     }
 
-                    var referencedTable = schema.Tables.FirstOrDefault(t => 
+                    var referencedTable = schema.Tables.FirstOrDefault(t =>
                         t.TableName.Equals(foreignKey.ReferencedTable, StringComparison.OrdinalIgnoreCase));
 
                     if (referencedTable == null)

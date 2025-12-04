@@ -101,10 +101,7 @@ namespace SmartRAG.Factories
 
         public IDocumentRepository GetCurrentRepository()
         {
-            if (_currentRepository == null)
-            {
-                _currentRepository = CreateRepository(_currentProvider);
-            }
+            _currentRepository ??= CreateRepository(_currentProvider);
             return _currentRepository;
         }
 

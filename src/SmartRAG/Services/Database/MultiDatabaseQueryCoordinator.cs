@@ -13,7 +13,7 @@ namespace SmartRAG.Services.Database
     /// Coordinates intelligent multi-database queries using AI
     /// </summary>
     public class MultiDatabaseQueryCoordinator : IMultiDatabaseQueryCoordinator
-    {     
+    {
 
         #region Fields
 
@@ -37,9 +37,9 @@ namespace SmartRAG.Services.Database
             IResultMerger resultMerger)
         {
             _schemaAnalyzer = schemaAnalyzer;
-         
+
             _logger = logger;
-            _queryIntentAnalyzer = queryIntentAnalyzer ?? throw new ArgumentNullException(nameof(queryIntentAnalyzer), 
+            _queryIntentAnalyzer = queryIntentAnalyzer ?? throw new ArgumentNullException(nameof(queryIntentAnalyzer),
                 "QueryIntentAnalyzer must be provided. Register IQueryIntentAnalyzer in DI container.");
             _sqlQueryGenerator = sqlQueryGenerator ?? throw new ArgumentNullException(nameof(sqlQueryGenerator),
                 "SQLQueryGenerator must be provided. Register ISQLQueryGenerator in DI container.");
@@ -102,7 +102,7 @@ namespace SmartRAG.Services.Database
         {
             if (string.IsNullOrWhiteSpace(userQuery))
                 throw new ArgumentException("User query cannot be null or empty", nameof(userQuery));
-            
+
             if (preAnalyzedIntent == null)
                 throw new ArgumentNullException(nameof(preAnalyzedIntent));
 
@@ -115,7 +115,7 @@ namespace SmartRAG.Services.Database
                 {
                     return CreateNoDatabaseMatchResponse();
                 }
-                
+
                 queryIntent = await ValidateAndCorrectQueryIntentAsync(queryIntent);
 
                 queryIntent = await GenerateDatabaseQueriesAsync(queryIntent);
@@ -227,7 +227,7 @@ namespace SmartRAG.Services.Database
             var validQueries = new List<DatabaseQueryIntent>();
             var missingTables = new Dictionary<string, List<string>>(); // table -> databases that need it
             var allSchemas = await _schemaAnalyzer.GetAllSchemasAsync();
-            
+
             foreach (var dbQuery in queryIntent.DatabaseQueries)
             {
                 var schema = await _schemaAnalyzer.GetSchemaAsync(dbQuery.DatabaseId);
@@ -236,10 +236,10 @@ namespace SmartRAG.Services.Database
                     _logger.LogWarning("Schema not found for {DatabaseId}, removing from query list", dbQuery.DatabaseId);
                     continue;
                 }
-                
+
                 var validTables = new List<string>();
                 var invalidTables = new List<string>();
-                
+
                 foreach (var tableName in dbQuery.RequiredTables)
                 {
                     if (schema.Tables.Any(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)))
@@ -250,7 +250,7 @@ namespace SmartRAG.Services.Database
                     else
                     {
                         invalidTables.Add(tableName);
-                        
+
                         if (!missingTables.ContainsKey(tableName))
                         {
                             missingTables[tableName] = new List<string>();
@@ -258,13 +258,13 @@ namespace SmartRAG.Services.Database
                         missingTables[tableName].Add(dbQuery.DatabaseId);
                     }
                 }
-                
+
                 if (invalidTables.Count > 0)
                 {
                     _logger.LogWarning("AI selected invalid tables for {DatabaseName}: {InvalidTables}",
                         dbQuery.DatabaseName, string.Join(", ", invalidTables));
                 }
-                
+
                 if (validTables.Count > 0)
                 {
                     dbQuery.RequiredTables = validTables;
@@ -275,36 +275,36 @@ namespace SmartRAG.Services.Database
                     _logger.LogWarning("✗ {DatabaseName}: No valid tables, removing", dbQuery.DatabaseName);
                 }
             }
-            
+
             foreach (var kvp in missingTables)
             {
                 var tableName = kvp.Key;
-                
-                var correctSchema = allSchemas.FirstOrDefault(s => 
+
+                var correctSchema = allSchemas.FirstOrDefault(s =>
                     s.Tables.Any(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)));
-                
+
                 if (correctSchema == null)
                 {
                     _logger.LogWarning("Table '{Table}' not found in any database", tableName);
                     continue;
                 }
-                
+
                 if (validQueries.Any(q => q.DatabaseId == correctSchema.DatabaseId))
                 {
                     var existingQuery = validQueries.First(q => q.DatabaseId == correctSchema.DatabaseId);
                     if (!existingQuery.RequiredTables.Contains(tableName, StringComparer.OrdinalIgnoreCase))
                     {
-                        var exactTableName = correctSchema.Tables.First(t => 
+                        var exactTableName = correctSchema.Tables.First(t =>
                             t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)).TableName;
-                        
+
                         existingQuery.RequiredTables.Add(exactTableName);
                     }
                 }
                 else
                 {
-                    var exactTableName = correctSchema.Tables.First(t => 
+                    var exactTableName = correctSchema.Tables.First(t =>
                         t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)).TableName;
-                    
+
                     validQueries.Add(new DatabaseQueryIntent
                     {
                         DatabaseId = correctSchema.DatabaseId,
@@ -315,12 +315,12 @@ namespace SmartRAG.Services.Database
                     });
                 }
             }
-            
-            queryIntent.DatabaseQueries = validQueries;
-            
-            return queryIntent;
-        }      
 
-        #endregion    
+            queryIntent.DatabaseQueries = validQueries;
+
+            return queryIntent;
+        }
+
+        #endregion
     }
 }

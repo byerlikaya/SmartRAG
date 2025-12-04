@@ -23,6 +23,11 @@ using SmartRAG.Services.Database.Strategies;
 using SmartRAG.Services.Search.Strategies;
 using SmartRAG.Interfaces.Database.Strategies;
 using SmartRAG.Interfaces.Search.Strategies;
+using SmartRAG.Mcp.Client;
+using SmartRAG.Mcp.Client.Services;
+using SmartRAG.Mcp.Integration;
+using SmartRAG.FileWatcher;
+using SmartRAG.Services.Startup;
 using System;
 using System.Collections.Generic;
 
@@ -56,13 +61,13 @@ namespace SmartRAG.Extensions
             services.Configure<SmartRagOptions>(options =>
             {
                 configuration.GetSection("SmartRAG").Bind(options);
-                
+
                 var dbConnectionsSection = configuration.GetSection("DatabaseConnections");
                 if (dbConnectionsSection.Exists())
                 {
                     options.DatabaseConnections = dbConnectionsSection.Get<List<DatabaseConnectionConfig>>() ?? new List<DatabaseConnectionConfig>();
                 }
-                
+
                 configureOptions(options);
             });
 
@@ -70,8 +75,9 @@ namespace SmartRAG.Extensions
             services.AddSingleton(sp => sp.GetRequiredService<IOptions<SmartRagOptions>>().Value);
 
             services.AddSingleton<IAIProviderFactory, AIProviderFactory>();
-            
-            services.AddSingleton<IAIProvider>(sp => {
+
+            services.AddSingleton<IAIProvider>(sp =>
+            {
                 var factory = sp.GetRequiredService<IAIProviderFactory>();
                 var options = sp.GetRequiredService<IOptions<SmartRagOptions>>().Value;
                 return factory.CreateProvider(options.AIProvider);
@@ -89,9 +95,8 @@ namespace SmartRAG.Extensions
             services.AddScoped<IQueryIntentClassifierService, QueryIntentClassifierService>();
             services.AddScoped<IConversationManagerService, ConversationManagerService>();
             services.AddScoped<IDocumentService, DocumentService>();
-            
+
             services.AddScoped<IFileParser, TextFileParser>();
-            services.AddScoped<IFileParser, PdfFileParser>();
             services.AddScoped<IFileParser, WordFileParser>();
             services.AddScoped<IFileParser, ExcelFileParser>();
 
@@ -99,11 +104,17 @@ namespace SmartRAG.Extensions
             configuration.GetSection("SmartRAG").Bind(options);
             configureOptions(options);
 
+            // IImageParserService is always registered because PdfFileParser needs it for CorrectCurrencySymbols
+            // OCR operations will be skipped if EnableImageParsing is false
+            services.AddScoped<IImageParserService, ImageParserService>();
+
             if (options.Features.EnableImageParsing)
             {
                 services.AddScoped<IFileParser, ImageFileParser>();
-                services.AddScoped<IImageParserService, ImageParserService>();
             }
+
+            // PdfFileParser always needs IImageParserService (for CorrectCurrencySymbols, OCR is optional)
+            services.AddScoped<IFileParser, PdfFileParser>();
 
             if (options.Features.EnableAudioParsing)
             {
@@ -111,7 +122,7 @@ namespace SmartRAG.Extensions
                 services.AddScoped<AudioConversionService>();
                 services.AddScoped<WhisperAudioParserService>();
                 services.AddScoped<IAudioParserFactory, AudioParserFactory>();
-                
+
                 services.AddScoped<IAudioParserService>(sp =>
                 {
                     var factory = sp.GetRequiredService<IAudioParserFactory>();
@@ -126,15 +137,15 @@ namespace SmartRAG.Extensions
             services.AddScoped<IDatabaseConnectionManager, DatabaseConnectionManager>();
             services.AddScoped<IQueryIntentAnalyzer, QueryIntentAnalyzer>();
             services.AddScoped<ISqlDialectStrategy, SqliteDialectStrategy>();
-                services.AddScoped<ISqlDialectStrategy, PostgreSqlDialectStrategy>();
-                services.AddScoped<ISqlDialectStrategy, MySqlDialectStrategy>();
-                services.AddScoped<ISqlDialectStrategy, SqlServerDialectStrategy>();
-                services.AddScoped<ISqlDialectStrategyFactory, SqlDialectStrategyFactory>();
-                
-                services.AddScoped<ISQLQueryGenerator, SQLQueryGenerator>();
-                services.AddScoped<IDatabaseQueryExecutor, DatabaseQueryExecutor>();
-                services.AddScoped<IResultMerger, ResultMerger>();
-                services.AddScoped<IMultiDatabaseQueryCoordinator, MultiDatabaseQueryCoordinator>();
+            services.AddScoped<ISqlDialectStrategy, PostgreSqlDialectStrategy>();
+            services.AddScoped<ISqlDialectStrategy, MySqlDialectStrategy>();
+            services.AddScoped<ISqlDialectStrategy, SqlServerDialectStrategy>();
+            services.AddScoped<ISqlDialectStrategyFactory, SqlDialectStrategyFactory>();
+
+            services.AddScoped<ISQLQueryGenerator, SQLQueryGenerator>();
+            services.AddScoped<IDatabaseQueryExecutor, DatabaseQueryExecutor>();
+            services.AddScoped<IResultMerger, ResultMerger>();
+            services.AddScoped<IMultiDatabaseQueryCoordinator, MultiDatabaseQueryCoordinator>();
 
             services.AddScoped<IDocumentParserService, DocumentParserService>();
             services.AddScoped<IDocumentSearchService, DocumentSearchService>();
@@ -146,6 +157,21 @@ namespace SmartRAG.Extensions
 
             services.AddSingleton(sp => sp.GetRequiredService<IStorageFactory>().GetCurrentRepository());
             services.AddSingleton(sp => sp.GetRequiredService<IStorageFactory>().GetCurrentConversationRepository());
+
+            if (options.Features.EnableMcpClient)
+            {
+                services.AddHttpClient();
+                services.AddSingleton<IMcpClient, McpClient>();
+                services.AddSingleton<IMcpConnectionManager, McpConnectionManager>();
+                services.AddScoped<IMcpIntegrationService, McpIntegrationService>();
+            }
+
+            if (options.Features.EnableFileWatcher)
+            {
+                services.AddSingleton<IFileWatcherService, FileWatcherService>();
+            }
+
+            services.AddSingleton<ISmartRagStartupService, SmartRagStartupService>();
 
             return services;
         }

@@ -59,7 +59,7 @@ namespace SmartRAG.Services.Support
                     var sessionLine = lines.FirstOrDefault(l => l.StartsWith("session-id:"));
                     if (sessionLine != null)
                     {
-                        var sessionId = sessionLine.Substring("session-id:".Length).Trim();
+                        var sessionId = sessionLine["session-id:".Length..].Trim();
 
                         var sessionExists = await _conversationRepository.SessionExistsAsync(sessionId);
                         if (sessionExists)

@@ -45,7 +45,7 @@ namespace SmartRAG.Services.Document
 
         private const int VoyageAIMaxBatchSize = 128;
         private const int RateLimitDelayMs = 1000;
-     
+
         private const string UnsupportedFileTypeFormat = "Unsupported file type: {0}. Supported types: {1}";
         private const string UnsupportedContentTypeFormat = "Unsupported content type: {0}. Supported types: {1}";
 
@@ -60,7 +60,7 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// [AI Query] [Document Query] Uploads a document, generates embeddings, and saves it
         /// </summary>
-        public async Task<SmartRAG.Entities.Document> UploadDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy, string language = null)
+        public async Task<SmartRAG.Entities.Document> UploadDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy, string language = null, long? fileSize = null, Dictionary<string, object> additionalMetadata = null)
         {
             var supportedExtensions = _documentParserService.GetSupportedFileTypes();
             var supportedContentTypes = _documentParserService.GetSupportedContentTypes();
@@ -80,6 +80,20 @@ namespace SmartRAG.Services.Document
             }
 
             var document = await _documentParserService.ParseDocumentAsync(fileStream, fileName, contentType, uploadedBy, language);
+
+            if (fileSize.HasValue && fileSize.Value > 0)
+            {
+                document.FileSize = fileSize.Value;
+            }
+
+            if (additionalMetadata != null && additionalMetadata.Count > 0)
+            {
+                document.Metadata ??= new Dictionary<string, object>();
+                foreach (var item in additionalMetadata)
+                {
+                    document.Metadata[item.Key] = item.Value;
+                }
+            }
 
             ServiceLogMessages.LogDocumentUploaded(_logger, fileName, null);
 
@@ -150,7 +164,7 @@ namespace SmartRAG.Services.Document
 
             return savedDocument;
         }
-        
+
         /// <summary>
         /// [Document Query] Retrieves a document by ID
         /// </summary>
@@ -272,41 +286,39 @@ namespace SmartRAG.Services.Document
                     {
                         ServiceLogMessages.LogBatchFailed(_logger, batchIndex + 1, null);
 
-                        using (var semaphore = new System.Threading.SemaphoreSlim(1)) // Max 1 concurrent
+                        using var semaphore = new System.Threading.SemaphoreSlim(1); // Max 1 concurrent
+                        var tasks = currentBatch.Select(async chunk =>
                         {
-                            var tasks = currentBatch.Select(async chunk =>
+                            await semaphore.WaitAsync();
+                            try
                             {
-                                await semaphore.WaitAsync();
-                                try
-                                {
-                                    var newEmbedding = await _aiService.GenerateEmbeddingsAsync(chunk.Content);
+                                var newEmbedding = await _aiService.GenerateEmbeddingsAsync(chunk.Content);
 
-                                    if (newEmbedding != null && newEmbedding.Count > 0)
-                                    {
-                                        chunk.Embedding = newEmbedding;
-                                        System.Threading.Interlocked.Increment(ref successCount);
-                                        ServiceLogMessages.LogChunkIndividualEmbeddingSuccessFinal(_logger, chunk.Id, newEmbedding.Count, null);
-                                    }
-                                    else
-                                    {
-                                        ServiceLogMessages.LogChunkEmbeddingGenerationFailed(_logger, chunk.Id, null);
-                                    }
-
-                                    System.Threading.Interlocked.Increment(ref processedChunks);
-                                }
-                                catch (Exception ex)
+                                if (newEmbedding != null && newEmbedding.Count > 0)
                                 {
-                                    ServiceLogMessages.LogChunkEmbeddingRegenerationFailed(_logger, chunk.Id, ex);
-                                    System.Threading.Interlocked.Increment(ref processedChunks);
+                                    chunk.Embedding = newEmbedding;
+                                    System.Threading.Interlocked.Increment(ref successCount);
+                                    ServiceLogMessages.LogChunkIndividualEmbeddingSuccessFinal(_logger, chunk.Id, newEmbedding.Count, null);
                                 }
-                                finally
+                                else
                                 {
-                                    semaphore.Release();
+                                    ServiceLogMessages.LogChunkEmbeddingGenerationFailed(_logger, chunk.Id, null);
                                 }
-                            });
 
-                            await Task.WhenAll(tasks);
-                        }
+                                System.Threading.Interlocked.Increment(ref processedChunks);
+                            }
+                            catch (Exception ex)
+                            {
+                                ServiceLogMessages.LogChunkEmbeddingRegenerationFailed(_logger, chunk.Id, ex);
+                                System.Threading.Interlocked.Increment(ref processedChunks);
+                            }
+                            finally
+                            {
+                                semaphore.Release();
+                            }
+                        });
+
+                        await Task.WhenAll(tasks);
                     }
 
                     ServiceLogMessages.LogProgress(_logger, processedChunks, chunksToProcess.Count, successCount, null);

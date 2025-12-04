@@ -50,26 +50,24 @@ namespace SmartRAG.Providers
             if (!isValid)
                 return errorMessage;
 
-            using (var client = CreateHttpClient(config.ApiKey))
+            using var client = CreateHttpClient(config.ApiKey);
+            var payload = CreateOpenAITextPayload(prompt, config);
+
+            var chatEndpoint = BuildOpenAIUrl(config.Endpoint, ChatCompletionsPath);
+
+            var (success, response, error) = await MakeHttpRequestAsync(client, chatEndpoint, payload);
+
+            if (!success)
+                return error;
+
+            try
             {
-                var payload = CreateOpenAITextPayload(prompt, config);
-
-                var chatEndpoint = BuildOpenAIUrl(config.Endpoint, ChatCompletionsPath);
-
-                var (success, response, error) = await MakeHttpRequestAsync(client, chatEndpoint, payload);
-
-                if (!success)
-                    return error;
-
-                try
-                {
-                    return ParseOpenAITextResponse(response);
-                }
-                catch (Exception ex)
-                {
-                    ProviderLogMessages.LogOpenAITextParsingError(Logger, ex);
-                    return $"Error parsing OpenAI response: {ex.Message}";
-                }
+                return ParseOpenAITextResponse(response);
+            }
+            catch (Exception ex)
+            {
+                ProviderLogMessages.LogOpenAITextParsingError(Logger, ex);
+                return $"Error parsing OpenAI response: {ex.Message}";
             }
         }
 
@@ -90,7 +88,7 @@ namespace SmartRAG.Providers
             }
 
             using var client = CreateHttpClient(config.ApiKey);
-            
+
             var payload = CreateOpenAIEmbeddingPayload(text, config.EmbeddingModel);
 
             var embeddingEndpoint = BuildOpenAIUrl(config.Endpoint, EmbeddingsPath);
@@ -134,29 +132,27 @@ namespace SmartRAG.Providers
             if (inputList.Count == 0)
                 return new List<List<float>>();
 
-            using (var client = CreateHttpClient(config.ApiKey))
+            using var client = CreateHttpClient(config.ApiKey);
+            var payload = CreateOpenAIBatchEmbeddingPayload(inputList, config.EmbeddingModel);
+
+            var embeddingEndpoint = BuildOpenAIUrl(config.Endpoint, EmbeddingsPath);
+
+            var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
+
+            if (!success)
             {
-                var payload = CreateOpenAIBatchEmbeddingPayload(inputList, config.EmbeddingModel);
+                ProviderLogMessages.LogOpenAIBatchEmbeddingRequestError(Logger, error, null);
+                return ParseBatchEmbeddingResponse("", inputList.Count);
+            }
 
-                var embeddingEndpoint = BuildOpenAIUrl(config.Endpoint, EmbeddingsPath);
-
-                var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
-
-                if (!success)
-                {
-                    ProviderLogMessages.LogOpenAIBatchEmbeddingRequestError(Logger, error, null);
-                    return ParseBatchEmbeddingResponse("", inputList.Count);
-                }
-
-                try
-                {
-                    return ParseOpenAIBatchEmbeddingResponse(response, inputList.Count);
-                }
-                catch (Exception ex)
-                {
-                    ProviderLogMessages.LogOpenAIBatchEmbeddingParsingError(Logger, ex);
-                    return ParseBatchEmbeddingResponse("", inputList.Count);
-                }
+            try
+            {
+                return ParseOpenAIBatchEmbeddingResponse(response, inputList.Count);
+            }
+            catch (Exception ex)
+            {
+                ProviderLogMessages.LogOpenAIBatchEmbeddingParsingError(Logger, ex);
+                return ParseBatchEmbeddingResponse("", inputList.Count);
             }
         }
 
@@ -204,7 +200,7 @@ namespace SmartRAG.Providers
             return new
             {
                 input = text,
-                model = model
+                model
             };
         }
 
@@ -216,7 +212,7 @@ namespace SmartRAG.Providers
             return new
             {
                 input = texts.ToArray(),
-                model = model
+                model
             };
         }
 
@@ -225,21 +221,19 @@ namespace SmartRAG.Providers
         /// </summary>
         private static string ParseOpenAITextResponse(string response)
         {
-            using (var doc = JsonDocument.Parse(response))
+            using var doc = JsonDocument.Parse(response);
+            if (doc.RootElement.TryGetProperty("choices", out var choices) && choices.ValueKind == JsonValueKind.Array)
             {
-                if (doc.RootElement.TryGetProperty("choices", out var choices) && choices.ValueKind == JsonValueKind.Array)
+                var firstChoice = choices.EnumerateArray().FirstOrDefault();
+
+                if (firstChoice.TryGetProperty("message", out var message) &&
+                    message.TryGetProperty("content", out var content))
                 {
-                    var firstChoice = choices.EnumerateArray().FirstOrDefault();
-
-                    if (firstChoice.TryGetProperty("message", out var message) &&
-                        message.TryGetProperty("content", out var content))
-                    {
-                        return content.GetString() ?? "No response generated";
-                    }
+                    return content.GetString() ?? "No response generated";
                 }
-
-                return "No response generated";
             }
+
+            return "No response generated";
         }
 
         /// <summary>
@@ -247,26 +241,24 @@ namespace SmartRAG.Providers
         /// </summary>
         private static List<float> ParseOpenAIEmbeddingResponse(string response)
         {
-            using (var doc = JsonDocument.Parse(response))
+            using var doc = JsonDocument.Parse(response);
+            if (doc.RootElement.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
             {
-                if (doc.RootElement.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
+                var firstItem = data.EnumerateArray().FirstOrDefault();
+
+                if (firstItem.TryGetProperty("embedding", out var embedding) && embedding.ValueKind == JsonValueKind.Array)
                 {
-                    var firstItem = data.EnumerateArray().FirstOrDefault();
-
-                    if (firstItem.TryGetProperty("embedding", out var embedding) && embedding.ValueKind == JsonValueKind.Array)
+                    var floats = new List<float>();
+                    foreach (var value in embedding.EnumerateArray())
                     {
-                        var floats = new List<float>();
-                        foreach (var value in embedding.EnumerateArray())
-                        {
-                            if (value.TryGetSingle(out var f))
-                                floats.Add(f);
-                        }
-                        return floats;
+                        if (value.TryGetSingle(out var f))
+                            floats.Add(f);
                     }
+                    return floats;
                 }
-
-                return new List<float>();
             }
+
+            return new List<float>();
         }
 
         /// <summary>
@@ -278,26 +270,24 @@ namespace SmartRAG.Providers
 
             try
             {
-                using (var doc = JsonDocument.Parse(response))
+                using var doc = JsonDocument.Parse(response);
+                if (doc.RootElement.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
                 {
-                    if (doc.RootElement.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
+                    foreach (var item in data.EnumerateArray())
                     {
-                        foreach (var item in data.EnumerateArray())
+                        if (item.TryGetProperty("embedding", out var embedding) && embedding.ValueKind == JsonValueKind.Array)
                         {
-                            if (item.TryGetProperty("embedding", out var embedding) && embedding.ValueKind == JsonValueKind.Array)
+                            var floats = new List<float>();
+                            foreach (var value in embedding.EnumerateArray())
                             {
-                                var floats = new List<float>();
-                                foreach (var value in embedding.EnumerateArray())
-                                {
-                                    if (value.TryGetSingle(out var f))
-                                        floats.Add(f);
-                                }
-                                results.Add(floats);
+                                if (value.TryGetSingle(out var f))
+                                    floats.Add(f);
                             }
-                            else
-                            {
-                                results.Add(new List<float>());
-                            }
+                            results.Add(floats);
+                        }
+                        else
+                        {
+                            results.Add(new List<float>());
                         }
                     }
                 }

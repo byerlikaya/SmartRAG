@@ -56,41 +56,39 @@ namespace SmartRAG.Providers
             if (!isValid)
                 return errorMessage;
 
-            using (var client = CreateHttpClient(config.ApiKey))
+            using var client = CreateHttpClient(config.ApiKey);
+            var messages = new List<object>();
+
+            if (!string.IsNullOrEmpty(config.SystemMessage))
             {
-                var messages = new List<object>();
+                messages.Add(new { role = "system", content = config.SystemMessage });
+            }
 
-                if (!string.IsNullOrEmpty(config.SystemMessage))
-                {
-                    messages.Add(new { role = "system", content = config.SystemMessage });
-                }
+            messages.Add(new { role = "user", content = prompt });
 
-                messages.Add(new { role = "user", content = prompt });
+            var payload = new
+            {
+                messages = messages.ToArray(),
+                max_tokens = config.MaxTokens,
+                temperature = config.Temperature,
+                stream = false
+            };
 
-                var payload = new
-                {
-                    messages = messages.ToArray(),
-                    max_tokens = config.MaxTokens,
-                    temperature = config.Temperature,
-                    stream = false
-                };
+            var url = BuildAzureUrl(config.Endpoint, config.Model, "chat/completions", config.ApiVersion);
 
-                var url = BuildAzureUrl(config.Endpoint, config.Model, "chat/completions", config.ApiVersion);
+            var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, config);
 
-                var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, config);
+            if (!success)
+                return error;
 
-                if (!success)
-                    return error;
-
-                try
-                {
-                    return ParseTextResponse(response);
-                }
-                catch (Exception ex)
-                {
-                    ProviderLogMessages.LogAzureOpenAITextParsingError(Logger, ex);
-                    return $"Error parsing Azure OpenAI response: {ex.Message}";
-                }
+            try
+            {
+                return ParseTextResponse(response);
+            }
+            catch (Exception ex)
+            {
+                ProviderLogMessages.LogAzureOpenAITextParsingError(Logger, ex);
+                return $"Error parsing Azure OpenAI response: {ex.Message}";
             }
         }
 
@@ -157,32 +155,30 @@ namespace SmartRAG.Providers
             if (inputList.Count == 0)
                 return new List<List<float>>();
 
-            using (var client = CreateHttpClient(config.ApiKey))
+            using var client = CreateHttpClient(config.ApiKey);
+            var payload = new
             {
-                var payload = new
-                {
-                    input = inputList.ToArray()
-                };
+                input = inputList.ToArray()
+            };
 
-                var url = BuildAzureUrl(config.Endpoint, config.EmbeddingModel, "embeddings", config.ApiVersion);
+            var url = BuildAzureUrl(config.Endpoint, config.EmbeddingModel, "embeddings", config.ApiVersion);
 
-                var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, config);
+            var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, config);
 
-                if (!success)
-                {
-                    ProviderLogMessages.LogAzureOpenAIBatchEmbeddingRequestError(Logger, error, null);
-                    return ParseBatchEmbeddingResponse("", inputList.Count);
-                }
+            if (!success)
+            {
+                ProviderLogMessages.LogAzureOpenAIBatchEmbeddingRequestError(Logger, error, null);
+                return ParseBatchEmbeddingResponse("", inputList.Count);
+            }
 
-                try
-                {
-                    return ParseBatchEmbeddingResponse(response, inputList.Count);
-                }
-                catch (Exception ex)
-                {
-                    ProviderLogMessages.LogAzureOpenAIBatchEmbeddingParsingError(Logger, ex);
-                    return ParseBatchEmbeddingResponse("", inputList.Count);
-                }
+            try
+            {
+                return ParseBatchEmbeddingResponse(response, inputList.Count);
+            }
+            catch (Exception ex)
+            {
+                ProviderLogMessages.LogAzureOpenAIBatchEmbeddingParsingError(Logger, ex);
+                return ParseBatchEmbeddingResponse("", inputList.Count);
             }
         }
 
