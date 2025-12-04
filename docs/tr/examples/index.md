@@ -74,6 +74,19 @@ SmartRAG için pratik kod örnekleri ve gerçek dünya kullanım senaryoları. A
             </a>
         </div>
     </div>
+    
+    <div class="col-md-4">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
+                <i class="fas fa-plug"></i>
+            </div>
+            <h3>MCP Entegrasyonu</h3>
+            <p>Harici MCP sunucularına bağlan ve yetenekleri genişlet</p>
+            <a href="{{ site.baseurl }}/tr/examples/mcp-integration" class="btn btn-outline-primary btn-sm mt-3">
+                MCP Entegrasyonu
+            </a>
+        </div>
+    </div>
 </div>
 
 ## Hızlı Referans
@@ -82,6 +95,7 @@ SmartRAG için pratik kod örnekleri ve gerçek dünya kullanım senaryoları. A
 
 - **[Basit Doküman Arama]({{ site.baseurl }}/tr/examples/quick#1-basit-doküman-arama)** - Doküman yükleme ve arama
 - **[Çoklu Veritabanı Sorgusu]({{ site.baseurl }}/tr/examples/quick#3-çoklu-veritabanı-sorgusu)** - Birden fazla veritabanında sorgu
+- **[MCP Entegrasyonu]({{ site.baseurl }}/tr/examples/mcp-integration)** - Harici MCP sunucularına bağlan
 - **[Tıbbi Kayıt Sistemi]({{ site.baseurl }}/tr/examples/real-world#1-tıbbi-kayıt-akıllı-sistemi)** - Sağlık hizmetleri kullanım senaryosu
 - **[Bankacılık Kredi Değerlendirmesi]({{ site.baseurl }}/tr/examples/real-world#2-bankacılık-kredi-limit-değerlendirmesi)** - Finansal hizmetler kullanım senaryosu
 

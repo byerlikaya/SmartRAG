@@ -180,6 +180,12 @@ app.Run();
       "ConnectionTimeout": 30,
       "EnableSsl": false
     }
+  },
+  "SmartRAG": {
+    "EnableMcpClient": false,
+    "McpServers": [],
+    "EnableFileWatcher": false,
+    "WatchedFolders": []
   }
 }
 ```

@@ -87,6 +87,32 @@ SmartRAG yapılandırması aşağıdaki kategorilere ayrılmıştır:
             </a>
         </div>
     </div>
+    
+    <div class="col-md-4">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
+                <i class="fas fa-plug"></i>
+            </div>
+            <h3>MCP Client</h3>
+            <p>Harici MCP sunucularına bağlan ve dış araçlarla yetenekleri genişlet</p>
+            <a href="{{ site.baseurl }}/tr/configuration/mcp-client" class="btn btn-outline-primary btn-sm mt-3">
+                MCP Client
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
+                <i class="fas fa-folder-open"></i>
+            </div>
+            <h3>Dosya İzleyici</h3>
+            <p>Otomatik klasör izleme ve gerçek zamanlı belge indeksleme</p>
+            <a href="{{ site.baseurl }}/tr/configuration/file-watcher" class="btn btn-outline-primary btn-sm mt-3">
+                Dosya İzleyici
+            </a>
+        </div>
+    </div>
 </div>
 
 ## Sonraki Adımlar

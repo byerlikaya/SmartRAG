@@ -145,6 +145,22 @@ Console.WriteLine(answer.Answer);
             
             <div class="card card-accent">
                 <div class="icon icon-lg icon-gradient">
+                    <i class="fas fa-plug"></i>
+                </div>
+                <h3>MCP Client Integration</h3>
+                <p>Connect to external MCP (Model Context Protocol) servers to extend capabilities with external tools and data sources.</p>
+            </div>
+            
+            <div class="card card-accent">
+                <div class="icon icon-lg icon-gradient">
+                    <i class="fas fa-folder-open"></i>
+                </div>
+                <h3>Automatic File Watching</h3>
+                <p>Monitor folders for new documents and automatically index them without manual uploads. Real-time document processing with duplicate detection.</p>
+            </div>
+            
+            <div class="card card-accent">
+                <div class="icon icon-lg icon-gradient">
                     <i class="fas fa-route"></i>
                 </div>
                 <h3>Smart Query Intent</h3>

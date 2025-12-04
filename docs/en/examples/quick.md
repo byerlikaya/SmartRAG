@@ -386,6 +386,42 @@ AI: "Started new conversation. How can I help you?"
 
 ---
 
+### 7. File Watcher - Automatic Document Indexing
+
+Monitor folders for new documents and automatically index them:
+
+```csharp
+// appsettings.json
+{
+  "SmartRAG": {
+    "EnableFileWatcher": true,
+    "WatchedFolders": [
+      {
+        "FolderPath": "C:\\Documents\\Incoming",
+        "FileExtensions": [".pdf", ".docx", ".txt"],
+        "Recursive": true,
+        "AutoUpload": true
+      }
+    ]
+  }
+}
+
+// The FileWatcherService automatically:
+// 1. Monitors the specified folder for new files
+// 2. Detects duplicates using file hash
+// 3. Automatically uploads and indexes new documents
+// 4. Processes files in real-time as they are added
+```
+
+**Features:**
+- Automatic duplicate detection using MD5 file hash
+- Real-time file monitoring
+- Recursive folder scanning
+- Configurable file extensions
+- Initial scan of existing files on startup
+
+---
+
 ## Related Examples
 
 - [Examples Index]({{ site.baseurl }}/en/examples) - Back to Examples categories

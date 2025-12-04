@@ -168,6 +168,14 @@
                                 <i class="fas fa-cogs me-2"></i>
                                 {% if page.lang == 'tr' %}Gelişmiş Yapılandırma{% else %}Advanced Configuration{% endif %}
                             </a></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/configuration/mcp-client">
+                                <i class="fas fa-plug me-2"></i>
+                                {% if page.lang == 'tr' %}MCP Client{% else %}MCP Client{% endif %}
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/configuration/file-watcher">
+                                <i class="fas fa-folder-open me-2"></i>
+                                {% if page.lang == 'tr' %}Dosya İzleyici{% else %}File Watcher{% endif %}
+                            </a></li>
                         </ul>
                     </li>
                     <li class="nav-item dropdown">

@@ -73,6 +73,30 @@ var response = await searchService.QueryIntelligenceAsync(
 // → Provides unified answer combining all sources
 ```
 
+### **5. (Optional) Configure MCP Client & File Watcher**
+```json
+{
+  "SmartRAG": {
+    "EnableMcpClient": true,
+    "McpServers": [
+      {
+        "ServerId": "example-server",
+        "Endpoint": "https://mcp.example.com/api",
+        "TransportType": "Http"
+      }
+    ],
+    "EnableFileWatcher": true,
+    "WatchedFolders": [
+      {
+        "FolderPath": "/path/to/documents",
+        "AllowedExtensions": [".pdf", ".docx", ".txt"],
+        "AutoUpload": true
+      }
+    ]
+  }
+}
+```
+
 **Want to test SmartRAG immediately?** → [Jump to Examples & Testing](#-examples--testing)
 
 
@@ -85,6 +109,10 @@ var response = await searchService.QueryIntelligenceAsync(
 🗄️ **Multi-Database RAG** - Query multiple databases simultaneously with natural language
 
 📄 **Multi-Modal Intelligence** - PDF, Word, Excel, Images (OCR), Audio (Speech-to-Text), and more  
+
+🔌 **MCP Client Integration** - Connect to external MCP servers and extend capabilities with external tools
+
+📁 **Automatic File Watching** - Monitor folders and automatically index new documents without manual uploads
 
 🧩 **Modular Architecture** - Strategy Pattern for SQL dialects, scoring, and file parsing
 
@@ -129,6 +157,8 @@ var answer = await searchService.QueryIntelligenceAsync(
 - **Enterprise-ready** with comprehensive error handling and logging
 - **Cross-database queries** without manual SQL writing
 - **Multi-modal intelligence** combining documents, databases, and AI
+- **MCP Client integration** for extending capabilities with external tools
+- **Automatic file watching** for real-time document indexing
 
 ## 🧪 **Examples & Testing**
 
@@ -193,6 +223,12 @@ docker exec -it smartrag-ollama ollama pull nomic-embed-text
 - **Step 14**: List and manage uploaded documents
 - **Step 15**: Clear documents for fresh testing
 - **Step 16**: Conversational Assistant - combine databases + documents + chat
+- **Step 17**: MCP Integration - list tools and run MCP queries
+
+**📁 File Watcher:**
+- Automatic folder monitoring for new documents
+- Real-time document indexing
+- Duplicate detection and prevention
 
 **Perfect for:** Quick evaluation, proof-of-concept, team demos, learning SmartRAG capabilities
 
@@ -204,7 +240,9 @@ docker exec -it smartrag-ollama ollama pull nomic-embed-text
 **📄 Documents:** PDF, Word, Excel, PowerPoint, Images, Audio  
 **🤖 AI Models:** OpenAI, Anthropic, Gemini, Azure OpenAI, Ollama (local), LM Studio  
 **🗄️ Vector Stores:** Qdrant, Redis, InMemory  
-**💬 Conversation Storage:** Redis, SQLite, FileSystem, InMemory (independent from document storage)
+**💬 Conversation Storage:** Redis, SQLite, FileSystem, InMemory (independent from document storage)  
+**🔌 External Integrations:** MCP (Model Context Protocol) servers for extended tool capabilities  
+**📁 File Monitoring:** Automatic folder watching with real-time document indexing
 
 ## 📄 License
 

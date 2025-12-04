@@ -74,6 +74,19 @@ Practical code examples and real-world use cases for SmartRAG. Learn how to inte
             </a>
         </div>
     </div>
+    
+    <div class="col-md-4">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
+                <i class="fas fa-plug"></i>
+            </div>
+            <h3>MCP Integration</h3>
+            <p>Connect to external MCP servers and extend capabilities</p>
+            <a href="{{ site.baseurl }}/en/examples/mcp-integration" class="btn btn-outline-primary btn-sm mt-3">
+                MCP Integration
+            </a>
+        </div>
+    </div>
 </div>
 
 ## Quick Reference
@@ -82,6 +95,7 @@ Practical code examples and real-world use cases for SmartRAG. Learn how to inte
 
 - **[Simple Document Search]({{ site.baseurl }}/en/examples/quick#1-simple-document-search)** - Upload and search documents
 - **[Multi-Database Query]({{ site.baseurl }}/en/examples/quick#3-multi-database-query)** - Query across multiple databases
+- **[MCP Integration]({{ site.baseurl }}/en/examples/mcp-integration)** - Connect to external MCP servers
 - **[Medical Records System]({{ site.baseurl }}/en/examples/real-world#1-medical-records-intelligence-system)** - Healthcare use case
 - **[Banking Credit Evaluation]({{ site.baseurl }}/en/examples/real-world#2-banking-credit-limit-evaluation)** - Financial services use case
 

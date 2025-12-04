@@ -73,6 +73,30 @@ var cevap = await searchService.QueryIntelligenceAsync(
 // → Tüm kaynaklardan birleşik cevap sağlar
 ```
 
+### **5. (Opsiyonel) MCP Client ve Dosya İzleyici Yapılandırması**
+```json
+{
+  "SmartRAG": {
+    "EnableMcpClient": true,
+    "McpServers": [
+      {
+        "ServerId": "ornek-sunucu",
+        "Endpoint": "https://mcp.ornek.com/api",
+        "TransportType": "Http"
+      }
+    ],
+    "EnableFileWatcher": true,
+    "WatchedFolders": [
+      {
+        "FolderPath": "/belgeler/yolu",
+        "AllowedExtensions": [".pdf", ".docx", ".txt"],
+        "AutoUpload": true
+      }
+    ]
+  }
+}
+```
+
 **SmartRAG'ı hemen test etmek ister misiniz?** → [Örnekler ve Test'e Git](#-örnekler-ve-test)
 
 
@@ -85,6 +109,10 @@ var cevap = await searchService.QueryIntelligenceAsync(
 🗄️ **Multi-Database RAG** - Birden fazla veritabanını doğal dil ile aynı anda sorgula
 
 📄 **Çoklu Modal Zeka** - PDF, Word, Excel, Görüntü (OCR), Ses (Konuşma-Metin), ve daha fazlası  
+
+🔌 **MCP Client Entegrasyonu** - Harici MCP sunucularına bağlan ve dış araçlarla yetenekleri genişlet
+
+📁 **Otomatik Dosya İzleme** - Klasörleri izle ve yeni belgeleri manuel yükleme olmadan otomatik indeksle
 
 🏠 **%100 Yerel İşleme** - GDPR, KVKK, HIPAA uyumlu
 
@@ -127,6 +155,8 @@ var cevap = await searchService.QueryIntelligenceAsync(
 - **Kurumsal hazır** kapsamlı hata yönetimi ve loglama ile
 - **Çapraz veritabanı sorguları** manuel SQL yazmadan
 - **Çoklu modal zeka** belgeler, veritabanları ve AI'yı birleştirerek
+- **MCP Client entegrasyonu** dış araçlarla yetenekleri genişletmek için
+- **Otomatik dosya izleme** gerçek zamanlı belge indeksleme için
 
 ## 🧪 **Örnekler ve Test**
 
@@ -191,6 +221,12 @@ docker exec -it smartrag-ollama ollama pull nomic-embed-text
 - **Adım 14**: Yüklenen belgeleri listele ve yönet
 - **Adım 15**: Temiz test için belgeleri temizle
 - **Adım 16**: Konuşma Asistanı - veritabanları + belgeler + sohbet birleştir
+- **Adım 17**: MCP Entegrasyonu - araçları listele ve MCP sorguları çalıştır
+
+**📁 Dosya İzleyici:**
+- Yeni belgeler için otomatik klasör izleme
+- Gerçek zamanlı belge indeksleme
+- Çift kayıt tespiti ve önleme
 
 **İdeal için:** Hızlı değerlendirme, proof-of-concept, ekip demoları, SmartRAG yeteneklerini öğrenme
 
@@ -202,7 +238,9 @@ docker exec -it smartrag-ollama ollama pull nomic-embed-text
 **📄 Belgeler:** PDF, Word, Excel, PowerPoint, Görüntü, Ses  
 **🤖 AI Modelleri:** OpenAI, Anthropic, Gemini, Azure OpenAI, Ollama (yerel), LM Studio  
 **🗄️ Vektör Depoları:** Qdrant, Redis, InMemory  
-**💬 Konuşma Depolama:** Redis, SQLite, FileSystem, InMemory (belge depolamadan bağımsız)
+**💬 Konuşma Depolama:** Redis, SQLite, FileSystem, InMemory (belge depolamadan bağımsız)  
+**🔌 Harici Entegrasyonlar:** MCP (Model Context Protocol) sunucuları ile genişletilmiş araç yetenekleri  
+**📁 Dosya İzleme:** Gerçek zamanlı belge indeksleme ile otomatik klasör izleme
 
 ## 📄 Lisans
 

@@ -87,6 +87,32 @@ SmartRAG configuration is organized into the following categories:
             </a>
         </div>
     </div>
+    
+    <div class="col-md-4">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
+                <i class="fas fa-plug"></i>
+            </div>
+            <h3>MCP Client</h3>
+            <p>Connect to external MCP servers and extend capabilities with external tools</p>
+            <a href="{{ site.baseurl }}/en/configuration/mcp-client" class="btn btn-outline-primary btn-sm mt-3">
+                MCP Client
+            </a>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card card-accent text-center">
+            <div class="icon icon-lg icon-gradient mx-auto">
+                <i class="fas fa-folder-open"></i>
+            </div>
+            <h3>File Watcher</h3>
+            <p>Automatic folder monitoring and real-time document indexing</p>
+            <a href="{{ site.baseurl }}/en/configuration/file-watcher" class="btn btn-outline-primary btn-sm mt-3">
+                File Watcher
+            </a>
+        </div>
+    </div>
 </div>
 
 ## Next Steps

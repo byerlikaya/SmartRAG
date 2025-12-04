@@ -145,6 +145,22 @@ Console.WriteLine(answer.Answer);
             
             <div class="card card-accent">
                 <div class="icon icon-lg icon-gradient">
+                    <i class="fas fa-plug"></i>
+                </div>
+                <h3>MCP Client Entegrasyonu</h3>
+                <p>Harici MCP (Model Context Protocol) sunucularına bağlan ve dış araçlar ve veri kaynakları ile yetenekleri genişlet.</p>
+            </div>
+            
+            <div class="card card-accent">
+                <div class="icon icon-lg icon-gradient">
+                    <i class="fas fa-folder-open"></i>
+                </div>
+                <h3>Otomatik Dosya İzleme</h3>
+                <p>Yeni belgeler için klasörleri izle ve manuel yükleme olmadan otomatik olarak indeksle. Çift kayıt tespiti ile gerçek zamanlı belge işleme.</p>
+            </div>
+            
+            <div class="card card-accent">
+                <div class="icon icon-lg icon-gradient">
                     <i class="fas fa-route"></i>
                 </div>
                 <h3>Akıllı Sorgu Amacı</h3>
