@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartRAG.FileWatcher.Events;
@@ -22,23 +23,46 @@ namespace SmartRAG.FileWatcher
         private const int RetryDelayMs = 1000;
 
         private readonly ILogger<FileWatcherService> _logger;
-        private readonly IDocumentService _documentService;
-        private readonly IDocumentParserService _documentParserService;
+        private readonly IServiceScopeFactory _serviceScopeFactory;
         private readonly SmartRagOptions _options;
         private readonly Dictionary<string, System.IO.FileSystemWatcher> _watchers = new Dictionary<string, System.IO.FileSystemWatcher>();
         private readonly Dictionary<string, WatchedFolderConfig> _configs = new Dictionary<string, WatchedFolderConfig>();
+        private readonly Lazy<HashSet<string>> _supportedExtensions;
+        private static readonly Dictionary<string, string> ContentTypeMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            { ".txt", "text/plain" },
+            { ".md", "text/markdown" },
+            { ".json", "application/json" },
+            { ".xml", "application/xml" },
+            { ".csv", "text/csv" },
+            { ".html", "text/html" },
+            { ".htm", "text/html" },
+            { ".docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document" },
+            { ".doc", "application/msword" },
+            { ".pdf", "application/pdf" },
+            { ".xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
+            { ".xls", "application/vnd.ms-excel" },
+            { ".jpg", "image/jpeg" },
+            { ".jpeg", "image/jpeg" },
+            { ".png", "image/png" },
+            { ".wav", "audio/wav" },
+            { ".mp3", "audio/mpeg" },
+            { ".m4a", "audio/mp4" },
+            { ".db", "application/x-sqlite3" }
+        };
         private bool _disposed = false;
 
         public FileWatcherService(
             ILogger<FileWatcherService> logger,
-            IDocumentService documentService,
-            IDocumentParserService documentParserService,
+            IServiceScopeFactory serviceScopeFactory,
             IOptions<SmartRagOptions> options)
         {
             _logger = logger;
-            _documentService = documentService;
-            _documentParserService = documentParserService;
+            _serviceScopeFactory = serviceScopeFactory;
             _options = options.Value;
+
+            // Lazy-load supported file types to avoid creating scope in constructor
+            _supportedExtensions = new Lazy<HashSet<string>>(() => LoadSupportedExtensions(), System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);
         }
 
         public event EventHandler<FileWatcherEventArgs> FileCreated;
@@ -245,12 +269,11 @@ namespace SmartRAG.FileWatcher
                 return false;
 
             var extension = Path.GetExtension(filePath).ToLowerInvariant();
-            var supportedExtensions = _documentParserService.GetSupportedFileTypes();
 
             if (string.IsNullOrEmpty(extension))
                 return false;
 
-            if (!supportedExtensions.Contains(extension))
+            if (!_supportedExtensions.Value.Contains(extension))
                 return false;
 
             var config = GetConfigForPathSync(filePath);
@@ -298,6 +321,9 @@ namespace SmartRAG.FileWatcher
             var retryCount = 0;
             while (retryCount < MaxRetryAttempts)
             {
+                using var scope = _serviceScopeFactory.CreateScope();
+                var documentService = scope.ServiceProvider.GetRequiredService<IDocumentService>();
+
                 try
                 {
                     if (!File.Exists(filePath))
@@ -311,7 +337,7 @@ namespace SmartRAG.FileWatcher
                     var contentType = GetContentType(filePath);
                     var fileHash = ComputeFileHash(filePath);
 
-                    var existingDocuments = await _documentService.GetAllDocumentsAsync();
+                    var existingDocuments = await documentService.GetAllDocumentsAsync();
 
                     _logger.LogDebug("Checking for duplicates. FileName: {FileName}, Hash: {Hash}, Total existing documents: {Count}",
                         fileName, fileHash, existingDocuments.Count);
@@ -339,7 +365,7 @@ namespace SmartRAG.FileWatcher
                         ["FilePath"] = filePath
                     };
 
-                    var document = await _documentService.UploadDocumentAsync(fileStream, fileName, contentType, config.UserId, config.Language, fileInfo.Length, additionalMetadata);
+                    var document = await documentService.UploadDocumentAsync(fileStream, fileName, contentType, config.UserId, config.Language, fileInfo.Length, additionalMetadata);
 
                     _logger.LogInformation("Auto-uploaded file: {FilePath} (size: {Size} bytes, hash: {Hash})", filePath, fileInfo.Length, fileHash);
                     return;
@@ -361,11 +387,14 @@ namespace SmartRAG.FileWatcher
 
         private async Task ScanExistingFilesAsync(string folderPath, WatchedFolderConfig config)
         {
+            using var scope = _serviceScopeFactory.CreateScope();
+            var documentService = scope.ServiceProvider.GetRequiredService<IDocumentService>();
+
             try
             {
                 _logger.LogInformation("Scanning existing files in folder: {FolderPath}", folderPath);
 
-                var existingDocuments = await _documentService.GetAllDocumentsAsync();
+                var existingDocuments = await documentService.GetAllDocumentsAsync();
                 var existingHashSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
                 foreach (var doc in existingDocuments)
@@ -425,19 +454,25 @@ namespace SmartRAG.FileWatcher
             }
         }
 
-        private string GetContentType(string filePath)
+        private static string GetContentType(string filePath)
         {
-            var extension = Path.GetExtension(filePath).ToLowerInvariant();
-            var supportedContentTypes = _documentParserService.GetSupportedContentTypes();
+            var extension = Path.GetExtension(filePath);
+            if (string.IsNullOrEmpty(extension))
+                return "application/octet-stream";
 
-            foreach (var contentType in supportedContentTypes)
-            {
-                if (contentType.Contains(extension.TrimStart('.'), StringComparison.OrdinalIgnoreCase))
-                    return contentType;
-            }
+            if (ContentTypeMap.TryGetValue(extension, out var contentType))
+                return contentType;
 
             return "application/octet-stream";
         }
+
+        private HashSet<string> LoadSupportedExtensions()
+        {
+            using var scope = _serviceScopeFactory.CreateScope();
+            var documentParserService = scope.ServiceProvider.GetRequiredService<IDocumentParserService>();
+            return new HashSet<string>(documentParserService.GetSupportedFileTypes(), StringComparer.OrdinalIgnoreCase);
+        }
+
 
         private static string ComputeFileHash(string filePath)
         {

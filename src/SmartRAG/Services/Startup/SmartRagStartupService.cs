@@ -1,8 +1,10 @@
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartRAG.FileWatcher;
 using SmartRAG.Mcp.Client.Services;
 using SmartRAG.Models;
+using System;
 using System.Threading.Tasks;
 
 #nullable enable
@@ -16,19 +18,16 @@ namespace SmartRAG.Services.Startup
     {
         private readonly ILogger<SmartRagStartupService> _logger;
         private readonly SmartRagOptions _options;
-        private readonly IMcpConnectionManager? _mcpConnectionManager;
-        private readonly IFileWatcherService? _fileWatcherService;
+        private readonly IServiceProvider _serviceProvider;
 
         public SmartRagStartupService(
             ILogger<SmartRagStartupService> logger,
             IOptions<SmartRagOptions> options,
-            IMcpConnectionManager? mcpConnectionManager = null,
-            IFileWatcherService? fileWatcherService = null)
+            IServiceProvider serviceProvider)
         {
             _logger = logger;
             _options = options.Value;
-            _mcpConnectionManager = mcpConnectionManager;
-            _fileWatcherService = fileWatcherService;
+            _serviceProvider = serviceProvider;
         }
 
         /// <summary>
@@ -36,24 +35,32 @@ namespace SmartRAG.Services.Startup
         /// </summary>
         public async Task InitializeAsync()
         {
-            if (_options.Features.EnableMcpClient && _mcpConnectionManager != null)
+            if (_options.Features.EnableMcpClient)
             {
-                _logger.LogInformation("Initializing MCP connections...");
-                await _mcpConnectionManager.ConnectAllAsync();
+                var mcpConnectionManager = _serviceProvider.GetService<IMcpConnectionManager>();
+                if (mcpConnectionManager != null)
+                {
+                    _logger.LogInformation("Initializing MCP connections...");
+                    await mcpConnectionManager.ConnectAllAsync();
+                }
             }
 
-            if (_options.Features.EnableFileWatcher && _fileWatcherService != null && _options.WatchedFolders != null)
+            if (_options.Features.EnableFileWatcher && _options.WatchedFolders != null)
             {
-                _logger.LogInformation("Initializing file watchers...");
-                foreach (var folderConfig in _options.WatchedFolders)
+                var fileWatcherService = _serviceProvider.GetService<IFileWatcherService>();
+                if (fileWatcherService != null)
                 {
-                    try
+                    _logger.LogInformation("Initializing file watchers...");
+                    foreach (var folderConfig in _options.WatchedFolders)
                     {
-                        await _fileWatcherService.StartWatchingAsync(folderConfig);
-                    }
-                    catch (System.Exception ex)
-                    {
-                        _logger.LogError(ex, "Failed to start watching folder: {FolderPath}", folderConfig.FolderPath);
+                        try
+                        {
+                            await fileWatcherService.StartWatchingAsync(folderConfig);
+                        }
+                        catch (System.Exception ex)
+                        {
+                            _logger.LogError(ex, "Failed to start watching folder: {FolderPath}", folderConfig.FolderPath);
+                        }
                     }
                 }
             }
