@@ -49,7 +49,7 @@ public class InitializationService(
         await Task.CompletedTask;
     }
 
-    public async Task<(bool UseLocal, AIProvider AIProvider, StorageProvider StorageProvider, AudioProvider AudioProvider)> SelectEnvironmentAsync()
+    public async Task<(bool UseLocal, AIProvider AIProvider, StorageProvider StorageProvider)> SelectEnvironmentAsync()
     {
         await Task.CompletedTask;
 
@@ -57,27 +57,27 @@ public class InitializationService(
 
         System.Console.WriteLine("Choose your deployment environment:");
         System.Console.WriteLine();
-        System.Console.WriteLine("1. ☁️  CLOUD Environment (Cloud Services)");
-        System.Console.WriteLine("   • AI: Gemini / OpenAI / AzureOpenAI / Anthropic / Custom");
-        System.Console.WriteLine("   • Vector Store: Qdrant Cloud");
-        System.Console.WriteLine("   • Cache: Redis Cloud");
-        System.Console.WriteLine("   • Databases: Can use cloud or local databases");
-        System.Console.WriteLine("   ⚡ High performance with cloud AI models");
-        System.Console.WriteLine();
-        System.Console.WriteLine("2. 🏠 LOCAL Environment (100% Local - No Cloud Required)");
+        System.Console.WriteLine("1. 🏠 LOCAL Environment (100% Local - No Cloud Required)");
         System.Console.WriteLine("   • AI: Ollama (running on localhost)");
         System.Console.WriteLine("   • Vector Store: Qdrant (local docker container)");
         System.Console.WriteLine("   • Document Cache: Redis (optional - local docker container)");
         System.Console.WriteLine("   • Databases: Local SQL Server, MySQL, PostgreSQL, SQLite");
         System.Console.WriteLine("   ✅ GDPR/KVKK compliant - All data stays on your machine");
         System.Console.WriteLine();
+        System.Console.WriteLine("2. ☁️  CLOUD Environment (Cloud Services)");
+        System.Console.WriteLine("   • AI: Gemini / OpenAI / AzureOpenAI / Anthropic / Custom");
+        System.Console.WriteLine("   • Vector Store: Qdrant Cloud");
+        System.Console.WriteLine("   • Cache: Redis Cloud");
+        System.Console.WriteLine("   • Databases: Can use cloud or local databases");
+        System.Console.WriteLine("   ⚡ High performance with cloud AI models");
+        System.Console.WriteLine();
 
-        var choice = _console.ReadLine("Selection (default: Cloud): ");
+        var choice = _console.ReadLine("Selection (default: Local): ");
 
         var useLocalEnvironment = choice switch
         {
-            "1" or "" => false,
-            "2" => true,
+            "1" or "" => true,
+            "2" => false,
             _ => true
         };
 
@@ -119,7 +119,7 @@ public class InitializationService(
             System.Console.WriteLine("     (AI:Custom:Endpoint = http://localhost:11434)");
             System.Console.WriteLine();
 
-            return (true, AIProvider.Custom, selectedStorage, AudioProvider.Whisper);
+            return (true, AIProvider.Custom, selectedStorage);
         }
 
         System.Console.WriteLine();
@@ -148,7 +148,7 @@ public class InitializationService(
         System.Console.WriteLine("  Audio: Whisper.net (Local transcription)");
         System.Console.WriteLine();
 
-        return (false, selectedAIProvider, StorageProvider.Redis, AudioProvider.Whisper);
+        return (false, selectedAIProvider, StorageProvider.Redis);
     }
 
     public async Task<string> SelectLanguageAsync()
@@ -198,7 +198,7 @@ public class InitializationService(
         return selectedLanguageCode;
     }
 
-    public async Task InitializeServicesAsync(AIProvider aiProvider, StorageProvider storageProvider, AudioProvider audioProvider)
+    public async Task InitializeServicesAsync(AIProvider aiProvider, StorageProvider storageProvider)
     {
         System.Console.WriteLine("🔧 Initializing SmartRAG...");
         System.Console.WriteLine();
@@ -221,22 +221,31 @@ public class InitializationService(
             {
                 options.StorageProvider = storageProvider;
                 options.AIProvider = aiProvider;
-                options.AudioProvider = audioProvider;
             });
 
             System.Console.WriteLine("   → Building service provider...");
-            _serviceProvider = services.BuildServiceProvider();
-
-            if (_serviceProvider != null)
+            System.Console.WriteLine("   → [DEBUG] Starting BuildServiceProvider...");
+            try
             {
-                await _serviceProvider.InitializeSmartRagAsync();
+                _serviceProvider = services.BuildServiceProvider();
+                System.Console.WriteLine("   → [DEBUG] BuildServiceProvider completed successfully");
+            }
+            catch (Exception buildEx)
+            {
+                System.Console.WriteLine($"   → [DEBUG] BuildServiceProvider failed: {buildEx.Message}");
+                System.Console.WriteLine($"   → [DEBUG] Exception type: {buildEx.GetType().Name}");
+                if (buildEx.InnerException != null)
+                {
+                    System.Console.WriteLine($"   → [DEBUG] Inner exception: {buildEx.InnerException.Message}");
+                }
+                throw;
             }
 
             System.Console.WriteLine();
             _console.WriteSuccess("Services initialized successfully");
             System.Console.WriteLine($"  AI Provider: {aiProvider}");
             System.Console.WriteLine($"  Storage Provider: {storageProvider}");
-            System.Console.WriteLine($"  Audio Provider: {audioProvider}");
+            System.Console.WriteLine($"  Audio Provider: Whisper (only supported provider)");
 
             await DisplayDatabaseStatus();
         }
@@ -271,15 +280,23 @@ public class InitializationService(
 
     private async Task DisplayDatabaseStatus()
     {
+        System.Console.WriteLine("   → [DEBUG] DisplayDatabaseStatus started");
         var connectionManager = _serviceProvider?.GetService<IDatabaseConnectionManager>();
         var schemaAnalyzer = _serviceProvider?.GetService<IDatabaseSchemaAnalyzer>();
 
         if (connectionManager == null || schemaAnalyzer == null)
+        {
+            System.Console.WriteLine("   → [DEBUG] Database services not available, skipping");
             return;
+        }
 
+        System.Console.WriteLine("   → [DEBUG] Calling connectionManager.InitializeAsync()...");
         await connectionManager.InitializeAsync();
+        System.Console.WriteLine("   → [DEBUG] connectionManager.InitializeAsync() completed");
 
+        System.Console.WriteLine("   → [DEBUG] Calling schemaAnalyzer.GetAllSchemasAsync()...");
         var schemas = await schemaAnalyzer.GetAllSchemasAsync();
+        System.Console.WriteLine("   → [DEBUG] schemaAnalyzer.GetAllSchemasAsync() completed");
         var completed = schemas.Where(s => s.Status == SchemaAnalysisStatus.Completed && s.Tables.Count > 0).ToList();
         var needsSetup = schemas.Where(s => s.Tables.Count == 0).ToList();
 

@@ -13,7 +13,6 @@ public class DemoConfiguration
     public bool UseLocalEnvironment { get; set; } = true;
     public AIProvider SelectedAIProvider { get; set; } = AIProvider.Custom;
     public StorageProvider SelectedStorageProvider { get; set; } = StorageProvider.Redis;
-    public AudioProvider SelectedAudioProvider { get; set; } = AudioProvider.Whisper;
 
     #endregion
 }

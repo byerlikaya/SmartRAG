@@ -17,11 +17,6 @@ RegisterServices(builder.Services, builder.Configuration);
 
 var app = builder.Build();
 
-using (var scope = app.Services.CreateScope())
-{
-    await scope.ServiceProvider.InitializeSmartRagAsync();
-}
-
 ConfigureMiddleware(app, builder.Environment);
 
 app.Run();

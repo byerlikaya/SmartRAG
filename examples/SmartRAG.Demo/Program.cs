@@ -63,14 +63,14 @@ internal class Program
 
             await initService.SetupTestDatabasesAsync();
 
-            var (useLocal, aiProvider, storageProvider, audioProvider) = await initService.SelectEnvironmentAsync();
+            var (useLocal, aiProvider, storageProvider) = await initService.SelectEnvironmentAsync();
             _useLocalEnvironment = useLocal;
             _selectedAIProvider = aiProvider;
             _selectedStorageProvider = storageProvider;
 
             _selectedLanguage = await initService.SelectLanguageAsync();
 
-            await initService.InitializeServicesAsync(aiProvider, storageProvider, audioProvider);
+            await initService.InitializeServicesAsync(aiProvider, storageProvider);
             _serviceProvider = initService.GetServiceProvider();
 
             if (_serviceProvider == null)
