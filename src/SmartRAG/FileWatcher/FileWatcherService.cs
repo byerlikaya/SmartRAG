@@ -100,14 +100,20 @@ namespace SmartRAG.FileWatcher
 
             if (_watchers.ContainsKey(sanitizedPath))
             {
-                _logger.LogInformation("Already watching folder: {FolderPath}", sanitizedPath);
+                _logger.LogInformation("Already watching folder: {FolderPath}. Re-scanning existing files...", sanitizedPath);
+                // Even if already watching, re-scan existing files if AutoUpload is enabled
+                if (config.AutoUpload)
+                {
+                    _ = Task.Run(async () => await ScanExistingFilesAsync(sanitizedPath, config));
+                }
                 return Task.CompletedTask;
             }
 
             var watcher = new System.IO.FileSystemWatcher(sanitizedPath)
             {
                 IncludeSubdirectories = config.IncludeSubdirectories,
-                NotifyFilter = System.IO.NotifyFilters.FileName | System.IO.NotifyFilters.LastWrite | System.IO.NotifyFilters.CreationTime
+                NotifyFilter = System.IO.NotifyFilters.FileName | System.IO.NotifyFilters.LastWrite | System.IO.NotifyFilters.CreationTime,
+                Filter = "*.*" // Watch all files, filtering will be done in IsFileAllowed
             };
 
             watcher.Created += async (sender, e) => await OnFileCreatedAsync(e);
@@ -116,6 +122,9 @@ namespace SmartRAG.FileWatcher
             watcher.Error += OnError;
 
             watcher.EnableRaisingEvents = true;
+            
+            _logger.LogDebug("FileSystemWatcher configured for: {FolderPath}, IncludeSubdirectories: {IncludeSubdirectories}, Filter: {Filter}",
+                sanitizedPath, config.IncludeSubdirectories, watcher.Filter);
 
             _watchers[sanitizedPath] = watcher;
             _configs[sanitizedPath] = config;
@@ -181,8 +190,16 @@ namespace SmartRAG.FileWatcher
         {
             try
             {
+                _logger.LogDebug("File created event received: {FilePath}", e.FullPath);
+
+                // Wait a bit for file to be fully written (especially for large files)
+                await Task.Delay(1000);
+
                 if (!IsFileAllowed(e.FullPath))
+                {
+                    _logger.LogDebug("File not allowed (extension or config): {FilePath}", e.FullPath);
                     return;
+                }
 
                 var args = new FileWatcherEventArgs
                 {
@@ -196,6 +213,7 @@ namespace SmartRAG.FileWatcher
 
                 if (await GetConfigForPath(e.FullPath) is WatchedFolderConfig config && config.AutoUpload)
                 {
+                    _logger.LogInformation("Auto-uploading file: {FilePath}", e.FullPath);
                     await UploadFileAsync(e.FullPath, config);
                 }
             }
@@ -263,26 +281,46 @@ namespace SmartRAG.FileWatcher
         private bool IsFileAllowed(string filePath)
         {
             if (string.IsNullOrWhiteSpace(filePath))
+            {
+                _logger.LogDebug("IsFileAllowed: File path is null or empty");
                 return false;
+            }
 
             if (!File.Exists(filePath))
+            {
+                _logger.LogDebug("IsFileAllowed: File does not exist: {FilePath}", filePath);
                 return false;
+            }
 
             var extension = Path.GetExtension(filePath).ToLowerInvariant();
 
             if (string.IsNullOrEmpty(extension))
+            {
+                _logger.LogDebug("IsFileAllowed: File has no extension: {FilePath}", filePath);
                 return false;
+            }
 
             if (!_supportedExtensions.Value.Contains(extension))
+            {
+                _logger.LogDebug("IsFileAllowed: Extension not supported: {Extension} for {FilePath}", extension, filePath);
                 return false;
+            }
 
             var config = GetConfigForPathSync(filePath);
             if (config == null)
+            {
+                _logger.LogDebug("IsFileAllowed: No config found for path: {FilePath}", filePath);
                 return false;
+            }
 
             if (config.AllowedExtensions != null && config.AllowedExtensions.Count > 0)
             {
-                return config.AllowedExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase);
+                var isAllowed = config.AllowedExtensions.Contains(extension, StringComparer.OrdinalIgnoreCase);
+                if (!isAllowed)
+                {
+                    _logger.LogDebug("IsFileAllowed: Extension {Extension} not in AllowedExtensions list for {FilePath}", extension, filePath);
+                }
+                return isAllowed;
             }
 
             return true;
@@ -365,7 +403,9 @@ namespace SmartRAG.FileWatcher
                         ["FilePath"] = filePath
                     };
 
-                    var document = await documentService.UploadDocumentAsync(fileStream, fileName, contentType, config.UserId, config.Language, fileInfo.Length, additionalMetadata);
+                    // Use config.Language if specified, otherwise fall back to SmartRagOptions.DefaultLanguage
+                    var languageToUse = config.Language ?? _options.DefaultLanguage;
+                    var document = await documentService.UploadDocumentAsync(fileStream, fileName, contentType, config.UserId, languageToUse, fileInfo.Length, additionalMetadata);
 
                     _logger.LogInformation("Auto-uploaded file: {FilePath} (size: {Size} bytes, hash: {Hash})", filePath, fileInfo.Length, fileHash);
                     return;
@@ -410,6 +450,8 @@ namespace SmartRAG.FileWatcher
                 var searchOption = config.IncludeSubdirectories ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly;
                 var files = Directory.GetFiles(folderPath, "*.*", searchOption);
 
+                _logger.LogDebug("ScanExistingFiles: Found {FileCount} files in folder {FolderPath}", files.Length, folderPath);
+
                 var processedCount = 0;
                 var skippedCount = 0;
                 var duplicateCount = 0;
@@ -418,8 +460,11 @@ namespace SmartRAG.FileWatcher
                 {
                     try
                     {
+                        _logger.LogDebug("ScanExistingFiles: Processing file: {FilePath}", filePath);
+                        
                         if (!IsFileAllowed(filePath))
                         {
+                            _logger.LogDebug("ScanExistingFiles: File not allowed, skipping: {FilePath}", filePath);
                             skippedCount++;
                             continue;
                         }

@@ -1,3 +1,5 @@
+#nullable enable
+
 using SmartRAG.Enums;
 using System.Collections.Generic;
 
@@ -66,11 +68,6 @@ namespace SmartRAG.Models
         public List<AIProvider> FallbackProviders { get; set; } = new List<AIProvider>();
 
         /// <summary>
-        /// Selected audio transcription provider - only Whisper.net supported
-        /// </summary>
-        public AudioProvider AudioProvider { get; set; } = AudioProvider.Whisper;
-
-        /// <summary>
         /// Whisper configuration for local audio transcription
         /// </summary>
         public WhisperConfig WhisperConfig { get; set; } = new WhisperConfig();
@@ -86,16 +83,6 @@ namespace SmartRAG.Models
         public bool EnableAutoSchemaAnalysis { get; set; } = true;
 
         /// <summary>
-        /// Enable periodic schema refresh
-        /// </summary>
-        public bool EnablePeriodicSchemaRefresh { get; set; } = true;
-
-        /// <summary>
-        /// Default schema refresh interval in minutes (0 = use per-connection settings)
-        /// </summary>
-        public int DefaultSchemaRefreshIntervalMinutes { get; set; } = 60;
-
-        /// <summary>
         /// Feature toggles for enabling/disabling specific capabilities
         /// </summary>
         public FeatureToggles Features { get; set; } = new FeatureToggles();
@@ -109,6 +96,12 @@ namespace SmartRAG.Models
         /// Watched folder configurations for automatic document indexing
         /// </summary>
         public List<WatchedFolderConfig> WatchedFolders { get; set; } = new List<WatchedFolderConfig>();
+
+        /// <summary>
+        /// Default language code for document processing (ISO 639-1 format, e.g., "tr", "en", "de")
+        /// Used when language is not specified in WatchedFolderConfig or document upload
+        /// </summary>
+        public string? DefaultLanguage { get; set; }
     }
 
     /// <summary>
@@ -139,11 +132,11 @@ namespace SmartRAG.Models
         /// <summary>
         /// Enable MCP Client support
         /// </summary>
-        public bool EnableMcpClient { get; set; } = true;
+        public bool EnableMcpClient { get; set; } = false;
 
         /// <summary>
         /// Enable File Watcher support
         /// </summary>
-        public bool EnableFileWatcher { get; set; } = true;
+        public bool EnableFileWatcher { get; set; } = false;
     }
 }

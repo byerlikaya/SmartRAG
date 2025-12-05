@@ -1,6 +1,15 @@
+#nullable enable
+
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Linq;
+using System.Reflection;
+using System.Threading;
+using System.Threading.Tasks;
 using SmartRAG.Enums;
 using SmartRAG.Factories;
 using SmartRAG.Interfaces.AI;
@@ -20,21 +29,16 @@ using SmartRAG.Services.Parser;
 using SmartRAG.Services.Document.Parsers;
 using SmartRAG.Services.Support;
 using SmartRAG.Services.Database.Strategies;
-using SmartRAG.Services.Search.Strategies;
 using SmartRAG.Interfaces.Database.Strategies;
-using SmartRAG.Interfaces.Search.Strategies;
-using SmartRAG.Mcp.Client;
-using SmartRAG.Mcp.Client.Services;
-using SmartRAG.Mcp.Integration;
+using SmartRAG.Interfaces.Mcp;
+using SmartRAG.Services.Mcp;
 using SmartRAG.FileWatcher;
 using SmartRAG.Services.Startup;
 using System;
 using System.Collections.Generic;
 
-
 namespace SmartRAG.Extensions
 {
-
     /// <summary>
     /// Extension methods for configuring SmartRag services
     /// </summary>
@@ -51,12 +55,61 @@ namespace SmartRAG.Extensions
 
         /// <summary>
         /// Adds SmartRag services with custom configuration
+        /// For Web API: Use this method - IHost will automatically start hosted services
+        /// For Console: Use UseSmartRag() instead - it returns IServiceProvider with auto-started services
         /// </summary>
         /// <param name="services">Service collection to add services to</param>
         /// <param name="configuration">Application configuration</param>
         /// <param name="configureOptions">Action to configure SmartRag options</param>
-        /// <returns>Service collection for method chaining</returns>
+        /// <returns>Service collection for method chaining (call BuildServiceProviderWithSmartRag() for console apps)</returns>
         public static IServiceCollection AddSmartRag(this IServiceCollection services, IConfiguration configuration, Action<SmartRagOptions> configureOptions)
+        {
+            RegisterConfiguration(services, configuration, configureOptions);
+            
+            var options = BuildOptions(configuration, configureOptions);
+            
+            RegisterCoreServices(services);
+            RegisterDocumentServices(services);
+            RegisterDatabaseServices(services);
+            RegisterParserServices(services, options);
+            RegisterFeatureBasedServices(services, options);
+            RegisterStorageServices(services, configuration);
+            RegisterStartupServices(services, options);
+
+            return services;
+        }
+
+        /// <summary>
+        /// Quick setup method for console applications - configures SmartRag services and returns a ready-to-use service provider
+        /// This method automatically starts hosted services (MCP client, file watcher) if enabled
+        /// For Web API projects, use AddSmartRag() instead and let IHost manage the lifecycle
+        /// </summary>
+        /// <param name="services">Service collection to add services to</param>
+        /// <param name="configuration">Application configuration</param>
+        /// <param name="storageProvider">Storage provider to use</param>
+        /// <param name="aiProvider">AI provider to use</param>
+        /// <param name="defaultLanguage">Default language code for document processing (ISO 639-1 format, e.g., "tr", "en", "de")</param>
+        /// <returns>Configured and initialized service provider ready for use</returns>
+        public static IServiceProvider UseSmartRag(this IServiceCollection services,
+                                                   IConfiguration configuration,
+                                                   StorageProvider storageProvider = StorageProvider.InMemory,
+                                                   AIProvider aiProvider = AIProvider.OpenAI,
+                                                   string? defaultLanguage = null)
+        {
+            services.AddSmartRag(configuration, options =>
+            {
+                options.StorageProvider = storageProvider;
+                options.AIProvider = aiProvider;
+                if (!string.IsNullOrEmpty(defaultLanguage))
+                {
+                    options.DefaultLanguage = defaultLanguage;
+                }
+            });
+            
+            return services.BuildServiceProviderWithSmartRag();
+        }
+
+        private static void RegisterConfiguration(IServiceCollection services, IConfiguration configuration, Action<SmartRagOptions> configureOptions)
         {
             services.Configure<SmartRagOptions>(options =>
             {
@@ -71,9 +124,39 @@ namespace SmartRAG.Extensions
                 configureOptions(options);
             });
 
-            // Also register as legacy singleton for backward compatibility during transition
             services.AddSingleton(sp => sp.GetRequiredService<IOptions<SmartRagOptions>>().Value);
+        }
 
+        private static SmartRagOptions BuildOptions(IConfiguration configuration, Action<SmartRagOptions> configureOptions)
+        {
+            var options = new SmartRagOptions();
+            configuration.GetSection("SmartRAG").Bind(options);
+
+            var dbConnectionsSection = configuration.GetSection("DatabaseConnections");
+            if (dbConnectionsSection.Exists())
+            {
+                options.DatabaseConnections = dbConnectionsSection.Get<List<DatabaseConnectionConfig>>() ?? new List<DatabaseConnectionConfig>();
+            }
+
+            // Explicitly bind Features section to ensure it's loaded correctly
+            // This is necessary because nested object binding can sometimes fail
+            var featuresSection = configuration.GetSection("SmartRAG:Features");
+            if (featuresSection.Exists())
+            {
+                if (options.Features == null)
+                {
+                    options.Features = new FeatureToggles();
+                }
+                featuresSection.Bind(options.Features);
+            }
+
+            configureOptions(options);
+            
+            return options;
+        }
+
+        private static void RegisterCoreServices(IServiceCollection services)
+        {
             services.AddSingleton<IAIProviderFactory, AIProviderFactory>();
 
             services.AddSingleton<IAIProvider>(sp =>
@@ -85,53 +168,50 @@ namespace SmartRAG.Extensions
 
             services.AddScoped<IAIService, AIService>();
             services.AddSingleton<IStorageFactory, StorageFactory>();
-            services.AddScoped<ISemanticSearchService, SemanticSearchService>();
             services.AddScoped<ITextNormalizationService, TextNormalizationService>();
             services.AddScoped<IAIConfigurationService, AIConfigurationService>();
-            services.AddScoped<IPromptBuilderService, PromptBuilderService>();
+            services.AddScoped<IConversationManagerService, ConversationManagerService>();
+            services.AddScoped<IPromptBuilderService>(sp =>
+            {
+                var conversationManagerLazy = new Lazy<IConversationManagerService>(() => sp.GetRequiredService<IConversationManagerService>());
+                return new PromptBuilderService(conversationManagerLazy);
+            });
             services.AddScoped<IDocumentScoringService, DocumentScoringService>();
             services.AddScoped<ISourceBuilderService, SourceBuilderService>();
             services.AddScoped<IContextExpansionService, ContextExpansionService>();
             services.AddScoped<IQueryIntentClassifierService, QueryIntentClassifierService>();
-            services.AddScoped<IConversationManagerService, ConversationManagerService>();
+            services.AddScoped<IAIRequestExecutor, AIRequestExecutor>();
+            services.AddMemoryCache();
+        }
+
+        private static void RegisterDocumentServices(IServiceCollection services)
+        {
             services.AddScoped<IDocumentService, DocumentService>();
-
-            services.AddScoped<IFileParser, TextFileParser>();
-            services.AddScoped<IFileParser, WordFileParser>();
-            services.AddScoped<IFileParser, ExcelFileParser>();
-
-            var options = new SmartRagOptions();
-            configuration.GetSection("SmartRAG").Bind(options);
-            configureOptions(options);
-
-            // IImageParserService is always registered because PdfFileParser needs it for CorrectCurrencySymbols
-            // OCR operations will be skipped if EnableImageParsing is false
-            services.AddScoped<IImageParserService, ImageParserService>();
-
-            if (options.Features.EnableImageParsing)
+            services.AddScoped<IQueryWordMatcherService, QueryWordMatcherService>();
+            services.AddScoped<IDocumentRelevanceCalculatorService, DocumentRelevanceCalculatorService>();
+            services.AddScoped<IQueryPatternAnalyzerService, QueryPatternAnalyzerService>();
+            services.AddScoped<IChunkPrioritizerService, ChunkPrioritizerService>();
+            services.AddScoped<IQueryAnalysisService, QueryAnalysisService>();
+            services.AddScoped<IResponseBuilderService, ResponseBuilderService>();
+            services.AddScoped<IQueryStrategyOrchestratorService, QueryStrategyOrchestratorService>();
+            services.AddScoped<IQueryStrategyExecutorService>(sp =>
             {
-                services.AddScoped<IFileParser, ImageFileParser>();
-            }
+                var ragAnswerGeneratorLazy = new Lazy<IRagAnswerGeneratorService>(() => sp.GetRequiredService<IDocumentSearchService>() as IRagAnswerGeneratorService ?? throw new InvalidOperationException("DocumentSearchService must implement IRagAnswerGeneratorService"));
+                return new QueryStrategyExecutorService(
+                    sp.GetService<IMultiDatabaseQueryCoordinator>(),
+                    sp.GetRequiredService<ILogger<QueryStrategyExecutorService>>(),
+                    ragAnswerGeneratorLazy,
+                    sp.GetService<IResponseBuilderService>(),
+                    sp.GetService<IConversationManagerService>());
+            });
+            services.AddScoped<IDocumentSearchStrategyService, DocumentSearchStrategyService>();
+            services.AddScoped<IDocumentParserService, DocumentParserService>();
+            services.AddScoped<IDocumentSearchService, DocumentSearchService>();
+            services.AddScoped<IRagAnswerGeneratorService>(sp => sp.GetRequiredService<IDocumentSearchService>() as IRagAnswerGeneratorService ?? throw new InvalidOperationException("DocumentSearchService must implement IRagAnswerGeneratorService"));
+        }
 
-            // PdfFileParser always needs IImageParserService (for CorrectCurrencySymbols, OCR is optional)
-            services.AddScoped<IFileParser, PdfFileParser>();
-
-            if (options.Features.EnableAudioParsing)
-            {
-                services.AddScoped<IFileParser, AudioFileParser>();
-                services.AddScoped<AudioConversionService>();
-                services.AddScoped<WhisperAudioParserService>();
-                services.AddScoped<IAudioParserFactory, AudioParserFactory>();
-
-                services.AddScoped<IAudioParserService>(sp =>
-                {
-                    var factory = sp.GetRequiredService<IAudioParserFactory>();
-                    var opts = sp.GetRequiredService<IOptions<SmartRagOptions>>();
-                    return factory.CreateAudioParser(opts.Value.AudioProvider);
-                });
-            }
-
-            services.AddScoped<IFileParser, DatabaseFileParser>();
+        private static void RegisterDatabaseServices(IServiceCollection services)
+        {
             services.AddScoped<IDatabaseParserService, DatabaseParserService>();
             services.AddScoped<IDatabaseSchemaAnalyzer, DatabaseSchemaAnalyzer>();
             services.AddScoped<IDatabaseConnectionManager, DatabaseConnectionManager>();
@@ -141,23 +221,36 @@ namespace SmartRAG.Extensions
             services.AddScoped<ISqlDialectStrategy, MySqlDialectStrategy>();
             services.AddScoped<ISqlDialectStrategy, SqlServerDialectStrategy>();
             services.AddScoped<ISqlDialectStrategyFactory, SqlDialectStrategyFactory>();
-
             services.AddScoped<ISQLQueryGenerator, SQLQueryGenerator>();
             services.AddScoped<IDatabaseQueryExecutor, DatabaseQueryExecutor>();
             services.AddScoped<IResultMerger, ResultMerger>();
             services.AddScoped<IMultiDatabaseQueryCoordinator, MultiDatabaseQueryCoordinator>();
+        }
 
-            services.AddScoped<IDocumentParserService, DocumentParserService>();
-            services.AddScoped<IDocumentSearchService, DocumentSearchService>();
-            services.AddScoped<IAIRequestExecutor, AIRequestExecutor>();
-            services.AddScoped<IScoringStrategy, HybridScoringStrategy>();
-            services.AddMemoryCache();
+        private static void RegisterParserServices(IServiceCollection services, SmartRagOptions options)
+        {
+            services.AddScoped<IFileParser, TextFileParser>();
+            services.AddScoped<IFileParser, WordFileParser>();
+            services.AddScoped<IFileParser, ExcelFileParser>();
+            services.AddScoped<IFileParser, DatabaseFileParser>();
+            services.AddScoped<IImageParserService, ImageParserService>();
+            services.AddScoped<IFileParser, PdfFileParser>();
 
-            ConfigureStorageProvider(services, configuration);
+            if (options.Features.EnableImageParsing)
+            {
+                services.AddScoped<IFileParser, ImageFileParser>();
+            }
 
-            services.AddSingleton(sp => sp.GetRequiredService<IStorageFactory>().GetCurrentRepository());
-            services.AddSingleton(sp => sp.GetRequiredService<IStorageFactory>().GetCurrentConversationRepository());
+            if (options.Features.EnableAudioParsing)
+            {
+                services.AddScoped<IFileParser, AudioFileParser>();
+                services.AddScoped<AudioConversionService>();
+                services.AddScoped<IAudioParserService, WhisperAudioParserService>();
+            }
+        }
 
+        private static void RegisterFeatureBasedServices(IServiceCollection services, SmartRagOptions options)
+        {
             if (options.Features.EnableMcpClient)
             {
                 services.AddHttpClient();
@@ -170,29 +263,32 @@ namespace SmartRAG.Extensions
             {
                 services.AddSingleton<IFileWatcherService, FileWatcherService>();
             }
-
-            services.AddSingleton<ISmartRagStartupService, SmartRagStartupService>();
-
-            return services;
         }
 
-        /// <summary>
-        /// Adds SmartRag services with minimal configuration (just specify providers)
-        /// </summary>
-        /// <param name="services">Service collection to add services to</param>
-        /// <param name="configuration">Application configuration</param>
-        /// <param name="storageProvider">Storage provider to use</param>
-        /// <param name="aiProvider">AI provider to use</param>
-        /// <returns>Service collection for method chaining</returns>
-        public static IServiceCollection UseSmartRag(this IServiceCollection services,
-                                                     IConfiguration configuration,
-                                                     StorageProvider storageProvider = StorageProvider.InMemory,
-                                                     AIProvider aiProvider = AIProvider.OpenAI)
-            => services.AddSmartRag(configuration, options =>
+        private static void RegisterStorageServices(IServiceCollection services, IConfiguration configuration)
+        {
+            ConfigureStorageProvider(services, configuration);
+
+            services.AddSingleton(sp => sp.GetRequiredService<IStorageFactory>().GetCurrentRepository());
+            services.AddSingleton(sp => sp.GetRequiredService<IStorageFactory>().GetCurrentConversationRepository());
+        }
+
+        private static void RegisterStartupServices(IServiceCollection services, SmartRagOptions options)
+        {
+            // Ensure Features is initialized
+            if (options.Features == null)
             {
-                options.StorageProvider = storageProvider;
-                options.AIProvider = aiProvider;
-            });
+                options.Features = new FeatureToggles();
+            }
+            
+            var enableMcp = options.Features.EnableMcpClient;
+            var enableFileWatcher = options.Features.EnableFileWatcher;
+            
+            if (enableMcp || enableFileWatcher)
+            {
+                services.AddHostedService<SmartRagStartupService>();
+            }
+        }
 
         private static void ConfigureStorageProvider(IServiceCollection services, IConfiguration configuration)
         {
@@ -202,5 +298,48 @@ namespace SmartRAG.Extensions
             services.Configure<InMemoryConfig>(options => configuration.GetSection("Storage:InMemory").Bind(options));
             services.Configure<StorageConfig>(options => configuration.GetSection("Storage:FileSystem").Bind(options));
         }
+
+        /// <summary>
+        /// Builds a service provider and automatically starts SmartRAG hosted services if configured
+        /// This method automatically detects and starts hosted services (MCP client, file watcher) for console applications
+        /// For Web API projects using IHost, this automatic startup is not needed
+        /// </summary>
+        /// <param name="services">Service collection</param>
+        /// <param name="validateScopes">Whether to validate scopes</param>
+        /// <returns>Service provider instance with auto-started hosted services</returns>
+        public static IServiceProvider BuildServiceProviderWithSmartRag(this IServiceCollection services, bool validateScopes = false)
+        {
+            var serviceProvider = services.BuildServiceProvider(validateScopes);
+            
+            // Check if SmartRAG hosted services are registered and start them
+            // Hosted services are registered as IHostedService, so we need to get all hosted services
+            // and find SmartRagStartupService among them
+            var hostedServices = serviceProvider.GetServices<IHostedService>();
+            var logger = serviceProvider.GetService<ILogger<Services.Startup.SmartRagStartupService>>();
+            
+            var startupService = hostedServices.OfType<Services.Startup.SmartRagStartupService>().FirstOrDefault();
+            
+            if (startupService != null)
+            {
+                logger?.LogInformation("SmartRagStartupService found, starting hosted services...");
+                try
+                {
+                    // Synchronous start for console applications
+                    startupService.StartAsync(CancellationToken.None).GetAwaiter().GetResult();
+                }
+                catch (Exception ex)
+                {
+                    logger?.LogError(ex, "Failed to start SmartRAG hosted services");
+                    throw;
+                }
+            }
+            else
+            {
+                logger?.LogWarning("SmartRagStartupService not found. MCP client and file watcher may not be initialized.");
+            }
+            
+            return serviceProvider;
+        }
     }
+
 }
