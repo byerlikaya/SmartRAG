@@ -1,8 +1,7 @@
 #nullable enable
 
 using Microsoft.Extensions.Logging;
-using SmartRAG.Mcp.Client;
-using SmartRAG.Mcp.Integration;
+using SmartRAG.Interfaces.Mcp;
 using SmartRAG.Models;
 using System;
 using System.Collections.Generic;
@@ -10,7 +9,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace SmartRAG.Mcp.Integration
+namespace SmartRAG.Services.Mcp
 {
     /// <summary>
     /// Service for integrating MCP server results with SmartRAG queries
@@ -238,14 +237,25 @@ namespace SmartRAG.Mcp.Integration
 
         private static bool IsCommonWord(string word)
         {
-            var commonWords = new[] { "the", "is", "are", "was", "were", "be", "been", "have", "has", "had",
-                "do", "does", "did", "will", "would", "could", "should", "may", "might", "can", "this", "that",
-                "these", "those", "a", "an", "and", "or", "but", "if", "then", "else", "when", "where", "why",
-                "how", "what", "which", "who", "whom", "whose", "not", "no", "yes", "ok", "okay", "nedir",
-                "nasıl", "neler", "hangi", "kim", "nerede", "ne", "var", "yok", "ile", "ve", "veya", "ama",
-                "ancak", "için", "gibi", "kadar", "daha", "en", "çok", "az", "bir", "iki", "üç", "dört", "beş" };
+            // Generic approach: Filter very short words (1-2 characters) and common function words
+            // This approach works across all languages without hardcoding language-specific words
+            if (word.Length <= 2)
+            {
+                return true;
+            }
 
-            return commonWords.Contains(word, StringComparer.OrdinalIgnoreCase);
+            // Filter common English function words that appear in technical contexts
+            // Note: This is a minimal set for technical keyword extraction, not a comprehensive stop word list
+            // The length check above already filters most short function words in any language
+            var commonFunctionWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "the", "is", "are", "was", "were", "be", "been", "have", "has", "had",
+                "do", "does", "did", "will", "would", "could", "should", "may", "might", "can",
+                "this", "that", "these", "those", "a", "an", "and", "or", "but", "if", "then", "else",
+                "when", "where", "why", "how", "what", "which", "who", "whom", "whose", "not", "no", "yes", "ok", "okay"
+            };
+
+            return commonFunctionWords.Contains(word);
         }
 
         /// <summary>

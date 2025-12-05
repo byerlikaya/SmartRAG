@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using SmartRAG.Models;
 
-namespace SmartRAG.Mcp.Client
+namespace SmartRAG.Interfaces.Mcp
 {
     /// <summary>
     /// Interface for MCP (Model Context Protocol) client operations
@@ -15,13 +15,6 @@ namespace SmartRAG.Mcp.Client
         /// <param name="config">MCP server configuration</param>
         /// <returns>True if connection successful</returns>
         Task<bool> ConnectAsync(McpServerConfig config);
-
-        /// <summary>
-        /// Disconnects from an MCP server
-        /// </summary>
-        /// <param name="serverId">Server identifier</param>
-        /// <returns>Task representing the disconnect operation</returns>
-        Task DisconnectAsync(string serverId);
 
         /// <summary>
         /// Discovers available tools on an MCP server
@@ -40,18 +33,10 @@ namespace SmartRAG.Mcp.Client
         Task<McpResponse> CallToolAsync(string serverId, string toolName, Dictionary<string, object> parameters);
 
         /// <summary>
-        /// Checks if connected to an MCP server
-        /// </summary>
-        /// <param name="serverId">Server identifier</param>
-        /// <returns>True if connected</returns>
-        Task<bool> IsConnectedAsync(string serverId);
-
-        /// <summary>
         /// Gets list of connected server IDs
         /// </summary>
         /// <returns>List of connected server identifiers</returns>
         List<string> GetConnectedServers();
     }
 }
-
 

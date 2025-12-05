@@ -1,12 +1,11 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using SmartRAG.Mcp.Client;
+using SmartRAG.Interfaces.Mcp;
 using SmartRAG.Models;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 
-namespace SmartRAG.Mcp.Client.Services
+namespace SmartRAG.Services.Mcp
 {
     /// <summary>
     /// Manages MCP server connections
@@ -67,41 +66,6 @@ namespace SmartRAG.Mcp.Client.Services
                     _logger.LogError(ex, "Error connecting to MCP server {ServerId}", server.ServerId);
                 }
             }
-        }
-
-        /// <summary>
-        /// Connects to a specific MCP server
-        /// </summary>
-        public async Task<bool> ConnectAsync(McpServerConfig config)
-        {
-            return await _mcpClient.ConnectAsync(config);
-        }
-
-        /// <summary>
-        /// Disconnects from all servers
-        /// </summary>
-        public async Task DisconnectAllAsync()
-        {
-            var connectedServers = _mcpClient.GetConnectedServers();
-            foreach (var serverId in connectedServers)
-            {
-                try
-                {
-                    await _mcpClient.DisconnectAsync(serverId);
-                }
-                catch (System.Exception ex)
-                {
-                    _logger.LogError(ex, "Error disconnecting from MCP server {ServerId}", serverId);
-                }
-            }
-        }
-
-        /// <summary>
-        /// Gets list of connected server IDs
-        /// </summary>
-        public List<string> GetConnectedServers()
-        {
-            return _mcpClient.GetConnectedServers();
         }
     }
 }

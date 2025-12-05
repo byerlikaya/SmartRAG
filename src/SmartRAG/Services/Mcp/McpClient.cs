@@ -1,7 +1,7 @@
-using Microsoft.Extensions.Http;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartRAG.Helpers;
+using SmartRAG.Interfaces.Mcp;
 using SmartRAG.Models;
 using System;
 using System.Collections.Generic;
@@ -11,7 +11,7 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 
-namespace SmartRAG.Mcp.Client
+namespace SmartRAG.Services.Mcp
 {
     /// <summary>
     /// MCP Client implementation for connecting to external MCP servers
@@ -19,9 +19,6 @@ namespace SmartRAG.Mcp.Client
     public class McpClient : IMcpClient
     {
         private const int DefaultTimeoutSeconds = 30;
-        private const int MaxRetryAttempts = 3;
-        private const int BaseRetryDelayMs = 1000;
-
         private readonly ILogger<McpClient> _logger;
         private readonly IHttpClientFactory _httpClientFactory;
         private readonly Dictionary<string, HttpClient> _connections = new Dictionary<string, HttpClient>();
@@ -40,7 +37,7 @@ namespace SmartRAG.Mcp.Client
         /// <summary>
         /// Connects to an MCP server
         /// </summary>
-        public async Task<bool> ConnectAsync(McpServerConfig config)
+        public Task<bool> ConnectAsync(McpServerConfig config)
         {
             McpRequestValidator.ValidateConfig(config);
 
@@ -51,7 +48,7 @@ namespace SmartRAG.Mcp.Client
                 if (_connections.ContainsKey(config.ServerId))
                 {
                     _logger.LogWarning("Already connected to server {ServerId}", config.ServerId);
-                    return true;
+                    return Task.FromResult(true);
                 }
 
                 var client = _httpClientFactory.CreateClient();
@@ -69,32 +66,13 @@ namespace SmartRAG.Mcp.Client
                 _serverConfigs[config.ServerId] = config;
 
                 _logger.LogInformation("Successfully connected to MCP server {ServerId}", config.ServerId);
-                return true;
+                return Task.FromResult(true);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to connect to MCP server {ServerId}", config.ServerId);
-                throw;
+                return Task.FromException<bool>(ex);
             }
-        }
-
-        /// <summary>
-        /// Disconnects from an MCP server
-        /// </summary>
-        public Task DisconnectAsync(string serverId)
-        {
-            if (string.IsNullOrWhiteSpace(serverId))
-                throw new ArgumentException("ServerId cannot be null or empty", nameof(serverId));
-
-            if (_connections.TryGetValue(serverId, out var client))
-            {
-                client?.Dispose();
-                _connections.Remove(serverId);
-                _serverConfigs.Remove(serverId);
-                _logger.LogInformation("Disconnected from MCP server {ServerId}", serverId);
-            }
-
-            return Task.CompletedTask;
         }
 
         /// <summary>
@@ -112,6 +90,7 @@ namespace SmartRAG.Mcp.Client
             {
                 var request = new McpRequest
                 {
+                    JsonRpc = "2.0",
                     Method = "tools/list",
                     Id = Guid.NewGuid().ToString()
                 };
@@ -176,6 +155,7 @@ namespace SmartRAG.Mcp.Client
             {
                 var request = new McpRequest
                 {
+                    JsonRpc = "2.0",
                     Method = "tools/call",
                     Id = Guid.NewGuid().ToString(),
                     Params = new Dictionary<string, object>
@@ -199,17 +179,6 @@ namespace SmartRAG.Mcp.Client
                     }
                 };
             }
-        }
-
-        /// <summary>
-        /// Checks if connected to an MCP server
-        /// </summary>
-        public Task<bool> IsConnectedAsync(string serverId)
-        {
-            if (string.IsNullOrWhiteSpace(serverId))
-                return Task.FromResult(false);
-
-            return Task.FromResult(_connections.ContainsKey(serverId));
         }
 
         /// <summary>
