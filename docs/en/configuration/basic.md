@@ -22,7 +22,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Simple one-line configuration
 builder.Services.UseSmartRag(builder.Configuration,
     storageProvider: StorageProvider.InMemory,  // Start with in-memory
-    aiProvider: AIProvider.Gemini               // Choose your AI provider
+    aiProvider: AIProvider.Gemini,              // Choose your AI provider
+    defaultLanguage: "tr"                        // Optional: Default language for document processing
 );
 
 var app = builder.Build();
@@ -63,6 +64,9 @@ builder.Services.AddSmartRag(builder.Configuration, options =>
         AIProvider.Anthropic, 
         AIProvider.Gemini 
     };
+    
+    // Default Language
+    options.DefaultLanguage = "tr";  // Optional: Default language for document processing
 });
 
 var app = builder.Build();
@@ -119,6 +123,12 @@ app.Run();
                 <td><code>int</code></td>
                 <td><code>60</code></td>
                 <td>Default interval in minutes for schema refresh</td>
+            </tr>
+            <tr>
+                <td><code>DefaultLanguage</code></td>
+                <td><code>string?</code></td>
+                <td><code>null</code></td>
+                <td>Default language code for document processing (ISO 639-1 format, e.g., "tr", "en", "de"). Used when language is not specified in WatchedFolderConfig or document upload.</td>
             </tr>
         </tbody>
     </table>

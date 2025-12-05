@@ -22,7 +22,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Tek satırda basit yapılandırma
 builder.Services.UseSmartRag(builder.Configuration,
     storageProvider: StorageProvider.InMemory,  // In-memory ile başlayın
-    aiProvider: AIProvider.Gemini               // AI sağlayıcınızı seçin
+    aiProvider: AIProvider.Gemini,              // AI sağlayıcınızı seçin
+    defaultLanguage: "tr"                        // Opsiyonel: Doküman işleme için varsayılan dil
 );
 
 var app = builder.Build();
@@ -63,6 +64,9 @@ builder.Services.AddSmartRag(builder.Configuration, options =>
         AIProvider.Anthropic, 
         AIProvider.Gemini 
     };
+    
+    // Varsayılan Dil
+    options.DefaultLanguage = "tr";  // Opsiyonel: Doküman işleme için varsayılan dil
 });
 
 var app = builder.Build();
@@ -119,6 +123,12 @@ SmartRagOptions'da mevcut temel yapılandırma seçenekleri:
                 <td><code>int</code></td>
                 <td><code>60</code></td>
                 <td>Şema yenileme için varsayılan aralık (dakika)</td>
+            </tr>
+            <tr>
+                <td><code>DefaultLanguage</code></td>
+                <td><code>string?</code></td>
+                <td><code>null</code></td>
+                <td>Doküman işleme için varsayılan dil kodu (ISO 639-1 formatı, örn. "tr", "en", "de"). WatchedFolderConfig veya doküman yüklemede dil belirtilmediğinde kullanılır.</td>
             </tr>
         </tbody>
     </table>
