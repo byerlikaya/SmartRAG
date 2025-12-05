@@ -70,7 +70,7 @@ internal class Program
 
             _selectedLanguage = await initService.SelectLanguageAsync();
 
-            await initService.InitializeServicesAsync(aiProvider, storageProvider);
+            await initService.InitializeServicesAsync(aiProvider, storageProvider, _selectedLanguage);
             _serviceProvider = initService.GetServiceProvider();
 
             if (_serviceProvider == null)

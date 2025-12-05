@@ -198,7 +198,7 @@ public class InitializationService(
         return selectedLanguageCode;
     }
 
-    public async Task InitializeServicesAsync(AIProvider aiProvider, StorageProvider storageProvider)
+    public async Task InitializeServicesAsync(AIProvider aiProvider, StorageProvider storageProvider, string? defaultLanguage = null)
     {
         System.Console.WriteLine("🔧 Initializing SmartRAG...");
         System.Console.WriteLine();
@@ -217,29 +217,7 @@ public class InitializationService(
             System.Console.WriteLine($"   → Configuring {aiProvider} provider...");
             System.Console.WriteLine($"   → Configuring {storageProvider} storage...");
 
-            services.AddSmartRag(_configuration, options =>
-            {
-                options.StorageProvider = storageProvider;
-                options.AIProvider = aiProvider;
-            });
-
-            System.Console.WriteLine("   → Building service provider...");
-            System.Console.WriteLine("   → [DEBUG] Starting BuildServiceProvider...");
-            try
-            {
-                _serviceProvider = services.BuildServiceProvider();
-                System.Console.WriteLine("   → [DEBUG] BuildServiceProvider completed successfully");
-            }
-            catch (Exception buildEx)
-            {
-                System.Console.WriteLine($"   → [DEBUG] BuildServiceProvider failed: {buildEx.Message}");
-                System.Console.WriteLine($"   → [DEBUG] Exception type: {buildEx.GetType().Name}");
-                if (buildEx.InnerException != null)
-                {
-                    System.Console.WriteLine($"   → [DEBUG] Inner exception: {buildEx.InnerException.Message}");
-                }
-                throw;
-            }
+            _serviceProvider = services.UseSmartRag(_configuration, storageProvider, aiProvider, defaultLanguage);
 
             System.Console.WriteLine();
             _console.WriteSuccess("Services initialized successfully");
@@ -280,23 +258,15 @@ public class InitializationService(
 
     private async Task DisplayDatabaseStatus()
     {
-        System.Console.WriteLine("   → [DEBUG] DisplayDatabaseStatus started");
         var connectionManager = _serviceProvider?.GetService<IDatabaseConnectionManager>();
         var schemaAnalyzer = _serviceProvider?.GetService<IDatabaseSchemaAnalyzer>();
 
         if (connectionManager == null || schemaAnalyzer == null)
-        {
-            System.Console.WriteLine("   → [DEBUG] Database services not available, skipping");
             return;
-        }
 
-        System.Console.WriteLine("   → [DEBUG] Calling connectionManager.InitializeAsync()...");
         await connectionManager.InitializeAsync();
-        System.Console.WriteLine("   → [DEBUG] connectionManager.InitializeAsync() completed");
 
-        System.Console.WriteLine("   → [DEBUG] Calling schemaAnalyzer.GetAllSchemasAsync()...");
         var schemas = await schemaAnalyzer.GetAllSchemasAsync();
-        System.Console.WriteLine("   → [DEBUG] schemaAnalyzer.GetAllSchemasAsync() completed");
         var completed = schemas.Where(s => s.Status == SchemaAnalysisStatus.Completed && s.Tables.Count > 0).ToList();
         var needsSetup = schemas.Where(s => s.Tables.Count == 0).ToList();
 
