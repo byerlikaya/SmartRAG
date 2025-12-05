@@ -112,4 +112,4 @@ if (success)
 
 ## Related Examples
 
-- [Examples Index]({{ site.baseurl }}/en/examples) - Back to Examples categories
+- [Advanced Examples]({{ site.baseurl }}/en/examples/advanced) - Advanced usage examples

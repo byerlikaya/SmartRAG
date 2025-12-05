@@ -436,7 +436,7 @@ Console.WriteLine(answer.Answer);
             </div>
 
         <div class="text-center mt-5">
-            <a href="{{ site.baseurl }}/en/examples" class="btn btn-primary btn-lg">
+            <a href="{{ site.baseurl }}/en/examples/quick" class="btn btn-primary btn-lg">
                 <i class="fas fa-lightbulb"></i>
                 Explore More Examples
             </a>

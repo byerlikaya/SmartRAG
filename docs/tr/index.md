@@ -436,7 +436,7 @@ Console.WriteLine(answer.Answer);
         </div>
         
         <div class="text-center mt-5">
-            <a href="{{ site.baseurl }}/tr/examples" class="btn btn-primary btn-lg">
+            <a href="{{ site.baseurl }}/tr/examples/quick" class="btn btn-primary btn-lg">
                 <i class="fas fa-lightbulb"></i>
                 Daha Fazla Örnek Keşfedin
             </a>

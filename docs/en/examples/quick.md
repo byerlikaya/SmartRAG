@@ -424,4 +424,4 @@ Monitor folders for new documents and automatically index them:
 
 ## Related Examples
 
-- [Examples Index]({{ site.baseurl }}/en/examples) - Back to Examples categories
+- [Quick Examples]({{ site.baseurl }}/en/examples/quick) - Quick start examples

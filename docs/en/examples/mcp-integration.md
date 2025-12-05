@@ -24,7 +24,6 @@ Add MCP server configuration to `appsettings.json`:
       {
         "ServerId": "weather-server",
         "Endpoint": "https://api.weather.example.com/mcp",
-        "TransportType": "Http",
         "AutoConnect": true,
         "TimeoutSeconds": 30,
         "Headers": {
@@ -41,7 +40,6 @@ Add MCP server configuration to `appsettings.json`:
 Configure MCP servers programmatically:
 
 ```csharp
-using SmartRAG.Enums;
 using SmartRAG.Models;
 
 var services = new ServiceCollection();
@@ -53,7 +51,6 @@ services.AddSmartRag(configuration, options =>
     {
         ServerId = "weather-server",
         Endpoint = "https://api.weather.example.com/mcp",
-        TransportType = McpTransportType.Http,
         AutoConnect = true,
         TimeoutSeconds = 30,
         Headers = new Dictionary<string, string>
@@ -149,13 +146,11 @@ Configure multiple MCP servers:
       {
         "ServerId": "weather-server",
         "Endpoint": "https://api.weather.example.com/mcp",
-        "TransportType": "Http",
         "AutoConnect": true
       },
       {
         "ServerId": "stock-server",
         "Endpoint": "https://api.stocks.example.com/mcp",
-        "TransportType": "Http",
         "AutoConnect": true,
         "Headers": {
           "X-API-Key": "your-api-key"

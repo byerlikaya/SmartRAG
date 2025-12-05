@@ -210,5 +210,5 @@ services.AddSingleton<IFileParser, MarkdownFileParser>();
 
 ## İlgili Örnekler
 
-- [Örnekler Ana Sayfası]({{ site.baseurl }}/tr/examples) - Örnekler kategorilerine dön
+- [Gelişmiş Özellikler]({{ site.baseurl }}/tr/examples/advanced-features) - Gelişmiş özellikler rehberi
 

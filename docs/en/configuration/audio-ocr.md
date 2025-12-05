@@ -45,12 +45,6 @@ SmartRAG provides capabilities for converting audio files to text and extracting
                 <td>Minimum confidence score (0.0-1.0)</td>
             </tr>
             <tr>
-                <td><code>IncludeWordTimestamps</code></td>
-                <td><code>bool</code></td>
-                <td><code>false</code></td>
-                <td>Include word-level timestamps</td>
-            </tr>
-            <tr>
                 <td><code>PromptHint</code></td>
                 <td><code>string</code></td>
                 <td><code>""</code></td>
@@ -161,7 +155,6 @@ Whisper.net automatically downloads GGML models from Hugging Face on first use. 
       "ModelPath": "models/ggml-large-v3.bin",
       "DefaultLanguage": "auto",
       "MinConfidenceThreshold": 0.3,
-      "IncludeWordTimestamps": false,
       "PromptHint": "",
       "MaxThreads": 0
     }
@@ -177,7 +170,6 @@ builder.Services.AddSmartRag(configuration, options =>
         ModelPath = "models/ggml-large-v3.bin",
         DefaultLanguage = "auto",
         MinConfidenceThreshold = 0.3,
-        IncludeWordTimestamps = false,
         PromptHint = "",
         MaxThreads = 0
     };
@@ -438,7 +430,7 @@ var document = await _documentService.UploadDocumentAsync(
             </div>
             <h3>Examples</h3>
             <p>Audio and OCR usage examples</p>
-            <a href="{{ site.baseurl }}/en/examples" class="btn btn-outline-primary btn-sm mt-3">
+            <a href="{{ site.baseurl }}/en/examples/quick" class="btn btn-outline-primary btn-sm mt-3">
                 View Examples
             </a>
         </div>

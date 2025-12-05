@@ -304,4 +304,4 @@ Console.WriteLine($"Kaynak Sayısı: {response.Sources.Count}");
 
 ## İlgili Örnekler
 
-- [Örnekler Ana Sayfası]({{ site.baseurl }}/tr/examples) - Örnekler kategorilerine dön
+- [Gerçek Dünya Senaryoları]({{ site.baseurl }}/tr/examples/real-world) - Gerçek dünya senaryoları

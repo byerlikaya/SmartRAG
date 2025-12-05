@@ -325,7 +325,7 @@ var newConv = await _searchService.QueryIntelligenceAsync(
             </div>
             <h3>Configuration</h3>
             <p>Explore all configuration options, AI providers, storage backends, and advanced settings.</p>
-            <a href="{{ site.baseurl }}/en/configuration" class="btn btn-outline-primary btn-sm mt-3">
+            <a href="{{ site.baseurl }}/en/configuration/basic" class="btn btn-outline-primary btn-sm mt-3">
                 Configure SmartRAG <i class="fas fa-arrow-right ms-2"></i>
             </a>
         </div>
@@ -351,7 +351,7 @@ var newConv = await _searchService.QueryIntelligenceAsync(
             </div>
             <h3>Examples</h3>
             <p>Real-world examples including multi-database queries, OCR processing, and audio transcription.</p>
-            <a href="{{ site.baseurl }}/en/examples" class="btn btn-outline-primary btn-sm mt-3">
+            <a href="{{ site.baseurl }}/en/examples/quick" class="btn btn-outline-primary btn-sm mt-3">
                 See Examples <i class="fas fa-arrow-right ms-2"></i>
             </a>
         </div>
@@ -364,7 +364,7 @@ var newConv = await _searchService.QueryIntelligenceAsync(
             </div>
             <h3>Changelog</h3>
             <p>Track new features, improvements, and breaking changes across all versions.</p>
-            <a href="{{ site.baseurl }}/en/changelog" class="btn btn-outline-primary btn-sm mt-3">
+            <a href="{{ site.baseurl }}/en/changelog/version-history" class="btn btn-outline-primary btn-sm mt-3">
                 View Changelog <i class="fas fa-arrow-right ms-2"></i>
             </a>
         </div>

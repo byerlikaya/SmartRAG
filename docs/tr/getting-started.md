@@ -326,7 +326,7 @@ var newConv = await _searchService.QueryIntelligenceAsync(
             </div>
             <h3>Yapılandırma</h3>
             <p>Tüm yapılandırma seçeneklerini, AI sağlayıcılarını, depolama backend'lerini ve gelişmiş ayarları keşfedin.</p>
-            <a href="{{ site.baseurl }}/tr/configuration" class="btn btn-outline-primary btn-sm mt-3">
+            <a href="{{ site.baseurl }}/tr/configuration/basic" class="btn btn-outline-primary btn-sm mt-3">
                 SmartRAG'i Yapılandır <i class="fas fa-arrow-right ms-2"></i>
             </a>
         </div>
@@ -352,7 +352,7 @@ var newConv = await _searchService.QueryIntelligenceAsync(
             </div>
             <h3>Örnekler</h3>
             <p>Çok veritabanlı sorgular, OCR işleme ve ses transkripsiyonu dahil gerçek dünya örnekleri.</p>
-            <a href="{{ site.baseurl }}/tr/examples" class="btn btn-outline-primary btn-sm mt-3">
+            <a href="{{ site.baseurl }}/tr/examples/quick" class="btn btn-outline-primary btn-sm mt-3">
                 Örnekleri Gör <i class="fas fa-arrow-right ms-2"></i>
             </a>
         </div>
@@ -365,7 +365,7 @@ var newConv = await _searchService.QueryIntelligenceAsync(
             </div>
             <h3>Değişiklikler</h3>
             <p>Tüm versiyonlardaki yeni özellikleri, iyileştirmeleri ve breaking change'leri takip edin.</p>
-            <a href="{{ site.baseurl }}/tr/changelog" class="btn btn-outline-primary btn-sm mt-3">
+            <a href="{{ site.baseurl }}/tr/changelog/version-history" class="btn btn-outline-primary btn-sm mt-3">
                 Changelog'u Görüntüle <i class="fas fa-arrow-right ms-2"></i>
             </a>
         </div>

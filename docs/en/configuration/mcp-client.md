@@ -32,7 +32,6 @@ Add the following to your `appsettings.json`:
       {
         "ServerId": "example-server",
         "Endpoint": "https://mcp.example.com/api",
-        "TransportType": "Http",
         "AutoConnect": true,
         "TimeoutSeconds": 30,
         "Headers": {
@@ -63,49 +62,11 @@ Add the following to your `appsettings.json`:
 | Property | Type | Required | Description |
 |----------|------|----------|-------------|
 | `ServerId` | `string` | Yes | Unique identifier for the server |
-| `Endpoint` | `string` | Yes | Server endpoint URL (HTTP or WebSocket) |
-| `TransportType` | `McpTransportType` | No | Transport type: `Http`, `WebSocket`, or `Stdio` (default: `Http`) |
+| `Endpoint` | `string` | Yes | Server endpoint URL (HTTP/HTTPS) |
 | `AutoConnect` | `bool` | No | Whether to automatically connect on startup (default: `true`) |
 | `TimeoutSeconds` | `int` | No | Connection timeout in seconds (default: `30`) |
 | `Headers` | `Dictionary<string, string>` | No | Optional HTTP headers for authentication or custom configuration |
 
-## Transport Types
-
-### Http
-
-Standard HTTP/HTTPS transport for REST-based MCP servers.
-
-```json
-{
-  "ServerId": "http-server",
-  "Endpoint": "https://api.example.com/mcp",
-  "TransportType": "Http"
-}
-```
-
-### WebSocket
-
-WebSocket transport for real-time MCP server connections.
-
-```json
-{
-  "ServerId": "ws-server",
-  "Endpoint": "wss://ws.example.com/mcp",
-  "TransportType": "WebSocket"
-}
-```
-
-### Stdio
-
-Standard input/output transport for local MCP server processes.
-
-```json
-{
-  "ServerId": "stdio-server",
-  "Endpoint": "stdio:///path/to/server",
-  "TransportType": "Stdio"
-}
-```
 
 ## Programmatic Configuration
 
@@ -119,7 +80,6 @@ services.AddSmartRag(configuration, options =>
     {
         ServerId = "example-server",
         Endpoint = "https://mcp.example.com/api",
-        TransportType = McpTransportType.Http,
         AutoConnect = true,
         TimeoutSeconds = 30,
         Headers = new Dictionary<string, string>

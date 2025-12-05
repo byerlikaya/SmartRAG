@@ -24,7 +24,6 @@ Bu kılavuz, SmartRAG ile MCP (Model Context Protocol) sunucularını entegre ed
       {
         "ServerId": "hava-sunucu",
         "Endpoint": "https://api.hava.ornek.com/mcp",
-        "TransportType": "Http",
         "AutoConnect": true,
         "TimeoutSeconds": 30,
         "Headers": {
@@ -41,7 +40,6 @@ Bu kılavuz, SmartRAG ile MCP (Model Context Protocol) sunucularını entegre ed
 MCP sunucularını programatik olarak yapılandırın:
 
 ```csharp
-using SmartRAG.Enums;
 using SmartRAG.Models;
 
 var services = new ServiceCollection();
@@ -53,7 +51,6 @@ services.AddSmartRag(configuration, options =>
     {
         ServerId = "hava-sunucu",
         Endpoint = "https://api.hava.ornek.com/mcp",
-        TransportType = McpTransportType.Http,
         AutoConnect = true,
         TimeoutSeconds = 30,
         Headers = new Dictionary<string, string>
@@ -149,13 +146,11 @@ Birden fazla MCP sunucusu yapılandırın:
       {
         "ServerId": "hava-sunucu",
         "Endpoint": "https://api.hava.ornek.com/mcp",
-        "TransportType": "Http",
         "AutoConnect": true
       },
       {
         "ServerId": "hisse-sunucu",
         "Endpoint": "https://api.hisseler.ornek.com/mcp",
-        "TransportType": "Http",
         "AutoConnect": true,
         "Headers": {
           "X-API-Key": "api-anahtari"

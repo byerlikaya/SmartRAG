@@ -300,4 +300,4 @@ var response = await _searchService.QueryIntelligenceAsync(
 
 ## Related Examples
 
-- [Examples Index]({{ site.baseurl }}/en/examples) - Back to Examples categories
+- [Real-World Use Cases]({{ site.baseurl }}/en/examples/real-world) - Real-world scenarios

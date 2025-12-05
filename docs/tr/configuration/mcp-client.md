@@ -32,7 +32,6 @@ MCP Client özelliği SmartRAG'ın şunları yapmasına olanak tanır:
       {
         "ServerId": "ornek-sunucu",
         "Endpoint": "https://mcp.ornek.com/api",
-        "TransportType": "Http",
         "AutoConnect": true,
         "TimeoutSeconds": 30,
         "Headers": {
@@ -63,49 +62,11 @@ MCP Client özelliği SmartRAG'ın şunları yapmasına olanak tanır:
 | Özellik | Tip | Gerekli | Açıklama |
 |---------|-----|---------|----------|
 | `ServerId` | `string` | Evet | Sunucu için benzersiz tanımlayıcı |
-| `Endpoint` | `string` | Evet | Sunucu endpoint URL'i (HTTP veya WebSocket) |
-| `TransportType` | `McpTransportType` | Hayır | Taşıma tipi: `Http`, `WebSocket` veya `Stdio` (varsayılan: `Http`) |
+| `Endpoint` | `string` | Evet | Sunucu endpoint URL'i (HTTP/HTTPS) |
 | `AutoConnect` | `bool` | Hayır | Başlangıçta otomatik bağlanıp bağlanmayacağı (varsayılan: `true`) |
 | `TimeoutSeconds` | `int` | Hayır | Bağlantı zaman aşımı saniye cinsinden (varsayılan: `30`) |
 | `Headers` | `Dictionary<string, string>` | Hayır | Kimlik doğrulama veya özel yapılandırma için isteğe bağlı HTTP başlıkları |
 
-## Taşıma Tipleri
-
-### Http
-
-REST tabanlı MCP sunucuları için standart HTTP/HTTPS taşıması.
-
-```json
-{
-  "ServerId": "http-sunucu",
-  "Endpoint": "https://api.ornek.com/mcp",
-  "TransportType": "Http"
-}
-```
-
-### WebSocket
-
-Gerçek zamanlı MCP sunucu bağlantıları için WebSocket taşıması.
-
-```json
-{
-  "ServerId": "ws-sunucu",
-  "Endpoint": "wss://ws.ornek.com/mcp",
-  "TransportType": "WebSocket"
-}
-```
-
-### Stdio
-
-Yerel MCP sunucu işlemleri için standart girdi/çıktı taşıması.
-
-```json
-{
-  "ServerId": "stdio-sunucu",
-  "Endpoint": "stdio:///sunucu/yolu",
-  "TransportType": "Stdio"
-}
-```
 
 ## Programatik Yapılandırma
 
@@ -119,7 +80,6 @@ services.AddSmartRag(configuration, options =>
     {
         ServerId = "ornek-sunucu",
         Endpoint = "https://mcp.ornek.com/api",
-        TransportType = McpTransportType.Http,
         AutoConnect = true,
         TimeoutSeconds = 30,
         Headers = new Dictionary<string, string>

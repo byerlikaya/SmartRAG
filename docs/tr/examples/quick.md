@@ -427,4 +427,4 @@ Klasörleri izleyin ve yeni belgeleri otomatik olarak indeksleyin:
 
 ## İlgili Örnekler
 
-- [Örnekler Ana Sayfası]({{ site.baseurl }}/tr/examples) - Örnekler kategorilerine dön
+- [Hızlı Örnekler]({{ site.baseurl }}/tr/examples/quick) - Hızlı başlangıç örnekleri

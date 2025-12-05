@@ -373,7 +373,7 @@ builder.Services.AddSmartRag(configuration, options =>
             </div>
             <h3>Examples</h3>
             <p>See practical examples and real-world usage scenarios</p>
-            <a href="{{ site.baseurl }}/en/examples" class="btn btn-outline-primary btn-sm mt-3">
+            <a href="{{ site.baseurl }}/en/examples/quick" class="btn btn-outline-primary btn-sm mt-3">
                 View Examples
             </a>
         </div>
@@ -386,7 +386,7 @@ builder.Services.AddSmartRag(configuration, options =>
             </div>
             <h3>Changelog</h3>
             <p>Track new features, improvements, and breaking changes across all versions.</p>
-            <a href="{{ site.baseurl }}/en/changelog" class="btn btn-outline-primary btn-sm mt-3">
+            <a href="{{ site.baseurl }}/en/changelog/version-history" class="btn btn-outline-primary btn-sm mt-3">
                 View Changelog
             </a>
         </div>

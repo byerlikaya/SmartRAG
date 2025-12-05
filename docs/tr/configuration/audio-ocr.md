@@ -45,12 +45,6 @@ lang: tr
                 <td>Minimum güven skoru (0.0-1.0)</td>
             </tr>
             <tr>
-                <td><code>IncludeWordTimestamps</code></td>
-                <td><code>bool</code></td>
-                <td><code>false</code></td>
-                <td>Kelime bazlı zaman damgaları dahil et</td>
-            </tr>
-            <tr>
                 <td><code>PromptHint</code></td>
                 <td><code>string</code></td>
                 <td><code>""</code></td>
@@ -161,7 +155,6 @@ Whisper.net, ilk kullanımda Hugging Face'den GGML modellerini otomatik olarak i
       "ModelPath": "models/ggml-large-v3.bin",
       "DefaultLanguage": "auto",
       "MinConfidenceThreshold": 0.3,
-      "IncludeWordTimestamps": false,
       "PromptHint": "",
       "MaxThreads": 0
     }
@@ -177,7 +170,6 @@ builder.Services.AddSmartRag(configuration, options =>
         ModelPath = "models/ggml-large-v3.bin",
         DefaultLanguage = "auto",
         MinConfidenceThreshold = 0.3,
-        IncludeWordTimestamps = false,
         PromptHint = "",
         MaxThreads = 0
     };
@@ -438,7 +430,7 @@ var document = await _documentService.UploadDocumentAsync(
             </div>
             <h3>Örnekler</h3>
             <p>Ses ve OCR kullanım örnekleri</p>
-            <a href="{{ site.baseurl }}/tr/examples" class="btn btn-outline-primary btn-sm mt-3">
+            <a href="{{ site.baseurl }}/tr/examples/quick" class="btn btn-outline-primary btn-sm mt-3">
                 Örnekleri Gör
             </a>
         </div>
