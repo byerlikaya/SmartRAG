@@ -43,16 +43,6 @@ namespace SmartRAG.Models
         public int MaxRowsPerQuery { get; set; }
 
         /// <summary>
-        /// Query timeout in seconds (default from DatabaseConfig)
-        /// </summary>
-        public int QueryTimeoutSeconds { get; set; }
-
-        /// <summary>
-        /// Auto-refresh interval in minutes (0 = no auto-refresh)
-        /// </summary>
-        public int SchemaRefreshIntervalMinutes { get; set; } = 0;
-
-        /// <summary>
         /// Include/Exclude specific tables (empty = all tables)
         /// </summary>
         public string[] IncludedTables { get; set; }

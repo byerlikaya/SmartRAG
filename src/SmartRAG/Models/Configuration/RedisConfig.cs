@@ -55,11 +55,6 @@ namespace SmartRAG.Models
         public bool EnableVectorSearch { get; set; } = true;
 
         /// <summary>
-        /// Vector index algorithm for RediSearch (default: HNSW)
-        /// </summary>
-        public string VectorIndexAlgorithm { get; set; } = "HNSW";
-
-        /// <summary>
         /// Distance metric for vector similarity calculation (COSINE, IP, L2)
         /// </summary>
         public string DistanceMetric { get; set; } = "COSINE";

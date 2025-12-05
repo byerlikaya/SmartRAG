@@ -55,11 +55,6 @@ namespace SmartRAG.Models
         public bool IncludeSchema { get; set; } = true;
 
         /// <summary>
-        /// Whether to include index information
-        /// </summary>
-        public bool IncludeIndexes { get; set; } = false;
-
-        /// <summary>
         /// Whether to include foreign key relationships
         /// </summary>
         public bool IncludeForeignKeys { get; set; } = true;
@@ -86,78 +81,6 @@ namespace SmartRAG.Models
             "credit_card", "creditcard", "cc_number", "card_number",
             "email", "email_address", "phone", "phone_number", "mobile"
         };
-
-        /// <summary>
-        /// Enable connection pooling for better performance
-        /// </summary>
-        public bool EnableConnectionPooling { get; set; } = true;
-
-        /// <summary>
-        /// Maximum number of connections in the pool
-        /// </summary>
-        [Range(1, 100)]
-        public int MaxPoolSize { get; set; } = 10;
-
-        /// <summary>
-        /// Minimum number of connections in the pool
-        /// </summary>
-        [Range(1, 50)]
-        public int MinPoolSize { get; set; } = 2;
-
-        /// <summary>
-        /// Enable query result caching
-        /// </summary>
-        public bool EnableQueryCaching { get; set; } = true;
-
-        /// <summary>
-        /// Cache duration in minutes
-        /// </summary>
-        [Range(1, 1440)]
-        public int CacheDurationMinutes { get; set; } = 30;
-
-        /// <summary>
-        /// Enable parallel table processing
-        /// </summary>
-        public bool EnableParallelProcessing { get; set; } = true;
-
-        /// <summary>
-        /// Maximum degree of parallelism for table processing
-        /// </summary>
-        [Range(1, 10)]
-        public int MaxDegreeOfParallelism { get; set; } = 3;
-
-        /// <summary>
-        /// Enable streaming for large datasets
-        /// </summary>
-        public bool EnableStreaming { get; set; } = true;
-
-        /// <summary>
-        /// Batch size for streaming operations
-        /// </summary>
-        [Range(100, 10000)]
-        public int StreamingBatchSize { get; set; } = 1000;
-
-        /// <summary>
-        /// Maximum memory usage threshold in MB before triggering streaming mode
-        /// </summary>
-        [Range(50, 2048)]
-        public int MaxMemoryThresholdMB { get; set; } = 500;
-
-        /// <summary>
-        /// Enable automatic garbage collection for large operations
-        /// </summary>
-        public bool EnableAutoGarbageCollection { get; set; } = true;
-
-        /// <summary>
-        /// Force streaming mode regardless of data size
-        /// </summary>
-        public bool ForceStreamingMode { get; set; } = false;
-
-        /// <summary>
-        /// Maximum string builder capacity to prevent excessive memory allocation
-        /// </summary>
-        [Range(1024, 1048576)]
-        public int MaxStringBuilderCapacity { get; set; } = 65536; // 64KB
 
         #endregion
     }

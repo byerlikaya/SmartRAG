@@ -24,11 +24,6 @@ namespace SmartRAG.Models
         public double MinConfidenceThreshold { get; set; } = 0.3;
 
         /// <summary>
-        /// Enable word-level timestamps
-        /// </summary>
-        public bool IncludeWordTimestamps { get; set; } = false;
-
-        /// <summary>
         /// Optional prompt/context hint for better transcription accuracy
         /// Example: "Natural conversation", "Business meeting", "Phone call"
         /// Providing context significantly improves accuracy (20-30% better)

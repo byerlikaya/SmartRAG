@@ -15,16 +15,11 @@ namespace SmartRAG.Models
         public string ServerId { get; set; } = string.Empty;
 
         /// <summary>
-        /// Server endpoint URL (HTTP or WebSocket)
+        /// Server endpoint URL (HTTP/HTTPS)
         /// </summary>
         [Required]
         [Url]
         public string Endpoint { get; set; } = string.Empty;
-
-        /// <summary>
-        /// Transport type for the connection
-        /// </summary>
-        public Enums.McpTransportType TransportType { get; set; } = Enums.McpTransportType.Http;
 
         /// <summary>
         /// Optional HTTP headers for authentication or custom configuration
