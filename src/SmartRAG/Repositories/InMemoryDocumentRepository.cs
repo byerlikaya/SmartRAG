@@ -46,10 +46,6 @@ namespace SmartRAG.Repositories
 
         protected ILogger Logger => _logger;
 
-        public int CurrentCount => _documents.Count;
-
-        public int MaxDocuments => _config.MaxDocuments;
-
         #endregion
 
         #region Public Methods

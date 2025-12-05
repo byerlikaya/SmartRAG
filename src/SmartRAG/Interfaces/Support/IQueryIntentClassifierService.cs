@@ -1,5 +1,6 @@
 #nullable enable
 
+using SmartRAG.Enums;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Interfaces.Support
@@ -25,16 +26,6 @@ namespace SmartRAG.Interfaces.Support
         /// <param name="payload">Extracted payload after command</param>
         /// <returns>True if a command was detected, false otherwise</returns>
         bool TryParseCommand(string input, out QueryCommandType commandType, out string payload);
-    }
-
-    /// <summary>
-    /// Command types that can be parsed from user input
-    /// </summary>
-    public enum QueryCommandType
-    {
-        None,
-        NewConversation,
-        ForceConversation
     }
 }
 

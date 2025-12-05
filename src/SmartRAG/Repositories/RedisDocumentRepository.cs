@@ -2,15 +2,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces.AI;
-using SmartRAG.Interfaces.Database;
 using SmartRAG.Interfaces.Document;
-using SmartRAG.Interfaces.Parser;
-using SmartRAG.Interfaces.Search;
-using SmartRAG.Interfaces.Storage;
-using SmartRAG.Interfaces.Storage.Qdrant;
-using SmartRAG.Interfaces.Support;
 using SmartRAG.Models;
-using SmartRAG.Services.AI;
 using StackExchange.Redis;
 using NRedisStack;
 using NRedisStack.RedisStackCommands;
@@ -603,20 +596,18 @@ namespace SmartRAG.Repositories
 
         #endregion
 
+        #region IDisposable
+
         public void Dispose()
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_disposed && disposing)
+            if (!_disposed)
             {
                 _redis?.Close();
                 _redis?.Dispose();
                 _disposed = true;
             }
         }
+
+        #endregion
     }
 }

@@ -24,8 +24,6 @@ namespace SmartRAG.Repositories
 
         private const int DefaultMaxSearchResults = 5;
         private const int DefaultBatchSize = 200;
-        private const int DefaultScrollBatchSize = 25;
-
         private const int DefaultGrpcTimeoutMinutes = 5;
 
         #endregion

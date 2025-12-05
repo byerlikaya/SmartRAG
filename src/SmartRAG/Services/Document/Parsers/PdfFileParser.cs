@@ -4,16 +4,15 @@ using iText.Kernel.Pdf.Canvas.Parser.Listener;
 using iText.Kernel.Pdf.Xobject;
 using SmartRAG.Interfaces.Parser;
 using SmartRAG.Interfaces.Parser.Strategies;
+using SmartRAG.Models;
 using SmartRAG.Services.Helpers;
 using Microsoft.Extensions.Logging;
 using SkiaSharp;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Text.RegularExpressions;
 
 namespace SmartRAG.Services.Document.Parsers
 {

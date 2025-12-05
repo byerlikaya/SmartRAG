@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using SmartRAG.Interfaces.AI;
 using SmartRAG.Interfaces.Database;
 using SmartRAG.Models;
 using System;
@@ -65,16 +64,6 @@ namespace SmartRAG.Services.Database
         }
 
         /// <summary>
-        /// Executes queries across multiple databases based on query intent
-        /// </summary>
-        /// <param name="queryIntent">Analyzed query intent</param>
-        /// <returns>Combined results from all databases</returns>
-        public async Task<MultiDatabaseQueryResult> ExecuteMultiDatabaseQueryAsync(QueryIntent queryIntent)
-        {
-            return await _databaseQueryExecutor.ExecuteMultiDatabaseQueryAsync(queryIntent);
-        }
-
-        /// <summary>
         /// [AI Query] [DB Query] Executes a full intelligent query: analyze intent + execute + merge results
         /// </summary>
         /// <param name="userQuery">Natural language user query</param>
@@ -120,7 +109,7 @@ namespace SmartRAG.Services.Database
 
                 queryIntent = await GenerateDatabaseQueriesAsync(queryIntent);
 
-                var queryResults = await ExecuteMultiDatabaseQueryAsync(queryIntent);
+                var queryResults = await _databaseQueryExecutor.ExecuteMultiDatabaseQueryAsync(queryIntent);
 
                 if (!queryResults.Success)
                 {

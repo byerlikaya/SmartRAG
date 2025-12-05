@@ -1,5 +1,6 @@
 using OfficeOpenXml;
 using SmartRAG.Interfaces.Parser.Strategies;
+using SmartRAG.Models;
 using SmartRAG.Services.Helpers;
 using System;
 using System.Globalization;
@@ -21,11 +22,6 @@ namespace SmartRAG.Services.Document.Parsers
 
         private const string WorksheetFormat = "Worksheet: {0}";
         private const string EmptyWorksheetFormat = "Worksheet: {0} (empty)";
-
-        static ExcelFileParser()
-        {
-
-        }
 
         public bool CanParse(string fileName, string contentType)
         {

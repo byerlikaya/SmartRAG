@@ -1,8 +1,8 @@
 #nullable enable
 using Microsoft.Extensions.Logging;
+using SmartRAG.Enums;
 using SmartRAG.Interfaces.AI;
 using SmartRAG.Interfaces.Support;
-using SmartRAG.Models;
 using System;
 using System.Globalization;
 using System.Linq;
@@ -168,8 +168,6 @@ Answer with ONE word only: CONVERSATION or INFORMATION",
 
             return false;
         }
-
-        private enum HeuristicDecision { Unknown, Conversation, Information }
 
         private HeuristicDecision HeuristicClassify(string query, out int score)
         {

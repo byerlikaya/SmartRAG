@@ -47,7 +47,7 @@ namespace SmartRAG.Services.Database.Strategies
 
         public override string GetLimitClause(int limit)
         {
-            return "";
+            return $"TOP {limit}";
         }
 
         public override bool ValidateSyntax(string sql, out string errorMessage)

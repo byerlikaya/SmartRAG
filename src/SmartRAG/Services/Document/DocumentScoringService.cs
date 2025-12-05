@@ -31,11 +31,7 @@ namespace SmartRAG.Services.Document
         private const int NumberCountThreshold = 2;
         private const int MinPotentialNamesCount = 2;
         private const int ChunkPreviewLength = 100;
-
-        private const int MinWordLength = 2;
         private const double DefaultScoreValue = 0.0;
-        private const double NormalizedScoreMax = 1.0;
-        private const int MinQueryWordsCount = 0;
 
         private readonly ITextNormalizationService _textNormalizationService;
         private readonly Microsoft.Extensions.Logging.ILogger<DocumentScoringService> _logger;
@@ -158,40 +154,6 @@ namespace SmartRAG.Services.Document
                 chunk.RelevanceScore = score;
                 return chunk;
             }).ToList();
-        }
-
-        /// <summary>
-        /// Calculates keyword relevance score for hybrid search
-        /// </summary>
-        public double CalculateKeywordRelevanceScore(string query, string content)
-        {
-            if (string.IsNullOrEmpty(query) || string.IsNullOrEmpty(content))
-                return DefaultScoreValue;
-
-            var queryWords = query.ToLowerInvariant()
-                .Split(new char[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries)
-                .Where(w => w.Length > MinWordLength)
-                .ToList();
-
-            if (queryWords.Count == MinQueryWordsCount)
-                return DefaultScoreValue;
-
-            var contentLower = content.ToLowerInvariant();
-            var score = DefaultScoreValue;
-
-            foreach (var word in queryWords)
-            {
-                if (contentLower.Contains($" {word} ") || contentLower.StartsWith($"{word} ", System.StringComparison.OrdinalIgnoreCase) || contentLower.EndsWith($" {word}", System.StringComparison.OrdinalIgnoreCase))
-                {
-                    score += WordMatchScore;
-                }
-                else if (contentLower.Contains(word))
-                {
-                    score += WordMatchScore / 2;
-                }
-            }
-
-            return Math.Min(score / queryWords.Count, NormalizedScoreMax);
         }
     }
 }

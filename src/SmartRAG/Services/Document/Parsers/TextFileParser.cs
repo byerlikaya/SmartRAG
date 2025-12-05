@@ -1,4 +1,5 @@
 using SmartRAG.Interfaces.Parser.Strategies;
+using SmartRAG.Models;
 using SmartRAG.Services.Helpers;
 using System;
 using System.IO;

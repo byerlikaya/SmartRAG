@@ -11,24 +11,25 @@ namespace SmartRAG.Services.Database.Prompts
     {
         private const int SampleDataLimit = 200;
 
-        // Language-agnostic stop words: Common function words that are unlikely to be column names
-        // These are generic patterns that appear across multiple languages
-        // Note: This is a minimal set - the length check (w.Length > 2) already filters most short words
+        // Common function words that are unlikely to be column names
+        // Note: This is a minimal set of English function words for technical keyword extraction
+        // The length check (w.Length > 2) already filters most short function words in any language
+        // This list focuses on filtering common English words that appear in technical query contexts
         private static readonly HashSet<string> FilterStopWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
-            // Common articles and prepositions (appear in many languages)
+            // Common articles and prepositions
             "the", "a", "an", "and", "or", "but", "for", "with", "from", "into", "onto", "about", "over", "under",
             "between", "within", "without", "through", "during", "before", "after", "above", "below",
             
-            // Common auxiliary verbs and modals (English patterns, but similar concepts exist in other languages)
+            // Common auxiliary verbs and modals
             "will", "would", "could", "should", "have", "has", "had", "been", "being", "is", "are", "was", "were",
             
-            // Common pronouns and determiners (generic patterns)
+            // Common pronouns and determiners
             "than", "then", "them", "they", "their", "there", "those", "these", "this", "that", "each", "every",
             "when", "where", "which", "while", "whose", "what", "ever", "many", "much", "more", "most", "some", "such",
             "only", "also", "just", "like", "make", "take", "give", "need", "want",
             
-            // Common query verbs (language-agnostic patterns)
+            // Common query verbs
             "time", "date", "question", "asked", "asking", "show", "list", "tell", "provide", "please"
         };
 
@@ -79,7 +80,14 @@ namespace SmartRAG.Services.Database.Prompts
             sb.AppendLine("  3. Maximum 2 JOINs (table1 JOIN table2 JOIN table3)");
             sb.AppendLine("  4. Simple WHERE clause (1-2 conditions maximum)");
             sb.AppendLine("  5. Simple ORDER BY (1 column)");
-            sb.AppendLine($"  6. {strategy.GetLimitClause(100)} at the end (or equivalent)");
+            if (strategy.DatabaseType == SmartRAG.Enums.DatabaseType.SqlServer)
+            {
+                sb.AppendLine($"  6. {strategy.GetLimitClause(100)} immediately after SELECT (SQL Server syntax)");
+            }
+            else
+            {
+                sb.AppendLine($"  6. {strategy.GetLimitClause(100)} at the end (or equivalent)");
+            }
             sb.AppendLine();
             sb.AppendLine("CROSS-DATABASE LOGIC (CRITICAL):");
             sb.AppendLine("  - If the user asks for a metric or attribute that is NOT in this database:");

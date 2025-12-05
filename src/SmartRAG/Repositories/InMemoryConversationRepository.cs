@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging;
 using SmartRAG.Interfaces.Storage;
-using SmartRAG.Models;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;

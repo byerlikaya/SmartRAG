@@ -150,20 +150,18 @@ namespace SmartRAG.Repositories
             }
         }
 
+        #region IDisposable
+
         public void Dispose()
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_disposed && disposing)
+            if (!_disposed)
             {
                 _redis?.Close();
                 _redis?.Dispose();
                 _disposed = true;
             }
         }
+
+        #endregion
     }
 }

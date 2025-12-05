@@ -1,12 +1,9 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartRAG.Entities;
-using SmartRAG.Interfaces.Database;
 using SmartRAG.Interfaces.Document;
-using SmartRAG.Interfaces.Parser;
 using SmartRAG.Interfaces.Parser.Strategies;
 using SmartRAG.Models;
-using SmartRAG.Services.Helpers;
 using System;
 using System.Collections.Generic;
 using System.IO;

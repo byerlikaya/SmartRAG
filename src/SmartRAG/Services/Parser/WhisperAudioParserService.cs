@@ -61,6 +61,7 @@ namespace SmartRAG.Services.Parser
 
                 await EnsureWhisperFactoryInitializedAsync();
 
+                _logger.LogDebug("WhisperAudioParserService: Language parameter: '{Language}', Config DefaultLanguage: '{DefaultLanguage}'", language, _config.DefaultLanguage);
                 var result = await PerformTranscriptionAsync(audioStream, fileName, language);
 
                 _logger.LogInformation("Whisper transcription completed: {Length} characters with {Confidence} confidence",
@@ -177,6 +178,7 @@ namespace SmartRAG.Services.Parser
                     : Environment.ProcessorCount;
 
                 var languageToUse = GetLanguageForWhisper(language ?? _config.DefaultLanguage);
+                _logger.LogDebug("WhisperAudioParserService: Language to use for Whisper: '{LanguageToUse}' (null means auto-detect)", languageToUse);
 
                 var builder = _whisperFactory.CreateBuilder()
                     .WithLanguage(languageToUse)
@@ -190,7 +192,7 @@ namespace SmartRAG.Services.Parser
 
                 using var processor = builder.Build();
                 Stream waveStream = null;
-                var needsConversion = RequiresConversion(fileName);
+                var needsConversion = AudioConversionService.RequiresConversion(fileName);
 
                 try
                 {
@@ -340,14 +342,6 @@ namespace SmartRAG.Services.Parser
 
             if (!audioStream.CanRead)
                 throw new ArgumentException("Audio stream is not readable");
-        }
-
-        /// <summary>
-        /// Determines if audio file requires conversion to WAV
-        /// </summary>
-        private static bool RequiresConversion(string fileName)
-        {
-            return AudioConversionService.RequiresConversion(fileName);
         }
 
         /// <summary>

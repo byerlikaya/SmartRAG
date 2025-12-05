@@ -63,11 +63,6 @@ namespace SmartRAG.Services.Shared
             new EventId(3010, "PartialNameMatches"),
             "Found PARTIAL name matches: [{FoundNames}] in chunk: {ChunkPreview}...");
 
-        public static readonly Action<ILogger, Exception> LogEmbeddingSearchFailedError = LoggerMessage.Define(
-            LogLevel.Error,
-            new EventId(3017, "EmbeddingSearchFailedError"),
-            "Embedding search failed");
-
         public static readonly Action<ILogger, Exception> LogCanAnswerFromDocumentsError = LoggerMessage.Define(
             LogLevel.Warning,
             new EventId(3020, "CanAnswerFromDocumentsError"),
@@ -305,16 +300,7 @@ namespace SmartRAG.Services.Shared
             "Failed to store conversation for session: {SessionId}");
 
         #endregion
-
-        #region Semantic Search Service (EventId: 21001-21999)
-
-        public static readonly Action<ILogger, Exception> LogSemanticSimilarityCalculationError = LoggerMessage.Define(
-            LogLevel.Warning,
-            new EventId(21001, "SemanticSimilarityCalculationError"),
-            "Failed to calculate enhanced semantic similarity");
-
-        #endregion
-
+   
         #region Image Processing and OCR Operations (EventId: 70001-70999)
 
         public static readonly Action<ILogger, int, Exception> LogImageOcrSuccess = LoggerMessage.Define<int>(

@@ -1,10 +1,12 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartRAG.FileWatcher;
-using SmartRAG.Mcp.Client.Services;
+using SmartRAG.Interfaces.Mcp;
 using SmartRAG.Models;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 #nullable enable
@@ -12,9 +14,9 @@ using System.Threading.Tasks;
 namespace SmartRAG.Services.Startup
 {
     /// <summary>
-    /// Service for initializing SmartRAG features on startup
+    /// Hosted service for automatically initializing SmartRAG features on startup
     /// </summary>
-    public class SmartRagStartupService : ISmartRagStartupService
+    public class SmartRagStartupService : IHostedService
     {
         private readonly ILogger<SmartRagStartupService> _logger;
         private readonly SmartRagOptions _options;
@@ -31,10 +33,13 @@ namespace SmartRAG.Services.Startup
         }
 
         /// <summary>
-        /// Initializes MCP connections and file watchers based on configuration
+        /// Starts the service and initializes MCP connections and file watchers based on configuration
         /// </summary>
-        public async Task InitializeAsync()
+        public async Task StartAsync(CancellationToken cancellationToken)
         {
+            _logger.LogInformation("SmartRagStartupService.StartAsync called. EnableMcpClient: {EnableMcpClient}, EnableFileWatcher: {EnableFileWatcher}",
+                _options.Features.EnableMcpClient, _options.Features.EnableFileWatcher);
+
             if (_options.Features.EnableMcpClient)
             {
                 var mcpConnectionManager = _serviceProvider.GetService<IMcpConnectionManager>();
@@ -43,6 +48,14 @@ namespace SmartRAG.Services.Startup
                     _logger.LogInformation("Initializing MCP connections...");
                     await mcpConnectionManager.ConnectAllAsync();
                 }
+                else
+                {
+                    _logger.LogWarning("IMcpConnectionManager service not found. MCP client may not be properly registered.");
+                }
+            }
+            else
+            {
+                _logger.LogInformation("MCP client is disabled in configuration");
             }
 
             if (_options.Features.EnableFileWatcher && _options.WatchedFolders != null)
@@ -57,7 +70,7 @@ namespace SmartRAG.Services.Startup
                         {
                             await fileWatcherService.StartWatchingAsync(folderConfig);
                         }
-                        catch (System.Exception ex)
+                        catch (Exception ex)
                         {
                             _logger.LogError(ex, "Failed to start watching folder: {FolderPath}", folderConfig.FolderPath);
                         }
@@ -65,17 +78,14 @@ namespace SmartRAG.Services.Startup
                 }
             }
         }
-    }
 
-    /// <summary>
-    /// Interface for SmartRAG startup service
-    /// </summary>
-    public interface ISmartRagStartupService
-    {
         /// <summary>
-        /// Initializes MCP connections and file watchers based on configuration
+        /// Stops the service
         /// </summary>
-        Task InitializeAsync();
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
     }
 }
 

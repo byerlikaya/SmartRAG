@@ -14,13 +14,13 @@ namespace SmartRAG.Services.AI
     /// </summary>
     public class PromptBuilderService : IPromptBuilderService
     {
-        private readonly IConversationManagerService _conversationManager;
+        private readonly Lazy<IConversationManagerService> _conversationManager;
 
         /// <summary>
         /// Initializes a new instance of the PromptBuilderService
         /// </summary>
-        /// <param name="conversationManager">Service for managing conversation sessions and history</param>
-        public PromptBuilderService(IConversationManagerService conversationManager)
+        /// <param name="conversationManager">Service for managing conversation sessions and history (lazy to break circular dependency)</param>
+        public PromptBuilderService(Lazy<IConversationManagerService> conversationManager)
         {
             _conversationManager = conversationManager;
         }
@@ -31,7 +31,7 @@ namespace SmartRAG.Services.AI
         public string BuildDocumentRagPrompt(string query, string context, string? conversationHistory = null, string? preferredLanguage = null)
         {
             var historyContext = !string.IsNullOrEmpty(conversationHistory)
-                ? $"\n\nRecent conversation context:\n{_conversationManager.TruncateConversationHistory(conversationHistory, maxTurns: 2)}\n"
+                ? $"\n\nRecent conversation context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 2)}\n"
                 : "";
 
 
@@ -109,7 +109,7 @@ Answer:";
             }
 
             var historyContext = !string.IsNullOrEmpty(conversationHistory)
-                ? $"\n\nRecent context:\n{_conversationManager.TruncateConversationHistory(conversationHistory, maxTurns: 2)}\n"
+                ? $"\n\nRecent context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 2)}\n"
                 : "";
 
             var languageInstruction = !string.IsNullOrEmpty(preferredLanguage)
@@ -142,7 +142,7 @@ Direct Answer:";
         public string BuildConversationPrompt(string query, string? conversationHistory = null, string? preferredLanguage = null)
         {
             var historyContext = !string.IsNullOrEmpty(conversationHistory)
-                ? $"\n\nRecent conversation context:\n{_conversationManager.TruncateConversationHistory(conversationHistory, maxTurns: 3)}\n"
+                ? $"\n\nRecent conversation context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 3)}\n"
                 : "";
 
             var languageInstruction = !string.IsNullOrEmpty(preferredLanguage)

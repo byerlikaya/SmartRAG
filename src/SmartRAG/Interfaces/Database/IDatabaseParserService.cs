@@ -10,8 +10,7 @@ namespace SmartRAG.Interfaces.Database
     /// Service for parsing database files and live database connections
     /// </summary>
     public interface IDatabaseParserService
-    {
-        #region File-based Database Operations
+    {     
 
         /// <summary>
         /// Parses a database file (SQLite) and extracts content for RAG processing
@@ -21,10 +20,6 @@ namespace SmartRAG.Interfaces.Database
         /// <returns>Extracted text content from all tables</returns>
         Task<string> ParseDatabaseFileAsync(Stream dbStream, string fileName);
 
-        #endregion
-
-        #region Live Database Connection Operations
-
         /// <summary>
         /// Connects to a live database and extracts content based on configuration
         /// </summary>
@@ -32,7 +27,6 @@ namespace SmartRAG.Interfaces.Database
         /// <param name="config">Database extraction configuration</param>
         /// <returns>Extracted text content from specified tables</returns>
         Task<string> ParseDatabaseConnectionAsync(string connectionString, DatabaseConfig config);
-
 
         /// <summary>
         /// Executes a custom SQL query and returns results
@@ -43,10 +37,7 @@ namespace SmartRAG.Interfaces.Database
         /// <param name="maxRows">Maximum number of rows to return</param>
         /// <returns>Query results as formatted text</returns>
         Task<string> ExecuteQueryAsync(string connectionString, string query, DatabaseType databaseType, int maxRows = 1000);
-
-        #endregion
-
-        #region Schema Operations
+    
 
         /// <summary>
         /// Gets list of table names from the database
@@ -55,11 +46,7 @@ namespace SmartRAG.Interfaces.Database
         /// <param name="databaseType">Type of database</param>
         /// <returns>List of table names</returns>
         Task<List<string>> GetTableNamesAsync(string connectionString, DatabaseType databaseType);
-
-        #endregion
-
-        #region Utility Methods
-
+    
         /// <summary>
         /// Gets supported database types
         /// </summary>
@@ -80,6 +67,5 @@ namespace SmartRAG.Interfaces.Database
         /// <returns>List of supported file extensions</returns>
         IEnumerable<string> GetSupportedDatabaseFileExtensions();
 
-        #endregion
     }
 }

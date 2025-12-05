@@ -18,8 +18,6 @@ namespace SmartRAG.Services.Storage.Qdrant
     public class QdrantSearchService : IQdrantSearchService, IDisposable
     {
         private const double DefaultTextSearchScore = 0.5;
-        private const double MinKeywordMatchScore = 0.1;
-        private const int MinWordLength = 2;
         private const double BaseRelevanceScore = 1.0;
         private const double TokenMatchScoreMultiplier = 0.1;
         private const double AllTokensMatchBoost = 2.0;

@@ -49,17 +49,6 @@ namespace SmartRAG.Services.Parser
         private const string CurrencyMisreadPatternAmpersand = @"(\d+)\s*&(?=\s*(?:\p{Lu}|\d|$))";
         private const string CurrencyMisreadPatternAmpersandCompact = @"(\d+)&(?=\p{Lu}|\s+\p{Lu}|$)";
 
-        private static readonly Dictionary<string, string> LanguageCodeMapping = new Dictionary<string, string>
-        {
-            { "tur", "tr" }, { "eng", "en" }, { "deu", "de" }, { "fra", "fr" },
-            { "spa", "es" }, { "ita", "it" }, { "rus", "ru" }, { "jpn", "ja" },
-            { "kor", "ko" }, { "zho", "zh" }, { "ara", "ar" }, { "hin", "hi" },
-            { "por", "pt" }, { "nld", "nl" }, { "pol", "pl" }, { "swe", "sv" },
-            { "nor", "no" }, { "dan", "da" }, { "fin", "fi" }, { "ell", "el" },
-            { "heb", "he" }, { "tha", "th" }, { "vie", "vi" }, { "ind", "id" },
-            { "ces", "cs" }, { "hun", "hu" }, { "ron", "ro" }, { "ukr", "uk" }
-        };
-
         private static readonly Dictionary<string, string> ReverseLanguageCodeMapping = new Dictionary<string, string>
         {
             { "tr", "tur" }, { "en", "eng" }, { "de", "deu" }, { "fr", "fra" },
@@ -99,8 +88,36 @@ namespace SmartRAG.Services.Parser
         #region Fields
 
         private readonly ILogger<ImageParserService> _logger;
-        private readonly string _ocrEngineDataPath;
+        private string _ocrEngineDataPath;
+        private readonly object _ocrEngineDataPathLock = new object();
         private bool _disposed = false;
+        private static bool _dyldLibraryPathInitialized = false;
+        private static readonly object _dyldLibraryPathLock = new object();
+
+        #endregion
+
+        #region Properties
+
+        /// <summary>
+        /// Gets the OCR engine data path (lazy initialization to avoid blocking during service registration)
+        /// </summary>
+        private string OcrEngineDataPath
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_ocrEngineDataPath))
+                {
+                    lock (_ocrEngineDataPathLock)
+                    {
+                        if (string.IsNullOrEmpty(_ocrEngineDataPath))
+                        {
+                            _ocrEngineDataPath = FindOcrEngineDataPath(_logger);
+                        }
+                    }
+                }
+                return _ocrEngineDataPath;
+            }
+        }
 
         #endregion
 
@@ -109,10 +126,23 @@ namespace SmartRAG.Services.Parser
         public ImageParserService(ILogger<ImageParserService> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _ocrEngineDataPath = FindOcrEngineDataPath(_logger);
+            // DYLD_LIBRARY_PATH setup moved to lazy initialization to avoid blocking during service registration
+            InitializeDyldLibraryPath();
+        }
 
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+        /// <summary>
+        /// Initializes DYLD_LIBRARY_PATH for macOS (thread-safe, lazy initialization)
+        /// </summary>
+        private static void InitializeDyldLibraryPath()
+        {
+            if (_dyldLibraryPathInitialized || !RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                return;
+
+            lock (_dyldLibraryPathLock)
             {
+                if (_dyldLibraryPathInitialized)
+                    return;
+
                 var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
                 var currentPath = Environment.GetEnvironmentVariable("DYLD_LIBRARY_PATH") ?? string.Empty;
 
@@ -140,7 +170,7 @@ namespace SmartRAG.Services.Parser
                 }
 
                 Environment.SetEnvironmentVariable("DYLD_LIBRARY_PATH", newPath);
-                _logger.LogDebug("Set DYLD_LIBRARY_PATH to: {Path}", newPath);
+                _dyldLibraryPathInitialized = true;
             }
         }
 
@@ -331,10 +361,10 @@ namespace SmartRAG.Services.Parser
         /// <returns>True if language data file exists</returns>
         private bool IsLanguageDataAvailable(string languageCode)
         {
-            if (string.IsNullOrEmpty(_ocrEngineDataPath))
+            if (string.IsNullOrEmpty(OcrEngineDataPath))
                 return false;
 
-            var trainedDataFile = Path.Combine(_ocrEngineDataPath, $"{languageCode}.traineddata");
+            var trainedDataFile = Path.Combine(OcrEngineDataPath, $"{languageCode}.traineddata");
             return File.Exists(trainedDataFile);
         }
 
@@ -364,7 +394,7 @@ namespace SmartRAG.Services.Parser
         /// </summary>
         private async Task<string> GetAvailableTesseractLanguageAsync(string requestedLanguage)
         {
-            var tessdataPath = string.IsNullOrEmpty(_ocrEngineDataPath) ? "." : _ocrEngineDataPath;
+            var tessdataPath = string.IsNullOrEmpty(OcrEngineDataPath) ? "." : OcrEngineDataPath;
 
             if (!Directory.Exists(tessdataPath))
             {
@@ -492,7 +522,7 @@ namespace SmartRAG.Services.Parser
             {
                 try
                 {
-                    var tessdataPath = string.IsNullOrEmpty(_ocrEngineDataPath) ? "." : _ocrEngineDataPath;
+                    var tessdataPath = string.IsNullOrEmpty(OcrEngineDataPath) ? "." : OcrEngineDataPath;
 
                     using var engine = new TesseractEngine(tessdataPath, availableLanguage, EngineMode.Default);
                     // CRITICAL: Do NOT use tessedit_char_whitelist - it breaks multi-language support
@@ -546,10 +576,19 @@ namespace SmartRAG.Services.Parser
                 }
             }
 
+            // Optimized search: Only check common locations instead of recursive search
+            // Recursive search with AllDirectories can be very slow on large directory trees
             var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            var tessdataDirs = Directory.GetDirectories(baseDir, "*tessdata*", SearchOption.AllDirectories);
+            var commonTessdataPaths = new[]
+            {
+                Path.Combine(baseDir, "tessdata"),
+                Path.Combine(baseDir, "bin", "Debug", "netstandard2.1", "tessdata"),
+                Path.Combine(baseDir, "bin", "Release", "netstandard2.1", "tessdata"),
+                Path.Combine(baseDir, "bin", "Debug", "net9.0", "tessdata"),
+                Path.Combine(baseDir, "bin", "Release", "net9.0", "tessdata")
+            };
 
-            foreach (var dir in tessdataDirs)
+            foreach (var dir in commonTessdataPaths)
             {
                 if (Directory.Exists(dir))
                 {

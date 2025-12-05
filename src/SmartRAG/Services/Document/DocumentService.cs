@@ -1,3 +1,5 @@
+#nullable enable
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartRAG.Entities;
@@ -60,7 +62,7 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// [AI Query] [Document Query] Uploads a document, generates embeddings, and saves it
         /// </summary>
-        public async Task<SmartRAG.Entities.Document> UploadDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy, string language = null, long? fileSize = null, Dictionary<string, object> additionalMetadata = null)
+        public async Task<SmartRAG.Entities.Document> UploadDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy, string? language = null, long? fileSize = null, Dictionary<string, object>? additionalMetadata = null)
         {
             var supportedExtensions = _documentParserService.GetSupportedFileTypes();
             var supportedContentTypes = _documentParserService.GetSupportedContentTypes();
@@ -174,6 +176,25 @@ namespace SmartRAG.Services.Document
         /// [Document Query] Retrieves all documents
         /// </summary>
         public async Task<List<SmartRAG.Entities.Document>> GetAllDocumentsAsync() => await _documentRepository.GetAllAsync();
+
+        /// <summary>
+        /// Retrieves all documents filtered by the enabled search options (text, audio, image)
+        /// </summary>
+        public async Task<List<SmartRAG.Entities.Document>> GetAllDocumentsFilteredAsync(Models.SearchOptions? options)
+        {
+            var allDocuments = await _documentRepository.GetAllAsync();
+
+            if (options == null)
+            {
+                return allDocuments;
+            }
+
+            return allDocuments.Where(d =>
+                (options.EnableDocumentSearch && IsTextDocument(d)) ||
+                (options.EnableAudioSearch && IsAudioDocument(d)) ||
+                (options.EnableImageSearch && IsImageDocument(d))
+            ).ToList();
+        }
 
         public async Task<bool> DeleteDocumentAsync(Guid id) => await _documentRepository.DeleteAsync(id);
 
@@ -414,6 +435,32 @@ namespace SmartRAG.Services.Document
                 ServiceLogMessages.LogDocumentDeletionFailed(_logger, ex);
                 return false;
             }
+        }
+
+        /// <summary>
+        /// Determines if a document is an audio document based on content type
+        /// </summary>
+        public bool IsAudioDocument(SmartRAG.Entities.Document doc)
+        {
+            return !string.IsNullOrEmpty(doc.ContentType) &&
+                   doc.ContentType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Determines if a document is an image document based on content type
+        /// </summary>
+        public bool IsImageDocument(SmartRAG.Entities.Document doc)
+        {
+            return !string.IsNullOrEmpty(doc.ContentType) &&
+                   doc.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Determines if a document is a text document (not audio and not image)
+        /// </summary>
+        public bool IsTextDocument(SmartRAG.Entities.Document doc)
+        {
+            return !IsAudioDocument(doc) && !IsImageDocument(doc);
         }
 
         #endregion

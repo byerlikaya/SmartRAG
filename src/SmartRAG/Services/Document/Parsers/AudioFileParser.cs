@@ -1,9 +1,11 @@
 using Microsoft.Extensions.Logging;
 using SmartRAG.Interfaces.Parser;
 using SmartRAG.Interfaces.Parser.Strategies;
+using SmartRAG.Models;
 using SmartRAG.Services.Helpers;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -38,6 +40,7 @@ namespace SmartRAG.Services.Document.Parsers
             try
             {
                 var detectedLanguage = DetectAudioLanguage(language, fileName);
+                _logger.LogDebug("AudioFileParser: Language parameter: '{Language}', Detected language: '{DetectedLanguage}'", language, detectedLanguage);
                 var transcriptionResult = await _audioParserService.TranscribeAudioAsync(fileStream, fileName, detectedLanguage);
 
                 var result = new FileParserResult
@@ -64,15 +67,20 @@ namespace SmartRAG.Services.Document.Parsers
 
         private string DetectAudioLanguage(string apiLanguage, string fileName)
         {
+            // If language is explicitly provided and not "auto", use it
             if (!string.IsNullOrEmpty(apiLanguage))
             {
                 if (apiLanguage.Equals("auto", StringComparison.OrdinalIgnoreCase))
                 {
-                    return "auto";
+                    // Fall through to system locale detection
                 }
-                return apiLanguage;
+                else
+                {
+                    return apiLanguage;
+                }
             }
 
+            // Try to detect language from filename (e.g., "audio_tr.m4a" or "audio-tr-TR.m4a")
             var fileNameLower = fileName.ToLowerInvariant();
             var iso6391Pattern = @"\b([a-z]{2})(?:[-_]([a-z]{2}))?\b";
             var matches = Regex.Matches(fileNameLower, iso6391Pattern);
@@ -84,14 +92,69 @@ namespace SmartRAG.Services.Document.Parsers
 
                 if (languageCode.Length == 2 && char.IsLetter(languageCode[0]) && char.IsLetter(languageCode[1]))
                 {
-                    var locale = regionCode != null && regionCode.Length == 2
-                        ? $"{languageCode}-{regionCode.ToUpperInvariant()}"
-                        : $"{languageCode}-{languageCode.ToUpperInvariant()}";
-                    return locale;
+                    // Whisper.net uses ISO 639-1 (2-letter) codes, not locale format
+                    // Return just the language code (e.g., "tr" not "tr-TR")
+                    _logger.LogDebug("Detected language from filename: '{LanguageCode}'", languageCode);
+                    return languageCode;
                 }
             }
 
-            return "auto";
+            // Fallback to system locale if no language detected from filename
+            try
+            {
+                // Try CurrentUICulture first (user interface language), then CurrentCulture (regional settings)
+                var uiCulture = CultureInfo.CurrentUICulture;
+                var culture = CultureInfo.CurrentCulture;
+                
+                // Prefer UI culture language code
+                var twoLetterCode = uiCulture.TwoLetterISOLanguageName;
+                
+                // If UI culture is "en" but we're in a non-English region, check environment variables
+                // This is cross-platform and works on Windows, Linux, and macOS
+                if (twoLetterCode == "en")
+                {
+                    // Check LANG environment variable (common on Unix-like systems: Linux, macOS)
+                    var langEnv = Environment.GetEnvironmentVariable("LANG");
+                    if (!string.IsNullOrEmpty(langEnv))
+                    {
+                        // LANG format is usually "language_REGION.encoding" (e.g., "tr_TR.UTF-8")
+                        var langParts = langEnv.Split('.')[0].Split('_');
+                        if (langParts.Length > 0 && langParts[0].Length == 2)
+                        {
+                            var envLanguageCode = langParts[0].ToLowerInvariant();
+                            if (envLanguageCode != "en" && envLanguageCode.Length == 2)
+                            {
+                                _logger.LogDebug("No language detected from filename or config. UI culture: '{UICulture}' (en), but LANG env var suggests: '{LangEnv}' → Language: '{LanguageCode}'", uiCulture.Name, langEnv, envLanguageCode);
+                                return envLanguageCode;
+                            }
+                        }
+                    }
+                    
+                    // Also check LC_ALL (overrides LANG on Unix-like systems)
+                    var lcAllEnv = Environment.GetEnvironmentVariable("LC_ALL");
+                    if (!string.IsNullOrEmpty(lcAllEnv))
+                    {
+                        var lcAllParts = lcAllEnv.Split('.')[0].Split('_');
+                        if (lcAllParts.Length > 0 && lcAllParts[0].Length == 2)
+                        {
+                            var lcAllLanguageCode = lcAllParts[0].ToLowerInvariant();
+                            if (lcAllLanguageCode != "en" && lcAllLanguageCode.Length == 2)
+                            {
+                                _logger.LogDebug("No language detected from filename or config. UI culture: '{UICulture}' (en), but LC_ALL env var suggests: '{LcAllEnv}' → Language: '{LanguageCode}'", uiCulture.Name, lcAllEnv, lcAllLanguageCode);
+                                return lcAllLanguageCode;
+                            }
+                        }
+                    }
+                }
+                
+                _logger.LogDebug("No language detected from filename or config. Using system UI locale: '{SystemLocale}' → Language: '{LanguageCode}'", uiCulture.Name, twoLetterCode);
+                return twoLetterCode;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to detect system locale, falling back to auto-detect");
+                return "auto";
+            }
         }
     }
 }

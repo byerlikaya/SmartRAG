@@ -8,7 +8,9 @@ using SmartRAG.Services.Shared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
+using IQueryPatternAnalyzerService = SmartRAG.Interfaces.Document.IQueryPatternAnalyzerService;
 
 namespace SmartRAG.Services.Search
 {
@@ -21,6 +23,9 @@ namespace SmartRAG.Services.Search
 
         private const int DefaultContextWindow = 2;
         private const int MaxContextWindow = 5;
+        private const int ComprehensiveWindow = 8;
+        private const int SmallChunkCountThreshold = 3;
+        private const int SmallChunkWindow = 3;
 
         #endregion
 
@@ -28,6 +33,7 @@ namespace SmartRAG.Services.Search
 
         private readonly IDocumentRepository _documentRepository;
         private readonly ILogger<ContextExpansionService> _logger;
+        private readonly IQueryPatternAnalyzerService? _queryPatternAnalyzer;
 
         #endregion
 
@@ -38,12 +44,15 @@ namespace SmartRAG.Services.Search
         /// </summary>
         /// <param name="documentRepository">Repository for document operations</param>
         /// <param name="logger">Logger instance</param>
+        /// <param name="queryPatternAnalyzer">Optional service for analyzing query patterns</param>
         public ContextExpansionService(
             IDocumentRepository documentRepository,
-            ILogger<ContextExpansionService> logger)
+            ILogger<ContextExpansionService> logger,
+            IQueryPatternAnalyzerService? queryPatternAnalyzer = null)
         {
             _documentRepository = documentRepository ?? throw new ArgumentNullException(nameof(documentRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _queryPatternAnalyzer = queryPatternAnalyzer;
         }
 
         #endregion
@@ -127,6 +136,99 @@ namespace SmartRAG.Services.Search
                 ServiceLogMessages.LogContextExpansionError(_logger, ex);
                 return chunks;
             }
+        }
+
+        /// <summary>
+        /// Determines appropriate context window based on query structure using language-agnostic pattern detection
+        /// </summary>
+        /// <param name="chunks">List of document chunks</param>
+        /// <param name="query">User query</param>
+        /// <returns>Context window size (number of adjacent chunks to include)</returns>
+        public int DetermineContextWindow(List<DocumentChunk> chunks, string query)
+        {
+            if (_queryPatternAnalyzer != null && _queryPatternAnalyzer.RequiresComprehensiveSearch(query))
+            {
+                return ComprehensiveWindow;
+            }
+
+            if (chunks != null && chunks.Count <= SmallChunkCountThreshold)
+            {
+                return SmallChunkWindow;
+            }
+
+            return DefaultContextWindow;
+        }
+
+        /// <summary>
+        /// Builds context string from chunks with size limit to prevent timeout
+        /// </summary>
+        /// <param name="chunks">List of document chunks to build context from</param>
+        /// <param name="maxContextSize">Maximum context size in characters</param>
+        /// <returns>Context string built from chunks</returns>
+        public string BuildLimitedContext(List<DocumentChunk> chunks, int maxContextSize)
+        {
+            if (chunks == null || chunks.Count == 0)
+            {
+                return string.Empty;
+            }
+
+            var sortedChunks = chunks
+                .OrderByDescending(c => c.ChunkIndex == 0)
+                .ThenBy(c => c.ChunkIndex)
+                .ToList();
+
+            var chunk0Included = sortedChunks.Any(c => c.ChunkIndex == 0);
+            if (chunk0Included)
+            {
+                var chunk0 = sortedChunks.First(c => c.ChunkIndex == 0);
+                _logger.LogDebug("Chunk 0 included in context (first position). Content preview: {Preview}",
+                    chunk0.Content?[..Math.Min(200, chunk0.Content?.Length ?? 0)] ?? "empty");
+            }
+            else
+            {
+                _logger.LogWarning("Chunk 0 NOT found in chunks list! Total chunks: {Count}", sortedChunks.Count);
+            }
+
+            var contextBuilder = new StringBuilder();
+            var totalSize = 0;
+
+            foreach (var chunk in sortedChunks)
+            {
+                if (chunk?.Content == null)
+                {
+                    continue;
+                }
+
+                var chunkSize = chunk.Content.Length;
+                const int separatorSize = 2;
+
+                if (totalSize + chunkSize + separatorSize > maxContextSize)
+                {
+                    var remainingSize = maxContextSize - totalSize - separatorSize;
+                    if (remainingSize > 100)
+                    {
+                        var partialContent = chunk.Content[..Math.Min(remainingSize, chunk.Content.Length)];
+                        if (contextBuilder.Length > 0)
+                        {
+                            contextBuilder.Append("\n\n");
+                        }
+                        contextBuilder.Append(partialContent);
+                        ServiceLogMessages.LogContextSizeLimited(_logger, chunks.Count, totalSize + partialContent.Length, maxContextSize, null);
+                    }
+                    break;
+                }
+
+                if (contextBuilder.Length > 0)
+                {
+                    contextBuilder.Append("\n\n");
+                    totalSize += separatorSize;
+                }
+
+                contextBuilder.Append(chunk.Content);
+                totalSize += chunkSize;
+            }
+
+            return contextBuilder.ToString();
         }
 
         #endregion

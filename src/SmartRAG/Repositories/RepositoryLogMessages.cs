@@ -162,16 +162,6 @@ namespace SmartRAG.Repositories
             new EventId(35002, "RedisConnectionFailed"),
             "Failed to connect to Redis server: {ConnectionString}");
 
-        public static readonly Action<ILogger, string, Guid, Exception> LogRedisDocumentAdded = LoggerMessage.Define<string, Guid>(
-            LogLevel.Information,
-            new EventId(35003, "RedisDocumentAdded"),
-            "Document added to Redis: {FileName} (ID: {DocumentId})");
-
-        public static readonly Action<ILogger, string, Exception> LogRedisDocumentAddFailed = LoggerMessage.Define<string>(
-            LogLevel.Error,
-            new EventId(35004, "RedisDocumentAddFailed"),
-            "Failed to add document to Redis: {FileName}");
-
         public static readonly Action<ILogger, Guid, Exception> LogRedisDocumentRetrieved = LoggerMessage.Define<Guid>(
             LogLevel.Debug,
             new EventId(35005, "RedisDocumentRetrieved"),
@@ -225,52 +215,7 @@ namespace SmartRAG.Repositories
         public static readonly Action<ILogger, string, Exception> LogRedisSearchFailed = LoggerMessage.Define<string>(
             LogLevel.Error,
             new EventId(35015, "RedisSearchFailed"),
-            "Redis search failed for query '{Query}'");
-
-        public static readonly Action<ILogger, string, Exception> LogRedisConversationNotFound = LoggerMessage.Define<string>(
-            LogLevel.Debug,
-            new EventId(35016, "RedisConversationNotFound"),
-            "Conversation not found in Redis for session: {SessionId}");
-
-        public static readonly Action<ILogger, string, Exception> LogRedisConversationRetrieved = LoggerMessage.Define<string>(
-            LogLevel.Debug,
-            new EventId(35017, "RedisConversationRetrieved"),
-            "Conversation retrieved from Redis for session: {SessionId}");
-
-        public static readonly Action<ILogger, string, Exception> LogRedisConversationRetrievalFailed = LoggerMessage.Define<string>(
-            LogLevel.Error,
-            new EventId(35018, "RedisConversationRetrievalFailed"),
-            "Failed to retrieve conversation from Redis for session: {SessionId}");
-
-        public static readonly Action<ILogger, string, Exception> LogRedisConversationUpdated = LoggerMessage.Define<string>(
-            LogLevel.Debug,
-            new EventId(35019, "RedisConversationUpdated"),
-            "Conversation updated in Redis for session: {SessionId}");
-
-        public static readonly Action<ILogger, string, Exception> LogRedisConversationUpdateFailed = LoggerMessage.Define<string>(
-            LogLevel.Error,
-            new EventId(35020, "RedisConversationUpdateFailed"),
-            "Failed to update conversation in Redis for session: {SessionId}");
-
-        public static readonly Action<ILogger, string, Exception> LogRedisConversationCleared = LoggerMessage.Define<string>(
-            LogLevel.Debug,
-            new EventId(35021, "RedisConversationCleared"),
-            "Conversation cleared in Redis for session: {SessionId}");
-
-        public static readonly Action<ILogger, string, Exception> LogRedisConversationClearFailed = LoggerMessage.Define<string>(
-            LogLevel.Error,
-            new EventId(35022, "RedisConversationClearFailed"),
-            "Failed to clear conversation in Redis for session: {SessionId}");
-
-        public static readonly Action<ILogger, string, bool, Exception> LogRedisSessionExistsChecked = LoggerMessage.Define<string, bool>(
-            LogLevel.Debug,
-            new EventId(35023, "RedisSessionExistsChecked"),
-            "Session exists check in Redis for session: {SessionId} - Exists: {Exists}");
-
-        public static readonly Action<ILogger, string, Exception> LogRedisSessionExistsCheckFailed = LoggerMessage.Define<string>(
-            LogLevel.Error,
-            new EventId(35024, "RedisSessionExistsCheckFailed"),
-            "Failed to check session existence in Redis for session: {SessionId}");
+            "Redis search failed for query '{Query}'");      
 
         #endregion
 
