@@ -381,7 +381,7 @@ public class QueryHandler(
 
         if (mcpIntegration == null)
         {
-            _console.WriteWarning("MCP integration service is not available. Ensure Features.EnableMcpClient is true in configuration.");
+            _console.WriteWarning("MCP integration service is not available. Ensure Features.EnableMcpSearch is true in configuration.");
             return;
         }
 
@@ -460,11 +460,18 @@ public class QueryHandler(
     {
         cleanQuery = input;
         
-        // Check for flags
-        var hasDocumentFlag = input.Contains("-d ", StringComparison.OrdinalIgnoreCase) || input.EndsWith("-d", StringComparison.OrdinalIgnoreCase);
-        var hasDatabaseFlag = input.Contains("-db ", StringComparison.OrdinalIgnoreCase) || input.EndsWith("-db", StringComparison.OrdinalIgnoreCase);
-        var hasAudioFlag = input.Contains("-a ", StringComparison.OrdinalIgnoreCase) || input.EndsWith("-a", StringComparison.OrdinalIgnoreCase);
-        var hasImageFlag = input.Contains("-i ", StringComparison.OrdinalIgnoreCase) || input.EndsWith("-i", StringComparison.OrdinalIgnoreCase);
+        // Use regex to find tags at the end of query (allowing for punctuation and whitespace)
+        var trimmedInput = input.TrimEnd();
+        
+        // Check for flags using regex patterns (matches " -d", "?-d", "! -d", " -d " etc at end)
+        var hasDocumentFlag = System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"\s*-d\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
+                              System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"[\p{P}]\s*-d\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        var hasDatabaseFlag = System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"\s*-db\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
+                              System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"[\p{P}]\s*-db\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        var hasAudioFlag = System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"\s*-a\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
+                           System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"[\p{P}]\s*-a\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        var hasImageFlag = System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"\s*-i\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
+                           System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"[\p{P}]\s*-i\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
         // Get global configuration
         var smartRagOptions = _serviceProvider.GetRequiredService<IOptions<SmartRagOptions>>().Value;
@@ -484,18 +491,33 @@ public class QueryHandler(
             EnableDatabaseSearch = hasDatabaseFlag,
             EnableAudioSearch = hasAudioFlag,
             EnableImageSearch = hasImageFlag,
+            // If -d flag is set, disable MCP, audio, and image search (only text documents)
+            // If -db flag is set, disable MCP, document, audio, and image search (only database)
+            // If -a flag is set, disable MCP, document, database, and image search (only audio)
+            // If -i flag is set, disable MCP, document, database, and audio search (only image)
+            EnableMcpSearch = !hasDocumentFlag && !hasDatabaseFlag && !hasAudioFlag && !hasImageFlag, // Only enable MCP if no specific flag is set
             PreferredLanguage = language  // CRITICAL: Pass user's selected language to AI
         };
+        
+        // When -d flag is set, explicitly disable audio and image search (only text documents)
+        if (hasDocumentFlag)
+        {
+            searchOptions.EnableAudioSearch = false;
+            searchOptions.EnableImageSearch = false;
+            searchOptions.EnableMcpSearch = false;
+            searchOptions.EnableDatabaseSearch = false;
+        }
 
-        // Remove flags from query
-        var parts = input.Split(' ');
-        var cleanParts = parts.Where(p => 
-            !p.Equals("-d", StringComparison.OrdinalIgnoreCase) && 
-            !p.Equals("-db", StringComparison.OrdinalIgnoreCase) && 
-            !p.Equals("-a", StringComparison.OrdinalIgnoreCase) && 
-            !p.Equals("-i", StringComparison.OrdinalIgnoreCase));
-            
-        cleanQuery = string.Join(" ", cleanParts);
+        // Remove flags from query using regex
+        cleanQuery = System.Text.RegularExpressions.Regex.Replace(trimmedInput, @"\s*-d\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"[\p{P}]\s*-d\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"\s*-db\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"[\p{P}]\s*-db\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"\s*-a\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"[\p{P}]\s*-a\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"\s*-i\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"[\p{P}]\s*-i\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        cleanQuery = cleanQuery.TrimEnd();
         
         return searchOptions;
     }
