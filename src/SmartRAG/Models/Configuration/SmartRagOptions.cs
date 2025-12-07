@@ -122,17 +122,17 @@ namespace SmartRAG.Models
         /// <summary>
         /// Enable audio file parsing and transcription
         /// </summary>
-        public bool EnableAudioParsing { get; set; } = true;
+        public bool EnableAudioSearch { get; set; } = true;
 
         /// <summary>
         /// Enable image parsing with OCR
         /// </summary>
-        public bool EnableImageParsing { get; set; } = true;
+        public bool EnableImageSearch { get; set; } = true;
 
         /// <summary>
         /// Enable MCP Client support
         /// </summary>
-        public bool EnableMcpClient { get; set; } = false;
+        public bool EnableMcpSearch { get; set; } = false;
 
         /// <summary>
         /// Enable File Watcher support

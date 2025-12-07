@@ -28,6 +28,11 @@ namespace SmartRAG.Models
         public bool EnableImageSearch { get; set; } = true;
 
         /// <summary>
+        /// Enable searching via MCP (Model Context Protocol) integration
+        /// </summary>
+        public bool EnableMcpSearch { get; set; } = true;
+
+        /// <summary>
         /// Preferred language for AI responses (ISO 639-1 language code, e.g., "tr", "en", "de")
         /// If not specified, AI will attempt to detect language from the query
         /// </summary>
@@ -42,8 +47,9 @@ namespace SmartRAG.Models
             {
                 EnableDatabaseSearch = options.Features.EnableDatabaseSearch,
                 EnableDocumentSearch = options.Features.EnableDocumentSearch,
-                EnableAudioSearch = options.Features.EnableAudioParsing,
-                EnableImageSearch = options.Features.EnableImageParsing
+                EnableAudioSearch = options.Features.EnableAudioSearch,
+                EnableImageSearch = options.Features.EnableImageSearch,
+                EnableMcpSearch = options.Features.EnableMcpSearch
             };
         }
     }

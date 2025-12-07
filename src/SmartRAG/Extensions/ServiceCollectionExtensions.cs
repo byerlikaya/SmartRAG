@@ -236,12 +236,12 @@ namespace SmartRAG.Extensions
             services.AddScoped<IImageParserService, ImageParserService>();
             services.AddScoped<IFileParser, PdfFileParser>();
 
-            if (options.Features.EnableImageParsing)
+            if (options.Features.EnableImageSearch)
             {
                 services.AddScoped<IFileParser, ImageFileParser>();
             }
 
-            if (options.Features.EnableAudioParsing)
+            if (options.Features.EnableAudioSearch)
             {
                 services.AddScoped<IFileParser, AudioFileParser>();
                 services.AddScoped<AudioConversionService>();
@@ -251,7 +251,7 @@ namespace SmartRAG.Extensions
 
         private static void RegisterFeatureBasedServices(IServiceCollection services, SmartRagOptions options)
         {
-            if (options.Features.EnableMcpClient)
+            if (options.Features.EnableMcpSearch)
             {
                 services.AddHttpClient();
                 services.AddSingleton<IMcpClient, McpClient>();
@@ -281,7 +281,7 @@ namespace SmartRAG.Extensions
                 options.Features = new FeatureToggles();
             }
             
-            var enableMcp = options.Features.EnableMcpClient;
+            var enableMcp = options.Features.EnableMcpSearch;
             var enableFileWatcher = options.Features.EnableFileWatcher;
             
             if (enableMcp || enableFileWatcher)

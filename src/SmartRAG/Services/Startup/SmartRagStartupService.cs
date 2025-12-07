@@ -37,10 +37,10 @@ namespace SmartRAG.Services.Startup
         /// </summary>
         public async Task StartAsync(CancellationToken cancellationToken)
         {
-            _logger.LogInformation("SmartRagStartupService.StartAsync called. EnableMcpClient: {EnableMcpClient}, EnableFileWatcher: {EnableFileWatcher}",
-                _options.Features.EnableMcpClient, _options.Features.EnableFileWatcher);
+            _logger.LogInformation("SmartRagStartupService.StartAsync called. EnableMcpSearch: {EnableMcpSearch}, EnableFileWatcher: {EnableFileWatcher}",
+                _options.Features.EnableMcpSearch, _options.Features.EnableFileWatcher);
 
-            if (_options.Features.EnableMcpClient)
+            if (_options.Features.EnableMcpSearch)
             {
                 var mcpConnectionManager = _serviceProvider.GetService<IMcpConnectionManager>();
                 if (mcpConnectionManager != null)
