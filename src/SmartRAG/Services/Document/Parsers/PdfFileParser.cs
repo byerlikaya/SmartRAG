@@ -470,10 +470,11 @@ namespace SmartRAG.Services.Document.Parsers
         /// Fixes common PDF text encoding issues
         /// PDF text extraction often produces incorrectly encoded characters, especially for non-ASCII characters
         /// This method attempts to correct encoding issues by:
-        /// 1. Applying Unicode normalization (FormC - Canonical Composition)
-        /// 2. Applying Unicode normalization (FormD - Canonical Decomposition) and recomposing
-        /// 3. Fixing replacement characters () by attempting to decode using common encodings
-        /// 4. Removing invalid Unicode characters
+        /// 1. Attempting to fix common encoding mismatches (Windows-1252/1254/ISO-8859-1 misinterpreted as UTF-8)
+        /// 2. Applying Unicode normalization (FormC - Canonical Composition)
+        /// 3. Applying Unicode normalization (FormD - Canonical Decomposition) and recomposing
+        /// 4. Fixing replacement characters () by attempting to decode using common encodings
+        /// 5. Removing invalid Unicode characters
         /// 
         /// This approach is generic and works for all alphabets (Latin, Cyrillic, Arabic, Chinese, Japanese, Korean, etc.)
         /// without requiring language-specific character mappings.
@@ -485,31 +486,83 @@ namespace SmartRAG.Services.Document.Parsers
 
             try
             {
-                // Step 1: Apply Unicode normalization (FormC - Canonical Composition)
-                // This combines decomposed characters (e.g., "ğ" = "g" + combining dot below) into composed form
-                // FormC is the most common form and works for all languages
-                var normalized = text.Normalize(NormalizationForm.FormC);
-
-                // Step 2: If FormC didn't help, try FormD (Canonical Decomposition) then recompose
-                // This handles cases where characters are in a different normalization form
-                // Some PDFs might store text in decomposed form, which needs to be recomposed
-                if (normalized != text)
+                // Step 1: Check for common encoding issues (mis-encoded characters)
+                // If text contains characters that look like they were mis-encoded from single-byte encodings
+                // (e.g., "õ" instead of correct characters in languages using Latin-based scripts), attempt to fix by trying common encodings
+                var fixedText = text;
+                var replacementChar = '\uFFFD'; // Unicode replacement character
+                var suspiciousChar = '\u00F5'; // 'õ' character that might indicate encoding issues
+                
+                // Check if text contains encoding issues
+                if (text.Contains(replacementChar) || (text.Contains(suspiciousChar) && text.Count(c => c == suspiciousChar) > text.Length * 0.01))
                 {
-                    // Text changed with FormC, try FormD as well for completeness
-                    var decomposed = text.Normalize(NormalizationForm.FormD);
-                    if (decomposed != text && decomposed != normalized)
+                    // Try to fix by attempting to decode from common single-byte encodings
+                    // The issue: PDF text was extracted as UTF-8 but was actually encoded in a single-byte encoding
+                    // Solution: Treat the text as if it was encoded in a single-byte encoding, then decode properly
+                    var encodingNames = new[] { "Windows-1254", "Windows-1252", "ISO-8859-1" };
+                    
+                    foreach (var encodingName in encodingNames)
                     {
-                        // Recompose from FormD to FormC
-                        normalized = decomposed.Normalize(NormalizationForm.FormC);
+                        try
+                        {
+                            var encoding = Encoding.GetEncoding(encodingName);
+                            // Get bytes of text as if it was UTF-8, then decode as the source encoding
+                            // This handles cases where single-byte encoded text was misinterpreted as UTF-8
+                            var utf8Bytes = Encoding.UTF8.GetBytes(text);
+                            var decoded = encoding.GetString(utf8Bytes);
+                            
+                            // Re-encode to UTF-8 properly
+                            var properBytes = encoding.GetBytes(decoded);
+                            var correctedText = Encoding.UTF8.GetString(Encoding.Convert(encoding, Encoding.UTF8, properBytes));
+                            
+                            // Check if corrected text is better (has fewer replacement characters and suspicious chars)
+                            var originalReplacementCount = text.Count(c => c == replacementChar);
+                            var correctedReplacementCount = correctedText.Count(c => c == replacementChar);
+                            var originalSuspiciousCount = text.Count(c => c == suspiciousChar);
+                            var correctedSuspiciousCount = correctedText.Count(c => c == suspiciousChar);
+                            
+                            if ((correctedReplacementCount < originalReplacementCount) || 
+                                (correctedReplacementCount == originalReplacementCount && correctedSuspiciousCount < originalSuspiciousCount) ||
+                                (correctedReplacementCount == originalReplacementCount && correctedSuspiciousCount == originalSuspiciousCount && correctedText.Length > text.Length * 0.9))
+                            {
+                                fixedText = correctedText;
+                                _logger.LogDebug("Fixed PDF text encoding using {Encoding}: replacement chars {Original}->{Corrected}, suspicious chars {OriginalSusp}->{CorrectedSusp}",
+                                    encodingName, originalReplacementCount, correctedReplacementCount, originalSuspiciousCount, correctedSuspiciousCount);
+                                break;
+                            }
+                        }
+                        catch
+                        {
+                            // Continue to next encoding
+                        }
                     }
                 }
 
-                // Step 3: Remove or fix invalid Unicode characters
+                // Step 2: Apply Unicode normalization (FormC - Canonical Composition)
+                // This combines decomposed characters (e.g., "ğ" = "g" + combining dot below) into composed form
+                // FormC is the most common form and works for all languages
+                var normalizedText = fixedText.Normalize(NormalizationForm.FormC);
+
+                // Step 3: If FormC didn't help, try FormD (Canonical Decomposition) then recompose
+                // This handles cases where characters are in a different normalization form
+                // Some PDFs might store text in decomposed form, which needs to be recomposed
+                if (normalizedText != fixedText)
+                {
+                    // Text changed with FormC, try FormD as well for completeness
+                    var decomposed = fixedText.Normalize(NormalizationForm.FormD);
+                    if (decomposed != fixedText && decomposed != normalizedText)
+                    {
+                        // Recompose from FormD to FormC
+                        normalizedText = decomposed.Normalize(NormalizationForm.FormC);
+                    }
+                }
+
+                // Step 4: Remove or fix invalid Unicode characters
                 // This preserves all valid Unicode characters from all alphabets while removing
                 // only control characters (except common ones like newline, tab)
-                normalized = RemoveInvalidUnicodeCharacters(normalized);
+                normalizedText = RemoveInvalidUnicodeCharacters(normalizedText);
 
-                return normalized;
+                return normalizedText;
             }
             catch (Exception ex)
             {
