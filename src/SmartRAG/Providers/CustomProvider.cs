@@ -52,7 +52,12 @@ namespace SmartRAG.Providers
             if (!isValid)
                 return errorMessage;
 
-            using var client = CreateHttpClient(config.ApiKey);
+            var handler = CreateHttpClientHandler();
+            using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(10) };
+            if (!string.IsNullOrEmpty(config.ApiKey))
+            {
+                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {config.ApiKey}");
+            }
             bool useMessagesFormat = IsMessagesFormat(config.Endpoint);
 
             object payload = CreatePayload(prompt, config, useMessagesFormat);
