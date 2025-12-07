@@ -56,6 +56,11 @@ namespace SmartRAG.Entities
         /// </summary>
         public int EndPosition { get; set; }
 
+        /// <summary>
+        /// Type of the document this chunk belongs to (Document, Audio, Image)
+        /// </summary>
+        public string DocumentType { get; set; } = "Document";
+
         #endregion
     }
 }

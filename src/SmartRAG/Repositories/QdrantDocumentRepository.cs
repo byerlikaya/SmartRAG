@@ -107,6 +107,47 @@ namespace SmartRAG.Repositories
 
 
 
+        /// <summary>
+        /// Determines document type from ContentType and file extension
+        /// </summary>
+        private static string DetermineDocumentType(SmartRAG.Entities.Document document)
+        {
+            if (document == null)
+            {
+                return "Document";
+            }
+
+            if (!string.IsNullOrWhiteSpace(document.ContentType) &&
+                document.ContentType.StartsWith("audio", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Audio";
+            }
+
+            var extension = System.IO.Path.GetExtension(document.FileName)?.ToLowerInvariant();
+            if (!string.IsNullOrWhiteSpace(extension))
+            {
+                switch (extension)
+                {
+                    case ".wav":
+                    case ".mp3":
+                    case ".m4a":
+                    case ".flac":
+                    case ".ogg":
+                        return "Audio";
+                    case ".jpg":
+                    case ".jpeg":
+                    case ".png":
+                    case ".gif":
+                    case ".bmp":
+                    case ".tiff":
+                    case ".webp":
+                        return "Image";
+                }
+            }
+
+            return "Document";
+        }
+
         private static string GetPayloadString(Google.Protobuf.Collections.MapField<string, Value> payload, string key)
         {
             if (payload == null) return string.Empty;
@@ -224,9 +265,13 @@ namespace SmartRAG.Repositories
         {
             var chunkContent = GetPayloadString(point.Payload, "content");
             var chunkUploadedAtStr = GetPayloadString(point.Payload, "uploadedAt");
+            var documentType = GetPayloadString(point.Payload, "documentType");
 
             if (!DateTime.TryParse(chunkUploadedAtStr, null, DateTimeStyles.RoundtripKind, out DateTime chunkCreatedAt))
                 chunkCreatedAt = fallbackCreatedAt;
+
+            if (string.IsNullOrWhiteSpace(documentType))
+                documentType = "Document";
 
             return new DocumentChunk
             {
@@ -234,7 +279,8 @@ namespace SmartRAG.Repositories
                 DocumentId = documentId,
                 Content = chunkContent,
                 Embedding = point.Vectors?.Vector?.Data?.ToList() ?? new List<float>(),
-                CreatedAt = chunkCreatedAt
+                CreatedAt = chunkCreatedAt,
+                DocumentType = documentType
             };
         }
 
@@ -309,6 +355,7 @@ namespace SmartRAG.Repositories
                     point.Payload.Add("fileSize", document.FileSize);
                     point.Payload.Add("uploadedAt", document.UploadedAt.ToString("O"));
                     point.Payload.Add("uploadedBy", document.UploadedBy);
+                    point.Payload.Add("documentType", DetermineDocumentType(document));
 
                     if (document.Metadata != null)
                     {

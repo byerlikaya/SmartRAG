@@ -79,7 +79,8 @@ namespace SmartRAG.Services.Document
                 }
 
                 var documentId = Guid.NewGuid();
-                var chunks = CreateChunks(content, documentId);
+                var documentType = DetermineDocumentType(fileName, contentType);
+                var chunks = CreateChunks(content, documentId, documentType);
 
                 var document = CreateDocument(documentId, fileName, contentType, content, uploadedBy, chunks);
                 document.FileSize = fileSize;
@@ -232,7 +233,43 @@ namespace SmartRAG.Services.Document
             return index;
         }
 
-        private List<DocumentChunk> CreateChunks(string content, Guid documentId)
+        /// <summary>
+        /// Determines document type from ContentType and file extension
+        /// </summary>
+        private static string DetermineDocumentType(string fileName, string contentType)
+        {
+            if (!string.IsNullOrWhiteSpace(contentType) &&
+                contentType.StartsWith("audio", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Audio";
+            }
+
+            var extension = Path.GetExtension(fileName)?.ToLowerInvariant();
+            if (!string.IsNullOrWhiteSpace(extension))
+            {
+                switch (extension)
+                {
+                    case ".wav":
+                    case ".mp3":
+                    case ".m4a":
+                    case ".flac":
+                    case ".ogg":
+                        return "Audio";
+                    case ".jpg":
+                    case ".jpeg":
+                    case ".png":
+                    case ".gif":
+                    case ".bmp":
+                    case ".tiff":
+                    case ".webp":
+                        return "Image";
+                }
+            }
+
+            return "Document";
+        }
+
+        private List<DocumentChunk> CreateChunks(string content, Guid documentId, string documentType)
         {
             var chunks = new List<DocumentChunk>();
             var maxChunkSize = Math.Max(1, _options.MaxChunkSize);
@@ -241,14 +278,14 @@ namespace SmartRAG.Services.Document
 
             if (content.Length <= maxChunkSize)
             {
-                chunks.Add(CreateSingleChunk(content, documentId, 0, 0, content.Length));
+                chunks.Add(CreateSingleChunk(content, documentId, 0, 0, content.Length, documentType));
                 return chunks;
             }
 
-            return CreateMultipleChunks(content, documentId, maxChunkSize, chunkOverlap, minChunkSize);
+            return CreateMultipleChunks(content, documentId, maxChunkSize, chunkOverlap, minChunkSize, documentType);
         }
 
-        private static DocumentChunk CreateSingleChunk(string content, Guid documentId, int chunkIndex, int startPosition, int endPosition)
+        private static DocumentChunk CreateSingleChunk(string content, Guid documentId, int chunkIndex, int startPosition, int endPosition, string documentType)
         {
             return new SmartRAG.Entities.DocumentChunk
             {
@@ -259,11 +296,12 @@ namespace SmartRAG.Services.Document
                 StartPosition = startPosition,
                 EndPosition = endPosition,
                 CreatedAt = DateTime.UtcNow,
-                RelevanceScore = 0.0
+                RelevanceScore = 0.0,
+                DocumentType = documentType
             };
         }
 
-        private static List<DocumentChunk> CreateMultipleChunks(string content, Guid documentId, int maxChunkSize, int chunkOverlap, int minChunkSize)
+        private static List<DocumentChunk> CreateMultipleChunks(string content, Guid documentId, int maxChunkSize, int chunkOverlap, int minChunkSize, string documentType)
         {
             var chunks = new List<DocumentChunk>();
             var startIndex = 0;
@@ -283,7 +321,7 @@ namespace SmartRAG.Services.Document
 
                 if (!string.IsNullOrWhiteSpace(chunkContent))
                 {
-                    chunks.Add(CreateSingleChunk(chunkContent, documentId, chunkIndex, validatedStart, validatedEnd));
+                    chunks.Add(CreateSingleChunk(chunkContent, documentId, chunkIndex, validatedStart, validatedEnd, documentType));
                     chunkIndex++;
                 }
 
