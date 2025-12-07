@@ -99,9 +99,41 @@ namespace SmartRAG.Services.Document
 
                     if (options != null)
                     {
-                        var filteredDocs = await _documentService.GetAllDocumentsFilteredAsync(options);
-                        var allowedDocIds = new HashSet<Guid>(filteredDocs.Select(d => d.Id));
-                        filteredResults = searchResults.Where(c => allowedDocIds.Contains(c.DocumentId)).ToList();
+                        // Filter chunks by document type directly (more efficient than document-level filtering)
+                        var beforeCount = searchResults.Count;
+                        
+                        // Count document types for debugging
+                        var documentTypeCounts = searchResults
+                            .GroupBy(c => c.DocumentType ?? "Document")
+                            .ToDictionary(g => g.Key, g => g.Count());
+                        
+                        filteredResults = searchResults.Where(chunk =>
+                        {
+                            var documentType = chunk.DocumentType ?? "Document";
+                            
+                            // Check if this document type is enabled
+                            if (documentType.Equals("Audio", StringComparison.OrdinalIgnoreCase))
+                                return options.EnableAudioSearch;
+                            
+                            if (documentType.Equals("Image", StringComparison.OrdinalIgnoreCase))
+                                return options.EnableImageSearch;
+                            
+                            // Default to Document type
+                            return options.EnableDocumentSearch;
+                        }).ToList();
+                        
+                        var afterCount = filteredResults.Count;
+                        
+                        _logger.LogInformation("📊 Document Type Filter Applied: {Filtered}/{Total} results kept → Documents: {Doc}, Audio: {Audio}, Image: {Image}",
+                            afterCount, beforeCount, 
+                            documentTypeCounts.GetValueOrDefault("Document", 0), 
+                            documentTypeCounts.GetValueOrDefault("Audio", 0), 
+                            documentTypeCounts.GetValueOrDefault("Image", 0));
+                        
+                        if (afterCount == 0 && beforeCount > 0)
+                        {
+                            _logger.LogWarning("All search results were filtered out by document type. This may indicate a filtering issue.");
+                        }
                     }
 
                     return filteredResults;

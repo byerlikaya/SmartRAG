@@ -82,8 +82,6 @@ namespace SmartRAG.Services.Storage.Qdrant
         {
             try
             {
-                _logger.LogDebug("Starting vector search with {MaxResults} max results", maxResults);
-
                 var allChunks = new List<DocumentChunk>();
                 var collections = await _client.ListCollectionsAsync();
 
@@ -107,8 +105,6 @@ namespace SmartRAG.Services.Storage.Qdrant
                             limit: (ulong)Math.Max(20, maxResults * 4)
                         );
 
-                        _logger.LogDebug("Found {Count} results in collection {Collection}", searchResults.Count, collectionName);
-
                         foreach (var result in searchResults)
                         {
                             var payload = result.Payload;
@@ -118,9 +114,13 @@ namespace SmartRAG.Services.Storage.Qdrant
                                 var content = GetPayloadString(payload, "content");
                                 var docId = GetPayloadString(payload, "documentId");
                                 var chunkIndex = GetPayloadString(payload, "chunkIndex");
+                                var documentType = GetPayloadString(payload, "documentType");
 
                                 if (!string.IsNullOrEmpty(content) && !string.IsNullOrEmpty(docId) && !string.IsNullOrEmpty(chunkIndex))
                                 {
+                                    if (string.IsNullOrWhiteSpace(documentType))
+                                        documentType = "Document";
+
                                     var chunk = new DocumentChunk
                                     {
                                         Id = Guid.NewGuid(),
@@ -129,7 +129,8 @@ namespace SmartRAG.Services.Storage.Qdrant
                                         ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
                                         RelevanceScore = result.Score,
                                         StartPosition = 0,
-                                        EndPosition = content.Length
+                                        EndPosition = content.Length,
+                                        DocumentType = documentType
                                     };
                                     allChunks.Add(chunk);
                                 }
@@ -161,7 +162,6 @@ namespace SmartRAG.Services.Storage.Qdrant
         {
             try
             {
-                _logger.LogDebug("Starting fallback text search for query: {Query}", query);
                 var queryLower = query.ToLowerInvariant();
                 var relevantChunks = new List<DocumentChunk>();
 
@@ -187,9 +187,13 @@ namespace SmartRAG.Services.Storage.Qdrant
                                 var content = GetPayloadString(payload, "content");
                                 var docId = GetPayloadString(payload, "documentId");
                                 var chunkIndex = GetPayloadString(payload, "chunkIndex");
+                                var documentType = GetPayloadString(payload, "documentType");
 
                                 if (!string.IsNullOrEmpty(content) && !string.IsNullOrEmpty(docId) && !string.IsNullOrEmpty(chunkIndex))
                                 {
+                                    if (string.IsNullOrWhiteSpace(documentType))
+                                        documentType = "Document";
+
                                     var contentStr = content.ToLowerInvariant();
 
                                     if (contentStr.Contains(queryLower))
@@ -202,7 +206,8 @@ namespace SmartRAG.Services.Storage.Qdrant
                                             ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
                                             RelevanceScore = DefaultTextSearchScore,
                                             StartPosition = 0,
-                                            EndPosition = content.Length
+                                            EndPosition = content.Length,
+                                            DocumentType = documentType
                                         };
                                         relevantChunks.Add(chunk);
 
@@ -244,8 +249,6 @@ namespace SmartRAG.Services.Storage.Qdrant
 
             try
             {
-                _logger.LogDebug("Starting native hybrid search for query: {Query}", query);
-
                 var collections = await _client.ListCollectionsAsync();
                 var documentCollections = collections.Where(c => c.StartsWith($"{_collectionName}_doc_", StringComparison.OrdinalIgnoreCase)).ToList();
 
@@ -277,7 +280,6 @@ namespace SmartRAG.Services.Storage.Qdrant
 
                             chunk.RelevanceScore = baseScore;
                             hybridResults.Add(chunk);
-                            _logger.LogDebug("Native text match found in chunk {ChunkIndex} with score {Score}", chunk.ChunkIndex, chunk.RelevanceScore);
                         }
                     }
                     catch (Exception ex)
@@ -387,9 +389,13 @@ namespace SmartRAG.Services.Storage.Qdrant
                         var content = GetPayloadString(payload, "content");
                         var docId = GetPayloadString(payload, "documentId");
                         var chunkIndex = GetPayloadString(payload, "chunkIndex");
+                        var documentType = GetPayloadString(payload, "documentType");
 
                         if (!string.IsNullOrEmpty(content) && !string.IsNullOrEmpty(docId) && !string.IsNullOrEmpty(chunkIndex))
                         {
+                            if (string.IsNullOrWhiteSpace(documentType))
+                                documentType = "Document";
+
                             var contentLower = content.ToLowerInvariant();
                             var normalizedContent = NormalizeQueryForFuzzyMatching(contentLower);
 
@@ -421,14 +427,10 @@ namespace SmartRAG.Services.Storage.Qdrant
                                 ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
                                 RelevanceScore = baseScore,
                                 StartPosition = 0,
-                                EndPosition = content.Length
+                                EndPosition = content.Length,
+                                DocumentType = documentType
                             };
                             relevantChunks.Add(chunk);
-
-                            if (relevantChunks.Count <= 3)
-                            {
-                                _logger.LogDebug("Native Search Chunk {Index} Content Preview: {Content}", chunk.ChunkIndex, content[..Math.Min(content.Length, 200)]);
-                            }
                         }
                     }
                 }

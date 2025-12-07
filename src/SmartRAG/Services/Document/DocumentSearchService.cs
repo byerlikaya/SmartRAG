@@ -16,6 +16,7 @@ using SmartRAG.Interfaces.Mcp;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using SmartRAG.Helpers;
 using System.Threading.Tasks;
 
@@ -47,6 +48,16 @@ namespace SmartRAG.Services.Document
         private const double NumberedListBonusPerItem = 100.0;
         private const double NumberedListWordMatchBonus = 10.0;
         private const double DocumentRelevanceBoost = 200.0;
+
+        // Regex patterns for parsing source tags from query
+        // Pattern matches: whitespace or punctuation + tag + optional whitespace at end
+        // This handles cases like "query? -d", "query! -d", "query -d", etc.
+        private const string DocumentTagPattern = @"\s*-d\s*$";
+        private const string DatabaseTagPattern = @"\s*-db\s*$";
+        private const string McpTagPattern = @"\s*-mcp\s*$";
+        private const string AudioTagPattern = @"\s*-a\s*$";
+        private const string ImageTagPattern = @"\s*-i\s*$";
+        private const RegexOptions TagRegexOptions = RegexOptions.IgnoreCase;
 
         #endregion
 
@@ -221,7 +232,39 @@ namespace SmartRAG.Services.Document
             if (string.IsNullOrWhiteSpace(query))
                 throw new ArgumentException("Query cannot be empty", nameof(query));
 
+            // Skip queries that start with / but are not recognized commands
+            // This prevents processing invalid slash commands as regular queries
+            var trimmedQuery = query.Trim();
+            if (trimmedQuery.StartsWith("/", StringComparison.Ordinal))
+            {
+                // Check if it's a recognized command
+                if (!_queryIntentClassifier.TryParseCommand(trimmedQuery, out var parsedCommandType, out var _))
+                {
+                    // Unknown slash command - skip processing
+                    _logger.LogDebug("Skipping unknown slash command: {Query}", trimmedQuery);
+                    return new RagResponse
+                    {
+                        Answer = string.Empty,
+                        Sources = new List<SearchSource>(),
+                        Query = trimmedQuery
+                    };
+                }
+                // If it's a recognized command, continue processing (it will be handled later in the method)
+            }
+
             var searchOptions = options ?? SearchOptions.FromConfig(_options);
+
+            // Parse source tags from query (-d, -db, -mcp, -a, -i)
+            // Only parse tags if options were not provided (to avoid double parsing)
+            if (options == null)
+            {
+                var (cleanedQuery, adjustedOptions) = ParseSourceTags(query, searchOptions);
+                searchOptions = adjustedOptions;
+                query = cleanedQuery;
+            }
+
+            if (string.IsNullOrWhiteSpace(query))
+                throw new ArgumentException("Query cannot be empty after removing tags", nameof(query));
 
             var preferredLanguage = searchOptions.PreferredLanguage;
 
@@ -320,7 +363,7 @@ namespace SmartRAG.Services.Document
                 else
                 {
                     // Both disabled? Check MCP first, then fallback to chat
-                    if (_mcpIntegration != null && _options.Features.EnableMcpClient)
+                    if (_mcpIntegration != null && _options.Features.EnableMcpSearch && searchOptions.EnableMcpSearch)
                     {
                         try
                         {
@@ -393,8 +436,9 @@ namespace SmartRAG.Services.Document
                 }
             }
 
-            if (_mcpIntegration != null && _options.Features.EnableMcpClient && (searchOptions.EnableDocumentSearch || searchOptions.EnableDatabaseSearch))
+            if (_mcpIntegration != null && _options.Features.EnableMcpSearch && searchOptions.EnableMcpSearch)
             {
+                _logger.LogDebug("MCP search enabled. Query: {Query}", query);
                 try
                 {
                     var mcpResults = await _mcpIntegration.QueryWithMcpAsync(query, maxResults);
@@ -452,7 +496,160 @@ namespace SmartRAG.Services.Document
 
         #region Private Methods
 
+        /// <summary>
+        /// Parses source tags from query and adjusts SearchOptions accordingly
+        /// Tags: -d (document), -db (database), -mcp (MCP), -a (audio), -i (image)
+        /// Returns cleaned query without tags
+        /// </summary>
+        private (string cleanedQuery, SearchOptions adjustedOptions) ParseSourceTags(string query, SearchOptions options)
+        {
+            var cleanedQuery = query;
+            var adjustedOptions = new SearchOptions
+            {
+                EnableDatabaseSearch = options.EnableDatabaseSearch,
+                EnableDocumentSearch = options.EnableDocumentSearch,
+                EnableAudioSearch = options.EnableAudioSearch,
+                EnableImageSearch = options.EnableImageSearch,
+                EnableMcpSearch = options.EnableMcpSearch,
+                PreferredLanguage = options.PreferredLanguage
+            };
 
+            var trimmedQuery = query.TrimEnd();
+
+            // Parse -d (document only)
+            var dMatch = Regex.Match(trimmedQuery, DocumentTagPattern, TagRegexOptions);
+            
+            if (!dMatch.Success && trimmedQuery.Length >= 3)
+            {
+                var punctuationPattern = @"[\p{P}]\s*-d\s*$";
+                dMatch = Regex.Match(trimmedQuery, punctuationPattern, TagRegexOptions);
+            }
+            
+            if (dMatch.Success)
+            {
+                SetDocumentOnlyOptions(adjustedOptions);
+                cleanedQuery = trimmedQuery.Substring(0, dMatch.Index).TrimEnd();
+                return (cleanedQuery, adjustedOptions);
+            }
+
+            // Parse -db (database only)
+            var dbMatch = Regex.Match(trimmedQuery, DatabaseTagPattern, TagRegexOptions);
+            if (!dbMatch.Success && trimmedQuery.Length >= 4)
+            {
+                var punctuationPattern = @"[\p{P}]\s*-db\s*$";
+                dbMatch = Regex.Match(trimmedQuery, punctuationPattern, TagRegexOptions);
+            }
+            if (dbMatch.Success)
+            {
+                SetDatabaseOnlyOptions(adjustedOptions);
+                cleanedQuery = trimmedQuery.Substring(0, dbMatch.Index).TrimEnd();
+                return (cleanedQuery, adjustedOptions);
+            }
+
+            // Parse -mcp (MCP only)
+            var mcpMatch = Regex.Match(trimmedQuery, McpTagPattern, TagRegexOptions);
+            if (!mcpMatch.Success && trimmedQuery.Length >= 5)
+            {
+                var punctuationPattern = @"[\p{P}]\s*-mcp\s*$";
+                mcpMatch = Regex.Match(trimmedQuery, punctuationPattern, TagRegexOptions);
+            }
+            if (mcpMatch.Success)
+            {
+                SetMcpOnlyOptions(adjustedOptions);
+                cleanedQuery = trimmedQuery.Substring(0, mcpMatch.Index).TrimEnd();
+                return (cleanedQuery, adjustedOptions);
+            }
+
+            // Parse -a (audio only)
+            var aMatch = Regex.Match(trimmedQuery, AudioTagPattern, TagRegexOptions);
+            if (!aMatch.Success && trimmedQuery.Length >= 3)
+            {
+                var punctuationPattern = @"[\p{P}]\s*-a\s*$";
+                aMatch = Regex.Match(trimmedQuery, punctuationPattern, TagRegexOptions);
+            }
+            if (aMatch.Success)
+            {
+                SetAudioOnlyOptions(adjustedOptions);
+                cleanedQuery = trimmedQuery.Substring(0, aMatch.Index).TrimEnd();
+                return (cleanedQuery, adjustedOptions);
+            }
+
+            // Parse -i (image only)
+            var iMatch = Regex.Match(trimmedQuery, ImageTagPattern, TagRegexOptions);
+            if (!iMatch.Success && trimmedQuery.Length >= 3)
+            {
+                var punctuationPattern = @"[\p{P}]\s*-i\s*$";
+                iMatch = Regex.Match(trimmedQuery, punctuationPattern, TagRegexOptions);
+            }
+            if (iMatch.Success)
+            {
+                SetImageOnlyOptions(adjustedOptions);
+                cleanedQuery = trimmedQuery.Substring(0, iMatch.Index).TrimEnd();
+                return (cleanedQuery, adjustedOptions);
+            }
+
+            return (cleanedQuery, adjustedOptions);
+        }
+
+        /// <summary>
+        /// Sets search options for document-only search
+        /// </summary>
+        private static void SetDocumentOnlyOptions(SearchOptions options)
+        {
+            options.EnableDocumentSearch = true;
+            options.EnableDatabaseSearch = false;
+            options.EnableMcpSearch = false;
+            options.EnableAudioSearch = false;
+            options.EnableImageSearch = false;
+        }
+
+        /// <summary>
+        /// Sets search options for database-only search
+        /// </summary>
+        private static void SetDatabaseOnlyOptions(SearchOptions options)
+        {
+            options.EnableDatabaseSearch = true;
+            options.EnableDocumentSearch = false;
+            options.EnableMcpSearch = false;
+            options.EnableAudioSearch = false;
+            options.EnableImageSearch = false;
+        }
+
+        /// <summary>
+        /// Sets search options for MCP-only search
+        /// </summary>
+        private static void SetMcpOnlyOptions(SearchOptions options)
+        {
+            options.EnableMcpSearch = true;
+            options.EnableDocumentSearch = false;
+            options.EnableDatabaseSearch = false;
+            options.EnableAudioSearch = false;
+            options.EnableImageSearch = false;
+        }
+
+        /// <summary>
+        /// Sets search options for audio-only search
+        /// </summary>
+        private static void SetAudioOnlyOptions(SearchOptions options)
+        {
+            options.EnableAudioSearch = true;
+            options.EnableDocumentSearch = false;
+            options.EnableDatabaseSearch = false;
+            options.EnableMcpSearch = false;
+            options.EnableImageSearch = false;
+        }
+
+        /// <summary>
+        /// Sets search options for image-only search
+        /// </summary>
+        private static void SetImageOnlyOptions(SearchOptions options)
+        {
+            options.EnableImageSearch = true;
+            options.EnableDocumentSearch = false;
+            options.EnableDatabaseSearch = false;
+            options.EnableMcpSearch = false;
+            options.EnableAudioSearch = false;
+        }
 
         /// <summary>
         /// Searches for relevant document chunks using repository's optimized search with keyword-based fallback
@@ -476,7 +673,21 @@ namespace SmartRAG.Services.Document
                     {
                         var filteredDocs = await _documentService.GetAllDocumentsFilteredAsync(options);
                         var allowedDocIds = new HashSet<Guid>(filteredDocs.Select(d => d.Id));
+                        
+                        _logger.LogDebug("PerformBasicSearchAsync: Filtering search results. Total results: {Total}, Allowed document IDs: {AllowedCount}, EnableDocumentSearch: {EnableDocumentSearch}, EnableAudioSearch: {EnableAudioSearch}, EnableImageSearch: {EnableImageSearch}",
+                            searchResults.Count, allowedDocIds.Count, options.EnableDocumentSearch, options.EnableAudioSearch, options.EnableImageSearch);
+                        
+                        var beforeCount = searchResults.Count;
                         filteredResults = searchResults.Where(c => allowedDocIds.Contains(c.DocumentId)).ToList();
+                        var afterCount = filteredResults.Count;
+                        
+                        _logger.LogDebug("PerformBasicSearchAsync: Filtered search results: {BeforeCount} -> {AfterCount} chunks", beforeCount, afterCount);
+                        
+                        if (afterCount == 0 && beforeCount > 0)
+                        {
+                            _logger.LogWarning("PerformBasicSearchAsync: All search results were filtered out. This may indicate a filtering issue. Allowed document IDs: {AllowedIds}",
+                                string.Join(", ", allowedDocIds.Take(10)));
+                        }
                     }
 
                     return filteredResults;
@@ -612,11 +823,25 @@ namespace SmartRAG.Services.Document
 
             if (preCalculatedResults != null && preCalculatedResults.Count > 0)
             {
-                preservedChunk0 = preCalculatedResults.FirstOrDefault(c => c.ChunkIndex == 0);
+                // Filter preCalculatedResults by document type if options are provided
+                var filteredPreCalculatedResults = preCalculatedResults;
+                if (options != null)
+                {
+                    var filteredDocs = await _documentService.GetAllDocumentsFilteredAsync(options);
+                    var allowedDocIds = new HashSet<Guid>(filteredDocs.Select(d => d.Id));
+                    var beforeCount = preCalculatedResults.Count;
+                    filteredPreCalculatedResults = preCalculatedResults.Where(c => allowedDocIds.Contains(c.DocumentId)).ToList();
+                    var afterCount = filteredPreCalculatedResults.Count;
+                    
+                    _logger.LogDebug("Filtered preCalculatedResults: {BeforeCount} -> {AfterCount} chunks (EnableDocumentSearch: {EnableDocumentSearch}, EnableAudioSearch: {EnableAudioSearch}, EnableImageSearch: {EnableImageSearch})",
+                        beforeCount, afterCount, options.EnableDocumentSearch, options.EnableAudioSearch, options.EnableImageSearch);
+                }
+                
+                preservedChunk0 = filteredPreCalculatedResults.FirstOrDefault(c => c.ChunkIndex == 0);
                 _logger.LogDebug("PreCalculatedResults contains chunk 0: {HasChunk0}, Total: {Count}",
-                    preservedChunk0 != null, preCalculatedResults.Count);
+                    preservedChunk0 != null, filteredPreCalculatedResults.Count);
 
-                chunks = preCalculatedResults.Where(c => c.ChunkIndex != 0).ToList();
+                chunks = filteredPreCalculatedResults.Where(c => c.ChunkIndex != 0).ToList();
 
                 if (preservedChunk0 != null)
                 {
