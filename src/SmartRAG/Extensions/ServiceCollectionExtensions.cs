@@ -193,6 +193,7 @@ namespace SmartRAG.Extensions
             services.AddScoped<IChunkPrioritizerService, ChunkPrioritizerService>();
             services.AddScoped<IQueryAnalysisService, QueryAnalysisService>();
             services.AddScoped<IResponseBuilderService, ResponseBuilderService>();
+            services.AddScoped<ISourceSelectionService, SourceSelectionService>();
             services.AddScoped<IQueryStrategyOrchestratorService, QueryStrategyOrchestratorService>();
             services.AddScoped<IQueryStrategyExecutorService>(sp =>
             {

@@ -89,6 +89,7 @@ namespace SmartRAG.Services.Document
         private readonly IQueryStrategyOrchestratorService? _strategyOrchestrator;
         private readonly IQueryStrategyExecutorService? _strategyExecutor;
         private readonly IDocumentSearchStrategyService? _documentSearchStrategy;
+        private readonly ISourceSelectionService? _sourceSelectionService;
 
         #endregion
 
@@ -123,6 +124,7 @@ namespace SmartRAG.Services.Document
         /// <param name="strategyOrchestrator">Service for determining query execution strategy</param>
         /// <param name="strategyExecutor">Service for executing query strategies</param>
         /// <param name="documentSearchStrategy">Service for executing document search strategies</param>
+        /// <param name="sourceSelectionService">Service for determining if other sources should be skipped</param>
         public DocumentSearchService(
             IDocumentRepository documentRepository,
             IAIService aiService,
@@ -149,7 +151,8 @@ namespace SmartRAG.Services.Document
             IResponseBuilderService? responseBuilder = null,
             IQueryStrategyOrchestratorService? strategyOrchestrator = null,
             IQueryStrategyExecutorService? strategyExecutor = null,
-            IDocumentSearchStrategyService? documentSearchStrategy = null)
+            IDocumentSearchStrategyService? documentSearchStrategy = null,
+            ISourceSelectionService? sourceSelectionService = null)
         {
             _documentRepository = documentRepository;
             _aiService = aiService;
@@ -177,6 +180,7 @@ namespace SmartRAG.Services.Document
             _strategyOrchestrator = strategyOrchestrator;
             _strategyExecutor = strategyExecutor;
             _documentSearchStrategy = documentSearchStrategy;
+            _sourceSelectionService = sourceSelectionService;
         }
 
         #endregion
@@ -311,6 +315,21 @@ namespace SmartRAG.Services.Document
             var (CanAnswer, Results) = searchOptions.EnableDocumentSearch
                 ? await CanAnswerFromDocumentsAsyncInternal(query, searchOptions, queryTokens)
                 : (CanAnswer: false, Results: new List<DocumentChunk>());
+
+            // Early exit optimization: if documents provide high-confidence results, skip other sources
+            if (_sourceSelectionService != null &&
+                _options.Features.SourceSelection.EnableEarlyExit &&
+                searchOptions.EnableDocumentSearch &&
+                CanAnswer &&
+                await _sourceSelectionService.ShouldSkipOtherSourcesAsync(CanAnswer, Results, _options.Features.SourceSelection.EarlyExitRelevanceThreshold))
+            {
+                _logger.LogInformation("High-confidence document results found, skipping other sources for faster response");
+                if (_strategyExecutor == null)
+                {
+                    throw new InvalidOperationException("IQueryStrategyExecutorService is required for strategy execution");
+                }
+                return await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(query, maxResults, conversationHistory, CanAnswer, preferredLanguage, searchOptions, Results, queryTokens);
+            }
 
             if (_multiDatabaseQueryCoordinator != null && searchOptions.EnableDatabaseSearch)
             {

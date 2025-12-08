@@ -138,5 +138,33 @@ namespace SmartRAG.Models
         /// Enable File Watcher support
         /// </summary>
         public bool EnableFileWatcher { get; set; } = false;
+
+        /// <summary>
+        /// Source selection configuration for early exit optimization
+        /// </summary>
+        public SourceSelectionConfig SourceSelection { get; set; } = new SourceSelectionConfig();
+    }
+
+    /// <summary>
+    /// Configuration for source selection and early exit optimization
+    /// </summary>
+    public class SourceSelectionConfig
+    {
+        /// <summary>
+        /// Minimum relevance score threshold for early exit (0.0-1.0 for vector search, 4.0+ for text search)
+        /// If null, uses adaptive threshold based on score type
+        /// </summary>
+        public double? EarlyExitRelevanceThreshold { get; set; }
+
+        /// <summary>
+        /// Enable early exit optimization
+        /// When enabled, if documents provide high-confidence results, other sources are skipped for faster response
+        /// </summary>
+        public bool EnableEarlyExit { get; set; } = true;
+
+        /// <summary>
+        /// Minimum number of high-quality results required for early exit
+        /// </summary>
+        public int MinResultsForEarlyExit { get; set; } = 1;
     }
 }
