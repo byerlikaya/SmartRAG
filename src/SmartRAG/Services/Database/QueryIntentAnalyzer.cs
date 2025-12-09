@@ -555,10 +555,7 @@ namespace SmartRAG.Services.Database
 
                         if (_logger.IsEnabled(LogLevel.Debug))
                         {
-                            _logger.LogDebug("Auto-added table '{ReferencedTable}' because '{SourceTable}' has foreign key column '{ColumnName}'",
-                                referencedTable.TableName,
-                                currentTableName,
-                                foreignKey.ColumnName);
+                            _logger.LogDebug("Auto-added referenced table due to foreign key relationship (source table has foreign key column, referenced table added to query)");
                         }
                     }
                 }

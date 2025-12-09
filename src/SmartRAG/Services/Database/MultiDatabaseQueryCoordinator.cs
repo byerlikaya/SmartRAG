@@ -84,10 +84,11 @@ namespace SmartRAG.Services.Database
         /// <param name="userQuery">Natural language user query</param>
         /// <param name="preAnalyzedIntent">Pre-analyzed query intent to avoid redundant AI calls</param>
         /// <param name="maxResults">Maximum number of results</param>
+        /// <param name="preferredLanguage">Preferred language for the response (ISO code, e.g., "tr", "en")</param>
         /// <returns>RAG response with data from multiple databases</returns>
         /// <exception cref="ArgumentException">Thrown when <paramref name="userQuery"/> is null or empty.</exception>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="preAnalyzedIntent"/> is null.</exception>
-        public async Task<RagResponse> QueryMultipleDatabasesAsync(string userQuery, QueryIntent preAnalyzedIntent, int maxResults = 5)
+        public async Task<RagResponse> QueryMultipleDatabasesAsync(string userQuery, QueryIntent preAnalyzedIntent, int maxResults = 5, string preferredLanguage = null)
         {
             if (string.IsNullOrWhiteSpace(userQuery))
                 throw new ArgumentException("User query cannot be null or empty", nameof(userQuery));
@@ -118,7 +119,7 @@ namespace SmartRAG.Services.Database
 
                 var mergedData = await _resultMerger.MergeResultsAsync(queryResults, userQuery);
 
-                var finalAnswer = await _resultMerger.GenerateFinalAnswerAsync(userQuery, mergedData, queryResults);
+                var finalAnswer = await _resultMerger.GenerateFinalAnswerAsync(userQuery, mergedData, queryResults, preferredLanguage);
 
                 return finalAnswer;
             }

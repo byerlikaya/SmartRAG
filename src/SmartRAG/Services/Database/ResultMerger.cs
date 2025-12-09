@@ -98,7 +98,8 @@ namespace SmartRAG.Services.Database
         public async Task<RagResponse> GenerateFinalAnswerAsync(
             string userQuery,
             string mergedData,
-            MultiDatabaseQueryResult queryResults)
+            MultiDatabaseQueryResult queryResults,
+            string preferredLanguage = null)
         {
             try
             {
@@ -106,6 +107,14 @@ namespace SmartRAG.Services.Database
                 var hasMergedResults = mergedData.Contains("SMART MERGED RESULTS");
 
                 var promptBuilder = new StringBuilder();
+                
+                // Add language instruction if preferred language is specified
+                if (!string.IsNullOrWhiteSpace(preferredLanguage))
+                {
+                    promptBuilder.AppendLine($"IMPORTANT: Respond in {preferredLanguage.ToUpperInvariant()} language.");
+                    promptBuilder.AppendLine();
+                }
+                
                 promptBuilder.AppendLine("Answer the user's question using ONLY the database information provided.");
                 promptBuilder.AppendLine();
                 promptBuilder.AppendLine("CRITICAL RULES:");
