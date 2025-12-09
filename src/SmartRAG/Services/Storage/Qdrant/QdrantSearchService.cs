@@ -115,15 +115,27 @@ namespace SmartRAG.Services.Storage.Qdrant
                                 var docId = GetPayloadString(payload, "documentId");
                                 var chunkIndex = GetPayloadString(payload, "chunkIndex");
                                 var documentType = GetPayloadString(payload, "documentType");
+                                var chunkIdStr = GetPayloadString(payload, "chunkId");
 
                                 if (!string.IsNullOrEmpty(content) && !string.IsNullOrEmpty(docId) && !string.IsNullOrEmpty(chunkIndex))
                                 {
                                     if (string.IsNullOrWhiteSpace(documentType))
                                         documentType = "Document";
 
+                                    // Use chunkId from payload if available to ensure consistency with GetByIdAsync
+                                    Guid chunkId;
+                                    if (!string.IsNullOrWhiteSpace(chunkIdStr) && Guid.TryParse(chunkIdStr, out var parsedChunkId))
+                                    {
+                                        chunkId = parsedChunkId;
+                                    }
+                                    else
+                                    {
+                                        chunkId = Guid.NewGuid();
+                                    }
+
                                     var chunk = new DocumentChunk
                                     {
-                                        Id = Guid.NewGuid(),
+                                        Id = chunkId, // Use original chunk ID from payload
                                         DocumentId = Guid.Parse(docId),
                                         Content = content,
                                         ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
@@ -188,6 +200,7 @@ namespace SmartRAG.Services.Storage.Qdrant
                                 var docId = GetPayloadString(payload, "documentId");
                                 var chunkIndex = GetPayloadString(payload, "chunkIndex");
                                 var documentType = GetPayloadString(payload, "documentType");
+                                var chunkIdStr = GetPayloadString(payload, "chunkId");
 
                                 if (!string.IsNullOrEmpty(content) && !string.IsNullOrEmpty(docId) && !string.IsNullOrEmpty(chunkIndex))
                                 {
@@ -198,9 +211,20 @@ namespace SmartRAG.Services.Storage.Qdrant
 
                                     if (contentStr.Contains(queryLower))
                                     {
+                                        // Use chunkId from payload if available to ensure consistency
+                                        Guid chunkId;
+                                        if (!string.IsNullOrWhiteSpace(chunkIdStr) && Guid.TryParse(chunkIdStr, out var parsedChunkId))
+                                        {
+                                            chunkId = parsedChunkId;
+                                        }
+                                        else
+                                        {
+                                            chunkId = Guid.NewGuid();
+                                        }
+
                                         var chunk = new DocumentChunk
                                         {
-                                            Id = Guid.NewGuid(),
+                                            Id = chunkId, // Use original chunk ID from payload
                                             DocumentId = Guid.Parse(docId),
                                             Content = content,
                                             ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
@@ -390,6 +414,7 @@ namespace SmartRAG.Services.Storage.Qdrant
                         var docId = GetPayloadString(payload, "documentId");
                         var chunkIndex = GetPayloadString(payload, "chunkIndex");
                         var documentType = GetPayloadString(payload, "documentType");
+                        var chunkIdStr = GetPayloadString(payload, "chunkId");
 
                         if (!string.IsNullOrEmpty(content) && !string.IsNullOrEmpty(docId) && !string.IsNullOrEmpty(chunkIndex))
                         {
@@ -419,9 +444,20 @@ namespace SmartRAG.Services.Storage.Qdrant
                                 baseScore += ExactPhraseMatchBoost * 0.7;
                             }
 
+                            // Use chunkId from payload if available to ensure consistency
+                            Guid chunkId;
+                            if (!string.IsNullOrWhiteSpace(chunkIdStr) && Guid.TryParse(chunkIdStr, out var parsedChunkId))
+                            {
+                                chunkId = parsedChunkId;
+                            }
+                            else
+                            {
+                                chunkId = Guid.NewGuid();
+                            }
+
                             var chunk = new DocumentChunk
                             {
-                                Id = Guid.NewGuid(),
+                                Id = chunkId, // Use original chunk ID from payload
                                 DocumentId = Guid.Parse(docId),
                                 Content = content,
                                 ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),

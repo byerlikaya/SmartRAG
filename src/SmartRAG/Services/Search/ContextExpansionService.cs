@@ -21,9 +21,9 @@ namespace SmartRAG.Services.Search
     {
         #region Constants
 
-        private const int DefaultContextWindow = 2;
-        private const int MaxContextWindow = 5;
-        private const int ComprehensiveWindow = 8;
+        private const int DefaultContextWindow = 3; // Balanced window for good context coverage
+        private const int MaxContextWindow = 15; // Maximum context window size for comprehensive searches
+        private const int ComprehensiveWindow = 8; // Balanced window for comprehensive searches
         private const int SmallChunkCountThreshold = 3;
         private const int SmallChunkWindow = 3;
 
@@ -88,6 +88,9 @@ namespace SmartRAG.Services.Search
                     var document = await _documentRepository.GetByIdAsync(documentId);
                     if (document == null || document.Chunks == null || document.Chunks.Count == 0)
                     {
+                        _logger.LogDebug(
+                            "Document {DocumentId} not found or has no chunks (Chunks: {ChunkCount}), skipping expansion",
+                            documentId, document?.Chunks?.Count ?? 0);
                         foreach (var chunk in documentChunks)
                         {
                             expandedChunks.Add(chunk);
@@ -96,6 +99,9 @@ namespace SmartRAG.Services.Search
                     }
 
                     var sortedDocumentChunks = document.Chunks.OrderBy(c => c.ChunkIndex).ToList();
+                    _logger.LogDebug(
+                        "Expanding context for document {DocumentId}: {FoundChunks} found chunks, {TotalChunks} total chunks in document, window: {Window}",
+                        documentId, documentChunks.Count, sortedDocumentChunks.Count, effectiveWindow);
 
                     foreach (var foundChunk in documentChunks)
                     {
@@ -104,20 +110,50 @@ namespace SmartRAG.Services.Search
                         var chunkIndex = sortedDocumentChunks.FindIndex(c => c.Id == foundChunk.Id);
                         if (chunkIndex < 0)
                         {
+                            _logger.LogDebug(
+                                "Chunk {ChunkId} (Index: {ChunkIndex}) not found in document chunks, skipping expansion",
+                                foundChunk.Id, foundChunk.ChunkIndex);
                             continue;
                         }
 
-                        var startIndex = Math.Max(0, chunkIndex - effectiveWindow);
+                        // Special handling for Chunk 0 in image documents
+                        // Image OCR often separates headers/labels from values across many chunks
+                        // If Chunk 0 is short and lacks numeric values, it's likely a header chunk needing broader context
+                        var adjustedWindow = effectiveWindow;
+                        if (foundChunk.ChunkIndex == 0 && 
+                            foundChunk.DocumentType == "Image" && 
+                            foundChunk.Content != null &&
+                            foundChunk.Content.Length < 500 && 
+                            !ContainsNumericValues(foundChunk.Content))
+                        {
+                            // Expand window significantly for image header chunks to capture associated values
+                            // This helps connect item names with their prices/values that may be many chunks away
+                            adjustedWindow = Math.Min(40, sortedDocumentChunks.Count);
+                            _logger.LogDebug(
+                                "Chunk 0 detected as image header chunk (length: {Length}, no numeric values), expanding window from {OldWindow} to {NewWindow}",
+                                foundChunk.Content.Length, effectiveWindow, adjustedWindow);
+                        }
+
+                        var startIndex = Math.Max(0, chunkIndex - adjustedWindow);
+                        var endIndex = Math.Min(sortedDocumentChunks.Count - 1, chunkIndex + adjustedWindow);
+                        var addedBefore = 0;
+                        var addedAfter = 0;
+
                         for (int i = startIndex; i < chunkIndex; i++)
                         {
                             expandedChunks.Add(sortedDocumentChunks[i]);
+                            addedBefore++;
                         }
 
-                        var endIndex = Math.Min(sortedDocumentChunks.Count - 1, chunkIndex + effectiveWindow);
                         for (int i = chunkIndex + 1; i <= endIndex; i++)
                         {
                             expandedChunks.Add(sortedDocumentChunks[i]);
+                            addedAfter++;
                         }
+
+                        _logger.LogDebug(
+                            "Expanded Chunk {ChunkIndex}: added {Before} chunks before, {After} chunks after (range: {StartIndex}-{EndIndex})",
+                            foundChunk.ChunkIndex, addedBefore, addedAfter, startIndex, endIndex);
                     }
                 }
 
@@ -151,6 +187,8 @@ namespace SmartRAG.Services.Search
                 return ComprehensiveWindow;
             }
 
+            // Use wider context window if there are few chunks (to ensure comprehensive coverage)
+            // No document type prioritization - all document types are treated equally
             if (chunks != null && chunks.Count <= SmallChunkCountThreshold)
             {
                 return SmallChunkWindow;
@@ -172,21 +210,28 @@ namespace SmartRAG.Services.Search
                 return string.Empty;
             }
 
-            var sortedChunks = chunks
-                .OrderByDescending(c => c.ChunkIndex == 0)
-                .ThenBy(c => c.ChunkIndex)
-                .ToList();
+            // DO NOT re-sort chunks here - they are already correctly sorted by DocumentSearchService
+            // Sorting logic in DocumentSearchService:
+            // 1. Original chunks (from initial search) are prioritized
+            // 2. Chunk 0 (document header) is prioritized
+            // 3. Then by relevance score
+            // Re-sorting here would break this carefully constructed order
+            var sortedChunks = chunks;
 
-            var chunk0Included = sortedChunks.Any(c => c.ChunkIndex == 0);
-            if (chunk0Included)
+            // Log top chunk information (sorted by relevance score)
+            if (sortedChunks.Count > 0)
             {
-                var chunk0 = sortedChunks.First(c => c.ChunkIndex == 0);
-                _logger.LogDebug("Chunk 0 included in context (first position). Content preview: {Preview}",
-                    chunk0.Content?[..Math.Min(200, chunk0.Content?.Length ?? 0)] ?? "empty");
-            }
-            else
-            {
-                _logger.LogWarning("Chunk 0 NOT found in chunks list! Total chunks: {Count}", sortedChunks.Count);
+                var topChunk = sortedChunks[0];
+                var chunk0Included = sortedChunks.Any(c => c.ChunkIndex == 0);
+                var chunk0Position = chunk0Included ? sortedChunks.FindIndex(c => c.ChunkIndex == 0) : -1;
+                
+                _logger.LogDebug(
+                    "Top chunk in context: Chunk {ChunkIndex} (Type: {DocumentType}, Score: {Score:F4}, Position: 0/{Total}). Chunk 0 position: {Chunk0Position}",
+                    topChunk.ChunkIndex,
+                    topChunk.DocumentType ?? "Document",
+                    topChunk.RelevanceScore ?? 0.0,
+                    sortedChunks.Count,
+                    chunk0Position >= 0 ? chunk0Position.ToString() : "not found");
             }
 
             var contextBuilder = new StringBuilder();
@@ -229,6 +274,51 @@ namespace SmartRAG.Services.Search
             }
 
             return contextBuilder.ToString();
+        }
+
+        /// <summary>
+        /// Checks if content contains numeric values (prices, quantities, etc.)
+        /// Used to detect header-only chunks that need broader context
+        /// </summary>
+        private static bool ContainsNumericValues(string content)
+        {
+            if (string.IsNullOrWhiteSpace(content))
+                return false;
+
+            // Check for common value patterns: numbers with currency symbols, percentages, or standalone numbers
+            // This is language-agnostic and works for all currency symbols
+            foreach (var c in content)
+            {
+                if (char.IsDigit(c))
+                {
+                    // Found a digit - check surrounding context for value patterns
+                    var index = content.IndexOf(c);
+                    if (index > 0)
+                    {
+                        var prev = content[index - 1];
+                        // Currency symbols, percentage, decimal point indicate numeric value
+                        if (prev == '$' || prev == '€' || prev == '£' || prev == '¥' || prev == '₺' || 
+                            prev == '%' || prev == '.' || prev == ',')
+                            return true;
+                    }
+                    if (index < content.Length - 1)
+                    {
+                        var next = content[index + 1];
+                        // Currency symbols, percentage after number
+                        if (next == '$' || next == '€' || next == '£' || next == '¥' || next == '₺' || 
+                            next == '%' || next == '.' || next == ',')
+                            return true;
+                    }
+                    // Standalone multi-digit number (likely quantity or price without symbol)
+                    var digitCount = 0;
+                    for (int i = index; i < content.Length && char.IsDigit(content[i]); i++)
+                        digitCount++;
+                    if (digitCount >= 2) // 2+ digits = likely a value
+                        return true;
+                }
+            }
+
+            return false;
         }
 
         #endregion

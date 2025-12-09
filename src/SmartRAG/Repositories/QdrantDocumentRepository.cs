@@ -266,6 +266,8 @@ namespace SmartRAG.Repositories
             var chunkContent = GetPayloadString(point.Payload, "content");
             var chunkUploadedAtStr = GetPayloadString(point.Payload, "uploadedAt");
             var documentType = GetPayloadString(point.Payload, "documentType");
+            var chunkIdStr = GetPayloadString(point.Payload, "chunkId");
+            var chunkIndexStr = GetPayloadString(point.Payload, "chunkIndex");
 
             if (!DateTime.TryParse(chunkUploadedAtStr, null, DateTimeStyles.RoundtripKind, out DateTime chunkCreatedAt))
                 chunkCreatedAt = fallbackCreatedAt;
@@ -273,14 +275,35 @@ namespace SmartRAG.Repositories
             if (string.IsNullOrWhiteSpace(documentType))
                 documentType = "Document";
 
+            // Use chunkId from payload if available, otherwise generate new Guid
+            Guid chunkId;
+            if (!string.IsNullOrWhiteSpace(chunkIdStr) && Guid.TryParse(chunkIdStr, out var parsedChunkId))
+            {
+                chunkId = parsedChunkId;
+            }
+            else
+            {
+                chunkId = Guid.NewGuid();
+            }
+
+            // Parse chunkIndex from payload
+            int chunkIndex = 0;
+            if (!string.IsNullOrWhiteSpace(chunkIndexStr) && int.TryParse(chunkIndexStr, out var parsedChunkIndex))
+            {
+                chunkIndex = parsedChunkIndex;
+            }
+
             return new DocumentChunk
             {
-                Id = Guid.NewGuid(),
+                Id = chunkId, // Use original chunk ID from payload to match with search results
                 DocumentId = documentId,
                 Content = chunkContent,
+                ChunkIndex = chunkIndex,
                 Embedding = point.Vectors?.Vector?.Data?.ToList() ?? new List<float>(),
                 CreatedAt = chunkCreatedAt,
-                DocumentType = documentType
+                DocumentType = documentType,
+                StartPosition = 0,
+                EndPosition = chunkContent?.Length ?? 0
             };
         }
 
@@ -355,7 +378,9 @@ namespace SmartRAG.Repositories
                     point.Payload.Add("fileSize", document.FileSize);
                     point.Payload.Add("uploadedAt", document.UploadedAt.ToString("O"));
                     point.Payload.Add("uploadedBy", document.UploadedBy);
-                    point.Payload.Add("documentType", DetermineDocumentType(document));
+                    // Use chunk's own DocumentType (set during parsing) instead of document-level type
+                    // This ensures PDF chunks are marked as "Document", not "Image"
+                    point.Payload.Add("documentType", chunk.DocumentType ?? DetermineDocumentType(document));
 
                     if (document.Metadata != null)
                     {
@@ -394,27 +419,25 @@ namespace SmartRAG.Repositories
         {
             try
             {
-                var filter = new Qdrant.Client.Grpc.Filter
+                // Document chunks are stored in document-specific collections
+                var documentCollectionName = $"{_collectionName}_doc_{id:N}".Replace("-", "");
+                
+                // Check if document collection exists
+                var allCollections = await _client.ListCollectionsAsync();
+                if (!allCollections.Contains(documentCollectionName))
                 {
-                    Must = {
-                    new Qdrant.Client.Grpc.Condition
-                    {
-                        Field = new FieldCondition
-                        {
-                            Key = "id",
-                            Match = new Qdrant.Client.Grpc.Match
-                            {
-                                Keyword = id.ToString()
-                            }
-                        }
-                    }
+                    Logger.LogDebug("Document collection {Collection} not found for document {DocumentId}", documentCollectionName, id);
+                    return null;
                 }
-                };
 
-                var result = await _client.ScrollAsync(_collectionName, filter, limit: DefaultMaxSearchResults * 10);
+                // Get all chunks from document-specific collection
+                var result = await _client.ScrollAsync(documentCollectionName, limit: 10000); // Get all chunks
 
                 if (result.Result.Count == 0)
+                {
+                    Logger.LogDebug("No chunks found in collection {Collection} for document {DocumentId}", documentCollectionName, id);
                     return null;
+                }
 
                 var firstPoint = result.Result.First();
                 var metadata = ExtractDocumentMetadata(firstPoint.Payload);
@@ -422,21 +445,27 @@ namespace SmartRAG.Repositories
 
                 if (metadata.Id == Guid.Empty)
                 {
+                    Logger.LogWarning("Invalid metadata for document {DocumentId}", id);
                     return null;
                 }
 
                 var document = CreateDocumentFromMetadata(metadata, additionalMetadata);
 
+                // Add all chunks from the document collection
                 foreach (var point in result.Result)
                 {
                     var chunk = CreateDocumentChunk(point, document.Id, metadata.UploadedAt);
                     document.Chunks.Add(chunk);
                 }
 
+                Logger.LogDebug("Retrieved document {DocumentId} with {ChunkCount} chunks from collection {Collection}", 
+                    id, document.Chunks.Count, documentCollectionName);
+
                 return document;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Logger.LogError(ex, "Failed to retrieve document {DocumentId}", id);
                 return null;
             }
         }

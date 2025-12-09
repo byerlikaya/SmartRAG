@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -531,7 +532,9 @@ namespace SmartRAG.Services.Parser
 
                     using var img = Pix.LoadFromMemory(ReadStreamToByteArray(imageStream));
                     using var page = engine.Process(img);
-                    var text = page.GetText();
+                    
+                    // Table-aware OCR: Extract text with spatial positioning to preserve table structure
+                    var text = ExtractTableAwareText(page);
                     var confidence = page.GetMeanConfidence();
 
                     var correctedText = CorrectCommonOcrMistakes(text, language);
@@ -546,6 +549,152 @@ namespace SmartRAG.Services.Parser
                     return (string.Empty, 0f);
                 }
             });
+        }
+
+        /// <summary>
+        /// Extracts text from OCR page with table-aware spatial positioning
+        /// Groups words by rows (Y-coordinate) and columns (X-coordinate) to preserve table structure
+        /// </summary>
+        private static string ExtractTableAwareText(Page page)
+        {
+            var words = new List<(string Text, int X, int Y, int Width)>();
+            
+            // Extract all words with their bounding boxes
+            using (var iterator = page.GetIterator())
+            {
+                iterator.Begin();
+                do
+                {
+                    if (iterator.TryGetBoundingBox(PageIteratorLevel.Word, out var rect))
+                    {
+                        var wordText = iterator.GetText(PageIteratorLevel.Word);
+                        if (!string.IsNullOrWhiteSpace(wordText))
+                        {
+                            words.Add((wordText.Trim(), rect.X1, rect.Y1, rect.Width));
+                        }
+                    }
+                } while (iterator.Next(PageIteratorLevel.Word));
+            }
+
+            if (words.Count == 0)
+            {
+                return page.GetText(); // Fallback to normal text extraction
+            }
+
+            // Group words by rows (Y-coordinate with tolerance for same-line detection)
+            const int rowTolerance = 15; // Pixels tolerance for same row
+            var rows = new List<List<(string Text, int X, int Y, int Width)>>();
+            
+            foreach (var word in words.OrderBy(w => w.Y))
+            {
+                var matchingRow = rows.FirstOrDefault(r => 
+                    Math.Abs(r[0].Y - word.Y) <= rowTolerance);
+                
+                if (matchingRow != null)
+                {
+                    matchingRow.Add(word);
+                }
+                else
+                {
+                    rows.Add(new List<(string Text, int X, int Y, int Width)> { word });
+                }
+            }
+
+            // Detect if this is a multi-column layout (table/menu structure)
+            var hasMultipleColumns = DetectMultiColumnLayout(rows);
+            
+            if (hasMultipleColumns)
+            {
+                return ReconstructTableText(rows);
+            }
+            else
+            {
+                // Single column - use normal text extraction
+                return page.GetText();
+            }
+        }
+
+        /// <summary>
+        /// Detects if the layout has multiple columns (table structure)
+        /// </summary>
+        private static bool DetectMultiColumnLayout(List<List<(string Text, int X, int Y, int Width)>> rows)
+        {
+            if (rows.Count < 2) return false;
+
+            // Check if rows have consistent column structure
+            // Look for rows with multiple words spaced apart (indicating columns)
+            int multiColumnRows = 0;
+            
+            foreach (var row in rows)
+            {
+                if (row.Count >= 2)
+                {
+                    var sortedByX = row.OrderBy(w => w.X).ToList();
+                    var gaps = new List<int>();
+                    
+                    for (int i = 1; i < sortedByX.Count; i++)
+                    {
+                        var gap = sortedByX[i].X - (sortedByX[i - 1].X + sortedByX[i - 1].Width);
+                        gaps.Add(gap);
+                    }
+                    
+                    // If there's a significant gap (> 50 pixels), it's likely a multi-column row
+                    if (gaps.Any(g => g > 50))
+                    {
+                        multiColumnRows++;
+                    }
+                }
+            }
+            
+            // If more than 30% of rows have multiple columns, treat as table
+            return multiColumnRows > (rows.Count * 0.3);
+        }
+
+        /// <summary>
+        /// Reconstructs text from table structure, pairing items from left and right columns
+        /// Example: "Product1 Price1\nProduct2 Price2" instead of "Product1 Product2... Price1 Price2..."
+        /// </summary>
+        private static string ReconstructTableText(List<List<(string Text, int X, int Y, int Width)>> rows)
+        {
+            var result = new System.Text.StringBuilder();
+            
+            foreach (var row in rows)
+            {
+                // Sort words in this row by X-coordinate (left to right)
+                var sortedWords = row.OrderBy(w => w.X).ToList();
+                
+                if (sortedWords.Count == 0) continue;
+                
+                // Detect column boundaries
+                if (sortedWords.Count >= 2)
+                {
+                    // Check if this row has a clear left-right split (2 columns)
+                    var midPoint = (sortedWords[0].X + sortedWords[sortedWords.Count - 1].X) / 2;
+                    var leftColumn = sortedWords.Where(w => w.X < midPoint).ToList();
+                    var rightColumn = sortedWords.Where(w => w.X >= midPoint).ToList();
+                    
+                    if (leftColumn.Any() && rightColumn.Any())
+                    {
+                        // Table structure detected: pair left and right columns
+                        result.Append(string.Join(" ", leftColumn.Select(w => w.Text)));
+                        result.Append(" ");
+                        result.Append(string.Join(" ", rightColumn.Select(w => w.Text)));
+                        result.AppendLine();
+                    }
+                    else
+                    {
+                        // Single column or complex layout - output as-is
+                        result.AppendLine(string.Join(" ", sortedWords.Select(w => w.Text)));
+                    }
+                }
+                else
+                {
+                    // Single word row
+                    result.AppendLine(sortedWords[0].Text);
+                }
+            }
+            
+            return result.ToString();
         }
 
         /// <summary>
