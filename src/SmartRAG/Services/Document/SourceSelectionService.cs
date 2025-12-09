@@ -25,7 +25,9 @@ namespace SmartRAG.Services.Document
         private const int DefaultMinResultsForEarlyExit = 1;
         private const double MinScoreRangeForEarlyExit = 0.3;
         private const int TopResultsToCheck = 5;
-        private const double HighConfidenceScoreMargin = 0.3;
+        private const double HighConfidenceScoreMargin = 0.2; // Reduced from 0.3 to allow early exit more readily
+        private const double MinScoreAboveThreshold = 0.1; // Reduced from 0.15 to allow early exit for image results and close scores
+        private const double Epsilon = 0.0001; // For floating point comparison
 
         #endregion
 
@@ -100,11 +102,18 @@ namespace SmartRAG.Services.Document
             var topResults = scores.Take(TopResultsToCheck).ToList();
             var scoreRange = topResults.Count > 1 ? topResults[0] - topResults[topResults.Count - 1] : 0.0;
 
+            // Check if results contain images - images with OCR content should be considered for early exit
+            var hasImageResults = results.Any(r => 
+                string.Equals(r.DocumentType, "Image", StringComparison.OrdinalIgnoreCase) && 
+                r.RelevanceScore.HasValue && 
+                r.RelevanceScore.Value >= threshold);
+
             var shouldSkip = highQualityResults >= minResults;
 
             if (shouldSkip && topScore > ScoreTypeBoundary)
             {
                 var topResultsCount = topResults.Count(s => s >= threshold);
+                var scoreAboveThreshold = topScore - threshold;
                 
                 if (topResultsCount < Math.Min(minResults, TopResultsToCheck))
                 {
@@ -115,19 +124,37 @@ namespace SmartRAG.Services.Document
                 }
                 else if (scoreRange < MinScoreRangeForEarlyExit && scores.Count > 1)
                 {
-                    var highConfidenceThreshold = threshold + HighConfidenceScoreMargin;
-                    if (topScore >= highConfidenceThreshold)
+                    // If results contain images with OCR content, be more lenient with early exit
+                    if (hasImageResults && scoreAboveThreshold >= MinScoreAboveThreshold - Epsilon)
                     {
                         _logger.LogDebug(
-                            "Score range narrow ({Range:F4} < {MinRange:F4}) but top score ({TopScore:F4}) exceeds high-confidence threshold ({HighConfidenceThreshold:F4}), allowing early exit",
-                            scoreRange, MinScoreRangeForEarlyExit, topScore, highConfidenceThreshold);
+                            "Score range narrow ({Range:F4} < {MinRange:F4}) but image results found and top score ({TopScore:F4}) is {ScoreAbove:F4} above threshold ({Threshold:F4}), allowing early exit",
+                            scoreRange, MinScoreRangeForEarlyExit, topScore, scoreAboveThreshold, threshold);
+                    }
+                    // If top score is significantly above threshold, allow early exit despite narrow range
+                    else if (scoreAboveThreshold >= MinScoreAboveThreshold - Epsilon)
+                    {
+                        _logger.LogDebug(
+                            "Score range narrow ({Range:F4} < {MinRange:F4}) but top score ({TopScore:F4}) is {ScoreAbove:F4} above threshold ({Threshold:F4}), allowing early exit",
+                            scoreRange, MinScoreRangeForEarlyExit, topScore, scoreAboveThreshold, threshold);
                     }
                     else
                     {
-                        _logger.LogDebug(
-                            "Score range too narrow ({Range:F4} < {MinRange:F4}) indicating low discrimination, and top score ({TopScore:F4}) below high-confidence threshold ({HighConfidenceThreshold:F4}), checking other sources for better results",
-                            scoreRange, MinScoreRangeForEarlyExit, topScore, highConfidenceThreshold);
-                        shouldSkip = false;
+                        // Check high-confidence threshold as fallback
+                        var highConfidenceThreshold = threshold + HighConfidenceScoreMargin;
+                        if (topScore >= highConfidenceThreshold - Epsilon)
+                        {
+                            _logger.LogDebug(
+                                "Score range narrow ({Range:F4} < {MinRange:F4}) but top score ({TopScore:F4}) exceeds high-confidence threshold ({HighConfidenceThreshold:F4}), allowing early exit",
+                                scoreRange, MinScoreRangeForEarlyExit, topScore, highConfidenceThreshold);
+                        }
+                        else
+                        {
+                            _logger.LogDebug(
+                                "Score range too narrow ({Range:F4} < {MinRange:F4}) and top score ({TopScore:F4}) not sufficiently above threshold ({Threshold:F4}, margin: {ScoreAbove:F4} < {MinMargin:F4}), checking other sources for better results",
+                                scoreRange, MinScoreRangeForEarlyExit, topScore, threshold, scoreAboveThreshold, MinScoreAboveThreshold);
+                            shouldSkip = false;
+                        }
                     }
                 }
                 else if (scoreRange >= MinScoreRangeForEarlyExit)
@@ -141,9 +168,10 @@ namespace SmartRAG.Services.Document
             if (shouldSkip)
             {
                 var confidenceScore = CalculateConfidenceScore(results);
+                var imageInfo = hasImageResults ? " (includes image results)" : "";
                 _logger.LogInformation(
-                    "High-confidence document results found (top score: {TopScore:F4}, threshold: {Threshold:F4}, high-quality results: {HighQualityCount}/{TotalCount}, confidence: {Confidence:F4}), skipping other sources for faster response",
-                    topScore, threshold, highQualityResults, results.Count, confidenceScore);
+                    "High-confidence document results found{ImageInfo} (top score: {TopScore:F4}, threshold: {Threshold:F4}, high-quality results: {HighQualityCount}/{TotalCount}, confidence: {Confidence:F4}), skipping other sources for faster response",
+                    imageInfo, topScore, threshold, highQualityResults, results.Count, confidenceScore);
             }
             else
             {

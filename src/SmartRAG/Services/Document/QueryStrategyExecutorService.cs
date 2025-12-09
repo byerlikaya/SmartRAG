@@ -68,7 +68,7 @@ namespace SmartRAG.Services.Document
                     return await ExecuteDocumentOnlyStrategyAsync(query, maxResults, conversationHistory, canAnswerFromDocuments, preferredLanguage, options, null, queryTokens);
                 }
 
-                var databaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(query, queryIntent, maxResults);
+                var databaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(query, queryIntent, maxResults, preferredLanguage);
 
                 if (_responseBuilder?.HasMeaningfulData(databaseResponse) ?? HasMeaningfulDataFallback(databaseResponse))
                 {
@@ -109,10 +109,40 @@ namespace SmartRAG.Services.Document
                 {
                     if (queryIntent != null)
                     {
-                        var candidateDatabaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(query, queryIntent, maxResults);
+                        var candidateDatabaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(query, queryIntent, maxResults, preferredLanguage);
                         if (_responseBuilder?.HasMeaningfulData(candidateDatabaseResponse) ?? HasMeaningfulDataFallback(candidateDatabaseResponse))
                         {
-                            databaseResponse = candidateDatabaseResponse;
+                            // CRITICAL: For database responses, use CONSERVATIVE quality check
+                            // Only reject if answer explicitly indicates an error or missing data
+                            // Short direct answers (e.g., "Eva De Vries") are VALID and should be accepted
+                            var isExplicitError = IsExplicitDatabaseError(candidateDatabaseResponse.Answer, query);
+                            
+                            if (isExplicitError)
+                            {
+                                // Database has data but AI explicitly cannot answer (e.g., "no information found")
+                                // Allow document search as fallback
+                                _logger.LogInformation("Database returned {RowCount} rows but AI explicitly indicates missing data - allowing document search as fallback", 
+                                    candidateDatabaseResponse.Sources?.Sum(s => {
+                                        if (s.FileName?.Contains(" rows)") == true)
+                                        {
+                                            var match = System.Text.RegularExpressions.Regex.Match(s.FileName, @"\((\d+) rows\)");
+                                            return match.Success ? int.Parse(match.Groups[1].Value) : 0;
+                                        }
+                                        return 0;
+                                    }) ?? 0);
+                                // Keep canAnswerFromDocuments = true to allow document search
+                            }
+                            else
+                            {
+                                databaseResponse = candidateDatabaseResponse;
+                                // CRITICAL: ALWAYS perform document search in hybrid mode
+                                // Even if database has an answer, document might have a BETTER answer
+                                // Let AI merge both results and choose the best one
+                                // This prevents false positives where database query is wrong but returns data
+                                // Example: "Araçta kaç hava yastığı var?" → DB returns facility data (wrong!) → Documents have actual answer
+                                _logger.LogInformation("Database query returned answer, also performing document search for true hybrid strategy");
+                                // Keep canAnswerFromDocuments = true to ALWAYS search documents in hybrid mode
+                            }
                         }
                     }
                 }
@@ -215,6 +245,72 @@ namespace SmartRAG.Services.Document
                 return true;
             }
 
+            return false;
+        }
+
+        /// <summary>
+        /// CONSERVATIVE check for database responses: Only reject if explicitly indicates error or missing data
+        /// This prevents false positives on short, direct answers (e.g., "Eva De Vries", "42", "Tokyo")
+        /// Complies with Rule 6: Uses generic heuristics instead of hardcoded language lists
+        /// </summary>
+        /// <param name="answer">AI-generated answer from database query</param>
+        /// <param name="query">The original user query for echo detection</param>
+        /// <returns>True if answer explicitly indicates error or missing data, False otherwise</returns>
+        private static bool IsExplicitDatabaseError(string? answer, string query)
+        {
+            if (string.IsNullOrWhiteSpace(answer))
+            {
+                return true; // Empty answer is an error
+            }
+
+            var lowerAnswer = answer.ToLowerInvariant();
+
+            // 1. Universal/English explicit negative patterns (acceptable as code lingua franca)
+            var universalNegativePatterns = new[]
+            {
+                "no information", "not found", "not available", "cannot find", "unable to find",
+                "not provided", "no data", "cannot answer", "cannot determine", "could not find",
+                "no results", "not present", "does not exist", "error"
+            };
+
+            if (universalNegativePatterns.Any(p => lowerAnswer.Contains(p)))
+            {
+                return true;
+            }
+
+            // 2. Generic Heuristic: Negative Echo Detection
+            // If the answer largely repeats the query keywords but contains no numeric data, 
+            // it is likely a polite "I couldn't find X" message in the user's language.
+            // This works for Turkish ("Araçta hava yastığı..."), German, Spanish, etc. without hardcoding.
+            
+            if (!string.IsNullOrWhiteSpace(query))
+            {
+                var queryWords = query.ToLowerInvariant()
+                    .Split(new[] { ' ', ',', '.', '?', '!', ':', ';' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Where(w => w.Length > 3) // Filter short words
+                    .ToList();
+
+                if (queryWords.Count > 0)
+                {
+                    int matchCount = queryWords.Count(w => lowerAnswer.Contains(w));
+                    double matchRatio = (double)matchCount / queryWords.Count;
+
+                    // If significant overlap with query (>= 50%) AND no numbers found
+                    // Example: Query "Airbags in vehicle?" -> Answer "No info about airbags in vehicle." (Matches: airbags, vehicle)
+                    if (matchRatio >= 0.5 && !answer.Any(char.IsDigit))
+                    {
+                        // Additional check: If answer is very short (< 30 chars), it might be a direct text answer (e.g. "Toyota Corolla")
+                        // So only apply this if answer has some length (likely a sentence)
+                        if (answer.Length > 30)
+                        {
+                            return true; 
+                        }
+                    }
+                }
+            }
+
+            // If no explicit negative pattern found, accept the answer
+            // This allows short answers like "Eva De Vries" to pass through
             return false;
         }
 

@@ -20,15 +20,13 @@ namespace SmartRAG.Services.Document
         private const double MultipleWordMatchBonus = 20.0; // Bonus for chunks matching 3+ query words
         private const double WordCountScoreBoost = 5.0;
         private const double PunctuationScoreBoost = 2.0;
-        private const double NumberScoreBoost = 2.0;
-        private const double NumberedListScoreBoost = 50.0; // High bonus for numbered lists (for counting questions)
+        private const double NumberedListScoreBoost = 50.0; // Bonus for numbered lists (structural pattern, generic)
         private const double NumberedListItemBonus = 10.0; // Additional bonus per numbered item
         private const double TitlePatternBonus = 15.0; // Bonus for chunks that look like titles/headings
 
         private const int WordCountMin = 10;
         private const int WordCountMax = 100;
         private const int PunctuationCountThreshold = 3;
-        private const int NumberCountThreshold = 2;
         private const int MinPotentialNamesCount = 2;
         private const int ChunkPreviewLength = 100;
         private const double DefaultScoreValue = 0.0;
@@ -131,8 +129,8 @@ namespace SmartRAG.Services.Document
                 var punctuationCount = content.Count(c => ".,;:!?()[]{}".Contains(c));
                 if (punctuationCount >= PunctuationCountThreshold) score += PunctuationScoreBoost;
 
-                var numberCount = content.Count(c => char.IsDigit(c));
-                if (numberCount >= NumberCountThreshold) score += NumberScoreBoost;
+                // No content-specific bonuses (prices, numbers, etc.) - only generic structural patterns
+                // Relevance is determined by word matches and structural content (numbered lists, titles), not by specific content types
 
                 var numberedListPatterns = new[]
                 {
