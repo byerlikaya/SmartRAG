@@ -22,8 +22,9 @@ namespace SmartRAG.Interfaces.Database
         /// <param name="userQuery">Original user query</param>
         /// <param name="mergedData">Merged data from databases</param>
         /// <param name="queryResults">Query results</param>
+        /// <param name="preferredLanguage">Preferred language for the response (ISO code, e.g., "tr", "en")</param>
         /// <returns>RAG response with AI-generated answer</returns>
-        Task<RagResponse> GenerateFinalAnswerAsync(string userQuery, string mergedData, MultiDatabaseQueryResult queryResults);
+        Task<RagResponse> GenerateFinalAnswerAsync(string userQuery, string mergedData, MultiDatabaseQueryResult queryResults, string preferredLanguage = null);
     }
 }
 

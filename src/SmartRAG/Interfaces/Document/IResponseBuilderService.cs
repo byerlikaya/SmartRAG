@@ -37,8 +37,9 @@ namespace SmartRAG.Interfaces.Document
         /// Checks if an answer indicates missing data using language-agnostic patterns
         /// </summary>
         /// <param name="answer">Answer text to check</param>
+        /// <param name="query">Optional original query to check for keyword repetition</param>
         /// <returns>True if answer indicates missing data</returns>
-        bool IndicatesMissingData(string answer);
+        bool IndicatesMissingData(string answer, string? query = null);
 
         /// <summary>
         /// Creates a fallback response when document query cannot answer the question

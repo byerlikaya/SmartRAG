@@ -32,8 +32,9 @@ namespace SmartRAG.Interfaces.Database
         /// <param name="userQuery">Natural language user query</param>
         /// <param name="preAnalyzedIntent">Pre-analyzed query intent to avoid redundant AI calls</param>
         /// <param name="maxResults">Maximum number of results</param>
+        /// <param name="preferredLanguage">Preferred language for the response (ISO code, e.g., "tr", "en")</param>
         /// <returns>RAG response with data from multiple databases</returns>
-        Task<RagResponse> QueryMultipleDatabasesAsync(string userQuery, QueryIntent preAnalyzedIntent, int maxResults = 5);
+        Task<RagResponse> QueryMultipleDatabasesAsync(string userQuery, QueryIntent preAnalyzedIntent, int maxResults = 5, string preferredLanguage = null);
 
         /// <summary>
         /// Generates optimized SQL queries for each database based on intent
