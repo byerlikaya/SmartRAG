@@ -13,15 +13,15 @@ namespace SmartRAG.Services.Database.Validation
     /// </summary>
     public class SqlValidator : ISqlValidator
     {
-        private readonly ILogger _logger;
+        private readonly ILogger<SqlValidator> _logger;
 
         /// <summary>
         /// Initializes a new instance of the SqlValidator
         /// </summary>
         /// <param name="logger">Logger instance</param>
-        public SqlValidator(ILogger logger)
+        public SqlValidator(ILogger<SqlValidator> logger)
         {
-            _logger = logger;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public List<string> ValidateQuery(string sql, DatabaseSchemaInfo schema, List<string> requiredTables)
