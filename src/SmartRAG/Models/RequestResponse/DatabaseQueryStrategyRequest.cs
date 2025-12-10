@@ -1,6 +1,5 @@
 #nullable enable
 
-using SmartRAG.Models;
 using System.Collections.Generic;
 
 namespace SmartRAG.Models.RequestResponse
