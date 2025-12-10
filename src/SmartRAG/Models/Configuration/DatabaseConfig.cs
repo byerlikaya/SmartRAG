@@ -10,11 +10,11 @@ namespace SmartRAG.Models
     public class DatabaseConfig
     {
         private const int DefaultMaxRowsPerTable = 1000;
-        private const int DefaultQueryTimeout = 30;
-        private const int MinMaxRows = 1;
-        private const int MaxMaxRows = 10000;
-        private const int MinTimeout = 1;
-        private const int MaxTimeout = 300;
+        private const int DefaultQueryTimeoutSeconds = 30;
+        private const int MinAllowedRowsPerTable = 1;
+        private const int MaxAllowedRowsPerTable = 10000;
+        private const int MinAllowedTimeoutSeconds = 1;
+        private const int MaxAllowedTimeoutSeconds = 300;
 
         /// <summary>
         /// Type of database to connect to
@@ -40,7 +40,7 @@ namespace SmartRAG.Models
         /// <summary>
         /// Maximum number of rows to extract per table
         /// </summary>
-        [Range(MinMaxRows, MaxMaxRows)]
+        [Range(MinAllowedRowsPerTable, MaxAllowedRowsPerTable)]
         public int MaxRowsPerTable { get; set; } = DefaultMaxRowsPerTable;
 
         /// <summary>
@@ -56,8 +56,8 @@ namespace SmartRAG.Models
         /// <summary>
         /// Query timeout in seconds
         /// </summary>
-        [Range(MinTimeout, MaxTimeout)]
-        public int QueryTimeoutSeconds { get; set; } = DefaultQueryTimeout;
+        [Range(MinAllowedTimeoutSeconds, MaxAllowedTimeoutSeconds)]
+        public int QueryTimeoutSeconds { get; set; } = DefaultQueryTimeoutSeconds;
 
         /// <summary>
         /// Whether to sanitize sensitive data (replace with placeholders)
@@ -65,15 +65,15 @@ namespace SmartRAG.Models
         public bool SanitizeSensitiveData { get; set; } = true;
 
         /// <summary>
-        /// List of column name patterns that contain sensitive data
-        /// These are generic security patterns applicable to any domain
+        /// List of column name patterns that contain sensitive data.
+        /// These are generic security patterns applicable to any domain.
+        /// Users can customize this list based on their specific requirements.
         /// </summary>
         public List<string> SensitiveColumns { get; set; } = new List<string>
         {
             "password", "pwd", "pass", "secret", "token", "key",
             "ssn", "social_security", "social_security_number",
-            "credit_card", "creditcard", "cc_number", "card_number",
-            "email", "email_address", "phone", "phone_number", "mobile"
+            "credit_card", "creditcard", "cc_number", "card_number"
         };
     }
 }
