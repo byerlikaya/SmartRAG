@@ -43,6 +43,8 @@ lang: en
 
 ### Quick Setup (Recommended)
 
+**For Web API Applications:**
+
 ```csharp
 using SmartRAG.Extensions;
 using SmartRAG.Enums;
@@ -50,13 +52,36 @@ using SmartRAG.Enums;
 var builder = WebApplication.CreateBuilder(args);
 
 // Simple one-line configuration
-builder.Services.UseSmartRag(builder.Configuration,
+builder.Services.AddSmartRag(builder.Configuration,
     storageProvider: StorageProvider.InMemory,  // Start with in-memory
     aiProvider: AIProvider.Gemini               // Choose your AI provider
 );
 
 var app = builder.Build();
 app.Run();
+```
+
+**For Console Applications:**
+
+```csharp
+using SmartRAG.Extensions;
+using SmartRAG.Enums;
+
+var services = new ServiceCollection();
+var configuration = new ConfigurationBuilder()
+    .AddJsonFile("appsettings.json")
+    .Build();
+
+// UseSmartRag returns IServiceProvider with auto-started services
+var serviceProvider = services.UseSmartRag(
+    configuration,
+    storageProvider: StorageProvider.InMemory,
+    aiProvider: AIProvider.Gemini,
+    defaultLanguage: "en"  // Optional
+);
+
+// Use the service provider
+var documentService = serviceProvider.GetRequiredService<IDocumentService>();
 ```
 
 ### Advanced Setup
@@ -164,11 +189,11 @@ app.Run();
       "MaxDocuments": 1000
     },
     "Qdrant": {
-      "Host": "localhost:6334",
+      "Host": "localhost",
       "UseHttps": false,
       "ApiKey": "",
       "CollectionName": "smartrag_documents",
-      "VectorSize": 1536,
+      "VectorSize": 768,
       "DistanceMetric": "Cosine"
     },
     "Redis": {

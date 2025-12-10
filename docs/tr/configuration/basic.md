@@ -113,18 +113,6 @@ SmartRagOptions'da mevcut temel yapılandırma seçenekleri:
                 <td>Başlangıçta veritabanı şemalarını otomatik olarak analiz et</td>
             </tr>
             <tr>
-                <td><code>EnablePeriodicSchemaRefresh</code></td>
-                <td><code>bool</code></td>
-                <td><code>true</code></td>
-                <td>Veritabanı şemalarını periyodik olarak yenile</td>
-            </tr>
-            <tr>
-                <td><code>DefaultSchemaRefreshIntervalMinutes</code></td>
-                <td><code>int</code></td>
-                <td><code>60</code></td>
-                <td>Şema yenileme için varsayılan aralık (dakika)</td>
-            </tr>
-            <tr>
                 <td><code>DefaultLanguage</code></td>
                 <td><code>string?</code></td>
                 <td><code>null</code></td>

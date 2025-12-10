@@ -165,11 +165,11 @@ app.Run();
       "MaxDocuments": 1000
     },
     "Qdrant": {
-      "Host": "localhost:6334",
+      "Host": "localhost",
       "UseHttps": false,
       "ApiKey": "",
       "CollectionName": "smartrag_documents",
-      "VectorSize": 1536,
+      "VectorSize": 768,
       "DistanceMetric": "Cosine"
     },
     "Redis": {

@@ -13,6 +13,8 @@ lang: en
 
 <p>Configure SmartRAG in your <code>Program.cs</code> or <code>Startup.cs</code>:</p>
 
+**For Web API Applications:**
+
 ```csharp
 using SmartRAG.Extensions;
 using SmartRAG.Enums;
@@ -20,14 +22,38 @@ using SmartRAG.Enums;
 var builder = WebApplication.CreateBuilder(args);
 
 // Simple one-line configuration
-builder.Services.UseSmartRag(builder.Configuration,
-    storageProvider: StorageProvider.InMemory,  // Start with in-memory
-    aiProvider: AIProvider.Gemini,              // Choose your AI provider
-    defaultLanguage: "tr"                        // Optional: Default language for document processing
-);
+builder.Services.AddSmartRag(builder.Configuration, options =>
+{
+    options.StorageProvider = StorageProvider.InMemory;
+    options.AIProvider = AIProvider.Gemini;
+    options.DefaultLanguage = "tr";  // Optional: Default language for document processing
+});
 
 var app = builder.Build();
 app.Run();
+```
+
+**For Console Applications:**
+
+```csharp
+using SmartRAG.Extensions;
+using SmartRAG.Enums;
+
+var services = new ServiceCollection();
+var configuration = new ConfigurationBuilder()
+    .AddJsonFile("appsettings.json")
+    .Build();
+
+// UseSmartRag returns IServiceProvider with auto-started services
+var serviceProvider = services.UseSmartRag(
+    configuration,
+    storageProvider: StorageProvider.InMemory,
+    aiProvider: AIProvider.Gemini,
+    defaultLanguage: "tr"  // Optional
+);
+
+// Use the service provider
+var documentService = serviceProvider.GetRequiredService<IDocumentService>();
 ```
 
 ### Advanced Setup
@@ -111,18 +137,6 @@ app.Run();
                 <td><code>bool</code></td>
                 <td><code>true</code></td>
                 <td>Automatically analyze database schemas on startup</td>
-            </tr>
-            <tr>
-                <td><code>EnablePeriodicSchemaRefresh</code></td>
-                <td><code>bool</code></td>
-                <td><code>true</code></td>
-                <td>Periodically refresh database schemas</td>
-            </tr>
-            <tr>
-                <td><code>DefaultSchemaRefreshIntervalMinutes</code></td>
-                <td><code>int</code></td>
-                <td><code>60</code></td>
-                <td>Default interval in minutes for schema refresh</td>
             </tr>
             <tr>
                 <td><code>DefaultLanguage</code></td>
