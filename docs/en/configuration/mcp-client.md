@@ -27,7 +27,9 @@ Add the following to your `appsettings.json`:
 ```json
 {
   "SmartRAG": {
-    "EnableMcpClient": true,
+    "Features": {
+      "EnableMcpSearch": true
+    },
     "McpServers": [
       {
         "ServerId": "example-server",
@@ -45,11 +47,11 @@ Add the following to your `appsettings.json`:
 
 ### Configuration Properties
 
-#### EnableMcpClient
+#### Features.EnableMcpSearch
 
 - **Type**: `bool`
-- **Default**: `true`
-- **Description**: Enables or disables MCP Client functionality
+- **Default**: `false`
+- **Description**: Enables or disables MCP Client functionality. When enabled, SmartRAG will query connected MCP servers during search operations.
 
 #### McpServers
 
@@ -75,7 +77,7 @@ You can also configure MCP servers programmatically:
 ```csharp
 services.AddSmartRag(configuration, options =>
 {
-    options.EnableMcpClient = true;
+    options.Features.EnableMcpSearch = true;
     options.McpServers.Add(new McpServerConfig
     {
         ServerId = "example-server",

@@ -68,10 +68,11 @@ hide_title: true
                     </div>
                     <div class="code-content">
                         <pre><code class="language-csharp">// Add SmartRAG to your .NET project
-services.UseSmartRag(configuration,
-    storageProvider: StorageProvider.InMemory,
-    aiProvider: AIProvider.Gemini
-);
+builder.Services.AddSmartRag(builder.Configuration, options =>
+{
+    options.StorageProvider = StorageProvider.InMemory;
+    options.AIProvider = AIProvider.Gemini;
+});
 
 // Upload documents (PDF, Word, Excel, Images, Audio)
 var document = await documentService.UploadDocumentAsync(
@@ -180,7 +181,7 @@ Console.WriteLine(answer.Answer);
                     <i class="fas fa-check-circle"></i>
                 </div>
                 <h3>Production Ready</h3>
-                <p>Zero warnings policy, SOLID/DRY principles, comprehensive error handling, thread-safe operations, and battle-tested in production.</p>
+                <p>Zero warnings policy, SOLID/DRY principles, comprehensive error handling, thread-safe operations, and enterprise-grade quality.</p>
             </div>
         </div>
     </div>

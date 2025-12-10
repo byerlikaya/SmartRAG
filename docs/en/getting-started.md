@@ -32,7 +32,7 @@ lang: en
 </div>
 
 <div class="code-panel" data-tab="xml">
-<pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="3.3.0" /&gt;</code></pre>
+<pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="3.4.0" /&gt;</code></pre>
 </div>
     </div>
 </div>
@@ -51,11 +51,12 @@ using SmartRAG.Enums;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Simple one-line configuration
-builder.Services.AddSmartRag(builder.Configuration,
-    storageProvider: StorageProvider.InMemory,  // Start with in-memory
-    aiProvider: AIProvider.Gemini               // Choose your AI provider
-);
+// Simple configuration
+builder.Services.AddSmartRag(builder.Configuration, options =>
+{
+    options.StorageProvider = StorageProvider.InMemory;  // Start with in-memory
+    options.AIProvider = AIProvider.Gemini;              // Choose your AI provider
+});
 
 var app = builder.Build();
 app.Run();
@@ -207,7 +208,9 @@ app.Run();
     }
   },
   "SmartRAG": {
-    "EnableMcpClient": false,
+    "Features": {
+      "EnableMcpSearch": false
+    },
     "McpServers": [],
     "EnableFileWatcher": false,
     "WatchedFolders": []

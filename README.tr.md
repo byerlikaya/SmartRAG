@@ -32,7 +32,16 @@ dotnet add package SmartRAG
 
 ### **2. Kurulum**
 ```csharp
-builder.Services.UseSmartRag(builder.Configuration,
+// Web API uygulamaları için
+builder.Services.AddSmartRag(builder.Configuration, options =>
+{
+    options.AIProvider = AIProvider.OpenAI;
+    options.StorageProvider = StorageProvider.InMemory;
+});
+
+// Konsol uygulamaları için
+var serviceProvider = services.UseSmartRag(
+    configuration,
     aiProvider: AIProvider.OpenAI,
     storageProvider: StorageProvider.InMemory
 );
@@ -77,7 +86,10 @@ var cevap = await searchService.QueryIntelligenceAsync(
 ```json
 {
   "SmartRAG": {
-    "EnableMcpClient": true,
+    "Features": {
+      "EnableMcpSearch": true,
+      "EnableFileWatcher": true
+    },
     "McpServers": [
       {
         "ServerId": "ornek-sunucu",
@@ -85,14 +97,14 @@ var cevap = await searchService.QueryIntelligenceAsync(
         "TransportType": "Http"
       }
     ],
-    "EnableFileWatcher": true,
     "WatchedFolders": [
       {
         "FolderPath": "/belgeler/yolu",
         "AllowedExtensions": [".pdf", ".docx", ".txt"],
         "AutoUpload": true
       }
-    ]
+    ],
+    "DefaultLanguage": "tr"
   }
 }
 ```
@@ -149,7 +161,7 @@ var cevap = await searchService.QueryIntelligenceAsync(
 
 ## 🚀 **SmartRAG'ı Özel Kılan Nedir?**
 
-- **Tek .NET kütüphanesi** gerçek çoklu veritabanı RAG yetenekleri ile
+- **Gerçek çoklu veritabanı RAG yetenekleri** .NET için
 - **Otomatik şema algılama** farklı veritabanı türleri arasında  
 - **%100 yerel işleme** Ollama ve Whisper.net ile
 - **Kurumsal hazır** kapsamlı hata yönetimi ve loglama ile

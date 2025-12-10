@@ -68,10 +68,11 @@ hide_title: true
                     </div>
                     <div class="code-content">
                         <pre><code class="language-csharp">// SmartRAG'i .NET projenize ekleyin
-services.UseSmartRag(configuration,
-    storageProvider: StorageProvider.InMemory,
-    aiProvider: AIProvider.Gemini
-);
+builder.Services.AddSmartRag(builder.Configuration, options =>
+{
+    options.StorageProvider = StorageProvider.InMemory;
+    options.AIProvider = AIProvider.Gemini;
+});
 
 // Doküman yükleyin (PDF, Word, Excel, Görsel, Ses)
 var document = await documentService.UploadDocumentAsync(
@@ -180,7 +181,7 @@ Console.WriteLine(answer.Answer);
                     <i class="fas fa-check-circle"></i>
                 </div>
                 <h3>Üretime Hazır</h3>
-                <p>Sıfır uyarı politikası, SOLID/DRY prensipleri, kapsamlı hata işleme, thread-safe operasyonlar ve üretimde test edilmiş.</p>
+                <p>Sıfır uyarı politikası, SOLID/DRY prensipleri, kapsamlı hata işleme, thread-safe operasyonlar ve kurumsal kalite.</p>
             </div>
         </div>
     </div>

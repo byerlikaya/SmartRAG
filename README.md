@@ -32,7 +32,16 @@ dotnet add package SmartRAG
 
 ### **2. Setup**
 ```csharp
-builder.Services.UseSmartRag(builder.Configuration,
+// For Web API applications
+builder.Services.AddSmartRag(builder.Configuration, options =>
+{
+    options.AIProvider = AIProvider.OpenAI;
+    options.StorageProvider = StorageProvider.InMemory;
+});
+
+// For Console applications
+var serviceProvider = services.UseSmartRag(
+    configuration,
     aiProvider: AIProvider.OpenAI,
     storageProvider: StorageProvider.InMemory
 );
@@ -77,7 +86,10 @@ var response = await searchService.QueryIntelligenceAsync(
 ```json
 {
   "SmartRAG": {
-    "EnableMcpClient": true,
+    "Features": {
+      "EnableMcpSearch": true,
+      "EnableFileWatcher": true
+    },
     "McpServers": [
       {
         "ServerId": "example-server",
@@ -85,14 +97,14 @@ var response = await searchService.QueryIntelligenceAsync(
         "TransportType": "Http"
       }
     ],
-    "EnableFileWatcher": true,
     "WatchedFolders": [
       {
         "FolderPath": "/path/to/documents",
         "AllowedExtensions": [".pdf", ".docx", ".txt"],
         "AutoUpload": true
       }
-    ]
+    ],
+    "DefaultLanguage": "en"
   }
 }
 ```
@@ -151,7 +163,7 @@ var answer = await searchService.QueryIntelligenceAsync(
 
 ## 🚀 **What Makes SmartRAG Special?**
 
-- **Only .NET library** with native multi-database RAG capabilities
+- **Native multi-database RAG capabilities** for .NET
 - **Automatic schema detection** across different database types  
 - **100% local processing** with Ollama and Whisper.net
 - **Enterprise-ready** with comprehensive error handling and logging

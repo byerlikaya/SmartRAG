@@ -19,7 +19,9 @@ Bu kılavuz, SmartRAG ile MCP (Model Context Protocol) sunucularını entegre ed
 ```json
 {
   "SmartRAG": {
-    "EnableMcpClient": true,
+    "Features": {
+      "EnableMcpSearch": true
+    },
     "McpServers": [
       {
         "ServerId": "hava-sunucu",
@@ -45,7 +47,7 @@ using SmartRAG.Models;
 var services = new ServiceCollection();
 services.AddSmartRag(configuration, options =>
 {
-    options.EnableMcpClient = true;
+    options.Features.EnableMcpSearch = true;
     
     options.McpServers.Add(new McpServerConfig
     {
@@ -141,7 +143,9 @@ Birden fazla MCP sunucusu yapılandırın:
 ```json
 {
   "SmartRAG": {
-    "EnableMcpClient": true,
+    "Features": {
+      "EnableMcpSearch": true
+    },
     "McpServers": [
       {
         "ServerId": "hava-sunucu",

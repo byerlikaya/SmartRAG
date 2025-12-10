@@ -19,7 +19,9 @@ Add MCP server configuration to `appsettings.json`:
 ```json
 {
   "SmartRAG": {
-    "EnableMcpClient": true,
+    "Features": {
+      "EnableMcpSearch": true
+    },
     "McpServers": [
       {
         "ServerId": "weather-server",
@@ -45,7 +47,7 @@ using SmartRAG.Models;
 var services = new ServiceCollection();
 services.AddSmartRag(configuration, options =>
 {
-    options.EnableMcpClient = true;
+    options.Features.EnableMcpSearch = true;
     
     options.McpServers.Add(new McpServerConfig
     {
@@ -141,7 +143,9 @@ Configure multiple MCP servers:
 ```json
 {
   "SmartRAG": {
-    "EnableMcpClient": true,
+    "Features": {
+      "EnableMcpSearch": true
+    },
     "McpServers": [
       {
         "ServerId": "weather-server",

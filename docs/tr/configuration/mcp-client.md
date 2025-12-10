@@ -27,7 +27,9 @@ MCP Client özelliği SmartRAG'ın şunları yapmasına olanak tanır:
 ```json
 {
   "SmartRAG": {
-    "EnableMcpClient": true,
+    "Features": {
+      "EnableMcpSearch": true
+    },
     "McpServers": [
       {
         "ServerId": "ornek-sunucu",
@@ -45,7 +47,7 @@ MCP Client özelliği SmartRAG'ın şunları yapmasına olanak tanır:
 
 ### Yapılandırma Özellikleri
 
-#### EnableMcpClient
+#### Features.EnableMcpSearch
 
 - **Tip**: `bool`
 - **Varsayılan**: `true`
@@ -75,7 +77,7 @@ MCP sunucularını programatik olarak da yapılandırabilirsiniz:
 ```csharp
 services.AddSmartRag(configuration, options =>
 {
-    options.EnableMcpClient = true;
+    options.Features.EnableMcpSearch = true;
     options.McpServers.Add(new McpServerConfig
     {
         ServerId = "ornek-sunucu",

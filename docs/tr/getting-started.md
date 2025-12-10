@@ -33,7 +33,7 @@ lang: tr
 </div>
 
 <div class="code-panel" data-tab="xml">
-<pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="3.3.0" /&gt;</code></pre>
+<pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="3.4.0" /&gt;</code></pre>
 </div>
     </div>
 </div>
@@ -44,20 +44,46 @@ lang: tr
 
 ### Hızlı Kurulum (Önerilen)
 
+**Web API Uygulamaları için:**
+
 ```csharp
 using SmartRAG.Extensions;
 using SmartRAG.Enums;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Tek satırda basit yapılandırma
-builder.Services.UseSmartRag(builder.Configuration,
-    storageProvider: StorageProvider.InMemory,  // In-memory ile başlayın
-    aiProvider: AIProvider.Gemini               // AI sağlayıcınızı seçin
-);
+// Basit yapılandırma
+builder.Services.AddSmartRag(builder.Configuration, options =>
+{
+    options.StorageProvider = StorageProvider.InMemory;  // In-memory ile başlayın
+    options.AIProvider = AIProvider.Gemini;              // AI sağlayıcınızı seçin
+});
 
 var app = builder.Build();
 app.Run();
+```
+
+**Konsol Uygulamaları için:**
+
+```csharp
+using SmartRAG.Extensions;
+using SmartRAG.Enums;
+
+var services = new ServiceCollection();
+var configuration = new ConfigurationBuilder()
+    .AddJsonFile("appsettings.json")
+    .Build();
+
+// UseSmartRag otomatik başlatılmış servislerle IServiceProvider döndürür
+var serviceProvider = services.UseSmartRag(
+    configuration,
+    storageProvider: StorageProvider.InMemory,
+    aiProvider: AIProvider.Gemini,
+    defaultLanguage: "tr"  // Opsiyonel
+);
+
+// Service provider'ı kullan
+var documentService = serviceProvider.GetRequiredService<IDocumentService>();
 ```
 
 ### Gelişmiş Kurulum
@@ -183,7 +209,9 @@ app.Run();
     }
   },
   "SmartRAG": {
-    "EnableMcpClient": false,
+    "Features": {
+      "EnableMcpSearch": false
+    },
     "McpServers": [],
     "EnableFileWatcher": false,
     "WatchedFolders": []

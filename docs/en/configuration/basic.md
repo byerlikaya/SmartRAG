@@ -238,6 +238,141 @@ builder.Services.AddSmartRag(configuration, options =>
     </ul>
 </div>
 
+## Feature Toggles
+
+Control which search capabilities are enabled globally:
+
+```csharp
+builder.Services.AddSmartRag(configuration, options =>
+{
+    options.Features.EnableDatabaseSearch = true;
+    options.Features.EnableDocumentSearch = true;
+    options.Features.EnableAudioSearch = true;
+    options.Features.EnableImageSearch = true;
+    options.Features.EnableMcpSearch = false;
+    options.Features.EnableFileWatcher = false;
+});
+```
+
+### Feature Toggle Options
+
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Option</th>
+                <th>Type</th>
+                <th>Default</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>Features.EnableDatabaseSearch</code></td>
+                <td><code>bool</code></td>
+                <td><code>true</code></td>
+                <td>Enable multi-database query capabilities (SQL Server, MySQL, PostgreSQL, SQLite)</td>
+            </tr>
+            <tr>
+                <td><code>Features.EnableDocumentSearch</code></td>
+                <td><code>bool</code></td>
+                <td><code>true</code></td>
+                <td>Enable document text search (PDF, Word, Excel, etc.)</td>
+            </tr>
+            <tr>
+                <td><code>Features.EnableAudioSearch</code></td>
+                <td><code>bool</code></td>
+                <td><code>true</code></td>
+                <td>Enable audio file transcription and search (MP3, WAV, etc.)</td>
+            </tr>
+            <tr>
+                <td><code>Features.EnableImageSearch</code></td>
+                <td><code>bool</code></td>
+                <td><code>true</code></td>
+                <td>Enable image OCR and search (PNG, JPG, etc.)</td>
+            </tr>
+            <tr>
+                <td><code>Features.EnableMcpSearch</code></td>
+                <td><code>bool</code></td>
+                <td><code>false</code></td>
+                <td>Enable MCP (Model Context Protocol) server integration for external tools</td>
+            </tr>
+            <tr>
+                <td><code>Features.EnableFileWatcher</code></td>
+                <td><code>bool</code></td>
+                <td><code>false</code></td>
+                <td>Enable automatic document indexing from watched folders</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> Feature Toggle Tips</h4>
+    <ul class="mb-0">
+        <li><strong>Per-Request Control:</strong> Use <code>SearchOptions</code> for per-request feature control</li>
+        <li><strong>Global Control:</strong> Use <code>Features</code> for global feature enablement</li>
+        <li><strong>Performance:</strong> Disable unused features to improve performance</li>
+        <li><strong>Resource Management:</strong> Disable audio/image search if not needed to save processing resources</li>
+    </ul>
+</div>
+
+## DocumentType Property
+
+The <code>DocumentType</code> property in <code>DocumentChunk</code> allows filtering chunks by content type:
+
+- **"Document"**: Regular text documents (PDF, Word, Excel, TXT)
+- **"Audio"**: Audio file transcriptions (MP3, WAV, M4A)
+- **"Image"**: Image OCR results (PNG, JPG, etc.)
+
+### Automatic Detection
+
+DocumentType is automatically determined based on file extension and content type:
+
+```csharp
+// Uploaded files are automatically categorized
+var document = await _documentService.UploadDocumentAsync(
+    fileStream, 
+    "invoice.pdf",      // → DocumentType: "Document"
+    "application/pdf",
+    "user-123"
+);
+
+var audio = await _documentService.UploadDocumentAsync(
+    audioStream,
+    "meeting.mp3",      // → DocumentType: "Audio"
+    "audio/mpeg",
+    "user-123"
+);
+
+var image = await _documentService.UploadDocumentAsync(
+    imageStream,
+    "receipt.jpg",      // → DocumentType: "Image"
+    "image/jpeg",
+    "user-123"
+);
+```
+
+### Filtering by DocumentType
+
+Use <code>SearchOptions</code> to filter by document type:
+
+```csharp
+// Search only in text documents
+var options = new SearchOptions
+{
+    EnableDocumentSearch = true,
+    EnableAudioSearch = false,  // Exclude audio chunks
+    EnableImageSearch = false  // Exclude image chunks
+};
+
+var response = await _searchService.QueryIntelligenceAsync(
+    "Find invoice details",
+    maxResults: 10,
+    options: options
+);
+```
+
 ## Retry & Resilience Options
 
 <div class="table-responsive">
