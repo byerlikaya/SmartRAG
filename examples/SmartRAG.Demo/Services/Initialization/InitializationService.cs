@@ -168,26 +168,26 @@ public class InitializationService(
         System.Console.WriteLine("5. 🌐 Other (specify ISO code)");
         System.Console.WriteLine();
 
-        var choice = _console.ReadLine("Selection (default: English): ");
+        var choice = _console.ReadLine("Selection (default: Turkish): ");
 
         var selectedLanguageCode = choice switch
         {
-            "1" or "" => "en",
+            "1" => "en",
             "2" => "de",
-            "3" => "tr",
+            "3" or "" => "tr",
             "4" => "ru",
             "5" => GetCustomLanguageCode(),
-            _ => "en"
+            _ => "tr"
         };
         
         var displayName = choice switch
         {
-            "1" or "" => "English",
+            "1" => "English",
             "2" => "German",
-            "3" => "Turkish",
+            "3" or "" => "Turkish",
             "4" => "Russian",
             "5" => selectedLanguageCode,
-            _ => "English"
+            _ => "Turkish"
         };
 
         System.Console.WriteLine();
