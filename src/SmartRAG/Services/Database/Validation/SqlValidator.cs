@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using SmartRAG.Interfaces.Database;
 using SmartRAG.Models;
 using System;
 using System.Collections.Generic;
@@ -7,10 +8,17 @@ using System.Text.RegularExpressions;
 
 namespace SmartRAG.Services.Database.Validation
 {
-    public class SqlValidator
+    /// <summary>
+    /// Validates SQL queries against database schemas
+    /// </summary>
+    public class SqlValidator : ISqlValidator
     {
         private readonly ILogger _logger;
 
+        /// <summary>
+        /// Initializes a new instance of the SqlValidator
+        /// </summary>
+        /// <param name="logger">Logger instance</param>
         public SqlValidator(ILogger logger)
         {
             _logger = logger;

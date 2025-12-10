@@ -86,8 +86,9 @@ namespace SmartRAG.Providers
                         var embedding = await GenerateEmbeddingAsync(text, config);
                         results[index] = embedding;
                     }
-                    catch
+                    catch (Exception ex)
                     {
+                        Logger.LogWarning(ex, "Failed to generate embedding for text at index {Index}", index);
                         results[index] = new List<float>();
                     }
                     finally

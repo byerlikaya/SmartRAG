@@ -3,9 +3,7 @@ using SmartRAG.Interfaces.AI;
 using SmartRAG.Interfaces.Database;
 using SmartRAG.Interfaces.Database.Strategies;
 using SmartRAG.Models;
-using SmartRAG.Services.Database.Prompts;
 using SmartRAG.Services.Database.Strategies;
-using SmartRAG.Services.Database.Validation;
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
@@ -21,22 +19,33 @@ namespace SmartRAG.Services.Database
         private readonly IDatabaseSchemaAnalyzer _schemaAnalyzer;
         private readonly IAIService _aiService;
         private readonly ISqlDialectStrategyFactory _strategyFactory;
-        private readonly SqlValidator _validator;
-        private readonly SqlPromptBuilder _promptBuilder;
+        private readonly ISqlValidator _validator;
+        private readonly ISqlPromptBuilder _promptBuilder;
         private readonly ILogger<SQLQueryGenerator> _logger;
 
+        /// <summary>
+        /// Initializes a new instance of the SQLQueryGenerator
+        /// </summary>
+        /// <param name="schemaAnalyzer">Database schema analyzer</param>
+        /// <param name="aiService">AI service for query generation</param>
+        /// <param name="strategyFactory">SQL dialect strategy factory</param>
+        /// <param name="validator">SQL validator</param>
+        /// <param name="promptBuilder">SQL prompt builder</param>
+        /// <param name="logger">Logger instance</param>
         public SQLQueryGenerator(
             IDatabaseSchemaAnalyzer schemaAnalyzer,
             IAIService aiService,
             ISqlDialectStrategyFactory strategyFactory,
+            ISqlValidator validator,
+            ISqlPromptBuilder promptBuilder,
             ILogger<SQLQueryGenerator> logger)
         {
-            _schemaAnalyzer = schemaAnalyzer;
-            _aiService = aiService;
-            _strategyFactory = strategyFactory;
-            _logger = logger;
-            _validator = new SqlValidator(logger);
-            _promptBuilder = new SqlPromptBuilder();
+            _schemaAnalyzer = schemaAnalyzer ?? throw new ArgumentNullException(nameof(schemaAnalyzer));
+            _aiService = aiService ?? throw new ArgumentNullException(nameof(aiService));
+            _strategyFactory = strategyFactory ?? throw new ArgumentNullException(nameof(strategyFactory));
+            _validator = validator ?? throw new ArgumentNullException(nameof(validator));
+            _promptBuilder = promptBuilder ?? throw new ArgumentNullException(nameof(promptBuilder));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>

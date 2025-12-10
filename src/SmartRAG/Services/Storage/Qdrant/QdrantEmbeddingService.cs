@@ -74,7 +74,7 @@ namespace SmartRAG.Services.Storage.Qdrant
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Failed to generate embedding for text");
-                return null;
+                return new List<float>();
             }
         }
 

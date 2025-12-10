@@ -1,3 +1,4 @@
+using SmartRAG.Interfaces.Database;
 using SmartRAG.Interfaces.Database.Strategies;
 using SmartRAG.Models;
 using System;
@@ -7,7 +8,10 @@ using System.Text;
 
 namespace SmartRAG.Services.Database.Prompts
 {
-    public class SqlPromptBuilder
+    /// <summary>
+    /// Builds prompts for SQL query generation
+    /// </summary>
+    public class SqlPromptBuilder : ISqlPromptBuilder
     {
         private const int SampleDataLimit = 200;
 

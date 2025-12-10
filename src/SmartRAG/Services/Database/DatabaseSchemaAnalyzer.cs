@@ -180,7 +180,11 @@ namespace SmartRAG.Services.Database
                                 return builder.InitialCatalog;
                             }
                         }
-                        catch { /* Fall through to connection attempt */ }
+                        catch (Exception)
+                        {
+                            // Connection string parsing failed, fall through to connection attempt
+                            // This is expected behavior when connection string format is non-standard
+                        }
                         break;
 
                     case DatabaseType.SQLite:
@@ -204,7 +208,11 @@ namespace SmartRAG.Services.Database
                                 return builder.Database;
                             }
                         }
-                        catch { /* Fall through to connection attempt */ }
+                        catch (Exception)
+                        {
+                            // Connection string parsing failed, fall through to connection attempt
+                            // This is expected behavior when connection string format is non-standard
+                        }
                         break;
 
                     case DatabaseType.PostgreSQL:
@@ -216,7 +224,11 @@ namespace SmartRAG.Services.Database
                                 return builder.Database;
                             }
                         }
-                        catch { /* Fall through to connection attempt */ }
+                        catch (Exception)
+                        {
+                            // Connection string parsing failed, fall through to connection attempt
+                            // This is expected behavior when connection string format is non-standard
+                        }
                         break;
                 }
 

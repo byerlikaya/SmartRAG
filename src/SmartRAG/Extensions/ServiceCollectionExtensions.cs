@@ -17,6 +17,8 @@ using SmartRAG.Interfaces.Storage;
 using SmartRAG.Interfaces.Parser;
 using SmartRAG.Interfaces.Parser.Strategies;
 using SmartRAG.Interfaces.Support;
+using SmartRAG.Services.Database.Validation;
+using SmartRAG.Services.Database.Prompts;
 using SmartRAG.Models;
 using SmartRAG.Services.AI;
 using SmartRAG.Services.Document;
@@ -218,6 +220,8 @@ namespace SmartRAG.Extensions
             services.AddScoped<ISqlDialectStrategy, MySqlDialectStrategy>();
             services.AddScoped<ISqlDialectStrategy, SqlServerDialectStrategy>();
             services.AddScoped<ISqlDialectStrategyFactory, SqlDialectStrategyFactory>();
+            services.AddScoped<ISqlValidator, SqlValidator>();
+            services.AddScoped<ISqlPromptBuilder, SqlPromptBuilder>();
             services.AddScoped<ISQLQueryGenerator, SQLQueryGenerator>();
             services.AddScoped<IDatabaseQueryExecutor, DatabaseQueryExecutor>();
             services.AddScoped<IResultMerger, ResultMerger>();
