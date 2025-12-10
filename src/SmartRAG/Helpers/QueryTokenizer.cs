@@ -25,7 +25,7 @@ namespace SmartRAG.Helpers
             }
 
             var words = query.ToLowerInvariant()
-                .Split(new char[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries)
+                .Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
                 .Where(w => w.Length > MinWordLength)
                 .ToList();
 
