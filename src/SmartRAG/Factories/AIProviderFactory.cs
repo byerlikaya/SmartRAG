@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Http;
 using System.Net.Http;
 using SmartRAG.Enums;
 using SmartRAG.Interfaces.AI;
