@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Http;
 using System.Net.Http;
 using SmartRAG.Enums;
 using SmartRAG.Models;
@@ -17,8 +16,6 @@ namespace SmartRAG.Providers
     /// </summary>
     public class GeminiProvider : BaseAIProvider
     {
-        private readonly ILogger<GeminiProvider> _logger;
-
         /// <summary>
         /// Initializes a new instance of the GeminiProvider
         /// </summary>
@@ -26,7 +23,6 @@ namespace SmartRAG.Providers
         /// <param name="httpClientFactory">HTTP client factory for creating HTTP clients</param>
         public GeminiProvider(ILogger<GeminiProvider> logger, IHttpClientFactory httpClientFactory) : base(logger, httpClientFactory)
         {
-            _logger = logger;
         }
 
         private const string GeminiApiKeyHeader = "x-goog-api-key";

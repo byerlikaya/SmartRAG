@@ -33,6 +33,11 @@ namespace SmartRAG.Providers
             new EventId(6005, "AnthropicBatchEmbeddingRequestError"),
             "Voyage batch embedding request failed: {Error}");
 
+        public static readonly Action<ILogger, Exception> LogAnthropicEmbeddingModelMissing = LoggerMessage.Define(
+            LogLevel.Error,
+            new EventId(6006, "AnthropicEmbeddingModelMissing"),
+            "Anthropic embedding model is required but not provided");
+
         public static readonly Action<ILogger, int, Exception> LogAzureOpenAIRateLimit = LoggerMessage.Define<int>(
             LogLevel.Warning,
             new EventId(7001, "AzureOpenAIRateLimit"),

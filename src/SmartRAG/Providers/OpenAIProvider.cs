@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Http;
 using System.Net.Http;
 using SmartRAG.Enums;
 using SmartRAG.Models;
@@ -17,8 +16,6 @@ namespace SmartRAG.Providers
     /// </summary>
     public class OpenAIProvider : BaseAIProvider
     {
-        private readonly ILogger<OpenAIProvider> _logger;
-
         /// <summary>
         /// Initializes a new instance of the OpenAIProvider
         /// </summary>
@@ -26,7 +23,6 @@ namespace SmartRAG.Providers
         /// <param name="httpClientFactory">HTTP client factory for creating HTTP clients</param>
         public OpenAIProvider(ILogger<OpenAIProvider> logger, IHttpClientFactory httpClientFactory) : base(logger, httpClientFactory)
         {
-            _logger = logger;
         }
 
         private const string ChatCompletionsPath = "chat/completions";

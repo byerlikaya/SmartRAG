@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Http;
 using System.Net.Http;
 using SmartRAG.Enums;
 using SmartRAG.Models;
@@ -17,8 +16,6 @@ namespace SmartRAG.Providers
     /// </summary>
     public class AnthropicProvider : BaseAIProvider
     {
-        private readonly ILogger<AnthropicProvider> _logger;
-
         /// <summary>
         /// Initializes a new instance of the AnthropicProvider
         /// </summary>
@@ -26,12 +23,10 @@ namespace SmartRAG.Providers
         /// <param name="httpClientFactory">HTTP client factory for creating HTTP clients</param>
         public AnthropicProvider(ILogger<AnthropicProvider> logger, IHttpClientFactory httpClientFactory) : base(logger, httpClientFactory)
         {
-            _logger = logger;
         }
 
-        private const string AnthropicApiVersion = "2023-06-01";
+        private const string DefaultAnthropicApiVersion = "2023-06-01";
         private const string DefaultVoyageEndpoint = "https://api.voyageai.com";
-        private const string DefaultVoyageModel = "voyage-3.5";
         private const string VoyageInputType = "document";
 
         public override AIProvider ProviderType => AIProvider.Anthropic;
@@ -43,11 +38,12 @@ namespace SmartRAG.Providers
             if (!isValid)
                 return errorMessage;
 
+            var apiVersion = config.ApiVersion ?? DefaultAnthropicApiVersion;
             var additionalHeaders = new Dictionary<string, string>
-        {
-            { "x-api-key", config.ApiKey },
-            { "anthropic-version", AnthropicApiVersion }
-        };
+                    {
+                        { "x-api-key", config.ApiKey },
+                        { "anthropic-version", apiVersion }
+                    };
 
             using var client = CreateHttpClientWithoutAuth(additionalHeaders);
             var systemMessage = config.SystemMessage;
@@ -89,7 +85,6 @@ namespace SmartRAG.Providers
 
         public override async Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config)
         {
-
             var (isValid, errorMessage) = ValidateEmbeddingConfig(config);
             if (!isValid)
             {
@@ -97,8 +92,14 @@ namespace SmartRAG.Providers
                 return new List<float>();
             }
 
+            if (string.IsNullOrEmpty(config.EmbeddingModel))
+            {
+                ProviderLogMessages.LogAnthropicEmbeddingModelMissing(Logger, null);
+                return new List<float>();
+            }
+
             var voyageApiKey = config.EmbeddingApiKey ?? config.ApiKey;
-            var voyageModel = config.EmbeddingModel ?? DefaultVoyageModel;
+            var voyageModel = config.EmbeddingModel;
 
             var additionalHeaders = new Dictionary<string, string>
             {
@@ -113,7 +114,8 @@ namespace SmartRAG.Providers
                 input_type = VoyageInputType
             };
 
-            var embeddingEndpoint = BuildVoyageUrl("v1/embeddings");
+            var voyageEndpoint = config.EmbeddingEndpoint ?? DefaultVoyageEndpoint;
+            var embeddingEndpoint = BuildVoyageUrl(voyageEndpoint, "v1/embeddings");
 
             var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
 
@@ -155,13 +157,19 @@ namespace SmartRAG.Providers
                 return Enumerable.Range(0, inputList.Count).Select(_ => new List<float>()).ToList();
             }
 
+            if (string.IsNullOrEmpty(config.EmbeddingModel))
+            {
+                ProviderLogMessages.LogAnthropicEmbeddingModelMissing(Logger, null);
+                return new List<List<float>>();
+            }
+
             var voyageApiKey = config.EmbeddingApiKey ?? config.ApiKey;
-            var voyageModel = config.EmbeddingModel ?? DefaultVoyageModel;
+            var voyageModel = config.EmbeddingModel;
 
             var additionalHeaders = new Dictionary<string, string>
-        {
-            { "Authorization", $"Bearer {voyageApiKey}" }
-        };
+                    {
+                         { "Authorization", $"Bearer {voyageApiKey}" }
+                    };
 
             using var client = CreateHttpClientWithoutAuth(additionalHeaders);
             var payload = new
@@ -171,7 +179,8 @@ namespace SmartRAG.Providers
                 input_type = VoyageInputType
             };
 
-            var embeddingEndpoint = BuildVoyageUrl("v1/embeddings");
+            var voyageEndpoint = config.EmbeddingEndpoint ?? DefaultVoyageEndpoint;
+            var embeddingEndpoint = BuildVoyageUrl(voyageEndpoint, "v1/embeddings");
 
             var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
 
@@ -204,9 +213,9 @@ namespace SmartRAG.Providers
         /// <summary>
         /// Build Voyage AI API URL
         /// </summary>
-        private static string BuildVoyageUrl(string path)
+        private static string BuildVoyageUrl(string endpoint, string path)
         {
-            return $"{DefaultVoyageEndpoint}/{path}";
+            return $"{endpoint.TrimEnd('/')}/{path}";
         }
 
         /// <summary>

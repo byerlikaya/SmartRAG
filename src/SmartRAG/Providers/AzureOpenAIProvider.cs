@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Http;
 using System.Net.Http;
 using SmartRAG.Enums;
 using SmartRAG.Models;
@@ -17,8 +16,6 @@ namespace SmartRAG.Providers
     /// </summary>
     public class AzureOpenAIProvider : BaseAIProvider, IDisposable
     {
-        private readonly ILogger<AzureOpenAIProvider> _logger;
-
         /// <summary>
         /// Initializes a new instance of the AzureOpenAIProvider
         /// </summary>
@@ -26,7 +23,6 @@ namespace SmartRAG.Providers
         /// <param name="httpClientFactory">HTTP client factory for creating HTTP clients</param>
         public AzureOpenAIProvider(ILogger<AzureOpenAIProvider> logger, IHttpClientFactory httpClientFactory) : base(logger, httpClientFactory)
         {
-            _logger = logger;
         }
 
         private const int DefaultMaxRetries = 3;

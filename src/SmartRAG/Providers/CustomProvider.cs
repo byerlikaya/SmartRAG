@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Http;
 using System.Net.Http;
 using SmartRAG.Enums;
 using SmartRAG.Models;
@@ -19,8 +18,6 @@ namespace SmartRAG.Providers
     /// </summary>
     public class CustomProvider : BaseAIProvider
     {
-        private readonly ILogger<CustomProvider> _logger;
-
         /// <summary>
         /// Initializes a new instance of the CustomProvider
         /// </summary>
@@ -28,7 +25,6 @@ namespace SmartRAG.Providers
         /// <param name="httpClientFactory">HTTP client factory for creating HTTP clients</param>
         public CustomProvider(ILogger<CustomProvider> logger, IHttpClientFactory httpClientFactory) : base(logger, httpClientFactory)
         {
-            _logger = logger;
         }
 
         private const int DefaultMaxChunkSize = 1000;
@@ -66,10 +62,7 @@ namespace SmartRAG.Providers
         }
 
         /// <summary>
-        /// Override GenerateEmbeddingsBatchAsync with OPTIMIZED approach:
-        /// - Single HttpClient reuse (reduces connection overhead)
-        /// - keep_alive parameter (keeps model loaded in memory)
-        /// - Small concurrency (2) for stability
+        /// Generates embeddings for multiple texts in batches with parallel processing
         /// </summary>
         public override async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config)
         {
@@ -78,7 +71,6 @@ namespace SmartRAG.Providers
                 return new List<List<float>>();
 
             var results = new List<List<float>>(new List<float>[textList.Count]);
-            var startTime = DateTime.UtcNow;
 
             var (isValid, errorMessage) = ValidateConfig(config, requireApiKey: false, requireEndpoint: true, requireModel: false);
             if (!isValid)
@@ -97,12 +89,8 @@ namespace SmartRAG.Providers
 
             using (var client = CreateHttpClient(config.ApiKey))
             {
-
                 const int BatchSize = 200;
-                const int MaxConcurrentBatches = 3; // Process 3 batches in parallel for 2-3x speedup
-
-                Logger.LogInformation("Processing {Count} embeddings in BATCHES of {BatchSize} using Ollama native batch API (parallel: {Concurrency})",
-                    textList.Count, BatchSize, MaxConcurrentBatches);
+                const int MaxConcurrentBatches = 3;
 
                 var sanitizedTexts = textList.Select(t =>
                 {
@@ -132,7 +120,6 @@ namespace SmartRAG.Providers
 
                 for (int batchStart = 0; batchStart < textList.Count; batchStart += BatchSize)
                 {
-                    var currentBatchStart = batchStart; // Capture for closure
                     var batchEnd = Math.Min(batchStart + BatchSize, textList.Count);
                     var batch = sanitizedTexts.Skip(batchStart).Take(BatchSize).ToList();
                     var batchIndices = Enumerable.Range(batchStart, batch.Count).ToList();
@@ -159,9 +146,8 @@ namespace SmartRAG.Providers
             }
 
             var successCount = results.Count(r => r != null && r.Count > 0);
-            var totalTime = DateTime.UtcNow - startTime;
-            Logger.LogInformation("Batch embedding completed: {Success}/{Total} successful ({SuccessRate:F1}%) | Total time: {TotalTime:F1}s",
-                successCount, textList.Count, (successCount * 100.0) / textList.Count, totalTime.TotalSeconds);
+            Logger.LogInformation("Batch embedding completed: {Success}/{Total} successful",
+                successCount, textList.Count);
 
             return results;
         }
@@ -170,39 +156,27 @@ namespace SmartRAG.Providers
             List<string> batch, List<int> batchIndices, int batchNum, int batchStart, int batchEnd, int totalCount,
             List<List<float>> results, object lockObject)
         {
-            var batchStartTime = DateTime.UtcNow;
-            bool shouldLogBatch = batchNum <= 5 || batchNum % 10 == 0;
-
             try
             {
-                if (shouldLogBatch)
-                {
-                    Logger.LogInformation("Sending BATCH {BatchNum} ({Start}-{End}/{Total}) - {Count} texts",
-                        batchNum, batchStart + 1, batchEnd, totalCount, batch.Count);
-                }
-
                 var payload = new Dictionary<string, object>
                 {
                     ["model"] = config.EmbeddingModel,
-                    ["input"] = batch,  // ARRAY of strings - Ollama native batch!
-                    ["keep_alive"] = "10m"  // Keep model loaded in memory longer for faster processing!
+                    ["input"] = batch,
+                    ["keep_alive"] = "10m"
                 };
 
                 var requestTask = MakeHttpRequestAsync(client, embeddingEndpoint, payload, maxRetries: 2);
                 var timeoutTask = Task.Delay(TimeSpan.FromSeconds(15));
                 var completedTask = await Task.WhenAny(requestTask, timeoutTask);
 
-                var batchDuration = (DateTime.UtcNow - batchStartTime).TotalSeconds;
-
                 if (completedTask == timeoutTask)
                 {
-                    Logger.LogWarning("BATCH {BatchNum} TIMEOUT after {Duration:F2}s - Retrying each text individually", batchNum, batchDuration);
+                    Logger.LogWarning("BATCH {BatchNum} TIMEOUT - Retrying each text individually", batchNum);
                     await ProcessIndividualTextsOnFailure(client, embeddingEndpoint, config, batch, batchIndices, results, batchNum);
                 }
                 else
                 {
                     var (success, response, error) = await requestTask;
-                    batchDuration = (DateTime.UtcNow - batchStartTime).TotalSeconds;
 
                     if (success && !string.IsNullOrEmpty(response))
                     {
@@ -218,12 +192,6 @@ namespace SmartRAG.Providers
                                     {
                                         results[batchIndices[i]] = batchEmbeddings[i];
                                     }
-                                }
-
-                                if (shouldLogBatch)
-                                {
-                                    Logger.LogInformation("BATCH {BatchNum} completed in {Duration:F2}s ({Count} embeddings)",
-                                        batchNum, batchDuration, batch.Count);
                                 }
                             }
                             else
@@ -345,18 +313,7 @@ namespace SmartRAG.Providers
                 [paramName] = text ?? ""
             };
 
-            Logger.LogDebug("Ollama embedding payload: {Payload}",
-                JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = false }));
-
             var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
-
-            Logger.LogDebug("Ollama embedding response: Success={Success}, ResponseLength={Length}, Error={Error}",
-                success, response?.Length ?? 0, error ?? "None");
-
-            if (success && !string.IsNullOrEmpty(response))
-            {
-                Logger.LogDebug("Ollama embedding response content: {Response}", response);
-            }
 
             if (!success)
             {
@@ -376,8 +333,7 @@ namespace SmartRAG.Providers
         }
 
         /// <summary>
-        /// Override ChunkTextAsync for custom endpoint optimization
-        /// Uses string concatenation for better compatibility with various APIs
+        /// Splits text into chunks based on sentence boundaries
         /// </summary>
         public override Task<List<string>> ChunkTextAsync(string text, int maxChunkSize = DefaultMaxChunkSize)
         {

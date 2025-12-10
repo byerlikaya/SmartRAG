@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Http;
 using SmartRAG.Enums;
 using SmartRAG.Interfaces.AI;
 using SmartRAG.Models;
@@ -75,24 +74,9 @@ namespace SmartRAG.Providers
             if (textList.Count == 0)
                 return results;
 
-            var processedCount = 0;
-            var lockObject = new object();
-            var lastProgressLog = 0;
+            Logger.LogInformation("Starting batch embedding generation: {Total} texts", textList.Count);
 
-            int ProgressLogInterval;
-            if (textList.Count < 100)
-                ProgressLogInterval = 10;
-            else if (textList.Count < 1000)
-                ProgressLogInterval = 50;
-            else
-                ProgressLogInterval = 100;
-
-            var startTime = System.DateTime.UtcNow;
-
-            Logger.LogInformation("Starting batch embedding generation: {Total} texts (progress every {Interval})",
-                textList.Count, ProgressLogInterval);
-
-            using (var semaphore = new System.Threading.SemaphoreSlim(3)) // Restored concurrency to 3 for performance with stable endpoint
+            using (var semaphore = new System.Threading.SemaphoreSlim(3))
             {
                 var tasks = textList.Select(async (text, index) =>
                 {
@@ -101,48 +85,10 @@ namespace SmartRAG.Providers
                     {
                         var embedding = await GenerateEmbeddingAsync(text, config);
                         results[index] = embedding;
-
-                        lock (lockObject)
-                        {
-                            processedCount++;
-                            var currentProgress = processedCount;
-
-                            bool shouldLog = currentProgress - lastProgressLog >= ProgressLogInterval ||
-                                            currentProgress == 1 ||
-                                            currentProgress == 2 ||
-                                            currentProgress == 3 ||
-                                            currentProgress == 5 ||
-                                            (currentProgress <= 50 && currentProgress % 5 == 0) ||
-                                            (currentProgress <= 100 && currentProgress % 10 == 0) ||
-                                            currentProgress == textList.Count;
-
-                            if (shouldLog)
-                            {
-                                var elapsed = System.DateTime.UtcNow - startTime;
-                                var percentage = (currentProgress * 100.0) / textList.Count;
-                                var avgTimePerEmbedding = elapsed.TotalSeconds / currentProgress;
-                                var remaining = textList.Count - currentProgress;
-                                var estimatedTimeRemaining = TimeSpan.FromSeconds(avgTimePerEmbedding * remaining);
-
-                                Logger.LogInformation("Embedding progress: {Processed}/{Total} ({Percentage:F1}%) | Elapsed: {Elapsed:F1}s | ETA: {ETA:F0}s",
-                                    currentProgress, textList.Count, percentage, elapsed.TotalSeconds, estimatedTimeRemaining.TotalSeconds);
-                                lastProgressLog = currentProgress;
-                            }
-                        }
                     }
                     catch
                     {
                         results[index] = new List<float>();
-
-                        lock (lockObject)
-                        {
-                            processedCount++;
-                            if (processedCount % 10 == 0)
-                            {
-                                Logger.LogWarning("Embedding generation errors: {ErrorCount} errors encountered so far",
-                                    results.Count(r => r != null && r.Count == 0));
-                            }
-                        }
                     }
                     finally
                     {
@@ -154,9 +100,8 @@ namespace SmartRAG.Providers
             }
 
             var successCount = results.Count(r => r != null && r.Count > 0);
-            var totalTime = System.DateTime.UtcNow - startTime;
-            Logger.LogInformation("Batch embedding generation completed: {Success}/{Total} successful ({SuccessRate:F1}%) | Total time: {TotalTime:F1}s",
-                successCount, textList.Count, (successCount * 100.0) / textList.Count, totalTime.TotalSeconds);
+            Logger.LogInformation("Batch embedding generation completed: {Success}/{Total} successful",
+                successCount, textList.Count);
 
             return results;
         }
@@ -296,7 +241,7 @@ namespace SmartRAG.Providers
                     attempt++;
                     if (attempt < maxRetries)
                     {
-                        var delay = BaseDelayMs * (int)Math.Pow(2, attempt - 1); ;
+                        var delay = BaseDelayMs * (int)Math.Pow(2, attempt - 1);
                         await Task.Delay(delay);
                         continue;
                     }
