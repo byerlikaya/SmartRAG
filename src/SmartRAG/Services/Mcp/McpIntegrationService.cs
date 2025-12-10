@@ -244,8 +244,7 @@ namespace SmartRAG.Services.Mcp
                 return true;
             }
 
-            // Filter common English function words that appear in technical contexts
-            // Note: This is a minimal set for technical keyword extraction, not a comprehensive stop word list
+            // Filter common function words that appear in technical contexts
             // The length check above already filters most short function words in any language
             var commonFunctionWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {

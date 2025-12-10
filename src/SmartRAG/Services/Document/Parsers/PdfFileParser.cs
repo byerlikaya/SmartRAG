@@ -20,7 +20,7 @@ namespace SmartRAG.Services.Document.Parsers
     {
         private static readonly string[] SupportedExtensions = { ".pdf" };
         private const string SupportedContentType = "application/pdf";
-        private const int MinTextLengthForOcrFallback = 50; // If extracted text is less than this, use OCR
+        private const int MinTextLengthForOcrFallback = 50;
 
         private readonly IImageParserService _imageParserService;
         private readonly ILogger<PdfFileParser> _logger;
@@ -226,17 +226,8 @@ namespace SmartRAG.Services.Document.Parsers
         {
             if (string.IsNullOrWhiteSpace(text)) return false;
 
-            // Generic pattern detection for encoding issues across all languages:
-            // 1. Words without spaces (e.g., "wordAWord" instead of "word A Word")
-            // 2. Missing special characters (non-ASCII characters that should be present)
-            // 3. Broken word patterns (consonant clusters that suggest missing vowels/special chars)
-
-            // Pattern 1: Check for words that are missing spaces (generic for all languages)
-            // Look for lowercase letter followed immediately by uppercase letter (without space)
-            // This indicates words that should be separated (e.g., "tenAyrlma" → "ten Ayrılma")
-            // However, we need to be careful not to flag valid patterns like "iPhone", "McDonald"
             var hasBrokenSpacing = false;
-            var brokenSpacingCount = 0; // Count occurrences to avoid false positives - declared here for use in Pattern 4
+            var brokenSpacingCount = 0;
             for (int i = 0; i < text.Length - 1; i++)
             {
                 if (char.IsLower(text[i]) && char.IsUpper(text[i + 1]))
@@ -250,7 +241,6 @@ namespace SmartRAG.Services.Document.Parsers
                         if (!isAtWordStart)
                         {
                             brokenSpacingCount++;
-                            // Only flag if we see multiple occurrences (suggests systematic encoding issue)
                             if (brokenSpacingCount >= 2)
                             {
                                 hasBrokenSpacing = true;
@@ -293,16 +283,9 @@ namespace SmartRAG.Services.Document.Parsers
             }
 
             var hasBrokenWordPatterns = false;
-            // However, single-language text is valid, so we need to be careful not to flag it
-            var nonAsciiCharCount = text.Count(c => c > 127); // Non-ASCII characters
+            var nonAsciiCharCount = text.Count(c => c > 127);
             var totalCharCount = text.Count(char.IsLetter);
 
-            // Only flag as encoding issue if:
-            // 1. Text is substantial (>200 letters) - short text might be single-language only (increased from 150)
-            // 2. Has broken spacing (suggests encoding corruption, not just single-language text)
-            // 3. Very low non-ASCII ratio (<1.5%) combined with broken spacing (lowered from 2% to 1.5%)
-            // This avoids false positives for single-language documents and isolated word issues
-            // Made more conservative to reduce false positives for text-based PDFs with minor encoding quirks
             var hasFewSpecialChars = totalCharCount > 200 &&
                                      nonAsciiCharCount < totalCharCount * 0.015 &&
                                      hasBrokenSpacing;
@@ -486,19 +469,12 @@ namespace SmartRAG.Services.Document.Parsers
 
             try
             {
-                // Step 1: Check for common encoding issues (mis-encoded characters)
-                // If text contains characters that look like they were mis-encoded from single-byte encodings
-                // (e.g., "õ" instead of correct characters in languages using Latin-based scripts), attempt to fix by trying common encodings
                 var fixedText = text;
-                var replacementChar = '\uFFFD'; // Unicode replacement character
-                var suspiciousChar = '\u00F5'; // 'õ' character that might indicate encoding issues
+                var replacementChar = '\uFFFD';
+                var suspiciousChar = '\u00F5';
                 
-                // Check if text contains encoding issues
                 if (text.Contains(replacementChar) || (text.Contains(suspiciousChar) && text.Count(c => c == suspiciousChar) > text.Length * 0.01))
                 {
-                    // Try to fix by attempting to decode from common single-byte encodings
-                    // The issue: PDF text was extracted as UTF-8 but was actually encoded in a single-byte encoding
-                    // Solution: Treat the text as if it was encoded in a single-byte encoding, then decode properly
                     var encodingNames = new[] { "Windows-1254", "Windows-1252", "ISO-8859-1" };
                     
                     foreach (var encodingName in encodingNames)
@@ -506,16 +482,12 @@ namespace SmartRAG.Services.Document.Parsers
                         try
                         {
                             var encoding = Encoding.GetEncoding(encodingName);
-                            // Get bytes of text as if it was UTF-8, then decode as the source encoding
-                            // This handles cases where single-byte encoded text was misinterpreted as UTF-8
                             var utf8Bytes = Encoding.UTF8.GetBytes(text);
                             var decoded = encoding.GetString(utf8Bytes);
                             
-                            // Re-encode to UTF-8 properly
                             var properBytes = encoding.GetBytes(decoded);
                             var correctedText = Encoding.UTF8.GetString(Encoding.Convert(encoding, Encoding.UTF8, properBytes));
                             
-                            // Check if corrected text is better (has fewer replacement characters and suspicious chars)
                             var originalReplacementCount = text.Count(c => c == replacementChar);
                             var correctedReplacementCount = correctedText.Count(c => c == replacementChar);
                             var originalSuspiciousCount = text.Count(c => c == suspiciousChar);
@@ -533,33 +505,21 @@ namespace SmartRAG.Services.Document.Parsers
                         }
                         catch
                         {
-                            // Continue to next encoding
                         }
                     }
                 }
 
-                // Step 2: Apply Unicode normalization (FormC - Canonical Composition)
-                // This combines decomposed characters (e.g., "ğ" = "g" + combining dot below) into composed form
-                // FormC is the most common form and works for all languages
                 var normalizedText = fixedText.Normalize(NormalizationForm.FormC);
 
-                // Step 3: If FormC didn't help, try FormD (Canonical Decomposition) then recompose
-                // This handles cases where characters are in a different normalization form
-                // Some PDFs might store text in decomposed form, which needs to be recomposed
                 if (normalizedText != fixedText)
                 {
-                    // Text changed with FormC, try FormD as well for completeness
                     var decomposed = fixedText.Normalize(NormalizationForm.FormD);
                     if (decomposed != fixedText && decomposed != normalizedText)
                     {
-                        // Recompose from FormD to FormC
                         normalizedText = decomposed.Normalize(NormalizationForm.FormC);
                     }
                 }
 
-                // Step 4: Remove or fix invalid Unicode characters
-                // This preserves all valid Unicode characters from all alphabets while removing
-                // only control characters (except common ones like newline, tab)
                 normalizedText = RemoveInvalidUnicodeCharacters(normalizedText);
 
                 return normalizedText;

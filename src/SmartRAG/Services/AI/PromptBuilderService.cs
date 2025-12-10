@@ -1,7 +1,6 @@
 #nullable enable
 
 using System;
-using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using SmartRAG.Interfaces.Support;
@@ -34,22 +33,21 @@ namespace SmartRAG.Services.AI
                 ? $"\n\nRecent conversation context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 3)}\n"
                 : "";
 
-            // Check if query is vague (refers to generic person/entity without naming them)
             var isVagueQuery = IsVagueQuery(query);
 
             var hasQuestionPunctuation = query.IndexOf('?', StringComparison.Ordinal) >= 0 ||
                                        query.IndexOf('¿', StringComparison.Ordinal) >= 0 ||
-                                       query.IndexOf('؟', StringComparison.Ordinal) >= 0; // Spanish, Arabic question marks
+                                       query.IndexOf('؟', StringComparison.Ordinal) >= 0;
             var hasNumbers = query.Any(char.IsDigit);
             var queryTokens = query.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
             var queryLength = queryTokens.Length;
 
 
             var isCountingOrListingQuery = hasQuestionPunctuation && (
-                hasNumbers || // Questions with numbers often ask for counts (universal pattern)
-                queryLength >= 5 || // Longer questions often need comprehensive answers (universal pattern)
-                HasNumericRangeOrList(query) || // Detects patterns like "1-5" or "1, 2, 3" (universal)
-                HasMultipleNumericGroups(query) // Detects multiple number groups (universal)
+                hasNumbers ||
+                queryLength >= 5 ||
+                HasNumericRangeOrList(query) ||
+                HasMultipleNumericGroups(query)
             );
 
             var countingInstructions = isCountingOrListingQuery
@@ -64,8 +62,6 @@ SPECIAL INSTRUCTIONS FOR COUNTING/LISTING QUESTIONS (applies to all languages):
 - Be thorough - scan the ENTIRE context for related information"
                 : "";
 
-            // Vague query instructions only if conversation history exists
-            // If no conversation history, let AI search document context directly (it will find the answer)
             var vagueQueryInstructions = isVagueQuery && !string.IsNullOrEmpty(conversationHistory)
                 ? @"
 SPECIAL INSTRUCTIONS FOR VAGUE QUESTIONS (questions referring to generic person/entity without naming them):
@@ -225,40 +221,22 @@ Answer:";
             if (string.IsNullOrWhiteSpace(query))
                 return false;
 
-            // If query contains a capitalized word pair (likely a name), it's not vague
             var hasName = Regex.IsMatch(query, @"\b\p{Lu}\p{Ll}+\s+\p{Lu}\p{Ll}+\b", RegexOptions.None);
             if (hasName)
                 return false;
 
-            // CONSERVATIVE APPROACH: Only mark as vague if query uses very explicit generic terms
-            // This prevents false positives - if document context has the answer, let AI find it directly
-            
-            // Pattern: Explicit generic person/entity references (language-agnostic structural patterns)
-            // Uses Unicode word boundaries and structural analysis to detect generic references in any language
             var lowerQuery = query.ToLowerInvariant();
             
-            // Pattern 1: Article + generic person/entity term structure
-            // Detects patterns like: "the [person]", "a [worker]", "an [employee]" (works for all languages with articles)
-            // Uses structural pattern: short article word (1-3 chars) + space + longer generic term (4+ chars)
             var articleGenericPattern = @"\b\p{L}{1,3}\s+\p{L}{4,}\b";
             var hasArticleGenericStructure = Regex.IsMatch(lowerQuery, articleGenericPattern, RegexOptions.None);
 
-            // Pattern 2: Possessive form structure (language-agnostic)
-            // Detects possessive patterns: word + possessive marker + space + attribute word
-            // Uses Unicode to detect possessive markers in any language
             var possessivePattern = @"\b\p{L}+\p{M}*\p{L}*\s+\p{L}+\b";
             var hasPossessiveStructure = Regex.IsMatch(lowerQuery, possessivePattern, RegexOptions.None);
 
-            // Pattern 3: Generic term followed by question word structure
-            // Detects patterns asking about attributes without naming the person
-            // Uses structural pattern: generic term + question word
             var genericQuestionPattern = @"\b\p{L}{4,}\s+\p{L}{2,6}\b";
             var hasGenericQuestionStructure = Regex.IsMatch(lowerQuery, genericQuestionPattern, RegexOptions.None);
 
-            // Only mark as vague if query has explicit generic structural patterns
-            // This is conservative - if document context has the answer, AI will find it without vague query instructions
-            // All patterns are language-agnostic and work for any language
-            var isVague = (hasArticleGenericStructure || hasPossessiveStructure || hasGenericQuestionStructure);
+            var isVague = hasArticleGenericStructure || hasPossessiveStructure || hasGenericQuestionStructure;
 
             return isVague;
         }

@@ -11,10 +11,6 @@ namespace SmartRAG.Services.Database.Prompts
     {
         private const int SampleDataLimit = 200;
 
-        // Common function words that are unlikely to be column names
-        // Note: This is a minimal set of English function words for technical keyword extraction
-        // The length check (w.Length > 2) already filters most short function words in any language
-        // This list focuses on filtering common English words that appear in technical query contexts
         private static readonly HashSet<string> FilterStopWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             // Common articles and prepositions
@@ -97,7 +93,6 @@ namespace SmartRAG.Services.Database.Prompts
             sb.AppendLine("    4. EXAMPLE: SELECT EntityID, DescriptiveColumn FROM ... (allows joining with other databases)");
             sb.AppendLine("    5. This allows the system to merge results with the database that has the missing metric.");
 
-            // Add cross-database context if available
             if (fullQueryIntent != null && fullQueryIntent.DatabaseQueries.Count > 1 && fullQueryIntent.RequiresCrossDatabaseJoin)
             {
                 var otherDbQueries = fullQueryIntent.DatabaseQueries
@@ -309,9 +304,9 @@ namespace SmartRAG.Services.Database.Prompts
 
             return words
                 .Where(w =>
-                    w.Length > 2 && // Filter short words (common stop words are usually 1-2 characters)
-                    !FilterStopWords.Contains(w) && // Filter common function words
-                    !IsNumeric(w)) // Filter pure numbers
+                    w.Length > 2 &&
+                    !FilterStopWords.Contains(w) &&
+                    !IsNumeric(w))
                 .Distinct(StringComparer.OrdinalIgnoreCase)
                 .ToList();
         }
@@ -323,7 +318,6 @@ namespace SmartRAG.Services.Database.Prompts
         {
             if (string.IsNullOrWhiteSpace(word)) return false;
 
-            // Remove common numeric separators
             var cleaned = word.Replace(".", "").Replace(",", "").Replace("-", "").Replace("+", "");
 
             return cleaned.Length > 0 && cleaned.All(char.IsDigit);

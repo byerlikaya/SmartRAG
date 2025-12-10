@@ -187,11 +187,7 @@ namespace SmartRAG.Services.Document
                                 databaseResponse = candidateDatabaseResponse;
                                 // CRITICAL: ALWAYS perform document search in hybrid mode
                                 // Even if database has an answer, document might have a BETTER answer
-                                // Let AI merge both results and choose the best one
-                                // This prevents false positives where database query is wrong but returns data
-                                // Example: "Araçta kaç hava yastığı var?" → DB returns facility data (wrong!) → Documents have actual answer
                                 _logger.LogInformation("Database query returned answer, also performing document search for true hybrid strategy");
-                                // Keep canAnswerFromDocuments = true to ALWAYS search documents in hybrid mode
                             }
                         }
                     }
@@ -224,7 +220,6 @@ namespace SmartRAG.Services.Document
                     return await _responseBuilder.MergeHybridResultsAsync(request.Query, databaseResponse, documentResponse, request.ConversationHistory, request.PreferredLanguage);
                 }
 
-                // Fallback: Simple merge without AI processing
                 var combinedSources = new List<SearchSource>();
                 combinedSources.AddRange(databaseResponse.Sources);
                 combinedSources.AddRange(documentResponse.Sources);
@@ -421,16 +416,11 @@ namespace SmartRAG.Services.Document
                 return true;
             }
 
-            // 2. Generic Heuristic: Negative Echo Detection
-            // If the answer largely repeats the query keywords but contains no numeric data, 
-            // it is likely a polite "I couldn't find X" message in the user's language.
-            // This works for Turkish ("Araçta hava yastığı..."), German, Spanish, etc. without hardcoding.
-            
             if (!string.IsNullOrWhiteSpace(query))
             {
                 var queryWords = query.ToLowerInvariant()
                     .Split(new[] { ' ', ',', '.', '?', '!', ':', ';' }, StringSplitOptions.RemoveEmptyEntries)
-                    .Where(w => w.Length > 3) // Filter short words
+                    .Where(w => w.Length > 3)
                     .ToList();
 
                 if (queryWords.Count > 0)
@@ -438,12 +428,8 @@ namespace SmartRAG.Services.Document
                     int matchCount = queryWords.Count(w => lowerAnswer.Contains(w));
                     double matchRatio = (double)matchCount / queryWords.Count;
 
-                    // If significant overlap with query (>= 50%) AND no numbers found
-                    // Example: Query "Airbags in vehicle?" -> Answer "No info about airbags in vehicle." (Matches: airbags, vehicle)
                     if (matchRatio >= 0.5 && !answer.Any(char.IsDigit))
                     {
-                        // Additional check: If answer is very short (< 30 chars), it might be a direct text answer (e.g. "Toyota Corolla")
-                        // So only apply this if answer has some length (likely a sentence)
                         if (answer.Length > 30)
                         {
                             return true; 
@@ -452,8 +438,6 @@ namespace SmartRAG.Services.Document
                 }
             }
 
-            // If no explicit negative pattern found, accept the answer
-            // This allows short answers like "Eva De Vries" to pass through
             return false;
         }
     }

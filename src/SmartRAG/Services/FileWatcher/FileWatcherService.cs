@@ -165,7 +165,6 @@ namespace SmartRAG.Services.FileWatcher
             {
                 _logger.LogDebug("File created event received: {FilePath}", e.FullPath);
 
-                // Wait a bit for file to be fully written (especially for large files)
                 await Task.Delay(1000);
 
                 if (!IsFileAllowed(e.FullPath))
@@ -376,7 +375,6 @@ namespace SmartRAG.Services.FileWatcher
                         ["FilePath"] = filePath
                     };
 
-                    // Use config.Language if specified, otherwise fall back to SmartRagOptions.DefaultLanguage
                     var languageToUse = config.Language ?? _options.DefaultLanguage;
                     var uploadRequest = new Models.RequestResponse.UploadDocumentRequest
                     {
