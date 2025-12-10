@@ -13,8 +13,6 @@ namespace SmartRAG.Services.Document
     /// </summary>
     public class QueryPatternAnalyzerService : IQueryPatternAnalyzerService
     {
-        #region Constants
-
         private static readonly Regex NumberedListPattern1 = new Regex(@"\b\d+\.\s", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
         private static readonly Regex NumberedListPattern2 = new Regex(@"\b\d+\)\s", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
         private static readonly Regex NumberedListPattern3 = new Regex(@"\b\d+-\s", RegexOptions.Compiled | RegexOptions.Multiline | RegexOptions.IgnoreCase);
@@ -33,15 +31,7 @@ namespace SmartRAG.Services.Document
         private static readonly Regex NumericPattern = new Regex(@"\p{Nd}+", RegexOptions.Compiled);
         private static readonly Regex ListIndicatorPattern = new Regex(@"\d+[\.\)]\s", RegexOptions.Compiled);
 
-        #endregion
-
-        #region Fields
-
         private readonly ILogger<QueryPatternAnalyzerService> _logger;
-
-        #endregion
-
-        #region Constructor
 
         /// <summary>
         /// Initializes a new instance of the QueryPatternAnalyzerService
@@ -51,10 +41,6 @@ namespace SmartRAG.Services.Document
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         /// Detects if content contains numbered lists
@@ -199,8 +185,6 @@ namespace SmartRAG.Services.Document
 
             return false;
         }
-
-        #endregion
     }
 }
 

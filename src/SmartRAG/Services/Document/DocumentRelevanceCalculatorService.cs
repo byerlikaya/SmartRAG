@@ -13,22 +13,12 @@ namespace SmartRAG.Services.Document
     /// </summary>
     public class DocumentRelevanceCalculatorService : IDocumentRelevanceCalculatorService
     {
-        #region Constants
-
         private const double QueryCoverageBonusMultiplier = 5000.0;
         private const double UniqueKeywordBonusMultiplier = 2500.0;
-        private const double FrequencyBonusMultiplier = 75.0;      
-
-        #endregion
-
-        #region Fields
+        private const double FrequencyBonusMultiplier = 75.0;
 
         private readonly ILogger<DocumentRelevanceCalculatorService> _logger;
         private readonly IQueryWordMatcherService _queryWordMatcher;
-
-        #endregion
-
-        #region Constructor
 
         /// <summary>
         /// Initializes a new instance of the DocumentRelevanceCalculatorService
@@ -43,10 +33,6 @@ namespace SmartRAG.Services.Document
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        #endregion
-
-        #region Public Methods
-
         /// <summary>
         /// Calculates relevance scores for documents based on query words and chunk scores
         /// </summary>
@@ -57,10 +43,14 @@ namespace SmartRAG.Services.Document
             Dictionary<string, HashSet<Guid>> wordDocumentMap,
             int topChunksPerDocument)
         {
-            if (documents == null || scoredChunks == null || queryWords == null || wordDocumentMap == null)
-            {
-                throw new ArgumentNullException();
-            }
+            if (documents == null)
+                throw new ArgumentNullException(nameof(documents));
+            if (scoredChunks == null)
+                throw new ArgumentNullException(nameof(scoredChunks));
+            if (queryWords == null)
+                throw new ArgumentNullException(nameof(queryWords));
+            if (wordDocumentMap == null)
+                throw new ArgumentNullException(nameof(wordDocumentMap));
 
             return documents.Select(doc =>
             {
@@ -159,8 +149,6 @@ namespace SmartRAG.Services.Document
                 }
             }
         }
-
-        #endregion
     }
 }
 

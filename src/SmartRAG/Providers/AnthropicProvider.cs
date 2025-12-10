@@ -1,4 +1,6 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Http;
+using System.Net.Http;
 using SmartRAG.Enums;
 using SmartRAG.Models;
 using System;
@@ -21,27 +23,18 @@ namespace SmartRAG.Providers
         /// Initializes a new instance of the AnthropicProvider
         /// </summary>
         /// <param name="logger">Logger instance for this provider</param>
-        public AnthropicProvider(ILogger<AnthropicProvider> logger) : base(logger)
+        /// <param name="httpClientFactory">HTTP client factory for creating HTTP clients</param>
+        public AnthropicProvider(ILogger<AnthropicProvider> logger, IHttpClientFactory httpClientFactory) : base(logger, httpClientFactory)
         {
             _logger = logger;
         }
-
-        #region Constants
 
         private const string AnthropicApiVersion = "2023-06-01";
         private const string DefaultVoyageEndpoint = "https://api.voyageai.com";
         private const string DefaultVoyageModel = "voyage-3.5";
         private const string VoyageInputType = "document";
 
-        #endregion
-
-        #region Properties
-
         public override AIProvider ProviderType => AIProvider.Anthropic;
-
-        #endregion
-
-        #region Public Methods
 
         public override async Task<string> GenerateTextAsync(string prompt, AIProviderConfig config)
         {
@@ -200,10 +193,6 @@ namespace SmartRAG.Providers
             }
         }
 
-        #endregion
-
-        #region Private Methods
-
         /// <summary>
         /// Build Anthropic API URL
         /// </summary>
@@ -338,7 +327,5 @@ namespace SmartRAG.Providers
 
             return result;
         }
-
-        #endregion
     }
 }

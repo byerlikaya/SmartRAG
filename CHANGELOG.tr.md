@@ -414,14 +414,6 @@ Google Speech-to-Text kullanıyorsanız:
 - **Kod kalitesi**: SOLID/DRY prensipleri korundu
 - **Performans**: Optimize edilmiş çoklu-veritabanı sorgu koordinasyonu
 
-### 📚 Dokümantasyon
-- **On-Premise rehberi**: Kapsamlı on-premise dağıtım dokümantasyonu
-- **Gizlilik rehberi**: Veri gizliliği ve uyumluluk dokümantasyonu
-- **OCR kısıtlamaları**: OCR yetenekleri ve kısıtlamalarının net dokümantasyonu
-- **Ses işleme notları**: Ses işleme gereksinimlerinin net dokümantasyonu
-- **Çok dilli destek**: Tüm dokümantasyon 4 dilde mevcut
-- **Kurumsal senaryolar**: Dokümante edilmiş gerçek dünya kurumsal kullanım durumları
-
 ### ✅ Kalite Güvencesi
 - **Sıfır Uyarı Politikası**: Tüm değişiklikler 0 hata, 0 uyarı standardını koruyor
 - **SOLID Prensipleri**: Temiz kod mimarisi korundu

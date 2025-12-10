@@ -13,19 +13,12 @@ namespace SmartRAG.Services.Database
     /// </summary>
     public class MultiDatabaseQueryCoordinator : IMultiDatabaseQueryCoordinator
     {
-
-        #region Fields
-
         private readonly IDatabaseSchemaAnalyzer _schemaAnalyzer;
         private readonly ILogger<MultiDatabaseQueryCoordinator> _logger;
         private readonly IQueryIntentAnalyzer _queryIntentAnalyzer;
         private readonly ISQLQueryGenerator _sqlQueryGenerator;
         private readonly IDatabaseQueryExecutor _databaseQueryExecutor;
         private readonly IResultMerger _resultMerger;
-
-        #endregion
-
-        #region Constructor
 
         public MultiDatabaseQueryCoordinator(
             IDatabaseSchemaAnalyzer schemaAnalyzer,
@@ -47,10 +40,6 @@ namespace SmartRAG.Services.Database
             _resultMerger = resultMerger ?? throw new ArgumentNullException(nameof(resultMerger),
                 "ResultMerger must be provided. Register IResultMerger in DI container.");
         }
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         /// Legacy: Analyze natural-language query and produce database-intent
@@ -139,10 +128,6 @@ namespace SmartRAG.Services.Database
         {
             return await _sqlQueryGenerator.GenerateDatabaseQueriesAsync(queryIntent);
         }
-
-        #endregion   
-
-        #region Private Helper Methods (Legacy - Kept for Reference Only)      
 
         /// <summary>
         /// Creates a RagResponse with no database matches
@@ -310,7 +295,5 @@ namespace SmartRAG.Services.Database
 
             return queryIntent;
         }
-
-        #endregion
     }
 }

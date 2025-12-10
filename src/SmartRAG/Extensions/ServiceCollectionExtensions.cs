@@ -2,14 +2,11 @@
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System.Linq;
-using System.Reflection;
 using System.Threading;
-using System.Threading.Tasks;
 using SmartRAG.Enums;
 using SmartRAG.Factories;
 using SmartRAG.Interfaces.AI;
@@ -65,9 +62,9 @@ namespace SmartRAG.Extensions
         public static IServiceCollection AddSmartRag(this IServiceCollection services, IConfiguration configuration, Action<SmartRagOptions> configureOptions)
         {
             RegisterConfiguration(services, configuration, configureOptions);
-            
+
             var options = BuildOptions(configuration, configureOptions);
-            
+
             RegisterCoreServices(services);
             RegisterDocumentServices(services);
             RegisterDatabaseServices(services);
@@ -105,7 +102,7 @@ namespace SmartRAG.Extensions
                     options.DefaultLanguage = defaultLanguage;
                 }
             });
-            
+
             return services.BuildServiceProviderWithSmartRag();
         }
 
@@ -143,20 +140,18 @@ namespace SmartRAG.Extensions
             var featuresSection = configuration.GetSection("SmartRAG:Features");
             if (featuresSection.Exists())
             {
-                if (options.Features == null)
-                {
-                    options.Features = new FeatureToggles();
-                }
+                options.Features ??= new FeatureToggles();
                 featuresSection.Bind(options.Features);
             }
 
             configureOptions(options);
-            
+
             return options;
         }
 
         private static void RegisterCoreServices(IServiceCollection services)
         {
+            services.AddHttpClient();
             services.AddSingleton<IAIProviderFactory, AIProviderFactory>();
 
             services.AddSingleton<IAIProvider>(sp =>
@@ -277,14 +272,11 @@ namespace SmartRAG.Extensions
         private static void RegisterStartupServices(IServiceCollection services, SmartRagOptions options)
         {
             // Ensure Features is initialized
-            if (options.Features == null)
-            {
-                options.Features = new FeatureToggles();
-            }
-            
+            options.Features ??= new FeatureToggles();
+
             var enableMcp = options.Features.EnableMcpSearch;
             var enableFileWatcher = options.Features.EnableFileWatcher;
-            
+
             if (enableMcp || enableFileWatcher)
             {
                 services.AddHostedService<SmartRagStartupService>();
@@ -311,22 +303,23 @@ namespace SmartRAG.Extensions
         public static IServiceProvider BuildServiceProviderWithSmartRag(this IServiceCollection services, bool validateScopes = false)
         {
             var serviceProvider = services.BuildServiceProvider(validateScopes);
-            
+
             // Check if SmartRAG hosted services are registered and start them
             // Hosted services are registered as IHostedService, so we need to get all hosted services
             // and find SmartRagStartupService among them
             var hostedServices = serviceProvider.GetServices<IHostedService>();
-            var logger = serviceProvider.GetService<ILogger<Services.Startup.SmartRagStartupService>>();
-            
-            var startupService = hostedServices.OfType<Services.Startup.SmartRagStartupService>().FirstOrDefault();
-            
+            var logger = serviceProvider.GetService<ILogger<SmartRagStartupService>>();
+
+            var startupService = hostedServices.OfType<SmartRagStartupService>().FirstOrDefault();
+
             if (startupService != null)
             {
                 logger?.LogInformation("SmartRagStartupService found, starting hosted services...");
                 try
                 {
-                    // Synchronous start for console applications
-                    startupService.StartAsync(CancellationToken.None).GetAwaiter().GetResult();
+                    // Start hosted services asynchronously with ConfigureAwait(false) to avoid deadlock
+                    // This is safe for console applications where there's no SynchronizationContext
+                    startupService.StartAsync(CancellationToken.None).ConfigureAwait(false).GetAwaiter().GetResult();
                 }
                 catch (Exception ex)
                 {
@@ -338,7 +331,7 @@ namespace SmartRAG.Extensions
             {
                 logger?.LogWarning("SmartRagStartupService not found. MCP client and file watcher may not be initialized.");
             }
-            
+
             return serviceProvider;
         }
     }

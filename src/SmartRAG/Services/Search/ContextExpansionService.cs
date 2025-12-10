@@ -19,25 +19,15 @@ namespace SmartRAG.Services.Search
     /// </summary>
     public class ContextExpansionService : IContextExpansionService
     {
-        #region Constants
-
-        private const int DefaultContextWindow = 3; // Balanced window for good context coverage
-        private const int MaxContextWindow = 15; // Maximum context window size for comprehensive searches
-        private const int ComprehensiveWindow = 8; // Balanced window for comprehensive searches
+        private const int DefaultContextWindow = 3;
+        private const int MaxContextWindow = 15;
+        private const int ComprehensiveWindow = 8;
         private const int SmallChunkCountThreshold = 3;
         private const int SmallChunkWindow = 3;
-
-        #endregion
-
-        #region Fields
 
         private readonly IDocumentRepository _documentRepository;
         private readonly ILogger<ContextExpansionService> _logger;
         private readonly IQueryPatternAnalyzerService? _queryPatternAnalyzer;
-
-        #endregion
-
-        #region Constructor
 
         /// <summary>
         /// Initializes a new instance of the ContextExpansionService
@@ -54,10 +44,6 @@ namespace SmartRAG.Services.Search
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _queryPatternAnalyzer = queryPatternAnalyzer;
         }
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         /// Expands context by including adjacent chunks from the same document
@@ -321,10 +307,6 @@ namespace SmartRAG.Services.Search
             return false;
         }
 
-        #endregion
-
-        #region Private Helper Classes
-
         /// <summary>
         /// Comparer for DocumentChunk to use in HashSet
         /// </summary>
@@ -342,8 +324,6 @@ namespace SmartRAG.Services.Search
                 return obj.Id.GetHashCode();
             }
         }
-
-        #endregion
     }
 }
 

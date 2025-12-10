@@ -1,10 +1,11 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Http;
+using System.Net.Http;
 using SmartRAG.Enums;
 using SmartRAG.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
 
@@ -22,26 +23,17 @@ namespace SmartRAG.Providers
         /// Initializes a new instance of the GeminiProvider
         /// </summary>
         /// <param name="logger">Logger instance for this provider</param>
-        public GeminiProvider(ILogger<GeminiProvider> logger) : base(logger)
+        /// <param name="httpClientFactory">HTTP client factory for creating HTTP clients</param>
+        public GeminiProvider(ILogger<GeminiProvider> logger, IHttpClientFactory httpClientFactory) : base(logger, httpClientFactory)
         {
             _logger = logger;
         }
-
-        #region Constants
 
         private const string GeminiApiKeyHeader = "x-goog-api-key";
         private const int DefaultMaxBatchSize = 50;
         private const int DefaultDelayBetweenBatchesMs = 1000;
 
-        #endregion
-
-        #region Properties
-
         public override AIProvider ProviderType => AIProvider.Gemini;
-
-        #endregion
-
-        #region Public Methods
 
         public override async Task<string> GenerateTextAsync(string prompt, AIProviderConfig config)
         {
@@ -159,14 +151,10 @@ namespace SmartRAG.Providers
             return results;
         }
 
-        #endregion
-
-        #region Private Methods
-
         /// <summary>
         /// Create Gemini HTTP client with proper authentication
         /// </summary>
-        private static HttpClient CreateGeminiHttpClient(string apiKey)
+        private HttpClient CreateGeminiHttpClient(string apiKey)
         {
             var client = CreateHttpClient(apiKey);
             client.DefaultRequestHeaders.Remove("Authorization");
@@ -340,7 +328,5 @@ namespace SmartRAG.Providers
 
             return results;
         }
-
-        #endregion
     }
 }

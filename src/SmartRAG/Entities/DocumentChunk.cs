@@ -9,8 +9,6 @@ namespace SmartRAG.Entities
     /// </summary>
     public class DocumentChunk
     {
-        #region Properties
-
         /// <summary>
         /// Unique identifier for the chunk
         /// </summary>
@@ -60,7 +58,5 @@ namespace SmartRAG.Entities
         /// Type of the document this chunk belongs to (Document, Audio, Image)
         /// </summary>
         public string DocumentType { get; set; } = "Document";
-
-        #endregion
     }
 }

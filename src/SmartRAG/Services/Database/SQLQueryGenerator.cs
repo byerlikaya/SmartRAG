@@ -18,18 +18,12 @@ namespace SmartRAG.Services.Database
     /// </summary>
     public class SQLQueryGenerator : ISQLQueryGenerator
     {
-        #region Fields
-
         private readonly IDatabaseSchemaAnalyzer _schemaAnalyzer;
         private readonly IAIService _aiService;
         private readonly ISqlDialectStrategyFactory _strategyFactory;
         private readonly SqlValidator _validator;
         private readonly SqlPromptBuilder _promptBuilder;
         private readonly ILogger<SQLQueryGenerator> _logger;
-
-        #endregion
-
-        #region Constructor
 
         public SQLQueryGenerator(
             IDatabaseSchemaAnalyzer schemaAnalyzer,
@@ -44,10 +38,6 @@ namespace SmartRAG.Services.Database
             _validator = new SqlValidator(logger);
             _promptBuilder = new SqlPromptBuilder();
         }
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         /// [AI Query] Generates optimized SQL queries for each database based on intent
@@ -99,10 +89,6 @@ namespace SmartRAG.Services.Database
             return queryIntent;
         }
 
-        #endregion
-
-        #region Private Helper Methods
-
         private bool ValidateSql(string sql, DatabaseSchemaInfo schema, List<string> requiredTables, ISqlDialectStrategy strategy, out List<string> errors)
         {
             errors = new List<string>();
@@ -142,7 +128,5 @@ namespace SmartRAG.Services.Database
 
             return response;
         }
-
-        #endregion
     }
 }

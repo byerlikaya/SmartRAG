@@ -8,8 +8,6 @@ namespace SmartRAG.Repositories
     /// </summary>
     public static class RepositoryLogMessages
     {
-        #region Document Operations (EventId: 30001-30999)
-
         public static readonly Action<ILogger, string, Guid, Exception> LogDocumentAdded = LoggerMessage.Define<string, Guid>(
             LogLevel.Information,
             new EventId(30001, "DocumentAdded"),
@@ -70,10 +68,6 @@ namespace SmartRAG.Repositories
             new EventId(30013, "DocumentCountRetrievalFailed"),
             "Failed to retrieve document count");
 
-        #endregion
-
-        #region Search Operations (EventId: 31001-31999)
-
         public static readonly Action<ILogger, string, int, int, Exception> LogSearchCompleted = LoggerMessage.Define<string, int, int>(
             LogLevel.Information,
             new EventId(31001, "SearchCompleted"),
@@ -83,10 +77,6 @@ namespace SmartRAG.Repositories
             LogLevel.Error,
             new EventId(31002, "SearchFailed"),
             "Search failed for query '{Query}'");
-
-        #endregion
-
-        #region Qdrant Operations (EventId: 34001-34999)
 
         public static readonly Action<ILogger, Exception> LogQdrantCollectionInitFailed = LoggerMessage.Define(
             LogLevel.Error,
@@ -147,10 +137,6 @@ namespace SmartRAG.Repositories
             LogLevel.Warning,
             new EventId(34028, "QdrantVectorSearchFailed"),
             "Vector search failed: {ErrorMessage}, falling back to text search");
-
-        #endregion
-
-        #region Redis Operations (EventId: 35001-35999)
 
         public static readonly Action<ILogger, string, Exception> LogRedisConnectionEstablished = LoggerMessage.Define<string>(
             LogLevel.Information,
@@ -215,18 +201,13 @@ namespace SmartRAG.Repositories
         public static readonly Action<ILogger, string, Exception> LogRedisSearchFailed = LoggerMessage.Define<string>(
             LogLevel.Error,
             new EventId(35015, "RedisSearchFailed"),
-            "Redis search failed for query '{Query}'");      
-
-        #endregion
-
-        #region InMemory Operations (EventId: 33001-33999)
+            "Redis search failed for query '{Query}'");
 
         public static readonly Action<ILogger, int, int, Exception> LogOldDocumentsRemoved = LoggerMessage.Define<int, int>(
             LogLevel.Information,
             new EventId(33001, "OldDocumentsRemoved"),
             "Removed {RemovedCount} old documents to maintain capacity limit of {MaxDocuments}");
 
-        #endregion
         public static readonly Action<ILogger, string, Exception> LogRedisVectorIndexExists = LoggerMessage.Define<string>(
             LogLevel.Information,
             new EventId(35209, "RedisVectorIndexExists"),

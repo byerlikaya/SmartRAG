@@ -11,14 +11,8 @@ namespace SmartRAG.Services.Document
     /// </summary>
     public class QueryWordMatcherService : IQueryWordMatcherService
     {
-        #region Constants
-
         private const int MinWordLengthForSubstringMatching = 4;
         private const int MaxSubstringLength = 8;
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         /// Maps query words to documents that contain them
@@ -29,10 +23,12 @@ namespace SmartRAG.Services.Document
             List<DocumentChunk> scoredChunks,
             int chunksToCheckPerDocument)
         {
-            if (queryWords == null || documents == null || scoredChunks == null)
-            {
-                throw new ArgumentNullException();
-            }
+            if (queryWords == null)
+                throw new ArgumentNullException(nameof(queryWords));
+            if (documents == null)
+                throw new ArgumentNullException(nameof(documents));
+            if (scoredChunks == null)
+                throw new ArgumentNullException(nameof(scoredChunks));
 
             var wordDocumentMap = new Dictionary<string, HashSet<Guid>>();
             foreach (var word in queryWords)
@@ -169,8 +165,6 @@ namespace SmartRAG.Services.Document
 
             return false;
         }
-
-        #endregion
     }
 }
 

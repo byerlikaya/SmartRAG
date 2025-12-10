@@ -13,20 +13,10 @@ namespace SmartRAG.Services.Storage.Qdrant
     /// </summary>
     public class QdrantEmbeddingService : IQdrantEmbeddingService
     {
-        #region Constants
-
         private const int DefaultVectorDimension = 768;
-
-        #endregion
-
-        #region Fields
 
         private readonly ILogger<QdrantEmbeddingService> _logger;
         private readonly QdrantConfig _config;
-
-        #endregion
-
-        #region Constructor
 
         /// <summary>
         /// Initializes a new instance of the QdrantEmbeddingService
@@ -38,10 +28,6 @@ namespace SmartRAG.Services.Storage.Qdrant
             _config = config.Value;
             _logger = logger;
         }
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         /// Generates an embedding vector for the given text using hash-based approach
@@ -113,7 +99,5 @@ namespace SmartRAG.Services.Storage.Qdrant
                 return Task.FromResult(DefaultVectorDimension);
             }
         }
-
-        #endregion
     }
 }

@@ -5,6 +5,7 @@ using SmartRAG.FileWatcher.Events;
 using SmartRAG.Helpers;
 using SmartRAG.Interfaces.Document;
 using SmartRAG.Models;
+using SmartRAG.Models.RequestResponse;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -405,7 +406,17 @@ namespace SmartRAG.FileWatcher
 
                     // Use config.Language if specified, otherwise fall back to SmartRagOptions.DefaultLanguage
                     var languageToUse = config.Language ?? _options.DefaultLanguage;
-                    var document = await documentService.UploadDocumentAsync(fileStream, fileName, contentType, config.UserId, languageToUse, fileInfo.Length, additionalMetadata);
+                    var uploadRequest = new Models.RequestResponse.UploadDocumentRequest
+                    {
+                        FileStream = fileStream,
+                        FileName = fileName,
+                        ContentType = contentType,
+                        UploadedBy = config.UserId,
+                        Language = languageToUse,
+                        FileSize = fileInfo.Length,
+                        AdditionalMetadata = additionalMetadata
+                    };
+                    var document = await documentService.UploadDocumentAsync(uploadRequest);
 
                     _logger.LogInformation("Auto-uploaded file: {FilePath} (size: {Size} bytes, hash: {Hash})", filePath, fileInfo.Length, fileHash);
                     return;
@@ -544,7 +555,9 @@ namespace SmartRAG.FileWatcher
         {
             if (!_disposed && disposing)
             {
-                StopAllWatchingAsync().GetAwaiter().GetResult();
+                // Use ConfigureAwait(false) to avoid deadlock in Dispose pattern
+                // This is safe because Dispose is called synchronously and there's no SynchronizationContext
+                StopAllWatchingAsync().ConfigureAwait(false).GetAwaiter().GetResult();
                 _disposed = true;
             }
         }

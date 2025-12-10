@@ -8,8 +8,6 @@ namespace SmartRAG.Models
     /// </summary>
     public class AudioTranscriptionResult
     {
-        #region Properties
-
         /// <summary>
         /// The transcribed text content from the audio
         /// </summary>
@@ -30,7 +28,5 @@ namespace SmartRAG.Models
         /// Additional metadata from the transcription process
         /// </summary>
         public Dictionary<string, object> Metadata { get; set; } = new Dictionary<string, object>();
-
-        #endregion
     }
 }

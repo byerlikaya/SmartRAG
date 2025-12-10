@@ -293,15 +293,15 @@ namespace SmartRAG.Services.Document.Parsers
             }
 
             var hasBrokenWordPatterns = false;
-            // However, English-only text is valid, so we need to be careful not to flag it
+            // However, single-language text is valid, so we need to be careful not to flag it
             var nonAsciiCharCount = text.Count(c => c > 127); // Non-ASCII characters
             var totalCharCount = text.Count(char.IsLetter);
 
             // Only flag as encoding issue if:
-            // 1. Text is substantial (>200 letters) - short text might be English-only (increased from 150)
-            // 2. Has broken spacing (suggests encoding corruption, not just English text)
+            // 1. Text is substantial (>200 letters) - short text might be single-language only (increased from 150)
+            // 2. Has broken spacing (suggests encoding corruption, not just single-language text)
             // 3. Very low non-ASCII ratio (<1.5%) combined with broken spacing (lowered from 2% to 1.5%)
-            // This avoids false positives for English-only documents and isolated word issues
+            // This avoids false positives for single-language documents and isolated word issues
             // Made more conservative to reduce false positives for text-based PDFs with minor encoding quirks
             var hasFewSpecialChars = totalCharCount > 200 &&
                                      nonAsciiCharCount < totalCharCount * 0.015 &&

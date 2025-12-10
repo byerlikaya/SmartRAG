@@ -82,22 +82,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Files Modified**:
     - `src/SmartRAG/Models/StorageConfig.cs` - Property removal
 
-### 📚 Documentation
-- **Redis Storage Documentation**: Updated with RediSearch requirements and setup instructions
-  - Added RediSearch module requirement warning
-  - Docker image recommendation (redis/redis-stack-server:latest)
-  - Vector search configuration details
-  - **Files Modified**:
-    - `docs/en/configuration/storage.md` - Redis section updated
-    - `docs/tr/configuration/storage.md` - Redis section updated
-
-- **InMemory Storage Documentation**: Added InMemory storage section
-  - Configuration examples
-  - Use case descriptions
-  - **Files Modified**:
-    - `docs/en/configuration/storage.md` - InMemory section
-    - `docs/tr/configuration/storage.md` - InMemory section
-
 ### ✨ Benefits
 - **Enhanced Redis Vector Search**: Proper similarity scoring and relevance ranking
 - **Better Developer Experience**: Clear warnings and documentation for RediSearch requirements
@@ -796,14 +780,6 @@ If you were using Google Speech-to-Text:
 - **Code quality**: SOLID/DRY principles maintained throughout
 - **Performance**: Optimized multi-database query coordination
 
-### 📚 Documentation
-- **On-Premise guide**: Comprehensive on-premise deployment documentation
-- **Privacy guide**: Data privacy and compliance documentation
-- **OCR limitations**: Clear documentation of OCR capabilities and limitations
-- **Audio processing notes**: Clear documentation of audio processing requirements
-- **Multi-language support**: All documentation available in 4 languages
-- **Enterprise scenarios**: Documented real-world enterprise use cases
-
 ### ✅ Quality Assurance
 - **Zero Warnings Policy**: All changes maintain 0 errors, 0 warnings standard
 - **SOLID Principles**: Clean code architecture maintained throughout
@@ -858,12 +834,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Error Handling**: Enhanced error handling for audio transcription operations
 - **Documentation**: Updated all language versions with Google Speech-to-Text examples
 
-### 📚 Documentation
-- **Audio Processing**: Comprehensive audio processing feature documentation
-- **Google Speech-to-Text**: Enhanced README with detailed speech-to-text capabilities
-- **Multi-language Support**: Highlighted 100+ language support for global applications
-- **Developer Experience**: Better visibility of audio processing features for developers
-
 ## [2.2.0] - 2025-09-15
 
 ### ✨ Added
@@ -875,12 +845,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Package Metadata**: Updated project URLs and release notes for better user experience
 - **Documentation Structure**: Enhanced documentation showcasing OCR as key differentiator
 - **User Guidance**: Improved guidance for image-based document processing workflows
-
-### 📚 Documentation
-- **OCR Capabilities**: Comprehensive OCR feature documentation with real-world examples
-- **Image Processing**: Enhanced README with detailed image processing capabilities
-- **WebP Support**: Highlighted WebP to PNG conversion and multi-language OCR support
-- **Developer Experience**: Better visibility of image processing features for developers
 
 ## [2.1.0] - 2025-09-05
 
@@ -895,10 +859,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Format Consistency**: Standardized conversation format across all storage providers
 - **Thread Safety**: Enhanced concurrent access handling for conversation operations
 - **Platform Agnostic**: Maintains compatibility across all .NET environments
-
-### 📚 Documentation
-- **Multi-language Updates**: All language versions (EN, TR, DE, RU) updated with real examples
-- **100% Compliance**: All established rules maintained with zero warnings policy
 
 ## [2.0.0] - 2025-08-27
 
@@ -916,11 +876,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Language Compatibility**: C# 7.3 syntax compatibility for .NET Standard 2.0/2.1
 - **Package Versions**: Updated all NuGet packages to .NET Standard compatible versions
 - **API Compatibility**: Maintained all existing functionality while ensuring framework compatibility
-
-### 📚 Documentation
-- **Framework Requirements**: Updated documentation for .NET Standard compatibility
-- **Installation Guide**: Updated package references and framework requirements
-- **Migration Guide**: Comprehensive guide for existing .NET 9.0 users
 
 ### 🧪 Testing
 - **Framework Compatibility**: Verified compatibility with .NET Standard 2.0/2.1
@@ -946,11 +901,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Content Processing**: More robust document parsing with fallback error messages
 - **Performance**: Optimized Excel content extraction and validation
 
-### 📚 Documentation
-- **Excel Format Support**: Comprehensive documentation of Excel file processing capabilities
-- **API Reliability**: Updated documentation for enhanced error handling
-- **Installation Guide**: Updated package references and configuration examples
-
 ### 🧪 Testing
 - **Excel Parsing**: Verified with various Excel formats and content types
 - **API Retry**: Tested retry mechanism with error scenarios
@@ -966,10 +916,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - LoggerMessage parameter count mismatches
 - Provider logging message implementations
 - Service collection registration issues
-
-### 📚 Documentation
-- Updated README with latest features
-- Improved installation instructions
 
 ---
 

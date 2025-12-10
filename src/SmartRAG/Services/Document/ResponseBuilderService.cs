@@ -20,18 +20,12 @@ namespace SmartRAG.Services.Document
     /// </summary>
     public class ResponseBuilderService : IResponseBuilderService
     {
-        #region Fields
-
         private readonly SmartRagOptions _options;
         private readonly IConfiguration _configuration;
         private readonly IConversationManagerService? _conversationManager;
         private readonly ILogger<ResponseBuilderService>? _logger;
         private readonly IAIService? _aiService;
         private readonly IPromptBuilderService? _promptBuilder;
-
-        #endregion
-
-        #region Constructor
 
         /// <summary>
         /// Initializes a new instance of the ResponseBuilderService
@@ -57,10 +51,6 @@ namespace SmartRAG.Services.Document
             _aiService = aiService;
             _promptBuilder = promptBuilder;
         }
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         /// Creates a RagResponse with standard configuration
@@ -456,8 +446,6 @@ namespace SmartRAG.Services.Document
 
             return CreateRagResponse(query, mergedAnswer, combinedSources);
         }
-
-        #endregion
     }
 }
 

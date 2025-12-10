@@ -10,15 +10,9 @@ namespace SmartRAG.Services.Document
     /// </summary>
     public class QueryStrategyOrchestratorService : IQueryStrategyOrchestratorService
     {
-        #region Constants
-
         private const double HighConfidenceThreshold = 0.7;
         private const double MediumConfidenceMin = 0.3;
         private const double MediumConfidenceMax = 0.7;
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         /// Determines the appropriate query strategy based on confidence and available data sources
@@ -44,8 +38,6 @@ namespace SmartRAG.Services.Document
 
             return QueryStrategy.DocumentOnly;
         }
-
-        #endregion
     }
 }
 

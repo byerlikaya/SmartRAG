@@ -16,14 +16,8 @@ namespace SmartRAG.Services.Database
     /// </summary>
     public class ResultMerger : IResultMerger
     {
-        #region Fields
-
         private readonly IAIService _aiService;
         private readonly ILogger<ResultMerger> _logger;
-
-        #endregion
-
-        #region Constructor
 
         public ResultMerger(
             IAIService aiService,
@@ -32,10 +26,6 @@ namespace SmartRAG.Services.Database
             _aiService = aiService;
             _logger = logger;
         }
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         /// Merges results from multiple databases into a coherent response
@@ -204,10 +194,6 @@ namespace SmartRAG.Services.Database
                 };
             }
         }
-
-        #endregion
-
-        #region Private Helper Methods
 
         private ParsedQueryResult ParseQueryResult(string resultData)
         {
@@ -645,8 +631,6 @@ namespace SmartRAG.Services.Database
             return false;
         }
 
-        #endregion
-
         private static List<string> ExtractTableNames(string query)
         {
             var tables = new List<string>();
@@ -693,8 +677,6 @@ namespace SmartRAG.Services.Database
             return builder.ToString();
         }
 
-        #region Helper Classes
-
         private class ParsedQueryResult
         {
             public string DatabaseName { get; set; }
@@ -702,8 +684,6 @@ namespace SmartRAG.Services.Database
             public List<string> Columns { get; set; } = new List<string>();
             public List<Dictionary<string, string>> Rows { get; set; } = new List<Dictionary<string, string>>();
         }
-
-        #endregion
     }
 }
 

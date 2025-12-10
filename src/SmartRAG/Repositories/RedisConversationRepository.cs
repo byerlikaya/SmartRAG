@@ -150,8 +150,6 @@ namespace SmartRAG.Repositories
             }
         }
 
-        #region IDisposable
-
         public void Dispose()
         {
             if (!_disposed)
@@ -161,7 +159,5 @@ namespace SmartRAG.Repositories
                 _disposed = true;
             }
         }
-
-        #endregion
     }
 }

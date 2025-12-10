@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Http;
 using SmartRAG.Enums;
 using SmartRAG.Interfaces.AI;
 using SmartRAG.Models;
@@ -17,8 +18,6 @@ namespace SmartRAG.Providers
     /// </summary>
     public abstract class BaseAIProvider : IAIProvider
     {
-        #region Constants
-
         private const int DefaultMaxRetries = 3;
         private const int BaseDelayMs = 1000;
         private const int MinRetryDelayMs = 60000;
@@ -29,42 +28,24 @@ namespace SmartRAG.Providers
         private const string DefaultMessageProperty = "message";
         private const string DefaultContentProperty = "content";
 
-        #endregion
-
-        #region Fields
-
         private readonly ILogger _logger;
-
-        #endregion
-
-        #region Protected Properties
+        private readonly IHttpClientFactory _httpClientFactory;
 
         /// <summary>
         /// Logger instance for derived classes
         /// </summary>
         protected ILogger Logger => _logger;
 
-        #endregion
-
-        #region Constructor
-
-        protected BaseAIProvider(ILogger logger)
+        protected BaseAIProvider(ILogger logger, IHttpClientFactory httpClientFactory)
         {
             _logger = logger;
+            _httpClientFactory = httpClientFactory;
         }
-
-        #endregion
-
-        #region Abstract Properties
 
         /// <summary>
         /// Gets the type of AI provider this implementation represents
         /// </summary>
         public abstract AIProvider ProviderType { get; }
-
-        #endregion
-
-        #region Abstract Methods
 
         /// <summary>
         /// Generates text response from the AI provider
@@ -81,10 +62,6 @@ namespace SmartRAG.Providers
         /// <param name="config">AI provider configuration settings</param>
         /// <returns>Vector embedding as list of floats</returns>
         public abstract Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config);
-
-        #endregion
-
-        #region Virtual Methods
 
         /// <summary>
         /// Default batch embedding implementation with parallel processing
@@ -222,10 +199,6 @@ namespace SmartRAG.Providers
             return Task.FromResult(chunks);
         }
 
-        #endregion
-
-        #region Protected Helper Methods
-
         /// <summary>
         /// Validates common configuration requirements
         /// </summary>
@@ -244,15 +217,12 @@ namespace SmartRAG.Providers
         }
 
         /// <summary>
-        /// Creates HttpClient with common headers
+        /// Creates HttpClient with common headers using IHttpClientFactory
         /// </summary>
-        protected static HttpClient CreateHttpClient(string apiKey = null, Dictionary<string, string> additionalHeaders = null)
+        protected HttpClient CreateHttpClient(string apiKey = null, Dictionary<string, string> additionalHeaders = null)
         {
-            var handler = CreateHttpClientHandler();
-            var client = new HttpClient(handler)
-            {
-                Timeout = TimeSpan.FromSeconds(60)
-            };
+            var client = _httpClientFactory.CreateClient();
+            client.Timeout = TimeSpan.FromSeconds(60);
 
             if (!string.IsNullOrEmpty(apiKey))
             {
@@ -272,10 +242,10 @@ namespace SmartRAG.Providers
         /// <summary>
         /// Creates HTTP client without automatic Authorization header (for providers like Anthropic that use custom headers)
         /// </summary>
-        protected static HttpClient CreateHttpClientWithoutAuth(Dictionary<string, string> additionalHeaders)
+        protected HttpClient CreateHttpClientWithoutAuth(Dictionary<string, string> additionalHeaders)
         {
-            var handler = CreateHttpClientHandler();
-            var client = new HttpClient(handler);
+            var client = _httpClientFactory.CreateClient();
+            client.Timeout = TimeSpan.FromSeconds(60);
 
             if (additionalHeaders != null)
             {
@@ -337,10 +307,6 @@ namespace SmartRAG.Providers
             return (false, string.Empty, $"{ProviderType} request failed after {maxRetries} attempts");
         }
 
-        #endregion
-
-        #region Private Helper Methods
-
         /// <summary>
         /// Creates HttpClientHandler with SSL/TLS configuration
         /// </summary>
@@ -393,10 +359,6 @@ namespace SmartRAG.Providers
 
             return (false, string.Empty, $"{ProviderType} error: {response.StatusCode} - {errorBody}");
         }
-
-        #endregion
-
-        #region Static Helper Methods
 
         /// <summary>
         /// Common embedding response parsing
@@ -489,7 +451,5 @@ namespace SmartRAG.Providers
         {
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
         };
-
-        #endregion
     }
 }

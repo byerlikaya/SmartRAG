@@ -8,16 +8,10 @@ namespace SmartRAG.Services.Shared
     /// </summary>
     public static class ServiceLogMessages
     {
-        #region Document Operations
-
         public static readonly Action<ILogger, string, Exception> LogDocumentUploaded = LoggerMessage.Define<string>(
             LogLevel.Information,
             new EventId(1001, "DocumentUploaded"),
             "Document uploaded successfully: {FileName}");
-
-        #endregion
-
-        #region Embedding Operations
 
         public static readonly Action<ILogger, int, Exception> LogChunkEmbeddingFailed = LoggerMessage.Define<int>(
             LogLevel.Warning,
@@ -43,10 +37,6 @@ namespace SmartRAG.Services.Shared
             LogLevel.Error,
             new EventId(2009, "EmbeddingRegenerationFailed"),
             "Failed to regenerate embeddings");
-
-        #endregion
-
-        #region Search Operations
 
         public static readonly Action<ILogger, Exception> LogGeneralConversationQuery = LoggerMessage.Define(
             LogLevel.Debug,
@@ -93,10 +83,6 @@ namespace SmartRAG.Services.Shared
             new EventId(3025, "FallbackSearchUsed"),
             "Fallback keyword search used, found {ChunkCount} chunks");
 
-        #endregion
-
-        #region Batch Operations
-
         public static readonly Action<ILogger, int, Exception> LogBatchProcessing = LoggerMessage.Define<int>(
             LogLevel.Information,
             new EventId(5001, "BatchProcessing"),
@@ -111,10 +97,6 @@ namespace SmartRAG.Services.Shared
             LogLevel.Warning,
             new EventId(5004, "BatchFailed"),
             "Batch {BatchNumber} failed, processing individually");
-
-        #endregion
-
-        #region Progress and Status
 
         public static readonly Action<ILogger, int, int, int, Exception> LogProgress = LoggerMessage.Define<int, int, int>(
             LogLevel.Information,
@@ -221,10 +203,6 @@ namespace SmartRAG.Services.Shared
             new EventId(6019, "EmbeddingClearingFailed"),
             "Failed to clear embeddings");
 
-        #endregion
-
-        #region AI Service (EventId: 20001-20999)
-
         public static readonly Action<ILogger, string, Exception> LogAIServiceGenerateResponseError = LoggerMessage.Define<string>(
             LogLevel.Error,
             new EventId(20001, "AIServiceGenerateResponseError"),
@@ -275,10 +253,6 @@ namespace SmartRAG.Services.Shared
             new EventId(20010, "AIServiceAllFallbacksFailed"),
             "All fallback providers failed for query: {Query}");
 
-        #endregion
-
-        #region Session Management (EventId: 50001-50999)
-
         public static readonly Action<ILogger, string, Exception> LogSessionCreated = LoggerMessage.Define<string>(
             LogLevel.Information,
             new EventId(50001, "SessionCreated"),
@@ -298,10 +272,6 @@ namespace SmartRAG.Services.Shared
             LogLevel.Warning,
             new EventId(50004, "ConversationStorageFailed"),
             "Failed to store conversation for session: {SessionId}");
-
-        #endregion
-   
-        #region Image Processing and OCR Operations (EventId: 70001-70999)
 
         public static readonly Action<ILogger, int, Exception> LogImageOcrSuccess = LoggerMessage.Define<int>(
             LogLevel.Debug,
@@ -337,8 +307,5 @@ namespace SmartRAG.Services.Shared
             LogLevel.Error,
             new EventId(70010, "ImageProcessingFailed"),
             "Image processing failed");
-
-        #endregion
-
     }
 }

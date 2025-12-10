@@ -137,9 +137,6 @@ namespace SmartRAG.Services.Database
             }
         }
 
-
-        #region Private Helper Methods
-
         private async Task<string> ExtractDatabaseNameAsync(DatabaseConnectionConfig config)
         {
             var connectionString = config.ConnectionString.ToLower();
@@ -190,8 +187,6 @@ namespace SmartRAG.Services.Database
 
             return masked;
         }
-
-        #endregion
     }
 }
 

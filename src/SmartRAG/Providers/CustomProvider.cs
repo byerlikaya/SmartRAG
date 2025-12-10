@@ -1,10 +1,11 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Http;
+using System.Net.Http;
 using SmartRAG.Enums;
 using SmartRAG.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -24,26 +25,17 @@ namespace SmartRAG.Providers
         /// Initializes a new instance of the CustomProvider
         /// </summary>
         /// <param name="logger">Logger instance for this provider</param>
-        public CustomProvider(ILogger<CustomProvider> logger) : base(logger)
+        /// <param name="httpClientFactory">HTTP client factory for creating HTTP clients</param>
+        public CustomProvider(ILogger<CustomProvider> logger, IHttpClientFactory httpClientFactory) : base(logger, httpClientFactory)
         {
             _logger = logger;
         }
-
-        #region Constants
 
         private const int DefaultMaxChunkSize = 1000;
         private const string UserRole = "user";
         private const string SystemRole = "system";
 
-        #endregion
-
-        #region Properties
-
         public override AIProvider ProviderType => AIProvider.Custom;
-
-        #endregion
-
-        #region Public Methods
 
         public override async Task<string> GenerateTextAsync(string prompt, AIProviderConfig config)
         {
@@ -52,12 +44,7 @@ namespace SmartRAG.Providers
             if (!isValid)
                 return errorMessage;
 
-            var handler = CreateHttpClientHandler();
-            using var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(10) };
-            if (!string.IsNullOrEmpty(config.ApiKey))
-            {
-                client.DefaultRequestHeaders.Add("Authorization", $"Bearer {config.ApiKey}");
-            }
+            using var client = CreateHttpClient(config.ApiKey);
             bool useMessagesFormat = IsMessagesFormat(config.Endpoint);
 
             object payload = CreatePayload(prompt, config, useMessagesFormat);
@@ -108,13 +95,8 @@ namespace SmartRAG.Providers
 
             var embeddingEndpoint = GetEmbeddingEndpoint(config);
 
-            var handler = CreateHttpClientHandler();
-            using (var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(10) })
+            using (var client = CreateHttpClient(config.ApiKey))
             {
-                if (!string.IsNullOrEmpty(config.ApiKey))
-                {
-                    client.DefaultRequestHeaders.Add("Authorization", $"Bearer {config.ApiKey}");
-                }
 
                 const int BatchSize = 200;
                 const int MaxConcurrentBatches = 3; // Process 3 batches in parallel for 2-3x speedup
@@ -432,13 +414,6 @@ namespace SmartRAG.Providers
             return Task.FromResult(chunks);
         }
 
-        #endregion
-
-        #region Private Methods
-
-        /// <summary>
-        /// Creates HttpClient with configurable timeout for localhost Ollama
-        /// </summary>
         /// <summary>
         /// Determine if endpoint uses messages format
         /// </summary>
@@ -661,7 +636,5 @@ namespace SmartRAG.Providers
 
             return new List<float>();
         }
-
-        #endregion
     }
 }

@@ -10,19 +10,9 @@ namespace SmartRAG.Services.Document
     /// </summary>
     public class QueryAnalysisService : IQueryAnalysisService
     {
-        #region Constants
-
         private const int ComprehensiveSearchMultiplier = 3;
 
-        #endregion
-
-        #region Fields
-
         private readonly IQueryPatternAnalyzerService _queryPatternAnalyzer;
-
-        #endregion
-
-        #region Constructor
 
         /// <summary>
         /// Initializes a new instance of the QueryAnalysisService
@@ -32,10 +22,6 @@ namespace SmartRAG.Services.Document
         {
             _queryPatternAnalyzer = queryPatternAnalyzer ?? throw new ArgumentNullException(nameof(queryPatternAnalyzer));
         }
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         /// Determines initial search count based on query characteristics
@@ -49,8 +35,6 @@ namespace SmartRAG.Services.Document
 
             return defaultMaxResults;
         }
-
-        #endregion
     }
 }
 

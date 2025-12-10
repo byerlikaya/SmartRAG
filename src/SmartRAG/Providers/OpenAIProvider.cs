@@ -1,4 +1,6 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Http;
+using System.Net.Http;
 using SmartRAG.Enums;
 using SmartRAG.Models;
 using System;
@@ -21,27 +23,18 @@ namespace SmartRAG.Providers
         /// Initializes a new instance of the OpenAIProvider
         /// </summary>
         /// <param name="logger">Logger instance for this provider</param>
-        public OpenAIProvider(ILogger<OpenAIProvider> logger) : base(logger)
+        /// <param name="httpClientFactory">HTTP client factory for creating HTTP clients</param>
+        public OpenAIProvider(ILogger<OpenAIProvider> logger, IHttpClientFactory httpClientFactory) : base(logger, httpClientFactory)
         {
             _logger = logger;
         }
-
-        #region Constants
 
         private const string ChatCompletionsPath = "chat/completions";
         private const string EmbeddingsPath = "embeddings";
         private const string SystemRole = "system";
         private const string UserRole = "user";
 
-        #endregion
-
-        #region Properties
-
         public override AIProvider ProviderType => AIProvider.OpenAI;
-
-        #endregion
-
-        #region Public Methods
 
         public override async Task<string> GenerateTextAsync(string prompt, AIProviderConfig config)
         {
@@ -155,10 +148,6 @@ namespace SmartRAG.Providers
                 return ParseBatchEmbeddingResponse("", inputList.Count);
             }
         }
-
-        #endregion
-
-        #region Private Methods
 
         /// <summary>
         /// Build OpenAI API URL
@@ -300,7 +289,5 @@ namespace SmartRAG.Providers
                 .Select(i => i < results.Count ? results[i] : new List<float>())
                 .ToList();
         }
-
-        #endregion
     }
 }

@@ -24,8 +24,6 @@ namespace SmartRAG.Repositories
     /// </summary>
     public class RedisDocumentRepository : IDocumentRepository, IDisposable
     {
-        #region Constants
-
         private const int DefaultConnectionTimeoutMs = 1000;
         private const int DefaultKeepAliveSeconds = 180;
         private const int DefaultMaxSearchResults = 5;
@@ -33,10 +31,6 @@ namespace SmartRAG.Repositories
         private const string MetadataKeySuffix = "meta:";
         private const string ChunkKeySuffix = "chunk:";
         private const string DateTimeFormat = "O";
-
-        #endregion
-
-        #region Fields
 
         private readonly ConnectionMultiplexer _redis;
         private readonly IDatabase _database;
@@ -49,15 +43,7 @@ namespace SmartRAG.Repositories
         private readonly SearchCommands _searchCommands;
         private bool _disposed;
 
-        #endregion
-
-        #region Properties
-
         protected ILogger Logger => _logger;
-
-        #endregion
-
-        #region Constructor
 
         /// <summary>
         /// Initializes a new instance of RedisDocumentRepository with vector search support
@@ -106,10 +92,6 @@ namespace SmartRAG.Repositories
                 throw;
             }
         }
-
-        #endregion
-
-        #region Public Methods
 
         public async Task<SmartRAG.Entities.Document> AddAsync(SmartRAG.Entities.Document document)
         {
@@ -403,12 +385,6 @@ namespace SmartRAG.Repositories
             }
         }
 
-
-
-        #endregion
-
-        #region Private Helper Methods
-
         private static ConfigurationOptions CreateConnectionOptions(RedisConfig config)
         {
             return new ConfigurationOptions
@@ -594,10 +570,6 @@ namespace SmartRAG.Repositories
             await Task.WhenAll(allTasks);
         }
 
-        #endregion
-
-        #region IDisposable
-
         public void Dispose()
         {
             if (!_disposed)
@@ -607,7 +579,5 @@ namespace SmartRAG.Repositories
                 _disposed = true;
             }
         }
-
-        #endregion
     }
 }

@@ -17,28 +17,18 @@ namespace SmartRAG.Services.Document
     /// </summary>
     public class SourceSelectionService : ISourceSelectionService
     {
-        #region Constants
-
         private const double VectorSearchThreshold = 0.8;
         private const double TextSearchThreshold = 5.0;
         private const double ScoreTypeBoundary = 3.0;
         private const int DefaultMinResultsForEarlyExit = 1;
         private const double MinScoreRangeForEarlyExit = 0.3;
         private const int TopResultsToCheck = 5;
-        private const double HighConfidenceScoreMargin = 0.2; // Reduced from 0.3 to allow early exit more readily
-        private const double MinScoreAboveThreshold = 0.1; // Reduced from 0.15 to allow early exit for image results and close scores
-        private const double Epsilon = 0.0001; // For floating point comparison
-
-        #endregion
-
-        #region Fields
+        private const double HighConfidenceScoreMargin = 0.2;
+        private const double MinScoreAboveThreshold = 0.1;
+        private const double Epsilon = 0.0001;
 
         private readonly ILogger<SourceSelectionService> _logger;
         private readonly SmartRagOptions _options;
-
-        #endregion
-
-        #region Constructor
 
         /// <summary>
         /// Initializes a new instance of the SourceSelectionService
@@ -52,10 +42,6 @@ namespace SmartRAG.Services.Document
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         }
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         /// Determines if other sources should be skipped based on document search results
@@ -214,10 +200,6 @@ namespace SmartRAG.Services.Document
             return Math.Min(1.0, avgScore);
         }
 
-        #endregion
-
-        #region Private Methods
-
         /// <summary>
         /// Determines adaptive threshold based on score type (vector vs text search)
         /// </summary>
@@ -230,7 +212,5 @@ namespace SmartRAG.Services.Document
 
             return VectorSearchThreshold;
         }
-
-        #endregion
     }
 }

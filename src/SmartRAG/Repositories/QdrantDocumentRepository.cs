@@ -20,15 +20,9 @@ namespace SmartRAG.Repositories
     /// </summary>
     public class QdrantDocumentRepository : IDocumentRepository, IDisposable
     {
-        #region Constants
-
         private const int DefaultMaxSearchResults = 5;
         private const int DefaultBatchSize = 200;
         private const int DefaultGrpcTimeoutMinutes = 5;
-
-        #endregion
-
-        #region Fields
 
         private readonly QdrantClient _client;
         private readonly QdrantConfig _config;
@@ -40,15 +34,7 @@ namespace SmartRAG.Repositories
         private readonly IQdrantCacheManager _cacheManager;
         private readonly IQdrantSearchService _searchService;
 
-        #endregion
-
-        #region Properties
-
         protected ILogger Logger => _logger;
-
-        #endregion
-
-        #region Constructor
 
         public QdrantDocumentRepository(
             IOptions<QdrantConfig> config,
@@ -100,12 +86,6 @@ namespace SmartRAG.Repositories
                     }
                 });
         }
-
-        #endregion
-
-        #region Public Methods
-
-
 
         /// <summary>
         /// Determines document type from ContentType and file extension
@@ -692,8 +672,6 @@ namespace SmartRAG.Repositories
                 return await _searchService.FallbackTextSearchAsync(query, maxResults);
             }
         }
-
-        #endregion
 
         public void Dispose()
         {

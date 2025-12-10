@@ -1,5 +1,6 @@
 #nullable enable
 
+using SmartRAG.Models.RequestResponse;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -16,6 +17,13 @@ namespace SmartRAG.Interfaces.Document
         /// <summary>
         /// Upload a single document
         /// </summary>
+        /// <param name="request">Request containing document upload parameters</param>
+        /// <returns>Created document entity</returns>
+        Task<Entities.Document> UploadDocumentAsync(Models.RequestResponse.UploadDocumentRequest request);
+
+        /// <summary>
+        /// Upload a single document
+        /// </summary>
         /// <param name="fileStream">File stream containing document content</param>
         /// <param name="fileName">Name of the file</param>
         /// <param name="contentType">MIME content type of the file</param>
@@ -24,6 +32,7 @@ namespace SmartRAG.Interfaces.Document
         /// <param name="fileSize">File size in bytes (optional, will be calculated from stream if not provided)</param>
         /// <param name="additionalMetadata">Additional metadata to add to document (optional)</param>
         /// <returns>Created document entity</returns>
+        [Obsolete("Use UploadDocumentAsync(UploadDocumentRequest) instead. This method will be removed in v4.0.0")]
         Task<Entities.Document> UploadDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy, string? language = null, long? fileSize = null, Dictionary<string, object>? additionalMetadata = null);
 
 

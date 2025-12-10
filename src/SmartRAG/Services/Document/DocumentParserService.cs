@@ -19,11 +19,6 @@ namespace SmartRAG.Services.Document
     /// </summary>
     public class DocumentParserService : IDocumentParserService
     {
-        private readonly SmartRagOptions _options;
-        private readonly IEnumerable<IFileParser> _parsers;
-        private readonly ILogger<DocumentParserService> _logger;
-
-        #region Constants
         private const int DefaultDynamicSearchRange = 500;
         private const int DynamicSearchRangeDivisor = 10;
         private const int UltimateSearchRange = 1000;
@@ -34,7 +29,10 @@ namespace SmartRAG.Services.Document
         private static readonly char[] PunctuationBoundaries = new char[] { ',', ':', ';', '-', '–', '—' };
         private static readonly char[] ExtendedWordBoundaries = new char[] { ' ', '\t', '\n', '\r', '.', '!', '?', ';', ',', ':', '-', '–', '—' };
         private static readonly char[] UltimateBoundaries = new char[] { ' ', '\t', '\n', '\r', '.', '!', '?', ';', ',', ':', '-', '–', '—', '(', ')', '[', ']', '{', '}' };
-        #endregion
+
+        private readonly SmartRagOptions _options;
+        private readonly IEnumerable<IFileParser> _parsers;
+        private readonly ILogger<DocumentParserService> _logger;
 
         public DocumentParserService(
             IOptions<SmartRagOptions> options,
@@ -111,8 +109,6 @@ namespace SmartRAG.Services.Document
         {
             return new[] { "text/", "application/", "audio/", "image/" };
         }
-
-        #region Private Methods
 
         private static SmartRAG.Entities.Document CreateDocument(Guid documentId, string fileName, string contentType, string content, string uploadedBy, List<DocumentChunk> chunks)
         {
@@ -593,6 +589,5 @@ namespace SmartRAG.Services.Document
 
             return nextStart;
         }
-        #endregion
     }
 }

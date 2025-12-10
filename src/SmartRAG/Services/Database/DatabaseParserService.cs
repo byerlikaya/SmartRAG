@@ -21,23 +21,13 @@ namespace SmartRAG.Services.Database
     /// </summary>
     public class DatabaseParserService : IDatabaseParserService
     {
-        #region Constants
-
         private const int DefaultMaxRows = 1000;
         private const int DefaultQueryTimeout = 30;
         private const string SensitiveDataPlaceholder = "[SENSITIVE_DATA]";
 
         private static readonly string[] DatabaseFileExtensions = { ".db", ".sqlite", ".sqlite3", ".db3" };
 
-        #endregion
-
-        #region Fields
-
         private readonly ILogger<DatabaseParserService> _logger;
-
-        #endregion
-
-        #region Constructor
 
         /// <summary>
         /// Initializes a new instance of the DatabaseParserService
@@ -47,10 +37,6 @@ namespace SmartRAG.Services.Database
         {
             _logger = logger;
         }
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         /// Parses a database file (SQLite) and extracts content for RAG processing
@@ -227,11 +213,6 @@ namespace SmartRAG.Services.Database
             return DatabaseFileExtensions;
         }
 
-
-        #endregion
-
-        #region SQLite Implementation
-
         private async Task<string> ParseSQLiteDatabaseAsync(string connectionString, DatabaseConfig config)
         {
             var sanitizedConnectionString = ValidateAndSanitizeSQLiteConnectionString(connectionString);
@@ -357,10 +338,6 @@ namespace SmartRAG.Services.Database
             await connection.OpenAsync();
             return connection.State == System.Data.ConnectionState.Open;
         }
-
-        #endregion
-
-        #region SQL Server Implementation
 
         private async Task<string> ParseSqlServerDatabaseAsync(string connectionString, DatabaseConfig config)
         {
@@ -582,10 +559,6 @@ namespace SmartRAG.Services.Database
             }
         }
 
-        #endregion
-
-        #region MySQL Implementation
-
         private async Task<string> ParseMySqlDatabaseAsync(string connectionString, DatabaseConfig config)
         {
             var sanitizedConnectionString = ValidateAndSanitizeMySqlConnectionString(connectionString);
@@ -736,10 +709,6 @@ namespace SmartRAG.Services.Database
             return connection.State == System.Data.ConnectionState.Open;
         }
 
-        #endregion
-
-        #region PostgreSQL Implementation
-
         private async Task<string> ParsePostgreSqlDatabaseAsync(string connectionString, DatabaseConfig config)
         {
             var sanitizedConnectionString = ValidateAndSanitizePostgreSqlConnectionString(connectionString);
@@ -886,10 +855,6 @@ namespace SmartRAG.Services.Database
             await connection.OpenAsync();
             return connection.State == System.Data.ConnectionState.Open;
         }
-
-        #endregion
-
-        #region Common Helper Methods
 
         /// <summary>
         /// Validates and sanitizes SQLite connection string to prevent path traversal attacks
@@ -1111,7 +1076,5 @@ namespace SmartRAG.Services.Database
             _logger.LogInformation("Custom query executed successfully, rows: {RowCount}", rowCount);
             return result.ToString();
         }
-
-        #endregion
     }
 }

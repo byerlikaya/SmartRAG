@@ -16,21 +16,11 @@ namespace SmartRAG.Services.Database
     /// </summary>
     public class QueryIntentAnalyzer : IQueryIntentAnalyzer
     {
-        #region Constants
-
         private const double MinimumConfidence = 0.0;
-
-        #endregion
-
-        #region Fields
 
         private readonly IDatabaseSchemaAnalyzer _schemaAnalyzer;
         private readonly IAIService _aiService;
         private readonly ILogger<QueryIntentAnalyzer> _logger;
-
-        #endregion
-
-        #region Constructor
 
         public QueryIntentAnalyzer(
             IDatabaseSchemaAnalyzer schemaAnalyzer,
@@ -41,10 +31,6 @@ namespace SmartRAG.Services.Database
             _aiService = aiService;
             _logger = logger;
         }
-
-        #endregion
-
-        #region Private Methods
 
         /// <summary>
         /// Sanitizes user input for safe logging by removing control characters and limiting length.
@@ -74,10 +60,6 @@ namespace SmartRAG.Services.Database
 
             return result;
         }
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         /// [AI Query] Analyzes user query and determines which databases/tables to query
@@ -127,10 +109,6 @@ namespace SmartRAG.Services.Database
 
             return queryIntent;
         }
-
-        #endregion
-
-        #region Private Helper Methods
 
         private string BuildQueryAnalysisPrompt(string userQuery, List<DatabaseSchemaInfo> schemas)
         {
@@ -561,8 +539,6 @@ namespace SmartRAG.Services.Database
                 }
             }
         }
-
-        #endregion
     }
 }
 

@@ -20,9 +20,6 @@ namespace SmartRAG.Services.Parser
     /// </summary>
     public class ImageParserService : IImageParserService, IDisposable
     {
-        #region Constants
-
-
         private const string DefaultLanguage = "eng";
 
         private const int WebPHeaderSize = 12;
@@ -84,20 +81,12 @@ namespace SmartRAG.Services.Parser
             { "ces", "ces" }, { "hun", "hun" }, { "ron", "ron" }, { "ukr", "ukr" }
         };
 
-        #endregion
-
-        #region Fields
-
         private readonly ILogger<ImageParserService> _logger;
         private string _ocrEngineDataPath;
         private readonly object _ocrEngineDataPathLock = new object();
         private bool _disposed = false;
         private static bool _dyldLibraryPathInitialized = false;
         private static readonly object _dyldLibraryPathLock = new object();
-
-        #endregion
-
-        #region Properties
 
         /// <summary>
         /// Gets the OCR engine data path (lazy initialization to avoid blocking during service registration)
@@ -119,10 +108,6 @@ namespace SmartRAG.Services.Parser
                 return _ocrEngineDataPath;
             }
         }
-
-        #endregion
-
-        #region Constructor
 
         public ImageParserService(ILogger<ImageParserService> logger)
         {
@@ -174,10 +159,6 @@ namespace SmartRAG.Services.Parser
                 _dyldLibraryPathInitialized = true;
             }
         }
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         /// [AI Query] Parses an image stream and extracts text using OCR
@@ -316,10 +297,6 @@ namespace SmartRAG.Services.Parser
             }
         }
 
-        #endregion
-
-        #region Private Methods
-
         /// <summary>
         /// Gets the default OCR language from system locale
         /// </summary>
@@ -335,22 +312,22 @@ namespace SmartRAG.Services.Parser
                 {
                     if (IsLanguageDataAvailable(threeLetterCode))
                     {
-                        Console.WriteLine($"[OCR Language Detection] System locale: '{currentCulture.Name}' → Language: '{threeLetterCode}' ✓");
+                        _logger.LogInformation("[OCR Language Detection] System locale: '{CultureName}' → Language: '{LanguageCode}' ✓", currentCulture.Name, threeLetterCode);
                         return threeLetterCode;
                     }
                     else
                     {
-                        Console.WriteLine($"[OCR Language Detection] System locale: '{currentCulture.Name}' → Language: '{threeLetterCode}' (not available, falling back to 'eng')");
+                        _logger.LogWarning("[OCR Language Detection] System locale: '{CultureName}' → Language: '{LanguageCode}' (not available, falling back to 'eng')", currentCulture.Name, threeLetterCode);
                         return DefaultLanguage;
                     }
                 }
 
-                Console.WriteLine($"[OCR Language Detection] System locale: '{currentCulture.Name}' → No mapping found, defaulting to 'eng'");
+                _logger.LogWarning("[OCR Language Detection] System locale: '{CultureName}' → No mapping found, defaulting to 'eng'", currentCulture.Name);
                 return DefaultLanguage;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[OCR Language Detection] Failed to detect system locale: {ex.Message}, defaulting to 'eng'");
+                _logger.LogError(ex, "[OCR Language Detection] Failed to detect system locale, defaulting to 'eng'");
                 return DefaultLanguage;
             }
         }
@@ -537,7 +514,7 @@ namespace SmartRAG.Services.Parser
                     var text = ExtractTableAwareText(page);
                     var confidence = page.GetMeanConfidence();
 
-                    var correctedText = CorrectCommonOcrMistakes(text, language);
+                    var correctedText = CorrectCommonOcrMistakes(text, language, _logger);
 
                     ServiceLogMessages.LogImageOcrSuccess(_logger, correctedText.Length, null);
 
@@ -780,13 +757,14 @@ namespace SmartRAG.Services.Parser
         /// </summary>
         /// <param name="text">OCR extracted text</param>
         /// <param name="language">Language code for context (e.g., "tur", "en", "de")</param>
+        /// <param name="logger">Logger instance for logging currency detection</param>
         /// <returns>Corrected text</returns>
-        private static string CorrectCommonOcrMistakes(string text, string language)
+        private static string CorrectCommonOcrMistakes(string text, string language, ILogger logger = null)
         {
             if (string.IsNullOrWhiteSpace(text))
                 return text;
 
-            var currencySymbol = GetCurrencySymbolFromSystemLocale();
+            var currencySymbol = GetCurrencySymbolFromSystemLocale(logger);
 
             if (!string.IsNullOrEmpty(currencySymbol))
             {
@@ -799,8 +777,9 @@ namespace SmartRAG.Services.Parser
         /// <summary>
         /// Gets the currency symbol from system locale (independent of OCR language)
         /// </summary>
+        /// <param name="logger">Logger instance for logging currency detection</param>
         /// <returns>Currency symbol or null if not determinable</returns>
-        private static string GetCurrencySymbolFromSystemLocale()
+        private static string GetCurrencySymbolFromSystemLocale(ILogger logger = null)
         {
             try
             {
@@ -810,13 +789,13 @@ namespace SmartRAG.Services.Parser
                 var region = new RegionInfo(specificCulture.Name);
                 var symbol = region.CurrencySymbol;
 
-                Console.WriteLine($"[OCR Currency Detection] System locale: '{currentCulture.Name}' → Symbol: '{symbol}'");
+                logger?.LogDebug("[OCR Currency Detection] System locale: '{CultureName}' → Symbol: '{Symbol}'", currentCulture.Name, symbol);
 
                 return symbol;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[OCR Currency Detection] Failed to get currency from system locale: {ex.Message}");
+                logger?.LogWarning(ex, "[OCR Currency Detection] Failed to get currency from system locale");
                 return null;
             }
         }
@@ -833,7 +812,7 @@ namespace SmartRAG.Services.Parser
             if (string.IsNullOrWhiteSpace(text))
                 return text;
 
-            var currencySymbol = GetCurrencySymbolFromSystemLocale();
+            var currencySymbol = GetCurrencySymbolFromSystemLocale(_logger);
 
             if (!string.IsNullOrEmpty(currencySymbol))
             {
@@ -909,11 +888,6 @@ namespace SmartRAG.Services.Parser
             return text;
         }
 
-
-        #endregion
-
-        #region IDisposable Implementation
-
         /// <summary>
         /// Disposes the service and releases resources
         /// </summary>
@@ -938,7 +912,5 @@ namespace SmartRAG.Services.Parser
                 _disposed = true;
             }
         }
-
-        #endregion
     }
 }

@@ -6,8 +6,6 @@ namespace SmartRAG.Models
     /// </summary>
     public class AIProviderConfig
     {
-        #region Authentication Properties
-
         /// <summary>
         /// API key for the AI provider
         /// </summary>
@@ -17,10 +15,6 @@ namespace SmartRAG.Models
         /// Optional separate API key for embedding operations
         /// </summary>
         public string EmbeddingApiKey { get; set; }
-
-        #endregion
-
-        #region Endpoint Configuration
 
         /// <summary>
         /// Optional custom endpoint URL for the AI provider
@@ -38,10 +32,6 @@ namespace SmartRAG.Models
         /// </summary>
         public string ApiVersion { get; set; }
 
-        #endregion
-
-        #region Model Configuration
-
         /// <summary>
         /// Model name to use for text generation
         /// </summary>
@@ -51,10 +41,6 @@ namespace SmartRAG.Models
         /// Optional separate model for embedding generation
         /// </summary>
         public string EmbeddingModel { get; set; }
-
-        #endregion
-
-        #region Generation Parameters
 
         /// <summary>
         /// Maximum number of tokens to generate
@@ -72,16 +58,10 @@ namespace SmartRAG.Models
         /// </summary>
         public string SystemMessage { get; set; }
 
-        #endregion
-
-        #region Rate Limiting
-
         /// <summary>
         /// Optional minimum interval between embedding requests in milliseconds.
         /// If null, provider defaults will be used (e.g., 60000 ms for Azure S0).
         /// </summary>
         public int? EmbeddingMinIntervalMs { get; set; }
-
-        #endregion
     }
 }

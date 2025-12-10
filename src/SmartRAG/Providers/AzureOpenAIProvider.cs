@@ -1,10 +1,11 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Http;
+using System.Net.Http;
 using SmartRAG.Enums;
 using SmartRAG.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -22,32 +23,19 @@ namespace SmartRAG.Providers
         /// Initializes a new instance of the AzureOpenAIProvider
         /// </summary>
         /// <param name="logger">Logger instance for this provider</param>
-        public AzureOpenAIProvider(ILogger<AzureOpenAIProvider> logger) : base(logger)
+        /// <param name="httpClientFactory">HTTP client factory for creating HTTP clients</param>
+        public AzureOpenAIProvider(ILogger<AzureOpenAIProvider> logger, IHttpClientFactory httpClientFactory) : base(logger, httpClientFactory)
         {
             _logger = logger;
         }
 
-        #region Constants
-
         private const int DefaultMaxRetries = 3;
-        private const int DefaultMinIntervalMs = 60000; // 60 seconds
-
-        #endregion
-
-        #region Fields
+        private const int DefaultMinIntervalMs = 60000;
 
         private readonly SemaphoreSlim _rateLimitSemaphore = new SemaphoreSlim(1, 1);
         private DateTime _lastRequestTime = DateTime.MinValue;
 
-        #endregion
-
-        #region Properties
-
         public override AIProvider ProviderType => AIProvider.AzureOpenAI;
-
-        #endregion
-
-        #region Public Methods
 
         public override async Task<string> GenerateTextAsync(string prompt, AIProviderConfig config)
         {
@@ -188,10 +176,6 @@ namespace SmartRAG.Providers
             GC.SuppressFinalize(this);
         }
 
-        #endregion
-
-        #region Private Methods
-
         /// <summary>
         /// Azure OpenAI URL builder
         /// </summary>
@@ -237,7 +221,5 @@ namespace SmartRAG.Providers
                 await Task.Delay(waitTime);
             }
         }
-
-        #endregion
     }
 }

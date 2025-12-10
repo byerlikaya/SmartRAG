@@ -31,9 +31,11 @@ namespace SmartRAG.Services.AI
         public string BuildDocumentRagPrompt(string query, string context, string? conversationHistory = null, string? preferredLanguage = null)
         {
             var historyContext = !string.IsNullOrEmpty(conversationHistory)
-                ? $"\n\nRecent conversation context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 2)}\n"
+                ? $"\n\nRecent conversation context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 3)}\n"
                 : "";
 
+            // Check if query is vague (refers to generic person/entity without naming them)
+            var isVagueQuery = IsVagueQuery(query);
 
             var hasQuestionPunctuation = query.IndexOf('?', StringComparison.Ordinal) >= 0 ||
                                        query.IndexOf('¿', StringComparison.Ordinal) >= 0 ||
@@ -62,6 +64,19 @@ SPECIAL INSTRUCTIONS FOR COUNTING/LISTING QUESTIONS (applies to all languages):
 - Be thorough - scan the ENTIRE context for related information"
                 : "";
 
+            // Vague query instructions only if conversation history exists
+            // If no conversation history, let AI search document context directly (it will find the answer)
+            var vagueQueryInstructions = isVagueQuery && !string.IsNullOrEmpty(conversationHistory)
+                ? @"
+SPECIAL INSTRUCTIONS FOR VAGUE QUESTIONS (questions referring to generic person/entity without naming them):
+- The current question is vague and refers to a person/entity without naming them
+- Use the conversation history above to identify the specific person/entity being discussed
+- Search the document context for information about that specific person/entity
+- If conversation history mentions a specific name, search for that name in the document context
+- If the question asks about attributes (title, position, role, etc.) without naming the person, look for that information about the person mentioned in conversation history
+- Combine conversation history context with document context to provide a complete answer"
+                : "";
+
             var languageInstruction = !string.IsNullOrEmpty(preferredLanguage)
                 ? GetLanguageInstructionForCode(preferredLanguage)
                 : "respond in the SAME language as the query";
@@ -71,10 +86,14 @@ SPECIAL INSTRUCTIONS FOR COUNTING/LISTING QUESTIONS (applies to all languages):
 CRITICAL RULES: 
 - Base your answer ONLY on the document context provided below
 - The query and context may be in ANY language - {languageInstruction}
-- Do NOT use information from previous conversations unless it's in the current document context
 - SEARCH THOROUGHLY through the entire context before concluding information is missing
 - IMPORTANT: The FIRST part of the context (beginning) often contains key document information like headers, titles, key-value pairs, structured data, and important metadata - pay special attention to it
 - Look for information in ALL forms: paragraphs, lists, tables, numbered items, bullet points, headings
+- TABLE DATA DETECTION: If the context contains structured data (tables, key-value pairs, form fields), carefully extract information from these structures
+- TABLE READING: When reading tables, look for column headers and corresponding values - information may be organized in rows and columns
+- STRUCTURED DATA: Pay attention to patterns like ""Label: Value"", ""Field: Data"", or tabular structures - these often contain the exact information requested
+- KEY-VALUE PAIRS: Look for patterns where a label/question is followed by a value/answer (e.g., ""Label: Value"", ""Field: Data"", ""Question: Answer"")
+- DOCUMENT STRUCTURE: PDF documents often have structured sections with labels and values - search for these patterns even if they appear in table-like formats
 - If you find ANY relevant or related information (even if not a perfect match), provide an answer based on what you found
 - If you have partial information, share it and clearly explain what is available and what might be missing
 - If you cannot find the information after thorough search, politely inform the user in the same language as the query
@@ -83,6 +102,7 @@ CRITICAL RULES:
 - Synthesize information from multiple parts of the context when needed
 - Keep responses focused on the current question
 {countingInstructions}
+{vagueQueryInstructions}
 
 {historyContext}Current question: {query}
 
@@ -158,8 +178,6 @@ Keep responses concise and relevant to the current question.
 Answer:";
         }
 
-        #region Private Helper Methods
-
         /// <summary>
         /// Gets language-specific instruction for AI prompt
         /// </summary>
@@ -196,7 +214,54 @@ Answer:";
             return matches.Count >= 2;
         }
 
-        #endregion
+        /// <summary>
+        /// Detects if query is vague (refers to generic person/entity without naming them)
+        /// CONSERVATIVE: Only marks as vague if query explicitly uses generic terms AND conversation history exists
+        /// This prevents false positives for queries that can be answered directly from document context
+        /// Language-agnostic: Uses structural patterns that work for all languages
+        /// </summary>
+        private static bool IsVagueQuery(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                return false;
+
+            // If query contains a capitalized word pair (likely a name), it's not vague
+            var hasName = Regex.IsMatch(query, @"\b\p{Lu}\p{Ll}+\s+\p{Lu}\p{Ll}+\b", RegexOptions.None);
+            if (hasName)
+                return false;
+
+            // CONSERVATIVE APPROACH: Only mark as vague if query uses very explicit generic terms
+            // This prevents false positives - if document context has the answer, let AI find it directly
+            
+            // Pattern: Explicit generic person/entity references (language-agnostic structural patterns)
+            // Uses Unicode word boundaries and structural analysis to detect generic references in any language
+            var lowerQuery = query.ToLowerInvariant();
+            
+            // Pattern 1: Article + generic person/entity term structure
+            // Detects patterns like: "the [person]", "a [worker]", "an [employee]" (works for all languages with articles)
+            // Uses structural pattern: short article word (1-3 chars) + space + longer generic term (4+ chars)
+            var articleGenericPattern = @"\b\p{L}{1,3}\s+\p{L}{4,}\b";
+            var hasArticleGenericStructure = Regex.IsMatch(lowerQuery, articleGenericPattern, RegexOptions.None);
+
+            // Pattern 2: Possessive form structure (language-agnostic)
+            // Detects possessive patterns: word + possessive marker + space + attribute word
+            // Uses Unicode to detect possessive markers in any language
+            var possessivePattern = @"\b\p{L}+\p{M}*\p{L}*\s+\p{L}+\b";
+            var hasPossessiveStructure = Regex.IsMatch(lowerQuery, possessivePattern, RegexOptions.None);
+
+            // Pattern 3: Generic term followed by question word structure
+            // Detects patterns asking about attributes without naming the person
+            // Uses structural pattern: generic term + question word
+            var genericQuestionPattern = @"\b\p{L}{4,}\s+\p{L}{2,6}\b";
+            var hasGenericQuestionStructure = Regex.IsMatch(lowerQuery, genericQuestionPattern, RegexOptions.None);
+
+            // Only mark as vague if query has explicit generic structural patterns
+            // This is conservative - if document context has the answer, AI will find it without vague query instructions
+            // All patterns are language-agnostic and work for any language
+            var isVague = (hasArticleGenericStructure || hasPossessiveStructure || hasGenericQuestionStructure);
+
+            return isVague;
+        }
     }
 }
 

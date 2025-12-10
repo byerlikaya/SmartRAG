@@ -13,21 +13,11 @@ namespace SmartRAG.Services.Database
     /// </summary>
     public class DatabaseQueryExecutor : IDatabaseQueryExecutor
     {
-        #region Constants
-
         private const int DefaultMaxRows = 100;
-
-        #endregion
-
-        #region Fields
 
         private readonly IDatabaseConnectionManager _connectionManager;
         private readonly IDatabaseParserService _databaseParser;
         private readonly ILogger<DatabaseQueryExecutor> _logger;
-
-        #endregion
-
-        #region Constructor
 
         public DatabaseQueryExecutor(
             IDatabaseConnectionManager connectionManager,
@@ -38,10 +28,6 @@ namespace SmartRAG.Services.Database
             _databaseParser = databaseParser;
             _logger = logger;
         }
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         /// [DB Query] Executes queries across multiple databases based on query intent
@@ -84,10 +70,6 @@ namespace SmartRAG.Services.Database
 
             return result;
         }
-
-        #endregion
-
-        #region Private Helper Methods
 
         private async Task<DatabaseQueryResult> ExecuteSingleDatabaseQueryAsync(DatabaseQueryIntent dbQuery)
         {
@@ -180,8 +162,6 @@ namespace SmartRAG.Services.Database
 
             return dataRows;
         }
-
-        #endregion
     }
 }
 

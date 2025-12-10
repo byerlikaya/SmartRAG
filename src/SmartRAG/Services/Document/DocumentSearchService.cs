@@ -11,6 +11,7 @@ using SmartRAG.Interfaces.Support;
 using SmartRAG.Interfaces.AI;
 using SmartRAG.Services.Shared;
 using SmartRAG.Models;
+using SmartRAG.Models.RequestResponse;
 using SmartRAG.Interfaces.Database;
 using SmartRAG.Interfaces.Mcp;
 using System;
@@ -27,9 +28,6 @@ namespace SmartRAG.Services.Document
     /// </summary>
     public class DocumentSearchService : IDocumentSearchService, IRagAnswerGeneratorService
     {
-        #region Constants
-
-        // DocumentSearchService-specific constants (not moved to other services)
         private const int InitialSearchMultiplier = 2;
         private const int MinSearchResultsCount = 0;
         private const int FallbackSearchMaxResults = 10;
@@ -72,10 +70,6 @@ namespace SmartRAG.Services.Document
         private const string ImageTagPattern = @"\s*-i\s*$";
         private const RegexOptions TagRegexOptions = RegexOptions.IgnoreCase;
 
-        #endregion
-
-        #region Fields
-
         private readonly IDocumentRepository _documentRepository;
         private readonly IAIService _aiService;
         private readonly IAIProviderFactory _aiProviderFactory;
@@ -103,10 +97,6 @@ namespace SmartRAG.Services.Document
         private readonly IQueryStrategyExecutorService? _strategyExecutor;
         private readonly IDocumentSearchStrategyService? _documentSearchStrategy;
         private readonly ISourceSelectionService? _sourceSelectionService;
-
-        #endregion
-
-        #region Constructor
 
         /// <summary>
         /// Initializes a new instance of the DocumentSearchService
@@ -196,10 +186,6 @@ namespace SmartRAG.Services.Document
             _sourceSelectionService = sourceSelectionService;
         }
 
-        #endregion
-
-        #region Public Methods
-
         /// <summary>
         /// [Document Query] Searches for relevant document chunks based on the query
         /// </summary>
@@ -221,7 +207,6 @@ namespace SmartRAG.Services.Document
                 ? await _documentSearchStrategy.SearchDocumentsAsync(query, maxResults * InitialSearchMultiplier, options, queryTokens)
                 : await PerformBasicSearchAsync(query, maxResults * InitialSearchMultiplier, options, queryTokens);
             
-            // Sort by relevance score (highest first) to prioritize most relevant chunks
             // This ensures image chunks and other high-scoring chunks are selected first
             return searchResults
                 .OrderByDescending(c => c.RelevanceScore ?? 0.0)
@@ -248,15 +233,12 @@ namespace SmartRAG.Services.Document
             if (string.IsNullOrWhiteSpace(query))
                 throw new ArgumentException("Query cannot be empty", nameof(query));
 
-            // Skip queries that start with / but are not recognized commands
             // This prevents processing invalid slash commands as regular queries
             var trimmedQuery = query.Trim();
             if (trimmedQuery.StartsWith("/", StringComparison.Ordinal))
             {
-                // Check if it's a recognized command
                 if (!_queryIntentClassifier.TryParseCommand(trimmedQuery, out var parsedCommandType, out var _))
                 {
-                    // Unknown slash command - skip processing
                     _logger.LogDebug("Skipping unknown slash command: {Query}", trimmedQuery);
                     return new RagResponse
                     {
@@ -265,12 +247,10 @@ namespace SmartRAG.Services.Document
                         Query = trimmedQuery
                     };
                 }
-                // If it's a recognized command, continue processing (it will be handled later in the method)
             }
 
             var searchOptions = options ?? SearchOptions.FromConfig(_options);
 
-            // Parse source tags from query (-d, -db, -mcp, -a, -i)
             // Only parse tags if options were not provided (to avoid double parsing)
             if (options == null)
             {
@@ -320,7 +300,6 @@ namespace SmartRAG.Services.Document
             RagResponse response;
 
             // Pre-evaluate document availability for smarter strategy selection
-            // Only check if document search is enabled
             // Compute query tokens once here and pass to all sub-methods to avoid redundant tokenization
             var queryTokens = searchOptions.EnableDocumentSearch ? QueryTokenizer.TokenizeQuery(query) : null;
 
@@ -349,7 +328,18 @@ namespace SmartRAG.Services.Document
                         throw new InvalidOperationException("IQueryStrategyExecutorService is required for strategy execution");
                     }
                     
-                    var documentOnlyResponse = await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(query, maxResults, conversationHistory, CanAnswer, preferredLanguage, searchOptions, Results, queryTokens);
+                    var docRequest = new Models.RequestResponse.DocumentQueryStrategyRequest
+                    {
+                        Query = query,
+                        MaxResults = maxResults,
+                        ConversationHistory = conversationHistory,
+                        CanAnswerFromDocuments = CanAnswer,
+                        PreferredLanguage = preferredLanguage,
+                        Options = searchOptions,
+                        PreCalculatedResults = Results,
+                        QueryTokens = queryTokens
+                    };
+                    var documentOnlyResponse = await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(docRequest);
                     
                     // CRITICAL: Check if AI answer indicates missing data
                     // If document search found high-confidence chunks but AI cannot answer, allow database fallback
@@ -358,11 +348,9 @@ namespace SmartRAG.Services.Document
                         _responseBuilder.IndicatesMissingData(documentOnlyResponse.Answer, query))
                     {
                         _logger.LogInformation("Document-only response indicates missing data, continuing to database search as fallback");
-                        // Don't return, continue to database search below
                     }
                     else
                     {
-                        // AI generated meaningful answer from documents, return it immediately
                         // This prevents unnecessary database/MCP queries when documents already have the answer
                         _logger.LogInformation("Document-only response is satisfactory, skipping database and MCP search for faster response");
                         return documentOnlyResponse;
@@ -397,17 +385,70 @@ namespace SmartRAG.Services.Document
 
                     response = strategy switch
                     {
-                        QueryStrategy.DatabaseOnly => await _strategyExecutor.ExecuteDatabaseOnlyStrategyAsync(query, maxResults, conversationHistory, CanAnswer, queryIntent, preferredLanguage, searchOptions, queryTokens),
-                        QueryStrategy.DocumentOnly => await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(query, maxResults, conversationHistory, CanAnswer, preferredLanguage, searchOptions, Results, queryTokens),
-                        QueryStrategy.Hybrid => await _strategyExecutor.ExecuteHybridStrategyAsync(query, maxResults, conversationHistory, hasDatabaseQueries, CanAnswer, queryIntent, preferredLanguage, searchOptions, Results, queryTokens),
-                        _ => await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(query, maxResults, conversationHistory, CanAnswer, preferredLanguage, searchOptions, Results, queryTokens) // Fallback
+                        QueryStrategy.DatabaseOnly => await _strategyExecutor.ExecuteDatabaseOnlyStrategyAsync(new Models.RequestResponse.DatabaseQueryStrategyRequest
+                        {
+                            Query = query,
+                            MaxResults = maxResults,
+                            ConversationHistory = conversationHistory,
+                            CanAnswerFromDocuments = CanAnswer,
+                            QueryIntent = queryIntent,
+                            PreferredLanguage = preferredLanguage,
+                            Options = searchOptions,
+                            QueryTokens = queryTokens
+                        }),
+                        QueryStrategy.DocumentOnly => await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(new Models.RequestResponse.DocumentQueryStrategyRequest
+                        {
+                            Query = query,
+                            MaxResults = maxResults,
+                            ConversationHistory = conversationHistory,
+                            CanAnswerFromDocuments = CanAnswer,
+                            PreferredLanguage = preferredLanguage,
+                            Options = searchOptions,
+                            PreCalculatedResults = Results,
+                            QueryTokens = queryTokens
+                        }),
+                        QueryStrategy.Hybrid => await _strategyExecutor.ExecuteHybridStrategyAsync(new Models.RequestResponse.HybridQueryStrategyRequest
+                        {
+                            Query = query,
+                            MaxResults = maxResults,
+                            ConversationHistory = conversationHistory,
+                            HasDatabaseQueries = hasDatabaseQueries,
+                            CanAnswerFromDocuments = CanAnswer,
+                            QueryIntent = queryIntent,
+                            PreferredLanguage = preferredLanguage,
+                            Options = searchOptions,
+                            PreCalculatedResults = Results,
+                            QueryTokens = queryTokens
+                        }),
+                        _ => await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(new Models.RequestResponse.DocumentQueryStrategyRequest
+                        {
+                            Query = query,
+                            MaxResults = maxResults,
+                            ConversationHistory = conversationHistory,
+                            CanAnswerFromDocuments = CanAnswer,
+                            PreferredLanguage = preferredLanguage,
+                            Options = searchOptions,
+                            PreCalculatedResults = Results,
+                            QueryTokens = queryTokens
+                        })
                     };
                 }
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error during query intent analysis, falling back to document-only query");
+                    var docRequest = new Models.RequestResponse.DocumentQueryStrategyRequest
+                    {
+                        Query = query,
+                        MaxResults = maxResults,
+                        ConversationHistory = conversationHistory,
+                        CanAnswerFromDocuments = CanAnswer,
+                        PreferredLanguage = preferredLanguage,
+                        Options = searchOptions,
+                        PreCalculatedResults = Results,
+                        QueryTokens = queryTokens
+                    };
                     response = _strategyExecutor != null
-                        ? await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(query, maxResults, conversationHistory, CanAnswer, preferredLanguage, searchOptions, Results, queryTokens)
+                        ? await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(docRequest)
                         : throw new InvalidOperationException("IQueryStrategyExecutorService is required for strategy execution");
                 }
             }
@@ -415,13 +456,23 @@ namespace SmartRAG.Services.Document
             {
                 if (searchOptions.EnableDocumentSearch)
                 {
+                    var docRequest = new Models.RequestResponse.DocumentQueryStrategyRequest
+                    {
+                        Query = query,
+                        MaxResults = maxResults,
+                        ConversationHistory = conversationHistory,
+                        CanAnswerFromDocuments = CanAnswer,
+                        PreferredLanguage = preferredLanguage,
+                        Options = searchOptions,
+                        PreCalculatedResults = Results,
+                        QueryTokens = queryTokens
+                    };
                     response = _strategyExecutor != null
-                        ? await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(query, maxResults, conversationHistory, CanAnswer, preferredLanguage, searchOptions, Results, queryTokens)
+                        ? await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(docRequest)
                         : throw new InvalidOperationException("IQueryStrategyExecutorService is required for strategy execution");
                 }
                 else
                 {
-                    // Both disabled? Check MCP first, then fallback to chat
                     if (_mcpIntegration != null && _options.Features.EnableMcpSearch && searchOptions.EnableMcpSearch)
                     {
                         try
@@ -565,7 +616,6 @@ namespace SmartRAG.Services.Document
                 return response;
             }
 
-            // Fallback: Create empty response if all strategies failed
             if (_responseBuilder != null)
             {
                 return await _responseBuilder.CreateFallbackResponseAsync(query, conversationHistory, preferredLanguage);
@@ -573,10 +623,6 @@ namespace SmartRAG.Services.Document
 
             return new RagResponse { Query = query, Answer = "Sorry, I cannot process your query right now. Please try again later.", Sources = new List<SearchSource>(), SearchedAt = DateTime.UtcNow };
         }
-
-        #endregion
-
-        #region Private Methods
 
         /// <summary>
         /// Parses source tags from query and adjusts SearchOptions accordingly
@@ -894,32 +940,35 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// Generates RAG answer with automatic session management and context expansion
         /// </summary>
-        public async Task<RagResponse> GenerateBasicRagAnswerAsync(string query, int maxResults, string conversationHistory, string? preferredLanguage = null, SearchOptions? options = null, List<DocumentChunk>? preCalculatedResults = null, List<string>? queryTokens = null)
+        /// <param name="request">Request containing query parameters</param>
+        /// <returns>RAG response with answer and sources</returns>
+        async Task<RagResponse> IRagAnswerGeneratorService.GenerateBasicRagAnswerAsync(Models.RequestResponse.GenerateRagAnswerRequest request)
         {
-            var searchMaxResults = _queryAnalysis?.DetermineInitialSearchCount(query, maxResults) ?? maxResults;
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
+            var searchMaxResults = _queryAnalysis?.DetermineInitialSearchCount(request.Query, request.MaxResults) ?? request.MaxResults;
 
             List<DocumentChunk> chunks;
-            var queryTokensForPrioritization = queryTokens ?? QueryTokenizer.TokenizeQuery(query);
+            var queryTokensForPrioritization = request.QueryTokens ?? QueryTokenizer.TokenizeQuery(request.Query);
 
             DocumentChunk? preservedChunk0 = null;
 
-            if (preCalculatedResults != null && preCalculatedResults.Count > 0)
+            if (request.PreCalculatedResults != null && request.PreCalculatedResults.Count > 0)
             {
-                // Filter preCalculatedResults by document type if options are provided
-                var filteredPreCalculatedResults = preCalculatedResults;
-                if (options != null)
+                var filteredPreCalculatedResults = request.PreCalculatedResults;
+                if (request.Options != null)
                 {
-                    var filteredDocs = await _documentService.GetAllDocumentsFilteredAsync(options);
+                    var filteredDocs = await _documentService.GetAllDocumentsFilteredAsync(request.Options);
                     var allowedDocIds = new HashSet<Guid>(filteredDocs.Select(d => d.Id));
-                    var beforeCount = preCalculatedResults.Count;
-                    filteredPreCalculatedResults = preCalculatedResults.Where(c => allowedDocIds.Contains(c.DocumentId)).ToList();
+                    var beforeCount = request.PreCalculatedResults.Count;
+                    filteredPreCalculatedResults = request.PreCalculatedResults.Where(c => allowedDocIds.Contains(c.DocumentId)).ToList();
                     var afterCount = filteredPreCalculatedResults.Count;
                     
                     _logger.LogDebug("Filtered preCalculatedResults: {BeforeCount} -> {AfterCount} chunks (EnableDocumentSearch: {EnableDocumentSearch}, EnableAudioSearch: {EnableAudioSearch}, EnableImageSearch: {EnableImageSearch})",
-                        beforeCount, afterCount, options.EnableDocumentSearch, options.EnableAudioSearch, options.EnableImageSearch);
+                        beforeCount, afterCount, request.Options.EnableDocumentSearch, request.Options.EnableAudioSearch, request.Options.EnableImageSearch);
                 }
                 
-                // Sort by relevance score (highest first) to prioritize most relevant chunks
                 // This ensures image chunks and other high-scoring chunks are selected first
                 chunks = filteredPreCalculatedResults
                     .OrderByDescending(c => c.RelevanceScore ?? 0.0)
@@ -931,23 +980,23 @@ namespace SmartRAG.Services.Document
             }
             else
             {
-                chunks = await SearchDocumentsAsync(query, searchMaxResults, options, queryTokens);
+                chunks = await SearchDocumentsAsync(request.Query, searchMaxResults, request.Options, request.QueryTokens);
                 preservedChunk0 = chunks.FirstOrDefault(c => c.ChunkIndex == 0);
                 var nonZeroChunksForSearch = chunks.Where(c => c.ChunkIndex != 0).ToList();
                 chunks = _chunkPrioritizer.PrioritizeChunksByQueryWords(nonZeroChunksForSearch, queryTokensForPrioritization);
                 chunks = _chunkPrioritizer.MergeChunksWithPreservedChunk0(chunks, preservedChunk0);
             }
 
-            var needsAggressiveSearch = chunks.Count < 5 || _queryPatternAnalyzer.RequiresComprehensiveSearch(query);
+            var needsAggressiveSearch = chunks.Count < 5 || _queryPatternAnalyzer.RequiresComprehensiveSearch(request.Query);
             if (needsAggressiveSearch)
             {
                 preservedChunk0 ??= chunks.FirstOrDefault(c => c.ChunkIndex == 0);
 
-                var allDocuments = await _documentService.GetAllDocumentsFilteredAsync(options);
+                var allDocuments = await _documentService.GetAllDocumentsFilteredAsync(request.Options);
                 var allChunks = allDocuments.SelectMany(d => d.Chunks).ToList();
-                var queryWords = queryTokens ?? QueryTokenizer.TokenizeQuery(query);
-                var potentialNames = QueryTokenizer.ExtractPotentialNames(query);
-                var scoredChunks = _documentScoring.ScoreChunks(allChunks, query, queryWords, potentialNames);
+                var queryWords = request.QueryTokens ?? QueryTokenizer.TokenizeQuery(request.Query);
+                var potentialNames = QueryTokenizer.ExtractPotentialNames(request.Query);
+                var scoredChunks = _documentScoring.ScoreChunks(allChunks, request.Query, queryWords, potentialNames);
 
                 var queryWordDocumentMap = _queryWordMatcher.MapQueryWordsToDocuments(
                     queryWords,
@@ -998,7 +1047,7 @@ namespace SmartRAG.Services.Document
                     NumberedListBonusPerItem,
                     NumberedListWordMatchBonus);
 
-                if (_queryPatternAnalyzer.RequiresComprehensiveSearch(query))
+                if (_queryPatternAnalyzer.RequiresComprehensiveSearch(request.Query))
                 {
                     var numberedListWithQueryWords = numberedListChunks
                         .Where(c => _queryPatternAnalyzer.DetectNumberedLists(c.Content) &&
@@ -1086,10 +1135,10 @@ namespace SmartRAG.Services.Document
 
                     if (_contextExpansion != null)
                     {
-                        var contextWindow = _contextExpansion.DetermineContextWindow(relevantDocumentChunks, query);
+                        var contextWindow = _contextExpansion.DetermineContextWindow(relevantDocumentChunks, request.Query);
                         var expandedChunks = await _contextExpansion.ExpandContextAsync(relevantDocumentChunks, contextWindow);
 
-                        var queryWords = QueryTokenizer.TokenizeQuery(query);
+                        var queryWords = request.QueryTokens ?? QueryTokenizer.TokenizeQuery(request.Query);
 
                         // Calculate max original score to ensure expanded chunks don't outrank original chunks
                         var maxOriginalScore = originalScores.Values.Any() ? originalScores.Values.Max() : 0.0;
@@ -1101,7 +1150,6 @@ namespace SmartRAG.Services.Document
                         {
                             if (originalScores.ContainsKey(chunk.Id))
                             {
-                                // Keep original score for chunks that were in the initial search results
                                 chunk.RelevanceScore = originalScores[chunk.Id];
                             }
                             else
@@ -1151,7 +1199,6 @@ namespace SmartRAG.Services.Document
 
             // After context expansion, chunks are already sorted by relevance score and original chunk priority
             // Do NOT re-prioritize by query words here, as it can incorrectly rank irrelevant Chunk 0s from other documents
-            // Just ensure Chunk 0 from the most relevant document is at the top
             if (preservedChunk0 == null)
             {
                 // Find Chunk 0 from the HIGHEST scoring original document (not just the first Chunk 0)
@@ -1168,7 +1215,6 @@ namespace SmartRAG.Services.Document
             }
 
             // Do NOT use PrioritizeChunksByQueryWords here - chunks are already correctly sorted by context expansion
-            // Just merge with preserved Chunk 0 if it's not already in the list
             chunks = _chunkPrioritizer.MergeChunksWithPreservedChunk0(chunks, preservedChunk0);
 
             // Build context with size limit to prevent timeout
@@ -1176,10 +1222,37 @@ namespace SmartRAG.Services.Document
                 ? _contextExpansion.BuildLimitedContext(chunks, MaxContextSize)
                 : string.Join("\n\n", chunks.Select(c => c.Content ?? string.Empty));
 
-            var prompt = _promptBuilder.BuildDocumentRagPrompt(query, context, conversationHistory, preferredLanguage);
+            var prompt = _promptBuilder.BuildDocumentRagPrompt(request.Query, context, request.ConversationHistory, request.PreferredLanguage);
             var answer = await _aiService.GenerateResponseAsync(prompt, new List<string> { context });
 
-            return _responseBuilder?.CreateRagResponse(query, answer, await _sourceBuilder.BuildSourcesAsync(chunks, _documentRepository)) ?? new RagResponse { Query = query, Answer = answer, Sources = await _sourceBuilder.BuildSourcesAsync(chunks, _documentRepository), SearchedAt = DateTime.UtcNow };
+            return _responseBuilder?.CreateRagResponse(request.Query, answer, await _sourceBuilder.BuildSourcesAsync(chunks, _documentRepository)) ?? new RagResponse { Query = request.Query, Answer = answer, Sources = await _sourceBuilder.BuildSourcesAsync(chunks, _documentRepository), SearchedAt = DateTime.UtcNow };
+        }
+
+        /// <summary>
+        /// Generates RAG answer with automatic session management and context expansion
+        /// </summary>
+        /// <param name="query">Natural language query to process</param>
+        /// <param name="maxResults">Maximum number of document chunks to use</param>
+        /// <param name="conversationHistory">Conversation history</param>
+        /// <param name="preferredLanguage">Optional preferred language code for AI response</param>
+        /// <param name="options">Optional search options</param>
+        /// <param name="preCalculatedResults">Pre-calculated search results to use</param>
+        /// <param name="queryTokens">Pre-computed query tokens for performance</param>
+        /// <returns>RAG response with answer and sources</returns>
+        [Obsolete("Use GenerateBasicRagAnswerAsync(GenerateRagAnswerRequest) instead. This method will be removed in v4.0.0")]
+        public async Task<RagResponse> GenerateBasicRagAnswerAsync(string query, int maxResults, string conversationHistory, string? preferredLanguage = null, SearchOptions? options = null, List<DocumentChunk>? preCalculatedResults = null, List<string>? queryTokens = null)
+        {
+            var request = new Models.RequestResponse.GenerateRagAnswerRequest
+            {
+                Query = query,
+                MaxResults = maxResults,
+                ConversationHistory = conversationHistory,
+                PreferredLanguage = preferredLanguage,
+                Options = options,
+                PreCalculatedResults = preCalculatedResults,
+                QueryTokens = queryTokens
+            };
+            return await ((IRagAnswerGeneratorService)this).GenerateBasicRagAnswerAsync(request);
         }
 
 
@@ -1308,7 +1381,5 @@ namespace SmartRAG.Services.Document
         {
             return await QueryIntelligenceAsync(query, maxResults, startNewConversation);
         }
-
-        #endregion
     }
 }

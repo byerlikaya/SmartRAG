@@ -9,18 +9,12 @@ namespace SmartRAG.Models
     /// </summary>
     public class DatabaseConfig
     {
-        #region Constants
-
         private const int DefaultMaxRowsPerTable = 1000;
         private const int DefaultQueryTimeout = 30;
         private const int MinMaxRows = 1;
         private const int MaxMaxRows = 10000;
         private const int MinTimeout = 1;
         private const int MaxTimeout = 300;
-
-        #endregion
-
-        #region Properties
 
         /// <summary>
         /// Type of database to connect to
@@ -81,7 +75,5 @@ namespace SmartRAG.Models
             "credit_card", "creditcard", "cc_number", "card_number",
             "email", "email_address", "phone", "phone_number", "mobile"
         };
-
-        #endregion
     }
 }

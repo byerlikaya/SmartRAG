@@ -20,14 +20,8 @@ namespace SmartRAG.Services.Support
     /// </summary>
     public class ConversationManagerService : IConversationManagerService
     {
-        #region Constants
-
         private const string PersistentSessionKey = "smartrag-current-session";
         private const string ChatUnavailableMessage = "Sorry, I cannot chat right now. Please try again later.";
-
-        #endregion
-
-        #region Fields
 
         private readonly IConversationRepository _conversationRepository;
         private readonly SmartRagOptions _options;
@@ -37,10 +31,6 @@ namespace SmartRAG.Services.Support
         private readonly IPromptBuilderService? _promptBuilder;
 
         private readonly ConcurrentDictionary<string, string> _conversationCache = new ConcurrentDictionary<string, string>();
-
-        #endregion
-
-        #region Constructor
 
         /// <summary>
         /// Initializes a new instance of the ConversationManagerService
@@ -66,8 +56,6 @@ namespace SmartRAG.Services.Support
             _aiProviderFactory = aiProviderFactory;
             _promptBuilder = promptBuilder;
         }
-
-        #endregion
 
         /// <summary>
         /// Gets or creates a session ID automatically for conversation continuity

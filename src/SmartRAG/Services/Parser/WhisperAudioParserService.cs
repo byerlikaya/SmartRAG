@@ -17,18 +17,11 @@ namespace SmartRAG.Services.Parser
     /// </summary>
     public class WhisperAudioParserService : IAudioParserService
     {
-
-        #region Fields
-
         private readonly ILogger<WhisperAudioParserService> _logger;
         private readonly WhisperConfig _config;
         private readonly AudioConversionService _audioConversionService;
         private WhisperFactory _whisperFactory = null;
         private bool _disposed;
-
-        #endregion
-
-        #region Constructor
 
         public WhisperAudioParserService(ILogger<WhisperAudioParserService> logger, IOptions<SmartRagOptions> options, AudioConversionService audioConversionService)
         {
@@ -36,10 +29,6 @@ namespace SmartRAG.Services.Parser
             _config = options?.Value?.WhisperConfig ?? throw new ArgumentNullException(nameof(options));
             _audioConversionService = audioConversionService ?? throw new ArgumentNullException(nameof(audioConversionService));
         }
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         /// [AI Query] Transcribes audio content from a stream using Whisper.net
@@ -75,10 +64,6 @@ namespace SmartRAG.Services.Parser
                 throw;
             }
         }
-
-        #endregion
-
-        #region Private Methods
 
         /// <summary>
         /// Ensures Whisper factory is initialized and model is loaded
@@ -355,10 +340,6 @@ namespace SmartRAG.Services.Parser
             return fileName.Replace("\n", "").Replace("\r", "").Replace("\t", "").Trim();
         }
 
-        #endregion
-
-        #region IDisposable
-
         public void Dispose()
         {
             if (_disposed)
@@ -370,8 +351,6 @@ namespace SmartRAG.Services.Parser
 
             GC.SuppressFinalize(this);
         }
-
-        #endregion
     }
 }
 

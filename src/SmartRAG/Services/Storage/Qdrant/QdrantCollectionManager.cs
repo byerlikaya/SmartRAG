@@ -17,14 +17,8 @@ namespace SmartRAG.Services.Storage.Qdrant
     /// </summary>
     public class QdrantCollectionManager : IQdrantCollectionManager, IDisposable
     {
-        #region Constants
-
         private const int DefaultGrpcTimeoutMinutes = 5;
         private const int DefaultVectorDimension = 768;
-
-        #endregion
-
-        #region Fields
 
         private readonly QdrantClient _client;
         private readonly QdrantConfig _config;
@@ -33,10 +27,6 @@ namespace SmartRAG.Services.Storage.Qdrant
         private static readonly SemaphoreSlim _collectionInitLock = new SemaphoreSlim(1, 1);
         private bool _collectionReady;
         private bool _isDisposed;
-
-        #endregion
-
-        #region Constructor
 
         /// <summary>
         /// Initializes a new instance of the QdrantCollectionManager
@@ -83,10 +73,6 @@ namespace SmartRAG.Services.Storage.Qdrant
                 }
             });
         }
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         /// Ensures the main collection exists and is ready for operations
@@ -217,10 +203,6 @@ namespace SmartRAG.Services.Storage.Qdrant
             GC.SuppressFinalize(this);
         }
 
-        #endregion
-
-        #region Private Methods
-
         private async Task InitializeCollectionAsync()
         {
             if (_collectionReady)
@@ -326,7 +308,5 @@ namespace SmartRAG.Services.Storage.Qdrant
                 _isDisposed = true;
             }
         }
-
-        #endregion
     }
 }

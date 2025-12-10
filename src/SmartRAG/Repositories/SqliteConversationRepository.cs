@@ -16,6 +16,8 @@ namespace SmartRAG.Repositories
         private readonly ILogger<SqliteConversationRepository> _logger;
         private SqliteConnection _connection;
         private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
+        private readonly SemaphoreSlim _initSemaphore = new SemaphoreSlim(1, 1);
+        private bool _initialized = false;
 
         private const int MaxConversationLength = 2000;
 
@@ -24,18 +26,23 @@ namespace SmartRAG.Repositories
             var sqliteConfig = config.Value;
             _connectionString = $"Data Source={sqliteConfig.DatabasePath};";
             _logger = logger;
-            InitializeDatabase();
         }
 
-        private void InitializeDatabase()
+        private async Task EnsureInitializedAsync()
         {
-            _semaphore.Wait();
+            if (_initialized)
+                return;
+
+            await _initSemaphore.WaitAsync();
             try
             {
+                if (_initialized)
+                    return;
+
                 if (_connection == null)
                 {
                     _connection = new SqliteConnection(_connectionString);
-                    _connection.Open();
+                    await _connection.OpenAsync();
 
                     var command = _connection.CreateCommand();
                     command.CommandText = @"
@@ -44,17 +51,20 @@ namespace SmartRAG.Repositories
                             History TEXT,
                             LastUpdated DATETIME DEFAULT CURRENT_TIMESTAMP
                         );";
-                    command.ExecuteNonQuery();
+                    await command.ExecuteNonQueryAsync();
                 }
+
+                _initialized = true;
             }
             finally
             {
-                _semaphore.Release();
+                _initSemaphore.Release();
             }
         }
 
         public async Task<string> GetConversationHistoryAsync(string sessionId)
         {
+            await EnsureInitializedAsync();
             await _semaphore.WaitAsync();
             try
             {
@@ -78,6 +88,7 @@ namespace SmartRAG.Repositories
 
         public async Task AddToConversationAsync(string sessionId, string question, string answer)
         {
+            await EnsureInitializedAsync();
             await _semaphore.WaitAsync();
             try
             {
@@ -130,6 +141,7 @@ namespace SmartRAG.Repositories
 
         public async Task ClearConversationAsync(string sessionId)
         {
+            await EnsureInitializedAsync();
             await _semaphore.WaitAsync();
             try
             {
@@ -150,6 +162,7 @@ namespace SmartRAG.Repositories
 
         public async Task<bool> SessionExistsAsync(string sessionId)
         {
+            await EnsureInitializedAsync();
             await _semaphore.WaitAsync();
             try
             {
@@ -183,6 +196,7 @@ namespace SmartRAG.Repositories
         public void Dispose()
         {
             _semaphore?.Dispose();
+            _initSemaphore?.Dispose();
             _connection?.Close();
             _connection?.Dispose();
         }

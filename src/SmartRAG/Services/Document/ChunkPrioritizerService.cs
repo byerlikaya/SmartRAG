@@ -14,19 +14,9 @@ namespace SmartRAG.Services.Document
     /// </summary>
     public class ChunkPrioritizerService : IChunkPrioritizerService
     {
-        #region Constants
-
         private const int MinTokenLength = 3;
 
-        #endregion
-
-        #region Fields
-
         private readonly ILogger<ChunkPrioritizerService> _logger;
-
-        #endregion
-
-        #region Constructor
 
         /// <summary>
         /// Initializes a new instance of the ChunkPrioritizerService
@@ -36,10 +26,6 @@ namespace SmartRAG.Services.Document
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         /// Prioritizes chunks by query word matches
@@ -124,8 +110,6 @@ namespace SmartRAG.Services.Document
                 .Where(c => (c.RelevanceScore ?? 0.0) >= threshold || c.ChunkIndex == 0)
                 .ToList();
         }
-
-        #endregion
     }
 }
 

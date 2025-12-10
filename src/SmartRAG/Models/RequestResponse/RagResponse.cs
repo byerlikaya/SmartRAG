@@ -9,8 +9,6 @@ namespace SmartRAG.Models
     /// </summary>
     public class RagResponse
     {
-        #region Response Data
-
         /// <summary>
         /// Original query that was processed
         /// </summary>
@@ -26,10 +24,6 @@ namespace SmartRAG.Models
         /// </summary>
         public List<SearchSource> Sources { get; set; } = new List<SearchSource>();
 
-        #endregion
-
-        #region Metadata
-
         /// <summary>
         /// Timestamp when the search was performed
         /// </summary>
@@ -39,8 +33,6 @@ namespace SmartRAG.Models
         /// Configuration information for this RAG response
         /// </summary>
         public RagConfiguration Configuration { get; set; } = new RagConfiguration();
-
-        #endregion
     }
 
     /// <summary>
@@ -48,8 +40,6 @@ namespace SmartRAG.Models
     /// </summary>
     public class RagConfiguration
     {
-        #region Provider Information
-
         /// <summary>
         /// AI provider used for generating the response
         /// </summary>
@@ -64,7 +54,5 @@ namespace SmartRAG.Models
         /// Model name used for text generation
         /// </summary>
         public string Model { get; set; } = string.Empty;
-
-        #endregion
     }
 }

@@ -13,30 +13,16 @@ namespace SmartRAG.Services.Parser
     /// </summary>
     public class AudioConversionService
     {
-        #region Constants
-
         private const string FfmpegDownloadUrl = "https://ffmpeg.org/download.html";
-
-        #endregion
-
-        #region Fields
 
         private readonly ILogger<AudioConversionService> _logger;
         private static bool _ffmpegInitialized = false;
         private static readonly System.Threading.SemaphoreSlim _ffmpegSemaphore = new System.Threading.SemaphoreSlim(1, 1);
 
-        #endregion
-
-        #region Constructor
-
         public AudioConversionService(ILogger<AudioConversionService> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         /// Converts audio stream to Whisper.net compatible format
@@ -178,10 +164,6 @@ namespace SmartRAG.Services.Parser
             return extension != ".wav";
         }
 
-        #endregion
-
-        #region Private Methods
-
         /// <summary>
         /// Ensures FFmpeg is initialized and available
         /// </summary>
@@ -234,7 +216,5 @@ namespace SmartRAG.Services.Parser
 
             return fileName.Replace("\n", "").Replace("\r", "").Replace("\t", "").Trim();
         }
-
-        #endregion
     }
 }

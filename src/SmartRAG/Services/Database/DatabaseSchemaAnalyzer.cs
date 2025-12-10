@@ -154,8 +154,6 @@ namespace SmartRAG.Services.Database
             }
         }
 
-        #region Private Helper Methods
-
         private async Task<string> GetDatabaseIdAsync(DatabaseConnectionConfig config)
         {
             if (!string.IsNullOrEmpty(config.Name))
@@ -653,8 +651,6 @@ namespace SmartRAG.Services.Database
                    $"with approximately {schemaInfo.TotalRowCount:N0} total rows. " +
                    $"Main tables: {string.Join(", ", schemaInfo.Tables.Take(5).Select(t => t.TableName))}.";
         }
-
-        #endregion
     }
 }
 

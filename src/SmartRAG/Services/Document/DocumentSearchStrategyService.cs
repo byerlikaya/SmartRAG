@@ -17,8 +17,6 @@ namespace SmartRAG.Services.Document
     /// </summary>
     public class DocumentSearchStrategyService : IDocumentSearchStrategyService
     {
-        #region Constants
-
         private const int InitialSearchMultiplier = 2;
         private const int MinWordCountThreshold = 0;
         private const int MinPotentialNamesCount = 2;
@@ -32,10 +30,6 @@ namespace SmartRAG.Services.Document
         private const double DocumentScoreThreshold = 0.8;
         private const double DocumentRelevanceBoost = 200.0;
 
-        #endregion
-
-        #region Fields
-
         private readonly IDocumentRepository _documentRepository;
         private readonly IDocumentService _documentService;
         private readonly IDocumentScoringService _documentScoring;
@@ -44,10 +38,6 @@ namespace SmartRAG.Services.Document
         private readonly IChunkPrioritizerService _chunkPrioritizer;
         private readonly IQueryPatternAnalyzerService _queryPatternAnalyzer;
         private readonly ILogger<DocumentSearchStrategyService> _logger;
-
-        #endregion
-
-        #region Constructor
 
         /// <summary>
         /// Initializes a new instance of the DocumentSearchStrategyService
@@ -79,10 +69,6 @@ namespace SmartRAG.Services.Document
             _queryPatternAnalyzer = queryPatternAnalyzer ?? throw new ArgumentNullException(nameof(queryPatternAnalyzer));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         /// Searches for relevant document chunks using repository's optimized search with keyword-based fallback
@@ -251,8 +237,6 @@ namespace SmartRAG.Services.Document
 
             return prioritizedChunks.Take(maxResults).ToList();
         }
-
-        #endregion
     }
 }
 
