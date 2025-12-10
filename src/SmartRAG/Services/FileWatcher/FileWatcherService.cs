@@ -140,29 +140,7 @@ namespace SmartRAG.Services.FileWatcher
 
             return Task.CompletedTask;
         }
-
-        /// <summary>
-        /// Stops watching a folder
-        /// </summary>
-        public Task StopWatchingAsync(string folderPath)
-        {
-            if (string.IsNullOrWhiteSpace(folderPath))
-                throw new ArgumentException("FolderPath cannot be null or empty", nameof(folderPath));
-
-            var baseDirectory = Directory.GetCurrentDirectory();
-            var sanitizedPath = PathSanitizer.SanitizePath(folderPath, baseDirectory);
-
-            if (_watchers.TryGetValue(sanitizedPath, out var watcher))
-            {
-                watcher.EnableRaisingEvents = false;
-                watcher.Dispose();
-                _watchers.Remove(sanitizedPath);
-                _configs.Remove(sanitizedPath);
-                _logger.LogInformation("Stopped watching folder: {FolderPath}", sanitizedPath);
-            }
-
-            return Task.CompletedTask;
-        }
+   
 
         /// <summary>
         /// Stops watching all folders
@@ -179,14 +157,7 @@ namespace SmartRAG.Services.FileWatcher
             _logger.LogInformation("Stopped watching all folders");
             return Task.CompletedTask;
         }
-
-        /// <summary>
-        /// Gets list of currently watched folders
-        /// </summary>
-        public List<WatchedFolderConfig> GetWatchedFolders()
-        {
-            return new List<WatchedFolderConfig>(_configs.Values);
-        }
+      
 
         private async Task OnFileCreatedAsync(System.IO.FileSystemEventArgs e)
         {
