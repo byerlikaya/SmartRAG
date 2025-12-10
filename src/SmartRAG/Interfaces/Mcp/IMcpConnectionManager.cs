@@ -1,6 +1,4 @@
-using System.Collections.Generic;
 using System.Threading.Tasks;
-using SmartRAG.Models;
 
 namespace SmartRAG.Interfaces.Mcp
 {

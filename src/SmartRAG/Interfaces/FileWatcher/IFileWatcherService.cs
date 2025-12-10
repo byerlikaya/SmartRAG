@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using SmartRAG.Services.FileWatcher.Events;
 using SmartRAG.Models;
@@ -16,26 +15,13 @@ namespace SmartRAG.Interfaces.FileWatcher
         /// </summary>
         /// <param name="config">Folder watch configuration</param>
         /// <returns>Task representing the watch operation</returns>
-        Task StartWatchingAsync(WatchedFolderConfig config);
-
-        /// <summary>
-        /// Stops watching a folder
-        /// </summary>
-        /// <param name="folderPath">Folder path to stop watching</param>
-        /// <returns>Task representing the stop operation</returns>
-        Task StopWatchingAsync(string folderPath);
+        Task StartWatchingAsync(WatchedFolderConfig config);   
 
         /// <summary>
         /// Stops watching all folders
         /// </summary>
         /// <returns>Task representing the stop operation</returns>
         Task StopAllWatchingAsync();
-
-        /// <summary>
-        /// Gets list of currently watched folders
-        /// </summary>
-        /// <returns>List of watched folder configurations</returns>
-        List<WatchedFolderConfig> GetWatchedFolders();
 
         /// <summary>
         /// Event raised when a file is created

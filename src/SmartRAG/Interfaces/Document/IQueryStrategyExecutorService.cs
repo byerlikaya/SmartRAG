@@ -2,7 +2,6 @@
 
 using SmartRAG.Entities;
 using SmartRAG.Models;
-using SmartRAG.Models.RequestResponse;
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
