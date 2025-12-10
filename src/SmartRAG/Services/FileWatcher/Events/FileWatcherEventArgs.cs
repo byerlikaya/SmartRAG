@@ -1,6 +1,6 @@
 using System;
 
-namespace SmartRAG.FileWatcher.Events
+namespace SmartRAG.Services.FileWatcher.Events
 {
     /// <summary>
     /// Event arguments for file watcher events
@@ -28,4 +28,3 @@ namespace SmartRAG.FileWatcher.Events
         public DateTime Timestamp { get; set; } = DateTime.UtcNow;
     }
 }
-

@@ -1,9 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using SmartRAG.FileWatcher.Events;
+using SmartRAG.Services.FileWatcher.Events;
 using SmartRAG.Helpers;
 using SmartRAG.Interfaces.Document;
+using SmartRAG.Interfaces.FileWatcher;
 using SmartRAG.Models;
 using SmartRAG.Models.RequestResponse;
 using System;
@@ -13,7 +14,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Threading.Tasks;
 
-namespace SmartRAG.FileWatcher
+namespace SmartRAG.Services.FileWatcher
 {
     /// <summary>
     /// Service for watching file system folders and automatically indexing documents
@@ -563,4 +564,3 @@ namespace SmartRAG.FileWatcher
         }
     }
 }
-

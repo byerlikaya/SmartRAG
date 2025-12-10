@@ -29,7 +29,8 @@ using SmartRAG.Services.Database.Strategies;
 using SmartRAG.Interfaces.Database.Strategies;
 using SmartRAG.Interfaces.Mcp;
 using SmartRAG.Services.Mcp;
-using SmartRAG.FileWatcher;
+using SmartRAG.Interfaces.FileWatcher;
+using SmartRAG.Services.FileWatcher;
 using SmartRAG.Services.Startup;
 using System;
 using System.Collections.Generic;
@@ -271,7 +272,6 @@ namespace SmartRAG.Extensions
 
         private static void RegisterStartupServices(IServiceCollection services, SmartRagOptions options)
         {
-            // Ensure Features is initialized
             options.Features ??= new FeatureToggles();
 
             var enableMcp = options.Features.EnableMcpSearch;

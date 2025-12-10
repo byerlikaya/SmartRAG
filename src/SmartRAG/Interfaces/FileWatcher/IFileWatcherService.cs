@@ -1,10 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using SmartRAG.FileWatcher.Events;
+using SmartRAG.Services.FileWatcher.Events;
 using SmartRAG.Models;
 
-namespace SmartRAG.FileWatcher
+namespace SmartRAG.Interfaces.FileWatcher
 {
     /// <summary>
     /// Interface for file system watching and automatic document indexing
@@ -53,5 +53,3 @@ namespace SmartRAG.FileWatcher
         event EventHandler<FileWatcherEventArgs> FileDeleted;
     }
 }
-
-
