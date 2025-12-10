@@ -1,5 +1,6 @@
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using SmartRAG.Demo.DatabaseSetup.Helpers;
 using SmartRAG.Demo.DatabaseSetup.Interfaces;
 using SmartRAG.Enums;
@@ -13,15 +14,27 @@ namespace SmartRAG.Demo.DatabaseSetup.Creators;
 /// </summary>
 public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
 {
+    #region Constants
+
+    private const int DefaultMaxRetries = 3;
+
+    #endregion
+
+    #region Fields
+
     private readonly IConfiguration? _configuration;
+    private readonly ILogger<SqlServerTestDatabaseCreator>? _logger;
     private readonly string _server;
     private readonly string _databaseName;
 
-    public SqlServerTestDatabaseCreator(IConfiguration? configuration = null)
+    #endregion
+
+    #region Constructor
+
+    public SqlServerTestDatabaseCreator(IConfiguration? configuration = null, ILogger<SqlServerTestDatabaseCreator>? logger = null)
     {
         _configuration = configuration;
-
-        // Try to get server and database name from configuration first
+        _logger = logger;
         string? server = null;
         string? databaseName = null;
 
@@ -42,6 +55,10 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
         _server = server ?? "localhost,1433";
         _databaseName = databaseName ?? "SalesManagement";
     }
+
+    #endregion
+
+    #region Public Methods
 
     public DatabaseType GetDatabaseType() => DatabaseType.SqlServer;
 
@@ -71,7 +88,7 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
 
         if (string.IsNullOrEmpty(password))
         {
-            throw new InvalidOperationException("SQL Server şifresi yapılandırmada veya ortam değişkenlerinde bulunamadı");
+            throw new InvalidOperationException("SQL Server password not found in configuration or environment variables");
         }
 
         return $"Server={_server};Database={_databaseName};User Id=sa;Password={password};TrustServerCertificate=true;";
@@ -98,63 +115,56 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
         }
     }
 
-    public void CreateSampleDatabase(string connectionString)
+    public async Task CreateSampleDatabaseAsync(string connectionString)
     {
-        Console.WriteLine();
-        Console.WriteLine("═══════════════════════════════════════════════════════════════════");
-        Console.WriteLine("Creating SQL Server Test Database...");
-        Console.WriteLine("═══════════════════════════════════════════════════════════════════");
-        Console.WriteLine();
+        _logger?.LogInformation("Starting SQL Server test database creation");
 
         try
         {
-            // 1. Create database
-            Console.WriteLine("1/3 Creating database...");
-            CreateDatabase();
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"   ✓ {_databaseName} database created");
-            Console.ResetColor();
+            _logger?.LogInformation("Step 1/3: Creating database");
+            await CreateDatabaseAsync();
+            _logger?.LogInformation("Database {DatabaseName} created successfully", _databaseName);
 
-            // 2. Create tables  
-            Console.WriteLine("2/3 Creating tables...");
+            _logger?.LogInformation("Step 2/3: Creating tables");
             using (var connection = new SqlConnection(connectionString))
             {
-                connection.Open();
-                CreateTables(connection);
+                await connection.OpenAsync();
+                await CreateTablesAsync(connection);
             }
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("   ✓ 8 tables created");
-            Console.ResetColor();
+            _logger?.LogInformation("8 tables created successfully");
 
-            // 3. Insert data
-            Console.WriteLine("3/3 Inserting sample data...");
+            _logger?.LogInformation("Step 3/3: Inserting sample data");
             using (var connection = new SqlConnection(connectionString))
             {
-                connection.Open();
-                InsertSampleData(connection);
+                await connection.OpenAsync();
+                await InsertSampleDataAsync(connection);
             }
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("   ✓ Sample data inserted");
-            Console.ResetColor();
+            _logger?.LogInformation("Sample data inserted successfully");
 
-            Console.WriteLine();
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("✅ SQL Server test database created successfully!");
-            Console.ResetColor();
+            _logger?.LogInformation("SQL Server test database created successfully");
 
-            // Verify
-            VerifyDatabase(connectionString);
+            await VerifyDatabaseAsync(connectionString);
         }
         catch (Exception ex)
         {
-            Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"❌ Error: {ex.Message}");
-            Console.ResetColor();
+            _logger?.LogError(ex, "Failed to create SQL Server test database");
             throw;
         }
     }
 
-    private void CreateDatabase()
+    public void CreateSampleDatabase(string connectionString)
+    {
+        CreateSampleDatabaseAsync(connectionString).GetAwaiter().GetResult();
+    }
+
+    #endregion
+
+    #region Private Methods
+
+    /// <summary>
+    /// Creates the SQL Server database, dropping it first if it exists
+    /// </summary>
+    private async Task CreateDatabaseAsync()
     {
         // Use the same password logic as GetDefaultConnectionString
         string? password = null;
@@ -185,30 +195,32 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
 
         using (var connection = new SqlConnection(masterConnectionString))
         {
-            connection.Open();
+            await connection.OpenAsync();
 
-            // Drop database if exists
             using (var cmd = connection.CreateCommand())
             {
                 cmd.CommandText = $@"
-                        IF EXISTS (SELECT name FROM sys.databases WHERE name = '{_databaseName}')
-                BEGIN
-                            ALTER DATABASE {_databaseName} SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-                            DROP DATABASE {_databaseName};
-                        END";
-                cmd.ExecuteNonQuery();
+                    IF EXISTS (SELECT name FROM sys.databases WHERE name = '{_databaseName}')
+                    BEGIN
+                        ALTER DATABASE {_databaseName} SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+                        DROP DATABASE {_databaseName};
+                    END";
+                await cmd.ExecuteNonQueryAsync();
             }
 
-            // Create database
             using (var cmd = connection.CreateCommand())
             {
                 cmd.CommandText = $"CREATE DATABASE {_databaseName}";
-                cmd.ExecuteNonQuery();
+                await cmd.ExecuteNonQueryAsync();
             }
         }
     }
 
-    private void CreateTables(SqlConnection connection)
+    /// <summary>
+    /// Creates all required tables in the database
+    /// </summary>
+    /// <param name="connection">Database connection</param>
+    private async Task CreateTablesAsync(SqlConnection connection)
     {
         var createTablesSql = @"
 -- Orders Table (CustomerID references SQLite Customers.CustomerID)
@@ -341,11 +353,15 @@ CREATE INDEX idx_refundrequests_status ON RefundRequests(Status);
         using (var cmd = connection.CreateCommand())
         {
             cmd.CommandText = createTablesSql;
-            cmd.ExecuteNonQuery();
+            await cmd.ExecuteNonQueryAsync();
         }
     }
 
-    private void InsertSampleData(SqlConnection connection)
+    /// <summary>
+    /// Inserts sample data into all tables
+    /// </summary>
+    /// <param name="connection">Database connection</param>
+    private async Task InsertSampleDataAsync(SqlConnection connection)
     {
         var random = new Random(42); // Fixed seed for reproducible data
 
@@ -385,13 +401,13 @@ CREATE INDEX idx_refundrequests_status ON RefundRequests(Status);
             using (var cmd = connection.CreateCommand())
             {
                 cmd.CommandText = ordersSql.ToString();
-                cmd.ExecuteNonQuery();
+                await cmd.ExecuteNonQueryAsync();
             }
-            Console.WriteLine("   ✓ Orders: 300 rows inserted");
+            _logger?.LogInformation("Orders: 300 rows inserted");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"   ❌ Orders INSERT failed: {ex.Message}");
+            _logger?.LogError(ex, "Orders INSERT failed");
             throw;
         }
 
@@ -417,13 +433,13 @@ CREATE INDEX idx_refundrequests_status ON RefundRequests(Status);
             using (var cmd = connection.CreateCommand())
             {
                 cmd.CommandText = orderDetailsSql.ToString();
-                cmd.ExecuteNonQuery();
+                await cmd.ExecuteNonQueryAsync();
             }
-            Console.WriteLine("   ✓ OrderDetails: 600 rows inserted");
+            _logger?.LogInformation("OrderDetails: 600 rows inserted");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"   ❌ OrderDetails INSERT failed: {ex.Message}");
+            _logger?.LogError(ex, "OrderDetails INSERT failed");
             throw;
         }
 
@@ -456,13 +472,13 @@ CREATE INDEX idx_refundrequests_status ON RefundRequests(Status);
             using (var cmd = connection.CreateCommand())
             {
                 cmd.CommandText = paymentsSql.ToString();
-                cmd.ExecuteNonQuery();
+                await cmd.ExecuteNonQueryAsync();
             }
-            Console.WriteLine("   ✓ Payments: 300 rows inserted");
+            _logger?.LogInformation("Payments: 300 rows inserted");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"   ❌ Payments INSERT failed: {ex.Message}");
+            _logger?.LogError(ex, "Payments INSERT failed");
             throw;
         }
 
@@ -490,13 +506,13 @@ CREATE INDEX idx_refundrequests_status ON RefundRequests(Status);
             using (var cmd = connection.CreateCommand())
             {
                 cmd.CommandText = salesSummarySql.ToString();
-                cmd.ExecuteNonQuery();
+                await cmd.ExecuteNonQueryAsync();
             }
-            Console.WriteLine("   ✓ SalesSummary: 150 rows inserted");
+            _logger?.LogInformation("SalesSummary: 150 rows inserted");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"   ❌ SalesSummary INSERT failed: {ex.Message}");
+            _logger?.LogError(ex, "SalesSummary INSERT failed");
             throw;
         }
 
@@ -536,13 +552,13 @@ CREATE INDEX idx_refundrequests_status ON RefundRequests(Status);
             using (var cmd = connection.CreateCommand())
             {
                 cmd.CommandText = invoicesSql.ToString();
-                cmd.ExecuteNonQuery();
+                await cmd.ExecuteNonQueryAsync();
             }
-            Console.WriteLine("   ✓ Invoices: 300 rows inserted");
+            _logger?.LogInformation("Invoices: 300 rows inserted");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"   ❌ Invoices INSERT failed: {ex.Message}");
+            _logger?.LogError(ex, "Invoices INSERT failed");
             throw;
         }
 
@@ -575,13 +591,13 @@ CREATE INDEX idx_refundrequests_status ON RefundRequests(Status);
             using (var cmd = connection.CreateCommand())
             {
                 cmd.CommandText = creditsSql.ToString();
-                cmd.ExecuteNonQuery();
+                await cmd.ExecuteNonQueryAsync();
             }
-            Console.WriteLine("   ✓ CustomerCredits: 100 rows inserted");
+            _logger?.LogInformation("CustomerCredits: 100 rows inserted");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"   ❌ CustomerCredits INSERT failed: {ex.Message}");
+            _logger?.LogError(ex, "CustomerCredits INSERT failed");
             throw;
         }
 
@@ -620,13 +636,13 @@ CREATE INDEX idx_refundrequests_status ON RefundRequests(Status);
             using (var cmd = connection.CreateCommand())
             {
                 cmd.CommandText = promotionsSql.ToString();
-                cmd.ExecuteNonQuery();
+                await cmd.ExecuteNonQueryAsync();
             }
-            Console.WriteLine("   ✓ Promotions: 50 rows inserted");
+            _logger?.LogInformation("Promotions: 50 rows inserted");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"   ❌ Promotions INSERT failed: {ex.Message}");
+            _logger?.LogError(ex, "Promotions INSERT failed");
             throw;
         }
 
@@ -658,47 +674,49 @@ CREATE INDEX idx_refundrequests_status ON RefundRequests(Status);
             using (var cmd = connection.CreateCommand())
             {
                 cmd.CommandText = refundsSql.ToString();
-                cmd.ExecuteNonQuery();
+                await cmd.ExecuteNonQueryAsync();
             }
-            Console.WriteLine("   ✓ RefundRequests: 120 rows inserted");
+            _logger?.LogInformation("RefundRequests: 120 rows inserted");
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"   ❌ RefundRequests INSERT failed: {ex.Message}");
+            _logger?.LogError(ex, "RefundRequests INSERT failed");
             throw;
         }
     }
 
-    private void VerifyDatabase(string connectionString)
+    /// <summary>
+    /// Verifies the database by querying table row counts
+    /// </summary>
+    /// <param name="connectionString">Database connection string</param>
+    private async Task VerifyDatabaseAsync(string connectionString)
     {
         using (var connection = new SqlConnection(connectionString))
         {
-            connection.Open();
-
-            Console.WriteLine();
-            Console.WriteLine("📊 Database Summary:");
-            Console.WriteLine("───────────────────────────────────────");
+            await connection.OpenAsync();
 
             using (var cmd = connection.CreateCommand())
             {
                 cmd.CommandText = @"
-                        SELECT 
-                            t.name as TableName,
-                            SUM(p.rows) as TotalRows
-                        FROM sys.tables t
-                        INNER JOIN sys.partitions p ON t.object_id = p.object_id
-                        WHERE p.index_id IN (0,1)
-                        GROUP BY t.name
-                        ORDER BY t.name";
+                    SELECT 
+                        t.name as TableName,
+                        SUM(p.rows) as TotalRows
+                    FROM sys.tables t
+                    INNER JOIN sys.partitions p ON t.object_id = p.object_id
+                    WHERE p.index_id IN (0,1)
+                    GROUP BY t.name
+                    ORDER BY t.name";
 
-                using (var reader = cmd.ExecuteReader())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
-                    while (reader.Read())
+                    while (await reader.ReadAsync())
                     {
-                        Console.WriteLine($"   • {reader["TableName"]}: {reader["TotalRows"]} rows");
+                        _logger?.LogInformation("Table {TableName}: {TotalRows} rows", reader["TableName"], reader["TotalRows"]);
                     }
                 }
             }
         }
     }
+
+    #endregion
 }

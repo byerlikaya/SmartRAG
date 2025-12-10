@@ -15,12 +15,14 @@ namespace SmartRAG.Demo.Services.Initialization;
 /// </summary>
 public class InitializationService(
     IConfiguration configuration,
-    IConsoleService console) : IInitializationService
+    IConsoleService console,
+    ILogger<InitializationService>? logger = null) : IInitializationService
 {
     #region Fields
 
     private readonly IConfiguration _configuration = configuration;
     private readonly IConsoleService _console = console;
+    private readonly ILogger<InitializationService>? _logger = logger;
     private IServiceProvider? _serviceProvider;
 
     #endregion
@@ -160,16 +162,14 @@ public class InitializationService(
         System.Console.WriteLine("Please select the language for test queries and AI responses:");
         System.Console.WriteLine();
         System.Console.WriteLine("1. 🇬🇧 English");
-        System.Console.WriteLine("2. 🇩🇪 German (Deutsch)");
-        System.Console.WriteLine("3. 🇹🇷 Turkish (Türkçe)");
-        System.Console.WriteLine("4. 🇷🇺 Russian (Русский)");
+        System.Console.WriteLine("2. 🇩🇪 German");
+        System.Console.WriteLine("3. 🇹🇷 Turkish");
+        System.Console.WriteLine("4. 🇷🇺 Russian");
         System.Console.WriteLine("5. 🌐 Other (specify ISO code)");
         System.Console.WriteLine();
 
         var choice = _console.ReadLine("Selection (default: English): ");
 
-        // CRITICAL: Return ISO 639-1 codes (2-letter) for language-agnostic support
-        // This follows the Generic Code rule - no hardcoded language names in the codebase
         var selectedLanguageCode = choice switch
         {
             "1" or "" => "en",
@@ -180,7 +180,6 @@ public class InitializationService(
             _ => "en"
         };
         
-        // Display name for user feedback (local to this method, not stored)
         var displayName = choice switch
         {
             "1" or "" => "English",
@@ -229,6 +228,7 @@ public class InitializationService(
         }
         catch (Exception ex)
         {
+            _logger?.LogError(ex, "Service initialization failed");
             _console.WriteError($"Service initialization failed: {ex.Message}");
             System.Console.WriteLine($"   Type: {ex.GetType().Name}");
             if (ex.InnerException != null)
@@ -249,6 +249,10 @@ public class InitializationService(
 
     #region Private Methods
 
+    /// <summary>
+    /// Prompts user to enter custom ISO 639-1 language code
+    /// </summary>
+    /// <returns>Language code or default 'en' if empty</returns>
     private string GetCustomLanguageCode()
     {
         System.Console.WriteLine();
@@ -256,6 +260,9 @@ public class InitializationService(
         return string.IsNullOrWhiteSpace(customCode) ? "en" : customCode.Trim().ToLowerInvariant();
     }
 
+    /// <summary>
+    /// Displays database connection and schema status
+    /// </summary>
     private async Task DisplayDatabaseStatus()
     {
         var connectionManager = _serviceProvider?.GetService<IDatabaseConnectionManager>();

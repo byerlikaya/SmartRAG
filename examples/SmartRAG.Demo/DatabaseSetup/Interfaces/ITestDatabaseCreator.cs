@@ -15,6 +15,13 @@ public interface ITestDatabaseCreator
         void CreateSampleDatabase(string connectionString);
 
         /// <summary>
+        /// Creates a sample database with test data asynchronously
+        /// </summary>
+        /// <param name="connectionString">Database connection string</param>
+        /// <returns>Task representing the async operation</returns>
+        Task CreateSampleDatabaseAsync(string connectionString);
+
+        /// <summary>
         /// Gets the default connection string for this database type
         /// </summary>
         /// <returns>Default connection string</returns>

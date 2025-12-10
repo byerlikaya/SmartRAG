@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using SmartRAG.Demo.Models;
 using SmartRAG.Demo.Services;
 using SmartRAG.Demo.Services.Console;
@@ -8,11 +9,14 @@ namespace SmartRAG.Demo.Handlers.OllamaHandlers;
 /// <summary>
 /// Handler for Ollama-related operations
 /// </summary>
-public class OllamaHandler(IConsoleService console) : IOllamaHandler
+public class OllamaHandler(
+    IConsoleService console,
+    ILogger<OllamaHandler>? logger = null) : IOllamaHandler
 {
     #region Fields
 
     private readonly IConsoleService _console = console;
+    private readonly ILogger<OllamaHandler>? _logger = logger;
 
     #endregion
 

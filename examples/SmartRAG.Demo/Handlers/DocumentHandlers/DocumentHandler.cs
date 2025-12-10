@@ -35,7 +35,6 @@ public class DocumentHandler(
         System.Console.WriteLine("  • Audio files (.mp3, .wav, .m4a)");
         System.Console.WriteLine();
 
-        // Dosya yolu alma ve sürükle-bırak desteği
         var filePath = await GetFilePathAsync();
 
         if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
@@ -170,6 +169,10 @@ public class DocumentHandler(
 
     #region Private Methods
 
+    /// <summary>
+    /// Gets file path from user input, supporting drag-and-drop
+    /// </summary>
+    /// <returns>File path or null if not provided</returns>
     private async Task<string?> GetFilePathAsync()
     {
         await Task.CompletedTask;
@@ -212,6 +215,11 @@ public class DocumentHandler(
         return null;
     }
 
+    /// <summary>
+    /// Determines content type based on file extension
+    /// </summary>
+    /// <param name="filePath">File path</param>
+    /// <returns>Content type MIME string</returns>
     private static string GetContentType(string filePath)
     {
         var extension = Path.GetExtension(filePath).ToLowerInvariant();
@@ -233,12 +241,21 @@ public class DocumentHandler(
         };
     }
 
+    /// <summary>
+    /// Checks if the file is an audio file based on extension
+    /// </summary>
+    /// <param name="fileName">File name</param>
+    /// <returns>True if audio file, false otherwise</returns>
     private static bool IsAudioFile(string fileName)
     {
         var extension = Path.GetExtension(fileName).ToLowerInvariant();
         return extension is ".mp3" or ".wav" or ".m4a" or ".flac" or ".ogg";
     }
 
+    /// <summary>
+    /// Prompts user to select audio transcription language
+    /// </summary>
+    /// <returns>Selected language code</returns>
     private async Task<string> SelectAudioLanguageAsync()
     {
         await Task.CompletedTask;

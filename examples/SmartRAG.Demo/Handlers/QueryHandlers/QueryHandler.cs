@@ -456,6 +456,13 @@ public class QueryHandler(
         }
     }
 
+    /// <summary>
+    /// Parses search options from input string and extracts flags
+    /// </summary>
+    /// <param name="input">Input string potentially containing flags (-d, -db, -a, -i)</param>
+    /// <param name="language">Preferred language for search</param>
+    /// <param name="cleanQuery">Output parameter with flags removed</param>
+    /// <returns>SearchOptions if flags found, null otherwise</returns>
     private SearchOptions? ParseSearchOptions(string input, string language, out string cleanQuery)
     {
         cleanQuery = input;
@@ -526,6 +533,11 @@ public class QueryHandler(
 
     #region Private Methods
 
+    /// <summary>
+    /// Gets the number of tests to run from user input
+    /// </summary>
+    /// <param name="totalQueries">Total number of available test queries</param>
+    /// <returns>Number of tests to run</returns>
     private int GetTestCount(int totalQueries)
     {
         var input = _console.ReadLine($"How many tests to run? (1-{totalQueries}, Enter for all): ");
@@ -543,6 +555,11 @@ public class QueryHandler(
         return totalQueries;
     }
 
+    /// <summary>
+    /// Checks if the response indicates an error
+    /// </summary>
+    /// <param name="answer">Response answer to check</param>
+    /// <returns>True if error detected, false otherwise</returns>
     private static bool IsErrorResponse(string answer)
     {
         return answer.Contains("failed", StringComparison.OrdinalIgnoreCase) ||
@@ -551,6 +568,12 @@ public class QueryHandler(
                answer.Contains("does not exist", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Extracts SQL-related error information from error message
+    /// </summary>
+    /// <param name="errorMessage">Error message to parse</param>
+    /// <param name="schemas">Database schemas for context</param>
+    /// <returns>Formatted error information</returns>
     private static string ExtractSQLFromError(string errorMessage, List<SmartRAG.Models.DatabaseSchemaInfo> schemas)
     {
         if (string.IsNullOrEmpty(errorMessage))
@@ -610,6 +633,12 @@ public class QueryHandler(
         return sqlInfo.ToString().TrimEnd();
     }
 
+    /// <summary>
+    /// Displays test execution summary with success/failure statistics
+    /// </summary>
+    /// <param name="successCount">Number of successful tests</param>
+    /// <param name="testCount">Total number of tests</param>
+    /// <param name="failedQueries">List of failed queries with error details</param>
     private void DisplayTestSummary(int successCount, int testCount, List<(TestQuery Query, string Error, string GeneratedSQL)> failedQueries)
     {
         System.Console.WriteLine("═══════════════════════════════════════════════════════════════════");
@@ -692,23 +721,41 @@ public class QueryHandler(
         }
     }
 
+    /// <summary>
+    /// Checks if input is a command (starts with /)
+    /// </summary>
+    /// <param name="input">Input string to check</param>
+    /// <returns>True if command, false otherwise</returns>
     private static bool IsCommand(string input)
     {
         return input.StartsWith("/", StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Checks if input is an exit command
+    /// </summary>
+    /// <param name="input">Input string to check</param>
+    /// <returns>True if exit command, false otherwise</returns>
     private static bool IsExitCommand(string input)
     {
         var normalized = input.Trim().ToLowerInvariant();
         return normalized is "/exit" or "/quit" or "/q" or "/back";
     }
 
+    /// <summary>
+    /// Checks if input is a help command
+    /// </summary>
+    /// <param name="input">Input string to check</param>
+    /// <returns>True if help command, false otherwise</returns>
     private static bool IsHelpCommand(string input)
     {
         var normalized = input.Trim().ToLowerInvariant();
         return normalized is "/help" or "/h" or "/?";
     }
 
+    /// <summary>
+    /// Prints available chat commands help message
+    /// </summary>
     private void PrintChatHelp()
     {
         System.Console.WriteLine();
@@ -721,6 +768,11 @@ public class QueryHandler(
         System.Console.WriteLine();
     }
 
+    /// <summary>
+    /// Prints search result sources with formatting
+    /// </summary>
+    /// <param name="sources">Collection of search sources</param>
+    /// <param name="maxCount">Maximum number of sources to display</param>
     private void PrintSources(IReadOnlyCollection<SearchSource> sources, int maxCount)
     {
         System.Console.ForegroundColor = ConsoleColor.DarkGray;
@@ -747,6 +799,11 @@ public class QueryHandler(
         System.Console.ResetColor();
     }
 
+    /// <summary>
+    /// Builds a formatted source line string from search source
+    /// </summary>
+    /// <param name="source">Search source to format</param>
+    /// <returns>Formatted source line</returns>
     private static string BuildSourceLine(SearchSource source)
     {
         var label = string.IsNullOrWhiteSpace(source.SourceType) ? "Document" : source.SourceType;
@@ -796,6 +853,12 @@ public class QueryHandler(
         return $"[{label}] {name}{detailText}";
     }
 
+    /// <summary>
+    /// Formats time range from start and end seconds
+    /// </summary>
+    /// <param name="startSeconds">Start time in seconds</param>
+    /// <param name="endSeconds">End time in seconds</param>
+    /// <returns>Formatted time range string</returns>
     private static string FormatTimeRange(double? startSeconds, double? endSeconds)
     {
         if (!startSeconds.HasValue && !endSeconds.HasValue)
@@ -816,6 +879,11 @@ public class QueryHandler(
         return $"-{FormatTimestamp(endSeconds!.Value)}";
     }
 
+    /// <summary>
+    /// Formats seconds into timestamp string (HH:MM:SS or MM:SS)
+    /// </summary>
+    /// <param name="seconds">Time in seconds</param>
+    /// <returns>Formatted timestamp</returns>
     private static string FormatTimestamp(double seconds)
     {
         if (seconds < 0)
@@ -830,6 +898,14 @@ public class QueryHandler(
             : $"{time.Minutes:D2}:{time.Seconds:D2}";
     }
 
+    /// <summary>
+    /// Generates combined answer from document and database contexts
+    /// </summary>
+    /// <param name="query">User query</param>
+    /// <param name="documentContext">Document context information</param>
+    /// <param name="databaseAnswer">Database query answer</param>
+    /// <param name="language">Response language</param>
+    /// <returns>Combined answer from AI</returns>
     private async Task<string> GenerateCombinedAnswer(string query, List<string> documentContext, string? databaseAnswer, string language)
     {
         var combinedContext = new List<string>();
