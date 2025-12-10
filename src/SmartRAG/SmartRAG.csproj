@@ -1,11 +1,11 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netstandard2.1</TargetFramework>
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
-    <PackageVersion>3.3.0</PackageVersion>
+    <PackageVersion>3.4.0</PackageVersion>
     <Authors>Barış Yerlikaya</Authors>
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
@@ -20,37 +20,43 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Release 3.3.0: Redis Vector Search &amp; Storage Improvements (MINOR Release - 2025-12-01)
+    <PackageReleaseNotes>Release 3.4.0: MCP Integration &amp; Enhanced Search Capabilities (MINOR Release - 2025-12-10)
 
 NEW FEATURES:
-- ConversationStorageProvider Separation: Separated conversation storage from document storage for better architecture
-- Redis RediSearch Integration: Enhanced vector similarity search with RediSearch module support
-- Redis Vector Search Configuration: Vector index algorithm, distance metric, and dimension configuration
-- RedisInsight UI Support: Docker Compose setup includes RedisInsight for Redis management
-- InMemory Storage Option: Added to demo initialization menu for easy testing
+- MCP (Model Context Protocol) Integration: External MCP server integration for enhanced search capabilities
+- File Watcher Service: Automatic document indexing from watched folders with real-time updates
+- DocumentType Property: Enhanced document chunk filtering by content type (Document, Audio, Image)
+- DefaultLanguage Support: Global default language configuration for document processing
+- Enhanced Search Feature Flags: Granular control over MCP, audio, and image search capabilities
+- Early Exit Optimization: Performance improvement for document search with early exit logic
+- SmartRagStartupService: Centralized startup service for automatic initialization
 
 IMPROVEMENTS:
-- Redis Vector Search: Proper relevance score calculation and assignment for DocumentSearchService
-- Redis Embedding Generation: Correct AIProviderConfig passing for embedding generation
-- StorageFactory DI: Resolved dependency injection scope issues with IAIProvider
-- Redis Docker Setup: Updated to redis/redis-stack-server:latest image (includes RediSearch)
+- Code Quality: Comprehensive code cleanup, removed redundant comments and language-specific references
+- Model Organization: Reorganized models into logical subfolders (Configuration, RequestResponse, Results, Schema)
+- Dependency Injection: Improved DI patterns and error handling
+- Image Parsing: Enhanced context expansion and error handling for image processing
+- Database Query Error Handling: Better error messages and response validation
+- Missing Data Detection: Language-agnostic missing data detection patterns
 
 FIXES:
-- StorageFactory Dependency Injection: Fixed IAIProvider scope issue using lazy resolution
-- Redis Relevance Scoring: Fixed RelevanceScore assignment in RedisDocumentRepository for vector search
-- Redis Embedding Config: Fixed NullReferenceException when generating embeddings
+- Language-Agnostic Missing Data Detection: Fixed language-specific patterns, now works with all languages
+- HttpClient Timeout: Increased timeout to 10 minutes for long-running AI operations
+- Turkish Character Encoding: Fixed encoding issues in PDF text extraction
+- Chunk0 Retrieval: Fixed numbered list processing chunk retrieval
+- DI Scope Issues: Resolved dependency injection scope conflicts and circular dependencies
+- Content Type Detection: Improved content type detection accuracy
 
-REMOVED:
-- FileSystemDocumentRepository: Removed unused file system storage implementation
-- SqliteDocumentRepository: Removed unused SQLite storage implementation
-- StorageConfig Properties: Removed FileSystemPath and SqliteConfig (unused)
+CHANGED:
+- Feature Flag Naming: Renamed EnableMcpClient→EnableMcpSearch, EnableAudioParsing→EnableAudioSearch, EnableImageParsing→EnableImageSearch
+- Interface Restructuring: Reorganized interfaces into Mcp/ and FileWatcher/ folders
 
 CODE QUALITY:
 - Maintained 0 errors, 0 warnings
-- Removed unused code and dependencies
-- Improved Redis vector search accuracy
+- Comprehensive code cleanup and organization
+- Improved maintainability and readability
 
-This release enhances Redis vector search capabilities and removes unused storage implementations while maintaining backward compatibility for actively used features.</PackageReleaseNotes>
+This release adds MCP integration, file watcher service, and enhanced search capabilities while maintaining full backward compatibility.</PackageReleaseNotes>
     
     <!-- Build Configuration -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -61,8 +67,8 @@ This release enhances Redis vector search capabilities and removes unused storag
     <AssemblyTitle>SmartRAG</AssemblyTitle>
     <AssemblyDescription>High-performance RAG library with conversation history management for .NET</AssemblyDescription>
     <AssemblyCopyright>Copyright © 2025 Barış Yerlikaya</AssemblyCopyright>
-    <AssemblyVersion>3.3.0.0</AssemblyVersion>
-    <FileVersion>3.3.0.0</FileVersion>
+    <AssemblyVersion>3.4.0.0</AssemblyVersion>
+    <FileVersion>3.4.0.0</FileVersion>
     <NeutralLanguage>en</NeutralLanguage>
     <Culture>en-US</Culture>
   </PropertyGroup>
