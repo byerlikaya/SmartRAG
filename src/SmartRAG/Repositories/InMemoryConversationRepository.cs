@@ -10,14 +10,12 @@ namespace SmartRAG.Repositories
     {
         private readonly Dictionary<string, string> _conversations = new Dictionary<string, string>();
         private readonly object _lock = new object();
-        private readonly ILogger<InMemoryConversationRepository> _logger;
 
         private const int MaxConversationLength = 2000;
         private const int MaxSessions = 1000;
 
         public InMemoryConversationRepository(ILogger<InMemoryConversationRepository> logger)
         {
-            _logger = logger;
         }
 
         public Task<string> GetConversationHistoryAsync(string sessionId)

@@ -161,7 +161,7 @@ namespace SmartRAG.Repositories
         }
 
         /// <summary>
-        /// Extract document metadata from Qdrant point payload
+        /// Extracts document metadata from Qdrant point payload
         /// </summary>
         private static DocumentMetadata ExtractDocumentMetadata(Google.Protobuf.Collections.MapField<string, Value> payload)
         {
@@ -214,7 +214,7 @@ namespace SmartRAG.Repositories
         }
 
         /// <summary>
-        /// Create Document from metadata
+        /// Creates Document from metadata
         /// </summary>
         private static SmartRAG.Entities.Document CreateDocumentFromMetadata(DocumentMetadata metadata, Dictionary<string, object> additionalMetadata = null)
         {
@@ -239,7 +239,7 @@ namespace SmartRAG.Repositories
         }
 
         /// <summary>
-        /// Create DocumentChunk from Qdrant point
+        /// Creates DocumentChunk from Qdrant point
         /// </summary>
         private static DocumentChunk CreateDocumentChunk(RetrievedPoint point, Guid documentId, DateTime fallbackCreatedAt)
         {
@@ -255,7 +255,6 @@ namespace SmartRAG.Repositories
             if (string.IsNullOrWhiteSpace(documentType))
                 documentType = "Document";
 
-            // Use chunkId from payload if available, otherwise generate new Guid
             Guid chunkId;
             if (!string.IsNullOrWhiteSpace(chunkIdStr) && Guid.TryParse(chunkIdStr, out var parsedChunkId))
             {
@@ -266,7 +265,6 @@ namespace SmartRAG.Repositories
                 chunkId = Guid.NewGuid();
             }
 
-            // Parse chunkIndex from payload
             int chunkIndex = 0;
             if (!string.IsNullOrWhiteSpace(chunkIndexStr) && int.TryParse(chunkIndexStr, out var parsedChunkIndex))
             {
@@ -275,7 +273,7 @@ namespace SmartRAG.Repositories
 
             return new DocumentChunk
             {
-                Id = chunkId, // Use original chunk ID from payload to match with search results
+                Id = chunkId,
                 DocumentId = documentId,
                 Content = chunkContent,
                 ChunkIndex = chunkIndex,
@@ -288,7 +286,7 @@ namespace SmartRAG.Repositories
         }
 
         /// <summary>
-        /// Helper class for document metadata extraction
+        /// Document metadata extraction helper class
         /// </summary>
         private sealed class DocumentMetadata
         {
@@ -307,7 +305,7 @@ namespace SmartRAG.Repositories
             {
                 await _collectionManager.EnsureCollectionExistsAsync();
 
-                var documentCollectionName = $"{_collectionName}_doc_{document.Id:N}".Replace("-", ""); // Remove hyphens for Qdrant
+                var documentCollectionName = $"{_collectionName}_doc_{document.Id:N}".Replace("-", "");
                 RepositoryLogMessages.LogQdrantDocumentCollectionCreating(Logger, documentCollectionName, _collectionName, document.Id, null);
 
                 await _collectionManager.EnsureDocumentCollectionExistsAsync(documentCollectionName, document);
@@ -321,7 +319,7 @@ namespace SmartRAG.Repositories
                     if (chunk.Embedding == null || chunk.Embedding.Count == 0)
                     {
                         chunk.Embedding = await _embeddingService.GenerateEmbeddingAsync(chunk.Content) ?? new List<float>();
-                        if (index % 10 == 0) // Progress every 10 chunks
+                        if (index % 10 == 0)
                         {
                             RepositoryLogMessages.LogQdrantEmbeddingsProgress(Logger, index + 1, document.Chunks.Count, null);
                         }
@@ -339,7 +337,7 @@ namespace SmartRAG.Repositories
                 {
                     var point = new PointStruct
                     {
-                        Id = new PointId { Uuid = Guid.NewGuid().ToString() }, // Use UUID string instead of Num
+                        Id = new PointId { Uuid = Guid.NewGuid().ToString() },
                         Vectors = new Vectors
                         {
                             Vector = new Vector
@@ -358,8 +356,6 @@ namespace SmartRAG.Repositories
                     point.Payload.Add("fileSize", document.FileSize);
                     point.Payload.Add("uploadedAt", document.UploadedAt.ToString("O"));
                     point.Payload.Add("uploadedBy", document.UploadedBy);
-                    // Use chunk's own DocumentType (set during parsing) instead of document-level type
-                    // This ensures PDF chunks are marked as "Document", not "Image"
                     point.Payload.Add("documentType", chunk.DocumentType ?? DetermineDocumentType(document));
 
                     if (document.Metadata != null)
@@ -399,10 +395,8 @@ namespace SmartRAG.Repositories
         {
             try
             {
-                // Document chunks are stored in document-specific collections
                 var documentCollectionName = $"{_collectionName}_doc_{id:N}".Replace("-", "");
                 
-                // Check if document collection exists
                 var allCollections = await _client.ListCollectionsAsync();
                 if (!allCollections.Contains(documentCollectionName))
                 {
@@ -410,8 +404,7 @@ namespace SmartRAG.Repositories
                     return null;
                 }
 
-                // Get all chunks from document-specific collection
-                var result = await _client.ScrollAsync(documentCollectionName, limit: 10000); // Get all chunks
+                var result = await _client.ScrollAsync(documentCollectionName, limit: 10000);
 
                 if (result.Result.Count == 0)
                 {
@@ -431,7 +424,6 @@ namespace SmartRAG.Repositories
 
                 var document = CreateDocumentFromMetadata(metadata, additionalMetadata);
 
-                // Add all chunks from the document collection
                 foreach (var point in result.Result)
                 {
                     var chunk = CreateDocumentChunk(point, document.Id, metadata.UploadedAt);
@@ -466,7 +458,7 @@ namespace SmartRAG.Repositories
                     {
                         var result = await _client.ScrollAsync(
                             docCollection,
-                            limit: 1);  // We only need one point to get metadata
+                            limit: 1);
 
                         if (result.Result.Count == 0)
                             continue;
@@ -545,7 +537,7 @@ namespace SmartRAG.Repositories
         }
 
         /// <summary>
-        /// [Document Query] Clear all documents by deleting all document collections and recreating main collection
+        /// Clears all documents by deleting all document collections and recreating main collection
         /// </summary>
         public async Task<bool> ClearAllAsync()
         {

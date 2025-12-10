@@ -184,7 +184,7 @@ namespace SmartRAG.Repositories
         }
 
         /// <summary>
-        /// Removes oldest documents when capacity is exceeded
+        /// Removes oldest documents when capacity limit is reached
         /// </summary>
         private int RemoveOldestDocuments()
         {
@@ -203,7 +203,7 @@ namespace SmartRAG.Repositories
         }
 
         /// <summary>
-        /// Performs search operation on documents
+        /// Performs text search on document chunks
         /// </summary>
         private List<DocumentChunk> PerformSearch(string normalizedQuery, int maxResults)
         {

@@ -124,7 +124,7 @@ namespace SmartRAG.Repositories
                             try
                             {
                                 embedding = await _aiProvider.GenerateEmbeddingAsync(chunk.Content, null);
-                                chunk.Embedding = embedding; // Update chunk with generated embedding
+                                chunk.Embedding = embedding;
                             }
                             catch (Exception ex)
                             {
@@ -308,7 +308,6 @@ namespace SmartRAG.Repositories
                         if (Guid.TryParse(docIdStr.ToString(), out var docId) &&
                             int.TryParse(chunkIndexStr.ToString(), out var chunkIndex))
                         {
-                            // Parse score - RediSearch returns distance (for COSINE: 0-2, for L2: 0-inf, for IP: -1 to 1)
                             double score = 0.0;
                             if (scoreStr.HasValue && !scoreStr.IsNull && double.TryParse(scoreStr.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedScore))
                             {
@@ -316,25 +315,23 @@ namespace SmartRAG.Repositories
                             }
 
                             var distanceMetric = _config.DistanceMetric?.ToUpperInvariant() ?? "COSINE";
-                            var
-                                    // Cosine distance: 0 = identical, 2 = opposite
-                                    similarity = distanceMetric switch
-                                    {
-                                        "COSINE" => (float)Math.Max(0.0, Math.Min(1.0, 1.0 - (score / 2.0))),// Cosine distance: 0 = identical, 2 = opposite
-                                        "L2" => (float)(1.0 / (1.0 + score)),// L2 distance: 0 = identical, larger = more different
-                                        "IP" => (float)Math.Max(0.0, Math.Min(1.0, (score + 1.0) / 2.0)),// Inner product: higher = more similar (can be negative)
-                                        _ => (float)Math.Max(0.0, Math.Min(1.0, 1.0 - score)),
-                                    };
+                            var similarity = distanceMetric switch
+                            {
+                                "COSINE" => (float)Math.Max(0.0, Math.Min(1.0, 1.0 - (score / 2.0))),
+                                "L2" => (float)(1.0 / (1.0 + score)),
+                                "IP" => (float)Math.Max(0.0, Math.Min(1.0, (score + 1.0) / 2.0)),
+                                _ => (float)Math.Max(0.0, Math.Min(1.0, 1.0 - score)),
+                            };
                             var relevanceScore = similarity * 100.0;
 
                             results.Add(new DocumentChunk
                             {
-                                Id = Guid.Parse(doc.Id.Replace($"{_config.KeyPrefix}{ChunkKeySuffix}", "")), // Extract GUID from key if possible, or generate new
+                                Id = Guid.Parse(doc.Id.Replace($"{_config.KeyPrefix}{ChunkKeySuffix}", "")),
                                 DocumentId = docId,
                                 Content = content.ToString(),
                                 ChunkIndex = chunkIndex,
-                                Embedding = new List<float>(), // We don't return embedding to save bandwidth
-                                RelevanceScore = relevanceScore // Set RelevanceScore for DocumentSearchService (0-100 scale)
+                                Embedding = new List<float>(),
+                                RelevanceScore = relevanceScore
                             });
                         }
                     }
@@ -546,8 +543,6 @@ namespace SmartRAG.Repositories
                 batch.KeyDeleteAsync(metadataKey)
             };
 
-            // Note: This is a simplified deletion. Ideally we should track chunk keys and delete them explicitly
-            // or use a tag-based deletion if RediSearch supports it efficiently.
             if (_config.EnableVectorSearch)
             {
                 try
