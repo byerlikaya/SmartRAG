@@ -5,6 +5,7 @@ using SmartRAG.API.Contracts;
 using SmartRAG.Enums;
 using SmartRAG.Interfaces;
 using SmartRAG.Models;
+using SmartRAG.Models.RequestResponse;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -168,11 +169,15 @@ namespace SmartRAG.API.Controllers
                     file.OpenReadStream(), 
                     file.FileName);
 
-                var document = await _documentService.UploadDocumentAsync(
-                    file.OpenReadStream(),
-                    file.FileName,
-                    file.ContentType,
-                    "database-upload");
+                var request = new UploadDocumentRequest
+                {
+                    FileStream = file.OpenReadStream(),
+                    FileName = file.FileName,
+                    ContentType = file.ContentType,
+                    UploadedBy = "database-upload"
+                };
+
+                var document = await _documentService.UploadDocumentAsync(request);
 
                 stopwatch.Stop();
 

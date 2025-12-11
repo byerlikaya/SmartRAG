@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using SmartRAG.Demo.Services.Console;
 using SmartRAG.Interfaces;
+using SmartRAG.Models.RequestResponse;
 
 namespace SmartRAG.Demo.Handlers.DocumentHandlers;
 
@@ -59,12 +60,16 @@ public class DocumentHandler(
                 languageToUse = await SelectAudioLanguageAsync();
             }
 
-            var document = await _documentService.UploadDocumentAsync(
-                fileStream,
-                fileName,
-                contentType,
-                "Demo",
-                languageToUse);
+            var request = new UploadDocumentRequest
+            {
+                FileStream = fileStream,
+                FileName = fileName,
+                ContentType = contentType,
+                UploadedBy = "Demo",
+                Language = languageToUse
+            };
+
+            var document = await _documentService.UploadDocumentAsync(request);
 
             _console.WriteSuccess("Document uploaded successfully!");
             System.Console.WriteLine($"  ID: {document.Id}");
