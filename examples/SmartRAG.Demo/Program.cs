@@ -11,9 +11,6 @@ using SmartRAG.Demo.Services.Menu;
 using SmartRAG.Demo.Services.TestQuery;
 using SmartRAG.Demo.Services.Translation;
 using SmartRAG.Enums;
-using SmartRAG.Extensions;
-using SmartRAG.Interfaces;
-using SmartRAG.Interfaces.Support;
 
 namespace SmartRAG.Demo;
 
@@ -53,7 +50,7 @@ internal class Program
                 ConsoleHelper.ResetCursor();
                 
                 // Clear console after animation but AFTER buffer is restored
-                System.Console.Clear();
+                Console.Clear();
             }
 
             var configuration = LoadConfiguration();
@@ -63,14 +60,14 @@ internal class Program
 
             await initService.SetupTestDatabasesAsync();
 
-            var (useLocal, aiProvider, storageProvider) = await initService.SelectEnvironmentAsync();
+            var (useLocal, aiProvider, storageProvider, conversationStorageProvider) = await initService.SelectEnvironmentAsync();
             _useLocalEnvironment = useLocal;
             _selectedAIProvider = aiProvider;
             _selectedStorageProvider = storageProvider;
 
             _selectedLanguage = await initService.SelectLanguageAsync();
 
-            await initService.InitializeServicesAsync(aiProvider, storageProvider, _selectedLanguage);
+            await initService.InitializeServicesAsync(aiProvider, storageProvider, conversationStorageProvider, _selectedLanguage);
             _serviceProvider = initService.GetServiceProvider();
 
             if (_serviceProvider == null)
@@ -336,6 +333,15 @@ internal class Program
                         break;
                     }
                     await queryHandler.RunMcpQueryAsync(_selectedLanguage);
+                    break;
+
+                case "18":
+                    if (queryHandler == null)
+                    {
+                        console.WriteError("Query handler is not available.");
+                        break;
+                    }
+                    await queryHandler.ClearConversationHistoryAsync();
                     break;
 
                 case "0":

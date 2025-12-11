@@ -10,5 +10,6 @@ public interface IQueryHandler
     Task RunTestQueriesAsync(string language);
     Task RunConversationalChatAsync(string language, bool useLocalEnvironment, string aiProvider);
     Task RunMcpQueryAsync(string language);
+    Task ClearConversationHistoryAsync();
 }
 

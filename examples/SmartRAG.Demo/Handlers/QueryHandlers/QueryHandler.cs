@@ -991,6 +991,36 @@ Instructions:
         return await _aiService.GenerateResponseAsync(finalPrompt, new List<string>());
     }
 
+    public async Task ClearConversationHistoryAsync()
+    {
+        _console.WriteSectionHeader("🧹 Clear Conversation History");
+
+        _console.WriteWarning("WARNING: This will permanently delete ALL conversation history!");
+        System.Console.WriteLine();
+
+        var confirmation = _console.ReadLine("Are you sure? Type 'yes' to confirm: ");
+        if (confirmation?.ToLower() != "yes")
+        {
+            _console.WriteInfo("Operation cancelled");
+            return;
+        }
+
+        try
+        {
+            System.Console.WriteLine();
+            System.Console.WriteLine("🧹 Clearing conversation history...");
+
+            await _conversationManager.ClearAllConversationsAsync();
+
+            _console.WriteSuccess("Conversation history cleared successfully!");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error clearing conversation history");
+            _console.WriteError($"Error: {ex.Message}");
+        }
+    }
+
     #endregion
 }
 
