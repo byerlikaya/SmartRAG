@@ -52,6 +52,11 @@ namespace SmartRAG.Interfaces.Support
         /// <param name="preferredLanguage">Optional preferred language code for AI response</param>
         /// <returns>AI-generated conversation response</returns>
         Task<string> HandleGeneralConversationAsync(string query, string? conversationHistory = null, string? preferredLanguage = null);
+
+        /// <summary>
+        /// Clears all conversation history from storage
+        /// </summary>
+        Task ClearAllConversationsAsync();
     }
 }
 

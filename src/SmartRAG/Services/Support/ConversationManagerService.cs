@@ -217,6 +217,24 @@ namespace SmartRAG.Services.Support
         }
 
         /// <summary>
+        /// Clears all conversation history from storage
+        /// </summary>
+        public async Task ClearAllConversationsAsync()
+        {
+            try
+            {
+                _conversationCache.Clear();
+                await _conversationRepository.ClearAllConversationsAsync();
+                _logger.LogInformation("Cleared all conversation history");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to clear all conversation history");
+                throw;
+            }
+        }
+
+        /// <summary>
         /// Handles general conversation queries with conversation history
         /// </summary>
         public async Task<string> HandleGeneralConversationAsync(string query, string? conversationHistory = null, string? preferredLanguage = null)
