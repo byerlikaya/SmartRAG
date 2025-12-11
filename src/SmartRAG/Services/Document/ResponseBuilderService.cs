@@ -150,7 +150,15 @@ namespace SmartRAG.Services.Document
                 
                 if (hasMeaningfulData && totalRows > 0)
                 {
-                    _logger?.LogInformation("Database query returned {TotalRows} rows - marking as meaningful data regardless of AI answer quality", totalRows);
+                    // Check if AI explicitly says there is no information despite returned rows
+                    // This handles cases where DB returns rows but they are not relevant to the query
+                    if (!string.IsNullOrWhiteSpace(response.Answer) && IndicatesMissingData(response.Answer))
+                    {
+                        _logger?.LogInformation("Database query returned {TotalRows} rows but AI indicated missing data. Marking as not meaningful.", totalRows);
+                        return false;
+                    }
+
+                    _logger?.LogInformation("Database query returned {TotalRows} rows - marking as meaningful data", totalRows);
                     return true;
                 }
                 
@@ -189,147 +197,35 @@ namespace SmartRAG.Services.Document
             }
 
             var normalized = answer.Trim();
-            var lowerAnswer = normalized.ToLowerInvariant();
             
-            if (normalized.Length < 15)
+            // Check explicit negative patterns first
+            if (IsExplicitlyNegative(normalized))
             {
                 return true;
             }
+
+            // aggressive heuristics (length checks, question mark checks, etc.) are removed 
+            // to prevent false positives for valid short database answers.
+            // We rely on the [NO_ANSWER_FOUND] token and explicit negative symbols.
             
-            if (normalized.EndsWith("?"))
-            {
-                return true;
-            }
+            return false;
+        }
+
+        /// <summary>
+        /// Checks if an answer strictly contains negative patterns ("no information", "not found", etc.)
+        /// Used to fast-fail even high-confidence results if they are explicitly negative
+        /// </summary>
+        public bool IsExplicitlyNegative(string answer)
+        {
+            if (string.IsNullOrWhiteSpace(answer)) return true;
             
-            var answerWords = normalized.Split(new[] { ' ', ',', '.', '?', '!' }, StringSplitOptions.RemoveEmptyEntries);
-            if (answerWords.Length < 5)
-            {
-                return true;
-            }
+            // Rely primarily on the special token from prompt
+            if (answer.Contains("[NO_ANSWER_FOUND]")) return true;
             
-            var universalNegativePatterns = new[]
-            {
-                " no ",
-                "404",
-                "0 row",
-                "empty",
-                "null",
-                "not provided",
-                "not available",
-                "not found",
-                "cannot answer",
-                "cannot determine",
-                "could not find",
-                "no information",
-                "information not",
-                "data not"
-            };
+            var normalized = answer.Trim();
             
-            if (universalNegativePatterns.Any(lowerAnswer.Contains))
-            {
-                return true;
-            }
-            
-            if (normalized.Length > 100)
-            {
-                var hasNumbers = normalized.Any(char.IsDigit);
-                var endsWithQuestion = normalized.EndsWith("?");
-                
-                if (!hasNumbers && endsWithQuestion)
-                {
-                    return true;
-                }
-            }
-            
-            if (normalized.Length > 60)
-            {
-                var hasNumbers = normalized.Any(char.IsDigit);
-                
-                if (!hasNumbers)
-                {
-                    var hasMultipleSentences = normalized.Contains(".") && normalized.Split('.').Length > 2;
-                    var isLongExplanation = normalized.Length > 150;
-                    var hasNegativeParticle = lowerAnswer.Contains(" not ") || 
-                                            lowerAnswer.Contains(" no ") ||
-                                            lowerAnswer.Contains(" cannot ") ||
-                                            lowerAnswer.Contains(" unable ") ||
-                                            lowerAnswer.Contains("does not") ||
-                                            lowerAnswer.Contains("do not");
-                    var hasMissingDataVerb = lowerAnswer.Contains("specif") ||
-                                           lowerAnswer.Contains("mention") ||
-                                           lowerAnswer.Contains("provid") ||
-                                           lowerAnswer.Contains("availab") ||
-                                           lowerAnswer.Contains("find") ||
-                                           lowerAnswer.Contains("exist") ||
-                                           lowerAnswer.Contains("present") ||
-                                           lowerAnswer.Contains("includ");
-                    
-                    if ((hasMultipleSentences || isLongExplanation) && 
-                        (hasNegativeParticle || hasMissingDataVerb))
-                    {
-                        return true;
-                    }
-                }
-            }
-            
-            var notSpecifiedPatterns = new[]
-            {
-                "not specified",
-                "not mentioned",
-                "not stated",
-                "not indicated",
-                "not provided",
-                "not available",
-                "not found",
-                "not clear",
-                "not explicit",
-                "not explicitly",
-                "not directly",
-                "does not specify",
-                "does not mention",
-                "does not state",
-                "does not indicate",
-                "no information",
-                "no data",
-                "no details",
-                "no specific",
-                "unclear",
-                "unavailable",
-                "unspecified"
-            };
-            
-            if (notSpecifiedPatterns.Any(pattern => lowerAnswer.Contains(pattern)))
-            {
-                return true;
-            }
-            
-            if (normalized.Contains("❌") || normalized.Contains("⚠") || normalized.Contains("🚫"))
-            {
-                return true;
-            }
-            
-            if (!string.IsNullOrWhiteSpace(query) && normalized.Length > 50 && normalized.Length < 200)
-            {
-                var queryWords = query.ToLowerInvariant()
-                    .Split(new[] { ' ', ',', '.', '?', '!' }, StringSplitOptions.RemoveEmptyEntries)
-                    .Where(w => w.Length > 3)
-                    .ToList();
-                
-                if (queryWords.Count > 0)
-                {
-                    var matchedKeywords = queryWords.Count(keyword => lowerAnswer.Contains(keyword));
-                    var keywordRatio = (double)matchedKeywords / queryWords.Count;
-                    
-                    var hasNumbers = normalized.Any(char.IsDigit);
-                    var answerWordCount = normalized.Split(new[] { ' ', ',', '.', '?', '!' }, StringSplitOptions.RemoveEmptyEntries).Length;
-                    var queryWordCount = query.Split(new[] { ' ', ',', '.', '?', '!' }, StringSplitOptions.RemoveEmptyEntries).Length;
-                    
-                    if (keywordRatio > 0.8 && !hasNumbers && answerWordCount < (queryWordCount * 1.5))
-                    {
-                        return true;
-                    }
-                }
-            }
+            // Only rely on the special token. 
+            // Symbols like ⚠ can appear in valid safety warnings (e.g. airbags).
             
             return false;
         }

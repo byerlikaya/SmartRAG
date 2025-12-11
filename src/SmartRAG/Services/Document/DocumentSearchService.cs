@@ -59,6 +59,8 @@ namespace SmartRAG.Services.Document
         // Query intent confidence thresholds for early exit decision
         private const double VeryHighDatabaseConfidenceThreshold = 0.98; // Always check database if query intent confidence >= 0.98 (very strict, only for clear database-only queries)
         private const double HighDatabaseConfidenceThreshold = 0.9; // Check database if query intent confidence >= 0.9 and document search has low confidence
+        private const double SkipEagerDocumentAnswerConfidenceThreshold = 0.85; // Skip eager document answer generation if confidence >= 0.85 and database queries exist (saves 1 LLM call)
+        private const double StrongDocumentMatchThreshold = 4.8; // If document chunks have score > 4.8, prioritize them over database queries even if DB intent confidence is high
 
         // Regex patterns for parsing source tags from query
         // Pattern matches: whitespace or punctuation + tag + optional whitespace at end
@@ -304,9 +306,20 @@ namespace SmartRAG.Services.Document
             // Compute query tokens once here and pass to all sub-methods to avoid redundant tokenization
             var queryTokens = searchOptions.EnableDocumentSearch ? QueryTokenizer.TokenizeQuery(query) : null;
 
-            var (CanAnswer, Results) = searchOptions.EnableDocumentSearch
-                ? await CanAnswerFromDocumentsAsyncInternal(query, searchOptions, queryTokens)
-                : (CanAnswer: false, Results: new List<DocumentChunk>());
+            var documentSearchTask = searchOptions.EnableDocumentSearch
+                ? CanAnswerFromDocumentsAsyncInternal(query, searchOptions, queryTokens)
+                : Task.FromResult((CanAnswer: false, Results: new List<DocumentChunk>()));
+            
+            var queryIntentTask = (_multiDatabaseQueryCoordinator != null && 
+                                   searchOptions.EnableDatabaseSearch && 
+                                   _queryIntentAnalyzer != null)
+                ? _queryIntentAnalyzer.AnalyzeQueryIntentAsync(query)
+                : Task.FromResult<QueryIntent?>(null);
+
+            await Task.WhenAll(documentSearchTask, queryIntentTask);
+
+            var (CanAnswer, Results) = await documentSearchTask;
+            var preAnalyzedQueryIntent = await queryIntentTask;
 
             if (searchOptions.EnableDocumentSearch)
             {
@@ -314,55 +327,81 @@ namespace SmartRAG.Services.Document
                 searchMetadata.DocumentChunksFound = Results.Count;
             }
 
-            // Early exit optimization: if documents provide high-confidence results, skip other sources
-            // CRITICAL: ALWAYS check document quality FIRST, regardless of database intent
-            // If documents have high confidence AND good answer, return immediately (no database/MCP needed)
-            QueryIntent? earlyExitQueryIntent = null;
+            QueryIntent? earlyExitQueryIntent = preAnalyzedQueryIntent;
             
-            if (_sourceSelectionService != null &&
-                _options.Features.SourceSelection.EnableEarlyExit &&
-                searchOptions.EnableDocumentSearch &&
-                CanAnswer)
+            // Only skip eager document answer if intent strongly suggests a database query 
+            // AND we don't have extremely high-scoring document chunks.
+            // If we have high-scoring document chunks, prioritize them over database queries
+            // to avoid false positive database intent detection when documents contain the answer.
+            var topScore = Results.Count > 0 ? Results.Max(r => r.RelevanceScore ?? 0) : 0;
+            var hasStrongDocumentMatch = topScore > StrongDocumentMatchThreshold; 
+
+            var skipEagerDocumentAnswer = !hasStrongDocumentMatch &&
+                                          earlyExitQueryIntent?.Confidence > SkipEagerDocumentAnswerConfidenceThreshold && 
+                                          earlyExitQueryIntent.DatabaseQueries?.Count > 0;
+
+            if (searchOptions.EnableDocumentSearch && CanAnswer && Results.Count > 0 && !skipEagerDocumentAnswer)
             {
-                // STEP 1: Check if documents provide high-confidence results
-                var shouldSkipOtherSources = await _sourceSelectionService.ShouldSkipOtherSourcesAsync(CanAnswer, Results, _options.Features.SourceSelection.EarlyExitRelevanceThreshold);
-                
-                if (shouldSkipOtherSources)
+                _logger.LogInformation("Document chunks found ({Count}), generating document-first response", Results.Count);
+                if (_strategyExecutor == null)
                 {
-                    _logger.LogInformation("High-confidence document results found, attempting document-only response with quality check");
-                    if (_strategyExecutor == null)
-                    {
-                        throw new InvalidOperationException("IQueryStrategyExecutorService is required for strategy execution");
-                    }
+                    throw new InvalidOperationException("IQueryStrategyExecutorService is required for strategy execution");
+                }
+                
+                var docRequest = new Models.RequestResponse.DocumentQueryStrategyRequest
+                {
+                    Query = query,
+                    MaxResults = maxResults,
+                    ConversationHistory = conversationHistory,
+                    CanAnswerFromDocuments = CanAnswer,
+                    PreferredLanguage = preferredLanguage,
+                    Options = searchOptions,
+                    PreCalculatedResults = Results,
+                    QueryTokens = queryTokens
+                };
+                var documentOnlyResponse = await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(docRequest);
+                
+                // Use StrongDocumentMatchThreshold for consistency (4.8)
+                // If topScore is very high, we trust the document search result unless it's a complete failure ([NO_ANSWER_FOUND])
+                // This prevents fallback to DB for questions that are clearly document-centric and have high-confidence matches
+                
+                if (topScore >= StrongDocumentMatchThreshold && 
+                    !string.IsNullOrWhiteSpace(documentOnlyResponse.Answer))
+                {
+                    // Check if answer is explicitly negative (meaning NO answer was found)
+                    // We only block if it contains the specific failure token, otherwise we accept even partial answers
+                    var isFailure = _responseBuilder != null && _responseBuilder.IsExplicitlyNegative(documentOnlyResponse.Answer);
                     
-                    var docRequest = new Models.RequestResponse.DocumentQueryStrategyRequest
+                    if (!isFailure)
                     {
-                        Query = query,
-                        MaxResults = maxResults,
-                        ConversationHistory = conversationHistory,
-                        CanAnswerFromDocuments = CanAnswer,
-                        PreferredLanguage = preferredLanguage,
-                        Options = searchOptions,
-                        PreCalculatedResults = Results,
-                        QueryTokens = queryTokens
-                    };
-                    var documentOnlyResponse = await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(docRequest);
-                    
-                    // CRITICAL: Check if AI answer indicates missing data
-                    // If document search found high-confidence chunks but AI cannot answer, allow database fallback
-                    if (_responseBuilder != null && 
-                        searchOptions.EnableDatabaseSearch && 
-                        _responseBuilder.IndicatesMissingData(documentOnlyResponse.Answer, query))
-                    {
-                        _logger.LogInformation("Document-only response indicates missing data, continuing to database search as fallback");
-                    }
-                    else
-                    {
-                        // This prevents unnecessary database/MCP queries when documents already have the answer
-                        _logger.LogInformation("Document-only response is satisfactory, skipping database and MCP search for faster response");
+                        _logger.LogInformation("High-confidence chunks found (score: {Score:F2} >= {Threshold:F2}) and answer is not a failure, accepting document response. Skip DB.", 
+                            topScore, StrongDocumentMatchThreshold);
                         documentOnlyResponse.SearchMetadata = searchMetadata;
                         return documentOnlyResponse;
                     }
+                    else
+                    {
+                         _logger.LogInformation("High-confidence chunks found but AI explicitly returned [NO_ANSWER_FOUND]. Allowing fallback to DB.");
+                    }
+                }
+
+                if (_responseBuilder != null && 
+                    !_responseBuilder.IndicatesMissingData(documentOnlyResponse.Answer, query))
+                {
+                    _logger.LogInformation("Document response is sufficient, skipping database and MCP search");
+                    documentOnlyResponse.SearchMetadata = searchMetadata;
+                    return documentOnlyResponse;
+                }
+
+                if (searchOptions.EnableDatabaseSearch)
+                {
+                    _logger.LogInformation("Document response indicates missing data, continuing to database search as fallback");
+                }
+                else
+                {
+                    _logger.LogInformation("Document response may be insufficient but database search is disabled, returning document response");
+                    documentOnlyResponse.SearchMetadata = searchMetadata;
+                    return documentOnlyResponse;
                 }
             }
 
@@ -370,11 +409,12 @@ namespace SmartRAG.Services.Document
             {
                 try
                 {
-                    // Analyze query intent using AI if analyzer is available
-                    // Reuse earlyExitQueryIntent if already analyzed during early exit check
+                    // Use pre-analyzed query intent from parallel execution
+                    // This was already analyzed in parallel with document search above
                     QueryIntent? queryIntent = earlyExitQueryIntent;
                     if (queryIntent == null && _queryIntentAnalyzer != null)
                     {
+                        _logger.LogDebug("Query intent not pre-analyzed, analyzing now");
                         queryIntent = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(query);
                     }
 
@@ -469,6 +509,15 @@ namespace SmartRAG.Services.Document
                 if (response != null && response.SearchMetadata == null)
                 {
                     response.SearchMetadata = searchMetadata;
+                }
+                
+                // CASCADE: Check if database response is sufficient
+                // If database response also indicates missing data, allow MCP fallback
+                if (response != null && 
+                    _responseBuilder != null && 
+                    _responseBuilder.IndicatesMissingData(response.Answer, query))
+                {
+                    _logger.LogInformation("Database response indicates missing data, cascade to MCP search");
                 }
             }
             else
@@ -573,14 +622,19 @@ namespace SmartRAG.Services.Document
                 }
             }
 
-            // Skip MCP search if database response has meaningful data (to avoid delays and incorrect answers)
-            var hasDatabaseData = response != null && 
+            // Skip MCP search if database response has meaningful data AND answer is sufficient
+            // CASCADE: If database response indicates missing data, proceed to MCP search
+            var hasMeaningfulDatabaseData = response != null && 
                 (response.Sources?.Any(s => s.SourceType == "Database") ?? false) &&
                 (!string.IsNullOrWhiteSpace(response.Answer) || (response.Sources?.Any(s => s.SourceType == "Database" && !string.IsNullOrWhiteSpace(s.RelevantContent)) ?? false));
             
-            if (hasDatabaseData)
+            var databaseAnswerIsSufficient = hasMeaningfulDatabaseData && 
+                _responseBuilder != null && 
+                !_responseBuilder.IndicatesMissingData(response!.Answer, query);
+            
+            if (databaseAnswerIsSufficient)
             {
-                _logger.LogDebug("Database response contains meaningful data, skipping MCP search for faster response");
+                _logger.LogDebug("Database response is sufficient, skipping MCP search");
             }
             else if (_mcpIntegration != null && _options.Features.EnableMcpSearch && searchOptions.EnableMcpSearch)
             {
@@ -604,31 +658,46 @@ namespace SmartRAG.Services.Document
                             })
                             .ToList();
 
-                        if (mcpSources.Count > 0 && response != null)
+                        if (mcpSources.Count > 0)
                         {
-                            if (response.Sources == null)
-                            {
-                                response.Sources = new List<SearchSource>();
-                            }
-                            response.Sources.AddRange(mcpSources);
                             var mcpContext = string.Join("\n\n", mcpResults.Where(r => r.IsSuccess).Select(r => r.Content));
-                            if (!string.IsNullOrWhiteSpace(mcpContext))
+                            
+                            if (response != null)
                             {
-                                var existingContext = response.Sources
-                                    .Where(s => s.SourceType != "MCP")
-                                    .Select(s => s.RelevantContent)
-                                    .Where(c => !string.IsNullOrWhiteSpace(c))
-                                    .ToList();
-
-                                var combinedContext = existingContext.Count > 0
-                                    ? string.Join("\n\n", existingContext) + "\n\n[MCP Results]\n" + mcpContext
-                                    : mcpContext;
-
-                                var mergedPrompt = _promptBuilder.BuildDocumentRagPrompt(query, combinedContext, conversationHistory, preferredLanguage);
-                                var mergedAnswer = await _aiService.GenerateResponseAsync(mergedPrompt, new List<string> { combinedContext });
-                                if (!string.IsNullOrWhiteSpace(mergedAnswer))
+                                if (response.Sources == null)
                                 {
-                                    response.Answer = mergedAnswer;
+                                    response.Sources = new List<SearchSource>();
+                                }
+                                response.Sources.AddRange(mcpSources);
+                                
+                                if (!string.IsNullOrWhiteSpace(mcpContext))
+                                {
+                                    var existingContext = response.Sources
+                                        .Where(s => s.SourceType != "MCP")
+                                        .Select(s => s.RelevantContent)
+                                        .Where(c => !string.IsNullOrWhiteSpace(c))
+                                        .ToList();
+
+                                    var combinedContext = existingContext.Count > 0
+                                        ? string.Join("\n\n", existingContext) + "\n\n[MCP Results]\n" + mcpContext
+                                        : mcpContext;
+
+                                    var mergedPrompt = _promptBuilder.BuildDocumentRagPrompt(query, combinedContext, conversationHistory, preferredLanguage);
+                                    var mergedAnswer = await _aiService.GenerateResponseAsync(mergedPrompt, new List<string> { combinedContext });
+                                    if (!string.IsNullOrWhiteSpace(mergedAnswer))
+                                    {
+                                        response.Answer = mergedAnswer;
+                                    }
+                                }
+                            }
+                            else if (!string.IsNullOrWhiteSpace(mcpContext))
+                            {
+                                var mcpPrompt = _promptBuilder.BuildDocumentRagPrompt(query, mcpContext, conversationHistory, preferredLanguage);
+                                var mcpAnswer = await _aiService.GenerateResponseAsync(mcpPrompt, new List<string> { mcpContext });
+                                if (!string.IsNullOrWhiteSpace(mcpAnswer))
+                                {
+                                    response = _responseBuilder?.CreateRagResponse(query, mcpAnswer, mcpSources, searchMetadata) 
+                                        ?? new RagResponse { Query = query, Answer = mcpAnswer, Sources = mcpSources, SearchedAt = DateTime.UtcNow, SearchMetadata = searchMetadata };
                                 }
                             }
                         }

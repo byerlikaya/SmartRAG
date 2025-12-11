@@ -23,8 +23,8 @@ namespace SmartRAG.Services.Document
         private const int DefaultMinResultsForEarlyExit = 1;
         private const double MinScoreRangeForEarlyExit = 0.3;
         private const int TopResultsToCheck = 5;
-        private const double HighConfidenceScoreMargin = 0.2;
-        private const double MinScoreAboveThreshold = 0.1;
+        private const double HighConfidenceScoreMargin = 0.4;
+        private const double MinScoreAboveThreshold = 0.3;
         private const double Epsilon = 0.0001;
 
         private readonly ILogger<SourceSelectionService> _logger;

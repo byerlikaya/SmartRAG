@@ -168,7 +168,7 @@ namespace SmartRAG.Providers
         protected HttpClient CreateHttpClient(string apiKey = null, Dictionary<string, string> additionalHeaders = null)
         {
             var client = _httpClientFactory.CreateClient();
-            client.Timeout = TimeSpan.FromSeconds(60);
+            client.Timeout = TimeSpan.FromSeconds(180);
 
             if (!string.IsNullOrEmpty(apiKey))
             {
@@ -191,7 +191,7 @@ namespace SmartRAG.Providers
         protected HttpClient CreateHttpClientWithoutAuth(Dictionary<string, string> additionalHeaders)
         {
             var client = _httpClientFactory.CreateClient();
-            client.Timeout = TimeSpan.FromSeconds(60);
+            client.Timeout = TimeSpan.FromSeconds(180);
 
             if (additionalHeaders != null)
             {

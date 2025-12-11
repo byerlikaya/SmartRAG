@@ -19,6 +19,7 @@ namespace SmartRAG.Services.Document
         /// </summary>
         public QueryStrategy DetermineQueryStrategy(double confidence, bool hasDatabaseQueries, bool hasDocumentMatches)
         {
+            // High confidence: AI is very sure about query intent
             if (confidence >= HighConfidenceThreshold)
             {
                 if (hasDatabaseQueries && hasDocumentMatches)
@@ -30,11 +31,24 @@ namespace SmartRAG.Services.Document
                 return QueryStrategy.DocumentOnly;
             }
 
+            // Medium confidence: Check both sources when possible
             if (confidence >= MediumConfidenceMin && confidence <= MediumConfidenceMax)
-                return hasDocumentMatches ? QueryStrategy.Hybrid : QueryStrategy.DatabaseOnly;
+            {
+                if (hasDatabaseQueries && hasDocumentMatches)
+                    return QueryStrategy.Hybrid;
 
-            if (hasDocumentMatches)
-                return QueryStrategy.DocumentOnly;
+                if (hasDatabaseQueries)
+                    return QueryStrategy.DatabaseOnly;
+
+                return hasDocumentMatches ? QueryStrategy.DocumentOnly : QueryStrategy.DatabaseOnly;
+            }
+
+            // Low confidence: Still check database if queries are available
+            if (hasDatabaseQueries && hasDocumentMatches)
+                return QueryStrategy.Hybrid;
+
+            if (hasDatabaseQueries)
+                return QueryStrategy.DatabaseOnly;
 
             return QueryStrategy.DocumentOnly;
         }

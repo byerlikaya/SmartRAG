@@ -111,7 +111,7 @@ namespace SmartRAG.Services.Database
                 promptBuilder.AppendLine("- Provide DIRECT, CONCISE answer to the question");
                 promptBuilder.AppendLine("- Use ONLY information from the database results below");
                 promptBuilder.AppendLine("- Do NOT explain data sources or methodology");
-                promptBuilder.AppendLine("- Do NOT mention what information is missing or unavailable");
+                promptBuilder.AppendLine("- If the database results do not contain the answer to the user's question, return exactly [NO_ANSWER_FOUND]");
                 promptBuilder.AppendLine("- Do NOT add unnecessary context or background");
                 promptBuilder.AppendLine("- Do NOT repeat the question");
                 promptBuilder.AppendLine("- Keep response SHORT and TO THE POINT");

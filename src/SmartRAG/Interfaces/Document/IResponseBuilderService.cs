@@ -52,6 +52,14 @@ namespace SmartRAG.Interfaces.Document
         bool IndicatesMissingData(string answer, string? query = null);
 
         /// <summary>
+        /// Checks if an answer strictly contains negative patterns ("no information", "not found", etc.)
+        /// Used to fast-fail even high-confidence results if they are explicitly negative
+        /// </summary>
+        /// <param name="answer">Answer text to check</param>
+        /// <returns>True if answer is explicitly negative</returns>
+        bool IsExplicitlyNegative(string answer);
+
+        /// <summary>
         /// Creates a fallback response when document query cannot answer the question
         /// </summary>
         /// <param name="query">User query</param>
