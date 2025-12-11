@@ -59,32 +59,25 @@ namespace SmartRAG.Services.Database
                     databaseId = await GetDatabaseIdAsync(config);
                     _connections[databaseId] = config;
 
-                    _logger.LogInformation("Registered database connection: {DatabaseId}", databaseId);
+                    _logger.LogInformation("Registered database connection");
 
                     if (_options.EnableAutoSchemaAnalysis)
                     {
-                        _logger.LogInformation("Starting schema analysis for: {DatabaseId}", databaseId);
+                        _logger.LogInformation("Starting schema analysis");
                         try
                         {
                             await _schemaAnalyzer.AnalyzeDatabaseSchemaAsync(config);
-                            _logger.LogInformation("Schema analysis completed for: {DatabaseId}", databaseId);
+                            _logger.LogInformation("Schema analysis completed");
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, "Schema analysis failed for: {DatabaseId}", databaseId);
+                            _logger.LogError(ex, "Schema analysis failed");
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    if (databaseId != null)
-                    {
-                        _logger.LogError(ex, "Failed to initialize database connection: {DatabaseId}", databaseId);
-                    }
-                    else
-                    {
-                        _logger.LogError(ex, "Failed to initialize database connection");
-                    }
+                    _logger.LogError(ex, "Failed to initialize database connection");
                 }
             }
 
@@ -108,7 +101,7 @@ namespace SmartRAG.Services.Database
         {
             if (!_connections.TryGetValue(databaseId, out var config))
             {
-                _logger.LogWarning("Database connection not found: {DatabaseId}", databaseId);
+                _logger.LogWarning("Database connection not found");
                 return false;
             }
 
@@ -120,7 +113,7 @@ namespace SmartRAG.Services.Database
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Validation failed for database: {DatabaseId}", databaseId);
+                _logger.LogError(ex, "Validation failed for database");
                 return false;
             }
         }
