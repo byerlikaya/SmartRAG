@@ -56,7 +56,7 @@ namespace SmartRAG.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting conversation history for session {SessionId}", sessionId);
+                _logger.LogError(ex, "Error getting conversation history");
                 return string.Empty;
             }
         }
@@ -83,7 +83,7 @@ namespace SmartRAG.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding to conversation for session {SessionId}", sessionId);
+                _logger.LogError(ex, "Error adding to conversation");
             }
         }
 
@@ -96,7 +96,7 @@ namespace SmartRAG.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error setting conversation history for session {SessionId}", sessionId);
+                _logger.LogError(ex, "Error setting conversation history");
             }
         }
 
@@ -110,7 +110,7 @@ namespace SmartRAG.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error clearing conversation for session {SessionId}", sessionId);
+                _logger.LogError(ex, "Error clearing conversation");
             }
         }
 
@@ -123,7 +123,7 @@ namespace SmartRAG.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error checking session existence for {SessionId}", sessionId);
+                _logger.LogError(ex, "Error checking session existence");
                 return false;
             }
         }
