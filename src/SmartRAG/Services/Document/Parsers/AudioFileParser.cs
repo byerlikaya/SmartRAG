@@ -40,7 +40,7 @@ namespace SmartRAG.Services.Document.Parsers
             try
             {
                 var detectedLanguage = DetectAudioLanguage(language, fileName);
-                _logger.LogDebug("AudioFileParser: Language parameter: '{Language}', Detected language: '{DetectedLanguage}'", language, detectedLanguage);
+                _logger.LogDebug("AudioFileParser: Language detected");
                 var transcriptionResult = await _audioParserService.TranscribeAudioAsync(fileStream, fileName, detectedLanguage);
 
                 var result = new FileParserResult
@@ -94,7 +94,7 @@ namespace SmartRAG.Services.Document.Parsers
                 {
                     // Whisper.net uses ISO 639-1 (2-letter) codes, not locale format
                     // Return just the language code (e.g., "tr" not "tr-TR")
-                    _logger.LogDebug("Detected language from filename: '{LanguageCode}'", languageCode);
+                    _logger.LogDebug("Detected language from filename");
                     return languageCode;
                 }
             }
@@ -124,7 +124,7 @@ namespace SmartRAG.Services.Document.Parsers
                             var envLanguageCode = langParts[0].ToLowerInvariant();
                             if (envLanguageCode != "en" && envLanguageCode.Length == 2)
                             {
-                                _logger.LogDebug("No language detected from filename or config. UI culture: '{UICulture}' (en), but LANG env var suggests: '{LangEnv}' → Language: '{LanguageCode}'", uiCulture.Name, langEnv, envLanguageCode);
+                                _logger.LogDebug("No language detected from filename or config. Using LANG environment variable");
                                 return envLanguageCode;
                             }
                         }
@@ -140,14 +140,14 @@ namespace SmartRAG.Services.Document.Parsers
                             var lcAllLanguageCode = lcAllParts[0].ToLowerInvariant();
                             if (lcAllLanguageCode != "en" && lcAllLanguageCode.Length == 2)
                             {
-                                _logger.LogDebug("No language detected from filename or config. UI culture: '{UICulture}' (en), but LC_ALL env var suggests: '{LcAllEnv}' → Language: '{LanguageCode}'", uiCulture.Name, lcAllEnv, lcAllLanguageCode);
+                                _logger.LogDebug("No language detected from filename or config. Using LC_ALL environment variable");
                                 return lcAllLanguageCode;
                             }
                         }
                     }
                 }
                 
-                _logger.LogDebug("No language detected from filename or config. Using system UI locale: '{SystemLocale}' → Language: '{LanguageCode}'", uiCulture.Name, twoLetterCode);
+                _logger.LogDebug("No language detected from filename or config. Using system UI locale");
                 return twoLetterCode;
             }
             catch (Exception ex)

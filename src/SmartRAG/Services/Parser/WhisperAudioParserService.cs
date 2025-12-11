@@ -50,7 +50,7 @@ namespace SmartRAG.Services.Parser
 
                 await EnsureWhisperFactoryInitializedAsync();
 
-                _logger.LogDebug("WhisperAudioParserService: Language parameter: '{Language}', Config DefaultLanguage: '{DefaultLanguage}'", language, _config.DefaultLanguage);
+                _logger.LogDebug("WhisperAudioParserService: Processing audio file");
                 var result = await PerformTranscriptionAsync(audioStream, fileName, language);
 
                 _logger.LogInformation("Whisper transcription completed: {Length} characters with {Confidence} confidence",
@@ -163,7 +163,7 @@ namespace SmartRAG.Services.Parser
                     : Environment.ProcessorCount;
 
                 var languageToUse = GetLanguageForWhisper(language ?? _config.DefaultLanguage);
-                _logger.LogDebug("WhisperAudioParserService: Language to use for Whisper: '{LanguageToUse}' (null means auto-detect)", languageToUse);
+                _logger.LogDebug("WhisperAudioParserService: Processing with Whisper");
 
                 var builder = _whisperFactory.CreateBuilder()
                     .WithLanguage(languageToUse)

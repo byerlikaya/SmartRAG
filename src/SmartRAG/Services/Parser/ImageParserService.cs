@@ -312,7 +312,7 @@ namespace SmartRAG.Services.Parser
                 {
                     if (IsLanguageDataAvailable(threeLetterCode))
                     {
-                        _logger.LogInformation("[OCR Language Detection] System locale: '{CultureName}' → Language: '{LanguageCode}' ✓", currentCulture.Name, threeLetterCode);
+                        _logger.LogInformation("[OCR Language Detection] System locale detected");
                         return threeLetterCode;
                     }
                     else
@@ -392,12 +392,12 @@ namespace SmartRAG.Services.Parser
                 return requestedLanguage;
             }
 
-            _logger.LogInformation("Tesseract data for '{Language}' not found. Attempting to download...", requestedLanguage);
+            _logger.LogInformation("Tesseract data not found. Attempting to download...");
             var downloaded = await TryDownloadTesseractDataAsync(requestedLanguage, tessdataPath);
 
             if (downloaded)
             {
-                _logger.LogInformation("Successfully downloaded Tesseract data for '{Language}'", requestedLanguage);
+                _logger.LogInformation("Successfully downloaded Tesseract data");
                 return requestedLanguage;
             }
 
@@ -410,12 +410,12 @@ namespace SmartRAG.Services.Parser
                     return DefaultLanguage;
                 }
 
-                _logger.LogInformation("Attempting to download fallback language '{Fallback}'...", DefaultLanguage);
+                _logger.LogInformation("Attempting to download fallback language...");
                 var fallbackDownloaded = await TryDownloadTesseractDataAsync(DefaultLanguage, tessdataPath);
 
                 if (fallbackDownloaded)
                 {
-                    _logger.LogInformation("Successfully downloaded fallback Tesseract data for '{Language}'", DefaultLanguage);
+                    _logger.LogInformation("Successfully downloaded fallback Tesseract data");
                     return DefaultLanguage;
                 }
             }
@@ -489,11 +489,11 @@ namespace SmartRAG.Services.Parser
 
             if (availableLanguage != tesseractLanguageCode)
             {
-                _logger.LogInformation("Tesseract data for '{Requested}' not found. Using '{Fallback}' instead.", tesseractLanguageCode, availableLanguage);
+                _logger.LogInformation("Tesseract data not found. Using fallback instead.");
             }
             else
             {
-                _logger.LogDebug("Using Tesseract language: '{Language}'", availableLanguage);
+                _logger.LogDebug("Using Tesseract language");
             }
 
             return await Task.Run(() =>
