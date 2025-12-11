@@ -191,6 +191,7 @@ namespace SmartRAG.Repositories
             {
                 var documentIds = await _database.ListRangeAsync(_documentsKey);
                 var documents = new List<SmartRAG.Entities.Document>();
+                var processedDocumentIds = new HashSet<Guid>();
 
                 foreach (var idString in documentIds)
                 {
@@ -200,7 +201,78 @@ namespace SmartRAG.Repositories
                         if (document != null)
                         {
                             documents.Add(document);
+                            processedDocumentIds.Add(id);
                         }
+                    }
+                }
+
+                if (_config.EnableVectorSearch && documents.Count == 0)
+                {
+                    try
+                    {
+                        var chunkKeys = await GetAllChunkKeysAsync();
+                        var documentMap = new Dictionary<Guid, DocumentData>();
+
+                        foreach (var chunkKey in chunkKeys)
+                        {
+                            var chunkData = await _database.HashGetAllAsync(chunkKey);
+                            if (chunkData == null || chunkData.Length == 0) continue;
+
+                            var docIdEntry = chunkData.FirstOrDefault(h => h.Name == "documentId");
+                            if (docIdEntry.Equals(default(HashEntry)) || docIdEntry.Value.IsNull ||
+                                !Guid.TryParse(docIdEntry.Value.ToString(), out var docId)) continue;
+
+                            if (!documentMap.ContainsKey(docId))
+                            {
+                                var fileNameEntry = chunkData.FirstOrDefault(h => h.Name == "fileName");
+                                documentMap[docId] = new DocumentData
+                                {
+                                    Id = docId,
+                                    FileName = fileNameEntry.Equals(default(HashEntry)) || fileNameEntry.Value.IsNull
+                                        ? string.Empty
+                                        : fileNameEntry.Value.ToString()
+                                };
+                            }
+
+                            var contentEntry = chunkData.FirstOrDefault(h => h.Name == "content");
+                            var chunkIndexEntry = chunkData.FirstOrDefault(h => h.Name == "chunkIndex");
+                            if (!contentEntry.Equals(default(HashEntry)) && !contentEntry.Value.IsNull &&
+                                int.TryParse(chunkIndexEntry.Equals(default(HashEntry)) || chunkIndexEntry.Value.IsNull
+                                    ? "0"
+                                    : chunkIndexEntry.Value.ToString(), out var chunkIndex))
+                            {
+                                documentMap[docId].Chunks.Add(new DocumentChunk
+                                {
+                                    Id = Guid.Parse(chunkKey.Replace($"{_config.KeyPrefix}{ChunkKeySuffix}", "")),
+                                    DocumentId = docId,
+                                    Content = contentEntry.Value.ToString(),
+                                    ChunkIndex = chunkIndex
+                                });
+                            }
+                        }
+
+                        foreach (var docData in documentMap.Values)
+                        {
+                            if (!processedDocumentIds.Contains(docData.Id))
+                            {
+                                var orderedChunks = docData.Chunks.OrderBy(c => c.ChunkIndex).ToList();
+                                documents.Add(new SmartRAG.Entities.Document
+                                {
+                                    Id = docData.Id,
+                                    FileName = docData.FileName,
+                                    ContentType = "application/octet-stream",
+                                    Content = string.Join("\n", orderedChunks.Select(c => c.Content)),
+                                    UploadedBy = "system",
+                                    UploadedAt = DateTime.UtcNow,
+                                    Chunks = orderedChunks,
+                                    FileSize = 0
+                                });
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to retrieve documents from chunks");
                     }
                 }
 
@@ -214,6 +286,28 @@ namespace SmartRAG.Repositories
             }
         }
 
+        private async Task<List<string>> GetAllChunkKeysAsync()
+        {
+            var chunkKeys = new List<string>();
+            var pattern = $"{_config.KeyPrefix}{ChunkKeySuffix}*";
+            var endpoints = _redis.GetEndPoints();
+            
+            if (endpoints == null || endpoints.Length == 0)
+            {
+                _logger.LogWarning("No Redis endpoints available for chunk key retrieval");
+                return chunkKeys;
+            }
+
+            var server = _redis.GetServer(endpoints.First());
+            
+            await foreach (var key in server.KeysAsync(pattern: pattern))
+            {
+                chunkKeys.Add(key);
+            }
+
+            return chunkKeys;
+        }
+
         public async Task<bool> ClearAllAsync()
         {
             try
@@ -223,6 +317,36 @@ namespace SmartRAG.Repositories
                 {
                     await DeleteAsync(doc.Id);
                 }
+
+                if (_config.EnableVectorSearch)
+                {
+                    try
+                    {
+                        var chunkKeys = await GetAllChunkKeysAsync();
+                        if (chunkKeys.Count > 0)
+                        {
+                            var batch = _database.CreateBatch();
+                            var tasks = new List<Task>();
+                            
+                            foreach (var chunkKey in chunkKeys)
+                            {
+                                tasks.Add(batch.KeyDeleteAsync(chunkKey));
+                            }
+                            
+                            batch.Execute();
+                            await Task.WhenAll(tasks);
+                            
+                            _logger.LogInformation("Cleared {Count} chunks from Redis", chunkKeys.Count);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to clear chunks from Redis");
+                    }
+                }
+
+                await _database.KeyDeleteAsync(_documentsKey);
+                
                 return true;
             }
             catch (Exception ex)
@@ -573,6 +697,13 @@ namespace SmartRAG.Repositories
                 _redis?.Dispose();
                 _disposed = true;
             }
+        }
+
+        private class DocumentData
+        {
+            public Guid Id { get; set; }
+            public string FileName { get; set; } = string.Empty;
+            public List<DocumentChunk> Chunks { get; set; } = new List<DocumentChunk>();
         }
     }
 }
