@@ -111,6 +111,26 @@ namespace SmartRAG.Repositories
             }
         }
 
+        public async Task ClearAllConversationsAsync()
+        {
+            try
+            {
+                if (Directory.Exists(_conversationsPath))
+                {
+                    var files = Directory.GetFiles(_conversationsPath, "*.txt");
+                    foreach (var file in files)
+                    {
+                        await Task.Run(() => File.Delete(file));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error clearing all conversations from file system");
+                throw;
+            }
+        }
+
         private string GetConversationFilePath(string sessionId)
         {
             var fileName = $"{sessionId}.txt";

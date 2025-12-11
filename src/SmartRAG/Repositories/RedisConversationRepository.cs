@@ -4,6 +4,7 @@ using SmartRAG.Interfaces.Storage;
 using SmartRAG.Models;
 using StackExchange.Redis;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Repositories
@@ -110,6 +111,34 @@ namespace SmartRAG.Repositories
             {
                 _logger.LogError(ex, "Error checking session existence for {SessionId}", sessionId);
                 return false;
+            }
+        }
+
+        public async Task ClearAllConversationsAsync()
+        {
+            try
+            {
+                var endpoints = _redis.GetEndPoints();
+                if (endpoints == null || endpoints.Length == 0)
+                {
+                    _logger.LogWarning("No Redis endpoints available for clearing conversations");
+                    return;
+                }
+
+                var server = _redis.GetServer(endpoints.First());
+                var pattern = "conversation:*";
+                
+                await foreach (var key in server.KeysAsync(pattern: pattern))
+                {
+                    await _database.KeyDeleteAsync(key);
+                }
+
+                _logger.LogInformation("Cleared all conversation history from Redis");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error clearing all conversations from Redis");
+                throw;
             }
         }
 

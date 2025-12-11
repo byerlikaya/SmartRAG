@@ -8,5 +8,6 @@ namespace SmartRAG.Interfaces.Storage
         Task AddToConversationAsync(string sessionId, string question, string answer);
         Task ClearConversationAsync(string sessionId);
         Task<bool> SessionExistsAsync(string sessionId);
+        Task ClearAllConversationsAsync();
     }
 }

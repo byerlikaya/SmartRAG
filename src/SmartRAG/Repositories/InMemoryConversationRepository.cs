@@ -87,6 +87,15 @@ namespace SmartRAG.Repositories
             }
         }
 
+        public Task ClearAllConversationsAsync()
+        {
+            lock (_lock)
+            {
+                _conversations.Clear();
+            }
+            return Task.CompletedTask;
+        }
+
         private void CleanupOldSessions()
         {
             var sessionsToRemove = _conversations.Count - MaxSessions + 100;

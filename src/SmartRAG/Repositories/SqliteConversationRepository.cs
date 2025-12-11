@@ -184,6 +184,28 @@ namespace SmartRAG.Repositories
             }
         }
 
+        public async Task ClearAllConversationsAsync()
+        {
+            await EnsureInitializedAsync();
+            await _semaphore.WaitAsync();
+            try
+            {
+                var command = _connection.CreateCommand();
+                command.CommandText = "DELETE FROM Conversations";
+                await command.ExecuteNonQueryAsync();
+                _logger.LogInformation("Cleared all conversations from SQLite");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error clearing all conversations from SQLite");
+                throw;
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
+        }
+
         private static string TruncateConversation(string conversation)
         {
             var lines = conversation.Split('\n');
