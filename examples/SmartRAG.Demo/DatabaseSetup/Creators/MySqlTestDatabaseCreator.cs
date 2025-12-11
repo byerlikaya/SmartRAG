@@ -30,7 +30,6 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
     private readonly string _server;
     private readonly int _port;
     private readonly string _user;
-    private readonly string _password;
     private readonly string _databaseName;
 
     #endregion
@@ -39,51 +38,36 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
 
     public MySqlTestDatabaseCreator(IConfiguration? configuration = null, ILogger<MySqlTestDatabaseCreator>? logger = null)
 
-        {
+    {
         _configuration = configuration;
         _logger = logger;
+        
+        // Try to get connection details from configuration first
+        string? server = null;
+        int port = 3306;
+        string? user = null;
+        string? databaseName = null;
+        
+        if (_configuration != null)
+        {
+            var connectionString = _configuration.GetConnectionString("InventoryManagement") ?? 
+                                 _configuration["DatabaseConnections:2:ConnectionString"];
             
-            // Try to get connection details from configuration first
-            string? server = null;
-            int port = 3306;
-            string? user = null;
-            string? password = null;
-            string? databaseName = null;
-            
-            if (_configuration != null)
+            if (!string.IsNullOrEmpty(connectionString))
             {
-                var connectionString = _configuration.GetConnectionString("InventoryManagement") ?? 
-                                     _configuration["DatabaseConnections:2:ConnectionString"];
-                
-                if (!string.IsNullOrEmpty(connectionString))
-                {
-                    var builder = new MySqlConnectionStringBuilder(connectionString);
-                    server = builder.Server;
-                    port = (int)builder.Port;
-                    user = builder.UserID;
-                    password = builder.Password;
-                    databaseName = builder.Database;
-                }
+                var builder = new MySqlConnectionStringBuilder(connectionString);
+                server = builder.Server;
+                port = (int)builder.Port;
+                user = builder.UserID;
+                databaseName = builder.Database;
             }
-            
-            // Fallback to defaults if not found in config
-            _server = server ?? "localhost";
-            _port = port;
-            _user = user ?? "root";
-            _databaseName = databaseName ?? "InventoryManagement";
-            
-            // Fallback to environment variable for password
-            if (string.IsNullOrEmpty(password))
-            {
-                password = Environment.GetEnvironmentVariable("MYSQL_ROOT_PASSWORD");
-            }
-            
-            if (string.IsNullOrEmpty(password))
-            {
-                throw new InvalidOperationException("MySQL password not found in configuration or environment variables");
-            }
-            
-        _password = password;
+        }
+        
+        // Fallback to defaults if not found in config
+        _server = server ?? "localhost";
+        _port = port;
+        _user = user ?? "root";
+        _databaseName = databaseName ?? "InventoryManagement";
     }
 
     #endregion
@@ -94,7 +78,30 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
 
         public string GetDefaultConnectionString()
         {
-            return $"Server={_server};Port={_port};Database={_databaseName};User={_user};Password={_password};";
+            return $"Server={_server};Port={_port};Database={_databaseName};User={_user};Password={GetPassword()};";
+        }
+        
+        private string GetPassword()
+        {
+            if (_configuration != null)
+            {
+                var connectionString = _configuration.GetConnectionString("InventoryManagement") ?? 
+                                     _configuration["DatabaseConnections:2:ConnectionString"];
+                
+                if (!string.IsNullOrEmpty(connectionString))
+                {
+                    var builder = new MySqlConnectionStringBuilder(connectionString);
+                    if (!string.IsNullOrEmpty(builder.Password))
+                    {
+                        return builder.Password;
+                    }
+                }
+            }
+            
+            var envPassword = Environment.GetEnvironmentVariable("MYSQL_ROOT_PASSWORD");
+            return string.IsNullOrEmpty(envPassword)
+                ? throw new InvalidOperationException("MySQL password not found in configuration or environment variables")
+                : envPassword;
         }
 
         public string GetDescription()
@@ -212,7 +219,7 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
     /// </summary>
     private async Task CreateDatabaseAsync()
     {
-        var masterConnectionString = $"Server={_server};Port={_port};User={_user};Password={_password};";
+        var masterConnectionString = $"Server={_server};Port={_port};User={_user};Password={GetPassword()};";
 
         using (var connection = new MySqlConnection(masterConnectionString))
         {

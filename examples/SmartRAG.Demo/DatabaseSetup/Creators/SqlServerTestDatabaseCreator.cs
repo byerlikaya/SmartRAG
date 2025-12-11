@@ -64,34 +64,30 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
 
     public string GetDefaultConnectionString()
     {
-        // Try to get password from configuration first
-        string? password = null;
-
+        return $"Server={_server};Database={_databaseName};User Id=sa;Password={GetPassword()};TrustServerCertificate=true;";
+    }
+    
+    private string GetPassword()
+    {
         if (_configuration != null)
         {
-            // Try to extract password from existing connection string in config
             var connectionString = _configuration.GetConnectionString("SalesManagement") ??
                                  _configuration["DatabaseConnections:1:ConnectionString"];
 
             if (!string.IsNullOrEmpty(connectionString))
             {
                 var builder = new SqlConnectionStringBuilder(connectionString);
-                password = builder.Password;
+                if (!string.IsNullOrEmpty(builder.Password))
+                {
+                    return builder.Password;
+                }
             }
         }
 
-        // Fallback to environment variable
-        if (string.IsNullOrEmpty(password))
-        {
-            password = Environment.GetEnvironmentVariable("SQLSERVER_SA_PASSWORD");
-        }
-
-        if (string.IsNullOrEmpty(password))
-        {
-            throw new InvalidOperationException("SQL Server password not found in configuration or environment variables");
-        }
-
-        return $"Server={_server};Database={_databaseName};User Id=sa;Password={password};TrustServerCertificate=true;";
+        var envPassword = Environment.GetEnvironmentVariable("SQLSERVER_SA_PASSWORD");
+        return string.IsNullOrEmpty(envPassword) 
+            ? throw new InvalidOperationException("SQL Server password not found in configuration or environment variables")
+            : envPassword;
     }
 
     public string GetDescription()
@@ -166,32 +162,7 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
     /// </summary>
     private async Task CreateDatabaseAsync()
     {
-        // Use the same password logic as GetDefaultConnectionString
-        string? password = null;
-
-        if (_configuration != null)
-        {
-            var connectionString = _configuration.GetConnectionString("SalesManagement") ??
-                                 _configuration["DatabaseConnections:1:ConnectionString"];
-
-            if (!string.IsNullOrEmpty(connectionString))
-            {
-                var builder = new SqlConnectionStringBuilder(connectionString);
-                password = builder.Password;
-            }
-        }
-
-        if (string.IsNullOrEmpty(password))
-        {
-            password = Environment.GetEnvironmentVariable("SQLSERVER_SA_PASSWORD");
-        }
-
-        if (string.IsNullOrEmpty(password))
-        {
-            throw new InvalidOperationException("SQL Server password not found in configuration or environment variables");
-        }
-
-        var masterConnectionString = $"Server={_server};Database=master;User Id=sa;Password={password};TrustServerCertificate=true;";
+        var masterConnectionString = $"Server={_server};Database=master;User Id=sa;Password={GetPassword()};TrustServerCertificate=true;";
 
         using (var connection = new SqlConnection(masterConnectionString))
         {
