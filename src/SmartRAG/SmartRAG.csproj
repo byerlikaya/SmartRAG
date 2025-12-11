@@ -20,7 +20,7 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Release 3.4.0: MCP Integration &amp; Enhanced Search Capabilities (MINOR Release - 2025-12-11)
+    <PackageReleaseNotes>Release 3.4.0: MCP Integration &amp; Enhanced Search Capabilities (MINOR Release - 2025-12-12)
 
 NEW FEATURES:
 - MCP (Model Context Protocol) Integration: External MCP server integration for enhanced search capabilities

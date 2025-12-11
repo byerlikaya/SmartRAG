@@ -6,7 +6,7 @@ SmartRAG'deki tüm önemli değişiklikler bu dosyada belgelenecektir.
 Format [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)'a dayanmaktadır
 ve bu proje [Semantic Versioning](https://semver.org/spec/v2.0.0.html)'a uymaktadır.
 
-## [3.4.0] - 2025-12-11
+## [3.4.0] - 2025-12-12
 
 ### ✨ Eklenenler
 - **MCP (Model Context Protocol) Entegrasyonu**: Gelişmiş arama yetenekleri için harici MCP sunucu entegrasyonu
