@@ -89,6 +89,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     - `src/SmartRAG/Services/Startup/SmartRagStartupService.cs` - Startup service implementation
   - **Benefits**: Simplified initialization, better service coordination
 
+- **ClearAllConversationsAsync**: Conversation history management enhancement
+  - `ClearAllConversationsAsync` method added to `IConversationManagerService` and `IConversationRepository`
+  - Support for clearing all conversation history across all storage providers
+  - **Files Modified**:
+    - `src/SmartRAG/Interfaces/Support/IConversationManagerService.cs` - Added ClearAllConversationsAsync method
+    - `src/SmartRAG/Services/Support/ConversationManagerService.cs` - ClearAllConversationsAsync implementation
+    - `src/SmartRAG/Interfaces/Storage/IConversationRepository.cs` - Added ClearAllConversationsAsync method
+    - `src/SmartRAG/Repositories/FileSystemConversationRepository.cs` - ClearAllConversationsAsync implementation
+    - `src/SmartRAG/Repositories/InMemoryConversationRepository.cs` - ClearAllConversationsAsync implementation
+    - `src/SmartRAG/Repositories/RedisConversationRepository.cs` - ClearAllConversationsAsync implementation
+    - `src/SmartRAG/Repositories/SqliteConversationRepository.cs` - ClearAllConversationsAsync implementation
+  - **Benefits**: Better conversation management, bulk clearing support, improved data control
+
+- **Search Metadata Tracking**: Enhanced search result metadata
+  - Search metadata tracking and display in responses
+  - Metadata includes search statistics and performance metrics
+  - **Files Modified**:
+    - `src/SmartRAG/Interfaces/Document/IResponseBuilderService.cs` - Metadata support
+    - `src/SmartRAG/Models/RequestResponse/RagResponse.cs` - Metadata properties
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Metadata tracking
+    - `src/SmartRAG/Services/Document/ResponseBuilderService.cs` - Metadata display
+  - **Benefits**: Better search visibility, performance monitoring, enhanced debugging
+
 ### 🔧 Improved
 - **Code Quality**: Comprehensive code quality improvements across the codebase
   - Removed redundant comments and language-specific references
@@ -183,6 +206,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Files Modified**:
     - `src/SmartRAG/Services/Document/DocumentParserService.cs` - Content type detection improvements
   - **Benefits**: More accurate document type detection, better file handling
+
+- **Conversation Intent Classification**: Enhanced context awareness
+  - Improved conversation intent classification with better context understanding
+  - Enhanced query intent detection accuracy
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Support/QueryIntentClassifierService.cs` - Context-aware classification
+  - **Benefits**: Better intent detection, improved conversation flow, enhanced accuracy
+
+### 🐛 Fixed
+- **Conversation History Duplicate Entries**: Fixed duplicate entries in conversation history
+  - Resolved duplicate conversation history entries across all storage providers
+  - Improved conversation history truncation logic
+  - **Files Modified**:
+    - `src/SmartRAG/Interfaces/Storage/IConversationRepository.cs` - Truncation support
+    - `src/SmartRAG/Repositories/FileSystemConversationRepository.cs` - Duplicate prevention
+    - `src/SmartRAG/Repositories/InMemoryConversationRepository.cs` - Duplicate prevention
+    - `src/SmartRAG/Repositories/RedisConversationRepository.cs` - Duplicate prevention
+    - `src/SmartRAG/Repositories/SqliteConversationRepository.cs` - Duplicate prevention
+    - `src/SmartRAG/Services/AI/PromptBuilderService.cs` - Truncation improvements
+    - `src/SmartRAG/Services/Support/ConversationManagerService.cs` - History management
+  - **Benefits**: Cleaner conversation history, reduced storage usage, better performance
+
+- **Redis Document Retrieval**: Fixed document retrieval when document list is empty
+  - Improved document retrieval from chunks when document list is empty in Redis
+  - Enhanced fallback mechanism for document retrieval
+  - **Files Modified**:
+    - `src/SmartRAG/Repositories/RedisDocumentRepository.cs` - Document retrieval improvements
+  - **Benefits**: Better document access, improved reliability, enhanced data consistency
+
+- **SqlValidator DI Compatibility**: Fixed dependency injection compatibility
+  - Changed `SqlValidator` to use `ILogger<SqlValidator>` for proper DI compatibility
+  - Improved service registration and lifetime management
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Database/Validation/SqlValidator.cs` - DI compatibility fix
+  - **Benefits**: Better DI integration, improved service registration, enhanced maintainability
 
 ### 🔄 Changed
 - **Feature Flag Naming**: Renamed feature flags for consistency

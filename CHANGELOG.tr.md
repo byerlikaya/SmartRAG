@@ -6,6 +6,273 @@ SmartRAG'deki tüm önemli değişiklikler bu dosyada belgelenecektir.
 Format [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)'a dayanmaktadır
 ve bu proje [Semantic Versioning](https://semver.org/spec/v2.0.0.html)'a uymaktadır.
 
+## [3.4.0] - 2025-12-10
+
+### ✨ Eklenenler
+- **MCP (Model Context Protocol) Entegrasyonu**: Gelişmiş arama yetenekleri için harici MCP sunucu entegrasyonu
+  - MCP sunucu bağlantıları için `IMcpClient` interface'i ve `McpClient` servisi
+  - Bağlantı yaşam döngüsü yönetimi için `IMcpConnectionManager` interface'i ve `McpConnectionManager` servisi
+  - MCP sunucularını sorgulamak için `IMcpIntegrationService` interface'i ve `McpIntegrationService` servisi
+  - Otomatik araç keşfi ile birden fazla MCP sunucusu desteği
+  - Konuşma geçmişi bağlamı ile sorgu zenginleştirme
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Interfaces/Mcp/IMcpClient.cs` - MCP client interface
+    - `src/SmartRAG/Interfaces/Mcp/IMcpConnectionManager.cs` - Connection manager interface
+    - `src/SmartRAG/Interfaces/Mcp/IMcpIntegrationService.cs` - Integration service interface
+    - `src/SmartRAG/Services/Mcp/McpClient.cs` - MCP client implementasyonu
+    - `src/SmartRAG/Services/Mcp/McpConnectionManager.cs` - Connection manager implementasyonu
+    - `src/SmartRAG/Services/Mcp/McpIntegrationService.cs` - Integration service implementasyonu
+    - `src/SmartRAG/Models/Configuration/McpServerConfig.cs` - MCP sunucu yapılandırma modeli
+    - `src/SmartRAG/Models/RequestResponse/McpRequest.cs` - MCP request modeli
+    - `src/SmartRAG/Models/RequestResponse/McpResponse.cs` - MCP response modeli
+    - `src/SmartRAG/Models/Results/McpTool.cs` - MCP tool modeli
+    - `src/SmartRAG/Models/Results/McpToolResult.cs` - MCP tool result modeli
+  - **Faydalar**: Genişletilebilir arama yetenekleri, harici veri kaynakları entegrasyonu, geliştirilmiş sorgu bağlamı
+
+- **Dosya İzleyici Servisi**: İzlenen klasörlerden otomatik doküman indeksleme
+  - `IFileWatcherService` interface'i ve `FileWatcherService` implementasyonu
+  - Belirtilen klasörler için otomatik dosya izleme ve indeksleme
+  - Bağımsız yapılandırmalarla birden fazla izlenen klasör desteği
+  - İzlenen klasör başına dil-spesifik işleme
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Interfaces/FileWatcher/IFileWatcherService.cs` - Dosya izleyici interface
+    - `src/SmartRAG/Services/FileWatcher/FileWatcherService.cs` - Dosya izleyici implementasyonu
+    - `src/SmartRAG/Services/FileWatcher/Events/FileWatcherEventArgs.cs` - Dosya izleyici event argümanları
+    - `src/SmartRAG/Models/Configuration/WatchedFolderConfig.cs` - İzlenen klasör yapılandırma modeli
+  - **Faydalar**: Otomatik doküman indeksleme, manuel yüklemelerin azalması, gerçek zamanlı güncellemeler
+
+- **DocumentType Özelliği**: İçerik tipine göre geliştirilmiş doküman chunk filtreleme
+  - `DocumentChunk` entity'sine `DocumentType` özelliği eklendi (Document, Audio, Image)
+  - Dosya uzantısı ve içerik tipine göre otomatik doküman tipi algılama
+  - Arama işlemlerinde ses ve görüntü chunk'ları için filtreleme desteği
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Entities/DocumentChunk.cs` - DocumentType özelliği eklendi
+    - `src/SmartRAG/Services/Document/DocumentParserService.cs` - Doküman tipi belirleme
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Doküman tipi filtreleme
+    - `src/SmartRAG/Services/Document/DocumentSearchStrategyService.cs` - Tip tabanlı filtreleme
+    - `src/SmartRAG/Repositories/QdrantDocumentRepository.cs` - Doküman tipi depolama
+    - `src/SmartRAG/Services/Storage/Qdrant/QdrantSearchService.cs` - Doküman tipi alma
+  - **Faydalar**: Daha iyi içerik tipi filtreleme, geliştirilmiş arama doğruluğu, geliştirilmiş chunk organizasyonu
+
+- **DefaultLanguage Desteği**: Doküman işleme için global varsayılan dil yapılandırması
+  - Varsayılan işleme dili ayarlamak için `SmartRagOptions` içinde `DefaultLanguage` özelliği
+  - Dil belirtilmediğinde otomatik dil algılama fallback'i
+  - ISO 639-1 dil kodları desteği (örn. "tr", "en", "de")
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Models/Configuration/SmartRagOptions.cs` - DefaultLanguage özelliği eklendi
+    - `src/SmartRAG/Services/FileWatcher/FileWatcherService.cs` - Varsayılan dil kullanımı
+    - `src/SmartRAG/Extensions/ServiceCollectionExtensions.cs` - Varsayılan dil yapılandırması
+  - **Faydalar**: Tutarlı dil işleme, azaltılmış yapılandırma yükü, daha iyi çok dilli destek
+
+- **Geliştirilmiş Arama Özellik Bayrakları**: Arama yetenekleri üzerinde granüler kontrol
+  - MCP entegrasyon kontrolü için `EnableMcpSearch` bayrağı
+  - Ses transkripsiyon araması için `EnableAudioSearch` bayrağı
+  - Görüntü OCR araması için `EnableImageSearch` bayrağı
+  - İstek başına ve global yapılandırma desteği
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Models/Schema/SearchOptions.cs` - EnableMcpSearch, EnableAudioSearch, EnableImageSearch bayrakları eklendi
+    - `src/SmartRAG/Models/Configuration/SmartRagOptions.cs` - FeatureToggles'a özellik bayrakları eklendi
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Özellik bayrağı entegrasyonu
+  - **Faydalar**: İnce taneli arama kontrolü, performans optimizasyonu, kaynak yönetimi
+
+- **Erken Çıkış Optimizasyonu**: Doküman araması için performans iyileştirmesi
+  - Yeterli yüksek kaliteli sonuç bulunduğunda erken çıkış
+  - Net sonuçları olan sorgular için gereksiz işlemenin azaltılması
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Erken çıkış mantığı implementasyonu
+  - **Faydalar**: Daha hızlı arama yanıtları, azaltılmış kaynak kullanımı, geliştirilmiş kullanıcı deneyimi
+
+- **SmartRagStartupService**: Başlatma için merkezi başlangıç servisi
+  - Başlangıçta otomatik MCP sunucu bağlantısı
+  - Dosya izleyici başlatma
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/Startup/SmartRagStartupService.cs` - Başlangıç servisi implementasyonu
+  - **Faydalar**: Basitleştirilmiş başlatma, daha iyi servis koordinasyonu
+
+- **ClearAllConversationsAsync**: Konuşma geçmişi yönetimi geliştirmesi
+  - `IConversationManagerService` ve `IConversationRepository`'ye `ClearAllConversationsAsync` metodu eklendi
+  - Tüm depolama sağlayıcılarında tüm konuşma geçmişini temizleme desteği
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Interfaces/Support/IConversationManagerService.cs` - ClearAllConversationsAsync metodu eklendi
+    - `src/SmartRAG/Services/Support/ConversationManagerService.cs` - ClearAllConversationsAsync implementasyonu
+    - `src/SmartRAG/Interfaces/Storage/IConversationRepository.cs` - ClearAllConversationsAsync metodu eklendi
+    - `src/SmartRAG/Repositories/FileSystemConversationRepository.cs` - ClearAllConversationsAsync implementasyonu
+    - `src/SmartRAG/Repositories/InMemoryConversationRepository.cs` - ClearAllConversationsAsync implementasyonu
+    - `src/SmartRAG/Repositories/RedisConversationRepository.cs` - ClearAllConversationsAsync implementasyonu
+    - `src/SmartRAG/Repositories/SqliteConversationRepository.cs` - ClearAllConversationsAsync implementasyonu
+  - **Faydalar**: Daha iyi konuşma yönetimi, toplu temizleme desteği, geliştirilmiş veri kontrolü
+
+- **Arama Metadata Takibi**: Geliştirilmiş arama sonucu metadata'sı
+  - Yanıtlarda arama metadata takibi ve görüntüleme
+  - Metadata arama istatistikleri ve performans metriklerini içerir
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Interfaces/Document/IResponseBuilderService.cs` - Metadata desteği
+    - `src/SmartRAG/Models/RequestResponse/RagResponse.cs` - Metadata özellikleri
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Metadata takibi
+    - `src/SmartRAG/Services/Document/ResponseBuilderService.cs` - Metadata görüntüleme
+  - **Faydalar**: Daha iyi arama görünürlüğü, performans izleme, geliştirilmiş hata ayıklama
+
+### 🔧 İyileştirilenler
+- **Kod Kalitesi**: Kod tabanı genelinde kapsamlı kod kalitesi iyileştirmeleri
+  - Gereksiz yorumlar ve dil-spesifik referanslar kaldırıldı
+  - Geliştirilmiş sabit isimlendirme ve generic kod pattern'leri
+  - Geliştirilmiş kod organizasyonu ve yapısı
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/` - Birden fazla servis dosyası temizlendi
+    - `src/SmartRAG/Repositories/` - Repository kod kalitesi iyileştirmeleri
+    - `src/SmartRAG/Providers/` - Provider kod iyileştirmeleri
+    - `src/SmartRAG/Interfaces/` - Interface temizliği
+    - `src/SmartRAG/Helpers/QueryTokenizer.cs` - Kod kalitesi iyileştirmeleri
+  - **Faydalar**: Daha iyi bakım kolaylığı, daha temiz kod tabanı, geliştirilmiş okunabilirlik
+
+- **Model Organizasyonu**: Modeller mantıksal alt klasörlere yeniden organize edildi
+  - Yapılandırma ile ilgili modeller için modeller `Configuration/` alt klasörüne taşındı
+  - Request/response modelleri için modeller `RequestResponse/` alt klasörüne taşındı
+  - Sonuç modelleri için modeller `Results/` alt klasörüne taşındı
+  - Şema ile ilgili modeller için modeller `Schema/` alt klasörüne taşındı
+  - **Değiştirilen Dosyalar**:
+    - Birden fazla model dosyası alt klasörlere yeniden organize edildi
+  - **Faydalar**: Daha iyi kod organizasyonu, daha kolay navigasyon, geliştirilmiş bakım kolaylığı
+
+- **Dependency Injection**: Geliştirilmiş DI pattern'leri ve hata yönetimi
+  - Daha iyi servis yaşam süresi yönetimi
+  - Servis başlatmada geliştirilmiş hata yönetimi
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Extensions/ServiceCollectionExtensions.cs` - DI iyileştirmeleri
+    - Birden fazla servis dosyası - Hata yönetimi iyileştirmeleri
+  - **Faydalar**: Daha güvenilir servis başlatma, daha iyi hata kurtarma
+
+- **Görüntü Ayrıştırma ve Bağlam Genişletme**: Geliştirilmiş görüntü işleme yetenekleri
+  - Görüntü chunk'ları için geliştirilmiş bağlam genişletme
+  - Daha iyi görüntü ayrıştırma hata yönetimi
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/Parser/ImageParserService.cs` - Görüntü ayrıştırma iyileştirmeleri
+    - `src/SmartRAG/Services/Search/ContextExpansionService.cs` - Bağlam genişletme iyileştirmeleri
+  - **Faydalar**: Daha iyi görüntü içerik çıkarma, geliştirilmiş OCR doğruluğu
+
+- **Veritabanı Sorgu Hata Yönetimi**: Geliştirilmiş hata yönetimi ve yanıt doğrulama
+  - Veritabanı sorgu hataları için daha iyi hata mesajları
+  - Geliştirilmiş yanıt doğrulama
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/Database/MultiDatabaseQueryCoordinator.cs` - Hata yönetimi iyileştirmeleri
+  - **Faydalar**: Daha iyi hata tanılama, geliştirilmiş güvenilirlik
+
+- **Eksik Veri Algılama**: Dil-agnostik eksik veri algılama
+  - Eksik veri göstergeleri için geliştirilmiş pattern eşleştirme
+  - Eksik veri algılama için generic dil desteği
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/Database/MultiDatabaseQueryCoordinator.cs` - Eksik veri algılama iyileştirmeleri
+  - **Faydalar**: Daha iyi veri kalitesi algılama, dil-agnostik pattern'ler
+
+### 🐛 Düzeltilenler
+- **Dil-Agnostik Eksik Veri Algılama**: Eksik veri algılamada dil-spesifik pattern'ler düzeltildi
+  - Hardcoded dil-spesifik pattern'ler kaldırıldı
+  - Generic eksik veri algılama pattern'leri implementasyonu
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/Database/MultiDatabaseQueryCoordinator.cs` - Dil-agnostik algılama
+  - **Faydalar**: Tüm dillerle çalışır, daha iyi pattern eşleştirme
+
+- **HttpClient Timeout**: Uzun süren AI işlemleri için timeout artırıldı
+  - `GenerateTextAsync` işlemleri için timeout 10 dakikaya çıkarıldı
+  - Karmaşık sorgular için erken timeout'u önler
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Providers/BaseAIProvider.cs` - Timeout yapılandırması
+  - **Faydalar**: Uzun süren işlemlerin daha iyi yönetimi, azaltılmış timeout hataları
+
+- **Türkçe Karakter Kodlaması**: PDF metin çıkarmada kodlama sorunları düzeltildi
+  - Türkçe karakterler için geliştirilmiş karakter kodlama işleme
+  - PDF ayrıştırmada daha iyi Unicode desteği
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/Document/Parsers/PdfFileParser.cs` - Kodlama iyileştirmeleri
+  - **Faydalar**: Türkçe dokümanlar için daha iyi metin çıkarma, geliştirilmiş çok dilli destek
+
+- **Chunk0 Alma**: Numaralandırılmış liste işleme chunk alma düzeltildi
+  - Numaralandırılmış liste işlemede chunk0 alma mantığı düzeltildi
+  - Numaralandırılmış listeler için geliştirilmiş bağlam genişletme
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Chunk alma düzeltmesi
+  - **Faydalar**: Daha iyi numaralandırılmış liste işleme, geliştirilmiş bağlam doğruluğu
+
+- **DI Scope Sorunları**: Dependency injection scope çakışmaları çözüldü
+  - Döngüsel bağımlılık sorunları düzeltildi
+  - Geliştirilmiş servis başlatma sırası
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Extensions/ServiceCollectionExtensions.cs` - DI scope düzeltmeleri
+  - **Faydalar**: Daha güvenilir servis başlatma, daha iyi hata yönetimi
+
+- **İçerik Tipi Algılama**: Geliştirilmiş içerik tipi algılama doğruluğu
+  - Daha iyi MIME tipi algılama
+  - Geliştirilmiş dosya uzantısı eşleştirme
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/Document/DocumentParserService.cs` - İçerik tipi algılama iyileştirmeleri
+  - **Faydalar**: Daha doğru doküman tipi algılama, daha iyi dosya işleme
+
+- **Konuşma Niyet Sınıflandırması**: Geliştirilmiş bağlam farkındalığı
+  - Daha iyi bağlam anlayışı ile geliştirilmiş konuşma niyet sınıflandırması
+  - Geliştirilmiş sorgu niyet algılama doğruluğu
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/Support/QueryIntentClassifierService.cs` - Bağlam-farkında sınıflandırma
+  - **Faydalar**: Daha iyi niyet algılama, geliştirilmiş konuşma akışı, geliştirilmiş doğruluk
+
+### 🐛 Düzeltilenler
+- **Konuşma Geçmişi Tekrarlanan Girdiler**: Konuşma geçmişinde tekrarlanan girdiler düzeltildi
+  - Tüm depolama sağlayıcılarında tekrarlanan konuşma geçmişi girdileri çözüldü
+  - Geliştirilmiş konuşma geçmişi kesme mantığı
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Interfaces/Storage/IConversationRepository.cs` - Kesme desteği
+    - `src/SmartRAG/Repositories/FileSystemConversationRepository.cs` - Tekrar önleme
+    - `src/SmartRAG/Repositories/InMemoryConversationRepository.cs` - Tekrar önleme
+    - `src/SmartRAG/Repositories/RedisConversationRepository.cs` - Tekrar önleme
+    - `src/SmartRAG/Repositories/SqliteConversationRepository.cs` - Tekrar önleme
+    - `src/SmartRAG/Services/AI/PromptBuilderService.cs` - Kesme iyileştirmeleri
+    - `src/SmartRAG/Services/Support/ConversationManagerService.cs` - Geçmiş yönetimi
+  - **Faydalar**: Daha temiz konuşma geçmişi, azaltılmış depolama kullanımı, daha iyi performans
+
+- **Redis Doküman Alma**: Doküman listesi boş olduğunda doküman alma düzeltildi
+  - Redis'te doküman listesi boş olduğunda chunk'lardan doküman alma iyileştirildi
+  - Geliştirilmiş doküman alma için fallback mekanizması
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Repositories/RedisDocumentRepository.cs` - Doküman alma iyileştirmeleri
+  - **Faydalar**: Daha iyi doküman erişimi, geliştirilmiş güvenilirlik, geliştirilmiş veri tutarlılığı
+
+- **SqlValidator DI Uyumluluğu**: Dependency injection uyumluluğu düzeltildi
+  - `SqlValidator`'ın doğru DI uyumluluğu için `ILogger<SqlValidator>` kullanması sağlandı
+  - Geliştirilmiş servis kaydı ve yaşam süresi yönetimi
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/Database/Validation/SqlValidator.cs` - DI uyumluluk düzeltmesi
+  - **Faydalar**: Daha iyi DI entegrasyonu, geliştirilmiş servis kaydı, geliştirilmiş bakım kolaylığı
+
+### 🔄 Değiştirilenler
+- **Özellik Bayrağı İsimlendirme**: Tutarlılık için özellik bayrakları yeniden adlandırıldı
+  - `EnableMcpClient` → `EnableMcpSearch`
+  - `EnableAudioParsing` → `EnableAudioSearch`
+  - `EnableImageParsing` → `EnableImageSearch`
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Models/Schema/SearchOptions.cs` - Bayrak yeniden adlandırma
+    - `src/SmartRAG/Models/Configuration/SmartRagOptions.cs` - Bayrak yeniden adlandırma
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Bayrak kullanım güncellemeleri
+  - **Faydalar**: Tutarlı isimlendirme, daha net semantik
+
+- **Interface Yeniden Yapılandırma**: Daha iyi organizasyon için interface'ler yeniden organize edildi
+  - MCP interface'leri `Interfaces/Mcp/` klasörüne taşındı
+  - Dosya izleyici interface'leri `Interfaces/FileWatcher/` klasörüne taşındı
+  - **Değiştirilen Dosyalar**:
+    - Birden fazla interface dosyası yeniden organize edildi
+  - **Faydalar**: Daha iyi kod organizasyonu, daha kolay navigasyon
+
+### ✨ Faydalar
+- **Genişletilmiş Arama Yetenekleri**: MCP entegrasyonu harici veri kaynağı sorgularını etkinleştirir
+- **Otomatik Doküman İndeksleme**: Dosya izleyici servisi manuel doküman yüklemelerini azaltır
+- **Daha İyi İçerik Filtreleme**: DocumentType özelliği kesin içerik tipi filtrelemeyi etkinleştirir
+- **Geliştirilmiş Kod Kalitesi**: Kapsamlı kod temizliği ve organizasyon iyileştirmeleri
+- **Geliştirilmiş Çok Dilli Destek**: DefaultLanguage yapılandırması dil işlemeyi basitleştirir
+- **Performans Optimizasyonu**: Erken çıkış optimizasyonu arama yanıt sürelerini iyileştirir
+
+### 📝 Notlar
+- **MCP Entegrasyonu**: `SmartRagOptions.McpServers` içinde MCP sunucu yapılandırması gerektirir
+- **Dosya İzleyici**: `SmartRagOptions.WatchedFolders` içinde izlenen klasör yapılandırması gerektirir
+- **Geriye Dönük Uyumluluk**: Tüm değişiklikler geriye dönük uyumludur, breaking change yok
+
 ## [3.3.0] - 2025-12-01
 
 ### ✨ Eklenenler
