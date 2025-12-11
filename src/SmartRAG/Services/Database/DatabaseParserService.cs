@@ -385,7 +385,7 @@ namespace SmartRAG.Services.Database
             command.CommandText = sanitizedQuery;
             command.CommandTimeout = DefaultQueryTimeout;
 
-            return await ExecuteQueryInternalAsync(command, query, maxRows);
+            return await ExecuteQueryInternalAsync(command, maxRows);
         }
 
         private async Task<bool> ValidateSQLiteConnectionAsync(string connectionString)
@@ -560,7 +560,7 @@ namespace SmartRAG.Services.Database
                 command.CommandText = sanitizedQuery;
                 command.CommandTimeout = DefaultQueryTimeout;
 
-                return await ExecuteQueryInternalAsync(command, query, maxRows);
+                return await ExecuteQueryInternalAsync(command, maxRows);
             }
             catch (SqlException sqlEx)
             {
@@ -761,7 +761,7 @@ namespace SmartRAG.Services.Database
             command.CommandText = sanitizedQuery;
             command.CommandTimeout = DefaultQueryTimeout;
 
-            return await ExecuteQueryInternalAsync(command, sanitizedQuery, maxRows);
+            return await ExecuteQueryInternalAsync(command, maxRows);
         }
 
         private async Task<bool> ValidateMySqlConnectionAsync(string connectionString)
@@ -911,7 +911,7 @@ namespace SmartRAG.Services.Database
             command.CommandText = sanitizedQuery;
             command.CommandTimeout = DefaultQueryTimeout;
 
-            return await ExecuteQueryInternalAsync(command, sanitizedQuery, maxRows);
+            return await ExecuteQueryInternalAsync(command, maxRows);
         }
 
         private async Task<bool> ValidatePostgreSqlConnectionAsync(string connectionString)
@@ -1109,7 +1109,7 @@ namespace SmartRAG.Services.Database
         /// <summary>
         /// Internal method to execute query and format results
         /// </summary>
-        private async Task<string> ExecuteQueryInternalAsync(DbCommand command, string query, int maxRows)
+        private async Task<string> ExecuteQueryInternalAsync(DbCommand command, int maxRows)
         {
             var result = new StringBuilder();
             result.AppendLine($"=== Query Results ===");
