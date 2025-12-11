@@ -241,7 +241,7 @@ namespace SmartRAG.Services.Document
             {
                 if (!_queryIntentClassifier.TryParseCommand(trimmedQuery, out var parsedCommandType, out var _))
                 {
-                    _logger.LogDebug("Skipping unknown slash command: {Query}", trimmedQuery);
+                    _logger.LogDebug("Skipping unknown slash command");
                     return new RagResponse
                     {
                         Answer = string.Empty,
@@ -638,7 +638,7 @@ namespace SmartRAG.Services.Document
             }
             else if (_mcpIntegration != null && _options.Features.EnableMcpSearch && searchOptions.EnableMcpSearch)
             {
-                _logger.LogDebug("MCP search enabled. Query: {Query}", query);
+                _logger.LogDebug("MCP search enabled");
                 try
                 {
                     var mcpResults = await _mcpIntegration.QueryWithMcpAsync(query, maxResults);
