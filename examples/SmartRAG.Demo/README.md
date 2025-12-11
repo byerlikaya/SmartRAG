@@ -77,12 +77,10 @@ For detailed Docker configuration and management:
 ```
 
 ### Multi-Language Support
-The application supports queries in:
-- 🇬🇧 English
-- 🇩🇪 German (Deutsch)
-- 🇹🇷 Turkish (Türkçe)
-- 🇷🇺 Russian (Русский)
-- 🌐 Custom languages
+The application supports queries in multiple languages:
+- ISO 639-1 language codes (e.g., "en", "de", "tr", "ru")
+- Automatic language detection
+- Custom language configuration per query
 
 ## 🔧 **Configuration**
 

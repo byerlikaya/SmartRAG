@@ -6,6 +6,7 @@ using SmartRAG.Demo.Services.Console;
 using SmartRAG.Demo.Services.TestQuery;
 using SmartRAG.Enums;
 using SmartRAG.Interfaces;
+using SmartRAG.Interfaces.Mcp;
 using SmartRAG.Interfaces.Support;
 using SmartRAG.Models;
 using System;
@@ -363,6 +364,12 @@ public class QueryHandler(
                     PrintSources(response.Sources, maxCount: 5);
                     System.Console.WriteLine();
                 }
+
+                if (response.SearchMetadata != null)
+                {
+                    PrintSearchMetadata(response.SearchMetadata);
+                    System.Console.WriteLine();
+                }
             }
             catch (Exception ex)
             {
@@ -372,21 +379,120 @@ public class QueryHandler(
         }
     }
 
+    public async Task RunMcpQueryAsync(string language)
+    {
+        _console.WriteSectionHeader("🔌 MCP Integration Test");
+
+        var mcpIntegration = _serviceProvider.GetService<IMcpIntegrationService>();
+
+        if (mcpIntegration == null)
+        {
+            _console.WriteWarning("MCP integration service is not available. Ensure Features.EnableMcpSearch is true in configuration.");
+            return;
+        }
+
+        try
+        {
+            System.Console.WriteLine("Listing available MCP tools from connected servers...");
+            System.Console.WriteLine();
+
+            var tools = await mcpIntegration.GetAvailableToolsAsync();
+
+            if (tools == null || tools.Count == 0)
+            {
+                _console.WriteWarning("No MCP tools found. Check MCP server configuration and connectivity.");
+                return;
+            }
+
+            var grouped = tools
+                .GroupBy(t => string.IsNullOrWhiteSpace(t.ServerId) ? "Unknown" : t.ServerId)
+                .ToList();
+
+            foreach (var group in grouped)
+            {
+                _console.WriteInfo($"Server: {group.Key}");
+                foreach (var tool in group)
+                {
+                    System.Console.WriteLine($"  • {tool.Name} - {tool.Description}");
+                }
+                System.Console.WriteLine();
+            }
+
+            var serverId = _console.ReadLine("ServerId (exact as listed above): ");
+            var toolName = _console.ReadLine("Tool name: ");
+
+            if (string.IsNullOrWhiteSpace(serverId) || string.IsNullOrWhiteSpace(toolName))
+            {
+                _console.WriteError("ServerId and tool name are required.");
+                return;
+            }
+
+            var query = _console.ReadLine($"Natural language query for MCP tool ({language}): ");
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                _console.WriteError("Empty query entered.");
+                return;
+            }
+
+            var parameters = new Dictionary<string, object>
+            {
+                { "query", query },
+                { "language", language }
+            };
+
+            _console.WriteInfo("Calling MCP tool...");
+
+            var result = await mcpIntegration.CallToolAsync(serverId, toolName, parameters);
+
+            if (!result.IsSuccess)
+            {
+                _console.WriteError($"MCP tool call failed: {result.ErrorMessage}");
+                return;
+            }
+
+            _console.WriteSuccess("MCP Tool Result:");
+            System.Console.WriteLine("─────────────────────────────────────────────────────────────────");
+            System.Console.WriteLine(result.Content);
+            System.Console.WriteLine();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during MCP query");
+            _console.WriteError($"Error: {ex.Message}", ex);
+        }
+    }
+
+    /// <summary>
+    /// Parses search options from input string and extracts flags
+    /// </summary>
+    /// <param name="input">Input string potentially containing flags (-d, -db, -a, -i)</param>
+    /// <param name="language">Preferred language for search</param>
+    /// <param name="cleanQuery">Output parameter with flags removed</param>
+    /// <returns>SearchOptions if flags found, null otherwise</returns>
     private SearchOptions? ParseSearchOptions(string input, string language, out string cleanQuery)
     {
         cleanQuery = input;
         
-        // Check for flags
-        var hasDocumentFlag = input.Contains("-d ", StringComparison.OrdinalIgnoreCase) || input.EndsWith("-d", StringComparison.OrdinalIgnoreCase);
-        var hasDatabaseFlag = input.Contains("-db ", StringComparison.OrdinalIgnoreCase) || input.EndsWith("-db", StringComparison.OrdinalIgnoreCase);
-        var hasAudioFlag = input.Contains("-a ", StringComparison.OrdinalIgnoreCase) || input.EndsWith("-a", StringComparison.OrdinalIgnoreCase);
-        var hasImageFlag = input.Contains("-i ", StringComparison.OrdinalIgnoreCase) || input.EndsWith("-i", StringComparison.OrdinalIgnoreCase);
+        // Use regex to find tags at the end of query (allowing for punctuation and whitespace)
+        var trimmedInput = input.TrimEnd();
+        
+        // Check for flags using regex patterns (matches " -d", "?-d", "! -d", " -d " etc at end)
+        var hasDocumentFlag = System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"\s*-d\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
+                              System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"[\p{P}]\s*-d\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        var hasDatabaseFlag = System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"\s*-db\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
+                              System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"[\p{P}]\s*-db\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        var hasAudioFlag = System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"\s*-a\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
+                           System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"[\p{P}]\s*-a\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        var hasMcpFlag = System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"\s*-mcp\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
+                               System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"[\p{P}]\s*-mcp\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        var hasImageFlag = System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"\s*-i\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
+                           System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"[\p{P}]\s*-i\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
         // Get global configuration
         var smartRagOptions = _serviceProvider.GetRequiredService<IOptions<SmartRagOptions>>().Value;
 
         // If no flags, use global configuration but override language
-        if (!hasDocumentFlag && !hasDatabaseFlag && !hasAudioFlag && !hasImageFlag)
+        if (!hasDocumentFlag && !hasDatabaseFlag && !hasAudioFlag && !hasImageFlag && !hasMcpFlag)
         {
             var options = SearchOptions.FromConfig(smartRagOptions);
             options.PreferredLanguage = language;
@@ -400,18 +506,43 @@ public class QueryHandler(
             EnableDatabaseSearch = hasDatabaseFlag,
             EnableAudioSearch = hasAudioFlag,
             EnableImageSearch = hasImageFlag,
+            // If -d flag is set, disable MCP, audio, and image search (only text documents)
+            // If -db flag is set, disable MCP, document, audio, and image search (only database)
+            // If -a flag is set, disable MCP, document, database, and image search (only audio)
+            // If -i flag is set, disable MCP, document, database, and audio search (only image)
+            // If -mcp flag is set, disable all others (only MCP)
+            EnableMcpSearch = hasMcpFlag || (!hasDocumentFlag && !hasDatabaseFlag && !hasAudioFlag && !hasImageFlag), // Only enable MCP if explicitly requested OR no other flag set
             PreferredLanguage = language  // CRITICAL: Pass user's selected language to AI
         };
+        
+        // When -mcp flag is set, explicitly disable all others
+        if (hasMcpFlag)
+        {
+            searchOptions.EnableDocumentSearch = false;
+            searchOptions.EnableDatabaseSearch = false;
+            searchOptions.EnableAudioSearch = false;
+            searchOptions.EnableImageSearch = false;
+        }
+        else if (hasDocumentFlag)
+        {
+            searchOptions.EnableAudioSearch = false;
+            searchOptions.EnableImageSearch = false;
+            searchOptions.EnableMcpSearch = false;
+            searchOptions.EnableDatabaseSearch = false;
+        }
 
-        // Remove flags from query
-        var parts = input.Split(' ');
-        var cleanParts = parts.Where(p => 
-            !p.Equals("-d", StringComparison.OrdinalIgnoreCase) && 
-            !p.Equals("-db", StringComparison.OrdinalIgnoreCase) && 
-            !p.Equals("-a", StringComparison.OrdinalIgnoreCase) && 
-            !p.Equals("-i", StringComparison.OrdinalIgnoreCase));
-            
-        cleanQuery = string.Join(" ", cleanParts);
+        // Remove flags from query using regex
+        cleanQuery = System.Text.RegularExpressions.Regex.Replace(trimmedInput, @"\s*-d\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"[\p{P}]\s*-d\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"\s*-db\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"[\p{P}]\s*-db\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"\s*-a\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"[\p{P}]\s*-a\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"\s*-i\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"[\p{P}]\s*-i\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"\s*-mcp\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"[\p{P}]\s*-mcp\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        cleanQuery = cleanQuery.TrimEnd();
         
         return searchOptions;
     }
@@ -420,6 +551,11 @@ public class QueryHandler(
 
     #region Private Methods
 
+    /// <summary>
+    /// Gets the number of tests to run from user input
+    /// </summary>
+    /// <param name="totalQueries">Total number of available test queries</param>
+    /// <returns>Number of tests to run</returns>
     private int GetTestCount(int totalQueries)
     {
         var input = _console.ReadLine($"How many tests to run? (1-{totalQueries}, Enter for all): ");
@@ -437,6 +573,11 @@ public class QueryHandler(
         return totalQueries;
     }
 
+    /// <summary>
+    /// Checks if the response indicates an error
+    /// </summary>
+    /// <param name="answer">Response answer to check</param>
+    /// <returns>True if error detected, false otherwise</returns>
     private static bool IsErrorResponse(string answer)
     {
         return answer.Contains("failed", StringComparison.OrdinalIgnoreCase) ||
@@ -445,6 +586,12 @@ public class QueryHandler(
                answer.Contains("does not exist", StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// Extracts SQL-related error information from error message
+    /// </summary>
+    /// <param name="errorMessage">Error message to parse</param>
+    /// <param name="schemas">Database schemas for context</param>
+    /// <returns>Formatted error information</returns>
     private static string ExtractSQLFromError(string errorMessage, List<SmartRAG.Models.DatabaseSchemaInfo> schemas)
     {
         if (string.IsNullOrEmpty(errorMessage))
@@ -504,6 +651,12 @@ public class QueryHandler(
         return sqlInfo.ToString().TrimEnd();
     }
 
+    /// <summary>
+    /// Displays test execution summary with success/failure statistics
+    /// </summary>
+    /// <param name="successCount">Number of successful tests</param>
+    /// <param name="testCount">Total number of tests</param>
+    /// <param name="failedQueries">List of failed queries with error details</param>
     private void DisplayTestSummary(int successCount, int testCount, List<(TestQuery Query, string Error, string GeneratedSQL)> failedQueries)
     {
         System.Console.WriteLine("═══════════════════════════════════════════════════════════════════");
@@ -586,23 +739,41 @@ public class QueryHandler(
         }
     }
 
+    /// <summary>
+    /// Checks if input is a command (starts with /)
+    /// </summary>
+    /// <param name="input">Input string to check</param>
+    /// <returns>True if command, false otherwise</returns>
     private static bool IsCommand(string input)
     {
         return input.StartsWith("/", StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// Checks if input is an exit command
+    /// </summary>
+    /// <param name="input">Input string to check</param>
+    /// <returns>True if exit command, false otherwise</returns>
     private static bool IsExitCommand(string input)
     {
         var normalized = input.Trim().ToLowerInvariant();
         return normalized is "/exit" or "/quit" or "/q" or "/back";
     }
 
+    /// <summary>
+    /// Checks if input is a help command
+    /// </summary>
+    /// <param name="input">Input string to check</param>
+    /// <returns>True if help command, false otherwise</returns>
     private static bool IsHelpCommand(string input)
     {
         var normalized = input.Trim().ToLowerInvariant();
         return normalized is "/help" or "/h" or "/?";
     }
 
+    /// <summary>
+    /// Prints available chat commands help message
+    /// </summary>
     private void PrintChatHelp()
     {
         System.Console.WriteLine();
@@ -615,6 +786,11 @@ public class QueryHandler(
         System.Console.WriteLine();
     }
 
+    /// <summary>
+    /// Prints search result sources with formatting
+    /// </summary>
+    /// <param name="sources">Collection of search sources</param>
+    /// <param name="maxCount">Maximum number of sources to display</param>
     private void PrintSources(IReadOnlyCollection<SearchSource> sources, int maxCount)
     {
         System.Console.ForegroundColor = ConsoleColor.DarkGray;
@@ -641,6 +817,59 @@ public class QueryHandler(
         System.Console.ResetColor();
     }
 
+    /// <summary>
+    /// Prints search metadata information about which searches were performed
+    /// </summary>
+    /// <param name="metadata">Search metadata to display</param>
+    private void PrintSearchMetadata(SearchMetadata metadata)
+    {
+        System.Console.ForegroundColor = ConsoleColor.DarkGray;
+        System.Console.WriteLine("🔍 Search Operations:");
+
+        var searches = new List<string>();
+
+        if (metadata.DocumentSearchPerformed)
+        {
+            var docInfo = metadata.DocumentChunksFound > 0
+                ? $"Document Search ({metadata.DocumentChunksFound} chunks found)"
+                : "Document Search";
+            searches.Add($"   ✓ {docInfo}");
+        }
+
+        if (metadata.DatabaseSearchPerformed)
+        {
+            var dbInfo = metadata.DatabaseResultsFound > 0
+                ? $"Database Search ({metadata.DatabaseResultsFound} results found)"
+                : "Database Search";
+            searches.Add($"   ✓ {dbInfo}");
+        }
+
+        if (metadata.McpSearchPerformed)
+        {
+            var mcpInfo = metadata.McpResultsFound > 0
+                ? $"MCP Search ({metadata.McpResultsFound} results found)"
+                : "MCP Search";
+            searches.Add($"   ✓ {mcpInfo}");
+        }
+
+        if (searches.Count == 0)
+        {
+            searches.Add("   (No searches performed)");
+        }
+
+        foreach (var search in searches)
+        {
+            System.Console.WriteLine(search);
+        }
+
+        System.Console.ResetColor();
+    }
+
+    /// <summary>
+    /// Builds a formatted source line string from search source
+    /// </summary>
+    /// <param name="source">Search source to format</param>
+    /// <returns>Formatted source line</returns>
     private static string BuildSourceLine(SearchSource source)
     {
         var label = string.IsNullOrWhiteSpace(source.SourceType) ? "Document" : source.SourceType;
@@ -690,6 +919,12 @@ public class QueryHandler(
         return $"[{label}] {name}{detailText}";
     }
 
+    /// <summary>
+    /// Formats time range from start and end seconds
+    /// </summary>
+    /// <param name="startSeconds">Start time in seconds</param>
+    /// <param name="endSeconds">End time in seconds</param>
+    /// <returns>Formatted time range string</returns>
     private static string FormatTimeRange(double? startSeconds, double? endSeconds)
     {
         if (!startSeconds.HasValue && !endSeconds.HasValue)
@@ -710,6 +945,11 @@ public class QueryHandler(
         return $"-{FormatTimestamp(endSeconds!.Value)}";
     }
 
+    /// <summary>
+    /// Formats seconds into timestamp string (HH:MM:SS or MM:SS)
+    /// </summary>
+    /// <param name="seconds">Time in seconds</param>
+    /// <returns>Formatted timestamp</returns>
     private static string FormatTimestamp(double seconds)
     {
         if (seconds < 0)
@@ -724,6 +964,14 @@ public class QueryHandler(
             : $"{time.Minutes:D2}:{time.Seconds:D2}";
     }
 
+    /// <summary>
+    /// Generates combined answer from document and database contexts
+    /// </summary>
+    /// <param name="query">User query</param>
+    /// <param name="documentContext">Document context information</param>
+    /// <param name="databaseAnswer">Database query answer</param>
+    /// <param name="language">Response language</param>
+    /// <returns>Combined answer from AI</returns>
     private async Task<string> GenerateCombinedAnswer(string query, List<string> documentContext, string? databaseAnswer, string language)
     {
         var combinedContext = new List<string>();
@@ -753,6 +1001,36 @@ Instructions:
 - Be clear about which source provided which information";
 
         return await _aiService.GenerateResponseAsync(finalPrompt, new List<string>());
+    }
+
+    public async Task ClearConversationHistoryAsync()
+    {
+        _console.WriteSectionHeader("🧹 Clear Conversation History");
+
+        _console.WriteWarning("WARNING: This will permanently delete ALL conversation history!");
+        System.Console.WriteLine();
+
+        var confirmation = _console.ReadLine("Are you sure? Type 'yes' to confirm: ");
+        if (confirmation?.ToLower() != "yes")
+        {
+            _console.WriteInfo("Operation cancelled");
+            return;
+        }
+
+        try
+        {
+            System.Console.WriteLine();
+            System.Console.WriteLine("🧹 Clearing conversation history...");
+
+            await _conversationManager.ClearAllConversationsAsync();
+
+            _console.WriteSuccess("Conversation history cleared successfully!");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error clearing conversation history");
+            _console.WriteError($"Error: {ex.Message}");
+        }
     }
 
     #endregion

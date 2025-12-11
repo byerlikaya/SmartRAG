@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
@@ -8,34 +9,37 @@ namespace SmartRAG.Demo.Services;
 /// Manages Ollama models - downloads, lists and verifies model availability
 /// </summary>
 public class OllamaModelManager
+{
+    #region Constants
+
+    private const string DefaultOllamaEndpoint = "http://localhost:11434";
+    private const int DefaultTimeoutMinutes = 30;
+    private const int MaxRetryAttempts = 3;
+    private const int RetryDelayMilliseconds = 5000;
+
+    #endregion
+
+    #region Fields
+
+    private readonly HttpClient _httpClient;
+    private readonly string _ollamaEndpoint;
+    private readonly ILogger<OllamaModelManager>? _logger;
+
+    #endregion
+
+    #region Constructor
+
+    public OllamaModelManager(string? ollamaEndpoint = null, ILogger<OllamaModelManager>? logger = null)
     {
-        #region Constants
-
-        private const string DefaultOllamaEndpoint = "http://localhost:11434";
-        private const int DefaultTimeoutMinutes = 30; // 30 dakika timeout
-        private const int MaxRetryAttempts = 3;
-
-        #endregion
-
-        #region Fields
-
-        private readonly HttpClient _httpClient;
-        private readonly string _ollamaEndpoint;
-
-        #endregion
-
-        #region Constructor
-
-        public OllamaModelManager(string? ollamaEndpoint = null)
+        _ollamaEndpoint = ollamaEndpoint ?? DefaultOllamaEndpoint;
+        _logger = logger;
+        _httpClient = new HttpClient
         {
-            _ollamaEndpoint = ollamaEndpoint ?? DefaultOllamaEndpoint;
-            _httpClient = new HttpClient
-            {
-                Timeout = TimeSpan.FromMinutes(DefaultTimeoutMinutes)
-            };
-        }
+            Timeout = TimeSpan.FromMinutes(DefaultTimeoutMinutes)
+        };
+    }
 
-        #endregion
+    #endregion
 
         #region Public Methods
 
@@ -90,9 +94,9 @@ public class OllamaModelManager
                                     progressCallback?.Invoke(status.GetString() ?? "Downloading...");
                                 }
                             }
-                            catch
+                            catch (JsonException ex)
                             {
-                                // Ignore JSON parsing errors
+                                _logger?.LogDebug(ex, "Ignoring JSON parsing error in Ollama response stream");
                             }
                         }
                     }
@@ -106,7 +110,8 @@ public class OllamaModelManager
                     
                     if (attempt < MaxRetryAttempts)
                     {
-                        await Task.Delay(5000); // 5 saniye bekle
+                        _logger?.LogWarning("Download timeout on attempt {Attempt}/{MaxRetries}, retrying in {Delay}ms", attempt, MaxRetryAttempts, RetryDelayMilliseconds);
+                        await Task.Delay(RetryDelayMilliseconds);
                         continue;
                     }
                     else
@@ -120,11 +125,13 @@ public class OllamaModelManager
                     
                     if (attempt < MaxRetryAttempts)
                     {
-                        await Task.Delay(5000); // 5 saniye bekle
+                        _logger?.LogWarning(ex, "Network error on attempt {Attempt}/{MaxRetries}, retrying in {Delay}ms", attempt, MaxRetryAttempts, RetryDelayMilliseconds);
+                        await Task.Delay(RetryDelayMilliseconds);
                         continue;
                     }
                     else
                     {
+                        _logger?.LogError(ex, "Model download failed after {MaxRetries} attempts due to network issues", MaxRetryAttempts);
                         throw new InvalidOperationException($"Model download failed after {MaxRetryAttempts} attempts due to network issues. Please check your internet connection and Ollama service.", ex);
                     }
                 }
@@ -134,7 +141,8 @@ public class OllamaModelManager
                     
                     if (attempt < MaxRetryAttempts)
                     {
-                        await Task.Delay(5000); // 5 saniye bekle
+                        _logger?.LogWarning(ex, "Unexpected error on attempt {Attempt}/{MaxRetries}, retrying in {Delay}ms", attempt, MaxRetryAttempts, RetryDelayMilliseconds);
+                        await Task.Delay(RetryDelayMilliseconds);
                         continue;
                     }
                     else
@@ -176,8 +184,9 @@ public class OllamaModelManager
 
                 return models;
             }
-            catch
+            catch (Exception ex)
             {
+                _logger?.LogWarning(ex, "Failed to list installed Ollama models");
                 return new List<string>();
             }
         }
@@ -193,8 +202,9 @@ public class OllamaModelManager
                 var response = await _httpClient.GetAsync($"{_ollamaEndpoint}/api/tags");
                 return response.IsSuccessStatusCode;
             }
-            catch
+            catch (Exception ex)
             {
+                _logger?.LogDebug(ex, "Ollama service is not available at {Endpoint}", _ollamaEndpoint);
                 return false;
             }
         }

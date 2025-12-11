@@ -17,8 +17,6 @@ namespace SmartRAG.Providers
     /// </summary>
     public abstract class BaseAIProvider : IAIProvider
     {
-        #region Constants
-
         private const int DefaultMaxRetries = 3;
         private const int BaseDelayMs = 1000;
         private const int MinRetryDelayMs = 60000;
@@ -29,42 +27,24 @@ namespace SmartRAG.Providers
         private const string DefaultMessageProperty = "message";
         private const string DefaultContentProperty = "content";
 
-        #endregion
-
-        #region Fields
-
         private readonly ILogger _logger;
-
-        #endregion
-
-        #region Protected Properties
+        private readonly IHttpClientFactory _httpClientFactory;
 
         /// <summary>
         /// Logger instance for derived classes
         /// </summary>
         protected ILogger Logger => _logger;
 
-        #endregion
-
-        #region Constructor
-
-        protected BaseAIProvider(ILogger logger)
+        protected BaseAIProvider(ILogger logger, IHttpClientFactory httpClientFactory)
         {
             _logger = logger;
+            _httpClientFactory = httpClientFactory;
         }
-
-        #endregion
-
-        #region Abstract Properties
 
         /// <summary>
         /// Gets the type of AI provider this implementation represents
         /// </summary>
         public abstract AIProvider ProviderType { get; }
-
-        #endregion
-
-        #region Abstract Methods
 
         /// <summary>
         /// Generates text response from the AI provider
@@ -82,10 +62,6 @@ namespace SmartRAG.Providers
         /// <returns>Vector embedding as list of floats</returns>
         public abstract Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config);
 
-        #endregion
-
-        #region Virtual Methods
-
         /// <summary>
         /// Default batch embedding implementation with parallel processing
         /// Providers can override this for better performance if they support true batch operations
@@ -94,28 +70,13 @@ namespace SmartRAG.Providers
         {
             var textList = texts.ToList();
             var results = new List<List<float>>(new List<float>[textList.Count]);
-            
+
             if (textList.Count == 0)
                 return results;
 
-            var processedCount = 0;
-            var lockObject = new object();
-            var lastProgressLog = 0;
-            
-            int ProgressLogInterval;
-            if (textList.Count < 100)
-                ProgressLogInterval = 10;
-            else if (textList.Count < 1000)
-                ProgressLogInterval = 50;
-            else
-                ProgressLogInterval = 100;
-            
-            var startTime = System.DateTime.UtcNow;
-            
-            Logger.LogInformation("Starting batch embedding generation: {Total} texts (progress every {Interval})", 
-                textList.Count, ProgressLogInterval);
-            
-            using (var semaphore = new System.Threading.SemaphoreSlim(3)) // Restored concurrency to 3 for performance with stable endpoint
+            Logger.LogInformation("Starting batch embedding generation: {Total} texts", textList.Count);
+
+            using (var semaphore = new System.Threading.SemaphoreSlim(3))
             {
                 var tasks = textList.Select(async (text, index) =>
                 {
@@ -124,48 +85,11 @@ namespace SmartRAG.Providers
                     {
                         var embedding = await GenerateEmbeddingAsync(text, config);
                         results[index] = embedding;
-                        
-                        lock (lockObject)
-                        {
-                            processedCount++;
-                            var currentProgress = processedCount;
-
-                            bool shouldLog = currentProgress - lastProgressLog >= ProgressLogInterval || 
-                                            currentProgress == 1 || 
-                                            currentProgress == 2 ||
-                                            currentProgress == 3 ||
-                                            currentProgress == 5 || 
-                                            (currentProgress <= 50 && currentProgress % 5 == 0) ||
-                                            (currentProgress <= 100 && currentProgress % 10 == 0) ||
-                                            currentProgress == textList.Count;
-
-                            if (shouldLog)
-                            {
-                                var elapsed = System.DateTime.UtcNow - startTime;
-                                var percentage = (currentProgress * 100.0) / textList.Count;
-                                var avgTimePerEmbedding = elapsed.TotalSeconds / currentProgress;
-                                var remaining = textList.Count - currentProgress;
-                                var estimatedTimeRemaining = TimeSpan.FromSeconds(avgTimePerEmbedding * remaining);
-                                
-                                Logger.LogInformation("Embedding progress: {Processed}/{Total} ({Percentage:F1}%) | Elapsed: {Elapsed:F1}s | ETA: {ETA:F0}s", 
-                                    currentProgress, textList.Count, percentage, elapsed.TotalSeconds, estimatedTimeRemaining.TotalSeconds);
-                                lastProgressLog = currentProgress;
-                            }
-                        }
                     }
-                    catch
+                    catch (Exception ex)
                     {
+                        Logger.LogWarning(ex, "Failed to generate embedding for text at index {Index}", index);
                         results[index] = new List<float>();
-                        
-                        lock (lockObject)
-                        {
-                            processedCount++;
-                            if (processedCount % 10 == 0)
-                            {
-                                Logger.LogWarning("Embedding generation errors: {ErrorCount} errors encountered so far", 
-                                    results.Count(r => r != null && r.Count == 0));
-                            }
-                        }
                     }
                     finally
                     {
@@ -177,9 +101,8 @@ namespace SmartRAG.Providers
             }
 
             var successCount = results.Count(r => r != null && r.Count > 0);
-            var totalTime = System.DateTime.UtcNow - startTime;
-            Logger.LogInformation("Batch embedding generation completed: {Success}/{Total} successful ({SuccessRate:F1}%) | Total time: {TotalTime:F1}s", 
-                successCount, textList.Count, (successCount * 100.0) / textList.Count, totalTime.TotalSeconds);
+            Logger.LogInformation("Batch embedding generation completed: {Success}/{Total} successful",
+                successCount, textList.Count);
 
             return results;
         }
@@ -222,10 +145,6 @@ namespace SmartRAG.Providers
             return Task.FromResult(chunks);
         }
 
-        #endregion
-
-        #region Protected Helper Methods
-
         /// <summary>
         /// Validates common configuration requirements
         /// </summary>
@@ -244,15 +163,12 @@ namespace SmartRAG.Providers
         }
 
         /// <summary>
-        /// Creates HttpClient with common headers
+        /// Creates HttpClient with common headers using IHttpClientFactory
         /// </summary>
-        protected static HttpClient CreateHttpClient(string apiKey = null, Dictionary<string, string> additionalHeaders = null)
+        protected HttpClient CreateHttpClient(string apiKey = null, Dictionary<string, string> additionalHeaders = null)
         {
-            var handler = CreateHttpClientHandler();
-            var client = new HttpClient(handler)
-            {
-                Timeout = TimeSpan.FromSeconds(60)
-            };
+            var client = _httpClientFactory.CreateClient();
+            client.Timeout = TimeSpan.FromSeconds(180);
 
             if (!string.IsNullOrEmpty(apiKey))
             {
@@ -272,10 +188,10 @@ namespace SmartRAG.Providers
         /// <summary>
         /// Creates HTTP client without automatic Authorization header (for providers like Anthropic that use custom headers)
         /// </summary>
-        protected static HttpClient CreateHttpClientWithoutAuth(Dictionary<string, string> additionalHeaders)
+        protected HttpClient CreateHttpClientWithoutAuth(Dictionary<string, string> additionalHeaders)
         {
-            var handler = CreateHttpClientHandler();
-            var client = new HttpClient(handler);
+            var client = _httpClientFactory.CreateClient();
+            client.Timeout = TimeSpan.FromSeconds(180);
 
             if (additionalHeaders != null)
             {
@@ -307,7 +223,7 @@ namespace SmartRAG.Providers
                         error.Contains("EOF") ||  // Retry EOF errors (Ollama runner crashes)
                         error.Contains("llama runner process no longer running") ||  // Ollama crash
                         error.Contains("InternalServerError");  // General server errors
-                        
+
                     if (shouldRetry)
                     {
                         attempt++;
@@ -326,7 +242,7 @@ namespace SmartRAG.Providers
                     attempt++;
                     if (attempt < maxRetries)
                     {
-                        var delay = BaseDelayMs * (int)Math.Pow(2, attempt - 1);;
+                        var delay = BaseDelayMs * (int)Math.Pow(2, attempt - 1);
                         await Task.Delay(delay);
                         continue;
                     }
@@ -337,10 +253,6 @@ namespace SmartRAG.Providers
             return (false, string.Empty, $"{ProviderType} request failed after {maxRetries} attempts");
         }
 
-        #endregion
-
-        #region Private Helper Methods
-
         /// <summary>
         /// Creates HttpClientHandler with SSL/TLS configuration
         /// </summary>
@@ -349,7 +261,7 @@ namespace SmartRAG.Providers
             var handler = new HttpClientHandler
             {
                 ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
-                { 
+                {
                     return true;
                 }
             };
@@ -390,13 +302,9 @@ namespace SmartRAG.Providers
             }
 
             var errorBody = await response.Content.ReadAsStringAsync();
-            
+
             return (false, string.Empty, $"{ProviderType} error: {response.StatusCode} - {errorBody}");
         }
-               
-        #endregion
-
-        #region Static Helper Methods
 
         /// <summary>
         /// Common embedding response parsing
@@ -434,26 +342,24 @@ namespace SmartRAG.Providers
 
             try
             {
-                using (var doc = JsonDocument.Parse(responseBody))
+                using var doc = JsonDocument.Parse(responseBody);
+                if (doc.RootElement.TryGetProperty(dataProperty, out var data) && data.ValueKind == JsonValueKind.Array)
                 {
-                    if (doc.RootElement.TryGetProperty(dataProperty, out var data) && data.ValueKind == JsonValueKind.Array)
+                    foreach (var item in data.EnumerateArray())
                     {
-                        foreach (var item in data.EnumerateArray())
+                        if (item.TryGetProperty(embeddingProperty, out var embedding) && embedding.ValueKind == JsonValueKind.Array)
                         {
-                            if (item.TryGetProperty(embeddingProperty, out var embedding) && embedding.ValueKind == JsonValueKind.Array)
+                            var floats = new List<float>(embedding.GetArrayLength());
+                            foreach (var value in embedding.EnumerateArray())
                             {
-                                var floats = new List<float>(embedding.GetArrayLength());
-                                foreach (var value in embedding.EnumerateArray())
-                                {
-                                    if (value.TryGetSingle(out var f))
-                                        floats.Add(f);
-                                }
-                                results.Add(floats);
+                                if (value.TryGetSingle(out var f))
+                                    floats.Add(f);
                             }
-                            else
-                            {
-                                results.Add(new List<float>());
-                            }
+                            results.Add(floats);
+                        }
+                        else
+                        {
+                            results.Add(new List<float>());
                         }
                     }
                 }
@@ -472,18 +378,16 @@ namespace SmartRAG.Providers
         /// </summary>
         protected static string ParseTextResponse(string responseBody, string choicesProperty = DefaultChoicesProperty, string messageProperty = DefaultMessageProperty, string contentProperty = DefaultContentProperty)
         {
-            using (var doc = JsonDocument.Parse(responseBody))
+            using var doc = JsonDocument.Parse(responseBody);
+            if (doc.RootElement.TryGetProperty(choicesProperty, out var choices) && choices.ValueKind == JsonValueKind.Array)
             {
-                if (doc.RootElement.TryGetProperty(choicesProperty, out var choices) && choices.ValueKind == JsonValueKind.Array)
-                {
-                    var firstChoice = choices.EnumerateArray().FirstOrDefault();
+                var firstChoice = choices.EnumerateArray().FirstOrDefault();
 
-                    if (firstChoice.TryGetProperty(messageProperty, out var message) && message.TryGetProperty(contentProperty, out var contentProp))
-                        return contentProp.GetString() ?? "No response generated";
-                }
-
-                return "No response generated";
+                if (firstChoice.TryGetProperty(messageProperty, out var message) && message.TryGetProperty(contentProperty, out var contentProp))
+                    return contentProp.GetString() ?? "No response generated";
             }
+
+            return "No response generated";
         }
 
         /// <summary>
@@ -493,7 +397,5 @@ namespace SmartRAG.Providers
         {
             Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
         };
-
-        #endregion
     }
 }

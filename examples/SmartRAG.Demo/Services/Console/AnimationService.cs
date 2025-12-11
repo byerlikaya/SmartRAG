@@ -35,14 +35,9 @@ public class AnimationService : IAnimationService
 
         System.Console.Clear();
 
-        // Phase 1: Logo reveal with colors
-        await RevealLogoAsync();
+        await ShowCenteredWelcomeAsync();
 
-        // Phase 2: Loading bar (vertically centered)
-        await ShowProgressBarAsync();
-
-        // Small delay to let user see the completion message
-        await Task.Delay(800);
+        await Task.Delay(1500);
     }
 
     public async Task ShowLoadingAnimationAsync(string message, int durationMs = 2000)
@@ -107,113 +102,73 @@ public class AnimationService : IAnimationService
 
     #region Private Methods
 
-    private static async Task RevealLogoAsync()
+    private static async Task ShowCenteredWelcomeAsync()
     {
+        var features = new[]
+        {
+            ("🗄️  Multi-Database RAG", "Query SQL Server, MySQL, PostgreSQL, SQLite simultaneously", ConsoleColor.Cyan),
+            ("📄 Multi-Modal Intelligence", "Process PDF, Word, Excel, Images (OCR), Audio (STT)", ConsoleColor.Magenta),
+            ("🏠 On-Premise & Local AI", "100% local with Ollama - GDPR/KVKK compliant", ConsoleColor.Green),
+            ("💬 Conversation History", "Session-based context-aware conversations", ConsoleColor.Yellow),
+            ("🔍 Advanced Semantic Search", "Vector search with Qdrant, Redis, InMemory", ConsoleColor.Cyan),
+            ("🧠 Unified Query Intelligence", "Automatic query routing across all sources", ConsoleColor.Magenta),
+            ("🔌 MCP Integration", "Model Context Protocol support", ConsoleColor.Green),
+            ("📁 File Watcher", "Automatic document processing from watched folders", ConsoleColor.Yellow)
+        };
+
         var windowWidth = System.Console.WindowWidth;
         var windowHeight = System.Console.WindowHeight;
         var logoWidth = SmartRagLogoLines[0].Length;
         var logoHeight = SmartRagLogoLines.Length;
-
-        // Calculate vertical centering - move logo up a bit
-        var leftPadding = Math.Max(0, (windowWidth - logoWidth) / 2);
-        var topPadding = Math.Max(0, (windowHeight - logoHeight - 4) / 2 - 3); // -3 to move logo up
-
-        var padding = new string(' ', leftPadding);
-
-        // Position cursor for vertical centering
+        
+        var totalContentHeight = logoHeight + 3 + 2 + features.Length + 3;
+        var topPadding = Math.Max(0, (windowHeight - totalContentHeight) / 2);
+        
         System.Console.SetCursorPosition(0, topPadding);
 
-        // Single color for logo
-        System.Console.ForegroundColor = ConsoleColor.Cyan;
+        var logoLeftPadding = Math.Max(0, (windowWidth - logoWidth) / 2);
+        var logoPadding = new string(' ', logoLeftPadding);
 
+        System.Console.ForegroundColor = ConsoleColor.Cyan;
         foreach (var line in SmartRagLogoLines)
         {
-            System.Console.WriteLine(padding + line);
-            await Task.Delay(80);
+            System.Console.WriteLine(logoPadding + line);
         }
         System.Console.ResetColor();
 
         System.Console.WriteLine();
-        System.Console.ForegroundColor = ConsoleColor.Yellow;
-        CenterText("🚀 Initializing AI System...");
+        System.Console.ForegroundColor = ConsoleColor.DarkCyan;
+        CenterText("🤖 AI-Powered Retrieval-Augmented Generation Framework");
+        CenterText("⚡ Multi-Database Query Coordinator | Document Intelligence");
         System.Console.ResetColor();
         System.Console.WriteLine();
-        System.Console.WriteLine(); // Extra blank line after "Initializing"
 
-        await Task.Delay(150);
-    }
+        System.Console.ForegroundColor = ConsoleColor.Yellow;
+        CenterText("✨ Key Features");
+        System.Console.ResetColor();
+        System.Console.WriteLine();
 
-    private static async Task ShowProgressBarAsync()
-    {
-        var steps = new[]
-        {
-            ("Loading neural networks", ConsoleColor.Cyan),
-            ("Connecting vector databases", ConsoleColor.Green),
-            ("Initializing AI providers", ConsoleColor.Magenta),
-            ("Analyzing database schemas", ConsoleColor.Yellow),
-            ("System ready", ConsoleColor.Green)
-        };
+        var maxFeatureWidth = features.Max(f => f.Item1.Length + f.Item2.Length + 3);
+        var featureLeftPadding = Math.Max(0, (windowWidth - maxFeatureWidth) / 2);
+        var featurePadding = new string(' ', featureLeftPadding);
 
-        var windowWidth = System.Console.WindowWidth;
-        var windowHeight = System.Console.WindowHeight;
-        var totalStepsHeight = steps.Length + 3; // +3 for spacing and final banner
-
-        // Calculate vertical centering for the entire progress block
-        // Position it below the logo area with proper spacing
-        var topPadding = Math.Max(0, (windowHeight - totalStepsHeight) / 2) + 5; // +5 to move below logo with better spacing
-
-        // Position cursor for vertical centering
-        System.Console.SetCursorPosition(0, topPadding);
-
-        // Calculate left padding to center the block but keep items left-aligned
-        var maxTextLength = steps.Max(s => s.Item1.Length) + 6; // +6 for "▸ " and " ✓"
-        var blockLeftPadding = Math.Max(0, (windowWidth - maxTextLength) / 2);
-
-        foreach (var (message, color) in steps)
+        foreach (var (title, description, color) in features)
         {
             System.Console.ForegroundColor = color;
-            var text = $"▸ {message}";
-            System.Console.Write(new string(' ', blockLeftPadding) + text);
-
-            // Animated dots with retro game sounds
-            for (int i = 0; i < 3; i++)
-            {
-                await Task.Delay(100);
-                System.Console.Write(".");
-            }
-
-            System.Console.ForegroundColor = ConsoleColor.Green;
-            System.Console.WriteLine(" ✓");
+            System.Console.Write(featurePadding + title);
             System.Console.ResetColor();
-
-            await Task.Delay(150);
+            System.Console.ForegroundColor = ConsoleColor.Gray;
+            System.Console.WriteLine($" - {description}");
+            System.Console.ResetColor();
+            
+            await Task.Delay(120);
         }
 
         System.Console.WriteLine();
         System.Console.ForegroundColor = ConsoleColor.Green;
-
-        // Create the banner as a single centered block
-        var bannerLines = new[]
-        {
-            "╔═══════════════════════════════════════════════════════╗",
-            "║           ✨ SmartRAG is ready to serve! ✨           ║",
-            "╚═══════════════════════════════════════════════════════╝"
-        };
-
-        // Calculate padding for the entire banner block
-        var bannerWidth = bannerLines[0].Length;
-        var bannerPadding = Math.Max(0, (System.Console.WindowWidth - bannerWidth) / 2);
-        var padding = new string(' ', bannerPadding);
-
-        foreach (var line in bannerLines)
-        {
-            System.Console.WriteLine(padding + line);
-        }
-
+        CenterText("✨ SmartRAG is ready to serve! ✨");
         System.Console.ResetColor();
         System.Console.WriteLine();
-
-        await Task.Delay(1000);
     }
 
     #endregion

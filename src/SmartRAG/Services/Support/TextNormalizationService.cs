@@ -158,7 +158,7 @@ namespace SmartRAG.Services.Support
 
             if (result.Length > maxLogLength)
             {
-                result = result.Substring(0, maxLogLength) + "... (truncated)";
+                result = result[..maxLogLength] + "... (truncated)";
             }
 
             return result;

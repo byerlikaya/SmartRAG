@@ -1,5 +1,6 @@
 using OfficeOpenXml;
 using SmartRAG.Interfaces.Parser.Strategies;
+using SmartRAG.Models;
 using SmartRAG.Services.Helpers;
 using System;
 using System.Globalization;
@@ -22,11 +23,6 @@ namespace SmartRAG.Services.Document.Parsers
         private const string WorksheetFormat = "Worksheet: {0}";
         private const string EmptyWorksheetFormat = "Worksheet: {0} (empty)";
 
-        static ExcelFileParser()
-        {
-
-        }
-
         public bool CanParse(string fileName, string contentType)
         {
             return SupportedExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) ||
@@ -39,47 +35,40 @@ namespace SmartRAG.Services.Document.Parsers
             {
                 var memoryStream = await CreateMemoryStreamCopy(fileStream);
 
-                using (var package = new ExcelPackage(memoryStream))
+                using var package = new ExcelPackage(memoryStream);
+                var textBuilder = new StringBuilder();
+
+                if (package.Workbook.Worksheets.Count == 0)
                 {
-                    var textBuilder = new StringBuilder();
+                    return new FileParserResult { Content = "Excel file contains no worksheets" };
+                }
 
-                    if (package.Workbook.Worksheets.Count == 0)
+                foreach (var worksheet in package.Workbook.Worksheets)
+                {
+                    if (worksheet.Dimension != null)
                     {
-                        return new FileParserResult { Content = "Excel file contains no worksheets" };
-                    }
+                        textBuilder.AppendLine(string.Format(CultureInfo.InvariantCulture, WorksheetFormat, worksheet.Name));
 
-                    foreach (var worksheet in package.Workbook.Worksheets)
-                    {
-                        if (worksheet.Dimension != null)
+                        var rowCount = worksheet.Dimension.Rows;
+                        var colCount = worksheet.Dimension.Columns;
+
+                        var hasData = false;
+                        for (int row = 1; row <= rowCount; row++)
                         {
-                            textBuilder.AppendLine(string.Format(CultureInfo.InvariantCulture, WorksheetFormat, worksheet.Name));
+                            var rowBuilder = new StringBuilder();
+                            var rowHasData = false;
 
-                            var rowCount = worksheet.Dimension.Rows;
-                            var colCount = worksheet.Dimension.Columns;
-
-                            var hasData = false;
-                            for (int row = 1; row <= rowCount; row++)
+                            for (int col = 1; col <= colCount; col++)
                             {
-                                var rowBuilder = new StringBuilder();
-                                var rowHasData = false;
-
-                                for (int col = 1; col <= colCount; col++)
+                                var cellValue = worksheet.Cells[row, col].Value;
+                                if (cellValue != null)
                                 {
-                                    var cellValue = worksheet.Cells[row, col].Value;
-                                    if (cellValue != null)
+                                    var cellText = cellValue.ToString();
+                                    if (!string.IsNullOrWhiteSpace(cellText))
                                     {
-                                        var cellText = cellValue.ToString();
-                                        if (!string.IsNullOrWhiteSpace(cellText))
-                                        {
-                                            rowBuilder.Append(cellText);
-                                            rowHasData = true;
-                                            if (col < colCount) rowBuilder.Append('\t');
-                                        }
-                                        else
-                                        {
-                                            rowBuilder.Append(' ');
-                                            if (col < colCount) rowBuilder.Append('\t');
-                                        }
+                                        rowBuilder.Append(cellText);
+                                        rowHasData = true;
+                                        if (col < colCount) rowBuilder.Append('\t');
                                     }
                                     else
                                     {
@@ -87,37 +76,42 @@ namespace SmartRAG.Services.Document.Parsers
                                         if (col < colCount) rowBuilder.Append('\t');
                                     }
                                 }
-
-                                if (rowHasData)
+                                else
                                 {
-                                    textBuilder.AppendLine(rowBuilder.ToString());
-                                    hasData = true;
+                                    rowBuilder.Append(' ');
+                                    if (col < colCount) rowBuilder.Append('\t');
                                 }
                             }
 
-                            if (!hasData)
+                            if (rowHasData)
                             {
-                                textBuilder.AppendLine("Worksheet contains no data");
+                                textBuilder.AppendLine(rowBuilder.ToString());
+                                hasData = true;
                             }
-
-                            textBuilder.AppendLine();
                         }
-                        else
+
+                        if (!hasData)
                         {
-                            textBuilder.AppendLine(string.Format(CultureInfo.InvariantCulture, EmptyWorksheetFormat, worksheet.Name));
+                            textBuilder.AppendLine("Worksheet contains no data");
                         }
+
+                        textBuilder.AppendLine();
                     }
-
-                    var content = textBuilder.ToString();
-                    var cleanedContent = TextCleaningHelper.CleanContent(content);
-
-                    if (string.IsNullOrWhiteSpace(cleanedContent))
+                    else
                     {
-                        return new FileParserResult { Content = "Excel file processed but no text content extracted" };
+                        textBuilder.AppendLine(string.Format(CultureInfo.InvariantCulture, EmptyWorksheetFormat, worksheet.Name));
                     }
-
-                    return new FileParserResult { Content = cleanedContent };
                 }
+
+                var content = textBuilder.ToString();
+                var cleanedContent = TextCleaningHelper.CleanContent(content);
+
+                if (string.IsNullOrWhiteSpace(cleanedContent))
+                {
+                    return new FileParserResult { Content = "Excel file processed but no text content extracted" };
+                }
+
+                return new FileParserResult { Content = cleanedContent };
             }
             catch (Exception ex)
             {

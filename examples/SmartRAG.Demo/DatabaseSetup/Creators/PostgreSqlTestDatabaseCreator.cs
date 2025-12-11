@@ -1,5 +1,6 @@
 using Npgsql;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using SmartRAG.Demo.DatabaseSetup.Helpers;
 using SmartRAG.Demo.DatabaseSetup.Interfaces;
 using SmartRAG.Enums;
@@ -12,66 +13,58 @@ namespace SmartRAG.Demo.DatabaseSetup.Creators;
 /// Domain: Logistics & Distribution
 /// </summary>
 public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
+{
+    #region Constants
+
+    private const int DefaultMaxRetries = 3;
+    private const int DatabaseCreationDelayMilliseconds = 1000;
+    private const int BaseRetryDelayMilliseconds = 2000;
+
+    #endregion
+
+    #region Fields
+
+    private readonly IConfiguration? _configuration;
+    private readonly ILogger<PostgreSqlTestDatabaseCreator>? _logger;
+    private readonly string _server;
+    private readonly int _port;
+    private readonly string _user;
+    private readonly string _databaseName;
+
+    #endregion
+
+    #region Constructor
+
+    public PostgreSqlTestDatabaseCreator(IConfiguration? configuration = null, ILogger<PostgreSqlTestDatabaseCreator>? logger = null)
     {
-        #region Fields
-
-        private readonly IConfiguration? _configuration;
-        private readonly string _server;
-        private readonly int _port;
-        private readonly string _user;
-        private readonly string _password;
-        private readonly string _databaseName;
-
-        #endregion
-
-        #region Constructor
-
-        public PostgreSqlTestDatabaseCreator(IConfiguration? configuration = null)
+        _configuration = configuration;
+        _logger = logger;
+        string? server = null;
+        int port = 5432;
+        string? user = null;
+        string? databaseName = null;
+        
+        if (_configuration != null)
         {
-            _configuration = configuration;
+            var connectionString = _configuration.GetConnectionString("LogisticsManagement") ?? 
+                                 _configuration["DatabaseConnections:3:ConnectionString"];
             
-            // Try to get connection details from configuration first
-            string? server = null;
-            int port = 5432;
-            string? user = null;
-            string? password = null;
-            string? databaseName = null;
-            
-            if (_configuration != null)
+            if (!string.IsNullOrEmpty(connectionString))
             {
-                var connectionString = _configuration.GetConnectionString("LogisticsManagement") ?? 
-                                     _configuration["DatabaseConnections:3:ConnectionString"];
-                
-                if (!string.IsNullOrEmpty(connectionString))
-                {
-                    var builder = new NpgsqlConnectionStringBuilder(connectionString);
-                    server = builder.Host;
-                    port = builder.Port;
-                    user = builder.Username;
-                    password = builder.Password;
-                    databaseName = builder.Database;
-                }
+                var builder = new NpgsqlConnectionStringBuilder(connectionString);
+                server = builder.Host;
+                port = builder.Port;
+                user = builder.Username;
+                databaseName = builder.Database;
             }
-            
-            // Fallback to defaults if not found in config
-            _server = server ?? "localhost";
-            _port = port;
-            _user = user ?? "postgres";
-            _databaseName = databaseName ?? "LogisticsManagement";
-            
-            // Fallback to environment variable for password
-            if (string.IsNullOrEmpty(password))
-            {
-                password = Environment.GetEnvironmentVariable("POSTGRES_PASSWORD");
-            }
-            
-            if (string.IsNullOrEmpty(password))
-            {
-                throw new InvalidOperationException("PostgreSQL password not found in configuration or environment variables");
-            }
-            
-            _password = password;
         }
+        
+        // Fallback to defaults if not found in config
+        _server = server ?? "localhost";
+        _port = port;
+        _user = user ?? "postgres";
+        _databaseName = databaseName ?? "LogisticsManagement";
+    }
 
         #endregion
 
@@ -81,7 +74,30 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
 
         public string GetDefaultConnectionString()
         {
-            return $"Server={_server};Port={_port};Database={_databaseName};User Id={_user};Password={_password};";
+            return $"Server={_server};Port={_port};Database={_databaseName};User Id={_user};Password={GetPassword()};";
+        }
+        
+        private string GetPassword()
+        {
+            if (_configuration != null)
+            {
+                var connectionString = _configuration.GetConnectionString("LogisticsManagement") ?? 
+                                     _configuration["DatabaseConnections:3:ConnectionString"];
+                
+                if (!string.IsNullOrEmpty(connectionString))
+                {
+                    var builder = new NpgsqlConnectionStringBuilder(connectionString);
+                    if (!string.IsNullOrEmpty(builder.Password))
+                    {
+                        return builder.Password;
+                    }
+                }
+            }
+            
+            var envPassword = Environment.GetEnvironmentVariable("POSTGRES_PASSWORD");
+            return string.IsNullOrEmpty(envPassword)
+                ? throw new InvalidOperationException("PostgreSQL password not found in configuration or environment variables")
+                : envPassword;
         }
 
         public string GetDescription()
@@ -105,160 +121,150 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
             }
         }
 
-        public void CreateSampleDatabase(string connectionString)
+    public async Task CreateSampleDatabaseAsync(string connectionString)
+    {
+        _logger?.LogInformation("Starting PostgreSQL test database creation");
+
+        try
         {
-            Console.WriteLine();
-            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
-            Console.WriteLine("Creating PostgreSQL Test Database...");
-            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
-            Console.WriteLine();
+            NpgsqlConnection.ClearAllPools();
 
-            try
-            {
-                // Clear any existing connection pools to ensure no locks are held
-                NpgsqlConnection.ClearAllPools();
+            _logger?.LogInformation("Step 1/3: Creating database");
+            await CreateDatabaseAsync();
+            _logger?.LogInformation("Database {DatabaseName} created successfully", _databaseName);
 
-                // 1. Create database
-                Console.WriteLine("1/3 Creating database...");
-                CreateDatabase();
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"   ✓ {_databaseName} database created");
-                Console.ResetColor();
+            await Task.Delay(DatabaseCreationDelayMilliseconds);
 
-                // Wait for PostgreSQL to complete database creation
-                System.Threading.Thread.Sleep(1000);
+            _logger?.LogInformation("Step 2/3: Creating tables");
+            await ExecuteWithRetryAsync(connectionString, CreateTablesAsync, DefaultMaxRetries);
+            _logger?.LogInformation("8 tables created successfully");
 
-                // 2. Create tables with retry mechanism
-                Console.WriteLine("2/3 Creating tables...");
-                ExecuteWithRetry(connectionString, CreateTables, 3);
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine("   ✓ 8 tables created");
-                Console.ResetColor();
+            _logger?.LogInformation("Step 3/3: Inserting sample data");
+            await ExecuteWithRetryAsync(connectionString, InsertSampleDataAsync, DefaultMaxRetries);
+            _logger?.LogInformation("Sample data inserted successfully");
 
-                // 3. Insert data with retry mechanism
-                Console.WriteLine("3/3 Inserting sample data...");
-                ExecuteWithRetry(connectionString, InsertSampleData, 3);
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine("   ✓ Sample data inserted");
-                Console.ResetColor();
-
-                Console.WriteLine();
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine("✅ PostgreSQL test database created successfully!");
-                Console.ResetColor();
-                
-                // Verify
-                VerifyDatabase(connectionString);
-            }
-            catch (Exception ex)
-            {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"❌ Hata: {ex.Message}");
-                Console.ResetColor();
-                throw;
-            }
+            _logger?.LogInformation("PostgreSQL test database created successfully");
+            
+            await VerifyDatabaseAsync(connectionString);
         }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to create PostgreSQL test database");
+            throw;
+        }
+    }
+
+    public void CreateSampleDatabase(string connectionString)
+    {
+        CreateSampleDatabaseAsync(connectionString).GetAwaiter().GetResult();
+    }
 
         #endregion
 
         #region Private Methods
 
-        private void ExecuteWithRetry(string connectionString, Action<NpgsqlConnection> action, int maxRetries)
-        {
-            int retryCount = 0;
-            Exception? lastException = null;
+    #endregion
 
-            while (retryCount < maxRetries)
+    #region Private Methods
+
+    /// <summary>
+    /// Executes an action with retry logic for transient connection errors
+    /// </summary>
+    /// <param name="connectionString">Database connection string</param>
+    /// <param name="action">Action to execute</param>
+    /// <param name="maxRetries">Maximum number of retry attempts</param>
+    private async Task ExecuteWithRetryAsync(string connectionString, Func<NpgsqlConnection, Task> action, int maxRetries)
+    {
+        int retryCount = 0;
+        Exception? lastException = null;
+
+        while (retryCount < maxRetries)
+        {
+            try
             {
-                try
+                using (var connection = new NpgsqlConnection(connectionString))
                 {
-                    using (var connection = new NpgsqlConnection(connectionString))
-                    {
-                        connection.Open();
-                        action(connection);
-                        return; // Success, exit
-                    }
-                }
-                catch (NpgsqlException ex) when (ex.Message.Contains("terminating connection") || 
-                                                   ex.Message.Contains("57P01"))
-                {
-                    lastException = ex;
-                    retryCount++;
-                    
-                    if (retryCount < maxRetries)
-                    {
-                        Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.WriteLine($"   ⏳ Connection interrupted, retrying ({retryCount}/{maxRetries})...");
-                        Console.ResetColor();
-                        System.Threading.Thread.Sleep(2000 * retryCount); // Exponential backoff
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // For other exceptions, don't retry
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"❌ Error: {ex.Message}");
-                    Console.ResetColor();
-                    throw;
+                    await connection.OpenAsync();
+                    await action(connection);
+                    return;
                 }
             }
-
-            // All retries failed
-            if (lastException != null)
+            catch (NpgsqlException ex) when (ex.Message.Contains("terminating connection") || 
+                                           ex.Message.Contains("57P01"))
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"❌ Failed after {maxRetries} retries: {lastException.Message}");
-                Console.ResetColor();
-                throw lastException;
+                lastException = ex;
+                retryCount++;
+                
+                if (retryCount < maxRetries)
+                {
+                    var delay = BaseRetryDelayMilliseconds * retryCount;
+                    _logger?.LogWarning(ex, "Connection interrupted, retrying ({RetryCount}/{MaxRetries}) after {Delay}ms", retryCount, maxRetries, delay);
+                    await Task.Delay(delay);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Non-retryable error occurred during database operation");
+                throw;
             }
         }
 
-        private void CreateDatabase()
+        if (lastException != null)
         {
-            var masterConnectionString = $"Server={_server};Port={_port};User Id={_user};Password={_password};Database=postgres;";
+            _logger?.LogError(lastException, "Failed after {MaxRetries} retries", maxRetries);
+            throw lastException;
+        }
+    }
 
-            using (var connection = new NpgsqlConnection(masterConnectionString))
+    /// <summary>
+    /// Creates the PostgreSQL database, dropping it first if it exists
+    /// </summary>
+    private async Task CreateDatabaseAsync()
+    {
+        var masterConnectionString = $"Server={_server};Port={_port};User Id={_user};Password={GetPassword()};Database=postgres;";
+
+        using (var connection = new NpgsqlConnection(masterConnectionString))
+        {
+            await connection.OpenAsync();
+
+            using (var cmd = connection.CreateCommand())
             {
-                connection.Open();
+                cmd.CommandText = $"SELECT 1 FROM pg_database WHERE datname = '{_databaseName}'";
+                var exists = await cmd.ExecuteScalarAsync() != null;
 
-                // Check if database exists
-                using (var cmd = connection.CreateCommand())
+                if (exists)
                 {
-                    cmd.CommandText = $"SELECT 1 FROM pg_database WHERE datname = '{_databaseName}'";
-                    var exists = cmd.ExecuteScalar() != null;
-
-                    if (exists)
+                    using (var terminateCmd = connection.CreateCommand())
                     {
-                        // Terminate existing connections
-                        using (var terminateCmd = connection.CreateCommand())
-                        {
-                            terminateCmd.CommandText = $@"
-                                SELECT pg_terminate_backend(pg_stat_activity.pid)
-                                FROM pg_stat_activity
-                                WHERE pg_stat_activity.datname = '{_databaseName}'
-                                AND pid <> pg_backend_pid();";
-                            terminateCmd.ExecuteNonQuery();
-                        }
+                        terminateCmd.CommandText = $@"
+                            SELECT pg_terminate_backend(pg_stat_activity.pid)
+                            FROM pg_stat_activity
+                            WHERE pg_stat_activity.datname = '{_databaseName}'
+                            AND pid <> pg_backend_pid();";
+                        await terminateCmd.ExecuteNonQueryAsync();
+                    }
 
-                        // Drop database
-                        using (var dropCmd = connection.CreateCommand())
-                        {
-                            dropCmd.CommandText = $"DROP DATABASE IF EXISTS \"{_databaseName}\"";
-                            dropCmd.ExecuteNonQuery();
-                        }
+                    using (var dropCmd = connection.CreateCommand())
+                    {
+                        dropCmd.CommandText = $"DROP DATABASE IF EXISTS \"{_databaseName}\"";
+                        await dropCmd.ExecuteNonQueryAsync();
                     }
                 }
+            }
 
-                // Create database
-                using (var cmd = connection.CreateCommand())
-                {
-                    cmd.CommandText = $"CREATE DATABASE \"{_databaseName}\" WITH ENCODING='UTF8'";
-                    cmd.ExecuteNonQuery();
-                }
+            using (var cmd = connection.CreateCommand())
+            {
+                cmd.CommandText = $"CREATE DATABASE \"{_databaseName}\" WITH ENCODING='UTF8'";
+                await cmd.ExecuteNonQueryAsync();
             }
         }
+    }
 
-        private void CreateTables(NpgsqlConnection connection)
+    /// <summary>
+    /// Creates all required tables in the database
+    /// </summary>
+    /// <param name="connection">Database connection</param>
+    private async Task CreateTablesAsync(NpgsqlConnection connection)
         {
             var createTablesSql = @"
 -- Facilities Table (Distribution centers, hubs)
@@ -416,14 +422,18 @@ CREATE INDEX idx_vehiclefleet_type ON VehicleFleet(VehicleType);
 CREATE INDEX idx_vehiclefleet_plate ON VehicleFleet(VehiclePlate);
 ";
 
-            using (var cmd = connection.CreateCommand())
-            {
-                cmd.CommandText = createTablesSql;
-                cmd.ExecuteNonQuery();
-            }
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = createTablesSql;
+            await cmd.ExecuteNonQueryAsync();
         }
+    }
 
-        private void InsertSampleData(NpgsqlConnection connection)
+    /// <summary>
+    /// Inserts sample data into all tables
+    /// </summary>
+    /// <param name="connection">Database connection</param>
+    private async Task InsertSampleDataAsync(NpgsqlConnection connection)
         {
             var random = new Random(42); // Fixed seed for reproducible data
             
@@ -452,12 +462,12 @@ CREATE INDEX idx_vehiclefleet_plate ON VehicleFleet(VehiclePlate);
                 facilitiesSql.Append(i < 39 ? ",\n" : ";\n");
             }
 
-            using (var cmd = connection.CreateCommand())
-            {
-                cmd.CommandText = facilitiesSql.ToString();
-                cmd.ExecuteNonQuery();
-            }
-            Console.WriteLine("   ✓ Facilities: 40 rows inserted");
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = facilitiesSql.ToString();
+            await cmd.ExecuteNonQueryAsync();
+        }
+        _logger?.LogInformation("Facilities: 40 rows inserted");
 
             // Generate 350 Shipments
             var shipmentsSql = new StringBuilder("INSERT INTO Shipments (OrderID, CustomerID, OriginWarehouseID, DestinationFacilityID, DestinationAddress, ShipmentWeight, ShipmentValue, StatusCode, CarrierID, ScheduledDate, ShippedDate, DeliveredDate, TrackingNumber, Notes) VALUES \n");
@@ -500,12 +510,12 @@ CREATE INDEX idx_vehiclefleet_plate ON VehicleFleet(VehiclePlate);
                 shipmentsSql.Append(i < 349 ? ",\n" : ";\n");
             }
 
-            using (var cmd = connection.CreateCommand())
-            {
-                cmd.CommandText = shipmentsSql.ToString();
-                cmd.ExecuteNonQuery();
-            }
-            Console.WriteLine("   ✓ Shipments: 350 rows inserted");
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = shipmentsSql.ToString();
+            await cmd.ExecuteNonQueryAsync();
+        }
+        _logger?.LogInformation("Shipments: 350 rows inserted");
 
             // Generate 700 ShipmentItems
             var shipmentItemsSql = new StringBuilder("INSERT INTO ShipmentItems (ShipmentID, ProductID, Quantity, PackageWeight, PackageDimensions, HandlingInstructions) VALUES \n");
@@ -528,12 +538,12 @@ CREATE INDEX idx_vehiclefleet_plate ON VehicleFleet(VehiclePlate);
                 shipmentItemsSql.Append(i < 699 ? ",\n" : ";\n");
             }
 
-            using (var cmd = connection.CreateCommand())
-            {
-                cmd.CommandText = shipmentItemsSql.ToString();
-                cmd.ExecuteNonQuery();
-            }
-            Console.WriteLine("   ✓ ShipmentItems: 700 rows inserted");
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = shipmentItemsSql.ToString();
+            await cmd.ExecuteNonQueryAsync();
+        }
+        _logger?.LogInformation("ShipmentItems: 700 rows inserted");
 
             // Generate 100 Drivers
             var driversSql = new StringBuilder("INSERT INTO Drivers (FirstName, LastName, LicenseNumber, Phone, Email, HireDate, VehicleType, Status, Rating) VALUES \n");
@@ -559,12 +569,12 @@ CREATE INDEX idx_vehiclefleet_plate ON VehicleFleet(VehiclePlate);
                 driversSql.Append(i < 99 ? ",\n" : ";\n");
             }
 
-            using (var cmd = connection.CreateCommand())
-            {
-                cmd.CommandText = driversSql.ToString();
-                cmd.ExecuteNonQuery();
-            }
-            Console.WriteLine("   ✓ Drivers: 100 rows inserted");
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = driversSql.ToString();
+            await cmd.ExecuteNonQueryAsync();
+        }
+        _logger?.LogInformation("Drivers: 100 rows inserted");
 
             // Generate 400 Routes
             var routesSql = new StringBuilder("INSERT INTO Routes (ShipmentID, OriginFacilityID, DestinationFacilityID, Distance, EstimatedDuration, ActualDuration, TransportMode, AssignedDriverID, RouteDate, CompletionStatus) VALUES \n");
@@ -599,12 +609,12 @@ CREATE INDEX idx_vehiclefleet_plate ON VehicleFleet(VehiclePlate);
                 routesSql.Append(i < 399 ? ",\n" : ";\n");
             }
 
-            using (var cmd = connection.CreateCommand())
-            {
-                cmd.CommandText = routesSql.ToString();
-                cmd.ExecuteNonQuery();
-            }
-            Console.WriteLine("   ✓ Routes: 400 rows inserted");
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = routesSql.ToString();
+            await cmd.ExecuteNonQueryAsync();
+        }
+        _logger?.LogInformation("Routes: 400 rows inserted");
 
             // Generate 1200 DeliveryEvents
             var eventsSql = new StringBuilder("INSERT INTO DeliveryEvents (ShipmentID, EventType, EventDate, EventTime, Location, Latitude, Longitude, Notes, RecordedBy) VALUES \n");
@@ -631,12 +641,12 @@ CREATE INDEX idx_vehiclefleet_plate ON VehicleFleet(VehiclePlate);
                 eventsSql.Append(i < 1199 ? ",\n" : ";\n");
             }
 
-            using (var cmd = connection.CreateCommand())
-            {
-                cmd.CommandText = eventsSql.ToString();
-                cmd.ExecuteNonQuery();
-            }
-            Console.WriteLine("   ✓ DeliveryEvents: 1200 rows inserted");
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = eventsSql.ToString();
+            await cmd.ExecuteNonQueryAsync();
+        }
+        _logger?.LogInformation("DeliveryEvents: 1200 rows inserted");
 
             // Generate 20 Carriers
             var carriersSql = new StringBuilder("INSERT INTO Carriers (CarrierName, ServiceType, ContactEmail, ContactPhone, TrackingURLTemplate, IsActive, Rating) VALUES \n");
@@ -660,12 +670,12 @@ CREATE INDEX idx_vehiclefleet_plate ON VehicleFleet(VehiclePlate);
                 carriersSql.Append(i < 19 ? ",\n" : ";\n");
             }
 
-            using (var cmd = connection.CreateCommand())
-            {
-                cmd.CommandText = carriersSql.ToString();
-                cmd.ExecuteNonQuery();
-            }
-            Console.WriteLine("   ✓ Carriers: 20 rows inserted");
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = carriersSql.ToString();
+            await cmd.ExecuteNonQueryAsync();
+        }
+        _logger?.LogInformation("Carriers: 20 rows inserted");
 
             // Generate 120 VehicleFleet
             var vehiclesSql = new StringBuilder("INSERT INTO VehicleFleet (VehiclePlate, VehicleType, Brand, Model, Year, Capacity, FuelType, Status, LastMaintenanceDate, NextMaintenanceDate) VALUES \n");
@@ -697,59 +707,57 @@ CREATE INDEX idx_vehiclefleet_plate ON VehicleFleet(VehiclePlate);
                 vehiclesSql.Append(i < 119 ? ",\n" : ";\n");
             }
 
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = vehiclesSql.ToString();
+            await cmd.ExecuteNonQueryAsync();
+        }
+        _logger?.LogInformation("VehicleFleet: 120 rows inserted");
+    }
+
+    /// <summary>
+    /// Verifies the database by querying table row counts
+    /// </summary>
+    /// <param name="connectionString">Database connection string</param>
+    private async Task VerifyDatabaseAsync(string connectionString)
+    {
+        using (var connection = new NpgsqlConnection(connectionString))
+        {
+            await connection.OpenAsync();
+
             using (var cmd = connection.CreateCommand())
             {
-                cmd.CommandText = vehiclesSql.ToString();
-                cmd.ExecuteNonQuery();
-            }
-            Console.WriteLine("   ✓ VehicleFleet: 120 rows inserted");
-        }
+                cmd.CommandText = @"
+                    SELECT 
+                        table_name as TableName,
+                        (SELECT COUNT(*) FROM information_schema.columns WHERE table_name = t.table_name) as TotalColumns
+                    FROM information_schema.tables t
+                    WHERE table_schema = 'public'
+                    AND table_type = 'BASE TABLE'
+                    ORDER BY table_name";
 
-        private void VerifyDatabase(string connectionString)
-        {
-            using (var connection = new NpgsqlConnection(connectionString))
-            {
-                connection.Open();
-
-                Console.WriteLine();
-                Console.WriteLine("📊 Database Summary:");
-                Console.WriteLine("───────────────────────────────────────");
-
-                using (var cmd = connection.CreateCommand())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
-                    cmd.CommandText = @"
-                        SELECT 
-                            table_name as TableName,
-                            (SELECT COUNT(*) FROM information_schema.columns WHERE table_name = t.table_name) as TotalColumns
-                        FROM information_schema.tables t
-                        WHERE table_schema = 'public'
-                        AND table_type = 'BASE TABLE'
-                        ORDER BY table_name";
-
-                    using (var reader = cmd.ExecuteReader())
+                    while (await reader.ReadAsync())
                     {
-                        while (reader.Read())
+                        var tableName = reader["TableName"].ToString();
+                        
+                        using (var countConn = new NpgsqlConnection(connectionString))
                         {
-                            var tableName = reader["TableName"].ToString();
-                            Console.Write($"   • {tableName}: ");
-                            
-                            // Get row count for each table
-                            using (var countConn = new NpgsqlConnection(connectionString))
+                            await countConn.OpenAsync();
+                            using (var countCmd = countConn.CreateCommand())
                             {
-                                countConn.Open();
-                                using (var countCmd = countConn.CreateCommand())
-                                {
-                                    countCmd.CommandText = $"SELECT COUNT(*) FROM \"{tableName}\"";
-                                    var rowCount = countCmd.ExecuteScalar();
-                                    Console.WriteLine($"{rowCount} rows");
-                                }
+                                countCmd.CommandText = $"SELECT COUNT(*) FROM \"{tableName}\"";
+                                var rowCount = await countCmd.ExecuteScalarAsync();
+                                _logger?.LogInformation("Table {TableName}: {RowCount} rows", tableName, rowCount);
                             }
                         }
                     }
                 }
             }
         }
+    }
 
-        #endregion
+    #endregion
 }
 

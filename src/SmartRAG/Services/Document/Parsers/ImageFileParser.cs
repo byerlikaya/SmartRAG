@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using SmartRAG.Interfaces.Parser;
 using SmartRAG.Interfaces.Parser.Strategies;
+using SmartRAG.Models;
 using SmartRAG.Services.Helpers;
 using System;
 using System.IO;

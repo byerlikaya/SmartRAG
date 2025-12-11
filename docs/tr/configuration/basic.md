@@ -22,7 +22,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Tek satırda basit yapılandırma
 builder.Services.UseSmartRag(builder.Configuration,
     storageProvider: StorageProvider.InMemory,  // In-memory ile başlayın
-    aiProvider: AIProvider.Gemini               // AI sağlayıcınızı seçin
+    aiProvider: AIProvider.Gemini,              // AI sağlayıcınızı seçin
+    defaultLanguage: "tr"                        // Opsiyonel: Doküman işleme için varsayılan dil
 );
 
 var app = builder.Build();
@@ -63,6 +64,9 @@ builder.Services.AddSmartRag(builder.Configuration, options =>
         AIProvider.Anthropic, 
         AIProvider.Gemini 
     };
+    
+    // Varsayılan Dil
+    options.DefaultLanguage = "tr";  // Opsiyonel: Doküman işleme için varsayılan dil
 });
 
 var app = builder.Build();
@@ -109,16 +113,10 @@ SmartRagOptions'da mevcut temel yapılandırma seçenekleri:
                 <td>Başlangıçta veritabanı şemalarını otomatik olarak analiz et</td>
             </tr>
             <tr>
-                <td><code>EnablePeriodicSchemaRefresh</code></td>
-                <td><code>bool</code></td>
-                <td><code>true</code></td>
-                <td>Veritabanı şemalarını periyodik olarak yenile</td>
-            </tr>
-            <tr>
-                <td><code>DefaultSchemaRefreshIntervalMinutes</code></td>
-                <td><code>int</code></td>
-                <td><code>60</code></td>
-                <td>Şema yenileme için varsayılan aralık (dakika)</td>
+                <td><code>DefaultLanguage</code></td>
+                <td><code>string?</code></td>
+                <td><code>null</code></td>
+                <td>Doküman işleme için varsayılan dil kodu (ISO 639-1 formatı, örn. "tr", "en", "de"). WatchedFolderConfig veya doküman yüklemede dil belirtilmediğinde kullanılır.</td>
             </tr>
         </tbody>
     </table>
@@ -213,6 +211,141 @@ builder.Services.AddSmartRag(configuration, options =>
         <li><strong>Daha küçük parçalar:</strong> Daha kesin sonuçlar, ama daha az bağlam</li>
     </ul>
 </div>
+
+## Özellik Bayrakları (Feature Toggles)
+
+Hangi arama yeteneklerinin global olarak etkinleştirileceğini kontrol edin:
+
+```csharp
+builder.Services.AddSmartRag(configuration, options =>
+{
+    options.Features.EnableDatabaseSearch = true;
+    options.Features.EnableDocumentSearch = true;
+    options.Features.EnableAudioSearch = true;
+    options.Features.EnableImageSearch = true;
+    options.Features.EnableMcpSearch = false;
+    options.Features.EnableFileWatcher = false;
+});
+```
+
+### Özellik Bayrağı Seçenekleri
+
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Seçenek</th>
+                <th>Tip</th>
+                <th>Varsayılan</th>
+                <th>Açıklama</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>Features.EnableDatabaseSearch</code></td>
+                <td><code>bool</code></td>
+                <td><code>true</code></td>
+                <td>Çoklu veritabanı sorgu yeteneklerini etkinleştir (SQL Server, MySQL, PostgreSQL, SQLite)</td>
+            </tr>
+            <tr>
+                <td><code>Features.EnableDocumentSearch</code></td>
+                <td><code>bool</code></td>
+                <td><code>true</code></td>
+                <td>Doküman metin aramasını etkinleştir (PDF, Word, Excel, vb.)</td>
+            </tr>
+            <tr>
+                <td><code>Features.EnableAudioSearch</code></td>
+                <td><code>bool</code></td>
+                <td><code>true</code></td>
+                <td>Ses dosyası transkripsiyonu ve aramasını etkinleştir (MP3, WAV, vb.)</td>
+            </tr>
+            <tr>
+                <td><code>Features.EnableImageSearch</code></td>
+                <td><code>bool</code></td>
+                <td><code>true</code></td>
+                <td>Görüntü OCR ve aramasını etkinleştir (PNG, JPG, vb.)</td>
+            </tr>
+            <tr>
+                <td><code>Features.EnableMcpSearch</code></td>
+                <td><code>bool</code></td>
+                <td><code>false</code></td>
+                <td>Harici araçlar için MCP (Model Context Protocol) sunucu entegrasyonunu etkinleştir</td>
+            </tr>
+            <tr>
+                <td><code>Features.EnableFileWatcher</code></td>
+                <td><code>bool</code></td>
+                <td><code>false</code></td>
+                <td>İzlenen klasörlerden otomatik doküman indekslemeyi etkinleştir</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> Özellik Bayrağı İpuçları</h4>
+    <ul class="mb-0">
+        <li><strong>İstek Bazlı Kontrol:</strong> İstek bazlı özellik kontrolü için <code>SearchOptions</code> kullanın</li>
+        <li><strong>Global Kontrol:</strong> Global özellik etkinleştirme için <code>Features</code> kullanın</li>
+        <li><strong>Performans:</strong> Kullanılmayan özellikleri devre dışı bırakarak performansı artırın</li>
+        <li><strong>Kaynak Yönetimi:</strong> Gerekmiyorsa ses/görüntü aramasını devre dışı bırakarak işleme kaynaklarını tasarruf edin</li>
+    </ul>
+</div>
+
+## DocumentType Özelliği
+
+<code>DocumentChunk</code> içindeki <code>DocumentType</code> özelliği, parçaları içerik tipine göre filtrelemeye olanak tanır:
+
+- **"Document"**: Normal metin dokümanları (PDF, Word, Excel, TXT)
+- **"Audio"**: Ses dosyası transkripsiyonları (MP3, WAV, M4A)
+- **"Image"**: Görüntü OCR sonuçları (PNG, JPG, vb.)
+
+### Otomatik Algılama
+
+DocumentType, dosya uzantısı ve içerik tipine göre otomatik olarak belirlenir:
+
+```csharp
+// Yüklenen dosyalar otomatik olarak kategorize edilir
+var document = await _documentService.UploadDocumentAsync(
+    fileStream, 
+    "invoice.pdf",      // → DocumentType: "Document"
+    "application/pdf",
+    "user-123"
+);
+
+var audio = await _documentService.UploadDocumentAsync(
+    audioStream,
+    "meeting.mp3",      // → DocumentType: "Audio"
+    "audio/mpeg",
+    "user-123"
+);
+
+var image = await _documentService.UploadDocumentAsync(
+    imageStream,
+    "receipt.jpg",      // → DocumentType: "Image"
+    "image/jpeg",
+    "user-123"
+);
+```
+
+### DocumentType'a Göre Filtreleme
+
+<code>SearchOptions</code> kullanarak doküman tipine göre filtreleyin:
+
+```csharp
+// Sadece metin dokümanlarında ara
+var options = new SearchOptions
+{
+    EnableDocumentSearch = true,
+    EnableAudioSearch = false,  // Ses parçalarını hariç tut
+    EnableImageSearch = false  // Görüntü parçalarını hariç tut
+};
+
+var response = await _searchService.QueryIntelligenceAsync(
+    "Fatura detaylarını bul",
+    maxResults: 10,
+    options: options
+);
+```
 
 ## Yeniden Deneme & Dayanıklılık Seçenekleri
 

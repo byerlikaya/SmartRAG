@@ -121,17 +121,13 @@ namespace SmartRAG.Services.AI
 
         private int CalculateRetryDelay(int attempt, int baseDelayMs)
         {
-            switch (_options.RetryPolicy)
+            return _options.RetryPolicy switch
             {
-                case RetryPolicy.FixedDelay:
-                    return baseDelayMs;
-                case RetryPolicy.LinearBackoff:
-                    return baseDelayMs * attempt;
-                case RetryPolicy.ExponentialBackoff:
-                    return baseDelayMs * (int)Math.Pow(2, attempt - 1);
-                default:
-                    return baseDelayMs;
-            }
+                RetryPolicy.FixedDelay => baseDelayMs,
+                RetryPolicy.LinearBackoff => baseDelayMs * attempt,
+                RetryPolicy.ExponentialBackoff => baseDelayMs * (int)Math.Pow(2, attempt - 1),
+                _ => baseDelayMs,
+            };
         }
 
         private async Task<string> TryFallbackProvidersAsync(string query, IEnumerable<string> context)
@@ -141,7 +137,7 @@ namespace SmartRAG.Services.AI
                 try
                 {
                     var response = await _requestExecutor.GenerateResponseAsync(fallbackProvider, query, context);
-                    
+
                     if (!string.IsNullOrEmpty(response))
                     {
                         ServiceLogMessages.LogAIServiceFallbackSuccess(_logger, fallbackProvider.ToString(), null);

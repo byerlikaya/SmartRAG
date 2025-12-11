@@ -1,4 +1,4 @@
-using SmartRAG.Services.Document.Parsers;
+using SmartRAG.Models;
 using System.IO;
 using System.Threading.Tasks;
 

@@ -139,11 +139,6 @@
                             {% if page.lang == 'tr' %}Yapılandırma{% else %}Configuration{% endif %}
                         </a>
                         <ul class="dropdown-menu" aria-labelledby="configurationDropdown">
-                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/configuration">
-                                <i class="fas fa-list me-2"></i>
-                                {% if page.lang == 'tr' %}Tüm Kategoriler{% else %}All Categories{% endif %}
-                            </a></li>
-                            <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/configuration/basic">
                                 <i class="fas fa-cog me-2"></i>
                                 {% if page.lang == 'tr' %}Temel Yapılandırma{% else %}Basic Configuration{% endif %}
@@ -168,44 +163,21 @@
                                 <i class="fas fa-cogs me-2"></i>
                                 {% if page.lang == 'tr' %}Gelişmiş Yapılandırma{% else %}Advanced Configuration{% endif %}
                             </a></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/configuration/mcp-client">
+                                <i class="fas fa-plug me-2"></i>
+                                {% if page.lang == 'tr' %}MCP Client{% else %}MCP Client{% endif %}
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/configuration/file-watcher">
+                                <i class="fas fa-folder-open me-2"></i>
+                                {% if page.lang == 'tr' %}Dosya İzleyici{% else %}File Watcher{% endif %}
+                            </a></li>
                         </ul>
                     </li>
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle{% if page.url contains '/api-reference' %} active{% endif %}" href="#" id="apiReferenceDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <li class="nav-item">
+                        <a class="nav-link{% if page.url contains '/api-reference' %} active{% endif %}" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/api-reference">
                             <i class="fas fa-code me-1"></i>
                             {% if page.lang == 'tr' %}API Referans{% else %}API Reference{% endif %}
                         </a>
-                        <ul class="dropdown-menu" aria-labelledby="apiReferenceDropdown">
-                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/api-reference">
-                                <i class="fas fa-list me-2"></i>
-                                {% if page.lang == 'tr' %}Tüm Kategoriler{% else %}All Categories{% endif %}
-                            </a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/api-reference/core">
-                                <i class="fas fa-cube me-2"></i>
-                                {% if page.lang == 'tr' %}Temel Arayüzler{% else %}Core Interfaces{% endif %}
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/api-reference/advanced">
-                                <i class="fas fa-rocket me-2"></i>
-                                {% if page.lang == 'tr' %}Gelişmiş Arayüzler{% else %}Advanced Interfaces{% endif %}
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/api-reference/strategies">
-                                <i class="fas fa-puzzle-piece me-2"></i>
-                                {% if page.lang == 'tr' %}Strateji Arayüzleri{% else %}Strategy Interfaces{% endif %}
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/api-reference/services">
-                                <i class="fas fa-cogs me-2"></i>
-                                {% if page.lang == 'tr' %}Servis Arayüzleri{% else %}Service Interfaces{% endif %}
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/api-reference/models">
-                                <i class="fas fa-database me-2"></i>
-                                {% if page.lang == 'tr' %}Veri Modelleri{% else %}Data Models{% endif %}
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/api-reference/enums">
-                                <i class="fas fa-list me-2"></i>
-                                {% if page.lang == 'tr' %}Numaralandırmalar{% else %}Enumerations{% endif %}
-                            </a></li>
-                        </ul>
                     </li>
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle{% if page.url contains '/examples' %} active{% endif %}" href="#" id="examplesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
@@ -213,11 +185,6 @@
                             {% if page.lang == 'tr' %}Örnekler{% else %}Examples{% endif %}
                         </a>
                         <ul class="dropdown-menu" aria-labelledby="examplesDropdown">
-                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/examples">
-                                <i class="fas fa-list me-2"></i>
-                                {% if page.lang == 'tr' %}Tüm Kategoriler{% else %}All Categories{% endif %}
-                            </a></li>
-                            <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/examples/quick">
                                 <i class="fas fa-rocket me-2"></i>
                                 {% if page.lang == 'tr' %}Hızlı Örnekler{% else %}Quick Examples{% endif %}
@@ -229,10 +196,6 @@
                             <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/examples/advanced">
                                 <i class="fas fa-cogs me-2"></i>
                                 {% if page.lang == 'tr' %}Gelişmiş Örnekler{% else %}Advanced Examples{% endif %}
-                            </a></li>
-                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/examples/best-practices">
-                                <i class="fas fa-star me-2"></i>
-                                {% if page.lang == 'tr' %}En İyi Pratikler{% else %}Best Practices{% endif %}
                             </a></li>
                             <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/examples/advanced-features">
                                 <i class="fas fa-magic me-2"></i>
@@ -246,11 +209,6 @@
                             {% if page.lang == 'tr' %}Değişiklikler{% else %}Changelog{% endif %}
                         </a>
                         <ul class="dropdown-menu" aria-labelledby="changelogDropdown">
-                            <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/changelog">
-                                <i class="fas fa-list me-2"></i>
-                                {% if page.lang == 'tr' %}Tüm Kategoriler{% else %}All Categories{% endif %}
-                            </a></li>
-                            <li><hr class="dropdown-divider"></li>
                             <li><a class="dropdown-item" href="{{ site.baseurl }}/{% if page.lang %}{{ page.lang }}{% else %}en{% endif %}/changelog/version-history">
                                 <i class="fas fa-history me-2"></i>
                                 {% if page.lang == 'tr' %}Versiyon Geçmişi{% else %}Version History{% endif %}

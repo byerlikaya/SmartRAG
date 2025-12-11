@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using SmartRAG.Demo.DatabaseSetup.Helpers;
 using SmartRAG.Demo.DatabaseSetup.Interfaces;
 using SmartRAG.Enums;
@@ -13,15 +14,27 @@ namespace SmartRAG.Demo.DatabaseSetup.Creators;
 /// Follows SOLID principles - Single Responsibility Principle
 /// </summary>
 public class SqliteTestDatabaseCreator : ITestDatabaseCreator
+{
+    #region Fields
+
+    private readonly IConfiguration? _configuration;
+    private readonly ILogger<SqliteTestDatabaseCreator>? _logger;
+
+    #endregion
+
+    #region Constructor
+
+    public SqliteTestDatabaseCreator(IConfiguration? configuration = null, ILogger<SqliteTestDatabaseCreator>? logger = null)
     {
-        private readonly IConfiguration? _configuration;
+        _configuration = configuration;
+        _logger = logger;
+    }
 
-        public SqliteTestDatabaseCreator(IConfiguration? configuration = null)
-        {
-            _configuration = configuration;
-        }
+    #endregion
 
-        public DatabaseType GetDatabaseType() => DatabaseType.SQLite;
+    #region Public Methods
+
+    public DatabaseType GetDatabaseType() => DatabaseType.SQLite;
 
         public string GetDescription() => "SQLite - Product Catalog & Customer Master Data";
 
@@ -101,52 +114,64 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
             }
         }
 
-        public void CreateSampleDatabase(string connectionString)
+    public async Task CreateSampleDatabaseAsync(string connectionString)
+    {
+        _logger?.LogInformation("Starting SQLite test database creation");
+
+        try
         {
-            Console.WriteLine("🗄️ Creating SQLite Test Database...");
-            Console.WriteLine("==========================================");
-
-            try
+            var dbPath = ExtractFilePath(connectionString);
+            
+            if (File.Exists(dbPath))
             {
-                // Extract file path from connection string
-                var dbPath = ExtractFilePath(connectionString);
-                
-                // Delete existing database if it exists
-                if (File.Exists(dbPath))
-                {
-                    File.Delete(dbPath);
-                    Console.WriteLine($"[INFO] Existing database deleted: {dbPath}");
-                }
-
-                using var connection = new SqliteConnection(connectionString);
-                connection.Open();
-
-                // Create tables
-                CreateTables(connection);
-
-                // Insert sample data
-                InsertSampleData(connection);
-
-                Console.WriteLine($"[✅ SUCCESS] SQLite database created: {dbPath}");
-                Console.WriteLine($"[INFO] File size: {new FileInfo(dbPath).Length / 1024.0:F2} KB");
+                File.Delete(dbPath);
+                _logger?.LogInformation("Existing database deleted");
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"[❌ ERROR] SQLite database creation failed: {ex.Message}");
-                throw;
-            }
+
+            using var connection = new SqliteConnection(connectionString);
+            await connection.OpenAsync();
+
+            await CreateTablesAsync(connection);
+            await InsertSampleDataAsync(connection);
+
+            var fileSize = new FileInfo(dbPath).Length / 1024.0;
+            _logger?.LogInformation("SQLite database created successfully, Size: {FileSize:F2} KB", fileSize);
         }
-
-        private string ExtractFilePath(string connectionString)
+        catch (Exception ex)
         {
-            if (connectionString.Contains("Data Source="))
-            {
-                return connectionString.Split("Data Source=")[1].Split(';')[0];
-            }
-            throw new ArgumentException("Invalid SQLite connection string");
+            _logger?.LogError(ex, "SQLite database creation failed");
+            throw;
         }
+    }
 
-        private void CreateTables(SqliteConnection connection)
+    public void CreateSampleDatabase(string connectionString)
+    {
+        CreateSampleDatabaseAsync(connectionString).GetAwaiter().GetResult();
+    }
+
+    #endregion
+
+    #region Private Methods
+
+    /// <summary>
+    /// Extracts the file path from SQLite connection string
+    /// </summary>
+    /// <param name="connectionString">SQLite connection string</param>
+    /// <returns>Database file path</returns>
+    private string ExtractFilePath(string connectionString)
+    {
+        if (connectionString.Contains("Data Source="))
+        {
+            return connectionString.Split("Data Source=")[1].Split(';')[0];
+        }
+        throw new ArgumentException("Invalid SQLite connection string");
+    }
+
+    /// <summary>
+    /// Creates all required tables in the database
+    /// </summary>
+    /// <param name="connection">Database connection</param>
+    private async Task CreateTablesAsync(SqliteConnection connection)
         {
             var createTablesSql = @"
                 -- Customers table (Master customer data)
@@ -227,13 +252,17 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
                 );
             ";
 
-            using var command = new SqliteCommand(createTablesSql, connection);
-            command.ExecuteNonQuery();
+        using var command = new SqliteCommand(createTablesSql, connection);
+        await command.ExecuteNonQueryAsync();
 
-            Console.WriteLine("[✅ OK] SQLite tables created: Customers, Categories, Suppliers, Products, ProductPriceHistory, EmployeesReference");
-        }
+        _logger?.LogInformation("SQLite tables created: Customers, Categories, Suppliers, Products, ProductPriceHistory, EmployeesReference");
+    }
 
-        private void InsertSampleData(SqliteConnection connection)
+    /// <summary>
+    /// Inserts sample data into all tables
+    /// </summary>
+    /// <param name="connection">Database connection</param>
+    private async Task InsertSampleDataAsync(SqliteConnection connection)
         {
             var random = new Random(42); // Fixed seed for reproducible data
             
@@ -256,7 +285,7 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
                 ('Garden Tools', 4, 'Gardening equipment and tools', 1),
                 ('Fitness Equipment', 5, 'Exercise and fitness gear', 1);
             ";
-            ExecuteSql(connection, categoriesSql, "Categories");
+        await ExecuteSqlAsync(connection, categoriesSql, "Categories");
 
             // Insert Suppliers (30 rows)
             var suppliersSql = new StringBuilder("INSERT INTO Suppliers (SupplierName, ContactPerson, Email, Phone, Country, Rating) VALUES \n");
@@ -276,7 +305,7 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
                 suppliersSql.Append($"('{companyName}', '{contactPerson}', '{email}', '{phone}', '{country}', {rating.ToString(System.Globalization.CultureInfo.InvariantCulture)})");
                 suppliersSql.Append(i < 29 ? ",\n" : ";\n");
             }
-            ExecuteSql(connection, suppliersSql.ToString(), "Suppliers");
+        await ExecuteSqlAsync(connection, suppliersSql.ToString(), "Suppliers");
 
             // Generate 150 Customers
             var customersSql = new StringBuilder("INSERT INTO Customers (FirstName, LastName, Email, Phone, Address, City, Country, CustomerSegment) VALUES \n");
@@ -296,7 +325,7 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
                 customersSql.Append($"('{firstName}', '{lastName}', '{email}', '{phone}', '{address}', '{city}', '{country}', '{segment}')");
                 customersSql.Append(i < 149 ? ",\n" : ";\n");
             }
-            ExecuteSql(connection, customersSql.ToString(), "Customers");
+        await ExecuteSqlAsync(connection, customersSql.ToString(), "Customers");
 
             // Generate 250 Products
             var productNames = new[] 
@@ -327,7 +356,7 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
                 productsSql.Append($"('{productName}', {categoryId}, {supplierId}, {price.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {stock}, '{sku}', 1)");
                 productsSql.Append(i < 249 ? ",\n" : ";\n");
             }
-            ExecuteSql(connection, productsSql.ToString(), "Products");
+        await ExecuteSqlAsync(connection, productsSql.ToString(), "Products");
 
             // Generate 500 ProductPriceHistory records
             var priceHistorySql = new StringBuilder("INSERT INTO ProductPriceHistory (ProductID, EffectiveDate, OldPrice, NewPrice, ChangeReason, ChangedBy) VALUES \n");
@@ -349,7 +378,7 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
                 priceHistorySql.Append($"({productId}, '{effectiveDate}', {oldPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {newPrice.ToString(System.Globalization.CultureInfo.InvariantCulture)}, '{reason}', '{changedBy}')");
                 priceHistorySql.Append(i < 499 ? ",\n" : ";\n");
             }
-            ExecuteSql(connection, priceHistorySql.ToString(), "ProductPriceHistory");
+        await ExecuteSqlAsync(connection, priceHistorySql.ToString(), "ProductPriceHistory");
 
             // Generate 100 Employees
             var departments = new[] { "IT", "Sales", "Marketing", "Finance", "HR", "Operations", "Support", "R&D" };
@@ -376,16 +405,24 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
                 employeesSql.Append($"('{firstName}', '{lastName}', '{email}', '{department}', '{position}', {salary.ToString(System.Globalization.CultureInfo.InvariantCulture)}, '{hireDate}', 1)");
                 employeesSql.Append(i < 99 ? ",\n" : ";\n");
             }
-            ExecuteSql(connection, employeesSql.ToString(), "EmployeesReference");
+        await ExecuteSqlAsync(connection, employeesSql.ToString(), "EmployeesReference");
 
-            Console.WriteLine($"[✅ OK] SQLite sample data inserted - Total: 15 categories, 30 suppliers, 150 customers, 250 products, 500 price history records, 100 employees");
-        }
+        _logger?.LogInformation("SQLite sample data inserted - Total: 15 categories, 30 suppliers, 150 customers, 250 products, 500 price history records, 100 employees");
+    }
 
-        private void ExecuteSql(SqliteConnection connection, string sql, string tableName)
-        {
-            using var command = new SqliteCommand(sql, connection);
-            var rowsAffected = command.ExecuteNonQuery();
-            Console.WriteLine($"[✅ OK] {tableName}: {rowsAffected} rows inserted");
-        }
+    /// <summary>
+    /// Executes SQL command and logs the result
+    /// </summary>
+    /// <param name="connection">Database connection</param>
+    /// <param name="sql">SQL command to execute</param>
+    /// <param name="tableName">Table name for logging</param>
+    private async Task ExecuteSqlAsync(SqliteConnection connection, string sql, string tableName)
+    {
+        using var command = new SqliteCommand(sql, connection);
+        var rowsAffected = await command.ExecuteNonQueryAsync();
+        _logger?.LogInformation("{TableName}: {RowsAffected} rows inserted", tableName, rowsAffected);
+    }
+
+    #endregion
 }
 

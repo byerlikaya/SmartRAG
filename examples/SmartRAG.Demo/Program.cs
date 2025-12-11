@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using SmartRAG.Demo.Handlers.DatabaseHandlers;
@@ -11,9 +11,6 @@ using SmartRAG.Demo.Services.Menu;
 using SmartRAG.Demo.Services.TestQuery;
 using SmartRAG.Demo.Services.Translation;
 using SmartRAG.Enums;
-using SmartRAG.Extensions;
-using SmartRAG.Interfaces;
-using SmartRAG.Interfaces.Support;
 
 namespace SmartRAG.Demo;
 
@@ -26,7 +23,7 @@ internal class Program
 
     private static IServiceProvider? _serviceProvider;
     private static ILogger<Program>? _logger;
-    private static string _selectedLanguage = "en"; // ISO 639-1 code
+    private static string _selectedLanguage = "tr"; // ISO 639-1 code
     private static bool _useLocalEnvironment = true;
     private static AIProvider _selectedAIProvider = AIProvider.Custom;
     private static StorageProvider _selectedStorageProvider = StorageProvider.Qdrant;
@@ -53,7 +50,7 @@ internal class Program
                 ConsoleHelper.ResetCursor();
                 
                 // Clear console after animation but AFTER buffer is restored
-                System.Console.Clear();
+                Console.Clear();
             }
 
             var configuration = LoadConfiguration();
@@ -63,14 +60,14 @@ internal class Program
 
             await initService.SetupTestDatabasesAsync();
 
-            var (useLocal, aiProvider, storageProvider, audioProvider) = await initService.SelectEnvironmentAsync();
+            var (useLocal, aiProvider, storageProvider, conversationStorageProvider) = await initService.SelectEnvironmentAsync();
             _useLocalEnvironment = useLocal;
             _selectedAIProvider = aiProvider;
             _selectedStorageProvider = storageProvider;
 
             _selectedLanguage = await initService.SelectLanguageAsync();
 
-            await initService.InitializeServicesAsync(aiProvider, storageProvider, audioProvider);
+            await initService.InitializeServicesAsync(aiProvider, storageProvider, conversationStorageProvider, _selectedLanguage);
             _serviceProvider = initService.GetServiceProvider();
 
             if (_serviceProvider == null)
@@ -327,6 +324,24 @@ internal class Program
                         _selectedLanguage,
                         _useLocalEnvironment,
                         _selectedAIProvider.ToString());
+                    break;
+
+                case "17":
+                    if (queryHandler == null)
+                    {
+                        console.WriteError("Query handler is not available.");
+                        break;
+                    }
+                    await queryHandler.RunMcpQueryAsync(_selectedLanguage);
+                    break;
+
+                case "18":
+                    if (queryHandler == null)
+                    {
+                        console.WriteError("Query handler is not available.");
+                        break;
+                    }
+                    await queryHandler.ClearConversationHistoryAsync();
                     break;
 
                 case "0":

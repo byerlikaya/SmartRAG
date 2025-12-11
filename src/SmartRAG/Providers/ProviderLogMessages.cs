@@ -8,8 +8,6 @@ namespace SmartRAG.Providers
     /// </summary>
     public static class ProviderLogMessages
     {
-        #region Anthropic Provider (EventId: 6001-6999)
-
         public static readonly Action<ILogger, Exception> LogVoyageParsingError = LoggerMessage.Define(
             LogLevel.Warning,
             new EventId(6001, "VoyageParsingError"),
@@ -35,9 +33,10 @@ namespace SmartRAG.Providers
             new EventId(6005, "AnthropicBatchEmbeddingRequestError"),
             "Voyage batch embedding request failed: {Error}");
 
-        #endregion
-
-        #region Azure OpenAI Provider (EventId: 7001-7999)
+        public static readonly Action<ILogger, Exception> LogAnthropicEmbeddingModelMissing = LoggerMessage.Define(
+            LogLevel.Error,
+            new EventId(6006, "AnthropicEmbeddingModelMissing"),
+            "Anthropic embedding model is required but not provided");
 
         public static readonly Action<ILogger, int, Exception> LogAzureOpenAIRateLimit = LoggerMessage.Define<int>(
             LogLevel.Warning,
@@ -79,10 +78,6 @@ namespace SmartRAG.Providers
             new EventId(7008, "AzureOpenAIBatchEmbeddingParsingError"),
             "Azure OpenAI batch embedding response parsing failed");
 
-        #endregion
-
-        #region OpenAI Provider (EventId: 8001-8999)
-
         public static readonly Action<ILogger, Exception> LogOpenAITextParsingError = LoggerMessage.Define(
             LogLevel.Error,
             new EventId(8001, "OpenAITextParsingError"),
@@ -117,10 +112,6 @@ namespace SmartRAG.Providers
             LogLevel.Error,
             new EventId(8007, "OpenAIBatchEmbeddingParsingError"),
             "OpenAI batch embedding response parsing failed");
-
-        #endregion
-
-        #region Gemini Provider (EventId: 9001-9999)
 
         public static readonly Action<ILogger, Exception> LogGeminiTextParsingError = LoggerMessage.Define(
             LogLevel.Error,
@@ -162,10 +153,6 @@ namespace SmartRAG.Providers
             new EventId(9008, "GeminiBatchFailedFallback"),
             "Gemini batch {BatchIndex} failed, falling back to individual requests: {ErrorMessage}");
 
-        #endregion
-
-        #region Custom Provider (EventId: 10001-10999)
-
         public static readonly Action<ILogger, Exception> LogCustomTextParsingError = LoggerMessage.Define(
             LogLevel.Error,
             new EventId(10001, "CustomTextParsingError"),
@@ -190,7 +177,5 @@ namespace SmartRAG.Providers
             LogLevel.Error,
             new EventId(10005, "CustomEmbeddingParsingError"),
             "Custom provider embedding response parsing failed");
-
-        #endregion
     }
 }

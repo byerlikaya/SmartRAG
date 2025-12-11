@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using System.Data.Common;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -14,24 +15,32 @@ namespace SmartRAG.Demo.Services;
 /// Service for checking health status of all SmartRAG Demo components
 /// </summary>
 public class HealthCheckService
+{
+    #region Constants
+
+    private const int DefaultHttpTimeoutSeconds = 5;
+
+    #endregion
+
+    #region Fields
+
+    private readonly HttpClient _httpClient;
+    private readonly ILogger<HealthCheckService>? _logger;
+
+    #endregion
+
+    #region Constructor
+
+    public HealthCheckService(ILogger<HealthCheckService>? logger = null)
     {
-        #region Fields
-
-        private readonly HttpClient _httpClient;
-
-        #endregion
-
-        #region Constructor
-
-        public HealthCheckService()
+        _logger = logger;
+        _httpClient = new HttpClient
         {
-            _httpClient = new HttpClient
-            {
-                Timeout = TimeSpan.FromSeconds(5)
-            };
-        }
+            Timeout = TimeSpan.FromSeconds(DefaultHttpTimeoutSeconds)
+        };
+    }
 
-        #endregion
+    #endregion
 
         #region Public Methods
 
@@ -72,6 +81,7 @@ public class HealthCheckService
             }
             catch (Exception ex)
             {
+                _logger?.LogWarning(ex, "Ollama service health check failed at {Endpoint}", endpoint);
                 return new HealthStatus
                 {
                     ServiceName = "Ollama",
@@ -116,6 +126,7 @@ public class HealthCheckService
             }
             catch (Exception ex)
             {
+                _logger?.LogWarning(ex, "Qdrant service health check failed at {Host}", host);
                 return new HealthStatus
                 {
                     ServiceName = "Qdrant",
@@ -142,12 +153,12 @@ public class HealthCheckService
                 {
                     ServiceName = "Redis",
                     IsHealthy = true,
-                    Message = "Cache service is healthy",
-                    Details = $"Connection: {connectionString}"
+                    Message = "Cache service is healthy"
                 };
             }
             catch (Exception ex)
             {
+                _logger?.LogWarning(ex, "Redis service health check failed");
                 return new HealthStatus
                 {
                     ServiceName = "Redis",
@@ -251,6 +262,7 @@ public class HealthCheckService
             }
             catch (Exception ex)
             {
+                _logger?.LogWarning(ex, "Database health check failed for {ServiceName}", serviceName);
                 return new HealthStatus
                 {
                     ServiceName = serviceName,
@@ -261,6 +273,6 @@ public class HealthCheckService
             }
         }
 
-        #endregion
+    #endregion
 }
 

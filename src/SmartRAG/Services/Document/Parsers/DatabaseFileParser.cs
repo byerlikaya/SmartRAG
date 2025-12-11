@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using SmartRAG.Interfaces.Database;
 using SmartRAG.Interfaces.Parser.Strategies;
+using SmartRAG.Models;
 using System;
 using System.IO;
 using System.Linq;

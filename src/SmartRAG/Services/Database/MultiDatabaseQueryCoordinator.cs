@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using SmartRAG.Interfaces.AI;
 using SmartRAG.Interfaces.Database;
 using SmartRAG.Models;
 using System;
@@ -13,20 +12,13 @@ namespace SmartRAG.Services.Database
     /// Coordinates intelligent multi-database queries using AI
     /// </summary>
     public class MultiDatabaseQueryCoordinator : IMultiDatabaseQueryCoordinator
-    {     
-
-        #region Fields
-
+    {
         private readonly IDatabaseSchemaAnalyzer _schemaAnalyzer;
         private readonly ILogger<MultiDatabaseQueryCoordinator> _logger;
         private readonly IQueryIntentAnalyzer _queryIntentAnalyzer;
         private readonly ISQLQueryGenerator _sqlQueryGenerator;
         private readonly IDatabaseQueryExecutor _databaseQueryExecutor;
         private readonly IResultMerger _resultMerger;
-
-        #endregion
-
-        #region Constructor
 
         public MultiDatabaseQueryCoordinator(
             IDatabaseSchemaAnalyzer schemaAnalyzer,
@@ -37,9 +29,9 @@ namespace SmartRAG.Services.Database
             IResultMerger resultMerger)
         {
             _schemaAnalyzer = schemaAnalyzer;
-         
+
             _logger = logger;
-            _queryIntentAnalyzer = queryIntentAnalyzer ?? throw new ArgumentNullException(nameof(queryIntentAnalyzer), 
+            _queryIntentAnalyzer = queryIntentAnalyzer ?? throw new ArgumentNullException(nameof(queryIntentAnalyzer),
                 "QueryIntentAnalyzer must be provided. Register IQueryIntentAnalyzer in DI container.");
             _sqlQueryGenerator = sqlQueryGenerator ?? throw new ArgumentNullException(nameof(sqlQueryGenerator),
                 "SQLQueryGenerator must be provided. Register ISQLQueryGenerator in DI container.");
@@ -48,10 +40,6 @@ namespace SmartRAG.Services.Database
             _resultMerger = resultMerger ?? throw new ArgumentNullException(nameof(resultMerger),
                 "ResultMerger must be provided. Register IResultMerger in DI container.");
         }
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         /// Legacy: Analyze natural-language query and produce database-intent
@@ -62,16 +50,6 @@ namespace SmartRAG.Services.Database
         public async Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery)
         {
             return await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(userQuery);
-        }
-
-        /// <summary>
-        /// Executes queries across multiple databases based on query intent
-        /// </summary>
-        /// <param name="queryIntent">Analyzed query intent</param>
-        /// <returns>Combined results from all databases</returns>
-        public async Task<MultiDatabaseQueryResult> ExecuteMultiDatabaseQueryAsync(QueryIntent queryIntent)
-        {
-            return await _databaseQueryExecutor.ExecuteMultiDatabaseQueryAsync(queryIntent);
         }
 
         /// <summary>
@@ -95,14 +73,15 @@ namespace SmartRAG.Services.Database
         /// <param name="userQuery">Natural language user query</param>
         /// <param name="preAnalyzedIntent">Pre-analyzed query intent to avoid redundant AI calls</param>
         /// <param name="maxResults">Maximum number of results</param>
+        /// <param name="preferredLanguage">Preferred language for the response (ISO code, e.g., "tr", "en")</param>
         /// <returns>RAG response with data from multiple databases</returns>
         /// <exception cref="ArgumentException">Thrown when <paramref name="userQuery"/> is null or empty.</exception>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="preAnalyzedIntent"/> is null.</exception>
-        public async Task<RagResponse> QueryMultipleDatabasesAsync(string userQuery, QueryIntent preAnalyzedIntent, int maxResults = 5)
+        public async Task<RagResponse> QueryMultipleDatabasesAsync(string userQuery, QueryIntent preAnalyzedIntent, int maxResults = 5, string preferredLanguage = null)
         {
             if (string.IsNullOrWhiteSpace(userQuery))
                 throw new ArgumentException("User query cannot be null or empty", nameof(userQuery));
-            
+
             if (preAnalyzedIntent == null)
                 throw new ArgumentNullException(nameof(preAnalyzedIntent));
 
@@ -115,12 +94,12 @@ namespace SmartRAG.Services.Database
                 {
                     return CreateNoDatabaseMatchResponse();
                 }
-                
+
                 queryIntent = await ValidateAndCorrectQueryIntentAsync(queryIntent);
 
                 queryIntent = await GenerateDatabaseQueriesAsync(queryIntent);
 
-                var queryResults = await ExecuteMultiDatabaseQueryAsync(queryIntent);
+                var queryResults = await _databaseQueryExecutor.ExecuteMultiDatabaseQueryAsync(queryIntent);
 
                 if (!queryResults.Success)
                 {
@@ -129,7 +108,7 @@ namespace SmartRAG.Services.Database
 
                 var mergedData = await _resultMerger.MergeResultsAsync(queryResults, userQuery);
 
-                var finalAnswer = await _resultMerger.GenerateFinalAnswerAsync(userQuery, mergedData, queryResults);
+                var finalAnswer = await _resultMerger.GenerateFinalAnswerAsync(userQuery, mergedData, queryResults, preferredLanguage);
 
                 return finalAnswer;
             }
@@ -149,10 +128,6 @@ namespace SmartRAG.Services.Database
         {
             return await _sqlQueryGenerator.GenerateDatabaseQueriesAsync(queryIntent);
         }
-
-        #endregion   
-
-        #region Private Helper Methods (Legacy - Kept for Reference Only)      
 
         /// <summary>
         /// Creates a RagResponse with no database matches
@@ -227,19 +202,19 @@ namespace SmartRAG.Services.Database
             var validQueries = new List<DatabaseQueryIntent>();
             var missingTables = new Dictionary<string, List<string>>(); // table -> databases that need it
             var allSchemas = await _schemaAnalyzer.GetAllSchemasAsync();
-            
+
             foreach (var dbQuery in queryIntent.DatabaseQueries)
             {
                 var schema = await _schemaAnalyzer.GetSchemaAsync(dbQuery.DatabaseId);
                 if (schema == null)
                 {
-                    _logger.LogWarning("Schema not found for {DatabaseId}, removing from query list", dbQuery.DatabaseId);
+                    _logger.LogWarning("Schema not found, removing from query list");
                     continue;
                 }
-                
+
                 var validTables = new List<string>();
                 var invalidTables = new List<string>();
-                
+
                 foreach (var tableName in dbQuery.RequiredTables)
                 {
                     if (schema.Tables.Any(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)))
@@ -250,7 +225,7 @@ namespace SmartRAG.Services.Database
                     else
                     {
                         invalidTables.Add(tableName);
-                        
+
                         if (!missingTables.ContainsKey(tableName))
                         {
                             missingTables[tableName] = new List<string>();
@@ -258,13 +233,12 @@ namespace SmartRAG.Services.Database
                         missingTables[tableName].Add(dbQuery.DatabaseId);
                     }
                 }
-                
+
                 if (invalidTables.Count > 0)
                 {
-                    _logger.LogWarning("AI selected invalid tables for {DatabaseName}: {InvalidTables}",
-                        dbQuery.DatabaseName, string.Join(", ", invalidTables));
+                    _logger.LogWarning("AI selected invalid tables: {InvalidTables}", string.Join(", ", invalidTables));
                 }
-                
+
                 if (validTables.Count > 0)
                 {
                     dbQuery.RequiredTables = validTables;
@@ -272,39 +246,39 @@ namespace SmartRAG.Services.Database
                 }
                 else
                 {
-                    _logger.LogWarning("✗ {DatabaseName}: No valid tables, removing", dbQuery.DatabaseName);
+                    _logger.LogWarning("No valid tables, removing");
                 }
             }
-            
+
             foreach (var kvp in missingTables)
             {
                 var tableName = kvp.Key;
-                
-                var correctSchema = allSchemas.FirstOrDefault(s => 
+
+                var correctSchema = allSchemas.FirstOrDefault(s =>
                     s.Tables.Any(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)));
-                
+
                 if (correctSchema == null)
                 {
                     _logger.LogWarning("Table '{Table}' not found in any database", tableName);
                     continue;
                 }
-                
+
                 if (validQueries.Any(q => q.DatabaseId == correctSchema.DatabaseId))
                 {
                     var existingQuery = validQueries.First(q => q.DatabaseId == correctSchema.DatabaseId);
                     if (!existingQuery.RequiredTables.Contains(tableName, StringComparer.OrdinalIgnoreCase))
                     {
-                        var exactTableName = correctSchema.Tables.First(t => 
+                        var exactTableName = correctSchema.Tables.First(t =>
                             t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)).TableName;
-                        
+
                         existingQuery.RequiredTables.Add(exactTableName);
                     }
                 }
                 else
                 {
-                    var exactTableName = correctSchema.Tables.First(t => 
+                    var exactTableName = correctSchema.Tables.First(t =>
                         t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)).TableName;
-                    
+
                     validQueries.Add(new DatabaseQueryIntent
                     {
                         DatabaseId = correctSchema.DatabaseId,
@@ -315,12 +289,10 @@ namespace SmartRAG.Services.Database
                     });
                 }
             }
-            
-            queryIntent.DatabaseQueries = validQueries;
-            
-            return queryIntent;
-        }      
 
-        #endregion    
+            queryIntent.DatabaseQueries = validQueries;
+
+            return queryIntent;
+        }
     }
 }

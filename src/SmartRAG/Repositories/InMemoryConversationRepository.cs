@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Logging;
 using SmartRAG.Interfaces.Storage;
-using SmartRAG.Models;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
@@ -11,14 +10,12 @@ namespace SmartRAG.Repositories
     {
         private readonly Dictionary<string, string> _conversations = new Dictionary<string, string>();
         private readonly object _lock = new object();
-        private readonly ILogger<InMemoryConversationRepository> _logger;
-        
+
         private const int MaxConversationLength = 2000;
         private const int MaxSessions = 1000;
 
         public InMemoryConversationRepository(ILogger<InMemoryConversationRepository> logger)
         {
-            _logger = logger;
         }
 
         public Task<string> GetConversationHistoryAsync(string sessionId)
@@ -88,6 +85,28 @@ namespace SmartRAG.Repositories
             {
                 return Task.FromResult(_conversations.ContainsKey(sessionId));
             }
+        }
+
+        public Task SetConversationHistoryAsync(string sessionId, string conversation)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId))
+                return Task.CompletedTask;
+
+            lock (_lock)
+            {
+                _conversations[sessionId] = conversation;
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public Task ClearAllConversationsAsync()
+        {
+            lock (_lock)
+            {
+                _conversations.Clear();
+            }
+            return Task.CompletedTask;
         }
 
         private void CleanupOldSessions()

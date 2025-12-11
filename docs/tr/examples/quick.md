@@ -389,6 +389,42 @@ AI: "Yeni konuşma başlatıldı. Size nasıl yardımcı olabilirim?"
 
 ---
 
+### 7. Dosya İzleyici - Otomatik Belge İndeksleme
+
+Klasörleri izleyin ve yeni belgeleri otomatik olarak indeksleyin:
+
+```csharp
+// appsettings.json
+{
+  "SmartRAG": {
+    "EnableFileWatcher": true,
+    "WatchedFolders": [
+      {
+        "FolderPath": "C:\\Belgeler\\Gelen",
+        "FileExtensions": [".pdf", ".docx", ".txt"],
+        "Recursive": true,
+        "AutoUpload": true
+      }
+    ]
+  }
+}
+
+// FileWatcherService otomatik olarak:
+// 1. Belirtilen klasörü yeni dosyalar için izler
+// 2. Dosya hash'i kullanarak çiftleri tespit eder
+// 3. Yeni belgeleri otomatik olarak yükler ve indeksler
+// 4. Dosyalar eklendikçe gerçek zamanlı olarak işler
+```
+
+**Özellikler:**
+- MD5 dosya hash'i kullanarak otomatik çift tespiti
+- Gerçek zamanlı dosya izleme
+- Özyinelemeli klasör taraması
+- Yapılandırılabilir dosya uzantıları
+- Başlangıçta mevcut dosyaların ilk taraması
+
+---
+
 ## İlgili Örnekler
 
-- [Örnekler Ana Sayfası]({{ site.baseurl }}/tr/examples) - Örnekler kategorilerine dön
+- [Hızlı Örnekler]({{ site.baseurl }}/tr/examples/quick) - Hızlı başlangıç örnekleri

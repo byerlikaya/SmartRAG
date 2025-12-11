@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -19,11 +20,8 @@ namespace SmartRAG.Services.Parser
     /// </summary>
     public class ImageParserService : IImageParserService, IDisposable
     {
-        #region Constants
-
-
         private const string DefaultLanguage = "eng";
-        
+
         private const int WebPHeaderSize = 12;
         private const byte RIFFByte1 = 0x52; // R
         private const byte RIFFByte2 = 0x49; // I
@@ -33,9 +31,9 @@ namespace SmartRAG.Services.Parser
         private const byte WEBPByte2 = 0x45; // E
         private const byte WEBPByte3 = 0x42; // B
         private const byte WEBPByte4 = 0x50; // P
-        
+
         private const int PNGQuality = 100;
-        
+
         private const string TesseractPath40 = "/usr/share/tesseract-ocr/4.00/tessdata";
         private const string TesseractPathDefault = "/usr/share/tesseract-ocr/tessdata";
         private const string TesseractPathWindows = "C:\\Program Files\\Tesseract-OCR\\tessdata";
@@ -48,18 +46,7 @@ namespace SmartRAG.Services.Parser
         private const string CurrencyMisreadPatternTCompact = @"(\d+)t(?=\s+\p{Lu}|\s+$|$)";
         private const string CurrencyMisreadPatternAmpersand = @"(\d+)\s*&(?=\s*(?:\p{Lu}|\d|$))";
         private const string CurrencyMisreadPatternAmpersandCompact = @"(\d+)&(?=\p{Lu}|\s+\p{Lu}|$)";
-        
-        private static readonly Dictionary<string, string> LanguageCodeMapping = new Dictionary<string, string>
-        {
-            { "tur", "tr" }, { "eng", "en" }, { "deu", "de" }, { "fra", "fr" },
-            { "spa", "es" }, { "ita", "it" }, { "rus", "ru" }, { "jpn", "ja" },
-            { "kor", "ko" }, { "zho", "zh" }, { "ara", "ar" }, { "hin", "hi" },
-            { "por", "pt" }, { "nld", "nl" }, { "pol", "pl" }, { "swe", "sv" },
-            { "nor", "no" }, { "dan", "da" }, { "fin", "fi" }, { "ell", "el" },
-            { "heb", "he" }, { "tha", "th" }, { "vie", "vi" }, { "ind", "id" },
-            { "ces", "cs" }, { "hun", "hu" }, { "ron", "ro" }, { "ukr", "uk" }
-        };
-        
+
         private static readonly Dictionary<string, string> ReverseLanguageCodeMapping = new Dictionary<string, string>
         {
             { "tr", "tur" }, { "en", "eng" }, { "de", "deu" }, { "fr", "fra" },
@@ -70,7 +57,7 @@ namespace SmartRAG.Services.Parser
             { "he", "heb" }, { "th", "tha" }, { "vi", "vie" }, { "id", "ind" },
             { "cs", "ces" }, { "hu", "hun" }, { "ro", "ron" }, { "uk", "ukr" }
         };
-        
+
         /// <summary>
         /// Maps ISO 639-1/639-2 language codes to Tesseract language codes
         /// CRITICAL: Generic mapping - no specific language names (follows Generic Code rule)
@@ -94,28 +81,57 @@ namespace SmartRAG.Services.Parser
             { "ces", "ces" }, { "hun", "hun" }, { "ron", "ron" }, { "ukr", "ukr" }
         };
 
-        #endregion
-
-        #region Fields
-
         private readonly ILogger<ImageParserService> _logger;
-        private readonly string _ocrEngineDataPath;
+        private string _ocrEngineDataPath;
+        private readonly object _ocrEngineDataPathLock = new object();
         private bool _disposed = false;
+        private static bool _dyldLibraryPathInitialized = false;
+        private static readonly object _dyldLibraryPathLock = new object();
 
-        #endregion
-
-        #region Constructor
+        /// <summary>
+        /// Gets the OCR engine data path (lazy initialization to avoid blocking during service registration)
+        /// </summary>
+        private string OcrEngineDataPath
+        {
+            get
+            {
+                if (string.IsNullOrEmpty(_ocrEngineDataPath))
+                {
+                    lock (_ocrEngineDataPathLock)
+                    {
+                        if (string.IsNullOrEmpty(_ocrEngineDataPath))
+                        {
+                            _ocrEngineDataPath = FindOcrEngineDataPath(_logger);
+                        }
+                    }
+                }
+                return _ocrEngineDataPath;
+            }
+        }
 
         public ImageParserService(ILogger<ImageParserService> logger)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-            _ocrEngineDataPath = FindOcrEngineDataPath(_logger);
-            
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+            // DYLD_LIBRARY_PATH setup moved to lazy initialization to avoid blocking during service registration
+            InitializeDyldLibraryPath();
+        }
+
+        /// <summary>
+        /// Initializes DYLD_LIBRARY_PATH for macOS (thread-safe, lazy initialization)
+        /// </summary>
+        private static void InitializeDyldLibraryPath()
+        {
+            if (_dyldLibraryPathInitialized || !RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+                return;
+
+            lock (_dyldLibraryPathLock)
             {
+                if (_dyldLibraryPathInitialized)
+                    return;
+
                 var baseDirectory = AppDomain.CurrentDomain.BaseDirectory;
                 var currentPath = Environment.GetEnvironmentVariable("DYLD_LIBRARY_PATH") ?? string.Empty;
-                
+
                 var possibleNativePaths = new[]
                 {
                     Path.Combine(baseDirectory, "runtimes", "osx-arm64", "native"),
@@ -123,7 +139,7 @@ namespace SmartRAG.Services.Parser
                     Path.Combine(baseDirectory, "runtimes", "osx", "native"),
                     baseDirectory
                 };
-                
+
                 var validPaths = new List<string> { baseDirectory };
                 foreach (var path in possibleNativePaths)
                 {
@@ -132,21 +148,17 @@ namespace SmartRAG.Services.Parser
                         validPaths.Add(path);
                     }
                 }
-                
+
                 var newPath = string.Join(":", validPaths);
                 if (!string.IsNullOrEmpty(currentPath))
                 {
                     newPath = $"{newPath}:{currentPath}";
                 }
-                
+
                 Environment.SetEnvironmentVariable("DYLD_LIBRARY_PATH", newPath);
-                _logger.LogDebug("Set DYLD_LIBRARY_PATH to: {Path}", newPath);
+                _dyldLibraryPathInitialized = true;
             }
         }
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         /// [AI Query] Parses an image stream and extracts text using OCR
@@ -185,31 +197,29 @@ namespace SmartRAG.Services.Parser
             language ??= GetDefaultLanguageFromSystemLocale();
 
             var startTime = DateTime.UtcNow;
-            
+
             try
             {
-                using (var preprocessedStream = await PreprocessImageAsync(imageStream))
-                {
-                    preprocessedStream.Position = 0;
+                using var preprocessedStream = await PreprocessImageAsync(imageStream);
+                preprocessedStream.Position = 0;
 
-                    var extractedText = await PerformOcrAsync(preprocessedStream, language);
-                    
-                    var processingTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
-                
-                    return new OcrResult
-                    {
-                        Text = extractedText.Text,
-                        Confidence = extractedText.Confidence,
-                        ProcessingTimeMs = (long)processingTime,
-                        WordCount = CountWords(extractedText.Text),
-                        Language = language
-                    };
-                }
+                var (Text, Confidence) = await PerformOcrAsync(preprocessedStream, language);
+
+                var processingTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
+
+                return new OcrResult
+                {
+                    Text = Text,
+                    Confidence = Confidence,
+                    ProcessingTimeMs = (long)processingTime,
+                    WordCount = CountWords(Text),
+                    Language = language
+                };
             }
             catch (Exception ex)
             {
                 ServiceLogMessages.LogImageOcrFailed(_logger, ex);
-                
+
                 return new OcrResult
                 {
                     Text = string.Empty,
@@ -232,14 +242,14 @@ namespace SmartRAG.Services.Parser
                 ServiceLogMessages.LogImageProcessingStarted(_logger, (int)imageStream.Length, null);
 
                 var convertedStream = await ConvertToPngIfNeededAsync(imageStream);
-                
+
                 ServiceLogMessages.LogImageProcessingCompleted(_logger, (int)imageStream.Length, (int)convertedStream.Length, null);
                 return convertedStream;
             }
             catch (Exception ex)
             {
                 ServiceLogMessages.LogImageProcessingFailed(_logger, ex);
-                
+
                 imageStream.Position = 0;
                 return imageStream;
             }
@@ -253,12 +263,12 @@ namespace SmartRAG.Services.Parser
             try
             {
                 imageStream.Position = 0;
-                
+
                 var header = new byte[WebPHeaderSize];
                 await imageStream.ReadAsync(header, 0, header.Length);
                 imageStream.Position = 0;
 
-                bool isWebP = header.Length >= WebPHeaderSize && 
+                bool isWebP = header.Length >= WebPHeaderSize &&
                              header[0] == RIFFByte1 && header[1] == RIFFByte2 && header[2] == RIFFByte3 && header[3] == RIFFByte4 && // RIFF
                              header[8] == WEBPByte1 && header[9] == WEBPByte2 && header[10] == WEBPByte3 && header[11] == WEBPByte4; // WEBP
 
@@ -267,19 +277,17 @@ namespace SmartRAG.Services.Parser
                     return imageStream;
                 }
 
-                using (var skImage = SKImage.FromEncodedData(imageStream))
+                using var skImage = SKImage.FromEncodedData(imageStream);
+                if (skImage == null)
                 {
-                    if (skImage == null)
-                    {
-                        _logger.LogWarning("Failed to decode WebP image with SkiaSharp");
-                        imageStream.Position = 0;
-                        return imageStream;
-                    }
-
-                    var pngData = skImage.Encode(SKEncodedImageFormat.Png, PNGQuality);
-                    var pngStream = new MemoryStream(pngData.ToArray());
-                    pngStream.Position = 0;                    return pngStream;
+                    _logger.LogWarning("Failed to decode WebP image with SkiaSharp");
+                    imageStream.Position = 0;
+                    return imageStream;
                 }
+
+                var pngData = skImage.Encode(SKEncodedImageFormat.Png, PNGQuality);
+                var pngStream = new MemoryStream(pngData.ToArray()) { Position = 0 };
+                return pngStream;
             }
             catch (Exception ex)
             {
@@ -288,10 +296,6 @@ namespace SmartRAG.Services.Parser
                 return imageStream;
             }
         }
-
-        #endregion
-
-        #region Private Methods
 
         /// <summary>
         /// Gets the default OCR language from system locale
@@ -303,27 +307,27 @@ namespace SmartRAG.Services.Parser
             {
                 var currentCulture = CultureInfo.CurrentCulture;
                 var twoLetterCode = currentCulture.TwoLetterISOLanguageName; // "tr", "en", "de", etc.
-                
+
                 if (ReverseLanguageCodeMapping.TryGetValue(twoLetterCode, out var threeLetterCode))
                 {
                     if (IsLanguageDataAvailable(threeLetterCode))
                     {
-                        Console.WriteLine($"[OCR Language Detection] System locale: '{currentCulture.Name}' → Language: '{threeLetterCode}' ✓");
+                        _logger.LogInformation("[OCR Language Detection] System locale detected");
                         return threeLetterCode;
                     }
                     else
                     {
-                        Console.WriteLine($"[OCR Language Detection] System locale: '{currentCulture.Name}' → Language: '{threeLetterCode}' (not available, falling back to 'eng')");
+                        _logger.LogWarning("[OCR Language Detection] System locale not available, falling back to 'eng'");
                         return DefaultLanguage;
                     }
                 }
-                
-                Console.WriteLine($"[OCR Language Detection] System locale: '{currentCulture.Name}' → No mapping found, defaulting to 'eng'");
+
+                _logger.LogWarning("[OCR Language Detection] No mapping found, defaulting to 'eng'");
                 return DefaultLanguage;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[OCR Language Detection] Failed to detect system locale: {ex.Message}, defaulting to 'eng'");
+                _logger.LogError(ex, "[OCR Language Detection] Failed to detect system locale, defaulting to 'eng'");
                 return DefaultLanguage;
             }
         }
@@ -335,10 +339,10 @@ namespace SmartRAG.Services.Parser
         /// <returns>True if language data file exists</returns>
         private bool IsLanguageDataAvailable(string languageCode)
         {
-            if (string.IsNullOrEmpty(_ocrEngineDataPath))
+            if (string.IsNullOrEmpty(OcrEngineDataPath))
                 return false;
 
-            var trainedDataFile = Path.Combine(_ocrEngineDataPath, $"{languageCode}.traineddata");
+            var trainedDataFile = Path.Combine(OcrEngineDataPath, $"{languageCode}.traineddata");
             return File.Exists(trainedDataFile);
         }
 
@@ -352,24 +356,24 @@ namespace SmartRAG.Services.Parser
             {
                 return DefaultLanguage;
             }
-            
+
             if (LanguageCodeToTesseractCode.TryGetValue(language, out var tesseractCode))
             {
                 return tesseractCode;
             }
-            
-            _logger.LogWarning("Unknown language code: '{Language}'. Falling back to default: '{Default}'", language, DefaultLanguage);
+
+            _logger.LogWarning("Unknown language code, falling back to default");
             return DefaultLanguage;
         }
-        
+
         /// <summary>
         /// Gets available Tesseract language (downloads if missing, falls back to English if download fails)
         /// Returns null if no language data is available at all
         /// </summary>
         private async Task<string> GetAvailableTesseractLanguageAsync(string requestedLanguage)
         {
-            var tessdataPath = string.IsNullOrEmpty(_ocrEngineDataPath) ? "." : _ocrEngineDataPath;
-            
+            var tessdataPath = string.IsNullOrEmpty(OcrEngineDataPath) ? "." : OcrEngineDataPath;
+
             if (!Directory.Exists(tessdataPath))
             {
                 try
@@ -381,45 +385,45 @@ namespace SmartRAG.Services.Parser
                     _logger.LogWarning(ex, "Failed to create tessdata directory: {Path}", tessdataPath);
                 }
             }
-            
+
             var requestedFile = Path.Combine(tessdataPath, $"{requestedLanguage}.traineddata");
             if (File.Exists(requestedFile))
             {
                 return requestedLanguage;
             }
-            
-            _logger.LogInformation("Tesseract data for '{Language}' not found. Attempting to download...", requestedLanguage);
+
+            _logger.LogInformation("Tesseract data not found. Attempting to download...");
             var downloaded = await TryDownloadTesseractDataAsync(requestedLanguage, tessdataPath);
-            
+
             if (downloaded)
             {
-                _logger.LogInformation("Successfully downloaded Tesseract data for '{Language}'", requestedLanguage);
+                _logger.LogInformation("Successfully downloaded Tesseract data");
                 return requestedLanguage;
             }
-            
+
             if (requestedLanguage != DefaultLanguage)
             {
                 var defaultFile = Path.Combine(tessdataPath, $"{DefaultLanguage}.traineddata");
-                
+
                 if (File.Exists(defaultFile))
                 {
                     return DefaultLanguage;
                 }
-                
-                _logger.LogInformation("Attempting to download fallback language '{Fallback}'...", DefaultLanguage);
+
+                _logger.LogInformation("Attempting to download fallback language...");
                 var fallbackDownloaded = await TryDownloadTesseractDataAsync(DefaultLanguage, tessdataPath);
-                
+
                 if (fallbackDownloaded)
                 {
-                    _logger.LogInformation("Successfully downloaded fallback Tesseract data for '{Language}'", DefaultLanguage);
+                    _logger.LogInformation("Successfully downloaded fallback Tesseract data");
                     return DefaultLanguage;
                 }
             }
-            
+
             _logger.LogWarning("No Tesseract language data available and download failed. OCR will be skipped.");
             return null;
         }
-        
+
         /// <summary>
         /// Attempts to download Tesseract traineddata file from GitHub
         /// Generic implementation that works for any language (eng, tur, deu, fra, etc.)
@@ -431,46 +435,43 @@ namespace SmartRAG.Services.Parser
                 var fileName = $"{languageCode}.traineddata";
                 var targetPath = Path.Combine(tessdataPath, fileName);
                 var downloadUrl = $"https://github.com/tesseract-ocr/tessdata/raw/main/{fileName}";
-                
+
                 _logger.LogDebug("Downloading Tesseract data from: {Url}", downloadUrl);
-                
-                using (var httpClient = new System.Net.Http.HttpClient())
+
+                using var httpClient = new System.Net.Http.HttpClient();
+                httpClient.Timeout = TimeSpan.FromSeconds(60);
+
+                var response = await httpClient.GetAsync(downloadUrl);
+
+                if (!response.IsSuccessStatusCode)
                 {
-                    httpClient.Timeout = TimeSpan.FromSeconds(60);
-                    
-                    var response = await httpClient.GetAsync(downloadUrl);
-                    
-                    if (!response.IsSuccessStatusCode)
-                    {
-                        _logger.LogWarning("Failed to download Tesseract data for '{Language}': HTTP {StatusCode}", 
-                            languageCode, response.StatusCode);
-                        return false;
-                    }
-                    
-                    var content = await response.Content.ReadAsByteArrayAsync();
-                    await File.WriteAllBytesAsync(targetPath, content);
-                    
-                    _logger.LogDebug("Downloaded Tesseract data: {File} ({Size} bytes)", fileName, content.Length);
-                    return true;
+                    _logger.LogWarning("Failed to download Tesseract data: HTTP {StatusCode}", response.StatusCode);
+                    return false;
                 }
+
+                var content = await response.Content.ReadAsByteArrayAsync();
+                await File.WriteAllBytesAsync(targetPath, content);
+
+                _logger.LogDebug("Downloaded Tesseract data: {File} ({Size} bytes)", fileName, content.Length);
+                return true;
             }
             catch (System.Net.Http.HttpRequestException ex)
             {
-                _logger.LogWarning(ex, "Network error while downloading Tesseract data for '{Language}'. OCR will use fallback.", languageCode);
+                _logger.LogWarning(ex, "Network error while downloading Tesseract data. OCR will use fallback.");
                 return false;
             }
             catch (TaskCanceledException ex)
             {
-                _logger.LogWarning(ex, "Download timeout for Tesseract data '{Language}'. OCR will use fallback.", languageCode);
+                _logger.LogWarning(ex, "Download timeout for Tesseract data. OCR will use fallback.");
                 return false;
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to download Tesseract data for '{Language}'. OCR will use fallback.", languageCode);
+                _logger.LogWarning(ex, "Failed to download Tesseract data. OCR will use fallback.");
                 return false;
             }
         }
-        
+
         /// <summary>
         /// Performs OCR on the image stream
         /// </summary>
@@ -478,47 +479,45 @@ namespace SmartRAG.Services.Parser
         {
             var tesseractLanguageCode = NormalizeTesseractLanguageCode(language);
             var availableLanguage = await GetAvailableTesseractLanguageAsync(tesseractLanguageCode);
-            
+
             if (string.IsNullOrEmpty(availableLanguage))
             {
                 _logger.LogWarning("No Tesseract language data available. OCR cannot be performed. Skipping OCR.");
                 return (string.Empty, 0f);
             }
-            
+
             if (availableLanguage != tesseractLanguageCode)
             {
-                _logger.LogInformation("Tesseract data for '{Requested}' not found. Using '{Fallback}' instead.", tesseractLanguageCode, availableLanguage);
+                _logger.LogInformation("Tesseract data not found. Using fallback instead.");
             }
             else
             {
-                _logger.LogDebug("Using Tesseract language: '{Language}'", availableLanguage);
+                _logger.LogDebug("Using Tesseract language");
             }
-            
+
             return await Task.Run(() =>
             {
                 try
                 {
-                    var tessdataPath = string.IsNullOrEmpty(_ocrEngineDataPath) ? "." : _ocrEngineDataPath;
+                    var tessdataPath = string.IsNullOrEmpty(OcrEngineDataPath) ? "." : OcrEngineDataPath;
+
+                    using var engine = new TesseractEngine(tessdataPath, availableLanguage, EngineMode.Default);
+                    // CRITICAL: Do NOT use tessedit_char_whitelist - it breaks multi-language support
+                    // Tesseract already handles language-specific characters (special chars, accented letters, etc.) correctly
+                    // based on the language parameter. Using whitelist filters out these non-ASCII characters.
+
+                    using var img = Pix.LoadFromMemory(ReadStreamToByteArray(imageStream));
+                    using var page = engine.Process(img);
                     
-                    using (var engine = new TesseractEngine(tessdataPath, availableLanguage, EngineMode.Default))
-                    {
-                        // CRITICAL: Do NOT use tessedit_char_whitelist - it breaks multi-language support
-                        // Tesseract already handles language-specific characters (special chars, accented letters, etc.) correctly
-                        // based on the language parameter. Using whitelist filters out these non-ASCII characters.
-                        
-                        using (var img = Pix.LoadFromMemory(ReadStreamToByteArray(imageStream)))
-                        using (var page = engine.Process(img))
-                        {
-                            var text = page.GetText();
-                            var confidence = page.GetMeanConfidence();
-                            
-                            var correctedText = CorrectCommonOcrMistakes(text, language);
-                            
-                            ServiceLogMessages.LogImageOcrSuccess(_logger, correctedText.Length, null);
-                            
-                            return (correctedText?.Trim() ?? string.Empty, confidence);
-                        }
-                    }
+                    // Table-aware OCR: Extract text with spatial positioning to preserve table structure
+                    var text = ExtractTableAwareText(page);
+                    var confidence = page.GetMeanConfidence();
+
+                    var correctedText = CorrectCommonOcrMistakes(text, language, _logger);
+
+                    ServiceLogMessages.LogImageOcrSuccess(_logger, correctedText.Length, null);
+
+                    return (correctedText?.Trim() ?? string.Empty, confidence);
                 }
                 catch (Exception ex)
                 {
@@ -526,6 +525,152 @@ namespace SmartRAG.Services.Parser
                     return (string.Empty, 0f);
                 }
             });
+        }
+
+        /// <summary>
+        /// Extracts text from OCR page with table-aware spatial positioning
+        /// Groups words by rows (Y-coordinate) and columns (X-coordinate) to preserve table structure
+        /// </summary>
+        private static string ExtractTableAwareText(Page page)
+        {
+            var words = new List<(string Text, int X, int Y, int Width)>();
+            
+            // Extract all words with their bounding boxes
+            using (var iterator = page.GetIterator())
+            {
+                iterator.Begin();
+                do
+                {
+                    if (iterator.TryGetBoundingBox(PageIteratorLevel.Word, out var rect))
+                    {
+                        var wordText = iterator.GetText(PageIteratorLevel.Word);
+                        if (!string.IsNullOrWhiteSpace(wordText))
+                        {
+                            words.Add((wordText.Trim(), rect.X1, rect.Y1, rect.Width));
+                        }
+                    }
+                } while (iterator.Next(PageIteratorLevel.Word));
+            }
+
+            if (words.Count == 0)
+            {
+                return page.GetText(); // Fallback to normal text extraction
+            }
+
+            // Group words by rows (Y-coordinate with tolerance for same-line detection)
+            const int rowTolerance = 15; // Pixels tolerance for same row
+            var rows = new List<List<(string Text, int X, int Y, int Width)>>();
+            
+            foreach (var word in words.OrderBy(w => w.Y))
+            {
+                var matchingRow = rows.FirstOrDefault(r => 
+                    Math.Abs(r[0].Y - word.Y) <= rowTolerance);
+                
+                if (matchingRow != null)
+                {
+                    matchingRow.Add(word);
+                }
+                else
+                {
+                    rows.Add(new List<(string Text, int X, int Y, int Width)> { word });
+                }
+            }
+
+            // Detect if this is a multi-column layout (table/menu structure)
+            var hasMultipleColumns = DetectMultiColumnLayout(rows);
+            
+            if (hasMultipleColumns)
+            {
+                return ReconstructTableText(rows);
+            }
+            else
+            {
+                // Single column - use normal text extraction
+                return page.GetText();
+            }
+        }
+
+        /// <summary>
+        /// Detects if the layout has multiple columns (table structure)
+        /// </summary>
+        private static bool DetectMultiColumnLayout(List<List<(string Text, int X, int Y, int Width)>> rows)
+        {
+            if (rows.Count < 2) return false;
+
+            // Check if rows have consistent column structure
+            // Look for rows with multiple words spaced apart (indicating columns)
+            int multiColumnRows = 0;
+            
+            foreach (var row in rows)
+            {
+                if (row.Count >= 2)
+                {
+                    var sortedByX = row.OrderBy(w => w.X).ToList();
+                    var gaps = new List<int>();
+                    
+                    for (int i = 1; i < sortedByX.Count; i++)
+                    {
+                        var gap = sortedByX[i].X - (sortedByX[i - 1].X + sortedByX[i - 1].Width);
+                        gaps.Add(gap);
+                    }
+                    
+                    // If there's a significant gap (> 50 pixels), it's likely a multi-column row
+                    if (gaps.Any(g => g > 50))
+                    {
+                        multiColumnRows++;
+                    }
+                }
+            }
+            
+            // If more than 30% of rows have multiple columns, treat as table
+            return multiColumnRows > (rows.Count * 0.3);
+        }
+
+        /// <summary>
+        /// Reconstructs text from table structure, pairing items from left and right columns
+        /// Example: "Product1 Price1\nProduct2 Price2" instead of "Product1 Product2... Price1 Price2..."
+        /// </summary>
+        private static string ReconstructTableText(List<List<(string Text, int X, int Y, int Width)>> rows)
+        {
+            var result = new System.Text.StringBuilder();
+            
+            foreach (var row in rows)
+            {
+                // Sort words in this row by X-coordinate (left to right)
+                var sortedWords = row.OrderBy(w => w.X).ToList();
+                
+                if (sortedWords.Count == 0) continue;
+                
+                // Detect column boundaries
+                if (sortedWords.Count >= 2)
+                {
+                    // Check if this row has a clear left-right split (2 columns)
+                    var midPoint = (sortedWords[0].X + sortedWords[sortedWords.Count - 1].X) / 2;
+                    var leftColumn = sortedWords.Where(w => w.X < midPoint).ToList();
+                    var rightColumn = sortedWords.Where(w => w.X >= midPoint).ToList();
+                    
+                    if (leftColumn.Any() && rightColumn.Any())
+                    {
+                        // Table structure detected: pair left and right columns
+                        result.Append(string.Join(" ", leftColumn.Select(w => w.Text)));
+                        result.Append(" ");
+                        result.Append(string.Join(" ", rightColumn.Select(w => w.Text)));
+                        result.AppendLine();
+                    }
+                    else
+                    {
+                        // Single column or complex layout - output as-is
+                        result.AppendLine(string.Join(" ", sortedWords.Select(w => w.Text)));
+                    }
+                }
+                else
+                {
+                    // Single word row
+                    result.AppendLine(sortedWords[0].Text);
+                }
+            }
+            
+            return result.ToString();
         }
 
         /// <summary>
@@ -556,10 +701,19 @@ namespace SmartRAG.Services.Parser
                 }
             }
 
+            // Optimized search: Only check common locations instead of recursive search
+            // Recursive search with AllDirectories can be very slow on large directory trees
             var baseDir = AppDomain.CurrentDomain.BaseDirectory;
-            var tessdataDirs = Directory.GetDirectories(baseDir, "*tessdata*", SearchOption.AllDirectories);
-            
-            foreach (var dir in tessdataDirs)
+            var commonTessdataPaths = new[]
+            {
+                Path.Combine(baseDir, "tessdata"),
+                Path.Combine(baseDir, "bin", "Debug", "netstandard2.1", "tessdata"),
+                Path.Combine(baseDir, "bin", "Release", "netstandard2.1", "tessdata"),
+                Path.Combine(baseDir, "bin", "Debug", "net9.0", "tessdata"),
+                Path.Combine(baseDir, "bin", "Release", "net9.0", "tessdata")
+            };
+
+            foreach (var dir in commonTessdataPaths)
             {
                 if (Directory.Exists(dir))
                 {
@@ -581,11 +735,9 @@ namespace SmartRAG.Services.Parser
         /// </summary>
         private static byte[] ReadStreamToByteArray(Stream stream)
         {
-            using (var memoryStream = new MemoryStream())
-            {
-                stream.CopyTo(memoryStream);
-                return memoryStream.ToArray();
-            }
+            using var memoryStream = new MemoryStream();
+            stream.CopyTo(memoryStream);
+            return memoryStream.ToArray();
         }
 
         /// <summary>
@@ -604,43 +756,45 @@ namespace SmartRAG.Services.Parser
         /// </summary>
         /// <param name="text">OCR extracted text</param>
         /// <param name="language">Language code for context (e.g., "tur", "en", "de")</param>
+        /// <param name="logger">Logger instance for logging currency detection</param>
         /// <returns>Corrected text</returns>
-        private static string CorrectCommonOcrMistakes(string text, string language)
+        private static string CorrectCommonOcrMistakes(string text, string language, ILogger logger = null)
         {
             if (string.IsNullOrWhiteSpace(text))
                 return text;
 
-            var currencySymbol = GetCurrencySymbolFromSystemLocale();
-            
+            var currencySymbol = GetCurrencySymbolFromSystemLocale(logger);
+
             if (!string.IsNullOrEmpty(currencySymbol))
             {
                 text = CorrectCurrencySymbolMisreads(text, currencySymbol);
             }
-            
+
             return text;
         }
 
         /// <summary>
         /// Gets the currency symbol from system locale (independent of OCR language)
         /// </summary>
+        /// <param name="logger">Logger instance for logging currency detection</param>
         /// <returns>Currency symbol or null if not determinable</returns>
-        private static string GetCurrencySymbolFromSystemLocale()
+        private static string GetCurrencySymbolFromSystemLocale(ILogger logger = null)
         {
             try
             {
                 var currentCulture = CultureInfo.CurrentCulture;
-                
+
                 var specificCulture = CultureInfo.CreateSpecificCulture(currentCulture.Name);
                 var region = new RegionInfo(specificCulture.Name);
                 var symbol = region.CurrencySymbol;
-                
-                Console.WriteLine($"[OCR Currency Detection] System locale: '{currentCulture.Name}' → Symbol: '{symbol}'");
-                
+
+                logger?.LogDebug("[OCR Currency Detection] System locale: '{CultureName}' → Symbol: '{Symbol}'", currentCulture.Name, symbol);
+
                 return symbol;
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"[OCR Currency Detection] Failed to get currency from system locale: {ex.Message}");
+                logger?.LogWarning(ex, "[OCR Currency Detection] Failed to get currency from system locale");
                 return null;
             }
         }
@@ -657,13 +811,13 @@ namespace SmartRAG.Services.Parser
             if (string.IsNullOrWhiteSpace(text))
                 return text;
 
-            var currencySymbol = GetCurrencySymbolFromSystemLocale();
-            
+            var currencySymbol = GetCurrencySymbolFromSystemLocale(_logger);
+
             if (!string.IsNullOrEmpty(currencySymbol))
             {
                 return CorrectCurrencySymbolMisreads(text, currencySymbol);
             }
-            
+
             return text;
         }
 
@@ -683,46 +837,46 @@ namespace SmartRAG.Services.Parser
                 $"$1{currencySymbol}",
                 RegexOptions.Multiline
             );
-            
+
             text = Regex.Replace(
                 text,
                 CurrencyMisreadPatternCompact,
                 $"$1{currencySymbol}"
             );
-            
+
             text = Regex.Replace(
                 text,
                 CurrencyMisreadPattern6,
                 $"$1{currencySymbol}",
                 RegexOptions.Multiline
             );
-            
+
             text = Regex.Replace(
                 text,
                 CurrencyMisreadPattern6Compact,
                 $"$1{currencySymbol}"
             );
-            
+
             text = Regex.Replace(
                 text,
                 CurrencyMisreadPatternT,
                 $"$1{currencySymbol}",
                 RegexOptions.Multiline
             );
-            
+
             text = Regex.Replace(
                 text,
                 CurrencyMisreadPatternTCompact,
                 $"$1{currencySymbol}"
             );
-            
+
             text = Regex.Replace(
                 text,
                 CurrencyMisreadPatternAmpersand,
                 $"$1{currencySymbol}",
                 RegexOptions.Multiline
             );
-            
+
             // Pattern 8: & (ampersand) - compact (no space)
             text = Regex.Replace(
                 text,
@@ -732,11 +886,6 @@ namespace SmartRAG.Services.Parser
 
             return text;
         }
-
-
-        #endregion
-
-        #region IDisposable Implementation
 
         /// <summary>
         /// Disposes the service and releases resources
@@ -762,7 +911,5 @@ namespace SmartRAG.Services.Parser
                 _disposed = true;
             }
         }
-
-        #endregion
     }
 }

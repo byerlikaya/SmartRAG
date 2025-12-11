@@ -1,6 +1,5 @@
 using SmartRAG.Models;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 
@@ -11,7 +10,6 @@ namespace SmartRAG.Interfaces.Parser
     /// </summary>
     public interface IAudioParserService : IDisposable
     {
-        #region Public Methods
 
         /// <summary>
         /// Transcribes audio content from a stream to text using default options
@@ -22,7 +20,5 @@ namespace SmartRAG.Interfaces.Parser
         /// <returns>Audio transcription result containing text and metadata</returns>
         Task<AudioTranscriptionResult> TranscribeAudioAsync(Stream audioStream, string fileName, string language = null);
 
-
-        #endregion
     }
 }

@@ -24,7 +24,7 @@ namespace SmartRAG.Services.Database.Strategies
             sb.AppendLine(FormatSchemaDescription(schema));
             sb.AppendLine();
             sb.AppendLine($"Query Intent: {queryIntent}");
-            
+
             return sb.ToString();
         }
 

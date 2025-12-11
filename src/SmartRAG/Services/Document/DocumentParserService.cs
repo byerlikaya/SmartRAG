@@ -1,12 +1,9 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartRAG.Entities;
-using SmartRAG.Interfaces.Database;
 using SmartRAG.Interfaces.Document;
-using SmartRAG.Interfaces.Parser;
 using SmartRAG.Interfaces.Parser.Strategies;
 using SmartRAG.Models;
-using SmartRAG.Services.Helpers;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -22,11 +19,6 @@ namespace SmartRAG.Services.Document
     /// </summary>
     public class DocumentParserService : IDocumentParserService
     {
-        private readonly SmartRagOptions _options;
-        private readonly IEnumerable<IFileParser> _parsers;
-        private readonly ILogger<DocumentParserService> _logger;
-
-        #region Constants
         private const int DefaultDynamicSearchRange = 500;
         private const int DynamicSearchRangeDivisor = 10;
         private const int UltimateSearchRange = 1000;
@@ -37,7 +29,10 @@ namespace SmartRAG.Services.Document
         private static readonly char[] PunctuationBoundaries = new char[] { ',', ':', ';', '-', '–', '—' };
         private static readonly char[] ExtendedWordBoundaries = new char[] { ' ', '\t', '\n', '\r', '.', '!', '?', ';', ',', ':', '-', '–', '—' };
         private static readonly char[] UltimateBoundaries = new char[] { ' ', '\t', '\n', '\r', '.', '!', '?', ';', ',', ':', '-', '–', '—', '(', ')', '[', ']', '{', '}' };
-        #endregion
+
+        private readonly SmartRagOptions _options;
+        private readonly IEnumerable<IFileParser> _parsers;
+        private readonly ILogger<DocumentParserService> _logger;
 
         public DocumentParserService(
             IOptions<SmartRagOptions> options,
@@ -53,25 +48,46 @@ namespace SmartRAG.Services.Document
         {
             try
             {
-                var parser = _parsers.FirstOrDefault(p => p.CanParse(fileName, contentType));
-                if (parser == null)
+                long fileSize = 0;
+                var originalPosition = 0L;
+                var canSeek = fileStream.CanSeek;
+
+                if (canSeek)
                 {
-                    throw new NotSupportedException($"No parser found for file {fileName} with content type {contentType}");
+                    originalPosition = fileStream.Position;
+                    fileStream.Position = 0;
+                    fileSize = fileStream.Length;
+                }
+                else if (fileStream.CanRead)
+                {
+                    fileSize = fileStream.Length;
                 }
 
+                var parser = _parsers.FirstOrDefault(p => p.CanParse(fileName, contentType)) ?? throw new NotSupportedException($"No parser found for file {fileName} with content type {contentType}");
                 var result = await parser.ParseAsync(fileStream, fileName, language);
                 var content = result.Content;
 
+                if (canSeek && fileStream.CanSeek)
+                {
+                    fileStream.Position = originalPosition;
+                    if (fileSize == 0)
+                    {
+                        fileSize = fileStream.Length;
+                    }
+                }
+
                 var documentId = Guid.NewGuid();
-                var chunks = CreateChunks(content, documentId);
+                var documentType = DetermineDocumentType(fileName, contentType);
+                var chunks = CreateChunks(content, documentId, documentType);
 
                 var document = CreateDocument(documentId, fileName, contentType, content, uploadedBy, chunks);
-                
+                document.FileSize = fileSize;
+
                 if (result.Metadata != null && result.Metadata.Count > 0)
                 {
                     document.Metadata = new Dictionary<string, object>(result.Metadata);
                 }
-                
+
                 PopulateMetadata(document);
                 AnnotateDocumentMetadata(document, content);
 
@@ -94,8 +110,6 @@ namespace SmartRAG.Services.Document
             return new[] { "text/", "application/", "audio/", "image/" };
         }
 
-        #region Private Methods
-
         private static SmartRAG.Entities.Document CreateDocument(Guid documentId, string fileName, string contentType, string content, string uploadedBy, List<DocumentChunk> chunks)
         {
             return new SmartRAG.Entities.Document
@@ -112,10 +126,7 @@ namespace SmartRAG.Services.Document
 
         private static void PopulateMetadata(SmartRAG.Entities.Document document)
         {
-            if (document.Metadata == null)
-            {
-                document.Metadata = new Dictionary<string, object>();
-            }
+            document.Metadata ??= new Dictionary<string, object>();
 
             document.Metadata["FileName"] = document.FileName;
             document.Metadata["ContentType"] = document.ContentType;
@@ -128,7 +139,7 @@ namespace SmartRAG.Services.Document
         private void AnnotateDocumentMetadata(SmartRAG.Entities.Document document, string content)
         {
             if (document == null || document.Metadata == null) return;
-            
+
             AnnotateAudioMetadata(document, content);
         }
 
@@ -218,7 +229,43 @@ namespace SmartRAG.Services.Document
             return index;
         }
 
-        private List<DocumentChunk> CreateChunks(string content, Guid documentId)
+        /// <summary>
+        /// Determines document type from ContentType and file extension
+        /// </summary>
+        private static string DetermineDocumentType(string fileName, string contentType)
+        {
+            if (!string.IsNullOrWhiteSpace(contentType) &&
+                contentType.StartsWith("audio", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Audio";
+            }
+
+            var extension = Path.GetExtension(fileName)?.ToLowerInvariant();
+            if (!string.IsNullOrWhiteSpace(extension))
+            {
+                switch (extension)
+                {
+                    case ".wav":
+                    case ".mp3":
+                    case ".m4a":
+                    case ".flac":
+                    case ".ogg":
+                        return "Audio";
+                    case ".jpg":
+                    case ".jpeg":
+                    case ".png":
+                    case ".gif":
+                    case ".bmp":
+                    case ".tiff":
+                    case ".webp":
+                        return "Image";
+                }
+            }
+
+            return "Document";
+        }
+
+        private List<DocumentChunk> CreateChunks(string content, Guid documentId, string documentType)
         {
             var chunks = new List<DocumentChunk>();
             var maxChunkSize = Math.Max(1, _options.MaxChunkSize);
@@ -227,14 +274,14 @@ namespace SmartRAG.Services.Document
 
             if (content.Length <= maxChunkSize)
             {
-                chunks.Add(CreateSingleChunk(content, documentId, 0, 0, content.Length));
+                chunks.Add(CreateSingleChunk(content, documentId, 0, 0, content.Length, documentType));
                 return chunks;
             }
 
-            return CreateMultipleChunks(content, documentId, maxChunkSize, chunkOverlap, minChunkSize);
+            return CreateMultipleChunks(content, documentId, maxChunkSize, chunkOverlap, minChunkSize, documentType);
         }
 
-        private static DocumentChunk CreateSingleChunk(string content, Guid documentId, int chunkIndex, int startPosition, int endPosition)
+        private static DocumentChunk CreateSingleChunk(string content, Guid documentId, int chunkIndex, int startPosition, int endPosition, string documentType)
         {
             return new SmartRAG.Entities.DocumentChunk
             {
@@ -245,11 +292,12 @@ namespace SmartRAG.Services.Document
                 StartPosition = startPosition,
                 EndPosition = endPosition,
                 CreatedAt = DateTime.UtcNow,
-                RelevanceScore = 0.0
+                RelevanceScore = 0.0,
+                DocumentType = documentType
             };
         }
 
-        private static List<DocumentChunk> CreateMultipleChunks(string content, Guid documentId, int maxChunkSize, int chunkOverlap, int minChunkSize)
+        private static List<DocumentChunk> CreateMultipleChunks(string content, Guid documentId, int maxChunkSize, int chunkOverlap, int minChunkSize, string documentType)
         {
             var chunks = new List<DocumentChunk>();
             var startIndex = 0;
@@ -265,11 +313,11 @@ namespace SmartRAG.Services.Document
                 }
 
                 var (validatedStart, validatedEnd) = ValidateChunkBoundaries(content, startIndex, endIndex);
-                var chunkContent = content.Substring(validatedStart, validatedEnd - validatedStart).Trim();
+                var chunkContent = content[validatedStart..validatedEnd].Trim();
 
                 if (!string.IsNullOrWhiteSpace(chunkContent))
                 {
-                    chunks.Add(CreateSingleChunk(chunkContent, documentId, chunkIndex, validatedStart, validatedEnd));
+                    chunks.Add(CreateSingleChunk(chunkContent, documentId, chunkIndex, validatedStart, validatedEnd, documentType));
                     chunkIndex++;
                 }
 
@@ -541,6 +589,5 @@ namespace SmartRAG.Services.Document
 
             return nextStart;
         }
-        #endregion
     }
 }

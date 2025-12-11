@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using SmartRAG.Models;
@@ -10,9 +9,7 @@ namespace SmartRAG.Interfaces.Parser
     /// </summary>
     public interface IImageParserService
     {
-        #region Public Methods
-
-        /// <summary>
+            /// <summary>
         /// Extracts text from an image using OCR
         /// </summary>
         /// <param name="imageStream">The image stream to process</param>
@@ -44,6 +41,6 @@ namespace SmartRAG.Interfaces.Parser
         /// <returns>Text with corrected currency symbols</returns>
         string CorrectCurrencySymbols(string text, string language = null);
 
-        #endregion
+
     }
 }

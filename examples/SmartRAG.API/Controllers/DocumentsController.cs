@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SmartRAG.Interfaces;
+using SmartRAG.Models.RequestResponse;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -180,12 +181,16 @@ namespace SmartRAG.API.Controllers
 
         try
         {
-                var document = await _documentService.UploadDocumentAsync(
-                file.OpenReadStream(),
-                file.FileName,
-                file.ContentType,
-                "system",
-                language);
+            var request = new UploadDocumentRequest
+            {
+                FileStream = file.OpenReadStream(),
+                FileName = file.FileName,
+                ContentType = file.ContentType,
+                UploadedBy = "system",
+                Language = language
+            };
+
+            var document = await _documentService.UploadDocumentAsync(request);
 
             return Ok(new
             {
@@ -459,12 +464,16 @@ namespace SmartRAG.API.Controllers
                 {
                     if (file.Length > 0)
                     {
-                        var document = await _documentService.UploadDocumentAsync(
-                            file.OpenReadStream(),
-                            file.FileName,
-                            file.ContentType,
-                            "system",
-                            language);
+                        var request = new UploadDocumentRequest
+                        {
+                            FileStream = file.OpenReadStream(),
+                            FileName = file.FileName,
+                            ContentType = file.ContentType,
+                            UploadedBy = "system",
+                            Language = language
+                        };
+
+                        var document = await _documentService.UploadDocumentAsync(request);
 
                         results.Add(new
                         {

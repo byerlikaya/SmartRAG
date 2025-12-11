@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using System.Net.Http;
 using SmartRAG.Enums;
 using SmartRAG.Models;
 using System;
@@ -15,33 +16,20 @@ namespace SmartRAG.Providers
     /// </summary>
     public class AnthropicProvider : BaseAIProvider
     {
-        private readonly ILogger<AnthropicProvider> _logger;
-
         /// <summary>
         /// Initializes a new instance of the AnthropicProvider
         /// </summary>
         /// <param name="logger">Logger instance for this provider</param>
-        public AnthropicProvider(ILogger<AnthropicProvider> logger) : base(logger)
+        /// <param name="httpClientFactory">HTTP client factory for creating HTTP clients</param>
+        public AnthropicProvider(ILogger<AnthropicProvider> logger, IHttpClientFactory httpClientFactory) : base(logger, httpClientFactory)
         {
-            _logger = logger;
         }
 
-        #region Constants
-
-        private const string AnthropicApiVersion = "2023-06-01";
+        private const string DefaultAnthropicApiVersion = "2023-06-01";
         private const string DefaultVoyageEndpoint = "https://api.voyageai.com";
-        private const string DefaultVoyageModel = "voyage-3.5";
         private const string VoyageInputType = "document";
 
-        #endregion
-
-        #region Properties
-
         public override AIProvider ProviderType => AIProvider.Anthropic;
-
-        #endregion
-
-        #region Public Methods
 
         public override async Task<string> GenerateTextAsync(string prompt, AIProviderConfig config)
         {
@@ -50,11 +38,12 @@ namespace SmartRAG.Providers
             if (!isValid)
                 return errorMessage;
 
+            var apiVersion = config.ApiVersion ?? DefaultAnthropicApiVersion;
             var additionalHeaders = new Dictionary<string, string>
-        {
-            { "x-api-key", config.ApiKey },
-            { "anthropic-version", AnthropicApiVersion }
-        };
+                    {
+                        { "x-api-key", config.ApiKey },
+                        { "anthropic-version", apiVersion }
+                    };
 
             using var client = CreateHttpClientWithoutAuth(additionalHeaders);
             var systemMessage = config.SystemMessage;
@@ -96,7 +85,6 @@ namespace SmartRAG.Providers
 
         public override async Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config)
         {
-
             var (isValid, errorMessage) = ValidateEmbeddingConfig(config);
             if (!isValid)
             {
@@ -104,8 +92,14 @@ namespace SmartRAG.Providers
                 return new List<float>();
             }
 
+            if (string.IsNullOrEmpty(config.EmbeddingModel))
+            {
+                ProviderLogMessages.LogAnthropicEmbeddingModelMissing(Logger, null);
+                return new List<float>();
+            }
+
             var voyageApiKey = config.EmbeddingApiKey ?? config.ApiKey;
-            var voyageModel = config.EmbeddingModel ?? DefaultVoyageModel;
+            var voyageModel = config.EmbeddingModel;
 
             var additionalHeaders = new Dictionary<string, string>
             {
@@ -120,7 +114,8 @@ namespace SmartRAG.Providers
                 input_type = VoyageInputType
             };
 
-            var embeddingEndpoint = BuildVoyageUrl("v1/embeddings");
+            var voyageEndpoint = config.EmbeddingEndpoint ?? DefaultVoyageEndpoint;
+            var embeddingEndpoint = BuildVoyageUrl(voyageEndpoint, "v1/embeddings");
 
             var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
 
@@ -162,49 +157,50 @@ namespace SmartRAG.Providers
                 return Enumerable.Range(0, inputList.Count).Select(_ => new List<float>()).ToList();
             }
 
+            if (string.IsNullOrEmpty(config.EmbeddingModel))
+            {
+                ProviderLogMessages.LogAnthropicEmbeddingModelMissing(Logger, null);
+                return new List<List<float>>();
+            }
+
             var voyageApiKey = config.EmbeddingApiKey ?? config.ApiKey;
-            var voyageModel = config.EmbeddingModel ?? DefaultVoyageModel;
+            var voyageModel = config.EmbeddingModel;
 
             var additionalHeaders = new Dictionary<string, string>
-        {
-            { "Authorization", $"Bearer {voyageApiKey}" }
-        };
+                    {
+                         { "Authorization", $"Bearer {voyageApiKey}" }
+                    };
 
-            using (var client = CreateHttpClientWithoutAuth(additionalHeaders))
+            using var client = CreateHttpClientWithoutAuth(additionalHeaders);
+            var payload = new
             {
-                var payload = new
-                {
-                    input = validInputs.ToArray(),
-                    model = voyageModel,
-                    input_type = VoyageInputType
-                };
+                input = validInputs.ToArray(),
+                model = voyageModel,
+                input_type = VoyageInputType
+            };
 
-                var embeddingEndpoint = BuildVoyageUrl("v1/embeddings");
+            var voyageEndpoint = config.EmbeddingEndpoint ?? DefaultVoyageEndpoint;
+            var embeddingEndpoint = BuildVoyageUrl(voyageEndpoint, "v1/embeddings");
 
-                var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
+            var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
 
-                if (!success)
-                {
-                    ProviderLogMessages.LogAnthropicBatchEmbeddingRequestError(Logger, error, null);
-                    return ParseVoyageBatchEmbeddingResponse("", inputList.Count);
-                }
+            if (!success)
+            {
+                ProviderLogMessages.LogAnthropicBatchEmbeddingRequestError(Logger, error, null);
+                return ParseVoyageBatchEmbeddingResponse("", inputList.Count);
+            }
 
-                try
-                {
-                    var validEmbeddings = ParseVoyageBatchEmbeddingResponse(response, validInputs.Count);
-                    return MapEmbeddingsToOriginalInputs(validEmbeddings, inputList, validInputs);
-                }
-                catch (Exception ex)
-                {
-                    ProviderLogMessages.LogVoyageParsingError(Logger, ex);
-                    return ParseVoyageBatchEmbeddingResponse("", inputList.Count);
-                }
+            try
+            {
+                var validEmbeddings = ParseVoyageBatchEmbeddingResponse(response, validInputs.Count);
+                return MapEmbeddingsToOriginalInputs(validEmbeddings, inputList, validInputs);
+            }
+            catch (Exception ex)
+            {
+                ProviderLogMessages.LogVoyageParsingError(Logger, ex);
+                return ParseVoyageBatchEmbeddingResponse("", inputList.Count);
             }
         }
-
-        #endregion
-
-        #region Private Methods
 
         /// <summary>
         /// Build Anthropic API URL
@@ -217,9 +213,9 @@ namespace SmartRAG.Providers
         /// <summary>
         /// Build Voyage AI API URL
         /// </summary>
-        private static string BuildVoyageUrl(string path)
+        private static string BuildVoyageUrl(string endpoint, string path)
         {
-            return $"{DefaultVoyageEndpoint}/{path}";
+            return $"{endpoint.TrimEnd('/')}/{path}";
         }
 
         /// <summary>
@@ -240,18 +236,16 @@ namespace SmartRAG.Providers
         /// </summary>
         private static string ParseAnthropicTextResponse(string response)
         {
-            using (var doc = JsonDocument.Parse(response))
+            using var doc = JsonDocument.Parse(response);
+            if (doc.RootElement.TryGetProperty("content", out var contentArray) && contentArray.ValueKind == JsonValueKind.Array)
             {
-                if (doc.RootElement.TryGetProperty("content", out var contentArray) && contentArray.ValueKind == JsonValueKind.Array)
-                {
-                    var firstContent = contentArray.EnumerateArray().FirstOrDefault();
+                var firstContent = contentArray.EnumerateArray().FirstOrDefault();
 
-                    if (firstContent.TryGetProperty("text", out var text))
-                        return text.GetString() ?? "No response generated";
-                }
-
-                return "No response generated";
+                if (firstContent.TryGetProperty("text", out var text))
+                    return text.GetString() ?? "No response generated";
             }
+
+            return "No response generated";
         }
 
         /// <summary>
@@ -284,23 +278,21 @@ namespace SmartRAG.Providers
 
             try
             {
-                using (var doc = JsonDocument.Parse(response))
+                using var doc = JsonDocument.Parse(response);
+                if (doc.RootElement.TryGetProperty("data", out var dataArray) && dataArray.ValueKind == JsonValueKind.Array)
                 {
-                    if (doc.RootElement.TryGetProperty("data", out var dataArray) && dataArray.ValueKind == JsonValueKind.Array)
+                    foreach (var item in dataArray.EnumerateArray())
                     {
-                        foreach (var item in dataArray.EnumerateArray())
+                        if (item.TryGetProperty("embedding", out var embeddingArray) && embeddingArray.ValueKind == JsonValueKind.Array)
                         {
-                            if (item.TryGetProperty("embedding", out var embeddingArray) && embeddingArray.ValueKind == JsonValueKind.Array)
-                            {
-                                var embedding = embeddingArray.EnumerateArray()
-                                    .Select(x => x.GetSingle())
-                                    .ToList();
-                                results.Add(embedding);
-                            }
-                            else
-                            {
-                                results.Add(new List<float>());
-                            }
+                            var embedding = embeddingArray.EnumerateArray()
+                                .Select(x => x.GetSingle())
+                                .ToList();
+                            results.Add(embedding);
+                        }
+                        else
+                        {
+                            results.Add(new List<float>());
                         }
                     }
                 }
@@ -344,7 +336,5 @@ namespace SmartRAG.Providers
 
             return result;
         }
-
-        #endregion
     }
 }

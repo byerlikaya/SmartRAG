@@ -37,7 +37,7 @@ namespace SmartRAG.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting conversation history for session {SessionId}", sessionId);
+                _logger.LogError(ex, "Error getting conversation history");
                 return string.Empty;
             }
         }
@@ -71,7 +71,7 @@ namespace SmartRAG.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding to conversation for session {SessionId}", sessionId);
+                _logger.LogError(ex, "Error adding to conversation");
             }
         }
 
@@ -90,7 +90,7 @@ namespace SmartRAG.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error clearing conversation for session {SessionId}", sessionId);
+                _logger.LogError(ex, "Error clearing conversation");
             }
         }
 
@@ -106,8 +106,44 @@ namespace SmartRAG.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error checking session existence for {SessionId}", sessionId);
+                _logger.LogError(ex, "Error checking session existence");
                 return false;
+            }
+        }
+
+        public async Task SetConversationHistoryAsync(string sessionId, string conversation)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId))
+                return;
+
+            try
+            {
+                var filePath = GetConversationFilePath(sessionId);
+                await Task.Run(() => File.WriteAllText(filePath, conversation));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error setting conversation history");
+            }
+        }
+
+        public async Task ClearAllConversationsAsync()
+        {
+            try
+            {
+                if (Directory.Exists(_conversationsPath))
+                {
+                    var files = Directory.GetFiles(_conversationsPath, "*.txt");
+                    foreach (var file in files)
+                    {
+                        await Task.Run(() => File.Delete(file));
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error clearing all conversations from file system");
+                throw;
             }
         }
 

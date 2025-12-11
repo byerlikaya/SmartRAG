@@ -12,21 +12,11 @@ namespace SmartRAG.Services.Storage.Qdrant
     /// </summary>
     public class QdrantCacheManager : IQdrantCacheManager
     {
-        #region Constants
-
         private const int CacheExpiryMinutes = 5;
-
-        #endregion
-
-        #region Fields
 
         private readonly ILogger<QdrantCacheManager> _logger;
         private static readonly Dictionary<string, (List<DocumentChunk> Chunks, DateTime Expiry)> _searchCache = new Dictionary<string, (List<DocumentChunk> Chunks, DateTime Expiry)>();
         private static readonly object _cacheLock = new object();
-
-        #endregion
-
-        #region Constructor
 
         /// <summary>
         /// Initializes a new instance of the QdrantCacheManager
@@ -36,10 +26,6 @@ namespace SmartRAG.Services.Storage.Qdrant
         {
             _logger = logger;
         }
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         /// Gets cached search results if available and not expired
@@ -71,8 +57,7 @@ namespace SmartRAG.Services.Storage.Qdrant
 
                 CleanupExpiredCache();
 
-                _logger.LogDebug("Search results cached for query hash: {QueryHash}, cache size: {CacheSize}",
-                    queryHash, _searchCache.Count);
+                _logger.LogDebug("Search results cached, cache size: {CacheSize}", _searchCache.Count);
             }
         }
 
@@ -92,7 +77,5 @@ namespace SmartRAG.Services.Storage.Qdrant
                 _logger.LogDebug("Cleaned up {ExpiredCount} expired cache entries", expiredKeys.Count);
             }
         }
-
-        #endregion
     }
 }

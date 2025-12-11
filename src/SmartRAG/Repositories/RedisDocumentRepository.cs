@@ -2,15 +2,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces.AI;
-using SmartRAG.Interfaces.Database;
 using SmartRAG.Interfaces.Document;
-using SmartRAG.Interfaces.Parser;
-using SmartRAG.Interfaces.Search;
-using SmartRAG.Interfaces.Storage;
-using SmartRAG.Interfaces.Storage.Qdrant;
-using SmartRAG.Interfaces.Support;
 using SmartRAG.Models;
-using SmartRAG.Services.AI;
 using StackExchange.Redis;
 using NRedisStack;
 using NRedisStack.RedisStackCommands;
@@ -31,8 +24,6 @@ namespace SmartRAG.Repositories
     /// </summary>
     public class RedisDocumentRepository : IDocumentRepository, IDisposable
     {
-        #region Constants
-
         private const int DefaultConnectionTimeoutMs = 1000;
         private const int DefaultKeepAliveSeconds = 180;
         private const int DefaultMaxSearchResults = 5;
@@ -40,10 +31,6 @@ namespace SmartRAG.Repositories
         private const string MetadataKeySuffix = "meta:";
         private const string ChunkKeySuffix = "chunk:";
         private const string DateTimeFormat = "O";
-
-        #endregion
-
-        #region Fields
 
         private readonly ConnectionMultiplexer _redis;
         private readonly IDatabase _database;
@@ -56,15 +43,7 @@ namespace SmartRAG.Repositories
         private readonly SearchCommands _searchCommands;
         private bool _disposed;
 
-        #endregion
-
-        #region Properties
-
         protected ILogger Logger => _logger;
-
-        #endregion
-
-        #region Constructor
 
         /// <summary>
         /// Initializes a new instance of RedisDocumentRepository with vector search support
@@ -99,12 +78,12 @@ namespace SmartRAG.Repositories
                 _documentPrefix = redisConfig.KeyPrefix;
 
                 ValidateConnection();
-                
+
                 if (_config.EnableVectorSearch)
                 {
                     _ = EnsureVectorIndexExistsAsync();
                 }
-                
+
                 RepositoryLogMessages.LogRedisConnectionEstablished(Logger, redisConfig.ConnectionString, null);
             }
             catch (Exception ex)
@@ -113,10 +92,6 @@ namespace SmartRAG.Repositories
                 throw;
             }
         }
-
-        #endregion
-
-        #region Public Methods
 
         public async Task<SmartRAG.Entities.Document> AddAsync(SmartRAG.Entities.Document document)
         {
@@ -135,7 +110,7 @@ namespace SmartRAG.Repositories
                 if (_config.EnableVectorSearch)
                 {
                     await EnsureVectorIndexExistsAsync();
-                    
+
                     var batch = _database.CreateBatch();
                     var tasks = new List<Task>();
 
@@ -146,10 +121,10 @@ namespace SmartRAG.Repositories
 
                         if (embedding == null || embedding.Count == 0)
                         {
-                            try 
+                            try
                             {
                                 embedding = await _aiProvider.GenerateEmbeddingAsync(chunk.Content, null);
-                                chunk.Embedding = embedding; // Update chunk with generated embedding
+                                chunk.Embedding = embedding;
                             }
                             catch (Exception ex)
                             {
@@ -172,7 +147,7 @@ namespace SmartRAG.Repositories
 
                     batch.Execute();
                     await Task.WhenAll(tasks);
-                    
+
                     await _database.StringSetAsync(documentKey, JsonSerializer.Serialize(document));
                 }
 
@@ -216,6 +191,7 @@ namespace SmartRAG.Repositories
             {
                 var documentIds = await _database.ListRangeAsync(_documentsKey);
                 var documents = new List<SmartRAG.Entities.Document>();
+                var processedDocumentIds = new HashSet<Guid>();
 
                 foreach (var idString in documentIds)
                 {
@@ -225,7 +201,78 @@ namespace SmartRAG.Repositories
                         if (document != null)
                         {
                             documents.Add(document);
+                            processedDocumentIds.Add(id);
                         }
+                    }
+                }
+
+                if (_config.EnableVectorSearch && documents.Count == 0)
+                {
+                    try
+                    {
+                        var chunkKeys = await GetAllChunkKeysAsync();
+                        var documentMap = new Dictionary<Guid, DocumentData>();
+
+                        foreach (var chunkKey in chunkKeys)
+                        {
+                            var chunkData = await _database.HashGetAllAsync(chunkKey);
+                            if (chunkData == null || chunkData.Length == 0) continue;
+
+                            var docIdEntry = chunkData.FirstOrDefault(h => h.Name == "documentId");
+                            if (docIdEntry.Equals(default(HashEntry)) || docIdEntry.Value.IsNull ||
+                                !Guid.TryParse(docIdEntry.Value.ToString(), out var docId)) continue;
+
+                            if (!documentMap.ContainsKey(docId))
+                            {
+                                var fileNameEntry = chunkData.FirstOrDefault(h => h.Name == "fileName");
+                                documentMap[docId] = new DocumentData
+                                {
+                                    Id = docId,
+                                    FileName = fileNameEntry.Equals(default(HashEntry)) || fileNameEntry.Value.IsNull
+                                        ? string.Empty
+                                        : fileNameEntry.Value.ToString()
+                                };
+                            }
+
+                            var contentEntry = chunkData.FirstOrDefault(h => h.Name == "content");
+                            var chunkIndexEntry = chunkData.FirstOrDefault(h => h.Name == "chunkIndex");
+                            if (!contentEntry.Equals(default(HashEntry)) && !contentEntry.Value.IsNull &&
+                                int.TryParse(chunkIndexEntry.Equals(default(HashEntry)) || chunkIndexEntry.Value.IsNull
+                                    ? "0"
+                                    : chunkIndexEntry.Value.ToString(), out var chunkIndex))
+                            {
+                                documentMap[docId].Chunks.Add(new DocumentChunk
+                                {
+                                    Id = Guid.Parse(chunkKey.Replace($"{_config.KeyPrefix}{ChunkKeySuffix}", "")),
+                                    DocumentId = docId,
+                                    Content = contentEntry.Value.ToString(),
+                                    ChunkIndex = chunkIndex
+                                });
+                            }
+                        }
+
+                        foreach (var docData in documentMap.Values)
+                        {
+                            if (!processedDocumentIds.Contains(docData.Id))
+                            {
+                                var orderedChunks = docData.Chunks.OrderBy(c => c.ChunkIndex).ToList();
+                                documents.Add(new SmartRAG.Entities.Document
+                                {
+                                    Id = docData.Id,
+                                    FileName = docData.FileName,
+                                    ContentType = "application/octet-stream",
+                                    Content = string.Join("\n", orderedChunks.Select(c => c.Content)),
+                                    UploadedBy = "system",
+                                    UploadedAt = DateTime.UtcNow,
+                                    Chunks = orderedChunks,
+                                    FileSize = 0
+                                });
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to retrieve documents from chunks");
                     }
                 }
 
@@ -239,6 +286,28 @@ namespace SmartRAG.Repositories
             }
         }
 
+        private async Task<List<string>> GetAllChunkKeysAsync()
+        {
+            var chunkKeys = new List<string>();
+            var pattern = $"{_config.KeyPrefix}{ChunkKeySuffix}*";
+            var endpoints = _redis.GetEndPoints();
+            
+            if (endpoints == null || endpoints.Length == 0)
+            {
+                _logger.LogWarning("No Redis endpoints available for chunk key retrieval");
+                return chunkKeys;
+            }
+
+            var server = _redis.GetServer(endpoints.First());
+            
+            await foreach (var key in server.KeysAsync(pattern: pattern))
+            {
+                chunkKeys.Add(key);
+            }
+
+            return chunkKeys;
+        }
+
         public async Task<bool> ClearAllAsync()
         {
             try
@@ -248,6 +317,36 @@ namespace SmartRAG.Repositories
                 {
                     await DeleteAsync(doc.Id);
                 }
+
+                if (_config.EnableVectorSearch)
+                {
+                    try
+                    {
+                        var chunkKeys = await GetAllChunkKeysAsync();
+                        if (chunkKeys.Count > 0)
+                        {
+                            var batch = _database.CreateBatch();
+                            var tasks = new List<Task>();
+                            
+                            foreach (var chunkKey in chunkKeys)
+                            {
+                                tasks.Add(batch.KeyDeleteAsync(chunkKey));
+                            }
+                            
+                            batch.Execute();
+                            await Task.WhenAll(tasks);
+                            
+                            _logger.LogInformation("Cleared {Count} chunks from Redis", chunkKeys.Count);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to clear chunks from Redis");
+                    }
+                }
+
+                await _database.KeyDeleteAsync(_documentsKey);
+                
                 return true;
             }
             catch (Exception ex)
@@ -309,7 +408,7 @@ namespace SmartRAG.Repositories
                 }
 
                 var queryEmbedding = await _aiProvider.GenerateEmbeddingAsync(query, aiConfig);
-                
+
                 // KNN search syntax: *=>[KNN {k} @vector_field $query_vector AS score]
                 var searchQuery = new Query($"*=>[KNN {maxResults} @embedding $vec AS score]")
                     .AddParam("vec", SerializeEmbedding(queryEmbedding))
@@ -318,7 +417,7 @@ namespace SmartRAG.Repositories
                     .Dialect(2); // Dialect 2 is required for vector search
 
                 var searchResult = await _searchCommands.SearchAsync(_config.VectorIndexName, searchQuery);
-                
+
                 var results = new List<DocumentChunk>();
 
                 foreach (var doc in searchResult.Documents)
@@ -333,45 +432,30 @@ namespace SmartRAG.Repositories
                         if (Guid.TryParse(docIdStr.ToString(), out var docId) &&
                             int.TryParse(chunkIndexStr.ToString(), out var chunkIndex))
                         {
-                            // Parse score - RediSearch returns distance (for COSINE: 0-2, for L2: 0-inf, for IP: -1 to 1)
                             double score = 0.0;
                             if (scoreStr.HasValue && !scoreStr.IsNull && double.TryParse(scoreStr.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedScore))
                             {
                                 score = parsedScore;
                             }
-                            
-                            float similarity;
+
                             var distanceMetric = _config.DistanceMetric?.ToUpperInvariant() ?? "COSINE";
-                            
-                            switch (distanceMetric)
+                            var similarity = distanceMetric switch
                             {
-                                case "COSINE":
-                                    // Cosine distance: 0 = identical, 2 = opposite
-                                    similarity = (float)Math.Max(0.0, Math.Min(1.0, 1.0 - (score / 2.0)));
-                                    break;
-                                case "L2":
-                                    // L2 distance: 0 = identical, larger = more different
-                                    similarity = (float)(1.0 / (1.0 + score));
-                                    break;
-                                case "IP":
-                                    // Inner product: higher = more similar (can be negative)
-                                    similarity = (float)Math.Max(0.0, Math.Min(1.0, (score + 1.0) / 2.0));
-                                    break;
-                                default:
-                                    similarity = (float)Math.Max(0.0, Math.Min(1.0, 1.0 - score));
-                                    break;
-                            }
-                            
+                                "COSINE" => (float)Math.Max(0.0, Math.Min(1.0, 1.0 - (score / 2.0))),
+                                "L2" => (float)(1.0 / (1.0 + score)),
+                                "IP" => (float)Math.Max(0.0, Math.Min(1.0, (score + 1.0) / 2.0)),
+                                _ => (float)Math.Max(0.0, Math.Min(1.0, 1.0 - score)),
+                            };
                             var relevanceScore = similarity * 100.0;
-                            
+
                             results.Add(new DocumentChunk
                             {
-                                Id = Guid.Parse(doc.Id.Replace($"{_config.KeyPrefix}{ChunkKeySuffix}", "")), // Extract GUID from key if possible, or generate new
+                                Id = Guid.Parse(doc.Id.Replace($"{_config.KeyPrefix}{ChunkKeySuffix}", "")),
                                 DocumentId = docId,
                                 Content = content.ToString(),
                                 ChunkIndex = chunkIndex,
-                                Embedding = new List<float>(), // We don't return embedding to save bandwidth
-                                RelevanceScore = relevanceScore // Set RelevanceScore for DocumentSearchService (0-100 scale)
+                                Embedding = new List<float>(),
+                                RelevanceScore = relevanceScore
                             });
                         }
                     }
@@ -421,12 +505,6 @@ namespace SmartRAG.Repositories
                 return new List<DocumentChunk>();
             }
         }
-
-
-
-        #endregion
-
-        #region Private Helper Methods
 
         private static ConfigurationOptions CreateConnectionOptions(RedisConfig config)
         {
@@ -479,7 +557,7 @@ namespace SmartRAG.Repositories
 
         private static HashEntry[] CreateDocumentMetadata(SmartRAG.Entities.Document document)
         {
-            return new HashEntry[]
+            var entries = new List<HashEntry>
             {
             new HashEntry("id", document.Id.ToString()),
             new HashEntry("fileName", document.FileName),
@@ -489,6 +567,19 @@ namespace SmartRAG.Repositories
             new HashEntry("uploadedBy", document.UploadedBy),
             new HashEntry("chunkCount", document.Chunks.Count.ToString(CultureInfo.InvariantCulture))
             };
+
+            if (document.Metadata != null)
+            {
+                foreach (var metadataItem in document.Metadata)
+                {
+                    if (metadataItem.Value != null)
+                    {
+                        entries.Add(new HashEntry($"metadata_{metadataItem.Key}", metadataItem.Value.ToString()));
+                    }
+                }
+            }
+
+            return entries.ToArray();
         }
 
         private async Task EnsureVectorIndexExistsAsync()
@@ -537,7 +628,7 @@ namespace SmartRAG.Repositories
             catch (Exception ex)
             {
                 RepositoryLogMessages.LogRedisVectorIndexCreationFailure(Logger, _config.VectorIndexName, ex);
-                
+
                 var errorMessage = ex.Message ?? string.Empty;
                 if (errorMessage.Contains("unknown command 'FT.CREATE'", StringComparison.OrdinalIgnoreCase) ||
                     errorMessage.Contains("FT.CREATE", StringComparison.OrdinalIgnoreCase))
@@ -569,52 +660,50 @@ namespace SmartRAG.Repositories
         private async Task ExecuteDocumentDeleteBatch(string documentKey, string metadataKey, Guid documentId)
         {
             var batch = _database.CreateBatch();
-            var allTasks = new List<Task>();
+            var allTasks = new List<Task>
+            {
+                batch.KeyDeleteAsync(documentKey),
+                batch.ListRemoveAsync(_documentsKey, documentId.ToString()),
+                batch.KeyDeleteAsync(metadataKey)
+            };
 
-            allTasks.Add(batch.KeyDeleteAsync(documentKey));
-            allTasks.Add(batch.ListRemoveAsync(_documentsKey, documentId.ToString()));
-            allTasks.Add(batch.KeyDeleteAsync(metadataKey));
-
-            // Note: This is a simplified deletion. Ideally we should track chunk keys and delete them explicitly
-            // or use a tag-based deletion if RediSearch supports it efficiently.
             if (_config.EnableVectorSearch)
             {
-               try 
-               {
-                   var query = new Query($"@documentId:{{{documentId}}}").ReturnFields("id");
-                   var result = await _searchCommands.SearchAsync(_config.VectorIndexName, query);
-                   
-                   foreach (var doc in result.Documents)
-                   {
-                       var chunkKey = doc.Id;
-                       allTasks.Add(batch.KeyDeleteAsync(chunkKey));
-                   }
-               }
-               catch
-               {
-               }
+                try
+                {
+                    var query = new Query($"@documentId:{{{documentId}}}").ReturnFields("id");
+                    var result = await _searchCommands.SearchAsync(_config.VectorIndexName, query);
+
+                    foreach (var doc in result.Documents)
+                    {
+                        var chunkKey = doc.Id;
+                        allTasks.Add(batch.KeyDeleteAsync(chunkKey));
+                    }
+                }
+                catch
+                {
+                }
             }
 
             batch.Execute();
             await Task.WhenAll(allTasks);
         }
 
-        #endregion
-
         public void Dispose()
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_disposed && disposing)
+            if (!_disposed)
             {
                 _redis?.Close();
                 _redis?.Dispose();
                 _disposed = true;
             }
+        }
+
+        private class DocumentData
+        {
+            public Guid Id { get; set; }
+            public string FileName { get; set; } = string.Empty;
+            public List<DocumentChunk> Chunks { get; set; } = new List<DocumentChunk>();
         }
     }
 }
