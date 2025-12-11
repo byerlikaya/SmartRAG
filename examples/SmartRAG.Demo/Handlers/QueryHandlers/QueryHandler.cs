@@ -364,6 +364,12 @@ public class QueryHandler(
                     PrintSources(response.Sources, maxCount: 5);
                     System.Console.WriteLine();
                 }
+
+                if (response.SearchMetadata != null)
+                {
+                    PrintSearchMetadata(response.SearchMetadata);
+                    System.Console.WriteLine();
+                }
             }
             catch (Exception ex)
             {
@@ -794,6 +800,54 @@ public class QueryHandler(
         if (sources.Count > maxCount)
         {
             System.Console.WriteLine($"   • … {sources.Count - maxCount} more");
+        }
+
+        System.Console.ResetColor();
+    }
+
+    /// <summary>
+    /// Prints search metadata information about which searches were performed
+    /// </summary>
+    /// <param name="metadata">Search metadata to display</param>
+    private void PrintSearchMetadata(SearchMetadata metadata)
+    {
+        System.Console.ForegroundColor = ConsoleColor.DarkGray;
+        System.Console.WriteLine("🔍 Search Operations:");
+
+        var searches = new List<string>();
+
+        if (metadata.DocumentSearchPerformed)
+        {
+            var docInfo = metadata.DocumentChunksFound > 0
+                ? $"Document Search ({metadata.DocumentChunksFound} chunks found)"
+                : "Document Search";
+            searches.Add($"   ✓ {docInfo}");
+        }
+
+        if (metadata.DatabaseSearchPerformed)
+        {
+            var dbInfo = metadata.DatabaseResultsFound > 0
+                ? $"Database Search ({metadata.DatabaseResultsFound} results found)"
+                : "Database Search";
+            searches.Add($"   ✓ {dbInfo}");
+        }
+
+        if (metadata.McpSearchPerformed)
+        {
+            var mcpInfo = metadata.McpResultsFound > 0
+                ? $"MCP Search ({metadata.McpResultsFound} results found)"
+                : "MCP Search";
+            searches.Add($"   ✓ {mcpInfo}");
+        }
+
+        if (searches.Count == 0)
+        {
+            searches.Add("   (No searches performed)");
+        }
+
+        foreach (var search in searches)
+        {
+            System.Console.WriteLine(search);
         }
 
         System.Console.ResetColor();

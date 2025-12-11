@@ -57,13 +57,27 @@ namespace SmartRAG.Services.Document
         /// </summary>
         public RagResponse CreateRagResponse(string query, string answer, List<SearchSource> sources)
         {
+            return CreateRagResponse(query, answer, sources, null);
+        }
+
+        /// <summary>
+        /// Creates a RagResponse with standard configuration and search metadata
+        /// </summary>
+        /// <param name="query">Original query</param>
+        /// <param name="answer">Generated answer</param>
+        /// <param name="sources">List of search sources</param>
+        /// <param name="searchMetadata">Metadata about search operations performed</param>
+        /// <returns>RAG response with search metadata</returns>
+        public RagResponse CreateRagResponse(string query, string answer, List<SearchSource> sources, SearchMetadata? searchMetadata)
+        {
             return new RagResponse
             {
                 Query = query,
                 Answer = answer,
                 Sources = sources,
                 SearchedAt = DateTime.UtcNow,
-                Configuration = GetRagConfiguration()
+                Configuration = GetRagConfiguration(),
+                SearchMetadata = searchMetadata ?? new SearchMetadata()
             };
         }
 

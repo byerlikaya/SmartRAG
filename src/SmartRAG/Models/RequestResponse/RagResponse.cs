@@ -33,6 +33,11 @@ namespace SmartRAG.Models
         /// Configuration information for this RAG response
         /// </summary>
         public RagConfiguration Configuration { get; set; } = new RagConfiguration();
+
+        /// <summary>
+        /// Information about which search operations were performed for this query
+        /// </summary>
+        public SearchMetadata SearchMetadata { get; set; } = new SearchMetadata();
     }
 
     /// <summary>
@@ -54,5 +59,41 @@ namespace SmartRAG.Models
         /// Model name used for text generation
         /// </summary>
         public string Model { get; set; } = string.Empty;
+    }
+
+    /// <summary>
+    /// Metadata about search operations performed for a query
+    /// </summary>
+    public class SearchMetadata
+    {
+        /// <summary>
+        /// Whether document search was performed
+        /// </summary>
+        public bool DocumentSearchPerformed { get; set; }
+
+        /// <summary>
+        /// Whether database search was performed
+        /// </summary>
+        public bool DatabaseSearchPerformed { get; set; }
+
+        /// <summary>
+        /// Whether MCP (Model Context Protocol) search was performed
+        /// </summary>
+        public bool McpSearchPerformed { get; set; }
+
+        /// <summary>
+        /// Number of document chunks found (if document search was performed)
+        /// </summary>
+        public int DocumentChunksFound { get; set; }
+
+        /// <summary>
+        /// Number of database results found (if database search was performed)
+        /// </summary>
+        public int DatabaseResultsFound { get; set; }
+
+        /// <summary>
+        /// Number of MCP results found (if MCP search was performed)
+        /// </summary>
+        public int McpResultsFound { get; set; }
     }
 }

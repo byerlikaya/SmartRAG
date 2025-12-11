@@ -298,6 +298,7 @@ namespace SmartRAG.Services.Document
             }
 
             RagResponse response;
+            var searchMetadata = new SearchMetadata();
 
             // Pre-evaluate document availability for smarter strategy selection
             // Compute query tokens once here and pass to all sub-methods to avoid redundant tokenization
@@ -306,6 +307,12 @@ namespace SmartRAG.Services.Document
             var (CanAnswer, Results) = searchOptions.EnableDocumentSearch
                 ? await CanAnswerFromDocumentsAsyncInternal(query, searchOptions, queryTokens)
                 : (CanAnswer: false, Results: new List<DocumentChunk>());
+
+            if (searchOptions.EnableDocumentSearch)
+            {
+                searchMetadata.DocumentSearchPerformed = true;
+                searchMetadata.DocumentChunksFound = Results.Count;
+            }
 
             // Early exit optimization: if documents provide high-confidence results, skip other sources
             // CRITICAL: ALWAYS check document quality FIRST, regardless of database intent
@@ -353,6 +360,7 @@ namespace SmartRAG.Services.Document
                     {
                         // This prevents unnecessary database/MCP queries when documents already have the answer
                         _logger.LogInformation("Document-only response is satisfactory, skipping database and MCP search for faster response");
+                        documentOnlyResponse.SearchMetadata = searchMetadata;
                         return documentOnlyResponse;
                     }
                 }
@@ -432,6 +440,12 @@ namespace SmartRAG.Services.Document
                             QueryTokens = queryTokens
                         })
                     };
+
+                    if (strategy == QueryStrategy.DatabaseOnly || strategy == QueryStrategy.Hybrid)
+                    {
+                        searchMetadata.DatabaseSearchPerformed = true;
+                        searchMetadata.DatabaseResultsFound = response.Sources?.Count(s => s.SourceType == "Database") ?? 0;
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -450,6 +464,11 @@ namespace SmartRAG.Services.Document
                     response = _strategyExecutor != null
                         ? await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(docRequest)
                         : throw new InvalidOperationException("IQueryStrategyExecutorService is required for strategy execution");
+                }
+
+                if (response != null && response.SearchMetadata == null)
+                {
+                    response.SearchMetadata = searchMetadata;
                 }
             }
             else
@@ -470,6 +489,11 @@ namespace SmartRAG.Services.Document
                     response = _strategyExecutor != null
                         ? await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(docRequest)
                         : throw new InvalidOperationException("IQueryStrategyExecutorService is required for strategy execution");
+                    
+                    if (response != null && response.SearchMetadata == null)
+                    {
+                        response.SearchMetadata = searchMetadata;
+                    }
                 }
                 else
                 {
@@ -477,7 +501,10 @@ namespace SmartRAG.Services.Document
                     {
                         try
                         {
-                            var mcpResults = await _mcpIntegration.QueryWithMcpAsync(query, maxResults, conversationHistory);
+                                var mcpResults = await _mcpIntegration.QueryWithMcpAsync(query, maxResults, conversationHistory);
+                            searchMetadata.McpSearchPerformed = true;
+                            searchMetadata.McpResultsFound = mcpResults?.Count(r => r.IsSuccess && !string.IsNullOrWhiteSpace(r.Content)) ?? 0;
+                            
                             if (mcpResults != null && mcpResults.Count > 0)
                             {
                                 var mcpSources = mcpResults
@@ -500,7 +527,7 @@ namespace SmartRAG.Services.Document
                                         var mcpAnswer = await _aiService.GenerateResponseAsync(mcpPrompt, new List<string> { mcpContext });
                                         if (!string.IsNullOrWhiteSpace(mcpAnswer))
                                         {
-                                            response = _responseBuilder?.CreateRagResponse(query, mcpAnswer, mcpSources) ?? new RagResponse { Query = query, Answer = mcpAnswer, Sources = mcpSources, SearchedAt = DateTime.UtcNow };
+                                            response = _responseBuilder?.CreateRagResponse(query, mcpAnswer, mcpSources, searchMetadata) ?? new RagResponse { Query = query, Answer = mcpAnswer, Sources = mcpSources, SearchedAt = DateTime.UtcNow, SearchMetadata = searchMetadata };
                                         }
                                         else
                                         {
@@ -561,6 +588,9 @@ namespace SmartRAG.Services.Document
                 try
                 {
                     var mcpResults = await _mcpIntegration.QueryWithMcpAsync(query, maxResults);
+                    searchMetadata.McpSearchPerformed = true;
+                    searchMetadata.McpResultsFound = mcpResults?.Count(r => r.IsSuccess && !string.IsNullOrWhiteSpace(r.Content)) ?? 0;
+                    
                     if (mcpResults != null && mcpResults.Count > 0)
                     {
                         var mcpSources = mcpResults
@@ -612,6 +642,10 @@ namespace SmartRAG.Services.Document
 
             if (response != null)
             {
+                if (response.SearchMetadata == null)
+                {
+                    response.SearchMetadata = searchMetadata;
+                }
                 await _conversationManager.AddToConversationAsync(sessionId, query, response.Answer);
                 return response;
             }
@@ -1116,6 +1150,10 @@ namespace SmartRAG.Services.Document
                 }
             }
 
+            HashSet<Guid>? originalChunkIds = request.PreCalculatedResults != null && request.PreCalculatedResults.Count > 0
+                ? new HashSet<Guid>(request.PreCalculatedResults.Select(c => c.Id))
+                : new HashSet<Guid>(chunks.Select(c => c.Id));
+
             chunks = _chunkPrioritizer.MergeChunksWithPreservedChunk0(chunks, preservedChunk0);
 
             if (_contextExpansion != null && chunks.Count > 0)
@@ -1130,7 +1168,6 @@ namespace SmartRAG.Services.Document
 
                 if (relevantDocumentChunks.Count > 0)
                 {
-                    var originalChunkIds = new HashSet<Guid>(relevantDocumentChunks.Select(c => c.Id));
                     var originalScores = relevantDocumentChunks.ToDictionary(c => c.Id, c => c.RelevanceScore ?? 0.0);
 
                     if (_contextExpansion != null)
@@ -1225,7 +1262,11 @@ namespace SmartRAG.Services.Document
             var prompt = _promptBuilder.BuildDocumentRagPrompt(request.Query, context, request.ConversationHistory, request.PreferredLanguage);
             var answer = await _aiService.GenerateResponseAsync(prompt, new List<string> { context });
 
-            return _responseBuilder?.CreateRagResponse(request.Query, answer, await _sourceBuilder.BuildSourcesAsync(chunks, _documentRepository)) ?? new RagResponse { Query = request.Query, Answer = answer, Sources = await _sourceBuilder.BuildSourcesAsync(chunks, _documentRepository), SearchedAt = DateTime.UtcNow };
+            var sourcesChunks = originalChunkIds != null && originalChunkIds.Count > 0
+                ? chunks.Where(c => originalChunkIds.Contains(c.Id)).ToList()
+                : chunks;
+
+            return _responseBuilder?.CreateRagResponse(request.Query, answer, await _sourceBuilder.BuildSourcesAsync(sourcesChunks, _documentRepository)) ?? new RagResponse { Query = request.Query, Answer = answer, Sources = await _sourceBuilder.BuildSourcesAsync(sourcesChunks, _documentRepository), SearchedAt = DateTime.UtcNow };
         }
 
         /// <summary>

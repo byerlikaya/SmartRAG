@@ -21,6 +21,16 @@ namespace SmartRAG.Interfaces.Document
         RagResponse CreateRagResponse(string query, string answer, List<SearchSource> sources);
 
         /// <summary>
+        /// Creates a RagResponse with standard configuration and search metadata
+        /// </summary>
+        /// <param name="query">User query</param>
+        /// <param name="answer">AI-generated answer</param>
+        /// <param name="sources">List of search sources</param>
+        /// <param name="searchMetadata">Metadata about search operations performed</param>
+        /// <returns>Configured RagResponse with search metadata</returns>
+        RagResponse CreateRagResponse(string query, string answer, List<SearchSource> sources, SearchMetadata? searchMetadata);
+
+        /// <summary>
         /// Gets RAG configuration from options and configuration
         /// </summary>
         /// <returns>RAG configuration object</returns>
