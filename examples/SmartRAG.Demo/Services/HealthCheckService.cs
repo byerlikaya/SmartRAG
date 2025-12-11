@@ -153,13 +153,12 @@ public class HealthCheckService
                 {
                     ServiceName = "Redis",
                     IsHealthy = true,
-                    Message = "Cache service is healthy",
-                    Details = $"Connection: {connectionString}"
+                    Message = "Cache service is healthy"
                 };
             }
             catch (Exception ex)
             {
-                _logger?.LogWarning(ex, "Redis service health check failed with connection string {ConnectionString}", connectionString);
+                _logger?.LogWarning(ex, "Redis service health check failed");
                 return new HealthStatus
                 {
                     ServiceName = "Redis",

@@ -53,9 +53,10 @@ namespace SmartRAG.Services.Database
                 .Where(c => c.Enabled)
                 .ToList(); foreach (var config in enabledConnections)
             {
+                string databaseId = null;
                 try
                 {
-                    var databaseId = await GetDatabaseIdAsync(config);
+                    databaseId = await GetDatabaseIdAsync(config);
                     _connections[databaseId] = config;
 
                     _logger.LogInformation("Registered database connection: {DatabaseId}", databaseId);
@@ -76,8 +77,14 @@ namespace SmartRAG.Services.Database
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to initialize database connection: {ConnectionString}",
-                        MaskConnectionString(config.ConnectionString));
+                    if (databaseId != null)
+                    {
+                        _logger.LogError(ex, "Failed to initialize database connection: {DatabaseId}", databaseId);
+                    }
+                    else
+                    {
+                        _logger.LogError(ex, "Failed to initialize database connection");
+                    }
                 }
             }
 
@@ -169,23 +176,6 @@ namespace SmartRAG.Services.Database
             }
 
             return await Task.FromResult("UnknownDB");
-        }
-
-        private string MaskConnectionString(string connectionString)
-        {
-            var masked = System.Text.RegularExpressions.Regex.Replace(
-                connectionString,
-                @"(password|pwd)=([^;]+)",
-                "$1=****",
-                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-
-            masked = System.Text.RegularExpressions.Regex.Replace(
-                masked,
-                @"(user id|uid)=([^;]+)",
-                "$1=****",
-                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-
-            return masked;
         }
     }
 }

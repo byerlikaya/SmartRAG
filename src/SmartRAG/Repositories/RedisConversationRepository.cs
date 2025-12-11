@@ -35,7 +35,7 @@ namespace SmartRAG.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to connect to Redis server at {ConnectionString}", redisConfig.ConnectionString);
+                _logger.LogError(ex, "Failed to connect to Redis server");
                 throw;
             }
         }
