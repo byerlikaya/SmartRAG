@@ -6,7 +6,7 @@ All notable changes to SmartRAG will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.4.0] - 2025-12-10
+## [3.4.0] - 2025-12-11
 
 ### ✨ Added
 - **MCP (Model Context Protocol) Integration**: External MCP server integration for enhanced search capabilities
@@ -78,9 +78,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Early Exit Optimization**: Performance improvement for document search
   - Early exit when sufficient high-quality results are found
   - Reduced unnecessary processing for queries with clear results
+  - Parallel execution of document search and query intent analysis for improved performance
+  - Smart skip logic for eager document answer generation when database intent confidence is high
   - **Files Modified**:
-    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Early exit logic implementation
-  - **Benefits**: Faster search responses, reduced resource usage, improved user experience
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Early exit logic implementation with parallel execution
+    - `src/SmartRAG/Services/Document/QueryStrategyOrchestratorService.cs` - Strategy optimization
+  - **Benefits**: Faster search responses, reduced resource usage, improved user experience, optimized query processing
+
+- **IsExplicitlyNegative Check**: Fast-fail mechanism for negative answers
+  - `IsExplicitlyNegative` method added to `IResponseBuilderService` interface for detecting explicit failure patterns
+  - Support for `[NO_ANSWER_FOUND]` pattern for explicit failure detection
+  - Prevents false positives when AI returns negative answers despite high-confidence document matches
+  - **Files Modified**:
+    - `src/SmartRAG/Interfaces/Document/IResponseBuilderService.cs` - Added IsExplicitlyNegative method
+    - `src/SmartRAG/Services/Document/ResponseBuilderService.cs` - IsExplicitlyNegative implementation
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - IsExplicitlyNegative usage in early exit logic
+    - `src/SmartRAG/Services/AI/PromptBuilderService.cs` - Added [NO_ANSWER_FOUND] pattern to prompts
+    - `src/SmartRAG/Services/Database/ResultMerger.cs` - Added [NO_ANSWER_FOUND] pattern to database prompts
+  - **Benefits**: More accurate failure detection, reduced false positives, better query strategy decisions
 
 - **SmartRagStartupService**: Centralized startup service for initialization
   - Automatic MCP server connection on startup
@@ -113,6 +128,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **Benefits**: Better search visibility, performance monitoring, enhanced debugging
 
 ### 🔧 Improved
+- **Query Strategy Optimization**: Enhanced query execution strategy with intelligent source selection
+  - Refactored `ResponseBuilderService` to use `IsExplicitlyNegative` method consistently
+  - Improved early exit logic with `StrongDocumentMatchThreshold` (4.8) constant for better document prioritization
+  - Enhanced database query skip logic based on document match strength and AI answer quality
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Document/ResponseBuilderService.cs` - Code simplification and consistency improvements
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Query strategy optimization
+    - `src/SmartRAG/Services/Document/SourceSelectionService.cs` - Selection logic improvements
+  - **Benefits**: Better query performance, more accurate source selection, reduced unnecessary processing
+
 - **Code Quality**: Comprehensive code quality improvements across the codebase
   - Removed redundant comments and language-specific references
   - Improved constant naming and generic code patterns
