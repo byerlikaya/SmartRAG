@@ -91,7 +91,7 @@ public class DocumentHandler(
             {
                 _console.WriteWarning("No documents uploaded yet");
                 System.Console.WriteLine();
-                System.Console.WriteLine("💡 Use option 12 to upload documents");
+                System.Console.WriteLine("💡 Use option 13 to upload documents");
                 return;
             }
 
