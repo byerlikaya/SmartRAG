@@ -6,7 +6,7 @@ SmartRAG'deki tüm önemli değişiklikler bu dosyada belgelenecektir.
 Format [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)'a dayanmaktadır
 ve bu proje [Semantic Versioning](https://semver.org/spec/v2.0.0.html)'a uymaktadır.
 
-## [3.4.0] - 2025-12-10
+## [3.4.0] - 2025-12-11
 
 ### ✨ Eklenenler
 - **MCP (Model Context Protocol) Entegrasyonu**: Gelişmiş arama yetenekleri için harici MCP sunucu entegrasyonu
@@ -78,9 +78,12 @@ ve bu proje [Semantic Versioning](https://semver.org/spec/v2.0.0.html)'a uymakta
 - **Erken Çıkış Optimizasyonu**: Doküman araması için performans iyileştirmesi
   - Yeterli yüksek kaliteli sonuç bulunduğunda erken çıkış
   - Net sonuçları olan sorgular için gereksiz işlemenin azaltılması
+  - Geliştirilmiş performans için doküman araması ve sorgu intent analizinin paralel çalıştırılması
+  - Veritabanı intent güveni yüksek olduğunda eager doküman cevap üretimini atlayan akıllı skip mantığı
   - **Değiştirilen Dosyalar**:
-    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Erken çıkış mantığı implementasyonu
-  - **Faydalar**: Daha hızlı arama yanıtları, azaltılmış kaynak kullanımı, geliştirilmiş kullanıcı deneyimi
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Paralel çalıştırma ile erken çıkış mantığı implementasyonu
+    - `src/SmartRAG/Services/Document/QueryStrategyOrchestratorService.cs` - Strateji optimizasyonu
+  - **Faydalar**: Daha hızlı arama yanıtları, azaltılmış kaynak kullanımı, geliştirilmiş kullanıcı deneyimi, optimize edilmiş sorgu işleme
 
 - **SmartRagStartupService**: Başlatma için merkezi başlangıç servisi
   - Başlangıçta otomatik MCP sunucu bağlantısı
@@ -112,7 +115,28 @@ ve bu proje [Semantic Versioning](https://semver.org/spec/v2.0.0.html)'a uymakta
     - `src/SmartRAG/Services/Document/ResponseBuilderService.cs` - Metadata görüntüleme
   - **Faydalar**: Daha iyi arama görünürlüğü, performans izleme, geliştirilmiş hata ayıklama
 
+- **IsExplicitlyNegative Kontrolü**: Negatif cevaplar için hızlı başarısızlık mekanizması
+  - Açık başarısızlık pattern'lerini algılamak için `IResponseBuilderService` interface'ine `IsExplicitlyNegative` metodu eklendi
+  - Açık başarısızlık algılama için `[NO_ANSWER_FOUND]` pattern desteği
+  - Yüksek güvenli doküman eşleşmelerine rağmen AI'nın negatif cevaplar döndürmesi durumunda yanlış pozitifleri önler
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Interfaces/Document/IResponseBuilderService.cs` - IsExplicitlyNegative metodu eklendi
+    - `src/SmartRAG/Services/Document/ResponseBuilderService.cs` - IsExplicitlyNegative implementasyonu
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Erken çıkış mantığında IsExplicitlyNegative kullanımı
+    - `src/SmartRAG/Services/AI/PromptBuilderService.cs` - Prompt'lara [NO_ANSWER_FOUND] pattern'i eklendi
+    - `src/SmartRAG/Services/Database/ResultMerger.cs` - Veritabanı prompt'larına [NO_ANSWER_FOUND] pattern'i eklendi
+  - **Faydalar**: Daha doğru başarısızlık algılama, azaltılmış yanlış pozitifler, daha iyi sorgu stratejisi kararları
+
 ### 🔧 İyileştirilenler
+- **Sorgu Stratejisi Optimizasyonu**: Akıllı kaynak seçimi ile geliştirilmiş sorgu çalıştırma stratejisi
+  - `ResponseBuilderService`'i `IsExplicitlyNegative` metodunu tutarlı şekilde kullanacak şekilde refactor edildi
+  - Daha iyi doküman önceliklendirmesi için `StrongDocumentMatchThreshold` (4.8) sabiti ile geliştirilmiş erken çıkış mantığı
+  - Doküman eşleşme gücü ve AI cevap kalitesine dayalı geliştirilmiş veritabanı sorgu skip mantığı
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/Document/ResponseBuilderService.cs` - Kod sadeleştirme ve tutarlılık iyileştirmeleri
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Sorgu stratejisi optimizasyonu
+    - `src/SmartRAG/Services/Document/SourceSelectionService.cs` - Seçim mantığı iyileştirmeleri
+  - **Faydalar**: Daha iyi sorgu performansı, daha doğru kaynak seçimi, azaltılmış gereksiz işleme
 - **Kod Kalitesi**: Kod tabanı genelinde kapsamlı kod kalitesi iyileştirmeleri
   - Gereksiz yorumlar ve dil-spesifik referanslar kaldırıldı
   - Geliştirilmiş sabit isimlendirme ve generic kod pattern'leri

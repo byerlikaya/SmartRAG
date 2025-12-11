@@ -11,12 +11,118 @@ SmartRAG'deki tüm sürümler ve değişiklikler burada belgelenmiştir.
 
 <div class="accordion mt-4" id="versionAccordion">
     <div class="accordion-item">
+        <h2 class="accordion-header" id="headingversion340">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion340" aria-expanded="true" aria-controls="collapseversion340">
+                <strong>v3.4.0</strong> - 2025-12-11
+            </button>
+        </h2>
+        <div id="collapseversion340" class="accordion-collapse collapse show" aria-labelledby="headingversion340" >
+            <div class="accordion-body">
+{% capture version_content %}
+
+### MCP Entegrasyonu, Dosya İzleyici ve Sorgu Stratejisi Optimizasyonu
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> MINOR Sürüm</h4>
+    <p class="mb-0">
+        Bu sürüm MCP (Model Context Protocol) entegrasyonu, dosya izleyici servisi ve erken çıkış ve paralel çalıştırma iyileştirmeleri ile önemli sorgu stratejisi optimizasyonları ekler.
+    </p>
+</div>
+
+### ✨ Eklendi
+
+#### MCP (Model Context Protocol) Entegrasyonu
+- **Harici MCP Sunucu Entegrasyonu**: Harici MCP sunucuları aracılığıyla geliştirilmiş arama yetenekleri
+- **Çoklu MCP Sunucuları**: Otomatik araç keşfi ile birden fazla MCP sunucusu desteği
+- **Sorgu Zenginleştirme**: MCP sorguları için konuşma geçmişi bağlamı zenginleştirme
+
+#### Dosya İzleyici Servisi
+- **Otomatik Doküman İndeksleme**: Klasörleri izle ve yeni belgeleri otomatik indeksle
+- **Çoklu İzlenen Klasörler**: Bağımsız yapılandırmalarla birden fazla izlenen klasör desteği
+- **Dil-Spesifik İşleme**: Klasör başına dil yapılandırması
+
+#### DocumentType Özelliği
+- **İçerik Tipi Filtreleme**: İçerik tipine göre geliştirilmiş doküman chunk filtreleme (Document, Audio, Image)
+- **Otomatik Algılama**: Dosya uzantısı ve içerik tipine dayalı doküman tipi algılama
+
+#### DefaultLanguage Desteği
+- **Global Varsayılan Dil**: Doküman işleme için global varsayılan dil yapılandırması
+- **ISO 639-1 Desteği**: ISO 639-1 dil kodları desteği
+
+#### Geliştirilmiş Arama Özellik Bayrakları
+- **Granüler Kontrol**: `EnableMcpSearch`, `EnableAudioSearch`, `EnableImageSearch` bayrakları
+- **İstek Başına ve Global Yapılandırma**: Hem istek başına hem global yapılandırma desteği
+
+#### Erken Çıkış Optimizasyonu
+- **Performans İyileştirmesi**: Yeterli yüksek kaliteli sonuç bulunduğunda erken çıkış
+- **Paralel Çalıştırma**: Doküman araması ve sorgu intent analizinin paralel çalıştırılması
+- **Akıllı Skip Mantığı**: Veritabanı intent güveni yüksek olduğunda eager doküman cevap üretimini atlama
+
+#### IsExplicitlyNegative Kontrolü
+- **Hızlı Başarısızlık Mekanizması**: `[NO_ANSWER_FOUND]` pattern'i ile açık başarısızlık pattern'lerini algılama
+- **Yanlış Pozitifleri Önler**: Yüksek güvenli doküman eşleşmelerine rağmen AI'nın negatif cevaplar döndürmesi durumunda yanlış pozitifleri önler
+
+### 🔧 İyileştirildi
+
+#### Sorgu Stratejisi Optimizasyonu
+- **Akıllı Kaynak Seçimi**: Akıllı kaynak seçimi ile geliştirilmiş sorgu çalıştırma stratejisi
+- **StrongDocumentMatchThreshold**: Daha iyi doküman önceliklendirmesi için threshold sabiti (4.8) ile geliştirilmiş erken çıkış mantığı
+- **Veritabanı Sorgu Skip Mantığı**: Doküman eşleşme gücü ve AI cevap kalitesine dayalı geliştirilmiş mantık
+
+#### Kod Kalitesi
+- **Kapsamlı Temizlik**: Gereksiz yorumlar ve dil-spesifik referanslar kaldırıldı
+- **Geliştirilmiş İsimlendirme**: Daha iyi sabit isimlendirme ve generic kod pattern'leri
+- **Geliştirilmiş Organizasyon**: Geliştirilmiş kod organizasyonu ve yapısı
+
+#### Model Organizasyonu
+- **Mantıksal Alt Klasörler**: Modeller mantıksal alt klasörlere yeniden organize edildi (Configuration/, RequestResponse/, Results/, Schema/)
+
+### 🐛 Düzeltildi
+
+- **Dil-Agnostik Eksik Veri Algılama**: Dil-spesifik pattern'ler düzeltildi
+- **HttpClient Timeout**: Uzun süren AI işlemleri için timeout artırıldı
+- **Türkçe Karakter Encoding**: PDF metin çıkarmada encoding sorunları düzeltildi
+- **Chunk0 Alma**: Numara listesi işleme chunk alma düzeltildi
+- **DI Scope Sorunları**: Dependency injection scope çakışmaları çözüldü
+- **İçerik Tipi Algılama**: İçerik tipi algılama doğruluğu geliştirildi
+- **Konuşma Intent Sınıflandırma**: Bağlam farkındalığı geliştirildi
+- **Konuşma Geçmişi Tekrar Eden Girdiler**: Tekrar eden girdiler düzeltildi
+- **Redis Doküman Alma**: Doküman listesi boş olduğunda doküman alma düzeltildi
+- **SqlValidator DI Uyumluluğu**: Dependency injection uyumluluğu düzeltildi
+
+### 🔄 Değiştirildi
+
+- **Özellik Bayrağı İsimlendirme**: Tutarlılık için bayraklar yeniden adlandırıldı (`EnableMcpClient` → `EnableMcpSearch`, vb.)
+- **Interface Yeniden Yapılandırma**: Daha iyi organizasyon için interface'ler yeniden organize edildi
+
+### ✨ Faydalar
+
+- **Genişletilmiş Arama Yetenekleri**: MCP entegrasyonu harici veri kaynağı sorgularını etkinleştirir
+- **Otomatik Doküman İndeksleme**: Dosya izleyici servisi manuel doküman yüklemelerini azaltır
+- **Daha İyi İçerik Filtreleme**: DocumentType özelliği kesin içerik tipi filtrelemeyi etkinleştirir
+- **Geliştirilmiş Kod Kalitesi**: Kapsamlı kod temizliği ve organizasyon iyileştirmeleri
+- **Geliştirilmiş Çok Dilli Destek**: DefaultLanguage yapılandırması dil işlemeyi basitleştirir
+- **Performans Optimizasyonu**: Erken çıkış optimizasyonu arama yanıt sürelerini iyileştirir
+
+### 📝 Notlar
+
+- **MCP Entegrasyonu**: `SmartRagOptions.McpServers` içinde MCP sunucu yapılandırması gerektirir
+- **Dosya İzleyici**: `SmartRagOptions.WatchedFolders` içinde izlenen klasör yapılandırması gerektirir
+- **Geriye Dönük Uyumluluk**: Tüm değişiklikler geriye dönük uyumludur, breaking change yok
+
+---
+{% endcapture %}
+{{ version_content | markdownify }}
+            </div>
+        </div>
+    </div>
+    <div class="accordion-item">
         <h2 class="accordion-header" id="headingversion330">
-            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion330" aria-expanded="true" aria-controls="collapseversion330">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion330" aria-expanded="false" aria-controls="collapseversion330">
                 <strong>v3.3.0</strong> - 2025-12-01
             </button>
         </h2>
-        <div id="collapseversion330" class="accordion-collapse collapse show" aria-labelledby="headingversion330" >
+        <div id="collapseversion330" class="accordion-collapse collapse" aria-labelledby="headingversion330" >
             <div class="accordion-body">
 {% capture version_content %}
 
