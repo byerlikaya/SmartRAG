@@ -125,7 +125,7 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
             if (File.Exists(dbPath))
             {
                 File.Delete(dbPath);
-                _logger?.LogInformation("Existing database deleted: {DbPath}", dbPath);
+                _logger?.LogInformation("Existing database deleted");
             }
 
             using var connection = new SqliteConnection(connectionString);
@@ -135,7 +135,7 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
             await InsertSampleDataAsync(connection);
 
             var fileSize = new FileInfo(dbPath).Length / 1024.0;
-            _logger?.LogInformation("SQLite database created successfully: {DbPath}, Size: {FileSize:F2} KB", dbPath, fileSize);
+            _logger?.LogInformation("SQLite database created successfully, Size: {FileSize:F2} KB", fileSize);
         }
         catch (Exception ex)
         {
