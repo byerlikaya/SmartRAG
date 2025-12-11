@@ -9,6 +9,7 @@ using SmartRAG.Models;
 using SmartRAG.Services.Shared;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -152,12 +153,37 @@ namespace SmartRAG.Services.Support
         {
             try
             {
-                var currentHistory = await GetConversationFromStorageAsync(sessionId);
+                string currentHistory;
+                if (_conversationCache.TryGetValue(sessionId, out var cachedHistory))
+                {
+                    currentHistory = RemoveDuplicateEntries(cachedHistory ?? string.Empty);
+                }
+                else
+                {
+                    currentHistory = await GetConversationFromStorageAsync(sessionId);
+                }
+
+                var newTurn = $"User: {question}\nAssistant: {answer}";
+
+                if (!string.IsNullOrEmpty(currentHistory))
+                {
+                    var lines = currentHistory.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+                    for (int i = 0; i < lines.Length; i++)
+                    {
+                        if (lines[i].StartsWith("User: ", StringComparison.OrdinalIgnoreCase) &&
+                            lines[i].Equals($"User: {question}", StringComparison.OrdinalIgnoreCase) &&
+                            i + 1 < lines.Length &&
+                            lines[i + 1].StartsWith("Assistant: ", StringComparison.OrdinalIgnoreCase) &&
+                            lines[i + 1].Equals($"Assistant: {answer}", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return;
+                        }
+                    }
+                }
 
                 var newEntry = string.IsNullOrEmpty(currentHistory)
-                    ? $"User: {question}\nAssistant: {answer}"
-                    : $"{currentHistory}\nUser: {question}\nAssistant: {answer}";
-
+                    ? newTurn
+                    : $"{currentHistory}\n{newTurn}";
 
                 await StoreConversationToStorageAsync(sessionId, newEntry);
 
@@ -206,7 +232,7 @@ namespace SmartRAG.Services.Support
                 turns.Add(currentTurn.ToString());
             }
 
-            var recentTurns = turns.TakeLast(maxTurns * 2).ToList();
+            var recentTurns = turns.TakeLast(maxTurns).ToList();
 
             if (recentTurns.Count == 0)
             {
@@ -314,7 +340,8 @@ namespace SmartRAG.Services.Support
         {
             try
             {
-                return await _conversationRepository.GetConversationHistoryAsync(sessionId);
+                var history = await _conversationRepository.GetConversationHistoryAsync(sessionId);
+                return RemoveDuplicateEntries(history);
             }
             catch (Exception ex)
             {
@@ -324,13 +351,70 @@ namespace SmartRAG.Services.Support
         }
 
         /// <summary>
+        /// Removes duplicate conversation entries from history
+        /// </summary>
+        private string RemoveDuplicateEntries(string history)
+        {
+            if (string.IsNullOrWhiteSpace(history))
+                return string.Empty;
+
+            var lines = history.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+            var seenEntries = new HashSet<string>();
+            var uniqueLines = new List<string>();
+
+            for (int i = 0; i < lines.Length; i++)
+            {
+                var line = lines[i];
+                if (line.StartsWith("User: ", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (i + 1 < lines.Length && lines[i + 1].StartsWith("Assistant: ", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var userLine = line;
+                        var assistantLine = lines[i + 1];
+                        var entry = $"{userLine}\n{assistantLine}";
+
+                        if (!seenEntries.Contains(entry))
+                        {
+                            seenEntries.Add(entry);
+                            uniqueLines.Add(userLine);
+                            uniqueLines.Add(assistantLine);
+                            i++;
+                        }
+                        else
+                        {
+                            i++;
+                        }
+                    }
+                    else
+                    {
+                        uniqueLines.Add(line);
+                    }
+                }
+                else if (line.StartsWith("Assistant: ", StringComparison.OrdinalIgnoreCase))
+                {
+                    if (i > 0 && lines[i - 1].StartsWith("User: ", StringComparison.OrdinalIgnoreCase))
+                    {
+                        continue;
+                    }
+                    uniqueLines.Add(line);
+                }
+                else
+                {
+                    uniqueLines.Add(line);
+                }
+            }
+
+            return string.Join("\n", uniqueLines);
+        }
+
+        /// <summary>
         /// Store conversation to storage based on conversation storage provider
         /// </summary>
         private async Task StoreConversationToStorageAsync(string sessionId, string conversation)
         {
             try
             {
-                await _conversationRepository.AddToConversationAsync(sessionId, "", conversation);
+                await _conversationRepository.SetConversationHistoryAsync(sessionId, conversation);
             }
             catch (Exception ex)
             {

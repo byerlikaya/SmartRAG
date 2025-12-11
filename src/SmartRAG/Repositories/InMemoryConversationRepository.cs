@@ -87,6 +87,19 @@ namespace SmartRAG.Repositories
             }
         }
 
+        public Task SetConversationHistoryAsync(string sessionId, string conversation)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId))
+                return Task.CompletedTask;
+
+            lock (_lock)
+            {
+                _conversations[sessionId] = conversation;
+            }
+
+            return Task.CompletedTask;
+        }
+
         public Task ClearAllConversationsAsync()
         {
             lock (_lock)

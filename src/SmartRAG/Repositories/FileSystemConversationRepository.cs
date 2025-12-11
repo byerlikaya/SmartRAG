@@ -111,6 +111,22 @@ namespace SmartRAG.Repositories
             }
         }
 
+        public async Task SetConversationHistoryAsync(string sessionId, string conversation)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId))
+                return;
+
+            try
+            {
+                var filePath = GetConversationFilePath(sessionId);
+                await Task.Run(() => File.WriteAllText(filePath, conversation));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error setting conversation history for session {SessionId}", sessionId);
+            }
+        }
+
         public async Task ClearAllConversationsAsync()
         {
             try

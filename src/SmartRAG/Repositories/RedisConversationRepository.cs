@@ -87,6 +87,20 @@ namespace SmartRAG.Repositories
             }
         }
 
+        public async Task SetConversationHistoryAsync(string sessionId, string conversation)
+        {
+            try
+            {
+                var conversationKey = $"conversation:{sessionId}";
+                await _database.StringSetAsync(conversationKey, conversation);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error setting conversation history for session {SessionId}", sessionId);
+            }
+        }
+
+
         public async Task ClearConversationAsync(string sessionId)
         {
             try

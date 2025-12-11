@@ -6,6 +6,7 @@ namespace SmartRAG.Interfaces.Storage
     {
         Task<string> GetConversationHistoryAsync(string sessionId);
         Task AddToConversationAsync(string sessionId, string question, string answer);
+        Task SetConversationHistoryAsync(string sessionId, string conversation);
         Task ClearConversationAsync(string sessionId);
         Task<bool> SessionExistsAsync(string sessionId);
         Task ClearAllConversationsAsync();

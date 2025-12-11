@@ -184,6 +184,31 @@ namespace SmartRAG.Repositories
             }
         }
 
+        public async Task SetConversationHistoryAsync(string sessionId, string conversation)
+        {
+            await EnsureInitializedAsync();
+            await _semaphore.WaitAsync();
+            try
+            {
+                var command = _connection.CreateCommand();
+                command.CommandText = @"
+                    INSERT INTO Conversations (SessionId, History, LastUpdated) 
+                    VALUES (@sessionId, @history, CURRENT_TIMESTAMP)
+                    ON CONFLICT(SessionId) DO UPDATE SET History = @history, LastUpdated = CURRENT_TIMESTAMP";
+                command.Parameters.AddWithValue("@sessionId", sessionId);
+                command.Parameters.AddWithValue("@history", conversation);
+                await command.ExecuteNonQueryAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error setting conversation history for session {SessionId}", sessionId);
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
+        }
+
         public async Task ClearAllConversationsAsync()
         {
             await EnsureInitializedAsync();

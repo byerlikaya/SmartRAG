@@ -30,7 +30,7 @@ namespace SmartRAG.Services.AI
         public string BuildDocumentRagPrompt(string query, string context, string? conversationHistory = null, string? preferredLanguage = null)
         {
             var historyContext = !string.IsNullOrEmpty(conversationHistory)
-                ? $"\n\nRecent conversation context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 3)}\n"
+                ? $"\n\nRecent conversation context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 30)}\n"
                 : "";
 
             var isVagueQuery = IsVagueQuery(query);
@@ -125,7 +125,7 @@ Answer:";
             }
 
             var historyContext = !string.IsNullOrEmpty(conversationHistory)
-                ? $"\n\nRecent context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 2)}\n"
+                ? $"\n\nRecent context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 30)}\n"
                 : "";
 
             var languageInstruction = !string.IsNullOrEmpty(preferredLanguage)
@@ -158,7 +158,7 @@ Direct Answer:";
         public string BuildConversationPrompt(string query, string? conversationHistory = null, string? preferredLanguage = null)
         {
             var historyContext = !string.IsNullOrEmpty(conversationHistory)
-                ? $"\n\nRecent conversation context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 3)}\n"
+                ? $"\n\nRecent conversation context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 30)}\n"
                 : "";
 
             var languageInstruction = !string.IsNullOrEmpty(preferredLanguage)
