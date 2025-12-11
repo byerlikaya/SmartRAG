@@ -51,7 +51,7 @@ public class InitializationService(
         await Task.CompletedTask;
     }
 
-    public async Task<(bool UseLocal, AIProvider AIProvider, StorageProvider StorageProvider)> SelectEnvironmentAsync()
+    public async Task<(bool UseLocal, AIProvider AIProvider, StorageProvider StorageProvider, ConversationStorageProvider ConversationStorageProvider)> SelectEnvironmentAsync()
     {
         await Task.CompletedTask;
 
@@ -117,11 +117,30 @@ public class InitializationService(
                 System.Console.WriteLine();
             }
             
+            System.Console.WriteLine("Select Conversation History Storage:");
+            System.Console.WriteLine("1. Redis (Persistent, recommended)");
+            System.Console.WriteLine("2. SQLite (Local database file)");
+            System.Console.WriteLine("3. FileSystem (File-based storage)");
+            System.Console.WriteLine("4. InMemory (Non-persistent, for testing)");
+            
+            var conversationStorageChoice = _console.ReadLine("Selection (default: Redis): ");
+            var selectedConversationStorage = conversationStorageChoice switch
+            {
+                "1" or "" => ConversationStorageProvider.Redis,
+                "2" => ConversationStorageProvider.SQLite,
+                "3" => ConversationStorageProvider.FileSystem,
+                "4" => ConversationStorageProvider.InMemory,
+                _ => ConversationStorageProvider.Redis
+            };
+
+            System.Console.WriteLine($"  Conversation History Storage: {selectedConversationStorage}");
+            System.Console.WriteLine();
+            
             _console.WriteWarning("⚠️  Note: Make sure Ollama endpoint is configured in appsettings");
             System.Console.WriteLine("     (AI:Custom:Endpoint = http://localhost:11434)");
             System.Console.WriteLine();
 
-            return (true, AIProvider.Custom, selectedStorage);
+            return (true, AIProvider.Custom, selectedStorage, selectedConversationStorage);
         }
 
         System.Console.WriteLine();
@@ -149,8 +168,27 @@ public class InitializationService(
         System.Console.WriteLine("  Storage: Redis (Document storage)");
         System.Console.WriteLine("  Audio: Whisper.net (Local transcription)");
         System.Console.WriteLine();
+        
+        System.Console.WriteLine("Select Conversation History Storage:");
+        System.Console.WriteLine("1. Redis (Persistent, recommended)");
+        System.Console.WriteLine("2. SQLite (Local database file)");
+        System.Console.WriteLine("3. FileSystem (File-based storage)");
+        System.Console.WriteLine("4. InMemory (Non-persistent, for testing)");
+        
+        var cloudConversationStorageChoice = _console.ReadLine("Selection (default: Redis): ");
+        var cloudSelectedConversationStorage = cloudConversationStorageChoice switch
+        {
+            "1" or "" => ConversationStorageProvider.Redis,
+            "2" => ConversationStorageProvider.SQLite,
+            "3" => ConversationStorageProvider.FileSystem,
+            "4" => ConversationStorageProvider.InMemory,
+            _ => ConversationStorageProvider.Redis
+        };
 
-        return (false, selectedAIProvider, StorageProvider.Redis);
+        System.Console.WriteLine($"  Conversation History Storage: {cloudSelectedConversationStorage}");
+        System.Console.WriteLine();
+
+        return (false, selectedAIProvider, StorageProvider.Redis, cloudSelectedConversationStorage);
     }
 
     public async Task<string> SelectLanguageAsync()
@@ -197,7 +235,7 @@ public class InitializationService(
         return selectedLanguageCode;
     }
 
-    public async Task InitializeServicesAsync(AIProvider aiProvider, StorageProvider storageProvider, string? defaultLanguage = null)
+    public async Task InitializeServicesAsync(AIProvider aiProvider, StorageProvider storageProvider, ConversationStorageProvider conversationStorageProvider, string? defaultLanguage = null)
     {
         System.Console.WriteLine("🔧 Initializing SmartRAG...");
         System.Console.WriteLine();
@@ -215,13 +253,15 @@ public class InitializationService(
 
             System.Console.WriteLine($"   → Configuring {aiProvider} provider...");
             System.Console.WriteLine($"   → Configuring {storageProvider} storage...");
+            System.Console.WriteLine($"   → Configuring {conversationStorageProvider} conversation history storage...");
 
-            _serviceProvider = services.UseSmartRag(_configuration, storageProvider, aiProvider, defaultLanguage);
+            _serviceProvider = services.UseSmartRag(_configuration, storageProvider, aiProvider, conversationStorageProvider, defaultLanguage);
 
             System.Console.WriteLine();
             _console.WriteSuccess("Services initialized successfully");
             System.Console.WriteLine($"  AI Provider: {aiProvider}");
             System.Console.WriteLine($"  Storage Provider: {storageProvider}");
+            System.Console.WriteLine($"  Conversation History Storage: {conversationStorageProvider}");
             System.Console.WriteLine($"  Audio Provider: Whisper (only supported provider)");
 
             await DisplayDatabaseStatus();

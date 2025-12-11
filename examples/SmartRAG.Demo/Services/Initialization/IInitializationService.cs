@@ -8,8 +8,8 @@ namespace SmartRAG.Demo.Services.Initialization;
 public interface IInitializationService
 {
     Task SetupTestDatabasesAsync();
-    Task<(bool UseLocal, AIProvider AIProvider, StorageProvider StorageProvider)> SelectEnvironmentAsync();
+    Task<(bool UseLocal, AIProvider AIProvider, StorageProvider StorageProvider, ConversationStorageProvider ConversationStorageProvider)> SelectEnvironmentAsync();
     Task<string> SelectLanguageAsync();
-    Task InitializeServicesAsync(AIProvider aiProvider, StorageProvider storageProvider, string? defaultLanguage = null);
+    Task InitializeServicesAsync(AIProvider aiProvider, StorageProvider storageProvider, ConversationStorageProvider conversationStorageProvider, string? defaultLanguage = null);
 }
 

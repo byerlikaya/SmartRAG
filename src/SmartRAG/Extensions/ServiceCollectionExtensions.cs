@@ -88,18 +88,24 @@ namespace SmartRAG.Extensions
         /// <param name="configuration">Application configuration</param>
         /// <param name="storageProvider">Storage provider to use</param>
         /// <param name="aiProvider">AI provider to use</param>
+        /// <param name="conversationStorageProvider">Conversation history storage provider to use</param>
         /// <param name="defaultLanguage">Default language code for document processing (ISO 639-1 format, e.g., "tr", "en", "de")</param>
         /// <returns>Configured and initialized service provider ready for use</returns>
         public static IServiceProvider UseSmartRag(this IServiceCollection services,
                                                    IConfiguration configuration,
                                                    StorageProvider storageProvider = StorageProvider.InMemory,
                                                    AIProvider aiProvider = AIProvider.OpenAI,
+                                                   ConversationStorageProvider? conversationStorageProvider = null,
                                                    string? defaultLanguage = null)
         {
             services.AddSmartRag(configuration, options =>
             {
                 options.StorageProvider = storageProvider;
                 options.AIProvider = aiProvider;
+                if (conversationStorageProvider.HasValue)
+                {
+                    options.ConversationStorageProvider = conversationStorageProvider.Value;
+                }
                 if (!string.IsNullOrEmpty(defaultLanguage))
                 {
                     options.DefaultLanguage = defaultLanguage;
