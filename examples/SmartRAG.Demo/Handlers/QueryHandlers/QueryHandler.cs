@@ -483,6 +483,8 @@ public class QueryHandler(
                               System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"[\p{P}]\s*-db\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         var hasAudioFlag = System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"\s*-a\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
                            System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"[\p{P}]\s*-a\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        var hasMcpFlag = System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"\s*-mcp\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
+                               System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"[\p{P}]\s*-mcp\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         var hasImageFlag = System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"\s*-i\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
                            System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"[\p{P}]\s*-i\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
@@ -490,7 +492,7 @@ public class QueryHandler(
         var smartRagOptions = _serviceProvider.GetRequiredService<IOptions<SmartRagOptions>>().Value;
 
         // If no flags, use global configuration but override language
-        if (!hasDocumentFlag && !hasDatabaseFlag && !hasAudioFlag && !hasImageFlag)
+        if (!hasDocumentFlag && !hasDatabaseFlag && !hasAudioFlag && !hasImageFlag && !hasMcpFlag)
         {
             var options = SearchOptions.FromConfig(smartRagOptions);
             options.PreferredLanguage = language;
@@ -508,12 +510,20 @@ public class QueryHandler(
             // If -db flag is set, disable MCP, document, audio, and image search (only database)
             // If -a flag is set, disable MCP, document, database, and image search (only audio)
             // If -i flag is set, disable MCP, document, database, and audio search (only image)
-            EnableMcpSearch = !hasDocumentFlag && !hasDatabaseFlag && !hasAudioFlag && !hasImageFlag, // Only enable MCP if no specific flag is set
+            // If -mcp flag is set, disable all others (only MCP)
+            EnableMcpSearch = hasMcpFlag || (!hasDocumentFlag && !hasDatabaseFlag && !hasAudioFlag && !hasImageFlag), // Only enable MCP if explicitly requested OR no other flag set
             PreferredLanguage = language  // CRITICAL: Pass user's selected language to AI
         };
         
-        // When -d flag is set, explicitly disable audio and image search (only text documents)
-        if (hasDocumentFlag)
+        // When -mcp flag is set, explicitly disable all others
+        if (hasMcpFlag)
+        {
+            searchOptions.EnableDocumentSearch = false;
+            searchOptions.EnableDatabaseSearch = false;
+            searchOptions.EnableAudioSearch = false;
+            searchOptions.EnableImageSearch = false;
+        }
+        else if (hasDocumentFlag)
         {
             searchOptions.EnableAudioSearch = false;
             searchOptions.EnableImageSearch = false;
@@ -530,6 +540,8 @@ public class QueryHandler(
         cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"[\p{P}]\s*-a\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"\s*-i\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"[\p{P}]\s*-i\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"\s*-mcp\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"[\p{P}]\s*-mcp\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
         cleanQuery = cleanQuery.TrimEnd();
         
         return searchOptions;
