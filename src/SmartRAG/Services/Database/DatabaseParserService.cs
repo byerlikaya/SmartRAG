@@ -1047,7 +1047,6 @@ namespace SmartRAG.Services.Database
         {
             var result = new StringBuilder();
             result.AppendLine($"=== Query Results ===");
-            result.AppendLine($"Query: {query.Replace("\r", " ").Replace("\n", " ")}");
             result.AppendLine();
 
             using var reader = await command.ExecuteReaderAsync();
