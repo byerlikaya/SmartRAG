@@ -150,26 +150,26 @@ namespace SmartRAG.Services.Database
             if (string.IsNullOrWhiteSpace(connectionString)) throw new ArgumentNullException(nameof(connectionString));
             if (string.IsNullOrWhiteSpace(query)) throw new ArgumentNullException(nameof(query));
 
-            ValidateQueryForSecurity(query);
+            var sanitizedQuery = ValidateAndSanitizeQuery(query);
 
             _logger.LogInformation("Executing custom query for database type: {DatabaseType}", databaseType);
 
             if (databaseType == DatabaseType.SQLite)
-                return await ExecuteSQLiteQueryAsync(connectionString, query, maxRows);
+                return await ExecuteSQLiteQueryAsync(connectionString, sanitizedQuery, maxRows);
             else if (databaseType == DatabaseType.SqlServer)
-                return await ExecuteSqlServerQueryAsync(connectionString, query, maxRows);
+                return await ExecuteSqlServerQueryAsync(connectionString, sanitizedQuery, maxRows);
             else if (databaseType == DatabaseType.MySQL)
-                return await ExecuteMySqlQueryAsync(connectionString, query, maxRows);
+                return await ExecuteMySqlQueryAsync(connectionString, sanitizedQuery, maxRows);
             else if (databaseType == DatabaseType.PostgreSQL)
-                return await ExecutePostgreSqlQueryAsync(connectionString, query, maxRows);
+                return await ExecutePostgreSqlQueryAsync(connectionString, sanitizedQuery, maxRows);
             else
                 throw new NotSupportedException($"Database type {databaseType} is not supported");
         }
 
-        private static void ValidateQueryForSecurity(string query)
+        private static string ValidateAndSanitizeQuery(string query)
         {
             if (string.IsNullOrWhiteSpace(query))
-                return;
+                throw new ArgumentException("Query cannot be null or empty", nameof(query));
 
             var upperQuery = query.ToUpperInvariant();
             var dangerousKeywords = new[] { "DROP", "DELETE", "TRUNCATE", "ALTER", "CREATE", "EXEC", "EXECUTE", "SP_", "XP_" };
@@ -181,6 +181,19 @@ namespace SmartRAG.Services.Database
                     throw new ArgumentException($"Query contains dangerous keyword: {keyword}", nameof(query));
                 }
             }
+
+            var sanitized = query.Trim();
+            
+            if (sanitized.Contains(";--", StringComparison.Ordinal) ||
+                sanitized.Contains(";/*", StringComparison.Ordinal) ||
+                sanitized.Contains("UNION", StringComparison.OrdinalIgnoreCase) ||
+                sanitized.Contains("--", StringComparison.Ordinal) ||
+                sanitized.Contains("/*", StringComparison.Ordinal))
+            {
+                throw new ArgumentException("Query contains potentially dangerous SQL patterns", nameof(query));
+            }
+
+            return sanitized;
         }
 
         private static string SanitizeTableName(string tableName)
@@ -363,13 +376,13 @@ namespace SmartRAG.Services.Database
 
         private async Task<string> ExecuteSQLiteQueryAsync(string connectionString, string query, int maxRows)
         {
-            ValidateQueryForSecurity(query);
+            var sanitizedQuery = ValidateAndSanitizeQuery(query);
             var sanitizedConnectionString = ValidateAndSanitizeSQLiteConnectionString(connectionString);
             using var connection = new SqliteConnection(sanitizedConnectionString);
             await connection.OpenAsync();
 
             using var command = connection.CreateCommand();
-            command.CommandText = query;
+            command.CommandText = sanitizedQuery;
             command.CommandTimeout = DefaultQueryTimeout;
 
             return await ExecuteQueryInternalAsync(command, query, maxRows);
@@ -542,9 +555,9 @@ namespace SmartRAG.Services.Database
                 using var connection = new SqlConnection(sanitizedConnectionString);
                 await connection.OpenAsync();
 
-                ValidateQueryForSecurity(query);
+                var sanitizedQuery = ValidateAndSanitizeQuery(query);
                 using var command = connection.CreateCommand();
-                command.CommandText = query;
+                command.CommandText = sanitizedQuery;
                 command.CommandTimeout = DefaultQueryTimeout;
 
                 return await ExecuteQueryInternalAsync(command, query, maxRows);
@@ -743,12 +756,12 @@ namespace SmartRAG.Services.Database
             using var connection = new MySqlConnection(sanitizedConnectionString);
             await connection.OpenAsync();
 
-            ValidateQueryForSecurity(query);
+            var sanitizedQuery = ValidateAndSanitizeQuery(query);
             using var command = connection.CreateCommand();
-            command.CommandText = query;
+            command.CommandText = sanitizedQuery;
             command.CommandTimeout = DefaultQueryTimeout;
 
-            return await ExecuteQueryInternalAsync(command, query, maxRows);
+            return await ExecuteQueryInternalAsync(command, sanitizedQuery, maxRows);
         }
 
         private async Task<bool> ValidateMySqlConnectionAsync(string connectionString)
@@ -893,12 +906,12 @@ namespace SmartRAG.Services.Database
             using var connection = new NpgsqlConnection(sanitizedConnectionString);
             await connection.OpenAsync();
 
-            ValidateQueryForSecurity(query);
+            var sanitizedQuery = ValidateAndSanitizeQuery(query);
             using var command = connection.CreateCommand();
-            command.CommandText = query;
+            command.CommandText = sanitizedQuery;
             command.CommandTimeout = DefaultQueryTimeout;
 
-            return await ExecuteQueryInternalAsync(command, query, maxRows);
+            return await ExecuteQueryInternalAsync(command, sanitizedQuery, maxRows);
         }
 
         private async Task<bool> ValidatePostgreSqlConnectionAsync(string connectionString)
