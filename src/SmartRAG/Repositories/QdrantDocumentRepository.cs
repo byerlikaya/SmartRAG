@@ -20,17 +20,9 @@ namespace SmartRAG.Repositories
     /// </summary>
     public class QdrantDocumentRepository : IDocumentRepository, IDisposable
     {
-        #region Constants
-
         private const int DefaultMaxSearchResults = 5;
         private const int DefaultBatchSize = 200;
-        private const int DefaultScrollBatchSize = 25;
-
         private const int DefaultGrpcTimeoutMinutes = 5;
-
-        #endregion
-
-        #region Fields
 
         private readonly QdrantClient _client;
         private readonly QdrantConfig _config;
@@ -42,15 +34,7 @@ namespace SmartRAG.Repositories
         private readonly IQdrantCacheManager _cacheManager;
         private readonly IQdrantSearchService _searchService;
 
-        #endregion
-
-        #region Properties
-
         protected ILogger Logger => _logger;
-
-        #endregion
-
-        #region Constructor
 
         public QdrantDocumentRepository(
             IOptions<QdrantConfig> config,
@@ -103,11 +87,46 @@ namespace SmartRAG.Repositories
                 });
         }
 
-        #endregion
+        /// <summary>
+        /// Determines document type from ContentType and file extension
+        /// </summary>
+        private static string DetermineDocumentType(SmartRAG.Entities.Document document)
+        {
+            if (document == null)
+            {
+                return "Document";
+            }
 
-        #region Public Methods
+            if (!string.IsNullOrWhiteSpace(document.ContentType) &&
+                document.ContentType.StartsWith("audio", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Audio";
+            }
 
+            var extension = System.IO.Path.GetExtension(document.FileName)?.ToLowerInvariant();
+            if (!string.IsNullOrWhiteSpace(extension))
+            {
+                switch (extension)
+                {
+                    case ".wav":
+                    case ".mp3":
+                    case ".m4a":
+                    case ".flac":
+                    case ".ogg":
+                        return "Audio";
+                    case ".jpg":
+                    case ".jpeg":
+                    case ".png":
+                    case ".gif":
+                    case ".bmp":
+                    case ".tiff":
+                    case ".webp":
+                        return "Image";
+                }
+            }
 
+            return "Document";
+        }
 
         private static string GetPayloadString(Google.Protobuf.Collections.MapField<string, Value> payload, string key)
         {
@@ -142,7 +161,7 @@ namespace SmartRAG.Repositories
         }
 
         /// <summary>
-        /// Extract document metadata from Qdrant point payload
+        /// Extracts document metadata from Qdrant point payload
         /// </summary>
         private static DocumentMetadata ExtractDocumentMetadata(Google.Protobuf.Collections.MapField<string, Value> payload)
         {
@@ -152,7 +171,7 @@ namespace SmartRAG.Repositories
             var uploadedAtStr = GetPayloadString(payload, "uploadedAt");
             var uploadedBy = GetPayloadString(payload, "uploadedBy");
             var content = GetPayloadString(payload, "content");
-            var idStr = GetPayloadString(payload, "documentId");  // Changed from "id" to "documentId"
+            var idStr = GetPayloadString(payload, "documentId");
 
             long.TryParse(fileSizeStr, NumberStyles.Any, CultureInfo.InvariantCulture, out long fileSize);
 
@@ -174,11 +193,32 @@ namespace SmartRAG.Repositories
             };
         }
 
+        private static Dictionary<string, object> ExtractAdditionalMetadata(Google.Protobuf.Collections.MapField<string, Value> payload)
+        {
+            var metadata = new Dictionary<string, object>();
+
+            foreach (var item in payload)
+            {
+                if (item.Key.StartsWith("metadata_", StringComparison.OrdinalIgnoreCase))
+                {
+                    var key = item.Key["metadata_".Length..];
+                    var value = GetPayloadString(payload, item.Key);
+                    if (!string.IsNullOrEmpty(value))
+                    {
+                        metadata[key] = value;
+                    }
+                }
+            }
+
+            return metadata;
+        }
+
         /// <summary>
-        /// Create Document from metadata
+        /// Creates Document from metadata
         /// </summary>
-        private static SmartRAG.Entities.Document CreateDocumentFromMetadata(DocumentMetadata metadata)
-            => new SmartRAG.Entities.Document()
+        private static SmartRAG.Entities.Document CreateDocumentFromMetadata(DocumentMetadata metadata, Dictionary<string, object> additionalMetadata = null)
+        {
+            var document = new SmartRAG.Entities.Document()
             {
                 Id = metadata.Id,
                 FileName = metadata.FileName,
@@ -190,29 +230,63 @@ namespace SmartRAG.Repositories
                 Chunks = new List<DocumentChunk>()
             };
 
+            if (additionalMetadata != null && additionalMetadata.Count > 0)
+            {
+                document.Metadata = new Dictionary<string, object>(additionalMetadata);
+            }
+
+            return document;
+        }
+
         /// <summary>
-        /// Create DocumentChunk from Qdrant point
+        /// Creates DocumentChunk from Qdrant point
         /// </summary>
         private static DocumentChunk CreateDocumentChunk(RetrievedPoint point, Guid documentId, DateTime fallbackCreatedAt)
         {
             var chunkContent = GetPayloadString(point.Payload, "content");
             var chunkUploadedAtStr = GetPayloadString(point.Payload, "uploadedAt");
+            var documentType = GetPayloadString(point.Payload, "documentType");
+            var chunkIdStr = GetPayloadString(point.Payload, "chunkId");
+            var chunkIndexStr = GetPayloadString(point.Payload, "chunkIndex");
 
             if (!DateTime.TryParse(chunkUploadedAtStr, null, DateTimeStyles.RoundtripKind, out DateTime chunkCreatedAt))
                 chunkCreatedAt = fallbackCreatedAt;
 
+            if (string.IsNullOrWhiteSpace(documentType))
+                documentType = "Document";
+
+            Guid chunkId;
+            if (!string.IsNullOrWhiteSpace(chunkIdStr) && Guid.TryParse(chunkIdStr, out var parsedChunkId))
+            {
+                chunkId = parsedChunkId;
+            }
+            else
+            {
+                chunkId = Guid.NewGuid();
+            }
+
+            int chunkIndex = 0;
+            if (!string.IsNullOrWhiteSpace(chunkIndexStr) && int.TryParse(chunkIndexStr, out var parsedChunkIndex))
+            {
+                chunkIndex = parsedChunkIndex;
+            }
+
             return new DocumentChunk
             {
-                Id = Guid.NewGuid(),
+                Id = chunkId,
                 DocumentId = documentId,
                 Content = chunkContent,
+                ChunkIndex = chunkIndex,
                 Embedding = point.Vectors?.Vector?.Data?.ToList() ?? new List<float>(),
-                CreatedAt = chunkCreatedAt
+                CreatedAt = chunkCreatedAt,
+                DocumentType = documentType,
+                StartPosition = 0,
+                EndPosition = chunkContent?.Length ?? 0
             };
         }
 
         /// <summary>
-        /// Helper class for document metadata extraction
+        /// Document metadata extraction helper class
         /// </summary>
         private sealed class DocumentMetadata
         {
@@ -231,7 +305,7 @@ namespace SmartRAG.Repositories
             {
                 await _collectionManager.EnsureCollectionExistsAsync();
 
-                var documentCollectionName = $"{_collectionName}_doc_{document.Id:N}".Replace("-", ""); // Remove hyphens for Qdrant
+                var documentCollectionName = $"{_collectionName}_doc_{document.Id:N}".Replace("-", "");
                 RepositoryLogMessages.LogQdrantDocumentCollectionCreating(Logger, documentCollectionName, _collectionName, document.Id, null);
 
                 await _collectionManager.EnsureDocumentCollectionExistsAsync(documentCollectionName, document);
@@ -245,7 +319,7 @@ namespace SmartRAG.Repositories
                     if (chunk.Embedding == null || chunk.Embedding.Count == 0)
                     {
                         chunk.Embedding = await _embeddingService.GenerateEmbeddingAsync(chunk.Content) ?? new List<float>();
-                        if (index % 10 == 0) // Progress every 10 chunks
+                        if (index % 10 == 0)
                         {
                             RepositoryLogMessages.LogQdrantEmbeddingsProgress(Logger, index + 1, document.Chunks.Count, null);
                         }
@@ -263,7 +337,7 @@ namespace SmartRAG.Repositories
                 {
                     var point = new PointStruct
                     {
-                        Id = new PointId { Uuid = Guid.NewGuid().ToString() }, // Use UUID string instead of Num
+                        Id = new PointId { Uuid = Guid.NewGuid().ToString() },
                         Vectors = new Vectors
                         {
                             Vector = new Vector
@@ -282,6 +356,18 @@ namespace SmartRAG.Repositories
                     point.Payload.Add("fileSize", document.FileSize);
                     point.Payload.Add("uploadedAt", document.UploadedAt.ToString("O"));
                     point.Payload.Add("uploadedBy", document.UploadedBy);
+                    point.Payload.Add("documentType", chunk.DocumentType ?? DetermineDocumentType(document));
+
+                    if (document.Metadata != null)
+                    {
+                        foreach (var metadataItem in document.Metadata)
+                        {
+                            if (metadataItem.Value != null)
+                            {
+                                point.Payload.Add($"metadata_{metadataItem.Key}", metadataItem.Value.ToString());
+                            }
+                        }
+                    }
 
                     allPoints.Add(point);
                 }
@@ -309,37 +395,34 @@ namespace SmartRAG.Repositories
         {
             try
             {
-                var filter = new Qdrant.Client.Grpc.Filter
+                var documentCollectionName = $"{_collectionName}_doc_{id:N}".Replace("-", "");
+                
+                var allCollections = await _client.ListCollectionsAsync();
+                if (!allCollections.Contains(documentCollectionName))
                 {
-                    Must = {
-                    new Qdrant.Client.Grpc.Condition
-                    {
-                        Field = new FieldCondition
-                        {
-                            Key = "id",
-                            Match = new Qdrant.Client.Grpc.Match
-                            {
-                                Keyword = id.ToString()
-                            }
-                        }
-                    }
+                    Logger.LogDebug("Document collection {Collection} not found for document {DocumentId}", documentCollectionName, id);
+                    return null;
                 }
-                };
 
-                var result = await _client.ScrollAsync(_collectionName, filter, limit: DefaultMaxSearchResults * 10);
+                var result = await _client.ScrollAsync(documentCollectionName, limit: 10000);
 
                 if (result.Result.Count == 0)
+                {
+                    Logger.LogDebug("No chunks found in collection {Collection} for document {DocumentId}", documentCollectionName, id);
                     return null;
+                }
 
                 var firstPoint = result.Result.First();
                 var metadata = ExtractDocumentMetadata(firstPoint.Payload);
+                var additionalMetadata = ExtractAdditionalMetadata(firstPoint.Payload);
 
                 if (metadata.Id == Guid.Empty)
                 {
+                    Logger.LogWarning("Invalid metadata for document {DocumentId}", id);
                     return null;
                 }
 
-                var document = CreateDocumentFromMetadata(metadata);
+                var document = CreateDocumentFromMetadata(metadata, additionalMetadata);
 
                 foreach (var point in result.Result)
                 {
@@ -347,10 +430,14 @@ namespace SmartRAG.Repositories
                     document.Chunks.Add(chunk);
                 }
 
+                Logger.LogDebug("Retrieved document {DocumentId} with {ChunkCount} chunks from collection {Collection}", 
+                    id, document.Chunks.Count, documentCollectionName);
+
                 return document;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Logger.LogError(ex, "Failed to retrieve document {DocumentId}", id);
                 return null;
             }
         }
@@ -364,28 +451,29 @@ namespace SmartRAG.Repositories
                 var documentCollections = allCollections
                     .Where(c => c.StartsWith($"{_collectionName}_doc_", StringComparison.OrdinalIgnoreCase))
                     .ToList();
-                
+
                 foreach (var docCollection in documentCollections)
                 {
                     try
                     {
                         var result = await _client.ScrollAsync(
                             docCollection,
-                            limit: 1);  // We only need one point to get metadata
-                        
+                            limit: 1);
+
                         if (result.Result.Count == 0)
                             continue;
-                        
+
                         var firstPoint = result.Result.First();
                         var metadata = ExtractDocumentMetadata(firstPoint.Payload);
-                        
+                        var additionalMetadata = ExtractAdditionalMetadata(firstPoint.Payload);
+
                         if (metadata.Id == Guid.Empty)
                             continue;
-                        
-                        var document = CreateDocumentFromMetadata(metadata);
+
+                        var document = CreateDocumentFromMetadata(metadata, additionalMetadata);
                         var collectionInfo = await _client.GetCollectionInfoAsync(docCollection);
                         var chunkCount = (int)collectionInfo.PointsCount;
-                        
+
                         for (int i = 0; i < chunkCount; i++)
                         {
                             document.Chunks.Add(new DocumentChunk
@@ -397,7 +485,7 @@ namespace SmartRAG.Repositories
                                 CreatedAt = metadata.UploadedAt
                             });
                         }
-                        
+
                         documents.Add(document);
                     }
                     catch (Exception ex)
@@ -449,7 +537,7 @@ namespace SmartRAG.Repositories
         }
 
         /// <summary>
-        /// [Document Query] Clear all documents by deleting all document collections and recreating main collection
+        /// Clears all documents by deleting all document collections and recreating main collection
         /// </summary>
         public async Task<bool> ClearAllAsync()
         {
@@ -459,7 +547,7 @@ namespace SmartRAG.Repositories
                 var documentCollections = allCollections
                     .Where(c => c.StartsWith($"{_collectionName}_doc_", StringComparison.OrdinalIgnoreCase))
                     .ToList();
-                
+
                 foreach (var docCollection in documentCollections)
                 {
                     try
@@ -472,9 +560,9 @@ namespace SmartRAG.Repositories
                         _logger.LogWarning(ex, "Failed to delete document collection: {Collection}", docCollection);
                     }
                 }
-                
+
                 await _collectionManager.RecreateCollectionAsync(_collectionName);
-                
+
                 _logger.LogInformation("Cleared all documents from Qdrant: deleted {Count} document collections and recreated main collection", documentCollections.Count);
                 return true;
             }
@@ -506,7 +594,14 @@ namespace SmartRAG.Repositories
                 var cachedResults = _cacheManager.GetCachedResults(queryHash);
                 if (cachedResults != null)
                 {
-                    return cachedResults;
+                    var cachedChunk0 = cachedResults.FirstOrDefault(c => c.ChunkIndex == 0);
+                    if (cachedChunk0 != null)
+                    {
+                        Logger.LogDebug("Cached results contain chunk 0. Returning cached results: {Count}", cachedResults.Count);
+                        return cachedResults;
+                    }
+                    Logger.LogWarning("Cached results missing chunk 0, invalidating cache and performing fresh search");
+                    cachedResults = null;
                 }
 
                 await _collectionManager.EnsureCollectionExistsAsync();
@@ -530,6 +625,8 @@ namespace SmartRAG.Repositories
                     .Select(g => g.OrderByDescending(c => c.RelevanceScore ?? 0.0).First())
                     .ToList();
 
+                var chunk0 = deduped.FirstOrDefault(c => c.ChunkIndex == 0);
+
                 var perDocTopK = Math.Max(1, Math.Min(3, maxResults));
                 var topPerDocument = deduped
                     .GroupBy(c => c.DocumentId)
@@ -549,6 +646,12 @@ namespace SmartRAG.Repositories
                     .OrderByDescending(c => c.RelevanceScore ?? 0.0)
                     .ToList();
 
+                if (chunk0 != null && !finalResults.Any(c => c.ChunkIndex == 0))
+                {
+                    finalResults = new List<DocumentChunk> { chunk0 }.Concat(finalResults).ToList();
+                    Logger.LogDebug("Chunk 0 was missing from finalResults, re-added. Total results: {Count}", finalResults.Count);
+                }
+
                 RepositoryLogMessages.LogQdrantFinalResultsReturned(Logger, finalResults.Count, null);
 
                 _cacheManager.CacheResults(queryHash, finalResults);
@@ -561,8 +664,6 @@ namespace SmartRAG.Repositories
                 return await _searchService.FallbackTextSearchAsync(query, maxResults);
             }
         }
-
-        #endregion
 
         public void Dispose()
         {

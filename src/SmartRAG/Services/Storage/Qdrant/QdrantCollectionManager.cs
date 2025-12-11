@@ -17,14 +17,8 @@ namespace SmartRAG.Services.Storage.Qdrant
     /// </summary>
     public class QdrantCollectionManager : IQdrantCollectionManager, IDisposable
     {
-        #region Constants
-
         private const int DefaultGrpcTimeoutMinutes = 5;
         private const int DefaultVectorDimension = 768;
-
-        #endregion
-
-        #region Fields
 
         private readonly QdrantClient _client;
         private readonly QdrantConfig _config;
@@ -33,10 +27,6 @@ namespace SmartRAG.Services.Storage.Qdrant
         private static readonly SemaphoreSlim _collectionInitLock = new SemaphoreSlim(1, 1);
         private bool _collectionReady;
         private bool _isDisposed;
-
-        #endregion
-
-        #region Constructor
 
         /// <summary>
         /// Initializes a new instance of the QdrantCollectionManager
@@ -83,10 +73,6 @@ namespace SmartRAG.Services.Storage.Qdrant
                 }
             });
         }
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         /// Ensures the main collection exists and is ready for operations
@@ -217,10 +203,6 @@ namespace SmartRAG.Services.Storage.Qdrant
             GC.SuppressFinalize(this);
         }
 
-        #endregion
-
-        #region Private Methods
-
         private async Task InitializeCollectionAsync()
         {
             if (_collectionReady)
@@ -242,7 +224,7 @@ namespace SmartRAG.Services.Storage.Qdrant
                 }
                 else
                 {
-                    try 
+                    try
                     {
                         await _client.CreatePayloadIndexAsync(_collectionName, "content", global::Qdrant.Client.Grpc.PayloadSchemaType.Text);
                     }
@@ -267,17 +249,13 @@ namespace SmartRAG.Services.Storage.Qdrant
         private static Distance GetDistanceMetric(string metric)
         {
             var lowerMetric = metric.ToLower(CultureInfo.InvariantCulture);
-            switch (lowerMetric)
+            return lowerMetric switch
             {
-                case "cosine":
-                    return Distance.Cosine;
-                case "dot":
-                    return Distance.Dot;
-                case "euclidean":
-                    return Distance.Euclid;
-                default:
-                    throw new ArgumentException($"Unknown distance metric: {metric}", nameof(metric));
-            }
+                "cosine" => Distance.Cosine,
+                "dot" => Distance.Dot,
+                "euclidean" => Distance.Euclid,
+                _ => throw new ArgumentException($"Unknown distance metric: {metric}", nameof(metric)),
+            };
         }
 
         /// <summary>
@@ -289,7 +267,7 @@ namespace SmartRAG.Services.Storage.Qdrant
             {
                 await _client.DeleteCollectionAsync(collectionName);
                 _logger.LogInformation("Deleted Qdrant collection: {CollectionName}", collectionName);
-                
+
                 if (collectionName == _collectionName)
                 {
                     _collectionReady = false;
@@ -312,7 +290,7 @@ namespace SmartRAG.Services.Storage.Qdrant
                 await DeleteCollectionAsync(collectionName);
                 var vectorDimension = await GetVectorDimensionAsync();
                 await CreateCollectionAsync(collectionName, vectorDimension);
-                
+
                 _logger.LogInformation("Recreated Qdrant collection: {CollectionName}", collectionName);
             }
             catch (Exception ex)
@@ -330,7 +308,5 @@ namespace SmartRAG.Services.Storage.Qdrant
                 _isDisposed = true;
             }
         }
-
-        #endregion
     }
 }

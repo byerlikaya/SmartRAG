@@ -4,6 +4,7 @@ using SmartRAG.Interfaces.Storage;
 using SmartRAG.Models;
 using StackExchange.Redis;
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Repositories
@@ -34,7 +35,7 @@ namespace SmartRAG.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to connect to Redis server at {ConnectionString}", redisConfig.ConnectionString);
+                _logger.LogError(ex, "Failed to connect to Redis server");
                 throw;
             }
         }
@@ -45,7 +46,7 @@ namespace SmartRAG.Repositories
             {
                 var conversationKey = $"conversation:{sessionId}";
                 var conversationJson = await _database.StringGetAsync(conversationKey);
-                
+
                 if (conversationJson.IsNull)
                 {
                     return string.Empty;
@@ -55,7 +56,7 @@ namespace SmartRAG.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting conversation history for session {SessionId}", sessionId);
+                _logger.LogError(ex, "Error getting conversation history");
                 return string.Empty;
             }
         }
@@ -65,26 +66,40 @@ namespace SmartRAG.Repositories
             try
             {
                 var conversationKey = $"conversation:{sessionId}";
-                
+
                 if (string.IsNullOrEmpty(question))
                 {
                     await _database.StringSetAsync(conversationKey, answer);
                     return;
                 }
-                
+
                 var existingConversation = await GetConversationHistoryAsync(sessionId);
-                
-                var newEntry = string.IsNullOrEmpty(existingConversation) 
+
+                var newEntry = string.IsNullOrEmpty(existingConversation)
                     ? $"User: {question}\nAssistant: {answer}"
                     : $"{existingConversation}\nUser: {question}\nAssistant: {answer}";
-                
+
                 await _database.StringSetAsync(conversationKey, newEntry);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding to conversation for session {SessionId}", sessionId);
+                _logger.LogError(ex, "Error adding to conversation");
             }
         }
+
+        public async Task SetConversationHistoryAsync(string sessionId, string conversation)
+        {
+            try
+            {
+                var conversationKey = $"conversation:{sessionId}";
+                await _database.StringSetAsync(conversationKey, conversation);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error setting conversation history");
+            }
+        }
+
 
         public async Task ClearConversationAsync(string sessionId)
         {
@@ -95,7 +110,7 @@ namespace SmartRAG.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error clearing conversation for session {SessionId}", sessionId);
+                _logger.LogError(ex, "Error clearing conversation");
             }
         }
 
@@ -108,8 +123,36 @@ namespace SmartRAG.Repositories
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error checking session existence for {SessionId}", sessionId);
+                _logger.LogError(ex, "Error checking session existence");
                 return false;
+            }
+        }
+
+        public async Task ClearAllConversationsAsync()
+        {
+            try
+            {
+                var endpoints = _redis.GetEndPoints();
+                if (endpoints == null || endpoints.Length == 0)
+                {
+                    _logger.LogWarning("No Redis endpoints available for clearing conversations");
+                    return;
+                }
+
+                var server = _redis.GetServer(endpoints.First());
+                var pattern = "conversation:*";
+                
+                await foreach (var key in server.KeysAsync(pattern: pattern))
+                {
+                    await _database.KeyDeleteAsync(key);
+                }
+
+                _logger.LogInformation("Cleared all conversation history from Redis");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error clearing all conversations from Redis");
+                throw;
             }
         }
 
@@ -152,13 +195,7 @@ namespace SmartRAG.Repositories
 
         public void Dispose()
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_disposed && disposing)
+            if (!_disposed)
             {
                 _redis?.Close();
                 _redis?.Dispose();

@@ -15,12 +15,14 @@ namespace SmartRAG.Demo.Services.Initialization;
 /// </summary>
 public class InitializationService(
     IConfiguration configuration,
-    IConsoleService console) : IInitializationService
+    IConsoleService console,
+    ILogger<InitializationService>? logger = null) : IInitializationService
 {
     #region Fields
 
     private readonly IConfiguration _configuration = configuration;
     private readonly IConsoleService _console = console;
+    private readonly ILogger<InitializationService>? _logger = logger;
     private IServiceProvider? _serviceProvider;
 
     #endregion
@@ -49,7 +51,7 @@ public class InitializationService(
         await Task.CompletedTask;
     }
 
-    public async Task<(bool UseLocal, AIProvider AIProvider, StorageProvider StorageProvider, AudioProvider AudioProvider)> SelectEnvironmentAsync()
+    public async Task<(bool UseLocal, AIProvider AIProvider, StorageProvider StorageProvider, ConversationStorageProvider ConversationStorageProvider)> SelectEnvironmentAsync()
     {
         await Task.CompletedTask;
 
@@ -57,27 +59,27 @@ public class InitializationService(
 
         System.Console.WriteLine("Choose your deployment environment:");
         System.Console.WriteLine();
-        System.Console.WriteLine("1. ☁️  CLOUD Environment (Cloud Services)");
-        System.Console.WriteLine("   • AI: Gemini / OpenAI / AzureOpenAI / Anthropic / Custom");
-        System.Console.WriteLine("   • Vector Store: Qdrant Cloud");
-        System.Console.WriteLine("   • Cache: Redis Cloud");
-        System.Console.WriteLine("   • Databases: Can use cloud or local databases");
-        System.Console.WriteLine("   ⚡ High performance with cloud AI models");
-        System.Console.WriteLine();
-        System.Console.WriteLine("2. 🏠 LOCAL Environment (100% Local - No Cloud Required)");
+        System.Console.WriteLine("1. 🏠 LOCAL Environment (100% Local - No Cloud Required)");
         System.Console.WriteLine("   • AI: Ollama (running on localhost)");
         System.Console.WriteLine("   • Vector Store: Qdrant (local docker container)");
         System.Console.WriteLine("   • Document Cache: Redis (optional - local docker container)");
         System.Console.WriteLine("   • Databases: Local SQL Server, MySQL, PostgreSQL, SQLite");
         System.Console.WriteLine("   ✅ GDPR/KVKK compliant - All data stays on your machine");
         System.Console.WriteLine();
+        System.Console.WriteLine("2. ☁️  CLOUD Environment (Cloud Services)");
+        System.Console.WriteLine("   • AI: Gemini / OpenAI / AzureOpenAI / Anthropic / Custom");
+        System.Console.WriteLine("   • Vector Store: Qdrant Cloud");
+        System.Console.WriteLine("   • Cache: Redis Cloud");
+        System.Console.WriteLine("   • Databases: Can use cloud or local databases");
+        System.Console.WriteLine("   ⚡ High performance with cloud AI models");
+        System.Console.WriteLine();
 
-        var choice = _console.ReadLine("Selection (default: Cloud): ");
+        var choice = _console.ReadLine("Selection (default: Local): ");
 
         var useLocalEnvironment = choice switch
         {
-            "1" or "" => false,
-            "2" => true,
+            "1" or "" => true,
+            "2" => false,
             _ => true
         };
 
@@ -115,11 +117,30 @@ public class InitializationService(
                 System.Console.WriteLine();
             }
             
+            System.Console.WriteLine("Select Conversation History Storage:");
+            System.Console.WriteLine("1. Redis (Persistent, recommended)");
+            System.Console.WriteLine("2. SQLite (Local database file)");
+            System.Console.WriteLine("3. FileSystem (File-based storage)");
+            System.Console.WriteLine("4. InMemory (Non-persistent, for testing)");
+            
+            var conversationStorageChoice = _console.ReadLine("Selection (default: Redis): ");
+            var selectedConversationStorage = conversationStorageChoice switch
+            {
+                "1" or "" => ConversationStorageProvider.Redis,
+                "2" => ConversationStorageProvider.SQLite,
+                "3" => ConversationStorageProvider.FileSystem,
+                "4" => ConversationStorageProvider.InMemory,
+                _ => ConversationStorageProvider.Redis
+            };
+
+            System.Console.WriteLine($"  Conversation History Storage: {selectedConversationStorage}");
+            System.Console.WriteLine();
+            
             _console.WriteWarning("⚠️  Note: Make sure Ollama endpoint is configured in appsettings");
             System.Console.WriteLine("     (AI:Custom:Endpoint = http://localhost:11434)");
             System.Console.WriteLine();
 
-            return (true, AIProvider.Custom, selectedStorage, AudioProvider.Whisper);
+            return (true, AIProvider.Custom, selectedStorage, selectedConversationStorage);
         }
 
         System.Console.WriteLine();
@@ -147,8 +168,27 @@ public class InitializationService(
         System.Console.WriteLine("  Storage: Redis (Document storage)");
         System.Console.WriteLine("  Audio: Whisper.net (Local transcription)");
         System.Console.WriteLine();
+        
+        System.Console.WriteLine("Select Conversation History Storage:");
+        System.Console.WriteLine("1. Redis (Persistent, recommended)");
+        System.Console.WriteLine("2. SQLite (Local database file)");
+        System.Console.WriteLine("3. FileSystem (File-based storage)");
+        System.Console.WriteLine("4. InMemory (Non-persistent, for testing)");
+        
+        var cloudConversationStorageChoice = _console.ReadLine("Selection (default: Redis): ");
+        var cloudSelectedConversationStorage = cloudConversationStorageChoice switch
+        {
+            "1" or "" => ConversationStorageProvider.Redis,
+            "2" => ConversationStorageProvider.SQLite,
+            "3" => ConversationStorageProvider.FileSystem,
+            "4" => ConversationStorageProvider.InMemory,
+            _ => ConversationStorageProvider.Redis
+        };
 
-        return (false, selectedAIProvider, StorageProvider.Redis, AudioProvider.Whisper);
+        System.Console.WriteLine($"  Conversation History Storage: {cloudSelectedConversationStorage}");
+        System.Console.WriteLine();
+
+        return (false, selectedAIProvider, StorageProvider.Redis, cloudSelectedConversationStorage);
     }
 
     public async Task<string> SelectLanguageAsync()
@@ -160,35 +200,32 @@ public class InitializationService(
         System.Console.WriteLine("Please select the language for test queries and AI responses:");
         System.Console.WriteLine();
         System.Console.WriteLine("1. 🇬🇧 English");
-        System.Console.WriteLine("2. 🇩🇪 German (Deutsch)");
-        System.Console.WriteLine("3. 🇹🇷 Turkish (Türkçe)");
-        System.Console.WriteLine("4. 🇷🇺 Russian (Русский)");
+        System.Console.WriteLine("2. 🇩🇪 German");
+        System.Console.WriteLine("3. 🇹🇷 Turkish");
+        System.Console.WriteLine("4. 🇷🇺 Russian");
         System.Console.WriteLine("5. 🌐 Other (specify ISO code)");
         System.Console.WriteLine();
 
-        var choice = _console.ReadLine("Selection (default: English): ");
+        var choice = _console.ReadLine("Selection (default: Turkish): ");
 
-        // CRITICAL: Return ISO 639-1 codes (2-letter) for language-agnostic support
-        // This follows the Generic Code rule - no hardcoded language names in the codebase
         var selectedLanguageCode = choice switch
         {
-            "1" or "" => "en",
+            "1" => "en",
             "2" => "de",
-            "3" => "tr",
+            "3" or "" => "tr",
             "4" => "ru",
             "5" => GetCustomLanguageCode(),
-            _ => "en"
+            _ => "tr"
         };
         
-        // Display name for user feedback (local to this method, not stored)
         var displayName = choice switch
         {
-            "1" or "" => "English",
+            "1" => "English",
             "2" => "German",
-            "3" => "Turkish",
+            "3" or "" => "Turkish",
             "4" => "Russian",
             "5" => selectedLanguageCode,
-            _ => "English"
+            _ => "Turkish"
         };
 
         System.Console.WriteLine();
@@ -198,7 +235,7 @@ public class InitializationService(
         return selectedLanguageCode;
     }
 
-    public async Task InitializeServicesAsync(AIProvider aiProvider, StorageProvider storageProvider, AudioProvider audioProvider)
+    public async Task InitializeServicesAsync(AIProvider aiProvider, StorageProvider storageProvider, ConversationStorageProvider conversationStorageProvider, string? defaultLanguage = null)
     {
         System.Console.WriteLine("🔧 Initializing SmartRAG...");
         System.Console.WriteLine();
@@ -216,27 +253,22 @@ public class InitializationService(
 
             System.Console.WriteLine($"   → Configuring {aiProvider} provider...");
             System.Console.WriteLine($"   → Configuring {storageProvider} storage...");
+            System.Console.WriteLine($"   → Configuring {conversationStorageProvider} conversation history storage...");
 
-            services.AddSmartRag(_configuration, options =>
-            {
-                options.StorageProvider = storageProvider;
-                options.AIProvider = aiProvider;
-                options.AudioProvider = audioProvider;
-            });
-
-            System.Console.WriteLine("   → Building service provider...");
-            _serviceProvider = services.BuildServiceProvider();
+            _serviceProvider = services.UseSmartRag(_configuration, storageProvider, aiProvider, conversationStorageProvider, defaultLanguage);
 
             System.Console.WriteLine();
             _console.WriteSuccess("Services initialized successfully");
             System.Console.WriteLine($"  AI Provider: {aiProvider}");
             System.Console.WriteLine($"  Storage Provider: {storageProvider}");
-            System.Console.WriteLine($"  Audio Provider: {audioProvider}");
+            System.Console.WriteLine($"  Conversation History Storage: {conversationStorageProvider}");
+            System.Console.WriteLine($"  Audio Provider: Whisper (only supported provider)");
 
             await DisplayDatabaseStatus();
         }
         catch (Exception ex)
         {
+            _logger?.LogError(ex, "Service initialization failed");
             _console.WriteError($"Service initialization failed: {ex.Message}");
             System.Console.WriteLine($"   Type: {ex.GetType().Name}");
             if (ex.InnerException != null)
@@ -257,6 +289,10 @@ public class InitializationService(
 
     #region Private Methods
 
+    /// <summary>
+    /// Prompts user to enter custom ISO 639-1 language code
+    /// </summary>
+    /// <returns>Language code or default 'en' if empty</returns>
     private string GetCustomLanguageCode()
     {
         System.Console.WriteLine();
@@ -264,6 +300,9 @@ public class InitializationService(
         return string.IsNullOrWhiteSpace(customCode) ? "en" : customCode.Trim().ToLowerInvariant();
     }
 
+    /// <summary>
+    /// Displays database connection and schema status
+    /// </summary>
     private async Task DisplayDatabaseStatus()
     {
         var connectionManager = _serviceProvider?.GetService<IDatabaseConnectionManager>();

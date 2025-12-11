@@ -12,8 +12,8 @@ namespace SmartRAG.Helpers
         private const int MinWordLength = 2;
 
         /// <summary>
-        /// Tokenizes a query into words, filtering by minimum length
-        /// For agglutinative languages, also extracts root words from suffixed words
+        /// Tokenizes a query into words, filtering by minimum length.
+        /// For agglutinative languages, also extracts root words from suffixed words to improve matching.
         /// </summary>
         /// <param name="query">Query to tokenize</param>
         /// <returns>List of tokenized words including root words</returns>
@@ -25,30 +25,26 @@ namespace SmartRAG.Helpers
             }
 
             var words = query.ToLowerInvariant()
-                .Split(new char[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries)
+                .Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
                 .Where(w => w.Length > MinWordLength)
                 .ToList();
-            
-            // For agglutinative languages: extract root words from suffixed words
-            // This helps match words with suffixes to their root forms in content
+
             var expandedWords = new HashSet<string>(words);
             foreach (var word in words)
             {
-                if (word.Length >= 6) // Only for longer words to avoid false positives
+                if (word.Length >= 6)
                 {
-                    // Try to extract root by removing common suffixes (last 2-4 characters)
-                    // This is a simple heuristic for agglutinative languages
                     for (int suffixLen = 2; suffixLen <= Math.Min(4, word.Length - 4); suffixLen++)
                     {
-                        var potentialRoot = word.Substring(0, word.Length - suffixLen);
-                        if (potentialRoot.Length >= 4) // Root must be at least 4 chars
+                        var potentialRoot = word[..^suffixLen];
+                        if (potentialRoot.Length >= 4)
                         {
                             expandedWords.Add(potentialRoot);
                         }
                     }
                 }
             }
-            
+
             return expandedWords.ToList();
         }
 
@@ -64,7 +60,7 @@ namespace SmartRAG.Helpers
                 return new List<string>();
             }
 
-            return query.Split(new char[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries)
+            return query.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
                 .Where(w => w.Length > MinWordLength && char.IsUpper(w[0]))
                 .ToList();
         }

@@ -4,16 +4,15 @@ using iText.Kernel.Pdf.Canvas.Parser.Listener;
 using iText.Kernel.Pdf.Xobject;
 using SmartRAG.Interfaces.Parser;
 using SmartRAG.Interfaces.Parser.Strategies;
+using SmartRAG.Models;
 using SmartRAG.Services.Helpers;
 using Microsoft.Extensions.Logging;
 using SkiaSharp;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Text.RegularExpressions;
 
 namespace SmartRAG.Services.Document.Parsers
 {
@@ -21,8 +20,8 @@ namespace SmartRAG.Services.Document.Parsers
     {
         private static readonly string[] SupportedExtensions = { ".pdf" };
         private const string SupportedContentType = "application/pdf";
-        private const int MinTextLengthForOcrFallback = 50; // If extracted text is less than this, use OCR
-        
+        private const int MinTextLengthForOcrFallback = 50;
+
         private readonly IImageParserService _imageParserService;
         private readonly ILogger<PdfFileParser> _logger;
 
@@ -45,17 +44,13 @@ namespace SmartRAG.Services.Document.Parsers
                 var memoryStream = await CreateMemoryStreamCopy(fileStream);
                 var bytes = memoryStream.ToArray();
 
-                using (var pdfReader = new PdfReader(new MemoryStream(bytes)))
-                {
-                    using (var pdfDocument = new PdfDocument(pdfReader))
-                    {
-                        var textBuilder = new StringBuilder();
-                        await ExtractTextFromPdfPagesAsync(pdfDocument, textBuilder, language, bytes);
+                using var pdfReader = new PdfReader(new MemoryStream(bytes));
+                using var pdfDocument = new PdfDocument(pdfReader);
+                var textBuilder = new StringBuilder();
+                await ExtractTextFromPdfPagesAsync(pdfDocument, textBuilder, language, bytes);
 
-                        var content = textBuilder.ToString();
-                        return new FileParserResult { Content = TextCleaningHelper.CleanContent(content) };
-                    }
-                }
+                var content = textBuilder.ToString();
+                return new FileParserResult { Content = TextCleaningHelper.CleanContent(content) };
             }
             catch (Exception ex)
             {
@@ -92,21 +87,19 @@ namespace SmartRAG.Services.Document.Parsers
                              locationText.Length >= simpleText.Length ? locationText : simpleText;
                 var text = FixPdfTextEncoding(rawText);
                 var hasEmbeddedImages = HasEmbeddedImages(page);
-                
+
                 var hasEncodingIssues = !string.IsNullOrWhiteSpace(text) && HasTextEncodingIssues(text);
                 var textIsSubstantial = !string.IsNullOrWhiteSpace(text) && text.Trim().Length >= MinTextLengthForOcrFallback;
                 var shouldUseOcr = false;
-                
+
                 if (textIsSubstantial && !hasEncodingIssues)
                 {
-                    // Text extraction is good, use it
-                    var correctedText = _imageParserService.CorrectCurrencySymbols(text, language);
+                    var correctedText = _imageParserService?.CorrectCurrencySymbols(text, language) ?? text;
                     textBuilder.AppendLine(correctedText);
                     _logger.LogDebug("PDF page {PageNumber} text extraction successful, using extracted text (length: {Length})", i, text.Length);
                 }
                 else if (hasEmbeddedImages)
                 {
-                    // Page has embedded images (scanned PDF) - try OCR
                     shouldUseOcr = true;
                     if (hasEncodingIssues)
                     {
@@ -119,11 +112,9 @@ namespace SmartRAG.Services.Document.Parsers
                 }
                 else
                 {
-                    // Text-based PDF - use extracted text (even if it has encoding issues)
-                    // We cannot render text-based PDF pages to images for OCR
-                    var correctedText = _imageParserService.CorrectCurrencySymbols(text, language);
+                    var correctedText = _imageParserService?.CorrectCurrencySymbols(text, language) ?? text;
                     textBuilder.AppendLine(correctedText);
-                    
+
                     if (hasEncodingIssues)
                     {
                         _logger.LogDebug("PDF page {PageNumber} is text-based with encoding issues, using extracted text (length: {Length}). OCR not available for text-based PDFs.", i, text?.Length ?? 0);
@@ -134,40 +125,36 @@ namespace SmartRAG.Services.Document.Parsers
                     }
                 }
 
-                // If we should use OCR, try to extract text via OCR from embedded images
-                if (shouldUseOcr)
+                if (shouldUseOcr && _imageParserService != null)
                 {
                     try
                     {
                         var pageImageStream = await RenderPdfPageAsImageAsync(page, pdfBytes);
                         if (pageImageStream != null)
                         {
-                            // Embedded image found - use OCR on the image
                             var ocrText = await _imageParserService.ExtractTextFromImageAsync(pageImageStream, language);
                             if (!string.IsNullOrWhiteSpace(ocrText))
                             {
                                 textBuilder.AppendLine(ocrText);
-                                _logger.LogDebug("Used OCR for PDF page {PageNumber} from embedded image (extracted text length: {Length} chars)", 
+                                _logger.LogDebug("Used OCR for PDF page {PageNumber} from embedded image (extracted text length: {Length} chars)",
                                     i, ocrText.Length);
                             }
                             else
                             {
-                                // OCR failed on embedded image, fallback to extracted text if available
                                 _logger.LogWarning("OCR failed to extract text from embedded image on PDF page {PageNumber}, using extracted text fallback", i);
                                 if (!string.IsNullOrWhiteSpace(text))
                                 {
-                                    var correctedText = _imageParserService.CorrectCurrencySymbols(text, language);
+                                    var correctedText = _imageParserService?.CorrectCurrencySymbols(text, language) ?? text;
                                     textBuilder.AppendLine(correctedText);
                                 }
                             }
                         }
                         else
                         {
-                            // This shouldn't happen if hasEmbeddedImages was true, but handle gracefully
                             _logger.LogWarning("PDF page {PageNumber} was expected to have embedded images but none were found, using extracted text", i);
                             if (!string.IsNullOrWhiteSpace(text))
                             {
-                                var correctedText = _imageParserService.CorrectCurrencySymbols(text, language);
+                                var correctedText = _imageParserService?.CorrectCurrencySymbols(text, language) ?? text;
                                 textBuilder.AppendLine(correctedText);
                             }
                         }
@@ -175,17 +162,24 @@ namespace SmartRAG.Services.Document.Parsers
                     catch (Exception ex)
                     {
                         _logger.LogWarning(ex, "Failed to extract text via OCR for PDF page {PageNumber}, using extracted text fallback", i);
-                        // Fallback to extracted text even if it has issues
                         if (!string.IsNullOrWhiteSpace(text))
                         {
-                            var correctedText = _imageParserService.CorrectCurrencySymbols(text, language);
+                            var correctedText = _imageParserService?.CorrectCurrencySymbols(text, language) ?? text;
                             textBuilder.AppendLine(correctedText);
                         }
                     }
                 }
+                else if (shouldUseOcr && _imageParserService == null)
+                {
+                    _logger.LogWarning("OCR is needed for PDF page {PageNumber} but ImageParserService is not available. Enable image parsing in configuration to use OCR.", i);
+                    if (!string.IsNullOrWhiteSpace(text))
+                    {
+                        textBuilder.AppendLine(text);
+                    }
+                }
             }
         }
-        
+
         /// <summary>
         /// Checks if PDF page has embedded images (indicates scanned PDF)
         /// </summary>
@@ -200,22 +194,21 @@ namespace SmartRAG.Services.Document.Parsers
                 if (xObjects == null || !(xObjects is PdfDictionary)) return false;
 
                 var xObjectDict = (PdfDictionary)xObjects;
-                
+
                 foreach (var key in xObjectDict.KeySet())
                 {
                     var obj = xObjectDict.Get(key);
-                    if (obj is PdfStream)
+                    if (obj is PdfStream stream)
                     {
-                        var stream = (PdfStream)obj;
                         var subtype = stream.GetAsName(iText.Kernel.Pdf.PdfName.Subtype);
-                        
+
                         if (subtype != null && subtype.GetValue() == iText.Kernel.Pdf.PdfName.Image.GetValue())
                         {
                             return true;
                         }
                     }
                 }
-                
+
                 return false;
             }
             catch (Exception ex)
@@ -233,35 +226,25 @@ namespace SmartRAG.Services.Document.Parsers
         {
             if (string.IsNullOrWhiteSpace(text)) return false;
 
-            // Generic pattern detection for encoding issues across all languages:
-            // 1. Words without spaces (e.g., "wordAWord" instead of "word A Word")
-            // 2. Missing special characters (non-ASCII characters that should be present)
-            // 3. Broken word patterns (consonant clusters that suggest missing vowels/special chars)
-            
-            // Pattern 1: Check for words that are missing spaces (generic for all languages)
-            // Look for lowercase letter followed immediately by uppercase letter (without space)
-            // This indicates words that should be separated (e.g., "tenAyrlma" → "ten Ayrılma")
-            // However, we need to be careful not to flag valid patterns like "iPhone", "McDonald"
             var hasBrokenSpacing = false;
-            var brokenSpacingCount = 0; // Count occurrences to avoid false positives - declared here for use in Pattern 4
+            var brokenSpacingCount = 0;
             for (int i = 0; i < text.Length - 1; i++)
             {
                 if (char.IsLower(text[i]) && char.IsUpper(text[i + 1]))
                 {
                     var before = i > 0 ? text[i - 1] : ' ';
                     var after = i + 2 < text.Length ? text[i + 2] : ' ';
-                    
+
                     if (char.IsLetter(before) && char.IsLetter(after))
                     {
                         var isAtWordStart = i == 0 || !char.IsLetter(text[i - 1]);
                         if (!isAtWordStart)
                         {
                             brokenSpacingCount++;
-                            // Only flag if we see multiple occurrences (suggests systematic encoding issue)
                             if (brokenSpacingCount >= 2)
                             {
                                 hasBrokenSpacing = true;
-                                _logger.LogDebug("Detected broken spacing at position {Position}: '{Before}{Char1}{Char2}{After}' (count: {Count})", 
+                                _logger.LogDebug("Detected broken spacing at position {Position}: '{Before}{Char1}{Char2}{After}' (count: {Count})",
                                     i, before, text[i], text[i + 1], after, brokenSpacingCount);
                                 break;
                             }
@@ -269,11 +252,11 @@ namespace SmartRAG.Services.Document.Parsers
                     }
                 }
             }
-            
+
             var hasUnusualConsonantClusters = false;
             var asciiConsonants = "bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ";
             var consecutiveConsonants = 0;
-            
+
             for (int i = 0; i < text.Length; i++)
             {
                 var c = text[i];
@@ -287,7 +270,7 @@ namespace SmartRAG.Services.Document.Parsers
                         if (char.IsLetter(before) && char.IsLetter(after))
                         {
                             hasUnusualConsonantClusters = true;
-                            _logger.LogDebug("Detected unusual consonant cluster: {Count} consecutive ASCII consonants at position {Position}", 
+                            _logger.LogDebug("Detected unusual consonant cluster: {Count} consecutive ASCII consonants at position {Position}",
                                 consecutiveConsonants, i);
                             break;
                         }
@@ -298,36 +281,29 @@ namespace SmartRAG.Services.Document.Parsers
                     consecutiveConsonants = 0;
                 }
             }
-            
+
             var hasBrokenWordPatterns = false;
-            // However, English-only text is valid, so we need to be careful not to flag it
-            var nonAsciiCharCount = text.Count(c => c > 127); // Non-ASCII characters
+            var nonAsciiCharCount = text.Count(c => c > 127);
             var totalCharCount = text.Count(char.IsLetter);
-            
-            // Only flag as encoding issue if:
-            // 1. Text is substantial (>200 letters) - short text might be English-only (increased from 150)
-            // 2. Has broken spacing (suggests encoding corruption, not just English text)
-            // 3. Very low non-ASCII ratio (<1.5%) combined with broken spacing (lowered from 2% to 1.5%)
-            // This avoids false positives for English-only documents and isolated word issues
-            // Made more conservative to reduce false positives for text-based PDFs with minor encoding quirks
-            var hasFewSpecialChars = totalCharCount > 200 && 
+
+            var hasFewSpecialChars = totalCharCount > 200 &&
                                      nonAsciiCharCount < totalCharCount * 0.015 &&
                                      hasBrokenSpacing;
-            
+
             if (hasFewSpecialChars)
             {
-                _logger.LogDebug("Detected very few non-ASCII characters with broken words: {NonAscii}/{Total} = {Ratio:P2} (threshold: 1.5%)", 
+                _logger.LogDebug("Detected very few non-ASCII characters with broken words: {NonAscii}/{Total} = {Ratio:P2} (threshold: 1.5%)",
                     nonAsciiCharCount, totalCharCount, (double)nonAsciiCharCount / totalCharCount);
             }
-            
+
             var hasIssue = hasBrokenSpacing || hasUnusualConsonantClusters || hasFewSpecialChars || hasBrokenWordPatterns;
-            
+
             if (hasIssue)
             {
-                _logger.LogDebug("Encoding issue detected - BrokenSpacing: {BrokenSpacing}, ConsonantClusters: {Clusters}, FewSpecialChars: {FewChars}, BrokenWords: {BrokenWords}", 
+                _logger.LogDebug("Encoding issue detected - BrokenSpacing: {BrokenSpacing}, ConsonantClusters: {Clusters}, FewSpecialChars: {FewChars}, BrokenWords: {BrokenWords}",
                     hasBrokenSpacing, hasUnusualConsonantClusters, hasFewSpecialChars, hasBrokenWordPatterns);
             }
-            
+
             return hasIssue;
         }
 
@@ -348,7 +324,7 @@ namespace SmartRAG.Services.Document.Parsers
                     {
                         return embeddedImageResult;
                     }
-                    
+
                     _logger.LogDebug("No embedded images found in PDF page - text-based PDF cannot be rendered to image for OCR with current libraries");
                     return null;
                 }
@@ -374,26 +350,24 @@ namespace SmartRAG.Services.Document.Parsers
                 var scaledWidth = (int)(width * scale);
                 var scaledHeight = (int)(height * scale);
 
-                using (var bitmap = new SKBitmap(scaledWidth, scaledHeight))
+                using var bitmap = new SKBitmap(scaledWidth, scaledHeight);
+                using var canvas = new SKCanvas(bitmap);
+                canvas.Clear(SKColors.White);
+                var imagesExtracted = ExtractImagesFromPdfPage(page, canvas, scale);
+
+                if (!imagesExtracted)
                 {
-                    using (var canvas = new SKCanvas(bitmap))
-                    {
-                        canvas.Clear(SKColors.White);
-                        var imagesExtracted = ExtractImagesFromPdfPage(page, canvas, scale);
-                        
-                        if (!imagesExtracted)
-                        {
-                            return null;
-                        }
-                        
-                        var image = SKImage.FromBitmap(bitmap);
-                        var pngData = image.Encode(SKEncodedImageFormat.Png, 100);
-                        var pngStream = new MemoryStream(pngData.ToArray());
-                        pngStream.Position = 0;
-                        
-                        return pngStream;
-                    }
+                    return null;
                 }
+
+                var image = SKImage.FromBitmap(bitmap);
+                var pngData = image.Encode(SKEncodedImageFormat.Png, 100);
+                var pngStream = new MemoryStream(pngData.ToArray())
+                {
+                    Position = 0
+                };
+
+                return pngStream;
             }
             catch (Exception ex)
             {
@@ -421,44 +395,39 @@ namespace SmartRAG.Services.Document.Parsers
                 foreach (var key in xObjectDict.KeySet())
                 {
                     var obj = xObjectDict.Get(key);
-                    if (obj is PdfStream)
+                    if (obj is PdfStream stream)
                     {
-                        var stream = (PdfStream)obj;
                         var subtype = stream.GetAsName(iText.Kernel.Pdf.PdfName.Subtype);
-                        
+
                         if (subtype != null && subtype.GetValue() == iText.Kernel.Pdf.PdfName.Image.GetValue())
                         {
                             try
                             {
                                 var pdfImage = new PdfImageXObject((PdfStream)stream);
                                 var imageBytes = pdfImage.GetImageBytes();
-                                
+
                                 if (imageBytes != null && imageBytes.Length > 0)
                                 {
-                                    using (var imageStream = new MemoryStream(imageBytes))
+                                    using var imageStream = new MemoryStream(imageBytes);
+                                    using var skImage = SKImage.FromEncodedData(imageStream);
+                                    if (skImage != null)
                                     {
-                                        using (var skImage = SKImage.FromEncodedData(imageStream))
-                                        {
-                                            if (skImage != null)
-                                            {
-                                                var imageWidth = pdfImage.GetWidth();
-                                                var imageHeight = pdfImage.GetHeight();
-                                                var pageSize = page.GetPageSize();
-                                                var pageWidth = (float)pageSize.GetWidth();
-                                                var pageHeight = (float)pageSize.GetHeight();
-                                                var scaleX = (pageWidth * scale) / imageWidth;
-                                                var scaleY = (pageHeight * scale) / imageHeight;
-                                                var finalScale = Math.Min(scaleX, scaleY);
-                                                var destWidth = imageWidth * finalScale;
-                                                var destHeight = imageHeight * finalScale;
-                                                var x = (pageWidth * scale - destWidth) / 2;
-                                                var y = (pageHeight * scale - destHeight) / 2;
-                                                
-                                                var destRect = new SKRect(x, y, x + destWidth, y + destHeight);
-                                                canvas.DrawImage(skImage, destRect);
-                                                imageFound = true;
-                                            }
-                                        }
+                                        var imageWidth = pdfImage.GetWidth();
+                                        var imageHeight = pdfImage.GetHeight();
+                                        var pageSize = page.GetPageSize();
+                                        var pageWidth = (float)pageSize.GetWidth();
+                                        var pageHeight = (float)pageSize.GetHeight();
+                                        var scaleX = (pageWidth * scale) / imageWidth;
+                                        var scaleY = (pageHeight * scale) / imageHeight;
+                                        var finalScale = Math.Min(scaleX, scaleY);
+                                        var destWidth = imageWidth * finalScale;
+                                        var destHeight = imageHeight * finalScale;
+                                        var x = (pageWidth * scale - destWidth) / 2;
+                                        var y = (pageHeight * scale - destHeight) / 2;
+
+                                        var destRect = new SKRect(x, y, x + destWidth, y + destHeight);
+                                        canvas.DrawImage(skImage, destRect);
+                                        imageFound = true;
                                     }
                                 }
                             }
@@ -484,10 +453,11 @@ namespace SmartRAG.Services.Document.Parsers
         /// Fixes common PDF text encoding issues
         /// PDF text extraction often produces incorrectly encoded characters, especially for non-ASCII characters
         /// This method attempts to correct encoding issues by:
-        /// 1. Applying Unicode normalization (FormC - Canonical Composition)
-        /// 2. Applying Unicode normalization (FormD - Canonical Decomposition) and recomposing
-        /// 3. Fixing replacement characters () by attempting to decode using common encodings
-        /// 4. Removing invalid Unicode characters
+        /// 1. Attempting to fix common encoding mismatches (Windows-1252/1254/ISO-8859-1 misinterpreted as UTF-8)
+        /// 2. Applying Unicode normalization (FormC - Canonical Composition)
+        /// 3. Applying Unicode normalization (FormD - Canonical Decomposition) and recomposing
+        /// 4. Fixing replacement characters () by attempting to decode using common encodings
+        /// 5. Removing invalid Unicode characters
         /// 
         /// This approach is generic and works for all alphabets (Latin, Cyrillic, Arabic, Chinese, Japanese, Korean, etc.)
         /// without requiring language-specific character mappings.
@@ -499,31 +469,60 @@ namespace SmartRAG.Services.Document.Parsers
 
             try
             {
-                // Step 1: Apply Unicode normalization (FormC - Canonical Composition)
-                // This combines decomposed characters (e.g., "ğ" = "g" + combining dot below) into composed form
-                // FormC is the most common form and works for all languages
-                var normalized = text.Normalize(NormalizationForm.FormC);
+                var fixedText = text;
+                var replacementChar = '\uFFFD';
+                var suspiciousChar = '\u00F5';
                 
-                // Step 2: If FormC didn't help, try FormD (Canonical Decomposition) then recompose
-                // This handles cases where characters are in a different normalization form
-                // Some PDFs might store text in decomposed form, which needs to be recomposed
-                if (normalized != text)
+                if (text.Contains(replacementChar) || (text.Contains(suspiciousChar) && text.Count(c => c == suspiciousChar) > text.Length * 0.01))
                 {
-                    // Text changed with FormC, try FormD as well for completeness
-                    var decomposed = text.Normalize(NormalizationForm.FormD);
-                    if (decomposed != text && decomposed != normalized)
+                    var encodingNames = new[] { "Windows-1254", "Windows-1252", "ISO-8859-1" };
+                    
+                    foreach (var encodingName in encodingNames)
                     {
-                        // Recompose from FormD to FormC
-                        normalized = decomposed.Normalize(NormalizationForm.FormC);
+                        try
+                        {
+                            var encoding = Encoding.GetEncoding(encodingName);
+                            var utf8Bytes = Encoding.UTF8.GetBytes(text);
+                            var decoded = encoding.GetString(utf8Bytes);
+                            
+                            var properBytes = encoding.GetBytes(decoded);
+                            var correctedText = Encoding.UTF8.GetString(Encoding.Convert(encoding, Encoding.UTF8, properBytes));
+                            
+                            var originalReplacementCount = text.Count(c => c == replacementChar);
+                            var correctedReplacementCount = correctedText.Count(c => c == replacementChar);
+                            var originalSuspiciousCount = text.Count(c => c == suspiciousChar);
+                            var correctedSuspiciousCount = correctedText.Count(c => c == suspiciousChar);
+                            
+                            if ((correctedReplacementCount < originalReplacementCount) || 
+                                (correctedReplacementCount == originalReplacementCount && correctedSuspiciousCount < originalSuspiciousCount) ||
+                                (correctedReplacementCount == originalReplacementCount && correctedSuspiciousCount == originalSuspiciousCount && correctedText.Length > text.Length * 0.9))
+                            {
+                                fixedText = correctedText;
+                                _logger.LogDebug("Fixed PDF text encoding using {Encoding}: replacement chars {Original}->{Corrected}, suspicious chars {OriginalSusp}->{CorrectedSusp}",
+                                    encodingName, originalReplacementCount, correctedReplacementCount, originalSuspiciousCount, correctedSuspiciousCount);
+                                break;
+                            }
+                        }
+                        catch
+                        {
+                        }
                     }
                 }
-                
-                // Step 3: Remove or fix invalid Unicode characters
-                // This preserves all valid Unicode characters from all alphabets while removing
-                // only control characters (except common ones like newline, tab)
-                normalized = RemoveInvalidUnicodeCharacters(normalized);
-                
-                return normalized;
+
+                var normalizedText = fixedText.Normalize(NormalizationForm.FormC);
+
+                if (normalizedText != fixedText)
+                {
+                    var decomposed = fixedText.Normalize(NormalizationForm.FormD);
+                    if (decomposed != fixedText && decomposed != normalizedText)
+                    {
+                        normalizedText = decomposed.Normalize(NormalizationForm.FormC);
+                    }
+                }
+
+                normalizedText = RemoveInvalidUnicodeCharacters(normalizedText);
+
+                return normalizedText;
             }
             catch (Exception ex)
             {

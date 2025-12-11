@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Logging;
+using System.Net.Http;
 using SmartRAG.Enums;
 using SmartRAG.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -16,38 +16,22 @@ namespace SmartRAG.Providers
     /// </summary>
     public class AzureOpenAIProvider : BaseAIProvider, IDisposable
     {
-        private readonly ILogger<AzureOpenAIProvider> _logger;
-
         /// <summary>
         /// Initializes a new instance of the AzureOpenAIProvider
         /// </summary>
         /// <param name="logger">Logger instance for this provider</param>
-        public AzureOpenAIProvider(ILogger<AzureOpenAIProvider> logger) : base(logger)
+        /// <param name="httpClientFactory">HTTP client factory for creating HTTP clients</param>
+        public AzureOpenAIProvider(ILogger<AzureOpenAIProvider> logger, IHttpClientFactory httpClientFactory) : base(logger, httpClientFactory)
         {
-            _logger = logger;
         }
 
-        #region Constants
-
         private const int DefaultMaxRetries = 3;
-        private const int DefaultMinIntervalMs = 60000; // 60 seconds
-
-        #endregion
-
-        #region Fields
+        private const int DefaultMinIntervalMs = 60000;
 
         private readonly SemaphoreSlim _rateLimitSemaphore = new SemaphoreSlim(1, 1);
         private DateTime _lastRequestTime = DateTime.MinValue;
 
-        #endregion
-
-        #region Properties
-
         public override AIProvider ProviderType => AIProvider.AzureOpenAI;
-
-        #endregion
-
-        #region Public Methods
 
         public override async Task<string> GenerateTextAsync(string prompt, AIProviderConfig config)
         {
@@ -56,41 +40,39 @@ namespace SmartRAG.Providers
             if (!isValid)
                 return errorMessage;
 
-            using (var client = CreateHttpClient(config.ApiKey))
+            using var client = CreateHttpClient(config.ApiKey);
+            var messages = new List<object>();
+
+            if (!string.IsNullOrEmpty(config.SystemMessage))
             {
-                var messages = new List<object>();
+                messages.Add(new { role = "system", content = config.SystemMessage });
+            }
 
-                if (!string.IsNullOrEmpty(config.SystemMessage))
-                {
-                    messages.Add(new { role = "system", content = config.SystemMessage });
-                }
+            messages.Add(new { role = "user", content = prompt });
 
-                messages.Add(new { role = "user", content = prompt });
+            var payload = new
+            {
+                messages = messages.ToArray(),
+                max_tokens = config.MaxTokens,
+                temperature = config.Temperature,
+                stream = false
+            };
 
-                var payload = new
-                {
-                    messages = messages.ToArray(),
-                    max_tokens = config.MaxTokens,
-                    temperature = config.Temperature,
-                    stream = false
-                };
+            var url = BuildAzureUrl(config.Endpoint, config.Model, "chat/completions", config.ApiVersion);
 
-                var url = BuildAzureUrl(config.Endpoint, config.Model, "chat/completions", config.ApiVersion);
+            var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, config);
 
-                var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, config);
+            if (!success)
+                return error;
 
-                if (!success)
-                    return error;
-
-                try
-                {
-                    return ParseTextResponse(response);
-                }
-                catch (Exception ex)
-                {
-                    ProviderLogMessages.LogAzureOpenAITextParsingError(Logger, ex);
-                    return $"Error parsing Azure OpenAI response: {ex.Message}";
-                }
+            try
+            {
+                return ParseTextResponse(response);
+            }
+            catch (Exception ex)
+            {
+                ProviderLogMessages.LogAzureOpenAITextParsingError(Logger, ex);
+                return $"Error parsing Azure OpenAI response: {ex.Message}";
             }
         }
 
@@ -157,32 +139,30 @@ namespace SmartRAG.Providers
             if (inputList.Count == 0)
                 return new List<List<float>>();
 
-            using (var client = CreateHttpClient(config.ApiKey))
+            using var client = CreateHttpClient(config.ApiKey);
+            var payload = new
             {
-                var payload = new
-                {
-                    input = inputList.ToArray()
-                };
+                input = inputList.ToArray()
+            };
 
-                var url = BuildAzureUrl(config.Endpoint, config.EmbeddingModel, "embeddings", config.ApiVersion);
+            var url = BuildAzureUrl(config.Endpoint, config.EmbeddingModel, "embeddings", config.ApiVersion);
 
-                var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, config);
+            var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, config);
 
-                if (!success)
-                {
-                    ProviderLogMessages.LogAzureOpenAIBatchEmbeddingRequestError(Logger, error, null);
-                    return ParseBatchEmbeddingResponse("", inputList.Count);
-                }
+            if (!success)
+            {
+                ProviderLogMessages.LogAzureOpenAIBatchEmbeddingRequestError(Logger, error, null);
+                return ParseBatchEmbeddingResponse("", inputList.Count);
+            }
 
-                try
-                {
-                    return ParseBatchEmbeddingResponse(response, inputList.Count);
-                }
-                catch (Exception ex)
-                {
-                    ProviderLogMessages.LogAzureOpenAIBatchEmbeddingParsingError(Logger, ex);
-                    return ParseBatchEmbeddingResponse("", inputList.Count);
-                }
+            try
+            {
+                return ParseBatchEmbeddingResponse(response, inputList.Count);
+            }
+            catch (Exception ex)
+            {
+                ProviderLogMessages.LogAzureOpenAIBatchEmbeddingParsingError(Logger, ex);
+                return ParseBatchEmbeddingResponse("", inputList.Count);
             }
         }
 
@@ -191,10 +171,6 @@ namespace SmartRAG.Providers
             _rateLimitSemaphore.Dispose();
             GC.SuppressFinalize(this);
         }
-
-        #endregion
-
-        #region Private Methods
 
         /// <summary>
         /// Azure OpenAI URL builder
@@ -241,7 +217,5 @@ namespace SmartRAG.Providers
                 await Task.Delay(waitTime);
             }
         }
-
-        #endregion
     }
 }

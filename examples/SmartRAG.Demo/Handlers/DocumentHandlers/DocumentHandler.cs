@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using SmartRAG.Demo.Services.Console;
 using SmartRAG.Interfaces;
+using SmartRAG.Models.RequestResponse;
 
 namespace SmartRAG.Demo.Handlers.DocumentHandlers;
 
@@ -35,7 +36,6 @@ public class DocumentHandler(
         System.Console.WriteLine("  • Audio files (.mp3, .wav, .m4a)");
         System.Console.WriteLine();
 
-        // Dosya yolu alma ve sürükle-bırak desteği
         var filePath = await GetFilePathAsync();
 
         if (string.IsNullOrWhiteSpace(filePath) || !File.Exists(filePath))
@@ -60,12 +60,16 @@ public class DocumentHandler(
                 languageToUse = await SelectAudioLanguageAsync();
             }
 
-            var document = await _documentService.UploadDocumentAsync(
-                fileStream,
-                fileName,
-                contentType,
-                "Demo",
-                languageToUse);
+            var request = new UploadDocumentRequest
+            {
+                FileStream = fileStream,
+                FileName = fileName,
+                ContentType = contentType,
+                UploadedBy = "Demo",
+                Language = languageToUse
+            };
+
+            var document = await _documentService.UploadDocumentAsync(request);
 
             _console.WriteSuccess("Document uploaded successfully!");
             System.Console.WriteLine($"  ID: {document.Id}");
@@ -92,7 +96,7 @@ public class DocumentHandler(
             {
                 _console.WriteWarning("No documents uploaded yet");
                 System.Console.WriteLine();
-                System.Console.WriteLine("💡 Use option 12 to upload documents");
+                System.Console.WriteLine("💡 Use option 13 to upload documents");
                 return;
             }
 
@@ -170,6 +174,10 @@ public class DocumentHandler(
 
     #region Private Methods
 
+    /// <summary>
+    /// Gets file path from user input, supporting drag-and-drop
+    /// </summary>
+    /// <returns>File path or null if not provided</returns>
     private async Task<string?> GetFilePathAsync()
     {
         await Task.CompletedTask;
@@ -212,6 +220,11 @@ public class DocumentHandler(
         return null;
     }
 
+    /// <summary>
+    /// Determines content type based on file extension
+    /// </summary>
+    /// <param name="filePath">File path</param>
+    /// <returns>Content type MIME string</returns>
     private static string GetContentType(string filePath)
     {
         var extension = Path.GetExtension(filePath).ToLowerInvariant();
@@ -233,12 +246,21 @@ public class DocumentHandler(
         };
     }
 
+    /// <summary>
+    /// Checks if the file is an audio file based on extension
+    /// </summary>
+    /// <param name="fileName">File name</param>
+    /// <returns>True if audio file, false otherwise</returns>
     private static bool IsAudioFile(string fileName)
     {
         var extension = Path.GetExtension(fileName).ToLowerInvariant();
         return extension is ".mp3" or ".wav" or ".m4a" or ".flac" or ".ogg";
     }
 
+    /// <summary>
+    /// Prompts user to select audio transcription language
+    /// </summary>
+    /// <returns>Selected language code</returns>
     private async Task<string> SelectAudioLanguageAsync()
     {
         await Task.CompletedTask;

@@ -885,7 +885,7 @@ public class DocumentServiceTests
             </div>
             <h3>Configuration</h3>
             <p>Complete configuration reference</p>
-            <a href="{{ site.baseurl }}/en/configuration" class="btn btn-outline-primary btn-sm mt-3">
+            <a href="{{ site.baseurl }}/en/configuration/basic" class="btn btn-outline-primary btn-sm mt-3">
                 Configure
             </a>
         </div>
@@ -911,7 +911,7 @@ public class DocumentServiceTests
             </div>
             <h3>Changelog</h3>
             <p>Track new features, improvements, and breaking changes across all versions.</p>
-            <a href="{{ site.baseurl }}/en/changelog" class="btn btn-outline-primary btn-sm mt-3">
+            <a href="{{ site.baseurl }}/en/changelog/version-history" class="btn btn-outline-primary btn-sm mt-3">
                 View Changelog
             </a>
         </div>

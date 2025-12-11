@@ -11,12 +11,118 @@ All releases and changes to SmartRAG are documented here.
 
 <div class="accordion mt-4" id="versionAccordion">
     <div class="accordion-item">
+        <h2 class="accordion-header" id="headingversion340">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion340" aria-expanded="true" aria-controls="collapseversion340">
+                <strong>v3.4.0</strong> - 2025-12-12
+            </button>
+        </h2>
+        <div id="collapseversion340" class="accordion-collapse collapse show" aria-labelledby="headingversion340" >
+            <div class="accordion-body">
+{% capture version_content %}
+
+### MCP Integration, File Watcher, and Query Strategy Optimization
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> MINOR Release</h4>
+    <p class="mb-0">
+        This release adds MCP (Model Context Protocol) integration, file watcher service, and significant query strategy optimizations with early exit and parallel execution improvements.
+    </p>
+</div>
+
+### ✨ Added
+
+#### MCP (Model Context Protocol) Integration
+- **External MCP Server Integration**: Enhanced search capabilities through external MCP servers
+- **Multiple MCP Servers**: Support for multiple MCP servers with automatic tool discovery
+- **Query Enrichment**: Conversation history context enrichment for MCP queries
+
+#### File Watcher Service
+- **Automatic Document Indexing**: Monitor folders and automatically index new documents
+- **Multiple Watched Folders**: Support for multiple watched folders with independent configurations
+- **Language-Specific Processing**: Per-folder language configuration
+
+#### DocumentType Property
+- **Content Type Filtering**: Enhanced document chunk filtering by content type (Document, Audio, Image)
+- **Automatic Detection**: Document type detection based on file extension and content type
+
+#### DefaultLanguage Support
+- **Global Default Language**: Global default language configuration for document processing
+- **ISO 639-1 Support**: Support for ISO 639-1 language codes
+
+#### Enhanced Search Feature Flags
+- **Granular Control**: `EnableMcpSearch`, `EnableAudioSearch`, `EnableImageSearch` flags
+- **Per-Request and Global Configuration**: Both per-request and global configuration support
+
+#### Early Exit Optimization
+- **Performance Improvement**: Early exit when sufficient high-quality results are found
+- **Parallel Execution**: Parallel execution of document search and query intent analysis
+- **Smart Skip Logic**: Skip eager document answer generation when database intent confidence is high
+
+#### IsExplicitlyNegative Check
+- **Fast-Fail Mechanism**: Detecting explicit failure patterns with `[NO_ANSWER_FOUND]` pattern
+- **Prevents False Positives**: Prevents false positives when AI returns negative answers despite high-confidence document matches
+
+### 🔧 Improved
+
+#### Query Strategy Optimization
+- **Intelligent Source Selection**: Enhanced query execution strategy with intelligent source selection
+- **StrongDocumentMatchThreshold**: Improved early exit logic with threshold constant (4.8) for better document prioritization
+- **Database Query Skip Logic**: Enhanced logic based on document match strength and AI answer quality
+
+#### Code Quality
+- **Comprehensive Cleanup**: Removed redundant comments and language-specific references
+- **Improved Naming**: Better constant naming and generic code patterns
+- **Enhanced Organization**: Improved code organization and structure
+
+#### Model Organization
+- **Logical Subfolders**: Reorganized models into logical subfolders (Configuration/, RequestResponse/, Results/, Schema/)
+
+### 🐛 Fixed
+
+- **Language-Agnostic Missing Data Detection**: Fixed language-specific patterns
+- **HttpClient Timeout**: Increased timeout for long-running AI operations
+- **Turkish Character Encoding**: Fixed encoding issues in PDF text extraction
+- **Chunk0 Retrieval**: Fixed numbered list processing chunk retrieval
+- **DI Scope Issues**: Resolved dependency injection scope conflicts
+- **Content Type Detection**: Improved content type detection accuracy
+- **Conversation Intent Classification**: Enhanced context awareness
+- **Conversation History Duplicate Entries**: Fixed duplicate entries
+- **Redis Document Retrieval**: Fixed document retrieval when document list is empty
+- **SqlValidator DI Compatibility**: Fixed dependency injection compatibility
+
+### 🔄 Changed
+
+- **Feature Flag Naming**: Renamed flags for consistency (`EnableMcpClient` → `EnableMcpSearch`, etc.)
+- **Interface Restructuring**: Reorganized interfaces for better organization
+
+### ✨ Benefits
+
+- **Extended Search Capabilities**: MCP integration enables external data source queries
+- **Automatic Document Indexing**: File watcher service reduces manual document uploads
+- **Better Content Filtering**: DocumentType property enables precise content type filtering
+- **Improved Code Quality**: Comprehensive code cleanup and organization improvements
+- **Enhanced Multilingual Support**: DefaultLanguage configuration simplifies language handling
+- **Performance Optimization**: Early exit optimization improves search response times
+
+### 📝 Notes
+
+- **MCP Integration**: Requires MCP server configuration in `SmartRagOptions.McpServers`
+- **File Watcher**: Requires watched folder configuration in `SmartRagOptions.WatchedFolders`
+- **Backward Compatibility**: All changes are backward compatible, no breaking changes
+
+---
+{% endcapture %}
+{{ version_content | markdownify }}
+            </div>
+        </div>
+    </div>
+    <div class="accordion-item">
         <h2 class="accordion-header" id="headingversion330">
-            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion330" aria-expanded="true" aria-controls="collapseversion330">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion330" aria-expanded="false" aria-controls="collapseversion330">
                 <strong>v3.3.0</strong> - 2025-12-01
             </button>
         </h2>
-        <div id="collapseversion330" class="accordion-collapse collapse show" aria-labelledby="headingversion330" >
+        <div id="collapseversion330" class="accordion-collapse collapse" aria-labelledby="headingversion330" >
             <div class="accordion-body">
 {% capture version_content %}
 

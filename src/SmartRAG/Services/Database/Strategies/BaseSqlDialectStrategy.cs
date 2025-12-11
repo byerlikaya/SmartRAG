@@ -43,10 +43,10 @@ namespace SmartRAG.Services.Database.Strategies
         public virtual string FormatSql(string sql)
         {
             if (string.IsNullOrWhiteSpace(sql)) return sql;
-            
+
             var formatted = sql.Trim();
             if (formatted.EndsWith(";")) formatted = formatted.TrimEnd(';');
-            
+
             return formatted;
         }
 
@@ -65,11 +65,11 @@ namespace SmartRAG.Services.Database.Strategies
 
             return quoteCount % 2 != 0;
         }
-        
+
         protected string FormatSchemaDescription(DatabaseSchemaInfo schema)
         {
             var sb = new StringBuilder();
-            
+
             foreach (var table in schema.Tables)
             {
                 sb.AppendLine($"Table: {table.TableName}");
@@ -78,7 +78,7 @@ namespace SmartRAG.Services.Database.Strategies
                 {
                     sb.AppendLine($"  - {col.ColumnName} ({col.DataType})");
                 }
-                
+
                 if (table.ForeignKeys != null && table.ForeignKeys.Count > 0)
                 {
                     sb.AppendLine("Foreign Keys:");
@@ -89,7 +89,7 @@ namespace SmartRAG.Services.Database.Strategies
                 }
                 sb.AppendLine();
             }
-            
+
             return sb.ToString();
         }
 

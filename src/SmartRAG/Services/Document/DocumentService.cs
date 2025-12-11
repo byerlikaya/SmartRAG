@@ -1,9 +1,12 @@
+#nullable enable
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces.AI;
 using SmartRAG.Interfaces.Document;
 using SmartRAG.Models;
+using SmartRAG.Models.RequestResponse;
 using SmartRAG.Services.Shared;
 using System;
 using System.Collections.Generic;
@@ -41,31 +44,25 @@ namespace SmartRAG.Services.Document
             _logger = logger;
         }
 
-        #region Constants
-
         private const int VoyageAIMaxBatchSize = 128;
         private const int RateLimitDelayMs = 1000;
-     
         private const string UnsupportedFileTypeFormat = "Unsupported file type: {0}. Supported types: {1}";
         private const string UnsupportedContentTypeFormat = "Unsupported content type: {0}. Supported types: {1}";
-
-        #endregion
-
-        #region Fields
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         /// [AI Query] [Document Query] Uploads a document, generates embeddings, and saves it
         /// </summary>
-        public async Task<SmartRAG.Entities.Document> UploadDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy, string language = null)
+        /// <param name="request">Request containing document upload parameters</param>
+        /// <returns>Created document entity</returns>
+        public async Task<SmartRAG.Entities.Document> UploadDocumentAsync(Models.RequestResponse.UploadDocumentRequest request)
         {
+            if (request == null)
+                throw new ArgumentNullException(nameof(request));
+
             var supportedExtensions = _documentParserService.GetSupportedFileTypes();
             var supportedContentTypes = _documentParserService.GetSupportedContentTypes();
 
-            var ext = Path.GetExtension(fileName).ToLowerInvariant();
+            var ext = Path.GetExtension(request.FileName).ToLowerInvariant();
 
             if (!string.IsNullOrWhiteSpace(ext) && !supportedExtensions.Contains(ext))
             {
@@ -73,15 +70,29 @@ namespace SmartRAG.Services.Document
                 throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, UnsupportedFileTypeFormat, ext, list));
             }
 
-            if (!string.IsNullOrWhiteSpace(contentType) && !supportedContentTypes.Any(ct => contentType.StartsWith(ct, StringComparison.OrdinalIgnoreCase)))
+            if (!string.IsNullOrWhiteSpace(request.ContentType) && !supportedContentTypes.Any(ct => request.ContentType.StartsWith(ct, StringComparison.OrdinalIgnoreCase)))
             {
                 var list = string.Join(", ", supportedContentTypes);
-                throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, UnsupportedContentTypeFormat, contentType, list));
+                throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, UnsupportedContentTypeFormat, request.ContentType, list));
             }
 
-            var document = await _documentParserService.ParseDocumentAsync(fileStream, fileName, contentType, uploadedBy, language);
+            var document = await _documentParserService.ParseDocumentAsync(request.FileStream, request.FileName, request.ContentType, request.UploadedBy, request.Language);
 
-            ServiceLogMessages.LogDocumentUploaded(_logger, fileName, null);
+            if (request.FileSize.HasValue && request.FileSize.Value > 0)
+            {
+                document.FileSize = request.FileSize.Value;
+            }
+
+            if (request.AdditionalMetadata != null && request.AdditionalMetadata.Count > 0)
+            {
+                document.Metadata ??= new Dictionary<string, object>();
+                foreach (var item in request.AdditionalMetadata)
+                {
+                    document.Metadata[item.Key] = item.Value;
+                }
+            }
+
+            ServiceLogMessages.LogDocumentUploaded(_logger, request.FileName, null);
 
             var allChunkContents = document.Chunks.Select(c => c.Content).ToList();
 
@@ -143,14 +154,41 @@ namespace SmartRAG.Services.Document
                 }
             }
 
-            ServiceLogMessages.LogDocumentProcessing(_logger, fileName, document.Chunks.Count, null);
+            ServiceLogMessages.LogDocumentProcessing(_logger, request.FileName, document.Chunks.Count, null);
 
             var savedDocument = await _documentRepository.AddAsync(document);
-            ServiceLogMessages.LogDocumentUploaded(_logger, fileName, null);
+            ServiceLogMessages.LogDocumentUploaded(_logger, request.FileName, null);
 
             return savedDocument;
         }
-        
+
+        /// <summary>
+        /// [AI Query] [Document Query] Uploads a document, generates embeddings, and saves it
+        /// </summary>
+        /// <param name="fileStream">File stream containing document content</param>
+        /// <param name="fileName">Name of the file</param>
+        /// <param name="contentType">MIME content type of the file</param>
+        /// <param name="uploadedBy">Identifier of the user uploading the document</param>
+        /// <param name="language">Language code for document processing (optional)</param>
+        /// <param name="fileSize">File size in bytes (optional, will be calculated from stream if not provided)</param>
+        /// <param name="additionalMetadata">Additional metadata to add to document (optional)</param>
+        /// <returns>Created document entity</returns>
+        [Obsolete("Use UploadDocumentAsync(UploadDocumentRequest) instead. This method will be removed in v4.0.0")]
+        public async Task<SmartRAG.Entities.Document> UploadDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy, string? language = null, long? fileSize = null, Dictionary<string, object>? additionalMetadata = null)
+        {
+            var request = new Models.RequestResponse.UploadDocumentRequest
+            {
+                FileStream = fileStream,
+                FileName = fileName,
+                ContentType = contentType,
+                UploadedBy = uploadedBy,
+                Language = language,
+                FileSize = fileSize,
+                AdditionalMetadata = additionalMetadata
+            };
+            return await UploadDocumentAsync(request);
+        }
+
         /// <summary>
         /// [Document Query] Retrieves a document by ID
         /// </summary>
@@ -160,6 +198,25 @@ namespace SmartRAG.Services.Document
         /// [Document Query] Retrieves all documents
         /// </summary>
         public async Task<List<SmartRAG.Entities.Document>> GetAllDocumentsAsync() => await _documentRepository.GetAllAsync();
+
+        /// <summary>
+        /// Retrieves all documents filtered by the enabled search options (text, audio, image)
+        /// </summary>
+        public async Task<List<SmartRAG.Entities.Document>> GetAllDocumentsFilteredAsync(Models.SearchOptions? options)
+        {
+            var allDocuments = await _documentRepository.GetAllAsync();
+
+            if (options == null)
+            {
+                return allDocuments;
+            }
+
+            return allDocuments.Where(d =>
+                (options.EnableDocumentSearch && IsTextDocument(d)) ||
+                (options.EnableAudioSearch && IsAudioDocument(d)) ||
+                (options.EnableImageSearch && IsImageDocument(d))
+            ).ToList();
+        }
 
         public async Task<bool> DeleteDocumentAsync(Guid id) => await _documentRepository.DeleteAsync(id);
 
@@ -272,41 +329,39 @@ namespace SmartRAG.Services.Document
                     {
                         ServiceLogMessages.LogBatchFailed(_logger, batchIndex + 1, null);
 
-                        using (var semaphore = new System.Threading.SemaphoreSlim(1)) // Max 1 concurrent
+                        using var semaphore = new System.Threading.SemaphoreSlim(1); // Max 1 concurrent
+                        var tasks = currentBatch.Select(async chunk =>
                         {
-                            var tasks = currentBatch.Select(async chunk =>
+                            await semaphore.WaitAsync();
+                            try
                             {
-                                await semaphore.WaitAsync();
-                                try
-                                {
-                                    var newEmbedding = await _aiService.GenerateEmbeddingsAsync(chunk.Content);
+                                var newEmbedding = await _aiService.GenerateEmbeddingsAsync(chunk.Content);
 
-                                    if (newEmbedding != null && newEmbedding.Count > 0)
-                                    {
-                                        chunk.Embedding = newEmbedding;
-                                        System.Threading.Interlocked.Increment(ref successCount);
-                                        ServiceLogMessages.LogChunkIndividualEmbeddingSuccessFinal(_logger, chunk.Id, newEmbedding.Count, null);
-                                    }
-                                    else
-                                    {
-                                        ServiceLogMessages.LogChunkEmbeddingGenerationFailed(_logger, chunk.Id, null);
-                                    }
-
-                                    System.Threading.Interlocked.Increment(ref processedChunks);
-                                }
-                                catch (Exception ex)
+                                if (newEmbedding != null && newEmbedding.Count > 0)
                                 {
-                                    ServiceLogMessages.LogChunkEmbeddingRegenerationFailed(_logger, chunk.Id, ex);
-                                    System.Threading.Interlocked.Increment(ref processedChunks);
+                                    chunk.Embedding = newEmbedding;
+                                    System.Threading.Interlocked.Increment(ref successCount);
+                                    ServiceLogMessages.LogChunkIndividualEmbeddingSuccessFinal(_logger, chunk.Id, newEmbedding.Count, null);
                                 }
-                                finally
+                                else
                                 {
-                                    semaphore.Release();
+                                    ServiceLogMessages.LogChunkEmbeddingGenerationFailed(_logger, chunk.Id, null);
                                 }
-                            });
 
-                            await Task.WhenAll(tasks);
-                        }
+                                System.Threading.Interlocked.Increment(ref processedChunks);
+                            }
+                            catch (Exception ex)
+                            {
+                                ServiceLogMessages.LogChunkEmbeddingRegenerationFailed(_logger, chunk.Id, ex);
+                                System.Threading.Interlocked.Increment(ref processedChunks);
+                            }
+                            finally
+                            {
+                                semaphore.Release();
+                            }
+                        });
+
+                        await Task.WhenAll(tasks);
                     }
 
                     ServiceLogMessages.LogProgress(_logger, processedChunks, chunksToProcess.Count, successCount, null);
@@ -404,6 +459,30 @@ namespace SmartRAG.Services.Document
             }
         }
 
-        #endregion
+        /// <summary>
+        /// Determines if a document is an audio document based on content type
+        /// </summary>
+        public bool IsAudioDocument(SmartRAG.Entities.Document doc)
+        {
+            return !string.IsNullOrEmpty(doc.ContentType) &&
+                   doc.ContentType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Determines if a document is an image document based on content type
+        /// </summary>
+        public bool IsImageDocument(SmartRAG.Entities.Document doc)
+        {
+            return !string.IsNullOrEmpty(doc.ContentType) &&
+                   doc.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
+        }
+
+        /// <summary>
+        /// Determines if a document is a text document (not audio and not image)
+        /// </summary>
+        public bool IsTextDocument(SmartRAG.Entities.Document doc)
+        {
+            return !IsAudioDocument(doc) && !IsImageDocument(doc);
+        }
     }
 }

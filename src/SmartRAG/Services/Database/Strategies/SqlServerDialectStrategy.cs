@@ -41,13 +41,13 @@ namespace SmartRAG.Services.Database.Strategies
             sb.AppendLine(FormatSchemaDescription(schema));
             sb.AppendLine();
             sb.AppendLine($"Query Intent: {queryIntent}");
-            
+
             return sb.ToString();
         }
 
         public override string GetLimitClause(int limit)
         {
-            return ""; 
+            return $"TOP {limit}";
         }
 
         public override bool ValidateSyntax(string sql, out string errorMessage)
@@ -69,24 +69,24 @@ namespace SmartRAG.Services.Database.Strategies
             errorMessage = string.Empty;
             return true;
         }
-        
+
         public override string FormatSql(string sql)
         {
             var formatted = base.FormatSql(sql);
-            
+
             // Remove LIMIT clause (SQL Server doesn't support it)
             if (formatted.ToUpper().Contains("LIMIT "))
             {
                 var index = formatted.LastIndexOf("LIMIT ", System.StringComparison.OrdinalIgnoreCase);
                 if (index > formatted.Length - 20) // Only if near end
                 {
-                    formatted = formatted.Substring(0, index).Trim();
+                    formatted = formatted[..index].Trim();
                 }
             }
 
             // Fix TOP clause placement: Move TOP from after ORDER BY to after SELECT
             formatted = FixTopClausePlacement(formatted);
-            
+
             return formatted;
         }
 
@@ -119,7 +119,7 @@ namespace SmartRAG.Services.Database.Strategies
             // Check if SELECT already has TOP
             var selectPattern = new Regex(@"SELECT\s+(TOP\s+\d+\s+)?", RegexOptions.IgnoreCase);
             var selectMatch = selectPattern.Match(sql);
-            
+
             if (selectMatch.Success && selectMatch.Groups[1].Success)
             {
                 // SELECT already has TOP, just remove the incorrect TOP after ORDER BY
@@ -134,7 +134,7 @@ namespace SmartRAG.Services.Database.Strategies
             }
 
             var afterSelectIndex = selectIndex + 6; // Length of "SELECT"
-            
+
             // Find where column list starts (skip whitespace)
             while (afterSelectIndex < sql.Length && char.IsWhiteSpace(sql[afterSelectIndex]))
             {
@@ -142,9 +142,9 @@ namespace SmartRAG.Services.Database.Strategies
             }
 
             // Insert "TOP N " after SELECT
-            var fixedSql = sql.Substring(0, afterSelectIndex) 
-                         + $"TOP {topValue} " 
-                         + sql.Substring(afterSelectIndex);
+            var fixedSql = sql[..afterSelectIndex]
+                         + $"TOP {topValue} "
+                         + sql[afterSelectIndex..];
 
             // Remove the incorrect TOP after ORDER BY
             fixedSql = fixedSql.Replace(match.Value, orderByClause);

@@ -68,10 +68,11 @@ hide_title: true
                     </div>
                     <div class="code-content">
                         <pre><code class="language-csharp">// SmartRAG'i .NET projenize ekleyin
-services.UseSmartRag(configuration,
-    storageProvider: StorageProvider.InMemory,
-    aiProvider: AIProvider.Gemini
-);
+builder.Services.AddSmartRag(builder.Configuration, options =>
+{
+    options.StorageProvider = StorageProvider.InMemory;
+    options.AIProvider = AIProvider.Gemini;
+});
 
 // Doküman yükleyin (PDF, Word, Excel, Görsel, Ses)
 var document = await documentService.UploadDocumentAsync(
@@ -145,6 +146,22 @@ Console.WriteLine(answer.Answer);
             
             <div class="card card-accent">
                 <div class="icon icon-lg icon-gradient">
+                    <i class="fas fa-plug"></i>
+                </div>
+                <h3>MCP Client Entegrasyonu</h3>
+                <p>Harici MCP (Model Context Protocol) sunucularına bağlan ve dış araçlar ve veri kaynakları ile yetenekleri genişlet.</p>
+            </div>
+            
+            <div class="card card-accent">
+                <div class="icon icon-lg icon-gradient">
+                    <i class="fas fa-folder-open"></i>
+                </div>
+                <h3>Otomatik Dosya İzleme</h3>
+                <p>Yeni belgeler için klasörleri izle ve manuel yükleme olmadan otomatik olarak indeksle. Çift kayıt tespiti ile gerçek zamanlı belge işleme.</p>
+            </div>
+            
+            <div class="card card-accent">
+                <div class="icon icon-lg icon-gradient">
                     <i class="fas fa-route"></i>
                 </div>
                 <h3>Akıllı Sorgu Amacı</h3>
@@ -164,7 +181,7 @@ Console.WriteLine(answer.Answer);
                     <i class="fas fa-check-circle"></i>
                 </div>
                 <h3>Üretime Hazır</h3>
-                <p>Sıfır uyarı politikası, SOLID/DRY prensipleri, kapsamlı hata işleme, thread-safe operasyonlar ve üretimde test edilmiş.</p>
+                <p>Sıfır uyarı politikası, SOLID/DRY prensipleri, kapsamlı hata işleme, thread-safe operasyonlar ve kurumsal kalite.</p>
             </div>
         </div>
     </div>
@@ -420,7 +437,7 @@ Console.WriteLine(answer.Answer);
         </div>
         
         <div class="text-center mt-5">
-            <a href="{{ site.baseurl }}/tr/examples" class="btn btn-primary btn-lg">
+            <a href="{{ site.baseurl }}/tr/examples/quick" class="btn btn-primary btn-lg">
                 <i class="fas fa-lightbulb"></i>
                 Daha Fazla Örnek Keşfedin
             </a>

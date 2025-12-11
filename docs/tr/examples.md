@@ -856,7 +856,7 @@ public async Task QueryIntelligenceAsync_ShouldReturnValidResponse_WhenValidQuer
             </div>
             <h3>Yapılandırma</h3>
             <p>Eksiksiz yapılandırma referansı</p>
-            <a href="{{ site.baseurl }}/tr/configuration" class="btn btn-outline-primary btn-sm mt-3">
+            <a href="{{ site.baseurl }}/tr/configuration/basic" class="btn btn-outline-primary btn-sm mt-3">
                 Yapılandır
             </a>
         </div>
@@ -882,7 +882,7 @@ public async Task QueryIntelligenceAsync_ShouldReturnValidResponse_WhenValidQuer
             </div>
             <h3>Changelog</h3>
             <p>Tüm versiyonlardaki yeni özellikleri, iyileştirmeleri ve breaking change'leri takip edin.</p>
-            <a href="{{ site.baseurl }}/tr/changelog" class="btn btn-outline-primary btn-sm mt-3">
+            <a href="{{ site.baseurl }}/tr/changelog/version-history" class="btn btn-outline-primary btn-sm mt-3">
                 Changelog'u Görüntüle
             </a>
         </div>

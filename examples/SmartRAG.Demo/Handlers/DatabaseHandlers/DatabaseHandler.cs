@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using SmartRAG.Demo.DatabaseSetup.Creators;
 using SmartRAG.Demo.Models;
 using SmartRAG.Demo.Services;
@@ -16,7 +17,8 @@ public class DatabaseHandler(
     IConsoleService console,
     IConfiguration configuration,
     IDatabaseConnectionManager connectionManager,
-    IDatabaseSchemaAnalyzer schemaAnalyzer) : IDatabaseHandler
+    IDatabaseSchemaAnalyzer schemaAnalyzer,
+    ILogger<DatabaseHandler>? logger = null) : IDatabaseHandler
 {
     #region Fields
 
@@ -24,6 +26,7 @@ public class DatabaseHandler(
     private readonly IConfiguration _configuration = configuration;
     private readonly IDatabaseConnectionManager _connectionManager = connectionManager;
     private readonly IDatabaseSchemaAnalyzer _schemaAnalyzer = schemaAnalyzer;
+    private readonly ILogger<DatabaseHandler>? _logger = logger;
 
     #endregion
 
@@ -67,8 +70,9 @@ public class DatabaseHandler(
                     _console.WriteHealthStatus(dbStatus, inline: true);
                 }
             }
-            catch
+            catch (Exception ex)
             {
+                _logger?.LogError(ex, "Error checking database health for {DatabaseName}", conn.Name);
                 System.Console.ForegroundColor = ConsoleColor.Red;
                 System.Console.WriteLine("✗ Error");
                 System.Console.ResetColor();
@@ -212,6 +216,11 @@ public class DatabaseHandler(
 
     #region Private Methods
 
+    /// <summary>
+    /// Gets setup instruction message for the specified database type
+    /// </summary>
+    /// <param name="databaseType">Database type</param>
+    /// <returns>Setup instruction message</returns>
     private static string GetSetupInstruction(DatabaseType databaseType)
     {
         return databaseType switch
@@ -224,6 +233,9 @@ public class DatabaseHandler(
         };
     }
 
+    /// <summary>
+    /// Creates SQLite test database using the configured creator
+    /// </summary>
     private async Task CreateSqliteDatabaseAsync()
     {
         _console.WriteSectionHeader("📦 Create SQLite Test Database");
@@ -271,7 +283,10 @@ public class DatabaseHandler(
                     {
                         await _schemaAnalyzer.AnalyzeDatabaseSchemaAsync(sqliteConn);
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogError(ex, "Error analyzing SQLite database schema");
+                    }
                 });
             }
 
@@ -284,6 +299,9 @@ public class DatabaseHandler(
         }
     }
 
+    /// <summary>
+    /// Creates SQL Server test database using the configured creator
+    /// </summary>
     private async Task CreateSqlServerDatabaseAsync()
     {
         _console.WriteSectionHeader("🗄️ Create SQL Server Test Database");
@@ -332,7 +350,10 @@ public class DatabaseHandler(
                     {
                         await _schemaAnalyzer.AnalyzeDatabaseSchemaAsync(sqlServerConn);
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogError(ex, "Error analyzing SQL Server database schema");
+                    }
                 });
             }
 
@@ -349,6 +370,9 @@ public class DatabaseHandler(
         }
     }
 
+    /// <summary>
+    /// Creates MySQL test database using the configured creator
+    /// </summary>
     private async Task CreateMySqlDatabaseAsync()
     {
         _console.WriteSectionHeader("🐬 Create MySQL Test Database");
@@ -387,7 +411,10 @@ public class DatabaseHandler(
                     {
                         await _schemaAnalyzer.AnalyzeDatabaseSchemaAsync(mySqlConn);
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogError(ex, "Error analyzing MySQL database schema");
+                    }
                 });
             }
 
@@ -404,6 +431,9 @@ public class DatabaseHandler(
         }
     }
 
+    /// <summary>
+    /// Creates PostgreSQL test database using the configured creator
+    /// </summary>
     private async Task CreatePostgreSqlDatabaseAsync()
     {
         _console.WriteSectionHeader("🐘 Create PostgreSQL Test Database");
@@ -442,7 +472,10 @@ public class DatabaseHandler(
                     {
                         await _schemaAnalyzer.AnalyzeDatabaseSchemaAsync(postgresConn);
                     }
-                    catch { }
+                    catch (Exception ex)
+                    {
+                        _logger?.LogError(ex, "Error analyzing PostgreSQL database schema");
+                    }
                 });
             }
 

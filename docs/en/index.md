@@ -68,10 +68,11 @@ hide_title: true
                     </div>
                     <div class="code-content">
                         <pre><code class="language-csharp">// Add SmartRAG to your .NET project
-services.UseSmartRag(configuration,
-    storageProvider: StorageProvider.InMemory,
-    aiProvider: AIProvider.Gemini
-);
+builder.Services.AddSmartRag(builder.Configuration, options =>
+{
+    options.StorageProvider = StorageProvider.InMemory;
+    options.AIProvider = AIProvider.Gemini;
+});
 
 // Upload documents (PDF, Word, Excel, Images, Audio)
 var document = await documentService.UploadDocumentAsync(
@@ -145,6 +146,22 @@ Console.WriteLine(answer.Answer);
             
             <div class="card card-accent">
                 <div class="icon icon-lg icon-gradient">
+                    <i class="fas fa-plug"></i>
+                </div>
+                <h3>MCP Client Integration</h3>
+                <p>Connect to external MCP (Model Context Protocol) servers to extend capabilities with external tools and data sources.</p>
+            </div>
+            
+            <div class="card card-accent">
+                <div class="icon icon-lg icon-gradient">
+                    <i class="fas fa-folder-open"></i>
+                </div>
+                <h3>Automatic File Watching</h3>
+                <p>Monitor folders for new documents and automatically index them without manual uploads. Real-time document processing with duplicate detection.</p>
+            </div>
+            
+            <div class="card card-accent">
+                <div class="icon icon-lg icon-gradient">
                     <i class="fas fa-route"></i>
                 </div>
                 <h3>Smart Query Intent</h3>
@@ -164,7 +181,7 @@ Console.WriteLine(answer.Answer);
                     <i class="fas fa-check-circle"></i>
                 </div>
                 <h3>Production Ready</h3>
-                <p>Zero warnings policy, SOLID/DRY principles, comprehensive error handling, thread-safe operations, and battle-tested in production.</p>
+                <p>Zero warnings policy, SOLID/DRY principles, comprehensive error handling, thread-safe operations, and enterprise-grade quality.</p>
             </div>
         </div>
     </div>
@@ -420,7 +437,7 @@ Console.WriteLine(answer.Answer);
             </div>
 
         <div class="text-center mt-5">
-            <a href="{{ site.baseurl }}/en/examples" class="btn btn-primary btn-lg">
+            <a href="{{ site.baseurl }}/en/examples/quick" class="btn btn-primary btn-lg">
                 <i class="fas fa-lightbulb"></i>
                 Explore More Examples
             </a>

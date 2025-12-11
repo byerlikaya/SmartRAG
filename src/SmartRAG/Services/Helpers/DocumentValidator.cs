@@ -9,19 +9,17 @@ namespace SmartRAG.Services.Helpers
     /// </summary>
     public static class DocumentValidator
     {
-        #region Constants
-        private const int MaxChunkContentLength = 1000000; // 1MB limit for chunk content
-        private const int MaxChunkIndex = 10000; // Reasonable limit for chunk index
+        private const int MaxChunkContentLength = 1000000;
+        private const int MaxChunkIndex = 10000;
         private const int MinRelevanceScore = -1;
         private const int MaxRelevanceScore = 1;
-        private const int MaxEmbeddingVectorSize = 10000; // Reasonable limit for embedding vector size
+        private const int MaxEmbeddingVectorSize = 10000;
         private const int MinEmbeddingValue = -1000;
         private const int MaxEmbeddingValue = 1000;
         private const int MaxAbsoluteValue = 100;
         private const int MinValueThreshold = 0;
         private const int OpenAIVectorDimension = 1536;
         private const int SentenceTransformersDimension = 768;
-        #endregion
 
         /// <summary>
         /// Validates basic document properties

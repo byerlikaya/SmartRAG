@@ -1,3 +1,5 @@
+#nullable enable
+
 using System.Threading.Tasks;
 
 namespace SmartRAG.Interfaces.Support
@@ -41,6 +43,20 @@ namespace SmartRAG.Interfaces.Support
         /// <param name="maxTurns">Maximum number of turns to keep</param>
         /// <returns>Truncated conversation history</returns>
         string TruncateConversationHistory(string history, int maxTurns = 3);
+
+        /// <summary>
+        /// Handles general conversation queries with conversation history
+        /// </summary>
+        /// <param name="query">User query</param>
+        /// <param name="conversationHistory">Optional conversation history</param>
+        /// <param name="preferredLanguage">Optional preferred language code for AI response</param>
+        /// <returns>AI-generated conversation response</returns>
+        Task<string> HandleGeneralConversationAsync(string query, string? conversationHistory = null, string? preferredLanguage = null);
+
+        /// <summary>
+        /// Clears all conversation history from storage
+        /// </summary>
+        Task ClearAllConversationsAsync();
     }
 }
 

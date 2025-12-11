@@ -16,10 +16,12 @@ Thank you for your interest in contributing to SmartRAG! We welcome contribution
 
 ### Prerequisites
 
-- **.NET 9.0 SDK** or later
+- **.NET SDK** (version 6.0 or later for building examples, .NET Standard 2.1 compatible for library)
 - **Git**
 - **Visual Studio 2022**, **VS Code**, or **JetBrains Rider**
 - Basic knowledge of **C#** and **RAG (Retrieval-Augmented Generation)**
+
+**Note**: The SmartRAG library (`src/SmartRAG/`) targets **.NET Standard 2.1** for maximum compatibility. Example projects may target newer .NET versions.
 
 ### Development Setup
 
@@ -37,9 +39,6 @@ Thank you for your interest in contributing to SmartRAG! We welcome contribution
    
    # Build the solution
    dotnet build
-   
-   # Run tests
-   dotnet test
    ```
 
 3. **Configure your development tools**
@@ -72,37 +71,48 @@ Branch naming conventions:
 - Write clean, maintainable code
 - Follow the existing code style
 - Add appropriate comments and documentation
-- Include unit tests for new functionality
 
-### 4. **Test Your Changes**
-```bash
-# Run all tests
-dotnet test
-
-# Run specific tests
-dotnet test --filter "TestClassName"
-
-# Check code coverage
-dotnet test --collect:"XPlat Code Coverage"
-```
-
-### 5. **Commit Your Changes**
+### 4. **Commit Your Changes**
 ```bash
 # Stage your changes
 git add .
 
-# Commit with a descriptive message
+# Commit with a descriptive message (ALWAYS in English)
 git commit -m "feat: add support for new AI provider"
 ```
 
 **Commit Message Format:**
-- `feat:` - New features
-- `fix:` - Bug fixes
-- `docs:` - Documentation changes
-- `style:` - Code style changes
-- `refactor:` - Code refactoring
-- `test:` - Test additions or changes
-- `chore:` - Maintenance tasks
+- **MUST be in English** - Never use Turkish or other languages
+- Format: `<type>[optional scope]: <description>`
+- Types:
+  - `feat:` - New features
+  - `fix:` - Bug fixes
+  - `docs:` - Documentation changes
+  - `style:` - Code style changes
+  - `refactor:` - Code refactoring
+  - `perf:` - Performance improvements
+  - `test:` - Test additions or changes
+  - `build:` - Build system changes
+  - `ci:` - CI/CD configuration
+  - `chore:` - Maintenance tasks
+  - `revert:` - Revert a previous commit
+
+**Categorization Rule (Optional):**
+If you have changes in multiple categories, you may commit them separately for better organization:
+```bash
+# 1. Documentation
+git add docs/en/*.md docs/tr/*.md
+git commit -m "docs: update API documentation"
+
+# 2. Code changes
+git add src/SmartRAG/**/*.cs
+git commit -m "feat: add new feature"
+```
+
+**⚠️ Release Tagging:**
+- **NEVER** add `[release]` tag unless explicitly instructed
+- `[release]` tag triggers automatic NuGet package publishing
+- Format: `[release] feat: add feature v3.2.0`
 
 ## 📝 Code Guidelines
 
@@ -113,80 +123,110 @@ git commit -m "feat: add support for new AI provider"
    - Use `camelCase` for local variables and parameters
    - Use `UPPER_CASE` for constants
    - Prefix interfaces with `I` (e.g., `IAIProvider`)
-   - Suffix DTOs with `IDto` (e.g., `SearchRequestIDto`)
 
-2. **Code Organization**
-   - One class per file
-   - Group related functionality in appropriate namespaces
-   - Use region blocks sparingly, prefer smaller classes
+2. **Constructors**
+   - Use standard constructors (primary constructors are C# 12+ and not available in .NET Standard 2.1)
+   - **Note**: Primary constructors can be used in example projects that target .NET 6+, but the library (`src/SmartRAG/`) must use standard constructors for .NET Standard 2.1 compatibility.
 
-3. **Documentation**
-   ```csharp
-   /// <summary>
-   /// Generates embeddings for the given text using the specified AI provider
-   /// </summary>
-   /// <param name="text">The text to generate embeddings for</param>
-   /// <param name="config">AI provider configuration</param>
-   /// <returns>Vector embeddings as a list of floats</returns>
-   public async Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config)
-   ```
+3. **Logging**
+   - **ALWAYS** use `ILogger<T>` for logging
+   - **NEVER** use `Console.WriteLine`
+   - Use structured logging with message templates
 
-4. **Error Handling**
+4. **Documentation**
+   - Use XML documentation for all public members
+   - Avoid unnecessary comments that restate the obvious
+
+5. **Error Handling**
    - Use specific exception types
    - Provide meaningful error messages
-   - Log errors appropriately
+   - Log errors appropriately with `ILogger<T>`
+
+6. **Language Requirements**
+   - **ALL code must be in English** (variable names, comments, documentation)
+   - No Turkish or other language words in code
+
+7. **Build Requirements**
+   - **MUST** build with 0 errors, 0 warnings, 0 messages
+   - Always run `dotnet clean` before `dotnet build`
+   - Fix all warnings before committing
+
+**For detailed coding standards**, see [Code Standards](.cursor/rules/03-KOD-STANDARTLARI.mdc)
 
 ### **Architecture Patterns**
 
-- Follow **SOLID principles**
+- Follow **SOLID principles** and **DRY principle**
 - Use **Dependency Injection** consistently
 - Implement proper **separation of concerns**
-- Maintain **single responsibility** for classes
 
-## 🧪 Testing
+### **Generic Code Requirements**
 
-### **Testing Strategy**
+**CRITICAL**: SmartRAG is a generic library - never write domain-specific code:
+- ❌ No hardcoded table names (e.g., "Products", "Orders", "Customers")
+- ❌ No hardcoded database names (e.g., "ProductCatalog", "SalesManagement")
+- ❌ No domain-specific scenarios (e.g., e-commerce, inventory management)
+- ✅ Use generic placeholders: "TableA", "ColumnX", "Database1"
+- ✅ Use schema-based logic that works for any database structure
+- ✅ Use interfaces for provider-agnostic code
 
-1. **Unit Tests**
-   - Test individual components in isolation
-   - Use mocking for dependencies
-   - Aim for high code coverage (80%+)
+## 🧪 Example Projects Verification
 
-2. **Integration Tests**
-   - Test component interactions
-   - Use test databases/services
-   - Cover critical user workflows
+While there are no mandatory unit tests for the library, **example projects must be verified** before submitting changes.
 
-3. **Example Test**
-   ```csharp
-   [Fact]
-   public async Task UploadDocument_WithValidFile_ShouldReturnDocument()
-   {
-       // Arrange
-       var service = GetDocumentService();
-       var stream = GetTestFileStream("sample.pdf");
-       
-       // Act
-       var result = await service.UploadDocumentAsync(stream, "test.pdf", "application/pdf", "user1");
-       
-       // Assert
-       result.Should().NotBeNull();
-       result.Chunks.Should().NotBeEmpty();
-   }
+### **SmartRAG.Demo Verification**
+
+Before submitting changes that affect the demo project:
+
+1. **Build Verification**
+   ```bash
+   cd examples/SmartRAG.Demo
+   dotnet clean
+   dotnet build
    ```
+   - Must build with 0 errors, 0 warnings
 
-### **Running Tests**
+2. **Runtime Verification**
+   - Run the demo application
+   - Verify initialization menu works
+   - Test at least one query scenario
+   - Verify test query generation works (if modified)
 
-```bash
-# Run all tests
-dotnet test
+3. **Configuration Verification**
+   - Check `appsettings.json` and `appsettings.Development.json`
+   - Verify all required settings are present
+   - Test with different storage providers (Qdrant, Redis, InMemory)
 
-# Run tests with coverage
-dotnet test --collect:"XPlat Code Coverage"
+### **SmartRAG.API Verification**
 
-# Run specific test category
-dotnet test --filter "Category=Integration"
-```
+Before submitting changes that affect the API project:
+
+1. **Build Verification**
+   ```bash
+   cd examples/SmartRAG.API
+   dotnet clean
+   dotnet build
+   ```
+   - Must build with 0 errors, 0 warnings
+
+2. **API Verification**
+   - Start the API application
+   - Verify Swagger UI loads correctly (`/swagger`)
+   - Test at least one endpoint manually
+   - Verify file upload functionality (if modified)
+   - Check CORS configuration works
+
+3. **Configuration Verification**
+   - Check `appsettings.json` and `appsettings.Development.json`
+   - Verify SmartRAG services are properly configured
+   - Test with different AI and storage providers
+
+### **What to Verify**
+
+- ✅ Application starts without errors
+- ✅ Configuration files are valid
+- ✅ Key features work as expected
+- ✅ No runtime exceptions in console/logs
+- ✅ API endpoints respond correctly (for API project)
 
 ## 📤 Submitting Changes
 
@@ -218,11 +258,15 @@ dotnet test --filter "Category=Integration"
 
 ### **PR Requirements**
 
-- [ ] All tests pass
+- [ ] Build successful (0 errors, 0 warnings, 0 messages)
 - [ ] Code follows style guidelines
-- [ ] Documentation is updated
+- [ ] Code is generic and provider-agnostic (no domain-specific code)
+- [ ] All code is in English (no Turkish or other languages)
+- [ ] Documentation is updated (both EN and TR if applicable)
 - [ ] No breaking changes (unless discussed)
-- [ ] Appropriate test coverage
+- [ ] Commit messages are in English
+- [ ] No `[release]` tag (unless explicitly approved)
+- [ ] Example projects verified (if changes affect them)
 
 ## 🌟 Types of Contributions
 
@@ -232,17 +276,20 @@ dotnet test --filter "Category=Integration"
 - Performance improvements
 - Bug fixes
 
+**Important Notes:**
+- All code changes must be in `src/SmartRAG/` directory
+- Changes in `examples/` projects are not included in NuGet package
+- Changelog entries should only reference `src/SmartRAG/` changes
+
 ### **Documentation**
 - API documentation
 - Usage examples
 - Tutorials and guides
 - README improvements
 
-### **Testing**
-- Unit test improvements
-- Integration test coverage
+### **Testing** (Optional)
+- Test improvements for example projects
 - Performance benchmarks
-- Test automation
 
 ### **Community**
 - Answering questions in issues
@@ -259,8 +306,10 @@ dotnet test --filter "Category=Integration"
 
 ### **Resources**
 - [Project README](README.md)
-- [API Documentation](docs/api.md)
-- [Architecture Overview](docs/architecture.md)
+- [Documentation Site](https://byerlikaya.github.io/SmartRAG/en/)
+- [Project Rules](.cursor/rules/00-ANA-INDEKS.mdc) - Complete project rules and guidelines
+- [Code Standards](.cursor/rules/03-KOD-STANDARTLARI.mdc) - Detailed C# coding standards
+- [Git Commit Rules](.cursor/rules/02-GIT-COMMIT-RULES.mdc) - Commit message guidelines
 
 ## 🏷️ Community Guidelines
 
@@ -272,7 +321,6 @@ dotnet test --filter "Category=Integration"
 
 ### **Quality Standards**
 - Write clean, readable code
-- Include appropriate tests
 - Update documentation
 - Consider backward compatibility
 

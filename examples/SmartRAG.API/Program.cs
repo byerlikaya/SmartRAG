@@ -3,6 +3,7 @@ using SmartRAG.API.Filters;
 using SmartRAG.Enums;
 using System;
 using System.IO;
+using SmartRAG.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -15,6 +16,7 @@ builder.WebHost.UseKestrel(options =>
 RegisterServices(builder.Services, builder.Configuration);
 
 var app = builder.Build();
+
 ConfigureMiddleware(app, builder.Environment);
 
 app.Run();

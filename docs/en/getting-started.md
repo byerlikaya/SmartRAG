@@ -32,7 +32,7 @@ lang: en
 </div>
 
 <div class="code-panel" data-tab="xml">
-<pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="3.3.0" /&gt;</code></pre>
+<pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="3.4.0" /&gt;</code></pre>
 </div>
     </div>
 </div>
@@ -43,20 +43,46 @@ lang: en
 
 ### Quick Setup (Recommended)
 
+**For Web API Applications:**
+
 ```csharp
 using SmartRAG.Extensions;
 using SmartRAG.Enums;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Simple one-line configuration
-builder.Services.UseSmartRag(builder.Configuration,
-    storageProvider: StorageProvider.InMemory,  // Start with in-memory
-    aiProvider: AIProvider.Gemini               // Choose your AI provider
-);
+// Simple configuration
+builder.Services.AddSmartRag(builder.Configuration, options =>
+{
+    options.StorageProvider = StorageProvider.InMemory;  // Start with in-memory
+    options.AIProvider = AIProvider.Gemini;              // Choose your AI provider
+});
 
 var app = builder.Build();
 app.Run();
+```
+
+**For Console Applications:**
+
+```csharp
+using SmartRAG.Extensions;
+using SmartRAG.Enums;
+
+var services = new ServiceCollection();
+var configuration = new ConfigurationBuilder()
+    .AddJsonFile("appsettings.json")
+    .Build();
+
+// UseSmartRag returns IServiceProvider with auto-started services
+var serviceProvider = services.UseSmartRag(
+    configuration,
+    storageProvider: StorageProvider.InMemory,
+    aiProvider: AIProvider.Gemini,
+    defaultLanguage: "en"  // Optional
+);
+
+// Use the service provider
+var documentService = serviceProvider.GetRequiredService<IDocumentService>();
 ```
 
 ### Advanced Setup
@@ -164,11 +190,11 @@ app.Run();
       "MaxDocuments": 1000
     },
     "Qdrant": {
-      "Host": "localhost:6334",
+      "Host": "localhost",
       "UseHttps": false,
       "ApiKey": "",
       "CollectionName": "smartrag_documents",
-      "VectorSize": 1536,
+      "VectorSize": 768,
       "DistanceMetric": "Cosine"
     },
     "Redis": {
@@ -180,6 +206,14 @@ app.Run();
       "ConnectionTimeout": 30,
       "EnableSsl": false
     }
+  },
+  "SmartRAG": {
+    "Features": {
+      "EnableMcpSearch": false
+    },
+    "McpServers": [],
+    "EnableFileWatcher": false,
+    "WatchedFolders": []
   }
 }
 ```
@@ -319,7 +353,7 @@ var newConv = await _searchService.QueryIntelligenceAsync(
             </div>
             <h3>Configuration</h3>
             <p>Explore all configuration options, AI providers, storage backends, and advanced settings.</p>
-            <a href="{{ site.baseurl }}/en/configuration" class="btn btn-outline-primary btn-sm mt-3">
+            <a href="{{ site.baseurl }}/en/configuration/basic" class="btn btn-outline-primary btn-sm mt-3">
                 Configure SmartRAG <i class="fas fa-arrow-right ms-2"></i>
             </a>
         </div>
@@ -345,7 +379,7 @@ var newConv = await _searchService.QueryIntelligenceAsync(
             </div>
             <h3>Examples</h3>
             <p>Real-world examples including multi-database queries, OCR processing, and audio transcription.</p>
-            <a href="{{ site.baseurl }}/en/examples" class="btn btn-outline-primary btn-sm mt-3">
+            <a href="{{ site.baseurl }}/en/examples/quick" class="btn btn-outline-primary btn-sm mt-3">
                 See Examples <i class="fas fa-arrow-right ms-2"></i>
             </a>
         </div>
@@ -358,7 +392,7 @@ var newConv = await _searchService.QueryIntelligenceAsync(
             </div>
             <h3>Changelog</h3>
             <p>Track new features, improvements, and breaking changes across all versions.</p>
-            <a href="{{ site.baseurl }}/en/changelog" class="btn btn-outline-primary btn-sm mt-3">
+            <a href="{{ site.baseurl }}/en/changelog/version-history" class="btn btn-outline-primary btn-sm mt-3">
                 View Changelog <i class="fas fa-arrow-right ms-2"></i>
             </a>
         </div>

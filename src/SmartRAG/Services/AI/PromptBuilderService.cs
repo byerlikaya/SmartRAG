@@ -1,7 +1,6 @@
 #nullable enable
 
 using System;
-using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 using SmartRAG.Interfaces.Support;
@@ -14,13 +13,13 @@ namespace SmartRAG.Services.AI
     /// </summary>
     public class PromptBuilderService : IPromptBuilderService
     {
-        private readonly IConversationManagerService _conversationManager;
+        private readonly Lazy<IConversationManagerService> _conversationManager;
 
         /// <summary>
         /// Initializes a new instance of the PromptBuilderService
         /// </summary>
-        /// <param name="conversationManager">Service for managing conversation sessions and history</param>
-        public PromptBuilderService(IConversationManagerService conversationManager)
+        /// <param name="conversationManager">Service for managing conversation sessions and history (lazy to break circular dependency)</param>
+        public PromptBuilderService(Lazy<IConversationManagerService> conversationManager)
         {
             _conversationManager = conversationManager;
         }
@@ -31,23 +30,24 @@ namespace SmartRAG.Services.AI
         public string BuildDocumentRagPrompt(string query, string context, string? conversationHistory = null, string? preferredLanguage = null)
         {
             var historyContext = !string.IsNullOrEmpty(conversationHistory)
-                ? $"\n\nRecent conversation context:\n{_conversationManager.TruncateConversationHistory(conversationHistory, maxTurns: 2)}\n"
+                ? $"\n\nRecent conversation context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 30)}\n"
                 : "";
 
+            var isVagueQuery = IsVagueQuery(query);
 
             var hasQuestionPunctuation = query.IndexOf('?', StringComparison.Ordinal) >= 0 ||
                                        query.IndexOf('¿', StringComparison.Ordinal) >= 0 ||
-                                       query.IndexOf('؟', StringComparison.Ordinal) >= 0; // Spanish, Arabic question marks
+                                       query.IndexOf('؟', StringComparison.Ordinal) >= 0;
             var hasNumbers = query.Any(char.IsDigit);
             var queryTokens = query.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
             var queryLength = queryTokens.Length;
-            
+
 
             var isCountingOrListingQuery = hasQuestionPunctuation && (
-                hasNumbers || // Questions with numbers often ask for counts (universal pattern)
-                queryLength >= 5 || // Longer questions often need comprehensive answers (universal pattern)
-                HasNumericRangeOrList(query) || // Detects patterns like "1-5" or "1, 2, 3" (universal)
-                HasMultipleNumericGroups(query) // Detects multiple number groups (universal)
+                hasNumbers ||
+                queryLength >= 5 ||
+                HasNumericRangeOrList(query) ||
+                HasMultipleNumericGroups(query)
             );
 
             var countingInstructions = isCountingOrListingQuery
@@ -62,6 +62,17 @@ SPECIAL INSTRUCTIONS FOR COUNTING/LISTING QUESTIONS (applies to all languages):
 - Be thorough - scan the ENTIRE context for related information"
                 : "";
 
+            var vagueQueryInstructions = isVagueQuery && !string.IsNullOrEmpty(conversationHistory)
+                ? @"
+SPECIAL INSTRUCTIONS FOR VAGUE QUESTIONS (questions referring to generic person/entity without naming them):
+- The current question is vague and refers to a person/entity without naming them
+- Use the conversation history above to identify the specific person/entity being discussed
+- Search the document context for information about that specific person/entity
+- If conversation history mentions a specific name, search for that name in the document context
+- If the question asks about attributes (title, position, role, etc.) without naming the person, look for that information about the person mentioned in conversation history
+- Combine conversation history context with document context to provide a complete answer"
+                : "";
+
             var languageInstruction = !string.IsNullOrEmpty(preferredLanguage)
                 ? GetLanguageInstructionForCode(preferredLanguage)
                 : "respond in the SAME language as the query";
@@ -71,17 +82,24 @@ SPECIAL INSTRUCTIONS FOR COUNTING/LISTING QUESTIONS (applies to all languages):
 CRITICAL RULES: 
 - Base your answer ONLY on the document context provided below
 - The query and context may be in ANY language - {languageInstruction}
-- Do NOT use information from previous conversations unless it's in the current document context
 - SEARCH THOROUGHLY through the entire context before concluding information is missing
+- IMPORTANT: The FIRST part of the context (beginning) often contains key document information like headers, titles, key-value pairs, structured data, and important metadata - pay special attention to it
 - Look for information in ALL forms: paragraphs, lists, tables, numbered items, bullet points, headings
+- TABLE DATA DETECTION: If the context contains structured data (tables, key-value pairs, form fields), carefully extract information from these structures
+- TABLE READING: When reading tables, look for column headers and corresponding values - information may be organized in rows and columns
+- STRUCTURED DATA: Pay attention to patterns like ""Label: Value"", ""Field: Data"", or tabular structures - these often contain the exact information requested
+- KEY-VALUE PAIRS: Look for patterns where a label/question is followed by a value/answer (e.g., ""Label: Value"", ""Field: Data"", ""Question: Answer"")
+- DOCUMENT STRUCTURE: PDF documents often have structured sections with labels and values - search for these patterns even if they appear in table-like formats
 - If you find ANY relevant or related information (even if not a perfect match), provide an answer based on what you found
 - If you have partial information, share it and clearly explain what is available and what might be missing
-- If you cannot find the information after thorough search, politely inform the user in the same language as the query
+- If you cannot find the information after thorough search, return exactly and only: [NO_ANSWER_FOUND]
+- Do NOT return [NO_ANSWER_FOUND] if you can answer even partially.
 - DO provide information if there is ANY related content found, even if incomplete - it's better to share partial information than to say nothing
 - Be precise and use exact information from documents
 - Synthesize information from multiple parts of the context when needed
 - Keep responses focused on the current question
 {countingInstructions}
+{vagueQueryInstructions}
 
 {historyContext}Current question: {query}
 
@@ -96,19 +114,19 @@ Answer:";
         public string BuildHybridMergePrompt(string query, string? databaseContext, string? documentContext, string? conversationHistory = null, string? preferredLanguage = null)
         {
             var combinedContext = new System.Collections.Generic.List<string>();
-            
+
             if (!string.IsNullOrEmpty(databaseContext))
             {
                 combinedContext.Add($"=== DATABASE INFORMATION ===\n{databaseContext}");
             }
-            
+
             if (!string.IsNullOrEmpty(documentContext))
             {
                 combinedContext.Add($"=== DOCUMENT INFORMATION ===\n{documentContext}");
             }
 
             var historyContext = !string.IsNullOrEmpty(conversationHistory)
-                ? $"\n\nRecent context:\n{_conversationManager.TruncateConversationHistory(conversationHistory, maxTurns: 2)}\n"
+                ? $"\n\nRecent context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 30)}\n"
                 : "";
 
             var languageInstruction = !string.IsNullOrEmpty(preferredLanguage)
@@ -141,7 +159,7 @@ Direct Answer:";
         public string BuildConversationPrompt(string query, string? conversationHistory = null, string? preferredLanguage = null)
         {
             var historyContext = !string.IsNullOrEmpty(conversationHistory)
-                ? $"\n\nRecent conversation context:\n{_conversationManager.TruncateConversationHistory(conversationHistory, maxTurns: 3)}\n"
+                ? $"\n\nRecent conversation context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 30)}\n"
                 : "";
 
             var languageInstruction = !string.IsNullOrEmpty(preferredLanguage)
@@ -156,8 +174,6 @@ Keep responses concise and relevant to the current question.
 
 Answer:";
         }
-
-        #region Private Helper Methods
 
         /// <summary>
         /// Gets language-specific instruction for AI prompt
@@ -195,7 +211,36 @@ Answer:";
             return matches.Count >= 2;
         }
 
-        #endregion
+        /// <summary>
+        /// Detects if query is vague (refers to generic person/entity without naming them)
+        /// CONSERVATIVE: Only marks as vague if query explicitly uses generic terms AND conversation history exists
+        /// This prevents false positives for queries that can be answered directly from document context
+        /// Language-agnostic: Uses structural patterns that work for all languages
+        /// </summary>
+        private static bool IsVagueQuery(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                return false;
+
+            var hasName = Regex.IsMatch(query, @"\b\p{Lu}\p{Ll}+\s+\p{Lu}\p{Ll}+\b", RegexOptions.None);
+            if (hasName)
+                return false;
+
+            var lowerQuery = query.ToLowerInvariant();
+            
+            var articleGenericPattern = @"\b\p{L}{1,3}\s+\p{L}{4,}\b";
+            var hasArticleGenericStructure = Regex.IsMatch(lowerQuery, articleGenericPattern, RegexOptions.None);
+
+            var possessivePattern = @"\b\p{L}+\p{M}*\p{L}*\s+\p{L}+\b";
+            var hasPossessiveStructure = Regex.IsMatch(lowerQuery, possessivePattern, RegexOptions.None);
+
+            var genericQuestionPattern = @"\b\p{L}{4,}\s+\p{L}{2,6}\b";
+            var hasGenericQuestionStructure = Regex.IsMatch(lowerQuery, genericQuestionPattern, RegexOptions.None);
+
+            var isVague = hasArticleGenericStructure || hasPossessiveStructure || hasGenericQuestionStructure;
+
+            return isVague;
+        }
     }
 }
 

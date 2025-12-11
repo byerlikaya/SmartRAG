@@ -77,12 +77,10 @@ Detaylı Docker konfigürasyonu ve yönetimi için:
 ```
 
 ### Çoklu Dil Desteği
-Uygulama şu dillerde sorguları destekler:
-- 🇬🇧 İngilizce
-- 🇩🇪 Almanca (Deutsch)
-- 🇹🇷 Türkçe
-- 🇷🇺 Rusça (Русский)
-- 🌐 Özel diller
+Uygulama birden fazla dilde sorguları destekler:
+- ISO 639-1 dil kodları (örn. "en", "de", "tr", "ru")
+- Otomatik dil algılama
+- Sorgu başına özel dil yapılandırması
 
 ## 🔧 **Konfigürasyon**
 

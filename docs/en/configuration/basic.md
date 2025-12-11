@@ -13,6 +13,8 @@ lang: en
 
 <p>Configure SmartRAG in your <code>Program.cs</code> or <code>Startup.cs</code>:</p>
 
+**For Web API Applications:**
+
 ```csharp
 using SmartRAG.Extensions;
 using SmartRAG.Enums;
@@ -20,13 +22,38 @@ using SmartRAG.Enums;
 var builder = WebApplication.CreateBuilder(args);
 
 // Simple one-line configuration
-builder.Services.UseSmartRag(builder.Configuration,
-    storageProvider: StorageProvider.InMemory,  // Start with in-memory
-    aiProvider: AIProvider.Gemini               // Choose your AI provider
-);
+builder.Services.AddSmartRag(builder.Configuration, options =>
+{
+    options.StorageProvider = StorageProvider.InMemory;
+    options.AIProvider = AIProvider.Gemini;
+    options.DefaultLanguage = "tr";  // Optional: Default language for document processing
+});
 
 var app = builder.Build();
 app.Run();
+```
+
+**For Console Applications:**
+
+```csharp
+using SmartRAG.Extensions;
+using SmartRAG.Enums;
+
+var services = new ServiceCollection();
+var configuration = new ConfigurationBuilder()
+    .AddJsonFile("appsettings.json")
+    .Build();
+
+// UseSmartRag returns IServiceProvider with auto-started services
+var serviceProvider = services.UseSmartRag(
+    configuration,
+    storageProvider: StorageProvider.InMemory,
+    aiProvider: AIProvider.Gemini,
+    defaultLanguage: "tr"  // Optional
+);
+
+// Use the service provider
+var documentService = serviceProvider.GetRequiredService<IDocumentService>();
 ```
 
 ### Advanced Setup
@@ -63,6 +90,9 @@ builder.Services.AddSmartRag(builder.Configuration, options =>
         AIProvider.Anthropic, 
         AIProvider.Gemini 
     };
+    
+    // Default Language
+    options.DefaultLanguage = "tr";  // Optional: Default language for document processing
 });
 
 var app = builder.Build();
@@ -109,16 +139,10 @@ app.Run();
                 <td>Automatically analyze database schemas on startup</td>
             </tr>
             <tr>
-                <td><code>EnablePeriodicSchemaRefresh</code></td>
-                <td><code>bool</code></td>
-                <td><code>true</code></td>
-                <td>Periodically refresh database schemas</td>
-            </tr>
-            <tr>
-                <td><code>DefaultSchemaRefreshIntervalMinutes</code></td>
-                <td><code>int</code></td>
-                <td><code>60</code></td>
-                <td>Default interval in minutes for schema refresh</td>
+                <td><code>DefaultLanguage</code></td>
+                <td><code>string?</code></td>
+                <td><code>null</code></td>
+                <td>Default language code for document processing (ISO 639-1 format, e.g., "tr", "en", "de"). Used when language is not specified in WatchedFolderConfig or document upload.</td>
             </tr>
         </tbody>
     </table>
@@ -213,6 +237,141 @@ builder.Services.AddSmartRag(configuration, options =>
         <li><strong>Smaller chunks:</strong> More precise results, but less context</li>
     </ul>
 </div>
+
+## Feature Toggles
+
+Control which search capabilities are enabled globally:
+
+```csharp
+builder.Services.AddSmartRag(configuration, options =>
+{
+    options.Features.EnableDatabaseSearch = true;
+    options.Features.EnableDocumentSearch = true;
+    options.Features.EnableAudioSearch = true;
+    options.Features.EnableImageSearch = true;
+    options.Features.EnableMcpSearch = false;
+    options.Features.EnableFileWatcher = false;
+});
+```
+
+### Feature Toggle Options
+
+<div class="table-responsive">
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Option</th>
+                <th>Type</th>
+                <th>Default</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><code>Features.EnableDatabaseSearch</code></td>
+                <td><code>bool</code></td>
+                <td><code>true</code></td>
+                <td>Enable multi-database query capabilities (SQL Server, MySQL, PostgreSQL, SQLite)</td>
+            </tr>
+            <tr>
+                <td><code>Features.EnableDocumentSearch</code></td>
+                <td><code>bool</code></td>
+                <td><code>true</code></td>
+                <td>Enable document text search (PDF, Word, Excel, etc.)</td>
+            </tr>
+            <tr>
+                <td><code>Features.EnableAudioSearch</code></td>
+                <td><code>bool</code></td>
+                <td><code>true</code></td>
+                <td>Enable audio file transcription and search (MP3, WAV, etc.)</td>
+            </tr>
+            <tr>
+                <td><code>Features.EnableImageSearch</code></td>
+                <td><code>bool</code></td>
+                <td><code>true</code></td>
+                <td>Enable image OCR and search (PNG, JPG, etc.)</td>
+            </tr>
+            <tr>
+                <td><code>Features.EnableMcpSearch</code></td>
+                <td><code>bool</code></td>
+                <td><code>false</code></td>
+                <td>Enable MCP (Model Context Protocol) server integration for external tools</td>
+            </tr>
+            <tr>
+                <td><code>Features.EnableFileWatcher</code></td>
+                <td><code>bool</code></td>
+                <td><code>false</code></td>
+                <td>Enable automatic document indexing from watched folders</td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> Feature Toggle Tips</h4>
+    <ul class="mb-0">
+        <li><strong>Per-Request Control:</strong> Use <code>SearchOptions</code> for per-request feature control</li>
+        <li><strong>Global Control:</strong> Use <code>Features</code> for global feature enablement</li>
+        <li><strong>Performance:</strong> Disable unused features to improve performance</li>
+        <li><strong>Resource Management:</strong> Disable audio/image search if not needed to save processing resources</li>
+    </ul>
+</div>
+
+## DocumentType Property
+
+The <code>DocumentType</code> property in <code>DocumentChunk</code> allows filtering chunks by content type:
+
+- **"Document"**: Regular text documents (PDF, Word, Excel, TXT)
+- **"Audio"**: Audio file transcriptions (MP3, WAV, M4A)
+- **"Image"**: Image OCR results (PNG, JPG, etc.)
+
+### Automatic Detection
+
+DocumentType is automatically determined based on file extension and content type:
+
+```csharp
+// Uploaded files are automatically categorized
+var document = await _documentService.UploadDocumentAsync(
+    fileStream, 
+    "invoice.pdf",      // → DocumentType: "Document"
+    "application/pdf",
+    "user-123"
+);
+
+var audio = await _documentService.UploadDocumentAsync(
+    audioStream,
+    "meeting.mp3",      // → DocumentType: "Audio"
+    "audio/mpeg",
+    "user-123"
+);
+
+var image = await _documentService.UploadDocumentAsync(
+    imageStream,
+    "receipt.jpg",      // → DocumentType: "Image"
+    "image/jpeg",
+    "user-123"
+);
+```
+
+### Filtering by DocumentType
+
+Use <code>SearchOptions</code> to filter by document type:
+
+```csharp
+// Search only in text documents
+var options = new SearchOptions
+{
+    EnableDocumentSearch = true,
+    EnableAudioSearch = false,  // Exclude audio chunks
+    EnableImageSearch = false  // Exclude image chunks
+};
+
+var response = await _searchService.QueryIntelligenceAsync(
+    "Find invoice details",
+    maxResults: 10,
+    options: options
+);
+```
 
 ## Retry & Resilience Options
 

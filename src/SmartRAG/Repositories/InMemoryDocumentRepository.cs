@@ -26,33 +26,13 @@ namespace SmartRAG.Repositories
             _logger = logger;
         }
 
-        #region Constants
-
         private const int DefaultMaxSearchResults = 5;
-
         private const int MinDocumentCapacity = 1;
-
-        #endregion
-
-        #region Fields
 
         private readonly List<SmartRAG.Entities.Document> _documents = new List<SmartRAG.Entities.Document>();
         private readonly object _lock = new object();
 
-
-        #endregion
-
-        #region Properties
-
         protected ILogger Logger => _logger;
-
-        public int CurrentCount => _documents.Count;
-
-        public int MaxDocuments => _config.MaxDocuments;
-
-        #endregion
-
-        #region Public Methods
 
         public Task<SmartRAG.Entities.Document> AddAsync(SmartRAG.Entities.Document document)
         {
@@ -203,12 +183,8 @@ namespace SmartRAG.Repositories
             }
         }
 
-        #endregion
-
-        #region Private Helper Methods
-
         /// <summary>
-        /// Removes oldest documents when capacity is exceeded
+        /// Removes oldest documents when capacity limit is reached
         /// </summary>
         private int RemoveOldestDocuments()
         {
@@ -227,7 +203,7 @@ namespace SmartRAG.Repositories
         }
 
         /// <summary>
-        /// Performs search operation on documents
+        /// Performs text search on document chunks
         /// </summary>
         private List<DocumentChunk> PerformSearch(string normalizedQuery, int maxResults)
         {
@@ -251,9 +227,5 @@ namespace SmartRAG.Repositories
 
             return relevantChunks;
         }
-
-        #endregion
-
-
     }
 }

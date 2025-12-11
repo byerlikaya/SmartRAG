@@ -33,7 +33,7 @@ lang: tr
 </div>
 
 <div class="code-panel" data-tab="xml">
-<pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="3.3.0" /&gt;</code></pre>
+<pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="3.4.0" /&gt;</code></pre>
 </div>
     </div>
 </div>
@@ -44,20 +44,46 @@ lang: tr
 
 ### Hızlı Kurulum (Önerilen)
 
+**Web API Uygulamaları için:**
+
 ```csharp
 using SmartRAG.Extensions;
 using SmartRAG.Enums;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Tek satırda basit yapılandırma
-builder.Services.UseSmartRag(builder.Configuration,
-    storageProvider: StorageProvider.InMemory,  // In-memory ile başlayın
-    aiProvider: AIProvider.Gemini               // AI sağlayıcınızı seçin
-);
+// Basit yapılandırma
+builder.Services.AddSmartRag(builder.Configuration, options =>
+{
+    options.StorageProvider = StorageProvider.InMemory;  // In-memory ile başlayın
+    options.AIProvider = AIProvider.Gemini;              // AI sağlayıcınızı seçin
+});
 
 var app = builder.Build();
 app.Run();
+```
+
+**Konsol Uygulamaları için:**
+
+```csharp
+using SmartRAG.Extensions;
+using SmartRAG.Enums;
+
+var services = new ServiceCollection();
+var configuration = new ConfigurationBuilder()
+    .AddJsonFile("appsettings.json")
+    .Build();
+
+// UseSmartRag otomatik başlatılmış servislerle IServiceProvider döndürür
+var serviceProvider = services.UseSmartRag(
+    configuration,
+    storageProvider: StorageProvider.InMemory,
+    aiProvider: AIProvider.Gemini,
+    defaultLanguage: "tr"  // Opsiyonel
+);
+
+// Service provider'ı kullan
+var documentService = serviceProvider.GetRequiredService<IDocumentService>();
 ```
 
 ### Gelişmiş Kurulum
@@ -165,11 +191,11 @@ app.Run();
       "MaxDocuments": 1000
     },
     "Qdrant": {
-      "Host": "localhost:6334",
+      "Host": "localhost",
       "UseHttps": false,
       "ApiKey": "",
       "CollectionName": "smartrag_documents",
-      "VectorSize": 1536,
+      "VectorSize": 768,
       "DistanceMetric": "Cosine"
     },
     "Redis": {
@@ -181,6 +207,14 @@ app.Run();
       "ConnectionTimeout": 30,
       "EnableSsl": false
     }
+  },
+  "SmartRAG": {
+    "Features": {
+      "EnableMcpSearch": false
+    },
+    "McpServers": [],
+    "EnableFileWatcher": false,
+    "WatchedFolders": []
   }
 }
 ```
@@ -320,7 +354,7 @@ var newConv = await _searchService.QueryIntelligenceAsync(
             </div>
             <h3>Yapılandırma</h3>
             <p>Tüm yapılandırma seçeneklerini, AI sağlayıcılarını, depolama backend'lerini ve gelişmiş ayarları keşfedin.</p>
-            <a href="{{ site.baseurl }}/tr/configuration" class="btn btn-outline-primary btn-sm mt-3">
+            <a href="{{ site.baseurl }}/tr/configuration/basic" class="btn btn-outline-primary btn-sm mt-3">
                 SmartRAG'i Yapılandır <i class="fas fa-arrow-right ms-2"></i>
             </a>
         </div>
@@ -346,7 +380,7 @@ var newConv = await _searchService.QueryIntelligenceAsync(
             </div>
             <h3>Örnekler</h3>
             <p>Çok veritabanlı sorgular, OCR işleme ve ses transkripsiyonu dahil gerçek dünya örnekleri.</p>
-            <a href="{{ site.baseurl }}/tr/examples" class="btn btn-outline-primary btn-sm mt-3">
+            <a href="{{ site.baseurl }}/tr/examples/quick" class="btn btn-outline-primary btn-sm mt-3">
                 Örnekleri Gör <i class="fas fa-arrow-right ms-2"></i>
             </a>
         </div>
@@ -359,7 +393,7 @@ var newConv = await _searchService.QueryIntelligenceAsync(
             </div>
             <h3>Değişiklikler</h3>
             <p>Tüm versiyonlardaki yeni özellikleri, iyileştirmeleri ve breaking change'leri takip edin.</p>
-            <a href="{{ site.baseurl }}/tr/changelog" class="btn btn-outline-primary btn-sm mt-3">
+            <a href="{{ site.baseurl }}/tr/changelog/version-history" class="btn btn-outline-primary btn-sm mt-3">
                 Changelog'u Görüntüle <i class="fas fa-arrow-right ms-2"></i>
             </a>
         </div>

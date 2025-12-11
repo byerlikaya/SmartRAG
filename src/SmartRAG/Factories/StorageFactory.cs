@@ -100,13 +100,7 @@ namespace SmartRAG.Factories
         }
 
         public IDocumentRepository GetCurrentRepository()
-        {
-            if (_currentRepository == null)
-            {
-                _currentRepository = CreateRepository(_currentProvider);
-            }
-            return _currentRepository;
-        }
+            => _currentRepository ??= CreateRepository(_currentProvider);
 
         public IConversationRepository CreateConversationRepository(ConversationStorageProvider provider)
         {

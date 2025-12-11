@@ -210,12 +210,6 @@ builder.Services.AddSmartRag(configuration, options =>
 {
     // Başlangıçta veritabanı şemalarını otomatik olarak analiz et
     options.EnableAutoSchemaAnalysis = true;
-    
-    // Şema değişikliklerini tespit etmek için şemaları periyodik olarak yenile
-    options.EnablePeriodicSchemaRefresh = true;
-    
-    // Tüm veritabanları için varsayılan yenileme aralığı (veritabanı bazında override edilebilir)
-    options.DefaultSchemaRefreshIntervalMinutes = 60;
 });
 ```
 
@@ -224,9 +218,7 @@ builder.Services.AddSmartRag(configuration, options =>
 ```json
 {
   "SmartRAG": {
-    "EnableAutoSchemaAnalysis": true,
-    "EnablePeriodicSchemaRefresh": true,
-    "DefaultSchemaRefreshIntervalMinutes": 60
+    "EnableAutoSchemaAnalysis": true
   }
 }
 ```

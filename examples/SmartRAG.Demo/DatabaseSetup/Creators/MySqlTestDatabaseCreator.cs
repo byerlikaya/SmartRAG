@@ -1,5 +1,6 @@
 using MySqlConnector;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using SmartRAG.Demo.DatabaseSetup.Helpers;
 using SmartRAG.Demo.DatabaseSetup.Interfaces;
 using SmartRAG.Enums;
@@ -13,25 +14,75 @@ namespace SmartRAG.Demo.DatabaseSetup.Creators;
 /// Follows SOLID principles - Single Responsibility Principle
 /// </summary>
 public class MySqlTestDatabaseCreator : ITestDatabaseCreator
-    {
-        private readonly IConfiguration? _configuration;
-        private readonly string _server;
-        private readonly int _port;
-        private readonly string _user;
-        private readonly string _password;
-        private readonly string _databaseName;
+{
+    #region Constants
 
-        public MySqlTestDatabaseCreator(IConfiguration? configuration = null)
+    private const int DefaultMaxRetries = 3;
+    private const int DatabaseCreationDelayMilliseconds = 500;
+    private const int BaseRetryDelayMilliseconds = 1000;
+
+    #endregion
+
+    #region Fields
+
+    private readonly IConfiguration? _configuration;
+    private readonly ILogger<MySqlTestDatabaseCreator>? _logger;
+    private readonly string _server;
+    private readonly int _port;
+    private readonly string _user;
+    private readonly string _databaseName;
+
+    #endregion
+
+    #region Constructor
+
+    public MySqlTestDatabaseCreator(IConfiguration? configuration = null, ILogger<MySqlTestDatabaseCreator>? logger = null)
+
+    {
+        _configuration = configuration;
+        _logger = logger;
+        
+        // Try to get connection details from configuration first
+        string? server = null;
+        int port = 3306;
+        string? user = null;
+        string? databaseName = null;
+        
+        if (_configuration != null)
         {
-            _configuration = configuration;
+            var connectionString = _configuration.GetConnectionString("InventoryManagement") ?? 
+                                 _configuration["DatabaseConnections:2:ConnectionString"];
             
-            // Try to get connection details from configuration first
-            string? server = null;
-            int port = 3306;
-            string? user = null;
-            string? password = null;
-            string? databaseName = null;
-            
+            if (!string.IsNullOrEmpty(connectionString))
+            {
+                var builder = new MySqlConnectionStringBuilder(connectionString);
+                server = builder.Server;
+                port = (int)builder.Port;
+                user = builder.UserID;
+                databaseName = builder.Database;
+            }
+        }
+        
+        // Fallback to defaults if not found in config
+        _server = server ?? "localhost";
+        _port = port;
+        _user = user ?? "root";
+        _databaseName = databaseName ?? "InventoryManagement";
+    }
+
+    #endregion
+
+    #region Public Methods
+
+    public DatabaseType GetDatabaseType() => DatabaseType.MySQL;
+
+        public string GetDefaultConnectionString()
+        {
+            return $"Server={_server};Port={_port};Database={_databaseName};User={_user};Password={GetPassword()};";
+        }
+        
+        private string GetPassword()
+        {
             if (_configuration != null)
             {
                 var connectionString = _configuration.GetConnectionString("InventoryManagement") ?? 
@@ -40,39 +91,17 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
                 if (!string.IsNullOrEmpty(connectionString))
                 {
                     var builder = new MySqlConnectionStringBuilder(connectionString);
-                    server = builder.Server;
-                    port = (int)builder.Port;
-                    user = builder.UserID;
-                    password = builder.Password;
-                    databaseName = builder.Database;
+                    if (!string.IsNullOrEmpty(builder.Password))
+                    {
+                        return builder.Password;
+                    }
                 }
             }
             
-            // Fallback to defaults if not found in config
-            _server = server ?? "localhost";
-            _port = port;
-            _user = user ?? "root";
-            _databaseName = databaseName ?? "InventoryManagement";
-            
-            // Fallback to environment variable for password
-            if (string.IsNullOrEmpty(password))
-            {
-                password = Environment.GetEnvironmentVariable("MYSQL_ROOT_PASSWORD");
-            }
-            
-            if (string.IsNullOrEmpty(password))
-            {
-                throw new InvalidOperationException("MySQL password not found in configuration or environment variables");
-            }
-            
-            _password = password;
-        }
-
-        public DatabaseType GetDatabaseType() => DatabaseType.MySQL;
-
-        public string GetDefaultConnectionString()
-        {
-            return $"Server={_server};Port={_port};Database={_databaseName};User={_user};Password={_password};";
+            var envPassword = Environment.GetEnvironmentVariable("MYSQL_ROOT_PASSWORD");
+            return string.IsNullOrEmpty(envPassword)
+                ? throw new InvalidOperationException("MySQL password not found in configuration or environment variables")
+                : envPassword;
         }
 
         public string GetDescription()
@@ -96,132 +125,125 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
             }
         }
 
-        public void CreateSampleDatabase(string connectionString)
-        {
-            Console.WriteLine();
-            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
-            Console.WriteLine("Creating MySQL Test Database...");
-            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
-            Console.WriteLine();
+    public async Task CreateSampleDatabaseAsync(string connectionString)
+    {
+        _logger?.LogInformation("Starting MySQL test database creation");
 
+        try
+        {
+            _logger?.LogInformation("Step 1/3: Creating database");
+            await CreateDatabaseAsync();
+            _logger?.LogInformation("Database {DatabaseName} created successfully", _databaseName);
+
+            await Task.Delay(DatabaseCreationDelayMilliseconds);
+
+            _logger?.LogInformation("Step 2/3: Creating tables");
+            await ExecuteWithRetryAsync(connectionString, CreateTablesAsync, DefaultMaxRetries);
+            _logger?.LogInformation("7 tables created successfully");
+
+            _logger?.LogInformation("Step 3/3: Inserting sample data");
+            await ExecuteWithRetryAsync(connectionString, InsertSampleDataAsync, DefaultMaxRetries);
+            _logger?.LogInformation("Sample data inserted successfully");
+
+            _logger?.LogInformation("MySQL test database created successfully");
+            
+            await VerifyDatabaseAsync(connectionString);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to create MySQL test database");
+            throw;
+        }
+    }
+
+    public void CreateSampleDatabase(string connectionString)
+    {
+        CreateSampleDatabaseAsync(connectionString).GetAwaiter().GetResult();
+    }
+
+    #endregion
+
+    #region Private Methods
+
+    /// <summary>
+    /// Executes an action with retry logic for transient connection errors
+    /// </summary>
+    /// <param name="connectionString">Database connection string</param>
+    /// <param name="action">Action to execute</param>
+    /// <param name="maxRetries">Maximum number of retry attempts</param>
+    private async Task ExecuteWithRetryAsync(string connectionString, Func<MySqlConnection, Task> action, int maxRetries)
+    {
+        int retryCount = 0;
+        Exception? lastException = null;
+
+        while (retryCount < maxRetries)
+        {
             try
             {
-                // 1. Create database
-                Console.WriteLine("1/3 Creating database...");
-                CreateDatabase();
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine($"   ✓ {_databaseName} database created");
-                Console.ResetColor();
-
-                // Wait for MySQL to complete database creation
-                System.Threading.Thread.Sleep(500);
-
-                // 2. Create tables with retry mechanism
-                Console.WriteLine("2/3 Creating tables...");
-                ExecuteWithRetry(connectionString, CreateTables, 3);
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine("   ✓ 7 tables created");
-                Console.ResetColor();
-
-                // 3. Insert data with retry mechanism
-                Console.WriteLine("3/3 Inserting sample data...");
-                ExecuteWithRetry(connectionString, InsertSampleData, 3);
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine("   ✓ Sample data inserted");
-                Console.ResetColor();
-
-                Console.WriteLine();
-                Console.ForegroundColor = ConsoleColor.Green;
-                Console.WriteLine("✅ MySQL test database created successfully!");
-                Console.ResetColor();
+                using (var connection = new MySqlConnection(connectionString))
+                {
+                    await connection.OpenAsync();
+                    await action(connection);
+                    return;
+                }
+            }
+            catch (MySqlException ex) when (ex.Message.Contains("Lost connection") || 
+                                            ex.Message.Contains("aborted"))
+            {
+                lastException = ex;
+                retryCount++;
                 
-                // Verify
-                VerifyDatabase(connectionString);
+                if (retryCount < maxRetries)
+                {
+                    var delay = BaseRetryDelayMilliseconds * retryCount;
+                    _logger?.LogWarning(ex, "Connection interrupted, retrying ({RetryCount}/{MaxRetries}) after {Delay}ms", retryCount, maxRetries, delay);
+                    await Task.Delay(delay);
+                }
             }
             catch (Exception ex)
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"❌ Hata: {ex.Message}");
-                Console.ResetColor();
+                _logger?.LogError(ex, "Non-retryable error occurred during database operation");
                 throw;
             }
         }
 
-        private void ExecuteWithRetry(string connectionString, Action<MySqlConnection> action, int maxRetries)
+        if (lastException != null)
         {
-            int retryCount = 0;
-            Exception? lastException = null;
+            _logger?.LogError(lastException, "Failed after {MaxRetries} retries", maxRetries);
+            throw lastException;
+        }
+    }
 
-            while (retryCount < maxRetries)
+    /// <summary>
+    /// Creates the MySQL database, dropping it first if it exists
+    /// </summary>
+    private async Task CreateDatabaseAsync()
+    {
+        var masterConnectionString = $"Server={_server};Port={_port};User={_user};Password={GetPassword()};";
+
+        using (var connection = new MySqlConnection(masterConnectionString))
+        {
+            await connection.OpenAsync();
+
+            using (var cmd = connection.CreateCommand())
             {
-                try
-                {
-                    using (var connection = new MySqlConnection(connectionString))
-                    {
-                        connection.Open();
-                        action(connection);
-                        return; // Success, exit
-                    }
-                }
-                catch (MySqlException ex) when (ex.Message.Contains("Lost connection") || 
-                                                  ex.Message.Contains("aborted"))
-                {
-                    lastException = ex;
-                    retryCount++;
-                    
-                    if (retryCount < maxRetries)
-                    {
-                        Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.WriteLine($"   ⏳ Connection interrupted, retrying ({retryCount}/{maxRetries})...");
-                        Console.ResetColor();
-                        System.Threading.Thread.Sleep(1000 * retryCount); // Exponential backoff
-                    }
-                }
-                catch (Exception ex)
-                {
-                    // For other exceptions, don't retry
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine($"❌ Error: {ex.Message}");
-                    Console.ResetColor();
-                    throw;
-                }
+                cmd.CommandText = $"DROP DATABASE IF EXISTS {_databaseName}";
+                await cmd.ExecuteNonQueryAsync();
             }
 
-            // All retries failed
-            if (lastException != null)
+            using (var cmd = connection.CreateCommand())
             {
-                Console.ForegroundColor = ConsoleColor.Red;
-                Console.WriteLine($"❌ Failed after {maxRetries} retries: {lastException.Message}");
-                Console.ResetColor();
-                throw lastException;
+                cmd.CommandText = $"CREATE DATABASE {_databaseName} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci";
+                await cmd.ExecuteNonQueryAsync();
             }
         }
+    }
 
-        private void CreateDatabase()
-        {
-            var masterConnectionString = $"Server={_server};Port={_port};User={_user};Password={_password};";
-
-            using (var connection = new MySqlConnection(masterConnectionString))
-            {
-                connection.Open();
-
-                // Drop database if exists
-                using (var cmd = connection.CreateCommand())
-                {
-                    cmd.CommandText = $"DROP DATABASE IF EXISTS {_databaseName}";
-                    cmd.ExecuteNonQuery();
-                }
-
-                // Create database
-                using (var cmd = connection.CreateCommand())
-                {
-                    cmd.CommandText = $"CREATE DATABASE {_databaseName} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci";
-                    cmd.ExecuteNonQuery();
-                }
-            }
-        }
-
-        private void CreateTables(MySqlConnection connection)
+    /// <summary>
+    /// Creates all required tables in the database
+    /// </summary>
+    /// <param name="connection">Database connection</param>
+    private async Task CreateTablesAsync(MySqlConnection connection)
         {
             var createTablesSql = @"
 -- Warehouses Table (Enhanced)
@@ -342,14 +364,18 @@ CREATE TABLE StockReservations (
     INDEX idx_status (Status)
 );";
 
-            using (var cmd = connection.CreateCommand())
-            {
-                cmd.CommandText = createTablesSql;
-                cmd.ExecuteNonQuery();
-            }
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = createTablesSql;
+            await cmd.ExecuteNonQueryAsync();
         }
+    }
 
-        private void InsertSampleData(MySqlConnection connection)
+    /// <summary>
+    /// Inserts sample data into all tables
+    /// </summary>
+    /// <param name="connection">Database connection</param>
+    private async Task InsertSampleDataAsync(MySqlConnection connection)
         {
             var random = new Random(42); // Fixed seed for reproducible data
             
@@ -381,12 +407,12 @@ CREATE TABLE StockReservations (
                 warehousesSql.Append(i < 34 ? ",\n" : ";\n");
             }
 
-            using (var cmd = connection.CreateCommand())
-            {
-                cmd.CommandText = warehousesSql.ToString();
-                cmd.ExecuteNonQuery();
-            }
-            Console.WriteLine("   ✓ Warehouses: 35 rows inserted");
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = warehousesSql.ToString();
+            await cmd.ExecuteNonQueryAsync();
+        }
+        _logger?.LogInformation("Warehouses: 35 rows inserted");
 
             // Generate 500 Stock entries (ProductID 1-250 from SQLite, SupplierID 1-30 from SQLite)
             var stockSql = new StringBuilder("INSERT INTO Stock (ProductID, SupplierID, WarehouseID, Quantity, MinimumLevel, MaximumLevel, ReorderPoint) VALUES \n");
@@ -407,12 +433,12 @@ CREATE TABLE StockReservations (
                 stockSql.Append(i < 499 ? ",\n" : ";\n");
             }
 
-            using (var cmd = connection.CreateCommand())
-            {
-                cmd.CommandText = stockSql.ToString();
-                cmd.ExecuteNonQuery();
-            }
-            Console.WriteLine("   ✓ Stock: 500 rows inserted");
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = stockSql.ToString();
+            await cmd.ExecuteNonQueryAsync();
+        }
+        _logger?.LogInformation("Stock: 500 rows inserted");
 
             // Generate 800 Stock Movements
             var movementsSql = new StringBuilder("INSERT INTO StockMovements (StockID, MovementType, Quantity, MovementDate, ReferenceNumber, Notes, CreatedBy) VALUES \n");
@@ -437,12 +463,12 @@ CREATE TABLE StockReservations (
                 movementsSql.Append(i < 799 ? ",\n" : ";\n");
             }
 
-            using (var cmd = connection.CreateCommand())
-            {
-                cmd.CommandText = movementsSql.ToString();
-                cmd.ExecuteNonQuery();
-            }
-            Console.WriteLine("   ✓ StockMovements: 800 rows inserted");
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = movementsSql.ToString();
+            await cmd.ExecuteNonQueryAsync();
+        }
+        _logger?.LogInformation("StockMovements: 800 rows inserted");
 
             // Generate 140 WarehouseZones
             var zonesSql = new StringBuilder("INSERT INTO WarehouseZones (WarehouseID, ZoneName, ZoneType, Capacity, CurrentUtilization, Temperature, IsClimateControlled) VALUES \n");
@@ -464,12 +490,12 @@ CREATE TABLE StockReservations (
                 zonesSql.Append(i < 139 ? ",\n" : ";\n");
             }
 
-            using (var cmd = connection.CreateCommand())
-            {
-                cmd.CommandText = zonesSql.ToString();
-                cmd.ExecuteNonQuery();
-            }
-            Console.WriteLine("   ✓ WarehouseZones: 140 rows inserted");
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = zonesSql.ToString();
+            await cmd.ExecuteNonQueryAsync();
+        }
+        _logger?.LogInformation("WarehouseZones: 140 rows inserted");
 
             // Generate 150 StockAlerts
             var alertsSql = new StringBuilder("INSERT INTO StockAlerts (ProductID, WarehouseID, AlertType, Threshold, CurrentLevel, AlertDate, IsResolved, ResolvedDate, Notes) VALUES \n");
@@ -493,12 +519,12 @@ CREATE TABLE StockReservations (
                 alertsSql.Append(i < 149 ? ",\n" : ";\n");
             }
 
-            using (var cmd = connection.CreateCommand())
-            {
-                cmd.CommandText = alertsSql.ToString();
-                cmd.ExecuteNonQuery();
-            }
-            Console.WriteLine("   ✓ StockAlerts: 150 rows inserted");
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = alertsSql.ToString();
+            await cmd.ExecuteNonQueryAsync();
+        }
+        _logger?.LogInformation("StockAlerts: 150 rows inserted");
 
             // Generate 200 InventoryAudits
             var auditsSql = new StringBuilder("INSERT INTO InventoryAudits (WarehouseID, ProductID, AuditDate, ExpectedQty, ActualQty, VarianceReason, AuditorName, Status) VALUES \n");
@@ -524,12 +550,12 @@ CREATE TABLE StockReservations (
                 auditsSql.Append(i < 199 ? ",\n" : ";\n");
             }
 
-            using (var cmd = connection.CreateCommand())
-            {
-                cmd.CommandText = auditsSql.ToString();
-                cmd.ExecuteNonQuery();
-            }
-            Console.WriteLine("   ✓ InventoryAudits: 200 rows inserted");
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = auditsSql.ToString();
+            await cmd.ExecuteNonQueryAsync();
+        }
+        _logger?.LogInformation("InventoryAudits: 200 rows inserted");
 
             // Generate 250 StockReservations
             var reservationsSql = new StringBuilder("INSERT INTO StockReservations (ProductID, WarehouseID, OrderID, ReservedQty, ReservationDate, ExpiryDate, Status) VALUES \n");
@@ -554,45 +580,47 @@ CREATE TABLE StockReservations (
                 reservationsSql.Append(i < 249 ? ",\n" : ";\n");
             }
 
+        using (var cmd = connection.CreateCommand())
+        {
+            cmd.CommandText = reservationsSql.ToString();
+            await cmd.ExecuteNonQueryAsync();
+        }
+        _logger?.LogInformation("StockReservations: 250 rows inserted");
+    }
+
+    /// <summary>
+    /// Verifies the database by querying table row counts
+    /// </summary>
+    /// <param name="connectionString">Database connection string</param>
+    private async Task VerifyDatabaseAsync(string connectionString)
+    {
+        using (var connection = new MySqlConnection(connectionString))
+        {
+            await connection.OpenAsync();
+
             using (var cmd = connection.CreateCommand())
             {
-                cmd.CommandText = reservationsSql.ToString();
-                cmd.ExecuteNonQuery();
-            }
-            Console.WriteLine("   ✓ StockReservations: 250 rows inserted");
-        }
+                cmd.CommandText = @"
+                    SELECT 
+                        TABLE_NAME as TableName,
+                        TABLE_ROWS as TotalRows
+                    FROM information_schema.TABLES
+                    WHERE TABLE_SCHEMA = @dbName
+                    ORDER BY TABLE_NAME";
+                
+                cmd.Parameters.AddWithValue("@dbName", _databaseName);
 
-        private void VerifyDatabase(string connectionString)
-        {
-            using (var connection = new MySqlConnection(connectionString))
-            {
-                connection.Open();
-
-                Console.WriteLine();
-                Console.WriteLine("📊 Database Summary:");
-                Console.WriteLine("───────────────────────────────────────");
-
-                using (var cmd = connection.CreateCommand())
+                using (var reader = await cmd.ExecuteReaderAsync())
                 {
-                    cmd.CommandText = @"
-                        SELECT 
-                            TABLE_NAME as TableName,
-                            TABLE_ROWS as TotalRows
-                        FROM information_schema.TABLES
-                        WHERE TABLE_SCHEMA = @dbName
-                        ORDER BY TABLE_NAME";
-                    
-                    cmd.Parameters.AddWithValue("@dbName", _databaseName);
-
-                    using (var reader = cmd.ExecuteReader())
+                    while (await reader.ReadAsync())
                     {
-                        while (reader.Read())
-                        {
-                            Console.WriteLine($"   • {reader["TableName"]}: {reader["TotalRows"]} rows");
-                        }
+                        _logger?.LogInformation("Table {TableName}: {TotalRows} rows", reader["TableName"], reader["TotalRows"]);
                     }
                 }
             }
         }
+    }
+
+    #endregion
 }
 

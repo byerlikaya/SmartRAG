@@ -210,12 +210,6 @@ builder.Services.AddSmartRag(configuration, options =>
 {
     // Automatically analyze database schemas on startup
     options.EnableAutoSchemaAnalysis = true;
-    
-    // Periodically refresh schemas to detect schema changes
-    options.EnablePeriodicSchemaRefresh = true;
-    
-    // Default refresh interval for all databases (unless overridden per-database)
-    options.DefaultSchemaRefreshIntervalMinutes = 60;
 });
 ```
 
@@ -224,9 +218,7 @@ builder.Services.AddSmartRag(configuration, options =>
 ```json
 {
   "SmartRAG": {
-    "EnableAutoSchemaAnalysis": true,
-    "EnablePeriodicSchemaRefresh": true,
-    "DefaultSchemaRefreshIntervalMinutes": 60
+    "EnableAutoSchemaAnalysis": true
   }
 }
 ```

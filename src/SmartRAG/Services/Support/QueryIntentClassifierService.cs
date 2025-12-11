@@ -1,8 +1,8 @@
 #nullable enable
 using Microsoft.Extensions.Logging;
+using SmartRAG.Enums;
 using SmartRAG.Interfaces.AI;
 using SmartRAG.Interfaces.Support;
-using SmartRAG.Models;
 using System;
 using System.Globalization;
 using System.Linq;
@@ -51,12 +51,13 @@ namespace SmartRAG.Services.Support
 
             if (heuristic == HeuristicDecision.Conversation)
             {
-                _logger.LogDebug("Query classified as CONVERSATION by heuristics (score={Score}): {Query}", heuristicScore, _textNormalizationService.SanitizeForLog(trimmedQuery));
+                _logger.LogDebug("Query classified as CONVERSATION by heuristics (score={Score})", heuristicScore);
                 return true;
             }
-            if (heuristic == HeuristicDecision.Information)
+            
+            if (heuristic == HeuristicDecision.Information && heuristicScore >= 4)
             {
-                _logger.LogDebug("Query classified as INFORMATION by heuristics (score={Score}): {Query}", heuristicScore, _textNormalizationService.SanitizeForLog(trimmedQuery));
+                _logger.LogDebug("Query classified as INFORMATION by heuristics (strong indicators, score={Score})", heuristicScore);
                 return false;
             }
 
@@ -78,26 +79,36 @@ namespace SmartRAG.Services.Support
 
 CRITICAL: Classify as CONVERSATION if:
 - Greeting in any human language (generic salutations/greetings)
-- About the AI (identity/capabilities, e.g., who/what are you, what can you do)
+- About the AI itself (identity, capabilities, technical specifications, model information)
 - Small talk (well-being, introductions, origin, casual chat)
 - Polite chat (gratitude, farewells, niceties)
+- Follow-up questions about the AI when previous conversation was about the AI AND current question is still about the AI
 
 ✓ Classify as INFORMATION if:
-- Contains ANY technical terms, acronyms, or domain-specific vocabulary
-- Asks for definitions, explanations, parts, or features of something
-- Contains data-request intent (show, list, find, calculate, total, count, sum)
-- Contains question words with informational intent (what, which, how many, when, how to)
-- Contains numbers/dates indicating data queries
-- Contains specific entity references
+- Contains ANY technical terms, acronyms, or domain-specific vocabulary about external topics
+- Asks for definitions, explanations, parts, or features of something external (not about the AI)
+- Contains data-request intent (show, list, find, calculate, total, count, sum) about external data
+- Contains question words with informational intent about external topics
+- Contains numbers/dates indicating data queries about external data
+- Contains specific entity references (not about the AI)
+- Topic has changed from AI to external subject (even if previous conversation was about AI)
 
-User: ""{0}""
 {1}
 
-CRITICAL: If the user asks about a specific topic, concept, or entity, it is INFORMATION.
-If unsure, default to INFORMATION (it is better to search and find nothing than to chat when user wanted info).
+User: ""{0}""
+
+CRITICAL CONTEXT RULES:
+- If conversation history shows previous questions about the AI AND current question is still about the AI, classify as CONVERSATION
+- If conversation history shows AI questions BUT current question is about external topic, classify as INFORMATION
+- Topic change detection: If user switches from AI questions to questions about external entities, it is INFORMATION
+- If the user asks about a specific external topic, concept, or entity (not the AI), it is INFORMATION
+- If unsure and no conversation history about AI, default to INFORMATION
+- If unsure but conversation history shows AI-related questions AND current question seems about AI, default to CONVERSATION
+- If unsure but current question contains external entity references, default to INFORMATION
+
 Answer with ONE word only: CONVERSATION or INFORMATION",
                     trimmedQuery,
-                    string.IsNullOrWhiteSpace(historySnippet) ? "" : $"Context: \"{historySnippet}\"");
+                    string.IsNullOrWhiteSpace(historySnippet) ? "" : $"Conversation History:\n\"{historySnippet}\"\n\n");
 
                 var classification = await _aiService.GenerateResponseAsync(classificationPrompt, Array.Empty<string>());
 
@@ -169,8 +180,6 @@ Answer with ONE word only: CONVERSATION or INFORMATION",
             return false;
         }
 
-        private enum HeuristicDecision { Unknown, Conversation, Information }
-
         private HeuristicDecision HeuristicClassify(string query, out int score)
         {
             score = 0;
@@ -195,7 +204,7 @@ Answer with ONE word only: CONVERSATION or INFORMATION",
                 return HeuristicDecision.Conversation;
             }
 
-            if (score >= 2)
+            if (score >= 3)
             {
                 return HeuristicDecision.Information;
             }

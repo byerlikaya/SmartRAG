@@ -21,23 +21,13 @@ namespace SmartRAG.Services.Database
     /// </summary>
     public class DatabaseParserService : IDatabaseParserService
     {
-        #region Constants
-
         private const int DefaultMaxRows = 1000;
         private const int DefaultQueryTimeout = 30;
         private const string SensitiveDataPlaceholder = "[SENSITIVE_DATA]";
 
         private static readonly string[] DatabaseFileExtensions = { ".db", ".sqlite", ".sqlite3", ".db3" };
 
-        #endregion
-
-        #region Fields
-
         private readonly ILogger<DatabaseParserService> _logger;
-
-        #endregion
-
-        #region Constructor
 
         /// <summary>
         /// Initializes a new instance of the DatabaseParserService
@@ -47,10 +37,6 @@ namespace SmartRAG.Services.Database
         {
             _logger = logger;
         }
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         /// Parses a database file (SQLite) and extracts content for RAG processing
@@ -63,7 +49,7 @@ namespace SmartRAG.Services.Database
             _logger.LogInformation("Starting database file parsing for: {FileName}", fileName);
 
             var tempPath = Path.GetTempFileName();
-            
+
             try
             {
                 using (var fileStream = File.Create(tempPath))
@@ -72,7 +58,7 @@ namespace SmartRAG.Services.Database
                 }
 
                 var connectionString = $"Data Source={tempPath};Mode=ReadOnly;";
-                
+
                 var config = new DatabaseConfig
                 {
                     Type = DatabaseType.SQLite,
@@ -83,7 +69,7 @@ namespace SmartRAG.Services.Database
                 };
 
                 var result = await ParseSQLiteDatabaseAsync(connectionString, config);
-                
+
                 _logger.LogInformation("Database file parsing completed for: {FileName}", fileName);
                 return result;
             }
@@ -153,9 +139,9 @@ namespace SmartRAG.Services.Database
                 return await GetPostgreSqlTableNamesAsync(connectionString);
             else
                 throw new NotSupportedException($"Database type {databaseType} is not supported");
-        }     
+        }
 
-    
+
         /// <summary>
         /// [DB Query] Executes a custom SQL query and returns results
         /// </summary>
@@ -164,18 +150,72 @@ namespace SmartRAG.Services.Database
             if (string.IsNullOrWhiteSpace(connectionString)) throw new ArgumentNullException(nameof(connectionString));
             if (string.IsNullOrWhiteSpace(query)) throw new ArgumentNullException(nameof(query));
 
+            var sanitizedQuery = ValidateAndSanitizeQuery(query);
+
             _logger.LogInformation("Executing custom query for database type: {DatabaseType}", databaseType);
 
             if (databaseType == DatabaseType.SQLite)
-                return await ExecuteSQLiteQueryAsync(connectionString, query, maxRows);
+                return await ExecuteSQLiteQueryAsync(connectionString, sanitizedQuery, maxRows);
             else if (databaseType == DatabaseType.SqlServer)
-                return await ExecuteSqlServerQueryAsync(connectionString, query, maxRows);
+                return await ExecuteSqlServerQueryAsync(connectionString, sanitizedQuery, maxRows);
             else if (databaseType == DatabaseType.MySQL)
-                return await ExecuteMySqlQueryAsync(connectionString, query, maxRows);
+                return await ExecuteMySqlQueryAsync(connectionString, sanitizedQuery, maxRows);
             else if (databaseType == DatabaseType.PostgreSQL)
-                return await ExecutePostgreSqlQueryAsync(connectionString, query, maxRows);
+                return await ExecutePostgreSqlQueryAsync(connectionString, sanitizedQuery, maxRows);
             else
                 throw new NotSupportedException($"Database type {databaseType} is not supported");
+        }
+
+        private static string ValidateAndSanitizeQuery(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                throw new ArgumentException("Query cannot be null or empty", nameof(query));
+
+            var upperQuery = query.ToUpperInvariant();
+            var dangerousKeywords = new[] { "DROP", "DELETE", "TRUNCATE", "ALTER", "CREATE", "EXEC", "EXECUTE", "SP_", "XP_" };
+
+            foreach (var keyword in dangerousKeywords)
+            {
+                if (upperQuery.Contains(keyword, StringComparison.Ordinal))
+                {
+                    throw new ArgumentException($"Query contains dangerous keyword: {keyword}", nameof(query));
+                }
+            }
+
+            var sanitized = query.Trim();
+            
+            if (sanitized.Contains(";--", StringComparison.Ordinal) ||
+                sanitized.Contains(";/*", StringComparison.Ordinal) ||
+                sanitized.Contains("UNION", StringComparison.OrdinalIgnoreCase) ||
+                sanitized.Contains("--", StringComparison.Ordinal) ||
+                sanitized.Contains("/*", StringComparison.Ordinal))
+            {
+                throw new ArgumentException("Query contains potentially dangerous SQL patterns", nameof(query));
+            }
+
+            return sanitized;
+        }
+
+        private static string SanitizeTableName(string tableName)
+        {
+            if (string.IsNullOrWhiteSpace(tableName))
+                throw new ArgumentException("Table name cannot be null or empty", nameof(tableName));
+
+            var sanitized = tableName.Trim();
+            
+            if (sanitized.Contains(";", StringComparison.Ordinal) ||
+                sanitized.Contains("--", StringComparison.Ordinal) ||
+                sanitized.Contains("/*", StringComparison.Ordinal) ||
+                sanitized.Contains("*/", StringComparison.Ordinal) ||
+                sanitized.Contains("'", StringComparison.Ordinal) ||
+                sanitized.Contains("\"", StringComparison.Ordinal) ||
+                sanitized.Contains("\\", StringComparison.Ordinal) ||
+                sanitized.Contains("/", StringComparison.Ordinal))
+            {
+                throw new ArgumentException("Table name contains invalid characters", nameof(tableName));
+            }
+
+            return sanitized;
         }
 
         /// <summary>
@@ -226,170 +266,152 @@ namespace SmartRAG.Services.Database
         {
             return DatabaseFileExtensions;
         }
-  
-
-        #endregion
-
-        #region SQLite Implementation
 
         private async Task<string> ParseSQLiteDatabaseAsync(string connectionString, DatabaseConfig config)
         {
-            using (var connection = new SqliteConnection(connectionString))
+            var sanitizedConnectionString = ValidateAndSanitizeSQLiteConnectionString(connectionString);
+            using var connection = new SqliteConnection(sanitizedConnectionString);
+            await connection.OpenAsync();
+
+            var content = new StringBuilder();
+            content.AppendLine("=== SQLite Database Content ===");
+            content.AppendLine($"Database: {connection.DataSource}");
+            content.AppendLine();
+
+            var allTables = await GetSQLiteTableNamesInternalAsync(connection);
+            var tablesToProcess = FilterTables(allTables, config);
+
+            _logger.LogInformation("Processing {TableCount} tables from SQLite database", tablesToProcess.Count);
+
+            foreach (var tableName in tablesToProcess)
             {
-                await connection.OpenAsync();
-
-                var content = new StringBuilder();
-                content.AppendLine("=== SQLite Database Content ===");
-                content.AppendLine($"Database: {connection.DataSource}");
-                content.AppendLine();
-
-                var allTables = await GetSQLiteTableNamesInternalAsync(connection);
-                var tablesToProcess = FilterTables(allTables, config);
-
-                _logger.LogInformation("Processing {TableCount} tables from SQLite database", tablesToProcess.Count);
-
-                foreach (var tableName in tablesToProcess)
+                try
                 {
-                    try
-                    {
-                        content.AppendLine($"--- Table: {tableName} ---");
+                    content.AppendLine($"--- Table: {tableName} ---");
 
-                        if (config.IncludeSchema)
-                        {
-                            var schema = await GetSQLiteTableSchemaInternalAsync(connection, tableName);
-                            content.AppendLine(schema);
-                        }
-
-                        var tableData = await GetSQLiteTableDataInternalAsync(connection, tableName, config);
-                        content.AppendLine(tableData);
-                        content.AppendLine();
-                    }
-                    catch (Exception ex)
+                    if (config.IncludeSchema)
                     {
-                        _logger.LogWarning(ex, "Error processing table: {TableName}", tableName);
-                        content.AppendLine($"Error processing table {tableName}: {ex.Message}");
-                        content.AppendLine();
+                        var schema = await GetSQLiteTableSchemaInternalAsync(connection, tableName);
+                        content.AppendLine(schema);
                     }
+
+                    var tableData = await GetSQLiteTableDataInternalAsync(connection, tableName, config);
+                    content.AppendLine(tableData);
+                    content.AppendLine();
                 }
-
-                return content.ToString();
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error processing table: {TableName}", tableName);
+                    content.AppendLine($"Error processing table {tableName}: {ex.Message}");
+                    content.AppendLine();
+                }
             }
+
+            return content.ToString();
         }
 
         private async Task<List<string>> GetSQLiteTableNamesAsync(string connectionString)
         {
-            using (var connection = new SqliteConnection(connectionString))
-            {
-                await connection.OpenAsync();
-                return await GetSQLiteTableNamesInternalAsync(connection);
-            }
+            var sanitizedConnectionString = ValidateAndSanitizeSQLiteConnectionString(connectionString);
+            using var connection = new SqliteConnection(sanitizedConnectionString);
+            await connection.OpenAsync();
+            return await GetSQLiteTableNamesInternalAsync(connection);
         }
 
         private async Task<List<string>> GetSQLiteTableNamesInternalAsync(SqliteConnection connection)
         {
-            using (var command = connection.CreateCommand())
+            using var command = connection.CreateCommand();
+            command.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name";
+
+            var tables = new List<string>();
+            using (var reader = await command.ExecuteReaderAsync())
             {
-                command.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name";
-
-                var tables = new List<string>();
-                using (var reader = await command.ExecuteReaderAsync())
+                while (await reader.ReadAsync())
                 {
-                    while (await reader.ReadAsync())
-                    {
-                        tables.Add(reader.GetString(0));
-                    }
+                    tables.Add(reader.GetString(0));
                 }
-
-                return tables;
             }
+
+            return tables;
         }
 
         private async Task<string> GetSQLiteTableSchemaInternalAsync(SqliteConnection connection, string tableName)
         {
-            using (var command = connection.CreateCommand())
+            using var command = connection.CreateCommand();
+            var sanitizedTableName = SanitizeTableName(tableName);
+            command.CommandText = $"PRAGMA table_info({sanitizedTableName})";
+
+            var schema = new StringBuilder();
+            schema.AppendLine($"Table: {tableName}");
+            schema.AppendLine("Columns:");
+
+            using (var reader = await command.ExecuteReaderAsync())
             {
-                command.CommandText = $"PRAGMA table_info({tableName})";
-
-                var schema = new StringBuilder();
-                schema.AppendLine($"Table: {tableName}");
-                schema.AppendLine("Columns:");
-
-                using (var reader = await command.ExecuteReaderAsync())
+                while (await reader.ReadAsync())
                 {
-                    while (await reader.ReadAsync())
-                    {
-                        var columnName = reader.GetString(1);
-                        var dataType = reader.GetString(2);
-                        var notNull = reader.GetBoolean(3);
-                        var primaryKey = reader.GetBoolean(5);
+                    var columnName = reader.GetString(1);
+                    var dataType = reader.GetString(2);
+                    var notNull = reader.GetBoolean(3);
+                    var primaryKey = reader.GetBoolean(5);
 
-                        schema.Append($"  - {columnName} ({dataType})");
-                        if (notNull) schema.Append(" NOT NULL");
-                        if (primaryKey) schema.Append(" PRIMARY KEY");
-                        schema.AppendLine();
-                    }
+                    schema.Append($"  - {columnName} ({dataType})");
+                    if (notNull) schema.Append(" NOT NULL");
+                    if (primaryKey) schema.Append(" PRIMARY KEY");
+                    schema.AppendLine();
                 }
-
-                return schema.ToString();
             }
+
+            return schema.ToString();
         }
 
         private async Task<string> GetSQLiteTableDataInternalAsync(SqliteConnection connection, string tableName, DatabaseConfig config)
         {
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText = $"SELECT * FROM [{tableName}] LIMIT {config.MaxRowsPerTable}";
-                command.CommandTimeout = config.QueryTimeoutSeconds;
+            using var command = connection.CreateCommand();
+            var sanitizedTableName = SanitizeTableName(tableName);
+            command.CommandText = $"SELECT * FROM [{sanitizedTableName}] LIMIT {config.MaxRowsPerTable}";
+            command.CommandTimeout = config.QueryTimeoutSeconds;
 
-                return await GetTableDataInternalAsync(command, config);
-            }
+            return await GetTableDataInternalAsync(command, config);
         }
 
         private async Task<string> ExecuteSQLiteQueryAsync(string connectionString, string query, int maxRows)
         {
-            using (var connection = new SqliteConnection(connectionString))
-            {
-                await connection.OpenAsync();
+            var sanitizedQuery = ValidateAndSanitizeQuery(query);
+            var sanitizedConnectionString = ValidateAndSanitizeSQLiteConnectionString(connectionString);
+            using var connection = new SqliteConnection(sanitizedConnectionString);
+            await connection.OpenAsync();
 
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText = query;
-                    command.CommandTimeout = DefaultQueryTimeout;
+            using var command = connection.CreateCommand();
+            command.CommandText = sanitizedQuery;
+            command.CommandTimeout = DefaultQueryTimeout;
 
-                    return await ExecuteQueryInternalAsync(command, query, maxRows);
-                }
-            }
+            return await ExecuteQueryInternalAsync(command, maxRows);
         }
 
         private async Task<bool> ValidateSQLiteConnectionAsync(string connectionString)
         {
-            using (var connection = new SqliteConnection(connectionString))
-            {
-                await connection.OpenAsync();
-                return connection.State == System.Data.ConnectionState.Open;
-            }
+            var sanitizedConnectionString = ValidateAndSanitizeSQLiteConnectionString(connectionString);
+            using var connection = new SqliteConnection(sanitizedConnectionString);
+            await connection.OpenAsync();
+            return connection.State == System.Data.ConnectionState.Open;
         }
-
-        #endregion
-
-        #region SQL Server Implementation
 
         private async Task<string> ParseSqlServerDatabaseAsync(string connectionString, DatabaseConfig config)
         {
             try
             {
-                using (var connection = new SqlConnection(connectionString))
-                {
-                    await connection.OpenAsync();
+                var sanitizedConnectionString = ValidateAndSanitizeSqlServerConnectionString(connectionString);
+                using var connection = new SqlConnection(sanitizedConnectionString);
+                await connection.OpenAsync();
 
-                    var content = new StringBuilder();
-                    content.AppendLine("=== SQL Server Database Content ===");
-                    content.AppendLine($"Database: {connection.Database}");
-                    content.AppendLine($"Server: {connection.DataSource}");
-                    content.AppendLine();
+                var content = new StringBuilder();
+                content.AppendLine("=== SQL Server Database Content ===");
+                content.AppendLine($"Database: {connection.Database}");
+                content.AppendLine($"Server: {connection.DataSource}");
+                content.AppendLine();
 
-                    var allTables = await GetSqlServerTableNamesInternalAsync(connection);
-                    var tablesToProcess = FilterTables(allTables, config);
+                var allTables = await GetSqlServerTableNamesInternalAsync(connection);
+                var tablesToProcess = FilterTables(allTables, config);
 
                 _logger.LogInformation("Processing {TableCount} tables from SQL Server database", tablesToProcess.Count);
 
@@ -418,7 +440,6 @@ namespace SmartRAG.Services.Database
                 }
 
                 return content.ToString();
-                }
             }
             catch (SqlException sqlEx)
             {
@@ -427,7 +448,7 @@ namespace SmartRAG.Services.Database
                     _logger.LogWarning("SQL Server database does not exist yet");
                     return "=== SQL Server Database Content ===\nDatabase does not exist yet. Please create the database first.\n";
                 }
-                
+
                 _logger.LogError(sqlEx, "Error parsing SQL Server database");
                 throw;
             }
@@ -437,11 +458,10 @@ namespace SmartRAG.Services.Database
         {
             try
             {
-                using (var connection = new SqlConnection(connectionString))
-                {
-                    await connection.OpenAsync();
-                    return await GetSqlServerTableNamesInternalAsync(connection);
-                }
+                var sanitizedConnectionString = ValidateAndSanitizeSqlServerConnectionString(connectionString);
+                using var connection = new SqlConnection(sanitizedConnectionString);
+                await connection.OpenAsync();
+                return await GetSqlServerTableNamesInternalAsync(connection);
             }
             catch (SqlException sqlEx)
             {
@@ -450,7 +470,7 @@ namespace SmartRAG.Services.Database
                     _logger.LogInformation($"Database does not exist yet, returning empty table list");
                     return new List<string>();
                 }
-                
+
                 _logger.LogError(sqlEx, "Error getting SQL Server table names");
                 throw;
             }
@@ -458,33 +478,31 @@ namespace SmartRAG.Services.Database
 
         private async Task<List<string>> GetSqlServerTableNamesInternalAsync(SqlConnection connection)
         {
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText = @"
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
                     SELECT TABLE_NAME 
                     FROM INFORMATION_SCHEMA.TABLES 
                     WHERE TABLE_TYPE = 'BASE TABLE' 
                     AND TABLE_SCHEMA != 'sys'
                     ORDER BY TABLE_NAME";
 
-                var tables = new List<string>();
-                using (var reader = await command.ExecuteReaderAsync())
+            var tables = new List<string>();
+            using (var reader = await command.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
                 {
-                    while (await reader.ReadAsync())
-                    {
-                        tables.Add(reader.GetString(0));
-                    }
+                    tables.Add(reader.GetString(0));
                 }
-
-                return tables;
             }
+
+            return tables;
         }
 
         private async Task<string> GetSqlServerTableSchemaInternalAsync(SqlConnection connection, string tableName)
         {
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText = @"
+            var sanitizedTableName = SanitizeTableName(tableName);
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
                     SELECT 
                         COLUMN_NAME,
                         DATA_TYPE,
@@ -494,59 +512,55 @@ namespace SmartRAG.Services.Database
                     WHERE TABLE_NAME = @tableName
                     ORDER BY ORDINAL_POSITION";
 
-                command.Parameters.AddWithValue("@tableName", tableName);
+            command.Parameters.AddWithValue("@tableName", sanitizedTableName);
 
-                var schema = new StringBuilder();
-                schema.AppendLine($"Table: {tableName}");
-                schema.AppendLine("Columns:");
+            var schema = new StringBuilder();
+            schema.AppendLine($"Table: {sanitizedTableName}");
+            schema.AppendLine("Columns:");
 
-                using (var reader = await command.ExecuteReaderAsync())
+            using (var reader = await command.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
                 {
-                    while (await reader.ReadAsync())
-                    {
-                        var columnName = reader.GetString(0);
-                        var dataType = reader.GetString(1);
-                        var isNullable = reader.GetString(2) == "YES";
-                        var columnDefault = reader.IsDBNull(3) ? null : reader.GetString(3);
+                    var columnName = reader.GetString(0);
+                    var dataType = reader.GetString(1);
+                    var isNullable = reader.GetString(2) == "YES";
+                    var columnDefault = reader.IsDBNull(3) ? null : reader.GetString(3);
 
-                        schema.Append($"  - {columnName} ({dataType})");
-                        if (!isNullable) schema.Append(" NOT NULL");
-                        if (!string.IsNullOrEmpty(columnDefault)) schema.Append($" DEFAULT {columnDefault}");
-                        schema.AppendLine();
-                    }
+                    schema.Append($"  - {columnName} ({dataType})");
+                    if (!isNullable) schema.Append(" NOT NULL");
+                    if (!string.IsNullOrEmpty(columnDefault)) schema.Append($" DEFAULT {columnDefault}");
+                    schema.AppendLine();
                 }
-
-                return schema.ToString();
             }
+
+            return schema.ToString();
         }
 
         private async Task<string> GetSqlServerTableDataInternalAsync(SqlConnection connection, string tableName, DatabaseConfig config)
         {
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText = $"SELECT TOP ({config.MaxRowsPerTable}) * FROM [{tableName}]";
-                command.CommandTimeout = config.QueryTimeoutSeconds;
+            using var command = connection.CreateCommand();
+            var sanitizedTableName = SanitizeTableName(tableName);
+            command.CommandText = $"SELECT TOP ({config.MaxRowsPerTable}) * FROM [{sanitizedTableName}]";
+            command.CommandTimeout = config.QueryTimeoutSeconds;
 
-                return await GetTableDataInternalAsync(command, config);
-            }
+            return await GetTableDataInternalAsync(command, config);
         }
 
         private async Task<string> ExecuteSqlServerQueryAsync(string connectionString, string query, int maxRows)
         {
             try
             {
-                using (var connection = new SqlConnection(connectionString))
-                {
-                    await connection.OpenAsync();
+                var sanitizedConnectionString = ValidateAndSanitizeSqlServerConnectionString(connectionString);
+                using var connection = new SqlConnection(sanitizedConnectionString);
+                await connection.OpenAsync();
 
-                    using (var command = connection.CreateCommand())
-                    {
-                        command.CommandText = query;
-                        command.CommandTimeout = DefaultQueryTimeout;
+                var sanitizedQuery = ValidateAndSanitizeQuery(query);
+                using var command = connection.CreateCommand();
+                command.CommandText = sanitizedQuery;
+                command.CommandTimeout = DefaultQueryTimeout;
 
-                        return await ExecuteQueryInternalAsync(command, query, maxRows);
-                    }
-                }
+                return await ExecuteQueryInternalAsync(command, maxRows);
             }
             catch (SqlException sqlEx)
             {
@@ -555,7 +569,7 @@ namespace SmartRAG.Services.Database
                     _logger.LogWarning("SQL Server database does not exist yet for query execution");
                     return "Error: Database does not exist yet. Please create the database first.\n";
                 }
-                
+
                 _logger.LogError(sqlEx, "Error executing SQL Server query");
                 throw;
             }
@@ -565,11 +579,10 @@ namespace SmartRAG.Services.Database
         {
             try
             {
-                using (var connection = new SqlConnection(connectionString))
-                {
-                    await connection.OpenAsync();
-                    return connection.State == System.Data.ConnectionState.Open;
-                }
+                var sanitizedConnectionString = ValidateAndSanitizeSqlServerConnectionString(connectionString);
+                using var connection = new SqlConnection(sanitizedConnectionString);
+                await connection.OpenAsync();
+                return connection.State == System.Data.ConnectionState.Open;
             }
             catch (SqlException sqlEx)
             {
@@ -577,16 +590,15 @@ namespace SmartRAG.Services.Database
                 {
                     try
                     {
-                        var builder = new SqlConnectionStringBuilder(connectionString);
+                        var sanitizedConnectionString = ValidateAndSanitizeSqlServerConnectionString(connectionString);
+                        var builder = new SqlConnectionStringBuilder(sanitizedConnectionString);
                         var targetDatabase = builder.InitialCatalog;
                         builder.InitialCatalog = "master";
-                        
-                        using (var masterConnection = new SqlConnection(builder.ConnectionString))
-                        {
-                            await masterConnection.OpenAsync();
-                            _logger.LogInformation($"SQL Server is accessible but database '{targetDatabase}' does not exist yet. This is expected for first-time setup.");
-                            return true; // Server is accessible, database can be created
-                        }
+
+                        using var masterConnection = new SqlConnection(builder.ConnectionString);
+                        await masterConnection.OpenAsync();
+                        _logger.LogInformation($"SQL Server is accessible but database '{targetDatabase}' does not exist yet. This is expected for first-time setup.");
+                        return true; // Server is accessible, database can be created
                     }
                     catch (Exception ex)
                     {
@@ -607,94 +619,86 @@ namespace SmartRAG.Services.Database
             }
         }
 
-        #endregion
-
-        #region MySQL Implementation
-
         private async Task<string> ParseMySqlDatabaseAsync(string connectionString, DatabaseConfig config)
         {
-            using (var connection = new MySqlConnection(connectionString))
+            var sanitizedConnectionString = ValidateAndSanitizeMySqlConnectionString(connectionString);
+            using var connection = new MySqlConnection(sanitizedConnectionString);
+            await connection.OpenAsync();
+
+            var content = new StringBuilder();
+            content.AppendLine("=== MySQL Database Content ===");
+            content.AppendLine($"Database: {connection.Database}");
+            content.AppendLine($"Server: {connection.DataSource}");
+            content.AppendLine($"Version: {connection.ServerVersion}");
+            content.AppendLine();
+
+            var allTables = await GetMySqlTableNamesInternalAsync(connection);
+            var tablesToProcess = FilterTables(allTables, config);
+
+            _logger.LogInformation("Processing {TableCount} tables from MySQL database", tablesToProcess.Count);
+
+            foreach (var tableName in tablesToProcess)
             {
-                await connection.OpenAsync();
-
-                var content = new StringBuilder();
-                content.AppendLine("=== MySQL Database Content ===");
-                content.AppendLine($"Database: {connection.Database}");
-                content.AppendLine($"Server: {connection.DataSource}");
-                content.AppendLine($"Version: {connection.ServerVersion}");
-                content.AppendLine();
-
-                var allTables = await GetMySqlTableNamesInternalAsync(connection);
-                var tablesToProcess = FilterTables(allTables, config);
-
-                _logger.LogInformation("Processing {TableCount} tables from MySQL database", tablesToProcess.Count);
-
-                foreach (var tableName in tablesToProcess)
+                try
                 {
-                    try
-                    {
-                        content.AppendLine($"--- Table: {tableName} ---");
+                    content.AppendLine($"--- Table: {tableName} ---");
 
-                        if (config.IncludeSchema)
-                        {
-                            var schema = await GetMySqlTableSchemaInternalAsync(connection, tableName);
-                            content.AppendLine(schema);
-                        }
-
-                        var tableData = await GetMySqlTableDataInternalAsync(connection, tableName, config);
-                        content.AppendLine(tableData);
-                        content.AppendLine();
-                    }
-                    catch (Exception ex)
+                    if (config.IncludeSchema)
                     {
-                        _logger.LogWarning(ex, "Error processing table: {TableName}", tableName);
-                        content.AppendLine($"Error processing table {tableName}: {ex.Message}");
-                        content.AppendLine();
+                        var schema = await GetMySqlTableSchemaInternalAsync(connection, tableName);
+                        content.AppendLine(schema);
                     }
+
+                    var tableData = await GetMySqlTableDataInternalAsync(connection, tableName, config);
+                    content.AppendLine(tableData);
+                    content.AppendLine();
                 }
-
-                return content.ToString();
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error processing table: {TableName}", tableName);
+                    content.AppendLine($"Error processing table {tableName}: {ex.Message}");
+                    content.AppendLine();
+                }
             }
+
+            return content.ToString();
         }
 
         private async Task<List<string>> GetMySqlTableNamesAsync(string connectionString)
         {
-            using (var connection = new MySqlConnection(connectionString))
-            {
-                await connection.OpenAsync();
-                return await GetMySqlTableNamesInternalAsync(connection);
-            }
+            var sanitizedConnectionString = ValidateAndSanitizeMySqlConnectionString(connectionString);
+            using var connection = new MySqlConnection(sanitizedConnectionString);
+            await connection.OpenAsync();
+            return await GetMySqlTableNamesInternalAsync(connection);
         }
 
         private async Task<List<string>> GetMySqlTableNamesInternalAsync(MySqlConnection connection)
         {
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText = @"
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
                     SELECT TABLE_NAME 
                     FROM INFORMATION_SCHEMA.TABLES 
                     WHERE TABLE_SCHEMA = DATABASE() 
                     AND TABLE_TYPE = 'BASE TABLE'
                     ORDER BY TABLE_NAME";
 
-                var tables = new List<string>();
-                using (var reader = await command.ExecuteReaderAsync())
+            var tables = new List<string>();
+            using (var reader = await command.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
                 {
-                    while (await reader.ReadAsync())
-                    {
-                        tables.Add(reader.GetString(0));
-                    }
+                    tables.Add(reader.GetString(0));
                 }
-
-                return tables;
             }
+
+            return tables;
         }
 
         private async Task<string> GetMySqlTableSchemaInternalAsync(MySqlConnection connection, string tableName)
         {
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText = @"
+            var sanitizedTableName = SanitizeTableName(tableName);
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
                     SELECT 
                         COLUMN_NAME,
                         DATA_TYPE,
@@ -707,158 +711,145 @@ namespace SmartRAG.Services.Database
                     AND TABLE_NAME = @tableName
                     ORDER BY ORDINAL_POSITION";
 
-                command.Parameters.AddWithValue("@tableName", tableName);
+            command.Parameters.AddWithValue("@tableName", sanitizedTableName);
 
-                var schema = new StringBuilder();
-                schema.AppendLine($"Table: {tableName}");
-                schema.AppendLine("Columns:");
+            var schema = new StringBuilder();
+            schema.AppendLine($"Table: {sanitizedTableName}");
+            schema.AppendLine("Columns:");
 
-                using (var reader = await command.ExecuteReaderAsync())
+            using (var reader = await command.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
                 {
-                    while (await reader.ReadAsync())
-                    {
-                        var columnName = reader.GetString(0);
-                        var dataType = reader.GetString(1);
-                        var isNullable = reader.GetString(2) == "YES";
-                        var columnDefault = reader.IsDBNull(3) ? null : reader.GetString(3);
-                        var columnKey = reader.IsDBNull(4) ? string.Empty : reader.GetString(4);
-                        var extra = reader.IsDBNull(5) ? string.Empty : reader.GetString(5);
+                    var columnName = reader.GetString(0);
+                    var dataType = reader.GetString(1);
+                    var isNullable = reader.GetString(2) == "YES";
+                    var columnDefault = reader.IsDBNull(3) ? null : reader.GetString(3);
+                    var columnKey = reader.IsDBNull(4) ? string.Empty : reader.GetString(4);
+                    var extra = reader.IsDBNull(5) ? string.Empty : reader.GetString(5);
 
-                        schema.Append($"  - {columnName} ({dataType})");
-                        if (!isNullable) schema.Append(" NOT NULL");
-                        if (!string.IsNullOrEmpty(columnDefault)) schema.Append($" DEFAULT {columnDefault}");
-                        if (columnKey == "PRI") schema.Append(" PRIMARY KEY");
-                        if (!string.IsNullOrEmpty(extra) && extra.Contains("auto_increment")) schema.Append(" AUTO_INCREMENT");
-                        schema.AppendLine();
-                    }
+                    schema.Append($"  - {columnName} ({dataType})");
+                    if (!isNullable) schema.Append(" NOT NULL");
+                    if (!string.IsNullOrEmpty(columnDefault)) schema.Append($" DEFAULT {columnDefault}");
+                    if (columnKey == "PRI") schema.Append(" PRIMARY KEY");
+                    if (!string.IsNullOrEmpty(extra) && extra.Contains("auto_increment")) schema.Append(" AUTO_INCREMENT");
+                    schema.AppendLine();
                 }
-
-                return schema.ToString();
             }
+
+            return schema.ToString();
         }
 
         private async Task<string> GetMySqlTableDataInternalAsync(MySqlConnection connection, string tableName, DatabaseConfig config)
         {
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText = $"SELECT * FROM `{tableName}` LIMIT {config.MaxRowsPerTable}";
-                command.CommandTimeout = config.QueryTimeoutSeconds;
+            using var command = connection.CreateCommand();
+            var sanitizedTableName = SanitizeTableName(tableName);
+            command.CommandText = $"SELECT * FROM `{sanitizedTableName}` LIMIT {config.MaxRowsPerTable}";
+            command.CommandTimeout = config.QueryTimeoutSeconds;
 
-                return await GetTableDataInternalAsync(command, config);
-            }
+            return await GetTableDataInternalAsync(command, config);
         }
 
         private async Task<string> ExecuteMySqlQueryAsync(string connectionString, string query, int maxRows)
         {
-            using (var connection = new MySqlConnection(connectionString))
-            {
-                await connection.OpenAsync();
+            var sanitizedConnectionString = ValidateAndSanitizeMySqlConnectionString(connectionString);
+            using var connection = new MySqlConnection(sanitizedConnectionString);
+            await connection.OpenAsync();
 
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText = query;
-                    command.CommandTimeout = DefaultQueryTimeout;
+            var sanitizedQuery = ValidateAndSanitizeQuery(query);
+            using var command = connection.CreateCommand();
+            command.CommandText = sanitizedQuery;
+            command.CommandTimeout = DefaultQueryTimeout;
 
-                    return await ExecuteQueryInternalAsync(command, query, maxRows);
-                }
-            }
+            return await ExecuteQueryInternalAsync(command, maxRows);
         }
 
         private async Task<bool> ValidateMySqlConnectionAsync(string connectionString)
         {
-            using (var connection = new MySqlConnection(connectionString))
-            {
-                await connection.OpenAsync();
-                return connection.State == System.Data.ConnectionState.Open;
-            }
+            var sanitizedConnectionString = ValidateAndSanitizeMySqlConnectionString(connectionString);
+            using var connection = new MySqlConnection(sanitizedConnectionString);
+            await connection.OpenAsync();
+            return connection.State == System.Data.ConnectionState.Open;
         }
-
-        #endregion
-
-        #region PostgreSQL Implementation
 
         private async Task<string> ParsePostgreSqlDatabaseAsync(string connectionString, DatabaseConfig config)
         {
-            using (var connection = new NpgsqlConnection(connectionString))
+            var sanitizedConnectionString = ValidateAndSanitizePostgreSqlConnectionString(connectionString);
+            using var connection = new NpgsqlConnection(sanitizedConnectionString);
+            await connection.OpenAsync();
+
+            var content = new StringBuilder();
+            content.AppendLine("=== PostgreSQL Database Content ===");
+            content.AppendLine($"Database: {connection.Database}");
+            content.AppendLine($"Server: {connection.Host}:{connection.Port}");
+            content.AppendLine();
+
+            var allTables = await GetPostgreSqlTableNamesInternalAsync(connection);
+            var tablesToProcess = FilterTables(allTables, config);
+
+            _logger.LogInformation("Processing {TableCount} tables from PostgreSQL database", tablesToProcess.Count);
+
+            foreach (var tableName in tablesToProcess)
             {
-                await connection.OpenAsync();
-
-                var content = new StringBuilder();
-                content.AppendLine("=== PostgreSQL Database Content ===");
-                content.AppendLine($"Database: {connection.Database}");
-                content.AppendLine($"Server: {connection.Host}:{connection.Port}");
-                content.AppendLine();
-
-                var allTables = await GetPostgreSqlTableNamesInternalAsync(connection);
-                var tablesToProcess = FilterTables(allTables, config);
-
-                _logger.LogInformation("Processing {TableCount} tables from PostgreSQL database", tablesToProcess.Count);
-
-                foreach (var tableName in tablesToProcess)
+                try
                 {
-                    try
-                    {
-                        content.AppendLine($"--- Table: {tableName} ---");
+                    content.AppendLine($"--- Table: {tableName} ---");
 
-                        if (config.IncludeSchema)
-                        {
-                            var schema = await GetPostgreSqlTableSchemaInternalAsync(connection, tableName);
-                            content.AppendLine(schema);
-                        }
-
-                        var tableData = await GetPostgreSqlTableDataInternalAsync(connection, tableName, config);
-                        content.AppendLine(tableData);
-                        content.AppendLine();
-                    }
-                    catch (Exception ex)
+                    if (config.IncludeSchema)
                     {
-                        _logger.LogWarning(ex, "Error processing table: {TableName}", tableName);
-                        content.AppendLine($"Error processing table {tableName}: {ex.Message}");
-                        content.AppendLine();
+                        var schema = await GetPostgreSqlTableSchemaInternalAsync(connection, tableName);
+                        content.AppendLine(schema);
                     }
+
+                    var tableData = await GetPostgreSqlTableDataInternalAsync(connection, tableName, config);
+                    content.AppendLine(tableData);
+                    content.AppendLine();
                 }
-
-                return content.ToString();
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Error processing table: {TableName}", tableName);
+                    content.AppendLine($"Error processing table {tableName}: {ex.Message}");
+                    content.AppendLine();
+                }
             }
+
+            return content.ToString();
         }
 
         private async Task<List<string>> GetPostgreSqlTableNamesAsync(string connectionString)
         {
-            using (var connection = new NpgsqlConnection(connectionString))
-            {
-                await connection.OpenAsync();
-                return await GetPostgreSqlTableNamesInternalAsync(connection);
-            }
+            var sanitizedConnectionString = ValidateAndSanitizePostgreSqlConnectionString(connectionString);
+            using var connection = new NpgsqlConnection(sanitizedConnectionString);
+            await connection.OpenAsync();
+            return await GetPostgreSqlTableNamesInternalAsync(connection);
         }
 
         private async Task<List<string>> GetPostgreSqlTableNamesInternalAsync(NpgsqlConnection connection)
         {
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText = @"
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
                     SELECT tablename 
                     FROM pg_tables 
                     WHERE schemaname = 'public'
                     ORDER BY tablename";
 
-                var tables = new List<string>();
-                using (var reader = await command.ExecuteReaderAsync())
+            var tables = new List<string>();
+            using (var reader = await command.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
                 {
-                    while (await reader.ReadAsync())
-                    {
-                        tables.Add(reader.GetString(0));
-                    }
+                    tables.Add(reader.GetString(0));
                 }
-
-                return tables;
             }
+
+            return tables;
         }
 
         private async Task<string> GetPostgreSqlTableSchemaInternalAsync(NpgsqlConnection connection, string tableName)
         {
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText = @"
+            var sanitizedTableName = SanitizeTableName(tableName);
+            using var command = connection.CreateCommand();
+            command.CommandText = @"
                     SELECT 
                         column_name,
                         data_type,
@@ -869,76 +860,170 @@ namespace SmartRAG.Services.Database
                     AND table_name = @tableName
                     ORDER BY ordinal_position";
 
-                command.Parameters.AddWithValue("@tableName", tableName);
+            command.Parameters.AddWithValue("@tableName", sanitizedTableName);
 
-                var schema = new StringBuilder();
-                schema.AppendLine($"Table: {tableName}");
-                schema.AppendLine("Columns:");
+            var schema = new StringBuilder();
+            schema.AppendLine($"Table: {sanitizedTableName}");
+            schema.AppendLine("Columns:");
 
-                using (var reader = await command.ExecuteReaderAsync())
+            using (var reader = await command.ExecuteReaderAsync())
+            {
+                while (await reader.ReadAsync())
                 {
-                    while (await reader.ReadAsync())
+                    var columnName = reader.GetString(0);
+                    var dataType = reader.GetString(1);
+                    var isNullable = reader.GetString(2) == "YES";
+                    var columnDefault = reader.IsDBNull(3) ? null : reader.GetString(3);
+
+                    schema.Append($"  - {columnName} ({dataType})");
+                    if (!isNullable) schema.Append(" NOT NULL");
+                    if (!string.IsNullOrEmpty(columnDefault))
                     {
-                        var columnName = reader.GetString(0);
-                        var dataType = reader.GetString(1);
-                        var isNullable = reader.GetString(2) == "YES";
-                        var columnDefault = reader.IsDBNull(3) ? null : reader.GetString(3);
-
-                        schema.Append($"  - {columnName} ({dataType})");
-                        if (!isNullable) schema.Append(" NOT NULL");
-                        if (!string.IsNullOrEmpty(columnDefault)) 
-                        {
-                            schema.Append($" DEFAULT {columnDefault}");
-                            if (columnDefault.Contains("nextval"))
-                                schema.Append(" [SERIAL]");
-                        }
-                        schema.AppendLine();
+                        schema.Append($" DEFAULT {columnDefault}");
+                        if (columnDefault.Contains("nextval"))
+                            schema.Append(" [SERIAL]");
                     }
+                    schema.AppendLine();
                 }
-
-                return schema.ToString();
             }
+
+            return schema.ToString();
         }
 
         private async Task<string> GetPostgreSqlTableDataInternalAsync(NpgsqlConnection connection, string tableName, DatabaseConfig config)
         {
-            using (var command = connection.CreateCommand())
-            {
-                command.CommandText = $"SELECT * FROM \"{tableName}\" LIMIT {config.MaxRowsPerTable}";
-                command.CommandTimeout = config.QueryTimeoutSeconds;
+            using var command = connection.CreateCommand();
+            var sanitizedTableName = SanitizeTableName(tableName);
+            command.CommandText = $"SELECT * FROM \"{sanitizedTableName}\" LIMIT {config.MaxRowsPerTable}";
+            command.CommandTimeout = config.QueryTimeoutSeconds;
 
-                return await GetTableDataInternalAsync(command, config);
-            }
+            return await GetTableDataInternalAsync(command, config);
         }
 
         private async Task<string> ExecutePostgreSqlQueryAsync(string connectionString, string query, int maxRows)
         {
-            using (var connection = new NpgsqlConnection(connectionString))
-            {
-                await connection.OpenAsync();
+            var sanitizedConnectionString = ValidateAndSanitizePostgreSqlConnectionString(connectionString);
+            using var connection = new NpgsqlConnection(sanitizedConnectionString);
+            await connection.OpenAsync();
 
-                using (var command = connection.CreateCommand())
-                {
-                    command.CommandText = query;
-                    command.CommandTimeout = DefaultQueryTimeout;
+            var sanitizedQuery = ValidateAndSanitizeQuery(query);
+            using var command = connection.CreateCommand();
+            command.CommandText = sanitizedQuery;
+            command.CommandTimeout = DefaultQueryTimeout;
 
-                    return await ExecuteQueryInternalAsync(command, query, maxRows);
-                }
-            }
+            return await ExecuteQueryInternalAsync(command, maxRows);
         }
 
         private async Task<bool> ValidatePostgreSqlConnectionAsync(string connectionString)
         {
-            using (var connection = new NpgsqlConnection(connectionString))
+            var sanitizedConnectionString = ValidateAndSanitizePostgreSqlConnectionString(connectionString);
+            using var connection = new NpgsqlConnection(sanitizedConnectionString);
+            await connection.OpenAsync();
+            return connection.State == System.Data.ConnectionState.Open;
+        }
+
+        /// <summary>
+        /// Validates and sanitizes SQLite connection string to prevent path traversal attacks
+        /// </summary>
+        private string ValidateAndSanitizeSQLiteConnectionString(string connectionString)
+        {
+            if (string.IsNullOrWhiteSpace(connectionString))
+                throw new ArgumentException("Connection string cannot be null or empty", nameof(connectionString));
+
+            try
             {
-                await connection.OpenAsync();
-                return connection.State == System.Data.ConnectionState.Open;
+                var builder = new SqliteConnectionStringBuilder(connectionString);
+
+                // Validate Data Source path to prevent path traversal
+                if (!string.IsNullOrEmpty(builder.DataSource))
+                {
+                    var dataSource = builder.DataSource;
+
+                    // Check for path traversal patterns
+                    if (dataSource.Contains("..") || dataSource.Contains("//") || dataSource.Contains("\\\\"))
+                    {
+                        throw new ArgumentException("Invalid path in connection string: path traversal detected", nameof(connectionString));
+                    }
+
+                    // For absolute paths, ensure they are within allowed boundaries
+                    if (Path.IsPathRooted(dataSource))
+                    {
+                        var fullPath = Path.GetFullPath(dataSource);
+                        if (fullPath != dataSource)
+                        {
+                            throw new ArgumentException("Invalid path in connection string: resolved path differs from provided path", nameof(connectionString));
+                        }
+                    }
+                }
+
+                return builder.ConnectionString;
+            }
+            catch (ArgumentException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                throw new ArgumentException($"Invalid SQLite connection string format: {ex.Message}", nameof(connectionString), ex);
             }
         }
 
-        #endregion
+        /// <summary>
+        /// Validates and sanitizes SQL Server connection string using connection string builder
+        /// </summary>
+        private string ValidateAndSanitizeSqlServerConnectionString(string connectionString)
+        {
+            if (string.IsNullOrWhiteSpace(connectionString))
+                throw new ArgumentException("Connection string cannot be null or empty", nameof(connectionString));
 
-        #region Common Helper Methods
+            try
+            {
+                var builder = new SqlConnectionStringBuilder(connectionString);
+                return builder.ConnectionString;
+            }
+            catch (ArgumentException ex)
+            {
+                throw new ArgumentException($"Invalid SQL Server connection string format: {ex.Message}", nameof(connectionString), ex);
+            }
+        }
+
+        /// <summary>
+        /// Validates and sanitizes MySQL connection string using connection string builder
+        /// </summary>
+        private string ValidateAndSanitizeMySqlConnectionString(string connectionString)
+        {
+            if (string.IsNullOrWhiteSpace(connectionString))
+                throw new ArgumentException("Connection string cannot be null or empty", nameof(connectionString));
+
+            try
+            {
+                var builder = new MySqlConnectionStringBuilder(connectionString);
+                return builder.ConnectionString;
+            }
+            catch (ArgumentException ex)
+            {
+                throw new ArgumentException($"Invalid MySQL connection string format: {ex.Message}", nameof(connectionString), ex);
+            }
+        }
+
+        /// <summary>
+        /// Validates and sanitizes PostgreSQL connection string using connection string builder
+        /// </summary>
+        private string ValidateAndSanitizePostgreSqlConnectionString(string connectionString)
+        {
+            if (string.IsNullOrWhiteSpace(connectionString))
+                throw new ArgumentException("Connection string cannot be null or empty", nameof(connectionString));
+
+            try
+            {
+                var builder = new NpgsqlConnectionStringBuilder(connectionString);
+                return builder.ConnectionString;
+            }
+            catch (ArgumentException ex)
+            {
+                throw new ArgumentException($"Invalid PostgreSQL connection string format: {ex.Message}", nameof(connectionString), ex);
+            }
+        }
 
         /// <summary>
         /// Filters tables based on configuration
@@ -969,8 +1054,8 @@ namespace SmartRAG.Services.Database
             {
                 return false;
             }
-            
-            return sensitiveColumns.Any(sensitive => 
+
+            return sensitiveColumns.Any(sensitive =>
                 columnName.IndexOf(sensitive, StringComparison.OrdinalIgnoreCase) >= 0);
         }
 
@@ -980,88 +1065,81 @@ namespace SmartRAG.Services.Database
         private async Task<string> GetTableDataInternalAsync(DbCommand command, DatabaseConfig config)
         {
             var result = new StringBuilder();
-            using (var reader = await command.ExecuteReaderAsync())
-            {
-                var columnCount = reader.FieldCount;
-                var columnNames = new string[columnCount];
-                var isSensitiveColumn = new bool[columnCount];
+            using var reader = await command.ExecuteReaderAsync();
+            var columnCount = reader.FieldCount;
+            var columnNames = new string[columnCount];
+            var isSensitiveColumn = new bool[columnCount];
 
+            for (int i = 0; i < columnCount; i++)
+            {
+                columnNames[i] = reader.GetName(i);
+                isSensitiveColumn[i] = config.SanitizeSensitiveData &&
+                    IsSensitiveColumn(columnNames[i], config.SensitiveColumns);
+            }
+
+            result.AppendLine(string.Join("\t", columnNames));
+
+            var rowCount = 0;
+            while (await reader.ReadAsync() && rowCount < config.MaxRowsPerTable)
+            {
+                var values = new string[columnCount];
                 for (int i = 0; i < columnCount; i++)
                 {
-                    columnNames[i] = reader.GetName(i);
-                    isSensitiveColumn[i] = config.SanitizeSensitiveData && 
-                        IsSensitiveColumn(columnNames[i], config.SensitiveColumns);
-                }
-
-                result.AppendLine(string.Join("\t", columnNames));
-
-                var rowCount = 0;
-                while (await reader.ReadAsync() && rowCount < config.MaxRowsPerTable)
-                {
-                    var values = new string[columnCount];
-                    for (int i = 0; i < columnCount; i++)
+                    if (reader.IsDBNull(i))
                     {
-                        if (reader.IsDBNull(i))
-                        {
-                            values[i] = "NULL";
-                        }
-                        else if (isSensitiveColumn[i])
-                        {
-                            values[i] = SensitiveDataPlaceholder;
-                        }
-                        else
-                        {
-                            values[i] = reader.GetValue(i).ToString();
-                        }
+                        values[i] = "NULL";
                     }
-                    result.AppendLine(string.Join("\t", values));
-                    rowCount++;
+                    else if (isSensitiveColumn[i])
+                    {
+                        values[i] = SensitiveDataPlaceholder;
+                    }
+                    else
+                    {
+                        values[i] = reader.GetValue(i).ToString();
+                    }
                 }
-
-                result.AppendLine($"Rows: {rowCount}");
-                return result.ToString();
+                result.AppendLine(string.Join("\t", values));
+                rowCount++;
             }
+
+            result.AppendLine($"Rows: {rowCount}");
+            return result.ToString();
         }
 
         /// <summary>
         /// Internal method to execute query and format results
         /// </summary>
-        private async Task<string> ExecuteQueryInternalAsync(DbCommand command, string query, int maxRows)
+        private async Task<string> ExecuteQueryInternalAsync(DbCommand command, int maxRows)
         {
             var result = new StringBuilder();
             result.AppendLine($"=== Query Results ===");
-            result.AppendLine($"Query: {query.Replace("\r", " ").Replace("\n", " ")}");
             result.AppendLine();
 
-            using (var reader = await command.ExecuteReaderAsync())
+            using var reader = await command.ExecuteReaderAsync();
+            var rowCount = 0;
+            var columnCount = reader.FieldCount;
+            var headers = new string[columnCount];
+
+            for (int i = 0; i < columnCount; i++)
             {
-                var rowCount = 0;
-                var columnCount = reader.FieldCount;
-                var headers = new string[columnCount];
-                
+                headers[i] = reader.GetName(i);
+            }
+            result.AppendLine(string.Join("\t", headers));
+
+            while (await reader.ReadAsync() && rowCount < maxRows)
+            {
+                var values = new string[columnCount];
                 for (int i = 0; i < columnCount; i++)
                 {
-                    headers[i] = reader.GetName(i);
+                    values[i] = reader.IsDBNull(i) ? "NULL" : reader.GetValue(i).ToString();
                 }
-                result.AppendLine(string.Join("\t", headers));
-
-                while (await reader.ReadAsync() && rowCount < maxRows)
-                {
-                    var values = new string[columnCount];
-                    for (int i = 0; i < columnCount; i++)
-                    {
-                        values[i] = reader.IsDBNull(i) ? "NULL" : reader.GetValue(i).ToString();
-                    }
-                    result.AppendLine(string.Join("\t", values));
-                    rowCount++;
-                }
-
-                result.AppendLine($"\nRows extracted: {rowCount}");
-                _logger.LogInformation("Custom query executed successfully, rows: {RowCount}", rowCount);
-                return result.ToString();
+                result.AppendLine(string.Join("\t", values));
+                rowCount++;
             }
-        }
 
-        #endregion
+            result.AppendLine($"\nRows extracted: {rowCount}");
+            _logger.LogInformation("Custom query executed successfully, rows: {RowCount}", rowCount);
+            return result.ToString();
+        }
     }
 }

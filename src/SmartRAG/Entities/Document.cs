@@ -9,8 +9,6 @@ namespace SmartRAG.Entities
     /// </summary>
     public class Document
     {
-        #region Properties
-
         /// <summary>
         /// Unique identifier for the document
         /// </summary>
@@ -55,7 +53,5 @@ namespace SmartRAG.Entities
         /// Size of the original file in bytes
         /// </summary>
         public long FileSize { get; set; }
-
-        #endregion
     }
 }

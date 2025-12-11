@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using SmartRAG.Interfaces.Database;
 using SmartRAG.Models;
 using System;
 using System.Collections.Generic;
@@ -7,13 +8,20 @@ using System.Text.RegularExpressions;
 
 namespace SmartRAG.Services.Database.Validation
 {
-    public class SqlValidator
+    /// <summary>
+    /// Validates SQL queries against database schemas
+    /// </summary>
+    public class SqlValidator : ISqlValidator
     {
-        private readonly ILogger _logger;
+        private readonly ILogger<SqlValidator> _logger;
 
-        public SqlValidator(ILogger logger)
+        /// <summary>
+        /// Initializes a new instance of the SqlValidator
+        /// </summary>
+        /// <param name="logger">Logger instance</param>
+        public SqlValidator(ILogger<SqlValidator> logger)
         {
-            _logger = logger;
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public List<string> ValidateQuery(string sql, DatabaseSchemaInfo schema, List<string> requiredTables)
@@ -41,13 +49,13 @@ namespace SmartRAG.Services.Database.Validation
         private List<string> ValidateTables(string sql, DatabaseSchemaInfo schema, List<string> requiredTables)
         {
             var errors = new List<string>();
-            
+
             var tableMatches = Regex.Matches(sql, @"(?:FROM|JOIN)\s+([a-zA-Z0-9_]+)", RegexOptions.IgnoreCase);
-            
+
             foreach (Match match in tableMatches)
             {
                 var tableName = match.Groups[1].Value;
-                
+
                 if (IsSqlKeyword(tableName)) continue;
 
                 // CRITICAL: Check if table exists in schema (ERROR if not)
@@ -64,7 +72,7 @@ namespace SmartRAG.Services.Database.Validation
                         "Table '{Table}' exists in database '{Database}' but was not in the required tables list. " +
                         "Allowing query to proceed. This may indicate QueryIntentAnalyzer needs improvement.",
                         tableName, schema.DatabaseName);
-                    
+
                 }
             }
 
@@ -74,31 +82,31 @@ namespace SmartRAG.Services.Database.Validation
         private List<string> ValidateColumns(string sql, DatabaseSchemaInfo schema, List<string> requiredTables)
         {
             var errors = new List<string>();
-            
+
             var aliasToTable = ExtractTableAliases(sql);
-            
+
             var columnMatches = Regex.Matches(sql, @"\b([a-zA-Z0-9_]+)\.([a-zA-Z0-9_]+)\b", RegexOptions.IgnoreCase);
-            
+
             foreach (Match match in columnMatches)
             {
                 var prefix = match.Groups[1].Value;
                 var columnName = match.Groups[2].Value;
-                
+
                 if (columnName.Equals("*", StringComparison.OrdinalIgnoreCase)) continue;
-                
+
                 string tableName = prefix;
 
                 if (aliasToTable.ContainsKey(prefix))
                 {
                     tableName = aliasToTable[prefix];
                 }
-                
+
                 var table = schema.Tables.FirstOrDefault(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase));
-                
+
                 if (table == null) continue;
-                
+
                 if (!requiredTables.Contains(table.TableName, StringComparer.OrdinalIgnoreCase)) continue;
-                
+
                 var columnExists = table.Columns.Any(c => c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase));
 
                 if (!columnExists)
@@ -121,7 +129,7 @@ namespace SmartRAG.Services.Database.Validation
             }
 
             var selectCount = Regex.Matches(sql, @"SELECT\s", RegexOptions.IgnoreCase).Count;
-            
+
             if (selectCount > 2)
             {
                 errors.Add("Too many nested subqueries (max 2 levels allowed).");
@@ -142,22 +150,22 @@ namespace SmartRAG.Services.Database.Validation
         private Dictionary<string, string> ExtractTableAliases(string sql)
         {
             var aliasToTable = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            
-            var aliasMatches = Regex.Matches(sql, 
-                @"(?:FROM|JOIN)\s+([a-zA-Z0-9_]+)(?:\s+(?:AS\s+)?([a-zA-Z0-9_]+))?", 
+
+            var aliasMatches = Regex.Matches(sql,
+                @"(?:FROM|JOIN)\s+([a-zA-Z0-9_]+)(?:\s+(?:AS\s+)?([a-zA-Z0-9_]+))?",
                 RegexOptions.IgnoreCase);
-            
+
             foreach (Match match in aliasMatches)
             {
                 var tableName = match.Groups[1].Value;
                 var alias = match.Groups[2].Value;
-                
+
                 if (!string.IsNullOrWhiteSpace(alias) && !IsSqlKeyword(alias))
                 {
                     aliasToTable[alias] = tableName;
                 }
             }
-            
+
             return aliasToTable;
         }
     }

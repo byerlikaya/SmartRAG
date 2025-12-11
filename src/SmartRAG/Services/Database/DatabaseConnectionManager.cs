@@ -41,7 +41,8 @@ namespace SmartRAG.Services.Database
             {
                 _logger.LogWarning("DatabaseConnectionManager already initialized");
                 return;
-            }            if (_options.DatabaseConnections == null || _options.DatabaseConnections.Count == 0)
+            }
+            if (_options.DatabaseConnections == null || _options.DatabaseConnections.Count == 0)
             {
                 _logger.LogInformation("No database connections configured");
                 _initialized = true;
@@ -50,38 +51,38 @@ namespace SmartRAG.Services.Database
 
             var enabledConnections = _options.DatabaseConnections
                 .Where(c => c.Enabled)
-                .ToList();            foreach (var config in enabledConnections)
+                .ToList(); foreach (var config in enabledConnections)
             {
+                string databaseId = null;
                 try
                 {
-                    var databaseId = await GetDatabaseIdAsync(config);
+                    databaseId = await GetDatabaseIdAsync(config);
                     _connections[databaseId] = config;
-                    
-                    _logger.LogInformation("Registered database connection: {DatabaseId}", databaseId);
+
+                    _logger.LogInformation("Registered database connection");
 
                     if (_options.EnableAutoSchemaAnalysis)
                     {
-                        _logger.LogInformation("Starting schema analysis for: {DatabaseId}", databaseId);
+                        _logger.LogInformation("Starting schema analysis");
                         try
                         {
                             await _schemaAnalyzer.AnalyzeDatabaseSchemaAsync(config);
-                            _logger.LogInformation("Schema analysis completed for: {DatabaseId}", databaseId);
+                            _logger.LogInformation("Schema analysis completed");
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogError(ex, "Schema analysis failed for: {DatabaseId}", databaseId);
+                            _logger.LogError(ex, "Schema analysis failed");
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Failed to initialize database connection: {ConnectionString}", 
-                        MaskConnectionString(config.ConnectionString));
+                    _logger.LogError(ex, "Failed to initialize database connection");
                 }
             }
 
             _initialized = true;
-            _logger.LogInformation("Database connection manager initialized with {Count} connections", 
+            _logger.LogInformation("Database connection manager initialized with {Count} connections",
                 _connections.Count);
         }
 
@@ -94,13 +95,13 @@ namespace SmartRAG.Services.Database
         {
             _connections.TryGetValue(databaseId, out var config);
             return await Task.FromResult(config);
-        }    
+        }
 
         public async Task<bool> ValidateConnectionAsync(string databaseId)
         {
             if (!_connections.TryGetValue(databaseId, out var config))
             {
-                _logger.LogWarning("Database connection not found: {DatabaseId}", databaseId);
+                _logger.LogWarning("Database connection not found");
                 return false;
             }
 
@@ -112,7 +113,7 @@ namespace SmartRAG.Services.Database
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Validation failed for database: {DatabaseId}", databaseId);
+                _logger.LogError(ex, "Validation failed for database");
                 return false;
             }
         }
@@ -127,17 +128,14 @@ namespace SmartRAG.Services.Database
             try
             {
                 var dbName = await ExtractDatabaseNameAsync(connectionConfig);
-                return $"{connectionConfig.DatabaseType}_{dbName}_{Guid.NewGuid():N}".Substring(0, 50);
+                return $"{connectionConfig.DatabaseType}_{dbName}_{Guid.NewGuid():N}"[..50];
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Could not extract database name, using GUID");
                 return $"DB_{Guid.NewGuid():N}";
             }
-        }   
-
-      
-        #region Private Helper Methods
+        }
 
         private async Task<string> ExtractDatabaseNameAsync(DatabaseConnectionConfig config)
         {
@@ -172,25 +170,6 @@ namespace SmartRAG.Services.Database
 
             return await Task.FromResult("UnknownDB");
         }
-
-        private string MaskConnectionString(string connectionString)
-        {
-            var masked = System.Text.RegularExpressions.Regex.Replace(
-                connectionString,
-                @"(password|pwd)=([^;]+)",
-                "$1=****",
-                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-
-            masked = System.Text.RegularExpressions.Regex.Replace(
-                masked,
-                @"(user id|uid)=([^;]+)",
-                "$1=****",
-                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-
-            return masked;
-        }
-
-        #endregion
     }
 }
 

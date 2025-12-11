@@ -7,89 +7,36 @@ lang: en
 
 ## Strategy Pattern Interfaces
 
-SmartRAG provides Strategy Pattern for extensibility and customization.
+> **Note:** Interface details are available in the source code with XML documentation. Use your IDE's IntelliSense to explore method signatures, parameters, and return types. For practical usage examples, see the [Examples]({{ site.baseurl }}/en/examples) section.
+
+SmartRAG provides Strategy Pattern for extensibility and customization. All interfaces are located in the `SmartRAG.Interfaces` namespace. Browse the `src/SmartRAG/Interfaces/` directory in the repository for complete interface definitions.
+
+## Next Steps
 
 <div class="row g-4 mt-4">
-    <div class="col-md-4">
-        <div class="card card-accent text-center">
-            <div class="icon icon-lg icon-gradient mx-auto">
-                <i class="fas fa-code"></i>
+    <div class="col-md-6">
+        <div class="card card-accent">
+            <div class="icon icon-lg icon-gradient">
+                <i class="fas fa-lightbulb"></i>
             </div>
-            <h3>ISqlDialectStrategy</h3>
-            <p>Database-specific SQL generation and validation</p>
-            <a href="{{ site.baseurl }}/en/api-reference/interfaces/sql-dialect-strategy" class="btn btn-outline-primary btn-sm mt-3">
-                View Interface
+            <h3>Examples</h3>
+            <p>See practical code examples and real-world implementations</p>
+            <a href="{{ site.baseurl }}/en/examples/quick" class="btn btn-outline-primary btn-sm mt-3">
+                View Examples
             </a>
         </div>
     </div>
     
-    <div class="col-md-4">
-        <div class="card card-accent text-center">
-            <div class="icon icon-lg icon-gradient mx-auto">
-                <i class="fas fa-star"></i>
-            </div>
-            <h3>IScoringStrategy</h3>
-            <p>Customizable document relevance scoring</p>
-            <a href="{{ site.baseurl }}/en/api-reference/interfaces/scoring-strategy" class="btn btn-outline-primary btn-sm mt-3">
-                View Interface
-            </a>
-        </div>
-    </div>
-    
-    <div class="col-md-4">
-        <div class="card card-accent text-center">
-            <div class="icon icon-lg icon-gradient mx-auto">
-                <i class="fas fa-file"></i>
-            </div>
-            <h3>IFileParser</h3>
-            <p>Strategy for parsing specific file formats</p>
-            <a href="{{ site.baseurl }}/en/api-reference/interfaces/file-parser" class="btn btn-outline-primary btn-sm mt-3">
-                View Interface
-            </a>
-        </div>
-    </div>
-</div>
-
-## Related Categories
-
-<div class="row g-4 mt-4">
-    <div class="col-md-4">
-        <div class="card card-accent text-center">
-            <div class="icon icon-lg icon-gradient mx-auto">
-                <i class="fas fa-cube"></i>
-            </div>
-            <h3>Core Interfaces</h3>
-            <p>Browse all core interfaces</p>
-            <a href="{{ site.baseurl }}/en/api-reference/core" class="btn btn-outline-primary btn-sm mt-3">
-                Core Interfaces
-            </a>
-        </div>
-    </div>
-    
-    <div class="col-md-4">
-        <div class="card card-accent text-center">
-            <div class="icon icon-lg icon-gradient mx-auto">
+    <div class="col-md-6">
+        <div class="card card-accent">
+            <div class="icon icon-lg icon-gradient">
                 <i class="fas fa-rocket"></i>
             </div>
-            <h3>Advanced Interfaces</h3>
-            <p>Multi-database coordination and advanced features</p>
-            <a href="{{ site.baseurl }}/en/api-reference/advanced" class="btn btn-outline-primary btn-sm mt-3">
-                Advanced Interfaces
-            </a>
-        </div>
-    </div>
-    
-    <div class="col-md-4">
-        <div class="card card-accent text-center">
-            <div class="icon icon-lg icon-gradient mx-auto">
-                <i class="fas fa-wrench"></i>
-            </div>
-            <h3>Service Interfaces</h3>
-            <p>Additional service interfaces for repositories, factories, and utilities</p>
-            <a href="{{ site.baseurl }}/en/api-reference/services" class="btn btn-outline-primary btn-sm mt-3">
-                Service Interfaces
+            <h3>Getting Started</h3>
+            <p>Quick installation and setup guide</p>
+            <a href="{{ site.baseurl }}/en/getting-started" class="btn btn-outline-primary btn-sm mt-3">
+                Get Started
             </a>
         </div>
     </div>
 </div>
-

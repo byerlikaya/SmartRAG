@@ -17,15 +17,14 @@ namespace SmartRAG.Services.Storage.Qdrant
     /// </summary>
     public class QdrantSearchService : IQdrantSearchService, IDisposable
     {
-        #region Constants
-
         private const double DefaultTextSearchScore = 0.5;
-        private const double MinKeywordMatchScore = 0.1;
-        private const int MinWordLength = 2;
-
-        #endregion
-
-        #region Fields
+        private const double BaseRelevanceScore = 1.0;
+        private const double TokenMatchScoreMultiplier = 0.1;
+        private const double AllTokensMatchBoost = 2.0;
+        private const double ExactPhraseMatchBoost = 1.5;
+        private const double AllTokensPresentBoost = 1.0;
+        private const double HybridSearchBaseScore = 4.0;
+        private const double HybridSearchDefaultScore = 5.0;
 
         private readonly QdrantClient _client;
         private readonly QdrantConfig _config;
@@ -33,10 +32,6 @@ namespace SmartRAG.Services.Storage.Qdrant
         private readonly ILogger<QdrantSearchService> _logger;
         private readonly IQdrantEmbeddingService _embeddingService;
         private bool _isDisposed;
-
-        #endregion
-
-        #region Constructor
 
         /// <summary>
         /// Initializes a new instance of the QdrantSearchService
@@ -77,10 +72,6 @@ namespace SmartRAG.Services.Storage.Qdrant
             );
         }
 
-        #endregion
-
-        #region Public Methods
-
         /// <summary>
         /// [Document Query] Performs vector search across all document collections
         /// </summary>
@@ -91,8 +82,6 @@ namespace SmartRAG.Services.Storage.Qdrant
         {
             try
             {
-                _logger.LogDebug("Starting vector search with {MaxResults} max results", maxResults);
-
                 var allChunks = new List<DocumentChunk>();
                 var collections = await _client.ListCollectionsAsync();
 
@@ -116,8 +105,6 @@ namespace SmartRAG.Services.Storage.Qdrant
                             limit: (ulong)Math.Max(20, maxResults * 4)
                         );
 
-                        _logger.LogDebug("Found {Count} results in collection {Collection}", searchResults.Count, collectionName);
-
                         foreach (var result in searchResults)
                         {
                             var payload = result.Payload;
@@ -127,18 +114,35 @@ namespace SmartRAG.Services.Storage.Qdrant
                                 var content = GetPayloadString(payload, "content");
                                 var docId = GetPayloadString(payload, "documentId");
                                 var chunkIndex = GetPayloadString(payload, "chunkIndex");
+                                var documentType = GetPayloadString(payload, "documentType");
+                                var chunkIdStr = GetPayloadString(payload, "chunkId");
 
                                 if (!string.IsNullOrEmpty(content) && !string.IsNullOrEmpty(docId) && !string.IsNullOrEmpty(chunkIndex))
                                 {
+                                    if (string.IsNullOrWhiteSpace(documentType))
+                                        documentType = "Document";
+
+                                    // Use chunkId from payload if available to ensure consistency with GetByIdAsync
+                                    Guid chunkId;
+                                    if (!string.IsNullOrWhiteSpace(chunkIdStr) && Guid.TryParse(chunkIdStr, out var parsedChunkId))
+                                    {
+                                        chunkId = parsedChunkId;
+                                    }
+                                    else
+                                    {
+                                        chunkId = Guid.NewGuid();
+                                    }
+
                                     var chunk = new DocumentChunk
                                     {
-                                        Id = Guid.NewGuid(),
+                                        Id = chunkId, // Use original chunk ID from payload
                                         DocumentId = Guid.Parse(docId),
                                         Content = content,
                                         ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
                                         RelevanceScore = result.Score,
-                                        StartPosition = 0,  // Qdrant doesn't store positions, content is already extracted
-                                        EndPosition = content.Length
+                                        StartPosition = 0,
+                                        EndPosition = content.Length,
+                                        DocumentType = documentType
                                     };
                                     allChunks.Add(chunk);
                                 }
@@ -170,7 +174,6 @@ namespace SmartRAG.Services.Storage.Qdrant
         {
             try
             {
-                _logger.LogDebug("Starting fallback text search for query: {Query}", query);
                 var queryLower = query.ToLowerInvariant();
                 var relevantChunks = new List<DocumentChunk>();
 
@@ -196,22 +199,39 @@ namespace SmartRAG.Services.Storage.Qdrant
                                 var content = GetPayloadString(payload, "content");
                                 var docId = GetPayloadString(payload, "documentId");
                                 var chunkIndex = GetPayloadString(payload, "chunkIndex");
+                                var documentType = GetPayloadString(payload, "documentType");
+                                var chunkIdStr = GetPayloadString(payload, "chunkId");
 
                                 if (!string.IsNullOrEmpty(content) && !string.IsNullOrEmpty(docId) && !string.IsNullOrEmpty(chunkIndex))
                                 {
+                                    if (string.IsNullOrWhiteSpace(documentType))
+                                        documentType = "Document";
+
                                     var contentStr = content.ToLowerInvariant();
 
                                     if (contentStr.Contains(queryLower))
                                     {
+                                        // Use chunkId from payload if available to ensure consistency
+                                        Guid chunkId;
+                                        if (!string.IsNullOrWhiteSpace(chunkIdStr) && Guid.TryParse(chunkIdStr, out var parsedChunkId))
+                                        {
+                                            chunkId = parsedChunkId;
+                                        }
+                                        else
+                                        {
+                                            chunkId = Guid.NewGuid();
+                                        }
+
                                         var chunk = new DocumentChunk
                                         {
-                                            Id = Guid.NewGuid(),
+                                            Id = chunkId, // Use original chunk ID from payload
                                             DocumentId = Guid.Parse(docId),
                                             Content = content,
                                             ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
                                             RelevanceScore = DefaultTextSearchScore,
                                             StartPosition = 0,
-                                            EndPosition = content.Length
+                                            EndPosition = content.Length,
+                                            DocumentType = documentType
                                         };
                                         relevantChunks.Add(chunk);
 
@@ -253,8 +273,6 @@ namespace SmartRAG.Services.Storage.Qdrant
 
             try
             {
-                _logger.LogDebug("Starting native hybrid search for query: {Query}", query);
-
                 var collections = await _client.ListCollectionsAsync();
                 var documentCollections = collections.Where(c => c.StartsWith($"{_collectionName}_doc_", StringComparison.OrdinalIgnoreCase)).ToList();
 
@@ -264,12 +282,29 @@ namespace SmartRAG.Services.Storage.Qdrant
                     {
                         var chunks = await FallbackTextSearchForCollectionAsync(collectionName, query, maxResults * 2);
 
+                        var queryLower = query.ToLowerInvariant();
+                        var queryTokens = query.Split(new[] { ' ', '.', ',', '?', '!', ';', ':' }, StringSplitOptions.RemoveEmptyEntries)
+                                              .Where(t => t.Length >= 3)
+                                              .ToList();
+
                         foreach (var chunk in chunks)
-            {
-                chunk.RelevanceScore = chunk.RelevanceScore.HasValue ? chunk.RelevanceScore.Value + 4.0 : 5.0;
-                hybridResults.Add(chunk);
-                _logger.LogDebug("Native text match found in chunk {ChunkIndex} with score {Score}", chunk.ChunkIndex, chunk.RelevanceScore);
-            }
+                        {
+                            var baseScore = chunk.RelevanceScore.HasValue ? chunk.RelevanceScore.Value + HybridSearchBaseScore : HybridSearchDefaultScore;
+                            var contentLower = chunk.Content.ToLowerInvariant();
+
+                            if (contentLower.Contains(queryLower))
+                            {
+                                baseScore += ExactPhraseMatchBoost;
+                            }
+
+                            if (queryTokens.Count > 1 && queryTokens.All(t => contentLower.Contains(t, StringComparison.OrdinalIgnoreCase)))
+                            {
+                                baseScore += AllTokensPresentBoost;
+                            }
+
+                            chunk.RelevanceScore = baseScore;
+                            hybridResults.Add(chunk);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -297,10 +332,6 @@ namespace SmartRAG.Services.Storage.Qdrant
             Dispose(true);
             GC.SuppressFinalize(this);
         }
-
-        #endregion
-
-        #region Private Methods
 
         private static string GetPayloadString(Google.Protobuf.Collections.MapField<string, global::Qdrant.Client.Grpc.Value> payload, string key)
         {
@@ -339,7 +370,7 @@ namespace SmartRAG.Services.Storage.Qdrant
             try
             {
                 var relevantChunks = new List<DocumentChunk>();
-                
+
                 var tokens = query.Split(new[] { ' ', '.', ',', '?', '!', ';', ':' }, StringSplitOptions.RemoveEmptyEntries)
                                   .Where(t => t.Length >= 3)
                                   .ToList();
@@ -365,6 +396,14 @@ namespace SmartRAG.Services.Storage.Qdrant
 
                 var scrollResult = await _client.ScrollAsync(collectionName, filter: filter, limit: (uint)maxResults * 2);
 
+                if (scrollResult.Result.Count == 0)
+                {
+                    scrollResult = await _client.ScrollAsync(collectionName, limit: (uint)maxResults * 10);
+                }
+
+                var queryLower = query.ToLowerInvariant();
+                var normalizedQuery = NormalizeQueryForFuzzyMatching(queryLower);
+
                 foreach (var point in scrollResult.Result)
                 {
                     var payload = point.Payload;
@@ -374,27 +413,60 @@ namespace SmartRAG.Services.Storage.Qdrant
                         var content = GetPayloadString(payload, "content");
                         var docId = GetPayloadString(payload, "documentId");
                         var chunkIndex = GetPayloadString(payload, "chunkIndex");
+                        var documentType = GetPayloadString(payload, "documentType");
+                        var chunkIdStr = GetPayloadString(payload, "chunkId");
 
                         if (!string.IsNullOrEmpty(content) && !string.IsNullOrEmpty(docId) && !string.IsNullOrEmpty(chunkIndex))
                         {
-                            var matchCount = tokens.Count(t => content.Contains(t, StringComparison.OrdinalIgnoreCase));
-                            
+                            if (string.IsNullOrWhiteSpace(documentType))
+                                documentType = "Document";
+
+                            var contentLower = content.ToLowerInvariant();
+                            var normalizedContent = NormalizeQueryForFuzzyMatching(contentLower);
+
+                            var matchCount = tokens.Count(t => contentLower.Contains(t, StringComparison.OrdinalIgnoreCase));
+
+                            var allTokensMatch = tokens.All(t => contentLower.Contains(t, StringComparison.OrdinalIgnoreCase));
+                            var baseScore = BaseRelevanceScore + (matchCount * TokenMatchScoreMultiplier);
+
+                            if (allTokensMatch && tokens.Count > 1)
+                            {
+                                baseScore += AllTokensMatchBoost;
+                            }
+
+                            if (contentLower.Contains(queryLower))
+                            {
+                                baseScore += ExactPhraseMatchBoost;
+                            }
+
+                            if (normalizedContent.Contains(normalizedQuery) && !contentLower.Contains(queryLower))
+                            {
+                                baseScore += ExactPhraseMatchBoost * 0.7;
+                            }
+
+                            // Use chunkId from payload if available to ensure consistency
+                            Guid chunkId;
+                            if (!string.IsNullOrWhiteSpace(chunkIdStr) && Guid.TryParse(chunkIdStr, out var parsedChunkId))
+                            {
+                                chunkId = parsedChunkId;
+                            }
+                            else
+                            {
+                                chunkId = Guid.NewGuid();
+                            }
+
                             var chunk = new DocumentChunk
                             {
-                                Id = Guid.NewGuid(),
+                                Id = chunkId, // Use original chunk ID from payload
                                 DocumentId = Guid.Parse(docId),
                                 Content = content,
                                 ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
-                                RelevanceScore = 1.0 + (matchCount * 0.1),
+                                RelevanceScore = baseScore,
                                 StartPosition = 0,
-                                EndPosition = content.Length
+                                EndPosition = content.Length,
+                                DocumentType = documentType
                             };
                             relevantChunks.Add(chunk);
-
-                            if (relevantChunks.Count <= 3)
-                            {
-                                _logger.LogDebug("Native Search Chunk {Index} Content Preview: {Content}", chunk.ChunkIndex, content.Substring(0, Math.Min(content.Length, 200)));
-                            }
                         }
                     }
                 }
@@ -410,6 +482,27 @@ namespace SmartRAG.Services.Storage.Qdrant
 
 
 
+        private static string NormalizeQueryForFuzzyMatching(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return text;
+
+            var normalized = text.Normalize(System.Text.NormalizationForm.FormD);
+
+            var sb = new System.Text.StringBuilder(normalized.Length);
+            foreach (var c in normalized)
+            {
+                var category = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c);
+                if (category == System.Globalization.UnicodeCategory.NonSpacingMark)
+                    continue;
+
+                var lower = char.ToLowerInvariant(c);
+                sb.Append(lower);
+            }
+
+            return sb.ToString();
+        }
+
         private void Dispose(bool disposing)
         {
             if (!_isDisposed && disposing)
@@ -418,7 +511,5 @@ namespace SmartRAG.Services.Storage.Qdrant
                 _isDisposed = true;
             }
         }
-
-        #endregion
     }
 }

@@ -152,6 +152,11 @@ public class TestQueryGenerator(
 
     #region Private Methods
 
+    /// <summary>
+    /// Builds schema prompt for AI query generation
+    /// </summary>
+    /// <param name="schemas">List of database schemas</param>
+    /// <returns>Formatted schema prompt string</returns>
     private string BuildSchemaPromptForAI(List<DatabaseSchemaInfo> schemas)
     {
         var sb = new StringBuilder();
@@ -183,6 +188,14 @@ public class TestQueryGenerator(
         return sb.ToString();
     }
 
+    /// <summary>
+    /// Builds AI prompt for generating test queries
+    /// </summary>
+    /// <param name="schemaPrompt">Schema information prompt</param>
+    /// <param name="language">Target language for queries</param>
+    /// <param name="queryCount">Number of queries to generate</param>
+    /// <param name="focus">Focus area for query generation</param>
+    /// <returns>Complete AI prompt string</returns>
     private static string BuildAIPrompt(string schemaPrompt, string language, int queryCount, string focus)
     {
         return $@"{schemaPrompt}
@@ -257,6 +270,12 @@ REQUIRED JSON FORMAT:
 Respond ONLY with the JSON array, no other text.";
     }
 
+    /// <summary>
+    /// Extracts database types from database names using schema information
+    /// </summary>
+    /// <param name="databaseNames">Comma or plus-separated database names</param>
+    /// <param name="schemas">List of database schemas</param>
+    /// <returns>Formatted database types string</returns>
     private static string ExtractDatabaseTypes(string databaseNames, List<DatabaseSchemaInfo> schemas)
     {
         var dbNames = databaseNames.Split(new[] { " + ", ", " }, StringSplitOptions.RemoveEmptyEntries);
@@ -274,6 +293,12 @@ Respond ONLY with the JSON array, no other text.";
         return string.Join(" + ", dbTypes);
     }
 
+    /// <summary>
+    /// Generates cross-database join queries based on foreign key relationships
+    /// </summary>
+    /// <param name="schemas">List of database schemas</param>
+    /// <param name="queries">List to add generated queries to</param>
+    /// <param name="language">Target language for queries</param>
     private void GenerateCrossJoinQueries(List<DatabaseSchemaInfo> schemas, List<Models.TestQuery> queries, string language)
     {
         var tablesWithForeignKeys = schemas
@@ -307,6 +332,12 @@ Respond ONLY with the JSON array, no other text.";
         }
     }
 
+    /// <summary>
+    /// Generates cross-database calculation queries for numeric columns
+    /// </summary>
+    /// <param name="databasePairs">Pairs of databases to query</param>
+    /// <param name="queries">List to add generated queries to</param>
+    /// <param name="language">Target language for queries</param>
     private void GenerateCrossCalculationQueries(List<(DatabaseSchemaInfo Db1, DatabaseSchemaInfo Db2)> databasePairs, List<Models.TestQuery> queries, string language)
     {
         foreach (var pair in databasePairs)
@@ -353,6 +384,12 @@ Respond ONLY with the JSON array, no other text.";
         }
     }
 
+    /// <summary>
+    /// Generates multi-database coverage query for all available databases
+    /// </summary>
+    /// <param name="schemas">List of database schemas</param>
+    /// <param name="queries">List to add generated queries to</param>
+    /// <param name="language">Target language for queries</param>
     private void GenerateMultiDatabaseCoverageQuery(List<DatabaseSchemaInfo> schemas, List<Models.TestQuery> queries, string language)
     {
         if (schemas.Count >= 2)
@@ -372,6 +409,12 @@ Respond ONLY with the JSON array, no other text.";
         }
     }
 
+    /// <summary>
+    /// Generates temporal analysis queries for tables with date/time columns
+    /// </summary>
+    /// <param name="schemas">List of database schemas</param>
+    /// <param name="queries">List to add generated queries to</param>
+    /// <param name="language">Target language for queries</param>
     private void GenerateTemporalAnalysisQueries(List<DatabaseSchemaInfo> schemas, List<Models.TestQuery> queries, string language)
     {
         var tablesWithDates = schemas
@@ -405,6 +448,12 @@ Respond ONLY with the JSON array, no other text.";
         }
     }
 
+    /// <summary>
+    /// Generates coverage test queries to ensure all databases are tested
+    /// </summary>
+    /// <param name="schemas">List of database schemas</param>
+    /// <param name="queries">List to add generated queries to</param>
+    /// <param name="language">Target language for queries</param>
     private void GenerateCoverageTestQueries(List<DatabaseSchemaInfo> schemas, List<Models.TestQuery> queries, string language)
     {
         var databasesUsed = new HashSet<string>();
@@ -448,6 +497,11 @@ Respond ONLY with the JSON array, no other text.";
         }
     }
 
+    /// <summary>
+    /// Checks if data type is numeric
+    /// </summary>
+    /// <param name="dataType">Database column data type</param>
+    /// <returns>True if numeric type, false otherwise</returns>
     private static bool IsNumericType(string dataType)
     {
         return dataType.Contains("int", StringComparison.OrdinalIgnoreCase) ||

@@ -92,4 +92,4 @@ else
 
 ## İlgili Örnekler
 
-- [Örnekler Ana Sayfası]({{ site.baseurl }}/tr/examples) - Örnekler kategorilerine dön
+- [Gelişmiş Örnekler]({{ site.baseurl }}/tr/examples/advanced) - Gelişmiş kullanım örnekleri

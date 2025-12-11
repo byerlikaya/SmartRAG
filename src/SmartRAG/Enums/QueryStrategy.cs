@@ -9,12 +9,12 @@ namespace SmartRAG.Enums
         /// Execute database query only
         /// </summary>
         DatabaseOnly,
-        
+
         /// <summary>
         /// Execute document query only
         /// </summary>
         DocumentOnly,
-        
+
         /// <summary>
         /// Execute both database and document queries
         /// </summary>

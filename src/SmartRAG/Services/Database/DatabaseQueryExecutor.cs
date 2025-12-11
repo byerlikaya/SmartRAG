@@ -13,21 +13,11 @@ namespace SmartRAG.Services.Database
     /// </summary>
     public class DatabaseQueryExecutor : IDatabaseQueryExecutor
     {
-        #region Constants
-
         private const int DefaultMaxRows = 100;
-
-        #endregion
-
-        #region Fields
 
         private readonly IDatabaseConnectionManager _connectionManager;
         private readonly IDatabaseParserService _databaseParser;
         private readonly ILogger<DatabaseQueryExecutor> _logger;
-
-        #endregion
-
-        #region Constructor
 
         public DatabaseQueryExecutor(
             IDatabaseConnectionManager connectionManager,
@@ -38,10 +28,6 @@ namespace SmartRAG.Services.Database
             _databaseParser = databaseParser;
             _logger = logger;
         }
-
-        #endregion
-
-        #region Public Methods
 
         /// <summary>
         /// [DB Query] Executes queries across multiple databases based on query intent
@@ -68,7 +54,7 @@ namespace SmartRAG.Services.Database
             foreach (var (databaseId, dbResult) in results)
             {
                 result.DatabaseResults[databaseId] = dbResult;
-                
+
                 if (!dbResult.Success)
                 {
                     result.Success = false;
@@ -84,10 +70,6 @@ namespace SmartRAG.Services.Database
 
             return result;
         }
-
-        #endregion
-
-        #region Private Helper Methods
 
         private async Task<DatabaseQueryResult> ExecuteSingleDatabaseQueryAsync(DatabaseQueryIntent dbQuery)
         {
@@ -129,7 +111,7 @@ namespace SmartRAG.Services.Database
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error executing query on database: {DatabaseId}", dbQuery.DatabaseId);
+                _logger.LogError(ex, "Error executing query on database");
                 result.Success = false;
                 result.ErrorMessage = ex.Message;
             }
@@ -154,7 +136,7 @@ namespace SmartRAG.Services.Database
             {
                 if (line.StartsWith("Rows extracted:"))
                 {
-                    if (int.TryParse(line.Substring("Rows extracted:".Length).Trim(), out int count))
+                    if (int.TryParse(line["Rows extracted:".Length..].Trim(), out int count))
                     {
                         return count;
                     }
@@ -163,25 +145,23 @@ namespace SmartRAG.Services.Database
 
             int dataRows = 0;
             bool headerFound = false;
-            
+
             foreach (var line in lines)
             {
                 if (line.StartsWith("===") || line.StartsWith("Query:") || line.StartsWith("Rows"))
                     continue;
-                    
+
                 if (!headerFound)
                 {
                     headerFound = true; // Skip header
                     continue;
                 }
-                
+
                 dataRows++;
             }
-            
+
             return dataRows;
         }
-
-        #endregion
     }
 }
 
