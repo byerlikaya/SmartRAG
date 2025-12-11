@@ -54,7 +54,7 @@ namespace SmartRAG.Services.Mcp
                     var connected = await _mcpClient.ConnectAsync(server);
                     if (connected)
                     {
-                        _logger.LogInformation("Successfully connected to MCP server {ServerId}", server.ServerId);
+                        _logger.LogInformation("Successfully connected to MCP server");
                     }
                     else
                     {
@@ -63,7 +63,7 @@ namespace SmartRAG.Services.Mcp
                 }
                 catch (System.Exception ex)
                 {
-                    _logger.LogError(ex, "Error connecting to MCP server {ServerId}", server.ServerId);
+                    _logger.LogError(ex, "Error connecting to MCP server");
                 }
             }
         }

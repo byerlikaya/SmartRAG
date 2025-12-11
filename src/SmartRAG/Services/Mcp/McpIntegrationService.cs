@@ -100,7 +100,7 @@ namespace SmartRAG.Services.Mcp
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error querying MCP server {ServerId}", serverId);
+                    _logger.LogError(ex, "Error querying MCP server");
                 }
             }
 
@@ -274,7 +274,7 @@ namespace SmartRAG.Services.Mcp
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error discovering tools on server {ServerId}", serverId);
+                    _logger.LogError(ex, "Error discovering tools");
                 }
             }
 
@@ -320,7 +320,7 @@ namespace SmartRAG.Services.Mcp
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error calling tool {ToolName} on server {ServerId}", toolName, serverId);
+                _logger.LogError(ex, "Error calling MCP tool");
                 return new McpToolResult
                 {
                     ServerId = serverId,

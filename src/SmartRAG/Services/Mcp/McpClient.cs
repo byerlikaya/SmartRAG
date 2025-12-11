@@ -41,7 +41,7 @@ namespace SmartRAG.Services.Mcp
         {
             McpRequestValidator.ValidateConfig(config);
 
-            _logger.LogInformation("Connecting to MCP server {ServerId} at {Endpoint}", config.ServerId, config.Endpoint);
+            _logger.LogInformation("Connecting to MCP server at {Endpoint}", config.Endpoint);
 
             try
             {
@@ -65,12 +65,12 @@ namespace SmartRAG.Services.Mcp
                 _connections[config.ServerId] = client;
                 _serverConfigs[config.ServerId] = config;
 
-                _logger.LogInformation("Successfully connected to MCP server {ServerId}", config.ServerId);
+                _logger.LogInformation("Successfully connected to MCP server");
                 return Task.FromResult(true);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to connect to MCP server {ServerId}", config.ServerId);
+                _logger.LogError(ex, "Failed to connect to MCP server");
                 return Task.FromException<bool>(ex);
             }
         }
@@ -99,7 +99,7 @@ namespace SmartRAG.Services.Mcp
 
                 if (!response.IsSuccess)
                 {
-                    _logger.LogError("Failed to discover tools on server {ServerId}: {Error}", serverId, response.Error?.Message);
+                    _logger.LogError("Failed to discover tools: {Error}", response.Error?.Message);
                     return new List<McpTool>();
                 }
 
@@ -127,12 +127,12 @@ namespace SmartRAG.Services.Mcp
                     }
                 }
 
-                _logger.LogInformation("Discovered {Count} tools on server {ServerId}", tools.Count, serverId);
+                _logger.LogInformation("Discovered {Count} tools", tools.Count);
                 return tools;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error discovering tools on server {ServerId}", serverId);
+                _logger.LogError(ex, "Error discovering tools");
                 return new List<McpTool>();
             }
         }
@@ -169,7 +169,7 @@ namespace SmartRAG.Services.Mcp
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error calling tool {ToolName} on server {ServerId}", toolName, serverId);
+                _logger.LogError(ex, "Error calling MCP tool");
                 return new McpResponse
                 {
                     Error = new McpError
@@ -226,7 +226,7 @@ namespace SmartRAG.Services.Mcp
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error parsing MCP response from server {ServerId}", serverId);
+                _logger.LogError(ex, "Error parsing MCP response");
                 return new McpResponse
                 {
                     Error = new McpError
