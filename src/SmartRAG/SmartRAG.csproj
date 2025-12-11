@@ -20,7 +20,7 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Release 3.4.0: MCP Integration &amp; Enhanced Search Capabilities (MINOR Release - 2025-12-10)
+    <PackageReleaseNotes>Release 3.4.0: MCP Integration &amp; Enhanced Search Capabilities (MINOR Release - 2025-12-11)
 
 NEW FEATURES:
 - MCP (Model Context Protocol) Integration: External MCP server integration for enhanced search capabilities
@@ -28,10 +28,12 @@ NEW FEATURES:
 - DocumentType Property: Enhanced document chunk filtering by content type (Document, Audio, Image)
 - DefaultLanguage Support: Global default language configuration for document processing
 - Enhanced Search Feature Flags: Granular control over MCP, audio, and image search capabilities
-- Early Exit Optimization: Performance improvement for document search with early exit logic
+- Early Exit Optimization: Performance improvement with parallel execution of document search and query intent analysis, smart skip logic for eager document answer generation
+- IsExplicitlyNegative Check: Fast-fail mechanism for negative answers with [NO_ANSWER_FOUND] pattern support
 - SmartRagStartupService: Centralized startup service for automatic initialization
 
 IMPROVEMENTS:
+- Query Strategy Optimization: Enhanced query execution strategy with intelligent source selection and improved early exit logic using StrongDocumentMatchThreshold
 - Code Quality: Comprehensive code cleanup, removed redundant comments and language-specific references
 - Model Organization: Reorganized models into logical subfolders (Configuration, RequestResponse, Results, Schema)
 - Dependency Injection: Improved DI patterns and error handling
