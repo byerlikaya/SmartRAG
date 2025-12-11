@@ -36,7 +36,7 @@ This directory contains example projects demonstrating how to use SmartRAG in di
   - **Test Databases**: Pre-configured test databases with cross-database relationships
   - **Health Monitoring**: Service health checks for all components
   - **Model Management**: Ollama model download and management
-  - **Multi-language**: Query support in English, Turkish, German, Russian
+  - **Multi-language**: Query support in multiple languages with ISO 639-1 language codes
 
 ## 🚀 Running Examples
 
