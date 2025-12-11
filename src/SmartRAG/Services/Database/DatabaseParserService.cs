@@ -150,6 +150,8 @@ namespace SmartRAG.Services.Database
             if (string.IsNullOrWhiteSpace(connectionString)) throw new ArgumentNullException(nameof(connectionString));
             if (string.IsNullOrWhiteSpace(query)) throw new ArgumentNullException(nameof(query));
 
+            ValidateQueryForSecurity(query);
+
             _logger.LogInformation("Executing custom query for database type: {DatabaseType}", databaseType);
 
             if (databaseType == DatabaseType.SQLite)
@@ -162,6 +164,45 @@ namespace SmartRAG.Services.Database
                 return await ExecutePostgreSqlQueryAsync(connectionString, query, maxRows);
             else
                 throw new NotSupportedException($"Database type {databaseType} is not supported");
+        }
+
+        private static void ValidateQueryForSecurity(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                return;
+
+            var upperQuery = query.ToUpperInvariant();
+            var dangerousKeywords = new[] { "DROP", "DELETE", "TRUNCATE", "ALTER", "CREATE", "EXEC", "EXECUTE", "SP_", "XP_" };
+
+            foreach (var keyword in dangerousKeywords)
+            {
+                if (upperQuery.Contains(keyword, StringComparison.Ordinal))
+                {
+                    throw new ArgumentException($"Query contains dangerous keyword: {keyword}", nameof(query));
+                }
+            }
+        }
+
+        private static string SanitizeTableName(string tableName)
+        {
+            if (string.IsNullOrWhiteSpace(tableName))
+                throw new ArgumentException("Table name cannot be null or empty", nameof(tableName));
+
+            var sanitized = tableName.Trim();
+            
+            if (sanitized.Contains(";", StringComparison.Ordinal) ||
+                sanitized.Contains("--", StringComparison.Ordinal) ||
+                sanitized.Contains("/*", StringComparison.Ordinal) ||
+                sanitized.Contains("*/", StringComparison.Ordinal) ||
+                sanitized.Contains("'", StringComparison.Ordinal) ||
+                sanitized.Contains("\"", StringComparison.Ordinal) ||
+                sanitized.Contains("\\", StringComparison.Ordinal) ||
+                sanitized.Contains("/", StringComparison.Ordinal))
+            {
+                throw new ArgumentException("Table name contains invalid characters", nameof(tableName));
+            }
+
+            return sanitized;
         }
 
         /// <summary>
@@ -284,7 +325,8 @@ namespace SmartRAG.Services.Database
         private async Task<string> GetSQLiteTableSchemaInternalAsync(SqliteConnection connection, string tableName)
         {
             using var command = connection.CreateCommand();
-            command.CommandText = $"PRAGMA table_info({tableName})";
+            var sanitizedTableName = SanitizeTableName(tableName);
+            command.CommandText = $"PRAGMA table_info({sanitizedTableName})";
 
             var schema = new StringBuilder();
             schema.AppendLine($"Table: {tableName}");
@@ -312,7 +354,8 @@ namespace SmartRAG.Services.Database
         private async Task<string> GetSQLiteTableDataInternalAsync(SqliteConnection connection, string tableName, DatabaseConfig config)
         {
             using var command = connection.CreateCommand();
-            command.CommandText = $"SELECT * FROM [{tableName}] LIMIT {config.MaxRowsPerTable}";
+            var sanitizedTableName = SanitizeTableName(tableName);
+            command.CommandText = $"SELECT * FROM [{sanitizedTableName}] LIMIT {config.MaxRowsPerTable}";
             command.CommandTimeout = config.QueryTimeoutSeconds;
 
             return await GetTableDataInternalAsync(command, config);
@@ -320,6 +363,7 @@ namespace SmartRAG.Services.Database
 
         private async Task<string> ExecuteSQLiteQueryAsync(string connectionString, string query, int maxRows)
         {
+            ValidateQueryForSecurity(query);
             var sanitizedConnectionString = ValidateAndSanitizeSQLiteConnectionString(connectionString);
             using var connection = new SqliteConnection(sanitizedConnectionString);
             await connection.OpenAsync();
@@ -443,6 +487,7 @@ namespace SmartRAG.Services.Database
 
         private async Task<string> GetSqlServerTableSchemaInternalAsync(SqlConnection connection, string tableName)
         {
+            var sanitizedTableName = SanitizeTableName(tableName);
             using var command = connection.CreateCommand();
             command.CommandText = @"
                     SELECT 
@@ -454,10 +499,10 @@ namespace SmartRAG.Services.Database
                     WHERE TABLE_NAME = @tableName
                     ORDER BY ORDINAL_POSITION";
 
-            command.Parameters.AddWithValue("@tableName", tableName);
+            command.Parameters.AddWithValue("@tableName", sanitizedTableName);
 
             var schema = new StringBuilder();
-            schema.AppendLine($"Table: {tableName}");
+            schema.AppendLine($"Table: {sanitizedTableName}");
             schema.AppendLine("Columns:");
 
             using (var reader = await command.ExecuteReaderAsync())
@@ -482,7 +527,8 @@ namespace SmartRAG.Services.Database
         private async Task<string> GetSqlServerTableDataInternalAsync(SqlConnection connection, string tableName, DatabaseConfig config)
         {
             using var command = connection.CreateCommand();
-            command.CommandText = $"SELECT TOP ({config.MaxRowsPerTable}) * FROM [{tableName}]";
+            var sanitizedTableName = SanitizeTableName(tableName);
+            command.CommandText = $"SELECT TOP ({config.MaxRowsPerTable}) * FROM [{sanitizedTableName}]";
             command.CommandTimeout = config.QueryTimeoutSeconds;
 
             return await GetTableDataInternalAsync(command, config);
@@ -496,6 +542,7 @@ namespace SmartRAG.Services.Database
                 using var connection = new SqlConnection(sanitizedConnectionString);
                 await connection.OpenAsync();
 
+                ValidateQueryForSecurity(query);
                 using var command = connection.CreateCommand();
                 command.CommandText = query;
                 command.CommandTimeout = DefaultQueryTimeout;
@@ -636,6 +683,7 @@ namespace SmartRAG.Services.Database
 
         private async Task<string> GetMySqlTableSchemaInternalAsync(MySqlConnection connection, string tableName)
         {
+            var sanitizedTableName = SanitizeTableName(tableName);
             using var command = connection.CreateCommand();
             command.CommandText = @"
                     SELECT 
@@ -650,10 +698,10 @@ namespace SmartRAG.Services.Database
                     AND TABLE_NAME = @tableName
                     ORDER BY ORDINAL_POSITION";
 
-            command.Parameters.AddWithValue("@tableName", tableName);
+            command.Parameters.AddWithValue("@tableName", sanitizedTableName);
 
             var schema = new StringBuilder();
-            schema.AppendLine($"Table: {tableName}");
+            schema.AppendLine($"Table: {sanitizedTableName}");
             schema.AppendLine("Columns:");
 
             using (var reader = await command.ExecuteReaderAsync())
@@ -682,7 +730,8 @@ namespace SmartRAG.Services.Database
         private async Task<string> GetMySqlTableDataInternalAsync(MySqlConnection connection, string tableName, DatabaseConfig config)
         {
             using var command = connection.CreateCommand();
-            command.CommandText = $"SELECT * FROM `{tableName}` LIMIT {config.MaxRowsPerTable}";
+            var sanitizedTableName = SanitizeTableName(tableName);
+            command.CommandText = $"SELECT * FROM `{sanitizedTableName}` LIMIT {config.MaxRowsPerTable}";
             command.CommandTimeout = config.QueryTimeoutSeconds;
 
             return await GetTableDataInternalAsync(command, config);
@@ -694,6 +743,7 @@ namespace SmartRAG.Services.Database
             using var connection = new MySqlConnection(sanitizedConnectionString);
             await connection.OpenAsync();
 
+            ValidateQueryForSecurity(query);
             using var command = connection.CreateCommand();
             command.CommandText = query;
             command.CommandTimeout = DefaultQueryTimeout;
@@ -784,6 +834,7 @@ namespace SmartRAG.Services.Database
 
         private async Task<string> GetPostgreSqlTableSchemaInternalAsync(NpgsqlConnection connection, string tableName)
         {
+            var sanitizedTableName = SanitizeTableName(tableName);
             using var command = connection.CreateCommand();
             command.CommandText = @"
                     SELECT 
@@ -796,10 +847,10 @@ namespace SmartRAG.Services.Database
                     AND table_name = @tableName
                     ORDER BY ordinal_position";
 
-            command.Parameters.AddWithValue("@tableName", tableName);
+            command.Parameters.AddWithValue("@tableName", sanitizedTableName);
 
             var schema = new StringBuilder();
-            schema.AppendLine($"Table: {tableName}");
+            schema.AppendLine($"Table: {sanitizedTableName}");
             schema.AppendLine("Columns:");
 
             using (var reader = await command.ExecuteReaderAsync())
@@ -829,7 +880,8 @@ namespace SmartRAG.Services.Database
         private async Task<string> GetPostgreSqlTableDataInternalAsync(NpgsqlConnection connection, string tableName, DatabaseConfig config)
         {
             using var command = connection.CreateCommand();
-            command.CommandText = $"SELECT * FROM \"{tableName}\" LIMIT {config.MaxRowsPerTable}";
+            var sanitizedTableName = SanitizeTableName(tableName);
+            command.CommandText = $"SELECT * FROM \"{sanitizedTableName}\" LIMIT {config.MaxRowsPerTable}";
             command.CommandTimeout = config.QueryTimeoutSeconds;
 
             return await GetTableDataInternalAsync(command, config);
@@ -841,6 +893,7 @@ namespace SmartRAG.Services.Database
             using var connection = new NpgsqlConnection(sanitizedConnectionString);
             await connection.OpenAsync();
 
+            ValidateQueryForSecurity(query);
             using var command = connection.CreateCommand();
             command.CommandText = query;
             command.CommandTimeout = DefaultQueryTimeout;

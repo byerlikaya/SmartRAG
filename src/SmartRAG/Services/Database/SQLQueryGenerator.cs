@@ -62,7 +62,7 @@ namespace SmartRAG.Services.Database
                     var schema = await _schemaAnalyzer.GetSchemaAsync(dbQuery.DatabaseId);
                     if (schema == null)
                     {
-                        _logger.LogWarning("Schema not found for database: {DatabaseId}", dbQuery.DatabaseId);
+                        _logger.LogWarning("Schema not found for database");
                         continue;
                     }
 
@@ -72,17 +72,17 @@ namespace SmartRAG.Services.Database
 
                     var sql = await _aiService.GenerateResponseAsync(systemPrompt, new List<string>());
 
-                    _logger.LogDebug("AI raw response for {DatabaseId}: {RawSQL}", dbQuery.DatabaseId, sql);
+                    _logger.LogDebug("AI raw response received");
 
                     var extractedSql = ExtractSQLFromAIResponse(sql);
 
                     extractedSql = strategy.FormatSql(extractedSql);
 
-                    _logger.LogDebug("Extracted SQL for {DatabaseId}: {ExtractedSQL}", dbQuery.DatabaseId, extractedSql);
+                    _logger.LogDebug("Extracted SQL");
 
                     if (!ValidateSql(extractedSql, schema, dbQuery.RequiredTables, strategy, out var validationErrors))
                     {
-                        _logger.LogWarning("Generated SQL failed validation for {DatabaseId}. Errors: {Errors}", dbQuery.DatabaseId, string.Join(", ", validationErrors));
+                        _logger.LogWarning("Generated SQL failed validation. Errors: {Errors}", string.Join(", ", validationErrors));
                         dbQuery.GeneratedQuery = null;
                         continue;
                     }
@@ -91,7 +91,7 @@ namespace SmartRAG.Services.Database
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error generating SQL for database: {DatabaseId}", dbQuery.DatabaseId);
+                    _logger.LogError(ex, "Error generating SQL for database");
                 }
             }
 

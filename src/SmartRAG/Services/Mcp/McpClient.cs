@@ -47,7 +47,7 @@ namespace SmartRAG.Services.Mcp
             {
                 if (_connections.ContainsKey(config.ServerId))
                 {
-                    _logger.LogWarning("Already connected to server {ServerId}", config.ServerId);
+                    _logger.LogWarning("Already connected to server");
                     return Task.FromResult(true);
                 }
 

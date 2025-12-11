@@ -111,7 +111,7 @@ namespace SmartRAG.Services.Database
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error executing query on database: {DatabaseId}", dbQuery.DatabaseId);
+                _logger.LogError(ex, "Error executing query on database");
                 result.Success = false;
                 result.ErrorMessage = ex.Message;
             }

@@ -58,7 +58,7 @@ namespace SmartRAG.Services.Mcp
                     }
                     else
                     {
-                        _logger.LogWarning("Failed to connect to MCP server {ServerId}", server.ServerId);
+                        _logger.LogWarning("Failed to connect to MCP server");
                     }
                 }
                 catch (System.Exception ex)

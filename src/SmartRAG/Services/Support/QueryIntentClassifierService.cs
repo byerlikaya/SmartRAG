@@ -51,13 +51,13 @@ namespace SmartRAG.Services.Support
 
             if (heuristic == HeuristicDecision.Conversation)
             {
-                _logger.LogDebug("Query classified as CONVERSATION by heuristics (score={Score}): {Query}", heuristicScore, _textNormalizationService.SanitizeForLog(trimmedQuery));
+                _logger.LogDebug("Query classified as CONVERSATION by heuristics (score={Score})", heuristicScore);
                 return true;
             }
             
             if (heuristic == HeuristicDecision.Information && heuristicScore >= 4)
             {
-                _logger.LogDebug("Query classified as INFORMATION by heuristics (strong indicators, score={Score}): {Query}", heuristicScore, _textNormalizationService.SanitizeForLog(trimmedQuery));
+                _logger.LogDebug("Query classified as INFORMATION by heuristics (strong indicators, score={Score})", heuristicScore);
                 return false;
             }
 

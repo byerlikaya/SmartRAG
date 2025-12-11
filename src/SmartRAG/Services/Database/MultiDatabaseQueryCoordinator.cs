@@ -208,7 +208,7 @@ namespace SmartRAG.Services.Database
                 var schema = await _schemaAnalyzer.GetSchemaAsync(dbQuery.DatabaseId);
                 if (schema == null)
                 {
-                    _logger.LogWarning("Schema not found for {DatabaseId}, removing from query list", dbQuery.DatabaseId);
+                    _logger.LogWarning("Schema not found, removing from query list");
                     continue;
                 }
 
@@ -236,8 +236,7 @@ namespace SmartRAG.Services.Database
 
                 if (invalidTables.Count > 0)
                 {
-                    _logger.LogWarning("AI selected invalid tables for {DatabaseName}: {InvalidTables}",
-                        dbQuery.DatabaseName, string.Join(", ", invalidTables));
+                    _logger.LogWarning("AI selected invalid tables: {InvalidTables}", string.Join(", ", invalidTables));
                 }
 
                 if (validTables.Count > 0)
@@ -247,7 +246,7 @@ namespace SmartRAG.Services.Database
                 }
                 else
                 {
-                    _logger.LogWarning("✗ {DatabaseName}: No valid tables, removing", dbQuery.DatabaseName);
+                    _logger.LogWarning("No valid tables, removing");
                 }
             }
 

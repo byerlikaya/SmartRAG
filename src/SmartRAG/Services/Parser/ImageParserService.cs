@@ -317,12 +317,12 @@ namespace SmartRAG.Services.Parser
                     }
                     else
                     {
-                        _logger.LogWarning("[OCR Language Detection] System locale: '{CultureName}' → Language: '{LanguageCode}' (not available, falling back to 'eng')", currentCulture.Name, threeLetterCode);
+                        _logger.LogWarning("[OCR Language Detection] System locale not available, falling back to 'eng'");
                         return DefaultLanguage;
                     }
                 }
 
-                _logger.LogWarning("[OCR Language Detection] System locale: '{CultureName}' → No mapping found, defaulting to 'eng'", currentCulture.Name);
+                _logger.LogWarning("[OCR Language Detection] No mapping found, defaulting to 'eng'");
                 return DefaultLanguage;
             }
             catch (Exception ex)
@@ -362,7 +362,7 @@ namespace SmartRAG.Services.Parser
                 return tesseractCode;
             }
 
-            _logger.LogWarning("Unknown language code: '{Language}'. Falling back to default: '{Default}'", language, DefaultLanguage);
+            _logger.LogWarning("Unknown language code, falling back to default");
             return DefaultLanguage;
         }
 
@@ -445,8 +445,7 @@ namespace SmartRAG.Services.Parser
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    _logger.LogWarning("Failed to download Tesseract data for '{Language}': HTTP {StatusCode}",
-                        languageCode, response.StatusCode);
+                    _logger.LogWarning("Failed to download Tesseract data: HTTP {StatusCode}", response.StatusCode);
                     return false;
                 }
 
@@ -458,17 +457,17 @@ namespace SmartRAG.Services.Parser
             }
             catch (System.Net.Http.HttpRequestException ex)
             {
-                _logger.LogWarning(ex, "Network error while downloading Tesseract data for '{Language}'. OCR will use fallback.", languageCode);
+                _logger.LogWarning(ex, "Network error while downloading Tesseract data. OCR will use fallback.");
                 return false;
             }
             catch (TaskCanceledException ex)
             {
-                _logger.LogWarning(ex, "Download timeout for Tesseract data '{Language}'. OCR will use fallback.", languageCode);
+                _logger.LogWarning(ex, "Download timeout for Tesseract data. OCR will use fallback.");
                 return false;
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to download Tesseract data for '{Language}'. OCR will use fallback.", languageCode);
+                _logger.LogWarning(ex, "Failed to download Tesseract data. OCR will use fallback.");
                 return false;
             }
         }

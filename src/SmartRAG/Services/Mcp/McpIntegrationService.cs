@@ -87,7 +87,7 @@ namespace SmartRAG.Services.Mcp
                         }
                         catch (Exception ex)
                         {
-                            _logger.LogWarning(ex, "Error calling tool {ToolName} on server {ServerId}", tool.Name, serverId);
+                            _logger.LogWarning(ex, "Error calling tool on server");
                             results.Add(new McpToolResult
                             {
                                 ServerId = serverId,
@@ -163,7 +163,7 @@ namespace SmartRAG.Services.Mcp
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Error parsing InputSchema for tool {ToolName}, using default parameters", tool.Name);
+                    _logger.LogWarning(ex, "Error parsing InputSchema for tool, using default parameters");
                 }
             }
 

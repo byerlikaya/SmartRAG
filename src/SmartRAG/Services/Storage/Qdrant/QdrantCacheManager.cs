@@ -57,8 +57,7 @@ namespace SmartRAG.Services.Storage.Qdrant
 
                 CleanupExpiredCache();
 
-                _logger.LogDebug("Search results cached for query hash: {QueryHash}, cache size: {CacheSize}",
-                    queryHash, _searchCache.Count);
+                _logger.LogDebug("Search results cached, cache size: {CacheSize}", _searchCache.Count);
             }
         }
 

@@ -52,7 +52,7 @@ namespace SmartRAG.Services.Database
         {
             var databaseId = await GetDatabaseIdAsync(connectionConfig);
 
-            _logger.LogInformation("Analyzing schema for database: {DatabaseId}", databaseId);
+            _logger.LogInformation("Analyzing schema for database");
 
             var schemaInfo = new DatabaseSchemaInfo
             {
@@ -98,11 +98,11 @@ namespace SmartRAG.Services.Database
                 _schemaCache[databaseId] = schemaInfo;
                 _lastRefreshTimes[databaseId] = DateTime.UtcNow;
 
-                _logger.LogInformation("Schema analysis completed for database: {DatabaseId}", databaseId);
+                _logger.LogInformation("Schema analysis completed");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error analyzing schema for database: {DatabaseId}", databaseId);
+                _logger.LogError(ex, "Error analyzing schema for database");
                 schemaInfo.Status = SchemaAnalysisStatus.Failed;
                 schemaInfo.ErrorMessage = ex.Message;
             }
@@ -149,7 +149,7 @@ namespace SmartRAG.Services.Database
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to generate AI summary for database {DatabaseId}", schemaInfo.DatabaseId);
+                _logger.LogWarning(ex, "Failed to generate AI summary for database");
                 return GenerateFallbackSummary(schemaInfo);
             }
         }

@@ -68,7 +68,7 @@ namespace SmartRAG.Services.Database
         /// <returns>Query intent with database routing information</returns>
         public async Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery)
         {
-            _logger.LogDebug("Analyzing query intent for: {Query}", SanitizeForLog(userQuery));
+            _logger.LogDebug("Analyzing query intent");
 
             var queryIntent = new QueryIntent
             {
@@ -402,7 +402,7 @@ namespace SmartRAG.Services.Database
 
                             if (targetSchema == null)
                             {
-                                _logger.LogWarning("Schema not found for database: {DatabaseName}", dbQuery.DatabaseName);
+                                _logger.LogWarning("Schema not found for database");
                                 continue;
                             }
 
@@ -443,7 +443,7 @@ namespace SmartRAG.Services.Database
                         }
                         else
                         {
-                            _logger.LogWarning("AI selected non-existent database: {DatabaseId}", dbQuery.DatabaseId);
+                            _logger.LogWarning("AI selected non-existent database");
                         }
                     }
                 }

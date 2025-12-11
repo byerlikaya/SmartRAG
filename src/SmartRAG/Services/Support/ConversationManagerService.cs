@@ -141,7 +141,7 @@ namespace SmartRAG.Services.Support
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error getting conversation history for session {SessionId}", sessionId);
+                _logger.LogError(ex, "Error getting conversation history");
                 return string.Empty;
             }
         }
@@ -191,7 +191,7 @@ namespace SmartRAG.Services.Support
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error adding to conversation for session {SessionId}", sessionId);
+                _logger.LogError(ex, "Error adding to conversation");
             }
         }
 
