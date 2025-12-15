@@ -8,6 +8,7 @@ using SmartRAG.Models;
 using SmartRAG.Services.Helpers;
 using Microsoft.Extensions.Logging;
 using SkiaSharp;
+using PDFtoImage;
 using System;
 using System.IO;
 using System.Linq;
@@ -112,16 +113,24 @@ namespace SmartRAG.Services.Document.Parsers
                 }
                 else
                 {
-                    var correctedText = _imageParserService?.CorrectCurrencySymbols(text, language) ?? text;
-                    textBuilder.AppendLine(correctedText);
-
-                    if (hasEncodingIssues)
+                    if (hasEncodingIssues && _imageParserService != null)
                     {
-                        _logger.LogDebug("PDF page {PageNumber} is text-based with encoding issues, using extracted text (length: {Length}). OCR not available for text-based PDFs.", i, text?.Length ?? 0);
+                        shouldUseOcr = true;
+                        _logger.LogDebug("PDF page {PageNumber} is text-based with encoding issues, attempting OCR fallback (text length: {Length})", i, text?.Length ?? 0);
                     }
-                    else if (!textIsSubstantial)
+                    else
                     {
-                        _logger.LogDebug("PDF page {PageNumber} is text-based with insufficient text (length: {Length}), using extracted text", i, text?.Length ?? 0);
+                        var correctedText = _imageParserService?.CorrectCurrencySymbols(text, language) ?? text;
+                        textBuilder.AppendLine(correctedText);
+
+                        if (hasEncodingIssues)
+                        {
+                            _logger.LogDebug("PDF page {PageNumber} is text-based with encoding issues, using extracted text (length: {Length})", i, text?.Length ?? 0);
+                        }
+                        else if (!textIsSubstantial)
+                        {
+                            _logger.LogDebug("PDF page {PageNumber} is text-based with insufficient text (length: {Length}), using extracted text", i, text?.Length ?? 0);
+                        }
                     }
                 }
 
@@ -129,7 +138,7 @@ namespace SmartRAG.Services.Document.Parsers
                 {
                     try
                     {
-                        var pageImageStream = await RenderPdfPageAsImageAsync(page, pdfBytes);
+                        var pageImageStream = await RenderPdfPageAsImageAsync(page, pdfBytes, i - 1);
                         if (pageImageStream != null)
                         {
                             var ocrText = await _imageParserService.ExtractTextFromImageAsync(pageImageStream, language);
@@ -296,12 +305,30 @@ namespace SmartRAG.Services.Document.Parsers
                     nonAsciiCharCount, totalCharCount, (double)nonAsciiCharCount / totalCharCount);
             }
 
-            var hasIssue = hasBrokenSpacing || hasUnusualConsonantClusters || hasFewSpecialChars || hasBrokenWordPatterns;
+            // Check for suspicious character frequency (common in encoding mismatches)
+            // Certain Unicode characters (U+00A0-U+00FF range) are valid in specific alphabets
+            // but when they appear frequently in otherwise Latin-script text, it indicates encoding issues
+            var hasSuspiciousCharacters = false;
+            var suspiciousChars = new[] { '\u00F5', '\u00A9', '\u00AA', '\u00BA', '\u00B5', '\u00B1', '\u00A7' };
+            var suspiciousCharCount = text.Count(c => suspiciousChars.Contains(c));
+            
+            if (totalCharCount > 100 && suspiciousCharCount >= 3)
+            {
+                var ratio = (double)suspiciousCharCount / totalCharCount;
+                if (ratio > 0.01) // >1% suspicious characters
+                {
+                    hasSuspiciousCharacters = true;
+                    _logger.LogDebug("Detected high frequency of suspicious characters: {Count}/{Total} = {Ratio:P2} (threshold: 1%)",
+                        suspiciousCharCount, totalCharCount, ratio);
+                }
+            }
+
+            var hasIssue = hasBrokenSpacing || hasUnusualConsonantClusters || hasFewSpecialChars || hasBrokenWordPatterns || hasSuspiciousCharacters;
 
             if (hasIssue)
             {
-                _logger.LogDebug("Encoding issue detected - BrokenSpacing: {BrokenSpacing}, ConsonantClusters: {Clusters}, FewSpecialChars: {FewChars}, BrokenWords: {BrokenWords}",
-                    hasBrokenSpacing, hasUnusualConsonantClusters, hasFewSpecialChars, hasBrokenWordPatterns);
+                _logger.LogDebug("Encoding issue detected - BrokenSpacing: {BrokenSpacing}, ConsonantClusters: {Clusters}, FewSpecialChars: {FewChars}, BrokenWords: {BrokenWords}, SuspiciousChars: {SuspiciousChars}",
+                    hasBrokenSpacing, hasUnusualConsonantClusters, hasFewSpecialChars, hasBrokenWordPatterns, hasSuspiciousCharacters);
             }
 
             return hasIssue;
@@ -309,28 +336,40 @@ namespace SmartRAG.Services.Document.Parsers
 
         /// <summary>
         /// Renders a PDF page as an image stream for OCR processing
-        /// Extracts embedded images from scanned PDFs (image-based PDFs)
-        /// For text-based PDFs, this method cannot render the page to an image
-        /// because the current libraries (iText7, SkiaSharp) don't support PDF-to-bitmap rendering
+        /// First tries to extract embedded images from scanned PDFs (image-based PDFs)
+        /// If no embedded images found, uses PDFium to render text-based PDF pages to bitmap
         /// </summary>
-        private async Task<Stream> RenderPdfPageAsImageAsync(PdfPage page, byte[] pdfBytes = null)
+        private async Task<Stream> RenderPdfPageAsImageAsync(PdfPage page, byte[] pdfBytes = null, int pageIndex = 0)
         {
             return await Task.Run(() =>
             {
                 try
                 {
+                    // Try embedded images first (for scanned PDFs)
                     var embeddedImageResult = RenderPdfPageUsingEmbeddedImages(page);
                     if (embeddedImageResult != null)
                     {
+                        _logger.LogDebug("Extracted embedded image from PDF page {PageIndex} for OCR", pageIndex + 1);
                         return embeddedImageResult;
                     }
 
-                    _logger.LogDebug("No embedded images found in PDF page - text-based PDF cannot be rendered to image for OCR with current libraries");
+                    // Try PDF page rendering for text-based PDFs (if pdfBytes available)
+                    if (pdfBytes != null && pdfBytes.Length > 0)
+                    {
+                        var renderedResult = RenderTextBasedPdfPageToImage(pdfBytes, pageIndex);
+                        if (renderedResult != null)
+                        {
+                            _logger.LogDebug("Rendered text-based PDF page {PageIndex} to bitmap for OCR", pageIndex + 1);
+                            return renderedResult;
+                        }
+                    }
+
+                    _logger.LogDebug("No embedded images found and page rendering unavailable for PDF page {PageIndex}", pageIndex + 1);
                     return null;
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to extract embedded images from PDF page for OCR");
+                    _logger.LogWarning(ex, "Failed to render PDF page {PageIndex} to image for OCR", pageIndex + 1);
                     return null;
                 }
             });
@@ -448,6 +487,68 @@ namespace SmartRAG.Services.Document.Parsers
             }
         }
 
+        /// <summary>
+        /// Renders a text-based PDF page to bitmap image (for OCR fallback)
+        /// This allows OCR to be performed on text-based PDFs with encoding issues
+        /// Uses PDF rendering library to convert page to bitmap
+        /// </summary>
+        private Stream RenderTextBasedPdfPageToImage(byte[] pdfBytes, int pageIndex)
+        {
+            try
+            {
+                // Render PDF page to bitmap
+                using var originalBitmap = Conversion.ToImage(pdfBytes, page: pageIndex);
+                
+                if (originalBitmap == null)
+                {
+                    _logger.LogDebug("Failed to render PDF page {PageIndex} to bitmap", pageIndex);
+                    return null;
+                }
+
+                // Upscale for better OCR accuracy (2x scale = ~600 DPI equivalent)
+                // Higher resolution helps OCR distinguish similar characters (|/1, O/0, etc.)
+                const float upscaleFactorForOcr = 2.0f;
+                var targetWidth = (int)(originalBitmap.Width * upscaleFactorForOcr);
+                var targetHeight = (int)(originalBitmap.Height * upscaleFactorForOcr);
+
+                using var scaledBitmap = originalBitmap.Resize(
+                    new SKImageInfo(targetWidth, targetHeight), 
+                    SKSamplingOptions.Default);
+
+                if (scaledBitmap == null)
+                {
+                    _logger.LogDebug("Failed to upscale bitmap for PDF page {PageIndex}, using original resolution", pageIndex);
+                    
+                    // Fallback to original bitmap
+                    using var image = SKImage.FromBitmap(originalBitmap);
+                    using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+                    var stream = new MemoryStream(data.ToArray());
+                    stream.Position = 0;
+                    
+                    _logger.LogDebug("Successfully rendered PDF page {PageIndex} to bitmap ({Width}x{Height})", 
+                        pageIndex, originalBitmap.Width, originalBitmap.Height);
+                    
+                    return stream;
+                }
+
+                // Encode upscaled bitmap to PNG stream for OCR processing
+                using var scaledImage = SKImage.FromBitmap(scaledBitmap);
+                using var scaledData = scaledImage.Encode(SKEncodedImageFormat.Png, 100);
+                var finalStream = new MemoryStream(scaledData.ToArray());
+                finalStream.Position = 0;
+
+                _logger.LogDebug("Successfully rendered and upscaled PDF page {PageIndex} to bitmap ({OriginalWidth}x{OriginalHeight} → {ScaledWidth}x{ScaledHeight})", 
+                    pageIndex, originalBitmap.Width, originalBitmap.Height, scaledBitmap.Width, scaledBitmap.Height);
+                
+                return finalStream;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Failed to render PDF page {PageIndex} to bitmap", pageIndex);
+                return null;
+            }
+        }
+
 
         /// <summary>
         /// Fixes common PDF text encoding issues
@@ -472,28 +573,35 @@ namespace SmartRAG.Services.Document.Parsers
                 var fixedText = text;
                 var replacementChar = '\uFFFD';
                 var suspiciousChar = '\u00F5';
-                
-                if (text.Contains(replacementChar) || (text.Contains(suspiciousChar) && text.Count(c => c == suspiciousChar) > text.Length * 0.01))
+
+                var totalLetterCount = text.Count(char.IsLetter);
+                var latinLikeLetterCount = text.Count(c => char.IsLetter(c) && c <= 0x024F);
+                var nonLatinLetterCount = totalLetterCount - latinLikeLetterCount;
+
+                var isLatinLikeDominant = totalLetterCount > 0 &&
+                                          latinLikeLetterCount >= nonLatinLetterCount * 2;
+
+                if (isLatinLikeDominant &&
+                    (text.Contains(replacementChar) ||
+                     (text.Contains(suspiciousChar) && text.Count(c => c == suspiciousChar) > text.Length * 0.01)))
                 {
                     var encodingNames = new[] { "Windows-1254", "Windows-1252", "ISO-8859-1" };
-                    
+
                     foreach (var encodingName in encodingNames)
                     {
                         try
                         {
-                            var encoding = Encoding.GetEncoding(encodingName);
-                            var utf8Bytes = Encoding.UTF8.GetBytes(text);
-                            var decoded = encoding.GetString(utf8Bytes);
-                            
-                            var properBytes = encoding.GetBytes(decoded);
-                            var correctedText = Encoding.UTF8.GetString(Encoding.Convert(encoding, Encoding.UTF8, properBytes));
-                            
+                            var legacyEncoding = Encoding.GetEncoding(encodingName);
+
+                            var legacyBytes = legacyEncoding.GetBytes(text);
+                            var correctedText = Encoding.UTF8.GetString(legacyBytes);
+
                             var originalReplacementCount = text.Count(c => c == replacementChar);
                             var correctedReplacementCount = correctedText.Count(c => c == replacementChar);
                             var originalSuspiciousCount = text.Count(c => c == suspiciousChar);
                             var correctedSuspiciousCount = correctedText.Count(c => c == suspiciousChar);
-                            
-                            if ((correctedReplacementCount < originalReplacementCount) || 
+
+                            if ((correctedReplacementCount < originalReplacementCount) ||
                                 (correctedReplacementCount == originalReplacementCount && correctedSuspiciousCount < originalSuspiciousCount) ||
                                 (correctedReplacementCount == originalReplacementCount && correctedSuspiciousCount == originalSuspiciousCount && correctedText.Length > text.Length * 0.9))
                             {

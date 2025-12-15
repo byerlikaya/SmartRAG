@@ -110,6 +110,9 @@ This release adds MCP integration, file watcher service, and enhanced search cap
     <PackageReference Include="itext" Version="9.4.0" />
     <PackageReference Include="EPPlus" Version="8.3.1" />
     
+    <!-- PDF Rendering (for OCR fallback on text-based PDFs with encoding issues) -->
+    <PackageReference Include="PDFtoImage" Version="5.0.0" />
+    
     <!-- OCR and Image Processing -->
     <PackageReference Include="Tesseract" Version="5.2.0" />
     <PackageReference Include="SkiaSharp" Version="3.119.1" />
