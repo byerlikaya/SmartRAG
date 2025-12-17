@@ -6,9 +6,9 @@ using System.Collections.Generic;
 namespace SmartRAG.Models.RequestResponse
 {
     /// <summary>
-    /// Request DTO for document-only query strategy execution
+    /// Unified request DTO for all query strategy executions (database-only, document-only, hybrid)
     /// </summary>
-    public class DocumentQueryStrategyRequest
+    public class QueryStrategyRequest
     {
         /// <summary>
         /// The natural language query to execute
@@ -31,6 +31,16 @@ namespace SmartRAG.Models.RequestResponse
         public bool? CanAnswerFromDocuments { get; set; }
 
         /// <summary>
+        /// Whether database queries are available (used for hybrid strategy)
+        /// </summary>
+        public bool? HasDatabaseQueries { get; set; }
+
+        /// <summary>
+        /// Query intent analysis result (used for database and hybrid strategies)
+        /// </summary>
+        public QueryIntent? QueryIntent { get; set; }
+
+        /// <summary>
         /// Preferred language for the response
         /// </summary>
         public string? PreferredLanguage { get; set; }
@@ -41,7 +51,7 @@ namespace SmartRAG.Models.RequestResponse
         public SearchOptions? Options { get; set; }
 
         /// <summary>
-        /// Pre-calculated document chunks
+        /// Pre-calculated document chunks (used for document and hybrid strategies)
         /// </summary>
         public List<DocumentChunk>? PreCalculatedResults { get; set; }
 
@@ -51,3 +61,4 @@ namespace SmartRAG.Models.RequestResponse
         public List<string>? QueryTokens { get; set; }
     }
 }
+
