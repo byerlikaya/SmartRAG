@@ -3,8 +3,10 @@
 using System;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Options;
 using SmartRAG.Interfaces.Support;
 using SmartRAG.Interfaces.AI;
+using SmartRAG.Models;
 
 namespace SmartRAG.Services.AI
 {
@@ -14,20 +16,23 @@ namespace SmartRAG.Services.AI
     public class PromptBuilderService : IPromptBuilderService
     {
         private readonly Lazy<IConversationManagerService> _conversationManager;
+        private readonly SmartRagOptions _options;
 
         /// <summary>
         /// Initializes a new instance of the PromptBuilderService
         /// </summary>
         /// <param name="conversationManager">Service for managing conversation sessions and history (lazy to break circular dependency)</param>
-        public PromptBuilderService(Lazy<IConversationManagerService> conversationManager)
+        /// <param name="options">SmartRAG configuration options</param>
+        public PromptBuilderService(Lazy<IConversationManagerService> conversationManager, IOptions<SmartRagOptions> options)
         {
             _conversationManager = conversationManager;
+            _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         }
 
         /// <summary>
         /// Builds a prompt for document-based RAG answer generation
         /// </summary>
-        public string BuildDocumentRagPrompt(string query, string context, string? conversationHistory = null, string? preferredLanguage = null)
+        public string BuildDocumentRagPrompt(string query, string context, string? conversationHistory = null)
         {
             var historyContext = !string.IsNullOrEmpty(conversationHistory)
                 ? $"\n\nRecent conversation context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 30)}\n"
@@ -73,8 +78,8 @@ SPECIAL INSTRUCTIONS FOR VAGUE QUESTIONS (questions referring to generic person/
 - Combine conversation history context with document context to provide a complete answer"
                 : "";
 
-            var languageInstruction = !string.IsNullOrEmpty(preferredLanguage)
-                ? GetLanguageInstructionForCode(preferredLanguage)
+            var languageInstruction = !string.IsNullOrEmpty(_options.DefaultLanguage)
+                ? GetLanguageInstructionForCode(_options.DefaultLanguage)
                 : "respond in the SAME language as the query";
 
             return $@"You are a helpful document analysis assistant. Answer questions based ONLY on the provided document context.
@@ -90,14 +95,29 @@ CRITICAL RULES:
 - STRUCTURED DATA: Pay attention to patterns like ""Label: Value"", ""Field: Data"", or tabular structures - these often contain the exact information requested
 - KEY-VALUE PAIRS: Look for patterns where a label/question is followed by a value/answer (e.g., ""Label: Value"", ""Field: Data"", ""Question: Answer"")
 - DOCUMENT STRUCTURE: PDF documents often have structured sections with labels and values - search for these patterns even if they appear in table-like formats
-- If you find ANY relevant or related information (even if not a perfect match), provide an answer based on what you found
+
+ANSWER STRATEGY (CRITICAL):
+- If you find ANY relevant or related information (even if not a perfect match), YOU MUST provide an answer based on what you found
 - If you have partial information, share it and clearly explain what is available and what might be missing
-- If you cannot find the information after thorough search, return exactly and only: [NO_ANSWER_FOUND]
-- Do NOT return [NO_ANSWER_FOUND] if you can answer even partially.
+- ALWAYS try to answer using the context provided - even if the answer is not 100% complete
 - DO provide information if there is ANY related content found, even if incomplete - it's better to share partial information than to say nothing
 - Be precise and use exact information from documents
 - Synthesize information from multiple parts of the context when needed
 - Keep responses focused on the current question
+
+HOW TO ANSWER (CRITICAL):
+- Provide DIRECT, COMPLETE answers using the information in the context
+- DO NOT tell the user to ""check page X"" or ""refer to section Y"" - extract and provide the information directly
+- DO NOT say ""more information can be found in..."" - provide the information NOW
+- Extract ALL relevant details from the context and present them in your answer
+- If the context contains specific numbers, names, or details, include them in your answer
+- NEVER redirect users to other pages or sections - you must answer directly from the context provided
+
+WHEN TO USE [NO_ANSWER_FOUND] (USE VERY RARELY):
+- ONLY return [NO_ANSWER_FOUND] if the context is COMPLETELY EMPTY or TOTALLY IRRELEVANT to the question
+- Do NOT return [NO_ANSWER_FOUND] if you can answer even partially
+- Do NOT return [NO_ANSWER_FOUND] if there is ANY information related to the topic in the context
+- CRITICAL: If the context contains ANYTHING about the topic (even loosely related), provide an answer - DO NOT use [NO_ANSWER_FOUND]
 {countingInstructions}
 {vagueQueryInstructions}
 
@@ -111,7 +131,7 @@ Answer:";
         /// <summary>
         /// Builds a prompt for merging hybrid results (database + documents)
         /// </summary>
-        public string BuildHybridMergePrompt(string query, string? databaseContext, string? documentContext, string? conversationHistory = null, string? preferredLanguage = null)
+        public string BuildHybridMergePrompt(string query, string? databaseContext, string? documentContext, string? conversationHistory = null)
         {
             var combinedContext = new System.Collections.Generic.List<string>();
 
@@ -129,8 +149,8 @@ Answer:";
                 ? $"\n\nRecent context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 30)}\n"
                 : "";
 
-            var languageInstruction = !string.IsNullOrEmpty(preferredLanguage)
-                ? GetLanguageInstructionForCode(preferredLanguage)
+            var languageInstruction = !string.IsNullOrEmpty(_options.DefaultLanguage)
+                ? GetLanguageInstructionForCode(_options.DefaultLanguage)
                 : "respond in the same language as the query";
 
             return $@"Answer the user's question using the provided information.
@@ -156,14 +176,14 @@ Direct Answer:";
         /// <summary>
         /// Builds a prompt for general conversation
         /// </summary>
-        public string BuildConversationPrompt(string query, string? conversationHistory = null, string? preferredLanguage = null)
+        public string BuildConversationPrompt(string query, string? conversationHistory = null)
         {
             var historyContext = !string.IsNullOrEmpty(conversationHistory)
                 ? $"\n\nRecent conversation context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 30)}\n"
                 : "";
 
-            var languageInstruction = !string.IsNullOrEmpty(preferredLanguage)
-                ? GetLanguageInstructionForCode(preferredLanguage)
+            var languageInstruction = !string.IsNullOrEmpty(_options.DefaultLanguage)
+                ? GetLanguageInstructionForCode(_options.DefaultLanguage)
                 : "respond naturally in the same language as the user's question";
 
             return $@"You are a helpful AI assistant. Answer the user's question naturally and friendly.

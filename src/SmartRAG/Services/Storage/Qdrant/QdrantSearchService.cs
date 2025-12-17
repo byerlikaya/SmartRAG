@@ -95,6 +95,13 @@ namespace SmartRAG.Services.Storage.Qdrant
                     }
                 }
 
+                // Calculate per-collection limit: distribute maxResults across collections
+                // If single collection, use maxResults directly; otherwise divide evenly
+                var collectionCount = Math.Max(1, documentCollections.Count);
+                var perCollectionLimit = collectionCount == 1 
+                    ? maxResults 
+                    : Math.Max(10, (int)Math.Ceiling((double)maxResults / collectionCount));
+
                 foreach (var collectionName in documentCollections)
                 {
                     try
@@ -102,7 +109,7 @@ namespace SmartRAG.Services.Storage.Qdrant
                         var searchResults = await _client.SearchAsync(
                             collectionName: collectionName,
                             vector: queryEmbedding.ToArray(),
-                            limit: (ulong)Math.Max(20, maxResults * 4)
+                            limit: (ulong)Math.Max(20, perCollectionLimit)
                         );
 
                         foreach (var result in searchResults)

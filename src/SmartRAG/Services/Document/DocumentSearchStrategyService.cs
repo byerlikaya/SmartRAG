@@ -77,6 +77,7 @@ namespace SmartRAG.Services.Document
         {
             try
             {
+                _logger.LogInformation("[QueryOperation] Chunk Search: DocumentRepository.SearchAsync (line 80) - Method: DocumentSearchStrategyService.SearchDocumentsAsync");
                 var searchResults = await _documentRepository.SearchAsync(query, maxResults * InitialSearchMultiplier);
 
                 if (searchResults.Count > 0)
@@ -122,7 +123,10 @@ namespace SmartRAG.Services.Document
                         }
                     }
 
-                    return filteredResults;
+                    return filteredResults
+                        .OrderByDescending(c => c.RelevanceScore ?? 0.0)
+                        .ThenBy(c => c.ChunkIndex)
+                        .ToList();
                 }
             }
             catch (Exception ex)
@@ -174,7 +178,8 @@ namespace SmartRAG.Services.Document
 
             var relevantChunks = finalScoredChunks
                 .Where(c => c.RelevanceScore > MinWordCountThreshold)
-                .OrderByDescending(c => c.RelevanceScore)
+                .OrderByDescending(c => c.RelevanceScore ?? 0.0)
+                .ThenBy(c => c.ChunkIndex)
                 .Take(Math.Max(maxResults * CandidateMultiplier, CandidateMinCount))
                 .ToList();
 

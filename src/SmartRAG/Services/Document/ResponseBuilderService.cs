@@ -55,20 +55,12 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// Creates a RagResponse with standard configuration
         /// </summary>
-        public RagResponse CreateRagResponse(string query, string answer, List<SearchSource> sources)
-        {
-            return CreateRagResponse(query, answer, sources, null);
-        }
-
-        /// <summary>
-        /// Creates a RagResponse with standard configuration and search metadata
-        /// </summary>
         /// <param name="query">Original query</param>
         /// <param name="answer">Generated answer</param>
         /// <param name="sources">List of search sources</param>
-        /// <param name="searchMetadata">Metadata about search operations performed</param>
-        /// <returns>RAG response with search metadata</returns>
-        public RagResponse CreateRagResponse(string query, string answer, List<SearchSource> sources, SearchMetadata? searchMetadata)
+        /// <param name="searchMetadata">Optional metadata about search operations performed</param>
+        /// <returns>RAG response</returns>
+        public RagResponse CreateRagResponse(string query, string answer, List<SearchSource> sources, SearchMetadata? searchMetadata = null)
         {
             return new RagResponse
             {
@@ -233,7 +225,7 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// Creates a fallback response when document query cannot answer the question
         /// </summary>
-        public async Task<RagResponse> CreateFallbackResponseAsync(string query, string conversationHistory, string? preferredLanguage = null)
+        public async Task<RagResponse> CreateFallbackResponseAsync(string query, string conversationHistory)
         {
             if (_conversationManager == null)
             {
@@ -245,14 +237,14 @@ namespace SmartRAG.Services.Document
                 ServiceLogMessages.LogGeneralConversationQuery(_logger, null);
             }
 
-            var chatResponse = await _conversationManager.HandleGeneralConversationAsync(query, conversationHistory, preferredLanguage);
+            var chatResponse = await _conversationManager.HandleGeneralConversationAsync(query, conversationHistory);
             return CreateRagResponse(query, chatResponse, new List<SearchSource>());
         }
 
         /// <summary>
         /// Merges results from database and document queries into a unified response
         /// </summary>
-        public async Task<RagResponse> MergeHybridResultsAsync(string query, RagResponse databaseResponse, RagResponse documentResponse, string conversationHistory, string? preferredLanguage = null)
+        public async Task<RagResponse> MergeHybridResultsAsync(string query, RagResponse databaseResponse, RagResponse documentResponse, string conversationHistory)
         {
             var combinedSources = new List<SearchSource>();
             combinedSources.AddRange(databaseResponse.Sources);
@@ -287,7 +279,7 @@ namespace SmartRAG.Services.Document
             string mergedAnswer;
             if (_aiService != null && _promptBuilder != null)
             {
-                var mergePrompt = _promptBuilder.BuildHybridMergePrompt(query, databaseContext, documentContext, conversationHistory, preferredLanguage);
+                var mergePrompt = _promptBuilder.BuildHybridMergePrompt(query, databaseContext, documentContext, conversationHistory);
                 mergedAnswer = await _aiService.GenerateResponseAsync(mergePrompt, combinedContext);
             }
             else

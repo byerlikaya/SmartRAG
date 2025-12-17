@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 
 namespace SmartRAG.Helpers
 {
@@ -9,14 +10,16 @@ namespace SmartRAG.Helpers
     /// </summary>
     public static class QueryTokenizer
     {
-        private const int MinWordLength = 2;
+        private const int MinTokenLength = 2;
 
         /// <summary>
         /// Tokenizes a query into words, filtering by minimum length.
-        /// For agglutinative languages, also extracts root words from suffixed words to improve matching.
+        /// This is a basic tokenization that works with any language.
+        /// Language-specific normalization (such as stemming or morphological analysis) should be handled
+        /// by higher-level services to remain language-agnostic.
         /// </summary>
         /// <param name="query">Query to tokenize</param>
-        /// <returns>List of tokenized words including root words</returns>
+        /// <returns>List of tokenized words</returns>
         public static List<string> TokenizeQuery(string query)
         {
             if (string.IsNullOrWhiteSpace(query))
@@ -24,28 +27,12 @@ namespace SmartRAG.Helpers
                 return new List<string>();
             }
 
-            var words = query.ToLowerInvariant()
-                .Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
-                .Where(w => w.Length > MinWordLength)
+            var normalizedQuery = query.ToLowerInvariant();
+            var tokens = TokenizeByAlphanumericCharacters(normalizedQuery);
+
+            return tokens
+                .Where(w => w.Length > MinTokenLength)
                 .ToList();
-
-            var expandedWords = new HashSet<string>(words);
-            foreach (var word in words)
-            {
-                if (word.Length >= 6)
-                {
-                    for (int suffixLen = 2; suffixLen <= Math.Min(4, word.Length - 4); suffixLen++)
-                    {
-                        var potentialRoot = word[..^suffixLen];
-                        if (potentialRoot.Length >= 4)
-                        {
-                            expandedWords.Add(potentialRoot);
-                        }
-                    }
-                }
-            }
-
-            return expandedWords.ToList();
         }
 
         /// <summary>
@@ -61,9 +48,38 @@ namespace SmartRAG.Helpers
             }
 
             return query.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
-                .Where(w => w.Length > MinWordLength && char.IsUpper(w[0]))
+                .Where(w => w.Length > MinTokenLength && char.IsUpper(w[0]))
                 .ToList();
         }
+
+        private static List<string> TokenizeByAlphanumericCharacters(string text)
+        {
+            var result = new List<string>();
+            var current = new StringBuilder();
+
+            foreach (var ch in text)
+            {
+                if (char.IsLetterOrDigit(ch))
+                {
+                    current.Append(ch);
+                }
+                else if (current.Length > 0)
+                {
+                    result.Add(current.ToString());
+                    current.Clear();
+                }
+            }
+
+            if (current.Length > 0)
+            {
+                result.Add(current.ToString());
+            }
+
+            return result;
+        }
+
+        // Intentionally no stemming logic here; language-specific normalization should be handled
+        // by higher-level services (for example via AI-based analysis) to remain language-agnostic.
     }
 }
 

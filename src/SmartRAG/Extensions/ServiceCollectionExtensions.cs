@@ -178,7 +178,8 @@ namespace SmartRAG.Extensions
             services.AddScoped<IPromptBuilderService>(sp =>
             {
                 var conversationManagerLazy = new Lazy<IConversationManagerService>(() => sp.GetRequiredService<IConversationManagerService>());
-                return new PromptBuilderService(conversationManagerLazy);
+                var options = sp.GetRequiredService<IOptions<SmartRagOptions>>();
+                return new PromptBuilderService(conversationManagerLazy, options);
             });
             services.AddScoped<IDocumentScoringService, DocumentScoringService>();
             services.AddScoped<ISourceBuilderService, SourceBuilderService>();
@@ -206,8 +207,9 @@ namespace SmartRAG.Extensions
                     sp.GetService<IMultiDatabaseQueryCoordinator>(),
                     sp.GetRequiredService<ILogger<QueryStrategyExecutorService>>(),
                     ragAnswerGeneratorLazy,
-                    sp.GetService<IResponseBuilderService>(),
-                    sp.GetService<IConversationManagerService>());
+                    sp.GetRequiredService<IResponseBuilderService>(),
+                    sp.GetService<IConversationManagerService>(),
+                    sp.GetRequiredService<IOptions<SmartRagOptions>>());
             });
             services.AddScoped<IDocumentSearchStrategyService, DocumentSearchStrategyService>();
             services.AddScoped<IDocumentParserService, DocumentParserService>();

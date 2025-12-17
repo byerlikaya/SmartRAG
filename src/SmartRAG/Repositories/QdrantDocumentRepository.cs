@@ -616,9 +616,7 @@ namespace SmartRAG.Repositories
 
                 var vectorResults = await _searchService.SearchAsync(queryEmbedding, maxResults);
 
-                var hybridResults = await _searchService.HybridSearchAsync(query, maxResults * 4);
-
-                var allChunks = vectorResults.Concat(hybridResults).ToList();
+                var allChunks = vectorResults.ToList();
 
                 var deduped = allChunks
                     .GroupBy(c => new { c.DocumentId, c.ChunkIndex })
