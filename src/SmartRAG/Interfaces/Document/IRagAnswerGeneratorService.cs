@@ -39,10 +39,11 @@ namespace SmartRAG.Interfaces.Document
         /// Determines if a query can be answered from documents using language-agnostic content-based analysis
         /// </summary>
         /// <param name="query">User query to analyze</param>
-        /// <param name="options">Optional search options</param>
+        /// <param name="searchOptions">Search options (tag parsing should be done before calling this method)</param>
         /// <param name="queryTokens">Pre-computed query tokens for performance</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>Tuple containing whether documents can answer and the found chunks</returns>
-        Task<(bool CanAnswer, List<DocumentChunk> Results)> CanAnswerFromDocumentsAsync(string query, SearchOptions? options = null, List<string>? queryTokens = null);
+        Task<(bool CanAnswer, List<DocumentChunk> Results)> CanAnswerFromDocumentsAsync(string query, SearchOptions searchOptions, List<string>? queryTokens = null, System.Threading.CancellationToken cancellationToken = default);
     }
 }
 

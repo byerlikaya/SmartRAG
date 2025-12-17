@@ -17,18 +17,9 @@ namespace SmartRAG.Interfaces.Document
         /// <param name="query">User query</param>
         /// <param name="answer">AI-generated answer</param>
         /// <param name="sources">List of search sources</param>
+        /// <param name="searchMetadata">Optional metadata about search operations performed</param>
         /// <returns>Configured RagResponse</returns>
-        RagResponse CreateRagResponse(string query, string answer, List<SearchSource> sources);
-
-        /// <summary>
-        /// Creates a RagResponse with standard configuration and search metadata
-        /// </summary>
-        /// <param name="query">User query</param>
-        /// <param name="answer">AI-generated answer</param>
-        /// <param name="sources">List of search sources</param>
-        /// <param name="searchMetadata">Metadata about search operations performed</param>
-        /// <returns>Configured RagResponse with search metadata</returns>
-        RagResponse CreateRagResponse(string query, string answer, List<SearchSource> sources, SearchMetadata? searchMetadata);
+        RagResponse CreateRagResponse(string query, string answer, List<SearchSource> sources, SearchMetadata? searchMetadata = null);
 
         /// <summary>
         /// Gets RAG configuration from options and configuration
@@ -64,9 +55,8 @@ namespace SmartRAG.Interfaces.Document
         /// </summary>
         /// <param name="query">User query</param>
         /// <param name="conversationHistory">Conversation history</param>
-        /// <param name="preferredLanguage">Optional preferred language code for AI response</param>
         /// <returns>Fallback RAG response</returns>
-        Task<RagResponse> CreateFallbackResponseAsync(string query, string conversationHistory, string? preferredLanguage = null);
+        Task<RagResponse> CreateFallbackResponseAsync(string query, string conversationHistory);
 
         /// <summary>
         /// Merges results from database and document queries into a unified response
@@ -75,9 +65,8 @@ namespace SmartRAG.Interfaces.Document
         /// <param name="databaseResponse">Database query response</param>
         /// <param name="documentResponse">Document query response</param>
         /// <param name="conversationHistory">Conversation history</param>
-        /// <param name="preferredLanguage">Optional preferred language code for AI response</param>
         /// <returns>Merged RAG response</returns>
-        Task<RagResponse> MergeHybridResultsAsync(string query, RagResponse databaseResponse, RagResponse documentResponse, string conversationHistory, string? preferredLanguage = null);
+        Task<RagResponse> MergeHybridResultsAsync(string query, RagResponse databaseResponse, RagResponse documentResponse, string conversationHistory);
     }
 }
 
