@@ -339,16 +339,10 @@ public class QueryHandler(
             {
                 var query = IsCommand(trimmedInput) ? trimmedInput : userInput;
                 
-                // Parse search options from query flags (e.g., -d, -db, -v) and set preferred language
-                var searchOptions = ParseSearchOptions(query, language, out var cleanQuery);
-                
-                // If flags were present, use the cleaned query
-                if (searchOptions != null)
-                {
-                    query = cleanQuery;
-                }
-
-                var response = await _documentSearchService.QueryIntelligenceAsync(query, maxResults: 8, options: searchOptions);
+                // Tag parsing (-d, -db, -i, -a, -mcp) is now handled by DocumentSearchService internally
+                // SearchOptions are created from DI configuration, tags in query override them
+                // TODO: Add -lang:xx tag support for PreferredLanguage override if needed
+                var response = await _documentSearchService.QueryIntelligenceAsync(query, maxResults: 8);
 
                 // Save to conversation history
                 await _conversationManager.AddToConversationAsync(sessionId, query, response.Answer);
@@ -462,90 +456,6 @@ public class QueryHandler(
         }
     }
 
-    /// <summary>
-    /// Parses search options from input string and extracts flags
-    /// </summary>
-    /// <param name="input">Input string potentially containing flags (-d, -db, -a, -i)</param>
-    /// <param name="language">Preferred language for search</param>
-    /// <param name="cleanQuery">Output parameter with flags removed</param>
-    /// <returns>SearchOptions if flags found, null otherwise</returns>
-    private SearchOptions? ParseSearchOptions(string input, string language, out string cleanQuery)
-    {
-        cleanQuery = input;
-        
-        // Use regex to find tags at the end of query (allowing for punctuation and whitespace)
-        var trimmedInput = input.TrimEnd();
-        
-        // Check for flags using regex patterns (matches " -d", "?-d", "! -d", " -d " etc at end)
-        var hasDocumentFlag = System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"\s*-d\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
-                              System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"[\p{P}]\s*-d\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        var hasDatabaseFlag = System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"\s*-db\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
-                              System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"[\p{P}]\s*-db\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        var hasAudioFlag = System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"\s*-a\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
-                           System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"[\p{P}]\s*-a\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        var hasMcpFlag = System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"\s*-mcp\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
-                               System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"[\p{P}]\s*-mcp\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        var hasImageFlag = System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"\s*-i\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
-                           System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"[\p{P}]\s*-i\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-
-        // Get global configuration
-        var smartRagOptions = _serviceProvider.GetRequiredService<IOptions<SmartRagOptions>>().Value;
-
-        // If no flags, use global configuration but override language
-        if (!hasDocumentFlag && !hasDatabaseFlag && !hasAudioFlag && !hasImageFlag && !hasMcpFlag)
-        {
-            var options = SearchOptions.FromConfig(smartRagOptions);
-            options.PreferredLanguage = language;
-            return options;
-        }
-
-        // If flags are present, enable only the requested features
-        SearchOptions searchOptions = new SearchOptions
-        {
-            EnableDocumentSearch = hasDocumentFlag,
-            EnableDatabaseSearch = hasDatabaseFlag,
-            EnableAudioSearch = hasAudioFlag,
-            EnableImageSearch = hasImageFlag,
-            // If -d flag is set, disable MCP, audio, and image search (only text documents)
-            // If -db flag is set, disable MCP, document, audio, and image search (only database)
-            // If -a flag is set, disable MCP, document, database, and image search (only audio)
-            // If -i flag is set, disable MCP, document, database, and audio search (only image)
-            // If -mcp flag is set, disable all others (only MCP)
-            EnableMcpSearch = hasMcpFlag || (!hasDocumentFlag && !hasDatabaseFlag && !hasAudioFlag && !hasImageFlag), // Only enable MCP if explicitly requested OR no other flag set
-            PreferredLanguage = language  // CRITICAL: Pass user's selected language to AI
-        };
-        
-        // When -mcp flag is set, explicitly disable all others
-        if (hasMcpFlag)
-        {
-            searchOptions.EnableDocumentSearch = false;
-            searchOptions.EnableDatabaseSearch = false;
-            searchOptions.EnableAudioSearch = false;
-            searchOptions.EnableImageSearch = false;
-        }
-        else if (hasDocumentFlag)
-        {
-            searchOptions.EnableAudioSearch = false;
-            searchOptions.EnableImageSearch = false;
-            searchOptions.EnableMcpSearch = false;
-            searchOptions.EnableDatabaseSearch = false;
-        }
-
-        // Remove flags from query using regex
-        cleanQuery = System.Text.RegularExpressions.Regex.Replace(trimmedInput, @"\s*-d\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"[\p{P}]\s*-d\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"\s*-db\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"[\p{P}]\s*-db\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"\s*-a\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"[\p{P}]\s*-a\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"\s*-i\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"[\p{P}]\s*-i\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"\s*-mcp\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"[\p{P}]\s*-mcp\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        cleanQuery = cleanQuery.TrimEnd();
-        
-        return searchOptions;
-    }
 
     #endregion
 
