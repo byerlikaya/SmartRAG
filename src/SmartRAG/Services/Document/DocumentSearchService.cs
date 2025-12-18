@@ -26,7 +26,6 @@ namespace SmartRAG.Services.Document
     /// </summary>
     public class DocumentSearchService : IDocumentSearchService, IRagAnswerGeneratorService
     {
-        private const int InitialSearchMultiplier = 2;
         private const int MinSearchResultsCount = 0;
         private const int FallbackSearchMaxResults = 10;
         private const int MinSubstantialContentLength = 50;
@@ -145,28 +144,6 @@ namespace SmartRAG.Services.Document
             _documentSearchStrategy = documentSearchStrategy ?? throw new ArgumentNullException(nameof(documentSearchStrategy));
         }
 
-        /// <summary>
-        /// [Document Query] Searches for relevant document chunks based on the query
-        /// </summary>
-        /// <param name="query">Search query string (supports tags: -d, -db, -i, -a, -mcp)</param>
-        /// <param name="maxResults">Maximum number of results to return</param>
-        /// <param name="queryTokens">Pre-computed query tokens (optional, for performance)</param>
-        /// <returns>List of relevant document chunks</returns>
-        public async Task<List<DocumentChunk>> SearchDocumentsAsync(
-            string query,
-            int maxResults = 5,
-            List<string>? queryTokens = null)
-        {
-            var (cleanedQuery, searchOptions) = ParseSourceTags(query);
-            query = cleanedQuery;
-
-            if (string.IsNullOrWhiteSpace(query))
-                throw new ArgumentException("Query cannot be empty", nameof(query));
-
-            var searchResults = await _documentSearchStrategy.SearchDocumentsAsync(query, maxResults * InitialSearchMultiplier, searchOptions, queryTokens);
-
-            return searchResults.Take(maxResults).ToList();
-        }
 
         /// <summary>
         /// [AI Query] Process intelligent query with RAG and automatic session management
@@ -480,7 +457,14 @@ namespace SmartRAG.Services.Document
             }
             else
             {
-                chunks = await SearchDocumentsAsync(request.Query, searchMaxResults, request.QueryTokens);
+                var (cleanedQuery, searchOptions) = ParseSourceTags(request.Query);
+                
+                if (string.IsNullOrWhiteSpace(cleanedQuery))
+                    throw new ArgumentException("Query cannot be empty", nameof(request.Query));
+
+                var searchResults = await _documentSearchStrategy.SearchDocumentsAsync(cleanedQuery, searchMaxResults, searchOptions, request.QueryTokens);
+                chunks = searchResults.Take(searchMaxResults).ToList();
+                
                 preservedChunk0 = chunks.FirstOrDefault(c => c.ChunkIndex == 0);
                 var nonZeroChunksForSearch = chunks.Where(c => c.ChunkIndex != 0).ToList();
                 chunks = _chunkPrioritizer.PrioritizeChunksByQueryWords(nonZeroChunksForSearch, queryTokens);
@@ -719,13 +703,25 @@ namespace SmartRAG.Services.Document
 
             var context = _contextExpansion.BuildLimitedContext(chunks, MaxContextSize);
 
-            var prompt = _promptBuilder.BuildDocumentRagPrompt(request.Query, context, request.ConversationHistory);
-            var answer = await _aiService.GenerateResponseAsync(prompt, new List<string> { context });
+            var answer = await GenerateRagAnswerFromContextAsync(request.Query, context, request.ConversationHistory);
 
             var sourcesChunks = FilterChunksByOriginalIds(chunks, originalChunkIds);
 
             var sources = await _sourceBuilder.BuildSourcesAsync(sourcesChunks, _documentRepository);
             return _responseBuilder.CreateRagResponse(request.Query, answer, sources);
+        }
+
+        /// <summary>
+        /// Generates RAG answer from context using AI service
+        /// </summary>
+        /// <param name="query">User query</param>
+        /// <param name="context">Context content for RAG</param>
+        /// <param name="conversationHistory">Conversation history</param>
+        /// <returns>Generated answer from AI</returns>
+        private async Task<string> GenerateRagAnswerFromContextAsync(string query, string context, string? conversationHistory)
+        {
+            var prompt = _promptBuilder.BuildDocumentRagPrompt(query, context, conversationHistory);
+            return await _aiService.GenerateResponseAsync(prompt, new List<string> { context });
         }
 
         /// <summary>
@@ -997,8 +993,7 @@ namespace SmartRAG.Services.Document
                             ? string.Join("\n\n", existingContext) + "\n\n[MCP Results]\n" + mcpContext
                             : mcpContext;
 
-                        var mergedPrompt = _promptBuilder.BuildDocumentRagPrompt(query, combinedContext, conversationHistory);
-                        var mergedAnswer = await _aiService.GenerateResponseAsync(mergedPrompt, new List<string> { combinedContext });
+                        var mergedAnswer = await GenerateRagAnswerFromContextAsync(query, combinedContext, conversationHistory);
                         if (!string.IsNullOrWhiteSpace(mergedAnswer))
                         {
                             existingResponse.Answer = mergedAnswer;
@@ -1008,21 +1003,20 @@ namespace SmartRAG.Services.Document
                     return existingResponse;
                 }
 
+                var chatResponse = await _conversationManager.HandleGeneralConversationAsync(query, conversationHistory);
+
                 if (string.IsNullOrWhiteSpace(mcpContext))
-                {
-                    var chatResponse = await _conversationManager.HandleGeneralConversationAsync(query, conversationHistory);
+                {                 
                     return _responseBuilder.CreateRagResponse(query, chatResponse, new List<SearchSource>(), searchMetadata);
                 }
 
-                var mcpPrompt = _promptBuilder.BuildDocumentRagPrompt(query, mcpContext, conversationHistory);
-                var mcpAnswer = await _aiService.GenerateResponseAsync(mcpPrompt, new List<string> { mcpContext });
+                var mcpAnswer = await GenerateRagAnswerFromContextAsync(query, mcpContext, conversationHistory);
                 if (!string.IsNullOrWhiteSpace(mcpAnswer))
                 {
                     return _responseBuilder.CreateRagResponse(query, mcpAnswer, mcpSources, searchMetadata);
                 }
-
-                var fallbackAnswer = await _conversationManager.HandleGeneralConversationAsync(query, conversationHistory);
-                return _responseBuilder.CreateRagResponse(query, fallbackAnswer, mcpSources, searchMetadata);
+                
+                return _responseBuilder.CreateRagResponse(query, chatResponse, mcpSources, searchMetadata);
             }
             catch (Exception ex)
             {
