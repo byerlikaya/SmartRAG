@@ -17,6 +17,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.RegularExpressions;
 using SmartRAG.Helpers;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Document
@@ -104,7 +105,6 @@ namespace SmartRAG.Services.Document
             IResponseBuilderService responseBuilder,
             IQueryIntentAnalyzer queryIntentAnalyzer,
             IContextExpansionService contextExpansion,
-            IMcpIntegrationService mcpIntegration,
             IDocumentRelevanceCalculatorService relevanceCalculator,
             IQueryWordMatcherService queryWordMatcher,
             IQueryPatternAnalyzerService queryPatternAnalyzer,
@@ -114,6 +114,7 @@ namespace SmartRAG.Services.Document
             IQueryStrategyOrchestratorService strategyOrchestrator,
             IQueryStrategyExecutorService strategyExecutor,
             IDocumentSearchStrategyService documentSearchStrategy,
+            IMcpIntegrationService mcpIntegration,
             IConversationManagerService? conversationManager = null,
             IQueryIntentClassifierService? queryIntentClassifier = null,
             IPromptBuilderService? promptBuilder = null,
@@ -152,11 +153,13 @@ namespace SmartRAG.Services.Document
         /// <param name="query">User query to process (supports tags: -d, -db, -i, -a, -mcp)</param>
         /// <param name="maxResults">Maximum number of document chunks to use</param>
         /// <param name="startNewConversation">Whether to start a new conversation session</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>RAG response with answer and sources from all available data sources</returns>
         public async Task<RagResponse> QueryIntelligenceAsync(
             string query,
             int maxResults = 5,
-            bool startNewConversation = false)
+            bool startNewConversation = false,
+            CancellationToken cancellationToken = default)
         {
             var trimmedQuery = query.Trim();
             var hasCommand = _queryIntentClassifier.TryParseCommand(trimmedQuery, out var commandType, out var commandPayload);
@@ -191,10 +194,19 @@ namespace SmartRAG.Services.Document
                 return await HandleConversationQueryAsync(conversationQuery, sessionId, conversationHistory);
             }
 
-            var intentAnalysis = await _queryIntentClassifier.AnalyzeQueryAsync(query, conversationHistory, default);
+            cancellationToken.ThrowIfCancellationRequested();
+            var intentAnalysis = await _queryIntentClassifier.AnalyzeQueryAsync(query, conversationHistory, cancellationToken);
 
             if (intentAnalysis.IsConversation)
             {
+                // If answer is already provided by the intent classifier, use it directly to avoid redundant LLM call
+                if (!string.IsNullOrWhiteSpace(intentAnalysis.Answer))
+                {
+                    await _conversationManager.AddToConversationAsync(sessionId, query, intentAnalysis.Answer);
+                    return _responseBuilder.CreateRagResponse(query, intentAnalysis.Answer, new List<SearchSource>());
+                }
+                
+                // Fallback to full conversation handler if answer not provided
                 return await HandleConversationQueryAsync(query, sessionId, conversationHistory);
             }
 
@@ -203,7 +215,8 @@ namespace SmartRAG.Services.Document
 
             var queryTokens = intentAnalysis.Tokens.ToList();
 
-            var (CanAnswer, Results) = await CanAnswerFromDocumentsAsync(query, searchOptions, queryTokens, default);
+            cancellationToken.ThrowIfCancellationRequested();
+            var (CanAnswer, Results) = await CanAnswerFromDocumentsAsync(query, searchOptions, queryTokens, cancellationToken);
 
             QueryIntent? preAnalyzedQueryIntent = null;
             
@@ -426,8 +439,9 @@ namespace SmartRAG.Services.Document
         /// Generates RAG answer with automatic session management and context expansion
         /// </summary>
         /// <param name="request">Request containing query parameters</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>RAG response with answer and sources</returns>
-        public async Task<RagResponse> GenerateBasicRagAnswerAsync(Models.RequestResponse.GenerateRagAnswerRequest request)
+        public async Task<RagResponse> GenerateBasicRagAnswerAsync(Models.RequestResponse.GenerateRagAnswerRequest request, CancellationToken cancellationToken = default)
         {
             if (request == null)
                 throw new ArgumentNullException(nameof(request));
@@ -462,7 +476,8 @@ namespace SmartRAG.Services.Document
                 if (string.IsNullOrWhiteSpace(cleanedQuery))
                     throw new ArgumentException("Query cannot be empty", nameof(request.Query));
 
-                var searchResults = await _documentSearchStrategy.SearchDocumentsAsync(cleanedQuery, searchMaxResults, searchOptions, request.QueryTokens);
+                cancellationToken.ThrowIfCancellationRequested();
+                var searchResults = await _documentSearchStrategy.SearchDocumentsAsync(cleanedQuery, searchMaxResults, searchOptions, request.QueryTokens, cancellationToken);
                 chunks = searchResults.Take(searchMaxResults).ToList();
                 
                 preservedChunk0 = chunks.FirstOrDefault(c => c.ChunkIndex == 0);
@@ -594,21 +609,16 @@ namespace SmartRAG.Services.Document
 
             if (chunks.Count > 0)
             {
-                // Calculate adaptive threshold based on score range
+                // Calculate adaptive threshold for context expansion
                 // Vector search scores: 0.0-1.0 range, Text search scores: 4.0-6.0+ range
-                var maxScore = chunks.Max(c => c.RelevanceScore ?? 0.0);
-                double contextExpansionThreshold;
-
-                if (maxScore > 3.0)
-                {
-                    contextExpansionThreshold = DocumentBoostThreshold;
-                }
-                else
-                {
-                    var sortedByScore = chunks.OrderByDescending(c => c.RelevanceScore ?? 0.0).ToList();
-                    var topPercentileCount = Math.Max(1, (int)(sortedByScore.Count * 0.4));
-                    contextExpansionThreshold = Math.Max(0.01, sortedByScore.Skip(topPercentileCount - 1).FirstOrDefault()?.RelevanceScore ?? 0.01);
-                }
+                // For high scores, use fixed DocumentBoostThreshold; for low scores, use percentile-based threshold
+                var contextExpansionThreshold = CalculateAdaptiveThreshold(
+                    chunks,
+                    highScoreThreshold: 3.0,
+                    highScorePercentile: 1.0,
+                    lowScorePercentile: 0.4,
+                    useScoreRangeCheck: false,
+                    fixedHighScoreThreshold: DocumentBoostThreshold);
 
                 var relevantDocumentChunks = chunks
                     .Where(c => (c.RelevanceScore ?? 0.0) >= contextExpansionThreshold)
@@ -737,6 +747,75 @@ namespace SmartRAG.Services.Document
         }
 
         /// <summary>
+        /// Calculates adaptive threshold based on score distribution in chunks
+        /// Handles different score ranges: vector search (0.0-1.0) vs text search (4.0-6.0+)
+        /// </summary>
+        /// <param name="chunks">List of document chunks to analyze</param>
+        /// <param name="highScoreThreshold">Threshold to distinguish high-score vs low-score ranges (default: 3.0)</param>
+        /// <param name="highScorePercentile">Percentile to use for high-score range (default: 0.7 for CanAnswer, 1.0 for ContextExpansion)</param>
+        /// <param name="lowScorePercentile">Percentile to use for low-score range (default: 0.4)</param>
+        /// <param name="useScoreRangeCheck">Whether to apply score range validation for high-score range (default: true for CanAnswer)</param>
+        /// <param name="fixedHighScoreThreshold">Fixed threshold to use when maxScore > highScoreThreshold and useScoreRangeCheck is false (default: null, uses percentile)</param>
+        /// <returns>Adaptive threshold value</returns>
+        private double CalculateAdaptiveThreshold(
+            List<DocumentChunk> chunks,
+            double highScoreThreshold = 3.0,
+            double highScorePercentile = 0.7,
+            double lowScorePercentile = 0.4,
+            bool useScoreRangeCheck = true,
+            double? fixedHighScoreThreshold = null)
+        {
+            if (chunks == null || chunks.Count == 0)
+                return 0.0;
+
+            var sortedByScore = chunks.OrderByDescending(c => c.RelevanceScore ?? 0.0).ToList();
+            var maxScore = sortedByScore.FirstOrDefault()?.RelevanceScore ?? 0.0;
+
+            if (maxScore > highScoreThreshold)
+            {
+                // High-score range (text search: 4.0-6.0+)
+                if (fixedHighScoreThreshold.HasValue)
+                {
+                    // Use fixed threshold (e.g., DocumentBoostThreshold for context expansion)
+                    return fixedHighScoreThreshold.Value;
+                }
+
+                if (useScoreRangeCheck)
+                {
+                    // CanAnswer logic: Check score range to handle edge cases
+                    var topPercentileCount = Math.Max(1, (int)(sortedByScore.Count * highScorePercentile));
+                    var percentileScore = sortedByScore.Skip(topPercentileCount - 1).FirstOrDefault()?.RelevanceScore ?? 4.0;
+
+                    var minScore = sortedByScore.LastOrDefault()?.RelevanceScore ?? 0.0;
+                    var scoreRange = maxScore - minScore;
+                    
+                    // If scores are very close together, use stricter threshold
+                    if (scoreRange < 0.5 && sortedByScore.Count > 1)
+                    {
+                        return Math.Max(4.5, maxScore - 0.5);
+                    }
+                    else
+                    {
+                        return Math.Max(4.0, percentileScore - 0.01);
+                    }
+                }
+                else
+                {
+                    // Simple percentile-based threshold
+                    var topPercentileCount = Math.Max(1, (int)(sortedByScore.Count * highScorePercentile));
+                    var percentileScore = sortedByScore.Skip(topPercentileCount - 1).FirstOrDefault()?.RelevanceScore ?? 4.0;
+                    return Math.Max(4.0, percentileScore - 0.01);
+                }
+            }
+            else
+            {
+                // Low-score range (vector search: 0.0-1.0)
+                var topPercentileCount = Math.Max(1, (int)(sortedByScore.Count * lowScorePercentile));
+                return Math.Max(0.01, sortedByScore.Skip(topPercentileCount - 1).FirstOrDefault()?.RelevanceScore ?? 0.01);
+            }
+        }
+
+        /// <summary>
         /// Filters chunks to include only those from the original search results
         /// </summary>
         private List<DocumentChunk> FilterChunksByOriginalIds(List<DocumentChunk> chunks, HashSet<Guid>? originalChunkIds)
@@ -800,7 +879,7 @@ namespace SmartRAG.Services.Document
                 PreCalculatedResults = preCalculatedResults,
                 QueryTokens = queryTokens
             };
-            return await GenerateBasicRagAnswerAsync(request);
+            return await GenerateBasicRagAnswerAsync(request, default);
         }
 
 
@@ -821,67 +900,39 @@ namespace SmartRAG.Services.Document
 
             try
             {
-
-                var searchResults = await _documentSearchStrategy.SearchDocumentsAsync(query, FallbackSearchMaxResults, searchOptions, queryTokens);
+                // SearchDocumentsAsync already performs comprehensive scoring, prioritization, and returns best results
+                // We only need simple checks: results exist, top score is sufficient, and content length is adequate
+                var searchResults = await _documentSearchStrategy.SearchDocumentsAsync(query, FallbackSearchMaxResults, searchOptions, queryTokens, cancellationToken);
 
                 if (searchResults.Count == MinSearchResultsCount)
                 {
                     return (false, searchResults);
                 }
 
-                var sortedByScore = searchResults.OrderByDescending(c => c.RelevanceScore ?? 0.0).ToList();
-                var maxScore = sortedByScore.FirstOrDefault()?.RelevanceScore ?? 0.0;
+                // Get top score to determine search type (vector vs text)
+                // Vector search: 0.0-1.0 range, Text search: 4.0-6.0+ range
+                var topScore = searchResults.FirstOrDefault()?.RelevanceScore ?? 0.0;
+                var isTextSearch = topScore > 3.0;
+                
+                // Simple threshold: text search needs higher scores, vector search accepts lower scores
+                var minScoreThreshold = isTextSearch ? 3.0 : 0.1;
 
-                double adaptiveThreshold;
+                // Check if top results meet the threshold
+                // Chunk 0 (document introduction) is always considered relevant for context
+                var relevantChunks = searchResults
+                    .Where(c => (c.RelevanceScore ?? 0.0) >= minScoreThreshold || c.ChunkIndex == 0)
+                    .ToList();
 
-                if (maxScore > 3.0)
-                {
-                    var topPercentileCount = Math.Max(1, (int)(sortedByScore.Count * 0.7));
-                    var percentileScore = sortedByScore.Skip(topPercentileCount - 1).FirstOrDefault()?.RelevanceScore ?? 4.0;
-
-                    var minScore = sortedByScore.LastOrDefault()?.RelevanceScore ?? 0.0;
-                    var scoreRange = maxScore - minScore;
-                    if (scoreRange < 0.5 && sortedByScore.Count > 1)
-                    {
-                        adaptiveThreshold = Math.Max(4.5, maxScore - 0.5);
-                    }
-                    else
-                    {
-                        adaptiveThreshold = Math.Max(4.0, percentileScore - 0.01);
-                    }
-                }
-                else
-                {
-                    var topPercentileCount = Math.Max(1, (int)(sortedByScore.Count * 0.4));
-                    adaptiveThreshold = Math.Max(0.01, sortedByScore.Skip(topPercentileCount - 1).FirstOrDefault()?.RelevanceScore ?? 0.01);
-                }
-
-                var chunk0FromSearch = searchResults.FirstOrDefault(c => c.ChunkIndex == 0);
-
-                var hasRelevantContent = searchResults.Any(chunk =>
-                    (chunk.RelevanceScore ?? 0.0) >= adaptiveThreshold || chunk.ChunkIndex == 0);
-
-                if (!hasRelevantContent)
+                if (relevantChunks.Count == 0)
                 {
                     return (false, searchResults);
                 }
 
-                var totalContentLength = searchResults
-                    .Where(c => (c.RelevanceScore ?? 0.0) >= adaptiveThreshold || c.ChunkIndex == 0)
-                    .Sum(c => c.Content.Length);
-
+                // Check if we have substantial content (minimum content length)
+                var totalContentLength = relevantChunks.Sum(c => c.Content.Length);
                 var hasSubstantialContent = totalContentLength > MinSubstantialContentLength;
 
-                var filteredResults = searchResults
-                    .Where(c => (c.RelevanceScore ?? 0.0) >= adaptiveThreshold || c.ChunkIndex == 0)
-                    .ToList();
-
-                if (chunk0FromSearch != null && !filteredResults.Any(c => c.ChunkIndex == 0))
-                {
-                    filteredResults = new List<DocumentChunk> { chunk0FromSearch }.Concat(filteredResults).ToList();
-                }
-
-                return (hasRelevantContent && hasSubstantialContent, filteredResults);
+                return (hasSubstantialContent, relevantChunks);
             }
             catch (Exception ex)
             {
@@ -897,11 +948,12 @@ namespace SmartRAG.Services.Document
         /// <param name="query">User query to process</param>
         /// <param name="maxResults">Maximum number of document chunks to use</param>
         /// <param name="startNewConversation">Whether to start a new conversation session</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>RAG response with answer and sources</returns>
         [Obsolete("Use QueryIntelligenceAsync instead. This method will be removed in v4.0.0")]
-        public async Task<RagResponse> GenerateRagAnswerAsync(string query, int maxResults = 5, bool startNewConversation = false)
+        public async Task<RagResponse> GenerateRagAnswerAsync(string query, int maxResults = 5, bool startNewConversation = false, CancellationToken cancellationToken = default)
         {
-            return await QueryIntelligenceAsync(query, maxResults, startNewConversation);
+            return await QueryIntelligenceAsync(query, maxResults, startNewConversation, cancellationToken);
         }
 
         private async Task<RagResponse> HandleConversationQueryAsync(string query, string sessionId, string? conversationHistory)

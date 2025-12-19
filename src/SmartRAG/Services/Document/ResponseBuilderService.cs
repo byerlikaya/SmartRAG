@@ -22,34 +22,34 @@ namespace SmartRAG.Services.Document
     {
         private readonly SmartRagOptions _options;
         private readonly IConfiguration _configuration;
-        private readonly IConversationManagerService? _conversationManager;
-        private readonly ILogger<ResponseBuilderService>? _logger;
-        private readonly IAIService? _aiService;
-        private readonly IPromptBuilderService? _promptBuilder;
+        private readonly IConversationManagerService _conversationManager;
+        private readonly ILogger<ResponseBuilderService> _logger;
+        private readonly IAIService _aiService;
+        private readonly IPromptBuilderService _promptBuilder;
 
         /// <summary>
         /// Initializes a new instance of the ResponseBuilderService
         /// </summary>
         /// <param name="options">SmartRAG configuration options</param>
         /// <param name="configuration">Application configuration</param>
-        /// <param name="conversationManager">Optional service for managing conversations</param>
-        /// <param name="logger">Optional logger instance</param>
-        /// <param name="aiService">Optional AI service for merging responses</param>
-        /// <param name="promptBuilder">Optional prompt builder service for merging responses</param>
+        /// <param name="conversationManager">Service for managing conversations</param>
+        /// <param name="logger">Logger instance</param>
+        /// <param name="aiService">AI service for merging responses</param>
+        /// <param name="promptBuilder">Prompt builder service for merging responses</param>
         public ResponseBuilderService(
             IOptions<SmartRagOptions> options,
             IConfiguration configuration,
-            IConversationManagerService? conversationManager = null,
-            ILogger<ResponseBuilderService>? logger = null,
-            IAIService? aiService = null,
-            IPromptBuilderService? promptBuilder = null)
+            IConversationManagerService conversationManager,
+            ILogger<ResponseBuilderService> logger,
+            IAIService aiService,
+            IPromptBuilderService promptBuilder)
         {
             _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
             _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            _conversationManager = conversationManager;
-            _logger = logger;
-            _aiService = aiService;
-            _promptBuilder = promptBuilder;
+            _conversationManager = conversationManager ?? throw new ArgumentNullException(nameof(conversationManager));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _aiService = aiService ?? throw new ArgumentNullException(nameof(aiService));
+            _promptBuilder = promptBuilder ?? throw new ArgumentNullException(nameof(promptBuilder));
         }
 
         /// <summary>
@@ -227,15 +227,7 @@ namespace SmartRAG.Services.Document
         /// </summary>
         public async Task<RagResponse> CreateFallbackResponseAsync(string query, string conversationHistory)
         {
-            if (_conversationManager == null)
-            {
-                return CreateRagResponse(query, "Sorry, I cannot chat right now. Please try again later.", new List<SearchSource>());
-            }
-
-            if (_logger != null)
-            {
-                ServiceLogMessages.LogGeneralConversationQuery(_logger, null);
-            }
+            ServiceLogMessages.LogGeneralConversationQuery(_logger, null);
 
             var chatResponse = await _conversationManager.HandleGeneralConversationAsync(query, conversationHistory);
             return CreateRagResponse(query, chatResponse, new List<SearchSource>());
@@ -276,18 +268,8 @@ namespace SmartRAG.Services.Document
             if (!string.IsNullOrEmpty(documentContext))
                 combinedContext.Add(documentContext);
 
-            string mergedAnswer;
-            if (_aiService != null && _promptBuilder != null)
-            {
-                var mergePrompt = _promptBuilder.BuildHybridMergePrompt(query, databaseContext, documentContext, conversationHistory);
-                mergedAnswer = await _aiService.GenerateResponseAsync(mergePrompt, combinedContext);
-            }
-            else
-            {
-                mergedAnswer = !string.IsNullOrEmpty(databaseContext) && !string.IsNullOrEmpty(documentContext)
-                    ? $"{databaseContext}\n\n{documentContext}"
-                    : databaseContext ?? documentContext ?? "No data available";
-            }
+            var mergePrompt = _promptBuilder.BuildHybridMergePrompt(query, databaseContext, documentContext, conversationHistory);
+            var mergedAnswer = await _aiService.GenerateResponseAsync(mergePrompt, combinedContext);
 
             return CreateRagResponse(query, mergedAnswer, combinedSources);
         }

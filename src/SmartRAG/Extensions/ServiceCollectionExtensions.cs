@@ -34,6 +34,8 @@ using SmartRAG.Services.Mcp;
 using SmartRAG.Interfaces.FileWatcher;
 using SmartRAG.Services.FileWatcher;
 using SmartRAG.Services.Startup;
+using SmartRAG.Services.Storage.Qdrant;
+using SmartRAG.Interfaces.Storage.Qdrant;
 using System;
 using System.Collections.Generic;
 
@@ -260,13 +262,10 @@ namespace SmartRAG.Extensions
 
         private static void RegisterFeatureBasedServices(IServiceCollection services, SmartRagOptions options)
         {
-            if (options.Features.EnableMcpSearch)
-            {
-                services.AddHttpClient();
-                services.AddSingleton<IMcpClient, McpClient>();
-                services.AddSingleton<IMcpConnectionManager, McpConnectionManager>();
-                services.AddScoped<IMcpIntegrationService, McpIntegrationService>();
-            }
+            services.AddHttpClient();
+            services.AddSingleton<IMcpClient, McpClient>();
+            services.AddSingleton<IMcpConnectionManager, McpConnectionManager>();
+            services.AddScoped<IMcpIntegrationService, McpIntegrationService>();
 
             if (options.Features.EnableFileWatcher)
             {

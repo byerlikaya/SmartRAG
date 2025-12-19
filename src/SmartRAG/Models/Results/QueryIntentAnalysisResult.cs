@@ -1,3 +1,4 @@
+#nullable enable
 namespace SmartRAG.Models.Results
 {
     /// <summary>
@@ -17,14 +18,22 @@ namespace SmartRAG.Models.Results
         public string[] Tokens { get; }
 
         /// <summary>
+        /// Gets the pre-generated answer for conversation queries, if available from the intent classifier.
+        /// This avoids redundant LLM calls when the answer is already provided during classification.
+        /// </summary>
+        public string? Answer { get; }
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="QueryIntentAnalysisResult"/> class.
         /// </summary>
         /// <param name="isConversation">Indicates whether the query is general conversation.</param>
         /// <param name="tokens">Tokenized representation of the query.</param>
-        public QueryIntentAnalysisResult(bool isConversation, string[] tokens)
+        /// <param name="answer">Optional pre-generated answer for conversation queries.</param>
+        public QueryIntentAnalysisResult(bool isConversation, string[] tokens, string? answer = null)
         {
             IsConversation = isConversation;
             Tokens = tokens ?? System.Array.Empty<string>();
+            Answer = answer;
         }
     }
 }

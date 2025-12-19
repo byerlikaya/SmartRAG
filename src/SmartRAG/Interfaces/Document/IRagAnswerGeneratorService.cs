@@ -5,6 +5,7 @@ using SmartRAG.Models;
 using SmartRAG.Models.RequestResponse;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Interfaces.Document
@@ -18,8 +19,9 @@ namespace SmartRAG.Interfaces.Document
         /// Generates RAG answer with automatic session management and context expansion
         /// </summary>
         /// <param name="request">Request containing query parameters</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>RAG response with answer and sources</returns>
-        Task<RagResponse> GenerateBasicRagAnswerAsync(Models.RequestResponse.GenerateRagAnswerRequest request);
+        Task<RagResponse> GenerateBasicRagAnswerAsync(Models.RequestResponse.GenerateRagAnswerRequest request, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Generates RAG answer with automatic session management and context expansion

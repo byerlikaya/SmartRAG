@@ -75,40 +75,38 @@ namespace SmartRAG.Services.Support
                 return new QueryIntentAnalysisResult(true, Array.Empty<string>());
             }
 
-            var trimmedQuery = string.IsNullOrWhiteSpace(query) ? string.Empty : query.Trim();
+            var trimmedQuery = query.Trim();
             var normalizedForMatching = _textNormalizationService.NormalizeForMatching(trimmedQuery);
 
             var heuristic = HeuristicClassify(trimmedQuery, out var heuristicScore);
 
-            if (heuristic == HeuristicDecision.Conversation)
+            switch (heuristic)
             {
-                _logger.LogDebug("Query classified as CONVERSATION by heuristics (score={Score})", heuristicScore);
-                return new QueryIntentAnalysisResult(true, Array.Empty<string>());
-            }
-
-            if (heuristic == HeuristicDecision.Information && heuristicScore >= 4)
-            {
-                _logger.LogDebug("Query classified as INFORMATION by heuristics (strong indicators, score={Score})", heuristicScore);
-                var heuristicTokens = _options.Features.EnableDocumentSearch
-                    ? TokenizeForSearch(normalizedForMatching)
-                    : Array.Empty<string>();
-                return new QueryIntentAnalysisResult(false, heuristicTokens);
-            }
-
-            try
-            {
-                var historySnippet = string.Empty;
-                if (!string.IsNullOrWhiteSpace(conversationHistory))
+                case HeuristicDecision.Conversation:
+                    return new QueryIntentAnalysisResult(true, Array.Empty<string>());
+                case HeuristicDecision.Information when heuristicScore >= 4:
                 {
-                    var normalizedHistory = conversationHistory.Trim();
-                    historySnippet = normalizedHistory.Length > MaxHistoryLength
-                        ? normalizedHistory.Substring(normalizedHistory.Length - MaxHistoryLength, MaxHistoryLength)
-                        : normalizedHistory;
+                    var heuristicTokens = _options.Features.EnableDocumentSearch
+                        ? TokenizeForSearch(normalizedForMatching)
+                        : Array.Empty<string>();
+                    return new QueryIntentAnalysisResult(false, heuristicTokens);
                 }
+                case HeuristicDecision.Unknown:
+                default:
+                    try
+                    {
+                        var historySnippet = string.Empty;
+                        if (!string.IsNullOrWhiteSpace(conversationHistory))
+                        {
+                            var normalizedHistory = conversationHistory.Trim();
+                            historySnippet = normalizedHistory.Length > MaxHistoryLength
+                                ? normalizedHistory.Substring(normalizedHistory.Length - MaxHistoryLength, MaxHistoryLength)
+                                : normalizedHistory;
+                        }
 
-                var classificationPrompt = string.Format(
-                    CultureInfo.InvariantCulture,
-@"You MUST analyze the input and decide whether it is CONVERSATION or INFORMATION, and also provide search tokens when it is INFORMATION.
+                        var classificationPrompt = string.Format(
+                            CultureInfo.InvariantCulture,
+                            @"You MUST analyze the input and decide whether it is CONVERSATION or INFORMATION, and also provide search tokens when it is INFORMATION.
 
 CRITICAL: Classify as CONVERSATION if:
 - Greeting in any human language (generic salutations/greetings)
@@ -147,6 +145,28 @@ OUTPUT FORMAT (JSON ONLY):
     ""answer"": ""Natural language answer for conversation queries, empty for information queries""
   }}
 
+ANSWER RULES (CRITICAL FOR CONVERSATION QUERIES):
+- For CONVERSATION queries, the ""answer"" field MUST contain a SPECIFIC, PERSONALIZED response to the user's question
+- CRITICAL: You MUST read and understand the user's question carefully
+- CRITICAL: You MUST provide an answer that DIRECTLY addresses what the user is asking
+- CRITICAL: If the user asks about the AI (name, identity, capabilities), provide a SPECIFIC answer about the AI, NOT a generic greeting
+- CRITICAL: If conversation history exists, read it carefully to understand the context and provide a CONTINUOUS, CONTEXTUAL response
+- CRITICAL: Do NOT repeat generic greetings or standard responses - answer the SPECIFIC question being asked
+- CRITICAL: If the user is frustrated or asking why you didn't answer, acknowledge their concern and provide the requested information
+- CRITICAL: If the user asks about the AI's name or identity, respond with a specific identifier appropriate for the AI assistant
+- CRITICAL: If the user asks why you didn't answer a previous question, acknowledge it and provide the answer they were looking for
+- CRITICAL: The answer MUST be relevant to the CURRENT question, not a generic template response
+- CRITICAL: Answer in the SAME language as the user's question
+- Examples of GOOD answer patterns:
+  * User asks about AI name → Answer should identify the AI assistant with a specific name or identifier
+  * User asks why previous question wasn't answered → Answer should acknowledge the issue and provide the requested information
+  * User asks how AI is doing → Answer should respond to the greeting appropriately
+- Examples of BAD answer patterns (DO NOT use):
+  * Generic greeting that doesn't address the specific question (when user asks a specific question)
+  * Repeating previous responses without addressing the current question
+  * Ignoring the user's specific question and providing a template response
+  * Using a different language than the user's question
+
 TOKEN RULES (CRITICAL FOR INFORMATION QUERIES):
 - PURPOSE: These tokens will be used to search through document chunks to find relevant information. More comprehensive tokens = better search results.
 - For INFORMATION queries:
@@ -180,125 +200,148 @@ IMPORTANT:
 - Do NOT wrap JSON in markdown code blocks (no ```json or ```).
 - Do NOT add comments, explanations, markdown, or extra text outside the JSON object.
 - Return the raw JSON object directly, starting with {{ and ending with }}.",
-                    normalizedForMatching,
-                    string.IsNullOrWhiteSpace(historySnippet) ? "" : $"Conversation History:\n\"{historySnippet}\"\n\n",
-                    MinTokenCountForInformation,
-                    MaxTokenCountForInformation);
+                            normalizedForMatching,
+                            string.IsNullOrWhiteSpace(historySnippet) ? "" : $"Conversation History:\n\"{historySnippet}\"\n\n",
+                            MinTokenCountForInformation,
+                            MaxTokenCountForInformation);
 
-                cancellationToken.ThrowIfCancellationRequested();
-                _logger.LogInformation("[QueryOperation] LLM Request: AIService.GenerateResponseAsync (line 181) - Method: QueryIntentClassifierService.AnalyzeQueryAsync");
-                var classification = await _aiService.GenerateResponseAsync(classificationPrompt, Array.Empty<string>()).ConfigureAwait(false);
+                        cancellationToken.ThrowIfCancellationRequested();
+                        _logger.LogInformation("[QueryOperation] LLM Request: AIService.GenerateResponseAsync (line 181) - Method: QueryIntentClassifierService.AnalyzeQueryAsync");
+                        var classification = await _aiService.GenerateResponseAsync(classificationPrompt, Array.Empty<string>()).ConfigureAwait(false);
 
-                if (string.IsNullOrWhiteSpace(classification))
-                {
-                    return new QueryIntentAnalysisResult(true, Array.Empty<string>());
-                }
-
-                try
-                {
-                    var cleanedClassification = TryExtractJsonFromResponse(classification) ?? classification;
-                    using var document = JsonDocument.Parse(cleanedClassification);
-                    var root = document.RootElement;
-
-                    if (root.ValueKind != JsonValueKind.Object)
-                    {
-                        return FallbackFromPlainClassification(classification, normalizedForMatching);
-                    }
-
-                    if (!root.TryGetProperty("type", out var typeElement) || typeElement.ValueKind != JsonValueKind.String)
-                    {
-                        return FallbackFromPlainClassification(classification, normalizedForMatching);
-                    }
-
-                    var typeValue = typeElement.GetString()?.Trim().ToUpperInvariant();
-                    if (string.Equals(typeValue, "CONVERSATION", StringComparison.Ordinal))
-                    {
-                        _logger.LogDebug("AI classified as CONVERSATION (JSON)");
-                        return new QueryIntentAnalysisResult(true, Array.Empty<string>());
-                    }
-
-                    if (string.Equals(typeValue, "INFORMATION", StringComparison.Ordinal))
-                    {
-                        _logger.LogDebug("AI classified as INFORMATION (JSON)");
-
-                        string[] tokens = Array.Empty<string>();
-                        if (root.TryGetProperty("tokens", out var tokensElement) && tokensElement.ValueKind == JsonValueKind.Array)
+                        if (string.IsNullOrWhiteSpace(classification))
                         {
-                            tokens = ExtractTokensFromJsonArray(tokensElement);
-                            
-                            if (tokens.Length < MinTokenCountForInformation)
-                            {
-                                _logger.LogWarning("AI returned only {Count} tokens, expected at least {MinCount}. Response may be incomplete.", tokens.Length, MinTokenCountForInformation);
-                            }
+                            return new QueryIntentAnalysisResult(true, Array.Empty<string>());
                         }
 
-                        if (tokens.Length == 0 && _options.Features.EnableDocumentSearch)
-                        {
-                            tokens = TokenizeForSearch(normalizedForMatching);
-                        }
-
-                        return new QueryIntentAnalysisResult(false, tokens);
-                    }
-
-                    _logger.LogWarning("AI returned JSON with unknown type value: {Type}", typeValue);
-                    return FallbackFromPlainClassification(classification, normalizedForMatching);
-                }
-                catch (JsonException ex)
-                {
-                    _logger.LogWarning(ex, "Failed to parse AI response as JSON. Response: {Response}", classification?.Substring(0, Math.Min(200, classification?.Length ?? 0)));
-                    
-                    var cleanedJson = TryExtractJsonFromResponse(classification);
-                    if (!string.IsNullOrWhiteSpace(cleanedJson))
-                    {
                         try
                         {
-                            using var document = JsonDocument.Parse(cleanedJson);
+                            var cleanedClassification = TryExtractJsonFromResponse(classification) ?? classification;
+                            using var document = JsonDocument.Parse(cleanedClassification);
                             var root = document.RootElement;
-                            
-                            if (root.ValueKind == JsonValueKind.Object)
+
+                            if (root.ValueKind != JsonValueKind.Object)
                             {
-                                if (root.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
+                                return FallbackFromPlainClassification(classification, normalizedForMatching);
+                            }
+
+                            if (!root.TryGetProperty("type", out var typeElement) || typeElement.ValueKind != JsonValueKind.String)
+                            {
+                                return FallbackFromPlainClassification(classification, normalizedForMatching);
+                            }
+
+                            var typeValue = typeElement.GetString()?.Trim().ToUpperInvariant();
+                            if (string.Equals(typeValue, "CONVERSATION", StringComparison.Ordinal))
+                            {
+                                _logger.LogDebug("AI classified as CONVERSATION (JSON)");
+                                
+                                string? answer = null;
+                                if (root.TryGetProperty("answer", out var answerElement) && answerElement.ValueKind == JsonValueKind.String)
                                 {
-                                    var typeValue = typeElement.GetString()?.Trim().ToUpperInvariant();
-                                    if (string.Equals(typeValue, "CONVERSATION", StringComparison.Ordinal))
+                                    answer = answerElement.GetString();
+                                    if (string.IsNullOrWhiteSpace(answer))
                                     {
-                                        _logger.LogDebug("AI classified as CONVERSATION (cleaned JSON)");
-                                        return new QueryIntentAnalysisResult(true, Array.Empty<string>());
-                                    }
-                                    
-                                    if (string.Equals(typeValue, "INFORMATION", StringComparison.Ordinal))
-                                    {
-                                        _logger.LogDebug("AI classified as INFORMATION (cleaned JSON)");
-                                        
-                                        string[] tokens = Array.Empty<string>();
-                                        if (root.TryGetProperty("tokens", out var tokensElement) && tokensElement.ValueKind == JsonValueKind.Array)
-                                        {
-                                            tokens = ExtractTokensFromJsonArray(tokensElement);
-                                        }
-                                        
-                                        if (tokens.Length == 0 && _options.Features.EnableDocumentSearch)
-                                        {
-                                            tokens = TokenizeForSearch(normalizedForMatching);
-                                        }
-                                        
-                                        return new QueryIntentAnalysisResult(false, tokens);
+                                        answer = null;
                                     }
                                 }
+                                
+                                return new QueryIntentAnalysisResult(true, Array.Empty<string>(), answer);
                             }
+
+                            if (string.Equals(typeValue, "INFORMATION", StringComparison.Ordinal))
+                            {
+                                _logger.LogDebug("AI classified as INFORMATION (JSON)");
+
+                                string[] tokens = Array.Empty<string>();
+                                if (root.TryGetProperty("tokens", out var tokensElement) && tokensElement.ValueKind == JsonValueKind.Array)
+                                {
+                                    tokens = ExtractTokensFromJsonArray(tokensElement);
+                            
+                                    if (tokens.Length < MinTokenCountForInformation)
+                                    {
+                                        _logger.LogWarning("AI returned only {Count} tokens, expected at least {MinCount}. Response may be incomplete.", tokens.Length, MinTokenCountForInformation);
+                                    }
+                                }
+
+                                if (tokens.Length == 0 && _options.Features.EnableDocumentSearch)
+                                {
+                                    tokens = TokenizeForSearch(normalizedForMatching);
+                                }
+
+                                return new QueryIntentAnalysisResult(false, tokens);
+                            }
+
+                            _logger.LogWarning("AI returned JSON with unknown type value: {Type}", typeValue);
+                            return FallbackFromPlainClassification(classification, normalizedForMatching);
                         }
-                        catch (JsonException)
+                        catch (JsonException ex)
                         {
-                            _logger.LogWarning("Failed to parse cleaned JSON, falling back to plain classification");
+                            _logger.LogWarning(ex, "Failed to parse AI response as JSON. Response: {Response}", classification?.Substring(0, Math.Min(200, classification?.Length ?? 0)));
+                    
+                            var cleanedJson = TryExtractJsonFromResponse(classification);
+                            if (!string.IsNullOrWhiteSpace(cleanedJson))
+                            {
+                                try
+                                {
+                                    using var document = JsonDocument.Parse(cleanedJson);
+                                    var root = document.RootElement;
+                            
+                                    if (root.ValueKind == JsonValueKind.Object)
+                                    {
+                                        if (root.TryGetProperty("type", out var typeElement) && typeElement.ValueKind == JsonValueKind.String)
+                                        {
+                                            var typeValue = typeElement.GetString()?.Trim().ToUpperInvariant();
+                                            if (string.Equals(typeValue, "CONVERSATION", StringComparison.Ordinal))
+                                            {
+                                                _logger.LogDebug("AI classified as CONVERSATION (cleaned JSON)");
+                                                
+                                                string? answer = null;
+                                                if (root.TryGetProperty("answer", out var answerElement) && answerElement.ValueKind == JsonValueKind.String)
+                                                {
+                                                    answer = answerElement.GetString();
+                                                    if (string.IsNullOrWhiteSpace(answer))
+                                                    {
+                                                        answer = null;
+                                                    }
+                                                }
+                                                
+                                                return new QueryIntentAnalysisResult(true, Array.Empty<string>(), answer);
+                                            }
+                                    
+                                            if (string.Equals(typeValue, "INFORMATION", StringComparison.Ordinal))
+                                            {
+                                                _logger.LogDebug("AI classified as INFORMATION (cleaned JSON)");
+                                        
+                                                string[] tokens = Array.Empty<string>();
+                                                if (root.TryGetProperty("tokens", out var tokensElement) && tokensElement.ValueKind == JsonValueKind.Array)
+                                                {
+                                                    tokens = ExtractTokensFromJsonArray(tokensElement);
+                                                }
+                                        
+                                                if (tokens.Length == 0 && _options.Features.EnableDocumentSearch)
+                                                {
+                                                    tokens = TokenizeForSearch(normalizedForMatching);
+                                                }
+                                        
+                                                return new QueryIntentAnalysisResult(false, tokens);
+                                            }
+                                        }
+                                    }
+                                }
+                                catch (JsonException)
+                                {
+                                    _logger.LogWarning("Failed to parse cleaned JSON, falling back to plain classification");
+                                }
+                            }
+                    
+                            return FallbackFromPlainClassification(classification, normalizedForMatching);
                         }
                     }
-                    
-                    return FallbackFromPlainClassification(classification, normalizedForMatching);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "AI classification failed; defaulting to conversation.");
-                return new QueryIntentAnalysisResult(true, Array.Empty<string>());
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "AI classification failed; defaulting to conversation.");
+                        return new QueryIntentAnalysisResult(true, Array.Empty<string>());
+                    }
             }
         }
 

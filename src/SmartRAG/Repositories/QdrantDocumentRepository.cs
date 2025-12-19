@@ -5,6 +5,7 @@ using Qdrant.Client.Grpc;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces.Document;
 using SmartRAG.Interfaces.Storage.Qdrant;
+using SmartRAG.Services.Storage.Qdrant;
 using SmartRAG.Models;
 using System;
 using System.Collections.Generic;
@@ -48,9 +49,9 @@ namespace SmartRAG.Repositories
             _collectionName = _config.CollectionName;
             _logger = logger;
             _collectionManager = collectionManager;
-            _embeddingService = embeddingService;
-            _cacheManager = cacheManager;
-            _searchService = searchService;
+            _embeddingService = embeddingService ?? throw new ArgumentNullException(nameof(embeddingService));
+            _cacheManager = cacheManager ?? throw new ArgumentNullException(nameof(cacheManager));
+            _searchService = searchService ?? throw new ArgumentNullException(nameof(searchService));
 
             string host;
             bool useHttps;
@@ -586,8 +587,18 @@ namespace SmartRAG.Repositories
             }
         }
 
+        private const int DefaultTopPerDocumentK = 3;
+
+        /// <summary>
+        /// Searches documents using query string with business logic (embedding generation, caching, deduplication, prioritization)
+        /// </summary>
+        /// <param name="query">Search query string</param>
+        /// <param name="maxResults">Maximum number of results to return</param>
+        /// <returns>List of relevant document chunks</returns>
         public async Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = DefaultMaxSearchResults)
         {
+            RepositoryLogMessages.LogQdrantSearchStarted(Logger, query, null);
+            
             try
             {
                 var queryHash = $"{query}_{maxResults}";
@@ -597,70 +608,90 @@ namespace SmartRAG.Repositories
                     var cachedChunk0 = cachedResults.FirstOrDefault(c => c.ChunkIndex == 0);
                     if (cachedChunk0 != null)
                     {
-                        Logger.LogDebug("Cached results contain chunk 0. Returning cached results: {Count}", cachedResults.Count);
+                        _logger.LogDebug("Cached results contain chunk 0. Returning cached results: {Count}", cachedResults.Count);
+                        RepositoryLogMessages.LogQdrantFinalResultsReturned(Logger, cachedResults.Count, null);
                         return cachedResults;
                     }
-                    Logger.LogWarning("Cached results missing chunk 0, invalidating cache and performing fresh search");
+                    _logger.LogWarning("Cached results missing chunk 0, invalidating cache and performing fresh search");
                     cachedResults = null;
                 }
 
                 await _collectionManager.EnsureCollectionExistsAsync();
 
-                RepositoryLogMessages.LogQdrantSearchStarted(Logger, query, null);
+                _logger.LogInformation("Starting document search for query: {Query}", query);
 
                 var queryEmbedding = await _embeddingService.GenerateEmbeddingAsync(query);
                 if (queryEmbedding == null || queryEmbedding.Count == 0)
                 {
-                    return await _searchService.FallbackTextSearchAsync(query, maxResults);
+                    _logger.LogWarning("Embedding generation failed, falling back to text search");
+                    var fallbackResults = await _searchService.FallbackTextSearchAsync(query, maxResults);
+                    RepositoryLogMessages.LogQdrantFinalResultsReturned(Logger, fallbackResults.Count, null);
+                    return fallbackResults;
                 }
 
                 var vectorResults = await _searchService.SearchAsync(queryEmbedding, maxResults);
 
-                var allChunks = vectorResults.ToList();
+                var processedResults = ProcessSearchResults(vectorResults, maxResults);
 
-                var deduped = allChunks
-                    .GroupBy(c => new { c.DocumentId, c.ChunkIndex })
-                    .Select(g => g.OrderByDescending(c => c.RelevanceScore ?? 0.0).First())
-                    .ToList();
+                _logger.LogInformation("Document search completed. Returning {Count} results", processedResults.Count);
 
-                var chunk0 = deduped.FirstOrDefault(c => c.ChunkIndex == 0);
+                _cacheManager.CacheResults(queryHash, processedResults);
 
-                var perDocTopK = Math.Max(1, Math.Min(3, maxResults));
-                var topPerDocument = deduped
-                    .GroupBy(c => c.DocumentId)
-                    .SelectMany(g => g.OrderByDescending(c => c.RelevanceScore ?? 0.0).Take(perDocTopK))
-                    .ToList();
-
-                var remainingSlots = Math.Max(0, (maxResults * 3) - topPerDocument.Count);
-                var topGlobal = deduped
-                    .Except(topPerDocument)
-                    .OrderByDescending(c => c.RelevanceScore ?? 0.0)
-                    .Take(remainingSlots)
-                    .ToList();
-
-                var finalResults = topPerDocument
-                    .Concat(topGlobal)
-                    .Distinct()
-                    .OrderByDescending(c => c.RelevanceScore ?? 0.0)
-                    .ToList();
-
-                if (chunk0 != null && !finalResults.Any(c => c.ChunkIndex == 0))
-                {
-                    finalResults = new List<DocumentChunk> { chunk0 }.Concat(finalResults).ToList();
-                    Logger.LogDebug("Chunk 0 was missing from finalResults, re-added. Total results: {Count}", finalResults.Count);
-                }
-
-                RepositoryLogMessages.LogQdrantFinalResultsReturned(Logger, finalResults.Count, null);
-
-                _cacheManager.CacheResults(queryHash, finalResults);
-
-                return finalResults;
+                RepositoryLogMessages.LogQdrantFinalResultsReturned(Logger, processedResults.Count, null);
+                return processedResults;
             }
             catch (Exception ex)
             {
-                RepositoryLogMessages.LogQdrantVectorSearchFailed(Logger, ex.Message, null);
-                return await _searchService.FallbackTextSearchAsync(query, maxResults);
+                _logger.LogError(ex, "Vector search failed, falling back to text search");
+                var fallbackResults = await _searchService.FallbackTextSearchAsync(query, maxResults);
+                RepositoryLogMessages.LogQdrantFinalResultsReturned(Logger, fallbackResults.Count, null);
+                return fallbackResults;
             }
+        }
+
+        /// <summary>
+        /// Processes raw search results by applying business logic: deduplication, top-per-document, chunk 0 priority
+        /// </summary>
+        /// <param name="rawResults">Raw search results from vector search</param>
+        /// <param name="maxResults">Maximum number of results to return</param>
+        /// <returns>Processed results with business logic applied</returns>
+        private List<DocumentChunk> ProcessSearchResults(List<DocumentChunk> rawResults, int maxResults)
+        {
+            var allChunks = rawResults.ToList();
+
+            var deduped = allChunks
+                .GroupBy(c => new { c.DocumentId, c.ChunkIndex })
+                .Select(g => g.OrderByDescending(c => c.RelevanceScore ?? 0.0).First())
+                .ToList();
+
+            var chunk0 = deduped.FirstOrDefault(c => c.ChunkIndex == 0);
+
+            var perDocTopK = Math.Max(1, Math.Min(DefaultTopPerDocumentK, maxResults));
+            var topPerDocument = deduped
+                .GroupBy(c => c.DocumentId)
+                .SelectMany(g => g.OrderByDescending(c => c.RelevanceScore ?? 0.0).Take(perDocTopK))
+                .ToList();
+
+            var remainingSlots = Math.Max(0, (maxResults * 3) - topPerDocument.Count);
+            var topGlobal = deduped
+                .Except(topPerDocument)
+                .OrderByDescending(c => c.RelevanceScore ?? 0.0)
+                .Take(remainingSlots)
+                .ToList();
+
+            var finalResults = topPerDocument
+                .Concat(topGlobal)
+                .Distinct()
+                .OrderByDescending(c => c.RelevanceScore ?? 0.0)
+                .ToList();
+
+            if (chunk0 != null && !finalResults.Any(c => c.ChunkIndex == 0))
+            {
+                finalResults = new List<DocumentChunk> { chunk0 }.Concat(finalResults).ToList();
+                _logger.LogDebug("Chunk 0 was missing from finalResults, re-added. Total results: {Count}", finalResults.Count);
+            }
+
+            return finalResults;
         }
 
         public void Dispose()

@@ -95,7 +95,7 @@ namespace SmartRAG.Services.Document.Parsers
 
                 if (textIsSubstantial && !hasEncodingIssues)
                 {
-                    var correctedText = _imageParserService?.CorrectCurrencySymbols(text, language) ?? text;
+                    var correctedText = _imageParserService.CorrectCurrencySymbols(text, language);
                     textBuilder.AppendLine(correctedText);
                     _logger.LogDebug("PDF page {PageNumber} text extraction successful, using extracted text (length: {Length})", i, text.Length);
                 }
@@ -113,14 +113,14 @@ namespace SmartRAG.Services.Document.Parsers
                 }
                 else
                 {
-                    if (hasEncodingIssues && _imageParserService != null)
+                    if (hasEncodingIssues)
                     {
                         shouldUseOcr = true;
                         _logger.LogDebug("PDF page {PageNumber} is text-based with encoding issues, attempting OCR fallback (text length: {Length})", i, text?.Length ?? 0);
                     }
                     else
                     {
-                        var correctedText = _imageParserService?.CorrectCurrencySymbols(text, language) ?? text;
+                        var correctedText = _imageParserService.CorrectCurrencySymbols(text, language);
                         textBuilder.AppendLine(correctedText);
 
                         if (hasEncodingIssues)
@@ -134,7 +134,7 @@ namespace SmartRAG.Services.Document.Parsers
                     }
                 }
 
-                if (shouldUseOcr && _imageParserService != null)
+                if (shouldUseOcr)
                 {
                     try
                     {
@@ -153,7 +153,7 @@ namespace SmartRAG.Services.Document.Parsers
                                 _logger.LogWarning("OCR failed to extract text from embedded image on PDF page {PageNumber}, using extracted text fallback", i);
                                 if (!string.IsNullOrWhiteSpace(text))
                                 {
-                                    var correctedText = _imageParserService?.CorrectCurrencySymbols(text, language) ?? text;
+                                    var correctedText = _imageParserService.CorrectCurrencySymbols(text, language);
                                     textBuilder.AppendLine(correctedText);
                                 }
                             }
@@ -163,7 +163,7 @@ namespace SmartRAG.Services.Document.Parsers
                             _logger.LogWarning("PDF page {PageNumber} was expected to have embedded images but none were found, using extracted text", i);
                             if (!string.IsNullOrWhiteSpace(text))
                             {
-                                var correctedText = _imageParserService?.CorrectCurrencySymbols(text, language) ?? text;
+                                var correctedText = _imageParserService.CorrectCurrencySymbols(text, language);
                                 textBuilder.AppendLine(correctedText);
                             }
                         }
@@ -173,17 +173,9 @@ namespace SmartRAG.Services.Document.Parsers
                         _logger.LogWarning(ex, "Failed to extract text via OCR for PDF page {PageNumber}, using extracted text fallback", i);
                         if (!string.IsNullOrWhiteSpace(text))
                         {
-                            var correctedText = _imageParserService?.CorrectCurrencySymbols(text, language) ?? text;
+                            var correctedText = _imageParserService.CorrectCurrencySymbols(text, language);
                             textBuilder.AppendLine(correctedText);
                         }
-                    }
-                }
-                else if (shouldUseOcr && _imageParserService == null)
-                {
-                    _logger.LogWarning("OCR is needed for PDF page {PageNumber} but ImageParserService is not available. Enable image parsing in configuration to use OCR.", i);
-                    if (!string.IsNullOrWhiteSpace(text))
-                    {
-                        textBuilder.AppendLine(text);
                     }
                 }
             }

@@ -1,6 +1,7 @@
 #nullable enable
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SmartRAG.Entities;
 using SmartRAG.Helpers;
 using SmartRAG.Interfaces.Document;
@@ -8,6 +9,7 @@ using SmartRAG.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Document
@@ -38,6 +40,7 @@ namespace SmartRAG.Services.Document
         private readonly IChunkPrioritizerService _chunkPrioritizer;
         private readonly IQueryPatternAnalyzerService _queryPatternAnalyzer;
         private readonly ILogger<DocumentSearchStrategyService> _logger;
+        private readonly SearchOptions _defaultSearchOptions;
 
         /// <summary>
         /// Initializes a new instance of the DocumentSearchStrategyService
@@ -49,6 +52,7 @@ namespace SmartRAG.Services.Document
         /// <param name="relevanceCalculator">Service for calculating document relevance</param>
         /// <param name="chunkPrioritizer">Service for prioritizing chunks</param>
         /// <param name="queryPatternAnalyzer">Service for analyzing query patterns</param>
+        /// <param name="options">SmartRAG configuration options</param>
         /// <param name="logger">Logger instance</param>
         public DocumentSearchStrategyService(
             IDocumentRepository documentRepository,
@@ -58,6 +62,7 @@ namespace SmartRAG.Services.Document
             IDocumentRelevanceCalculatorService relevanceCalculator,
             IChunkPrioritizerService chunkPrioritizer,
             IQueryPatternAnalyzerService queryPatternAnalyzer,
+            IOptions<SmartRagOptions> options,
             ILogger<DocumentSearchStrategyService> logger)
         {
             _documentRepository = documentRepository ?? throw new ArgumentNullException(nameof(documentRepository));
@@ -68,60 +73,51 @@ namespace SmartRAG.Services.Document
             _chunkPrioritizer = chunkPrioritizer ?? throw new ArgumentNullException(nameof(chunkPrioritizer));
             _queryPatternAnalyzer = queryPatternAnalyzer ?? throw new ArgumentNullException(nameof(queryPatternAnalyzer));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            
+            var smartRagOptions = options?.Value ?? throw new ArgumentNullException(nameof(options));
+            _defaultSearchOptions = SearchOptions.FromConfig(smartRagOptions);
         }
 
         /// <summary>
         /// Searches for relevant document chunks using repository's optimized search with keyword-based fallback
         /// </summary>
-        public async Task<List<DocumentChunk>> SearchDocumentsAsync(string query, int maxResults, SearchOptions? options = null, List<string>? queryTokens = null)
+        /// <param name="query">Search query string</param>
+        /// <param name="maxResults">Maximum number of results to return</param>
+        /// <param name="options">Optional search options to filter documents. If null, default options from configuration are used.</param>
+        /// <param name="queryTokens">Pre-computed query tokens for performance</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
+        /// <returns>List of relevant document chunks</returns>
+        public async Task<List<DocumentChunk>> SearchDocumentsAsync(string query, int maxResults, SearchOptions? options = null, List<string>? queryTokens = null, CancellationToken cancellationToken = default)
         {
+            var searchOptions = options ?? _defaultSearchOptions;
+            
+            // Stage 1: Try fast repository search (vector similarity search)
+            // This is the primary strategy - fast and efficient for semantic queries
+            // If successful, return immediately. If not, fall back to keyword-based search.
             try
             {
-                _logger.LogInformation("[QueryOperation] Chunk Search: DocumentRepository.SearchAsync (line 80) - Method: DocumentSearchStrategyService.SearchDocumentsAsync");
+                // Use repository directly. For Qdrant, repository's SearchAsync delegates to orchestration service internally.
+                // For InMemory/Redis, repository handles search directly. No unnecessary wrapper needed.
                 var searchResults = await _documentRepository.SearchAsync(query, maxResults * InitialSearchMultiplier);
+                cancellationToken.ThrowIfCancellationRequested();
 
                 if (searchResults.Count > 0)
                 {
-                    var filteredResults = searchResults;
-
-                    if (options != null)
+                    // Filter chunks by document type directly (more efficient than document-level filtering)
+                    var filteredResults = searchResults.Where(chunk =>
                     {
-                        // Filter chunks by document type directly (more efficient than document-level filtering)
-                        var beforeCount = searchResults.Count;
+                        var documentType = chunk.DocumentType ?? "Document";
                         
-                        // Count document types for debugging
-                        var documentTypeCounts = searchResults
-                            .GroupBy(c => c.DocumentType ?? "Document")
-                            .ToDictionary(g => g.Key, g => g.Count());
+                        // Check if this document type is enabled
+                        if (documentType.Equals("Audio", StringComparison.OrdinalIgnoreCase))
+                            return searchOptions.EnableAudioSearch;
                         
-                        filteredResults = searchResults.Where(chunk =>
-                        {
-                            var documentType = chunk.DocumentType ?? "Document";
-                            
-                            // Check if this document type is enabled
-                            if (documentType.Equals("Audio", StringComparison.OrdinalIgnoreCase))
-                                return options.EnableAudioSearch;
-                            
-                            if (documentType.Equals("Image", StringComparison.OrdinalIgnoreCase))
-                                return options.EnableImageSearch;
-                            
-                            // Default to Document type
-                            return options.EnableDocumentSearch;
-                        }).ToList();
+                        if (documentType.Equals("Image", StringComparison.OrdinalIgnoreCase))
+                            return searchOptions.EnableImageSearch;
                         
-                        var afterCount = filteredResults.Count;
-                        
-                        _logger.LogInformation("📊 Document Type Filter Applied: {Filtered}/{Total} results kept → Documents: {Doc}, Audio: {Audio}, Image: {Image}",
-                            afterCount, beforeCount, 
-                            documentTypeCounts.GetValueOrDefault("Document", 0), 
-                            documentTypeCounts.GetValueOrDefault("Audio", 0), 
-                            documentTypeCounts.GetValueOrDefault("Image", 0));
-                        
-                        if (afterCount == 0 && beforeCount > 0)
-                        {
-                            _logger.LogWarning("All search results were filtered out by document type. This may indicate a filtering issue.");
-                        }
-                    }
+                        // Default to Document type
+                        return searchOptions.EnableDocumentSearch;
+                    }).ToList();
 
                     return filteredResults
                         .OrderByDescending(c => c.RelevanceScore ?? 0.0)
@@ -134,20 +130,30 @@ namespace SmartRAG.Services.Document
                 _logger.LogWarning(ex, "Repository search failed, falling back to keyword scoring");
             }
 
-            var allDocuments = await _documentService.GetAllDocumentsFilteredAsync(options);
+            // Stage 2: Keyword-based fallback strategy
+            // Used when repository search fails or returns no results
+            // This strategy loads all documents and uses sophisticated scoring algorithms
+            
+            cancellationToken.ThrowIfCancellationRequested();
+            var allDocuments = await _documentService.GetAllDocumentsFilteredAsync(searchOptions);
             var allChunks = allDocuments.SelectMany(d => d.Chunks).ToList();
 
             var queryWords = queryTokens ?? QueryTokenizer.TokenizeQuery(query);
             var potentialNames = QueryTokenizer.ExtractPotentialNames(query);
 
+            // Score all chunks based on word matching and potential name matching
             var scoredChunks = _documentScoring.ScoreChunks(allChunks, query, queryWords, potentialNames);
 
+            // Map query words to documents to identify which documents contain query terms
+            // This helps prioritize documents that have multiple query word matches
             var queryWordDocumentMap = _queryWordMatcher.MapQueryWordsToDocuments(
                 queryWords,
                 allDocuments,
                 scoredChunks,
                 ChunksToCheckForKeywords);
 
+            // Calculate document-level relevance scores
+            // Documents with more query word matches and higher chunk scores get higher document scores
             var documentScores = _relevanceCalculator.CalculateDocumentScores(
                 allDocuments,
                 scoredChunks,
@@ -155,6 +161,8 @@ namespace SmartRAG.Services.Document
                 queryWordDocumentMap,
                 TopChunksPerDocument);
 
+            // Identify documents that meet the relevance threshold
+            // This filters out documents with low overall relevance
             var relevantDocuments = _relevanceCalculator.IdentifyRelevantDocuments(
                 documentScores,
                 DocumentScoreThreshold);
@@ -168,6 +176,9 @@ namespace SmartRAG.Services.Document
                 .SelectMany(d => scoredChunks.Where(c => c.DocumentId == d.Id))
                 .ToList();
 
+            // Apply document-level boost to chunks from relevant documents
+            // This ensures chunks from highly relevant documents rank higher than chunks from less relevant documents
+            // Boost value (200.0) is significant to create clear separation between relevant and irrelevant documents
             var relevantDocumentIds = new HashSet<Guid>(relevantDocuments.Select(d => d.Id));
             _relevanceCalculator.ApplyDocumentBoost(
                 relevantDocumentChunks,
@@ -183,6 +194,9 @@ namespace SmartRAG.Services.Document
                 .Take(Math.Max(maxResults * CandidateMultiplier, CandidateMinCount))
                 .ToList();
 
+            // Special handling for queries containing potential names (person names, company names, etc.)
+            // When query contains 2+ potential names, prioritize chunks that contain those names
+            // This improves accuracy for queries like "John Smith salary" or "Microsoft revenue"
             if (potentialNames.Count >= MinPotentialNamesCount)
             {
                 // Pre-compute lowercase names once to avoid repeated conversions in the loop
@@ -196,6 +210,8 @@ namespace SmartRAG.Services.Document
 
                 if (nameChunks.Count > MinNameChunksCount)
                 {
+                    // Prioritize chunk 0 (document introduction/header) if it contains the name
+                    // This ensures document context is preserved when returning name-specific results
                     var chunk0 = nameChunks.FirstOrDefault(c => c.ChunkIndex == 0);
                     var otherChunks = nameChunks.Where(c => c.ChunkIndex != 0).Take(maxResults - (chunk0 != null ? 1 : 0)).ToList();
 
@@ -210,9 +226,15 @@ namespace SmartRAG.Services.Document
 
             var prioritizedChunks = _chunkPrioritizer.PrioritizeChunksByRelevanceScore(relevantChunks);
 
+            // Special handling for comprehensive queries (e.g., "list all products", "show all features")
+            // These queries benefit from numbered lists which often contain complete information
             if (_queryPatternAnalyzer.RequiresComprehensiveSearch(query))
             {
                 var comprehensiveQueryWords = QueryTokenizer.TokenizeQuery(query);
+                
+                // Score chunks containing numbered lists with significant bonuses
+                // Each numbered list item gets +100.0 bonus, and query word matches get +10.0 bonus
+                // This ensures numbered lists rank higher for comprehensive queries
                 var numberedListChunks = _queryPatternAnalyzer.ScoreChunksByNumberedLists(
                     prioritizedChunks,
                     comprehensiveQueryWords,
@@ -228,6 +250,8 @@ namespace SmartRAG.Services.Document
 
                 if (topNumberedChunks.Count > 0)
                 {
+                    // Preserve chunk 0 (document introduction) if available
+                    // This maintains document context while prioritizing numbered list content
                     var chunk0 = topNumberedChunks.FirstOrDefault(c => c.ChunkIndex == 0)
                         ?? prioritizedChunks.FirstOrDefault(c => c.ChunkIndex == 0);
                     var otherChunks = topNumberedChunks
@@ -240,6 +264,7 @@ namespace SmartRAG.Services.Document
                 }
             }
 
+            // Default: Return top chunks by relevance score
             return prioritizedChunks.Take(maxResults).ToList();
         }
     }
