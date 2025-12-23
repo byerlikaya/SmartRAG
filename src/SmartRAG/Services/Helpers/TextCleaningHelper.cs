@@ -22,6 +22,7 @@ namespace SmartRAG.Services.Helpers
                 return string.Empty;
 
             var cleaned = RemoveBinaryCharacters(content);
+            cleaned = CorrectOcrErrors(cleaned);
             cleaned = RemoveExcessiveWhitespace(cleaned);
             cleaned = RemoveExcessiveLineBreaks(cleaned);
             cleaned = cleaned.Trim();
@@ -83,6 +84,70 @@ namespace SmartRAG.Services.Helpers
 
             var meaningfulTextRatio = content.Count(c => char.IsLetterOrDigit(c)) / (double)content.Length;
             return meaningfulTextRatio >= MinMeaningfulTextRatio;
+        }
+
+        /// <summary>
+        /// Corrects common OCR errors in extracted text
+        /// Based on industry best practices: fixes percentage misreads, number/character confusions
+        /// </summary>
+        private static string CorrectOcrErrors(string content)
+        {
+            if (string.IsNullOrWhiteSpace(content))
+                return content;
+
+            var corrected = content;
+
+            corrected = CorrectPercentageMisreads(corrected);
+            corrected = CorrectNumberCharacterConfusions(corrected);
+
+            return corrected;
+        }
+
+        /// <summary>
+        /// Corrects percentage misreads using language-agnostic structural pattern detection
+        /// OCR commonly misreads "%XX" as "6XX" when percentage symbol is not clearly separated
+        /// Uses generic pattern: 3-digit number starting with 6 followed by word boundary (structural pattern, no language-specific words)
+        /// </summary>
+        private static string CorrectPercentageMisreads(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return text;
+
+            var corrected = text;
+
+            var pattern = @"\b6(\d{2})\s*['']i\s+[a-zA-Z]{3,}";
+            corrected = Regex.Replace(corrected, pattern, match =>
+            {
+                var number = match.Groups[1].Value;
+                var after = match.Value.Substring(3);
+                return $"%{number}" + after;
+            }, RegexOptions.IgnoreCase);
+
+            pattern = @"\b6(\d{2})\s+[a-zA-Z]{3,}";
+            corrected = Regex.Replace(corrected, pattern, match =>
+            {
+                var number = match.Groups[1].Value;
+                var after = match.Value.Substring(3);
+                return $"%{number}" + after;
+            }, RegexOptions.IgnoreCase);
+
+            return corrected;
+        }
+
+        /// <summary>
+        /// Corrects common OCR character/number confusions
+        /// </summary>
+        private static string CorrectNumberCharacterConfusions(string text)
+        {
+            if (string.IsNullOrWhiteSpace(text))
+                return text;
+
+            var corrected = text;
+
+            corrected = Regex.Replace(corrected, @"\b0([A-Za-z])\b", "O$1");
+            corrected = Regex.Replace(corrected, @"\b([A-Za-z])0\b", "$1O");
+
+            return corrected;
         }
     }
 }

@@ -39,8 +39,9 @@ namespace SmartRAG.Interfaces.Document
         /// </summary>
         /// <param name="answer">Answer text to check</param>
         /// <param name="query">Optional original query to check for keyword repetition</param>
+        /// <param name="sources">Optional sources used to generate the answer, to check if query terms are present</param>
         /// <returns>True if answer indicates missing data</returns>
-        bool IndicatesMissingData(string answer, string? query = null);
+        bool IndicatesMissingData(string answer, string? query = null, List<SearchSource>? sources = null);
 
         /// <summary>
         /// Checks if an answer strictly contains negative patterns ("no information", "not found", etc.)

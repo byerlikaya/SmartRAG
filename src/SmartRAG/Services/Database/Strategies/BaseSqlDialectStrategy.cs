@@ -23,7 +23,7 @@ namespace SmartRAG.Services.Database.Strategies
                 return false;
             }
 
-            var forbiddenKeywords = new[] { "DROP", "DELETE", "TRUNCATE", "ALTER", "GRANT", "REVOKE" };
+            var forbiddenKeywords = new[] { "DROP", "DELETE", "TRUNCATE", "ALTER", "CREATE", "GRANT", "REVOKE", "EXEC", "EXECUTE" };
             foreach (var keyword in forbiddenKeywords)
             {
                 if (sql.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0)

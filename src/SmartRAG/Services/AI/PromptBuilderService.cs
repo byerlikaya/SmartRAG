@@ -82,48 +82,31 @@ SPECIAL INSTRUCTIONS FOR VAGUE QUESTIONS (questions referring to generic person/
                 ? GetLanguageInstructionForCode(_options.DefaultLanguage)
                 : "respond in the SAME language as the query";
 
-            return $@"You are a helpful document analysis assistant. Answer questions based ONLY on the provided document context.
+            return $@"### ROLE
+You are a document-based assistant. Answer questions using ONLY the documents provided below.
 
-CRITICAL RULES: 
-- Base your answer ONLY on the document context provided below
-- The query and context may be in ANY language - {languageInstruction}
-- SEARCH THOROUGHLY through the entire context before concluding information is missing
-- IMPORTANT: The FIRST part of the context (beginning) often contains key document information like headers, titles, key-value pairs, structured data, and important metadata - pay special attention to it
-- Look for information in ALL forms: paragraphs, lists, tables, numbered items, bullet points, headings
-- TABLE DATA DETECTION: If the context contains structured data (tables, key-value pairs, form fields), carefully extract information from these structures
-- TABLE READING: When reading tables, look for column headers and corresponding values - information may be organized in rows and columns
-- STRUCTURED DATA: Pay attention to patterns like ""Label: Value"", ""Field: Data"", or tabular structures - these often contain the exact information requested
-- KEY-VALUE PAIRS: Look for patterns where a label/question is followed by a value/answer (e.g., ""Label: Value"", ""Field: Data"", ""Question: Answer"")
-- DOCUMENT STRUCTURE: PDF documents often have structured sections with labels and values - search for these patterns even if they appear in table-like formats
+### CONSTRAINTS
+1. If the question mentions a specific term (word or phrase) that is NOT in the documents, you MUST say you couldn't find it and add [NO_ANSWER_FOUND] at the end
+2. DO NOT invent or assume information about terms not found in the documents
+3. If the question asks about multiple things and ANY part is missing from documents, mention what's missing and add [NO_ANSWER_FOUND]
+4. ONLY answer based on what is EXPLICITLY written in the documents below
+5. If you cannot find the answer, your response MUST end with: [NO_ANSWER_FOUND]
+6. WITHOUT [NO_ANSWER_FOUND] token, system CANNOT search other sources
 
-ANSWER STRATEGY (CRITICAL):
-- If you find ANY relevant or related information (even if not a perfect match), YOU MUST provide an answer based on what you found
-- If you have partial information, share it and clearly explain what is available and what might be missing
-- ALWAYS try to answer using the context provided - even if the answer is not 100% complete
-- DO provide information if there is ANY related content found, even if incomplete - it's better to share partial information than to say nothing
-- Be precise and use exact information from documents
-- Synthesize information from multiple parts of the context when needed
-- Keep responses focused on the current question
+### OUTPUT FORMAT
+{languageInstruction}
 
-HOW TO ANSWER (CRITICAL):
-- Provide DIRECT, COMPLETE answers using the information in the context
-- DO NOT tell the user to ""check page X"" or ""refer to section Y"" - extract and provide the information directly
-- DO NOT say ""more information can be found in..."" - provide the information NOW
-- Extract ALL relevant details from the context and present them in your answer
-- If the context contains specific numbers, names, or details, include them in your answer
-- NEVER redirect users to other pages or sections - you must answer directly from the context provided
-
-WHEN TO USE [NO_ANSWER_FOUND] (USE VERY RARELY):
-- ONLY return [NO_ANSWER_FOUND] if the context is COMPLETELY EMPTY or TOTALLY IRRELEVANT to the question
-- Do NOT return [NO_ANSWER_FOUND] if you can answer even partially
-- Do NOT return [NO_ANSWER_FOUND] if there is ANY information related to the topic in the context
-- CRITICAL: If the context contains ANYTHING about the topic (even loosely related), provide an answer - DO NOT use [NO_ANSWER_FOUND]
 {countingInstructions}
 {vagueQueryInstructions}
 
-{historyContext}Current question: {query}
+### CONTEXT
+{historyContext}Question: {query}
 
-Document context: {context}
+Documents:
+{context}
+
+### TASK
+Answer the question using ONLY the documents above. If any part of the question cannot be answered from the documents, add [NO_ANSWER_FOUND] at the end.
 
 Answer:";
         }
@@ -153,24 +136,34 @@ Answer:";
                 ? GetLanguageInstructionForCode(_options.DefaultLanguage)
                 : "respond in the same language as the query";
 
-            return $@"Answer the user's question using the provided information.
+            return $@"### ROLE
+You are a hybrid assistant. Answer questions using database and document sources below.
 
-CRITICAL RULES:
-- Provide DIRECT, CONCISE answer to the question
-- {languageInstruction}
-- Use information from the sources below (database OR documents)
-- Do NOT explain where information came from
-- Do NOT mention missing information or unavailable data
-- Do NOT add unnecessary explanations
-- Do NOT include irrelevant information
-- Keep response SHORT and TO THE POINT
+### CONSTRAINTS
+1. If the question mentions a specific term (word or phrase) that is NOT in the sources, you MUST say you couldn't find it and add [NO_ANSWER_FOUND] at the end
+2. DO NOT invent or assume information about terms not found in the sources
+3. If the question asks about multiple things and ANY part is missing from sources, mention what's missing and add [NO_ANSWER_FOUND]
+4. ONLY answer based on what is EXPLICITLY written in the sources below
+5. If you cannot find the answer, your response MUST end with: [NO_ANSWER_FOUND]
+6. WITHOUT [NO_ANSWER_FOUND] token, system CANNOT search other sources
 
+### PRIORITY
+DATABASE INFORMATION = First priority (authoritative)
+DOCUMENT INFORMATION = Second priority (if database has no answer)
+
+### OUTPUT FORMAT
+{languageInstruction}
+
+### CONTEXT
 {historyContext}Question: {query}
 
-Available Information:
+Sources:
 {string.Join("\n\n", combinedContext)}
 
-Direct Answer:";
+### TASK
+Answer the question using the sources above. Prioritize database information over document information. If any part of the question cannot be answered from the sources, add [NO_ANSWER_FOUND] at the end.
+
+Answer:";
         }
 
         /// <summary>

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace SmartRAG.Helpers
 {
@@ -76,6 +77,33 @@ namespace SmartRAG.Helpers
             }
 
             return result;
+        }
+
+        /// <summary>
+        /// Checks if query contains numeric indicators using generic structural patterns
+        /// Detects numeric values, percentages, currency symbols without language-specific terms
+        /// </summary>
+        public static bool ContainsNumericIndicators(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                return false;
+
+            var hasNumericPattern = Regex.IsMatch(query,
+                @"\b\d+\s*[%€$£¥₺]|\b\d+\s+\p{L}{3,}|\b\p{L}{3,}\s+\d+",
+                RegexOptions.IgnoreCase);
+
+            if (hasNumericPattern)
+                return true;
+
+            var hasPercentageSymbol = query.Contains('%');
+            if (hasPercentageSymbol)
+                return true;
+
+            var hasCurrencySymbol = query.Any(c => c == '€' || c == '$' || c == '£' || c == '¥' || c == '₺');
+            if (hasCurrencySymbol)
+                return true;
+
+            return false;
         }
 
         // Intentionally no stemming logic here; language-specific normalization should be handled

@@ -5,6 +5,7 @@ using Qdrant.Client.Grpc;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces.Document;
 using SmartRAG.Interfaces.Storage.Qdrant;
+using SmartRAG.Interfaces.AI;
 using SmartRAG.Services.Storage.Qdrant;
 using SmartRAG.Models;
 using System;
@@ -32,6 +33,7 @@ namespace SmartRAG.Repositories
 
         private readonly IQdrantCollectionManager _collectionManager;
         private readonly IQdrantEmbeddingService _embeddingService;
+        private readonly IAIService _aiService;
         private readonly IQdrantCacheManager _cacheManager;
         private readonly IQdrantSearchService _searchService;
 
@@ -42,6 +44,7 @@ namespace SmartRAG.Repositories
             ILogger<QdrantDocumentRepository> logger,
             IQdrantCollectionManager collectionManager,
             IQdrantEmbeddingService embeddingService,
+            IAIService aiService,
             IQdrantCacheManager cacheManager,
             IQdrantSearchService searchService)
         {
@@ -50,6 +53,7 @@ namespace SmartRAG.Repositories
             _logger = logger;
             _collectionManager = collectionManager;
             _embeddingService = embeddingService ?? throw new ArgumentNullException(nameof(embeddingService));
+            _aiService = aiService ?? throw new ArgumentNullException(nameof(aiService));
             _cacheManager = cacheManager ?? throw new ArgumentNullException(nameof(cacheManager));
             _searchService = searchService ?? throw new ArgumentNullException(nameof(searchService));
 
@@ -242,13 +246,14 @@ namespace SmartRAG.Repositories
         /// <summary>
         /// Creates DocumentChunk from Qdrant point
         /// </summary>
-        private static DocumentChunk CreateDocumentChunk(RetrievedPoint point, Guid documentId, DateTime fallbackCreatedAt)
+        private static DocumentChunk CreateDocumentChunk(RetrievedPoint point, Guid documentId, DateTime fallbackCreatedAt, string fileName = null)
         {
             var chunkContent = GetPayloadString(point.Payload, "content");
             var chunkUploadedAtStr = GetPayloadString(point.Payload, "uploadedAt");
             var documentType = GetPayloadString(point.Payload, "documentType");
             var chunkIdStr = GetPayloadString(point.Payload, "chunkId");
             var chunkIndexStr = GetPayloadString(point.Payload, "chunkIndex");
+            var payloadFileName = GetPayloadString(point.Payload, "fileName");
 
             if (!DateTime.TryParse(chunkUploadedAtStr, null, DateTimeStyles.RoundtripKind, out DateTime chunkCreatedAt))
                 chunkCreatedAt = fallbackCreatedAt;
@@ -276,6 +281,7 @@ namespace SmartRAG.Repositories
             {
                 Id = chunkId,
                 DocumentId = documentId,
+                FileName = payloadFileName ?? fileName ?? string.Empty,
                 Content = chunkContent,
                 ChunkIndex = chunkIndex,
                 Embedding = point.Vectors?.Vector?.Data?.ToList() ?? new List<float>(),
@@ -352,7 +358,7 @@ namespace SmartRAG.Repositories
                     point.Payload.Add("chunkIndex", chunk.ChunkIndex);
                     point.Payload.Add("content", chunk.Content);
                     point.Payload.Add("documentId", document.Id.ToString());
-                    point.Payload.Add("fileName", document.FileName);
+                    point.Payload.Add("fileName", chunk.FileName ?? document.FileName);
                     point.Payload.Add("contentType", document.ContentType);
                     point.Payload.Add("fileSize", document.FileSize);
                     point.Payload.Add("uploadedAt", document.UploadedAt.ToString("O"));
@@ -427,7 +433,7 @@ namespace SmartRAG.Repositories
 
                 foreach (var point in result.Result)
                 {
-                    var chunk = CreateDocumentChunk(point, document.Id, metadata.UploadedAt);
+                    var chunk = CreateDocumentChunk(point, document.Id, metadata.UploadedAt, document.FileName);
                     document.Chunks.Add(chunk);
                 }
 
@@ -481,6 +487,7 @@ namespace SmartRAG.Repositories
                             {
                                 Id = Guid.NewGuid(),
                                 DocumentId = document.Id,
+                                FileName = document.FileName,
                                 Content = string.Empty,
                                 ChunkIndex = i,
                                 CreatedAt = metadata.UploadedAt
@@ -620,10 +627,13 @@ namespace SmartRAG.Repositories
 
                 _logger.LogInformation("Starting document search for query: {Query}", query);
 
-                var queryEmbedding = await _embeddingService.GenerateEmbeddingAsync(query);
+                // Use AI embedding service for query embeddings (semantic similarity)
+                // Document embeddings are already stored using AI embeddings from DocumentService
+                // Hash-based embedding would break semantic similarity
+                var queryEmbedding = await _aiService.GenerateEmbeddingsAsync(query);
                 if (queryEmbedding == null || queryEmbedding.Count == 0)
                 {
-                    _logger.LogWarning("Embedding generation failed, falling back to text search");
+                    _logger.LogWarning("AI embedding generation failed, falling back to text search");
                     var fallbackResults = await _searchService.FallbackTextSearchAsync(query, maxResults);
                     RepositoryLogMessages.LogQdrantFinalResultsReturned(Logger, fallbackResults.Count, null);
                     return fallbackResults;

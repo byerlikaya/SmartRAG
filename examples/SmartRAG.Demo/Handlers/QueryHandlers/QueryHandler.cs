@@ -668,28 +668,15 @@ public class QueryHandler(
     /// Prints search result sources with formatting
     /// </summary>
     /// <param name="sources">Collection of search sources</param>
-    /// <param name="maxCount">Maximum number of sources to display</param>
+    /// <param name="maxCount">Maximum number of sources to display (unused - all sources are displayed)</param>
     private void PrintSources(IReadOnlyCollection<SearchSource> sources, int maxCount)
     {
         Console.ForegroundColor = ConsoleColor.DarkGray;
         Console.WriteLine("📚 Sources:");
 
-        var displayed = 0;
-
         foreach (var source in sources)
         {
-            if (displayed >= maxCount)
-            {
-                break;
-            }
-
             Console.WriteLine($"   • {BuildSourceLine(source)}");
-            displayed++;
-        }
-
-        if (sources.Count > maxCount)
-        {
-            Console.WriteLine($"   • … {sources.Count - maxCount} more");
         }
 
         Console.ResetColor();
