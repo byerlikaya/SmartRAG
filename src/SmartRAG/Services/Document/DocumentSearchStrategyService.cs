@@ -154,9 +154,6 @@ namespace SmartRAG.Services.Document
                     // If no results with preferred threshold, try fallback threshold (adaptive)
                     if (filteredResults.Count == 0 && !isTextSearch)
                     {
-                        _logger.LogInformation("No chunks met preferred threshold {Preferred}, trying fallback threshold {Fallback} for query: {Query}", 
-                            PreferredVectorSearchThreshold, FallbackVectorSearchThreshold, query);
-                        
                         filteredResults = typeFilteredResults.Where(chunk =>
                         {
                             var relevanceScore = chunk.RelevanceScore ?? 0.0;
@@ -165,12 +162,9 @@ namespace SmartRAG.Services.Document
                         }).ToList();
                     }
                     
-                    // If still no results, return top-K by score (better than nothing, but log warning)
+                    // If still no results, return top-K by score (better than nothing)
                     if (filteredResults.Count == 0)
                     {
-                        _logger.LogWarning("No chunks met relevance thresholds, returning top {Count} chunks by score for query: {Query}", 
-                            maxResults, query);
-                        
                         // Return top-K results sorted by score (adaptive fallback)
                         return typeFilteredResults
                             .OrderByDescending(c => c.RelevanceScore ?? 0.0)
@@ -195,9 +189,6 @@ namespace SmartRAG.Services.Document
                         var criticalPhrases = ExtractCriticalPhrases(queryLower, queryWordsLower);
                         var significantQueryWords = queryWordsLower.Where(w => w.Length >= 4).ToList();
                         
-                        _logger.LogDebug("Checking keyword fallback trigger. Critical phrases: {Phrases}, Significant words: {Words}", 
-                            string.Join(", ", criticalPhrases), string.Join(", ", significantQueryWords));
-                        
                         var shouldTriggerKeywordFallback = false;
                         var reason = string.Empty;
                         
@@ -205,9 +196,6 @@ namespace SmartRAG.Services.Document
                         {
                             var criticalPhrasesInTopChunk = criticalPhrases.Count(phrase => topChunkContent.Contains(phrase));
                             var criticalPhraseMatchRatio = (double)criticalPhrasesInTopChunk / criticalPhrases.Count;
-                            
-                            _logger.LogDebug("Critical phrase check: {Matched}/{Total} phrases in top chunk ({Ratio:P0}). Phrases: {Phrases}", 
-                                criticalPhrasesInTopChunk, criticalPhrases.Count, criticalPhraseMatchRatio, string.Join(", ", criticalPhrases));
                             
                             if (criticalPhraseMatchRatio < 0.5)
                             {
@@ -219,9 +207,6 @@ namespace SmartRAG.Services.Document
                         {
                             var significantWordsInTopChunk = significantQueryWords.Count(word => topChunkContent.Contains(word));
                             var significantWordMatchRatio = (double)significantWordsInTopChunk / significantQueryWords.Count;
-                            
-                            _logger.LogDebug("Significant word check: {Matched}/{Total} words in top chunk ({Ratio:P0})", 
-                                significantWordsInTopChunk, significantQueryWords.Count, significantWordMatchRatio);
                             
                             if (significantWordMatchRatio < 0.5)
                             {
@@ -242,29 +227,17 @@ namespace SmartRAG.Services.Document
                         
                         if (shouldTriggerKeywordFallback)
                         {
-                            _logger.LogInformation("Top vector result contains {Reason}, supplementing with keyword search for query: {Query}", reason, query);
                             var keywordResults = await PerformKeywordFallbackAsync(query, maxResults, searchOptions, queryTokens, cancellationToken);
                             if (keywordResults.Count > 0)
                             {
                                 var combinedResults = CombineSearchResultsWithRRF(finalResults, keywordResults, maxResults);
-                                _logger.LogDebug("RRF combined results: {Count} chunks. Top 5: {TopChunks}",
-                                    combinedResults.Count,
-                                    string.Join(", ", combinedResults
-                                        .OrderByDescending(c => c.RelevanceScore ?? 0.0)
-                                        .Take(5)
-                                        .Select(c => $"{c.FileName} (Chunk {c.ChunkIndex}, Score: {c.RelevanceScore:F2}, DocId: {c.DocumentId})")));
                                 return combinedResults;
                             }
-                        }
-                        else
-                        {
-                            _logger.LogDebug("Keyword fallback not triggered. Top chunk contains sufficient critical phrases/significant words.");
                         }
                     }
                     
                     if (hasNameQuery && finalResults.Count > 0)
                     {
-                        _logger.LogInformation("Name-based query detected, supplementing with keyword search for better name matching. Query: {Query}", query);
                         var keywordResults = await PerformKeywordFallbackAsync(query, maxResults, searchOptions, queryTokens, cancellationToken);
                         if (keywordResults.Count > 0)
                         {
@@ -275,8 +248,6 @@ namespace SmartRAG.Services.Document
                     
                     if (requiresNumericContext && finalResults.Count > 0 && highestScore < PreferredVectorSearchThreshold)
                     {
-                        _logger.LogInformation("Numeric query with low vector scores ({Score}), supplementing with keyword search for query: {Query}", 
-                            highestScore, query);
                         var keywordResults = await PerformKeywordFallbackAsync(query, maxResults, searchOptions, queryTokens, cancellationToken);
                         if (keywordResults.Count > 0)
                         {
@@ -287,8 +258,6 @@ namespace SmartRAG.Services.Document
                     
                     if (isVagueQuery && finalResults.Count > 0)
                     {
-                        _logger.LogInformation("Vague query detected (top vector score: {Score}), supplementing with keyword search for query: {Query}", 
-                            highestScore, query);
                         var keywordResults = await PerformKeywordFallbackAsync(query, maxResults, searchOptions, queryTokens, cancellationToken);
                         if (keywordResults.Count > 0)
                         {
@@ -308,8 +277,6 @@ namespace SmartRAG.Services.Document
             // Stage 2: Simple keyword-based fallback strategy
             // Only used when vector search completely fails or returns no results
             // Simple word matching - if vector search doesn't work, basic keyword search is better than nothing
-            
-            _logger.LogInformation("Vector search returned no results, using simple keyword fallback for query: {Query}", query);
             
             cancellationToken.ThrowIfCancellationRequested();
             var allDocuments = await _documentService.GetAllDocumentsFilteredAsync(searchOptions);
@@ -344,7 +311,6 @@ namespace SmartRAG.Services.Document
 
             if (matchingChunks.Count == 0)
             {
-                _logger.LogWarning("No chunks found matching query words: {Query}", query);
                 return new List<DocumentChunk>();
             }
 
@@ -401,9 +367,6 @@ namespace SmartRAG.Services.Document
             cancellationToken.ThrowIfCancellationRequested();
             var allDocuments = await _documentService.GetAllDocumentsFilteredAsync(searchOptions);
             
-            _logger.LogDebug("PerformKeywordFallbackAsync: Searching in {DocumentCount} documents. Documents: {DocumentNames}",
-                allDocuments.Count, string.Join(", ", allDocuments.Select(d => d.FileName)));
-
             var queryWords = queryTokens ?? QueryTokenizer.TokenizeQuery(query);
             var queryWordsLower = queryWords.Select(w => w.ToLowerInvariant()).ToList();
             var queryLower = query.ToLowerInvariant();
@@ -411,8 +374,6 @@ namespace SmartRAG.Services.Document
             var potentialNames = QueryTokenizer.ExtractPotentialNames(query);
             var potentialNamesLower = potentialNames.Select(n => n.ToLowerInvariant()).ToList();
             
-            _logger.LogDebug("PerformKeywordFallbackAsync: Query words: {QueryWords}, Critical phrases: {Phrases}, Potential names: {PotentialNames}",
-                string.Join(", ", queryWordsLower), string.Join(", ", criticalPhrases), string.Join(", ", potentialNamesLower));
 
             var requiresNumericContext = RequiresNumericContext(query);
             
@@ -426,9 +387,6 @@ namespace SmartRAG.Services.Document
                 }
             }
 
-            _logger.LogDebug("PerformKeywordFallbackAsync: Loaded {ChunkCount} chunks with content from {DocumentCount} documents",
-                chunksWithContent.Count, allDocuments.Count);
-            
             var matchingChunks = chunksWithContent.Where(chunk =>
             {
                 if (string.IsNullOrWhiteSpace(chunk.Content))
@@ -476,12 +434,8 @@ namespace SmartRAG.Services.Document
 
             if (matchingChunks.Count == 0)
             {
-                _logger.LogWarning("PerformKeywordFallbackAsync: No chunks matched query words: {Query}", query);
                 return new List<DocumentChunk>();
             }
-
-            _logger.LogDebug("PerformKeywordFallbackAsync: Found {MatchingChunkCount} matching chunks from {DocumentCount} documents",
-                matchingChunks.Count, matchingChunks.Select(c => c.DocumentId).Distinct().Count());
 
             var scoredChunks = matchingChunks.Select(chunk =>
             {
@@ -555,10 +509,6 @@ namespace SmartRAG.Services.Document
                 .ThenBy(c => c.ChunkIndex)
                 .Take(maxResults)
                 .ToList();
-
-            _logger.LogDebug("PerformKeywordFallbackAsync: Top {Count} chunks after scoring. Top scores: {TopScores}",
-                topScoredChunks.Count,
-                string.Join(", ", topScoredChunks.Take(5).Select(c => $"{c.FileName} (Chunk {c.ChunkIndex}, Score: {c.RelevanceScore:F2})")));
 
             return topScoredChunks;
         }
@@ -772,15 +722,6 @@ namespace SmartRAG.Services.Document
                 }
             }
 
-            _logger.LogDebug("RRF: chunkScores after keyword merge. Total: {Count}. Keyword chunks with OriginalScore > 4.5: {HighScoringCount}. Sample: {Sample}",
-                chunkScores.Count,
-                chunkScores.Values.Count(x => x.OriginalScore.HasValue && x.OriginalScore.Value > 4.5),
-                string.Join(", ", chunkScores.Values
-                    .Where(x => x.OriginalScore.HasValue && x.OriginalScore.Value > 4.5)
-                    .OrderByDescending(x => x.OriginalScore!.Value)
-                    .Take(5)
-                    .Select(x => $"{x.Chunk.FileName} (Chunk {x.Chunk.ChunkIndex}, OriginalScore: {x.OriginalScore:F2})")));
-
             var maxRRFScore = chunkScores.Values.Any() ? chunkScores.Values.Max(v => v.RRFScore) : 1.0;
             var minRRFScore = chunkScores.Values.Any() ? chunkScores.Values.Min(v => v.RRFScore) : 0.0;
             var rrfScoreRange = maxRRFScore - minRRFScore;
@@ -795,12 +736,6 @@ namespace SmartRAG.Services.Document
                     return x.Chunk;
                 })
                 .ToList();
-
-            _logger.LogDebug("RRF: highScoringKeywordChunks: {Count} chunks. Top 5: {TopChunks}",
-                highScoringKeywordChunks.Count,
-                string.Join(", ", highScoringKeywordChunks
-                    .Take(5)
-                    .Select(c => $"{c.FileName} (Chunk {c.ChunkIndex}, Score: {c.RelevanceScore:F2}, DocId: {c.DocumentId})")));
 
             var otherChunks = chunkScores.Values
                 .Where(x => !x.OriginalScore.HasValue || x.OriginalScore.Value <= 4.5)
@@ -845,12 +780,6 @@ namespace SmartRAG.Services.Document
             }
             
             var finalResult = result.Take(maxResults).ToList();
-            _logger.LogDebug("RRF final result: {Count} chunks. Top 5: {TopChunks}",
-                finalResult.Count,
-                string.Join(", ", finalResult
-                    .OrderByDescending(c => c.RelevanceScore ?? 0.0)
-                    .Take(5)
-                    .Select(c => $"{c.FileName} (Chunk {c.ChunkIndex}, Score: {c.RelevanceScore:F2}, DocId: {c.DocumentId})")));
             return finalResult;
         }
     }

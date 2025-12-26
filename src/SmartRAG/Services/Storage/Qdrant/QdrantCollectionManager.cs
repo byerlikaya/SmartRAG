@@ -168,15 +168,12 @@ namespace SmartRAG.Services.Storage.Qdrant
                             var sizeValue = sizeProperty.GetValue(config);
                             if (sizeValue is ulong size)
                             {
-                                _logger.LogDebug("Detected vector dimension: {Dimension} from collection: {Collection}",
-                                    (int)size, firstCollection);
                                 return (int)size;
                             }
                         }
                     }
                 }
 
-                _logger.LogDebug("Using default vector dimension: {Dimension}", DefaultVectorDimension);
                 return DefaultVectorDimension;
             }
             catch (Exception ex)
@@ -220,9 +217,8 @@ namespace SmartRAG.Services.Storage.Qdrant
                     {
                         await _client.CreatePayloadIndexAsync(_collectionName, "content", global::Qdrant.Client.Grpc.PayloadSchemaType.Text);
                     }
-                    catch (Exception ex)
+                    catch
                     {
-                        _logger.LogDebug(ex, "Attempted to ensure text index on existing collection");
                     }
                 }
 

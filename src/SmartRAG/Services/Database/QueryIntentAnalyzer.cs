@@ -33,35 +33,6 @@ namespace SmartRAG.Services.Database
         }
 
         /// <summary>
-        /// Sanitizes user input for safe logging by removing control characters and limiting length.
-        /// Prevents log injection attacks by removing newlines, carriage returns, and other control characters.
-        /// </summary>
-        private static string SanitizeForLog(string input)
-        {
-            if (string.IsNullOrEmpty(input)) return string.Empty;
-
-            const int maxLogLength = 500;
-
-            var sanitized = new StringBuilder(input.Length);
-            foreach (var c in input)
-            {
-                if (!char.IsControl(c) || c == ' ')
-                {
-                    sanitized.Append(c);
-                }
-            }
-
-            var result = sanitized.ToString();
-
-            if (result.Length > maxLogLength)
-            {
-                result = result[..maxLogLength] + "... (truncated)";
-            }
-
-            return result;
-        }
-
-        /// <summary>
         /// [AI Query] Analyzes user query and determines which databases/tables to query
         /// </summary>
         /// <param name="userQuery">Natural language user query</param>
@@ -94,12 +65,8 @@ namespace SmartRAG.Services.Database
 
                 if (queryIntent.DatabaseQueries.Count == 0)
                 {
-                    _logger.LogWarning("AI analysis returned no databases. Falling back to schema-driven defaults.");
                     queryIntent = CreateFallbackQueryIntent(userQuery, schemas);
                 }
-
-                _logger.LogDebug("Query analysis completed. Confidence: {Confidence}, Databases: {Count}",
-                    queryIntent.Confidence, queryIntent.DatabaseQueries.Count);
             }
             catch (Exception ex)
             {

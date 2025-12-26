@@ -262,7 +262,6 @@ namespace SmartRAG.Services.Storage.Qdrant
                     }
                 }
 
-                _logger.LogDebug("Fallback text search found {Count} results", relevantChunks.Count);
                 return relevantChunks.Take(maxResults).ToList();
             }
             catch (Exception ex)

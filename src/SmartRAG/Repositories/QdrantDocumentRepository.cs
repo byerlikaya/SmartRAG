@@ -560,7 +560,6 @@ namespace SmartRAG.Repositories
                     try
                     {
                         await _collectionManager.DeleteCollectionAsync(docCollection);
-                        _logger.LogDebug("Deleted document collection: {Collection}", docCollection);
                     }
                     catch (Exception ex)
                     {
@@ -570,7 +569,6 @@ namespace SmartRAG.Repositories
 
                 await _collectionManager.RecreateCollectionAsync(_collectionName);
 
-                _logger.LogInformation("Cleared all documents from Qdrant: deleted {Count} document collections and recreated main collection", documentCollections.Count);
                 return true;
             }
             catch (Exception ex)
@@ -614,7 +612,6 @@ namespace SmartRAG.Repositories
                     var cachedChunk0 = cachedResults.FirstOrDefault(c => c.ChunkIndex == 0);
                     if (cachedChunk0 != null)
                     {
-                        _logger.LogDebug("Cached results contain chunk 0. Returning cached results: {Count}", cachedResults.Count);
                         RepositoryLogMessages.LogQdrantFinalResultsReturned(Logger, cachedResults.Count, null);
                         return cachedResults;
                     }
@@ -623,8 +620,6 @@ namespace SmartRAG.Repositories
                 }
 
                 await _collectionManager.EnsureCollectionExistsAsync();
-
-                _logger.LogInformation("Starting document search for query: {Query}", query);
 
                 // Use AI embedding service for query embeddings (semantic similarity)
                 // Document embeddings are already stored using AI embeddings from DocumentService
@@ -641,8 +636,6 @@ namespace SmartRAG.Repositories
                 var vectorResults = await _searchService.SearchAsync(queryEmbedding, maxResults);
 
                 var processedResults = ProcessSearchResults(vectorResults, maxResults);
-
-                _logger.LogInformation("Document search completed. Returning {Count} results", processedResults.Count);
 
                 _cacheManager.CacheResults(queryHash, processedResults);
 
@@ -697,7 +690,6 @@ namespace SmartRAG.Repositories
             if (chunk0 != null && !finalResults.Any(c => c.ChunkIndex == 0))
             {
                 finalResults = new List<DocumentChunk> { chunk0 }.Concat(finalResults).ToList();
-                _logger.LogDebug("Chunk 0 was missing from finalResults, re-added. Total results: {Count}", finalResults.Count);
             }
 
             return finalResults;

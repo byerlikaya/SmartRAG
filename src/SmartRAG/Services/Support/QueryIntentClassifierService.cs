@@ -193,7 +193,6 @@ IMPORTANT:
                             MaxTokenCountForInformation);
 
                         cancellationToken.ThrowIfCancellationRequested();
-                        _logger.LogInformation("[QueryOperation] LLM Request: AIService.GenerateResponseAsync (line 181) - Method: QueryIntentClassifierService.AnalyzeQueryAsync");
                         var classification = await _aiService.GenerateResponseAsync(classificationPrompt, Array.Empty<string>()).ConfigureAwait(false);
 
                         if (string.IsNullOrWhiteSpace(classification))
@@ -220,8 +219,6 @@ IMPORTANT:
                             var typeValue = typeElement.GetString()?.Trim().ToUpperInvariant();
                             if (string.Equals(typeValue, "CONVERSATION", StringComparison.Ordinal))
                             {
-                                _logger.LogDebug("AI classified as CONVERSATION (JSON)");
-                                
                                 string? answer = null;
                                 if (root.TryGetProperty("answer", out var answerElement) && answerElement.ValueKind == JsonValueKind.String)
                                 {
@@ -237,8 +234,6 @@ IMPORTANT:
 
                             if (string.Equals(typeValue, "INFORMATION", StringComparison.Ordinal))
                             {
-                                _logger.LogDebug("AI classified as INFORMATION (JSON)");
-
                                 string[] tokens = Array.Empty<string>();
                                 if (root.TryGetProperty("tokens", out var tokensElement) && tokensElement.ValueKind == JsonValueKind.Array)
                                 {
@@ -280,8 +275,6 @@ IMPORTANT:
                                             var typeValue = typeElement.GetString()?.Trim().ToUpperInvariant();
                                             if (string.Equals(typeValue, "CONVERSATION", StringComparison.Ordinal))
                                             {
-                                                _logger.LogDebug("AI classified as CONVERSATION (cleaned JSON)");
-                                                
                                                 string? answer = null;
                                                 if (root.TryGetProperty("answer", out var answerElement) && answerElement.ValueKind == JsonValueKind.String)
                                                 {
@@ -297,8 +290,6 @@ IMPORTANT:
                                     
                                             if (string.Equals(typeValue, "INFORMATION", StringComparison.Ordinal))
                                             {
-                                                _logger.LogDebug("AI classified as INFORMATION (cleaned JSON)");
-                                        
                                                 string[] tokens = Array.Empty<string>();
                                                 if (root.TryGetProperty("tokens", out var tokensElement) && tokensElement.ValueKind == JsonValueKind.Array)
                                                 {
