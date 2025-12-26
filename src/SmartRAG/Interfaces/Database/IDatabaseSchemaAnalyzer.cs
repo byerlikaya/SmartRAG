@@ -28,13 +28,6 @@ namespace SmartRAG.Interfaces.Database
         /// <param name="databaseId">Database identifier</param>
         /// <returns>Database schema information</returns>
         Task<DatabaseSchemaInfo> GetSchemaAsync(string databaseId);
-
-        /// <summary>
-        /// Generates AI-powered summary of database content
-        /// </summary>
-        /// <param name="schemaInfo">Schema information</param>
-        /// <returns>AI-generated summary</returns>
-        Task<string> GenerateAISummaryAsync(DatabaseSchemaInfo schemaInfo);
     }
 }
 

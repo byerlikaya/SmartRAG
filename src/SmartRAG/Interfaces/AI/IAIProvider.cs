@@ -33,13 +33,5 @@ namespace SmartRAG.Interfaces.AI
         /// <param name="config">AI provider configuration settings</param>
         /// <returns>List of embedding vectors, one for each input text</returns>
         Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config);
-
-        /// <summary>
-        /// Chunks text into smaller segments for processing
-        /// </summary>
-        /// <param name="text">Text to chunk</param>
-        /// <param name="maxChunkSize">Maximum size of each chunk in characters</param>
-        /// <returns>List of text chunks</returns>
-        Task<List<string>> ChunkTextAsync(string text, int maxChunkSize = 1000);
     }
 }

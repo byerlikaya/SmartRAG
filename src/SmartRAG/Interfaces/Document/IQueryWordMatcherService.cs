@@ -38,14 +38,6 @@ namespace SmartRAG.Interfaces.Document
         /// <param name="documentId">Document ID to check</param>
         /// <returns>Number of unique keywords for this document</returns>
         int FindUniqueKeywords(Dictionary<string, HashSet<Guid>> wordDocumentMap, Guid documentId);
-
-        /// <summary>
-        /// Checks if a word exists in text with word boundaries (not as substring)
-        /// </summary>
-        /// <param name="text">Text to search in</param>
-        /// <param name="word">Word to find</param>
-        /// <returns>True if word is found as whole word</returns>
-        bool IsWordInText(string text, string word);
     }
 }
 

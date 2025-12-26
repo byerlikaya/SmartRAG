@@ -14,7 +14,7 @@ namespace SmartRAG.Services.Database
     /// <summary>
     /// Generates optimized SQL queries for databases based on query intent
     /// </summary>
-    public class SQLQueryGenerator : ISQLQueryGenerator
+    public class SQLQueryGenerator : ISqlQueryGenerator
     {
         private readonly IDatabaseSchemaAnalyzer _schemaAnalyzer;
         private readonly IAIService _aiService;
@@ -53,8 +53,6 @@ namespace SmartRAG.Services.Database
         /// </summary>
         public async Task<QueryIntent> GenerateDatabaseQueriesAsync(QueryIntent queryIntent)
         {
-            _logger.LogInformation("Generating SQL queries for {Count} databases", queryIntent.DatabaseQueries.Count);
-
             foreach (var dbQuery in queryIntent.DatabaseQueries)
             {
                 try
@@ -72,13 +70,9 @@ namespace SmartRAG.Services.Database
 
                     var sql = await _aiService.GenerateResponseAsync(systemPrompt, new List<string>());
 
-                    _logger.LogDebug("AI raw response received");
-
                     var extractedSql = ExtractSQLFromAIResponse(sql);
 
                     extractedSql = strategy.FormatSql(extractedSql);
-
-                    _logger.LogDebug("Extracted SQL");
 
                     if (!ValidateSql(extractedSql, schema, dbQuery.RequiredTables, strategy, out var validationErrors))
                     {

@@ -153,7 +153,7 @@ Bu sayfa taşındı. Lütfen [Değişiklikler Ana Sayfası]({{ site.baseurl }}/t
 - **`IQueryIntentAnalyzer`**: Sorgu niyet analizi ve sınıflandırma
 - **`IDatabaseQueryExecutor`**: Veritabanı sorgu yürütme
 - **`IResultMerger`**: Çoklu veritabanı sonuç birleştirme
-- **`ISQLQueryGenerator`**: Doğrulama ile SQL sorgu üretimi
+- **`ISqlQueryGenerator`**: Doğrulama ile SQL sorgu üretimi
 - **`IDatabaseConnectionManager`**: Veritabanı bağlantı yaşam döngüsü yönetimi
 - **`IDatabaseSchemaAnalyzer`**: Veritabanı şema analizi ve önbellekleme
 

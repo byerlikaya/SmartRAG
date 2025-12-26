@@ -23,12 +23,7 @@ namespace SmartRAG.Enums
         /// <summary>
         /// Analysis failed with an error
         /// </summary>
-        Failed,
-
-        /// <summary>
-        /// Schema refresh is needed
-        /// </summary>
-        RefreshNeeded
+        Failed
     }
 }
 

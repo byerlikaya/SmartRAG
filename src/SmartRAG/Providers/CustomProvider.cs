@@ -27,7 +27,6 @@ namespace SmartRAG.Providers
         {
         }
 
-        private const int DefaultMaxChunkSize = 1000;
         private const string UserRole = "user";
         private const string SystemRole = "system";
 
@@ -330,44 +329,6 @@ namespace SmartRAG.Providers
                 ProviderLogMessages.LogCustomEmbeddingParsingError(Logger, ex);
                 return new List<float>();
             }
-        }
-
-        /// <summary>
-        /// Splits text into chunks based on sentence boundaries
-        /// </summary>
-        public override Task<List<string>> ChunkTextAsync(string text, int maxChunkSize = DefaultMaxChunkSize)
-        {
-            if (string.IsNullOrWhiteSpace(text))
-                return Task.FromResult(new List<string>());
-
-            var chunks = new List<string>();
-            var sentences = text.Split(new char[] { '.', '!', '?' }, StringSplitOptions.RemoveEmptyEntries);
-            var currentChunk = "";
-
-            foreach (var sentence in sentences)
-            {
-                var trimmedSentence = sentence.Trim();
-
-                if (string.IsNullOrEmpty(trimmedSentence))
-                    continue;
-
-                if (currentChunk.Length + trimmedSentence.Length > maxChunkSize && !string.IsNullOrEmpty(currentChunk))
-                {
-                    chunks.Add(currentChunk.Trim());
-                    currentChunk = trimmedSentence + ".";
-                }
-                else
-                {
-                    currentChunk += (currentChunk.Length > 0 ? " " : "") + trimmedSentence + ".";
-                }
-            }
-
-            if (!string.IsNullOrEmpty(currentChunk))
-            {
-                chunks.Add(currentChunk.Trim());
-            }
-
-            return Task.FromResult(chunks);
         }
 
         /// <summary>

@@ -127,28 +127,6 @@ namespace SmartRAG.Services.Document
 
             return relevantDocuments;
         }
-
-        /// <summary>
-        /// Applies document-level boost to chunks from relevant documents
-        /// </summary>
-        /// <param name="chunks">List of chunks to boost</param>
-        /// <param name="relevantDocumentIds">Set of relevant document IDs</param>
-        /// <param name="boostAmount">Amount to boost relevance score</param>
-        public void ApplyDocumentBoost(List<DocumentChunk> chunks, HashSet<Guid> relevantDocumentIds, double boostAmount)
-        {
-            if (chunks == null || relevantDocumentIds == null)
-            {
-                return;
-            }
-
-            foreach (var chunk in chunks)
-            {
-                if (relevantDocumentIds.Contains(chunk.DocumentId))
-                {
-                    chunk.RelevanceScore = (chunk.RelevanceScore ?? 0.0) + boostAmount;
-                }
-            }
-        }
     }
 }
 

@@ -37,12 +37,9 @@ namespace SmartRAG.Factories
 
         public IAIProvider CreateProvider(AIProvider providerType)
         {
-            if (_providers.TryGetValue(providerType, out var provider))
-            {
-                return provider;
-            }
-
-            throw new InvalidOperationException($"AI Provider '{providerType}' is not supported or not implemented.");
+            return _providers.TryGetValue(providerType, out var provider) ? 
+                provider : 
+                throw new InvalidOperationException($"AI Provider '{providerType}' is not supported or not implemented.");
         }
     }
 }

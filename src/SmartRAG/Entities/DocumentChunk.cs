@@ -20,6 +20,11 @@ namespace SmartRAG.Entities
         public Guid DocumentId { get; set; }
 
         /// <summary>
+        /// Name of the file this chunk belongs to
+        /// </summary>
+        public string FileName { get; set; } = string.Empty;
+
+        /// <summary>
         /// Text content of this chunk
         /// </summary>
         public string Content { get; set; } = string.Empty;

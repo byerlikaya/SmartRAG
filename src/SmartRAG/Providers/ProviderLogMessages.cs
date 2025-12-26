@@ -10,32 +10,32 @@ namespace SmartRAG.Providers
     {
         public static readonly Action<ILogger, Exception> LogVoyageParsingError = LoggerMessage.Define(
             LogLevel.Warning,
-            new EventId(6001, "VoyageParsingError"),
+            new EventId(10006, "VoyageParsingError"),
             "Failed to parse Voyage embedding response, returning partial results");
 
         public static readonly Action<ILogger, string, Exception> LogAnthropicResponseParsingError = LoggerMessage.Define<string>(
             LogLevel.Warning,
-            new EventId(6002, "AnthropicResponseParsingError"),
+            new EventId(10007, "AnthropicResponseParsingError"),
             "Failed to parse Anthropic response: {Error}");
 
         public static readonly Action<ILogger, string, Exception> LogAnthropicEmbeddingValidationError = LoggerMessage.Define<string>(
             LogLevel.Error,
-            new EventId(6003, "AnthropicEmbeddingValidationError"),
+            new EventId(10008, "AnthropicEmbeddingValidationError"),
             "Anthropic embedding validation failed: {ErrorMessage}");
 
         public static readonly Action<ILogger, string, Exception> LogAnthropicEmbeddingRequestError = LoggerMessage.Define<string>(
             LogLevel.Error,
-            new EventId(6004, "AnthropicEmbeddingRequestError"),
+            new EventId(10009, "AnthropicEmbeddingRequestError"),
             "Voyage embedding request failed: {Error}");
 
         public static readonly Action<ILogger, string, Exception> LogAnthropicBatchEmbeddingRequestError = LoggerMessage.Define<string>(
             LogLevel.Error,
-            new EventId(6005, "AnthropicBatchEmbeddingRequestError"),
+            new EventId(10010, "AnthropicBatchEmbeddingRequestError"),
             "Voyage batch embedding request failed: {Error}");
 
         public static readonly Action<ILogger, Exception> LogAnthropicEmbeddingModelMissing = LoggerMessage.Define(
             LogLevel.Error,
-            new EventId(6006, "AnthropicEmbeddingModelMissing"),
+            new EventId(10011, "AnthropicEmbeddingModelMissing"),
             "Anthropic embedding model is required but not provided");
 
         public static readonly Action<ILogger, int, Exception> LogAzureOpenAIRateLimit = LoggerMessage.Define<int>(

@@ -40,9 +40,6 @@ namespace SmartRAG.Services.Database
                 Success = true
             };
 
-            _logger.LogInformation("Executing multi-database query across {Count} databases",
-                queryIntent.DatabaseQueries.Count);
-
             var tasks = queryIntent.DatabaseQueries.Select(async dbQuery =>
             {
                 var dbResult = await ExecuteSingleDatabaseQueryAsync(dbQuery);
@@ -64,9 +61,6 @@ namespace SmartRAG.Services.Database
 
             stopwatch.Stop();
             result.ExecutionTimeMs = stopwatch.ElapsedMilliseconds;
-
-            _logger.LogInformation("Multi-database query completed in {Ms}ms. Success: {Success}",
-                result.ExecutionTimeMs, result.Success);
 
             return result;
         }

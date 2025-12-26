@@ -85,12 +85,7 @@ namespace SmartRAG.Services.Storage.Qdrant
             await InitializeCollectionAsync();
         }
 
-        /// <summary>
-        /// Creates a new collection with specified vector parameters
-        /// </summary>
-        /// <param name="collectionName">Name of the collection to create</param>
-        /// <param name="vectorDimension">Dimension of vectors to store</param>
-        public async Task CreateCollectionAsync(string collectionName, int vectorDimension)
+        private async Task CreateCollectionAsync(string collectionName, int vectorDimension)
         {
             try
             {
@@ -141,10 +136,7 @@ namespace SmartRAG.Services.Storage.Qdrant
             }
         }
 
-        /// <summary>
-        /// Gets the vector dimension for collections
-        /// </summary>
-        public async Task<int> GetVectorDimensionAsync()
+        private async Task<int> GetVectorDimensionAsync()
         {
             try
             {
@@ -176,15 +168,12 @@ namespace SmartRAG.Services.Storage.Qdrant
                             var sizeValue = sizeProperty.GetValue(config);
                             if (sizeValue is ulong size)
                             {
-                                _logger.LogDebug("Detected vector dimension: {Dimension} from collection: {Collection}",
-                                    (int)size, firstCollection);
                                 return (int)size;
                             }
                         }
                     }
                 }
 
-                _logger.LogDebug("Using default vector dimension: {Dimension}", DefaultVectorDimension);
                 return DefaultVectorDimension;
             }
             catch (Exception ex)
@@ -228,9 +217,8 @@ namespace SmartRAG.Services.Storage.Qdrant
                     {
                         await _client.CreatePayloadIndexAsync(_collectionName, "content", global::Qdrant.Client.Grpc.PayloadSchemaType.Text);
                     }
-                    catch (Exception ex)
+                    catch
                     {
-                        _logger.LogDebug(ex, "Attempted to ensure text index on existing collection");
                     }
                 }
 

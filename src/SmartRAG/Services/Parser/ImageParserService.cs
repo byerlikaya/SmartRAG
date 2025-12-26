@@ -180,10 +180,7 @@ namespace SmartRAG.Services.Parser
             return result.Text;
         }
 
-        /// <summary>
-        /// [AI Query] Extracts text from an image with confidence scores
-        /// </summary>
-        public async Task<OcrResult> ExtractTextWithConfidenceAsync(Stream imageStream, string language = null)
+        private async Task<OcrResult> ExtractTextWithConfidenceAsync(Stream imageStream, string language = null)
         {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(ImageParserService));
@@ -232,10 +229,7 @@ namespace SmartRAG.Services.Parser
         }
 
 
-        /// <summary>
-        /// Preprocesses an image for better OCR results
-        /// </summary>
-        public async Task<Stream> PreprocessImageAsync(Stream imageStream)
+        private async Task<Stream> PreprocessImageAsync(Stream imageStream)
         {
             try
             {
@@ -502,9 +496,18 @@ namespace SmartRAG.Services.Parser
                     var tessdataPath = string.IsNullOrEmpty(OcrEngineDataPath) ? "." : OcrEngineDataPath;
 
                     using var engine = new TesseractEngine(tessdataPath, availableLanguage, EngineMode.Default);
+                    
                     // CRITICAL: Do NOT use tessedit_char_whitelist - it breaks multi-language support
                     // Tesseract already handles language-specific characters (special chars, accented letters, etc.) correctly
                     // based on the language parameter. Using whitelist filters out these non-ASCII characters.
+                    
+                    // Optimize OCR for structured documents (PDFs, scanned documents)
+                    // PSM 6 = Assume single uniform block of text (best for PDF pages)
+                    // PSM 3 = Fully automatic (default, good for mixed layouts)
+                    engine.SetVariable("tessedit_pageseg_mode", "6");
+                    
+                    // Enable character-level confidence for better error detection
+                    engine.SetVariable("tessedit_create_hocr", "0");
 
                     using var img = Pix.LoadFromMemory(ReadStreamToByteArray(imageStream));
                     using var page = engine.Process(img);
@@ -770,6 +773,51 @@ namespace SmartRAG.Services.Parser
                 text = CorrectCurrencySymbolMisreads(text, currencySymbol);
             }
 
+            // Generic OCR error corrections (work for all languages)
+            text = CorrectPipeCharacterMisreads(text);
+            text = CorrectCurrencySymbolMisplacements(text);
+            text = NormalizeWhitespace(text);
+
+            return text;
+        }
+
+        /// <summary>
+        /// Corrects pipe character (|) misread as digit 1 or vice versa
+        /// OCR commonly confuses | with 1 or l, especially in numeric contexts
+        /// </summary>
+        private static string CorrectPipeCharacterMisreads(string text)
+        {
+            // Pattern: digit + pipe + digit → digit + 1 + digit (e.g., "6|49" → "6149" or "649")
+            // This is a common OCR error where | is misread in numeric sequences
+            text = Regex.Replace(text, @"(\d)\|(\d)", "$1$2");
+            
+            return text;
+        }
+
+        /// <summary>
+        /// Corrects currency symbols appearing inside numeric sequences
+        /// OCR sometimes places currency symbols in wrong positions (e.g., "120₺784" → "120 784")
+        /// </summary>
+        private static string CorrectCurrencySymbolMisplacements(string text)
+        {
+            // Pattern: digit + currency symbol + digit → digit + space + digit
+            // Works for all currency symbols (₺, $, €, £, ¥, etc.)
+            text = Regex.Replace(text, @"(\d)([\$€£¥₺₽¢₹₩])(\d)", "$1 $3");
+            
+            return text;
+        }
+
+        /// <summary>
+        /// Normalizes whitespace (removes multiple spaces, tabs, etc.)
+        /// </summary>
+        private static string NormalizeWhitespace(string text)
+        {
+            // Replace multiple spaces/tabs with single space
+            text = Regex.Replace(text, @"[ \t]+", " ");
+            
+            // Remove spaces before punctuation
+            text = Regex.Replace(text, @"\s+([.,;:!?])", "$1");
+            
             return text;
         }
 
@@ -804,9 +852,8 @@ namespace SmartRAG.Services.Parser
         /// This method applies the same currency correction logic used in OCR results to any text
         /// </summary>
         /// <param name="text">Text to correct</param>
-        /// <param name="language">Language code for context (optional, used for logging)</param>
         /// <returns>Text with corrected currency symbols</returns>
-        public string CorrectCurrencySymbols(string text, string language = null)
+        public string CorrectCurrencySymbols(string text)
         {
             if (string.IsNullOrWhiteSpace(text))
                 return text;

@@ -56,15 +56,10 @@ namespace SmartRAG.Services.Storage.Qdrant
                 _searchCache[queryHash] = (results.ToList(), DateTime.UtcNow.AddMinutes(CacheExpiryMinutes));
 
                 CleanupExpiredCache();
-
-                _logger.LogDebug("Search results cached, cache size: {CacheSize}", _searchCache.Count);
             }
         }
 
-        /// <summary>
-        /// Cleans up expired cache entries
-        /// </summary>
-        public void CleanupExpiredCache()
+        private void CleanupExpiredCache()
         {
             var expiredKeys = _searchCache.Where(kvp => kvp.Value.Expiry <= DateTime.UtcNow).Select(kvp => kvp.Key).ToList();
             foreach (var key in expiredKeys)
@@ -72,10 +67,6 @@ namespace SmartRAG.Services.Storage.Qdrant
                 _searchCache.Remove(key);
             }
 
-            if (expiredKeys.Count > 0)
-            {
-                _logger.LogDebug("Cleaned up {ExpiredCount} expired cache entries", expiredKeys.Count);
-            }
         }
     }
 }

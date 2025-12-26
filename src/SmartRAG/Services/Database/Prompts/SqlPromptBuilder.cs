@@ -59,6 +59,27 @@ namespace SmartRAG.Services.Database.Prompts
             sb.AppendLine("═══════════════════════════════════════════════════════════════════");
             sb.AppendLine();
             sb.AppendLine("╔═══════════════════════════════════════════════════════════════╗");
+            sb.AppendLine("║  🚨🚨🚨 CRITICAL SECURITY RULES - READ FIRST! 🚨🚨🚨          ║");
+            sb.AppendLine("╚═══════════════════════════════════════════════════════════════╝");
+            sb.AppendLine();
+            sb.AppendLine("ABSOLUTELY FORBIDDEN - YOUR QUERY WILL BE REJECTED IF YOU USE:");
+            sb.AppendLine("  ✗ CREATE, DROP, ALTER, TRUNCATE (DDL statements)");
+            sb.AppendLine("  ✗ DELETE, UPDATE, INSERT (DML statements - ONLY SELECT allowed)");
+            sb.AppendLine("  ✗ EXEC, EXECUTE, SP_, XP_ (stored procedures)");
+            sb.AppendLine("  ✗ GRANT, REVOKE (security statements)");
+            sb.AppendLine();
+            sb.AppendLine("YOU MUST ONLY GENERATE SELECT STATEMENTS!");
+            sb.AppendLine();
+            sb.AppendLine("WRONG EXAMPLES (WILL FAIL):");
+            sb.AppendLine("  ✗ CREATE TABLE TableA ...");
+            sb.AppendLine("  ✗ DROP TABLE TableA ...");
+            sb.AppendLine("  ✗ DELETE FROM TableA ...");
+            sb.AppendLine("  ✗ EXEC sp_ProcedureName ...");
+            sb.AppendLine();
+            sb.AppendLine("CORRECT EXAMPLE:");
+            sb.AppendLine("  ✓ SELECT EntityID, NameColumn FROM TableA ORDER BY EntityID");
+            sb.AppendLine();
+            sb.AppendLine("╔═══════════════════════════════════════════════════════════════╗");
             sb.AppendLine($"║  🎯 TARGET DATABASE: {schema.DatabaseName} ({schema.DatabaseType}) 🎯    ║");
             sb.AppendLine("╚═══════════════════════════════════════════════════════════════╝");
             sb.AppendLine();
@@ -150,12 +171,18 @@ namespace SmartRAG.Services.Database.Prompts
             sb.AppendLine("  - Example: SELECT t1.Id, t2.Name FROM Table1 t1 JOIN Table2 t2 ON t1.ForeignKey = t2.Id");
             sb.AppendLine("  - NEVER use column names without table alias when joining tables.");
             sb.AppendLine();
-            sb.AppendLine("ABSOLUTELY FORBIDDEN:");
+            sb.AppendLine("╔═══════════════════════════════════════════════════════════════╗");
+            sb.AppendLine("║  🚨 ADDITIONAL FORBIDDEN PATTERNS 🚨                          ║");
+            sb.AppendLine("╚═══════════════════════════════════════════════════════════════╝");
+            sb.AppendLine();
+            sb.AppendLine("QUERY COMPLEXITY RESTRICTIONS:");
             sb.AppendLine("  ✗ NO nested subqueries (no SELECT inside WHERE)");
             sb.AppendLine("  ✗ NO complex logic (no multiple levels of nesting)");
             sb.AppendLine("  ✗ NO aggregate functions in WHERE clause");
             sb.AppendLine("  ✗ NO using aggregate functions (COUNT, SUM, etc.) without a GROUP BY clause");
             sb.AppendLine("  ✗ NO more than 2 JOINs");
+            sb.AppendLine();
+            sb.AppendLine("REMEMBER: ONLY SELECT statements are allowed. NO CREATE, DROP, DELETE, EXEC!");
             sb.AppendLine();
 
 
@@ -291,6 +318,20 @@ namespace SmartRAG.Services.Database.Prompts
             sb.AppendLine("STEP 5: Apply filters and ordering");
             sb.AppendLine("   → WHERE, GROUP BY, ORDER BY as needed");
             sb.AppendLine();
+            sb.AppendLine("╔═══════════════════════════════════════════════════════════════╗");
+            sb.AppendLine("║  🚨 FINAL CHECK BEFORE WRITING SQL 🚨                        ║");
+            sb.AppendLine("╚═══════════════════════════════════════════════════════════════╝");
+            sb.AppendLine();
+            sb.AppendLine("BEFORE you write your SQL, verify:");
+            sb.AppendLine("  ✓ Does it start with SELECT? (NOT CREATE, DROP, DELETE, EXEC)");
+            sb.AppendLine("  ✓ Are all table names in the allowed list above?");
+            sb.AppendLine("  ✓ Are all column names in the table's column list?");
+            sb.AppendLine("  ✓ Does it follow the simple query pattern?");
+            sb.AppendLine();
+            sb.AppendLine("IF YOUR SQL CONTAINS CREATE, DROP, DELETE, EXEC, OR ANY OTHER");
+            sb.AppendLine("NON-SELECT STATEMENT, IT WILL BE REJECTED AND THE QUERY WILL FAIL!");
+            sb.AppendLine();
+            sb.AppendLine("NOW WRITE YOUR SQL QUERY (SELECT statement only):");
 
             return sb.ToString();
         }

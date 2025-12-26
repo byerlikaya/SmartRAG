@@ -6,7 +6,7 @@ namespace SmartRAG.Interfaces.Database
     /// <summary>
     /// Generates optimized SQL queries for databases based on query intent
     /// </summary>
-    public interface ISQLQueryGenerator
+    public interface ISqlQueryGenerator
     {
         /// <summary>
         /// Generates optimized SQL queries for each database based on intent

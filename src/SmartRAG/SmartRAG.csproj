@@ -5,7 +5,7 @@
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
-    <PackageVersion>3.4.0</PackageVersion>
+    <PackageVersion>3.5.0</PackageVersion>
     <Authors>Barış Yerlikaya</Authors>
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
@@ -20,45 +20,37 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Release 3.4.0: MCP Integration &amp; Enhanced Search Capabilities (MINOR Release - 2025-12-12)
-
-NEW FEATURES:
-- MCP (Model Context Protocol) Integration: External MCP server integration for enhanced search capabilities
-- File Watcher Service: Automatic document indexing from watched folders with real-time updates
-- DocumentType Property: Enhanced document chunk filtering by content type (Document, Audio, Image)
-- DefaultLanguage Support: Global default language configuration for document processing
-- Enhanced Search Feature Flags: Granular control over MCP, audio, and image search capabilities
-- Early Exit Optimization: Performance improvement with parallel execution of document search and query intent analysis, smart skip logic for eager document answer generation
-- IsExplicitlyNegative Check: Fast-fail mechanism for negative answers with [NO_ANSWER_FOUND] pattern support
-- SmartRagStartupService: Centralized startup service for automatic initialization
+    <PackageReleaseNotes>Release 3.5.0: Code Quality Improvements &amp; Architecture Refactoring (MINOR Release - 2025-12-27)
 
 IMPROVEMENTS:
-- Query Strategy Optimization: Enhanced query execution strategy with intelligent source selection and improved early exit logic using StrongDocumentMatchThreshold
-- Code Quality: Comprehensive code cleanup, removed redundant comments and language-specific references
-- Model Organization: Reorganized models into logical subfolders (Configuration, RequestResponse, Results, Schema)
-- Dependency Injection: Improved DI patterns and error handling
-- Image Parsing: Enhanced context expansion and error handling for image processing
-- Database Query Error Handling: Better error messages and response validation
-- Missing Data Detection: Language-agnostic missing data detection patterns
+- Code Quality: Comprehensive refactoring across services, providers, and interfaces for better SOLID/DRY compliance
+- Interface Consistency: Renamed ISQLQueryGenerator to ISqlQueryGenerator for naming consistency
+- Code Duplication Elimination: Removed unnecessary wrapper methods and orchestration services
+- Architecture: Improved service layer organization and separation of concerns
+- PDF Parsing: Enhanced PDF parsing and OCR robustness
+- Search Strategy: Improved search strategy implementation and code quality
 
-FIXES:
-- Language-Agnostic Missing Data Detection: Fixed language-specific patterns, now works with all languages
-- HttpClient Timeout: Increased timeout to 10 minutes for long-running AI operations
-- Turkish Character Encoding: Fixed encoding issues in PDF text extraction
-- Chunk0 Retrieval: Fixed numbered list processing chunk retrieval
-- DI Scope Issues: Resolved dependency injection scope conflicts and circular dependencies
-- Content Type Detection: Improved content type detection accuracy
+ADDED:
+- QueryIntentAnalysisResult Model: New model for query intent classification results
+- SearchOptions Enhancements: Added factory methods and Clone method to SearchOptions
+- QueryStrategyRequest Consolidation: Unified query strategy request DTOs into single QueryStrategyRequest model
 
 CHANGED:
-- Feature Flag Naming: Renamed EnableMcpClient→EnableMcpSearch, EnableAudioParsing→EnableAudioSearch, EnableImageParsing→EnableImageSearch
-- Interface Restructuring: Reorganized interfaces into Mcp/ and FileWatcher/ folders
+- Interface Method Signatures: Removed preferredLanguage parameter from interfaces and consolidated method overloads
+- Interface Naming: ISQLQueryGenerator renamed to ISqlQueryGenerator (breaking change for direct interface users)
+- Service Organization: Removed unused ISourceSelectionService and SourceSelectionService
+
+REMOVED:
+- Unused Services: Removed ISourceSelectionService and SourceSelectionService
+- Unnecessary Wrappers: Removed unnecessary wrapper methods and orchestration services
 
 CODE QUALITY:
 - Maintained 0 errors, 0 warnings
-- Comprehensive code cleanup and organization
-- Improved maintainability and readability
+- Improved SOLID/DRY compliance across codebase
+- Enhanced maintainability and readability
+- Better separation of concerns
 
-This release adds MCP integration, file watcher service, and enhanced search capabilities while maintaining full backward compatibility.</PackageReleaseNotes>
+This release focuses on code quality improvements and architecture refactoring. Interface naming changes may require updates if directly using ISQLQueryGenerator interface.</PackageReleaseNotes>
     
     <!-- Build Configuration -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -69,8 +61,8 @@ This release adds MCP integration, file watcher service, and enhanced search cap
     <AssemblyTitle>SmartRAG</AssemblyTitle>
     <AssemblyDescription>High-performance RAG library with conversation history management for .NET</AssemblyDescription>
     <AssemblyCopyright>Copyright © 2025 Barış Yerlikaya</AssemblyCopyright>
-    <AssemblyVersion>3.4.0.0</AssemblyVersion>
-    <FileVersion>3.4.0.0</FileVersion>
+    <AssemblyVersion>3.5.0.0</AssemblyVersion>
+    <FileVersion>3.5.0.0</FileVersion>
     <NeutralLanguage>en</NeutralLanguage>
     <Culture>en-US</Culture>
   </PropertyGroup>
@@ -109,6 +101,9 @@ This release adds MCP integration, file watcher service, and enhanced search cap
     <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
     <PackageReference Include="itext" Version="9.4.0" />
     <PackageReference Include="EPPlus" Version="8.3.1" />
+    
+    <!-- PDF Rendering (for OCR fallback on text-based PDFs with encoding issues) -->
+    <PackageReference Include="PDFtoImage" Version="5.0.0" />
     
     <!-- OCR and Image Processing -->
     <PackageReference Include="Tesseract" Version="5.2.0" />

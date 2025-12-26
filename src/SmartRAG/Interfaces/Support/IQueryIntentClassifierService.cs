@@ -1,6 +1,7 @@
 #nullable enable
 
 using SmartRAG.Enums;
+using SmartRAG.Models.Results;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Interfaces.Support
@@ -11,12 +12,13 @@ namespace SmartRAG.Interfaces.Support
     public interface IQueryIntentClassifierService
     {
         /// <summary>
-        /// Determines whether the query should be treated as general conversation
+        /// Analyzes the query intent and returns both conversation classification and tokenized query terms.
         /// </summary>
-        /// <param name="query">User query to classify</param>
-        /// <param name="conversationHistory">Optional conversation history for context</param>
-        /// <returns>True if query is conversation, false if information query</returns>
-        Task<bool> IsGeneralConversationAsync(string query, string? conversationHistory = null);
+        /// <param name="query">User query to analyze.</param>
+        /// <param name="conversationHistory">Optional conversation history for context.</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
+        /// <returns>Analysis result containing conversation flag and normalized tokens for non-conversational queries.</returns>
+        Task<QueryIntentAnalysisResult> AnalyzeQueryAsync(string query, string? conversationHistory = null, System.Threading.CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Parses command from user input and extracts payload if available
@@ -28,4 +30,3 @@ namespace SmartRAG.Interfaces.Support
         bool TryParseCommand(string input, out QueryCommandType commandType, out string payload);
     }
 }
-

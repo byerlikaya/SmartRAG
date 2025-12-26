@@ -66,9 +66,6 @@ namespace SmartRAG.Services.Storage.Qdrant
                     }
                 }
 
-                _logger.LogDebug("Generated embedding with dimension {Dimension} for text length {TextLength}",
-                    vectorDimension, text?.Length ?? 0);
-
                 return embedding;
             }
             catch (Exception ex)
@@ -78,10 +75,7 @@ namespace SmartRAG.Services.Storage.Qdrant
             }
         }
 
-        /// <summary>
-        /// Gets the vector dimension for embeddings
-        /// </summary>
-        public Task<int> GetVectorDimensionAsync()
+        private Task<int> GetVectorDimensionAsync()
         {
             try
             {
@@ -90,7 +84,6 @@ namespace SmartRAG.Services.Storage.Qdrant
                     return Task.FromResult(_config.VectorSize);
                 }
 
-                _logger.LogDebug("Using default vector dimension: {Dimension}", DefaultVectorDimension);
                 return Task.FromResult(DefaultVectorDimension);
             }
             catch (Exception ex)

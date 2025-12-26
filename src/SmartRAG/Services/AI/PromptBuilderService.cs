@@ -3,8 +3,10 @@
 using System;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Microsoft.Extensions.Options;
 using SmartRAG.Interfaces.Support;
 using SmartRAG.Interfaces.AI;
+using SmartRAG.Models;
 
 namespace SmartRAG.Services.AI
 {
@@ -14,20 +16,23 @@ namespace SmartRAG.Services.AI
     public class PromptBuilderService : IPromptBuilderService
     {
         private readonly Lazy<IConversationManagerService> _conversationManager;
+        private readonly SmartRagOptions _options;
 
         /// <summary>
         /// Initializes a new instance of the PromptBuilderService
         /// </summary>
         /// <param name="conversationManager">Service for managing conversation sessions and history (lazy to break circular dependency)</param>
-        public PromptBuilderService(Lazy<IConversationManagerService> conversationManager)
+        /// <param name="options">SmartRAG configuration options</param>
+        public PromptBuilderService(Lazy<IConversationManagerService> conversationManager, IOptions<SmartRagOptions> options)
         {
             _conversationManager = conversationManager;
+            _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         }
 
         /// <summary>
         /// Builds a prompt for document-based RAG answer generation
         /// </summary>
-        public string BuildDocumentRagPrompt(string query, string context, string? conversationHistory = null, string? preferredLanguage = null)
+        public string BuildDocumentRagPrompt(string query, string context, string? conversationHistory = null)
         {
             var historyContext = !string.IsNullOrEmpty(conversationHistory)
                 ? $"\n\nRecent conversation context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 30)}\n"
@@ -73,37 +78,35 @@ SPECIAL INSTRUCTIONS FOR VAGUE QUESTIONS (questions referring to generic person/
 - Combine conversation history context with document context to provide a complete answer"
                 : "";
 
-            var languageInstruction = !string.IsNullOrEmpty(preferredLanguage)
-                ? GetLanguageInstructionForCode(preferredLanguage)
+            var languageInstruction = !string.IsNullOrEmpty(_options.DefaultLanguage)
+                ? GetLanguageInstructionForCode(_options.DefaultLanguage)
                 : "respond in the SAME language as the query";
 
-            return $@"You are a helpful document analysis assistant. Answer questions based ONLY on the provided document context.
+            return $@"### ROLE
+You are a document-based assistant. Answer questions using ONLY the documents provided below.
 
-CRITICAL RULES: 
-- Base your answer ONLY on the document context provided below
-- The query and context may be in ANY language - {languageInstruction}
-- SEARCH THOROUGHLY through the entire context before concluding information is missing
-- IMPORTANT: The FIRST part of the context (beginning) often contains key document information like headers, titles, key-value pairs, structured data, and important metadata - pay special attention to it
-- Look for information in ALL forms: paragraphs, lists, tables, numbered items, bullet points, headings
-- TABLE DATA DETECTION: If the context contains structured data (tables, key-value pairs, form fields), carefully extract information from these structures
-- TABLE READING: When reading tables, look for column headers and corresponding values - information may be organized in rows and columns
-- STRUCTURED DATA: Pay attention to patterns like ""Label: Value"", ""Field: Data"", or tabular structures - these often contain the exact information requested
-- KEY-VALUE PAIRS: Look for patterns where a label/question is followed by a value/answer (e.g., ""Label: Value"", ""Field: Data"", ""Question: Answer"")
-- DOCUMENT STRUCTURE: PDF documents often have structured sections with labels and values - search for these patterns even if they appear in table-like formats
-- If you find ANY relevant or related information (even if not a perfect match), provide an answer based on what you found
-- If you have partial information, share it and clearly explain what is available and what might be missing
-- If you cannot find the information after thorough search, return exactly and only: [NO_ANSWER_FOUND]
-- Do NOT return [NO_ANSWER_FOUND] if you can answer even partially.
-- DO provide information if there is ANY related content found, even if incomplete - it's better to share partial information than to say nothing
-- Be precise and use exact information from documents
-- Synthesize information from multiple parts of the context when needed
-- Keep responses focused on the current question
+### CONSTRAINTS
+1. If the question mentions a specific term (word or phrase) that is NOT in the documents, you MUST say you couldn't find it and add [NO_ANSWER_FOUND] at the end
+2. DO NOT invent or assume information about terms not found in the documents
+3. If the question asks about multiple things and ANY part is missing from documents, mention what's missing and add [NO_ANSWER_FOUND]
+4. ONLY answer based on what is EXPLICITLY written in the documents below
+5. If you cannot find the answer, your response MUST end with: [NO_ANSWER_FOUND]
+6. WITHOUT [NO_ANSWER_FOUND] token, system CANNOT search other sources
+
+### OUTPUT FORMAT
+{languageInstruction}
+
 {countingInstructions}
 {vagueQueryInstructions}
 
-{historyContext}Current question: {query}
+### CONTEXT
+{historyContext}Question: {query}
 
-Document context: {context}
+Documents:
+{context}
+
+### TASK
+Answer the question using ONLY the documents above. If any part of the question cannot be answered from the documents, add [NO_ANSWER_FOUND] at the end.
 
 Answer:";
         }
@@ -111,7 +114,7 @@ Answer:";
         /// <summary>
         /// Builds a prompt for merging hybrid results (database + documents)
         /// </summary>
-        public string BuildHybridMergePrompt(string query, string? databaseContext, string? documentContext, string? conversationHistory = null, string? preferredLanguage = null)
+        public string BuildHybridMergePrompt(string query, string? databaseContext, string? documentContext, string? conversationHistory = null)
         {
             var combinedContext = new System.Collections.Generic.List<string>();
 
@@ -129,41 +132,51 @@ Answer:";
                 ? $"\n\nRecent context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 30)}\n"
                 : "";
 
-            var languageInstruction = !string.IsNullOrEmpty(preferredLanguage)
-                ? GetLanguageInstructionForCode(preferredLanguage)
+            var languageInstruction = !string.IsNullOrEmpty(_options.DefaultLanguage)
+                ? GetLanguageInstructionForCode(_options.DefaultLanguage)
                 : "respond in the same language as the query";
 
-            return $@"Answer the user's question using the provided information.
+            return $@"### ROLE
+You are a hybrid assistant. Answer questions using database and document sources below.
 
-CRITICAL RULES:
-- Provide DIRECT, CONCISE answer to the question
-- {languageInstruction}
-- Use information from the sources below (database OR documents)
-- Do NOT explain where information came from
-- Do NOT mention missing information or unavailable data
-- Do NOT add unnecessary explanations
-- Do NOT include irrelevant information
-- Keep response SHORT and TO THE POINT
+### CONSTRAINTS
+1. If the question mentions a specific term (word or phrase) that is NOT in the sources, you MUST say you couldn't find it and add [NO_ANSWER_FOUND] at the end
+2. DO NOT invent or assume information about terms not found in the sources
+3. If the question asks about multiple things and ANY part is missing from sources, mention what's missing and add [NO_ANSWER_FOUND]
+4. ONLY answer based on what is EXPLICITLY written in the sources below
+5. If you cannot find the answer, your response MUST end with: [NO_ANSWER_FOUND]
+6. WITHOUT [NO_ANSWER_FOUND] token, system CANNOT search other sources
 
+### PRIORITY
+DATABASE INFORMATION = First priority (authoritative)
+DOCUMENT INFORMATION = Second priority (if database has no answer)
+
+### OUTPUT FORMAT
+{languageInstruction}
+
+### CONTEXT
 {historyContext}Question: {query}
 
-Available Information:
+Sources:
 {string.Join("\n\n", combinedContext)}
 
-Direct Answer:";
+### TASK
+Answer the question using the sources above. Prioritize database information over document information. If any part of the question cannot be answered from the sources, add [NO_ANSWER_FOUND] at the end.
+
+Answer:";
         }
 
         /// <summary>
         /// Builds a prompt for general conversation
         /// </summary>
-        public string BuildConversationPrompt(string query, string? conversationHistory = null, string? preferredLanguage = null)
+        public string BuildConversationPrompt(string query, string? conversationHistory = null)
         {
             var historyContext = !string.IsNullOrEmpty(conversationHistory)
                 ? $"\n\nRecent conversation context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 30)}\n"
                 : "";
 
-            var languageInstruction = !string.IsNullOrEmpty(preferredLanguage)
-                ? GetLanguageInstructionForCode(preferredLanguage)
+            var languageInstruction = !string.IsNullOrEmpty(_options.DefaultLanguage)
+                ? GetLanguageInstructionForCode(_options.DefaultLanguage)
                 : "respond naturally in the same language as the user's question";
 
             return $@"You are a helpful AI assistant. Answer the user's question naturally and friendly.

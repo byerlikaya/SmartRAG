@@ -143,20 +143,14 @@ namespace SmartRAG.Services.Document
             return false;
         }
 
-        /// <summary>
-        /// Checks if query contains question punctuation (language-agnostic)
-        /// </summary>
-        public bool HasQuestionPunctuation(string input)
+        private bool HasQuestionPunctuation(string input)
         {
             return input.IndexOf('?', StringComparison.Ordinal) >= 0 ||
                    input.IndexOf('¿', StringComparison.Ordinal) >= 0 ||
                    input.IndexOf('؟', StringComparison.Ordinal) >= 0;
         }
 
-        /// <summary>
-        /// Checks if query contains numeric patterns using Unicode digit detection
-        /// </summary>
-        public bool HasNumericPattern(string input)
+        private bool HasNumericPattern(string input)
         {
             if (input.Any(c => char.GetUnicodeCategory(c) == System.Globalization.UnicodeCategory.DecimalDigitNumber))
             {
@@ -167,10 +161,7 @@ namespace SmartRAG.Services.Document
             return numericMatches.Count >= 2;
         }
 
-        /// <summary>
-        /// Checks if query has structural patterns indicating list/enumeration needs
-        /// </summary>
-        public bool HasListIndicators(string input)
+        private bool HasListIndicators(string input)
         {
             if (ListIndicatorPattern.IsMatch(input))
             {

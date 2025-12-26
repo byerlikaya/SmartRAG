@@ -85,26 +85,5 @@ namespace SmartRAG.Interfaces.Document
         /// </summary>
         /// <returns>True if clearing completed successfully</returns>
         Task<bool> ClearAllDocumentsAsync();
-
-        /// <summary>
-        /// Determines if a document is an audio document based on content type
-        /// </summary>
-        /// <param name="doc">Document to check</param>
-        /// <returns>True if document is audio</returns>
-        bool IsAudioDocument(Entities.Document doc);
-
-        /// <summary>
-        /// Determines if a document is an image document based on content type
-        /// </summary>
-        /// <param name="doc">Document to check</param>
-        /// <returns>True if document is image</returns>
-        bool IsImageDocument(Entities.Document doc);
-
-        /// <summary>
-        /// Determines if a document is a text document (not audio and not image)
-        /// </summary>
-        /// <param name="doc">Document to check</param>
-        /// <returns>True if document is text</returns>
-        bool IsTextDocument(Entities.Document doc);
     }
 }

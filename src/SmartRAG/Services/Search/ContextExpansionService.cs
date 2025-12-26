@@ -2,6 +2,7 @@
 
 using Microsoft.Extensions.Logging;
 using SmartRAG.Entities;
+using SmartRAG.Helpers;
 using SmartRAG.Interfaces.Document;
 using SmartRAG.Interfaces.Search;
 using SmartRAG.Services.Shared;
@@ -22,6 +23,7 @@ namespace SmartRAG.Services.Search
         private const int DefaultContextWindow = 3;
         private const int MaxContextWindow = 15;
         private const int ComprehensiveWindow = 8;
+        private const int NumericQueryWindow = 10;
         private const int SmallChunkCountThreshold = 3;
         private const int SmallChunkWindow = 3;
 
@@ -102,9 +104,6 @@ namespace SmartRAG.Services.Search
                             continue;
                         }
 
-                        // Special handling for Chunk 0 in image documents
-                        // Image OCR often separates headers/labels from values across many chunks
-                        // If Chunk 0 is short and lacks numeric values, it's likely a header chunk needing broader context
                         var adjustedWindow = effectiveWindow;
                         if (foundChunk.ChunkIndex == 0 && 
                             foundChunk.DocumentType == "Image" && 
@@ -112,8 +111,6 @@ namespace SmartRAG.Services.Search
                             foundChunk.Content.Length < 500 && 
                             !ContainsNumericValues(foundChunk.Content))
                         {
-                            // Expand window significantly for image header chunks to capture associated values
-                            // This helps connect item names with their prices/values that may be many chunks away
                             adjustedWindow = Math.Min(40, sortedDocumentChunks.Count);
                             _logger.LogDebug(
                                 "Chunk 0 detected as image header chunk (length: {Length}, no numeric values), expanding window from {OldWindow} to {NewWindow}",
@@ -173,14 +170,102 @@ namespace SmartRAG.Services.Search
                 return ComprehensiveWindow;
             }
 
-            // Use wider context window if there are few chunks (to ensure comprehensive coverage)
-            // No document type prioritization - all document types are treated equally
+            if (RequiresNumericContext(query))
+            {
+                return NumericQueryWindow;
+            }
+
             if (chunks != null && chunks.Count <= SmallChunkCountThreshold)
             {
                 return SmallChunkWindow;
             }
 
             return DefaultContextWindow;
+        }
+
+        /// <summary>
+        /// Detects if query asks for numeric values, percentages, or specific numbers
+        /// Uses language-agnostic pattern detection based on structural patterns and Unicode characters
+        /// Works for all languages without hardcoding specific language terms
+        /// </summary>
+        private static bool RequiresNumericContext(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                return false;
+
+            var queryLower = query.ToLowerInvariant();
+
+            if (query.Contains('%'))
+                return true;
+
+            if (System.Text.RegularExpressions.Regex.IsMatch(query, @"\d+\s*%|\d+\s+[a-z]{2,}"))
+            {
+                var words = queryLower.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+                foreach (var word in words)
+                {
+                    if (word.Length >= 4 && word.Length <= 12 && 
+                        word.Any(char.IsLetter) && 
+                        (word.Any(char.IsDigit) || System.Text.RegularExpressions.Regex.IsMatch(word, @"^[a-z]{4,}$")))
+                    {
+                        if (ContainsQuestionIndicators(query))
+                            return true;
+                    }
+                }
+            }
+
+            if (ContainsQuestionIndicators(query))
+            {
+                var hasNumericContext = 
+                    query.Any(char.IsDigit) ||
+                    query.Contains('.') || query.Contains(',') ||
+                    query.Contains('+') || query.Contains('-') || query.Contains('×') || query.Contains('*') ||
+                    query.Contains('>') || query.Contains('<') || query.Contains('=');
+
+                if (hasNumericContext)
+                    return true;
+
+
+                var hasNumericQuestionPattern = System.Text.RegularExpressions.Regex.IsMatch(queryLower,
+                    @"\b\p{L}{2,5}\s+\p{L}{3,}\b",
+                    System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+                if (hasNumericQuestionPattern && QueryTokenizer.ContainsNumericIndicators(query))
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Detects question indicators using language-agnostic structural patterns
+        /// Works for all languages by detecting question marks, question word patterns, and sentence structure
+        /// </summary>
+        private static bool ContainsQuestionIndicators(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+                return false;
+
+            if (query.Contains('?') || query.Contains('？'))
+                return true;
+
+            var trimmedQuery = query.TrimStart();
+            if (trimmedQuery.Length > 0)
+            {
+                var firstWord = trimmedQuery.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+                if (!string.IsNullOrEmpty(firstWord))
+                {
+                    var firstWordLower = firstWord.ToLowerInvariant();
+                    if (firstWordLower.Length >= 2 && firstWordLower.Length <= 5)
+                    {
+                        if (firstWordLower.All(char.IsLetter))
+                        {
+                            return true;
+                        }
+                    }
+                }
+            }
+
+            return false;
         }
 
         /// <summary>
@@ -196,15 +281,8 @@ namespace SmartRAG.Services.Search
                 return string.Empty;
             }
 
-            // DO NOT re-sort chunks here - they are already correctly sorted by DocumentSearchService
-            // Sorting logic in DocumentSearchService:
-            // 1. Original chunks (from initial search) are prioritized
-            // 2. Chunk 0 (document header) is prioritized
-            // 3. Then by relevance score
-            // Re-sorting here would break this carefully constructed order
             var sortedChunks = chunks;
 
-            // Log top chunk information (sorted by relevance score)
             if (sortedChunks.Count > 0)
             {
                 var topChunk = sortedChunks[0];
@@ -271,8 +349,6 @@ namespace SmartRAG.Services.Search
             if (string.IsNullOrWhiteSpace(content))
                 return false;
 
-            // Check for common value patterns: numbers with currency symbols, percentages, or standalone numbers
-            // This is language-agnostic and works for all currency symbols
             foreach (var c in content)
             {
                 if (char.IsDigit(c))
@@ -282,7 +358,6 @@ namespace SmartRAG.Services.Search
                     if (index > 0)
                     {
                         var prev = content[index - 1];
-                        // Currency symbols, percentage, decimal point indicate numeric value
                         if (prev == '$' || prev == '€' || prev == '£' || prev == '¥' || prev == '₺' || 
                             prev == '%' || prev == '.' || prev == ',')
                             return true;
@@ -290,16 +365,14 @@ namespace SmartRAG.Services.Search
                     if (index < content.Length - 1)
                     {
                         var next = content[index + 1];
-                        // Currency symbols, percentage after number
                         if (next == '$' || next == '€' || next == '£' || next == '¥' || next == '₺' || 
                             next == '%' || next == '.' || next == ',')
                             return true;
                     }
-                    // Standalone multi-digit number (likely quantity or price without symbol)
                     var digitCount = 0;
                     for (int i = index; i < content.Length && char.IsDigit(content[i]); i++)
                         digitCount++;
-                    if (digitCount >= 2) // 2+ digits = likely a value
+                    if (digitCount >= 2)
                         return true;
                 }
             }
