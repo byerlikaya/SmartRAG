@@ -325,10 +325,6 @@ namespace SmartRAG.Repositories
                     if (chunk.Embedding == null || chunk.Embedding.Count == 0)
                     {
                         chunk.Embedding = await _embeddingService.GenerateEmbeddingAsync(chunk.Content) ?? new List<float>();
-                        if (index % 10 == 0)
-                        {
-                            RepositoryLogMessages.LogQdrantEmbeddingsProgress(Logger, index + 1, document.Chunks.Count, null);
-                        }
                     }
                     return chunk;
                 }).ToList();
@@ -601,8 +597,6 @@ namespace SmartRAG.Repositories
         /// <returns>List of relevant document chunks</returns>
         public async Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = DefaultMaxSearchResults)
         {
-            RepositoryLogMessages.LogQdrantSearchStarted(Logger, query, null);
-            
             try
             {
                 var queryHash = $"{query}_{maxResults}";

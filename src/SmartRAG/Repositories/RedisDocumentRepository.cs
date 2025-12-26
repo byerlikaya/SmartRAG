@@ -170,12 +170,10 @@ namespace SmartRAG.Repositories
 
                 if (documentJson.IsNull)
                 {
-                    RepositoryLogMessages.LogRedisDocumentNotFound(Logger, id, null);
                     return null;
                 }
 
                 var document = JsonSerializer.Deserialize<SmartRAG.Entities.Document>(documentJson);
-                RepositoryLogMessages.LogRedisDocumentRetrieved(Logger, id, null);
                 return document;
             }
             catch (Exception ex)
@@ -387,7 +385,6 @@ namespace SmartRAG.Repositories
             {
                 var count = await _database.ListLengthAsync(_documentsKey);
                 var result = (int)count;
-                RepositoryLogMessages.LogRedisDocumentCountRetrieved(Logger, result, null);
                 return result;
             }
             catch (Exception ex)
@@ -472,7 +469,6 @@ namespace SmartRAG.Repositories
                     }
                 }
 
-                RepositoryLogMessages.LogRedisSearchCompleted(Logger, query, results.Count, maxResults, null);
                 return results;
             }
             catch (Exception ex)
@@ -507,7 +503,6 @@ namespace SmartRAG.Repositories
                         break;
                 }
 
-                RepositoryLogMessages.LogRedisSearchCompleted(Logger, query, relevantChunks.Count, maxResults, null);
                 return relevantChunks;
             }
             catch (Exception ex)
