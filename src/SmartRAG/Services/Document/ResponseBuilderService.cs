@@ -12,6 +12,7 @@ using SmartRAG.Services.Shared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Document
@@ -477,16 +478,16 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// Creates a fallback response when document query cannot answer the question
         /// </summary>
-        public async Task<RagResponse> CreateFallbackResponseAsync(string query, string conversationHistory)
+        public async Task<RagResponse> CreateFallbackResponseAsync(string query, string conversationHistory, CancellationToken cancellationToken = default)
         {
-            var chatResponse = await _conversationManager.HandleGeneralConversationAsync(query, conversationHistory);
+            var chatResponse = await _conversationManager.HandleGeneralConversationAsync(query, conversationHistory, cancellationToken);
             return CreateRagResponse(query, chatResponse, new List<SearchSource>());
         }
 
         /// <summary>
         /// Merges results from database and document queries into a unified response
         /// </summary>
-        public async Task<RagResponse> MergeHybridResultsAsync(string query, RagResponse databaseResponse, RagResponse documentResponse, string conversationHistory)
+        public async Task<RagResponse> MergeHybridResultsAsync(string query, RagResponse databaseResponse, RagResponse documentResponse, string conversationHistory, CancellationToken cancellationToken = default)
         {
             var combinedSources = new List<SearchSource>();
             combinedSources.AddRange(databaseResponse.Sources);
@@ -519,7 +520,7 @@ namespace SmartRAG.Services.Document
                 combinedContext.Add(documentContext);
 
             var mergePrompt = _promptBuilder.BuildHybridMergePrompt(query, databaseContext, documentContext, conversationHistory);
-            var mergedAnswer = await _aiService.GenerateResponseAsync(mergePrompt, combinedContext);
+            var mergedAnswer = await _aiService.GenerateResponseAsync(mergePrompt, combinedContext, cancellationToken);
 
             return CreateRagResponse(query, mergedAnswer, combinedSources);
         }

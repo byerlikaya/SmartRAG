@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Providers
@@ -51,22 +52,24 @@ namespace SmartRAG.Providers
         /// </summary>
         /// <param name="prompt">The input prompt for text generation</param>
         /// <param name="config">AI provider configuration settings</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>Generated text response</returns>
-        public abstract Task<string> GenerateTextAsync(string prompt, AIProviderConfig config);
+        public abstract Task<string> GenerateTextAsync(string prompt, AIProviderConfig config, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Generates vector embedding for the given text
         /// </summary>
         /// <param name="text">The text to generate embedding for</param>
         /// <param name="config">AI provider configuration settings</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>Vector embedding as list of floats</returns>
-        public abstract Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config);
+        public abstract Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Default batch embedding implementation with parallel processing
         /// Providers can override this for better performance if they support true batch operations
         /// </summary>
-        public virtual async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config)
+        public virtual async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config, CancellationToken cancellationToken = default)
         {
             var textList = texts.ToList();
             var results = new List<List<float>>(new List<float>[textList.Count]);
@@ -80,10 +83,11 @@ namespace SmartRAG.Providers
             {
                 var tasks = textList.Select(async (text, index) =>
                 {
-                    await semaphore.WaitAsync();
+                    await semaphore.WaitAsync(cancellationToken);
                     try
                     {
-                        var embedding = await GenerateEmbeddingAsync(text, config);
+                        cancellationToken.ThrowIfCancellationRequested();
+                        var embedding = await GenerateEmbeddingAsync(text, config, cancellationToken);
                         results[index] = embedding;
                     }
                     catch (Exception ex)
@@ -167,15 +171,17 @@ namespace SmartRAG.Providers
         /// Common HTTP POST request with error handling and retry logic
         /// </summary>
         protected async Task<(bool success, string response, string errorMessage)> MakeHttpRequestAsync(
-            HttpClient client, string endpoint, object payload, int maxRetries = DefaultMaxRetries)
+            HttpClient client, string endpoint, object payload, int maxRetries = DefaultMaxRetries, CancellationToken cancellationToken = default)
         {
             var attempt = 0;
 
             while (attempt < maxRetries)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 try
                 {
-                    var (success, response, error) = await ExecuteHttpRequestAsync(client, endpoint, payload);
+                    var (success, response, error) = await ExecuteHttpRequestAsync(client, endpoint, payload, cancellationToken);
 
                     if (success)
                         return (true, response, string.Empty);
@@ -192,7 +198,7 @@ namespace SmartRAG.Providers
                         if (attempt < maxRetries)
                         {
                             int delayMs = error.Contains("EOF") ? 1000 : MinRetryDelayMs * attempt;
-                            await Task.Delay(delayMs);
+                            await Task.Delay(delayMs, cancellationToken);
                             continue;
                         }
                     }
@@ -205,7 +211,7 @@ namespace SmartRAG.Providers
                     if (attempt < maxRetries)
                     {
                         var delay = BaseDelayMs * (int)Math.Pow(2, attempt - 1);
-                        await Task.Delay(delay);
+                        await Task.Delay(delay, cancellationToken);
                         continue;
                     }
                     return (false, string.Empty, $"{ProviderType} request failed: {ex.Message}");
@@ -233,13 +239,13 @@ namespace SmartRAG.Providers
         /// Executes a single HTTP request
         /// </summary>
         private async Task<(bool success, string response, string error)> ExecuteHttpRequestAsync(
-            HttpClient client, string endpoint, object payload)
+            HttpClient client, string endpoint, object payload, CancellationToken cancellationToken = default)
         {
             var json = JsonSerializer.Serialize(payload, _jsonOptions);
 
             var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await client.PostAsync(endpoint, content);
+            var response = await client.PostAsync(endpoint, content, cancellationToken);
 
             if (response.IsSuccessStatusCode)
             {

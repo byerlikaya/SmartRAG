@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Storage.Qdrant
@@ -77,8 +78,9 @@ namespace SmartRAG.Services.Storage.Qdrant
         /// </summary>
         /// <param name="queryEmbedding">Embedding vector for the search query</param>
         /// <param name="maxResults">Maximum number of results to return</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>List of relevant document chunks</returns>
-        public async Task<List<DocumentChunk>> SearchAsync(List<float> queryEmbedding, int maxResults)
+        public async Task<List<DocumentChunk>> SearchAsync(List<float> queryEmbedding, int maxResults, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -178,8 +180,9 @@ namespace SmartRAG.Services.Storage.Qdrant
         /// </summary>
         /// <param name="query">Text query to search for</param>
         /// <param name="maxResults">Maximum number of results to return</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>List of relevant document chunks</returns>
-        public async Task<List<DocumentChunk>> FallbackTextSearchAsync(string query, int maxResults)
+        public async Task<List<DocumentChunk>> FallbackTextSearchAsync(string query, int maxResults, CancellationToken cancellationToken = default)
         {
             try
             {

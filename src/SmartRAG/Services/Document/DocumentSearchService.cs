@@ -897,9 +897,10 @@ namespace SmartRAG.Services.Document
         /// <param name="options">Optional search options</param>
         /// <param name="preCalculatedResults">Pre-calculated search results to use</param>
         /// <param name="queryTokens">Pre-computed query tokens for performance</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>RAG response with answer and sources</returns>
         [Obsolete("Use GenerateBasicRagAnswerAsync(GenerateRagAnswerRequest) instead. This method will be removed in v4.0.0")]
-        public async Task<RagResponse> GenerateBasicRagAnswerAsync(string query, int maxResults, string conversationHistory, string? preferredLanguage = null, SearchOptions? options = null, List<DocumentChunk>? preCalculatedResults = null, List<string>? queryTokens = null)
+        public async Task<RagResponse> GenerateBasicRagAnswerAsync(string query, int maxResults, string conversationHistory, string? preferredLanguage = null, SearchOptions? options = null, List<DocumentChunk>? preCalculatedResults = null, List<string>? queryTokens = null, CancellationToken cancellationToken = default)
         {
             var request = new Models.RequestResponse.GenerateRagAnswerRequest
             {
@@ -911,7 +912,7 @@ namespace SmartRAG.Services.Document
                 PreCalculatedResults = preCalculatedResults,
                 QueryTokens = queryTokens
             };
-            return await GenerateBasicRagAnswerAsync(request, default);
+            return await GenerateBasicRagAnswerAsync(request, cancellationToken);
         }
 
 

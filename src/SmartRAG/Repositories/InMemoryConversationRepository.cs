@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using SmartRAG.Interfaces.Storage;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Repositories
@@ -18,7 +19,7 @@ namespace SmartRAG.Repositories
         {
         }
 
-        public Task<string> GetConversationHistoryAsync(string sessionId)
+        public Task<string> GetConversationHistoryAsync(string sessionId, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(sessionId))
                 return Task.FromResult(string.Empty);
@@ -29,7 +30,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public Task AddToConversationAsync(string sessionId, string question, string answer)
+        public Task AddToConversationAsync(string sessionId, string question, string answer, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(sessionId))
                 return Task.CompletedTask;
@@ -63,7 +64,7 @@ namespace SmartRAG.Repositories
             return Task.CompletedTask;
         }
 
-        public Task ClearConversationAsync(string sessionId)
+        public Task ClearConversationAsync(string sessionId, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(sessionId))
                 return Task.CompletedTask;
@@ -76,7 +77,7 @@ namespace SmartRAG.Repositories
             return Task.CompletedTask;
         }
 
-        public Task<bool> SessionExistsAsync(string sessionId)
+        public Task<bool> SessionExistsAsync(string sessionId, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(sessionId))
                 return Task.FromResult(false);
@@ -87,7 +88,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public Task SetConversationHistoryAsync(string sessionId, string conversation)
+        public Task SetConversationHistoryAsync(string sessionId, string conversation, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(sessionId))
                 return Task.CompletedTask;
@@ -100,7 +101,7 @@ namespace SmartRAG.Repositories
             return Task.CompletedTask;
         }
 
-        public Task ClearAllConversationsAsync()
+        public Task ClearAllConversationsAsync(CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {

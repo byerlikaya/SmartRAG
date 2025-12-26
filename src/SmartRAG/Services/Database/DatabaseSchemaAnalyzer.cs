@@ -15,6 +15,7 @@ using System.Data;
 using System.Data.Common;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Database
@@ -48,7 +49,7 @@ namespace SmartRAG.Services.Database
         /// <summary>
         /// [DB Query] Analyzes database schema
         /// </summary>
-        public async Task<DatabaseSchemaInfo> AnalyzeDatabaseSchemaAsync(DatabaseConnectionConfig connectionConfig)
+        public async Task<DatabaseSchemaInfo> AnalyzeDatabaseSchemaAsync(DatabaseConnectionConfig connectionConfig, CancellationToken cancellationToken = default)
         {
             var databaseId = await GetDatabaseIdAsync(connectionConfig);
 
@@ -63,11 +64,12 @@ namespace SmartRAG.Services.Database
 
             try
             {
-                schemaInfo.DatabaseName = await ExtractDatabaseNameAsync(connectionConfig);
+                schemaInfo.DatabaseName = await ExtractDatabaseNameAsync(connectionConfig, cancellationToken);
 
                 var tableNames = await _databaseParserService.GetTableNamesAsync(
                     connectionConfig.ConnectionString,
-                    connectionConfig.DatabaseType);
+                    connectionConfig.DatabaseType,
+                    cancellationToken);
 
                 tableNames = FilterTables(tableNames, connectionConfig);
 
@@ -75,10 +77,13 @@ namespace SmartRAG.Services.Database
 
                 foreach (var tableName in tableNames)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    
                     var tableInfo = await AnalyzeTableAsync(
                         connectionConfig.ConnectionString,
                         tableName,
-                        connectionConfig.DatabaseType);
+                        connectionConfig.DatabaseType,
+                        cancellationToken);
 
                     schemaInfo.Tables.Add(tableInfo);
                     totalRows += tableInfo.RowCount;
@@ -88,7 +93,7 @@ namespace SmartRAG.Services.Database
 
                 if (string.IsNullOrEmpty(schemaInfo.Description))
                 {
-                    schemaInfo.AISummary = await GenerateAISummaryAsync(schemaInfo);
+                    schemaInfo.AISummary = await GenerateAISummaryAsync(schemaInfo, cancellationToken);
                 }
 
                 schemaInfo.Status = SchemaAnalysisStatus.Completed;
@@ -106,15 +111,17 @@ namespace SmartRAG.Services.Database
             return schemaInfo;
         }
 
-        public async Task<List<DatabaseSchemaInfo>> GetAllSchemasAsync()
+        public async Task<List<DatabaseSchemaInfo>> GetAllSchemasAsync(CancellationToken cancellationToken = default)
         {
             if (_schemaCache.IsEmpty && _options.DatabaseConnections != null && _options.DatabaseConnections.Count > 0)
             {
                 foreach (var connection in _options.DatabaseConnections)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    
                     try
                     {
-                        await AnalyzeDatabaseSchemaAsync(connection);
+                        await AnalyzeDatabaseSchemaAsync(connection, cancellationToken);
                     }
                     catch (Exception ex)
                     {
@@ -126,18 +133,18 @@ namespace SmartRAG.Services.Database
             return _schemaCache.Values.ToList();
         }
 
-        public Task<DatabaseSchemaInfo> GetSchemaAsync(string databaseId)
+        public Task<DatabaseSchemaInfo> GetSchemaAsync(string databaseId, CancellationToken cancellationToken = default)
         {
             _schemaCache.TryGetValue(databaseId, out var schema);
             return Task.FromResult(schema);
         }
 
-        private async Task<string> GenerateAISummaryAsync(DatabaseSchemaInfo schemaInfo)
+        private async Task<string> GenerateAISummaryAsync(DatabaseSchemaInfo schemaInfo, CancellationToken cancellationToken = default)
         {
             try
             {
                 var prompt = BuildSummaryPrompt(schemaInfo);
-                var summary = await _aiService.GenerateResponseAsync(prompt, new List<string>());
+                var summary = await _aiService.GenerateResponseAsync(prompt, new List<string>(), cancellationToken);
                 return summary?.Trim() ?? "Database schema analysis completed.";
             }
             catch (Exception ex)
@@ -147,18 +154,18 @@ namespace SmartRAG.Services.Database
             }
         }
 
-        private async Task<string> GetDatabaseIdAsync(DatabaseConnectionConfig config)
+        private async Task<string> GetDatabaseIdAsync(DatabaseConnectionConfig config, CancellationToken cancellationToken = default)
         {
             if (!string.IsNullOrEmpty(config.Name))
             {
                 return config.Name;
             }
 
-            var dbName = await ExtractDatabaseNameAsync(config);
+            var dbName = await ExtractDatabaseNameAsync(config, cancellationToken);
             return $"{config.DatabaseType}_{dbName}";
         }
 
-        private async Task<string> ExtractDatabaseNameAsync(DatabaseConnectionConfig config)
+        private async Task<string> ExtractDatabaseNameAsync(DatabaseConnectionConfig config, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -272,7 +279,8 @@ namespace SmartRAG.Services.Database
         private async Task<TableSchemaInfo> AnalyzeTableAsync(
             string connectionString,
             string tableName,
-            DatabaseType databaseType)
+            DatabaseType databaseType,
+            CancellationToken cancellationToken = default)
         {
             var tableInfo = new TableSchemaInfo
             {
@@ -282,7 +290,7 @@ namespace SmartRAG.Services.Database
             try
             {
                 using var connection = CreateConnection(connectionString, databaseType);
-                await connection.OpenAsync();
+                await connection.OpenAsync(cancellationToken);
 
                 tableInfo.Columns = await GetColumnsAsync(connection, tableName, databaseType);
 

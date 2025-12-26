@@ -4,6 +4,7 @@ using SmartRAG.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Database
@@ -45,11 +46,12 @@ namespace SmartRAG.Services.Database
         /// Legacy: Analyze natural-language query and produce database-intent
         /// </summary>
         /// <param name="userQuery">Natural language user query</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>Structured query intent</returns>
         [Obsolete("Use IQueryIntentAnalyzer.AnalyzeQueryIntentAsync instead. Will be removed in v4.0.0")]
-        public async Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery)
+        public async Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery, CancellationToken cancellationToken = default)
         {
-            return await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(userQuery);
+            return await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(userQuery, cancellationToken);
         }
 
         /// <summary>
@@ -57,14 +59,15 @@ namespace SmartRAG.Services.Database
         /// </summary>
         /// <param name="userQuery">Natural language user query</param>
         /// <param name="maxResults">Maximum number of results</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>RAG response with data from multiple databases</returns>
-        public async Task<RagResponse> QueryMultipleDatabasesAsync(string userQuery, int maxResults = 5)
+        public async Task<RagResponse> QueryMultipleDatabasesAsync(string userQuery, int maxResults = 5, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(userQuery))
                 throw new ArgumentException("User query cannot be null or empty", nameof(userQuery));
 
-            var queryIntent = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(userQuery);
-            return await QueryMultipleDatabasesAsync(userQuery, queryIntent, maxResults);
+            var queryIntent = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(userQuery, cancellationToken);
+            return await QueryMultipleDatabasesAsync(userQuery, queryIntent, maxResults, preferredLanguage: null, cancellationToken);
         }
 
         /// <summary>
@@ -74,10 +77,11 @@ namespace SmartRAG.Services.Database
         /// <param name="preAnalyzedIntent">Pre-analyzed query intent to avoid redundant AI calls</param>
         /// <param name="maxResults">Maximum number of results</param>
         /// <param name="preferredLanguage">Preferred language for the response (ISO code, e.g., "tr", "en")</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>RAG response with data from multiple databases</returns>
         /// <exception cref="ArgumentException">Thrown when <paramref name="userQuery"/> is null or empty.</exception>
         /// <exception cref="ArgumentNullException">Thrown when <paramref name="preAnalyzedIntent"/> is null.</exception>
-        public async Task<RagResponse> QueryMultipleDatabasesAsync(string userQuery, QueryIntent preAnalyzedIntent, int maxResults = 5, string preferredLanguage = null)
+        public async Task<RagResponse> QueryMultipleDatabasesAsync(string userQuery, QueryIntent preAnalyzedIntent, int maxResults = 5, string preferredLanguage = null, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(userQuery))
                 throw new ArgumentException("User query cannot be null or empty", nameof(userQuery));
@@ -94,11 +98,11 @@ namespace SmartRAG.Services.Database
                     return CreateNoDatabaseMatchResponse();
                 }
 
-                queryIntent = await ValidateAndCorrectQueryIntentAsync(queryIntent);
+                queryIntent = await ValidateAndCorrectQueryIntentAsync(queryIntent, cancellationToken);
 
-                queryIntent = await GenerateDatabaseQueriesAsync(queryIntent);
+                queryIntent = await GenerateDatabaseQueriesAsync(queryIntent, cancellationToken);
 
-                var queryResults = await _databaseQueryExecutor.ExecuteMultiDatabaseQueryAsync(queryIntent);
+                var queryResults = await _databaseQueryExecutor.ExecuteMultiDatabaseQueryAsync(queryIntent, cancellationToken);
 
                 if (!queryResults.Success)
                 {
@@ -122,10 +126,11 @@ namespace SmartRAG.Services.Database
         /// Generates optimized SQL queries for each database based on intent
         /// </summary>
         /// <param name="queryIntent">Query intent</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>Updated query intent with generated SQL</returns>
-        public async Task<QueryIntent> GenerateDatabaseQueriesAsync(QueryIntent queryIntent)
+        public async Task<QueryIntent> GenerateDatabaseQueriesAsync(QueryIntent queryIntent, CancellationToken cancellationToken = default)
         {
-            return await _sqlQueryGenerator.GenerateDatabaseQueriesAsync(queryIntent);
+            return await _sqlQueryGenerator.GenerateDatabaseQueriesAsync(queryIntent, cancellationToken);
         }
 
         /// <summary>
@@ -196,11 +201,11 @@ namespace SmartRAG.Services.Database
             };
         }
 
-        private async Task<QueryIntent> ValidateAndCorrectQueryIntentAsync(QueryIntent queryIntent)
+        private async Task<QueryIntent> ValidateAndCorrectQueryIntentAsync(QueryIntent queryIntent, CancellationToken cancellationToken = default)
         {
             var validQueries = new List<DatabaseQueryIntent>();
             var missingTables = new Dictionary<string, List<string>>(); // table -> databases that need it
-            var allSchemas = await _schemaAnalyzer.GetAllSchemasAsync();
+            var allSchemas = await _schemaAnalyzer.GetAllSchemasAsync(cancellationToken);
 
             foreach (var dbQuery in queryIntent.DatabaseQueries)
             {

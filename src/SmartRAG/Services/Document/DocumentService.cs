@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Document
@@ -53,8 +54,9 @@ namespace SmartRAG.Services.Document
         /// [AI Query] [Document Query] Uploads a document, generates embeddings, and saves it
         /// </summary>
         /// <param name="request">Request containing document upload parameters</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>Created document entity</returns>
-        public async Task<SmartRAG.Entities.Document> UploadDocumentAsync(Models.RequestResponse.UploadDocumentRequest request)
+        public async Task<SmartRAG.Entities.Document> UploadDocumentAsync(Models.RequestResponse.UploadDocumentRequest request, CancellationToken cancellationToken = default)
         {
             if (request == null)
                 throw new ArgumentNullException(nameof(request));
@@ -98,7 +100,7 @@ namespace SmartRAG.Services.Document
 
             try
             {
-                var allEmbeddings = await _aiService.GenerateEmbeddingsBatchAsync(allChunkContents);
+                var allEmbeddings = await _aiService.GenerateEmbeddingsBatchAsync(allChunkContents, cancellationToken);
 
                 if (allEmbeddings != null && allEmbeddings.Count == document.Chunks.Count)
                 {
@@ -146,7 +148,7 @@ namespace SmartRAG.Services.Document
                 }
             }
 
-            var savedDocument = await _documentRepository.AddAsync(document);
+            var savedDocument = await _documentRepository.AddAsync(document, cancellationToken);
             ServiceLogMessages.LogDocumentUploaded(_logger, request.FileName, null);
 
             return savedDocument;
@@ -162,9 +164,10 @@ namespace SmartRAG.Services.Document
         /// <param name="language">Language code for document processing (optional)</param>
         /// <param name="fileSize">File size in bytes (optional, will be calculated from stream if not provided)</param>
         /// <param name="additionalMetadata">Additional metadata to add to document (optional)</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>Created document entity</returns>
         [Obsolete("Use UploadDocumentAsync(UploadDocumentRequest) instead. This method will be removed in v4.0.0")]
-        public async Task<SmartRAG.Entities.Document> UploadDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy, string? language = null, long? fileSize = null, Dictionary<string, object>? additionalMetadata = null)
+        public async Task<SmartRAG.Entities.Document> UploadDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy, string? language = null, long? fileSize = null, Dictionary<string, object>? additionalMetadata = null, CancellationToken cancellationToken = default)
         {
             var request = new Models.RequestResponse.UploadDocumentRequest
             {
@@ -176,25 +179,25 @@ namespace SmartRAG.Services.Document
                 FileSize = fileSize,
                 AdditionalMetadata = additionalMetadata
             };
-            return await UploadDocumentAsync(request);
+            return await UploadDocumentAsync(request, cancellationToken);
         }
 
         /// <summary>
         /// [Document Query] Retrieves a document by ID
         /// </summary>
-        public async Task<SmartRAG.Entities.Document> GetDocumentAsync(Guid id) => await _documentRepository.GetByIdAsync(id);
+        public async Task<SmartRAG.Entities.Document> GetDocumentAsync(Guid id, CancellationToken cancellationToken = default) => await _documentRepository.GetByIdAsync(id, cancellationToken);
 
         /// <summary>
         /// [Document Query] Retrieves all documents
         /// </summary>
-        public async Task<List<SmartRAG.Entities.Document>> GetAllDocumentsAsync() => await _documentRepository.GetAllAsync();
+        public async Task<List<SmartRAG.Entities.Document>> GetAllDocumentsAsync(CancellationToken cancellationToken = default) => await _documentRepository.GetAllAsync(cancellationToken);
 
         /// <summary>
         /// Retrieves all documents filtered by the enabled search options (text, audio, image)
         /// </summary>
-        public async Task<List<SmartRAG.Entities.Document>> GetAllDocumentsFilteredAsync(Models.SearchOptions? options)
+        public async Task<List<SmartRAG.Entities.Document>> GetAllDocumentsFilteredAsync(Models.SearchOptions? options, CancellationToken cancellationToken = default)
         {
-            var allDocuments = await _documentRepository.GetAllAsync();
+            var allDocuments = await _documentRepository.GetAllAsync(cancellationToken);
 
             if (options == null)
             {
@@ -208,11 +211,11 @@ namespace SmartRAG.Services.Document
             ).ToList();
         }
 
-        public async Task<bool> DeleteDocumentAsync(Guid id) => await _documentRepository.DeleteAsync(id);
+        public async Task<bool> DeleteDocumentAsync(Guid id, CancellationToken cancellationToken = default) => await _documentRepository.DeleteAsync(id, cancellationToken);
 
-        public async Task<Dictionary<string, object>> GetStorageStatisticsAsync()
+        public async Task<Dictionary<string, object>> GetStorageStatisticsAsync(CancellationToken cancellationToken = default)
         {
-            var count = await _documentRepository.GetCountAsync();
+            var count = await _documentRepository.GetCountAsync(cancellationToken);
             var stats = new Dictionary<string, object>
             {
                 ["TotalDocuments"] = count,
@@ -228,13 +231,13 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// [AI Query] [Document Query] Regenerates embeddings for all documents
         /// </summary>
-        public async Task<bool> RegenerateAllEmbeddingsAsync()
+        public async Task<bool> RegenerateAllEmbeddingsAsync(CancellationToken cancellationToken = default)
         {
             try
             {
                 ServiceLogMessages.LogEmbeddingRegenerationStarted(_logger, null);
 
-                var allDocuments = await _documentRepository.GetAllAsync();
+                var allDocuments = await _documentRepository.GetAllAsync(cancellationToken);
                 var totalChunks = allDocuments.Sum(d => d.Chunks.Count);
                 var processedChunks = 0;
                 var successCount = 0;
@@ -266,12 +269,14 @@ namespace SmartRAG.Services.Document
 
                 for (int batchIndex = 0; batchIndex < totalBatches; batchIndex++)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    
                     var startIndex = batchIndex * VoyageAIMaxBatchSize;
                     var endIndex = Math.Min(startIndex + VoyageAIMaxBatchSize, chunksToProcess.Count);
                     var currentBatch = chunksToProcess.Skip(startIndex).Take(endIndex - startIndex).ToList();
 
                     var batchContents = currentBatch.Select(c => c.Content).ToList();
-                    var batchEmbeddings = await _aiService.GenerateEmbeddingsBatchAsync(batchContents);
+                    var batchEmbeddings = await _aiService.GenerateEmbeddingsBatchAsync(batchContents, cancellationToken);
 
                     if (batchEmbeddings != null && batchEmbeddings.Count == currentBatch.Count)
                     {
@@ -288,7 +293,7 @@ namespace SmartRAG.Services.Document
                             else
                             {
 
-                                var individualEmbedding = await _aiService.GenerateEmbeddingsAsync(chunk.Content);
+                                var individualEmbedding = await _aiService.GenerateEmbeddingsAsync(chunk.Content, cancellationToken);
                                 if (individualEmbedding != null && individualEmbedding.Count > 0)
                                 {
                                     chunk.Embedding = individualEmbedding;
@@ -304,10 +309,10 @@ namespace SmartRAG.Services.Document
                         using var semaphore = new System.Threading.SemaphoreSlim(1); // Max 1 concurrent
                         var tasks = currentBatch.Select(async chunk =>
                         {
-                            await semaphore.WaitAsync();
+                            await semaphore.WaitAsync(cancellationToken);
                             try
                             {
-                                var newEmbedding = await _aiService.GenerateEmbeddingsAsync(chunk.Content);
+                                var newEmbedding = await _aiService.GenerateEmbeddingsAsync(chunk.Content, cancellationToken);
 
                                 if (newEmbedding != null && newEmbedding.Count > 0)
                                 {
@@ -333,7 +338,7 @@ namespace SmartRAG.Services.Document
 
                     if (batchIndex < totalBatches - 1) // Don't wait after last batch
                     {
-                        await Task.Delay(RateLimitDelayMs);
+                        await Task.Delay(RateLimitDelayMs, cancellationToken);
                     }
                 }
 
@@ -341,8 +346,9 @@ namespace SmartRAG.Services.Document
 
                 foreach (var document in documentsToUpdate)
                 {
-                    await _documentRepository.DeleteAsync(document.Id);
-                    await _documentRepository.AddAsync(document);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await _documentRepository.DeleteAsync(document.Id, cancellationToken);
+                    await _documentRepository.AddAsync(document, cancellationToken);
                 }
 
                 ServiceLogMessages.LogEmbeddingRegenerationCompleted(_logger, successCount, processedChunks, null);
@@ -358,18 +364,20 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// Clear all embeddings from all documents
         /// </summary>
-        public async Task<bool> ClearAllEmbeddingsAsync()
+        public async Task<bool> ClearAllEmbeddingsAsync(CancellationToken cancellationToken = default)
         {
             try
             {
                 ServiceLogMessages.LogEmbeddingClearingStarted(_logger, null);
 
-                var allDocuments = await _documentRepository.GetAllAsync();
+                var allDocuments = await _documentRepository.GetAllAsync(cancellationToken);
                 var totalChunks = allDocuments.Sum(d => d.Chunks.Count);
                 var clearedChunks = 0;
 
                 foreach (var document in allDocuments)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    
                     foreach (var chunk in document.Chunks)
                     {
                         if (chunk.Embedding != null && chunk.Embedding.Count > 0)
@@ -379,8 +387,8 @@ namespace SmartRAG.Services.Document
                         }
                     }
 
-                    await _documentRepository.DeleteAsync(document.Id);
-                    await _documentRepository.AddAsync(document);
+                    await _documentRepository.DeleteAsync(document.Id, cancellationToken);
+                    await _documentRepository.AddAsync(document, cancellationToken);
                 }
 
                 ServiceLogMessages.LogEmbeddingClearingCompleted(_logger, clearedChunks, null);
@@ -396,16 +404,16 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// Clear all documents and their embeddings
         /// </summary>
-        public async Task<bool> ClearAllDocumentsAsync()
+        public async Task<bool> ClearAllDocumentsAsync(CancellationToken cancellationToken = default)
         {
             try
             {
                 ServiceLogMessages.LogDocumentDeletionStarted(_logger, null);
 
-                var allDocuments = await _documentRepository.GetAllAsync();
+                var allDocuments = await _documentRepository.GetAllAsync(cancellationToken);
                 var totalDocuments = allDocuments.Count;
                 var totalChunks = allDocuments.Sum(d => d.Chunks.Count);
-                var success = await _documentRepository.ClearAllAsync();
+                var success = await _documentRepository.ClearAllAsync(cancellationToken);
 
                 if (success)
                 {

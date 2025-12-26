@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using Tesseract;
 using SkiaSharp;
@@ -163,7 +164,7 @@ namespace SmartRAG.Services.Parser
         /// <summary>
         /// [AI Query] Parses an image stream and extracts text using OCR
         /// </summary>
-        public async Task<string> ExtractTextFromImageAsync(Stream imageStream, string language = null)
+        public async Task<string> ExtractTextFromImageAsync(Stream imageStream, string language = null, CancellationToken cancellationToken = default)
         {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(ImageParserService));

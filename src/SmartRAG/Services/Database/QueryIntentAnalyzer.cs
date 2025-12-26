@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Database
@@ -36,8 +37,9 @@ namespace SmartRAG.Services.Database
         /// [AI Query] Analyzes user query and determines which databases/tables to query
         /// </summary>
         /// <param name="userQuery">Natural language user query</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>Query intent with database routing information</returns>
-        public async Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery)
+        public async Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery, CancellationToken cancellationToken = default)
         {
             var queryIntent = new QueryIntent
             {

@@ -5,6 +5,7 @@ using SmartRAG.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Repositories
@@ -34,7 +35,7 @@ namespace SmartRAG.Repositories
 
         protected ILogger Logger => _logger;
 
-        public Task<SmartRAG.Entities.Document> AddAsync(SmartRAG.Entities.Document document)
+        public Task<SmartRAG.Entities.Document> AddAsync(SmartRAG.Entities.Document document, CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
@@ -61,7 +62,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public Task<SmartRAG.Entities.Document> GetByIdAsync(Guid id)
+        public Task<SmartRAG.Entities.Document> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
@@ -78,7 +79,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public Task<List<Entities.Document>> GetAllAsync()
+        public Task<List<Entities.Document>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
@@ -95,7 +96,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public Task<bool> ClearAllAsync()
+        public Task<bool> ClearAllAsync(CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
@@ -104,7 +105,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public Task<bool> DeleteAsync(Guid id)
+        public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
@@ -134,7 +135,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public Task<int> GetCountAsync()
+        public Task<int> GetCountAsync(CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
@@ -151,7 +152,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = DefaultMaxSearchResults)
+        public Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = DefaultMaxSearchResults, CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
