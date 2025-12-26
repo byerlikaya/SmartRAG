@@ -49,7 +49,92 @@ namespace SmartRAG.Models
                 EnableDocumentSearch = options.Features.EnableDocumentSearch,
                 EnableAudioSearch = options.Features.EnableAudioSearch,
                 EnableImageSearch = options.Features.EnableImageSearch,
-                EnableMcpSearch = options.Features.EnableMcpSearch
+                EnableMcpSearch = options.Features.EnableMcpSearch,
+                PreferredLanguage = options.DefaultLanguage
+            };
+        }
+
+        /// <summary>
+        /// Creates search options for document-only search
+        /// </summary>
+        public static SearchOptions CreateDocumentOnly(SearchOptions baseOptions)
+        {
+            return new SearchOptions
+            {
+                EnableDocumentSearch = true,
+                EnableDatabaseSearch = false,
+                EnableMcpSearch = false,
+                EnableAudioSearch = false,
+                EnableImageSearch = false,
+                PreferredLanguage = baseOptions.PreferredLanguage
+            };
+        }
+
+        /// <summary>
+        /// Creates search options for database-only search
+        /// Note: EnableDatabaseSearch is only set from baseOptions
+        /// This ensures global feature flag is respected
+        /// </summary>
+        public static SearchOptions CreateDatabaseOnly(SearchOptions baseOptions)
+        {
+            return new SearchOptions
+            {
+                EnableDatabaseSearch = baseOptions.EnableDatabaseSearch,
+                EnableDocumentSearch = false,
+                EnableMcpSearch = false,
+                EnableAudioSearch = false,
+                EnableImageSearch = false,
+                PreferredLanguage = baseOptions.PreferredLanguage
+            };
+        }
+
+        /// <summary>
+        /// Creates search options for MCP-only search
+        /// Note: EnableMcpSearch is only set to true if it was already enabled in baseOptions
+        /// This ensures global feature flag is respected
+        /// </summary>
+        public static SearchOptions CreateMcpOnly(SearchOptions baseOptions)
+        {
+            return new SearchOptions
+            {
+                EnableMcpSearch = baseOptions.EnableMcpSearch,
+                EnableDocumentSearch = false,
+                EnableDatabaseSearch = false,
+                EnableAudioSearch = false,
+                EnableImageSearch = false,
+                PreferredLanguage = baseOptions.PreferredLanguage
+            };
+        }
+
+        /// <summary>
+        /// Creates search options for audio-only search
+        /// </summary>
+        public static SearchOptions CreateAudioOnly(SearchOptions baseOptions)
+        {
+            return new SearchOptions
+            {
+                EnableAudioSearch = true,
+                EnableDocumentSearch = false,
+                EnableDatabaseSearch = false,
+                EnableMcpSearch = false,
+                EnableImageSearch = false,
+                PreferredLanguage = baseOptions.PreferredLanguage
+            };
+        }
+
+        /// <summary>
+        /// Creates search options for image-only search
+        /// </summary>
+        public static SearchOptions CreateImageOnly(SearchOptions baseOptions)
+        {
+            return new SearchOptions
+            {
+                EnableImageSearch = true,
+                EnableDocumentSearch = false,
+                EnableDatabaseSearch = false,
+                EnableMcpSearch = false,
+                EnableAudioSearch = false,
+                PreferredLanguage = baseOptions.PreferredLanguage
             };
         }
     }

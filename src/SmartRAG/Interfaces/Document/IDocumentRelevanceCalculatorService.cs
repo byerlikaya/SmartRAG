@@ -35,14 +35,6 @@ namespace SmartRAG.Interfaces.Document
         List<Entities.Document> IdentifyRelevantDocuments(
             List<DocumentScoreResult> documentScores,
             double scoreThreshold);
-
-        /// <summary>
-        /// Applies document-level boost to chunks from relevant documents
-        /// </summary>
-        /// <param name="chunks">List of chunks to boost</param>
-        /// <param name="relevantDocumentIds">Set of relevant document IDs</param>
-        /// <param name="boostAmount">Amount to boost relevance score</param>
-        void ApplyDocumentBoost(List<DocumentChunk> chunks, HashSet<Guid> relevantDocumentIds, double boostAmount);
     }
 }
 

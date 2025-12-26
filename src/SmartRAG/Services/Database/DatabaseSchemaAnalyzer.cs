@@ -52,8 +52,6 @@ namespace SmartRAG.Services.Database
         {
             var databaseId = await GetDatabaseIdAsync(connectionConfig);
 
-            _logger.LogInformation("Analyzing schema for database");
-
             var schemaInfo = new DatabaseSchemaInfo
             {
                 DatabaseId = databaseId,
@@ -97,8 +95,6 @@ namespace SmartRAG.Services.Database
 
                 _schemaCache[databaseId] = schemaInfo;
                 _lastRefreshTimes[databaseId] = DateTime.UtcNow;
-
-                _logger.LogInformation("Schema analysis completed");
             }
             catch (Exception ex)
             {
@@ -136,10 +132,7 @@ namespace SmartRAG.Services.Database
             return Task.FromResult(schema);
         }
 
-        /// <summary>
-        /// [AI Query] Generates an AI summary of the database schema
-        /// </summary>
-        public async Task<string> GenerateAISummaryAsync(DatabaseSchemaInfo schemaInfo)
+        private async Task<string> GenerateAISummaryAsync(DatabaseSchemaInfo schemaInfo)
         {
             try
             {

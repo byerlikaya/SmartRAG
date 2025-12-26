@@ -18,7 +18,7 @@ namespace SmartRAG.Interfaces.Document
         /// </summary>
         /// <param name="request">Request containing query parameters</param>
         /// <returns>RAG response with answer and sources</returns>
-        Task<RagResponse> ExecuteDatabaseOnlyStrategyAsync(Models.RequestResponse.DatabaseQueryStrategyRequest request);
+        Task<RagResponse> ExecuteDatabaseOnlyStrategyAsync(Models.RequestResponse.QueryStrategyRequest request);
 
         /// <summary>
         /// Executes a database-only query strategy with fallback to document query
@@ -32,7 +32,7 @@ namespace SmartRAG.Interfaces.Document
         /// <param name="options">Optional search options</param>
         /// <param name="queryTokens">Pre-computed query tokens for performance</param>
         /// <returns>RAG response with answer and sources</returns>
-        [Obsolete("Use ExecuteDatabaseOnlyStrategyAsync(DatabaseQueryStrategyRequest) instead. This method will be removed in v4.0.0")]
+        [Obsolete("Use ExecuteDatabaseOnlyStrategyAsync(QueryStrategyRequest) instead. This method will be removed in v4.0.0")]
         Task<RagResponse> ExecuteDatabaseOnlyStrategyAsync(string query, int maxResults, string conversationHistory, bool canAnswerFromDocuments, QueryIntent? queryIntent, string? preferredLanguage = null, SearchOptions? options = null, List<string>? queryTokens = null);
 
         /// <summary>
@@ -40,7 +40,7 @@ namespace SmartRAG.Interfaces.Document
         /// </summary>
         /// <param name="request">Request containing query parameters</param>
         /// <returns>Merged RAG response with answer and sources from both database and documents</returns>
-        Task<RagResponse> ExecuteHybridStrategyAsync(Models.RequestResponse.HybridQueryStrategyRequest request);
+        Task<RagResponse> ExecuteHybridStrategyAsync(Models.RequestResponse.QueryStrategyRequest request);
 
         /// <summary>
         /// Executes a hybrid query strategy combining both database and document queries
@@ -56,7 +56,7 @@ namespace SmartRAG.Interfaces.Document
         /// <param name="preCalculatedResults">Pre-calculated search results to use</param>
         /// <param name="queryTokens">Pre-computed query tokens for performance</param>
         /// <returns>Merged RAG response with answer and sources from both database and documents</returns>
-        [Obsolete("Use ExecuteHybridStrategyAsync(HybridQueryStrategyRequest) instead. This method will be removed in v4.0.0")]
+        [Obsolete("Use ExecuteHybridStrategyAsync(QueryStrategyRequest) instead. This method will be removed in v4.0.0")]
         Task<RagResponse> ExecuteHybridStrategyAsync(
             string query,
             int maxResults,
@@ -74,7 +74,7 @@ namespace SmartRAG.Interfaces.Document
         /// </summary>
         /// <param name="request">Request containing query parameters</param>
         /// <returns>RAG response with answer and sources</returns>
-        Task<RagResponse> ExecuteDocumentOnlyStrategyAsync(Models.RequestResponse.DocumentQueryStrategyRequest request);
+        Task<RagResponse> ExecuteDocumentOnlyStrategyAsync(Models.RequestResponse.QueryStrategyRequest request);
 
         /// <summary>
         /// Executes a document-only query strategy
@@ -88,7 +88,7 @@ namespace SmartRAG.Interfaces.Document
         /// <param name="preCalculatedResults">Pre-calculated search results to use</param>
         /// <param name="queryTokens">Pre-computed query tokens for performance</param>
         /// <returns>RAG response with answer and sources</returns>
-        [Obsolete("Use ExecuteDocumentOnlyStrategyAsync(DocumentQueryStrategyRequest) instead. This method will be removed in v4.0.0")]
+        [Obsolete("Use ExecuteDocumentOnlyStrategyAsync(QueryStrategyRequest) instead. This method will be removed in v4.0.0")]
         Task<RagResponse> ExecuteDocumentOnlyStrategyAsync(string query, int maxResults, string conversationHistory, bool? canAnswerFromDocuments = null, string? preferredLanguage = null, SearchOptions? options = null, List<DocumentChunk>? preCalculatedResults = null, List<string>? queryTokens = null);
     }
 }

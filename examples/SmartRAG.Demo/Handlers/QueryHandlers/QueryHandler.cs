@@ -1,18 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using SmartRAG.Demo.Models;
 using SmartRAG.Demo.Services.Console;
 using SmartRAG.Demo.Services.TestQuery;
-using SmartRAG.Enums;
-using SmartRAG.Interfaces;
 using SmartRAG.Interfaces.Mcp;
-using SmartRAG.Interfaces.Support;
 using SmartRAG.Models;
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
 using System.Text;
 
 namespace SmartRAG.Demo.Handlers.QueryHandlers;
@@ -49,21 +41,21 @@ public class QueryHandler(
 
     #region Public Methods
 
-    public async Task RunMultiDatabaseQueryAsync(string language)
+    public async Task RunMultiDatabaseQueryAsync(string language, CancellationToken cancellationToken = default)
     {
         _console.WriteSectionHeader("🤖 Multi-Database Smart Query");
 
-        System.Console.ForegroundColor = ConsoleColor.DarkGray;
-        System.Console.WriteLine($"Language: {language}");
-        System.Console.ResetColor();
-        System.Console.WriteLine();
+        Console.ForegroundColor = ConsoleColor.DarkGray;
+        Console.WriteLine($"Language: {language}");
+        Console.ResetColor();
+        Console.WriteLine();
         
-        System.Console.WriteLine("Sample Questions:");
-        System.Console.WriteLine("  • Show me the items with highest values");
-        System.Console.WriteLine("  • Find records where foreign key ID is 1 and show related data");
-        System.Console.WriteLine("  • How many records match the criteria from both databases?");
-        System.Console.WriteLine("  • What is the total of all numeric values?");
-        System.Console.WriteLine();
+        Console.WriteLine("Sample Questions:");
+        Console.WriteLine("  • Show me the items with highest values");
+        Console.WriteLine("  • Find records where foreign key ID is 1 and show related data");
+        Console.WriteLine("  • How many records match the criteria from both databases?");
+        Console.WriteLine("  • What is the total of all numeric values?");
+        Console.WriteLine();
 
         var query = _console.ReadLine($"Your question ({language}): ");
         if (string.IsNullOrWhiteSpace(query))
@@ -74,29 +66,29 @@ public class QueryHandler(
 
         try
         {
-            System.Console.WriteLine();
-            System.Console.ForegroundColor = ConsoleColor.DarkGray;
-            System.Console.WriteLine("⏳ Analyzing databases and preparing query...");
-            System.Console.ResetColor();
+            Console.WriteLine();
+            Console.ForegroundColor = ConsoleColor.DarkGray;
+            Console.WriteLine("⏳ Analyzing databases and preparing query...");
+            Console.ResetColor();
 
             var languageInstructedQuery = $"{query}\n\n[IMPORTANT: Respond in {language} language]";
             var response = await _multiDbCoordinator!.QueryMultipleDatabasesAsync(languageInstructedQuery, maxResults: 10);
 
-            System.Console.WriteLine();
+            Console.WriteLine();
             _console.WriteSuccess("ANSWER:");
-            System.Console.WriteLine("─────────────────────────────────────────────────────────────────");
-            System.Console.WriteLine(response.Answer);
-            System.Console.WriteLine();
+            Console.WriteLine("─────────────────────────────────────────────────────────────────");
+            Console.WriteLine(response.Answer);
+            Console.WriteLine();
 
             if (response.Sources.Any())
             {
-                System.Console.ForegroundColor = ConsoleColor.DarkGray;
-                System.Console.WriteLine("📚 Sources:");
+                Console.ForegroundColor = ConsoleColor.DarkGray;
+                Console.WriteLine("📚 Sources:");
                 foreach (var source in response.Sources)
                 {
-                    System.Console.WriteLine($"   • {source.FileName}");
+                    Console.WriteLine($"   • {source.FileName}");
                 }
-                System.Console.ResetColor();
+                Console.ResetColor();
             }
         }
         catch (Exception ex)
@@ -106,14 +98,14 @@ public class QueryHandler(
         }
     }
 
-    public async Task AnalyzeQueryIntentAsync(string language)
+    public async Task AnalyzeQueryIntentAsync(string language, CancellationToken cancellationToken = default)
     {
         _console.WriteSectionHeader("🔬 Query Analysis (SQL Generation - Without Execution)");
 
-        System.Console.ForegroundColor = ConsoleColor.DarkGray;
-        System.Console.WriteLine($"Language: {language}");
-        System.Console.ResetColor();
-        System.Console.WriteLine();
+        Console.ForegroundColor = ConsoleColor.DarkGray;
+        Console.WriteLine($"Language: {language}");
+        Console.ResetColor();
+        Console.WriteLine();
 
         var query = _console.ReadLine($"Question to analyze ({language}): ");
         if (string.IsNullOrWhiteSpace(query))
@@ -124,8 +116,8 @@ public class QueryHandler(
 
         try
         {
-            System.Console.WriteLine();
-            System.Console.WriteLine("⏳ AI analyzing...");
+            Console.WriteLine();
+            Console.WriteLine("⏳ AI analyzing...");
 
             var languageInstructedQuery = $"{query}\n\n[IMPORTANT: Analyze and respond in {language} language]";
 
@@ -134,49 +126,49 @@ public class QueryHandler(
             var intent = await queryIntentAnalyzer.AnalyzeQueryIntentAsync(languageInstructedQuery);
             intent = await _multiDbCoordinator!.GenerateDatabaseQueriesAsync(intent);
 
-            System.Console.WriteLine();
-            System.Console.ForegroundColor = ConsoleColor.Yellow;
-            System.Console.WriteLine($"AI Understanding: {intent.QueryUnderstanding}");
-            System.Console.WriteLine($"Confidence Level: {intent.Confidence:P0}");
-            System.Console.ResetColor();
+            Console.WriteLine();
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine($"AI Understanding: {intent.QueryUnderstanding}");
+            Console.WriteLine($"Confidence Level: {intent.Confidence:P0}");
+            Console.ResetColor();
 
             if (!string.IsNullOrEmpty(intent.Reasoning))
             {
-                System.Console.ForegroundColor = ConsoleColor.DarkGray;
-                System.Console.WriteLine($"Reasoning: {intent.Reasoning}");
-                System.Console.ResetColor();
+                Console.ForegroundColor = ConsoleColor.DarkGray;
+                Console.WriteLine($"Reasoning: {intent.Reasoning}");
+                Console.ResetColor();
             }
 
-            System.Console.WriteLine();
-            System.Console.WriteLine($"Databases to Query: {intent.DatabaseQueries.Count}");
-            System.Console.WriteLine();
+            Console.WriteLine();
+            Console.WriteLine($"Databases to Query: {intent.DatabaseQueries.Count}");
+            Console.WriteLine();
 
             foreach (var dbQuery in intent.DatabaseQueries)
             {
                 _logger.LogDebug("Displaying SQL for {DatabaseName}: {SQL}", dbQuery.DatabaseName, dbQuery.GeneratedQuery);
                 
-                System.Console.ForegroundColor = ConsoleColor.Cyan;
-                System.Console.WriteLine($"📊 {dbQuery.DatabaseName}");
-                System.Console.ResetColor();
-                System.Console.WriteLine($"   Tables: {string.Join(", ", dbQuery.RequiredTables)}");
-                System.Console.WriteLine($"   Purpose: {dbQuery.Purpose}");
-                System.Console.WriteLine($"   Priority: {dbQuery.Priority}");
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine($"📊 {dbQuery.DatabaseName}");
+                Console.ResetColor();
+                Console.WriteLine($"   Tables: {string.Join(", ", dbQuery.RequiredTables)}");
+                Console.WriteLine($"   Purpose: {dbQuery.Purpose}");
+                Console.WriteLine($"   Priority: {dbQuery.Priority}");
 
                 if (!string.IsNullOrEmpty(dbQuery.GeneratedQuery))
                 {
-                    System.Console.ForegroundColor = ConsoleColor.Green;
-                    System.Console.WriteLine($"\n   Generated SQL:");
-                    System.Console.WriteLine($"   {dbQuery.GeneratedQuery.Replace("\n", "\n   ")}");
-                    System.Console.ResetColor();
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.WriteLine($"\n   Generated SQL:");
+                    Console.WriteLine($"   {dbQuery.GeneratedQuery.Replace("\n", "\n   ")}");
+                    Console.ResetColor();
                 }
                 else
                 {
-                    System.Console.ForegroundColor = ConsoleColor.Yellow;
-                    System.Console.WriteLine($"\n   ⚠️ SQL generation failed or was skipped");
-                    System.Console.ResetColor();
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine($"\n   ⚠️ SQL generation failed or was skipped");
+                    Console.ResetColor();
                 }
 
-                System.Console.WriteLine();
+                Console.WriteLine();
             }
         }
         catch (Exception ex)
@@ -186,16 +178,16 @@ public class QueryHandler(
         }
     }
 
-    public async Task RunTestQueriesAsync(string language)
+    public async Task RunTestQueriesAsync(string language, CancellationToken cancellationToken = default)
     {
         _console.WriteSectionHeader("🧪 Automatic Test Queries");
 
-        System.Console.ForegroundColor = ConsoleColor.Cyan;
-        System.Console.WriteLine($"🌍 Query Language: {language}");
-        System.Console.ResetColor();
-        System.Console.WriteLine();
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.WriteLine($"🌍 Query Language: {language}");
+        Console.ResetColor();
+        Console.WriteLine();
 
-        System.Console.WriteLine("📊 Analyzing database schemas to generate test queries...");
+        Console.WriteLine("📊 Analyzing database schemas to generate test queries...");
         var testQueries = await _testQueryGenerator.GenerateTestQueriesAsync(language);
 
         if (testQueries.Count == 0)
@@ -209,13 +201,13 @@ public class QueryHandler(
         var categoryBreakdown = testQueries.GroupBy(q => q.Category.Split(' ')[0])
             .Select(g => $"{g.Key} ({g.Count()})");
         
-        System.Console.ForegroundColor = ConsoleColor.DarkGray;
-        System.Console.WriteLine($"  Categories: {string.Join(", ", categoryBreakdown)}");
-        System.Console.ResetColor();
-        System.Console.WriteLine();
+        Console.ForegroundColor = ConsoleColor.DarkGray;
+        Console.WriteLine($"  Categories: {string.Join(", ", categoryBreakdown)}");
+        Console.ResetColor();
+        Console.WriteLine();
 
         var testCount = GetTestCount(testQueries.Count);
-        System.Console.WriteLine();
+        Console.WriteLine();
 
         var failedQueries = new List<(TestQuery Query, string Error, string GeneratedSQL)>();
         var successCount = 0;
@@ -224,16 +216,16 @@ public class QueryHandler(
         {
             var testQuery = testQueries[i];
 
-            System.Console.ForegroundColor = ConsoleColor.Cyan;
-            System.Console.WriteLine($"[{i + 1}/{testCount}] {testQuery.Category}");
-            System.Console.WriteLine($"  Query: {testQuery.Query}");
-            System.Console.ForegroundColor = ConsoleColor.DarkCyan;
-            System.Console.WriteLine($"  Databases: {testQuery.DatabaseName}");
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine($"[{i + 1}/{testCount}] {testQuery.Category}");
+            Console.WriteLine($"  Query: {testQuery.Query}");
+            Console.ForegroundColor = ConsoleColor.DarkCyan;
+            Console.WriteLine($"  Databases: {testQuery.DatabaseName}");
             if (!string.IsNullOrEmpty(testQuery.DatabaseTypes))
             {
-                System.Console.WriteLine($"  Types: {testQuery.DatabaseTypes}");
+                Console.WriteLine($"  Types: {testQuery.DatabaseTypes}");
             }
-            System.Console.ResetColor();
+            Console.ResetColor();
 
             try
             {
@@ -242,9 +234,9 @@ public class QueryHandler(
 
                 if (IsErrorResponse(response.Answer))
                 {
-                    System.Console.ForegroundColor = ConsoleColor.Yellow;
-                    System.Console.WriteLine($"⚠️  Query Failed: {response.Answer}");
-                    System.Console.ResetColor();
+                    Console.ForegroundColor = ConsoleColor.Yellow;
+                    Console.WriteLine($"⚠️  Query Failed: {response.Answer}");
+                    Console.ResetColor();
 
                     var schemas = _schemaAnalyzer != null ? await _schemaAnalyzer.GetAllSchemasAsync() : new List<DatabaseSchemaInfo>();
                     var sqlInfo = ExtractSQLFromError(response.Answer, schemas);
@@ -258,9 +250,9 @@ public class QueryHandler(
 
                 if (response.Sources.Any())
                 {
-                    System.Console.ForegroundColor = ConsoleColor.DarkGray;
-                    System.Console.WriteLine($"  Source: {string.Join(", ", response.Sources.Select(s => s.FileName))}");
-                    System.Console.ResetColor();
+                    Console.ForegroundColor = ConsoleColor.DarkGray;
+                    Console.WriteLine($"  Source: {string.Join(", ", response.Sources.Select(s => s.FileName))}");
+                    Console.ResetColor();
                 }
             }
             catch (Exception ex)
@@ -269,10 +261,10 @@ public class QueryHandler(
                 failedQueries.Add((testQuery, ex.Message, string.Empty));
             }
 
-            System.Console.WriteLine();
+            Console.WriteLine();
             if (i < testCount - 1)
             {
-                await Task.Delay(500);
+                await Task.Delay(500, cancellationToken);
             }
         }
 
@@ -280,22 +272,20 @@ public class QueryHandler(
     }
 
 
-    public async Task RunConversationalChatAsync(string language, bool useLocalEnvironment, string aiProvider)
+    public async Task RunConversationalChatAsync(string language, bool useLocalEnvironment, string aiProvider, CancellationToken cancellationToken = default)
     {
         _console.WriteSectionHeader("💬 Conversational Assistant");
 
-        System.Console.ForegroundColor = ConsoleColor.DarkGray;
-        System.Console.WriteLine($"Language: {language}");
-        System.Console.WriteLine($"Environment: {(useLocalEnvironment ? "LOCAL (Ollama)" : $"CLOUD ({aiProvider})")}");
-        System.Console.ResetColor();
-        System.Console.WriteLine();
+        Console.ForegroundColor = ConsoleColor.DarkGray;
+        Console.WriteLine($"Language: {language}");
+        Console.WriteLine($"Environment: {(useLocalEnvironment ? "LOCAL (Ollama)" : $"CLOUD ({aiProvider})")}");
+        Console.ResetColor();
+        Console.WriteLine();
 
-        _console.WriteInfo("Type /new to reset the session, /exit to return to the main menu, /help to see available commands.");
-        System.Console.WriteLine();
+        _console.WriteInfo("SmartRAG commands: /new, /reset, /clear (start new session).");
+        _console.WriteInfo("Demo commands: /exit, /quit, /q, /back (return to menu), /help (show help).");
 
-        // Start a new conversation session
-        var sessionId = await _conversationManager.StartNewConversationAsync();
-        _console.WriteSuccess($"Started new session: {sessionId}");
+        Console.WriteLine();
 
         while (true)
         {
@@ -326,49 +316,26 @@ public class QueryHandler(
                 continue;
             }
 
-            if (trimmedInput.Equals("/new", StringComparison.OrdinalIgnoreCase) || 
-                trimmedInput.Equals("/reset", StringComparison.OrdinalIgnoreCase) || 
-                trimmedInput.Equals("/clear", StringComparison.OrdinalIgnoreCase))
-            {
-                sessionId = await _conversationManager.StartNewConversationAsync();
-                _console.WriteSuccess($"Started new session: {sessionId}");
-                continue;
-            }
-
             try
             {
-                var query = IsCommand(trimmedInput) ? trimmedInput : userInput;
-                
-                // Parse search options from query flags (e.g., -d, -db, -v) and set preferred language
-                var searchOptions = ParseSearchOptions(query, language, out var cleanQuery);
-                
-                // If flags were present, use the cleaned query
-                if (searchOptions != null)
-                {
-                    query = cleanQuery;
-                }
+                var response = await _documentSearchService.QueryIntelligenceAsync(trimmedInput, maxResults: 8, startNewConversation: false);
 
-                var response = await _documentSearchService.QueryIntelligenceAsync(query, maxResults: 8, options: searchOptions);
-
-                // Save to conversation history
-                await _conversationManager.AddToConversationAsync(sessionId, query, response.Answer);
-
-                System.Console.WriteLine();
+                Console.WriteLine();
                 _console.WriteSuccess("Assistant:");
-                System.Console.WriteLine("─────────────────────────────────────────────────────────────────");
-                System.Console.WriteLine(response.Answer);
-                System.Console.WriteLine();
+                Console.WriteLine("─────────────────────────────────────────────────────────────────");
+                Console.WriteLine(response.Answer);
+                Console.WriteLine();
 
                 if (response.Sources != null && response.Sources.Any())
                 {
                     PrintSources(response.Sources, maxCount: 5);
-                    System.Console.WriteLine();
+                    Console.WriteLine();
                 }
 
                 if (response.SearchMetadata != null)
                 {
                     PrintSearchMetadata(response.SearchMetadata);
-                    System.Console.WriteLine();
+                    Console.WriteLine();
                 }
             }
             catch (Exception ex)
@@ -379,7 +346,7 @@ public class QueryHandler(
         }
     }
 
-    public async Task RunMcpQueryAsync(string language)
+    public async Task RunMcpQueryAsync(string language, CancellationToken cancellationToken = default)
     {
         _console.WriteSectionHeader("🔌 MCP Integration Test");
 
@@ -393,8 +360,8 @@ public class QueryHandler(
 
         try
         {
-            System.Console.WriteLine("Listing available MCP tools from connected servers...");
-            System.Console.WriteLine();
+            Console.WriteLine("Listing available MCP tools from connected servers...");
+            Console.WriteLine();
 
             var tools = await mcpIntegration.GetAvailableToolsAsync();
 
@@ -413,9 +380,9 @@ public class QueryHandler(
                 _console.WriteInfo($"Server: {group.Key}");
                 foreach (var tool in group)
                 {
-                    System.Console.WriteLine($"  • {tool.Name} - {tool.Description}");
+                    Console.WriteLine($"  • {tool.Name} - {tool.Description}");
                 }
-                System.Console.WriteLine();
+                Console.WriteLine();
             }
 
             var serverId = _console.ReadLine("ServerId (exact as listed above): ");
@@ -451,9 +418,9 @@ public class QueryHandler(
             }
 
             _console.WriteSuccess("MCP Tool Result:");
-            System.Console.WriteLine("─────────────────────────────────────────────────────────────────");
-            System.Console.WriteLine(result.Content);
-            System.Console.WriteLine();
+            Console.WriteLine("─────────────────────────────────────────────────────────────────");
+            Console.WriteLine(result.Content);
+            Console.WriteLine();
         }
         catch (Exception ex)
         {
@@ -462,90 +429,6 @@ public class QueryHandler(
         }
     }
 
-    /// <summary>
-    /// Parses search options from input string and extracts flags
-    /// </summary>
-    /// <param name="input">Input string potentially containing flags (-d, -db, -a, -i)</param>
-    /// <param name="language">Preferred language for search</param>
-    /// <param name="cleanQuery">Output parameter with flags removed</param>
-    /// <returns>SearchOptions if flags found, null otherwise</returns>
-    private SearchOptions? ParseSearchOptions(string input, string language, out string cleanQuery)
-    {
-        cleanQuery = input;
-        
-        // Use regex to find tags at the end of query (allowing for punctuation and whitespace)
-        var trimmedInput = input.TrimEnd();
-        
-        // Check for flags using regex patterns (matches " -d", "?-d", "! -d", " -d " etc at end)
-        var hasDocumentFlag = System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"\s*-d\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
-                              System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"[\p{P}]\s*-d\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        var hasDatabaseFlag = System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"\s*-db\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
-                              System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"[\p{P}]\s*-db\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        var hasAudioFlag = System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"\s*-a\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
-                           System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"[\p{P}]\s*-a\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        var hasMcpFlag = System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"\s*-mcp\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
-                               System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"[\p{P}]\s*-mcp\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        var hasImageFlag = System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"\s*-i\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase) ||
-                           System.Text.RegularExpressions.Regex.IsMatch(trimmedInput, @"[\p{P}]\s*-i\s*$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-
-        // Get global configuration
-        var smartRagOptions = _serviceProvider.GetRequiredService<IOptions<SmartRagOptions>>().Value;
-
-        // If no flags, use global configuration but override language
-        if (!hasDocumentFlag && !hasDatabaseFlag && !hasAudioFlag && !hasImageFlag && !hasMcpFlag)
-        {
-            var options = SearchOptions.FromConfig(smartRagOptions);
-            options.PreferredLanguage = language;
-            return options;
-        }
-
-        // If flags are present, enable only the requested features
-        SearchOptions searchOptions = new SearchOptions
-        {
-            EnableDocumentSearch = hasDocumentFlag,
-            EnableDatabaseSearch = hasDatabaseFlag,
-            EnableAudioSearch = hasAudioFlag,
-            EnableImageSearch = hasImageFlag,
-            // If -d flag is set, disable MCP, audio, and image search (only text documents)
-            // If -db flag is set, disable MCP, document, audio, and image search (only database)
-            // If -a flag is set, disable MCP, document, database, and image search (only audio)
-            // If -i flag is set, disable MCP, document, database, and audio search (only image)
-            // If -mcp flag is set, disable all others (only MCP)
-            EnableMcpSearch = hasMcpFlag || (!hasDocumentFlag && !hasDatabaseFlag && !hasAudioFlag && !hasImageFlag), // Only enable MCP if explicitly requested OR no other flag set
-            PreferredLanguage = language  // CRITICAL: Pass user's selected language to AI
-        };
-        
-        // When -mcp flag is set, explicitly disable all others
-        if (hasMcpFlag)
-        {
-            searchOptions.EnableDocumentSearch = false;
-            searchOptions.EnableDatabaseSearch = false;
-            searchOptions.EnableAudioSearch = false;
-            searchOptions.EnableImageSearch = false;
-        }
-        else if (hasDocumentFlag)
-        {
-            searchOptions.EnableAudioSearch = false;
-            searchOptions.EnableImageSearch = false;
-            searchOptions.EnableMcpSearch = false;
-            searchOptions.EnableDatabaseSearch = false;
-        }
-
-        // Remove flags from query using regex
-        cleanQuery = System.Text.RegularExpressions.Regex.Replace(trimmedInput, @"\s*-d\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"[\p{P}]\s*-d\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"\s*-db\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"[\p{P}]\s*-db\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"\s*-a\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"[\p{P}]\s*-a\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"\s*-i\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"[\p{P}]\s*-i\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"\s*-mcp\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        cleanQuery = System.Text.RegularExpressions.Regex.Replace(cleanQuery, @"[\p{P}]\s*-mcp\s*$", "", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        cleanQuery = cleanQuery.TrimEnd();
-        
-        return searchOptions;
-    }
 
     #endregion
 
@@ -659,9 +542,9 @@ public class QueryHandler(
     /// <param name="failedQueries">List of failed queries with error details</param>
     private void DisplayTestSummary(int successCount, int testCount, List<(TestQuery Query, string Error, string GeneratedSQL)> failedQueries)
     {
-        System.Console.WriteLine("═══════════════════════════════════════════════════════════════════");
-        System.Console.WriteLine("📊 TEST SUMMARY");
-        System.Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+        Console.WriteLine("📊 TEST SUMMARY");
+        Console.WriteLine("═══════════════════════════════════════════════════════════════════");
         
         double successRate = (double)successCount / testCount * 100;
         
@@ -672,81 +555,71 @@ public class QueryHandler(
             _console.WriteError($"Failed: {failedQueries.Count}/{testCount}");
         }
         
-        System.Console.WriteLine();
-        System.Console.ForegroundColor = successRate >= 70 ? ConsoleColor.Green : 
+        Console.WriteLine();
+        Console.ForegroundColor = successRate >= 70 ? ConsoleColor.Green : 
                                          successRate >= 50 ? ConsoleColor.Yellow : 
                                          ConsoleColor.Red;
-        System.Console.WriteLine($"📈 Success Rate: {successRate:F1}%");
-        System.Console.ResetColor();
+        Console.WriteLine($"📈 Success Rate: {successRate:F1}%");
+        Console.ResetColor();
         
         if (failedQueries.Any())
         {
-            System.Console.WriteLine();
+            Console.WriteLine();
 
-            System.Console.WriteLine("═══════════════════════════════════════════════════════════════════");
-            System.Console.WriteLine("🔴 FAILED QUERIES (for analysis):");
-            System.Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
+            Console.WriteLine("🔴 FAILED QUERIES (for analysis):");
+            Console.WriteLine("═══════════════════════════════════════════════════════════════════");
 
             for (int i = 0; i < failedQueries.Count; i++)
             {
                 var failed = failedQueries[i];
-                System.Console.WriteLine();
-                System.Console.ForegroundColor = ConsoleColor.Yellow;
-                System.Console.WriteLine($"[FAIL #{i + 1}]");
-                System.Console.ResetColor();
-                System.Console.WriteLine($"Category: {failed.Query.Category}");
-                System.Console.WriteLine($"Databases: {failed.Query.DatabaseName}");
+                Console.WriteLine();
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                Console.WriteLine($"[FAIL #{i + 1}]");
+                Console.ResetColor();
+                Console.WriteLine($"Category: {failed.Query.Category}");
+                Console.WriteLine($"Databases: {failed.Query.DatabaseName}");
                 
                 if (!string.IsNullOrEmpty(failed.Query.DatabaseTypes))
                 {
-                    System.Console.ForegroundColor = ConsoleColor.Magenta;
-                    System.Console.WriteLine($"Database Types: {failed.Query.DatabaseTypes}");
-                    System.Console.ResetColor();
+                    Console.ForegroundColor = ConsoleColor.Magenta;
+                    Console.WriteLine($"Database Types: {failed.Query.DatabaseTypes}");
+                    Console.ResetColor();
                 }
 
-                System.Console.WriteLine();
-                System.Console.ForegroundColor = ConsoleColor.Cyan;
-                System.Console.WriteLine($"User Query:");
-                System.Console.WriteLine($"  {failed.Query.Query}");
-                System.Console.ResetColor();
+                Console.WriteLine();
+                Console.ForegroundColor = ConsoleColor.Cyan;
+                Console.WriteLine($"User Query:");
+                Console.WriteLine($"  {failed.Query.Query}");
+                Console.ResetColor();
                 
-                System.Console.WriteLine();
-                System.Console.ForegroundColor = ConsoleColor.Red;
-                System.Console.WriteLine($"Error Details:");
-                System.Console.WriteLine($"  {failed.Error}");
-                System.Console.ResetColor();
+                Console.WriteLine();
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"Error Details:");
+                Console.WriteLine($"  {failed.Error}");
+                Console.ResetColor();
 
                 if (!string.IsNullOrEmpty(failed.GeneratedSQL))
                 {
-                    System.Console.WriteLine();
-                    System.Console.ForegroundColor = ConsoleColor.DarkGray;
-                    System.Console.WriteLine($"SQL Analysis:");
-                    System.Console.WriteLine($"  {failed.GeneratedSQL}");
-                    System.Console.ResetColor();
+                    Console.WriteLine();
+                    Console.ForegroundColor = ConsoleColor.DarkGray;
+                    Console.WriteLine($"SQL Analysis:");
+                    Console.WriteLine($"  {failed.GeneratedSQL}");
+                    Console.ResetColor();
                 }
 
-                System.Console.WriteLine("─────────────────────────────────────────────────────────────────");
+                Console.WriteLine("─────────────────────────────────────────────────────────────────");
             }
 
-            System.Console.WriteLine();
-            System.Console.ForegroundColor = ConsoleColor.Cyan;
-            System.Console.WriteLine("💡 Copy the failed queries above to share for troubleshooting.");
-            System.Console.ResetColor();
+            Console.WriteLine();
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine("💡 Copy the failed queries above to share for troubleshooting.");
+            Console.ResetColor();
         }
         else
         {
             _console.WriteSuccess("🎉 All tests passed successfully!");
         }
-    }
-
-    /// <summary>
-    /// Checks if input is a command (starts with /)
-    /// </summary>
-    /// <param name="input">Input string to check</param>
-    /// <returns>True if command, false otherwise</returns>
-    private static bool IsCommand(string input)
-    {
-        return input.StartsWith("/", StringComparison.Ordinal);
     }
 
     /// <summary>
@@ -776,45 +649,37 @@ public class QueryHandler(
     /// </summary>
     private void PrintChatHelp()
     {
-        System.Console.WriteLine();
-        System.Console.WriteLine("Available commands:");
-        System.Console.WriteLine("  • /new, /reset, /clear — start a new conversation session");
-        System.Console.WriteLine("  • /help — show this help message");
-        System.Console.WriteLine("  • /exit, /quit, /back — return to the main menu");
-        System.Console.WriteLine();
-        System.Console.WriteLine("Any other text will be processed using SmartRAG's conversational intelligence.");
-        System.Console.WriteLine();
+        Console.WriteLine();
+        Console.WriteLine("Available commands:");
+        Console.WriteLine();
+        Console.WriteLine("SmartRAG Library Commands (handled by SmartRAG):");
+        Console.WriteLine("  • /new, /reset, /clear — start a new conversation session");
+        Console.WriteLine("  • /chat, /talk, /conversation — force conversation mode");
+        Console.WriteLine();
+        Console.WriteLine("Demo Application Commands (handled by this demo):");
+        Console.WriteLine("  • /help, /h, /? — show this help message");
+        Console.WriteLine("  • /exit, /quit, /q, /back — return to the main menu");
+        Console.WriteLine();
+        Console.WriteLine("Any other text will be processed using SmartRAG's conversational intelligence.");
+        Console.WriteLine();
     }
 
     /// <summary>
     /// Prints search result sources with formatting
     /// </summary>
     /// <param name="sources">Collection of search sources</param>
-    /// <param name="maxCount">Maximum number of sources to display</param>
+    /// <param name="maxCount">Maximum number of sources to display (unused - all sources are displayed)</param>
     private void PrintSources(IReadOnlyCollection<SearchSource> sources, int maxCount)
     {
-        System.Console.ForegroundColor = ConsoleColor.DarkGray;
-        System.Console.WriteLine("📚 Sources:");
-
-        var displayed = 0;
+        Console.ForegroundColor = ConsoleColor.DarkGray;
+        Console.WriteLine("📚 Sources:");
 
         foreach (var source in sources)
         {
-            if (displayed >= maxCount)
-            {
-                break;
-            }
-
-            System.Console.WriteLine($"   • {BuildSourceLine(source)}");
-            displayed++;
+            Console.WriteLine($"   • {BuildSourceLine(source)}");
         }
 
-        if (sources.Count > maxCount)
-        {
-            System.Console.WriteLine($"   • … {sources.Count - maxCount} more");
-        }
-
-        System.Console.ResetColor();
+        Console.ResetColor();
     }
 
     /// <summary>
@@ -823,8 +688,8 @@ public class QueryHandler(
     /// <param name="metadata">Search metadata to display</param>
     private void PrintSearchMetadata(SearchMetadata metadata)
     {
-        System.Console.ForegroundColor = ConsoleColor.DarkGray;
-        System.Console.WriteLine("🔍 Search Operations:");
+        Console.ForegroundColor = ConsoleColor.DarkGray;
+        Console.WriteLine("🔍 Search Operations:");
 
         var searches = new List<string>();
 
@@ -859,10 +724,10 @@ public class QueryHandler(
 
         foreach (var search in searches)
         {
-            System.Console.WriteLine(search);
+            Console.WriteLine(search);
         }
 
-        System.Console.ResetColor();
+        Console.ResetColor();
     }
 
     /// <summary>
@@ -972,7 +837,7 @@ public class QueryHandler(
     /// <param name="databaseAnswer">Database query answer</param>
     /// <param name="language">Response language</param>
     /// <returns>Combined answer from AI</returns>
-    private async Task<string> GenerateCombinedAnswer(string query, List<string> documentContext, string? databaseAnswer, string language)
+    private async Task<string> GenerateCombinedAnswer(string query, List<string> documentContext, string? databaseAnswer, string language, CancellationToken cancellationToken = default)
     {
         var combinedContext = new List<string>();
 
@@ -1003,12 +868,12 @@ Instructions:
         return await _aiService.GenerateResponseAsync(finalPrompt, new List<string>());
     }
 
-    public async Task ClearConversationHistoryAsync()
+    public async Task ClearConversationHistoryAsync(CancellationToken cancellationToken = default)
     {
         _console.WriteSectionHeader("🧹 Clear Conversation History");
 
         _console.WriteWarning("WARNING: This will permanently delete ALL conversation history!");
-        System.Console.WriteLine();
+        Console.WriteLine();
 
         var confirmation = _console.ReadLine("Are you sure? Type 'yes' to confirm: ");
         if (confirmation?.ToLower() != "yes")
@@ -1019,8 +884,8 @@ Instructions:
 
         try
         {
-            System.Console.WriteLine();
-            System.Console.WriteLine("🧹 Clearing conversation history...");
+            Console.WriteLine();
+            Console.WriteLine("🧹 Clearing conversation history...");
 
             await _conversationManager.ClearAllConversationsAsync();
 

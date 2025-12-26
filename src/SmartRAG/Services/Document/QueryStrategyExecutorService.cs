@@ -1,6 +1,7 @@
 #nullable enable
 
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces.Database;
 using SmartRAG.Interfaces.Document;
@@ -22,8 +23,9 @@ namespace SmartRAG.Services.Document
         private readonly IMultiDatabaseQueryCoordinator? _multiDatabaseQueryCoordinator;
         private readonly ILogger<QueryStrategyExecutorService> _logger;
         private readonly Lazy<IRagAnswerGeneratorService> _ragAnswerGenerator;
-        private readonly IResponseBuilderService? _responseBuilder;
+        private readonly IResponseBuilderService _responseBuilder;
         private readonly IConversationManagerService _conversationManager;
+        private readonly SmartRagOptions _options;
 
         /// <summary>
         /// Initializes a new instance of the QueryStrategyExecutorService
@@ -33,18 +35,21 @@ namespace SmartRAG.Services.Document
         /// <param name="ragAnswerGenerator">Service for generating RAG answers (lazy to break circular dependency)</param>
         /// <param name="responseBuilder">Service for building RAG responses</param>
         /// <param name="conversationManager">Service for managing conversations</param>
+        /// <param name="options">SmartRAG configuration options</param>
         public QueryStrategyExecutorService(
             IMultiDatabaseQueryCoordinator? multiDatabaseQueryCoordinator,
             ILogger<QueryStrategyExecutorService> logger,
             Lazy<IRagAnswerGeneratorService> ragAnswerGenerator,
-            IResponseBuilderService? responseBuilder = null,
-            IConversationManagerService? conversationManager = null)
+            IResponseBuilderService responseBuilder,
+            IConversationManagerService? conversationManager = null,
+            IOptions<SmartRagOptions>? options = null)
         {
             _multiDatabaseQueryCoordinator = multiDatabaseQueryCoordinator;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _ragAnswerGenerator = ragAnswerGenerator ?? throw new ArgumentNullException(nameof(ragAnswerGenerator));
-            _responseBuilder = responseBuilder;
+            _responseBuilder = responseBuilder ?? throw new ArgumentNullException(nameof(responseBuilder));
             _conversationManager = conversationManager ?? throw new ArgumentNullException(nameof(conversationManager));
+            _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         }
 
         /// <summary>
@@ -52,7 +57,7 @@ namespace SmartRAG.Services.Document
         /// </summary>
         /// <param name="request">Request containing query parameters</param>
         /// <returns>RAG response with answer and sources</returns>
-        public async Task<RagResponse> ExecuteDatabaseOnlyStrategyAsync(Models.RequestResponse.DatabaseQueryStrategyRequest request)
+        public async Task<RagResponse> ExecuteDatabaseOnlyStrategyAsync(QueryStrategyRequest request)
         {
             if (request == null)
                 throw new ArgumentNullException(nameof(request));
@@ -61,51 +66,53 @@ namespace SmartRAG.Services.Document
             {
                 if (request.QueryIntent == null)
                 {
-                    var docRequest = new DocumentQueryStrategyRequest
+                    var docRequest = new QueryStrategyRequest
                     {
                         Query = request.Query,
                         MaxResults = request.MaxResults,
                         ConversationHistory = request.ConversationHistory,
                         CanAnswerFromDocuments = request.CanAnswerFromDocuments,
-                        PreferredLanguage = request.PreferredLanguage,
+                        PreferredLanguage = request.PreferredLanguage ?? _options.DefaultLanguage,
                         Options = request.Options,
-                        QueryTokens = request.QueryTokens
+                        QueryTokens = request.QueryTokens,
+                        PreCalculatedResults = request.PreCalculatedResults
                     };
                     return await ExecuteDocumentOnlyStrategyAsync(docRequest);
                 }
 
-                var databaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(request.Query, request.QueryIntent, request.MaxResults, request.PreferredLanguage);
+                var databaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(request.Query, request.QueryIntent, request.MaxResults, request.PreferredLanguage ?? _options.DefaultLanguage);
 
-                if (_responseBuilder?.HasMeaningfulData(databaseResponse) ?? HasMeaningfulDataFallback(databaseResponse))
+                if (_responseBuilder.HasMeaningfulData(databaseResponse))
                 {
                     return databaseResponse;
                 }
 
-                _logger.LogInformation("Database query returned no meaningful data, falling back to document search");
-                var fallbackRequest = new DocumentQueryStrategyRequest
+                var fallbackRequest = new QueryStrategyRequest
                 {
                     Query = request.Query,
                     MaxResults = request.MaxResults,
                     ConversationHistory = request.ConversationHistory,
                     CanAnswerFromDocuments = request.CanAnswerFromDocuments,
-                    PreferredLanguage = request.PreferredLanguage,
+                    PreferredLanguage = request.PreferredLanguage ?? _options.DefaultLanguage,
                     Options = request.Options,
-                    QueryTokens = request.QueryTokens
+                    QueryTokens = request.QueryTokens,
+                    PreCalculatedResults = request.PreCalculatedResults
                 };
                 return await ExecuteDocumentOnlyStrategyAsync(fallbackRequest);
             }
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Database query failed, falling back to document query");
-                var fallbackRequest = new DocumentQueryStrategyRequest
+                var fallbackRequest = new QueryStrategyRequest
                 {
                     Query = request.Query,
                     MaxResults = request.MaxResults,
                     ConversationHistory = request.ConversationHistory,
                     CanAnswerFromDocuments = request.CanAnswerFromDocuments,
-                    PreferredLanguage = request.PreferredLanguage,
+                    PreferredLanguage = request.PreferredLanguage ?? _options.DefaultLanguage,
                     Options = request.Options,
-                    QueryTokens = request.QueryTokens
+                    QueryTokens = request.QueryTokens,
+                    PreCalculatedResults = request.PreCalculatedResults
                 };
                 return await ExecuteDocumentOnlyStrategyAsync(fallbackRequest);
             }
@@ -123,10 +130,10 @@ namespace SmartRAG.Services.Document
         /// <param name="options">Optional search options</param>
         /// <param name="queryTokens">Pre-computed query tokens for performance</param>
         /// <returns>RAG response with answer and sources</returns>
-        [Obsolete("Use ExecuteDatabaseOnlyStrategyAsync(DatabaseQueryStrategyRequest) instead. This method will be removed in v4.0.0")]
+        [Obsolete("Use ExecuteDatabaseOnlyStrategyAsync(QueryStrategyRequest) instead. This method will be removed in v4.0.0")]
         public async Task<RagResponse> ExecuteDatabaseOnlyStrategyAsync(string query, int maxResults, string conversationHistory, bool canAnswerFromDocuments, QueryIntent? queryIntent, string? preferredLanguage = null, SearchOptions? options = null, List<string>? queryTokens = null)
         {
-            var request = new Models.RequestResponse.DatabaseQueryStrategyRequest
+            var request = new QueryStrategyRequest
             {
                 Query = query,
                 MaxResults = maxResults,
@@ -145,7 +152,7 @@ namespace SmartRAG.Services.Document
         /// </summary>
         /// <param name="request">Request containing query parameters</param>
         /// <returns>Merged RAG response with answer and sources from both database and documents</returns>
-        public async Task<RagResponse> ExecuteHybridStrategyAsync(Models.RequestResponse.HybridQueryStrategyRequest request)
+        public async Task<RagResponse> ExecuteHybridStrategyAsync(QueryStrategyRequest request)
         {
             if (request == null)
                 throw new ArgumentNullException(nameof(request));
@@ -153,14 +160,14 @@ namespace SmartRAG.Services.Document
             RagResponse? databaseResponse = null;
             RagResponse? documentResponse = null;
 
-            if (request.HasDatabaseQueries)
+            if (request.HasDatabaseQueries == true)
             {
                 try
                 {
                     if (request.QueryIntent != null)
                     {
-                        var candidateDatabaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(request.Query, request.QueryIntent, request.MaxResults, request.PreferredLanguage);
-                        if (_responseBuilder?.HasMeaningfulData(candidateDatabaseResponse) ?? HasMeaningfulDataFallback(candidateDatabaseResponse))
+                        var candidateDatabaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(request.Query, request.QueryIntent, request.MaxResults, _options.DefaultLanguage);
+                        if (_responseBuilder.HasMeaningfulData(candidateDatabaseResponse))
                         {
                             // CRITICAL: For database responses, use CONSERVATIVE quality check
                             // Only reject if answer explicitly indicates an error or missing data
@@ -171,15 +178,6 @@ namespace SmartRAG.Services.Document
                             {
                                 // Database has data but AI explicitly cannot answer (e.g., "no information found")
                                 // Allow document search as fallback
-                                _logger.LogInformation("Database returned {RowCount} rows but AI explicitly indicates missing data - allowing document search as fallback", 
-                                    candidateDatabaseResponse.Sources?.Sum(s => {
-                                        if (s.FileName?.Contains(" rows)") == true)
-                                        {
-                                            var match = System.Text.RegularExpressions.Regex.Match(s.FileName, @"\((\d+) rows\)");
-                                            return match.Success ? int.Parse(match.Groups[1].Value) : 0;
-                                        }
-                                        return 0;
-                                    }) ?? 0);
                                 // Keep canAnswerFromDocuments = true to allow document search
                             }
                             else
@@ -187,7 +185,6 @@ namespace SmartRAG.Services.Document
                                 databaseResponse = candidateDatabaseResponse;
                                 // CRITICAL: ALWAYS perform document search in hybrid mode
                                 // Even if database has an answer, document might have a BETTER answer
-                                _logger.LogInformation("Database query returned answer, also performing document search for true hybrid strategy");
                             }
                         }
                     }
@@ -198,14 +195,14 @@ namespace SmartRAG.Services.Document
                 }
             }
 
-            if (request.CanAnswerFromDocuments)
+            if (request.CanAnswerFromDocuments == true)
             {
                 var ragRequest = new Models.RequestResponse.GenerateRagAnswerRequest
                 {
                     Query = request.Query,
                     MaxResults = request.MaxResults,
                     ConversationHistory = request.ConversationHistory,
-                    PreferredLanguage = request.PreferredLanguage,
+                    PreferredLanguage = _options.DefaultLanguage,
                     Options = request.Options,
                     PreCalculatedResults = request.PreCalculatedResults,
                     QueryTokens = request.QueryTokens
@@ -215,18 +212,7 @@ namespace SmartRAG.Services.Document
 
             if (databaseResponse != null && documentResponse != null)
             {
-                if (_responseBuilder != null)
-                {
-                    return await _responseBuilder.MergeHybridResultsAsync(request.Query, databaseResponse, documentResponse, request.ConversationHistory, request.PreferredLanguage);
-                }
-
-                var combinedSources = new List<SearchSource>();
-                combinedSources.AddRange(databaseResponse.Sources);
-                combinedSources.AddRange(documentResponse.Sources);
-                var mergedAnswer = !string.IsNullOrEmpty(databaseResponse.Answer) && !string.IsNullOrEmpty(documentResponse.Answer)
-                    ? $"{databaseResponse.Answer}\n\n{documentResponse.Answer}"
-                    : databaseResponse.Answer ?? documentResponse.Answer ?? "No data available";
-                return _responseBuilder?.CreateRagResponse(request.Query, mergedAnswer, combinedSources) ?? new RagResponse { Query = request.Query, Answer = mergedAnswer, Sources = combinedSources, SearchedAt = DateTime.UtcNow };
+                return await _responseBuilder.MergeHybridResultsAsync(request.Query, databaseResponse, documentResponse, request.ConversationHistory);
             }
 
             if (databaseResponse != null)
@@ -235,12 +221,7 @@ namespace SmartRAG.Services.Document
             if (documentResponse != null)
                 return documentResponse;
 
-            if (_responseBuilder != null)
-            {
-                return await _responseBuilder.CreateFallbackResponseAsync(request.Query, request.ConversationHistory, request.PreferredLanguage);
-            }
-
-            return new RagResponse { Query = request.Query, Answer = "Sorry, I cannot chat right now. Please try again later.", Sources = new List<SearchSource>(), SearchedAt = DateTime.UtcNow };
+            return await _responseBuilder.CreateFallbackResponseAsync(request.Query, request.ConversationHistory);
         }
 
         /// <summary>
@@ -257,7 +238,7 @@ namespace SmartRAG.Services.Document
         /// <param name="preCalculatedResults">Pre-calculated search results to use</param>
         /// <param name="queryTokens">Pre-computed query tokens for performance</param>
         /// <returns>Merged RAG response with answer and sources from both database and documents</returns>
-        [Obsolete("Use ExecuteHybridStrategyAsync(HybridQueryStrategyRequest) instead. This method will be removed in v4.0.0")]
+        [Obsolete("Use ExecuteHybridStrategyAsync(QueryStrategyRequest) instead. This method will be removed in v4.0.0")]
         public async Task<RagResponse> ExecuteHybridStrategyAsync(
             string query,
             int maxResults,
@@ -270,7 +251,7 @@ namespace SmartRAG.Services.Document
             List<DocumentChunk>? preCalculatedResults = null,
             List<string>? queryTokens = null)
         {
-            var request = new Models.RequestResponse.HybridQueryStrategyRequest
+            var request = new QueryStrategyRequest
             {
                 Query = query,
                 MaxResults = maxResults,
@@ -291,7 +272,7 @@ namespace SmartRAG.Services.Document
         /// </summary>
         /// <param name="request">Request containing query parameters</param>
         /// <returns>RAG response with answer and sources</returns>
-        public async Task<RagResponse> ExecuteDocumentOnlyStrategyAsync(Models.RequestResponse.DocumentQueryStrategyRequest request)
+        public async Task<RagResponse> ExecuteDocumentOnlyStrategyAsync(QueryStrategyRequest request)
         {
             if (request == null)
                 throw new ArgumentNullException(nameof(request));
@@ -305,7 +286,8 @@ namespace SmartRAG.Services.Document
             }
             else
             {
-                var (CanAnswer, Results) = await _ragAnswerGenerator.Value.CanAnswerFromDocumentsAsync(request.Query, request.Options, request.QueryTokens);
+                var searchOptions = request.Options ?? SearchOptions.FromConfig(_options);
+                var (CanAnswer, Results) = await _ragAnswerGenerator.Value.CanAnswerFromDocumentsAsync(request.Query, searchOptions, request.QueryTokens);
                 canAnswer = CanAnswer;
                 results = Results;
             }
@@ -317,7 +299,7 @@ namespace SmartRAG.Services.Document
                     Query = request.Query,
                     MaxResults = request.MaxResults,
                     ConversationHistory = request.ConversationHistory,
-                    PreferredLanguage = request.PreferredLanguage,
+                    PreferredLanguage = request.PreferredLanguage ?? _options.DefaultLanguage,
                     Options = request.Options,
                     PreCalculatedResults = results,
                     QueryTokens = request.QueryTokens
@@ -325,12 +307,7 @@ namespace SmartRAG.Services.Document
                 return await _ragAnswerGenerator.Value.GenerateBasicRagAnswerAsync(ragRequest);
             }
 
-            if (_responseBuilder != null)
-            {
-                return await _responseBuilder.CreateFallbackResponseAsync(request.Query, request.ConversationHistory, request.PreferredLanguage);
-            }
-
-            return new RagResponse { Query = request.Query, Answer = "Sorry, I cannot chat right now. Please try again later.", Sources = new List<SearchSource>(), SearchedAt = DateTime.UtcNow };
+            return await _responseBuilder.CreateFallbackResponseAsync(request.Query, request.ConversationHistory);
         }
 
         /// <summary>
@@ -345,10 +322,10 @@ namespace SmartRAG.Services.Document
         /// <param name="preCalculatedResults">Pre-calculated search results to use</param>
         /// <param name="queryTokens">Pre-computed query tokens for performance</param>
         /// <returns>RAG response with answer and sources</returns>
-        [Obsolete("Use ExecuteDocumentOnlyStrategyAsync(DocumentQueryStrategyRequest) instead. This method will be removed in v4.0.0")]
+        [Obsolete("Use ExecuteDocumentOnlyStrategyAsync(QueryStrategyRequest) instead. This method will be removed in v4.0.0")]
         public async Task<RagResponse> ExecuteDocumentOnlyStrategyAsync(string query, int maxResults, string conversationHistory, bool? canAnswerFromDocuments = null, string? preferredLanguage = null, SearchOptions? options = null, List<DocumentChunk>? preCalculatedResults = null, List<string>? queryTokens = null)
         {
-            var request = new Models.RequestResponse.DocumentQueryStrategyRequest
+            var request = new QueryStrategyRequest
             {
                 Query = query,
                 MaxResults = maxResults,
@@ -362,29 +339,6 @@ namespace SmartRAG.Services.Document
             return await ExecuteDocumentOnlyStrategyAsync(request);
         }
 
-        /// <summary>
-        /// Fallback method for HasMeaningfulData when IResponseBuilderService is not available
-        /// </summary>
-        private static bool HasMeaningfulDataFallback(RagResponse? response)
-        {
-            if (response == null)
-            {
-                return false;
-            }
-
-            if (!string.IsNullOrWhiteSpace(response.Answer))
-            {
-                return true;
-            }
-
-            if (response.Sources != null && response.Sources.Any(source =>
-                source.DocumentId != Guid.Empty && !string.IsNullOrWhiteSpace(source.RelevantContent)))
-            {
-                return true;
-            }
-
-            return false;
-        }
 
         /// <summary>
         /// CONSERVATIVE check for database responses: Only reject if explicitly indicates error or missing data

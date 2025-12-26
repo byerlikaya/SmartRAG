@@ -32,14 +32,6 @@ namespace SmartRAG.Interfaces.Document
         /// <param name="chunk0">Chunk with index 0 to preserve at the beginning</param>
         /// <returns>Merged list with chunk0 at the beginning if available</returns>
         List<DocumentChunk> MergeChunksWithPreservedChunk0(List<DocumentChunk> chunks, DocumentChunk? chunk0);
-
-        /// <summary>
-        /// Filters chunks by relevance score threshold
-        /// </summary>
-        /// <param name="chunks">List of chunks to filter</param>
-        /// <param name="threshold">Minimum relevance score</param>
-        /// <returns>Filtered list of chunks</returns>
-        List<DocumentChunk> FilterChunksByThreshold(List<DocumentChunk> chunks, double threshold);
     }
 }
 

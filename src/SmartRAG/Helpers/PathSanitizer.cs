@@ -42,18 +42,13 @@ namespace SmartRAG.Helpers
                     var normalizedUserHome = Path.GetFullPath(userHomeDir);
                     var normalizedPath = Path.GetFullPath(fullPath);
 
-                    if (normalizedPath.StartsWith(normalizedUserHome, StringComparison.OrdinalIgnoreCase))
-                    {
-                        effectiveBaseDir = normalizedUserHome;
-                    }
-                    else
-                    {
-                        effectiveBaseDir = Path.GetPathRoot(fullPath) ?? baseDir;
-                    }
+                    effectiveBaseDir = normalizedPath.StartsWith(normalizedUserHome, StringComparison.OrdinalIgnoreCase) ? 
+                        normalizedUserHome : 
+                        Path.GetPathRoot(fullPath);
                 }
                 else
                 {
-                    effectiveBaseDir = Path.GetPathRoot(fullPath) ?? baseDir;
+                    effectiveBaseDir = Path.GetPathRoot(fullPath);
                 }
             }
             else
@@ -66,10 +61,9 @@ namespace SmartRAG.Helpers
             var normalizedBaseDir = Path.GetFullPath(effectiveBaseDir);
             var normalizedFullPath = Path.GetFullPath(fullPath);
 
-            if (!normalizedFullPath.StartsWith(normalizedBaseDir, StringComparison.OrdinalIgnoreCase))
-                throw new System.Security.SecurityException("Path traversal detected");
-
-            return normalizedFullPath;
+            return !normalizedFullPath.StartsWith(normalizedBaseDir, StringComparison.OrdinalIgnoreCase) ? 
+                throw new System.Security.SecurityException("Path traversal detected") : 
+                normalizedFullPath;
         }
     }
 }

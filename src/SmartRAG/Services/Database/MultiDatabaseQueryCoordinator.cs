@@ -16,7 +16,7 @@ namespace SmartRAG.Services.Database
         private readonly IDatabaseSchemaAnalyzer _schemaAnalyzer;
         private readonly ILogger<MultiDatabaseQueryCoordinator> _logger;
         private readonly IQueryIntentAnalyzer _queryIntentAnalyzer;
-        private readonly ISQLQueryGenerator _sqlQueryGenerator;
+        private readonly ISqlQueryGenerator _sqlQueryGenerator;
         private readonly IDatabaseQueryExecutor _databaseQueryExecutor;
         private readonly IResultMerger _resultMerger;
 
@@ -24,7 +24,7 @@ namespace SmartRAG.Services.Database
             IDatabaseSchemaAnalyzer schemaAnalyzer,
             ILogger<MultiDatabaseQueryCoordinator> logger,
             IQueryIntentAnalyzer queryIntentAnalyzer,
-            ISQLQueryGenerator sqlQueryGenerator,
+            ISqlQueryGenerator sqlQueryGenerator,
             IDatabaseQueryExecutor databaseQueryExecutor,
             IResultMerger resultMerger)
         {
@@ -87,7 +87,6 @@ namespace SmartRAG.Services.Database
 
             try
             {
-                _logger.LogDebug("Using pre-analyzed query intent to avoid redundant AI call");
                 var queryIntent = preAnalyzedIntent;
 
                 if (queryIntent.DatabaseQueries.Count == 0)

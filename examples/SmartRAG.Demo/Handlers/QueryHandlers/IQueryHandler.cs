@@ -1,3 +1,5 @@
+using System.Threading;
+
 namespace SmartRAG.Demo.Handlers.QueryHandlers;
 
 /// <summary>
@@ -5,11 +7,11 @@ namespace SmartRAG.Demo.Handlers.QueryHandlers;
 /// </summary>
 public interface IQueryHandler
 {
-    Task RunMultiDatabaseQueryAsync(string language);
-    Task AnalyzeQueryIntentAsync(string language);
-    Task RunTestQueriesAsync(string language);
-    Task RunConversationalChatAsync(string language, bool useLocalEnvironment, string aiProvider);
-    Task RunMcpQueryAsync(string language);
-    Task ClearConversationHistoryAsync();
+    Task RunMultiDatabaseQueryAsync(string language, CancellationToken cancellationToken = default);
+    Task AnalyzeQueryIntentAsync(string language, CancellationToken cancellationToken = default);
+    Task RunTestQueriesAsync(string language, CancellationToken cancellationToken = default);
+    Task RunConversationalChatAsync(string language, bool useLocalEnvironment, string aiProvider, CancellationToken cancellationToken = default);
+    Task RunMcpQueryAsync(string language, CancellationToken cancellationToken = default);
+    Task ClearConversationHistoryAsync(CancellationToken cancellationToken = default);
 }
 

@@ -153,7 +153,7 @@ This page has been moved. Please visit the [Changelog Index]({{ site.baseurl }}/
 - **`IQueryIntentAnalyzer`**: Query intent analysis and classification
 - **`IDatabaseQueryExecutor`**: Database query execution
 - **`IResultMerger`**: Multi-database result merging
-- **`ISQLQueryGenerator`**: SQL query generation with validation
+- **`ISqlQueryGenerator`**: SQL query generation with validation
 - **`IDatabaseConnectionManager`**: Database connection lifecycle management
 - **`IDatabaseSchemaAnalyzer`**: Database schema analysis and caching
 

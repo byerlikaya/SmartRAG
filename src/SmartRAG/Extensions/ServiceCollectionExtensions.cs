@@ -44,24 +44,14 @@ namespace SmartRAG.Extensions
     /// </summary>
     public static class ServiceCollectionExtensions
     {
-        /// <summary>
-        /// Adds SmartRag services with default configuration
-        /// </summary>
-        /// <param name="services">Service collection to add services to</param>
-        /// <param name="configuration">Application configuration</param>
-        /// <returns>Service collection for method chaining</returns>
         public static IServiceCollection AddSmartRag(this IServiceCollection services, IConfiguration configuration)
             => services.AddSmartRag(configuration, options => { });
 
         /// <summary>
-        /// Adds SmartRag services with custom configuration
-        /// For Web API: Use this method - IHost will automatically start hosted services
-        /// For Console: Use UseSmartRag() instead - it returns IServiceProvider with auto-started services
+        /// Adds SmartRag services with custom configuration.
+        /// For Web API: IHost automatically starts hosted services.
+        /// For Console: Use UseSmartRag() instead - returns IServiceProvider with auto-started services.
         /// </summary>
-        /// <param name="services">Service collection to add services to</param>
-        /// <param name="configuration">Application configuration</param>
-        /// <param name="configureOptions">Action to configure SmartRag options</param>
-        /// <returns>Service collection for method chaining (call BuildServiceProviderWithSmartRag() for console apps)</returns>
         public static IServiceCollection AddSmartRag(this IServiceCollection services, IConfiguration configuration, Action<SmartRagOptions> configureOptions)
         {
             RegisterConfiguration(services, configuration, configureOptions);
@@ -80,17 +70,10 @@ namespace SmartRAG.Extensions
         }
 
         /// <summary>
-        /// Quick setup method for console applications - configures SmartRag services and returns a ready-to-use service provider
-        /// This method automatically starts hosted services (MCP client, file watcher) if enabled
-        /// For Web API projects, use AddSmartRag() instead and let IHost manage the lifecycle
+        /// Quick setup for console applications - configures services and returns ready-to-use service provider.
+        /// Automatically starts hosted services (MCP client, file watcher) if enabled.
+        /// For Web API: Use AddSmartRag() instead - IHost manages lifecycle.
         /// </summary>
-        /// <param name="services">Service collection to add services to</param>
-        /// <param name="configuration">Application configuration</param>
-        /// <param name="storageProvider">Storage provider to use</param>
-        /// <param name="aiProvider">AI provider to use</param>
-        /// <param name="conversationStorageProvider">Conversation history storage provider to use</param>
-        /// <param name="defaultLanguage">Default language code for document processing (ISO 639-1 format, e.g., "tr", "en", "de")</param>
-        /// <returns>Configured and initialized service provider ready for use</returns>
         public static IServiceProvider UseSmartRag(this IServiceCollection services,
                                                    IConfiguration configuration,
                                                    StorageProvider storageProvider = StorageProvider.InMemory,
@@ -178,7 +161,8 @@ namespace SmartRAG.Extensions
             services.AddScoped<IPromptBuilderService>(sp =>
             {
                 var conversationManagerLazy = new Lazy<IConversationManagerService>(() => sp.GetRequiredService<IConversationManagerService>());
-                return new PromptBuilderService(conversationManagerLazy);
+                var options = sp.GetRequiredService<IOptions<SmartRagOptions>>();
+                return new PromptBuilderService(conversationManagerLazy, options);
             });
             services.AddScoped<IDocumentScoringService, DocumentScoringService>();
             services.AddScoped<ISourceBuilderService, SourceBuilderService>();
@@ -197,7 +181,6 @@ namespace SmartRAG.Extensions
             services.AddScoped<IChunkPrioritizerService, ChunkPrioritizerService>();
             services.AddScoped<IQueryAnalysisService, QueryAnalysisService>();
             services.AddScoped<IResponseBuilderService, ResponseBuilderService>();
-            services.AddScoped<ISourceSelectionService, SourceSelectionService>();
             services.AddScoped<IQueryStrategyOrchestratorService, QueryStrategyOrchestratorService>();
             services.AddScoped<IQueryStrategyExecutorService>(sp =>
             {
@@ -206,8 +189,9 @@ namespace SmartRAG.Extensions
                     sp.GetService<IMultiDatabaseQueryCoordinator>(),
                     sp.GetRequiredService<ILogger<QueryStrategyExecutorService>>(),
                     ragAnswerGeneratorLazy,
-                    sp.GetService<IResponseBuilderService>(),
-                    sp.GetService<IConversationManagerService>());
+                    sp.GetRequiredService<IResponseBuilderService>(),
+                    sp.GetService<IConversationManagerService>(),
+                    sp.GetRequiredService<IOptions<SmartRagOptions>>());
             });
             services.AddScoped<IDocumentSearchStrategyService, DocumentSearchStrategyService>();
             services.AddScoped<IDocumentParserService, DocumentParserService>();
@@ -228,7 +212,7 @@ namespace SmartRAG.Extensions
             services.AddScoped<ISqlDialectStrategyFactory, SqlDialectStrategyFactory>();
             services.AddScoped<ISqlValidator, SqlValidator>();
             services.AddScoped<ISqlPromptBuilder, SqlPromptBuilder>();
-            services.AddScoped<ISQLQueryGenerator, SQLQueryGenerator>();
+            services.AddScoped<ISqlQueryGenerator, SQLQueryGenerator>();
             services.AddScoped<IDatabaseQueryExecutor, DatabaseQueryExecutor>();
             services.AddScoped<IResultMerger, ResultMerger>();
             services.AddScoped<IMultiDatabaseQueryCoordinator, MultiDatabaseQueryCoordinator>();
@@ -258,13 +242,10 @@ namespace SmartRAG.Extensions
 
         private static void RegisterFeatureBasedServices(IServiceCollection services, SmartRagOptions options)
         {
-            if (options.Features.EnableMcpSearch)
-            {
-                services.AddHttpClient();
-                services.AddSingleton<IMcpClient, McpClient>();
-                services.AddSingleton<IMcpConnectionManager, McpConnectionManager>();
-                services.AddScoped<IMcpIntegrationService, McpIntegrationService>();
-            }
+            services.AddHttpClient();
+            services.AddSingleton<IMcpClient, McpClient>();
+            services.AddSingleton<IMcpConnectionManager, McpConnectionManager>();
+            services.AddScoped<IMcpIntegrationService, McpIntegrationService>();
 
             if (options.Features.EnableFileWatcher)
             {
@@ -303,20 +284,15 @@ namespace SmartRAG.Extensions
         }
 
         /// <summary>
-        /// Builds a service provider and automatically starts SmartRAG hosted services if configured
-        /// This method automatically detects and starts hosted services (MCP client, file watcher) for console applications
-        /// For Web API projects using IHost, this automatic startup is not needed
+        /// Builds service provider and automatically starts SmartRAG hosted services if configured.
+        /// For console applications: Automatically detects and starts hosted services (MCP client, file watcher).
+        /// For Web API with IHost: Automatic startup not needed - IHost manages lifecycle.
         /// </summary>
-        /// <param name="services">Service collection</param>
-        /// <param name="validateScopes">Whether to validate scopes</param>
-        /// <returns>Service provider instance with auto-started hosted services</returns>
         public static IServiceProvider BuildServiceProviderWithSmartRag(this IServiceCollection services, bool validateScopes = false)
         {
             var serviceProvider = services.BuildServiceProvider(validateScopes);
 
-            // Check if SmartRAG hosted services are registered and start them
-            // Hosted services are registered as IHostedService, so we need to get all hosted services
-            // and find SmartRagStartupService among them
+            // Find SmartRagStartupService among registered IHostedService instances
             var hostedServices = serviceProvider.GetServices<IHostedService>();
             var logger = serviceProvider.GetService<ILogger<SmartRagStartupService>>();
 

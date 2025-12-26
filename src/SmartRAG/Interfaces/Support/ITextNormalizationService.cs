@@ -6,13 +6,6 @@ namespace SmartRAG.Interfaces.Support
     public interface ITextNormalizationService
     {
         /// <summary>
-        /// Normalizes text for better search matching (handles Unicode encoding issues)
-        /// </summary>
-        /// <param name="text">Text to normalize</param>
-        /// <returns>Normalized text</returns>
-        string NormalizeText(string text);
-
-        /// <summary>
         /// Normalizes text for matching purposes (removes control characters and normalizes whitespace)
         /// </summary>
         /// <param name="value">Text to normalize</param>

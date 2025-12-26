@@ -78,7 +78,7 @@ namespace SmartRAG.Services.Document
 
                 var documentId = Guid.NewGuid();
                 var documentType = DetermineDocumentType(fileName, contentType);
-                var chunks = CreateChunks(content, documentId, documentType);
+                var chunks = CreateChunks(content, documentId, documentType, fileName);
 
                 var document = CreateDocument(documentId, fileName, contentType, content, uploadedBy, chunks);
                 document.FileSize = fileSize;
@@ -265,7 +265,7 @@ namespace SmartRAG.Services.Document
             return "Document";
         }
 
-        private List<DocumentChunk> CreateChunks(string content, Guid documentId, string documentType)
+        private List<DocumentChunk> CreateChunks(string content, Guid documentId, string documentType, string fileName)
         {
             var chunks = new List<DocumentChunk>();
             var maxChunkSize = Math.Max(1, _options.MaxChunkSize);
@@ -274,19 +274,20 @@ namespace SmartRAG.Services.Document
 
             if (content.Length <= maxChunkSize)
             {
-                chunks.Add(CreateSingleChunk(content, documentId, 0, 0, content.Length, documentType));
+                chunks.Add(CreateSingleChunk(content, documentId, 0, 0, content.Length, documentType, fileName));
                 return chunks;
             }
 
-            return CreateMultipleChunks(content, documentId, maxChunkSize, chunkOverlap, minChunkSize, documentType);
+            return CreateMultipleChunks(content, documentId, maxChunkSize, chunkOverlap, minChunkSize, documentType, fileName);
         }
 
-        private static DocumentChunk CreateSingleChunk(string content, Guid documentId, int chunkIndex, int startPosition, int endPosition, string documentType)
+        private static DocumentChunk CreateSingleChunk(string content, Guid documentId, int chunkIndex, int startPosition, int endPosition, string documentType, string fileName)
         {
             return new SmartRAG.Entities.DocumentChunk
             {
                 Id = Guid.NewGuid(),
                 DocumentId = documentId,
+                FileName = fileName ?? string.Empty,
                 Content = content,
                 ChunkIndex = chunkIndex,
                 StartPosition = startPosition,
@@ -297,7 +298,7 @@ namespace SmartRAG.Services.Document
             };
         }
 
-        private static List<DocumentChunk> CreateMultipleChunks(string content, Guid documentId, int maxChunkSize, int chunkOverlap, int minChunkSize, string documentType)
+        private static List<DocumentChunk> CreateMultipleChunks(string content, Guid documentId, int maxChunkSize, int chunkOverlap, int minChunkSize, string documentType, string fileName)
         {
             var chunks = new List<DocumentChunk>();
             var startIndex = 0;
@@ -317,7 +318,7 @@ namespace SmartRAG.Services.Document
 
                 if (!string.IsNullOrWhiteSpace(chunkContent))
                 {
-                    chunks.Add(CreateSingleChunk(chunkContent, documentId, chunkIndex, validatedStart, validatedEnd, documentType));
+                    chunks.Add(CreateSingleChunk(chunkContent, documentId, chunkIndex, validatedStart, validatedEnd, documentType, fileName));
                     chunkIndex++;
                 }
 

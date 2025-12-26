@@ -6,6 +6,116 @@ All notable changes to SmartRAG will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.5.0] - 2025-12-27
+
+### 🔧 Improved
+- **Code Quality**: Comprehensive refactoring across services, providers, and interfaces for better SOLID/DRY compliance
+  - Improved code organization and separation of concerns
+  - Enhanced maintainability and readability
+  - Better architecture patterns implementation
+  - **Files Modified**:
+    - `src/SmartRAG/Services/` - Multiple service files refactored
+    - `src/SmartRAG/Providers/` - Provider code quality improvements
+    - `src/SmartRAG/Interfaces/` - Interface cleanup and consistency
+  - **Benefits**: Better maintainability, cleaner codebase, improved testability
+
+- **Interface Consistency**: Renamed interface for naming consistency
+  - `ISQLQueryGenerator` → `ISqlQueryGenerator` (PascalCase naming convention)
+  - **Files Modified**:
+    - `src/SmartRAG/Interfaces/Database/ISqlQueryGenerator.cs` - Interface renamed
+    - `src/SmartRAG/Services/Database/SQLQueryGenerator.cs` - Implementation updated
+    - `src/SmartRAG/Extensions/ServiceCollectionExtensions.cs` - Registration updated
+  - **Benefits**: Consistent naming conventions, better code readability
+  - **Breaking Change**: Direct interface users need to update references
+
+- **Code Duplication Elimination**: Removed unnecessary wrapper methods and services
+  - Removed unnecessary wrapper methods that only delegate to other services
+  - Eliminated code duplication across DocumentSearchService and related services
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Wrapper removal
+    - `src/SmartRAG/Services/Document/` - Multiple service files cleaned up
+  - **Benefits**: Reduced code complexity, better performance, improved maintainability
+
+- **Search Strategy**: Improved search strategy implementation and code quality
+  - Enhanced query strategy logic
+  - Better code organization in strategy services
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Document/QueryStrategyOrchestratorService.cs` - Strategy improvements
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Strategy optimization
+  - **Benefits**: Better query routing, improved performance
+
+- **PDF Parsing and OCR**: Enhanced PDF parsing and OCR robustness
+  - Improved error handling in PDF parsing
+  - Better OCR processing reliability
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Document/Parsers/PdfFileParser.cs` - Parsing improvements
+    - `src/SmartRAG/Services/Parser/ImageParserService.cs` - OCR robustness
+  - **Benefits**: More reliable document processing, better error recovery
+
+### ✨ Added
+- **QueryIntentAnalysisResult Model**: New model for query intent classification results
+  - Structured result model for query intent analysis
+  - Better type safety for intent classification
+  - **Files Modified**:
+    - `src/SmartRAG/Models/Results/QueryIntentAnalysisResult.cs` - New model
+  - **Benefits**: Better type safety, improved code clarity
+
+- **SearchOptions Enhancements**: Added factory methods and Clone method
+  - `FromConfig()` factory method for creating SearchOptions from configuration
+  - `Clone()` method for creating copies of SearchOptions
+  - **Files Modified**:
+    - `src/SmartRAG/Models/Schema/SearchOptions.cs` - Factory and Clone methods
+  - **Benefits**: Easier configuration, better object management
+
+- **QueryStrategyRequest Consolidation**: Unified query strategy request DTOs
+  - Consolidated multiple query strategy request DTOs into single `QueryStrategyRequest` model
+  - Simplified request handling
+  - **Files Modified**:
+    - `src/SmartRAG/Models/RequestResponse/QueryStrategyRequest.cs` - Unified model
+  - **Benefits**: Simplified API, better consistency
+
+### 🔄 Changed
+- **Interface Method Signatures**: Removed preferredLanguage parameter and consolidated method overloads
+  - Removed `preferredLanguage` parameter from interface methods
+  - Consolidated method overloads for better API consistency
+  - **Files Modified**:
+    - `src/SmartRAG/Interfaces/Document/IDocumentSearchService.cs` - Method signature updates
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Implementation updates
+  - **Benefits**: Cleaner API, better consistency
+  - **Breaking Change**: Code using `preferredLanguage` parameter needs to use `SearchOptions` instead
+
+- **Interface Naming**: ISQLQueryGenerator renamed to ISqlQueryGenerator
+  - **Breaking Change**: Direct interface users need to update references
+  - **Migration**: Replace `ISQLQueryGenerator` with `ISqlQueryGenerator` in your code
+
+### 🗑️ Removed
+- **Unused Services**: Removed unused service interfaces and implementations
+  - `ISourceSelectionService` interface removed
+  - `SourceSelectionService` implementation removed
+  - **Files Removed**:
+    - `src/SmartRAG/Interfaces/Document/ISourceSelectionService.cs`
+    - `src/SmartRAG/Services/Document/SourceSelectionService.cs`
+  - **Benefits**: Cleaner codebase, reduced complexity
+
+- **Unnecessary Wrappers**: Removed unnecessary wrapper methods and orchestration services
+  - Removed wrapper methods that only delegate to other services
+  - Removed orchestration services with no added value
+  - **Benefits**: Reduced code complexity, better performance
+
+### ✨ Benefits
+- **Better Code Quality**: Comprehensive refactoring improves maintainability and readability
+- **Improved Architecture**: Better separation of concerns and SOLID/DRY compliance
+- **Cleaner API**: Simplified interfaces and method signatures
+- **Enhanced Performance**: Removed unnecessary wrappers improve performance
+- **Better Type Safety**: New models provide better type safety
+
+### 📝 Notes
+- **Breaking Changes**: 
+  - `ISQLQueryGenerator` renamed to `ISqlQueryGenerator` (direct interface users only)
+  - `preferredLanguage` parameter removed from methods (use `SearchOptions` instead)
+- **Migration**: Update interface references and use `SearchOptions` for language configuration
+- **Backward Compatibility**: Most changes are internal refactoring, public API remains largely compatible
+
 ## [3.4.0] - 2025-12-12
 
 ### ✨ Added
@@ -1197,6 +1307,10 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 
 ## Version History
 
+- **3.5.0** (2025-12-27) - Code Quality Improvements & Architecture Refactoring
+- **3.4.0** (2025-12-12) - MCP Integration, File Watcher, Query Strategy Optimization
+- **3.3.0** (2025-12-01) - Redis Vector Search & Storage Improvements
+- **3.2.0** (2025-11-27) - Architectural Refactoring, Strategy Pattern Implementation
 - **3.1.0** (2025-11-11) - Unified Query Intelligence, Smart Hybrid Routing, New Service Architecture
 - **3.0.3** (2025-11-06) - Package Optimization - Native Libraries Excluded
 - **3.0.2** (2025-10-24) - Google Speech-to-Text removal, Whisper.net only

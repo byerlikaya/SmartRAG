@@ -138,10 +138,7 @@ namespace SmartRAG.Services.Document
             return uniqueKeywordCount;
         }
 
-        /// <summary>
-        /// Checks if a word exists in text with word boundaries (not as substring)
-        /// </summary>
-        public bool IsWordInText(string text, string word)
+        private bool IsWordInText(string text, string word)
         {
             if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(word))
             {

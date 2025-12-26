@@ -263,7 +263,7 @@ namespace SmartRAG.Services.Support
         /// <summary>
         /// Handles general conversation queries with conversation history
         /// </summary>
-        public async Task<string> HandleGeneralConversationAsync(string query, string? conversationHistory = null, string? preferredLanguage = null)
+        public async Task<string> HandleGeneralConversationAsync(string query, string? conversationHistory = null)
         {
             try
             {
@@ -281,7 +281,7 @@ namespace SmartRAG.Services.Support
 
                 var aiProvider = _aiProviderFactory.CreateProvider(_options.AIProvider);
 
-                var prompt = _promptBuilder.BuildConversationPrompt(query, conversationHistory, preferredLanguage);
+                var prompt = _promptBuilder.BuildConversationPrompt(query, conversationHistory);
 
                 return await aiProvider.GenerateTextAsync(prompt, providerConfig);
             }

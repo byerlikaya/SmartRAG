@@ -95,6 +95,13 @@ namespace SmartRAG.Services.Storage.Qdrant
                     }
                 }
 
+                // Calculate per-collection limit: distribute maxResults across collections
+                // If single collection, use maxResults directly; otherwise divide evenly
+                var collectionCount = Math.Max(1, documentCollections.Count);
+                var perCollectionLimit = collectionCount == 1 
+                    ? maxResults 
+                    : Math.Max(10, (int)Math.Ceiling((double)maxResults / collectionCount));
+
                 foreach (var collectionName in documentCollections)
                 {
                     try
@@ -102,7 +109,7 @@ namespace SmartRAG.Services.Storage.Qdrant
                         var searchResults = await _client.SearchAsync(
                             collectionName: collectionName,
                             vector: queryEmbedding.ToArray(),
-                            limit: (ulong)Math.Max(20, maxResults * 4)
+                            limit: (ulong)Math.Max(20, perCollectionLimit)
                         );
 
                         foreach (var result in searchResults)
@@ -116,6 +123,7 @@ namespace SmartRAG.Services.Storage.Qdrant
                                 var chunkIndex = GetPayloadString(payload, "chunkIndex");
                                 var documentType = GetPayloadString(payload, "documentType");
                                 var chunkIdStr = GetPayloadString(payload, "chunkId");
+                                var fileName = GetPayloadString(payload, "fileName");
 
                                 if (!string.IsNullOrEmpty(content) && !string.IsNullOrEmpty(docId) && !string.IsNullOrEmpty(chunkIndex))
                                 {
@@ -137,6 +145,7 @@ namespace SmartRAG.Services.Storage.Qdrant
                                     {
                                         Id = chunkId, // Use original chunk ID from payload
                                         DocumentId = Guid.Parse(docId),
+                                        FileName = fileName ?? string.Empty,
                                         Content = content,
                                         ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
                                         RelevanceScore = result.Score,
@@ -201,6 +210,7 @@ namespace SmartRAG.Services.Storage.Qdrant
                                 var chunkIndex = GetPayloadString(payload, "chunkIndex");
                                 var documentType = GetPayloadString(payload, "documentType");
                                 var chunkIdStr = GetPayloadString(payload, "chunkId");
+                                var fileName = GetPayloadString(payload, "fileName");
 
                                 if (!string.IsNullOrEmpty(content) && !string.IsNullOrEmpty(docId) && !string.IsNullOrEmpty(chunkIndex))
                                 {
@@ -226,6 +236,7 @@ namespace SmartRAG.Services.Storage.Qdrant
                                         {
                                             Id = chunkId, // Use original chunk ID from payload
                                             DocumentId = Guid.Parse(docId),
+                                            FileName = fileName ?? string.Empty,
                                             Content = content,
                                             ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
                                             RelevanceScore = DefaultTextSearchScore,
@@ -251,7 +262,6 @@ namespace SmartRAG.Services.Storage.Qdrant
                     }
                 }
 
-                _logger.LogDebug("Fallback text search found {Count} results", relevantChunks.Count);
                 return relevantChunks.Take(maxResults).ToList();
             }
             catch (Exception ex)
@@ -267,7 +277,7 @@ namespace SmartRAG.Services.Storage.Qdrant
         /// <param name="query">Text query to search for</param>
         /// <param name="maxResults">Maximum number of results to return</param>
         /// <returns>List of relevant document chunks</returns>
-        public async Task<List<DocumentChunk>> HybridSearchAsync(string query, int maxResults)
+        private async Task<List<DocumentChunk>> HybridSearchAsync(string query, int maxResults)
         {
             var hybridResults = new List<DocumentChunk>();
 
@@ -415,6 +425,7 @@ namespace SmartRAG.Services.Storage.Qdrant
                         var chunkIndex = GetPayloadString(payload, "chunkIndex");
                         var documentType = GetPayloadString(payload, "documentType");
                         var chunkIdStr = GetPayloadString(payload, "chunkId");
+                        var fileName = GetPayloadString(payload, "fileName");
 
                         if (!string.IsNullOrEmpty(content) && !string.IsNullOrEmpty(docId) && !string.IsNullOrEmpty(chunkIndex))
                         {
@@ -459,6 +470,7 @@ namespace SmartRAG.Services.Storage.Qdrant
                             {
                                 Id = chunkId, // Use original chunk ID from payload
                                 DocumentId = Guid.Parse(docId),
+                                FileName = fileName ?? string.Empty,
                                 Content = content,
                                 ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
                                 RelevanceScore = baseScore,

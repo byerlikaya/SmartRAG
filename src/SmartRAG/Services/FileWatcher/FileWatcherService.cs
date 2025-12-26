@@ -67,10 +67,6 @@ namespace SmartRAG.Services.FileWatcher
             _supportedExtensions = new Lazy<HashSet<string>>(() => LoadSupportedExtensions(), System.Threading.LazyThreadSafetyMode.ExecutionAndPublication);
         }
 
-        public event EventHandler<FileWatcherEventArgs> FileCreated;
-        public event EventHandler<FileWatcherEventArgs> FileChanged;
-        public event EventHandler<FileWatcherEventArgs> FileDeleted;
-
         /// <summary>
         /// Starts watching a folder for file changes
         /// </summary>
@@ -142,10 +138,7 @@ namespace SmartRAG.Services.FileWatcher
         }
    
 
-        /// <summary>
-        /// Stops watching all folders
-        /// </summary>
-        public Task StopAllWatchingAsync()
+        private Task StopAllWatchingAsync()
         {
             foreach (var kvp in _watchers)
             {
@@ -173,16 +166,6 @@ namespace SmartRAG.Services.FileWatcher
                     return;
                 }
 
-                var args = new FileWatcherEventArgs
-                {
-                    FilePath = e.FullPath,
-                    FileName = e.Name,
-                    EventType = "Created",
-                    Timestamp = DateTime.UtcNow
-                };
-
-                FileCreated?.Invoke(this, args);
-
                 if (await GetConfigForPath(e.FullPath) is WatchedFolderConfig config && config.AutoUpload)
                 {
                     _logger.LogInformation("Auto-uploading file: {FilePath}", e.FullPath);
@@ -202,16 +185,6 @@ namespace SmartRAG.Services.FileWatcher
                 if (!IsFileAllowed(e.FullPath))
                     return;
 
-                var args = new FileWatcherEventArgs
-                {
-                    FilePath = e.FullPath,
-                    FileName = e.Name,
-                    EventType = "Changed",
-                    Timestamp = DateTime.UtcNow
-                };
-
-                FileChanged?.Invoke(this, args);
-
                 if (await GetConfigForPath(e.FullPath) is WatchedFolderConfig config && config.AutoUpload)
                 {
                     await Task.Delay(500);
@@ -228,15 +201,7 @@ namespace SmartRAG.Services.FileWatcher
         {
             try
             {
-                var args = new FileWatcherEventArgs
-                {
-                    FilePath = e.FullPath,
-                    FileName = e.Name,
-                    EventType = "Deleted",
-                    Timestamp = DateTime.UtcNow
-                };
-
-                FileDeleted?.Invoke(this, args);
+                _logger.LogDebug("File deleted event received: {FilePath}", e.FullPath);
                 await Task.CompletedTask;
             }
             catch (Exception ex)

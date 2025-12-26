@@ -136,7 +136,7 @@ namespace SmartRAG.Repositories
                         var hashEntries = new HashEntry[]
                         {
                             new HashEntry("documentId", document.Id.ToString()),
-                            new HashEntry("fileName", document.FileName),
+                            new HashEntry("fileName", chunk.FileName ?? document.FileName),
                             new HashEntry("content", chunk.Content),
                             new HashEntry("chunkIndex", chunk.ChunkIndex),
                             new HashEntry("embedding", SerializeEmbedding(embedding))
@@ -222,9 +222,12 @@ namespace SmartRAG.Repositories
                             if (docIdEntry.Equals(default(HashEntry)) || docIdEntry.Value.IsNull ||
                                 !Guid.TryParse(docIdEntry.Value.ToString(), out var docId)) continue;
 
+                            var contentEntry = chunkData.FirstOrDefault(h => h.Name == "content");
+                            var chunkIndexEntry = chunkData.FirstOrDefault(h => h.Name == "chunkIndex");
+                            var fileNameEntry = chunkData.FirstOrDefault(h => h.Name == "fileName");
+
                             if (!documentMap.ContainsKey(docId))
                             {
-                                var fileNameEntry = chunkData.FirstOrDefault(h => h.Name == "fileName");
                                 documentMap[docId] = new DocumentData
                                 {
                                     Id = docId,
@@ -234,17 +237,20 @@ namespace SmartRAG.Repositories
                                 };
                             }
 
-                            var contentEntry = chunkData.FirstOrDefault(h => h.Name == "content");
-                            var chunkIndexEntry = chunkData.FirstOrDefault(h => h.Name == "chunkIndex");
                             if (!contentEntry.Equals(default(HashEntry)) && !contentEntry.Value.IsNull &&
                                 int.TryParse(chunkIndexEntry.Equals(default(HashEntry)) || chunkIndexEntry.Value.IsNull
                                     ? "0"
                                     : chunkIndexEntry.Value.ToString(), out var chunkIndex))
                             {
+                                var fileName = fileNameEntry.Equals(default(HashEntry)) || fileNameEntry.Value.IsNull
+                                    ? documentMap[docId].FileName
+                                    : fileNameEntry.Value.ToString();
+
                                 documentMap[docId].Chunks.Add(new DocumentChunk
                                 {
                                     Id = Guid.Parse(chunkKey.Replace($"{_config.KeyPrefix}{ChunkKeySuffix}", "")),
                                     DocumentId = docId,
+                                    FileName = fileName,
                                     Content = contentEntry.Value.ToString(),
                                     ChunkIndex = chunkIndex
                                 });
@@ -448,10 +454,15 @@ namespace SmartRAG.Repositories
                             };
                             var relevanceScore = similarity * 100.0;
 
+                            var fileName = properties.TryGetValue("fileName", out var fileNameValue) 
+                                ? fileNameValue.ToString() 
+                                : string.Empty;
+
                             results.Add(new DocumentChunk
                             {
                                 Id = Guid.Parse(doc.Id.Replace($"{_config.KeyPrefix}{ChunkKeySuffix}", "")),
                                 DocumentId = docId,
+                                FileName = fileName,
                                 Content = content.ToString(),
                                 ChunkIndex = chunkIndex,
                                 Embedding = new List<float>(),
