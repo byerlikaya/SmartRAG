@@ -1,4 +1,5 @@
 using SmartRAG.Models;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Interfaces.Database
@@ -12,8 +13,9 @@ namespace SmartRAG.Interfaces.Database
         /// Analyzes user query and determines which databases/tables to query
         /// </summary>
         /// <param name="userQuery">Natural language user query</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>Query intent with database routing information</returns>
-        Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery);
+        Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery, CancellationToken cancellationToken = default);
     }
 }
 

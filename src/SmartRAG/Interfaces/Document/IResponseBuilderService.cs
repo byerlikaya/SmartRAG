@@ -2,6 +2,7 @@
 
 using SmartRAG.Models;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Interfaces.Document
@@ -48,8 +49,9 @@ namespace SmartRAG.Interfaces.Document
         /// </summary>
         /// <param name="query">User query</param>
         /// <param name="conversationHistory">Conversation history</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>Fallback RAG response</returns>
-        Task<RagResponse> CreateFallbackResponseAsync(string query, string conversationHistory);
+        Task<RagResponse> CreateFallbackResponseAsync(string query, string conversationHistory, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Merges results from database and document queries into a unified response
@@ -58,8 +60,9 @@ namespace SmartRAG.Interfaces.Document
         /// <param name="databaseResponse">Database query response</param>
         /// <param name="documentResponse">Document query response</param>
         /// <param name="conversationHistory">Conversation history</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>Merged RAG response</returns>
-        Task<RagResponse> MergeHybridResultsAsync(string query, RagResponse databaseResponse, RagResponse documentResponse, string conversationHistory);
+        Task<RagResponse> MergeHybridResultsAsync(string query, RagResponse databaseResponse, RagResponse documentResponse, string conversationHistory, CancellationToken cancellationToken = default);
     }
 }
 
