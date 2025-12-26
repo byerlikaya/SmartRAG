@@ -66,5 +66,5 @@ theme_toggle: true
 default_theme: "light"
 
 # Cache busting
-cache_bust: "2025-11-29-v3.3.0-migration-guides-config-section"
+cache_bust: "2025-12-26-v3.5.0-code-quality-refactoring"
 
