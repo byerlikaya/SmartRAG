@@ -6,7 +6,7 @@ All notable changes to SmartRAG will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [3.5.0] - 2025-12-26
+## [3.5.0] - 2025-12-27
 
 ### 🔧 Improved
 - **Code Quality**: Comprehensive refactoring across services, providers, and interfaces for better SOLID/DRY compliance
@@ -1307,7 +1307,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 
 ## Version History
 
-- **3.5.0** (2025-12-26) - Code Quality Improvements & Architecture Refactoring
+- **3.5.0** (2025-12-27) - Code Quality Improvements & Architecture Refactoring
 - **3.4.0** (2025-12-12) - MCP Integration, File Watcher, Query Strategy Optimization
 - **3.3.0** (2025-12-01) - Redis Vector Search & Storage Improvements
 - **3.2.0** (2025-11-27) - Architectural Refactoring, Strategy Pattern Implementation

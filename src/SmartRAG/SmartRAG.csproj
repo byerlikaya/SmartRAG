@@ -20,7 +20,7 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Release 3.5.0: Code Quality Improvements &amp; Architecture Refactoring (MINOR Release - 2025-12-26)
+    <PackageReleaseNotes>Release 3.5.0: Code Quality Improvements &amp; Architecture Refactoring (MINOR Release - 2025-12-27)
 
 IMPROVEMENTS:
 - Code Quality: Comprehensive refactoring across services, providers, and interfaces for better SOLID/DRY compliance
