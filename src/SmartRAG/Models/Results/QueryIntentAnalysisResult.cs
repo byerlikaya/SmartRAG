@@ -32,7 +32,7 @@ namespace SmartRAG.Models.Results
         public QueryIntentAnalysisResult(bool isConversation, string[] tokens, string? answer = null)
         {
             IsConversation = isConversation;
-            Tokens = tokens ?? System.Array.Empty<string>();
+            Tokens = tokens;
             Answer = answer;
         }
     }

@@ -13,11 +13,7 @@ namespace SmartRAG.Services.Support
     /// </summary>
     public class TextNormalizationService : ITextNormalizationService
     {
-        /// <summary>
-        /// Normalizes text for better search matching (handles Unicode encoding issues)
-        /// Uses Unicode normalization to handle character variations for all languages generically
-        /// </summary>
-        public string NormalizeText(string text)
+        private string NormalizeText(string text)
         {
             if (string.IsNullOrEmpty(text)) return text;
 

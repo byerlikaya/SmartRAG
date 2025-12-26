@@ -25,13 +25,5 @@ namespace SmartRAG.Interfaces.Storage.Qdrant
         /// <param name="maxResults">Maximum number of results to return</param>
         /// <returns>List of relevant document chunks</returns>
         Task<List<DocumentChunk>> FallbackTextSearchAsync(string query, int maxResults);
-
-        /// <summary>
-        /// Performs hybrid search combining vector and keyword matching
-        /// </summary>
-        /// <param name="query">Text query to search for</param>
-        /// <param name="maxResults">Maximum number of results to return</param>
-        /// <returns>List of relevant document chunks</returns>
-        Task<List<DocumentChunk>> HybridSearchAsync(string query, int maxResults);
     }
 }

@@ -6,7 +6,6 @@ using SmartRAG.Entities;
 using SmartRAG.Interfaces.Document;
 using SmartRAG.Interfaces.Storage.Qdrant;
 using SmartRAG.Interfaces.AI;
-using SmartRAG.Services.Storage.Qdrant;
 using SmartRAG.Models;
 using System;
 using System.Collections.Generic;

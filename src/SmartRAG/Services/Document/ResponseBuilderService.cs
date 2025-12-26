@@ -471,12 +471,7 @@ namespace SmartRAG.Services.Document
             return false;
         }
 
-        /// <summary>
-        /// Checks if an answer strictly contains negative patterns ("no information", "not found", etc.)
-        /// Used to fast-fail even high-confidence results if they are explicitly negative
-        /// Uses generic patterns that work across all languages (no hardcoded language-specific terms)
-        /// </summary>
-        public bool IsExplicitlyNegative(string answer)
+        private bool IsExplicitlyNegative(string answer)
         {
             if (string.IsNullOrWhiteSpace(answer)) return true;
             

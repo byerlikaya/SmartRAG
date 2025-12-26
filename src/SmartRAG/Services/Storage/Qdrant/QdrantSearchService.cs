@@ -278,7 +278,7 @@ namespace SmartRAG.Services.Storage.Qdrant
         /// <param name="query">Text query to search for</param>
         /// <param name="maxResults">Maximum number of results to return</param>
         /// <returns>List of relevant document chunks</returns>
-        public async Task<List<DocumentChunk>> HybridSearchAsync(string query, int maxResults)
+        private async Task<List<DocumentChunk>> HybridSearchAsync(string query, int maxResults)
         {
             var hybridResults = new List<DocumentChunk>();
 

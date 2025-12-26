@@ -12,15 +12,6 @@ namespace SmartRAG.Interfaces.Support
     public interface IQueryIntentClassifierService
     {
         /// <summary>
-        /// Determines whether the query should be treated as general conversation
-        /// </summary>
-        /// <param name="query">User query to classify</param>
-        /// <param name="conversationHistory">Optional conversation history for context</param>
-        /// <param name="cancellationToken">Token to cancel the operation</param>
-        /// <returns>True if query is conversation, false if information query</returns>
-        Task<bool> IsGeneralConversationAsync(string query, string? conversationHistory = null, System.Threading.CancellationToken cancellationToken = default);
-
-        /// <summary>
         /// Analyzes the query intent and returns both conversation classification and tokenized query terms.
         /// </summary>
         /// <param name="query">User query to analyze.</param>

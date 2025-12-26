@@ -48,18 +48,13 @@ namespace SmartRAG.Factories
             {
                 var providerString = _configuration["Storage:Provider"] ?? "InMemory";
 
-                if (Enum.TryParse<StorageProvider>(providerString, true, out var provider))
-                {
-                    _currentProvider = provider;
-                }
-                else
-                {
-                    _currentProvider = StorageProvider.InMemory;
-                }
+                _currentProvider = Enum.TryParse<StorageProvider>(providerString, true, out var provider) ? 
+                    provider : 
+                    StorageProvider.InMemory;
             }
         }
 
-        public IDocumentRepository CreateRepository(StorageConfig config)
+        private IDocumentRepository CreateRepository(StorageConfig config)
         {
             switch (config.Provider)
             {
@@ -80,7 +75,7 @@ namespace SmartRAG.Factories
             }
         }
 
-        public IDocumentRepository CreateRepository(StorageProvider provider)
+        private IDocumentRepository CreateRepository(StorageProvider provider)
         {
             var config = GetStorageConfig();
             config.Provider = provider;
@@ -103,7 +98,7 @@ namespace SmartRAG.Factories
         public IDocumentRepository GetCurrentRepository()
             => _currentRepository ??= CreateRepository(_currentProvider);
 
-        public IConversationRepository CreateConversationRepository(ConversationStorageProvider provider)
+        private IConversationRepository CreateConversationRepository(ConversationStorageProvider provider)
         {
             switch (provider)
             {
@@ -129,12 +124,11 @@ namespace SmartRAG.Factories
 
         public IConversationRepository GetCurrentConversationRepository()
         {
-            if (_currentConversationRepository == null)
-            {
-                // Use ConversationStorageProvider if specified, otherwise fallback to InMemory
-                var conversationProvider = _options.ConversationStorageProvider ?? ConversationStorageProvider.InMemory;
-                _currentConversationRepository = CreateConversationRepository(conversationProvider);
-            }
+            if (_currentConversationRepository != null) 
+                return _currentConversationRepository;
+            
+            var conversationProvider = _options.ConversationStorageProvider ?? ConversationStorageProvider.InMemory;
+            _currentConversationRepository = CreateConversationRepository(conversationProvider);
             return _currentConversationRepository;
         }
     }

@@ -61,10 +61,7 @@ namespace SmartRAG.Services.Storage.Qdrant
             }
         }
 
-        /// <summary>
-        /// Cleans up expired cache entries
-        /// </summary>
-        public void CleanupExpiredCache()
+        private void CleanupExpiredCache()
         {
             var expiredKeys = _searchCache.Where(kvp => kvp.Value.Expiry <= DateTime.UtcNow).Select(kvp => kvp.Key).ToList();
             foreach (var key in expiredKeys)

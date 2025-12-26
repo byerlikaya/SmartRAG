@@ -95,21 +95,6 @@ namespace SmartRAG.Services.Document
 
             return new List<DocumentChunk> { chunk0 }.Concat(chunks).ToList();
         }
-
-        /// <summary>
-        /// Filters chunks by relevance score threshold
-        /// </summary>
-        public List<DocumentChunk> FilterChunksByThreshold(List<DocumentChunk> chunks, double threshold)
-        {
-            if (chunks == null)
-            {
-                throw new ArgumentNullException(nameof(chunks));
-            }
-
-            return chunks
-                .Where(c => (c.RelevanceScore ?? 0.0) >= threshold || c.ChunkIndex == 0)
-                .ToList();
-        }
     }
 }
 

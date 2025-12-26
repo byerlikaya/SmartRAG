@@ -459,28 +459,19 @@ namespace SmartRAG.Services.Document
             }
         }
 
-        /// <summary>
-        /// Determines if a document is an audio document based on content type
-        /// </summary>
-        public bool IsAudioDocument(SmartRAG.Entities.Document doc)
+        private bool IsAudioDocument(SmartRAG.Entities.Document doc)
         {
             return !string.IsNullOrEmpty(doc.ContentType) &&
                    doc.ContentType.StartsWith("audio/", StringComparison.OrdinalIgnoreCase);
         }
 
-        /// <summary>
-        /// Determines if a document is an image document based on content type
-        /// </summary>
-        public bool IsImageDocument(SmartRAG.Entities.Document doc)
+        private bool IsImageDocument(SmartRAG.Entities.Document doc)
         {
             return !string.IsNullOrEmpty(doc.ContentType) &&
                    doc.ContentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase);
         }
 
-        /// <summary>
-        /// Determines if a document is a text document (not audio and not image)
-        /// </summary>
-        public bool IsTextDocument(SmartRAG.Entities.Document doc)
+        private bool IsTextDocument(SmartRAG.Entities.Document doc)
         {
             return !IsAudioDocument(doc) && !IsImageDocument(doc);
         }

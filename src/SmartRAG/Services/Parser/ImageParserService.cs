@@ -180,10 +180,7 @@ namespace SmartRAG.Services.Parser
             return result.Text;
         }
 
-        /// <summary>
-        /// [AI Query] Extracts text from an image with confidence scores
-        /// </summary>
-        public async Task<OcrResult> ExtractTextWithConfidenceAsync(Stream imageStream, string language = null)
+        private async Task<OcrResult> ExtractTextWithConfidenceAsync(Stream imageStream, string language = null)
         {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(ImageParserService));
@@ -232,10 +229,7 @@ namespace SmartRAG.Services.Parser
         }
 
 
-        /// <summary>
-        /// Preprocesses an image for better OCR results
-        /// </summary>
-        public async Task<Stream> PreprocessImageAsync(Stream imageStream)
+        private async Task<Stream> PreprocessImageAsync(Stream imageStream)
         {
             try
             {
@@ -858,9 +852,8 @@ namespace SmartRAG.Services.Parser
         /// This method applies the same currency correction logic used in OCR results to any text
         /// </summary>
         /// <param name="text">Text to correct</param>
-        /// <param name="language">Language code for context (optional, used for logging)</param>
         /// <returns>Text with corrected currency symbols</returns>
-        public string CorrectCurrencySymbols(string text, string language = null)
+        public string CorrectCurrencySymbols(string text)
         {
             if (string.IsNullOrWhiteSpace(text))
                 return text;

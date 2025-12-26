@@ -136,10 +136,7 @@ namespace SmartRAG.Services.Database
             return Task.FromResult(schema);
         }
 
-        /// <summary>
-        /// [AI Query] Generates an AI summary of the database schema
-        /// </summary>
-        public async Task<string> GenerateAISummaryAsync(DatabaseSchemaInfo schemaInfo)
+        private async Task<string> GenerateAISummaryAsync(DatabaseSchemaInfo schemaInfo)
         {
             try
             {

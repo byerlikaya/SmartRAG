@@ -95,7 +95,7 @@ namespace SmartRAG.Services.Document.Parsers
 
                 if (textIsSubstantial && !hasEncodingIssues)
                 {
-                    var correctedText = _imageParserService.CorrectCurrencySymbols(text, language);
+                    var correctedText = _imageParserService.CorrectCurrencySymbols(text);
                     textBuilder.AppendLine(correctedText);
                     _logger.LogDebug("PDF page {PageNumber} text extraction successful, using extracted text (length: {Length})", i, text.Length);
                 }
@@ -120,7 +120,7 @@ namespace SmartRAG.Services.Document.Parsers
                     }
                     else
                     {
-                        var correctedText = _imageParserService.CorrectCurrencySymbols(text, language);
+                        var correctedText = _imageParserService.CorrectCurrencySymbols(text);
                         textBuilder.AppendLine(correctedText);
 
                         if (hasEncodingIssues)
@@ -153,7 +153,7 @@ namespace SmartRAG.Services.Document.Parsers
                                 _logger.LogWarning("OCR failed to extract text from embedded image on PDF page {PageNumber}, using extracted text fallback", i);
                                 if (!string.IsNullOrWhiteSpace(text))
                                 {
-                                    var correctedText = _imageParserService.CorrectCurrencySymbols(text, language);
+                                    var correctedText = _imageParserService.CorrectCurrencySymbols(text);
                                     textBuilder.AppendLine(correctedText);
                                 }
                             }
@@ -163,7 +163,7 @@ namespace SmartRAG.Services.Document.Parsers
                             _logger.LogWarning("PDF page {PageNumber} was expected to have embedded images but none were found, using extracted text", i);
                             if (!string.IsNullOrWhiteSpace(text))
                             {
-                                var correctedText = _imageParserService.CorrectCurrencySymbols(text, language);
+                                var correctedText = _imageParserService.CorrectCurrencySymbols(text);
                                 textBuilder.AppendLine(correctedText);
                             }
                         }
@@ -173,7 +173,7 @@ namespace SmartRAG.Services.Document.Parsers
                         _logger.LogWarning(ex, "Failed to extract text via OCR for PDF page {PageNumber}, using extracted text fallback", i);
                         if (!string.IsNullOrWhiteSpace(text))
                         {
-                            var correctedText = _imageParserService.CorrectCurrencySymbols(text, language);
+                            var correctedText = _imageParserService.CorrectCurrencySymbols(text);
                             textBuilder.AppendLine(correctedText);
                         }
                     }

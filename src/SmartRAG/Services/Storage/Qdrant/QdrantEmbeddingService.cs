@@ -78,10 +78,7 @@ namespace SmartRAG.Services.Storage.Qdrant
             }
         }
 
-        /// <summary>
-        /// Gets the vector dimension for embeddings
-        /// </summary>
-        public Task<int> GetVectorDimensionAsync()
+        private Task<int> GetVectorDimensionAsync()
         {
             try
             {

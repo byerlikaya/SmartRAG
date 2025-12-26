@@ -85,12 +85,7 @@ namespace SmartRAG.Services.Storage.Qdrant
             await InitializeCollectionAsync();
         }
 
-        /// <summary>
-        /// Creates a new collection with specified vector parameters
-        /// </summary>
-        /// <param name="collectionName">Name of the collection to create</param>
-        /// <param name="vectorDimension">Dimension of vectors to store</param>
-        public async Task CreateCollectionAsync(string collectionName, int vectorDimension)
+        private async Task CreateCollectionAsync(string collectionName, int vectorDimension)
         {
             try
             {
@@ -141,10 +136,7 @@ namespace SmartRAG.Services.Storage.Qdrant
             }
         }
 
-        /// <summary>
-        /// Gets the vector dimension for collections
-        /// </summary>
-        public async Task<int> GetVectorDimensionAsync()
+        private async Task<int> GetVectorDimensionAsync()
         {
             try
             {

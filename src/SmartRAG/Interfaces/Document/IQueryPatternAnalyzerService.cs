@@ -42,27 +42,6 @@ namespace SmartRAG.Interfaces.Document
         /// <param name="query">Query text to analyze</param>
         /// <returns>True if query requires comprehensive search</returns>
         bool RequiresComprehensiveSearch(string query);
-
-        /// <summary>
-        /// Checks if query contains question punctuation (language-agnostic)
-        /// </summary>
-        /// <param name="input">Query text to check</param>
-        /// <returns>True if query contains question punctuation</returns>
-        bool HasQuestionPunctuation(string input);
-
-        /// <summary>
-        /// Checks if query contains numeric patterns using Unicode digit detection
-        /// </summary>
-        /// <param name="input">Query text to check</param>
-        /// <returns>True if query contains numeric patterns</returns>
-        bool HasNumericPattern(string input);
-
-        /// <summary>
-        /// Checks if query has structural patterns indicating list/enumeration needs
-        /// </summary>
-        /// <param name="input">Query text to check</param>
-        /// <returns>True if query indicates list/enumeration needs</returns>
-        bool HasListIndicators(string input);
     }
 }
 

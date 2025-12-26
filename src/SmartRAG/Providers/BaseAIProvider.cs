@@ -108,44 +108,6 @@ namespace SmartRAG.Providers
         }
 
         /// <summary>
-        /// Common text chunking implementation for all providers
-        /// Uses StringBuilder for better performance
-        /// </summary>
-        public virtual Task<List<string>> ChunkTextAsync(string text, int maxChunkSize = 1000)
-        {
-            if (string.IsNullOrWhiteSpace(text))
-                return Task.FromResult(new List<string>());
-
-            var chunks = new List<string>();
-            var sentences = text.Split(new char[] { '.', '!', '?' }, StringSplitOptions.RemoveEmptyEntries);
-            var current = new StringBuilder();
-
-            foreach (var sentence in sentences)
-            {
-                var trimmedSentence = sentence.Trim();
-
-                if (string.IsNullOrEmpty(trimmedSentence))
-                    continue;
-
-                if (current.Length + trimmedSentence.Length + 1 > maxChunkSize && current.Length > 0)
-                {
-                    chunks.Add(current.ToString().Trim());
-                    current.Clear();
-                }
-
-                if (current.Length > 0)
-                    current.Append(' ');
-
-                current.Append(trimmedSentence).Append('.');
-            }
-
-            if (current.Length > 0)
-                chunks.Add(current.ToString().Trim());
-
-            return Task.FromResult(chunks);
-        }
-
-        /// <summary>
         /// Validates common configuration requirements
         /// </summary>
         protected (bool isValid, string errorMessage) ValidateConfig(AIProviderConfig config, bool requireApiKey = true, bool requireEndpoint = true, bool requireModel = true)
@@ -251,22 +213,6 @@ namespace SmartRAG.Providers
             }
 
             return (false, string.Empty, $"{ProviderType} request failed after {maxRetries} attempts");
-        }
-
-        /// <summary>
-        /// Creates HttpClientHandler with SSL/TLS configuration
-        /// </summary>
-        protected static HttpClientHandler CreateHttpClientHandler()
-        {
-            var handler = new HttpClientHandler
-            {
-                ServerCertificateCustomValidationCallback = (message, cert, chain, errors) =>
-                {
-                    return true;
-                }
-            };
-
-            return handler;
         }
 
         /// <summary>

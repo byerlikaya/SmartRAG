@@ -65,7 +65,7 @@ namespace SmartRAG.Providers
                 messages = messages.ToArray()
             };
 
-            var chatEndpoint = BuildAnthropicUrl(config.Endpoint, "v1/messages");
+            var chatEndpoint = $"{config.Endpoint.TrimEnd('/')}/v1/messages";
 
             var (success, response, error) = await MakeHttpRequestAsync(client, chatEndpoint, payload);
 
@@ -200,14 +200,6 @@ namespace SmartRAG.Providers
                 ProviderLogMessages.LogVoyageParsingError(Logger, ex);
                 return ParseVoyageBatchEmbeddingResponse("", inputList.Count);
             }
-        }
-
-        /// <summary>
-        /// Build Anthropic API URL
-        /// </summary>
-        private static string BuildAnthropicUrl(string endpoint, string path)
-        {
-            return $"{endpoint.TrimEnd('/')}/{path}";
         }
 
         /// <summary>

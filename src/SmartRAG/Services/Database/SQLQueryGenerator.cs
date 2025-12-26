@@ -14,7 +14,7 @@ namespace SmartRAG.Services.Database
     /// <summary>
     /// Generates optimized SQL queries for databases based on query intent
     /// </summary>
-    public class SQLQueryGenerator : ISQLQueryGenerator
+    public class SQLQueryGenerator : ISqlQueryGenerator
     {
         private readonly IDatabaseSchemaAnalyzer _schemaAnalyzer;
         private readonly IAIService _aiService;

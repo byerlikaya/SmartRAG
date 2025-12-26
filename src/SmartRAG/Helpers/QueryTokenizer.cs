@@ -6,9 +6,6 @@ using System.Text.RegularExpressions;
 
 namespace SmartRAG.Helpers
 {
-    /// <summary>
-    /// Helper class for tokenizing queries
-    /// </summary>
     public static class QueryTokenizer
     {
         private const int MinTokenLength = 2;
@@ -36,11 +33,6 @@ namespace SmartRAG.Helpers
                 .ToList();
         }
 
-        /// <summary>
-        /// Extracts potential names from query (words starting with uppercase)
-        /// </summary>
-        /// <param name="query">Query to extract names from</param>
-        /// <returns>List of potential names</returns>
         public static List<string> ExtractPotentialNames(string query)
         {
             if (string.IsNullOrWhiteSpace(query))
@@ -100,10 +92,7 @@ namespace SmartRAG.Helpers
                 return true;
 
             var hasCurrencySymbol = query.Any(c => c == '€' || c == '$' || c == '£' || c == '¥' || c == '₺');
-            if (hasCurrencySymbol)
-                return true;
-
-            return false;
+            return hasCurrencySymbol;
         }
 
         // Intentionally no stemming logic here; language-specific normalization should be handled

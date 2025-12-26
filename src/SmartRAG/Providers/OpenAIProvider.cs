@@ -78,7 +78,7 @@ namespace SmartRAG.Providers
 
             using var client = CreateHttpClient(config.ApiKey);
 
-            var payload = CreateOpenAIEmbeddingPayload(text, config.EmbeddingModel);
+            var payload = new { input = text, model = config.EmbeddingModel };
 
             var embeddingEndpoint = BuildOpenAIUrl(config.Endpoint, EmbeddingsPath);
 
@@ -122,7 +122,7 @@ namespace SmartRAG.Providers
                 return new List<List<float>>();
 
             using var client = CreateHttpClient(config.ApiKey);
-            var payload = CreateOpenAIBatchEmbeddingPayload(inputList, config.EmbeddingModel);
+            var payload = new { input = inputList.ToArray(), model = config.EmbeddingModel };
 
             var embeddingEndpoint = BuildOpenAIUrl(config.Endpoint, EmbeddingsPath);
 
@@ -174,30 +174,6 @@ namespace SmartRAG.Providers
                 max_tokens = config.MaxTokens,
                 temperature = config.Temperature,
                 stream = false
-            };
-        }
-
-        /// <summary>
-        /// Create OpenAI embedding payload
-        /// </summary>
-        private static object CreateOpenAIEmbeddingPayload(string text, string model)
-        {
-            return new
-            {
-                input = text,
-                model
-            };
-        }
-
-        /// <summary>
-        /// Create OpenAI batch embedding payload
-        /// </summary>
-        private static object CreateOpenAIBatchEmbeddingPayload(List<string> texts, string model)
-        {
-            return new
-            {
-                input = texts.ToArray(),
-                model
             };
         }
 

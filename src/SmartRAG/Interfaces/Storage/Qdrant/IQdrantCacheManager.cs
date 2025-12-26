@@ -21,10 +21,5 @@ namespace SmartRAG.Interfaces.Storage.Qdrant
         /// <param name="queryHash">Hash of the search query</param>
         /// <param name="results">Results to cache</param>
         void CacheResults(string queryHash, List<DocumentChunk> results);
-
-        /// <summary>
-        /// Cleans up expired cache entries
-        /// </summary>
-        void CleanupExpiredCache();
     }
 }
