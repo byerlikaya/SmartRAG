@@ -11,12 +11,112 @@ All releases and changes to SmartRAG are documented here.
 
 <div class="accordion mt-4" id="versionAccordion">
     <div class="accordion-item">
+        <h2 class="accordion-header" id="headingversion350">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion350" aria-expanded="true" aria-controls="collapseversion350">
+                <strong>v3.5.0</strong> - 2025-12-26
+            </button>
+        </h2>
+        <div id="collapseversion350" class="accordion-collapse collapse show" aria-labelledby="headingversion350" >
+            <div class="accordion-body">
+{% capture version_content %}
+
+### Code Quality Improvements & Architecture Refactoring
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> MINOR Release</h4>
+    <p class="mb-0">
+        This release focuses on comprehensive code quality improvements, architecture refactoring, and SOLID/DRY compliance enhancements across the codebase.
+    </p>
+</div>
+
+### 🔧 Improved
+
+#### Code Quality
+- **Comprehensive Refactoring**: Refactored services, providers, and interfaces for better SOLID/DRY compliance
+- **Code Organization**: Improved code organization and separation of concerns
+- **Maintainability**: Enhanced maintainability and readability across the codebase
+- **Architecture Patterns**: Better architecture patterns implementation
+
+#### Interface Consistency
+- **Naming Convention**: Renamed `ISQLQueryGenerator` to `ISqlQueryGenerator` for PascalCase consistency
+- **Breaking Change**: Direct interface users need to update references
+
+#### Code Duplication Elimination
+- **Wrapper Removal**: Removed unnecessary wrapper methods that only delegate to other services
+- **Duplication Elimination**: Eliminated code duplication across DocumentSearchService and related services
+
+#### Search Strategy
+- **Implementation Improvements**: Enhanced query strategy logic and code quality
+- **Better Organization**: Improved code organization in strategy services
+
+#### PDF Parsing and OCR
+- **Enhanced Robustness**: Improved error handling in PDF parsing
+- **Better Reliability**: Enhanced OCR processing reliability
+
+### ✨ Added
+
+#### QueryIntentAnalysisResult Model
+- **New Model**: Structured result model for query intent classification results
+- **Type Safety**: Better type safety for intent classification
+
+#### SearchOptions Enhancements
+- **Factory Methods**: Added `FromConfig()` factory method for creating SearchOptions from configuration
+- **Clone Method**: Added `Clone()` method for creating copies of SearchOptions
+
+#### QueryStrategyRequest Consolidation
+- **Unified Model**: Consolidated multiple query strategy request DTOs into single `QueryStrategyRequest` model
+- **Simplified API**: Simplified request handling
+
+### 🔄 Changed
+
+#### Interface Method Signatures
+- **Parameter Removal**: Removed `preferredLanguage` parameter from interface methods
+- **Method Consolidation**: Consolidated method overloads for better API consistency
+- **Breaking Change**: Code using `preferredLanguage` parameter needs to use `SearchOptions` instead
+
+#### Interface Naming
+- **Renamed Interface**: `ISQLQueryGenerator` renamed to `ISqlQueryGenerator`
+- **Breaking Change**: Direct interface users need to update references
+
+### 🗑️ Removed
+
+#### Unused Services
+- **ISourceSelectionService**: Removed unused interface and implementation
+- **SourceSelectionService**: Removed unused service implementation
+
+#### Unnecessary Wrappers
+- **Wrapper Methods**: Removed unnecessary wrapper methods and orchestration services
+- **Code Simplification**: Reduced code complexity
+
+### ✨ Benefits
+
+- **Better Code Quality**: Comprehensive refactoring improves maintainability and readability
+- **Improved Architecture**: Better separation of concerns and SOLID/DRY compliance
+- **Cleaner API**: Simplified interfaces and method signatures
+- **Enhanced Performance**: Removed unnecessary wrappers improve performance
+- **Better Type Safety**: New models provide better type safety
+
+### 📝 Notes
+
+- **Breaking Changes**: 
+  - `ISQLQueryGenerator` renamed to `ISqlQueryGenerator` (direct interface users only)
+  - `preferredLanguage` parameter removed from methods (use `SearchOptions` instead)
+- **Migration**: Update interface references and use `SearchOptions` for language configuration
+- **Backward Compatibility**: Most changes are internal refactoring, public API remains largely compatible
+
+---
+{% endcapture %}
+{{ version_content | markdownify }}
+            </div>
+        </div>
+    </div>
+    <div class="accordion-item">
         <h2 class="accordion-header" id="headingversion340">
-            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion340" aria-expanded="true" aria-controls="collapseversion340">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion340" aria-expanded="false" aria-controls="collapseversion340">
                 <strong>v3.4.0</strong> - 2025-12-12
             </button>
         </h2>
-        <div id="collapseversion340" class="accordion-collapse collapse show" aria-labelledby="headingversion340" >
+        <div id="collapseversion340" class="accordion-collapse collapse" aria-labelledby="headingversion340" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -272,7 +372,7 @@ All releases and changes to SmartRAG are documented here.
 - **`IQueryIntentAnalyzer`**: Query intent analysis and classification
 - **`IDatabaseQueryExecutor`**: Database query execution
 - **`IResultMerger`**: Multi-database result merging
-- **`ISQLQueryGenerator`**: SQL query generation with validation
+- **`ISqlQueryGenerator`**: SQL query generation with validation
 - **`IDatabaseConnectionManager`**: Database connection lifecycle management
 - **`IDatabaseSchemaAnalyzer`**: Database schema analysis and caching
 

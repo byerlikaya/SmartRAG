@@ -11,12 +11,112 @@ SmartRAG'deki tüm sürümler ve değişiklikler burada belgelenmiştir.
 
 <div class="accordion mt-4" id="versionAccordion">
     <div class="accordion-item">
+        <h2 class="accordion-header" id="headingversion350">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion350" aria-expanded="true" aria-controls="collapseversion350">
+                <strong>v3.5.0</strong> - 2025-12-26
+            </button>
+        </h2>
+        <div id="collapseversion350" class="accordion-collapse collapse show" aria-labelledby="headingversion350" >
+            <div class="accordion-body">
+{% capture version_content %}
+
+### Kod Kalitesi İyileştirmeleri ve Mimari Refactoring
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> MINOR Sürüm</h4>
+    <p class="mb-0">
+        Bu sürüm kod tabanı genelinde kapsamlı kod kalitesi iyileştirmeleri, mimari refactoring ve SOLID/DRY uyumluluğu geliştirmelerine odaklanır.
+    </p>
+</div>
+
+### 🔧 İyileştirildi
+
+#### Kod Kalitesi
+- **Kapsamlı Refactoring**: Daha iyi SOLID/DRY uyumluluğu için servisler, provider'lar ve interface'ler refactor edildi
+- **Kod Organizasyonu**: Geliştirilmiş kod organizasyonu ve sorumluluk ayrımı
+- **Bakım Kolaylığı**: Kod tabanı genelinde artırılmış bakım kolaylığı ve okunabilirlik
+- **Mimari Desenler**: Daha iyi mimari desen implementasyonu
+
+#### Interface Tutarlılığı
+- **İsimlendirme Kuralı**: PascalCase tutarlılığı için `ISQLQueryGenerator` `ISqlQueryGenerator` olarak yeniden adlandırıldı
+- **Breaking Change**: Interface'i doğrudan kullananlar referansları güncellemeli
+
+#### Kod Tekrarı Eliminasyonu
+- **Wrapper Kaldırma**: Sadece diğer servislere delegate eden gereksiz wrapper metodları kaldırıldı
+- **Tekrar Eliminasyonu**: DocumentSearchService ve ilgili servislerde kod tekrarı elimine edildi
+
+#### Arama Stratejisi
+- **Implementasyon İyileştirmeleri**: Geliştirilmiş sorgu stratejisi mantığı ve kod kalitesi
+- **Daha İyi Organizasyon**: Strateji servislerinde geliştirilmiş kod organizasyonu
+
+#### PDF Ayrıştırma ve OCR
+- **Geliştirilmiş Sağlamlık**: PDF ayrıştırmada geliştirilmiş hata işleme
+- **Daha İyi Güvenilirlik**: Geliştirilmiş OCR işleme güvenilirliği
+
+### ✨ Eklendi
+
+#### QueryIntentAnalysisResult Modeli
+- **Yeni Model**: Sorgu niyet sınıflandırma sonuçları için yapılandırılmış sonuç modeli
+- **Tip Güvenliği**: Niyet sınıflandırma için daha iyi tip güvenliği
+
+#### SearchOptions Geliştirmeleri
+- **Factory Metodları**: Yapılandırmadan SearchOptions oluşturmak için `FromConfig()` factory metodu eklendi
+- **Clone Metodu**: SearchOptions kopyaları oluşturmak için `Clone()` metodu eklendi
+
+#### QueryStrategyRequest Konsolidasyonu
+- **Birleştirilmiş Model**: Birden fazla sorgu stratejisi istek DTO'su tek `QueryStrategyRequest` modelinde birleştirildi
+- **Basitleştirilmiş API**: Basitleştirilmiş istek işleme
+
+### 🔄 Değiştirildi
+
+#### Interface Metod İmzaları
+- **Parametre Kaldırma**: Interface metodlarından `preferredLanguage` parametresi kaldırıldı
+- **Metod Birleştirme**: Daha iyi API tutarlılığı için metod overload'ları birleştirildi
+- **Breaking Change**: `preferredLanguage` parametresini kullanan kod `SearchOptions` kullanmalı
+
+#### Interface İsimlendirme
+- **Yeniden Adlandırılan Interface**: `ISQLQueryGenerator` `ISqlQueryGenerator` olarak yeniden adlandırıldı
+- **Breaking Change**: Interface'i doğrudan kullananlar referansları güncellemeli
+
+### 🗑️ Kaldırılanlar
+
+#### Kullanılmayan Servisler
+- **ISourceSelectionService**: Kullanılmayan interface ve implementasyon kaldırıldı
+- **SourceSelectionService**: Kullanılmayan servis implementasyonu kaldırıldı
+
+#### Gereksiz Wrapper'lar
+- **Wrapper Metodları**: Gereksiz wrapper metodları ve orchestration servisleri kaldırıldı
+- **Kod Basitleştirme**: Azaltılmış kod karmaşıklığı
+
+### ✨ Faydalar
+
+- **Daha İyi Kod Kalitesi**: Kapsamlı refactoring bakım kolaylığı ve okunabilirliği artırır
+- **Geliştirilmiş Mimari**: Daha iyi sorumluluk ayrımı ve SOLID/DRY uyumluluğu
+- **Daha Temiz API**: Basitleştirilmiş interface'ler ve metod imzaları
+- **Geliştirilmiş Performans**: Gereksiz wrapper'ların kaldırılması performansı artırır
+- **Daha İyi Tip Güvenliği**: Yeni modeller daha iyi tip güvenliği sağlar
+
+### 📝 Notlar
+
+- **Breaking Changes**: 
+  - `ISQLQueryGenerator` `ISqlQueryGenerator` olarak yeniden adlandırıldı (sadece doğrudan interface kullananlar)
+  - Metodlardan `preferredLanguage` parametresi kaldırıldı (dil yapılandırması için `SearchOptions` kullanın)
+- **Geçiş**: Interface referanslarını güncelleyin ve dil yapılandırması için `SearchOptions` kullanın
+- **Geriye Dönük Uyumluluk**: Çoğu değişiklik dahili refactoring, public API büyük ölçüde uyumlu kalıyor
+
+---
+{% endcapture %}
+{{ version_content | markdownify }}
+            </div>
+        </div>
+    </div>
+    <div class="accordion-item">
         <h2 class="accordion-header" id="headingversion340">
-            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion340" aria-expanded="true" aria-controls="collapseversion340">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion340" aria-expanded="false" aria-controls="collapseversion340">
                 <strong>v3.4.0</strong> - 2025-12-12
             </button>
         </h2>
-        <div id="collapseversion340" class="accordion-collapse collapse show" aria-labelledby="headingversion340" >
+        <div id="collapseversion340" class="accordion-collapse collapse" aria-labelledby="headingversion340" >
             <div class="accordion-body">
 {% capture version_content %}
 
@@ -272,7 +372,7 @@ SmartRAG'deki tüm sürümler ve değişiklikler burada belgelenmiştir.
 - **`IQueryIntentAnalyzer`**: Sorgu niyet analizi ve sınıflandırma
 - **`IDatabaseQueryExecutor`**: Veritabanı sorgu yürütme
 - **`IResultMerger`**: Çoklu veritabanı sonuç birleştirme
-- **`ISQLQueryGenerator`**: Doğrulama ile SQL sorgu üretimi
+- **`ISqlQueryGenerator`**: Doğrulama ile SQL sorgu üretimi
 - **`IDatabaseConnectionManager`**: Veritabanı bağlantı yaşam döngüsü yönetimi
 - **`IDatabaseSchemaAnalyzer`**: Veritabanı şema analizi ve önbellekleme
 

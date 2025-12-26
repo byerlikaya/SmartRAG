@@ -6,6 +6,116 @@ SmartRAG'deki tüm önemli değişiklikler bu dosyada belgelenecektir.
 Format [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)'a dayanmaktadır
 ve bu proje [Semantic Versioning](https://semver.org/spec/v2.0.0.html)'a uymaktadır.
 
+## [3.5.0] - 2025-12-26
+
+### 🔧 İyileştirmeler
+- **Kod Kalitesi**: SOLID/DRY uyumluluğu için servisler, provider'lar ve interface'ler genelinde kapsamlı refactoring
+  - Geliştirilmiş kod organizasyonu ve sorumluluk ayrımı
+  - Artırılmış bakım kolaylığı ve okunabilirlik
+  - Daha iyi mimari desen implementasyonu
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/` - Birden fazla servis dosyası refactor edildi
+    - `src/SmartRAG/Providers/` - Provider kod kalitesi iyileştirmeleri
+    - `src/SmartRAG/Interfaces/` - Interface temizliği ve tutarlılık
+  - **Faydalar**: Daha iyi bakım kolaylığı, daha temiz kod tabanı, geliştirilmiş test edilebilirlik
+
+- **Interface Tutarlılığı**: İsimlendirme tutarlılığı için interface yeniden adlandırıldı
+  - `ISQLQueryGenerator` → `ISqlQueryGenerator` (PascalCase isimlendirme kuralı)
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Interfaces/Database/ISqlQueryGenerator.cs` - Interface yeniden adlandırıldı
+    - `src/SmartRAG/Services/Database/SQLQueryGenerator.cs` - Implementasyon güncellendi
+    - `src/SmartRAG/Extensions/ServiceCollectionExtensions.cs` - Kayıt güncellendi
+  - **Faydalar**: Tutarlı isimlendirme kuralları, daha iyi kod okunabilirliği
+  - **Breaking Change**: Interface'i doğrudan kullananlar referansları güncellemeli
+
+- **Kod Tekrarı Eliminasyonu**: Gereksiz wrapper metodları ve servisler kaldırıldı
+  - Sadece diğer servislere delegate eden gereksiz wrapper metodları kaldırıldı
+  - DocumentSearchService ve ilgili servislerde kod tekrarı elimine edildi
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Wrapper kaldırma
+    - `src/SmartRAG/Services/Document/` - Birden fazla servis dosyası temizlendi
+  - **Faydalar**: Azaltılmış kod karmaşıklığı, daha iyi performans, geliştirilmiş bakım kolaylığı
+
+- **Arama Stratejisi**: Geliştirilmiş arama stratejisi implementasyonu ve kod kalitesi
+  - Geliştirilmiş sorgu stratejisi mantığı
+  - Strateji servislerinde daha iyi kod organizasyonu
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/Document/QueryStrategyOrchestratorService.cs` - Strateji iyileştirmeleri
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Strateji optimizasyonu
+  - **Faydalar**: Daha iyi sorgu yönlendirme, geliştirilmiş performans
+
+- **PDF Ayrıştırma ve OCR**: Geliştirilmiş PDF ayrıştırma ve OCR sağlamlığı
+  - PDF ayrıştırmada geliştirilmiş hata işleme
+  - Daha iyi OCR işleme güvenilirliği
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/Document/Parsers/PdfFileParser.cs` - Ayrıştırma iyileştirmeleri
+    - `src/SmartRAG/Services/Parser/ImageParserService.cs` - OCR sağlamlığı
+  - **Faydalar**: Daha güvenilir doküman işleme, daha iyi hata kurtarma
+
+### ✨ Eklenenler
+- **QueryIntentAnalysisResult Modeli**: Sorgu niyet sınıflandırma sonuçları için yeni model
+  - Sorgu niyet analizi için yapılandırılmış sonuç modeli
+  - Niyet sınıflandırma için daha iyi tip güvenliği
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Models/Results/QueryIntentAnalysisResult.cs` - Yeni model
+  - **Faydalar**: Daha iyi tip güvenliği, geliştirilmiş kod netliği
+
+- **SearchOptions Geliştirmeleri**: Factory metodları ve Clone metodu eklendi
+  - Yapılandırmadan SearchOptions oluşturmak için `FromConfig()` factory metodu
+  - SearchOptions kopyaları oluşturmak için `Clone()` metodu
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Models/Schema/SearchOptions.cs` - Factory ve Clone metodları
+  - **Faydalar**: Daha kolay yapılandırma, daha iyi nesne yönetimi
+
+- **QueryStrategyRequest Konsolidasyonu**: Birleştirilmiş sorgu stratejisi istek DTO'ları
+  - Birden fazla sorgu stratejisi istek DTO'su tek `QueryStrategyRequest` modelinde birleştirildi
+  - Basitleştirilmiş istek işleme
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Models/RequestResponse/QueryStrategyRequest.cs` - Birleştirilmiş model
+  - **Faydalar**: Basitleştirilmiş API, daha iyi tutarlılık
+
+### 🔄 Değişiklikler
+- **Interface Metod İmzaları**: preferredLanguage parametresi kaldırıldı ve metod overload'ları birleştirildi
+  - Interface metodlarından `preferredLanguage` parametresi kaldırıldı
+  - Daha iyi API tutarlılığı için metod overload'ları birleştirildi
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Interfaces/Document/IDocumentSearchService.cs` - Metod imza güncellemeleri
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Implementasyon güncellemeleri
+  - **Faydalar**: Daha temiz API, daha iyi tutarlılık
+  - **Breaking Change**: `preferredLanguage` parametresini kullanan kod `SearchOptions` kullanmalı
+
+- **Interface İsimlendirme**: ISQLQueryGenerator ISqlQueryGenerator olarak yeniden adlandırıldı
+  - **Breaking Change**: Interface'i doğrudan kullananlar referansları güncellemeli
+  - **Geçiş**: Kodunuzda `ISQLQueryGenerator` yerine `ISqlQueryGenerator` kullanın
+
+### 🗑️ Kaldırılanlar
+- **Kullanılmayan Servisler**: Kullanılmayan servis interface'leri ve implementasyonları kaldırıldı
+  - `ISourceSelectionService` interface'i kaldırıldı
+  - `SourceSelectionService` implementasyonu kaldırıldı
+  - **Kaldırılan Dosyalar**:
+    - `src/SmartRAG/Interfaces/Document/ISourceSelectionService.cs`
+    - `src/SmartRAG/Services/Document/SourceSelectionService.cs`
+  - **Faydalar**: Daha temiz kod tabanı, azaltılmış karmaşıklık
+
+- **Gereksiz Wrapper'lar**: Gereksiz wrapper metodları ve orchestration servisleri kaldırıldı
+  - Sadece diğer servislere delegate eden wrapper metodları kaldırıldı
+  - Ek değer katmayan orchestration servisleri kaldırıldı
+  - **Faydalar**: Azaltılmış kod karmaşıklığı, daha iyi performans
+
+### ✨ Faydalar
+- **Daha İyi Kod Kalitesi**: Kapsamlı refactoring bakım kolaylığı ve okunabilirliği artırır
+- **Geliştirilmiş Mimari**: Daha iyi sorumluluk ayrımı ve SOLID/DRY uyumluluğu
+- **Daha Temiz API**: Basitleştirilmiş interface'ler ve metod imzaları
+- **Geliştirilmiş Performans**: Gereksiz wrapper'ların kaldırılması performansı artırır
+- **Daha İyi Tip Güvenliği**: Yeni modeller daha iyi tip güvenliği sağlar
+
+### 📝 Notlar
+- **Breaking Changes**: 
+  - `ISQLQueryGenerator` `ISqlQueryGenerator` olarak yeniden adlandırıldı (sadece doğrudan interface kullananlar)
+  - Metodlardan `preferredLanguage` parametresi kaldırıldı (dil yapılandırması için `SearchOptions` kullanın)
+- **Geçiş**: Interface referanslarını güncelleyin ve dil yapılandırması için `SearchOptions` kullanın
+- **Geriye Dönük Uyumluluk**: Çoğu değişiklik dahili refactoring, public API büyük ölçüde uyumlu kalıyor
+
 ## [3.4.0] - 2025-12-12
 
 ### ✨ Eklenenler
@@ -732,6 +842,10 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 
 ## Versiyon Geçmişi
 
+- **3.5.0** (2025-12-26) - Kod Kalitesi İyileştirmeleri ve Mimari Refactoring
+- **3.4.0** (2025-12-12) - MCP Entegrasyonu, Dosya İzleyici, Sorgu Stratejisi Optimizasyonu
+- **3.3.0** (2025-12-01) - Redis Vector Search ve Depolama İyileştirmeleri
+- **3.2.0** (2025-11-27) - Mimari Refactoring, Strateji Deseni Implementasyonu
 - **3.1.0** (2025-11-11) - Birleşik Sorgu Zekası, Akıllı Hibrit Yönlendirme, Yeni Servis Mimarisi
 - **3.0.3** (2025-11-06) - Paket optimizasyonu, native kütüphaneler hariç
 - **3.0.2** (2025-10-24) - Google Speech-to-Text kaldırıldı, sadece Whisper.net
