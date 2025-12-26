@@ -81,7 +81,6 @@ namespace SmartRAG.Services.Support
                             var conversationHistory = await _conversationRepository.GetConversationHistoryAsync(sessionId);
 
                             _conversationCache.TryAdd(sessionId, conversationHistory ?? string.Empty);
-                            ServiceLogMessages.LogSessionRetrieved(_logger, sessionId, null);
                             return sessionId;
                         }
                     }
@@ -304,8 +303,6 @@ namespace SmartRAG.Services.Support
                 await _conversationRepository.AddToConversationAsync(newSessionId, "", "");
 
                 _conversationCache.TryAdd(newSessionId, string.Empty);
-
-                ServiceLogMessages.LogSessionCreated(_logger, newSessionId, null);
             }
             catch (Exception ex)
             {

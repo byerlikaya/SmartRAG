@@ -92,11 +92,7 @@ namespace SmartRAG.Services.Document
                 }
             }
 
-            ServiceLogMessages.LogDocumentUploaded(_logger, request.FileName, null);
-
             var allChunkContents = document.Chunks.Select(c => c.Content).ToList();
-
-            ServiceLogMessages.LogBatchEmbeddingAttempt(_logger, allChunkContents.Count, null);
 
             var successCount = 0;
 
@@ -119,18 +115,14 @@ namespace SmartRAG.Services.Document
                         else
                         {
                             chunk.Embedding = new List<float>();
-                            ServiceLogMessages.LogChunkEmbeddingFailed(_logger, i + 1, null);
                         }
 
                         if (chunk.CreatedAt == default)
                             chunk.CreatedAt = DateTime.UtcNow;
                     }
-
-                    ServiceLogMessages.LogBatchEmbeddingSuccess(_logger, successCount, null);
                 }
                 else
                 {
-                    ServiceLogMessages.LogBatchEmbeddingIncomplete(_logger, allEmbeddings?.Count ?? 0, document.Chunks.Count, null);
 
                     foreach (var chunk in document.Chunks)
                     {
@@ -153,8 +145,6 @@ namespace SmartRAG.Services.Document
                         chunk.CreatedAt = DateTime.UtcNow;
                 }
             }
-
-            ServiceLogMessages.LogDocumentProcessing(_logger, request.FileName, document.Chunks.Count, null);
 
             var savedDocument = await _documentRepository.AddAsync(document);
             ServiceLogMessages.LogDocumentUploaded(_logger, request.FileName, null);
@@ -254,8 +244,6 @@ namespace SmartRAG.Services.Document
 
                 foreach (var document in allDocuments)
                 {
-                    ServiceLogMessages.LogDocumentProcessing(_logger, document.FileName, document.Chunks.Count, null);
-
                     foreach (var chunk in document.Chunks)
                     {
                         if (chunk.Embedding != null && chunk.Embedding.Count > 0)
@@ -269,25 +257,18 @@ namespace SmartRAG.Services.Document
                     }
                 }
 
-                ServiceLogMessages.LogTotalChunksToProcess(_logger, chunksToProcess.Count, totalChunks, null);
-
                 if (chunksToProcess.Count == 0)
                 {
-                    ServiceLogMessages.LogNoProcessingNeeded(_logger, null);
                     return true;
                 }
 
                 var totalBatches = (int)Math.Ceiling((double)chunksToProcess.Count / VoyageAIMaxBatchSize);
-
-                ServiceLogMessages.LogBatchProcessing(_logger, totalBatches, null);
 
                 for (int batchIndex = 0; batchIndex < totalBatches; batchIndex++)
                 {
                     var startIndex = batchIndex * VoyageAIMaxBatchSize;
                     var endIndex = Math.Min(startIndex + VoyageAIMaxBatchSize, chunksToProcess.Count);
                     var currentBatch = chunksToProcess.Skip(startIndex).Take(endIndex - startIndex).ToList();
-
-                    ServiceLogMessages.LogBatchProgress(_logger, batchIndex + 1, totalBatches, null);
 
                     var batchContents = currentBatch.Select(c => c.Content).ToList();
                     var batchEmbeddings = await _aiService.GenerateEmbeddingsBatchAsync(batchContents);
@@ -303,22 +284,15 @@ namespace SmartRAG.Services.Document
                             {
                                 chunk.Embedding = embedding;
                                 successCount++;
-                                ServiceLogMessages.LogChunkBatchEmbeddingSuccess(_logger, i, embedding.Count, null);
                             }
                             else
                             {
-                                ServiceLogMessages.LogChunkBatchEmbeddingFailedRetry(_logger, chunk.Id, null);
 
                                 var individualEmbedding = await _aiService.GenerateEmbeddingsAsync(chunk.Content);
                                 if (individualEmbedding != null && individualEmbedding.Count > 0)
                                 {
                                     chunk.Embedding = individualEmbedding;
                                     successCount++;
-                                    ServiceLogMessages.LogChunkIndividualEmbeddingSuccessRetry(_logger, chunk.Id, individualEmbedding.Count, null);
-                                }
-                                else
-                                {
-                                    ServiceLogMessages.LogChunkAllEmbeddingMethodsFailed(_logger, chunk.Id, null);
                                 }
                             }
 
@@ -327,8 +301,6 @@ namespace SmartRAG.Services.Document
                     }
                     else
                     {
-                        ServiceLogMessages.LogBatchFailed(_logger, batchIndex + 1, null);
-
                         using var semaphore = new System.Threading.SemaphoreSlim(1); // Max 1 concurrent
                         var tasks = currentBatch.Select(async chunk =>
                         {
@@ -341,11 +313,6 @@ namespace SmartRAG.Services.Document
                                 {
                                     chunk.Embedding = newEmbedding;
                                     System.Threading.Interlocked.Increment(ref successCount);
-                                    ServiceLogMessages.LogChunkIndividualEmbeddingSuccessFinal(_logger, chunk.Id, newEmbedding.Count, null);
-                                }
-                                else
-                                {
-                                    ServiceLogMessages.LogChunkEmbeddingGenerationFailed(_logger, chunk.Id, null);
                                 }
 
                                 System.Threading.Interlocked.Increment(ref processedChunks);
@@ -364,8 +331,6 @@ namespace SmartRAG.Services.Document
                         await Task.WhenAll(tasks);
                     }
 
-                    ServiceLogMessages.LogProgress(_logger, processedChunks, chunksToProcess.Count, successCount, null);
-
                     if (batchIndex < totalBatches - 1) // Don't wait after last batch
                     {
                         await Task.Delay(RateLimitDelayMs);
@@ -373,7 +338,6 @@ namespace SmartRAG.Services.Document
                 }
 
                 var documentsToUpdate = documentChunkMap.Values.Distinct().ToList();
-                ServiceLogMessages.LogSavingDocuments(_logger, documentsToUpdate.Count, null);
 
                 foreach (var document in documentsToUpdate)
                 {
@@ -406,8 +370,6 @@ namespace SmartRAG.Services.Document
 
                 foreach (var document in allDocuments)
                 {
-                    ServiceLogMessages.LogDocumentProcessing(_logger, document.FileName, document.Chunks.Count, null);
-
                     foreach (var chunk in document.Chunks)
                     {
                         if (chunk.Embedding != null && chunk.Embedding.Count > 0)

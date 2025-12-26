@@ -479,8 +479,6 @@ namespace SmartRAG.Services.Document
         /// </summary>
         public async Task<RagResponse> CreateFallbackResponseAsync(string query, string conversationHistory)
         {
-            ServiceLogMessages.LogGeneralConversationQuery(_logger, null);
-
             var chatResponse = await _conversationManager.HandleGeneralConversationAsync(query, conversationHistory);
             return CreateRagResponse(query, chatResponse, new List<SearchSource>());
         }

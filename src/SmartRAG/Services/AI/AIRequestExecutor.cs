@@ -82,7 +82,6 @@ namespace SmartRAG.Services.AI
             var embeddings = await aiProvider.GenerateEmbeddingsBatchAsync(texts, providerConfig);
 
             var filteredEmbeddings = embeddings?.Where(e => e != null && e.Count > 0).ToList() ?? new List<List<float>>();
-            ServiceLogMessages.LogAIServiceBatchEmbeddingsGenerated(_logger, filteredEmbeddings.Count, provider.ToString(), null);
 
             return filteredEmbeddings;
         }

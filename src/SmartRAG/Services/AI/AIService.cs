@@ -55,7 +55,7 @@ namespace SmartRAG.Services.AI
                     }
                     catch (Exception fallbackEx)
                     {
-                        ServiceLogMessages.LogAIServiceFallbackError(_logger, query, fallbackEx);
+                        _logger.LogError(fallbackEx, "Fallback providers failed");
                     }
                 }
 
@@ -74,7 +74,7 @@ namespace SmartRAG.Services.AI
             }
             catch (Exception ex)
             {
-                ServiceLogMessages.LogAIServiceEmbeddingError(_logger, text, ex);
+                _logger.LogError(ex, "Error generating embeddings");
                 throw;
             }
         }
@@ -140,7 +140,6 @@ namespace SmartRAG.Services.AI
 
                     if (!string.IsNullOrEmpty(response))
                     {
-                        ServiceLogMessages.LogAIServiceFallbackSuccess(_logger, fallbackProvider.ToString(), null);
                         return response;
                     }
                 }
@@ -151,7 +150,7 @@ namespace SmartRAG.Services.AI
                 }
             }
 
-            ServiceLogMessages.LogAIServiceAllFallbacksFailed(_logger, query, null);
+            _logger.LogWarning("All fallback providers failed");
             return FallbackUnavailableMessage;
         }
     }
