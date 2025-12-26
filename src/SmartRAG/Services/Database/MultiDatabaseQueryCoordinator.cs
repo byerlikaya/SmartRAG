@@ -87,7 +87,6 @@ namespace SmartRAG.Services.Database
 
             try
             {
-                _logger.LogDebug("Using pre-analyzed query intent to avoid redundant AI call");
                 var queryIntent = preAnalyzedIntent;
 
                 if (queryIntent.DatabaseQueries.Count == 0)

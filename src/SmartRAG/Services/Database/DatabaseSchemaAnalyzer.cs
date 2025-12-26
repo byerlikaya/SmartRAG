@@ -52,8 +52,6 @@ namespace SmartRAG.Services.Database
         {
             var databaseId = await GetDatabaseIdAsync(connectionConfig);
 
-            _logger.LogInformation("Analyzing schema for database");
-
             var schemaInfo = new DatabaseSchemaInfo
             {
                 DatabaseId = databaseId,
@@ -97,8 +95,6 @@ namespace SmartRAG.Services.Database
 
                 _schemaCache[databaseId] = schemaInfo;
                 _lastRefreshTimes[databaseId] = DateTime.UtcNow;
-
-                _logger.LogInformation("Schema analysis completed");
             }
             catch (Exception ex)
             {

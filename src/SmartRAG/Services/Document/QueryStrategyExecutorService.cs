@@ -87,7 +87,6 @@ namespace SmartRAG.Services.Document
                     return databaseResponse;
                 }
 
-                _logger.LogInformation("Database query returned no meaningful data, falling back to document search");
                 var fallbackRequest = new QueryStrategyRequest
                 {
                     Query = request.Query,
@@ -179,15 +178,6 @@ namespace SmartRAG.Services.Document
                             {
                                 // Database has data but AI explicitly cannot answer (e.g., "no information found")
                                 // Allow document search as fallback
-                                _logger.LogInformation("Database returned {RowCount} rows but AI explicitly indicates missing data - allowing document search as fallback", 
-                                    candidateDatabaseResponse.Sources?.Sum(s => {
-                                        if (s.FileName?.Contains(" rows)") == true)
-                                        {
-                                            var match = System.Text.RegularExpressions.Regex.Match(s.FileName, @"\((\d+) rows\)");
-                                            return match.Success ? int.Parse(match.Groups[1].Value) : 0;
-                                        }
-                                        return 0;
-                                    }) ?? 0);
                                 // Keep canAnswerFromDocuments = true to allow document search
                             }
                             else
@@ -195,7 +185,6 @@ namespace SmartRAG.Services.Document
                                 databaseResponse = candidateDatabaseResponse;
                                 // CRITICAL: ALWAYS perform document search in hybrid mode
                                 // Even if database has an answer, document might have a BETTER answer
-                                _logger.LogInformation("Database query returned answer, also performing document search for true hybrid strategy");
                             }
                         }
                     }

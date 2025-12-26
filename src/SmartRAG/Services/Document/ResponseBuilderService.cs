@@ -68,16 +68,9 @@ namespace SmartRAG.Services.Document
             // Post-processing: If AI didn't include token but answer indicates missing data, add it
             if (!validatedAnswer.Contains("[NO_ANSWER_FOUND]"))
             {
-                _logger?.LogDebug("CreateRagResponse: Checking if token should be added. Answer length: {AnswerLength}, Query: {Query}", validatedAnswer.Length, query);
-                
                 if (ShouldAddMissingDataToken(validatedAnswer, query, sources))
                 {
                     validatedAnswer += " [NO_ANSWER_FOUND]";
-                    _logger?.LogWarning("AI response indicates missing data but [NO_ANSWER_FOUND] token was missing. System added token automatically to enable MCP search. Answer length: {AnswerLength}, Query: {Query}", validatedAnswer.Length, query);
-                }
-                else
-                {
-                    _logger?.LogDebug("CreateRagResponse: Token not added. ShouldAddMissingDataToken returned false.");
                 }
             }
             
@@ -197,11 +190,12 @@ namespace SmartRAG.Services.Document
                 var termInSources = sourceContentLower.Contains(termLower);
                 var termInAnswer = answerLower.Contains(termLower);
                 
-                // Only log warning if term is in answer, NOT in sources, AND answer is long enough to be substantive
+                // Only check if term is in answer, NOT in sources, AND answer is long enough to be substantive
                 // Short answers (<150 chars) with term mentions are likely "not found" responses, not hallucinations
                 if (!termInSources && termInAnswer && !answerIndicatesNotFound && answer.Length >= 150)
                 {
-                    _logger?.LogWarning("Specific term '{Term}' from query not found in sources but AI answer contains information about it. This is likely hallucination. AI should have followed the prompt instructions to say it couldn't find the information.", term);
+                    // Potential hallucination detected - AI should have followed prompt instructions
+                    // No logging to avoid user input in logs (CodeQL security)
                 }
             }
 

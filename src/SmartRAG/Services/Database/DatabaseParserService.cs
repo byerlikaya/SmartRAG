@@ -152,8 +152,6 @@ namespace SmartRAG.Services.Database
 
             var sanitizedQuery = ValidateAndSanitizeQuery(query);
 
-            _logger.LogInformation("Executing custom query for database type: {DatabaseType}", databaseType);
-
             if (databaseType == DatabaseType.SQLite)
                 return await ExecuteSQLiteQueryAsync(connectionString, sanitizedQuery, maxRows);
             else if (databaseType == DatabaseType.SqlServer)
@@ -1138,7 +1136,6 @@ namespace SmartRAG.Services.Database
             }
 
             result.AppendLine($"\nRows extracted: {rowCount}");
-            _logger.LogInformation("Custom query executed successfully, rows: {RowCount}", rowCount);
             return result.ToString();
         }
     }

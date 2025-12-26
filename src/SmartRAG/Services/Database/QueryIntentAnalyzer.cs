@@ -39,8 +39,6 @@ namespace SmartRAG.Services.Database
         /// <returns>Query intent with database routing information</returns>
         public async Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery)
         {
-            _logger.LogDebug("Analyzing query intent");
-
             var queryIntent = new QueryIntent
             {
                 OriginalQuery = userQuery
@@ -498,10 +496,6 @@ namespace SmartRAG.Services.Database
                         dbQuery.RequiredTables.Add(referencedTable.TableName);
                         processingQueue.Enqueue(referencedTable.TableName);
 
-                        if (_logger.IsEnabled(LogLevel.Debug))
-                        {
-                            _logger.LogDebug("Auto-added referenced table due to foreign key relationship (source table has foreign key column, referenced table added to query)");
-                        }
                     }
                 }
             }
