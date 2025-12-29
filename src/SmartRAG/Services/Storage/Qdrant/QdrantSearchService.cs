@@ -85,7 +85,7 @@ namespace SmartRAG.Services.Storage.Qdrant
             try
             {
                 var allChunks = new List<DocumentChunk>();
-                var collections = await _client.ListCollectionsAsync();
+                var collections = await _client.ListCollectionsAsync(cancellationToken);
 
                 var documentCollections = collections.Where(c => c.StartsWith(_collectionName + "_doc_", StringComparison.OrdinalIgnoreCase)).ToList();
 
@@ -111,7 +111,8 @@ namespace SmartRAG.Services.Storage.Qdrant
                         var searchResults = await _client.SearchAsync(
                             collectionName: collectionName,
                             vector: queryEmbedding.ToArray(),
-                            limit: (ulong)Math.Max(20, perCollectionLimit)
+                            limit: (ulong)Math.Max(20, perCollectionLimit),
+                            cancellationToken: cancellationToken
                         );
 
                         foreach (var result in searchResults)
@@ -189,7 +190,7 @@ namespace SmartRAG.Services.Storage.Qdrant
                 var queryLower = query.ToLowerInvariant();
                 var relevantChunks = new List<DocumentChunk>();
 
-                var collections = await _client.ListCollectionsAsync();
+                var collections = await _client.ListCollectionsAsync(cancellationToken);
                 var documentCollections = collections.Where(c => c.StartsWith(_collectionName + "_doc_", StringComparison.OrdinalIgnoreCase)).ToList();
 
                 if (documentCollections.Count == 0)
@@ -201,7 +202,7 @@ namespace SmartRAG.Services.Storage.Qdrant
                 {
                     try
                     {
-                        var scrollResult = await _client.ScrollAsync(collectionName, limit: 1000);
+                        var scrollResult = await _client.ScrollAsync(collectionName, limit: 1000, cancellationToken: cancellationToken);
 
                         foreach (var point in scrollResult.Result)
                         {
@@ -279,21 +280,22 @@ namespace SmartRAG.Services.Storage.Qdrant
         /// </summary>
         /// <param name="query">Text query to search for</param>
         /// <param name="maxResults">Maximum number of results to return</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>List of relevant document chunks</returns>
-        private async Task<List<DocumentChunk>> HybridSearchAsync(string query, int maxResults)
+        private async Task<List<DocumentChunk>> HybridSearchAsync(string query, int maxResults, CancellationToken cancellationToken = default)
         {
             var hybridResults = new List<DocumentChunk>();
 
             try
             {
-                var collections = await _client.ListCollectionsAsync();
+                var collections = await _client.ListCollectionsAsync(cancellationToken);
                 var documentCollections = collections.Where(c => c.StartsWith($"{_collectionName}_doc_", StringComparison.OrdinalIgnoreCase)).ToList();
 
                 foreach (var collectionName in documentCollections)
                 {
                     try
                     {
-                        var chunks = await FallbackTextSearchForCollectionAsync(collectionName, query, maxResults * 2);
+                        var chunks = await FallbackTextSearchForCollectionAsync(collectionName, query, maxResults * 2, cancellationToken);
 
                         var queryLower = query.ToLowerInvariant();
                         var queryTokens = query.Split(new[] { ' ', '.', ',', '?', '!', ';', ':' }, StringSplitOptions.RemoveEmptyEntries)
@@ -378,7 +380,7 @@ namespace SmartRAG.Services.Storage.Qdrant
             }
         }
 
-        private async Task<List<DocumentChunk>> FallbackTextSearchForCollectionAsync(string collectionName, string query, int maxResults)
+        private async Task<List<DocumentChunk>> FallbackTextSearchForCollectionAsync(string collectionName, string query, int maxResults, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -407,11 +409,11 @@ namespace SmartRAG.Services.Storage.Qdrant
                     Should = { shouldConditions }
                 };
 
-                var scrollResult = await _client.ScrollAsync(collectionName, filter: filter, limit: (uint)maxResults * 2);
+                var scrollResult = await _client.ScrollAsync(collectionName, filter: filter, limit: (uint)maxResults * 2, cancellationToken: cancellationToken);
 
                 if (scrollResult.Result.Count == 0)
                 {
-                    scrollResult = await _client.ScrollAsync(collectionName, limit: (uint)maxResults * 10);
+                    scrollResult = await _client.ScrollAsync(collectionName, limit: (uint)maxResults * 10, cancellationToken: cancellationToken);
                 }
 
                 var queryLower = query.ToLowerInvariant();

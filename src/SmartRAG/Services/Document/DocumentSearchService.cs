@@ -191,7 +191,7 @@ namespace SmartRAG.Services.Document
                     ? originalQuery
                     : commandPayload;
 
-                return await HandleConversationQueryAsync(conversationQuery, sessionId, conversationHistory);
+                return await HandleConversationQueryAsync(conversationQuery, sessionId, conversationHistory, cancellationToken);
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -202,12 +202,12 @@ namespace SmartRAG.Services.Document
                 // If answer is already provided by the intent classifier, use it directly to avoid redundant LLM call
                 if (!string.IsNullOrWhiteSpace(intentAnalysis.Answer))
                 {
-                    await _conversationManager.AddToConversationAsync(sessionId, query, intentAnalysis.Answer);
+                    await _conversationManager.AddToConversationAsync(sessionId, query, intentAnalysis.Answer, cancellationToken);
                     return _responseBuilder.CreateRagResponse(query, intentAnalysis.Answer, new List<SearchSource>());
                 }
                 
                 // Fallback to full conversation handler if answer not provided
-                return await HandleConversationQueryAsync(query, sessionId, conversationHistory);
+                return await HandleConversationQueryAsync(query, sessionId, conversationHistory, cancellationToken);
             }
 
             RagResponse? response = null;
@@ -270,7 +270,7 @@ namespace SmartRAG.Services.Document
 
                 if (!searchOptions.EnableDatabaseSearch)
                 {
-                    var fallbackAnswer = await _conversationManager.HandleGeneralConversationAsync(query, conversationHistory);
+                    var fallbackAnswer = await _conversationManager.HandleGeneralConversationAsync(query, conversationHistory, cancellationToken);
                     var fallbackResponse = _responseBuilder.CreateRagResponse(
                         query,
                         fallbackAnswer,
@@ -349,16 +349,16 @@ namespace SmartRAG.Services.Document
                 {
                     if (searchOptions.EnableMcpSearch)
                     {
-                        response = await ExecuteMcpSearchAsync(query, maxResults, conversationHistory, searchMetadata, existingResponse: null);
+                        response = await ExecuteMcpSearchAsync(query, maxResults, conversationHistory, searchMetadata, existingResponse: null, cancellationToken);
                         if (response != null)
                         {
-                            await _conversationManager.AddToConversationAsync(sessionId, query, response.Answer);
+                            await _conversationManager.AddToConversationAsync(sessionId, query, response.Answer, cancellationToken);
                             return response;
                         }
                     }
                     else
                     {
-                        var chatResponse = await _conversationManager.HandleGeneralConversationAsync(query, conversationHistory);
+                        var chatResponse = await _conversationManager.HandleGeneralConversationAsync(query, conversationHistory, cancellationToken);
                         response = _responseBuilder.CreateRagResponse(query, chatResponse, new List<SearchSource>());
                     }
                 }
@@ -385,7 +385,7 @@ namespace SmartRAG.Services.Document
 
             if (searchOptions.EnableMcpSearch && !mcpAlreadyPerformed && !answerIsSufficient)
             {
-                var mcpResponse = await ExecuteMcpSearchAsync(query, maxResults, conversationHistory, searchMetadata, existingResponse: response);
+                var mcpResponse = await ExecuteMcpSearchAsync(query, maxResults, conversationHistory, searchMetadata, existingResponse: response, cancellationToken);
                 if (mcpResponse != null)
                 {
                     response = mcpResponse;
@@ -514,7 +514,7 @@ namespace SmartRAG.Services.Document
             {
                 preservedChunk0 ??= chunks.FirstOrDefault(c => c.ChunkIndex == 0);
 
-                allDocuments = await EnsureAllDocumentsLoadedAsync(allDocuments, request.Options);
+                allDocuments = await EnsureAllDocumentsLoadedAsync(allDocuments, request.Options, cancellationToken);
                 var allChunks = allDocuments.SelectMany(d => d.Chunks).ToList();
                 var queryWords = queryTokens;
                 var potentialNames = QueryTokenizer.ExtractPotentialNames(request.Query);
@@ -745,7 +745,7 @@ namespace SmartRAG.Services.Document
 
             var context = _contextExpansion.BuildLimitedContext(chunks, MaxContextSize);
 
-            var answer = await GenerateRagAnswerFromContextAsync(request.Query, context, request.ConversationHistory);
+            var answer = await GenerateRagAnswerFromContextAsync(request.Query, context, request.ConversationHistory, cancellationToken);
 
             var sourcesChunks = FilterChunksByOriginalIds(chunks, originalChunkIds);
 
@@ -759,21 +759,22 @@ namespace SmartRAG.Services.Document
         /// <param name="query">User query</param>
         /// <param name="context">Context content for RAG</param>
         /// <param name="conversationHistory">Conversation history</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>Generated answer from AI</returns>
-        private async Task<string> GenerateRagAnswerFromContextAsync(string query, string context, string? conversationHistory)
+        private async Task<string> GenerateRagAnswerFromContextAsync(string query, string context, string? conversationHistory, CancellationToken cancellationToken = default)
         {
             var prompt = _promptBuilder.BuildDocumentRagPrompt(query, context, conversationHistory);
-            return await _aiService.GenerateResponseAsync(prompt, new List<string> { context });
+            return await _aiService.GenerateResponseAsync(prompt, new List<string> { context }, cancellationToken);
         }
 
         /// <summary>
         /// Ensures all documents are loaded, loading them if necessary
         /// </summary>
-        private async Task<List<Entities.Document>> EnsureAllDocumentsLoadedAsync(List<Entities.Document>? allDocuments, SearchOptions? options)
+        private async Task<List<Entities.Document>> EnsureAllDocumentsLoadedAsync(List<Entities.Document>? allDocuments, SearchOptions? options, CancellationToken cancellationToken = default)
         {
             if (allDocuments == null)
             {
-                return await _documentService.GetAllDocumentsFilteredAsync(options);
+                return await _documentService.GetAllDocumentsFilteredAsync(options, cancellationToken);
             }
             return allDocuments;
         }
@@ -978,10 +979,10 @@ namespace SmartRAG.Services.Document
         
         
 
-        private async Task<RagResponse> HandleConversationQueryAsync(string query, string sessionId, string? conversationHistory)
+        private async Task<RagResponse> HandleConversationQueryAsync(string query, string sessionId, string? conversationHistory, CancellationToken cancellationToken = default)
         {
-            var conversationAnswer = await _conversationManager.HandleGeneralConversationAsync(query, conversationHistory);
-            await _conversationManager.AddToConversationAsync(sessionId, query, conversationAnswer);
+            var conversationAnswer = await _conversationManager.HandleGeneralConversationAsync(query, conversationHistory, cancellationToken);
+            await _conversationManager.AddToConversationAsync(sessionId, query, conversationAnswer, cancellationToken);
             return _responseBuilder.CreateRagResponse(query, conversationAnswer, new List<SearchSource>());
         }
 
@@ -1016,11 +1017,12 @@ namespace SmartRAG.Services.Document
             int maxResults,
             string conversationHistory,
             SearchMetadata searchMetadata,
-            RagResponse? existingResponse)
+            RagResponse? existingResponse,
+            CancellationToken cancellationToken = default)
         {
             try
             {
-                var mcpResults = await _mcpIntegration.QueryWithMcpAsync(query, maxResults, conversationHistory);
+                var mcpResults = await _mcpIntegration.QueryWithMcpAsync(query, maxResults, conversationHistory, cancellationToken);
                 searchMetadata.McpSearchPerformed = true;
                 searchMetadata.McpResultsFound = mcpResults?.Count(r => r.IsSuccess && !string.IsNullOrWhiteSpace(r.Content)) ?? 0;
 
@@ -1067,7 +1069,7 @@ namespace SmartRAG.Services.Document
                             ? string.Join("\n\n", existingContext) + "\n\n[MCP Results]\n" + mcpContext
                             : mcpContext;
 
-                        var mergedAnswer = await GenerateRagAnswerFromContextAsync(query, combinedContext, conversationHistory);
+                        var mergedAnswer = await GenerateRagAnswerFromContextAsync(query, combinedContext, conversationHistory, cancellationToken);
                         if (!string.IsNullOrWhiteSpace(mergedAnswer))
                         {
                             existingResponse.Answer = mergedAnswer;
@@ -1077,14 +1079,14 @@ namespace SmartRAG.Services.Document
                     return existingResponse;
                 }
 
-                var chatResponse = await _conversationManager.HandleGeneralConversationAsync(query, conversationHistory);
+                var chatResponse = await _conversationManager.HandleGeneralConversationAsync(query, conversationHistory, cancellationToken);
 
                 if (string.IsNullOrWhiteSpace(mcpContext))
                 {                 
                     return _responseBuilder.CreateRagResponse(query, chatResponse, new List<SearchSource>(), searchMetadata);
                 }
 
-                var mcpAnswer = await GenerateRagAnswerFromContextAsync(query, mcpContext, conversationHistory);
+                var mcpAnswer = await GenerateRagAnswerFromContextAsync(query, mcpContext, conversationHistory, cancellationToken);
                 if (!string.IsNullOrWhiteSpace(mcpAnswer))
                 {
                     return _responseBuilder.CreateRagResponse(query, mcpAnswer, mcpSources, searchMetadata);

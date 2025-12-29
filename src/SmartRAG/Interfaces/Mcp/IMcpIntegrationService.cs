@@ -1,6 +1,7 @@
 #nullable enable
 
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using SmartRAG.Models;
 
@@ -17,8 +18,9 @@ namespace SmartRAG.Interfaces.Mcp
         /// <param name="query">User query</param>
         /// <param name="maxResults">Maximum number of results</param>
         /// <param name="conversationHistory">Optional conversation history for context</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>List of MCP tool results</returns>
-        Task<List<McpToolResult>> QueryWithMcpAsync(string query, int maxResults = 5, string? conversationHistory = null);
+        Task<List<McpToolResult>> QueryWithMcpAsync(string query, int maxResults = 5, string? conversationHistory = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets available tools from all connected MCP servers
