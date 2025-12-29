@@ -34,7 +34,7 @@ namespace SmartRAG.Repositories
                     return string.Empty;
                 }
 
-                return await Task.Run(() => File.ReadAllText(filePath), cancellationToken);
+                return await File.ReadAllTextAsync(filePath, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -53,7 +53,7 @@ namespace SmartRAG.Repositories
                 if (string.IsNullOrEmpty(question))
                 {
                     var sessionFilePath = GetConversationFilePath(sessionId);
-                    await Task.Run(() => File.WriteAllText(sessionFilePath, answer), cancellationToken);
+                    await File.WriteAllTextAsync(sessionFilePath, answer, cancellationToken);
                     return;
                 }
 
@@ -68,7 +68,7 @@ namespace SmartRAG.Repositories
                 }
 
                 var filePath = GetConversationFilePath(sessionId);
-                await Task.Run(() => File.WriteAllText(filePath, newEntry), cancellationToken);
+                await File.WriteAllTextAsync(filePath, newEntry, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -86,7 +86,8 @@ namespace SmartRAG.Repositories
                 var filePath = GetConversationFilePath(sessionId);
                 if (File.Exists(filePath))
                 {
-                    await Task.Run(() => File.Delete(filePath), cancellationToken);
+                    cancellationToken.ThrowIfCancellationRequested();
+                    File.Delete(filePath);
                 }
             }
             catch (Exception ex)
@@ -103,7 +104,8 @@ namespace SmartRAG.Repositories
             try
             {
                 var filePath = GetConversationFilePath(sessionId);
-                return await Task.Run(() => File.Exists(filePath), cancellationToken);
+                cancellationToken.ThrowIfCancellationRequested();
+                return File.Exists(filePath);
             }
             catch (Exception ex)
             {
@@ -120,7 +122,7 @@ namespace SmartRAG.Repositories
             try
             {
                 var filePath = GetConversationFilePath(sessionId);
-                await Task.Run(() => File.WriteAllText(filePath, conversation), cancellationToken);
+                await File.WriteAllTextAsync(filePath, conversation, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -138,7 +140,7 @@ namespace SmartRAG.Repositories
                     foreach (var file in files)
                     {
                         cancellationToken.ThrowIfCancellationRequested();
-                        await Task.Run(() => File.Delete(file), cancellationToken);
+                        File.Delete(file);
                     }
                 }
             }
