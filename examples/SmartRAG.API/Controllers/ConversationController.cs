@@ -100,7 +100,7 @@ namespace SmartRAG.API.Controllers
             try
             {
                 // Start a new conversation session
-                var sessionId = await _conversationManager.StartNewConversationAsync();
+                var sessionId = await _conversationManager.StartNewConversationAsync(HttpContext.RequestAborted);
 
                 return CreatedAtAction(nameof(GetConversation), new { id = sessionId }, new ConversationResponse 
                 { 
@@ -128,7 +128,7 @@ namespace SmartRAG.API.Controllers
         {
             try
             {
-                var history = await _conversationManager.GetConversationHistoryAsync(id);
+                var history = await _conversationManager.GetConversationHistoryAsync(id, HttpContext.RequestAborted);
                 
                 if (string.IsNullOrEmpty(history))
                 {
@@ -168,11 +168,11 @@ namespace SmartRAG.API.Controllers
                 // If RAG is requested, use DocumentSearchService
                 if (request.GenerateResponse && request.UseRAG)
                 {
-                    var result = await _documentSearchService.QueryIntelligenceAsync(request.Content, 5, false);
+                    var result = await _documentSearchService.QueryIntelligenceAsync(request.Content, 5, false, HttpContext.RequestAborted);
                     answer = result.Answer;
                 }
 
-                await _conversationManager.AddToConversationAsync(id, request.Content, answer);
+                await _conversationManager.AddToConversationAsync(id, request.Content, answer, HttpContext.RequestAborted);
 
                 return Ok(new List<ConversationMessage> 
                 { 

@@ -48,7 +48,7 @@ public class DatabaseHandler(
         System.Console.WriteLine();
         System.Console.WriteLine("Databases:");
 
-        var connections = await _connectionManager.GetAllConnectionsAsync();
+        var connections = await _connectionManager.GetAllConnectionsAsync(CancellationToken.None);
         foreach (var conn in connections)
         {
             System.Console.Write($"  • {conn.Name} ({conn.DatabaseType})... ");
@@ -89,24 +89,24 @@ public class DatabaseHandler(
     {
         _console.WriteSectionHeader("🔗 Database Connection Status");
 
-        var connections = await _connectionManager.GetAllConnectionsAsync();
+        var connections = await _connectionManager.GetAllConnectionsAsync(CancellationToken.None);
         var needsSetup = new List<string>();
 
         foreach (var conn in connections)
         {
-            var dbId = await _connectionManager.GetDatabaseIdAsync(conn);
+            var dbId = await _connectionManager.GetDatabaseIdAsync(conn, CancellationToken.None);
 
             bool isValid;
             try
             {
-                isValid = await _connectionManager.ValidateConnectionAsync(dbId);
+                isValid = await _connectionManager.ValidateConnectionAsync(dbId, CancellationToken.None);
             }
             catch
             {
                 isValid = false;
             }
 
-            var schema = await _schemaAnalyzer.GetSchemaAsync(dbId);
+            var schema = await _schemaAnalyzer.GetSchemaAsync(dbId, CancellationToken.None);
 
             System.Console.WriteLine();
             System.Console.ForegroundColor = ConsoleColor.Yellow;
@@ -159,7 +159,7 @@ public class DatabaseHandler(
     {
         _console.WriteSectionHeader("📊 Detailed Database Schemas");
 
-        var schemas = await _schemaAnalyzer.GetAllSchemasAsync();
+        var schemas = await _schemaAnalyzer.GetAllSchemasAsync(CancellationToken.None);
 
         foreach (var schema in schemas)
         {
@@ -272,7 +272,7 @@ public class DatabaseHandler(
             System.Console.WriteLine();
             System.Console.WriteLine("🔄 Refreshing schema analysis...");
 
-            var connections = await _connectionManager.GetAllConnectionsAsync();
+            var connections = await _connectionManager.GetAllConnectionsAsync(CancellationToken.None);
             var sqliteConn = connections.FirstOrDefault(c => c.DatabaseType == DatabaseType.SQLite);
 
             if (sqliteConn != null)
@@ -281,7 +281,7 @@ public class DatabaseHandler(
                 {
                     try
                     {
-                        await _schemaAnalyzer.AnalyzeDatabaseSchemaAsync(sqliteConn);
+                        await _schemaAnalyzer.AnalyzeDatabaseSchemaAsync(sqliteConn, CancellationToken.None);
                     }
                     catch (Exception ex)
                     {
@@ -339,7 +339,7 @@ public class DatabaseHandler(
             System.Console.WriteLine();
             System.Console.WriteLine("🔄 Refreshing schema analysis...");
 
-            var connections = await _connectionManager.GetAllConnectionsAsync();
+            var connections = await _connectionManager.GetAllConnectionsAsync(CancellationToken.None);
             var sqlServerConn = connections.FirstOrDefault(c => c.DatabaseType == DatabaseType.SqlServer);
 
             if (sqlServerConn != null)
@@ -348,7 +348,7 @@ public class DatabaseHandler(
                 {
                     try
                     {
-                        await _schemaAnalyzer.AnalyzeDatabaseSchemaAsync(sqlServerConn);
+                        await _schemaAnalyzer.AnalyzeDatabaseSchemaAsync(sqlServerConn, CancellationToken.None);
                     }
                     catch (Exception ex)
                     {
@@ -400,7 +400,7 @@ public class DatabaseHandler(
             System.Console.WriteLine();
             System.Console.WriteLine("🔄 Refreshing schema analysis...");
 
-            var connections = await _connectionManager.GetAllConnectionsAsync();
+            var connections = await _connectionManager.GetAllConnectionsAsync(CancellationToken.None);
             var mySqlConn = connections.FirstOrDefault(c => c.DatabaseType == DatabaseType.MySQL);
 
             if (mySqlConn != null)
@@ -409,7 +409,7 @@ public class DatabaseHandler(
                 {
                     try
                     {
-                        await _schemaAnalyzer.AnalyzeDatabaseSchemaAsync(mySqlConn);
+                        await _schemaAnalyzer.AnalyzeDatabaseSchemaAsync(mySqlConn, CancellationToken.None);
                     }
                     catch (Exception ex)
                     {
@@ -461,7 +461,7 @@ public class DatabaseHandler(
             System.Console.WriteLine();
             System.Console.WriteLine("🔄 Refreshing schema analysis...");
 
-            var connections = await _connectionManager.GetAllConnectionsAsync();
+            var connections = await _connectionManager.GetAllConnectionsAsync(CancellationToken.None);
             var postgresConn = connections.FirstOrDefault(c => c.DatabaseType == DatabaseType.PostgreSQL);
 
             if (postgresConn != null)
@@ -470,7 +470,7 @@ public class DatabaseHandler(
                 {
                     try
                     {
-                        await _schemaAnalyzer.AnalyzeDatabaseSchemaAsync(postgresConn);
+                        await _schemaAnalyzer.AnalyzeDatabaseSchemaAsync(postgresConn, CancellationToken.None);
                     }
                     catch (Exception ex)
                     {

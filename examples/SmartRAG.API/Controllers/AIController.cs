@@ -310,7 +310,7 @@ namespace SmartRAG.API.Controllers
                 }
 
                 // Generate AI response
-                var response = await _aiService.GenerateResponseAsync(request.Prompt, context);
+                var response = await _aiService.GenerateResponseAsync(request.Prompt, context, HttpContext.RequestAborted);
                 stopwatch.Stop();
 
                 var aiResponse = new AIResponse
@@ -392,7 +392,7 @@ namespace SmartRAG.API.Controllers
                 // Handle single text
                 if (!string.IsNullOrEmpty(request.Text))
                 {
-                    var embedding = await _aiService.GenerateEmbeddingsAsync(request.Text);
+                    var embedding = await _aiService.GenerateEmbeddingsAsync(request.Text, HttpContext.RequestAborted);
                     embeddingResponse.Embedding = embedding;
                     embeddingResponse.Dimensions = embedding.Count;
                     embeddingResponse.TokensUsed = EstimateTokens(request.Text);
@@ -405,7 +405,7 @@ namespace SmartRAG.API.Controllers
 
                     foreach (var text in request.Texts)
                     {
-                        var embedding = await _aiService.GenerateEmbeddingsAsync(text);
+                        var embedding = await _aiService.GenerateEmbeddingsAsync(text, HttpContext.RequestAborted);
                         embeddings.Add(embedding);
                         totalTokens += EstimateTokens(text);
                     }

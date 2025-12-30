@@ -167,7 +167,8 @@ namespace SmartRAG.API.Controllers
             {
                 var content = await _databaseParserService.ParseDatabaseFileAsync(
                     file.OpenReadStream(), 
-                    file.FileName);
+                    file.FileName,
+                    HttpContext.RequestAborted);
 
                 var request = new UploadDocumentRequest
                 {
@@ -177,7 +178,7 @@ namespace SmartRAG.API.Controllers
                     UploadedBy = "database-upload"
                 };
 
-                var document = await _documentService.UploadDocumentAsync(request);
+                var document = await _documentService.UploadDocumentAsync(request, HttpContext.RequestAborted);
 
                 stopwatch.Stop();
 
@@ -257,7 +258,8 @@ namespace SmartRAG.API.Controllers
             {
                 var isValidConnection = await _databaseParserService.ValidateConnectionAsync(
                     request.ConnectionString, 
-                    request.DatabaseType);
+                    request.DatabaseType,
+                    HttpContext.RequestAborted);
 
                 if (!isValidConnection)
                 {
@@ -279,7 +281,8 @@ namespace SmartRAG.API.Controllers
 
                 var content = await _databaseParserService.ParseDatabaseConnectionAsync(
                     request.ConnectionString, 
-                    config);
+                    config,
+                    HttpContext.RequestAborted);
 
                 stopwatch.Stop();
 
@@ -366,7 +369,8 @@ namespace SmartRAG.API.Controllers
             {
                 var isValidConnection = await _databaseParserService.ValidateConnectionAsync(
                     request.ConnectionString, 
-                    request.DatabaseType);
+                    request.DatabaseType,
+                    HttpContext.RequestAborted);
 
                 if (!isValidConnection)
                 {
@@ -377,7 +381,8 @@ namespace SmartRAG.API.Controllers
                     request.ConnectionString,
                     request.Query,
                     request.DatabaseType,
-                    request.MaxRows);
+                    request.MaxRows,
+                    HttpContext.RequestAborted);
 
                 stopwatch.Stop();
 
@@ -447,13 +452,13 @@ namespace SmartRAG.API.Controllers
 
             try
             {
-                var connections = await connectionManager.GetAllConnectionsAsync();
+                var connections = await connectionManager.GetAllConnectionsAsync(HttpContext.RequestAborted);
                 var result = new List<DatabaseConnectionInfoDto>();
 
                 foreach (var conn in connections)
                 {
-                    var databaseId = await connectionManager.GetDatabaseIdAsync(conn);
-                    var schema = await schemaAnalyzer.GetSchemaAsync(databaseId);
+                    var databaseId = await connectionManager.GetDatabaseIdAsync(conn, HttpContext.RequestAborted);
+                    var schema = await schemaAnalyzer.GetSchemaAsync(databaseId, HttpContext.RequestAborted);
 
                     var dto = new DatabaseConnectionInfoDto
                     {
@@ -462,7 +467,7 @@ namespace SmartRAG.API.Controllers
                         DatabaseType = conn.DatabaseType,
                         Description = conn.Description,
                         Enabled = conn.Enabled,
-                        IsValid = await connectionManager.ValidateConnectionAsync(databaseId),
+                        IsValid = await connectionManager.ValidateConnectionAsync(databaseId, HttpContext.RequestAborted),
                         SchemaStatus = schema?.Status.ToString() ?? "NotAnalyzed",
                         TableCount = schema?.Tables.Count ?? 0,
                         TotalRows = schema?.TotalRowCount ?? 0,
@@ -508,7 +513,7 @@ namespace SmartRAG.API.Controllers
 
             try
             {
-                var connections = await connectionManager.GetAllConnectionsAsync();
+                var connections = await connectionManager.GetAllConnectionsAsync(HttpContext.RequestAborted);
                 var enabledConnections = connections.Where(c => c.Enabled).ToList();
 
                 // Start background analysis for each database
@@ -518,7 +523,7 @@ namespace SmartRAG.API.Controllers
                     {
                         try
                         {
-                            await schemaAnalyzer.AnalyzeDatabaseSchemaAsync(conn);
+                            await schemaAnalyzer.AnalyzeDatabaseSchemaAsync(conn, CancellationToken.None);
                         }
                         catch
                         {
@@ -559,7 +564,7 @@ namespace SmartRAG.API.Controllers
 
             try
             {
-                var schema = await schemaAnalyzer.GetSchemaAsync(databaseId);
+                var schema = await schemaAnalyzer.GetSchemaAsync(databaseId, HttpContext.RequestAborted);
 
                 if (schema == null)
                 {
