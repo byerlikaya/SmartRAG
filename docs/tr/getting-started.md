@@ -33,7 +33,7 @@ lang: tr
 </div>
 
 <div class="code-panel" data-tab="xml">
-<pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="3.5.0" /&gt;</code></pre>
+<pre><code class="language-xml">&lt;PackageReference Include="SmartRAG" Version="3.6.0" /&gt;</code></pre>
 </div>
     </div>
 </div>
