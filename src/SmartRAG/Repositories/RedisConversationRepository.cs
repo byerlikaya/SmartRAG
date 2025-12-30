@@ -5,6 +5,7 @@ using SmartRAG.Models;
 using StackExchange.Redis;
 using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Repositories
@@ -40,7 +41,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task<string> GetConversationHistoryAsync(string sessionId)
+        public async Task<string> GetConversationHistoryAsync(string sessionId, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -61,7 +62,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task AddToConversationAsync(string sessionId, string question, string answer)
+        public async Task AddToConversationAsync(string sessionId, string question, string answer, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -73,7 +74,7 @@ namespace SmartRAG.Repositories
                     return;
                 }
 
-                var existingConversation = await GetConversationHistoryAsync(sessionId);
+                var existingConversation = await GetConversationHistoryAsync(sessionId, cancellationToken);
 
                 var newEntry = string.IsNullOrEmpty(existingConversation)
                     ? $"User: {question}\nAssistant: {answer}"
@@ -87,7 +88,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task SetConversationHistoryAsync(string sessionId, string conversation)
+        public async Task SetConversationHistoryAsync(string sessionId, string conversation, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -101,7 +102,7 @@ namespace SmartRAG.Repositories
         }
 
 
-        public async Task ClearConversationAsync(string sessionId)
+        public async Task ClearConversationAsync(string sessionId, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -114,7 +115,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task<bool> SessionExistsAsync(string sessionId)
+        public async Task<bool> SessionExistsAsync(string sessionId, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -128,7 +129,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task ClearAllConversationsAsync()
+        public async Task ClearAllConversationsAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -144,6 +145,7 @@ namespace SmartRAG.Repositories
                 
                 await foreach (var key in server.KeysAsync(pattern: pattern))
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
                     await _database.KeyDeleteAsync(key);
                 }
 

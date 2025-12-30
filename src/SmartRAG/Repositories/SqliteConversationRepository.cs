@@ -62,17 +62,17 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task<string> GetConversationHistoryAsync(string sessionId)
+        public async Task<string> GetConversationHistoryAsync(string sessionId, CancellationToken cancellationToken = default)
         {
             await EnsureInitializedAsync();
-            await _semaphore.WaitAsync();
+            await _semaphore.WaitAsync(cancellationToken);
             try
             {
                 var command = _connection.CreateCommand();
                 command.CommandText = "SELECT History FROM Conversations WHERE SessionId = @sessionId";
                 command.Parameters.AddWithValue("@sessionId", sessionId);
 
-                var result = await command.ExecuteScalarAsync();
+                var result = await command.ExecuteScalarAsync(cancellationToken);
                 return result?.ToString() ?? string.Empty;
             }
             catch (Exception ex)
@@ -86,10 +86,10 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task AddToConversationAsync(string sessionId, string question, string answer)
+        public async Task AddToConversationAsync(string sessionId, string question, string answer, CancellationToken cancellationToken = default)
         {
             await EnsureInitializedAsync();
-            await _semaphore.WaitAsync();
+            await _semaphore.WaitAsync(cancellationToken);
             try
             {
                 if (string.IsNullOrEmpty(question))
@@ -101,14 +101,14 @@ namespace SmartRAG.Repositories
                         ON CONFLICT(SessionId) DO UPDATE SET History = @history, LastUpdated = CURRENT_TIMESTAMP";
                     updateCmd.Parameters.AddWithValue("@sessionId", sessionId);
                     updateCmd.Parameters.AddWithValue("@history", answer);
-                    await updateCmd.ExecuteNonQueryAsync();
+                    await updateCmd.ExecuteNonQueryAsync(cancellationToken);
                     return;
                 }
 
                 var commandHistory = _connection.CreateCommand();
                 commandHistory.CommandText = "SELECT History FROM Conversations WHERE SessionId = @sessionId";
                 commandHistory.Parameters.AddWithValue("@sessionId", sessionId);
-                var result = await commandHistory.ExecuteScalarAsync();
+                var result = await commandHistory.ExecuteScalarAsync(cancellationToken);
                 var currentHistory = result?.ToString() ?? string.Empty;
 
                 var newEntry = string.IsNullOrEmpty(currentHistory)
@@ -127,7 +127,7 @@ namespace SmartRAG.Repositories
                     ON CONFLICT(SessionId) DO UPDATE SET History = @history, LastUpdated = CURRENT_TIMESTAMP";
                 command.Parameters.AddWithValue("@sessionId", sessionId);
                 command.Parameters.AddWithValue("@history", newEntry);
-                await command.ExecuteNonQueryAsync();
+                await command.ExecuteNonQueryAsync(cancellationToken);
             }
             catch (Exception ex)
             {
@@ -139,16 +139,16 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task ClearConversationAsync(string sessionId)
+        public async Task ClearConversationAsync(string sessionId, CancellationToken cancellationToken = default)
         {
             await EnsureInitializedAsync();
-            await _semaphore.WaitAsync();
+            await _semaphore.WaitAsync(cancellationToken);
             try
             {
                 var command = _connection.CreateCommand();
                 command.CommandText = "DELETE FROM Conversations WHERE SessionId = @sessionId";
                 command.Parameters.AddWithValue("@sessionId", sessionId);
-                await command.ExecuteNonQueryAsync();
+                await command.ExecuteNonQueryAsync(cancellationToken);
             }
             catch (Exception ex)
             {
@@ -160,16 +160,16 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task<bool> SessionExistsAsync(string sessionId)
+        public async Task<bool> SessionExistsAsync(string sessionId, CancellationToken cancellationToken = default)
         {
             await EnsureInitializedAsync();
-            await _semaphore.WaitAsync();
+            await _semaphore.WaitAsync(cancellationToken);
             try
             {
                 var command = _connection.CreateCommand();
                 command.CommandText = "SELECT COUNT(1) FROM Conversations WHERE SessionId = @sessionId";
                 command.Parameters.AddWithValue("@sessionId", sessionId);
-                var result = await command.ExecuteScalarAsync();
+                var result = await command.ExecuteScalarAsync(cancellationToken);
                 var count = Convert.ToInt32(result);
                 return count > 0;
             }
@@ -184,10 +184,10 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task SetConversationHistoryAsync(string sessionId, string conversation)
+        public async Task SetConversationHistoryAsync(string sessionId, string conversation, CancellationToken cancellationToken = default)
         {
             await EnsureInitializedAsync();
-            await _semaphore.WaitAsync();
+            await _semaphore.WaitAsync(cancellationToken);
             try
             {
                 var command = _connection.CreateCommand();
@@ -197,7 +197,7 @@ namespace SmartRAG.Repositories
                     ON CONFLICT(SessionId) DO UPDATE SET History = @history, LastUpdated = CURRENT_TIMESTAMP";
                 command.Parameters.AddWithValue("@sessionId", sessionId);
                 command.Parameters.AddWithValue("@history", conversation);
-                await command.ExecuteNonQueryAsync();
+                await command.ExecuteNonQueryAsync(cancellationToken);
             }
             catch (Exception ex)
             {
@@ -209,15 +209,15 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task ClearAllConversationsAsync()
+        public async Task ClearAllConversationsAsync(CancellationToken cancellationToken = default)
         {
             await EnsureInitializedAsync();
-            await _semaphore.WaitAsync();
+            await _semaphore.WaitAsync(cancellationToken);
             try
             {
                 var command = _connection.CreateCommand();
                 command.CommandText = "DELETE FROM Conversations";
-                await command.ExecuteNonQueryAsync();
+                await command.ExecuteNonQueryAsync(cancellationToken);
                 _logger.LogInformation("Cleared all conversations from SQLite");
             }
             catch (Exception ex)

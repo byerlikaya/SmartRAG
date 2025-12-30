@@ -12,6 +12,7 @@ using System.Data.Common;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Database
@@ -41,7 +42,7 @@ namespace SmartRAG.Services.Database
         /// <summary>
         /// Parses a database file (SQLite) and extracts content for RAG processing
         /// </summary>
-        public async Task<string> ParseDatabaseFileAsync(Stream dbStream, string fileName)
+        public async Task<string> ParseDatabaseFileAsync(Stream dbStream, string fileName, CancellationToken cancellationToken = default)
         {
             if (dbStream == null) throw new ArgumentNullException(nameof(dbStream));
             if (string.IsNullOrWhiteSpace(fileName)) throw new ArgumentNullException(nameof(fileName));
@@ -95,7 +96,7 @@ namespace SmartRAG.Services.Database
         /// <summary>
         /// [DB Query] Connects to a live database and extracts content based on configuration
         /// </summary>
-        public async Task<string> ParseDatabaseConnectionAsync(string connectionString, DatabaseConfig config)
+        public async Task<string> ParseDatabaseConnectionAsync(string connectionString, DatabaseConfig config, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(connectionString)) throw new ArgumentNullException(nameof(connectionString));
             if (config == null) throw new ArgumentNullException(nameof(config));
@@ -125,7 +126,7 @@ namespace SmartRAG.Services.Database
         /// <summary>
         /// Gets list of table names from the database
         /// </summary>
-        public async Task<List<string>> GetTableNamesAsync(string connectionString, DatabaseType databaseType)
+        public async Task<List<string>> GetTableNamesAsync(string connectionString, DatabaseType databaseType, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(connectionString)) throw new ArgumentNullException(nameof(connectionString));
 
@@ -145,7 +146,7 @@ namespace SmartRAG.Services.Database
         /// <summary>
         /// [DB Query] Executes a custom SQL query and returns results
         /// </summary>
-        public async Task<string> ExecuteQueryAsync(string connectionString, string query, DatabaseType databaseType, int maxRows = DefaultMaxRows)
+        public async Task<string> ExecuteQueryAsync(string connectionString, string query, DatabaseType databaseType, int maxRows = DefaultMaxRows, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(connectionString)) throw new ArgumentNullException(nameof(connectionString));
             if (string.IsNullOrWhiteSpace(query)) throw new ArgumentNullException(nameof(query));
@@ -219,7 +220,7 @@ namespace SmartRAG.Services.Database
         /// <summary>
         /// Validates database connection
         /// </summary>
-        public async Task<bool> ValidateConnectionAsync(string connectionString, DatabaseType databaseType)
+        public async Task<bool> ValidateConnectionAsync(string connectionString, DatabaseType databaseType, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(connectionString)) return false;
 

@@ -76,9 +76,6 @@ namespace SmartRAG.Services.Search
                     var document = await _documentRepository.GetByIdAsync(documentId);
                     if (document == null || document.Chunks == null || document.Chunks.Count == 0)
                     {
-                        _logger.LogDebug(
-                            "Document {DocumentId} not found or has no chunks (Chunks: {ChunkCount}), skipping expansion",
-                            documentId, document?.Chunks?.Count ?? 0);
                         foreach (var chunk in documentChunks)
                         {
                             expandedChunks.Add(chunk);
@@ -87,9 +84,6 @@ namespace SmartRAG.Services.Search
                     }
 
                     var sortedDocumentChunks = document.Chunks.OrderBy(c => c.ChunkIndex).ToList();
-                    _logger.LogDebug(
-                        "Expanding context for document {DocumentId}: {FoundChunks} found chunks, {TotalChunks} total chunks in document, window: {Window}",
-                        documentId, documentChunks.Count, sortedDocumentChunks.Count, effectiveWindow);
 
                     foreach (var foundChunk in documentChunks)
                     {
@@ -98,9 +92,6 @@ namespace SmartRAG.Services.Search
                         var chunkIndex = sortedDocumentChunks.FindIndex(c => c.Id == foundChunk.Id);
                         if (chunkIndex < 0)
                         {
-                            _logger.LogDebug(
-                                "Chunk {ChunkId} (Index: {ChunkIndex}) not found in document chunks, skipping expansion",
-                                foundChunk.Id, foundChunk.ChunkIndex);
                             continue;
                         }
 
@@ -112,9 +103,6 @@ namespace SmartRAG.Services.Search
                             !ContainsNumericValues(foundChunk.Content))
                         {
                             adjustedWindow = Math.Min(40, sortedDocumentChunks.Count);
-                            _logger.LogDebug(
-                                "Chunk 0 detected as image header chunk (length: {Length}, no numeric values), expanding window from {OldWindow} to {NewWindow}",
-                                foundChunk.Content.Length, effectiveWindow, adjustedWindow);
                         }
 
                         var startIndex = Math.Max(0, chunkIndex - adjustedWindow);
@@ -133,10 +121,6 @@ namespace SmartRAG.Services.Search
                             expandedChunks.Add(sortedDocumentChunks[i]);
                             addedAfter++;
                         }
-
-                        _logger.LogDebug(
-                            "Expanded Chunk {ChunkIndex}: added {Before} chunks before, {After} chunks after (range: {StartIndex}-{EndIndex})",
-                            foundChunk.ChunkIndex, addedBefore, addedAfter, startIndex, endIndex);
                     }
                 }
 
@@ -145,8 +129,6 @@ namespace SmartRAG.Services.Search
                     .OrderBy(c => c.DocumentId)
                     .ThenBy(c => c.ChunkIndex)
                     .ToList();
-
-                ServiceLogMessages.LogContextExpansionCompleted(_logger, chunks.Count, result.Count, null);
 
                 return result;
             }
@@ -322,7 +304,6 @@ namespace SmartRAG.Services.Search
                             contextBuilder.Append("\n\n");
                         }
                         contextBuilder.Append(partialContent);
-                        ServiceLogMessages.LogContextSizeLimited(_logger, chunks.Count, totalSize + partialContent.Length, maxContextSize, null);
                     }
                     break;
                 }

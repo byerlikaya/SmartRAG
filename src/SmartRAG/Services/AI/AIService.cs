@@ -6,6 +6,7 @@ using SmartRAG.Models;
 using SmartRAG.Services.Shared;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Services.AI
@@ -37,11 +38,11 @@ namespace SmartRAG.Services.AI
         /// <summary>
         /// [AI Query] Generates a response using the configured AI provider with retry logic
         /// </summary>
-        public async Task<string> GenerateResponseAsync(string query, IEnumerable<string> context)
+        public async Task<string> GenerateResponseAsync(string query, IEnumerable<string> context, CancellationToken cancellationToken = default)
         {
             try
             {
-                return await GenerateResponseWithRetryAsync(_options.AIProvider, query, context);
+                return await GenerateResponseWithRetryAsync(_options.AIProvider, query, context, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -51,11 +52,11 @@ namespace SmartRAG.Services.AI
                 {
                     try
                     {
-                        return await TryFallbackProvidersAsync(query, context);
+                        return await TryFallbackProvidersAsync(query, context, cancellationToken);
                     }
                     catch (Exception fallbackEx)
                     {
-                        ServiceLogMessages.LogAIServiceFallbackError(_logger, query, fallbackEx);
+                        _logger.LogError(fallbackEx, "Fallback providers failed");
                     }
                 }
 
@@ -66,15 +67,15 @@ namespace SmartRAG.Services.AI
         /// <summary>
         /// [AI Query] Generates embeddings for a single text
         /// </summary>
-        public async Task<List<float>> GenerateEmbeddingsAsync(string text)
+        public async Task<List<float>> GenerateEmbeddingsAsync(string text, CancellationToken cancellationToken = default)
         {
             try
             {
-                return await _requestExecutor.GenerateEmbeddingsAsync(_options.AIProvider, text);
+                return await _requestExecutor.GenerateEmbeddingsAsync(_options.AIProvider, text, cancellationToken);
             }
             catch (Exception ex)
             {
-                ServiceLogMessages.LogAIServiceEmbeddingError(_logger, text, ex);
+                _logger.LogError(ex, "Error generating embeddings");
                 throw;
             }
         }
@@ -82,11 +83,11 @@ namespace SmartRAG.Services.AI
         /// <summary>
         /// [AI Query] Generates embeddings for a batch of texts
         /// </summary>
-        public async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts)
+        public async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, CancellationToken cancellationToken = default)
         {
             try
             {
-                return await _requestExecutor.GenerateEmbeddingsBatchAsync(_options.AIProvider, texts);
+                return await _requestExecutor.GenerateEmbeddingsBatchAsync(_options.AIProvider, texts, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -95,7 +96,7 @@ namespace SmartRAG.Services.AI
             }
         }
 
-        private async Task<string> GenerateResponseWithRetryAsync(AIProvider provider, string query, IEnumerable<string> context)
+        private async Task<string> GenerateResponseWithRetryAsync(AIProvider provider, string query, IEnumerable<string> context, CancellationToken cancellationToken = default)
         {
             var attempt = 0;
             var maxAttempts = Math.Max(MinRetryAttempts, _options.MaxRetryAttempts);
@@ -103,9 +104,11 @@ namespace SmartRAG.Services.AI
 
             while (true)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 try
                 {
-                    return await _requestExecutor.GenerateResponseAsync(provider, query, context);
+                    return await _requestExecutor.GenerateResponseAsync(provider, query, context, cancellationToken);
                 }
                 catch (Exception ex) when (_options.RetryPolicy != RetryPolicy.None && attempt < maxAttempts - 1)
                 {
@@ -114,7 +117,7 @@ namespace SmartRAG.Services.AI
 
                     ServiceLogMessages.LogAIServiceRetryAttempt(_logger, attempt, provider.ToString(), backoff, ex);
 
-                    await Task.Delay(backoff);
+                    await Task.Delay(backoff, cancellationToken);
                 }
             }
         }
@@ -130,17 +133,18 @@ namespace SmartRAG.Services.AI
             };
         }
 
-        private async Task<string> TryFallbackProvidersAsync(string query, IEnumerable<string> context)
+        private async Task<string> TryFallbackProvidersAsync(string query, IEnumerable<string> context, CancellationToken cancellationToken = default)
         {
             foreach (var fallbackProvider in _options.FallbackProviders)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 try
                 {
-                    var response = await _requestExecutor.GenerateResponseAsync(fallbackProvider, query, context);
+                    var response = await _requestExecutor.GenerateResponseAsync(fallbackProvider, query, context, cancellationToken);
 
                     if (!string.IsNullOrEmpty(response))
                     {
-                        ServiceLogMessages.LogAIServiceFallbackSuccess(_logger, fallbackProvider.ToString(), null);
                         return response;
                     }
                 }
@@ -151,7 +155,7 @@ namespace SmartRAG.Services.AI
                 }
             }
 
-            ServiceLogMessages.LogAIServiceAllFallbacksFailed(_logger, query, null);
+            _logger.LogWarning("All fallback providers failed");
             return FallbackUnavailableMessage;
         }
     }

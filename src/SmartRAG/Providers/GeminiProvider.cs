@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Providers
@@ -31,7 +32,7 @@ namespace SmartRAG.Providers
 
         public override AIProvider ProviderType => AIProvider.Gemini;
 
-        public override async Task<string> GenerateTextAsync(string prompt, AIProviderConfig config)
+        public override async Task<string> GenerateTextAsync(string prompt, AIProviderConfig config, CancellationToken cancellationToken = default)
         {
             var (isValid, errorMessage) = ValidateConfig(config);
 
@@ -43,7 +44,7 @@ namespace SmartRAG.Providers
 
             var modelEndpoint = BuildGeminiUrl(config.Endpoint, config.Model, "generateContent");
 
-            var (success, response, error) = await MakeHttpRequestAsync(client, modelEndpoint, payload);
+            var (success, response, error) = await MakeHttpRequestAsync(client, modelEndpoint, payload, cancellationToken: cancellationToken);
 
             if (!success)
                 return error;
@@ -59,7 +60,7 @@ namespace SmartRAG.Providers
             }
         }
 
-        public override async Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config)
+        public override async Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config, CancellationToken cancellationToken = default)
         {
             var (isValid, errorMessage) = ValidateConfig(config, requireApiKey: true, requireEndpoint: true, requireModel: false);
 
@@ -80,7 +81,7 @@ namespace SmartRAG.Providers
 
             var embeddingEndpoint = BuildGeminiUrl(config.Endpoint, config.EmbeddingModel, "embedContent");
 
-            var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
+            var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload, cancellationToken: cancellationToken);
 
             if (!success)
             {
@@ -99,7 +100,7 @@ namespace SmartRAG.Providers
             }
         }
 
-        public override async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config)
+        public override async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config, CancellationToken cancellationToken = default)
         {
             var (isValid, errorMessage) = ValidateConfig(config, requireApiKey: true, requireEndpoint: true, requireModel: false);
 
@@ -123,23 +124,25 @@ namespace SmartRAG.Providers
 
             for (int i = 0; i < textList.Count; i += DefaultMaxBatchSize)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 var batchTexts = textList.Skip(i).Take(DefaultMaxBatchSize).ToList();
 
                 try
                 {
-                    var batchResults = await ProcessGeminiBatchAsync(batchTexts, config);
+                    var batchResults = await ProcessGeminiBatchAsync(batchTexts, config, cancellationToken);
                     results.AddRange(batchResults);
 
                     if (i + DefaultMaxBatchSize < textList.Count)
                     {
-                        await Task.Delay(DefaultDelayBetweenBatchesMs);
+                        await Task.Delay(DefaultDelayBetweenBatchesMs, cancellationToken);
                     }
                 }
                 catch (Exception ex)
                 {
                     ProviderLogMessages.LogGeminiBatchFailedFallback(Logger, i / DefaultMaxBatchSize, ex.Message, ex);
 
-                    var fallbackResults = await base.GenerateEmbeddingsBatchAsync(batchTexts, config);
+                    var fallbackResults = await base.GenerateEmbeddingsBatchAsync(batchTexts, config, cancellationToken);
                     results.AddRange(fallbackResults);
                 }
             }
@@ -253,7 +256,7 @@ namespace SmartRAG.Providers
         /// <summary>
         /// Process batch embedding requests
         /// </summary>
-        private async Task<List<List<float>>> ProcessGeminiBatchAsync(List<string> batchTexts, AIProviderConfig config)
+        private async Task<List<List<float>>> ProcessGeminiBatchAsync(List<string> batchTexts, AIProviderConfig config, CancellationToken cancellationToken = default)
         {
             using var client = CreateGeminiHttpClient(config.ApiKey);
             var payload = new
@@ -270,7 +273,7 @@ namespace SmartRAG.Providers
 
             var batchEndpoint = BuildGeminiUrl(config.Endpoint, config.EmbeddingModel, "batchEmbedContents");
 
-            var (success, response, error) = await MakeHttpRequestAsync(client, batchEndpoint, payload);
+            var (success, response, error) = await MakeHttpRequestAsync(client, batchEndpoint, payload, cancellationToken: cancellationToken);
 
             if (!success)
             {

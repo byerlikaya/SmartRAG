@@ -33,7 +33,7 @@ namespace SmartRAG.Providers
 
         public override AIProvider ProviderType => AIProvider.AzureOpenAI;
 
-        public override async Task<string> GenerateTextAsync(string prompt, AIProviderConfig config)
+        public override async Task<string> GenerateTextAsync(string prompt, AIProviderConfig config, CancellationToken cancellationToken = default)
         {
             var (isValid, errorMessage) = ValidateConfig(config);
 
@@ -60,7 +60,7 @@ namespace SmartRAG.Providers
 
             var url = BuildAzureUrl(config.Endpoint, config.Model, "chat/completions", config.ApiVersion);
 
-            var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, config);
+            var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, config, cancellationToken);
 
             if (!success)
                 return error;
@@ -76,7 +76,7 @@ namespace SmartRAG.Providers
             }
         }
 
-        public override async Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config)
+        public override async Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config, CancellationToken cancellationToken = default)
         {
             var (isValid, errorMessage) = ValidateConfig(config, requireApiKey: true, requireEndpoint: true, requireModel: false);
 
@@ -100,7 +100,7 @@ namespace SmartRAG.Providers
 
             var url = BuildAzureUrl(config.Endpoint, config.EmbeddingModel, "embeddings", config.ApiVersion);
 
-            var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, config);
+            var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, config, cancellationToken);
 
             if (!success)
             {
@@ -119,7 +119,7 @@ namespace SmartRAG.Providers
             }
         }
 
-        public override async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config)
+        public override async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config, CancellationToken cancellationToken = default)
         {
             var (isValid, errorMessage) = ValidateConfig(config, requireApiKey: true, requireEndpoint: true, requireModel: false);
 
@@ -147,7 +147,7 @@ namespace SmartRAG.Providers
 
             var url = BuildAzureUrl(config.Endpoint, config.EmbeddingModel, "embeddings", config.ApiVersion);
 
-            var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, config);
+            var (success, response, error) = await MakeHttpRequestAsyncWithRateLimit(client, url, payload, config, cancellationToken);
 
             if (!success)
             {
@@ -184,17 +184,17 @@ namespace SmartRAG.Providers
         /// Azure OpenAI S0 tier custom rate limiting (3 RPM)
         /// </summary>
         private async Task<(bool success, string response, string error)> MakeHttpRequestAsyncWithRateLimit(
-            HttpClient client, string endpoint, object payload, AIProviderConfig config)
+            HttpClient client, string endpoint, object payload, AIProviderConfig config, CancellationToken cancellationToken = default)
         {
             var minIntervalMs = Math.Max(0, config.EmbeddingMinIntervalMs ?? DefaultMinIntervalMs);
 
-            await _rateLimitSemaphore.WaitAsync();
+            await _rateLimitSemaphore.WaitAsync(cancellationToken);
             try
             {
-                await WaitForRateLimit(minIntervalMs);
+                await WaitForRateLimit(minIntervalMs, cancellationToken);
                 _lastRequestTime = DateTime.UtcNow;
 
-                return await MakeHttpRequestAsync(client, endpoint, payload, maxRetries: DefaultMaxRetries);
+                return await MakeHttpRequestAsync(client, endpoint, payload, maxRetries: DefaultMaxRetries, cancellationToken);
             }
             finally
             {
@@ -205,7 +205,7 @@ namespace SmartRAG.Providers
         /// <summary>
         /// Calculate wait time for rate limiting
         /// </summary>
-        private async Task WaitForRateLimit(int minIntervalMs)
+        private async Task WaitForRateLimit(int minIntervalMs, CancellationToken cancellationToken = default)
         {
             var now = DateTime.UtcNow;
             var timeSinceLastRequest = now - _lastRequestTime;
@@ -214,7 +214,7 @@ namespace SmartRAG.Providers
             {
                 var waitTime = minIntervalMs - (int)timeSinceLastRequest.TotalMilliseconds;
                 ProviderLogMessages.LogAzureOpenAIRateLimit(Logger, waitTime, null);
-                await Task.Delay(waitTime);
+                await Task.Delay(waitTime, cancellationToken);
             }
         }
     }

@@ -32,7 +32,7 @@ namespace SmartRAG.Providers
 
         public override AIProvider ProviderType => AIProvider.Custom;
 
-        public override async Task<string> GenerateTextAsync(string prompt, AIProviderConfig config)
+        public override async Task<string> GenerateTextAsync(string prompt, AIProviderConfig config, CancellationToken cancellationToken = default)
         {
             var (isValid, errorMessage) = ValidateConfig(config, requireApiKey: false, requireEndpoint: true, requireModel: true);
 
@@ -44,7 +44,7 @@ namespace SmartRAG.Providers
 
             object payload = CreatePayload(prompt, config, useMessagesFormat);
 
-            var (success, response, error) = await MakeHttpRequestAsync(client, config.Endpoint, payload);
+            var (success, response, error) = await MakeHttpRequestAsync(client, config.Endpoint, payload, cancellationToken: cancellationToken);
 
             if (!success)
                 return error;
@@ -63,7 +63,7 @@ namespace SmartRAG.Providers
         /// <summary>
         /// Generates embeddings for multiple texts in batches with parallel processing
         /// </summary>
-        public override async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config)
+        public override async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config, CancellationToken cancellationToken = default)
         {
             var textList = texts.ToList();
             if (textList.Count == 0)
@@ -126,17 +126,17 @@ namespace SmartRAG.Providers
 
                     var batchTask = Task.Run(async () =>
                     {
-                        await semaphore.WaitAsync();
+                        await semaphore.WaitAsync(cancellationToken);
                         try
                         {
                             await ProcessBatchAsync(client, embeddingEndpoint, config, batch, batchIndices, batchNum,
-                                batchStart, batchEnd, textList.Count, results, lockObject);
+                                batchStart, batchEnd, textList.Count, results, lockObject, cancellationToken);
                         }
                         finally
                         {
                             semaphore.Release();
                         }
-                    });
+                    }, cancellationToken);
 
                     batchTasks.Add(batchTask);
                 }
@@ -153,7 +153,7 @@ namespace SmartRAG.Providers
 
         private async Task ProcessBatchAsync(HttpClient client, string embeddingEndpoint, AIProviderConfig config,
             List<string> batch, List<int> batchIndices, int batchNum, int batchStart, int batchEnd, int totalCount,
-            List<List<float>> results, object lockObject)
+            List<List<float>> results, object lockObject, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -164,14 +164,14 @@ namespace SmartRAG.Providers
                     ["keep_alive"] = "10m"
                 };
 
-                var requestTask = MakeHttpRequestAsync(client, embeddingEndpoint, payload, maxRetries: 2);
-                var timeoutTask = Task.Delay(TimeSpan.FromSeconds(15));
+                var requestTask = MakeHttpRequestAsync(client, embeddingEndpoint, payload, maxRetries: 2, cancellationToken);
+                var timeoutTask = Task.Delay(TimeSpan.FromSeconds(15), cancellationToken);
                 var completedTask = await Task.WhenAny(requestTask, timeoutTask);
 
                 if (completedTask == timeoutTask)
                 {
                     Logger.LogWarning("BATCH {BatchNum} TIMEOUT - Retrying each text individually", batchNum);
-                    await ProcessIndividualTextsOnFailure(client, embeddingEndpoint, config, batch, batchIndices, results, batchNum);
+                    await ProcessIndividualTextsOnFailure(client, embeddingEndpoint, config, batch, batchIndices, results, batchNum, cancellationToken);
                 }
                 else
                 {
@@ -197,34 +197,36 @@ namespace SmartRAG.Providers
                             {
                                 Logger.LogWarning("BATCH {BatchNum} returned {Returned} embeddings but expected {Expected} - Retrying individually",
                                     batchNum, batchEmbeddings.Count, batch.Count);
-                                await ProcessIndividualTextsOnFailure(client, embeddingEndpoint, config, batch, batchIndices, results, batchNum);
+                                await ProcessIndividualTextsOnFailure(client, embeddingEndpoint, config, batch, batchIndices, results, batchNum, cancellationToken);
                             }
                         }
                         catch (Exception parseEx)
                         {
                             Logger.LogError(parseEx, "Failed to parse batch response for batch {BatchNum} - Retrying individually", batchNum);
-                            await ProcessIndividualTextsOnFailure(client, embeddingEndpoint, config, batch, batchIndices, results, batchNum);
+                            await ProcessIndividualTextsOnFailure(client, embeddingEndpoint, config, batch, batchIndices, results, batchNum, cancellationToken);
                         }
                     }
                     else
                     {
                         Logger.LogWarning("BATCH {BatchNum} failed: {Error} - Retrying each text individually", batchNum, error ?? "Unknown error");
-                        await ProcessIndividualTextsOnFailure(client, embeddingEndpoint, config, batch, batchIndices, results, batchNum);
+                        await ProcessIndividualTextsOnFailure(client, embeddingEndpoint, config, batch, batchIndices, results, batchNum, cancellationToken);
                     }
                 }
             }
             catch (Exception ex)
             {
                 Logger.LogError(ex, "An unexpected error occurred during BATCH {BatchNum} processing", batchNum);
-                await ProcessIndividualTextsOnFailure(client, embeddingEndpoint, config, batch, batchIndices, results, batchNum);
+                await ProcessIndividualTextsOnFailure(client, embeddingEndpoint, config, batch, batchIndices, results, batchNum, cancellationToken);
             }
         }
 
         private async Task ProcessIndividualTextsOnFailure(HttpClient client, string embeddingEndpoint, AIProviderConfig config,
-            List<string> batch, List<int> batchIndices, List<List<float>> results, int batchNum)
+            List<string> batch, List<int> batchIndices, List<List<float>> results, int batchNum, CancellationToken cancellationToken = default)
         {
             for (int i = 0; i < batch.Count; i++)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 try
                 {
                     var text = batch[i];
@@ -238,7 +240,7 @@ namespace SmartRAG.Providers
                         ["keep_alive"] = "10m"
                     };
 
-                    var (singleSuccess, singleResponse, singleError) = await MakeHttpRequestAsync(client, embeddingEndpoint, singlePayload, maxRetries: 3);
+                    var (singleSuccess, singleResponse, singleError) = await MakeHttpRequestAsync(client, embeddingEndpoint, singlePayload, maxRetries: 3, cancellationToken);
 
                     if (singleSuccess && !string.IsNullOrEmpty(singleResponse))
                     {
@@ -268,7 +270,7 @@ namespace SmartRAG.Providers
 
                     if (i < batch.Count - 1)
                     {
-                        await Task.Delay(TimeSpan.FromMilliseconds(1000));
+                        await Task.Delay(TimeSpan.FromMilliseconds(1000), cancellationToken);
                     }
                 }
                 catch (Exception ex)
@@ -280,7 +282,7 @@ namespace SmartRAG.Providers
             }
         }
 
-        public override async Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config)
+        public override async Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config, CancellationToken cancellationToken = default)
         {
             if (!string.IsNullOrEmpty(text))
             {
@@ -312,7 +314,7 @@ namespace SmartRAG.Providers
                 [paramName] = text ?? ""
             };
 
-            var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
+            var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload, cancellationToken: cancellationToken);
 
             if (!success)
             {

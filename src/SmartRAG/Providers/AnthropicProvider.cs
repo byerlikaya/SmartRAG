@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Providers
@@ -31,7 +32,7 @@ namespace SmartRAG.Providers
 
         public override AIProvider ProviderType => AIProvider.Anthropic;
 
-        public override async Task<string> GenerateTextAsync(string prompt, AIProviderConfig config)
+        public override async Task<string> GenerateTextAsync(string prompt, AIProviderConfig config, CancellationToken cancellationToken = default)
         {
             var (isValid, errorMessage) = ValidateConfig(config);
 
@@ -67,7 +68,7 @@ namespace SmartRAG.Providers
 
             var chatEndpoint = $"{config.Endpoint.TrimEnd('/')}/v1/messages";
 
-            var (success, response, error) = await MakeHttpRequestAsync(client, chatEndpoint, payload);
+            var (success, response, error) = await MakeHttpRequestAsync(client, chatEndpoint, payload, cancellationToken: cancellationToken);
 
             if (!success)
                 return error;
@@ -83,7 +84,7 @@ namespace SmartRAG.Providers
             }
         }
 
-        public override async Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config)
+        public override async Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config, CancellationToken cancellationToken = default)
         {
             var (isValid, errorMessage) = ValidateEmbeddingConfig(config);
             if (!isValid)
@@ -117,7 +118,7 @@ namespace SmartRAG.Providers
             var voyageEndpoint = config.EmbeddingEndpoint ?? DefaultVoyageEndpoint;
             var embeddingEndpoint = BuildVoyageUrl(voyageEndpoint, "v1/embeddings");
 
-            var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
+            var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload, cancellationToken: cancellationToken);
 
             if (!success)
             {
@@ -136,7 +137,7 @@ namespace SmartRAG.Providers
             }
         }
 
-        public override async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config)
+        public override async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, AIProviderConfig config, CancellationToken cancellationToken = default)
         {
             var (isValid, errorMessage) = ValidateEmbeddingConfig(config);
             if (!isValid)
@@ -182,7 +183,7 @@ namespace SmartRAG.Providers
             var voyageEndpoint = config.EmbeddingEndpoint ?? DefaultVoyageEndpoint;
             var embeddingEndpoint = BuildVoyageUrl(voyageEndpoint, "v1/embeddings");
 
-            var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload);
+            var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload, cancellationToken: cancellationToken);
 
             if (!success)
             {

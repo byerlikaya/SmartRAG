@@ -6,6 +6,46 @@ SmartRAG'deki tüm önemli değişiklikler bu dosyada belgelenecektir.
 Format [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)'a dayanmaktadır
 ve bu proje [Semantic Versioning](https://semver.org/spec/v2.0.0.html)'a uymaktadır.
 
+## [3.6.0] - 2025-12-30
+
+### ✨ Eklenenler
+- **CancellationToken Desteği**: Tüm async metodlar ve interface'ler genelinde kapsamlı CancellationToken desteği
+  - Tüm async interface metodları artık `CancellationToken cancellationToken = default` parametresi kabul ediyor
+  - Özel helper metodlar iptal desteği için güncellendi
+  - Daha iyi kaynak yönetimi ve zarif iptal işleme
+  - CancellationToken içeren tüm metodlar için XML dokümantasyonu güncellendi
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Interfaces/` - Tüm async interface metodları güncellendi
+    - `src/SmartRAG/Services/` - Tüm servis implementasyonları güncellendi
+    - `src/SmartRAG/Repositories/` - Tüm repository implementasyonları güncellendi
+    - `src/SmartRAG/Providers/` - Tüm provider implementasyonları güncellendi
+  - **Faydalar**: Daha iyi kaynak yönetimi, zarif iptal, geliştirilmiş async/await desenleri
+
+### 🔧 İyileştirmeler
+- **Performans**: Task.Run native async dosya I/O metodları ile değiştirildi
+  - Native async metodlar kullanılarak geliştirilmiş dosya I/O işlemleri
+  - Daha iyi kaynak kullanımı ve azaltılmış overhead
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/FileWatcher/FileWatcherService.cs` - Native async I/O
+    - `src/SmartRAG/Services/Document/DocumentService.cs` - Native async I/O
+  - **Faydalar**: Daha iyi performans, azaltılmış bellek ayırma, geliştirilmiş ölçeklenebilirlik
+
+- **Kod Kalitesi**: Gereksiz servis ve repository log'ları kaldırıldı
+  - Servis katmanında aşırı loglama temizlendi
+  - Gereksiz repository log'ları kaldırıldı
+  - Log okunabilirliği ve gürültü azaltma iyileştirildi
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/Shared/ServiceLogMessages.cs` - Log temizliği
+    - `src/SmartRAG/Repositories/RepositoryLogMessages.cs` - Log temizliği
+    - Birden fazla servis ve repository dosyası - Log kaldırma
+  - **Faydalar**: Daha temiz log'lar, daha iyi performans, geliştirilmiş okunabilirlik
+
+### 📝 Notlar
+- **Geriye Dönük Uyumluluk**: Tüm CancellationToken parametreleri varsayılan değerlere sahip, tam geriye dönük uyumluluk sağlıyor
+- **Geçiş**: Geçiş gerekli değil - mevcut kod değişiklik olmadan çalışmaya devam ediyor
+- **Breaking Changes**: Yok
+- **Kod Kalitesi**: 0 hata, 0 uyarı korundu
+
 ## [3.5.0] - 2025-12-27
 
 ### 🔧 İyileştirmeler

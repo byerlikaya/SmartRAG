@@ -5,6 +5,7 @@ using SmartRAG.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Repositories
@@ -34,7 +35,7 @@ namespace SmartRAG.Repositories
 
         protected ILogger Logger => _logger;
 
-        public Task<SmartRAG.Entities.Document> AddAsync(SmartRAG.Entities.Document document)
+        public Task<SmartRAG.Entities.Document> AddAsync(SmartRAG.Entities.Document document, CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
@@ -61,23 +62,13 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public Task<SmartRAG.Entities.Document> GetByIdAsync(Guid id)
+        public Task<SmartRAG.Entities.Document> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
                 try
                 {
                     var document = _documents.FirstOrDefault(d => d.Id == id);
-
-                    if (document != null)
-                    {
-                        RepositoryLogMessages.LogDocumentRetrieved(Logger, document.FileName, id, null);
-                    }
-                    else
-                    {
-                        RepositoryLogMessages.LogDocumentNotFound(Logger, id, null);
-                    }
-
                     return Task.FromResult(document);
                 }
                 catch (Exception ex)
@@ -88,14 +79,13 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public Task<List<Entities.Document>> GetAllAsync()
+        public Task<List<Entities.Document>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
                 try
                 {
                     var documents = _documents.ToList();
-                    RepositoryLogMessages.LogDocumentsRetrieved(Logger, documents.Count, null);
                     return Task.FromResult(documents);
                 }
                 catch (Exception ex)
@@ -106,7 +96,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public Task<bool> ClearAllAsync()
+        public Task<bool> ClearAllAsync(CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
@@ -115,7 +105,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public Task<bool> DeleteAsync(Guid id)
+        public Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
@@ -145,14 +135,13 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public Task<int> GetCountAsync()
+        public Task<int> GetCountAsync(CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
                 try
                 {
                     var count = _documents.Count;
-                    RepositoryLogMessages.LogDocumentCountRetrieved(Logger, count, null);
                     return Task.FromResult(count);
                 }
                 catch (Exception ex)
@@ -163,7 +152,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = DefaultMaxSearchResults)
+        public Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = DefaultMaxSearchResults, CancellationToken cancellationToken = default)
         {
             lock (_lock)
             {
@@ -172,7 +161,6 @@ namespace SmartRAG.Repositories
                     var normalizedQuery = SmartRAG.Extensions.SearchTextExtensions.NormalizeForSearch(query);
                     var relevantChunks = PerformSearch(normalizedQuery, maxResults);
 
-                    RepositoryLogMessages.LogSearchCompleted(Logger, query, relevantChunks.Count, maxResults, null);
                     return Task.FromResult(relevantChunks);
                 }
                 catch (Exception ex)

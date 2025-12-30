@@ -12,6 +12,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Support
@@ -62,11 +63,11 @@ namespace SmartRAG.Services.Support
         /// Gets or creates a session ID automatically for conversation continuity
         /// Uses a persistent session key that survives application restarts
         /// </summary>
-        public async Task<string> GetOrCreateSessionIdAsync()
+        public async Task<string> GetOrCreateSessionIdAsync(CancellationToken cancellationToken = default)
         {
             try
             {
-                var existingSessionData = await _conversationRepository.GetConversationHistoryAsync(PersistentSessionKey);
+                var existingSessionData = await _conversationRepository.GetConversationHistoryAsync(PersistentSessionKey, cancellationToken);
                 if (!string.IsNullOrEmpty(existingSessionData))
                 {
                     var lines = existingSessionData.Split('\n');
@@ -75,13 +76,12 @@ namespace SmartRAG.Services.Support
                     {
                         var sessionId = sessionLine["session-id:".Length..].Trim();
 
-                        var sessionExists = await _conversationRepository.SessionExistsAsync(sessionId);
+                        var sessionExists = await _conversationRepository.SessionExistsAsync(sessionId, cancellationToken);
                         if (sessionExists)
                         {
-                            var conversationHistory = await _conversationRepository.GetConversationHistoryAsync(sessionId);
+                            var conversationHistory = await _conversationRepository.GetConversationHistoryAsync(sessionId, cancellationToken);
 
                             _conversationCache.TryAdd(sessionId, conversationHistory ?? string.Empty);
-                            ServiceLogMessages.LogSessionRetrieved(_logger, sessionId, null);
                             return sessionId;
                         }
                     }
@@ -92,13 +92,13 @@ namespace SmartRAG.Services.Support
                 ServiceLogMessages.LogConversationRetrievalFailed(_logger, PersistentSessionKey, ex);
             }
 
-            return await CreateAndPersistSessionAsync();
+            return await CreateAndPersistSessionAsync(cancellationToken);
         }
 
         /// <summary>
         /// Starts a new conversation session
         /// </summary>
-        public async Task<string> StartNewConversationAsync()
+        public async Task<string> StartNewConversationAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -110,14 +110,14 @@ namespace SmartRAG.Services.Support
 
                 try
                 {
-                    await _conversationRepository.ClearConversationAsync(PersistentSessionKey);
+                    await _conversationRepository.ClearConversationAsync(PersistentSessionKey, cancellationToken);
                 }
                 catch (Exception ex)
                 {
                     ServiceLogMessages.LogConversationStorageFailed(_logger, PersistentSessionKey, ex);
                 }
 
-                return await CreateAndPersistSessionAsync();
+                return await CreateAndPersistSessionAsync(cancellationToken);
             }
             catch (Exception ex)
             {
@@ -129,11 +129,11 @@ namespace SmartRAG.Services.Support
         /// <summary>
         /// Gets conversation history for a session using existing storage provider
         /// </summary>
-        public async Task<string> GetConversationHistoryAsync(string sessionId)
+        public async Task<string> GetConversationHistoryAsync(string sessionId, CancellationToken cancellationToken = default)
         {
             try
             {
-                var history = await GetConversationFromStorageAsync(sessionId);
+                var history = await GetConversationFromStorageAsync(sessionId, cancellationToken);
 
                 _conversationCache.AddOrUpdate(sessionId, history, (key, oldValue) => history);
 
@@ -149,7 +149,7 @@ namespace SmartRAG.Services.Support
         /// <summary>
         /// Adds a conversation turn to the session
         /// </summary>
-        public async Task AddToConversationAsync(string sessionId, string question, string answer)
+        public async Task AddToConversationAsync(string sessionId, string question, string answer, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -160,7 +160,7 @@ namespace SmartRAG.Services.Support
                 }
                 else
                 {
-                    currentHistory = await GetConversationFromStorageAsync(sessionId);
+                    currentHistory = await GetConversationFromStorageAsync(sessionId, cancellationToken);
                 }
 
                 var newTurn = $"User: {question}\nAssistant: {answer}";
@@ -185,7 +185,7 @@ namespace SmartRAG.Services.Support
                     ? newTurn
                     : $"{currentHistory}\n{newTurn}";
 
-                await StoreConversationToStorageAsync(sessionId, newEntry);
+                await StoreConversationToStorageAsync(sessionId, newEntry, cancellationToken);
 
                 _conversationCache.AddOrUpdate(sessionId, newEntry, (key, oldValue) => newEntry);
             }
@@ -245,12 +245,12 @@ namespace SmartRAG.Services.Support
         /// <summary>
         /// Clears all conversation history from storage
         /// </summary>
-        public async Task ClearAllConversationsAsync()
+        public async Task ClearAllConversationsAsync(CancellationToken cancellationToken = default)
         {
             try
             {
                 _conversationCache.Clear();
-                await _conversationRepository.ClearAllConversationsAsync();
+                await _conversationRepository.ClearAllConversationsAsync(cancellationToken);
                 _logger.LogInformation("Cleared all conversation history");
             }
             catch (Exception ex)
@@ -263,7 +263,7 @@ namespace SmartRAG.Services.Support
         /// <summary>
         /// Handles general conversation queries with conversation history
         /// </summary>
-        public async Task<string> HandleGeneralConversationAsync(string query, string? conversationHistory = null)
+        public async Task<string> HandleGeneralConversationAsync(string query, string? conversationHistory = null, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -283,7 +283,7 @@ namespace SmartRAG.Services.Support
 
                 var prompt = _promptBuilder.BuildConversationPrompt(query, conversationHistory);
 
-                return await aiProvider.GenerateTextAsync(prompt, providerConfig);
+                return await aiProvider.GenerateTextAsync(prompt, providerConfig, cancellationToken);
             }
             catch (Exception)
             {
@@ -294,18 +294,16 @@ namespace SmartRAG.Services.Support
         /// <summary>
         /// Creates a new session ID and persists it to storage and cache
         /// </summary>
-        private async Task<string> CreateAndPersistSessionAsync()
+        private async Task<string> CreateAndPersistSessionAsync(CancellationToken cancellationToken = default)
         {
             var newSessionId = GenerateSessionId();
 
             try
             {
-                await _conversationRepository.AddToConversationAsync(PersistentSessionKey, "", $"session-id:{newSessionId}");
-                await _conversationRepository.AddToConversationAsync(newSessionId, "", "");
+                await _conversationRepository.AddToConversationAsync(PersistentSessionKey, "", $"session-id:{newSessionId}", cancellationToken);
+                await _conversationRepository.AddToConversationAsync(newSessionId, "", "", cancellationToken);
 
                 _conversationCache.TryAdd(newSessionId, string.Empty);
-
-                ServiceLogMessages.LogSessionCreated(_logger, newSessionId, null);
             }
             catch (Exception ex)
             {
@@ -336,11 +334,11 @@ namespace SmartRAG.Services.Support
         /// <summary>
         /// Get conversation from storage based on conversation storage provider
         /// </summary>
-        private async Task<string> GetConversationFromStorageAsync(string sessionId)
+        private async Task<string> GetConversationFromStorageAsync(string sessionId, CancellationToken cancellationToken = default)
         {
             try
             {
-                var history = await _conversationRepository.GetConversationHistoryAsync(sessionId);
+                var history = await _conversationRepository.GetConversationHistoryAsync(sessionId, cancellationToken);
                 return RemoveDuplicateEntries(history);
             }
             catch (Exception ex)
@@ -410,11 +408,11 @@ namespace SmartRAG.Services.Support
         /// <summary>
         /// Store conversation to storage based on conversation storage provider
         /// </summary>
-        private async Task StoreConversationToStorageAsync(string sessionId, string conversation)
+        private async Task StoreConversationToStorageAsync(string sessionId, string conversation, CancellationToken cancellationToken = default)
         {
             try
             {
-                await _conversationRepository.SetConversationHistoryAsync(sessionId, conversation);
+                await _conversationRepository.SetConversationHistoryAsync(sessionId, conversation, cancellationToken);
             }
             catch (Exception ex)
             {

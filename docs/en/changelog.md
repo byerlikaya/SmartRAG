@@ -789,6 +789,16 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
         </thead>
         <tbody>
             <tr>
+                <td><strong>3.6.0</strong></td>
+                <td>2025-12-30</td>
+                <td>CancellationToken Support, Performance Improvements, Code Quality Enhancements</td>
+            </tr>
+            <tr>
+                <td><strong>3.5.0</strong></td>
+                <td>2025-12-27</td>
+                <td>Code Quality Improvements, Architecture Refactoring, SOLID/DRY Compliance</td>
+            </tr>
+            <tr>
                 <td><strong>3.1.0</strong></td>
                 <td>2025-11-11</td>
                 <td>Unified Query Intelligence, Smart Hybrid Routing, New Service Architecture</td>

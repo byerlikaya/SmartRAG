@@ -3,6 +3,7 @@ using SmartRAG.Interfaces.Storage;
 using System;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Repositories
@@ -20,7 +21,7 @@ namespace SmartRAG.Repositories
             Directory.CreateDirectory(_conversationsPath);
         }
 
-        public async Task<string> GetConversationHistoryAsync(string sessionId)
+        public async Task<string> GetConversationHistoryAsync(string sessionId, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(sessionId))
                 return string.Empty;
@@ -33,7 +34,7 @@ namespace SmartRAG.Repositories
                     return string.Empty;
                 }
 
-                return await Task.Run(() => File.ReadAllText(filePath));
+                return await File.ReadAllTextAsync(filePath, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -42,7 +43,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task AddToConversationAsync(string sessionId, string question, string answer)
+        public async Task AddToConversationAsync(string sessionId, string question, string answer, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(sessionId))
                 return;
@@ -52,11 +53,11 @@ namespace SmartRAG.Repositories
                 if (string.IsNullOrEmpty(question))
                 {
                     var sessionFilePath = GetConversationFilePath(sessionId);
-                    await Task.Run(() => File.WriteAllText(sessionFilePath, answer));
+                    await File.WriteAllTextAsync(sessionFilePath, answer, cancellationToken);
                     return;
                 }
 
-                var currentHistory = await GetConversationHistoryAsync(sessionId);
+                var currentHistory = await GetConversationHistoryAsync(sessionId, cancellationToken);
                 var newEntry = string.IsNullOrEmpty(currentHistory)
                     ? $"User: {question}\nAssistant: {answer}"
                     : $"{currentHistory}\nUser: {question}\nAssistant: {answer}";
@@ -67,7 +68,7 @@ namespace SmartRAG.Repositories
                 }
 
                 var filePath = GetConversationFilePath(sessionId);
-                await Task.Run(() => File.WriteAllText(filePath, newEntry));
+                await File.WriteAllTextAsync(filePath, newEntry, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -75,7 +76,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task ClearConversationAsync(string sessionId)
+        public async Task ClearConversationAsync(string sessionId, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(sessionId))
                 return;
@@ -85,7 +86,8 @@ namespace SmartRAG.Repositories
                 var filePath = GetConversationFilePath(sessionId);
                 if (File.Exists(filePath))
                 {
-                    await Task.Run(() => File.Delete(filePath));
+                    cancellationToken.ThrowIfCancellationRequested();
+                    File.Delete(filePath);
                 }
             }
             catch (Exception ex)
@@ -94,7 +96,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task<bool> SessionExistsAsync(string sessionId)
+        public async Task<bool> SessionExistsAsync(string sessionId, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(sessionId))
                 return false;
@@ -102,7 +104,8 @@ namespace SmartRAG.Repositories
             try
             {
                 var filePath = GetConversationFilePath(sessionId);
-                return await Task.Run(() => File.Exists(filePath));
+                cancellationToken.ThrowIfCancellationRequested();
+                return File.Exists(filePath);
             }
             catch (Exception ex)
             {
@@ -111,7 +114,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task SetConversationHistoryAsync(string sessionId, string conversation)
+        public async Task SetConversationHistoryAsync(string sessionId, string conversation, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(sessionId))
                 return;
@@ -119,7 +122,7 @@ namespace SmartRAG.Repositories
             try
             {
                 var filePath = GetConversationFilePath(sessionId);
-                await Task.Run(() => File.WriteAllText(filePath, conversation));
+                await File.WriteAllTextAsync(filePath, conversation, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -127,7 +130,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task ClearAllConversationsAsync()
+        public async Task ClearAllConversationsAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -136,7 +139,8 @@ namespace SmartRAG.Repositories
                     var files = Directory.GetFiles(_conversationsPath, "*.txt");
                     foreach (var file in files)
                     {
-                        await Task.Run(() => File.Delete(file));
+                        cancellationToken.ThrowIfCancellationRequested();
+                        File.Delete(file);
                     }
                 }
             }

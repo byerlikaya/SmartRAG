@@ -11,6 +11,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Repositories
@@ -305,16 +306,16 @@ namespace SmartRAG.Repositories
             public string Content { get; set; } = string.Empty;
         }
 
-        public async Task<SmartRAG.Entities.Document> AddAsync(SmartRAG.Entities.Document document)
+        public async Task<SmartRAG.Entities.Document> AddAsync(SmartRAG.Entities.Document document, CancellationToken cancellationToken = default)
         {
             try
             {
-                await _collectionManager.EnsureCollectionExistsAsync();
+                await _collectionManager.EnsureCollectionExistsAsync(cancellationToken);
 
                 var documentCollectionName = $"{_collectionName}_doc_{document.Id:N}".Replace("-", "");
                 RepositoryLogMessages.LogQdrantDocumentCollectionCreating(Logger, documentCollectionName, _collectionName, document.Id, null);
 
-                await _collectionManager.EnsureDocumentCollectionExistsAsync(documentCollectionName, document);
+                await _collectionManager.EnsureDocumentCollectionExistsAsync(documentCollectionName, document, cancellationToken);
 
                 SmartRAG.Services.Helpers.DocumentValidator.ValidateDocument(document);
                 SmartRAG.Services.Helpers.DocumentValidator.ValidateChunks(document);
@@ -324,11 +325,7 @@ namespace SmartRAG.Repositories
                 {
                     if (chunk.Embedding == null || chunk.Embedding.Count == 0)
                     {
-                        chunk.Embedding = await _embeddingService.GenerateEmbeddingAsync(chunk.Content) ?? new List<float>();
-                        if (index % 10 == 0)
-                        {
-                            RepositoryLogMessages.LogQdrantEmbeddingsProgress(Logger, index + 1, document.Chunks.Count, null);
-                        }
+                        chunk.Embedding = await _embeddingService.GenerateEmbeddingAsync(chunk.Content, cancellationToken) ?? new List<float>();
                     }
                     return chunk;
                 }).ToList();
@@ -397,7 +394,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task<SmartRAG.Entities.Document> GetByIdAsync(Guid id)
+        public async Task<SmartRAG.Entities.Document> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -448,7 +445,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task<List<SmartRAG.Entities.Document>> GetAllAsync()
+        public async Task<List<SmartRAG.Entities.Document>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -511,7 +508,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task<bool> DeleteAsync(Guid id)
+        public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -546,7 +543,7 @@ namespace SmartRAG.Repositories
         /// <summary>
         /// Clears all documents by deleting all document collections and recreating main collection
         /// </summary>
-        public async Task<bool> ClearAllAsync()
+        public async Task<bool> ClearAllAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -578,7 +575,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task<int> GetCountAsync()
+        public async Task<int> GetCountAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -598,11 +595,10 @@ namespace SmartRAG.Repositories
         /// </summary>
         /// <param name="query">Search query string</param>
         /// <param name="maxResults">Maximum number of results to return</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>List of relevant document chunks</returns>
-        public async Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = DefaultMaxSearchResults)
+        public async Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = DefaultMaxSearchResults, CancellationToken cancellationToken = default)
         {
-            RepositoryLogMessages.LogQdrantSearchStarted(Logger, query, null);
-            
             try
             {
                 var queryHash = $"{query}_{maxResults}";
@@ -619,21 +615,21 @@ namespace SmartRAG.Repositories
                     cachedResults = null;
                 }
 
-                await _collectionManager.EnsureCollectionExistsAsync();
+                await _collectionManager.EnsureCollectionExistsAsync(cancellationToken);
 
                 // Use AI embedding service for query embeddings (semantic similarity)
                 // Document embeddings are already stored using AI embeddings from DocumentService
                 // Hash-based embedding would break semantic similarity
-                var queryEmbedding = await _aiService.GenerateEmbeddingsAsync(query);
+                var queryEmbedding = await _aiService.GenerateEmbeddingsAsync(query, cancellationToken);
                 if (queryEmbedding == null || queryEmbedding.Count == 0)
                 {
                     _logger.LogWarning("AI embedding generation failed, falling back to text search");
-                    var fallbackResults = await _searchService.FallbackTextSearchAsync(query, maxResults);
+                    var fallbackResults = await _searchService.FallbackTextSearchAsync(query, maxResults, cancellationToken);
                     RepositoryLogMessages.LogQdrantFinalResultsReturned(Logger, fallbackResults.Count, null);
                     return fallbackResults;
                 }
 
-                var vectorResults = await _searchService.SearchAsync(queryEmbedding, maxResults);
+                var vectorResults = await _searchService.SearchAsync(queryEmbedding, maxResults, cancellationToken);
 
                 var processedResults = ProcessSearchResults(vectorResults, maxResults);
 
@@ -645,7 +641,7 @@ namespace SmartRAG.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Vector search failed, falling back to text search");
-                var fallbackResults = await _searchService.FallbackTextSearchAsync(query, maxResults);
+                var fallbackResults = await _searchService.FallbackTextSearchAsync(query, maxResults, cancellationToken);
                 RepositoryLogMessages.LogQdrantFinalResultsReturned(Logger, fallbackResults.Count, null);
                 return fallbackResults;
             }
