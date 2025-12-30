@@ -83,7 +83,7 @@ public class StorageController(IStorageFactory storageFactory, IDocumentService 
     {
         try
         {
-            var stats = await documentService.GetStorageStatisticsAsync();
+            var stats = await documentService.GetStorageStatisticsAsync(HttpContext.RequestAborted);
             return Ok(stats);
         }
         catch (Exception ex)
@@ -121,7 +121,7 @@ public class StorageController(IStorageFactory storageFactory, IDocumentService 
     {
         try
         {
-            var stats = await documentService.GetStorageStatisticsAsync();
+            var stats = await documentService.GetStorageStatisticsAsync(HttpContext.RequestAborted);
             var provider = storageFactory.GetCurrentProvider();
 
             var health = new StorageHealthInfo
