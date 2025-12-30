@@ -311,9 +311,9 @@ public class InitializationService(
         if (connectionManager == null || schemaAnalyzer == null)
             return;
 
-        await connectionManager.InitializeAsync();
+        await connectionManager.InitializeAsync(CancellationToken.None);
 
-        var schemas = await schemaAnalyzer.GetAllSchemasAsync();
+        var schemas = await schemaAnalyzer.GetAllSchemasAsync(CancellationToken.None);
         var completed = schemas.Where(s => s.Status == SchemaAnalysisStatus.Completed && s.Tables.Count > 0).ToList();
         var needsSetup = schemas.Where(s => s.Tables.Count == 0).ToList();
 

@@ -32,7 +32,7 @@ public class TestQueryGenerator(
                 return testQueries;
             }
 
-            var schemas = await schemaAnalyzer.GetAllSchemasAsync();
+            var schemas = await schemaAnalyzer.GetAllSchemasAsync(CancellationToken.None);
 
             if (schemas.Count < 2)
             {
@@ -80,7 +80,7 @@ public class TestQueryGenerator(
             var selectedFocus = focusAreas[random.Next(focusAreas.Length)];
 
             var aiPrompt = BuildAIPrompt(schemaPrompt, language, queryCountVariation, selectedFocus);
-            var response = await aiService.GenerateResponseAsync(aiPrompt, new List<string>());
+            var response = await aiService.GenerateResponseAsync(aiPrompt, new List<string>(), CancellationToken.None);
 
             var jsonStart = response.IndexOf('[');
             var jsonEnd = response.LastIndexOf(']');

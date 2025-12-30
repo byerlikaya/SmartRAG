@@ -132,7 +132,7 @@ namespace SmartRAG.API.Controllers
 
             try
             {
-                var response = await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
+                var response = await _documentSearchService.QueryIntelligenceAsync(query, maxResults, false, HttpContext.RequestAborted);
                 return Ok(response);
             }
             catch (Exception ex)
@@ -439,7 +439,7 @@ namespace SmartRAG.API.Controllers
             try
             {
                 // Execute multi-database query
-                var response = await coordinator.QueryMultipleDatabasesAsync(request.Query, request.MaxResults);
+                var response = await coordinator.QueryMultipleDatabasesAsync(request.Query, request.MaxResults, HttpContext.RequestAborted);
 
                 stopwatch.Stop();
 
@@ -457,7 +457,7 @@ namespace SmartRAG.API.Controllers
                 if (request.IncludeQueryAnalysis)
                 {
                     var queryIntentAnalyzer = HttpContext.RequestServices.GetRequiredService<IQueryIntentAnalyzer>();
-                    var queryIntent = await queryIntentAnalyzer.AnalyzeQueryIntentAsync(request.Query);
+                    var queryIntent = await queryIntentAnalyzer.AnalyzeQueryIntentAsync(request.Query, HttpContext.RequestAborted);
                     result.QueryAnalysis = new QueryIntentAnalysisResponseDto
                     {
                         OriginalQuery = queryIntent.OriginalQuery,
@@ -528,7 +528,7 @@ namespace SmartRAG.API.Controllers
             try
             {
                 var queryIntentAnalyzer = HttpContext.RequestServices.GetRequiredService<IQueryIntentAnalyzer>();
-                var queryIntent = await queryIntentAnalyzer.AnalyzeQueryIntentAsync(query);
+                var queryIntent = await queryIntentAnalyzer.AnalyzeQueryIntentAsync(query, HttpContext.RequestAborted);
                 
                 // Generate SQL queries
                 queryIntent = await coordinator.GenerateDatabaseQueriesAsync(queryIntent);

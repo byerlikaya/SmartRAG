@@ -190,7 +190,7 @@ namespace SmartRAG.API.Controllers
                 Language = language
             };
 
-            var document = await _documentService.UploadDocumentAsync(request);
+            var document = await _documentService.UploadDocumentAsync(request, HttpContext.RequestAborted);
 
             return Ok(new
             {
@@ -239,7 +239,7 @@ namespace SmartRAG.API.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult> GetDocument(Guid id)
     {
-            var document = await _documentService.GetDocumentAsync(id);
+            var document = await _documentService.GetDocumentAsync(id, HttpContext.RequestAborted);
 
         if (document == null)
             return NotFound();
@@ -255,7 +255,7 @@ namespace SmartRAG.API.Controllers
         [ProducesResponseType(typeof(object), StatusCodes.Status200OK)]
         public async Task<ActionResult> GetAllDocuments()
     {
-            var documents = await _documentService.GetAllDocumentsAsync();
+            var documents = await _documentService.GetAllDocumentsAsync(HttpContext.RequestAborted);
         return Ok(documents);
     }
 
@@ -295,7 +295,7 @@ namespace SmartRAG.API.Controllers
         [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<ActionResult> DeleteDocument(Guid id)
     {
-            var success = await _documentService.DeleteDocumentAsync(id);
+            var success = await _documentService.DeleteDocumentAsync(id, HttpContext.RequestAborted);
 
         if (!success)
             return NotFound();
@@ -330,7 +330,7 @@ namespace SmartRAG.API.Controllers
     {
         try
         {
-                var documents = await _documentService.GetAllDocumentsAsync();
+                var documents = await _documentService.GetAllDocumentsAsync(HttpContext.RequestAborted);
                 
                 var filteredDocuments = documents.AsQueryable();
                 
@@ -396,7 +396,7 @@ namespace SmartRAG.API.Controllers
     {
         try
         {
-                var document = await _documentService.GetDocumentAsync(id);
+                var document = await _documentService.GetDocumentAsync(id, HttpContext.RequestAborted);
                 if (document == null)
                     return NotFound(new { Error = "Document not found" });
 
@@ -473,7 +473,7 @@ namespace SmartRAG.API.Controllers
                             Language = language
                         };
 
-                        var document = await _documentService.UploadDocumentAsync(request);
+                        var document = await _documentService.UploadDocumentAsync(request, HttpContext.RequestAborted);
 
                         results.Add(new
                         {
@@ -541,7 +541,7 @@ namespace SmartRAG.API.Controllers
     {
         try
         {
-                var success = await _documentService.RegenerateAllEmbeddingsAsync();
+                var success = await _documentService.RegenerateAllEmbeddingsAsync(HttpContext.RequestAborted);
 
                 return Ok(new
                 {
@@ -576,7 +576,7 @@ namespace SmartRAG.API.Controllers
         {
             try
             {
-                var success = await _documentService.ClearAllEmbeddingsAsync();
+                var success = await _documentService.ClearAllEmbeddingsAsync(HttpContext.RequestAborted);
 
                 return Ok(new
                 {

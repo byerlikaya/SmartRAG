@@ -72,7 +72,7 @@ public class QueryHandler(
             Console.ResetColor();
 
             var languageInstructedQuery = $"{query}\n\n[IMPORTANT: Respond in {language} language]";
-            var response = await _multiDbCoordinator!.QueryMultipleDatabasesAsync(languageInstructedQuery, maxResults: 10);
+            var response = await _multiDbCoordinator!.QueryMultipleDatabasesAsync(languageInstructedQuery, maxResults: 10, cancellationToken);
 
             Console.WriteLine();
             _console.WriteSuccess("ANSWER:");
@@ -123,8 +123,8 @@ public class QueryHandler(
 
             // Use IQueryIntentAnalyzer instead of deprecated method
             var queryIntentAnalyzer = _serviceProvider.GetRequiredService<IQueryIntentAnalyzer>();
-            var intent = await queryIntentAnalyzer.AnalyzeQueryIntentAsync(languageInstructedQuery);
-            intent = await _multiDbCoordinator!.GenerateDatabaseQueriesAsync(intent);
+            var intent = await queryIntentAnalyzer.AnalyzeQueryIntentAsync(languageInstructedQuery, cancellationToken);
+            intent = await _multiDbCoordinator!.GenerateDatabaseQueriesAsync(intent, cancellationToken);
 
             Console.WriteLine();
             Console.ForegroundColor = ConsoleColor.Yellow;
@@ -230,7 +230,7 @@ public class QueryHandler(
             try
             {
                 var languageInstructedQuery = $"{testQuery.Query}\n\n[IMPORTANT: Respond in {language} language]";
-                var response = await _multiDbCoordinator!.QueryMultipleDatabasesAsync(languageInstructedQuery, maxResults: 5);
+                var response = await _multiDbCoordinator!.QueryMultipleDatabasesAsync(languageInstructedQuery, maxResults: 5, cancellationToken);
 
                 if (IsErrorResponse(response.Answer))
                 {
@@ -238,7 +238,7 @@ public class QueryHandler(
                     Console.WriteLine($"⚠️  Query Failed: {response.Answer}");
                     Console.ResetColor();
 
-                    var schemas = _schemaAnalyzer != null ? await _schemaAnalyzer.GetAllSchemasAsync() : new List<DatabaseSchemaInfo>();
+                    var schemas = _schemaAnalyzer != null ? await _schemaAnalyzer.GetAllSchemasAsync(cancellationToken) : new List<DatabaseSchemaInfo>();
                     var sqlInfo = ExtractSQLFromError(response.Answer, schemas);
                     failedQueries.Add((testQuery, response.Answer, sqlInfo));
                 }
@@ -318,7 +318,7 @@ public class QueryHandler(
 
             try
             {
-                var response = await _documentSearchService.QueryIntelligenceAsync(trimmedInput, maxResults: 8, startNewConversation: false);
+                var response = await _documentSearchService.QueryIntelligenceAsync(trimmedInput, maxResults: 8, startNewConversation: false, CancellationToken.None);
 
                 Console.WriteLine();
                 _console.WriteSuccess("Assistant:");
@@ -865,7 +865,7 @@ Instructions:
 - Respond in {language} language
 - Be clear about which source provided which information";
 
-        return await _aiService.GenerateResponseAsync(finalPrompt, new List<string>());
+        return await _aiService.GenerateResponseAsync(finalPrompt, new List<string>(), CancellationToken.None);
     }
 
     public async Task ClearConversationHistoryAsync(CancellationToken cancellationToken = default)
@@ -887,7 +887,7 @@ Instructions:
             Console.WriteLine();
             Console.WriteLine("🧹 Clearing conversation history...");
 
-            await _conversationManager.ClearAllConversationsAsync();
+            await _conversationManager.ClearAllConversationsAsync(cancellationToken);
 
             _console.WriteSuccess("Conversation history cleared successfully!");
         }

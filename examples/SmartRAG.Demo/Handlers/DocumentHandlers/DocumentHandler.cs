@@ -69,7 +69,7 @@ public class DocumentHandler(
                 Language = languageToUse
             };
 
-            var document = await _documentService.UploadDocumentAsync(request);
+            var document = await _documentService.UploadDocumentAsync(request, CancellationToken.None);
 
             _console.WriteSuccess("Document uploaded successfully!");
             System.Console.WriteLine($"  ID: {document.Id}");
@@ -90,7 +90,7 @@ public class DocumentHandler(
 
         try
         {
-            var documents = await _documentService.GetAllDocumentsAsync();
+            var documents = await _documentService.GetAllDocumentsAsync(CancellationToken.None);
 
             if (!documents.Any())
             {
@@ -127,7 +127,7 @@ public class DocumentHandler(
     {
         _console.WriteSectionHeader("🗑️ Clear All Documents");
 
-        var documents = await _documentService.GetAllDocumentsAsync();
+        var documents = await _documentService.GetAllDocumentsAsync(CancellationToken.None);
         System.Console.WriteLine($"Total documents in storage: {documents.Count}");
         System.Console.WriteLine();
 
@@ -152,7 +152,7 @@ public class DocumentHandler(
             System.Console.WriteLine();
             System.Console.WriteLine("🗑️  Clearing all documents...");
 
-            var success = await _documentService.ClearAllDocumentsAsync();
+            var success = await _documentService.ClearAllDocumentsAsync(CancellationToken.None);
 
             if (success)
             {
