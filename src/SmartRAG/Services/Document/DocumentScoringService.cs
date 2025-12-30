@@ -63,13 +63,10 @@ namespace SmartRAG.Services.Document
                     if (_textNormalizationService.ContainsNormalizedName(content, fullName))
                     {
                         score += FullNameMatchScoreBoost;
-                        ServiceLogMessages.LogFullNameMatch(_logger, _textNormalizationService.SanitizeForLog(fullName), chunk.Content[..Math.Min(ChunkPreviewLength, chunk.Content.Length)], null);
                     }
                     else if (potentialNames.Any(name => _textNormalizationService.ContainsNormalizedName(content, name)))
                     {
                         score += PartialNameMatchScoreBoost;
-                        var foundNames = potentialNames.Where(name => _textNormalizationService.ContainsNormalizedName(content, name)).ToList();
-                        ServiceLogMessages.LogPartialNameMatches(_logger, string.Join(", ", foundNames.Select(_textNormalizationService.SanitizeForLog)), chunk.Content[..Math.Min(ChunkPreviewLength, chunk.Content.Length)], null);
                     }
                 }
 

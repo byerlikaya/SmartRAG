@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Mcp
@@ -33,7 +34,7 @@ namespace SmartRAG.Services.Mcp
         /// <summary>
         /// Queries connected MCP servers and merges results with RAG response
         /// </summary>
-        public async Task<List<McpToolResult>> QueryWithMcpAsync(string query, int maxResults = 5, string? conversationHistory = null)
+        public async Task<List<McpToolResult>> QueryWithMcpAsync(string query, int maxResults = 5, string? conversationHistory = null, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(query))
                 throw new ArgumentException("Query cannot be null or empty", nameof(query));

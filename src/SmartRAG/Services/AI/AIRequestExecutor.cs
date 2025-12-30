@@ -5,6 +5,7 @@ using SmartRAG.Services.Shared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Services.AI
@@ -32,13 +33,13 @@ namespace SmartRAG.Services.AI
         /// <summary>
         /// [AI Query] Generates a response using the specified AI provider
         /// </summary>
-        public async Task<string> GenerateResponseAsync(AIProvider provider, string query, IEnumerable<string> context)
+        public async Task<string> GenerateResponseAsync(AIProvider provider, string query, IEnumerable<string> context, CancellationToken cancellationToken = default)
         {
             var providerConfig = _configService.GetProviderConfig(provider) ?? throw new InvalidOperationException($"AI provider configuration not found for '{provider}'");
             var aiProvider = _aiProviderFactory.CreateProvider(provider);
             var prompt = BuildPrompt(query, context);
 
-            var response = await aiProvider.GenerateTextAsync(prompt, providerConfig);
+            var response = await aiProvider.GenerateTextAsync(prompt, providerConfig, cancellationToken);
 
             if (IsErrorResponse(response))
             {
@@ -53,7 +54,7 @@ namespace SmartRAG.Services.AI
         /// <summary>
         /// [AI Query] Generates embeddings for a single text
         /// </summary>
-        public async Task<List<float>> GenerateEmbeddingsAsync(AIProvider provider, string text)
+        public async Task<List<float>> GenerateEmbeddingsAsync(AIProvider provider, string text, CancellationToken cancellationToken = default)
         {
             var providerConfig = _configService.GetProviderConfig(provider);
             if (providerConfig == null)
@@ -63,13 +64,13 @@ namespace SmartRAG.Services.AI
             }
 
             var aiProvider = _aiProviderFactory.CreateProvider(provider);
-            return await aiProvider.GenerateEmbeddingAsync(text, providerConfig);
+            return await aiProvider.GenerateEmbeddingAsync(text, providerConfig, cancellationToken);
         }
 
         /// <summary>
         /// [AI Query] Generates embeddings for a batch of texts
         /// </summary>
-        public async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(AIProvider provider, IEnumerable<string> texts)
+        public async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(AIProvider provider, IEnumerable<string> texts, CancellationToken cancellationToken = default)
         {
             var providerConfig = _configService.GetProviderConfig(provider);
             if (providerConfig == null)
@@ -79,10 +80,9 @@ namespace SmartRAG.Services.AI
             }
 
             var aiProvider = _aiProviderFactory.CreateProvider(provider);
-            var embeddings = await aiProvider.GenerateEmbeddingsBatchAsync(texts, providerConfig);
+            var embeddings = await aiProvider.GenerateEmbeddingsBatchAsync(texts, providerConfig, cancellationToken);
 
             var filteredEmbeddings = embeddings?.Where(e => e != null && e.Count > 0).ToList() ?? new List<List<float>>();
-            ServiceLogMessages.LogAIServiceBatchEmbeddingsGenerated(_logger, filteredEmbeddings.Count, provider.ToString(), null);
 
             return filteredEmbeddings;
         }

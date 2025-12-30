@@ -11,6 +11,7 @@ using SmartRAG.Models.RequestResponse;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Document
@@ -56,8 +57,9 @@ namespace SmartRAG.Services.Document
         /// Executes a database-only query strategy with fallback to document query
         /// </summary>
         /// <param name="request">Request containing query parameters</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>RAG response with answer and sources</returns>
-        public async Task<RagResponse> ExecuteDatabaseOnlyStrategyAsync(QueryStrategyRequest request)
+        public async Task<RagResponse> ExecuteDatabaseOnlyStrategyAsync(QueryStrategyRequest request, CancellationToken cancellationToken = default)
         {
             if (request == null)
                 throw new ArgumentNullException(nameof(request));
@@ -77,10 +79,10 @@ namespace SmartRAG.Services.Document
                         QueryTokens = request.QueryTokens,
                         PreCalculatedResults = request.PreCalculatedResults
                     };
-                    return await ExecuteDocumentOnlyStrategyAsync(docRequest);
+                    return await ExecuteDocumentOnlyStrategyAsync(docRequest, cancellationToken);
                 }
 
-                var databaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(request.Query, request.QueryIntent, request.MaxResults, request.PreferredLanguage ?? _options.DefaultLanguage);
+                var databaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(request.Query, request.QueryIntent, request.MaxResults, request.PreferredLanguage ?? _options.DefaultLanguage, cancellationToken);
 
                 if (_responseBuilder.HasMeaningfulData(databaseResponse))
                 {
@@ -98,7 +100,7 @@ namespace SmartRAG.Services.Document
                     QueryTokens = request.QueryTokens,
                     PreCalculatedResults = request.PreCalculatedResults
                 };
-                return await ExecuteDocumentOnlyStrategyAsync(fallbackRequest);
+                return await ExecuteDocumentOnlyStrategyAsync(fallbackRequest, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -114,7 +116,7 @@ namespace SmartRAG.Services.Document
                     QueryTokens = request.QueryTokens,
                     PreCalculatedResults = request.PreCalculatedResults
                 };
-                return await ExecuteDocumentOnlyStrategyAsync(fallbackRequest);
+                return await ExecuteDocumentOnlyStrategyAsync(fallbackRequest, cancellationToken);
             }
         }
 
@@ -129,9 +131,10 @@ namespace SmartRAG.Services.Document
         /// <param name="preferredLanguage">Optional preferred language code for AI response</param>
         /// <param name="options">Optional search options</param>
         /// <param name="queryTokens">Pre-computed query tokens for performance</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>RAG response with answer and sources</returns>
         [Obsolete("Use ExecuteDatabaseOnlyStrategyAsync(QueryStrategyRequest) instead. This method will be removed in v4.0.0")]
-        public async Task<RagResponse> ExecuteDatabaseOnlyStrategyAsync(string query, int maxResults, string conversationHistory, bool canAnswerFromDocuments, QueryIntent? queryIntent, string? preferredLanguage = null, SearchOptions? options = null, List<string>? queryTokens = null)
+        public async Task<RagResponse> ExecuteDatabaseOnlyStrategyAsync(string query, int maxResults, string conversationHistory, bool canAnswerFromDocuments, QueryIntent? queryIntent, string? preferredLanguage = null, SearchOptions? options = null, List<string>? queryTokens = null, CancellationToken cancellationToken = default)
         {
             var request = new QueryStrategyRequest
             {
@@ -144,15 +147,16 @@ namespace SmartRAG.Services.Document
                 Options = options,
                 QueryTokens = queryTokens
             };
-            return await ExecuteDatabaseOnlyStrategyAsync(request);
+            return await ExecuteDatabaseOnlyStrategyAsync(request, cancellationToken);
         }
 
         /// <summary>
         /// Executes a hybrid query strategy combining both database and document queries
         /// </summary>
         /// <param name="request">Request containing query parameters</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>Merged RAG response with answer and sources from both database and documents</returns>
-        public async Task<RagResponse> ExecuteHybridStrategyAsync(QueryStrategyRequest request)
+        public async Task<RagResponse> ExecuteHybridStrategyAsync(QueryStrategyRequest request, CancellationToken cancellationToken = default)
         {
             if (request == null)
                 throw new ArgumentNullException(nameof(request));
@@ -166,7 +170,7 @@ namespace SmartRAG.Services.Document
                 {
                     if (request.QueryIntent != null)
                     {
-                        var candidateDatabaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(request.Query, request.QueryIntent, request.MaxResults, _options.DefaultLanguage);
+                        var candidateDatabaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(request.Query, request.QueryIntent, request.MaxResults, _options.DefaultLanguage, cancellationToken);
                         if (_responseBuilder.HasMeaningfulData(candidateDatabaseResponse))
                         {
                             // CRITICAL: For database responses, use CONSERVATIVE quality check
@@ -207,12 +211,12 @@ namespace SmartRAG.Services.Document
                     PreCalculatedResults = request.PreCalculatedResults,
                     QueryTokens = request.QueryTokens
                 };
-                documentResponse = await _ragAnswerGenerator.Value.GenerateBasicRagAnswerAsync(ragRequest);
+                documentResponse = await _ragAnswerGenerator.Value.GenerateBasicRagAnswerAsync(ragRequest, cancellationToken);
             }
 
             if (databaseResponse != null && documentResponse != null)
             {
-                return await _responseBuilder.MergeHybridResultsAsync(request.Query, databaseResponse, documentResponse, request.ConversationHistory);
+                return await _responseBuilder.MergeHybridResultsAsync(request.Query, databaseResponse, documentResponse, request.ConversationHistory, cancellationToken);
             }
 
             if (databaseResponse != null)
@@ -221,7 +225,7 @@ namespace SmartRAG.Services.Document
             if (documentResponse != null)
                 return documentResponse;
 
-            return await _responseBuilder.CreateFallbackResponseAsync(request.Query, request.ConversationHistory);
+            return await _responseBuilder.CreateFallbackResponseAsync(request.Query, request.ConversationHistory, cancellationToken);
         }
 
         /// <summary>
@@ -237,6 +241,7 @@ namespace SmartRAG.Services.Document
         /// <param name="options">Optional search options</param>
         /// <param name="preCalculatedResults">Pre-calculated search results to use</param>
         /// <param name="queryTokens">Pre-computed query tokens for performance</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>Merged RAG response with answer and sources from both database and documents</returns>
         [Obsolete("Use ExecuteHybridStrategyAsync(QueryStrategyRequest) instead. This method will be removed in v4.0.0")]
         public async Task<RagResponse> ExecuteHybridStrategyAsync(
@@ -249,7 +254,8 @@ namespace SmartRAG.Services.Document
             string? preferredLanguage = null,
             SearchOptions? options = null,
             List<DocumentChunk>? preCalculatedResults = null,
-            List<string>? queryTokens = null)
+            List<string>? queryTokens = null,
+            CancellationToken cancellationToken = default)
         {
             var request = new QueryStrategyRequest
             {
@@ -264,15 +270,16 @@ namespace SmartRAG.Services.Document
                 PreCalculatedResults = preCalculatedResults,
                 QueryTokens = queryTokens
             };
-            return await ExecuteHybridStrategyAsync(request);
+            return await ExecuteHybridStrategyAsync(request, cancellationToken);
         }
 
         /// <summary>
         /// Executes a document-only query strategy
         /// </summary>
         /// <param name="request">Request containing query parameters</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>RAG response with answer and sources</returns>
-        public async Task<RagResponse> ExecuteDocumentOnlyStrategyAsync(QueryStrategyRequest request)
+        public async Task<RagResponse> ExecuteDocumentOnlyStrategyAsync(QueryStrategyRequest request, CancellationToken cancellationToken = default)
         {
             if (request == null)
                 throw new ArgumentNullException(nameof(request));
@@ -287,7 +294,7 @@ namespace SmartRAG.Services.Document
             else
             {
                 var searchOptions = request.Options ?? SearchOptions.FromConfig(_options);
-                var (CanAnswer, Results) = await _ragAnswerGenerator.Value.CanAnswerFromDocumentsAsync(request.Query, searchOptions, request.QueryTokens);
+                var (CanAnswer, Results) = await _ragAnswerGenerator.Value.CanAnswerFromDocumentsAsync(request.Query, searchOptions, request.QueryTokens, cancellationToken);
                 canAnswer = CanAnswer;
                 results = Results;
             }
@@ -304,10 +311,10 @@ namespace SmartRAG.Services.Document
                     PreCalculatedResults = results,
                     QueryTokens = request.QueryTokens
                 };
-                return await _ragAnswerGenerator.Value.GenerateBasicRagAnswerAsync(ragRequest);
+                return await _ragAnswerGenerator.Value.GenerateBasicRagAnswerAsync(ragRequest, cancellationToken);
             }
 
-            return await _responseBuilder.CreateFallbackResponseAsync(request.Query, request.ConversationHistory);
+            return await _responseBuilder.CreateFallbackResponseAsync(request.Query, request.ConversationHistory, cancellationToken);
         }
 
         /// <summary>
@@ -321,9 +328,10 @@ namespace SmartRAG.Services.Document
         /// <param name="options">Optional search options</param>
         /// <param name="preCalculatedResults">Pre-calculated search results to use</param>
         /// <param name="queryTokens">Pre-computed query tokens for performance</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>RAG response with answer and sources</returns>
         [Obsolete("Use ExecuteDocumentOnlyStrategyAsync(QueryStrategyRequest) instead. This method will be removed in v4.0.0")]
-        public async Task<RagResponse> ExecuteDocumentOnlyStrategyAsync(string query, int maxResults, string conversationHistory, bool? canAnswerFromDocuments = null, string? preferredLanguage = null, SearchOptions? options = null, List<DocumentChunk>? preCalculatedResults = null, List<string>? queryTokens = null)
+        public async Task<RagResponse> ExecuteDocumentOnlyStrategyAsync(string query, int maxResults, string conversationHistory, bool? canAnswerFromDocuments = null, string? preferredLanguage = null, SearchOptions? options = null, List<DocumentChunk>? preCalculatedResults = null, List<string>? queryTokens = null, CancellationToken cancellationToken = default)
         {
             var request = new QueryStrategyRequest
             {
@@ -336,7 +344,7 @@ namespace SmartRAG.Services.Document
                 PreCalculatedResults = preCalculatedResults,
                 QueryTokens = queryTokens
             };
-            return await ExecuteDocumentOnlyStrategyAsync(request);
+            return await ExecuteDocumentOnlyStrategyAsync(request, cancellationToken);
         }
 
 

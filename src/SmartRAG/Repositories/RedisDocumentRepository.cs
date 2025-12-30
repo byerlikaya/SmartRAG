@@ -14,6 +14,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Repositories
@@ -93,7 +94,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task<SmartRAG.Entities.Document> AddAsync(SmartRAG.Entities.Document document)
+        public async Task<SmartRAG.Entities.Document> AddAsync(SmartRAG.Entities.Document document, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -123,7 +124,7 @@ namespace SmartRAG.Repositories
                         {
                             try
                             {
-                                embedding = await _aiProvider.GenerateEmbeddingAsync(chunk.Content, null);
+                                embedding = await _aiProvider.GenerateEmbeddingAsync(chunk.Content, null, cancellationToken);
                                 chunk.Embedding = embedding;
                             }
                             catch (Exception ex)
@@ -161,7 +162,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task<SmartRAG.Entities.Document> GetByIdAsync(Guid id)
+        public async Task<SmartRAG.Entities.Document> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -170,12 +171,10 @@ namespace SmartRAG.Repositories
 
                 if (documentJson.IsNull)
                 {
-                    RepositoryLogMessages.LogRedisDocumentNotFound(Logger, id, null);
                     return null;
                 }
 
                 var document = JsonSerializer.Deserialize<SmartRAG.Entities.Document>(documentJson);
-                RepositoryLogMessages.LogRedisDocumentRetrieved(Logger, id, null);
                 return document;
             }
             catch (Exception ex)
@@ -185,7 +184,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task<List<SmartRAG.Entities.Document>> GetAllAsync()
+        public async Task<List<SmartRAG.Entities.Document>> GetAllAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -197,7 +196,7 @@ namespace SmartRAG.Repositories
                 {
                     if (Guid.TryParse(idString, out var id))
                     {
-                        var document = await GetByIdAsync(id);
+                        var document = await GetByIdAsync(id, cancellationToken);
                         if (document != null)
                         {
                             documents.Add(document);
@@ -210,7 +209,7 @@ namespace SmartRAG.Repositories
                 {
                     try
                     {
-                        var chunkKeys = await GetAllChunkKeysAsync();
+                        var chunkKeys = await GetAllChunkKeysAsync(cancellationToken);
                         var documentMap = new Dictionary<Guid, DocumentData>();
 
                         foreach (var chunkKey in chunkKeys)
@@ -292,7 +291,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        private async Task<List<string>> GetAllChunkKeysAsync()
+        private async Task<List<string>> GetAllChunkKeysAsync(CancellationToken cancellationToken = default)
         {
             var chunkKeys = new List<string>();
             var pattern = $"{_config.KeyPrefix}{ChunkKeySuffix}*";
@@ -308,27 +307,28 @@ namespace SmartRAG.Repositories
             
             await foreach (var key in server.KeysAsync(pattern: pattern))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 chunkKeys.Add(key);
             }
 
             return chunkKeys;
         }
 
-        public async Task<bool> ClearAllAsync()
+        public async Task<bool> ClearAllAsync(CancellationToken cancellationToken = default)
         {
             try
             {
-                var documents = await GetAllAsync();
+                var documents = await GetAllAsync(cancellationToken);
                 foreach (var doc in documents)
                 {
-                    await DeleteAsync(doc.Id);
+                    await DeleteAsync(doc.Id, cancellationToken);
                 }
 
                 if (_config.EnableVectorSearch)
                 {
                     try
                     {
-                        var chunkKeys = await GetAllChunkKeysAsync();
+                        var chunkKeys = await GetAllChunkKeysAsync(cancellationToken);
                         if (chunkKeys.Count > 0)
                         {
                             var batch = _database.CreateBatch();
@@ -362,7 +362,7 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task<bool> DeleteAsync(Guid id)
+        public async Task<bool> DeleteAsync(Guid id, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -381,13 +381,12 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task<int> GetCountAsync()
+        public async Task<int> GetCountAsync(CancellationToken cancellationToken = default)
         {
             try
             {
                 var count = await _database.ListLengthAsync(_documentsKey);
                 var result = (int)count;
-                RepositoryLogMessages.LogRedisDocumentCountRetrieved(Logger, result, null);
                 return result;
             }
             catch (Exception ex)
@@ -397,11 +396,11 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = DefaultMaxSearchResults)
+        public async Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = DefaultMaxSearchResults, CancellationToken cancellationToken = default)
         {
             if (!_config.EnableVectorSearch)
             {
-                return await FallbackTextSearchAsync(query, maxResults);
+                return await FallbackTextSearchAsync(query, maxResults, cancellationToken);
             }
 
             try
@@ -410,10 +409,10 @@ namespace SmartRAG.Repositories
                 if (aiConfig == null)
                 {
                     RepositoryLogMessages.LogRedisVectorSearchFailed(Logger, query, new InvalidOperationException("AI provider configuration not available"));
-                    return await FallbackTextSearchAsync(query, maxResults);
+                    return await FallbackTextSearchAsync(query, maxResults, cancellationToken);
                 }
 
-                var queryEmbedding = await _aiProvider.GenerateEmbeddingAsync(query, aiConfig);
+                var queryEmbedding = await _aiProvider.GenerateEmbeddingAsync(query, aiConfig, cancellationToken);
 
                 // KNN search syntax: *=>[KNN {k} @vector_field $query_vector AS score]
                 var searchQuery = new Query($"*=>[KNN {maxResults} @embedding $vec AS score]")
@@ -472,24 +471,23 @@ namespace SmartRAG.Repositories
                     }
                 }
 
-                RepositoryLogMessages.LogRedisSearchCompleted(Logger, query, results.Count, maxResults, null);
                 return results;
             }
             catch (Exception ex)
             {
                 RepositoryLogMessages.LogRedisVectorSearchFailed(Logger, query, ex);
-                return await FallbackTextSearchAsync(query, maxResults);
+                return await FallbackTextSearchAsync(query, maxResults, cancellationToken);
             }
         }
 
-        private async Task<List<DocumentChunk>> FallbackTextSearchAsync(string query, int maxResults)
+        private async Task<List<DocumentChunk>> FallbackTextSearchAsync(string query, int maxResults, CancellationToken cancellationToken = default)
         {
             try
             {
                 var normalizedQuery = Extensions.SearchTextExtensions.NormalizeForSearch(query);
                 var relevantChunks = new List<DocumentChunk>();
 
-                var documents = await GetAllAsync();
+                var documents = await GetAllAsync(cancellationToken);
 
                 foreach (var document in documents)
                 {
@@ -507,7 +505,6 @@ namespace SmartRAG.Repositories
                         break;
                 }
 
-                RepositoryLogMessages.LogRedisSearchCompleted(Logger, query, relevantChunks.Count, maxResults, null);
                 return relevantChunks;
             }
             catch (Exception ex)

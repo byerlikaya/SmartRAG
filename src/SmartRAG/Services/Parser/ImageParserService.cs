@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using Tesseract;
 using SkiaSharp;
@@ -163,7 +164,7 @@ namespace SmartRAG.Services.Parser
         /// <summary>
         /// [AI Query] Parses an image stream and extracts text using OCR
         /// </summary>
-        public async Task<string> ExtractTextFromImageAsync(Stream imageStream, string language = null)
+        public async Task<string> ExtractTextFromImageAsync(Stream imageStream, string language = null, CancellationToken cancellationToken = default)
         {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(ImageParserService));
@@ -233,11 +234,8 @@ namespace SmartRAG.Services.Parser
         {
             try
             {
-                ServiceLogMessages.LogImageProcessingStarted(_logger, (int)imageStream.Length, null);
-
                 var convertedStream = await ConvertToPngIfNeededAsync(imageStream);
 
-                ServiceLogMessages.LogImageProcessingCompleted(_logger, (int)imageStream.Length, (int)convertedStream.Length, null);
                 return convertedStream;
             }
             catch (Exception ex)
@@ -518,8 +516,6 @@ namespace SmartRAG.Services.Parser
 
                     var correctedText = CorrectCommonOcrMistakes(text, language, _logger);
 
-                    ServiceLogMessages.LogImageOcrSuccess(_logger, correctedText.Length, null);
-
                     return (correctedText?.Trim() ?? string.Empty, confidence);
                 }
                 catch (Exception ex)
@@ -698,7 +694,6 @@ namespace SmartRAG.Services.Parser
                     var engTrainedDataPath = Path.Combine(path, "eng.traineddata");
                     if (File.Exists(engTrainedDataPath))
                     {
-                        ServiceLogMessages.LogOcrDataPathFound(_logger, path, null);
                         return path;
                     }
                 }
@@ -723,7 +718,6 @@ namespace SmartRAG.Services.Parser
                     var engTrainedDataPath = Path.Combine(dir, "eng.traineddata");
                     if (File.Exists(engTrainedDataPath))
                     {
-                        ServiceLogMessages.LogOcrDataPathFound(_logger, dir, null);
                         return dir;
                     }
                 }

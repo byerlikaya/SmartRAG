@@ -18,25 +18,10 @@ namespace SmartRAG.Repositories
             new EventId(30002, "DocumentAddFailed"),
             "Failed to add document: {FileName}");
 
-        public static readonly Action<ILogger, string, Guid, Exception> LogDocumentRetrieved = LoggerMessage.Define<string, Guid>(
-            LogLevel.Debug,
-            new EventId(30004, "DocumentRetrieved"),
-            "Document retrieved: {FileName} (ID: {DocumentId})");
-
-        public static readonly Action<ILogger, Guid, Exception> LogDocumentNotFound = LoggerMessage.Define<Guid>(
-            LogLevel.Debug,
-            new EventId(30005, "DocumentNotFound"),
-            "Document not found: {DocumentId}");
-
         public static readonly Action<ILogger, Guid, Exception> LogDocumentRetrievalFailed = LoggerMessage.Define<Guid>(
             LogLevel.Error,
             new EventId(30006, "DocumentRetrievalFailed"),
             "Failed to retrieve document: {DocumentId}");
-
-        public static readonly Action<ILogger, int, Exception> LogDocumentsRetrieved = LoggerMessage.Define<int>(
-            LogLevel.Debug,
-            new EventId(30007, "DocumentsRetrieved"),
-            "Retrieved {Count} documents");
 
         public static readonly Action<ILogger, Exception> LogDocumentsRetrievalFailed = LoggerMessage.Define(
             LogLevel.Error,
@@ -58,20 +43,10 @@ namespace SmartRAG.Repositories
             new EventId(30011, "DocumentDeleteFailed"),
             "Failed to delete document: {DocumentId}");
 
-        public static readonly Action<ILogger, int, Exception> LogDocumentCountRetrieved = LoggerMessage.Define<int>(
-            LogLevel.Debug,
-            new EventId(30012, "DocumentCountRetrieved"),
-            "Document count retrieved: {Count}");
-
         public static readonly Action<ILogger, Exception> LogDocumentCountRetrievalFailed = LoggerMessage.Define(
             LogLevel.Error,
             new EventId(30013, "DocumentCountRetrievalFailed"),
             "Failed to retrieve document count");
-
-        public static readonly Action<ILogger, string, int, int, Exception> LogSearchCompleted = LoggerMessage.Define<string, int, int>(
-            LogLevel.Information,
-            new EventId(31001, "SearchCompleted"),
-            "Search completed for query '{Query}': {ResultCount}/{MaxResults} results");
 
         public static readonly Action<ILogger, string, Exception> LogSearchFailed = LoggerMessage.Define<string>(
             LogLevel.Error,
@@ -92,11 +67,6 @@ namespace SmartRAG.Repositories
             LogLevel.Information,
             new EventId(34003, "QdrantEmbeddingsGenerationStarted"),
             "Started generating embeddings for {ChunkCount} chunks");
-
-        public static readonly Action<ILogger, int, int, Exception> LogQdrantEmbeddingsProgress = LoggerMessage.Define<int, int>(
-            LogLevel.Debug,
-            new EventId(34004, "QdrantEmbeddingsProgress"),
-            "Generated embeddings for {CurrentChunk}/{TotalChunks} chunks");
 
         public static readonly Action<ILogger, int, Exception> LogQdrantEmbeddingsGenerationCompleted = LoggerMessage.Define<int>(
             LogLevel.Information,
@@ -123,11 +93,6 @@ namespace SmartRAG.Repositories
             new EventId(34009, "QdrantDocumentUploadFailed"),
             "Failed to upload document: {FileName}");
 
-        public static readonly Action<ILogger, string, Exception> LogQdrantSearchStarted = LoggerMessage.Define<string>(
-            LogLevel.Information,
-            new EventId(34012, "QdrantSearchStarted"),
-            "Started Qdrant search for query: {Query}");
-
         public static readonly Action<ILogger, int, Exception> LogQdrantFinalResultsReturned = LoggerMessage.Define<int>(
             LogLevel.Information,
             new EventId(34025, "QdrantFinalResultsReturned"),
@@ -147,16 +112,6 @@ namespace SmartRAG.Repositories
             LogLevel.Error,
             new EventId(35002, "RedisConnectionFailed"),
             "Failed to connect to Redis server: {ConnectionString}");
-
-        public static readonly Action<ILogger, Guid, Exception> LogRedisDocumentRetrieved = LoggerMessage.Define<Guid>(
-            LogLevel.Debug,
-            new EventId(35005, "RedisDocumentRetrieved"),
-            "Document retrieved from Redis: {DocumentId}");
-
-        public static readonly Action<ILogger, Guid, Exception> LogRedisDocumentNotFound = LoggerMessage.Define<Guid>(
-            LogLevel.Debug,
-            new EventId(35006, "RedisDocumentNotFound"),
-            "Document not found in Redis: {DocumentId}");
 
         public static readonly Action<ILogger, Guid, Exception> LogRedisDocumentRetrievalFailed = LoggerMessage.Define<Guid>(
             LogLevel.Error,
@@ -183,20 +138,10 @@ namespace SmartRAG.Repositories
             new EventId(35011, "RedisDocumentDeleteFailed"),
             "Failed to delete document from Redis: {DocumentId}");
 
-        public static readonly Action<ILogger, int, Exception> LogRedisDocumentCountRetrieved = LoggerMessage.Define<int>(
-            LogLevel.Debug,
-            new EventId(35012, "RedisDocumentCountRetrieved"),
-            "Redis document count retrieved: {Count}");
-
         public static readonly Action<ILogger, Exception> LogRedisDocumentCountRetrievalFailed = LoggerMessage.Define(
             LogLevel.Error,
             new EventId(35013, "RedisDocumentCountRetrievalFailed"),
             "Failed to retrieve document count from Redis");
-
-        public static readonly Action<ILogger, string, int, int, Exception> LogRedisSearchCompleted = LoggerMessage.Define<string, int, int>(
-            LogLevel.Information,
-            new EventId(35014, "RedisSearchCompleted"),
-            "Redis search completed for query '{Query}': {ResultCount}/{MaxResults} results");
 
         public static readonly Action<ILogger, string, Exception> LogRedisSearchFailed = LoggerMessage.Define<string>(
             LogLevel.Error,

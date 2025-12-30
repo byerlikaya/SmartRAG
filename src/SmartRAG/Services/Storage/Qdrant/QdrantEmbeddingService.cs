@@ -4,6 +4,7 @@ using SmartRAG.Interfaces.Storage.Qdrant;
 using SmartRAG.Models;
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Storage.Qdrant
@@ -33,8 +34,9 @@ namespace SmartRAG.Services.Storage.Qdrant
         /// Generates an embedding vector for the given text using hash-based approach
         /// </summary>
         /// <param name="text">Text to generate embedding for</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>List of float values representing the embedding vector</returns>
-        public async Task<List<float>> GenerateEmbeddingAsync(string text)
+        public async Task<List<float>> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken = default)
         {
             try
             {

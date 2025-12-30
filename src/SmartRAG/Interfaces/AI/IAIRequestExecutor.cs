@@ -1,5 +1,6 @@
 using SmartRAG.Enums;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Interfaces.AI
@@ -12,16 +13,26 @@ namespace SmartRAG.Interfaces.AI
         /// <summary>
         /// Generates a response using the specified provider
         /// </summary>
-        Task<string> GenerateResponseAsync(AIProvider provider, string query, IEnumerable<string> context);
+        /// <param name="provider">AI provider to use</param>
+        /// <param name="query">User query or prompt</param>
+        /// <param name="context">Collection of context strings</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
+        Task<string> GenerateResponseAsync(AIProvider provider, string query, IEnumerable<string> context, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Generates embeddings using the specified provider
         /// </summary>
-        Task<List<float>> GenerateEmbeddingsAsync(AIProvider provider, string text);
+        /// <param name="provider">AI provider to use</param>
+        /// <param name="text">Text to generate embedding for</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
+        Task<List<float>> GenerateEmbeddingsAsync(AIProvider provider, string text, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Generates batch embeddings using the specified provider
         /// </summary>
-        Task<List<List<float>>> GenerateEmbeddingsBatchAsync(AIProvider provider, IEnumerable<string> texts);
+        /// <param name="provider">AI provider to use</param>
+        /// <param name="texts">Collection of texts to generate embeddings for</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
+        Task<List<List<float>>> GenerateEmbeddingsBatchAsync(AIProvider provider, IEnumerable<string> texts, CancellationToken cancellationToken = default);
     }
 }

@@ -7,6 +7,7 @@ using SmartRAG.Services.Database.Strategies;
 using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Database
@@ -51,13 +52,15 @@ namespace SmartRAG.Services.Database
         /// <summary>
         /// [AI Query] Generates optimized SQL queries for each database based on intent
         /// </summary>
-        public async Task<QueryIntent> GenerateDatabaseQueriesAsync(QueryIntent queryIntent)
+        public async Task<QueryIntent> GenerateDatabaseQueriesAsync(QueryIntent queryIntent, CancellationToken cancellationToken = default)
         {
             foreach (var dbQuery in queryIntent.DatabaseQueries)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 try
                 {
-                    var schema = await _schemaAnalyzer.GetSchemaAsync(dbQuery.DatabaseId);
+                    var schema = await _schemaAnalyzer.GetSchemaAsync(dbQuery.DatabaseId, cancellationToken);
                     if (schema == null)
                     {
                         _logger.LogWarning("Schema not found for database");
@@ -68,7 +71,7 @@ namespace SmartRAG.Services.Database
 
                     var systemPrompt = _promptBuilder.Build(queryIntent.OriginalQuery, dbQuery, schema, strategy, queryIntent);
 
-                    var sql = await _aiService.GenerateResponseAsync(systemPrompt, new List<string>());
+                    var sql = await _aiService.GenerateResponseAsync(systemPrompt, new List<string>(), cancellationToken);
 
                     var extractedSql = ExtractSQLFromAIResponse(sql);
 

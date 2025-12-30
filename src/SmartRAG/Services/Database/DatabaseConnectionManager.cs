@@ -6,6 +6,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Database
@@ -35,7 +36,7 @@ namespace SmartRAG.Services.Database
             _connections = new ConcurrentDictionary<string, DatabaseConnectionConfig>();
         }
 
-        public async Task InitializeAsync()
+        public async Task InitializeAsync(CancellationToken cancellationToken = default)
         {
             if (_initialized)
             {
@@ -53,10 +54,12 @@ namespace SmartRAG.Services.Database
                 .Where(c => c.Enabled)
                 .ToList(); foreach (var config in enabledConnections)
             {
+                cancellationToken.ThrowIfCancellationRequested();
+                
                 string databaseId = null;
                 try
                 {
-                    databaseId = await GetDatabaseIdAsync(config);
+                    databaseId = await GetDatabaseIdAsync(config, cancellationToken);
                     _connections[databaseId] = config;
 
                     _logger.LogInformation("Registered database connection");
@@ -66,7 +69,7 @@ namespace SmartRAG.Services.Database
                         _logger.LogInformation("Starting schema analysis");
                         try
                         {
-                            await _schemaAnalyzer.AnalyzeDatabaseSchemaAsync(config);
+                            await _schemaAnalyzer.AnalyzeDatabaseSchemaAsync(config, cancellationToken);
                             _logger.LogInformation("Schema analysis completed");
                         }
                         catch (Exception ex)
@@ -86,18 +89,18 @@ namespace SmartRAG.Services.Database
                 _connections.Count);
         }
 
-        public async Task<List<DatabaseConnectionConfig>> GetAllConnectionsAsync()
+        public async Task<List<DatabaseConnectionConfig>> GetAllConnectionsAsync(CancellationToken cancellationToken = default)
         {
             return await Task.FromResult(_connections.Values.ToList());
         }
 
-        public async Task<DatabaseConnectionConfig> GetConnectionAsync(string databaseId)
+        public async Task<DatabaseConnectionConfig> GetConnectionAsync(string databaseId, CancellationToken cancellationToken = default)
         {
             _connections.TryGetValue(databaseId, out var config);
             return await Task.FromResult(config);
         }
 
-        public async Task<bool> ValidateConnectionAsync(string databaseId)
+        public async Task<bool> ValidateConnectionAsync(string databaseId, CancellationToken cancellationToken = default)
         {
             if (!_connections.TryGetValue(databaseId, out var config))
             {
@@ -109,7 +112,8 @@ namespace SmartRAG.Services.Database
             {
                 return await _databaseParserService.ValidateConnectionAsync(
                     config.ConnectionString,
-                    config.DatabaseType);
+                    config.DatabaseType,
+                    cancellationToken);
             }
             catch (Exception ex)
             {
@@ -118,7 +122,7 @@ namespace SmartRAG.Services.Database
             }
         }
 
-        public async Task<string> GetDatabaseIdAsync(DatabaseConnectionConfig connectionConfig)
+        public async Task<string> GetDatabaseIdAsync(DatabaseConnectionConfig connectionConfig, CancellationToken cancellationToken = default)
         {
             if (!string.IsNullOrEmpty(connectionConfig.Name))
             {
@@ -127,7 +131,7 @@ namespace SmartRAG.Services.Database
 
             try
             {
-                var dbName = await ExtractDatabaseNameAsync(connectionConfig);
+                var dbName = await ExtractDatabaseNameAsync(connectionConfig, cancellationToken);
                 return $"{connectionConfig.DatabaseType}_{dbName}_{Guid.NewGuid():N}"[..50];
             }
             catch (Exception ex)
@@ -137,7 +141,7 @@ namespace SmartRAG.Services.Database
             }
         }
 
-        private async Task<string> ExtractDatabaseNameAsync(DatabaseConnectionConfig config)
+        private async Task<string> ExtractDatabaseNameAsync(DatabaseConnectionConfig config, CancellationToken cancellationToken = default)
         {
             var connectionString = config.ConnectionString.ToLower();
 

@@ -1,4 +1,5 @@
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using SmartRAG.Models;
 
@@ -14,8 +15,9 @@ namespace SmartRAG.Interfaces.Parser
         /// </summary>
         /// <param name="imageStream">The image stream to process</param>
         /// <param name="language">The language code for OCR (e.g., "eng", "tur"). If null, uses system locale automatically.</param>
+        /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>The extracted text from the image</returns>
-        Task<string> ExtractTextFromImageAsync(Stream imageStream, string language = null);
+        Task<string> ExtractTextFromImageAsync(Stream imageStream, string language = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Corrects currency symbol misreads in text (e.g., % → ₺, $, €)

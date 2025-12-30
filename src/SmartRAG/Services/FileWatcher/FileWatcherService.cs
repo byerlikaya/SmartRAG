@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Services.FileWatcher
@@ -310,7 +311,7 @@ namespace SmartRAG.Services.FileWatcher
                     var fileName = Path.GetFileName(filePath);
                     var fileInfo = new FileInfo(filePath);
                     var contentType = GetContentType(filePath);
-                    var fileHash = ComputeFileHash(filePath);
+                    var fileHash = await ComputeFileHashAsync(filePath, CancellationToken.None);
 
                     var existingDocuments = await documentService.GetAllDocumentsAsync();
 
@@ -417,7 +418,7 @@ namespace SmartRAG.Services.FileWatcher
 
                         var fileName = Path.GetFileName(filePath);
                         var fileInfo = new FileInfo(filePath);
-                        var fileHash = ComputeFileHash(filePath);
+                        var fileHash = await ComputeFileHashAsync(filePath, CancellationToken.None);
 
                         if (existingHashSet.Contains(fileHash))
                         {
@@ -465,13 +466,21 @@ namespace SmartRAG.Services.FileWatcher
         }
 
 
-        private static string ComputeFileHash(string filePath)
+        private static async Task<string> ComputeFileHashAsync(string filePath, CancellationToken cancellationToken = default)
         {
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 using var md5 = MD5.Create();
-                using var stream = File.OpenRead(filePath);
-                var hash = md5.ComputeHash(stream);
+                using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: true);
+                var buffer = new byte[4096];
+                int bytesRead;
+                while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length, cancellationToken)) > 0)
+                {
+                    md5.TransformBlock(buffer, 0, bytesRead, null, 0);
+                }
+                md5.TransformFinalBlock(Array.Empty<byte>(), 0, 0);
+                var hash = md5.Hash;
                 return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
             }
             catch

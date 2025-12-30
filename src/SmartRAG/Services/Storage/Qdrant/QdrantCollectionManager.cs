@@ -65,7 +65,7 @@ namespace SmartRAG.Services.Storage.Qdrant
             {
                 try
                 {
-                    await InitializeCollectionAsync();
+                    await InitializeCollectionAsync(CancellationToken.None);
                 }
                 catch (Exception ex)
                 {
@@ -77,15 +77,15 @@ namespace SmartRAG.Services.Storage.Qdrant
         /// <summary>
         /// Ensures the main collection exists and is ready for operations
         /// </summary>
-        public async Task EnsureCollectionExistsAsync()
+        public async Task EnsureCollectionExistsAsync(CancellationToken cancellationToken = default)
         {
             if (_collectionReady)
                 return;
 
-            await InitializeCollectionAsync();
+            await InitializeCollectionAsync(cancellationToken);
         }
 
-        private async Task CreateCollectionAsync(string collectionName, int vectorDimension)
+        private async Task CreateCollectionAsync(string collectionName, int vectorDimension, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -114,7 +114,8 @@ namespace SmartRAG.Services.Storage.Qdrant
         /// </summary>
         /// <param name="collectionName">Name of the document collection</param>
         /// <param name="document">Document to store</param>
-        public async Task EnsureDocumentCollectionExistsAsync(string collectionName, SmartRAG.Entities.Document document)
+        /// <param name="cancellationToken">Token to cancel the operation</param>
+        public async Task EnsureDocumentCollectionExistsAsync(string collectionName, SmartRAG.Entities.Document document, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -125,9 +126,9 @@ namespace SmartRAG.Services.Storage.Qdrant
                         return;
                 }
 
-                var vectorDimension = await GetVectorDimensionAsync();
+                var vectorDimension = await GetVectorDimensionAsync(cancellationToken);
 
-                await CreateCollectionAsync(collectionName, vectorDimension);
+                await CreateCollectionAsync(collectionName, vectorDimension, cancellationToken);
             }
             catch (Exception ex)
             {
@@ -136,7 +137,7 @@ namespace SmartRAG.Services.Storage.Qdrant
             }
         }
 
-        private async Task<int> GetVectorDimensionAsync()
+        private async Task<int> GetVectorDimensionAsync(CancellationToken cancellationToken = default)
         {
             try
             {
@@ -192,12 +193,12 @@ namespace SmartRAG.Services.Storage.Qdrant
             GC.SuppressFinalize(this);
         }
 
-        private async Task InitializeCollectionAsync()
+        private async Task InitializeCollectionAsync(CancellationToken cancellationToken = default)
         {
             if (_collectionReady)
                 return;
 
-            await _collectionInitLock.WaitAsync();
+            await _collectionInitLock.WaitAsync(cancellationToken);
 
             try
             {
@@ -208,8 +209,8 @@ namespace SmartRAG.Services.Storage.Qdrant
 
                 if (!collections.Contains(_collectionName))
                 {
-                    var vectorDimension = await GetVectorDimensionAsync();
-                    await CreateCollectionAsync(_collectionName, vectorDimension);
+                    var vectorDimension = await GetVectorDimensionAsync(cancellationToken);
+                    await CreateCollectionAsync(_collectionName, vectorDimension, cancellationToken);
                 }
                 else
                 {
@@ -249,7 +250,7 @@ namespace SmartRAG.Services.Storage.Qdrant
         /// <summary>
         /// Deletes a collection completely
         /// </summary>
-        public async Task DeleteCollectionAsync(string collectionName)
+        public async Task DeleteCollectionAsync(string collectionName, CancellationToken cancellationToken = default)
         {
             try
             {
@@ -271,13 +272,13 @@ namespace SmartRAG.Services.Storage.Qdrant
         /// <summary>
         /// Recreates a collection (deletes and creates anew)
         /// </summary>
-        public async Task RecreateCollectionAsync(string collectionName)
+        public async Task RecreateCollectionAsync(string collectionName, CancellationToken cancellationToken = default)
         {
             try
             {
-                await DeleteCollectionAsync(collectionName);
-                var vectorDimension = await GetVectorDimensionAsync();
-                await CreateCollectionAsync(collectionName, vectorDimension);
+                await DeleteCollectionAsync(collectionName, cancellationToken);
+                var vectorDimension = await GetVectorDimensionAsync(cancellationToken);
+                await CreateCollectionAsync(collectionName, vectorDimension, cancellationToken);
 
                 _logger.LogInformation("Recreated Qdrant collection: {CollectionName}", collectionName);
             }

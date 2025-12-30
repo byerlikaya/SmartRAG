@@ -4,6 +4,7 @@ using SmartRAG.Models;
 using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Database
@@ -32,7 +33,7 @@ namespace SmartRAG.Services.Database
         /// <summary>
         /// [DB Query] Executes queries across multiple databases based on query intent
         /// </summary>
-        public async Task<MultiDatabaseQueryResult> ExecuteMultiDatabaseQueryAsync(QueryIntent queryIntent)
+        public async Task<MultiDatabaseQueryResult> ExecuteMultiDatabaseQueryAsync(QueryIntent queryIntent, CancellationToken cancellationToken = default)
         {
             var stopwatch = Stopwatch.StartNew();
             var result = new MultiDatabaseQueryResult
@@ -42,7 +43,8 @@ namespace SmartRAG.Services.Database
 
             var tasks = queryIntent.DatabaseQueries.Select(async dbQuery =>
             {
-                var dbResult = await ExecuteSingleDatabaseQueryAsync(dbQuery);
+                cancellationToken.ThrowIfCancellationRequested();
+                var dbResult = await ExecuteSingleDatabaseQueryAsync(dbQuery, cancellationToken);
                 return (dbQuery.DatabaseId, dbResult);
             });
 
@@ -65,7 +67,7 @@ namespace SmartRAG.Services.Database
             return result;
         }
 
-        private async Task<DatabaseQueryResult> ExecuteSingleDatabaseQueryAsync(DatabaseQueryIntent dbQuery)
+        private async Task<DatabaseQueryResult> ExecuteSingleDatabaseQueryAsync(DatabaseQueryIntent dbQuery, CancellationToken cancellationToken = default)
         {
             var stopwatch = Stopwatch.StartNew();
             var result = new DatabaseQueryResult
@@ -77,7 +79,7 @@ namespace SmartRAG.Services.Database
 
             try
             {
-                var connection = await _connectionManager.GetConnectionAsync(dbQuery.DatabaseId);
+                var connection = await _connectionManager.GetConnectionAsync(dbQuery.DatabaseId, cancellationToken);
                 if (connection == null)
                 {
                     result.Success = false;
@@ -97,7 +99,8 @@ namespace SmartRAG.Services.Database
                     connection.ConnectionString,
                     dbQuery.GeneratedQuery,
                     connection.DatabaseType,
-                    maxRows);
+                    maxRows,
+                    cancellationToken);
 
                 result.ResultData = queryResult;
                 result.RowCount = CountRowsInResult(queryResult);
