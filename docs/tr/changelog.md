@@ -790,6 +790,16 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
         </thead>
         <tbody>
             <tr>
+                <td><strong>3.6.0</strong></td>
+                <td>2025-12-30</td>
+                <td>CancellationToken Desteği, Performans İyileştirmeleri, Kod Kalitesi Geliştirmeleri</td>
+            </tr>
+            <tr>
+                <td><strong>3.5.0</strong></td>
+                <td>2025-12-27</td>
+                <td>Kod Kalitesi İyileştirmeleri, Mimari Refactoring, SOLID/DRY Uyumluluğu</td>
+            </tr>
+            <tr>
                 <td><strong>3.1.0</strong></td>
                 <td>2025-11-11</td>
                 <td>Birleşik Sorgu Zekası, Akıllı Hibrit Yönlendirme, Yeni Servis Mimarisi</td>
