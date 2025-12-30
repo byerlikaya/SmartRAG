@@ -11,12 +11,75 @@ SmartRAG'deki tüm sürümler ve değişiklikler burada belgelenmiştir.
 
 <div class="accordion mt-4" id="versionAccordion">
     <div class="accordion-item">
+        <h2 class="accordion-header" id="headingversion360">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion360" aria-expanded="true" aria-controls="collapseversion360">
+                <strong>v3.6.0</strong> - 2025-12-30
+            </button>
+        </h2>
+        <div id="collapseversion360" class="accordion-collapse collapse show" aria-labelledby="headingversion360" >
+            <div class="accordion-body">
+{% capture version_content %}
+
+### CancellationToken Desteği ve Performans İyileştirmeleri
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> MINOR Sürüm</h4>
+    <p class="mb-0">
+        Bu sürüm daha iyi kaynak yönetimi ve iptal işleme için kapsamlı CancellationToken desteği eklerken, performans ve kod kalitesini de iyileştiriyor.
+    </p>
+</div>
+
+### ✨ Eklendi
+
+#### CancellationToken Desteği
+- **Kapsamlı Destek**: Tüm async interface metodları artık `CancellationToken cancellationToken = default` parametresi kabul ediyor
+- **Daha İyi Kaynak Yönetimi**: Geliştirilmiş kaynak yönetimi ve zarif iptal işleme
+- **Özel Helper'lar**: Özel helper metodlar iptal desteği için güncellendi
+- **XML Dokümantasyon**: CancellationToken içeren tüm metodlar için XML dokümantasyonu güncellendi
+- **Değiştirilen Dosyalar**:
+  - `src/SmartRAG/Interfaces/` - Tüm async interface metodları güncellendi
+  - `src/SmartRAG/Services/` - Tüm servis implementasyonları güncellendi
+  - `src/SmartRAG/Repositories/` - Tüm repository implementasyonları güncellendi
+  - `src/SmartRAG/Providers/` - Tüm provider implementasyonları güncellendi
+
+### 🔧 İyileştirildi
+
+#### Performans
+- **Native Async I/O**: Task.Run native async dosya I/O metodları ile değiştirildi
+- **Daha İyi Kaynak Kullanımı**: Geliştirilmiş kaynak kullanımı ve azaltılmış overhead
+- **Değiştirilen Dosyalar**:
+  - `src/SmartRAG/Services/FileWatcher/FileWatcherService.cs` - Native async I/O
+  - `src/SmartRAG/Services/Document/DocumentService.cs` - Native async I/O
+
+#### Kod Kalitesi
+- **Log Temizliği**: Gereksiz servis ve repository log'ları kaldırıldı
+- **Geliştirilmiş Okunabilirlik**: Log okunabilirliği ve gürültü azaltma iyileştirildi
+- **Değiştirilen Dosyalar**:
+  - `src/SmartRAG/Services/Shared/ServiceLogMessages.cs` - Log temizliği
+  - `src/SmartRAG/Repositories/RepositoryLogMessages.cs` - Log temizliği
+  - Birden fazla servis ve repository dosyası - Log kaldırma
+
+### 📝 Notlar
+
+- **Geriye Dönük Uyumluluk**: Tüm CancellationToken parametreleri varsayılan değerlere sahip, tam geriye dönük uyumluluk sağlıyor
+- **Geçiş**: Geçiş gerekli değil - mevcut kod değişiklik olmadan çalışmaya devam ediyor
+- **Breaking Changes**: Yok
+- **Kod Kalitesi**: 0 hata, 0 uyarı korundu
+- **Teknik Detaylar**: 59 dosya değiştirildi: 635 ekleme(+), 802 silme(-)
+
+---
+{% endcapture %}
+{{ version_content | markdownify }}
+            </div>
+        </div>
+    </div>
+    <div class="accordion-item">
         <h2 class="accordion-header" id="headingversion350">
-            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion350" aria-expanded="true" aria-controls="collapseversion350">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion350" aria-expanded="false" aria-controls="collapseversion350">
                 <strong>v3.5.0</strong> - 2025-12-27
             </button>
         </h2>
-        <div id="collapseversion350" class="accordion-collapse collapse show" aria-labelledby="headingversion350" >
+        <div id="collapseversion350" class="accordion-collapse collapse" aria-labelledby="headingversion350" >
             <div class="accordion-body">
 {% capture version_content %}
 

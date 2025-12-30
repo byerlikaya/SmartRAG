@@ -6,6 +6,46 @@ All notable changes to SmartRAG will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.6.0] - 2025-12-30
+
+### ✨ Added
+- **CancellationToken Support**: Comprehensive CancellationToken support across all async methods and interfaces
+  - All async interface methods now accept `CancellationToken cancellationToken = default` parameter
+  - Private helper methods updated for cancellation support
+  - Better resource management and graceful cancellation handling
+  - XML documentation updated for all methods with CancellationToken
+  - **Files Modified**:
+    - `src/SmartRAG/Interfaces/` - All async interface methods updated
+    - `src/SmartRAG/Services/` - All service implementations updated
+    - `src/SmartRAG/Repositories/` - All repository implementations updated
+    - `src/SmartRAG/Providers/` - All provider implementations updated
+  - **Benefits**: Better resource management, graceful cancellation, improved async/await patterns
+
+### 🔧 Improved
+- **Performance**: Replaced Task.Run with native async file I/O methods
+  - Improved file I/O operations using native async methods
+  - Better resource utilization and reduced overhead
+  - **Files Modified**:
+    - `src/SmartRAG/Services/FileWatcher/FileWatcherService.cs` - Native async I/O
+    - `src/SmartRAG/Services/Document/DocumentService.cs` - Native async I/O
+  - **Benefits**: Better performance, reduced memory allocation, improved scalability
+
+- **Code Quality**: Removed unnecessary service and repository logs
+  - Cleaned up excessive logging in service layer
+  - Removed unnecessary repository logs
+  - Improved log readability and reduced noise
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Shared/ServiceLogMessages.cs` - Log cleanup
+    - `src/SmartRAG/Repositories/RepositoryLogMessages.cs` - Log cleanup
+    - Multiple service and repository files - Log removal
+  - **Benefits**: Cleaner logs, better performance, improved readability
+
+### 📝 Notes
+- **Backward Compatibility**: All CancellationToken parameters have default values, ensuring full backward compatibility
+- **Migration**: No migration required - existing code continues to work without changes
+- **Breaking Changes**: None
+- **Code Quality**: Maintained 0 errors, 0 warnings
+
 ## [3.5.0] - 2025-12-27
 
 ### 🔧 Improved
