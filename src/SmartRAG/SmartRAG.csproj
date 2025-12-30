@@ -5,7 +5,7 @@
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
-    <PackageVersion>3.5.0</PackageVersion>
+    <PackageVersion>3.6.0</PackageVersion>
     <Authors>Barış Yerlikaya</Authors>
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
@@ -20,37 +20,30 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Release 3.5.0: Code Quality Improvements &amp; Architecture Refactoring (MINOR Release - 2025-12-27)
-
-IMPROVEMENTS:
-- Code Quality: Comprehensive refactoring across services, providers, and interfaces for better SOLID/DRY compliance
-- Interface Consistency: Renamed ISQLQueryGenerator to ISqlQueryGenerator for naming consistency
-- Code Duplication Elimination: Removed unnecessary wrapper methods and orchestration services
-- Architecture: Improved service layer organization and separation of concerns
-- PDF Parsing: Enhanced PDF parsing and OCR robustness
-- Search Strategy: Improved search strategy implementation and code quality
+    <PackageReleaseNotes>Release 3.6.0: CancellationToken Support &amp; Performance Improvements (MINOR Release - 2025-12-30)
 
 ADDED:
-- QueryIntentAnalysisResult Model: New model for query intent classification results
-- SearchOptions Enhancements: Added factory methods and Clone method to SearchOptions
-- QueryStrategyRequest Consolidation: Unified query strategy request DTOs into single QueryStrategyRequest model
+- CancellationToken Support: Comprehensive CancellationToken support across all async methods and interfaces
+  - All async interface methods now accept CancellationToken parameter
+  - Private helper methods updated for cancellation support
+  - Better resource management and graceful cancellation handling
+  - XML documentation updated for all methods with CancellationToken
 
-CHANGED:
-- Interface Method Signatures: Removed preferredLanguage parameter from interfaces and consolidated method overloads
-- Interface Naming: ISQLQueryGenerator renamed to ISqlQueryGenerator (breaking change for direct interface users)
-- Service Organization: Removed unused ISourceSelectionService and SourceSelectionService
+IMPROVEMENTS:
+- Performance: Replaced Task.Run with native async file I/O methods for better performance
+  - Improved file I/O operations using native async methods
+  - Better resource utilization and reduced overhead
+- Code Quality: Removed unnecessary service and repository logs
+  - Cleaned up excessive logging in service layer
+  - Improved log readability and reduced noise
 
-REMOVED:
-- Unused Services: Removed ISourceSelectionService and SourceSelectionService
-- Unnecessary Wrappers: Removed unnecessary wrapper methods and orchestration services
-
-CODE QUALITY:
+TECHNICAL DETAILS:
+- 59 files changed: 635 insertions(+), 802 deletions(-)
 - Maintained 0 errors, 0 warnings
-- Improved SOLID/DRY compliance across codebase
-- Enhanced maintainability and readability
-- Better separation of concerns
+- Full backward compatibility maintained (CancellationToken parameters have default values)
+- Enhanced async/await patterns throughout codebase
 
-This release focuses on code quality improvements and architecture refactoring. Interface naming changes may require updates if directly using ISQLQueryGenerator interface.</PackageReleaseNotes>
+This release adds comprehensive CancellationToken support for better resource management and cancellation handling, while improving performance and code quality.</PackageReleaseNotes>
     
     <!-- Build Configuration -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -61,8 +54,8 @@ This release focuses on code quality improvements and architecture refactoring. 
     <AssemblyTitle>SmartRAG</AssemblyTitle>
     <AssemblyDescription>High-performance RAG library with conversation history management for .NET</AssemblyDescription>
     <AssemblyCopyright>Copyright © 2025 Barış Yerlikaya</AssemblyCopyright>
-    <AssemblyVersion>3.5.0.0</AssemblyVersion>
-    <FileVersion>3.5.0.0</FileVersion>
+    <AssemblyVersion>3.6.0.0</AssemblyVersion>
+    <FileVersion>3.6.0.0</FileVersion>
     <NeutralLanguage>en</NeutralLanguage>
     <Culture>en-US</Culture>
   </PropertyGroup>
