@@ -44,6 +44,22 @@ For detailed Docker configuration and management:
 - **Step 6**: Create SQLite test database
 - **Step 7**: View database schemas and relationships
 
+#### **📁 Database Scripts**
+The demo uses Northwind database scripts located in `DatabaseScripts/` directory:
+- `instnwnd.sql` - Reference script (SQL Server, all tables) - **DO NOT MODIFY**
+- `DatabaseScripts/instnwnd.sqlite.sql` - SQLite: Customers, Categories, Suppliers, Products
+- `DatabaseScripts/instnwnd.mysql.sql` - MySQL: Shippers, CustomerDemographics, CustomerCustomerDemo
+- `DatabaseScripts/instnwnd.postgresql.sql` - PostgreSQL: Employees, Region, Territories, EmployeeTerritories
+- `DatabaseScripts/instnwnd.sqlserver.sql` - SQL Server: Orders, Order Details
+
+Each script contains:
+- DROP TABLE statements for clean database creation
+- CREATE TABLE statements with proper data types for each database
+- Indexes for optimal query performance
+- Foreign key constraints where applicable
+
+**Note**: INSERT statements are directly included in the database-specific SQL files, extracted from the reference `instnwnd.sql` file.
+
 ### **🤖 AI & Query Testing**
 - **Step 8**: Query analysis - see how natural language converts to SQL
 - **Step 9**: Automatic test queries - pre-built scenarios
