@@ -362,7 +362,32 @@ namespace SmartRAG.Services.Database
                 if (row.Table.Columns.Contains("CHARACTER_MAXIMUM_LENGTH") &&
                     row["CHARACTER_MAXIMUM_LENGTH"] != DBNull.Value)
                 {
-                    column.MaxLength = Convert.ToInt32(row["CHARACTER_MAXIMUM_LENGTH"]);
+                    var maxLengthValue = row["CHARACTER_MAXIMUM_LENGTH"];
+                    // Handle LONGBLOB/BLOB types that may return -1 or very large values
+                    if (maxLengthValue is long longValue)
+                    {
+                        if (longValue > int.MaxValue || longValue < int.MinValue)
+                        {
+                            // For BLOB types, set to null or a reasonable max
+                            column.MaxLength = null;
+                        }
+                        else
+                        {
+                            column.MaxLength = (int)longValue;
+                        }
+                    }
+                    else
+                    {
+                        try
+                        {
+                            column.MaxLength = Convert.ToInt32(maxLengthValue);
+                        }
+                        catch (OverflowException)
+                        {
+                            // For BLOB/LONGBLOB types, set to null
+                            column.MaxLength = null;
+                        }
+                    }
                 }
 
                 columns.Add(column);
