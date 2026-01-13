@@ -271,6 +271,11 @@ config.json
 *.backup
 *.bak
 
+# Exception: DatabaseBackups folder (required for test database restoration)
+!examples/SmartRAG.Demo/DatabaseBackups/*.db
+!examples/SmartRAG.Demo/DatabaseBackups/*.bak
+!examples/SmartRAG.Demo/DatabaseBackups/*.sql
+
 # Package outputs
 nupkgs/
 *.nupkg

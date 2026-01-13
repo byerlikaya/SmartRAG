@@ -3,6 +3,7 @@ services:
   smartrag-sqlserver:
     image: mcr.microsoft.com/mssql/server:2022-latest
     container_name: smartrag-sqlserver-test
+    platform: linux/amd64
     env_file:
       - .env
     environment:
