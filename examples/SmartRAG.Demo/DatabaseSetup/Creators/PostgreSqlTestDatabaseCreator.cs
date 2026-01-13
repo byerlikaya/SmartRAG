@@ -4,13 +4,12 @@ using Microsoft.Extensions.Logging;
 using SmartRAG.Demo.DatabaseSetup.Interfaces;
 using SmartRAG.Enums;
 using System.Linq;
-using System.Text;
 
 namespace SmartRAG.Demo.DatabaseSetup.Creators;
 
 /// <summary>
-/// PostgreSQL test database creator implementation for Northwind HR & Geography
-/// Domain: Northwind HR & Geography (Employees, Region, Territories, EmployeeTerritories)
+/// PostgreSQL test database creator implementation
+/// Restores database from backup file based on configuration
 /// Follows SOLID principles - Single Responsibility Principle
 /// </summary>
 public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
@@ -47,8 +46,7 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
         
         if (_configuration != null)
         {
-            var connectionString = _configuration.GetConnectionString("LogisticsManagement") ?? 
-                                 _configuration["DatabaseConnections:3:ConnectionString"];
+            var connectionString = FindConnectionStringByType(DatabaseType.PostgreSQL);
             
             if (!string.IsNullOrEmpty(connectionString))
             {
@@ -60,11 +58,10 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
             }
         }
         
-        // Fallback to defaults if not found in config
         _server = server ?? "localhost";
         _port = port;
         _user = user ?? "postgres";
-        _databaseName = databaseName ?? "LogisticsManagement";
+        _databaseName = databaseName ?? "TestDatabase";
     }
 
         #endregion
@@ -82,8 +79,7 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
         {
             if (_configuration != null)
             {
-                var connectionString = _configuration.GetConnectionString("LogisticsManagement") ?? 
-                                     _configuration["DatabaseConnections:3:ConnectionString"];
+                var connectionString = FindConnectionStringByType(DatabaseType.PostgreSQL);
                 
                 if (!string.IsNullOrEmpty(connectionString))
                 {
@@ -99,11 +95,6 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
             return string.IsNullOrEmpty(envPassword)
                 ? throw new InvalidOperationException("PostgreSQL password not found in configuration or environment variables")
                 : envPassword;
-        }
-
-        public string GetDescription()
-        {
-            return "PostgreSQL - Northwind HR & Geography (Employees, Region, Territories, EmployeeTerritories - EmployeeID self-reference)";
         }
 
         public bool ValidateConnectionString(string connectionString)
@@ -129,29 +120,20 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
 
     public async Task CreateSampleDatabaseAsync(string connectionString, CancellationToken cancellationToken)
     {
-        _logger?.LogInformation("Starting Northwind PostgreSQL database creation");
-
         try
         {
             NpgsqlConnection.ClearAllPools();
 
-            _logger?.LogInformation("Step 1/3: Creating database");
             await CreateDatabaseAsync(cancellationToken);
-            _logger?.LogInformation("Database {DatabaseName} created successfully", _databaseName);
-
             await Task.Delay(DatabaseCreationDelayMilliseconds, cancellationToken);
-
-            _logger?.LogInformation("Step 2/3: Executing SQL script");
-            await ExecuteWithRetryAsync(connectionString, (conn) => ExecuteSqlScriptAsync(conn, cancellationToken), DefaultMaxRetries);
-            _logger?.LogInformation("SQL script executed successfully");
-
-            _logger?.LogInformation("Northwind PostgreSQL database created successfully");
+            await RestoreFromBackupAsync(connectionString, cancellationToken);
+            _logger?.LogInformation("PostgreSQL database {DatabaseName} created successfully", _databaseName);
             
             await VerifyDatabaseAsync(connectionString, cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to create Northwind PostgreSQL database");
+            _logger?.LogError(ex, "Failed to create PostgreSQL database {DatabaseName}", _databaseName);
             throw;
         }
     }
@@ -200,7 +182,6 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
                 if (retryCount < maxRetries)
                 {
                     var delay = BaseRetryDelayMilliseconds * retryCount;
-                    _logger?.LogWarning(ex, "Connection interrupted, retrying ({RetryCount}/{MaxRetries}) after {Delay}ms", retryCount, maxRetries, delay);
                     await Task.Delay(delay);
                 }
             }
@@ -247,11 +228,15 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
                         await terminateCmd.ExecuteNonQueryAsync(cancellationToken);
                     }
 
+                    await Task.Delay(1000, cancellationToken);
+
                     using (var dropCmd = connection.CreateCommand())
                     {
                         dropCmd.CommandText = $"DROP DATABASE IF EXISTS \"{_databaseName}\"";
                         await dropCmd.ExecuteNonQueryAsync(cancellationToken);
                     }
+                    
+                    await Task.Delay(500, cancellationToken);
                 }
             }
 
@@ -264,46 +249,273 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
     }
 
     /// <summary>
-    /// Executes the SQL script file to create tables and insert data
+    /// Restores PostgreSQL database from backup file using psql command (supports both Docker and local installations)
     /// </summary>
-    /// <param name="connection">Database connection</param>
+    /// <param name="connectionString">Database connection string</param>
     /// <param name="cancellationToken">Token to cancel the operation</param>
-    private async Task ExecuteSqlScriptAsync(NpgsqlConnection connection, CancellationToken cancellationToken = default)
+    private async Task RestoreFromBackupAsync(string connectionString, CancellationToken cancellationToken = default)
     {
-        var sqlFilePath = FindSqlScriptFilePath("instnwnd.postgresql.sql");
-        _logger?.LogInformation("Executing SQL script: {FilePath}", sqlFilePath);
+        var backupFileName = GetBackupFileName();
+        var backupFilePath = FindBackupFilePath(backupFileName);
         
-        var sqlContent = await File.ReadAllTextAsync(sqlFilePath, cancellationToken);
-        var statements = SplitSqlStatements(sqlContent);
+        if (!File.Exists(backupFilePath))
+        {
+            throw new FileNotFoundException($"Backup file not found. Expected: {backupFilePath}");
+        }
         
-        using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        
         try
         {
-            foreach (var statement in statements)
-            {
-                if (string.IsNullOrWhiteSpace(statement) || statement.Trim().StartsWith("--"))
-                    continue;
-                
-                cancellationToken.ThrowIfCancellationRequested();
-                
-                using var command = new NpgsqlCommand(statement, connection, transaction);
-                await command.ExecuteNonQueryAsync(cancellationToken);
-            }
+            var password = GetPassword();
+            var containerName = await FindPostgreSqlContainerNameAsync();
             
-            await transaction.CommitAsync(cancellationToken);
-            _logger?.LogInformation("SQL script executed successfully");
+            if (!string.IsNullOrEmpty(containerName))
+            {
+                await RestoreInDockerContainerAsync(containerName, backupFilePath, password, cancellationToken);
+            }
+            else
+            {
+                await RestoreLocalAsync(backupFilePath, password, cancellationToken);
+            }
         }
-        catch
+        catch (Exception ex)
         {
-            await transaction.RollbackAsync(cancellationToken);
+            _logger?.LogError(ex, "Error restoring backup file: {BackupPath}. Error: {Error}", backupFilePath, ex.Message);
             throw;
         }
     }
     
     /// <summary>
-    /// Finds the SQL script file path relative to the project root
+    /// Restores PostgreSQL database in Docker container
     /// </summary>
-    private static string FindSqlScriptFilePath(string fileName)
+    private async Task RestoreInDockerContainerAsync(string containerName, string backupFilePath, string password, CancellationToken cancellationToken)
+    {
+        var containerBackupPath = "/tmp/restore.sql";
+        
+        var copyResult = await CopyBackupToContainerAsync(backupFilePath, containerName, containerBackupPath);
+        if (!copyResult)
+        {
+            throw new InvalidOperationException($"Failed to copy backup file to container: {containerName}");
+        }
+        
+        await Task.Run(() =>
+        {
+            var escapedPath = containerBackupPath.Replace("'", "'\"'\"'");
+            var processInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "docker",
+                Arguments = $"exec {containerName} sh -c \"sed '/^\\\\\\\\restrict/d' {escapedPath} | sed -E 's/^CREATE SCHEMA (\\\"[^\\\"]+\\\"|\\w+)/CREATE SCHEMA IF NOT EXISTS \\1/i' > /tmp/restore_cleaned.sql && PGPASSWORD='{password}' psql -U {_user} -d {_databaseName} -f /tmp/restore_cleaned.sql 2>&1 | grep -v 'already exists' || true\"",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+            
+            using var process = System.Diagnostics.Process.Start(processInfo);
+            if (process == null)
+            {
+                throw new InvalidOperationException("Failed to start docker exec process");
+            }
+            
+            var output = process.StandardOutput.ReadToEnd();
+            var error = process.StandardError.ReadToEnd();
+            
+            process.WaitForExit(600000);
+            
+            var allOutput = output + error;
+            
+            var ignoreableErrors = new[]
+            {
+                "already exists",
+                "duplicate key",
+                "multiple primary keys",
+                "constraint.*already exists"
+            };
+            
+            var hasIgnorableError = ignoreableErrors.Any(err => 
+                allOutput.Contains(err, StringComparison.OrdinalIgnoreCase));
+            
+            var hasFatalError = allOutput.Contains("FATAL:", StringComparison.OrdinalIgnoreCase) ||
+                               (process.ExitCode != 0 && !hasIgnorableError && 
+                                !string.IsNullOrWhiteSpace(allOutput.Trim()));
+            
+            if (hasFatalError)
+            {
+                var errorMessage = string.IsNullOrWhiteSpace(error) ? output : error;
+                if (!string.IsNullOrWhiteSpace(allOutput))
+                {
+                    errorMessage = allOutput;
+                }
+                throw new InvalidOperationException($"PostgreSQL restore failed with exit code {process.ExitCode}: {errorMessage}");
+            }
+        }, cancellationToken);
+    }
+    
+    /// <summary>
+    /// Restores PostgreSQL database using local psql command
+    /// </summary>
+    private async Task RestoreLocalAsync(string backupFilePath, string password, CancellationToken cancellationToken)
+    {
+        await Task.Run(() =>
+        {
+            var tempCleanedPath = Path.Combine(Path.GetTempPath(), $"restore_cleaned_{Guid.NewGuid():N}.sql");
+            
+            try
+            {
+                var cleanedContent = File.ReadAllLines(backupFilePath)
+                    .Where(line => !line.StartsWith("\\restrict", StringComparison.OrdinalIgnoreCase))
+                    .Select(line => 
+                    {
+                        if (line.TrimStart().StartsWith("CREATE SCHEMA", StringComparison.OrdinalIgnoreCase) &&
+                            !line.Contains("IF NOT EXISTS", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return line.Replace("CREATE SCHEMA", "CREATE SCHEMA IF NOT EXISTS", StringComparison.OrdinalIgnoreCase);
+                        }
+                        return line;
+                    })
+                    .ToArray();
+                File.WriteAllLines(tempCleanedPath, cleanedContent);
+                
+                var escapedPath = tempCleanedPath.Replace("'", "'\"'\"'");
+                var processInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "psql",
+                    Arguments = $"-h {_server} -p {_port} -U {_user} -d {_databaseName} -f \"{escapedPath}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+                
+                processInfo.Environment["PGPASSWORD"] = password;
+                
+                using var process = System.Diagnostics.Process.Start(processInfo);
+                if (process == null)
+                {
+                    throw new InvalidOperationException("Failed to start psql process. Make sure PostgreSQL client tools are installed and psql is in PATH.");
+                }
+                
+                var output = process.StandardOutput.ReadToEnd();
+                var error = process.StandardError.ReadToEnd();
+                
+                process.WaitForExit(600000);
+                
+                var allOutput = output + error;
+                
+                var ignoreableErrors = new[]
+                {
+                    "already exists",
+                    "duplicate key",
+                    "multiple primary keys",
+                    "constraint.*already exists"
+                };
+                
+                var hasIgnorableError = ignoreableErrors.Any(err => 
+                    allOutput.Contains(err, StringComparison.OrdinalIgnoreCase));
+                
+                var hasFatalError = allOutput.Contains("FATAL:", StringComparison.OrdinalIgnoreCase) ||
+                                   (process.ExitCode != 0 && !hasIgnorableError && 
+                                    !string.IsNullOrWhiteSpace(allOutput.Trim()));
+                
+                if (hasFatalError)
+                {
+                    var errorMessage = string.IsNullOrWhiteSpace(error) ? output : error;
+                    if (!string.IsNullOrWhiteSpace(allOutput))
+                    {
+                        errorMessage = allOutput;
+                    }
+                    throw new InvalidOperationException($"PostgreSQL restore failed with exit code {process.ExitCode}: {errorMessage}");
+                }
+            }
+            finally
+            {
+                if (File.Exists(tempCleanedPath))
+                {
+                    try { File.Delete(tempCleanedPath); } catch { }
+                }
+            }
+        }, cancellationToken);
+    }
+    
+    /// <summary>
+    /// Finds PostgreSQL Docker container name by checking port 5432
+    /// </summary>
+    private async Task<string?> FindPostgreSqlContainerNameAsync()
+    {
+        return await Task.Run(() =>
+        {
+            try
+            {
+                var processInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "docker",
+                    Arguments = "ps --filter \"publish=5432\" --format \"{{.Names}}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+                
+                using var process = System.Diagnostics.Process.Start(processInfo);
+                if (process == null) return null;
+                
+                var output = process.StandardOutput.ReadToEnd();
+                process.WaitForExit(5000);
+                
+                if (process.ExitCode == 0 && !string.IsNullOrWhiteSpace(output))
+                {
+                    var containerName = output.Trim().Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+                    return containerName;
+                }
+                
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to find PostgreSQL container: {Error}", ex.Message);
+                return null;
+            }
+        });
+    }
+    
+    /// <summary>
+    /// Copies backup file to Docker container
+    /// </summary>
+    private async Task<bool> CopyBackupToContainerAsync(string localBackupPath, string containerName, string containerPath)
+    {
+        return await Task.Run(() =>
+        {
+            try
+            {
+                var processInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "docker",
+                    Arguments = $"cp \"{localBackupPath}\" {containerName}:{containerPath}",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+                
+                using var process = System.Diagnostics.Process.Start(processInfo);
+                if (process == null) return false;
+                
+                process.WaitForExit(300000);
+                return process.ExitCode == 0;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to copy backup to container: {Error}", ex.Message);
+                return false;
+            }
+        });
+    }
+    
+    /// <summary>
+    /// Finds the backup file path relative to the project root
+    /// </summary>
+    private static string FindBackupFilePath(string fileName)
     {
         var assemblyLocation = System.Reflection.Assembly.GetExecutingAssembly().Location;
         var currentDir = Path.GetDirectoryName(assemblyLocation) ?? Directory.GetCurrentDirectory();
@@ -314,14 +526,14 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
             throw new FileNotFoundException("Could not find project root directory.");
         }
         
-        var sqlFilePath = Path.Combine(projectRoot, "examples", "SmartRAG.Demo", "DatabaseScripts", fileName);
+        var backupFilePath = Path.Combine(projectRoot, "examples", "SmartRAG.Demo", "DatabaseBackups", fileName);
         
-        if (!File.Exists(sqlFilePath))
+        if (!File.Exists(backupFilePath))
         {
-            throw new FileNotFoundException($"SQL script file not found. Searched: {sqlFilePath}");
+            throw new FileNotFoundException($"Backup file not found. Searched: {backupFilePath}");
         }
         
-        return sqlFilePath;
+        return backupFilePath;
     }
     
     /// <summary>
@@ -342,126 +554,71 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
     }
     
     /// <summary>
-    /// Splits SQL content into individual statements (handles semicolons and GO commands)
-    /// </summary>
-    private static List<string> SplitSqlStatements(string sqlContent)
-    {
-        var statements = new List<string>();
-        var currentStatement = new StringBuilder();
-        var inQuotes = false;
-        var quoteChar = '\0';
-        
-        var lines = sqlContent.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-        
-        foreach (var line in lines)
-        {
-            var trimmedLine = line.Trim();
-            
-            if (trimmedLine.StartsWith("--") || string.IsNullOrWhiteSpace(trimmedLine))
-                continue;
-            
-            if (trimmedLine.Equals("GO", StringComparison.OrdinalIgnoreCase))
-            {
-                if (currentStatement.Length > 0)
-                {
-                    statements.Add(currentStatement.ToString().Trim());
-                    currentStatement.Clear();
-                }
-                continue;
-            }
-            
-            for (int i = 0; i < line.Length; i++)
-            {
-                var ch = line[i];
-                
-                if (!inQuotes && (ch == '\'' || ch == '"'))
-                {
-                    inQuotes = true;
-                    quoteChar = ch;
-                    currentStatement.Append(ch);
-                }
-                else if (inQuotes && ch == quoteChar)
-                {
-                    if (i + 1 < line.Length && line[i + 1] == quoteChar)
-                    {
-                        currentStatement.Append(ch).Append(ch);
-                        i++;
-                    }
-                    else
-                    {
-                        inQuotes = false;
-                        quoteChar = '\0';
-                        currentStatement.Append(ch);
-                    }
-                }
-                else if (!inQuotes && ch == ';')
-                {
-                    currentStatement.Append(ch);
-                    if (currentStatement.Length > 0)
-                    {
-                        statements.Add(currentStatement.ToString().Trim());
-                        currentStatement.Clear();
-                    }
-                }
-                else
-                {
-                    currentStatement.Append(ch);
-                }
-            }
-            
-            currentStatement.Append('\n');
-        }
-        
-        if (currentStatement.Length > 0)
-        {
-            statements.Add(currentStatement.ToString().Trim());
-        }
-        
-        return statements.Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
-    }
-
-    /// <summary>
-    /// Verifies the database by querying table row counts
+    /// Verifies the database by checking table existence
     /// </summary>
     /// <param name="connectionString">Database connection string</param>
     /// <param name="cancellationToken">Token to cancel the operation</param>
     private async Task VerifyDatabaseAsync(string connectionString, CancellationToken cancellationToken = default)
     {
-        using (var connection = new NpgsqlConnection(connectionString))
+        using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = @"
+            SELECT COUNT(*) 
+            FROM information_schema.tables 
+            WHERE table_schema NOT IN ('pg_catalog', 'information_schema') 
+            AND table_type = 'BASE TABLE'";
+        
+        var tableCount = await cmd.ExecuteScalarAsync(cancellationToken);
+        
+        if (tableCount == null || Convert.ToInt32(tableCount) == 0)
         {
-            await connection.OpenAsync(cancellationToken);
+            throw new InvalidOperationException("Database verification failed: No tables found");
+        }
+    }
 
-            using (var cmd = connection.CreateCommand())
+    /// <summary>
+    /// Finds connection string from DatabaseConnections array by database type
+    /// </summary>
+    private string? FindConnectionStringByType(DatabaseType databaseType)
+    {
+        if (_configuration == null)
+            return null;
+        
+        var databaseTypeStr = databaseType.ToString();
+        var connectionsSection = _configuration.GetSection("DatabaseConnections");
+        
+        if (!connectionsSection.Exists())
+            return null;
+        
+        var connections = connectionsSection.GetChildren();
+        foreach (var connection in connections)
+        {
+            var type = connection["DatabaseType"];
+            if (string.Equals(type, databaseTypeStr, StringComparison.OrdinalIgnoreCase))
             {
-                cmd.CommandText = @"
-                    SELECT 
-                        table_name as TableName,
-                        (SELECT COUNT(*) FROM information_schema.columns WHERE table_name = t.table_name) as TotalColumns
-                    FROM information_schema.tables t
-                    WHERE table_schema = 'public'
-                    AND table_type = 'BASE TABLE'
-                    ORDER BY table_name";
-
-                using (var reader = await cmd.ExecuteReaderAsync(cancellationToken))
+                var connectionString = connection["ConnectionString"];
+                if (!string.IsNullOrEmpty(connectionString))
                 {
-                    while (await reader.ReadAsync(cancellationToken))
-                    {
-                        var tableName = reader["TableName"].ToString();
-                        
-                        using (var countConn = new NpgsqlConnection(connectionString))
-                        {
-                            await countConn.OpenAsync(cancellationToken);
-                            using (var countCmd = countConn.CreateCommand())
-                            {
-                                countCmd.CommandText = $"SELECT COUNT(*) FROM \"{tableName}\"";
-                                var rowCount = await countCmd.ExecuteScalarAsync(cancellationToken);
-                                _logger?.LogInformation("Table {TableName}: {RowCount} rows", tableName, rowCount);
-                            }
-                        }
-                    }
+                    return connectionString;
                 }
             }
         }
+        
+        return null;
+    }
+    
+    /// <summary>
+    /// Generates backup file name from database name (lowercase, sanitized)
+    /// </summary>
+    private string GetBackupFileName()
+    {
+        var sanitizedName = _databaseName.ToLowerInvariant()
+            .Replace(" ", "")
+            .Replace("-", "")
+            .Replace("_", "");
+        return $"{sanitizedName}.backup.sql";
     }
 
     #endregion

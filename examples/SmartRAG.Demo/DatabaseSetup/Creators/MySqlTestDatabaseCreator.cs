@@ -4,13 +4,12 @@ using Microsoft.Extensions.Logging;
 using SmartRAG.Demo.DatabaseSetup.Interfaces;
 using SmartRAG.Enums;
 using System.Linq;
-using System.Text;
 
 namespace SmartRAG.Demo.DatabaseSetup.Creators;
 
 /// <summary>
-/// MySQL test database creator implementation for Northwind Logistics & Customer Segments
-/// Domain: Northwind Logistics & Customer Segments (Shippers, CustomerCustomerDemo, CustomerDemographics)
+/// MySQL test database creator implementation
+/// Restores database from backup file based on configuration
 /// Follows SOLID principles - Single Responsibility Principle
 /// </summary>
 public class MySqlTestDatabaseCreator : ITestDatabaseCreator
@@ -37,12 +36,10 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
     #region Constructor
 
     public MySqlTestDatabaseCreator(IConfiguration? configuration = null, ILogger<MySqlTestDatabaseCreator>? logger = null)
-
     {
         _configuration = configuration;
         _logger = logger;
         
-        // Try to get connection details from configuration first
         string? server = null;
         int port = 3306;
         string? user = null;
@@ -50,8 +47,7 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
         
         if (_configuration != null)
         {
-            var connectionString = _configuration.GetConnectionString("InventoryManagement") ?? 
-                                 _configuration["DatabaseConnections:2:ConnectionString"];
+            var connectionString = FindConnectionStringByType(DatabaseType.MySQL);
             
             if (!string.IsNullOrEmpty(connectionString))
             {
@@ -63,11 +59,10 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
             }
         }
         
-        // Fallback to defaults if not found in config
         _server = server ?? "localhost";
         _port = port;
         _user = user ?? "root";
-        _databaseName = databaseName ?? "InventoryManagement";
+        _databaseName = databaseName ?? "TestDatabase";
     }
 
     #endregion
@@ -85,8 +80,7 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
         {
             if (_configuration != null)
             {
-                var connectionString = _configuration.GetConnectionString("InventoryManagement") ?? 
-                                     _configuration["DatabaseConnections:2:ConnectionString"];
+                var connectionString = FindConnectionStringByType(DatabaseType.MySQL);
                 
                 if (!string.IsNullOrEmpty(connectionString))
                 {
@@ -102,11 +96,6 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
             return string.IsNullOrEmpty(envPassword)
                 ? throw new InvalidOperationException("MySQL password not found in configuration or environment variables")
                 : envPassword;
-        }
-
-        public string GetDescription()
-        {
-            return "MySQL - Northwind Master Data & Logistics (Categories, Shippers, CustomerCustomerDemo, CustomerDemographics, Customers)";
         }
 
         public bool ValidateConnectionString(string connectionString)
@@ -132,27 +121,17 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
 
     public async Task CreateSampleDatabaseAsync(string connectionString, CancellationToken cancellationToken)
     {
-        _logger?.LogInformation("Starting Northwind MySQL database creation");
-
         try
         {
-            _logger?.LogInformation("Step 1/3: Creating database");
             await CreateDatabaseAsync(cancellationToken);
-            _logger?.LogInformation("Database {DatabaseName} created successfully", _databaseName);
-
             await Task.Delay(DatabaseCreationDelayMilliseconds, cancellationToken);
-
-            _logger?.LogInformation("Step 2/3: Executing SQL script");
-            await ExecuteWithRetryAsync(connectionString, (conn) => ExecuteSqlScriptAsync(conn, cancellationToken), DefaultMaxRetries);
-            _logger?.LogInformation("SQL script executed successfully");
-
-            _logger?.LogInformation("Northwind MySQL database created successfully");
-            
+            await RestoreFromBackupAsync(connectionString, cancellationToken);
+            _logger?.LogInformation("MySQL database {DatabaseName} created successfully", _databaseName);
             await VerifyDatabaseAsync(connectionString, cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to create Northwind MySQL database");
+            _logger?.LogError(ex, "Failed to create MySQL database {DatabaseName}", _databaseName);
             throw;
         }
     }
@@ -197,7 +176,6 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
                 if (retryCount < maxRetries)
                 {
                     var delay = BaseRetryDelayMilliseconds * retryCount;
-                    _logger?.LogWarning(ex, "Connection interrupted, retrying ({RetryCount}/{MaxRetries}) after {Delay}ms", retryCount, maxRetries, delay);
                     await Task.Delay(delay);
                 }
             }
@@ -242,46 +220,217 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
     }
 
     /// <summary>
-    /// Executes the SQL script file to create tables and insert data
+    /// Restores MySQL database from backup file
     /// </summary>
-    /// <param name="connection">Database connection</param>
+    /// <param name="connectionString">Database connection string</param>
     /// <param name="cancellationToken">Token to cancel the operation</param>
-    private async Task ExecuteSqlScriptAsync(MySqlConnection connection, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Restores MySQL database from backup file using mysql command (supports both Docker and local installations)
+    /// </summary>
+    /// <param name="connectionString">Database connection string</param>
+    /// <param name="cancellationToken">Token to cancel the operation</param>
+    private async Task RestoreFromBackupAsync(string connectionString, CancellationToken cancellationToken = default)
     {
-        var sqlFilePath = FindSqlScriptFilePath("instnwnd.mysql.sql");
-        _logger?.LogInformation("Executing SQL script: {FilePath}", sqlFilePath);
+        var backupFileName = GetBackupFileName();
+        var backupFilePath = FindBackupFilePath(backupFileName);
         
-        var sqlContent = await File.ReadAllTextAsync(sqlFilePath, cancellationToken);
-        var statements = SplitSqlStatements(sqlContent);
+        if (!File.Exists(backupFilePath))
+        {
+            throw new FileNotFoundException($"Backup file not found. Expected: {backupFilePath}");
+        }
         
-        using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        
         try
         {
-            foreach (var statement in statements)
-            {
-                if (string.IsNullOrWhiteSpace(statement) || statement.Trim().StartsWith("--"))
-                    continue;
-                
-                cancellationToken.ThrowIfCancellationRequested();
-                
-                using var command = new MySqlCommand(statement, connection, transaction);
-                await command.ExecuteNonQueryAsync(cancellationToken);
-            }
+            var password = GetPassword();
+            var containerName = await FindMySqlContainerNameAsync();
             
-            await transaction.CommitAsync(cancellationToken);
-            _logger?.LogInformation("SQL script executed successfully");
+            if (!string.IsNullOrEmpty(containerName))
+            {
+                await RestoreInDockerContainerAsync(containerName, backupFilePath, password, cancellationToken);
+            }
+            else
+            {
+                await RestoreLocalAsync(backupFilePath, password, cancellationToken);
+            }
         }
-        catch
+        catch (Exception ex)
         {
-            await transaction.RollbackAsync(cancellationToken);
+            _logger?.LogError(ex, "Error restoring backup file: {BackupPath}. Error: {Error}", backupFilePath, ex.Message);
             throw;
         }
     }
     
     /// <summary>
-    /// Finds the SQL script file path relative to the project root
+    /// Restores MySQL database in Docker container
     /// </summary>
-    private static string FindSqlScriptFilePath(string fileName)
+    private async Task RestoreInDockerContainerAsync(string containerName, string backupFilePath, string password, CancellationToken cancellationToken)
+    {
+        var containerBackupPath = "/tmp/restore.sql";
+        
+        var copyResult = await CopyBackupToContainerAsync(backupFilePath, containerName, containerBackupPath);
+        if (!copyResult)
+        {
+            throw new InvalidOperationException($"Failed to copy backup file to container: {containerName}");
+        }
+        
+        await Task.Run(() =>
+        {
+            var escapedPath = containerBackupPath.Replace("'", "'\"'\"'");
+            var processInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "docker",
+                Arguments = $"exec {containerName} sh -c \"grep -v '^mysqldump:' {escapedPath} | mysql -u {_user} -p'{password}' {_databaseName}\"",
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+            
+            using var process = System.Diagnostics.Process.Start(processInfo);
+            if (process == null)
+            {
+                throw new InvalidOperationException("Failed to start docker exec process");
+            }
+            
+            var output = process.StandardOutput.ReadToEnd();
+            var error = process.StandardError.ReadToEnd();
+            
+            process.WaitForExit(600000);
+            
+            if (process.ExitCode != 0)
+            {
+                var errorMessage = string.IsNullOrWhiteSpace(error) ? output : error;
+                if (!errorMessage.Contains("[Warning] Using a password"))
+                {
+                    throw new InvalidOperationException($"MySQL restore failed with exit code {process.ExitCode}: {errorMessage}");
+                }
+            }
+        }, cancellationToken);
+    }
+    
+    /// <summary>
+    /// Restores MySQL database using local mysql command
+    /// </summary>
+    private async Task RestoreLocalAsync(string backupFilePath, string password, CancellationToken cancellationToken)
+    {
+        await Task.Run(() =>
+        {
+            var escapedPath = backupFilePath.Replace("'", "'\"'\"'");
+            var shellCommand = "/bin/sh";
+            var shellArgs = $"-c \"grep -v '^mysqldump:' '{escapedPath}' | mysql -h {_server} -P {_port} -u {_user} -p'{password}' {_databaseName}\"";
+            
+            var processInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = shellCommand,
+                Arguments = shellArgs,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+            
+            using var process = System.Diagnostics.Process.Start(processInfo);
+            if (process == null)
+            {
+                throw new InvalidOperationException("Failed to start mysql restore process. Make sure MySQL client tools are installed and mysql is in PATH.");
+            }
+            
+            var output = process.StandardOutput.ReadToEnd();
+            var error = process.StandardError.ReadToEnd();
+            
+            process.WaitForExit(600000);
+            
+            if (process.ExitCode != 0)
+            {
+                var errorMessage = string.IsNullOrWhiteSpace(error) ? output : error;
+                if (!errorMessage.Contains("[Warning] Using a password"))
+                {
+                    throw new InvalidOperationException($"MySQL restore failed with exit code {process.ExitCode}: {errorMessage}");
+                }
+            }
+        }, cancellationToken);
+    }
+    
+    /// <summary>
+    /// Finds MySQL Docker container name by checking port 3306
+    /// </summary>
+    private async Task<string?> FindMySqlContainerNameAsync()
+    {
+        return await Task.Run(() =>
+        {
+            try
+            {
+                var processInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "docker",
+                    Arguments = "ps --filter \"publish=3306\" --format \"{{.Names}}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+                
+                using var process = System.Diagnostics.Process.Start(processInfo);
+                if (process == null) return null;
+                
+                var output = process.StandardOutput.ReadToEnd();
+                process.WaitForExit(5000);
+                
+                if (process.ExitCode == 0 && !string.IsNullOrWhiteSpace(output))
+                {
+                    var containerName = output.Trim().Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+                    return containerName;
+                }
+                
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to find MySQL container: {Error}", ex.Message);
+                return null;
+            }
+        });
+    }
+    
+    /// <summary>
+    /// Copies backup file to Docker container
+    /// </summary>
+    private async Task<bool> CopyBackupToContainerAsync(string localBackupPath, string containerName, string containerPath)
+    {
+        return await Task.Run(() =>
+        {
+            try
+            {
+                var processInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "docker",
+                    Arguments = $"cp \"{localBackupPath}\" {containerName}:{containerPath}",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+                
+                using var process = System.Diagnostics.Process.Start(processInfo);
+                if (process == null) return false;
+                
+                process.WaitForExit(300000);
+                return process.ExitCode == 0;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to copy backup to container: {Error}", ex.Message);
+                return false;
+            }
+        });
+    }
+    
+    /// <summary>
+    /// Finds the backup file path relative to the project root
+    /// </summary>
+    private static string FindBackupFilePath(string fileName)
     {
         var assemblyLocation = System.Reflection.Assembly.GetExecutingAssembly().Location;
         var currentDir = Path.GetDirectoryName(assemblyLocation) ?? Directory.GetCurrentDirectory();
@@ -292,14 +441,14 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
             throw new FileNotFoundException("Could not find project root directory.");
         }
         
-        var sqlFilePath = Path.Combine(projectRoot, "examples", "SmartRAG.Demo", "DatabaseScripts", fileName);
+        var backupFilePath = Path.Combine(projectRoot, "examples", "SmartRAG.Demo", "DatabaseBackups", fileName);
         
-        if (!File.Exists(sqlFilePath))
+        if (!File.Exists(backupFilePath))
         {
-            throw new FileNotFoundException($"SQL script file not found. Searched: {sqlFilePath}");
+            throw new FileNotFoundException($"Backup file not found. Searched: {backupFilePath}");
         }
         
-        return sqlFilePath;
+        return backupFilePath;
     }
     
     /// <summary>
@@ -320,116 +469,71 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
     }
     
     /// <summary>
-    /// Splits SQL content into individual statements (handles semicolons and GO commands)
-    /// </summary>
-    private static List<string> SplitSqlStatements(string sqlContent)
-    {
-        var statements = new List<string>();
-        var currentStatement = new StringBuilder();
-        var inQuotes = false;
-        var quoteChar = '\0';
-        
-        var lines = sqlContent.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-        
-        foreach (var line in lines)
-        {
-            var trimmedLine = line.Trim();
-            
-            if (trimmedLine.StartsWith("--") || string.IsNullOrWhiteSpace(trimmedLine))
-                continue;
-            
-            if (trimmedLine.Equals("GO", StringComparison.OrdinalIgnoreCase))
-            {
-                if (currentStatement.Length > 0)
-                {
-                    statements.Add(currentStatement.ToString().Trim());
-                    currentStatement.Clear();
-                }
-                continue;
-            }
-            
-            for (int i = 0; i < line.Length; i++)
-            {
-                var ch = line[i];
-                
-                if (!inQuotes && (ch == '\'' || ch == '"'))
-                {
-                    inQuotes = true;
-                    quoteChar = ch;
-                    currentStatement.Append(ch);
-                }
-                else if (inQuotes && ch == quoteChar)
-                {
-                    if (i + 1 < line.Length && line[i + 1] == quoteChar)
-                    {
-                        currentStatement.Append(ch).Append(ch);
-                        i++;
-                    }
-                    else
-                    {
-                        inQuotes = false;
-                        quoteChar = '\0';
-                        currentStatement.Append(ch);
-                    }
-                }
-                else if (!inQuotes && ch == ';')
-                {
-                    currentStatement.Append(ch);
-                    if (currentStatement.Length > 0)
-                    {
-                        statements.Add(currentStatement.ToString().Trim());
-                        currentStatement.Clear();
-                    }
-                }
-                else
-                {
-                    currentStatement.Append(ch);
-                }
-            }
-            
-            currentStatement.Append('\n');
-        }
-        
-        if (currentStatement.Length > 0)
-        {
-            statements.Add(currentStatement.ToString().Trim());
-        }
-        
-        return statements.Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
-    }
-
-    /// <summary>
-    /// Verifies the database by querying table row counts
+    /// Verifies the database by checking table existence
     /// </summary>
     /// <param name="connectionString">Database connection string</param>
     /// <param name="cancellationToken">Token to cancel the operation</param>
     private async Task VerifyDatabaseAsync(string connectionString, CancellationToken cancellationToken = default)
     {
-        using (var connection = new MySqlConnection(connectionString))
+        using var connection = new MySqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = @"
+            SELECT COUNT(*) 
+            FROM information_schema.TABLES 
+            WHERE TABLE_SCHEMA = @dbName";
+        
+        cmd.Parameters.AddWithValue("@dbName", _databaseName);
+        var tableCount = await cmd.ExecuteScalarAsync(cancellationToken);
+        
+        if (tableCount == null || Convert.ToInt32(tableCount) == 0)
         {
-            await connection.OpenAsync(cancellationToken);
+            throw new InvalidOperationException("Database verification failed: No tables found");
+        }
+    }
 
-            using (var cmd = connection.CreateCommand())
+    /// <summary>
+    /// Finds connection string from DatabaseConnections array by database type
+    /// </summary>
+    private string? FindConnectionStringByType(DatabaseType databaseType)
+    {
+        if (_configuration == null)
+            return null;
+        
+        var databaseTypeStr = databaseType.ToString();
+        var connectionsSection = _configuration.GetSection("DatabaseConnections");
+        
+        if (!connectionsSection.Exists())
+            return null;
+        
+        var connections = connectionsSection.GetChildren();
+        foreach (var connection in connections)
+        {
+            var type = connection["DatabaseType"];
+            if (string.Equals(type, databaseTypeStr, StringComparison.OrdinalIgnoreCase))
             {
-                cmd.CommandText = @"
-                    SELECT 
-                        TABLE_NAME as TableName,
-                        TABLE_ROWS as TotalRows
-                    FROM information_schema.TABLES
-                    WHERE TABLE_SCHEMA = @dbName
-                    ORDER BY TABLE_NAME";
-                
-                cmd.Parameters.AddWithValue("@dbName", _databaseName);
-
-                using (var reader = await cmd.ExecuteReaderAsync(cancellationToken))
+                var connectionString = connection["ConnectionString"];
+                if (!string.IsNullOrEmpty(connectionString))
                 {
-                    while (await reader.ReadAsync(cancellationToken))
-                    {
-                        _logger?.LogInformation("Table {TableName}: {TotalRows} rows", reader["TableName"], reader["TotalRows"]);
-                    }
+                    return connectionString;
                 }
             }
         }
+        
+        return null;
+    }
+    
+    /// <summary>
+    /// Generates backup file name from database name (lowercase, sanitized)
+    /// </summary>
+    private string GetBackupFileName()
+    {
+        var sanitizedName = _databaseName.ToLowerInvariant()
+            .Replace(" ", "")
+            .Replace("-", "")
+            .Replace("_", "");
+        return $"{sanitizedName}.backup.sql";
     }
 
     #endregion

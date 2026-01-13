@@ -4,13 +4,12 @@ using Microsoft.Extensions.Logging;
 using SmartRAG.Demo.DatabaseSetup.Interfaces;
 using SmartRAG.Enums;
 using System.Linq;
-using System.Text;
 
 namespace SmartRAG.Demo.DatabaseSetup.Creators;
 
 /// <summary>
-/// SQL Server test database creator implementation for Northwind sales transactions
-/// Domain: Northwind Sales Transactions (Orders, Order Details)
+/// SQL Server test database creator implementation
+/// Restores database from backup file based on configuration
 /// Follows SOLID principles - Single Responsibility Principle
 /// </summary>
 public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
@@ -27,6 +26,7 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
     private readonly ILogger<SqlServerTestDatabaseCreator>? _logger;
     private readonly string _server;
     private readonly string _databaseName;
+    private readonly string _configurationName;
 
     #endregion
 
@@ -38,11 +38,11 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
         _logger = logger;
         string? server = null;
         string? databaseName = null;
+        string? configurationName = null;
 
         if (_configuration != null)
         {
-            var connectionString = _configuration.GetConnectionString("SalesManagement") ??
-                                 _configuration["DatabaseConnections:1:ConnectionString"];
+            var connectionString = FindConnectionStringByType(DatabaseType.SqlServer);
 
             if (!string.IsNullOrEmpty(connectionString))
             {
@@ -50,11 +50,13 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
                 server = builder.DataSource;
                 databaseName = builder.InitialCatalog;
             }
+            
+            configurationName = FindConfigurationNameByType(DatabaseType.SqlServer);
         }
 
-        // Fallback to defaults if not found in config
         _server = server ?? "localhost,1433";
-        _databaseName = databaseName ?? "SalesManagement";
+        _databaseName = databaseName ?? "TestDatabase";
+        _configurationName = configurationName ?? _databaseName;
     }
 
     #endregion
@@ -72,8 +74,7 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
     {
         if (_configuration != null)
         {
-            var connectionString = _configuration.GetConnectionString("SalesManagement") ??
-                                 _configuration["DatabaseConnections:1:ConnectionString"];
+            var connectionString = FindConnectionStringByType(DatabaseType.SqlServer);
 
             if (!string.IsNullOrEmpty(connectionString))
             {
@@ -89,11 +90,6 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
         return string.IsNullOrEmpty(envPassword) 
             ? throw new InvalidOperationException("SQL Server password not found in configuration or environment variables")
             : envPassword;
-    }
-
-    public string GetDescription()
-    {
-        return "SQL Server - Northwind Sales Transactions (Orders, Order Details - CustomerID, ProductID, EmployeeID, ShipperID reference other databases)";
     }
 
     public bool ValidateConnectionString(string connectionString)
@@ -119,29 +115,16 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
 
     public async Task CreateSampleDatabaseAsync(string connectionString, CancellationToken cancellationToken)
     {
-        _logger?.LogInformation("Starting Northwind SQL Server database creation");
-
         try
         {
-            _logger?.LogInformation("Step 1/3: Creating database");
             await CreateDatabaseAsync(cancellationToken);
-            _logger?.LogInformation("Database {DatabaseName} created successfully", _databaseName);
-
-            _logger?.LogInformation("Step 2/3: Executing SQL script");
-            using (var connection = new SqlConnection(connectionString))
-            {
-                await connection.OpenAsync(cancellationToken);
-                await ExecuteSqlScriptAsync(connection, cancellationToken);
-            }
-            _logger?.LogInformation("SQL script executed successfully");
-
-            _logger?.LogInformation("Northwind SQL Server database created successfully");
-
+            await RestoreFromBackupAsync(connectionString, cancellationToken);
+            _logger?.LogInformation("SQL Server database {DatabaseName} created successfully", _databaseName);
             await VerifyDatabaseAsync(connectionString, cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to create Northwind SQL Server database");
+            _logger?.LogError(ex, "Failed to create SQL Server database {DatabaseName}", _databaseName);
             throw;
         }
     }
@@ -187,46 +170,191 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
     }
 
     /// <summary>
-    /// Executes the SQL script file to create tables and insert data
+    /// Restores SQL Server database from backup file
     /// </summary>
-    /// <param name="connection">Database connection</param>
+    /// <param name="connectionString">Database connection string</param>
     /// <param name="cancellationToken">Token to cancel the operation</param>
-    private async Task ExecuteSqlScriptAsync(SqlConnection connection, CancellationToken cancellationToken = default)
+    private async Task RestoreFromBackupAsync(string connectionString, CancellationToken cancellationToken = default)
     {
-        var sqlFilePath = FindSqlScriptFilePath("instnwnd.sqlserver.sql");
-        _logger?.LogInformation("Executing SQL script: {FilePath}", sqlFilePath);
+        var backupFileName = GetBackupFileName();
+        var backupFilePath = FindBackupFilePath(backupFileName);
         
-        var sqlContent = await File.ReadAllTextAsync(sqlFilePath, cancellationToken);
-        var statements = SplitSqlStatements(sqlContent);
+        if (!File.Exists(backupFilePath))
+        {
+            throw new FileNotFoundException($"Backup file not found. Expected: {backupFilePath}");
+        }
         
-        using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        var masterConnectionString = $"Server={_server};Database=master;User Id=sa;Password={GetPassword()};TrustServerCertificate=true;";
+        
+        using var connection = new SqlConnection(masterConnectionString);
+        await connection.OpenAsync(cancellationToken);
+        
         try
         {
-            foreach (var statement in statements)
+            var sanitizedConfigName = _configurationName.ToLowerInvariant()
+                .Replace(" ", "")
+                .Replace("-", "")
+                .Replace("_", "");
+            
+            var containerName = await FindSqlServerContainerNameAsync();
+            if (string.IsNullOrEmpty(containerName))
             {
-                if (string.IsNullOrWhiteSpace(statement) || statement.Trim().StartsWith("--"))
-                    continue;
-                
-                cancellationToken.ThrowIfCancellationRequested();
-                
-                using var command = new SqlCommand(statement, connection, (SqlTransaction)transaction);
-                await command.ExecuteNonQueryAsync(cancellationToken);
+                throw new InvalidOperationException("Could not find SQL Server Docker container. Make sure container is running on port 1433.");
             }
             
-            await transaction.CommitAsync(cancellationToken);
-            _logger?.LogInformation("SQL script executed successfully");
+            var finalBackupPath = $"/var/opt/mssql/data/{sanitizedConfigName}_restore.bak";
+            
+            var copyResult = await CopyBackupToContainerAsync(backupFilePath, containerName, finalBackupPath);
+            if (!copyResult)
+            {
+                throw new InvalidOperationException($"Failed to copy backup file to container: {containerName}");
+            }
+            
+            await SetFilePermissionsAsync(containerName, finalBackupPath);
+            
+            var restoreCommand = $@"
+                ALTER DATABASE [{_databaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+                RESTORE DATABASE [{_databaseName}]
+                FROM DISK = N'{finalBackupPath}'
+                WITH REPLACE, RECOVERY, STATS = 10;
+                ALTER DATABASE [{_databaseName}] SET MULTI_USER;
+            ";
+            
+            using var command = new SqlCommand(restoreCommand, connection);
+            command.CommandTimeout = 600;
+            
+            await command.ExecuteNonQueryAsync(cancellationToken);
         }
-        catch
+        catch (Exception ex)
         {
-            await transaction.RollbackAsync(cancellationToken);
+            _logger?.LogError(ex, "Error restoring backup file: {BackupPath}. Error: {Error}", backupFilePath, ex.Message);
             throw;
         }
     }
     
     /// <summary>
-    /// Finds the SQL script file path relative to the project root
+    /// Finds SQL Server Docker container name by checking port 1433
     /// </summary>
-    private static string FindSqlScriptFilePath(string fileName)
+    private async Task<string?> FindSqlServerContainerNameAsync()
+    {
+        return await Task.Run(() =>
+        {
+            try
+            {
+                var processInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "docker",
+                    Arguments = "ps --filter \"publish=1433\" --format \"{{.Names}}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+                
+                using var process = System.Diagnostics.Process.Start(processInfo);
+                if (process == null) return null;
+                
+                var output = process.StandardOutput.ReadToEnd();
+                process.WaitForExit(5000);
+                
+                if (process.ExitCode == 0 && !string.IsNullOrWhiteSpace(output))
+                {
+                    var containerName = output.Trim().Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+                    return containerName;
+                }
+                
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to find SQL Server container: {Error}", ex.Message);
+                return null;
+            }
+        });
+    }
+    
+    /// <summary>
+    /// Copies backup file to Docker container
+    /// </summary>
+    private async Task<bool> CopyBackupToContainerAsync(string localBackupPath, string containerName, string containerPath)
+    {
+        return await Task.Run(() =>
+        {
+            try
+            {
+                var processInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "docker",
+                    Arguments = $"cp \"{localBackupPath}\" {containerName}:{containerPath}",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+                
+                using var process = System.Diagnostics.Process.Start(processInfo);
+                if (process == null) return false;
+                
+                process.WaitForExit(300000);
+                return process.ExitCode == 0;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to copy backup to container: {Error}", ex.Message);
+                return false;
+            }
+        });
+    }
+    
+    /// <summary>
+    /// Sets file permissions in container so SQL Server can read the backup file
+    /// </summary>
+    private async Task SetFilePermissionsAsync(string containerName, string containerPath)
+    {
+        await Task.Run(() =>
+        {
+            try
+            {
+                var processInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "docker",
+                    Arguments = $"exec -u root {containerName} sh -c \"chown mssql:mssql {containerPath} && chmod 644 {containerPath}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+                
+                using var process = System.Diagnostics.Process.Start(processInfo);
+                if (process == null)
+                {
+                    throw new InvalidOperationException("Failed to start docker exec process for setting file permissions");
+                }
+                
+                var output = process.StandardOutput.ReadToEnd();
+                var error = process.StandardError.ReadToEnd();
+                
+                process.WaitForExit(30000);
+                
+                if (process.ExitCode != 0)
+                {
+                    var errorMessage = string.IsNullOrWhiteSpace(error) ? output : error;
+                    _logger?.LogWarning("Failed to set file permissions in container: {Error}. This may not be critical if SQL Server can still read the file.", errorMessage);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "Failed to set file permissions in container: {Error}. This may not be critical if SQL Server can still read the file.", ex.Message);
+            }
+        });
+    }
+    
+    /// <summary>
+    /// Finds the backup file path relative to the project root
+    /// </summary>
+    /// <param name="fileName">Backup file name</param>
+    /// <returns>Full path to the backup file</returns>
+    private static string FindBackupFilePath(string fileName)
     {
         var assemblyLocation = System.Reflection.Assembly.GetExecutingAssembly().Location;
         var currentDir = Path.GetDirectoryName(assemblyLocation) ?? Directory.GetCurrentDirectory();
@@ -237,14 +365,14 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
             throw new FileNotFoundException("Could not find project root directory.");
         }
         
-        var sqlFilePath = Path.Combine(projectRoot, "examples", "SmartRAG.Demo", "DatabaseScripts", fileName);
+        var backupFilePath = Path.Combine(projectRoot, "examples", "SmartRAG.Demo", "DatabaseBackups", fileName);
         
-        if (!File.Exists(sqlFilePath))
+        if (!File.Exists(backupFilePath))
         {
-            throw new FileNotFoundException($"SQL script file not found. Searched: {sqlFilePath}");
+            throw new FileNotFoundException($"Backup file not found. Searched: {backupFilePath}");
         }
         
-        return sqlFilePath;
+        return backupFilePath;
     }
     
     /// <summary>
@@ -264,117 +392,99 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
         return null;
     }
     
+    
     /// <summary>
-    /// Splits SQL content into individual statements (handles semicolons and GO commands)
-    /// </summary>
-    private static List<string> SplitSqlStatements(string sqlContent)
-    {
-        var statements = new List<string>();
-        var currentStatement = new StringBuilder();
-        var inQuotes = false;
-        var quoteChar = '\0';
-        
-        var lines = sqlContent.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-        
-        foreach (var line in lines)
-        {
-            var trimmedLine = line.Trim();
-            
-            if (trimmedLine.StartsWith("--") || string.IsNullOrWhiteSpace(trimmedLine))
-                continue;
-            
-            if (trimmedLine.Equals("GO", StringComparison.OrdinalIgnoreCase))
-            {
-                if (currentStatement.Length > 0)
-                {
-                    statements.Add(currentStatement.ToString().Trim());
-                    currentStatement.Clear();
-                }
-                continue;
-            }
-            
-            for (int i = 0; i < line.Length; i++)
-            {
-                var ch = line[i];
-                
-                if (!inQuotes && (ch == '\'' || ch == '"'))
-                {
-                    inQuotes = true;
-                    quoteChar = ch;
-                    currentStatement.Append(ch);
-                }
-                else if (inQuotes && ch == quoteChar)
-                {
-                    if (i + 1 < line.Length && line[i + 1] == quoteChar)
-                    {
-                        currentStatement.Append(ch).Append(ch);
-                        i++;
-                    }
-                    else
-                    {
-                        inQuotes = false;
-                        quoteChar = '\0';
-                        currentStatement.Append(ch);
-                    }
-                }
-                else if (!inQuotes && ch == ';')
-                {
-                    currentStatement.Append(ch);
-                    if (currentStatement.Length > 0)
-                    {
-                        statements.Add(currentStatement.ToString().Trim());
-                        currentStatement.Clear();
-                    }
-                }
-                else
-                {
-                    currentStatement.Append(ch);
-                }
-            }
-            
-            currentStatement.Append('\n');
-        }
-        
-        if (currentStatement.Length > 0)
-        {
-            statements.Add(currentStatement.ToString().Trim());
-        }
-        
-        return statements.Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
-    }
-
-    /// <summary>
-    /// Verifies the database by querying table row counts
+    /// Verifies the database by checking table existence
     /// </summary>
     /// <param name="connectionString">Database connection string</param>
     /// <param name="cancellationToken">Token to cancel the operation</param>
     private async Task VerifyDatabaseAsync(string connectionString, CancellationToken cancellationToken = default)
     {
-        using (var connection = new SqlConnection(connectionString))
+        using var connection = new SqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = "SELECT COUNT(*) FROM sys.tables";
+        var tableCount = await cmd.ExecuteScalarAsync(cancellationToken);
+        
+        if (tableCount == null || Convert.ToInt32(tableCount) == 0)
         {
-            await connection.OpenAsync(cancellationToken);
-
-            using (var cmd = connection.CreateCommand())
+            throw new InvalidOperationException("Database verification failed: No tables found");
+        }
+    }
+    
+    /// <summary>
+    /// Finds connection string from DatabaseConnections array by database type
+    /// </summary>
+    private string? FindConnectionStringByType(DatabaseType databaseType)
+    {
+        if (_configuration == null)
+            return null;
+        
+        var databaseTypeStr = databaseType.ToString();
+        var connectionsSection = _configuration.GetSection("DatabaseConnections");
+        
+        if (!connectionsSection.Exists())
+            return null;
+        
+        var connections = connectionsSection.GetChildren();
+        foreach (var connection in connections)
+        {
+            var type = connection["DatabaseType"];
+            if (string.Equals(type, databaseTypeStr, StringComparison.OrdinalIgnoreCase))
             {
-                cmd.CommandText = @"
-                    SELECT 
-                        t.name as TableName,
-                        SUM(p.rows) as TotalRows
-                    FROM sys.tables t
-                    INNER JOIN sys.partitions p ON t.object_id = p.object_id
-                    WHERE p.index_id IN (0,1)
-                    GROUP BY t.name
-                    ORDER BY t.name";
-
-                using (var reader = await cmd.ExecuteReaderAsync(cancellationToken))
+                var connectionString = connection["ConnectionString"];
+                if (!string.IsNullOrEmpty(connectionString))
                 {
-                    while (await reader.ReadAsync(cancellationToken))
-                    {
-                        _logger?.LogInformation("Table {TableName}: {TotalRows} rows", reader["TableName"], reader["TotalRows"]);
-                    }
+                    return connectionString;
                 }
             }
         }
+        
+        return null;
+    }
+    
+    /// <summary>
+    /// Generates backup file name from configuration name (lowercase, sanitized)
+    /// </summary>
+    private string GetBackupFileName()
+    {
+        var sanitizedName = _configurationName.ToLowerInvariant()
+            .Replace(" ", "")
+            .Replace("-", "")
+            .Replace("_", "");
+        return $"{sanitizedName}.backup.bak";
+    }
+
+    /// <summary>
+    /// Finds configuration name from DatabaseConnections array by database type
+    /// </summary>
+    private string? FindConfigurationNameByType(DatabaseType databaseType)
+    {
+        if (_configuration == null)
+            return null;
+        
+        var databaseTypeStr = databaseType.ToString();
+        var connectionsSection = _configuration.GetSection("DatabaseConnections");
+        
+        if (!connectionsSection.Exists())
+            return null;
+        
+        var connections = connectionsSection.GetChildren();
+        foreach (var connection in connections)
+        {
+            var type = connection["DatabaseType"];
+            if (string.Equals(type, databaseTypeStr, StringComparison.OrdinalIgnoreCase))
+            {
+                var name = connection["Name"];
+                if (!string.IsNullOrEmpty(name))
+                {
+                    return name;
+                }
+            }
+        }
+        
+        return null;
     }
 
     #endregion

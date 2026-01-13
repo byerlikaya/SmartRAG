@@ -3,14 +3,12 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SmartRAG.Demo.DatabaseSetup.Interfaces;
 using SmartRAG.Enums;
-using System.Linq;
-using System.Text;
 
 namespace SmartRAG.Demo.DatabaseSetup.Creators;
 
 /// <summary>
-/// SQLite test database creator implementation for Northwind master data
-/// Domain: Northwind Master Data (Customers, Categories, Suppliers, Products)
+/// SQLite test database creator implementation
+/// Restores database from backup file based on configuration
 /// Follows SOLID principles - Single Responsibility Principle
 /// </summary>
 public class SqliteTestDatabaseCreator : ITestDatabaseCreator
@@ -22,6 +20,7 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
 
     private readonly IConfiguration? _configuration;
     private readonly ILogger<SqliteTestDatabaseCreator>? _logger;
+    private readonly string? _configurationName;
 
     #endregion
 
@@ -31,6 +30,11 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
     {
         _configuration = configuration;
         _logger = logger;
+        
+        if (_configuration != null)
+        {
+            _configurationName = FindConfigurationNameByType(DatabaseType.SQLite);
+        }
     }
 
     #endregion
@@ -39,16 +43,18 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
 
     public DatabaseType GetDatabaseType() => DatabaseType.SQLite;
 
-    public string GetDescription() => "SQLite - Northwind Master Data (Suppliers, Products)";
-
         public string GetDefaultConnectionString()
         {
             if (_configuration != null)
             {
-                // First check SQLite specific path
+                var connectionString = FindConnectionStringByType(DatabaseType.SQLite);
+                if (!string.IsNullOrEmpty(connectionString))
+                {
+                    return connectionString;
+                }
+
                 var dbPath = _configuration["DatabaseTests:Sqlite:DatabasePath"];
                 
-                // If SQLite specific path not found, use DefaultDatabasePath
                 if (string.IsNullOrEmpty(dbPath))
                 {
                     dbPath = _configuration["DatabaseTests:DefaultDatabasePath"];
@@ -56,36 +62,43 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
 
                 if (!string.IsNullOrEmpty(dbPath))
                 {
-                    // If relative path, add to current directory
                     if (!Path.IsPathRooted(dbPath))
                     {
-                        var currentDir = Directory.GetCurrentDirectory();
-                        dbPath = Path.Combine(currentDir, dbPath);
+                        var projectRoot = FindProjectRoot();
+                        if (projectRoot != null)
+                        {
+                            dbPath = Path.Combine(projectRoot, dbPath);
+                        }
+                        else
+                        {
+                            var currentDir = Directory.GetCurrentDirectory();
+                            dbPath = Path.Combine(currentDir, dbPath);
+                        }
                     }
 
-                    // Create connection string
-                    var connectionString = $"Data Source={dbPath}";
+                    var cs = $"Data Source={dbPath}";
                     
-                    // Add SQLite specific settings
                     var enableForeignKeys = _configuration["DatabaseTests:Sqlite:EnableForeignKeys"];
                     var connectionTimeout = _configuration["DatabaseTests:Sqlite:ConnectionTimeout"];
                     
                     if (!string.IsNullOrEmpty(enableForeignKeys) && bool.Parse(enableForeignKeys))
                     {
-                        connectionString += ";Foreign Keys=True";
+                        cs += ";Foreign Keys=True";
                     }
                     
                     if (!string.IsNullOrEmpty(connectionTimeout))
                     {
-                        connectionString += $";Connection Timeout={connectionTimeout}";
+                        cs += $";Connection Timeout={connectionTimeout}";
                     }
                     
-                    return connectionString;
+                    return cs;
                 }
             }
 
-            // Fallback: Default path
-            var fallbackPath = Path.Combine(Directory.GetCurrentDirectory(), "test_company.db");
+            var fallbackProjectRoot = FindProjectRoot();
+            var fallbackPath = fallbackProjectRoot != null
+                ? Path.Combine(fallbackProjectRoot, "TestSQLiteData", "LogisticsManagement.db")
+                : Path.Combine(Directory.GetCurrentDirectory(), "LogisticsManagement.db");
             return $"Data Source={fallbackPath};Foreign Keys=True";
         }
 
@@ -124,29 +137,86 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
 
     public async Task CreateSampleDatabaseAsync(string connectionString, CancellationToken cancellationToken)
     {
-        _logger?.LogInformation("Starting Northwind SQLite database creation");
+        var dbPath = ExtractFilePath(connectionString);
+        var dbName = Path.GetFileNameWithoutExtension(dbPath);
 
         try
         {
-            var dbPath = ExtractFilePath(connectionString);
+            if (!Path.IsPathRooted(dbPath))
+            {
+                var projectRoot = FindProjectRoot();
+                if (projectRoot != null)
+                {
+                    dbPath = Path.Combine(projectRoot, dbPath);
+                }
+                else
+                {
+                    dbPath = Path.Combine(Directory.GetCurrentDirectory(), dbPath);
+                }
+            }
+            
+            dbPath = Path.GetFullPath(dbPath);
+            var directory = Path.GetDirectoryName(dbPath);
+            
+            if (string.IsNullOrEmpty(directory))
+            {
+                throw new InvalidOperationException($"Cannot determine directory for database path: {dbPath}");
+            }
+            
+            if (!Directory.Exists(directory))
+            {
+                try
+                {
+                    Directory.CreateDirectory(directory);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Failed to create directory: {Directory}. Error: {Error}", directory, ex.Message);
+                    throw new InvalidOperationException($"Failed to create directory: {directory}. Error: {ex.Message}", ex);
+                }
+            }
             
             if (File.Exists(dbPath))
             {
-                File.Delete(dbPath);
-                _logger?.LogInformation("Existing database deleted");
+                try
+                {
+                    File.SetAttributes(dbPath, FileAttributes.Normal);
+                    File.Delete(dbPath);
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError(ex, "Failed to delete existing database: {DbPath}. Error: {Error}", dbPath, ex.Message);
+                    throw new InvalidOperationException($"Failed to delete existing database: {dbPath}. Error: {ex.Message}", ex);
+                }
             }
 
-            using var connection = new SqliteConnection(connectionString);
+            var resolvedConnectionString = $"Data Source={dbPath};Mode=ReadWriteCreate;Foreign Keys=True";
+            
+            using var connection = new SqliteConnection(resolvedConnectionString);
             await connection.OpenAsync(cancellationToken);
+            
+            using var pragmaCommand = connection.CreateCommand();
+            pragmaCommand.CommandText = "PRAGMA journal_mode=WAL;";
+            await pragmaCommand.ExecuteNonQueryAsync(cancellationToken);
 
-            await ExecuteSqlScriptAsync(connection, cancellationToken);
+            await connection.CloseAsync();
 
-            var fileSize = new FileInfo(dbPath).Length / 1024.0;
-            _logger?.LogInformation("Northwind SQLite database created successfully, Size: {FileSize:F2} KB", fileSize);
+            await RestoreFromBackupAsync(dbPath, cancellationToken);
+
+            if (File.Exists(dbPath))
+            {
+                var fileSize = new FileInfo(dbPath).Length / 1024.0;
+                _logger?.LogInformation("SQLite database {DatabaseName} created successfully, Size: {FileSize:F2} KB", dbName, fileSize);
+            }
+            else
+            {
+                _logger?.LogWarning("Database file was not created at expected path: {DbPath}", dbPath);
+                throw new InvalidOperationException($"Database file was not created at expected path: {dbPath}");
+            }
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Northwind SQLite database creation failed");
+            _logger?.LogError(ex, "SQLite database {DatabaseName} creation failed. Error: {Error}", dbName, ex.Message);
             throw;
         }
     }
@@ -175,165 +245,167 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
     }
 
     /// <summary>
-    /// Executes the SQL script file to create tables and insert data
+    /// Restores SQLite database from backup file
     /// </summary>
-    /// <param name="connection">Database connection</param>
+    /// <param name="targetDbPath">Target database file path</param>
     /// <param name="cancellationToken">Token to cancel the operation</param>
-    private async Task ExecuteSqlScriptAsync(SqliteConnection connection, CancellationToken cancellationToken = default)
+    private async Task RestoreFromBackupAsync(string targetDbPath, CancellationToken cancellationToken = default)
     {
-        var sqlFilePath = FindSqlScriptFilePath("instnwnd.sqlite.sql");
-        _logger?.LogInformation("Executing SQL script: {FilePath}", sqlFilePath);
+        string backupFileName;
+        if (!string.IsNullOrEmpty(_configurationName))
+        {
+            backupFileName = GetBackupFileName(_configurationName);
+        }
+        else
+        {
+            var dbName = Path.GetFileNameWithoutExtension(targetDbPath);
+            backupFileName = GetBackupFileName(dbName);
+        }
         
-        var sqlContent = await File.ReadAllTextAsync(sqlFilePath, cancellationToken);
+        var backupFilePath = FindBackupFilePath(backupFileName);
         
-        var statements = SplitSqlStatements(sqlContent);
+        if (!File.Exists(backupFilePath))
+        {
+            throw new FileNotFoundException($"Backup file not found. Expected: {backupFilePath}");
+        }
         
-        using var transaction = await connection.BeginTransactionAsync(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        
         try
         {
-            foreach (var statement in statements)
+            await Task.Run(() =>
             {
-                if (string.IsNullOrWhiteSpace(statement) || statement.Trim().StartsWith("--"))
-                    continue;
-                
-                cancellationToken.ThrowIfCancellationRequested();
-                
-                using var command = new SqliteCommand(statement, connection, (SqliteTransaction)transaction);
-                await command.ExecuteNonQueryAsync(cancellationToken);
-            }
-            
-            await transaction.CommitAsync(cancellationToken);
-            _logger?.LogInformation("SQL script executed successfully");
+                File.Copy(backupFilePath, targetDbPath, overwrite: true);
+            }, cancellationToken);
         }
-        catch
+        catch (Exception ex)
         {
-            await transaction.RollbackAsync(cancellationToken);
+            _logger?.LogError(ex, "Error restoring backup file: {BackupPath}. Error: {Error}", backupFilePath, ex.Message);
             throw;
         }
     }
     
     /// <summary>
-    /// Finds the SQL script file path relative to the project root
+    /// Finds the backup file path relative to the project root
     /// </summary>
-    /// <param name="fileName">SQL script file name</param>
-    /// <returns>Full path to the SQL script file</returns>
-    private static string FindSqlScriptFilePath(string fileName)
+    /// <param name="fileName">Backup file name</param>
+    /// <returns>Full path to the backup file</returns>
+    private static string FindBackupFilePath(string fileName)
     {
-        var assemblyLocation = System.Reflection.Assembly.GetExecutingAssembly().Location;
-        var currentDir = Path.GetDirectoryName(assemblyLocation) ?? Directory.GetCurrentDirectory();
-        
-        var projectRoot = FindProjectRoot(currentDir);
+        var projectRoot = FindProjectRoot();
         if (projectRoot == null)
         {
             throw new FileNotFoundException("Could not find project root directory.");
         }
         
-        var sqlFilePath = Path.Combine(projectRoot, "examples", "SmartRAG.Demo", "DatabaseScripts", fileName);
+        var backupFilePath = Path.Combine(projectRoot, "DatabaseBackups", fileName);
         
-        if (!File.Exists(sqlFilePath))
+        if (!File.Exists(backupFilePath))
         {
-            throw new FileNotFoundException($"SQL script file not found. Searched: {sqlFilePath}");
+            var alternativePath = Path.Combine(Directory.GetCurrentDirectory(), "DatabaseBackups", fileName);
+            if (File.Exists(alternativePath))
+            {
+                return alternativePath;
+            }
+            throw new FileNotFoundException($"Backup file not found. Searched: {backupFilePath}");
         }
         
-        return sqlFilePath;
+        return backupFilePath;
     }
     
     /// <summary>
     /// Finds the project root directory by searching upwards from the current directory
     /// </summary>
-    private static string? FindProjectRoot(string startDir)
+    private static string? FindProjectRoot(string? startDir = null)
     {
-        var dir = new DirectoryInfo(startDir);
+        var currentDir = startDir ?? Directory.GetCurrentDirectory();
+        var dir = new DirectoryInfo(currentDir);
+        
         while (dir != null)
         {
             if (File.Exists(Path.Combine(dir.FullName, "SmartRAG.sln")))
             {
-                return dir.FullName;
+                return Path.Combine(dir.FullName, "examples", "SmartRAG.Demo");
             }
             dir = dir.Parent;
         }
+        
         return null;
     }
     
     /// <summary>
-    /// Splits SQL content into individual statements (handles semicolons and GO commands)
+    /// Generates backup file name from database name (lowercase, sanitized)
     /// </summary>
-    private static List<string> SplitSqlStatements(string sqlContent)
+    private static string GetBackupFileName(string databaseName)
     {
-        var statements = new List<string>();
-        var currentStatement = new StringBuilder();
-        var inQuotes = false;
-        var quoteChar = '\0';
+        var sanitizedName = databaseName.ToLowerInvariant()
+            .Replace(" ", "")
+            .Replace("-", "")
+            .Replace("_", "");
+        return $"{sanitizedName}.backup.db";
+    }
+    
+    /// <summary>
+    /// Finds connection string from DatabaseConnections array by database type
+    /// </summary>
+    private string? FindConnectionStringByType(DatabaseType databaseType)
+    {
+        if (_configuration == null)
+            return null;
         
-        var lines = sqlContent.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+        var databaseTypeStr = databaseType.ToString();
+        var connectionsSection = _configuration.GetSection("DatabaseConnections");
         
-        foreach (var line in lines)
+        if (!connectionsSection.Exists())
+            return null;
+        
+        var connections = connectionsSection.GetChildren();
+        foreach (var connection in connections)
         {
-            var trimmedLine = line.Trim();
-            
-            if (trimmedLine.StartsWith("--") || string.IsNullOrWhiteSpace(trimmedLine))
-                continue;
-            
-            if (trimmedLine.Equals("GO", StringComparison.OrdinalIgnoreCase))
+            var type = connection["DatabaseType"];
+            if (string.Equals(type, databaseTypeStr, StringComparison.OrdinalIgnoreCase))
             {
-                if (currentStatement.Length > 0)
+                var connectionString = connection["ConnectionString"];
+                if (!string.IsNullOrEmpty(connectionString))
                 {
-                    statements.Add(currentStatement.ToString().Trim());
-                    currentStatement.Clear();
-                }
-                continue;
-            }
-            
-            for (int i = 0; i < line.Length; i++)
-            {
-                var ch = line[i];
-                
-                if (!inQuotes && (ch == '\'' || ch == '"'))
-                {
-                    inQuotes = true;
-                    quoteChar = ch;
-                    currentStatement.Append(ch);
-                }
-                else if (inQuotes && ch == quoteChar)
-                {
-                    if (i + 1 < line.Length && line[i + 1] == quoteChar)
-                    {
-                        currentStatement.Append(ch).Append(ch);
-                        i++;
-                    }
-                    else
-                    {
-                        inQuotes = false;
-                        quoteChar = '\0';
-                        currentStatement.Append(ch);
-                    }
-                }
-                else if (!inQuotes && ch == ';')
-                {
-                    currentStatement.Append(ch);
-                    if (currentStatement.Length > 0)
-                    {
-                        statements.Add(currentStatement.ToString().Trim());
-                        currentStatement.Clear();
-                    }
-                }
-                else
-                {
-                    currentStatement.Append(ch);
+                    return connectionString;
                 }
             }
-            
-            currentStatement.Append('\n');
         }
         
-        if (currentStatement.Length > 0)
-        {
-            statements.Add(currentStatement.ToString().Trim());
-        }
-        
-        return statements.Where(s => !string.IsNullOrWhiteSpace(s)).ToList();
+        return null;
     }
 
+    /// <summary>
+    /// Finds configuration name from DatabaseConnections array by database type
+    /// </summary>
+    private string? FindConfigurationNameByType(DatabaseType databaseType)
+    {
+        if (_configuration == null)
+            return null;
+        
+        var databaseTypeStr = databaseType.ToString();
+        var connectionsSection = _configuration.GetSection("DatabaseConnections");
+        
+        if (!connectionsSection.Exists())
+            return null;
+        
+        var connections = connectionsSection.GetChildren();
+        foreach (var connection in connections)
+        {
+            var type = connection["DatabaseType"];
+            if (string.Equals(type, databaseTypeStr, StringComparison.OrdinalIgnoreCase))
+            {
+                var name = connection["Name"];
+                if (!string.IsNullOrEmpty(name))
+                {
+                    return name;
+                }
+            }
+        }
+        
+        return null;
+    }
 
     #endregion
 }

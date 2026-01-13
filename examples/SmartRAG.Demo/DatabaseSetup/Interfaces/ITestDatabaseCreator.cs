@@ -39,10 +39,4 @@ public interface ITestDatabaseCreator
         /// <param name="connectionString">Connection string to validate</param>
         /// <returns>True if valid, false otherwise</returns>
         bool ValidateConnectionString(string connectionString);
-
-        /// <summary>
-        /// Gets a human-readable description of this database type
-        /// </summary>
-        /// <returns>Database type description</returns>
-        string GetDescription();
 }
