@@ -31,5 +31,9 @@
     </Content>
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="TestSQLiteData\" />
+  </ItemGroup>
+
 </Project>
 

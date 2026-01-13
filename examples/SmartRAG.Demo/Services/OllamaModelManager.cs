@@ -41,203 +41,181 @@ public class OllamaModelManager
 
     #endregion
 
-        #region Public Methods
+    #region Public Methods
 
-        /// <summary>
-        /// Checks if a specific model is installed
-        /// </summary>
-        /// <returns>True if model is installed, false otherwise</returns>
-        public async Task<bool> IsModelInstalledAsync(string modelName)
+    /// <summary>
+    /// Downloads and installs a model from Ollama with retry mechanism
+    /// </summary>
+    /// <returns>Task representing the async operation</returns>
+    public async Task DownloadModelAsync(string modelName, Action<string>? progressCallback = null)
+    {
+        for (int attempt = 1; attempt <= MaxRetryAttempts; attempt++)
         {
             try
             {
-                var installedModels = await ListInstalledModelsAsync();
-                return installedModels.Any(m => m.Equals(modelName, StringComparison.OrdinalIgnoreCase));
-            }
-            catch
-            {
-                return false;
-            }
-        }
+                progressCallback?.Invoke($"Starting download of model: {modelName} (Attempt {attempt}/{MaxRetryAttempts})");
 
-        /// <summary>
-        /// Downloads and installs a model from Ollama with retry mechanism
-        /// </summary>
-        /// <returns>Task representing the async operation</returns>
-        public async Task DownloadModelAsync(string modelName, Action<string>? progressCallback = null)
-        {
-            for (int attempt = 1; attempt <= MaxRetryAttempts; attempt++)
-            {
-                try
-                {
-                    progressCallback?.Invoke($"Starting download of model: {modelName} (Attempt {attempt}/{MaxRetryAttempts})");
+                var payload = new { name = modelName };
+                var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
 
-                    var payload = new { name = modelName };
-                    var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
-
-                    var response = await _httpClient.PostAsync($"{_ollamaEndpoint}/api/pull", content);
-                    response.EnsureSuccessStatusCode();
-
-                    using var stream = await response.Content.ReadAsStreamAsync();
-                    using var reader = new StreamReader(stream);
-
-                    while (!reader.EndOfStream)
-                    {
-                        var line = await reader.ReadLineAsync();
-                        if (!string.IsNullOrEmpty(line))
-                        {
-                            try
-                            {
-                                var json = JsonSerializer.Deserialize<JsonElement>(line);
-                                if (json.TryGetProperty("status", out var status))
-                                {
-                                    progressCallback?.Invoke(status.GetString() ?? "Downloading...");
-                                }
-                            }
-                            catch (JsonException ex)
-                            {
-                                _logger?.LogDebug(ex, "Ignoring JSON parsing error in Ollama response stream");
-                            }
-                        }
-                    }
-
-                    progressCallback?.Invoke($"Model {modelName} downloaded successfully");
-                    return; // Success, exit retry loop
-                }
-                catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
-                {
-                    progressCallback?.Invoke($"Download timeout on attempt {attempt}/{MaxRetryAttempts}. Retrying in 5 seconds...");
-                    
-                    if (attempt < MaxRetryAttempts)
-                    {
-                        _logger?.LogWarning("Download timeout on attempt {Attempt}/{MaxRetries}, retrying in {Delay}ms", attempt, MaxRetryAttempts, RetryDelayMilliseconds);
-                        await Task.Delay(RetryDelayMilliseconds);
-                        continue;
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException($"Model download failed after {MaxRetryAttempts} attempts due to timeout. The model might be too large for your connection. Try a smaller model like 'llama3.2:1b' or 'phi3'.", ex);
-                    }
-                }
-                catch (HttpRequestException ex)
-                {
-                    progressCallback?.Invoke($"Network error on attempt {attempt}/{MaxRetryAttempts}: {ex.Message}");
-                    
-                    if (attempt < MaxRetryAttempts)
-                    {
-                        _logger?.LogWarning(ex, "Network error on attempt {Attempt}/{MaxRetries}, retrying in {Delay}ms", attempt, MaxRetryAttempts, RetryDelayMilliseconds);
-                        await Task.Delay(RetryDelayMilliseconds);
-                        continue;
-                    }
-                    else
-                    {
-                        _logger?.LogError(ex, "Model download failed after {MaxRetries} attempts due to network issues", MaxRetryAttempts);
-                        throw new InvalidOperationException($"Model download failed after {MaxRetryAttempts} attempts due to network issues. Please check your internet connection and Ollama service.", ex);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    progressCallback?.Invoke($"Unexpected error on attempt {attempt}/{MaxRetryAttempts}: {ex.Message}");
-                    
-                    if (attempt < MaxRetryAttempts)
-                    {
-                        _logger?.LogWarning(ex, "Unexpected error on attempt {Attempt}/{MaxRetries}, retrying in {Delay}ms", attempt, MaxRetryAttempts, RetryDelayMilliseconds);
-                        await Task.Delay(RetryDelayMilliseconds);
-                        continue;
-                    }
-                    else
-                    {
-                        throw;
-                    }
-                }
-            }
-        }
-
-        /// <summary>
-        /// Lists all installed models
-        /// </summary>
-        /// <returns>List of installed model names</returns>
-        public async Task<List<string>> ListInstalledModelsAsync()
-        {
-            try
-            {
-                var response = await _httpClient.GetAsync($"{_ollamaEndpoint}/api/tags");
+                var response = await _httpClient.PostAsync($"{_ollamaEndpoint}/api/pull", content);
                 response.EnsureSuccessStatusCode();
 
-                var json = await response.Content.ReadFromJsonAsync<JsonElement>();
-                var models = new List<string>();
+                using var stream = await response.Content.ReadAsStreamAsync();
+                using var reader = new StreamReader(stream);
 
-                if (json.TryGetProperty("models", out var modelsArray))
+                while (!reader.EndOfStream)
                 {
-                    foreach (var model in modelsArray.EnumerateArray())
+                    var line = await reader.ReadLineAsync();
+                    if (!string.IsNullOrEmpty(line))
                     {
-                        if (model.TryGetProperty("name", out var name))
+                        try
                         {
-                            var modelName = name.GetString();
-                            if (!string.IsNullOrEmpty(modelName))
+                            var json = JsonSerializer.Deserialize<JsonElement>(line);
+                            if (json.TryGetProperty("status", out var status))
                             {
-                                models.Add(modelName);
+                                progressCallback?.Invoke(status.GetString() ?? "Downloading...");
                             }
+                        }
+                        catch (JsonException)
+                        {
                         }
                     }
                 }
 
-                return models;
+                progressCallback?.Invoke($"Model {modelName} downloaded successfully");
+                return;
             }
-            catch (Exception ex)
+            catch (TaskCanceledException ex) when (ex.InnerException is TimeoutException)
             {
-                _logger?.LogWarning(ex, "Failed to list installed Ollama models");
-                return new List<string>();
-            }
-        }
-
-        /// <summary>
-        /// Checks if Ollama service is running and accessible
-        /// </summary>
-        /// <returns>True if service is available, false otherwise</returns>
-        public async Task<bool> IsServiceAvailableAsync()
-        {
-            try
-            {
-                var response = await _httpClient.GetAsync($"{_ollamaEndpoint}/api/tags");
-                return response.IsSuccessStatusCode;
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogDebug(ex, "Ollama service is not available at {Endpoint}", _ollamaEndpoint);
-                return false;
-            }
-        }
-
-        /// <summary>
-        /// Gets recommended models for SmartRAG Demo (Optimized for 32GB+ RAM systems)
-        /// </summary>
-        /// <returns>Dictionary of model names and descriptions</returns>
-        public static Dictionary<string, string> GetRecommendedModels()
-        {
-            return new Dictionary<string, string>
-            {
-                // 🏆 Top 5 Models for High-End Systems (32GB+ RAM) - SQL Generation Focus
-                { "deepseek-coder-v2:16b", "⭐ DeepSeek-Coder-V2 16B - Best SQL generation, requires ~12GB RAM" },
-                { "qwen2.5-coder:32b", "🚀 Qwen2.5-Coder 32B - Most powerful for complex SQL, requires ~20GB RAM" },
-                { "codellama:13b-instruct", "💡 CodeLlama 13B Instruct - Meta's SQL specialist, requires ~8GB RAM" },
-                { "qwen2.5-coder:14b", "⚡ Qwen2.5-Coder 14B - Balanced power and speed, requires ~9GB RAM" },
-                { "llama3.1:8b", "📦 Llama 3.1 8B - Lightweight but capable, requires ~5GB RAM" },
+                progressCallback?.Invoke($"Download timeout on attempt {attempt}/{MaxRetryAttempts}. Retrying in 5 seconds...");
                 
-                // Required for RAG (Embeddings)
-                { "nomic-embed-text", "📊 Nomic Embed - Text embedding model (Required for RAG, ~300MB)" }
-            };
+                if (attempt < MaxRetryAttempts)
+                {
+                    await Task.Delay(RetryDelayMilliseconds);
+                    continue;
+                }
+                else
+                {
+                    throw new InvalidOperationException($"Model download failed after {MaxRetryAttempts} attempts due to timeout. The model might be too large for your connection. Try a smaller model like 'llama3.2:1b' or 'phi3'.", ex);
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                progressCallback?.Invoke($"Network error on attempt {attempt}/{MaxRetryAttempts}: {ex.Message}");
+                
+                if (attempt < MaxRetryAttempts)
+                {
+                    await Task.Delay(RetryDelayMilliseconds);
+                    continue;
+                }
+                else
+                {
+                    _logger?.LogError(ex, "Model download failed after {MaxRetries} attempts due to network issues", MaxRetryAttempts);
+                    throw new InvalidOperationException($"Model download failed after {MaxRetryAttempts} attempts due to network issues. Please check your internet connection and Ollama service.", ex);
+                }
+            }
+            catch (Exception ex)
+            {
+                progressCallback?.Invoke($"Unexpected error on attempt {attempt}/{MaxRetryAttempts}: {ex.Message}");
+                
+                if (attempt < MaxRetryAttempts)
+                {
+                    await Task.Delay(RetryDelayMilliseconds);
+                    continue;
+                }
+                else
+                {
+                    throw;
+                }
+            }
         }
+    }
 
-        /// <summary>
-        /// Gets small models recommended for slow connections
-        /// </summary>
-        /// <returns>List of small model names</returns>
-        public static List<string> GetSmallModels()
+    /// <summary>
+    /// Lists all installed models
+    /// </summary>
+    /// <returns>List of installed model names</returns>
+    public async Task<List<string>> ListInstalledModelsAsync()
+    {
+        try
         {
-            return new List<string> { "llama3.2:1b", "phi3", "nomic-embed-text" };
-        }
+            var response = await _httpClient.GetAsync($"{_ollamaEndpoint}/api/tags");
+            response.EnsureSuccessStatusCode();
 
-        #endregion
+            var json = await response.Content.ReadFromJsonAsync<JsonElement>();
+            var models = new List<string>();
+
+            if (json.TryGetProperty("models", out var modelsArray))
+            {
+                foreach (var model in modelsArray.EnumerateArray())
+                {
+                    if (model.TryGetProperty("name", out var name))
+                    {
+                        var modelName = name.GetString();
+                        if (!string.IsNullOrEmpty(modelName))
+                        {
+                            models.Add(modelName);
+                        }
+                    }
+                }
+            }
+
+            return models;
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Failed to list installed Ollama models");
+            return new List<string>();
+        }
+    }
+
+    /// <summary>
+    /// Checks if Ollama service is running and accessible
+    /// </summary>
+    /// <returns>True if service is available, false otherwise</returns>
+    public async Task<bool> IsServiceAvailableAsync()
+    {
+        try
+        {
+            var response = await _httpClient.GetAsync($"{_ollamaEndpoint}/api/tags");
+            return response.IsSuccessStatusCode;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Gets recommended models for SmartRAG Demo (Optimized for 32GB+ RAM systems)
+    /// </summary>
+    /// <returns>Dictionary of model names and descriptions</returns>
+    public static Dictionary<string, string> GetRecommendedModels()
+    {
+        return new Dictionary<string, string>
+        {
+            // 🏆 Top 5 Models for High-End Systems (32GB+ RAM) - SQL Generation Focus
+            { "deepseek-coder-v2:16b", "⭐ DeepSeek-Coder-V2 16B - Best SQL generation, requires ~12GB RAM" },
+            { "qwen2.5-coder:32b", "🚀 Qwen2.5-Coder 32B - Most powerful for complex SQL, requires ~20GB RAM" },
+            { "codellama:13b-instruct", "💡 CodeLlama 13B Instruct - Meta's SQL specialist, requires ~8GB RAM" },
+            { "qwen2.5-coder:14b", "⚡ Qwen2.5-Coder 14B - Balanced power and speed, requires ~9GB RAM" },
+            { "llama3.1:8b", "📦 Llama 3.1 8B - Lightweight but capable, requires ~5GB RAM" },
+            
+            // Required for RAG (Embeddings)
+            { "nomic-embed-text", "📊 Nomic Embed - Text embedding model (Required for RAG, ~300MB)" }
+        };
+    }
+
+    /// <summary>
+    /// Gets small models recommended for slow connections
+    /// </summary>
+    /// <returns>List of small model names</returns>
+    public static List<string> GetSmallModels()
+    {
+        return new List<string> { "llama3.2:1b", "phi3", "nomic-embed-text" };
+    }
+
+    #endregion
 }
 

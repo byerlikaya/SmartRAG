@@ -23,11 +23,6 @@ namespace SmartRAG.API.Contracts
         public DatabaseType DatabaseType { get; set; }
 
         /// <summary>
-        /// Optional description
-        /// </summary>
-        public string? Description { get; set; }
-
-        /// <summary>
         /// Whether the connection is enabled
         /// </summary>
         public bool Enabled { get; set; }
