@@ -272,9 +272,11 @@ config.json
 *.bak
 
 # Exception: DatabaseBackups folder (required for test database restoration)
+# Note: Large .bak files (>100MB) are excluded due to GitHub file size limits
 !examples/SmartRAG.Demo/DatabaseBackups/*.db
-!examples/SmartRAG.Demo/DatabaseBackups/*.bak
 !examples/SmartRAG.Demo/DatabaseBackups/*.sql
+# Exclude large backup files that exceed GitHub's 100MB limit
+examples/SmartRAG.Demo/DatabaseBackups/*.bak
 
 # Package outputs
 nupkgs/
