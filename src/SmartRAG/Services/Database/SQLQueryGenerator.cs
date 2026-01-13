@@ -79,7 +79,8 @@ namespace SmartRAG.Services.Database
 
                     if (!ValidateSql(extractedSql, schema, dbQuery.RequiredTables, strategy, out var validationErrors))
                     {
-                        _logger.LogWarning("Generated SQL failed validation. Errors: {Errors}", string.Join(", ", validationErrors));
+                        _logger.LogWarning("Generated SQL failed validation for database {DatabaseName}. SQL: {Sql}. Errors: {Errors}", 
+                            schema.DatabaseName, extractedSql, string.Join(", ", validationErrors));
                         dbQuery.GeneratedQuery = null;
                         continue;
                     }

@@ -25,11 +25,6 @@ namespace SmartRAG.Models
         public DatabaseType DatabaseType { get; set; }
 
         /// <summary>
-        /// User-provided or auto-generated description
-        /// </summary>
-        public string Description { get; set; }
-
-        /// <summary>
         /// When this schema was last analyzed
         /// </summary>
         public DateTime LastAnalyzed { get; set; } = DateTime.UtcNow;

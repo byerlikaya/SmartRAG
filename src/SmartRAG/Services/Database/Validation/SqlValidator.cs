@@ -50,28 +50,63 @@ namespace SmartRAG.Services.Database.Validation
         {
             var errors = new List<string>();
 
-            var tableMatches = Regex.Matches(sql, @"(?:FROM|JOIN)\s+([a-zA-Z0-9_]+)", RegexOptions.IgnoreCase);
+            var tableMatches = Regex.Matches(sql, @"(?:FROM|JOIN)\s+(\[?[a-zA-Z0-9_]+\]?(?:\]?\.\[?[a-zA-Z0-9_]+\]?)?)", RegexOptions.IgnoreCase);
 
             foreach (Match match in tableMatches)
             {
-                var tableName = match.Groups[1].Value;
+                var tableNameRaw = match.Groups[1].Value;
+                var tableName = NormalizeTableName(tableNameRaw);
 
                 if (IsSqlKeyword(tableName)) continue;
 
-                // CRITICAL: Check if table exists in schema (ERROR if not)
-                var tableExists = schema.Tables.Any(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase));
+                // For PostgreSQL, check case-sensitive matching first
+                if (schema.DatabaseType == SmartRAG.Enums.DatabaseType.PostgreSQL)
+                {
+                    var exactMatch = schema.Tables.FirstOrDefault(t => t.TableName.Equals(tableNameRaw, StringComparison.Ordinal));
+                    if (exactMatch != null)
+                    {
+                        var exactTableName = exactMatch.TableName;
+                        if (!requiredTables.Any(t => t.Equals(exactTableName, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            _logger.LogWarning(
+                                "Table '{Table}' exists in database '{Database}' but was not in the required tables list.",
+                                exactTableName, schema.DatabaseName);
+                        }
+                        continue;
+                    }
+
+                    // Try case-insensitive match for better error message
+                    var caseInsensitiveMatch = schema.Tables.FirstOrDefault(t => 
+                        t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase) ||
+                        t.TableName.Equals(tableNameRaw, StringComparison.OrdinalIgnoreCase));
+                    
+                    if (caseInsensitiveMatch != null)
+                    {
+                        errors.Add($"Table '{tableNameRaw}' case mismatch in PostgreSQL. Use exact case: '{caseInsensitiveMatch.TableName}'");
+                        continue;
+                    }
+                }
+
+                var tableExists = schema.Tables.Any(t => 
+                    t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase) ||
+                    t.TableName.Equals(tableNameRaw, StringComparison.OrdinalIgnoreCase));
                 if (!tableExists)
                 {
-                    errors.Add($"Table '{tableName}' does not exist in database '{schema.DatabaseName}'");
+                    errors.Add($"Table '{tableNameRaw}' does not exist in database '{schema.DatabaseName}'");
                     continue;
                 }
 
-                if (!requiredTables.Contains(tableName, StringComparer.OrdinalIgnoreCase))
+                var matchedTable = schema.Tables.FirstOrDefault(t => 
+                    t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase) ||
+                    t.TableName.Equals(tableNameRaw, StringComparison.OrdinalIgnoreCase));
+                var tableNameForRequiredCheck = matchedTable?.TableName ?? tableName;
+
+                if (!requiredTables.Contains(tableNameForRequiredCheck, StringComparer.OrdinalIgnoreCase))
                 {
                     _logger.LogWarning(
                         "Table '{Table}' exists in database '{Database}' but was not in the required tables list. " +
                         "Allowing query to proceed. This may indicate QueryIntentAnalyzer needs improvement.",
-                        tableName, schema.DatabaseName);
+                        tableNameForRequiredCheck, schema.DatabaseName);
 
                 }
             }
@@ -106,6 +141,22 @@ namespace SmartRAG.Services.Database.Validation
                 if (table == null) continue;
 
                 if (!requiredTables.Contains(table.TableName, StringComparer.OrdinalIgnoreCase)) continue;
+
+                // For PostgreSQL, check case-sensitive matching first
+                if (schema.DatabaseType == SmartRAG.Enums.DatabaseType.PostgreSQL)
+                {
+                    var exactMatch = table.Columns.FirstOrDefault(c => c.ColumnName.Equals(columnName, StringComparison.Ordinal));
+                    if (exactMatch != null)
+                        continue;
+
+                    var caseInsensitiveMatch = table.Columns.FirstOrDefault(c => c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase));
+                    if (caseInsensitiveMatch != null)
+                    {
+                        var aliasInfo = aliasToTable.ContainsKey(prefix) ? $" (via alias '{prefix}')" : "";
+                        errors.Add($"Column '{columnName}' case mismatch in PostgreSQL. Use exact case: '{caseInsensitiveMatch.ColumnName}' in table '{tableName}'{aliasInfo}");
+                        continue;
+                    }
+                }
 
                 var columnExists = table.Columns.Any(c => c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase));
 
@@ -144,20 +195,33 @@ namespace SmartRAG.Services.Database.Validation
             return keywords.Contains(word.ToUpperInvariant());
         }
 
-        /// <summary>
-        /// Extracts table aliases from SQL query (e.g., "FROM TableName t2" -> {"t2": "TableName"})
-        /// </summary>
+        private string NormalizeTableName(string tableName)
+        {
+            if (string.IsNullOrWhiteSpace(tableName))
+                return tableName;
+
+            var normalized = tableName
+                .Replace("[", "")
+                .Replace("]", "")
+                .Replace("\"", "")
+                .Replace("`", "")
+                .Trim();
+
+            return normalized;
+        }
+
         private Dictionary<string, string> ExtractTableAliases(string sql)
         {
             var aliasToTable = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
             var aliasMatches = Regex.Matches(sql,
-                @"(?:FROM|JOIN)\s+([a-zA-Z0-9_]+)(?:\s+(?:AS\s+)?([a-zA-Z0-9_]+))?",
+                @"(?:FROM|JOIN)\s+(\[?[a-zA-Z0-9_]+\]?(?:\]?\.\[?[a-zA-Z0-9_]+\]?)?)(?:\s+(?:AS\s+)?([a-zA-Z0-9_]+))?",
                 RegexOptions.IgnoreCase);
 
             foreach (Match match in aliasMatches)
             {
-                var tableName = match.Groups[1].Value;
+                var tableNameRaw = match.Groups[1].Value;
+                var tableName = NormalizeTableName(tableNameRaw);
                 var alias = match.Groups[2].Value;
 
                 if (!string.IsNullOrWhiteSpace(alias) && !IsSqlKeyword(alias))

@@ -28,8 +28,7 @@ namespace SmartRAG.Services.Support
         private readonly IConversationRepository _conversationRepository;
         private readonly SmartRagOptions _options;
         private readonly ILogger<ConversationManagerService> _logger;
-        private readonly IAIConfigurationService? _aiConfiguration;
-        private readonly IAIProviderFactory? _aiProviderFactory;
+        private readonly IAIService? _aiService;
         private readonly IPromptBuilderService? _promptBuilder;
 
         private readonly ConcurrentDictionary<string, string> _conversationCache = new ConcurrentDictionary<string, string>();
@@ -40,22 +39,19 @@ namespace SmartRAG.Services.Support
         /// <param name="conversationRepository">Repository for conversation operations</param>
         /// <param name="options">SmartRAG configuration options</param>
         /// <param name="logger">Logger instance for this service</param>
-        /// <param name="aiConfiguration">Optional service for AI provider configuration</param>
-        /// <param name="aiProviderFactory">Optional factory for creating AI providers</param>
+        /// <param name="aiService">Optional AI service for generating responses (uses AIService with retry and fallback logic)</param>
         /// <param name="promptBuilder">Optional service for building AI prompts</param>
         public ConversationManagerService(
             IConversationRepository conversationRepository,
             IOptions<SmartRagOptions> options,
             ILogger<ConversationManagerService> logger,
-            IAIConfigurationService? aiConfiguration = null,
-            IAIProviderFactory? aiProviderFactory = null,
+            IAIService? aiService = null,
             IPromptBuilderService? promptBuilder = null)
         {
             _conversationRepository = conversationRepository;
             _options = options.Value;
             _logger = logger;
-            _aiConfiguration = aiConfiguration;
-            _aiProviderFactory = aiProviderFactory;
+            _aiService = aiService;
             _promptBuilder = promptBuilder;
         }
 
@@ -267,26 +263,18 @@ namespace SmartRAG.Services.Support
         {
             try
             {
-                if (_aiConfiguration == null || _aiProviderFactory == null || _promptBuilder == null)
+                if (_aiService == null || _promptBuilder == null)
                 {
                     return ChatUnavailableMessage;
                 }
-
-                var providerConfig = _aiConfiguration.GetProviderConfig(_options.AIProvider);
-
-                if (providerConfig == null)
-                {
-                    return ChatUnavailableMessage;
-                }
-
-                var aiProvider = _aiProviderFactory.CreateProvider(_options.AIProvider);
 
                 var prompt = _promptBuilder.BuildConversationPrompt(query, conversationHistory);
 
-                return await aiProvider.GenerateTextAsync(prompt, providerConfig, cancellationToken);
+                return await _aiService.GenerateResponseAsync(prompt, new List<string>(), cancellationToken);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogWarning(ex, "Error handling general conversation");
                 return ChatUnavailableMessage;
             }
         }
