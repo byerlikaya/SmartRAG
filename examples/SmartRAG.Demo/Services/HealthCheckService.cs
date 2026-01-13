@@ -211,10 +211,100 @@ public class HealthCheckService
         /// <returns>Health status for SQLite</returns>
         public async Task<HealthStatus> CheckSqliteAsync(string connectionString)
         {
-            return await CheckDatabaseAsync(
-                "SQLite",
-                () => new SqliteConnection(connectionString)
-            );
+            try
+            {
+                var resolvedConnectionString = ResolveSqliteConnectionString(connectionString);
+                return await CheckDatabaseAsync(
+                    "SQLite",
+                    () => new SqliteConnection(resolvedConnectionString)
+                );
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "SQLite health check failed");
+                return new HealthStatus
+                {
+                    ServiceName = "SQLite",
+                    IsHealthy = false,
+                    Message = "Database connection failed",
+                    Details = ex.Message
+                };
+            }
+        }
+        
+        /// <summary>
+        /// Resolves SQLite connection string path to absolute path
+        /// </summary>
+        private string ResolveSqliteConnectionString(string connectionString)
+        {
+            if (string.IsNullOrWhiteSpace(connectionString))
+            {
+                return connectionString;
+            }
+            
+            if (!connectionString.Contains("Data Source=", StringComparison.OrdinalIgnoreCase))
+            {
+                return connectionString;
+            }
+            
+            var parts = connectionString.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
+            var resolvedParts = new List<string>();
+            
+            foreach (var part in parts)
+            {
+                if (part.TrimStart().StartsWith("Data Source=", StringComparison.OrdinalIgnoreCase))
+                {
+                    var dataSource = part.Substring("Data Source=".Length).Trim();
+                    
+                    if (System.IO.Path.IsPathRooted(dataSource))
+                    {
+                        resolvedParts.Add(part);
+                    }
+                    else
+                    {
+                        var projectRoot = FindProjectRoot();
+                        if (projectRoot != null)
+                        {
+                            var absolutePath = System.IO.Path.Combine(projectRoot, "examples", "SmartRAG.Demo", dataSource);
+                            absolutePath = System.IO.Path.GetFullPath(absolutePath);
+                            resolvedParts.Add($"Data Source={absolutePath}");
+                        }
+                        else
+                        {
+                            var currentDir = System.IO.Directory.GetCurrentDirectory();
+                            var absolutePath = System.IO.Path.Combine(currentDir, dataSource);
+                            absolutePath = System.IO.Path.GetFullPath(absolutePath);
+                            resolvedParts.Add($"Data Source={absolutePath}");
+                        }
+                    }
+                }
+                else
+                {
+                    resolvedParts.Add(part);
+                }
+            }
+            
+            return string.Join(";", resolvedParts);
+        }
+        
+        /// <summary>
+        /// Finds the project root directory by searching upwards from the current directory
+        /// </summary>
+        private static string? FindProjectRoot()
+        {
+            var currentDir = System.IO.Directory.GetCurrentDirectory();
+            var dir = new System.IO.DirectoryInfo(currentDir);
+            
+            while (dir != null)
+            {
+                if (System.IO.File.Exists(System.IO.Path.Combine(dir.FullName, "SmartRAG.sln")))
+                {
+                    return dir.FullName;
+                }
+                dir = dir.Parent;
+            }
+            
+            return null;
         }
 
         /// <summary>

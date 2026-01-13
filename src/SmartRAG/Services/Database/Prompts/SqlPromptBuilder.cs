@@ -54,145 +54,241 @@ namespace SmartRAG.Services.Database.Prompts
                 .Take(5)
                 .ToList();
 
-            sb.AppendLine("═══════════════════════════════════════════════════════════════════");
-            sb.AppendLine("          SQL QUERY GENERATION - ANSWER THE USER'S QUESTION              ");
-            sb.AppendLine("═══════════════════════════════════════════════════════════════════");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("SQL QUERY GENERATOR");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
             sb.AppendLine();
-            sb.AppendLine("╔═══════════════════════════════════════════════════════════════╗");
-            sb.AppendLine("║  🚨🚨🚨 CRITICAL SECURITY RULES - READ FIRST! 🚨🚨🚨          ║");
-            sb.AppendLine("╚═══════════════════════════════════════════════════════════════╝");
+            sb.AppendLine($"Database: {schema.DatabaseName} ({schema.DatabaseType})");
+            sb.AppendLine($"User Query: \"{userQuery}\"");
+            sb.AppendLine($"Purpose: {dbQuery.Purpose}");
+            
+            var dialectInfo = strategy.DatabaseType == SmartRAG.Enums.DatabaseType.SqlServer
+                ? "SQL Server - Use [brackets] for identifiers with spaces"
+                : strategy.DatabaseType == SmartRAG.Enums.DatabaseType.PostgreSQL
+                    ? "PostgreSQL - Use \"quotes\" for case-sensitive identifiers, case-sensitive!"
+                    : strategy.DatabaseType == SmartRAG.Enums.DatabaseType.MySQL
+                        ? "MySQL - Use backticks for identifiers with spaces"
+                        : "SQLite - Use double quotes for identifiers with spaces";
+            
+            sb.AppendLine($"SQL Dialect: {dialectInfo}");
             sb.AppendLine();
-            sb.AppendLine("ABSOLUTELY FORBIDDEN - YOUR QUERY WILL BE REJECTED IF YOU USE:");
-            sb.AppendLine("  ✗ CREATE, DROP, ALTER, TRUNCATE (DDL statements)");
-            sb.AppendLine("  ✗ DELETE, UPDATE, INSERT (DML statements - ONLY SELECT allowed)");
-            sb.AppendLine("  ✗ EXEC, EXECUTE, SP_, XP_ (stored procedures)");
-            sb.AppendLine("  ✗ GRANT, REVOKE (security statements)");
-            sb.AppendLine();
-            sb.AppendLine("YOU MUST ONLY GENERATE SELECT STATEMENTS!");
-            sb.AppendLine();
-            sb.AppendLine("WRONG EXAMPLES (WILL FAIL):");
-            sb.AppendLine("  ✗ CREATE TABLE TableA ...");
-            sb.AppendLine("  ✗ DROP TABLE TableA ...");
-            sb.AppendLine("  ✗ DELETE FROM TableA ...");
-            sb.AppendLine("  ✗ EXEC sp_ProcedureName ...");
-            sb.AppendLine();
-            sb.AppendLine("CORRECT EXAMPLE:");
-            sb.AppendLine("  ✓ SELECT EntityID, NameColumn FROM TableA ORDER BY EntityID");
-            sb.AppendLine();
-            sb.AppendLine("╔═══════════════════════════════════════════════════════════════╗");
-            sb.AppendLine($"║  🎯 TARGET DATABASE: {schema.DatabaseName} ({schema.DatabaseType}) 🎯    ║");
-            sb.AppendLine("╚═══════════════════════════════════════════════════════════════╝");
-            sb.AppendLine();
-            sb.AppendLine($"🚨 CRITICAL: You are generating SQL for {schema.DatabaseType} database!");
-            sb.AppendLine($"   Database Name: {schema.DatabaseName}");
-            sb.AppendLine($"   Database Type: {schema.DatabaseType}");
+            sb.AppendLine("🚨 IMPORTANT: The schema information below is the ONLY source of truth!");
+            sb.AppendLine("   Use ONLY the tables and columns listed in the schema section below.");
+            sb.AppendLine("   DO NOT use any table or column that is NOT listed below!");
             sb.AppendLine();
 
-            sb.AppendLine(strategy.BuildSystemPrompt(schema, userQuery));
+            sb.AppendLine();
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("RULE 1: SECURITY - ONLY SELECT ALLOWED");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("✗ FORBIDDEN: CREATE, DROP, DELETE, UPDATE, INSERT, EXEC, GRANT, REVOKE");
+            sb.AppendLine("✓ ALLOWED: SELECT (and only SELECT)");
+            sb.AppendLine();
 
-            sb.AppendLine();
-            sb.AppendLine("╔═══════════════════════════════════════════════════════════════╗");
-            sb.AppendLine("║  🚨 MANDATORY: WRITE SIMPLE SQL - NO COMPLEX QUERIES! 🚨    ║");
-            sb.AppendLine("╚═══════════════════════════════════════════════════════════════╝");
-            sb.AppendLine();
-            sb.AppendLine("REQUIRED QUERY PATTERN (DO NOT DEVIATE):");
-            sb.AppendLine("  1. Simple SELECT with descriptive columns");
-            sb.AppendLine("  2. ALWAYS include ID columns (e.g. EntityID, ForeignKeyID) in SELECT to allow joining");
-            sb.AppendLine("  3. Maximum 2 JOINs (table1 JOIN table2 JOIN table3)");
-            sb.AppendLine("  4. Simple WHERE clause (1-2 conditions maximum)");
-            sb.AppendLine("  5. Simple ORDER BY (1 column)");
-            if (strategy.DatabaseType == SmartRAG.Enums.DatabaseType.SqlServer)
+            // Cross-database context (if applicable)
+            if (fullQueryIntent != null && fullQueryIntent.DatabaseQueries.Count > 1)
             {
-                sb.AppendLine($"  6. {strategy.GetLimitClause(100)} immediately after SELECT (SQL Server syntax)");
-            }
-            else
-            {
-                sb.AppendLine($"  6. {strategy.GetLimitClause(100)} at the end (or equivalent)");
-            }
-            sb.AppendLine();
-            sb.AppendLine("CROSS-DATABASE LOGIC (CRITICAL):");
-            sb.AppendLine("  - If the user asks for a metric or attribute that is NOT in this database:");
-            sb.AppendLine("    1. DO NOT try to calculate it or guess it.");
-            sb.AppendLine("    2. DO NOT aggregate if it hides the Entity ID needed for joining.");
-            sb.AppendLine("    3. INSTEAD, SELECT the Entity ID (Foreign Key) AND the Descriptive Attribute.");
-            sb.AppendLine("    4. EXAMPLE: SELECT EntityID, DescriptiveColumn FROM ... (allows joining with other databases)");
-            sb.AppendLine("    5. This allows the system to merge results with the database that has the missing metric.");
-
-            if (fullQueryIntent != null && fullQueryIntent.DatabaseQueries.Count > 1 && fullQueryIntent.RequiresCrossDatabaseJoin)
-            {
-                var otherDbQueries = fullQueryIntent.DatabaseQueries
-                    .Where(q => q.DatabaseId != dbQuery.DatabaseId)
-                    .ToList();
-
-                if (otherDbQueries.Any())
+                var otherDbCount = fullQueryIntent.DatabaseQueries.Count(q => q.DatabaseId != dbQuery.DatabaseId);
+                if (otherDbCount > 0)
                 {
+                    sb.AppendLine("═══════════════════════════════════════════════════════════════");
+                    sb.AppendLine("🚨 MULTI-DATABASE QUERY - CRITICAL WARNINGS!");
+                    sb.AppendLine("═══════════════════════════════════════════════════════════════");
+                    sb.AppendLine($"  → This query is part of a {fullQueryIntent.DatabaseQueries.Count}-database query");
                     sb.AppendLine();
-                    sb.AppendLine("╔═══════════════════════════════════════════════════════════════╗");
-                    sb.AppendLine("║  🔗 CROSS-DATABASE CONTEXT - OTHER DATABASES IN THIS QUERY 🔗  ║");
-                    sb.AppendLine("╚═══════════════════════════════════════════════════════════════╝");
+                    sb.AppendLine("🚨 FORBIDDEN:");
+                    sb.AppendLine("  ✗ DO NOT use tables from other databases in your SQL!");
+                    sb.AppendLine("  ✗ DO NOT try to JOIN tables from different databases!");
+                    sb.AppendLine("  ✗ DO NOT reference columns from tables in other databases!");
                     sb.AppendLine();
-                    sb.AppendLine("This query is part of a MULTI-DATABASE query. Other databases will also be queried:");
-
-                    foreach (var otherDb in otherDbQueries)
-                    {
-                        sb.AppendLine($"  • {otherDb.DatabaseName}: {otherDb.Purpose}");
-                        if (otherDb.RequiredTables.Any())
-                        {
-                            sb.AppendLine($"    Tables: {string.Join(", ", otherDb.RequiredTables)}");
-                        }
-                    }
-
+                    sb.AppendLine("✓ ALLOWED:");
+                    sb.AppendLine("  ✓ Use ONLY tables listed in 'TABLES AVAILABLE' section below");
+                    sb.AppendLine("  ✓ Use ONLY columns from tables in THIS database");
+                    sb.AppendLine("  ✓ ALWAYS include ID columns in SELECT (for joining results later)");
                     sb.AppendLine();
-                    sb.AppendLine("CRITICAL INSTRUCTIONS FOR CROSS-DATABASE QUERIES:");
-                    sb.AppendLine("  1. If another database will return an EntityID (e.g., from aggregation/calculation):");
-                    sb.AppendLine("     → Your query should return ALL rows with EntityID and descriptive columns");
-                    sb.AppendLine("     → DO NOT filter or limit - let the system match EntityIDs after both queries run");
-                    sb.AppendLine("  2. If your database has the EntityID source (e.g., aggregation query):");
-                    sb.AppendLine("     → Return EntityID and the calculated metric");
-                    sb.AppendLine("     → Use ORDER BY and LIMIT/TOP to get the top result");
-                    sb.AppendLine("  3. If your database has descriptive data (e.g., names, details):");
-                    sb.AppendLine("     → Return EntityID and all descriptive columns");
-                    sb.AppendLine("     → DO NOT use ORDER BY CreatedDate or similar - return all matching rows");
-                    sb.AppendLine("     → The system will match your EntityID with the EntityID from the other database");
-                    sb.AppendLine();
-                    sb.AppendLine("EXAMPLE SCENARIO:");
-                    sb.AppendLine("  User asks: 'Who has the most items?'");
-                    sb.AppendLine("  Database A (aggregation): Returns EntityID=123, CountValue=15");
-                    sb.AppendLine("  Database B (lookup): Should return EntityID=123, NameColumn='Value', DescriptionColumn='Value'");
-                    sb.AppendLine("  → Database B should NOT filter by CreatedDate - it should return EntityID=123's details");
+                    sb.AppendLine($"Other databases in this query: {string.Join(", ", fullQueryIntent.DatabaseQueries.Where(q => q.DatabaseId != dbQuery.DatabaseId).Select(q => q.DatabaseName))}");
+                    sb.AppendLine($"Your current database: {schema.DatabaseName}");
                     sb.AppendLine();
                 }
             }
 
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("RULE 2: GROUP BY - MANDATORY FOR AGGREGATES");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("IF you use SUM/COUNT/AVG/MAX/MIN:");
+            sb.AppendLine("  → ALL non-aggregate columns in SELECT MUST be in GROUP BY");
             sb.AppendLine();
-            sb.AppendLine("AMBIGUITY PREVENTION (CRITICAL):");
-            sb.AppendLine("  - ALWAYS use meaningful Table Aliases (e.g., use 't1', 't2' or derived from table name).");
-            sb.AppendLine("  - ALWAYS qualify columns with these aliases (e.g., 't1.ColumnName', 't2.OtherColumn').");
-            sb.AppendLine("  - Example: SELECT t1.Id, t2.Name FROM Table1 t1 JOIN Table2 t2 ON t1.ForeignKey = t2.Id");
-            sb.AppendLine("  - NEVER use column names without table alias when joining tables.");
-            sb.AppendLine();
-            sb.AppendLine("╔═══════════════════════════════════════════════════════════════╗");
-            sb.AppendLine("║  🚨 ADDITIONAL FORBIDDEN PATTERNS 🚨                          ║");
-            sb.AppendLine("╚═══════════════════════════════════════════════════════════════╝");
-            sb.AppendLine();
-            sb.AppendLine("QUERY COMPLEXITY RESTRICTIONS:");
-            sb.AppendLine("  ✗ NO nested subqueries (no SELECT inside WHERE)");
-            sb.AppendLine("  ✗ NO complex logic (no multiple levels of nesting)");
-            sb.AppendLine("  ✗ NO aggregate functions in WHERE clause");
-            sb.AppendLine("  ✗ NO using aggregate functions (COUNT, SUM, etc.) without a GROUP BY clause");
-            sb.AppendLine("  ✗ NO more than 2 JOINs");
-            sb.AppendLine();
-            sb.AppendLine("REMEMBER: ONLY SELECT statements are allowed. NO CREATE, DROP, DELETE, EXEC!");
+            sb.AppendLine("Examples:");
+            sb.AppendLine("  ✓ SELECT EntityID, SUM(Value) FROM T GROUP BY EntityID");
+            sb.AppendLine("  ✓ SELECT Col1, Col2, SUM(Value) FROM T GROUP BY Col1, Col2");
+            sb.AppendLine("  ✗ SELECT EntityID, SUM(Value) FROM T  -- Missing GROUP BY!");
             sb.AppendLine();
 
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("RULE 2.4: JOIN RULES - CRITICAL!");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("🚨 CRITICAL: CROSS JOIN is FORBIDDEN!");
+            sb.AppendLine();
+            sb.AppendLine("FORBIDDEN:");
+            sb.AppendLine("  ✗ CROSS JOIN  -- ABSOLUTELY FORBIDDEN!");
+            sb.AppendLine();
+            sb.AppendLine("ALLOWED JOIN TYPES:");
+            sb.AppendLine("  ✓ INNER JOIN ... ON condition");
+            sb.AppendLine("  ✓ LEFT JOIN ... ON condition");
+            sb.AppendLine("  ✓ RIGHT JOIN ... ON condition (if needed)");
+            sb.AppendLine();
+            sb.AppendLine("If you need to combine data from multiple tables:");
+            sb.AppendLine("  ✓ Use INNER JOIN with proper ON clause based on foreign keys");
+            sb.AppendLine("  ✓ Use LEFT JOIN if one table may not have matching rows");
+            sb.AppendLine("  ✗ NEVER use CROSS JOIN - it will cause query rejection!");
+            sb.AppendLine();
 
-            sb.AppendLine("═══════════════════════════════════════════════════════════════════");
+            // Table Name Escaping Rule
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("RULE 2.5: TABLE/COLUMN NAME ESCAPING");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            
+            if (strategy.DatabaseType == SmartRAG.Enums.DatabaseType.SqlServer)
+            {
+                sb.AppendLine("SQL Server uses SQUARE BRACKETS for identifiers with spaces:");
+                sb.AppendLine("  ✓ SELECT * FROM [Multi Word Table]");
+                sb.AppendLine("  ✗ SELECT * FROM Multi Word Table  -- SYNTAX ERROR!");
+            }
+            else if (strategy.DatabaseType == SmartRAG.Enums.DatabaseType.SQLite || strategy.DatabaseType == SmartRAG.Enums.DatabaseType.PostgreSQL)
+            {
+                sb.AppendLine("Use DOUBLE QUOTES for identifiers with spaces:");
+                sb.AppendLine("  ✓ SELECT * FROM \"Multi Word Table\"");
+                sb.AppendLine("  ✗ SELECT * FROM Multi Word Table  -- SYNTAX ERROR!");
+            }
+            else if (strategy.DatabaseType == SmartRAG.Enums.DatabaseType.MySQL)
+            {
+                sb.AppendLine("MySQL uses BACKTICKS for identifiers with spaces:");
+                sb.AppendLine("  ✓ SELECT * FROM `Multi Word Table`");
+                sb.AppendLine("  ✗ SELECT * FROM Multi Word Table  -- SYNTAX ERROR!");
+            }
             sb.AppendLine();
-            sb.AppendLine("USER'S QUESTION:");
-            sb.AppendLine($"   \"{userQuery}\"");
+
+            // Schema.Table Format Rule
+            if (strategy.DatabaseType == SmartRAG.Enums.DatabaseType.SqlServer || strategy.DatabaseType == SmartRAG.Enums.DatabaseType.PostgreSQL)
+            {
+                sb.AppendLine("═══════════════════════════════════════════════════════════════");
+                sb.AppendLine("RULE 2.6: SCHEMA.TABLE FORMAT - CRITICAL!");
+                sb.AppendLine("═══════════════════════════════════════════════════════════════");
+                sb.AppendLine("🚨 CRITICAL: Use schema.table format (NOT database.schema.table)");
+                sb.AppendLine();
+                sb.AppendLine("CORRECT FORMAT:");
+                if (strategy.DatabaseType == SmartRAG.Enums.DatabaseType.SqlServer)
+                {
+                    sb.AppendLine("  ✓ SELECT * FROM [SchemaName].[TableName]");
+                    sb.AppendLine("  ✓ SELECT * FROM SchemaName.TableName");
+                }
+                else if (strategy.DatabaseType == SmartRAG.Enums.DatabaseType.PostgreSQL)
+                {
+                    sb.AppendLine("  ✓ SELECT * FROM \"SchemaName\".\"TableName\"");
+                    sb.AppendLine("  ✓ SELECT * FROM schemaname.tablename (if identifiers are lowercase)");
+                    sb.AppendLine();
+                    sb.AppendLine("🚨🚨🚨 CRITICAL FOR POSTGRESQL: Table names are case-sensitive! 🚨🚨🚨");
+                    sb.AppendLine("  → Use EXACT case as shown in schema section below - NO EXCEPTIONS!");
+                    sb.AppendLine("  → If schema shows lowercase: schemaname.tablename → Use lowercase: schemaname.tablename");
+                    sb.AppendLine("  → If schema shows mixed case: \"SchemaName\".\"TableName\" → Use double quotes: \"SchemaName\".\"TableName\"");
+                    sb.AppendLine("  → WRONG: SchemaName.TableName (if schema shows schemaname.tablename)");
+                    sb.AppendLine("  → WRONG: schemaname.TableName (mixed case without quotes)");
+                    sb.AppendLine("  → Check schema section below FIRST, then use EXACT format!");
+                }
+                sb.AppendLine();
+                sb.AppendLine("WRONG FORMAT (WILL CAUSE ERROR):");
+                sb.AppendLine("  ✗ SELECT * FROM DatabaseName.SchemaName.TableName  -- Database prefix FORBIDDEN!");
+                sb.AppendLine("  ✗ SELECT * FROM SchemaName.TableName  -- Wrong case if schema shows schemaname.tablename");
+                sb.AppendLine("  ✗ SELECT * FROM SchemaA.TableB  -- This table exists in DIFFERENT database!");
+                sb.AppendLine();
+                sb.AppendLine("Rule: Table names in schema are already in 'schema.table' format.");
+                sb.AppendLine("Use them EXACTLY as shown in the schema section below.");
+                sb.AppendLine("NEVER add database name prefix!");
+                sb.AppendLine("NEVER use tables from other databases!");
+                sb.AppendLine();
+            }
+
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("RULE 3: QUERY PATTERNS");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("Choose the correct pattern based on the purpose:");
             sb.AppendLine();
-            sb.AppendLine("YOUR TASK FOR THIS DATABASE:");
-            sb.AppendLine($"   {dbQuery.Purpose}");
+            sb.AppendLine("PATTERN 1: Simple SELECT (no aggregation)");
+            sb.AppendLine("  Purpose: Get descriptive data (names, descriptions)");
+            sb.AppendLine("  🚨 CRITICAL: ALWAYS include BOTH ID column AND descriptive columns (Name, Description, etc.)");
+            sb.AppendLine("  SQL: SELECT ID_Column, Name_Column, Other_Descriptive_Columns FROM Table");
+            sb.AppendLine("  ✓ Example: SELECT EntityID, EntityName, EntityDescription, Location FROM EntityTable");
+            sb.AppendLine("  ✗ WRONG: SELECT EntityID FROM EntityTable  -- Missing Name!");
+            sb.AppendLine("  ✗ WRONG: SELECT EntityName FROM EntityTable  -- Missing ID!");
+            sb.AppendLine();
+            sb.AppendLine("PATTERN 2: Aggregation Query (with GROUP BY)");
+            sb.AppendLine("  Purpose: Get numeric data for calculations");
+            sb.AppendLine("  🚨 CRITICAL: Include ID column in SELECT and GROUP BY");
+            sb.AppendLine("  ⚠️ If descriptive columns exist (Name, Description), include them too!");
+            sb.AppendLine("  SQL: SELECT ID_Column, Name_Column, SUM(Calc) AS Total FROM Table T");
+            sb.AppendLine("       LEFT JOIN ReferenceTable R ON T.ID = R.ID");
+            sb.AppendLine("       GROUP BY ID_Column, Name_Column");
+            sb.AppendLine("  Example: SELECT T.EntityID, SUM(D.Price * D.Quantity * (1-D.DiscountRate)) AS TotalAmount");
+            sb.AppendLine("           FROM TransactionTable T JOIN DetailTable D ON T.TransactionID = D.TransactionID");
+            sb.AppendLine("           GROUP BY T.EntityID");
+            sb.AppendLine("           ORDER BY TotalAmount DESC");
+            if (strategy.DatabaseType == SmartRAG.Enums.DatabaseType.SqlServer)
+            {
+                sb.AppendLine("           TOP 5");
+            }
+            else
+            {
+                sb.AppendLine("           LIMIT 5");
+            }
+            sb.AppendLine();
+            sb.AppendLine("PATTERN 3: Cross-Database Join (return IDs)");
+            sb.AppendLine("  Purpose: Return data that will be joined with another database");
+            sb.AppendLine("  SQL: ALWAYS include ID columns for joining");
+            sb.AppendLine("  Example: SELECT EntityID, NameColumn FROM TableA WHERE EntityID IN (...)");
+            sb.AppendLine();
+
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("RULE 4: ANTI-HALLUCINATION - CRITICAL!");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("🚨🚨🚨 FORBIDDEN - NEVER DO THESE:");
+            sb.AppendLine();
+            sb.AppendLine("⛔ NEVER invent table names that don't exist in schema!");
+            sb.AppendLine("   ✗ WRONG: FROM TableNameHistory  -- If TableNameHistory is NOT listed in schema!");
+            sb.AppendLine("   ✗ WRONG: FROM SchemaA.TableBHistory  -- If TableBHistory is NOT listed in schema!");
+            sb.AppendLine("   ✗ WRONG: FROM AnyTableName  -- If AnyTableName is NOT listed in schema!");
+            sb.AppendLine("   ✓ CORRECT: Use ONLY tables listed in schema section below");
+            sb.AppendLine("   ✓ If table is NOT in schema section, it does NOT exist - DO NOT use it!");
+            sb.AppendLine();
+            sb.AppendLine("⛔ NEVER invent column names that don't exist in schema!");
+            sb.AppendLine("   ✗ WRONG: SELECT ColumnX FROM TableName  -- If ColumnX doesn't exist in schema!");
+            sb.AppendLine("   ✗ WRONG: SELECT NameColumn FROM TableName  -- If NameColumn doesn't exist in schema!");
+            sb.AppendLine("   ✗ WRONG: SELECT NumericColumn FROM TableName  -- If NumericColumn doesn't exist!");
+            sb.AppendLine("   ✓ CORRECT: Check schema section below, use ONLY listed columns");
+            sb.AppendLine("   ✓ If column doesn't exist in schema, DO NOT use it - query will fail!");
+            sb.AppendLine();
+            sb.AppendLine("⛔ NEVER invent values in WHERE clause!");
+            sb.AppendLine("   ✗ WHERE NameColumn = 'Invented Value'  -- Value doesn't exist in data!");
+            sb.AppendLine("   ✗ WHERE LocationColumn = 'Specific Place'  -- Unless verified in schema!");
+            sb.AppendLine("   ✓ Use GROUP BY + ORDER BY instead for TOP N queries");
+            sb.AppendLine();
+            sb.AppendLine("⛔ NEVER use tables from other databases!");
+            sb.AppendLine("   ✗ WRONG: JOIN SchemaA.TableB  -- If TableB is in DIFFERENT database!");
+            sb.AppendLine("   ✗ WRONG: FROM SchemaX.TableY  -- If TableY is in DIFFERENT database!");
+            sb.AppendLine("   ✓ CORRECT: Use ONLY tables listed in schema section below");
+            sb.AppendLine();
+            sb.AppendLine("⛔ For TOP N / HIGHEST / MOST queries:");
+            sb.AppendLine("   ✓ CORRECT: SELECT EntityID, SUM(Value) AS Total FROM T");
+            sb.AppendLine("              GROUP BY EntityID ORDER BY Total DESC");
+            sb.AppendLine("   ✗ WRONG: SELECT * FROM T WHERE EntityName = 'TopEntity'");
+            sb.AppendLine();
+            sb.AppendLine("⛔ Return ONLY IDs in result if descriptive columns don't exist in this table");
+            sb.AppendLine("   The application will merge descriptive data from other databases");
+            sb.AppendLine();
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("GENERATE SQL NOW");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine($"User Query: \"{userQuery}\"");
+            sb.AppendLine($"Your Task: {dbQuery.Purpose}");
             sb.AppendLine();
 
             if (filterKeywords.Count > 0)
@@ -226,22 +322,60 @@ namespace SmartRAG.Services.Database.Prompts
                 sb.AppendLine();
             }
 
-            sb.AppendLine("═══════════════════════════════════════");
-            sb.AppendLine($"TABLES AVAILABLE IN {schema.DatabaseName} (ONLY IN THIS DATABASE):");
-            sb.AppendLine("═══════════════════════════════════════");
-            sb.AppendLine("🚨 CRITICAL: You MUST ONLY use tables listed below. DO NOT invent or use tables from other databases. 🚨");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine($"🚨🚨🚨 TABLES AVAILABLE IN {schema.DatabaseName} - READ CAREFULLY! 🚨🚨🚨");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("⛔ FORBIDDEN:");
+            sb.AppendLine("  ✗ DO NOT invent table names that are NOT listed below!");
+            sb.AppendLine("  ✗ DO NOT use tables from other databases!");
+            sb.AppendLine("  ✗ DO NOT add prefixes/suffixes to table names!");
+            sb.AppendLine();
+            sb.AppendLine("✓ REQUIRED:");
+            sb.AppendLine($"  ✓ Use ONLY these {dbQuery.RequiredTables.Count} table(s): {string.Join(", ", dbQuery.RequiredTables)}");
+            sb.AppendLine("  ✓ Copy table names EXACTLY as shown below (character by character)");
+            sb.AppendLine("  ✓ If a table is NOT listed below, it does NOT exist - DO NOT use it!");
+            sb.AppendLine();
 
             foreach (var tableName in dbQuery.RequiredTables)
             {
                 var table = schema.Tables.FirstOrDefault(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase));
                 if (table != null)
                 {
-                    sb.AppendLine($"\nTable: {table.TableName}");
-                    sb.AppendLine("═══════════════════════════════════════");
-                    sb.AppendLine($"AVAILABLE COLUMNS (use EXACT names, case-sensitive):");
-
-                    var columnList = string.Join(", ", table.Columns.Select(c => c.ColumnName));
-                    sb.AppendLine($"  {columnList}");
+                    sb.AppendLine();
+                    sb.AppendLine("═══════════════════════════════════════════════════════════════");
+                    sb.AppendLine($"📋 TABLE #{Array.IndexOf(dbQuery.RequiredTables.ToArray(), tableName) + 1}: {table.TableName}");
+                    sb.AppendLine("═══════════════════════════════════════════════════════════════");
+                    if (strategy.DatabaseType == SmartRAG.Enums.DatabaseType.PostgreSQL)
+                    {
+                        sb.AppendLine("🚨🚨🚨 POSTGRESQL CASE-SENSITIVE - COPY EXACTLY! 🚨🚨🚨");
+                        sb.AppendLine($"   ✓ CORRECT FORMAT: {table.TableName}");
+                        sb.AppendLine($"   ✓ USE THIS EXACT STRING: \"{table.TableName}\"");
+                        sb.AppendLine("   ✗ WRONG: Change ANY letter case");
+                        sb.AppendLine("   ✗ WRONG: Add/remove quotes if not shown");
+                        sb.AppendLine("   ✗ WRONG: Use mixed case if schema shows lowercase");
+                        sb.AppendLine();
+                        sb.AppendLine("🚨 CRITICAL: Columns below are also case-sensitive - copy EXACTLY!");
+                    }
+                    else
+                    {
+                        sb.AppendLine("🚨 CRITICAL: Use EXACT table name and column names as shown below");
+                    }
+                    sb.AppendLine();
+                    sb.AppendLine("AVAILABLE COLUMNS:");
+                    foreach (var column in table.Columns)
+                    {
+                        var columnInfo = $"  • {column.ColumnName} ({column.DataType})";
+                        if (column.IsPrimaryKey)
+                            columnInfo += " [PRIMARY KEY]";
+                        if (column.IsForeignKey)
+                            columnInfo += " [FOREIGN KEY]";
+                        sb.AppendLine(columnInfo);
+                    }
+                    sb.AppendLine();
+                    sb.AppendLine("⚠️ WARNING: Do NOT use columns from other tables!");
+                    sb.AppendLine($"   These columns exist ONLY in {table.TableName} table.");
+                    sb.AppendLine($"   If you need data from another table, it's in a DIFFERENT database!");
+                    sb.AppendLine();
 
                     if (table.ForeignKeys.Any())
                     {
@@ -273,65 +407,40 @@ namespace SmartRAG.Services.Database.Prompts
             }
 
             sb.AppendLine();
-            sb.AppendLine("╔═══════════════════════════════════════════════════════════════╗");
-            sb.AppendLine($"║  🚨 TABLE VALIDATION CHECKLIST - VERIFY BEFORE WRITING SQL 🚨  ║");
-            sb.AppendLine("╚═══════════════════════════════════════════════════════════════╝");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("🚨🚨🚨 FINAL CHECKLIST - VERIFY BEFORE WRITING SQL! 🚨🚨🚨");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("⛔ ABSOLUTELY FORBIDDEN:");
+            sb.AppendLine($"  ✗ DO NOT use any table NOT in this list: {string.Join(", ", dbQuery.RequiredTables)}");
+            sb.AppendLine("  ✗ DO NOT invent table names (e.g., TableNameHistory, SchemaA.TableB)");
+            sb.AppendLine("  ✗ DO NOT use tables from other databases");
+            sb.AppendLine("  ✗ DO NOT use columns that are NOT listed above");
             sb.AppendLine();
-            sb.AppendLine($"BEFORE you write ANY table name in your SQL, CHECK:");
+            sb.AppendLine("✓ REQUIRED:");
+            sb.AppendLine($"  ✓ Use ONLY these {dbQuery.RequiredTables.Count} table(s): {string.Join(", ", dbQuery.RequiredTables)}");
+            sb.AppendLine("  ✓ Copy table names EXACTLY as shown above (character by character)");
+            sb.AppendLine("  ✓ Use ONLY columns listed above for each table");
+            sb.AppendLine("  ✓ If column doesn't exist in this table, it's in a DIFFERENT database - DO NOT use it!");
+            sb.AppendLine("  ✓ Start with SELECT (no CREATE, DROP, DELETE)");
+            sb.AppendLine("  ✓ If using SUM/COUNT/AVG, include GROUP BY");
+            sb.AppendLine("  ✓ Never invent WHERE clause values");
+            sb.AppendLine("  ✓ NEVER use CROSS JOIN - use INNER JOIN or LEFT JOIN with ON clause");
+            if (strategy.DatabaseType == SmartRAG.Enums.DatabaseType.PostgreSQL)
+            {
+                sb.AppendLine("  ✓ Use EXACT table names from schema above - COPY EXACTLY (case-sensitive!)");
+                sb.AppendLine("  ✓ Use EXACT column names from schema above - COPY EXACTLY (case-sensitive!)");
+                sb.AppendLine("  ✓ If schema shows 'schemaname.tablename' → Use 'schemaname.tablename' (NOT 'SchemaName.TableName')");
+                sb.AppendLine("  ✓ If schema shows '\"SchemaName\".\"TableName\"' → Use double quotes");
+            }
+            else
+            {
+                sb.AppendLine("  ✓ Use EXACT table names from schema above");
+                sb.AppendLine("  ✓ Use EXACT column names from schema above");
+            }
+            sb.AppendLine("  ✓ NEVER use tables from other databases - only tables listed above");
+            sb.AppendLine("  ✓ If you see table names from other databases in the query, DO NOT use them here!");
             sb.AppendLine();
-            sb.AppendLine("1️⃣  Is the table name in the list above?");
-            sb.AppendLine($"    ✓ ALLOWED TABLES: {string.Join(", ", dbQuery.RequiredTables)}");
-            sb.AppendLine($"    ✗ FORBIDDEN: Any table NOT in this list");
-            sb.AppendLine();
-            sb.AppendLine("2️⃣  Are you using the EXACT table name from the list?");
-            sb.AppendLine("    ✓ Use exact spelling and case");
-            sb.AppendLine("    ✗ Do NOT guess or invent similar table names");
-            sb.AppendLine();
-            sb.AppendLine("3️⃣  Does each column exist in that table's column list above?");
-            sb.AppendLine("    ✓ Cross-reference every column with the AVAILABLE COLUMNS list");
-            sb.AppendLine("    ✗ Do NOT use columns from other tables");
-            sb.AppendLine();
-            sb.AppendLine($"🚨 COMMON MISTAKE TO AVOID:");
-            sb.AppendLine($"   If you need a table but it's NOT in the allowed list above,");
-            sb.AppendLine($"   DO NOT write: JOIN [TableName]");
-            sb.AppendLine($"   INSTEAD: DO NOT use that table at all - it doesn't exist in {schema.DatabaseName}!");
-            sb.AppendLine();
-            sb.AppendLine("═══════════════════════════════════════");
-            sb.AppendLine("HOW TO WRITE YOUR SQL QUERY:");
-            sb.AppendLine("═══════════════════════════════════════");
-            sb.AppendLine();
-            sb.AppendLine("STEP 1: Choose your tables");
-            sb.AppendLine($"   → You can ONLY use: {string.Join(", ", dbQuery.RequiredTables)}");
-            sb.AppendLine($"   → These tables ONLY exist in {schema.DatabaseName}");
-            sb.AppendLine();
-            sb.AppendLine("STEP 2: Write SELECT clause");
-            sb.AppendLine("   → Verify EACH column exists in the table's column list above");
-            sb.AppendLine("   → Include ALL foreign key columns that exist in the table");
-            sb.AppendLine();
-            sb.AppendLine("STEP 3: Write FROM clause");
-            sb.AppendLine($"   ✓ FROM {dbQuery.RequiredTables[0]} (use allowed table)");
-            sb.AppendLine();
-            sb.AppendLine("STEP 4: Write JOIN clause (if needed)");
-            sb.AppendLine("   → JOIN between allowed tables only");
-            sb.AppendLine("   → Verify the referenced table is in the allowed list");
-            sb.AppendLine();
-            sb.AppendLine("STEP 5: Apply filters and ordering");
-            sb.AppendLine("   → WHERE, GROUP BY, ORDER BY as needed");
-            sb.AppendLine();
-            sb.AppendLine("╔═══════════════════════════════════════════════════════════════╗");
-            sb.AppendLine("║  🚨 FINAL CHECK BEFORE WRITING SQL 🚨                        ║");
-            sb.AppendLine("╚═══════════════════════════════════════════════════════════════╝");
-            sb.AppendLine();
-            sb.AppendLine("BEFORE you write your SQL, verify:");
-            sb.AppendLine("  ✓ Does it start with SELECT? (NOT CREATE, DROP, DELETE, EXEC)");
-            sb.AppendLine("  ✓ Are all table names in the allowed list above?");
-            sb.AppendLine("  ✓ Are all column names in the table's column list?");
-            sb.AppendLine("  ✓ Does it follow the simple query pattern?");
-            sb.AppendLine();
-            sb.AppendLine("IF YOUR SQL CONTAINS CREATE, DROP, DELETE, EXEC, OR ANY OTHER");
-            sb.AppendLine("NON-SELECT STATEMENT, IT WILL BE REJECTED AND THE QUERY WILL FAIL!");
-            sb.AppendLine();
-            sb.AppendLine("NOW WRITE YOUR SQL QUERY (SELECT statement only):");
+            sb.AppendLine("Write your SQL now:");
 
             return sb.ToString();
         }

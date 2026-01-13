@@ -465,7 +465,6 @@ namespace SmartRAG.API.Controllers
                         DatabaseId = databaseId,
                         DatabaseName = schema?.DatabaseName ?? "Unknown",
                         DatabaseType = conn.DatabaseType,
-                        Description = conn.Description,
                         Enabled = conn.Enabled,
                         IsValid = await connectionManager.ValidateConnectionAsync(databaseId, HttpContext.RequestAborted),
                         SchemaStatus = schema?.Status.ToString() ?? "NotAnalyzed",

@@ -3,6 +3,7 @@ using SmartRAG.Interfaces.Database.Strategies;
 using SmartRAG.Models;
 using System;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace SmartRAG.Services.Database.Strategies
 {
@@ -26,7 +27,9 @@ namespace SmartRAG.Services.Database.Strategies
             var forbiddenKeywords = new[] { "DROP", "DELETE", "TRUNCATE", "ALTER", "CREATE", "GRANT", "REVOKE", "EXEC", "EXECUTE" };
             foreach (var keyword in forbiddenKeywords)
             {
-                if (sql.IndexOf(keyword, StringComparison.OrdinalIgnoreCase) >= 0)
+                // Use word boundary regex to avoid false positives (e.g., "CreatedDate" should not match "CREATE")
+                var pattern = $@"\b{Regex.Escape(keyword)}\b";
+                if (Regex.IsMatch(sql, pattern, RegexOptions.IgnoreCase))
                 {
                     if (!IsInsideStringLiteral(sql, keyword))
                     {
@@ -66,6 +69,7 @@ namespace SmartRAG.Services.Database.Strategies
             return quoteCount % 2 != 0;
         }
 
+
         protected string FormatSchemaDescription(DatabaseSchemaInfo schema)
         {
             var sb = new StringBuilder();
@@ -94,5 +98,10 @@ namespace SmartRAG.Services.Database.Strategies
         }
 
         protected abstract string GetDialectName();
+
+        /// <summary>
+        /// Escapes table/column names for the specific SQL dialect
+        /// </summary>
+        public abstract string EscapeIdentifier(string identifier);
     }
 }

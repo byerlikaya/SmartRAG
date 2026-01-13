@@ -105,86 +105,59 @@ namespace SmartRAG.Services.Database
                     promptBuilder.AppendLine();
                 }
                 
-                promptBuilder.AppendLine("Answer the user's question using ONLY the database information provided.");
-                promptBuilder.AppendLine();
                 promptBuilder.AppendLine("╔═══════════════════════════════════════════════════════════════╗");
-                promptBuilder.AppendLine("║  🚨 CRITICAL: DATABASE DATA ANALYSIS RULES 🚨                ║");
+                promptBuilder.AppendLine("║  🚨 CRITICAL - READ THIS FIRST! 🚨                             ║");
                 promptBuilder.AppendLine("╚═══════════════════════════════════════════════════════════════╝");
                 promptBuilder.AppendLine();
-                promptBuilder.AppendLine("╔═══════════════════════════════════════════════════════════════╗");
-                promptBuilder.AppendLine("║  🚨 STEP-BY-STEP ANALYSIS PROCESS - FOLLOW EXACTLY! 🚨         ║");
-                promptBuilder.AppendLine("╚═══════════════════════════════════════════════════════════════╝");
+                promptBuilder.AppendLine("⛔ FORBIDDEN:");
+                promptBuilder.AppendLine("  ✗ 'database connection failed', 'no data available', 'missing data'");
+                promptBuilder.AppendLine("  ✗ SQL examples, code snippets, or query explanations");
+                promptBuilder.AppendLine("  ✗ Inventing names/numbers NOT in database results");
                 promptBuilder.AppendLine();
-                promptBuilder.AppendLine("STEP 1: CHECK IF DATA EXISTS");
-                promptBuilder.AppendLine("  - Look at the 'Database Results' section below");
-                promptBuilder.AppendLine("  - If you see ANY rows (even 1 row), DATA EXISTS - proceed to STEP 2");
-                promptBuilder.AppendLine("  - If you see '0 rows' or 'Error', then use [NO_ANSWER_FOUND]");
+                promptBuilder.AppendLine("✓ REQUIRED:");
+                promptBuilder.AppendLine("  ✓ If you see '📊 Total rows: X' where X > 0 → Data EXISTS, use it!");
+                promptBuilder.AppendLine("  ✓ Use EXACT values from database results - copy character by character");
+                promptBuilder.AppendLine("  ✓ If name missing → Say 'EntityID: X (name not available in results)'");
                 promptBuilder.AppendLine();
-                promptBuilder.AppendLine("STEP 2: ANALYZE THE DATA STRUCTURE");
-                promptBuilder.AppendLine("  - The first line contains column names (tab-separated)");
-                promptBuilder.AppendLine("  - Each subsequent line is a data row (tab-separated values)");
-                promptBuilder.AppendLine("  - Identify which columns contain: names, counts, IDs, values");
+                promptBuilder.AppendLine("═══════════════════════════════════════════════════════════════");
+                promptBuilder.AppendLine("HOW TO READ DATABASE RESULTS:");
+                promptBuilder.AppendLine("═══════════════════════════════════════════════════════════════");
+                promptBuilder.AppendLine("Format: '📊 Total rows: X | Columns: Col1, Col2, Col3'");
+                promptBuilder.AppendLine("Then: Column names (tab-separated)");
+                promptBuilder.AppendLine("Then: Data rows (tab-separated values matching columns)");
                 promptBuilder.AppendLine();
-                promptBuilder.AppendLine("STEP 3: ANSWER THE QUESTION");
-                promptBuilder.AppendLine("  - For 'most'/'highest'/'lowest' questions:");
-                promptBuilder.AppendLine("    → Look for COUNT columns or numeric columns");
-                promptBuilder.AppendLine("    → Find the row with the HIGHEST number (for 'most'/'highest')");
-                promptBuilder.AppendLine("    → Find the row with the LOWEST number (for 'lowest')");
-                promptBuilder.AppendLine("    → Extract the name/ID from that row");
-                promptBuilder.AppendLine("  - For 'how much'/'price' questions:");
-                promptBuilder.AppendLine("    → Look for numeric columns (numeric fields containing amounts, values, or quantities)");
-                promptBuilder.AppendLine("    → Extract the numeric value from relevant rows");
-                promptBuilder.AppendLine("  - For 'what is' questions:");
-                promptBuilder.AppendLine("    → Look for text columns (description fields, name fields, or value fields)");
-                promptBuilder.AppendLine("    → Extract the relevant information");
+                promptBuilder.AppendLine("ANSWER STRATEGY:");
+                promptBuilder.AppendLine("  1. Check: Do you see ANY rows? (📊 Total rows: X where X > 0)");
+                promptBuilder.AppendLine("     → If YES: Data EXISTS, answer using this data!");
+                promptBuilder.AppendLine("     → If NO: Only then say 'No data found'");
                 promptBuilder.AppendLine();
-                promptBuilder.AppendLine("STEP 4: PROVIDE DIRECT ANSWER");
-                promptBuilder.AppendLine("  - Extract the EXACT value from the database results");
-                promptBuilder.AppendLine("  - Do NOT say 'the data shows' or 'according to the database'");
-                promptBuilder.AppendLine("  - Just provide the answer directly");
+                promptBuilder.AppendLine("  2. Question type:");
+                promptBuilder.AppendLine("     → COUNT/Number: Return count value or row count");
+                promptBuilder.AppendLine("     → TOTAL/SUM: Return aggregated numeric value from results");
+                promptBuilder.AppendLine("     → LIST: Return all rows (format as list)");
+                promptBuilder.AppendLine("     → TOP N: Sort by numeric column (descending), take first N");
                 promptBuilder.AppendLine();
-                promptBuilder.AppendLine("CRITICAL RULES:");
-                promptBuilder.AppendLine("- If database results contain ANY rows, you MUST analyze them - DO NOT skip this step");
-                promptBuilder.AppendLine("- Database results are tab-separated: first line = headers, other lines = data rows");
-                promptBuilder.AppendLine("- For 'most'/'highest' questions: the answer is usually in the FIRST row (already sorted)");
-                promptBuilder.AppendLine("- For 'most'/'highest' questions: if multiple rows exist, find the one with highest count/value");
-                promptBuilder.AppendLine("- Look for columns that match the question: text fields for names, numeric fields for counts, numeric fields for amounts");
-                promptBuilder.AppendLine("- If the question asks for a specific entity name and you see text columns containing names, extract from the row with highest count");
-                promptBuilder.AppendLine("- ONLY use [NO_ANSWER_FOUND] if database results are COMPLETELY EMPTY (0 rows) or TOTALLY IRRELEVANT");
-                promptBuilder.AppendLine("- IMPORTANT: When you cannot find the answer, write a natural, user-friendly message AND add [NO_ANSWER_FOUND] at the end");
-                promptBuilder.AppendLine("- Do NOT explain data sources, methodology, or column names");
-                promptBuilder.AppendLine("- Do NOT repeat the question");
-                promptBuilder.AppendLine("- Keep response SHORT and TO THE POINT");
-
-                if (hasMultipleDatabases && !hasMergedResults)
-                {
-                    promptBuilder.AppendLine();
-                    promptBuilder.AppendLine("╔═══════════════════════════════════════════════════════════════╗");
-                    promptBuilder.AppendLine("║  🚨 MULTIPLE DATABASES - MANUAL DATA CORRELATION REQUIRED 🚨  ║");
-                    promptBuilder.AppendLine("╚═══════════════════════════════════════════════════════════════╝");
-                    promptBuilder.AppendLine();
-                    promptBuilder.AppendLine("The results below come from DIFFERENT databases that could not be automatically merged.");
-                    promptBuilder.AppendLine("You MUST manually correlate the data to answer the question:");
-                    promptBuilder.AppendLine();
-                    promptBuilder.AppendLine("1. Look for common ID columns (e.g., EntityID, ReferenceID, ForeignKeyID)");
-                    promptBuilder.AppendLine("2. Match rows from different databases using these ID columns");
-                    promptBuilder.AppendLine("3. Combine the information to provide a complete answer");
-                    promptBuilder.AppendLine("4. If you find matching IDs, use the corresponding data from each database");
-                    promptBuilder.AppendLine();
-                    promptBuilder.AppendLine("EXAMPLE:");
-                    promptBuilder.AppendLine("  Database A: EntityID=123, CountValue=5");
-                    promptBuilder.AppendLine("  Database B: EntityID=123, NameColumn='Value1', DescriptionColumn='Value2'");
-                    promptBuilder.AppendLine("  → Answer: Value1 Value2 (EntityID 123) has CountValue 5");
-                    promptBuilder.AppendLine();
-                }
-
+                promptBuilder.AppendLine("  3. Multiple databases:");
+                promptBuilder.AppendLine("     → Find ID columns (ending with 'ID' or 'Id') in ALL results");
+                promptBuilder.AppendLine("     → Match rows by ID values (numeric comparison, then string)");
+                promptBuilder.AppendLine("     → Combine matched rows (ID + all columns)");
+                promptBuilder.AppendLine("     → If no match: Use each database separately");
                 promptBuilder.AppendLine();
                 promptBuilder.AppendLine($"User Question: {userQuery}");
                 promptBuilder.AppendLine();
-                promptBuilder.AppendLine("Database Results:");
+                promptBuilder.AppendLine("═══════════════════════════════════════════════════════════════");
+                promptBuilder.AppendLine("📊 DATABASE RESULTS - USE ONLY THESE VALUES:");
+                promptBuilder.AppendLine("═══════════════════════════════════════════════════════════════");
+                promptBuilder.AppendLine();
                 promptBuilder.AppendLine(mergedData);
                 promptBuilder.AppendLine();
-                promptBuilder.AppendLine("Direct Answer:");
+                promptBuilder.AppendLine("═══════════════════════════════════════════════════════════════");
+                promptBuilder.AppendLine("NOW GENERATE YOUR ANSWER:");
+                promptBuilder.AppendLine("  ✓ Use data from results above");
+                promptBuilder.AppendLine("  ✓ Use EXACT values (no modifications)");
+                promptBuilder.AppendLine("  ✓ If names missing, say 'EntityID: X (name not available)'");
+                promptBuilder.AppendLine();
+                promptBuilder.AppendLine("Your answer (start directly, no preamble):");
 
                 var prompt = promptBuilder.ToString();
 
@@ -288,7 +261,6 @@ namespace SmartRAG.Services.Database
                     }
                 }
 
-                _logger.LogInformation("Parsed {RowCount} rows with {ColumnCount} columns", result.Rows.Count, result.Columns.Count);
                 return result;
             }
             catch (Exception ex)
@@ -306,8 +278,6 @@ namespace SmartRAG.Services.Database
                 if (parsedResults.Count < 2)
                     return null;
 
-                _logger.LogInformation("Attempting smart merge of {Count} databases", parsedResults.Count);
-
                 var joinableResults = await FindJoinableTablesAsync(parsedResults);
 
                 if (joinableResults == null || joinableResults.Count < 2)
@@ -317,11 +287,6 @@ namespace SmartRAG.Services.Database
                 }
 
                 var merged = PerformInMemoryJoin(joinableResults);
-
-                if (_logger.IsEnabled(LogLevel.Debug))
-                {
-                    _logger.LogDebug("Smart merge completed: {RowCount} merged rows", merged?.Rows.Count ?? 0);
-                }
                 return merged;
             }
             catch (Exception ex)
@@ -473,6 +438,14 @@ namespace SmartRAG.Services.Database
         {
             var sb = new StringBuilder();
 
+            if (result.Rows.Count == 0)
+            {
+                sb.AppendLine("No rows found");
+                return sb.ToString();
+            }
+
+            sb.AppendLine($"📊 Total rows: {result.Rows.Count} | Columns: {string.Join(", ", result.Columns)}");
+            sb.AppendLine();
             sb.AppendLine(string.Join("\t", result.Columns));
 
             foreach (var row in result.Rows)
@@ -480,8 +453,6 @@ namespace SmartRAG.Services.Database
                 var values = result.Columns.Select(col => row.TryGetValue(col, out var val) ? val : "NULL");
                 sb.AppendLine(string.Join("\t", values));
             }
-
-            sb.AppendLine($"\nMerged rows: {result.Rows.Count}");
 
             return sb.ToString();
         }
@@ -492,7 +463,9 @@ namespace SmartRAG.Services.Database
             {
                 var result = kvp.Value;
                 sb.AppendLine($"=== {result.DatabaseName} ===");
+                sb.AppendLine("🚨 CRITICAL: Use ONLY the data shown below. DO NOT invent any names or values!");
                 sb.AppendLine(FormatParsedResult(result));
+                sb.AppendLine("🚨 REMINDER: If names are not shown above, use ID only - NEVER invent names!");
                 sb.AppendLine();
             }
         }
@@ -507,8 +480,7 @@ namespace SmartRAG.Services.Database
                 var result = kvp.Value;
                 foreach (var col in result.Columns)
                 {
-                    if (col.EndsWith("id", StringComparison.OrdinalIgnoreCase) ||
-                        col.EndsWith("ID", StringComparison.OrdinalIgnoreCase))
+                    if (col.EndsWith("id", StringComparison.OrdinalIgnoreCase))
                     {
                         if (!allIdColumns.ContainsKey(col))
                         {
@@ -572,7 +544,9 @@ namespace SmartRAG.Services.Database
             {
                 var result = kvp.Value;
                 sb.AppendLine($"=== {result.DatabaseName} ===");
+                sb.AppendLine("🚨 CRITICAL: Use ONLY the data shown below. DO NOT invent any names or values!");
                 sb.AppendLine(FormatParsedResult(result));
+                sb.AppendLine("🚨 REMINDER: If names are not shown above, use ID only - NEVER invent names!");
 
                 // Add join hints if common ID columns exist
                 if (commonIdColumns.Any())

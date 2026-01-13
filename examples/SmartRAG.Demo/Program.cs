@@ -154,7 +154,7 @@ internal class Program
         var configuration = serviceProvider.GetRequiredService<IConfiguration>();
         var schemaAnalyzer = serviceProvider.GetRequiredService<IDatabaseSchemaAnalyzer>();
 
-        return new DatabaseHandler(console, configuration, connectionManager, schemaAnalyzer);
+        return new DatabaseHandler(console, configuration, connectionManager, schemaAnalyzer, serviceProvider);
     }
 
     private static DocumentHandler CreateDocumentHandler(IServiceProvider serviceProvider, IConsoleService console)

@@ -27,12 +27,6 @@ namespace SmartRAG.Models
         public DatabaseType DatabaseType { get; set; }
 
         /// <summary>
-        /// Optional description to help AI understand the database content.
-        /// Example: "Table A metrics, reference mappings, lookup values"
-        /// </summary>
-        public string Description { get; set; }
-
-        /// <summary>
         /// Whether this connection is enabled
         /// </summary>
         public bool Enabled { get; set; } = true;

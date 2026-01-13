@@ -145,8 +145,6 @@ public class QueryHandler(
 
             foreach (var dbQuery in intent.DatabaseQueries)
             {
-                _logger.LogDebug("Displaying SQL for {DatabaseName}: {SQL}", dbQuery.DatabaseName, dbQuery.GeneratedQuery);
-                
                 Console.ForegroundColor = ConsoleColor.Cyan;
                 Console.WriteLine($"📊 {dbQuery.DatabaseName}");
                 Console.ResetColor();

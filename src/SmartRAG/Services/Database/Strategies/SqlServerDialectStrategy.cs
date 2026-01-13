@@ -151,5 +151,19 @@ namespace SmartRAG.Services.Database.Strategies
 
             return fixedSql;
         }
+
+        public override string EscapeIdentifier(string identifier)
+        {
+            // SQL Server uses square brackets for identifiers with spaces/special chars
+            if (string.IsNullOrWhiteSpace(identifier)) return identifier;
+            
+            // If identifier contains space or special chars, wrap in square brackets
+            if (identifier.Contains(" ") || identifier.Contains("-") || identifier.Contains("."))
+            {
+                return $"[{identifier}]";
+            }
+            
+            return identifier;
+        }
     }
 }

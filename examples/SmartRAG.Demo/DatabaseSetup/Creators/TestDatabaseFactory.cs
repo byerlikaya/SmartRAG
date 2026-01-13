@@ -30,22 +30,6 @@ public static class TestDatabaseFactory
         }
 
         /// <summary>
-        /// Gets all supported database types with their descriptions
-        /// </summary>
-        /// <param name="configuration">Configuration instance for connection strings</param>
-        /// <returns>Dictionary of supported database types and descriptions</returns>
-        public static Dictionary<DatabaseType, string> GetSupportedDatabases(IConfiguration? configuration = null)
-        {
-            return new Dictionary<DatabaseType, string>
-            {
-                { DatabaseType.SQLite, new SqliteTestDatabaseCreator(configuration).GetDescription() },
-                { DatabaseType.SqlServer, new SqlServerTestDatabaseCreator(configuration).GetDescription() },
-                { DatabaseType.MySQL, new MySqlTestDatabaseCreator(configuration).GetDescription() },
-                { DatabaseType.PostgreSQL, new PostgreSqlTestDatabaseCreator(configuration).GetDescription() }
-            };
-        }
-
-        /// <summary>
         /// Validates if a database type is supported
         /// </summary>
         /// <param name="databaseType">Database type to validate</param>

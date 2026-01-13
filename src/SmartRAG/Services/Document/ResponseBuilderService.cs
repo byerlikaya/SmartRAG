@@ -319,15 +319,10 @@ namespace SmartRAG.Services.Document
                 
                 if (hasMeaningfulData && totalRows > 0)
                 {
-                    // Check if AI explicitly says there is no information despite returned rows
-                    // This handles cases where DB returns rows but they are not relevant to the query
-                    if (!string.IsNullOrWhiteSpace(response.Answer) && IndicatesMissingData(response.Answer))
-                    {
-                        _logger?.LogInformation("Database query returned {TotalRows} rows but AI indicated missing data. Marking as not meaningful.", totalRows);
-                        return false;
-                    }
-
-                    _logger?.LogInformation("Database query returned {TotalRows} rows - marking as meaningful data", totalRows);
+                    // CRITICAL: If database query returned rows, data EXISTS regardless of AI's interpretation
+                    // AI may incorrectly say "no data" or "connection failed" even when data is present
+                    // Trust the database results over AI's answer interpretation
+                    _logger?.LogInformation("Database query returned {TotalRows} rows - marking as meaningful data (ignoring AI's data interpretation)", totalRows);
                     return true;
                 }
                 
