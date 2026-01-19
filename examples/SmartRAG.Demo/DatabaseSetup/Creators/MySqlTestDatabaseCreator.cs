@@ -173,6 +173,53 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
 
     #region Private Methods
 
+    private static string ValidateContainerName(string containerName)
+    {
+        if (string.IsNullOrWhiteSpace(containerName))
+            throw new ArgumentException("Container name cannot be null or empty", nameof(containerName));
+        
+        if (!System.Text.RegularExpressions.Regex.IsMatch(containerName, @"^[a-zA-Z0-9_\-]+$"))
+            throw new ArgumentException("Container name contains invalid characters. Only alphanumeric characters, underscores, and hyphens are allowed.", nameof(containerName));
+        
+        return containerName;
+    }
+
+    private static string ValidatePath(string path, string parameterName)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            throw new ArgumentException($"{parameterName} cannot be null or empty", parameterName);
+        
+        if (path.Contains("..") || path.Contains("//") || path.Contains("\\\\"))
+            throw new ArgumentException($"{parameterName} contains invalid path characters. Path traversal is not allowed.", parameterName);
+        
+        if (path.Contains(";") || path.Contains("&") || path.Contains("|") || path.Contains("`") || path.Contains("$"))
+            throw new ArgumentException($"{parameterName} contains invalid characters that could be used for command injection.", parameterName);
+        
+        return path;
+    }
+
+    private static string ValidateServer(string server)
+    {
+        if (string.IsNullOrWhiteSpace(server))
+            throw new ArgumentException("Server cannot be null or empty", nameof(server));
+        
+        if (!System.Text.RegularExpressions.Regex.IsMatch(server, @"^[a-zA-Z0-9._\-]+$"))
+            throw new ArgumentException("Server contains invalid characters. Only alphanumeric characters, dots, underscores, and hyphens are allowed.", nameof(server));
+        
+        return server;
+    }
+
+    private static string ValidateUser(string user)
+    {
+        if (string.IsNullOrWhiteSpace(user))
+            throw new ArgumentException("User cannot be null or empty", nameof(user));
+        
+        if (!System.Text.RegularExpressions.Regex.IsMatch(user, @"^[a-zA-Z0-9_]+$"))
+            throw new ArgumentException("User contains invalid characters. Only alphanumeric characters and underscores are allowed.", nameof(user));
+        
+        return user;
+    }
+
     private static string EscapeMySqlIdentifier(string identifier)
     {
         if (string.IsNullOrWhiteSpace(identifier))
@@ -317,23 +364,28 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
     /// </summary>
     private async Task RestoreInDockerContainerAsync(string containerName, string backupFilePath, string password, CancellationToken cancellationToken)
     {
+        var validatedContainerName = ValidateContainerName(containerName);
+        var validatedBackupPath = ValidatePath(backupFilePath, nameof(backupFilePath));
+        var validatedUser = ValidateUser(_user);
+        var validatedDatabaseName = ValidateDatabaseName(_databaseName);
         var containerBackupPath = "/tmp/restore.sql";
         
-        var copyResult = await CopyBackupToContainerAsync(backupFilePath, containerName, containerBackupPath);
+        var copyResult = await CopyBackupToContainerAsync(validatedBackupPath, validatedContainerName, containerBackupPath);
         if (!copyResult)
         {
-            throw new InvalidOperationException($"Failed to copy backup file to container: {containerName}");
+            throw new InvalidOperationException($"Failed to copy backup file to container: {validatedContainerName}");
         }
         
         await Task.Run(() =>
         {
-            var validatedName = ValidateDatabaseName(_databaseName);
             var escapedPath = containerBackupPath.Replace("'", "'\"'\"'");
             var escapedPassword = password.Replace("'", "'\"'\"'");
+            var shellCommand = $"grep -v '^mysqldump:' {escapedPath} | mysql -u {validatedUser} -p'{escapedPassword}' {validatedDatabaseName}";
+            
             var processInfo = new System.Diagnostics.ProcessStartInfo
             {
                 FileName = "docker",
-                Arguments = $"exec {containerName} sh -c \"grep -v '^mysqldump:' {escapedPath} | mysql -u {_user} -p'{escapedPassword}' {validatedName}\"",
+                ArgumentList = { "exec", validatedContainerName, "sh", "-c", shellCommand },
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
@@ -367,18 +419,21 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
     /// </summary>
     private async Task RestoreLocalAsync(string backupFilePath, string password, CancellationToken cancellationToken)
     {
+        var validatedBackupPath = ValidatePath(backupFilePath, nameof(backupFilePath));
+        var validatedServer = ValidateServer(_server);
+        var validatedUser = ValidateUser(_user);
+        var validatedDatabaseName = ValidateDatabaseName(_databaseName);
+        
         await Task.Run(() =>
         {
-            var validatedName = ValidateDatabaseName(_databaseName);
-            var escapedPath = backupFilePath.Replace("'", "'\"'\"'");
+            var escapedPath = validatedBackupPath.Replace("'", "'\"'\"'");
             var escapedPassword = password.Replace("'", "'\"'\"'");
-            var shellCommand = "/bin/sh";
-            var shellArgs = $"-c \"grep -v '^mysqldump:' '{escapedPath}' | mysql -h {_server} -P {_port} -u {_user} -p'{escapedPassword}' {validatedName}\"";
+            var shellCommand = $"grep -v '^mysqldump:' '{escapedPath}' | mysql -h {validatedServer} -P {_port} -u {validatedUser} -p'{escapedPassword}' {validatedDatabaseName}";
             
             var processInfo = new System.Diagnostics.ProcessStartInfo
             {
-                FileName = shellCommand,
-                Arguments = shellArgs,
+                FileName = "/bin/sh",
+                ArgumentList = { "-c", shellCommand },
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
@@ -453,6 +508,10 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
     /// </summary>
     private async Task<bool> CopyBackupToContainerAsync(string localBackupPath, string containerName, string containerPath)
     {
+        var validatedContainerName = ValidateContainerName(containerName);
+        var validatedLocalPath = ValidatePath(localBackupPath, nameof(localBackupPath));
+        var validatedContainerPath = ValidatePath(containerPath, nameof(containerPath));
+        
         return await Task.Run(() =>
         {
             try
@@ -460,7 +519,7 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
                 var processInfo = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = "docker",
-                    Arguments = $"cp \"{localBackupPath}\" {containerName}:{containerPath}",
+                    ArgumentList = { "cp", validatedLocalPath, $"{validatedContainerName}:{validatedContainerPath}" },
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,

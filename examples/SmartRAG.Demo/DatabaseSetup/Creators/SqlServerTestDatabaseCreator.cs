@@ -185,6 +185,31 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
         return databaseName;
     }
 
+    private static string ValidateContainerName(string containerName)
+    {
+        if (string.IsNullOrWhiteSpace(containerName))
+            throw new ArgumentException("Container name cannot be null or empty", nameof(containerName));
+        
+        if (!System.Text.RegularExpressions.Regex.IsMatch(containerName, @"^[a-zA-Z0-9_\-]+$"))
+            throw new ArgumentException("Container name contains invalid characters. Only alphanumeric characters, underscores, and hyphens are allowed.", nameof(containerName));
+        
+        return containerName;
+    }
+
+    private static string ValidatePath(string path, string parameterName)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            throw new ArgumentException($"{parameterName} cannot be null or empty", parameterName);
+        
+        if (path.Contains("..") || path.Contains("//") || path.Contains("\\\\"))
+            throw new ArgumentException($"{parameterName} contains invalid path characters. Path traversal is not allowed.", parameterName);
+        
+        if (path.Contains(";") || path.Contains("&") || path.Contains("|") || path.Contains("`") || path.Contains("$"))
+            throw new ArgumentException($"{parameterName} contains invalid characters that could be used for command injection.", parameterName);
+        
+        return path;
+    }
+
     /// <summary>
     /// Creates the SQL Server database, dropping it first if it exists
     /// </summary>
@@ -333,6 +358,10 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
     /// </summary>
     private async Task<bool> CopyBackupToContainerAsync(string localBackupPath, string containerName, string containerPath)
     {
+        var validatedContainerName = ValidateContainerName(containerName);
+        var validatedLocalPath = ValidatePath(localBackupPath, nameof(localBackupPath));
+        var validatedContainerPath = ValidatePath(containerPath, nameof(containerPath));
+        
         return await Task.Run(() =>
         {
             try
@@ -340,7 +369,7 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
                 var processInfo = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = "docker",
-                    Arguments = $"cp \"{localBackupPath}\" {containerName}:{containerPath}",
+                    ArgumentList = { "cp", validatedLocalPath, $"{validatedContainerName}:{validatedContainerPath}" },
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -366,14 +395,18 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
     /// </summary>
     private async Task SetFilePermissionsAsync(string containerName, string containerPath)
     {
+        var validatedContainerName = ValidateContainerName(containerName);
+        var validatedContainerPath = ValidatePath(containerPath, nameof(containerPath));
+        
         await Task.Run(() =>
         {
             try
             {
+                var escapedPath = validatedContainerPath.Replace("'", "'\"'\"'");
                 var processInfo = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = "docker",
-                    Arguments = $"exec -u root {containerName} sh -c \"chown mssql:mssql {containerPath} && chmod 644 {containerPath}\"",
+                    ArgumentList = { "exec", "-u", "root", validatedContainerName, "sh", "-c", $"chown mssql:mssql '{escapedPath}' && chmod 644 '{escapedPath}'" },
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,

@@ -175,6 +175,53 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
 
         #region Private Methods
 
+    private static string ValidateContainerName(string containerName)
+    {
+        if (string.IsNullOrWhiteSpace(containerName))
+            throw new ArgumentException("Container name cannot be null or empty", nameof(containerName));
+        
+        if (!System.Text.RegularExpressions.Regex.IsMatch(containerName, @"^[a-zA-Z0-9_\-]+$"))
+            throw new ArgumentException("Container name contains invalid characters. Only alphanumeric characters, underscores, and hyphens are allowed.", nameof(containerName));
+        
+        return containerName;
+    }
+
+    private static string ValidatePath(string path, string parameterName)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            throw new ArgumentException($"{parameterName} cannot be null or empty", parameterName);
+        
+        if (path.Contains("..") || path.Contains("//") || path.Contains("\\\\"))
+            throw new ArgumentException($"{parameterName} contains invalid path characters. Path traversal is not allowed.", parameterName);
+        
+        if (path.Contains(";") || path.Contains("&") || path.Contains("|") || path.Contains("`") || path.Contains("$"))
+            throw new ArgumentException($"{parameterName} contains invalid characters that could be used for command injection.", parameterName);
+        
+        return path;
+    }
+
+    private static string ValidateServer(string server)
+    {
+        if (string.IsNullOrWhiteSpace(server))
+            throw new ArgumentException("Server cannot be null or empty", nameof(server));
+        
+        if (!System.Text.RegularExpressions.Regex.IsMatch(server, @"^[a-zA-Z0-9._\-]+$"))
+            throw new ArgumentException("Server contains invalid characters. Only alphanumeric characters, dots, underscores, and hyphens are allowed.", nameof(server));
+        
+        return server;
+    }
+
+    private static string ValidateUser(string user)
+    {
+        if (string.IsNullOrWhiteSpace(user))
+            throw new ArgumentException("User cannot be null or empty", nameof(user));
+        
+        if (!System.Text.RegularExpressions.Regex.IsMatch(user, @"^[a-zA-Z0-9_]+$"))
+            throw new ArgumentException("User contains invalid characters. Only alphanumeric characters and underscores are allowed.", nameof(user));
+        
+        return user;
+    }
+
     private static string EscapePostgreSqlIdentifier(string identifier)
     {
         if (string.IsNullOrWhiteSpace(identifier))
@@ -338,21 +385,28 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
     /// </summary>
     private async Task RestoreInDockerContainerAsync(string containerName, string backupFilePath, string password, CancellationToken cancellationToken)
     {
+        var validatedContainerName = ValidateContainerName(containerName);
+        var validatedBackupPath = ValidatePath(backupFilePath, nameof(backupFilePath));
+        var validatedUser = ValidateUser(_user);
+        var validatedDatabaseName = ValidateDatabaseName(_databaseName);
         var containerBackupPath = "/tmp/restore.sql";
         
-        var copyResult = await CopyBackupToContainerAsync(backupFilePath, containerName, containerBackupPath);
+        var copyResult = await CopyBackupToContainerAsync(validatedBackupPath, validatedContainerName, containerBackupPath);
         if (!copyResult)
         {
-            throw new InvalidOperationException($"Failed to copy backup file to container: {containerName}");
+            throw new InvalidOperationException($"Failed to copy backup file to container: {validatedContainerName}");
         }
         
         await Task.Run(() =>
         {
             var escapedPath = containerBackupPath.Replace("'", "'\"'\"'");
+            var escapedPassword = password.Replace("'", "'\"'\"'");
+            var shellCommand = $"sed '/^\\\\restrict/d' {escapedPath} | sed -E 's/^CREATE SCHEMA (\\\"[^\\\"]+\\\"|\\w+)/CREATE SCHEMA IF NOT EXISTS \\1/i' > /tmp/restore_cleaned.sql && PGPASSWORD='{escapedPassword}' psql -U {validatedUser} -d {validatedDatabaseName} -f /tmp/restore_cleaned.sql 2>&1 | grep -v 'already exists' || true";
+            
             var processInfo = new System.Diagnostics.ProcessStartInfo
             {
                 FileName = "docker",
-                Arguments = $"exec {containerName} sh -c \"sed '/^\\\\\\\\restrict/d' {escapedPath} | sed -E 's/^CREATE SCHEMA (\\\"[^\\\"]+\\\"|\\w+)/CREATE SCHEMA IF NOT EXISTS \\1/i' > /tmp/restore_cleaned.sql && PGPASSWORD='{password.Replace("'", "'\"'\"'")}' psql -U {_user} -d {ValidateDatabaseName(_databaseName)} -f /tmp/restore_cleaned.sql 2>&1 | grep -v 'already exists' || true\"",
+                ArgumentList = { "exec", validatedContainerName, "sh", "-c", shellCommand },
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
@@ -404,13 +458,18 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
     /// </summary>
     private async Task RestoreLocalAsync(string backupFilePath, string password, CancellationToken cancellationToken)
     {
+        var validatedBackupPath = ValidatePath(backupFilePath, nameof(backupFilePath));
+        var validatedServer = ValidateServer(_server);
+        var validatedUser = ValidateUser(_user);
+        var validatedDatabaseName = ValidateDatabaseName(_databaseName);
+        
         await Task.Run(() =>
         {
             var tempCleanedPath = Path.Combine(Path.GetTempPath(), $"restore_cleaned_{Guid.NewGuid():N}.sql");
             
             try
             {
-                var cleanedContent = File.ReadAllLines(backupFilePath)
+                var cleanedContent = File.ReadAllLines(validatedBackupPath)
                     .Where(line => !line.StartsWith("\\restrict", StringComparison.OrdinalIgnoreCase))
                     .Select(line => 
                     {
@@ -424,12 +483,11 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
                     .ToArray();
                 File.WriteAllLines(tempCleanedPath, cleanedContent);
                 
-                var validatedName = ValidateDatabaseName(_databaseName);
-                var escapedPath = tempCleanedPath.Replace("'", "'\"'\"'");
+                var validatedPath = ValidatePath(tempCleanedPath, nameof(tempCleanedPath));
                 var processInfo = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = "psql",
-                    Arguments = $"-h {_server} -p {_port} -U {_user} -d {validatedName} -f \"{escapedPath}\"",
+                    ArgumentList = { "-h", validatedServer, "-p", _port.ToString(), "-U", validatedUser, "-d", validatedDatabaseName, "-f", validatedPath },
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
@@ -532,6 +590,10 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
     /// </summary>
     private async Task<bool> CopyBackupToContainerAsync(string localBackupPath, string containerName, string containerPath)
     {
+        var validatedContainerName = ValidateContainerName(containerName);
+        var validatedLocalPath = ValidatePath(localBackupPath, nameof(localBackupPath));
+        var validatedContainerPath = ValidatePath(containerPath, nameof(containerPath));
+        
         return await Task.Run(() =>
         {
             try
@@ -539,7 +601,7 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
                 var processInfo = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = "docker",
-                    Arguments = $"cp \"{localBackupPath}\" {containerName}:{containerPath}",
+                    ArgumentList = { "cp", validatedLocalPath, $"{validatedContainerName}:{validatedContainerPath}" },
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
