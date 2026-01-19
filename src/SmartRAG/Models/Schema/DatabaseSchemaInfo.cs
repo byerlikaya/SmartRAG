@@ -35,11 +35,6 @@ namespace SmartRAG.Models
         public List<TableSchemaInfo> Tables { get; set; } = new List<TableSchemaInfo>();
 
         /// <summary>
-        /// AI-generated summary of database content
-        /// </summary>
-        public string AISummary { get; set; }
-
-        /// <summary>
         /// Total row count across all tables (approximate)
         /// </summary>
         public long TotalRowCount { get; set; }

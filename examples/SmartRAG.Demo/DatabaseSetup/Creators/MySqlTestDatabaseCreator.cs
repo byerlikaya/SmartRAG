@@ -119,8 +119,33 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
         await CreateSampleDatabaseAsync(connectionString, CancellationToken.None);
     }
 
+    public async Task<bool> DatabaseExistsAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var masterConnectionString = $"Server={_server};Port={_port};User={_user};Password={GetPassword()};";
+            using var connection = new MySqlConnection(masterConnectionString);
+            await connection.OpenAsync(cancellationToken);
+
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = $"SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = '{_databaseName}'";
+            var result = await cmd.ExecuteScalarAsync(cancellationToken);
+            return Convert.ToInt32(result) > 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public async Task CreateSampleDatabaseAsync(string connectionString, CancellationToken cancellationToken)
     {
+        if (await DatabaseExistsAsync(cancellationToken))
+        {
+            _logger?.LogInformation("MySQL database {DatabaseName} already exists, skipping creation", _databaseName);
+            return;
+        }
+
         try
         {
             await CreateDatabaseAsync(cancellationToken);

@@ -91,8 +91,6 @@ namespace SmartRAG.Services.Database
 
                 schemaInfo.TotalRowCount = totalRows;
 
-                schemaInfo.AISummary = await GenerateAISummaryAsync(schemaInfo, cancellationToken);
-
                 schemaInfo.Status = SchemaAnalysisStatus.Completed;
 
                 _schemaCache[databaseId] = schemaInfo;
@@ -134,21 +132,6 @@ namespace SmartRAG.Services.Database
         {
             _schemaCache.TryGetValue(databaseId, out var schema);
             return Task.FromResult(schema);
-        }
-
-        private async Task<string> GenerateAISummaryAsync(DatabaseSchemaInfo schemaInfo, CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                var prompt = BuildSummaryPrompt(schemaInfo);
-                var summary = await _aiService.GenerateResponseAsync(prompt, new List<string>(), cancellationToken);
-                return summary?.Trim() ?? "Database schema analysis completed.";
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to generate AI summary for database");
-                return GenerateFallbackSummary(schemaInfo);
-            }
         }
 
         private async Task<string> GetDatabaseIdAsync(DatabaseConnectionConfig config, CancellationToken cancellationToken = default)
@@ -863,35 +846,6 @@ namespace SmartRAG.Services.Database
             return null;
         }
 
-        private string BuildSummaryPrompt(DatabaseSchemaInfo schemaInfo)
-        {
-            var sb = new StringBuilder();
-            sb.AppendLine("Analyze this database schema and provide a concise summary of its purpose and content:");
-            sb.AppendLine();
-            sb.AppendLine($"Database: {schemaInfo.DatabaseName} ({schemaInfo.DatabaseType})");
-            sb.AppendLine($"Total Tables: {schemaInfo.Tables.Count}");
-            sb.AppendLine($"Total Rows: {schemaInfo.TotalRowCount:N0}");
-            sb.AppendLine();
-            sb.AppendLine("Tables:");
-
-            foreach (var table in schemaInfo.Tables.Take(10))
-            {
-                sb.AppendLine($"- {table.TableName} ({table.RowCount:N0} rows, {table.Columns.Count} columns)");
-                sb.AppendLine($"  Columns: {string.Join(", ", table.Columns.Take(5).Select(c => c.ColumnName))}");
-            }
-
-            sb.AppendLine();
-            sb.AppendLine("Provide a 2-3 sentence summary describing what kind of data this database contains and its likely purpose.");
-
-            return sb.ToString();
-        }
-
-        private string GenerateFallbackSummary(DatabaseSchemaInfo schemaInfo)
-        {
-            return $"Database '{schemaInfo.DatabaseName}' contains {schemaInfo.Tables.Count} tables " +
-                   $"with approximately {schemaInfo.TotalRowCount:N0} total rows. " +
-                   $"Main tables: {string.Join(", ", schemaInfo.Tables.Take(5).Select(t => t.TableName))}.";
-        }
     }
 }
 

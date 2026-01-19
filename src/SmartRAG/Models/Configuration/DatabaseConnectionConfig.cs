@@ -1,4 +1,5 @@
 using SmartRAG.Enums;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace SmartRAG.Models
@@ -45,6 +46,11 @@ namespace SmartRAG.Models
         /// Exclude specific tables from analysis
         /// </summary>
         public string[] ExcludedTables { get; set; }
+
+        /// <summary>
+        /// Cross-database column mappings for joining data across different databases
+        /// </summary>
+        public List<CrossDatabaseMapping> CrossDatabaseMappings { get; set; } = new List<CrossDatabaseMapping>();
     }
 }
 

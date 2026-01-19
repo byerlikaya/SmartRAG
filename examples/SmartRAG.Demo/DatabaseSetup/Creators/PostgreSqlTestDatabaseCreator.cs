@@ -118,8 +118,33 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
         await CreateSampleDatabaseAsync(connectionString, CancellationToken.None);
     }
 
+    public async Task<bool> DatabaseExistsAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var masterConnectionString = $"Server={_server};Port={_port};User Id={_user};Password={GetPassword()};Database=postgres;";
+            using var connection = new NpgsqlConnection(masterConnectionString);
+            await connection.OpenAsync(cancellationToken);
+
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = $"SELECT 1 FROM pg_database WHERE datname = '{_databaseName}'";
+            var result = await cmd.ExecuteScalarAsync(cancellationToken);
+            return result != null;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public async Task CreateSampleDatabaseAsync(string connectionString, CancellationToken cancellationToken)
     {
+        if (await DatabaseExistsAsync(cancellationToken))
+        {
+            _logger?.LogInformation("PostgreSQL database {DatabaseName} already exists, skipping creation", _databaseName);
+            return;
+        }
+
         try
         {
             NpgsqlConnection.ClearAllPools();

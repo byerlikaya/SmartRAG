@@ -166,7 +166,7 @@ namespace SmartRAG.Services.Document
 
             if (startNewConversation || (hasCommand && commandType == QueryCommandType.NewConversation))
             {
-                await _conversationManager.StartNewConversationAsync();
+                await _conversationManager.StartNewConversationAsync(cancellationToken);
                 return _responseBuilder.CreateRagResponse(query, "New conversation started. How can I help you?", new List<SearchSource>());
             }
 
@@ -182,8 +182,8 @@ namespace SmartRAG.Services.Document
                 throw new ArgumentException("Query cannot be empty", nameof(query));
 
             var originalQuery = query;
-            var sessionId = await _conversationManager.GetOrCreateSessionIdAsync();
-            var conversationHistory = await _conversationManager.GetConversationHistoryAsync(sessionId);
+            var sessionId = await _conversationManager.GetOrCreateSessionIdAsync(cancellationToken);
+            var conversationHistory = await _conversationManager.GetConversationHistoryAsync(sessionId, cancellationToken);
 
             if (hasCommand && commandType == QueryCommandType.ForceConversation)
             {
@@ -200,14 +200,13 @@ namespace SmartRAG.Services.Document
             if (intentAnalysis.IsConversation)
             {
                 // If answer is already provided by the intent classifier, use it directly to avoid redundant LLM call
-                if (!string.IsNullOrWhiteSpace(intentAnalysis.Answer))
-                {
-                    await _conversationManager.AddToConversationAsync(sessionId, query, intentAnalysis.Answer, cancellationToken);
-                    return _responseBuilder.CreateRagResponse(query, intentAnalysis.Answer, new List<SearchSource>());
-                }
-                
+                if (string.IsNullOrWhiteSpace(intentAnalysis.Answer))
+                    return await HandleConversationQueryAsync(query, sessionId, conversationHistory, cancellationToken);
+              
+                await _conversationManager.AddToConversationAsync(sessionId, query, intentAnalysis.Answer, cancellationToken);
+                return _responseBuilder.CreateRagResponse(query, intentAnalysis.Answer, new List<SearchSource>());
+
                 // Fallback to full conversation handler if answer not provided
-                return await HandleConversationQueryAsync(query, sessionId, conversationHistory, cancellationToken);
             }
 
             RagResponse? response = null;
@@ -222,7 +221,7 @@ namespace SmartRAG.Services.Document
             
             if (searchOptions.EnableDatabaseSearch)
             {
-                preAnalyzedQueryIntent = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(query);
+                preAnalyzedQueryIntent = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(query, cancellationToken);
             }
 
             if (searchOptions.EnableDocumentSearch)
@@ -241,19 +240,19 @@ namespace SmartRAG.Services.Document
             if (searchOptions.EnableDocumentSearch && CanAnswer && Results.Count > 0 && !skipEagerDocumentAnswer)
             {
                 var docRequest = CreateStrategyRequest(query, maxResults, conversationHistory, CanAnswer, searchOptions, queryTokens, preCalculatedResults: Results);
-                earlyDocumentResponse = await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(docRequest);
+                earlyDocumentResponse = await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(docRequest, cancellationToken);
 
                 QueryIntent? queryIntentForCheck = preAnalyzedQueryIntent;
                 if (queryIntentForCheck == null && searchOptions.EnableDatabaseSearch)
                 {
-                    queryIntentForCheck = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(query);
+                    queryIntentForCheck = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(query, cancellationToken);
                     preAnalyzedQueryIntent = queryIntentForCheck;
                 }
                 else if (queryIntentForCheck != null && 
                         (queryIntentForCheck.DatabaseQueries == null || queryIntentForCheck.DatabaseQueries.Count == 0) && 
                         searchOptions.EnableDatabaseSearch)
                 {
-                    queryIntentForCheck = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(query);
+                    queryIntentForCheck = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(query, cancellationToken);
                     preAnalyzedQueryIntent = queryIntentForCheck;
                 }
                 

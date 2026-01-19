@@ -832,17 +832,21 @@ namespace SmartRAG.Services.Database
         {
             using var command = connection.CreateCommand();
             command.CommandText = @"
-                    SELECT schemaname || '.' || tablename AS full_table_name
-                    FROM pg_tables 
-                    WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
-                    ORDER BY schemaname, tablename";
+                    SELECT 
+                        nspname || '.' || relname AS full_table_name
+                    FROM pg_class c
+                    JOIN pg_namespace n ON n.oid = c.relnamespace
+                    WHERE c.relkind = 'r'
+                    AND nspname NOT IN ('pg_catalog', 'information_schema')
+                    ORDER BY nspname, relname";
 
             var tables = new List<string>();
             using (var reader = await command.ExecuteReaderAsync())
             {
                 while (await reader.ReadAsync())
                 {
-                    tables.Add(reader.GetString(0));
+                    var tableName = reader.GetString(0);
+                    tables.Add(tableName);
                 }
             }
 

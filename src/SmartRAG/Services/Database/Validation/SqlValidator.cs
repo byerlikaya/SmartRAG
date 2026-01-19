@@ -24,7 +24,7 @@ namespace SmartRAG.Services.Database.Validation
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public List<string> ValidateQuery(string sql, DatabaseSchemaInfo schema, List<string> requiredTables)
+        public List<string> ValidateQuery(string sql, DatabaseSchemaInfo schema, List<string> requiredTables, List<string> allDatabaseNames = null)
         {
             var errors = new List<string>();
 
@@ -34,35 +34,114 @@ namespace SmartRAG.Services.Database.Validation
                 return errors;
             }
 
-            var tableErrors = ValidateTables(sql, schema, requiredTables);
+            var tableErrors = ValidateTables(sql, schema, requiredTables, allDatabaseNames);
             errors.AddRange(tableErrors);
 
             var columnErrors = ValidateColumns(sql, schema, requiredTables);
             errors.AddRange(columnErrors);
 
-            var syntaxErrors = ValidateSyntax(sql);
+            var syntaxErrors = ValidateSyntax(sql, schema);
             errors.AddRange(syntaxErrors);
 
             return errors;
         }
 
-        private List<string> ValidateTables(string sql, DatabaseSchemaInfo schema, List<string> requiredTables)
+        private List<string> ValidateTables(string sql, DatabaseSchemaInfo schema, List<string> requiredTables, List<string> allDatabaseNames = null)
         {
             var errors = new List<string>();
 
-            var tableMatches = Regex.Matches(sql, @"(?:FROM|JOIN)\s+(\[?[a-zA-Z0-9_]+\]?(?:\]?\.\[?[a-zA-Z0-9_]+\]?)?)", RegexOptions.IgnoreCase);
-
-            foreach (Match match in tableMatches)
+            var threePartPatterns = new[]
             {
-                var tableNameRaw = match.Groups[1].Value;
+                @"(?:FROM|JOIN)\s+(\[?[a-zA-Z0-9_]+\]?\.\[?[a-zA-Z0-9_]+\]?\.\[?[a-zA-Z0-9_]+\]?)",
+                @"(?:FROM|JOIN)\s+(""?[a-zA-Z0-9_]+""?\.""?[a-zA-Z0-9_]+""?\.""?[a-zA-Z0-9_]+""?)",
+                @"(?:WHERE|IN|EXISTS|NOT\s+EXISTS)[\s\S]*?FROM\s+(\[?[a-zA-Z0-9_]+\]?\.\[?[a-zA-Z0-9_]+\]?\.\[?[a-zA-Z0-9_]+\]?)",
+                @"(?:WHERE|IN|EXISTS|NOT\s+EXISTS)[\s\S]*?FROM\s+(""?[a-zA-Z0-9_]+""?\.""?[a-zA-Z0-9_]+""?\.""?[a-zA-Z0-9_]+""?)"
+            };
+
+            foreach (var pattern in threePartPatterns)
+            {
+                var matches = Regex.Matches(sql, pattern, RegexOptions.IgnoreCase);
+                
+                foreach (Match match in matches)
+                {
+                    var fullTableName = match.Groups[1].Value;
+                    var normalized = fullTableName
+                        .Replace("[", string.Empty)
+                        .Replace("]", string.Empty)
+                        .Replace("\"", string.Empty);
+                    var parts = normalized.Split('.');
+                    
+                    if (parts.Length == 3)
+                    {
+                        var databaseName = parts[0];
+                        if (!schema.DatabaseName.Equals(databaseName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            errors.Add($"Cross-database reference not allowed: '{fullTableName}'. Use only tables from '{schema.DatabaseName}' database.");
+                            _logger.LogWarning(
+                                "Detected cross-database table reference: {Reference} in database {Database}",
+                                fullTableName, schema.DatabaseName);
+                        }
+                    }
+                }
+            }
+
+            var allTablePatterns = new[]
+            {
+                @"(?:FROM|JOIN)\s+(\[?[a-zA-Z0-9_]+\]?(?:\]?\.\[?[a-zA-Z0-9_]+\]?)?)",
+                @"(?:WHERE|IN|EXISTS|NOT\s+EXISTS)[\s\S]*?FROM\s+(\[?[a-zA-Z0-9_]+\]?(?:\]?\.\[?[a-zA-Z0-9_]+\]?)?)",
+                @"SELECT[\s\S]*?FROM\s+(\[?[a-zA-Z0-9_]+\]?(?:\]?\.\[?[a-zA-Z0-9_]+\]?)?)",
+                @"(?:FROM|JOIN)\s+(""?[a-zA-Z0-9_]+""?(?:\.""?[a-zA-Z0-9_]+""?)?)",
+                @"(?:WHERE|IN|EXISTS|NOT\s+EXISTS)[\s\S]*?FROM\s+(""?[a-zA-Z0-9_]+""?(?:\.""?[a-zA-Z0-9_]+""?)?)",
+                @"SELECT[\s\S]*?FROM\s+(""?[a-zA-Z0-9_]+""?(?:\.""?[a-zA-Z0-9_]+""?)?)"
+            };
+
+            var allTableMatches = new HashSet<string>();
+
+            foreach (var pattern in allTablePatterns)
+            {
+                var matches = Regex.Matches(sql, pattern, RegexOptions.IgnoreCase | RegexOptions.Singleline);
+                foreach (Match match in matches)
+                {
+                    if (match.Groups.Count > 1 && !string.IsNullOrWhiteSpace(match.Groups[1].Value))
+                    {
+                        allTableMatches.Add(match.Groups[1].Value);
+                    }
+                }
+            }
+
+            foreach (var tableNameRaw in allTableMatches)
+            {
+                if (tableNameRaw.Split('.').Length == 3)
+                    continue;
+                
                 var tableName = NormalizeTableName(tableNameRaw);
 
                 if (IsSqlKeyword(tableName)) continue;
 
-                // For PostgreSQL, check case-sensitive matching first
+                var normalizedParts = tableName.Split('.');
+                if (normalizedParts.Length == 2 && allDatabaseNames != null && allDatabaseNames.Count > 1)
+                {
+                    var schemaPart = normalizedParts[0];
+                    foreach (var otherDbName in allDatabaseNames)
+                    {
+                        if (otherDbName.Equals(schema.DatabaseName, StringComparison.OrdinalIgnoreCase))
+                            continue;
+
+                        if (otherDbName.Contains(schemaPart, StringComparison.OrdinalIgnoreCase) ||
+                            schemaPart.Equals(otherDbName, StringComparison.OrdinalIgnoreCase))
+                        {
+                            errors.Add($"Cross-database reference detected: '{tableNameRaw}' appears to reference schema or database '{otherDbName}', but you are querying '{schema.DatabaseName}' database. Use ONLY tables from '{schema.DatabaseName}' database.");
+                            _logger.LogWarning(
+                                "Detected potential cross-database reference: {Reference} in database {Database}, possibly referencing {OtherDatabase}",
+                                tableNameRaw, schema.DatabaseName, otherDbName);
+                            break;
+                        }
+                    }
+                }
+
                 if (schema.DatabaseType == SmartRAG.Enums.DatabaseType.PostgreSQL)
                 {
-                    var exactMatch = schema.Tables.FirstOrDefault(t => t.TableName.Equals(tableNameRaw, StringComparison.Ordinal));
+                    var exactMatch = schema.Tables.FirstOrDefault(t => t.TableName.Equals(tableName, StringComparison.Ordinal));
                     if (exactMatch != null)
                     {
                         var exactTableName = exactMatch.TableName;
@@ -75,10 +154,8 @@ namespace SmartRAG.Services.Database.Validation
                         continue;
                     }
 
-                    // Try case-insensitive match for better error message
                     var caseInsensitiveMatch = schema.Tables.FirstOrDefault(t => 
-                        t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase) ||
-                        t.TableName.Equals(tableNameRaw, StringComparison.OrdinalIgnoreCase));
+                        t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase));
                     
                     if (caseInsensitiveMatch != null)
                     {
@@ -170,9 +247,20 @@ namespace SmartRAG.Services.Database.Validation
             return errors;
         }
 
-        private List<string> ValidateSyntax(string sql)
+        private List<string> ValidateSyntax(string sql, DatabaseSchemaInfo schema)
         {
             var errors = new List<string>();
+
+            if (Regex.IsMatch(sql, @"\[values from previous database results\]", RegexOptions.IgnoreCase))
+            {
+                errors.Add("SQL contains placeholder text '[values from previous database results]'. SQL must be executable with literal values only.");
+            }
+
+            var placeholderMatch = Regex.Match(sql, @"\[([a-zA-Z\s]+)\]");
+            if (placeholderMatch.Success && placeholderMatch.Groups[1].Value.Contains(" "))
+            {
+                errors.Add($"SQL contains placeholder text '[{placeholderMatch.Groups[1].Value}]'. Use only literal values and actual table/column names.");
+            }
 
             if (sql.Contains("CROSS JOIN", StringComparison.OrdinalIgnoreCase))
             {
@@ -184,6 +272,23 @@ namespace SmartRAG.Services.Database.Validation
             if (selectCount > 2)
             {
                 errors.Add("Too many nested subqueries (max 2 levels allowed).");
+            }
+
+            if (schema.DatabaseType == SmartRAG.Enums.DatabaseType.PostgreSQL)
+            {
+                if (Regex.IsMatch(sql, @"\bSELECT\s+TOP\s+\d+\b", RegexOptions.IgnoreCase))
+                {
+                    errors.Add("PostgreSQL does not support TOP. Use LIMIT at the end of the query instead (e.g., ORDER BY ... LIMIT 5).");
+                }
+            }
+
+            if (schema.DatabaseType == SmartRAG.Enums.DatabaseType.SqlServer)
+            {
+                if (Regex.IsMatch(sql, @"\bLIMIT\s+\d+", RegexOptions.IgnoreCase) && 
+                    !sql.Contains("FETCH", StringComparison.OrdinalIgnoreCase))
+                {
+                    errors.Add("SQL Server does not support LIMIT. Use TOP N immediately after SELECT instead (e.g., SELECT TOP 5 ...).");
+                }
             }
 
             return errors;

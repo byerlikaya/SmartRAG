@@ -211,7 +211,7 @@ namespace SmartRAG.Extensions
             services.AddScoped<ISqlDialectStrategy, SqlServerDialectStrategy>();
             services.AddScoped<ISqlDialectStrategyFactory, SqlDialectStrategyFactory>();
             services.AddScoped<ISqlValidator, SqlValidator>();
-            services.AddScoped<ISqlPromptBuilder, SqlPromptBuilder>();
+            services.AddScoped<ISqlPromptBuilder>(sp => new SqlPromptBuilder(sp.GetService<IDatabaseConnectionManager>()));
             services.AddScoped<ISqlQueryGenerator, SQLQueryGenerator>();
             services.AddScoped<IDatabaseQueryExecutor, DatabaseQueryExecutor>();
             services.AddScoped<IResultMerger, ResultMerger>();

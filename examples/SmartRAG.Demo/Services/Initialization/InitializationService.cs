@@ -52,9 +52,17 @@ public class InitializationService(
             System.Console.Write("  • SQL Server (SalesManagement)... ");
             try
             {
-                await sqlServerCreator.CreateSampleDatabaseAsync(sqlServerConnectionString);
-                _console.WriteSuccess("✓");
-                databasesCreated++;
+                if (await sqlServerCreator.DatabaseExistsAsync())
+                {
+                    _console.WriteInfo("✓ Exists");
+                    databasesSkipped++;
+                }
+                else
+                {
+                    await sqlServerCreator.CreateSampleDatabaseAsync(sqlServerConnectionString);
+                    _console.WriteSuccess("✓ Created");
+                    databasesCreated++;
+                }
             }
             catch (Exception ex)
             {
@@ -68,9 +76,17 @@ public class InitializationService(
             System.Console.Write("  • MySQL (InventoryManagement)... ");
             try
             {
-                await mysqlCreator.CreateSampleDatabaseAsync(mysqlConnectionString);
-                _console.WriteSuccess("✓");
-                databasesCreated++;
+                if (await mysqlCreator.DatabaseExistsAsync())
+                {
+                    _console.WriteInfo("✓ Exists");
+                    databasesSkipped++;
+                }
+                else
+                {
+                    await mysqlCreator.CreateSampleDatabaseAsync(mysqlConnectionString);
+                    _console.WriteSuccess("✓ Created");
+                    databasesCreated++;
+                }
             }
             catch (Exception ex)
             {
@@ -84,9 +100,17 @@ public class InitializationService(
             System.Console.Write("  • PostgreSQL (PersonManagement)... ");
             try
             {
-                await postgresqlCreator.CreateSampleDatabaseAsync(postgresqlConnectionString);
-                _console.WriteSuccess("✓");
-                databasesCreated++;
+                if (await postgresqlCreator.DatabaseExistsAsync())
+                {
+                    _console.WriteInfo("✓ Exists");
+                    databasesSkipped++;
+                }
+                else
+                {
+                    await postgresqlCreator.CreateSampleDatabaseAsync(postgresqlConnectionString);
+                    _console.WriteSuccess("✓ Created");
+                    databasesCreated++;
+                }
             }
             catch (Exception ex)
             {
@@ -100,9 +124,17 @@ public class InitializationService(
             System.Console.Write("  • SQLite (LogisticsManagement)... ");
             try
             {
-                await sqliteCreator.CreateSampleDatabaseAsync(sqliteConnectionString);
-                _console.WriteSuccess("✓");
-                databasesCreated++;
+                if (await sqliteCreator.DatabaseExistsAsync())
+                {
+                    _console.WriteInfo("✓ Exists");
+                    databasesSkipped++;
+                }
+                else
+                {
+                    await sqliteCreator.CreateSampleDatabaseAsync(sqliteConnectionString);
+                    _console.WriteSuccess("✓ Created");
+                    databasesCreated++;
+                }
             }
             catch (Exception ex)
             {

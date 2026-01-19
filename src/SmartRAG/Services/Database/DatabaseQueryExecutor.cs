@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using SmartRAG.Interfaces.Database;
 using SmartRAG.Models;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -18,15 +19,18 @@ namespace SmartRAG.Services.Database
 
         private readonly IDatabaseConnectionManager _connectionManager;
         private readonly IDatabaseParserService _databaseParser;
+        private readonly IDatabaseSchemaAnalyzer _schemaAnalyzer;
         private readonly ILogger<DatabaseQueryExecutor> _logger;
 
         public DatabaseQueryExecutor(
             IDatabaseConnectionManager connectionManager,
             IDatabaseParserService databaseParser,
+            IDatabaseSchemaAnalyzer schemaAnalyzer,
             ILogger<DatabaseQueryExecutor> logger)
         {
             _connectionManager = connectionManager;
             _databaseParser = databaseParser;
+            _schemaAnalyzer = schemaAnalyzer;
             _logger = logger;
         }
 
@@ -94,6 +98,8 @@ namespace SmartRAG.Services.Database
                     return result;
                 }
 
+                _logger.LogDebug("Executing SQL for database {DatabaseName}: {Sql}", dbQuery.DatabaseName, dbQuery.GeneratedQuery);
+
                 var maxRows = connection.MaxRowsPerQuery > 0 ? connection.MaxRowsPerQuery : DefaultMaxRows;
                 var queryResult = await _databaseParser.ExecuteQueryAsync(
                     connection.ConnectionString,
@@ -108,7 +114,8 @@ namespace SmartRAG.Services.Database
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error executing query on database");
+                _logger.LogError(ex, "Error executing query on database {DatabaseName}. SQL: {Sql}", 
+                    dbQuery.DatabaseName, dbQuery.GeneratedQuery);
                 result.Success = false;
                 result.ErrorMessage = ex.Message;
             }
@@ -150,7 +157,7 @@ namespace SmartRAG.Services.Database
 
                 if (!headerFound)
                 {
-                    headerFound = true; // Skip header
+                    headerFound = true;
                     continue;
                 }
 

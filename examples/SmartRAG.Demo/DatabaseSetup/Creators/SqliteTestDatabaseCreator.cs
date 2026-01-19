@@ -135,10 +135,45 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
         await CreateSampleDatabaseAsync(connectionString, CancellationToken.None);
     }
 
+    public async Task<bool> DatabaseExistsAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var connectionString = GetDefaultConnectionString();
+            var dbPath = ExtractFilePath(connectionString);
+            
+            if (!Path.IsPathRooted(dbPath))
+            {
+                var projectRoot = FindProjectRoot();
+                if (projectRoot != null)
+                {
+                    dbPath = Path.Combine(projectRoot, dbPath);
+                }
+                else
+                {
+                    dbPath = Path.Combine(Directory.GetCurrentDirectory(), dbPath);
+                }
+            }
+            
+            dbPath = Path.GetFullPath(dbPath);
+            return File.Exists(dbPath);
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
     public async Task CreateSampleDatabaseAsync(string connectionString, CancellationToken cancellationToken)
     {
         var dbPath = ExtractFilePath(connectionString);
         var dbName = Path.GetFileNameWithoutExtension(dbPath);
+
+        if (await DatabaseExistsAsync(cancellationToken))
+        {
+            _logger?.LogInformation("SQLite database {DatabaseName} already exists, skipping creation", dbName);
+            return;
+        }
 
         try
         {
@@ -173,20 +208,6 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
                 {
                     _logger?.LogError(ex, "Failed to create directory: {Directory}. Error: {Error}", directory, ex.Message);
                     throw new InvalidOperationException($"Failed to create directory: {directory}. Error: {ex.Message}", ex);
-                }
-            }
-            
-            if (File.Exists(dbPath))
-            {
-                try
-                {
-                    File.SetAttributes(dbPath, FileAttributes.Normal);
-                    File.Delete(dbPath);
-                }
-                catch (Exception ex)
-                {
-                    _logger?.LogError(ex, "Failed to delete existing database: {DbPath}. Error: {Error}", dbPath, ex.Message);
-                    throw new InvalidOperationException($"Failed to delete existing database: {dbPath}. Error: {ex.Message}", ex);
                 }
             }
 

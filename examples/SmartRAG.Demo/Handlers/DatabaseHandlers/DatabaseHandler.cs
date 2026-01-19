@@ -280,13 +280,6 @@ public class DatabaseHandler(
             System.Console.WriteLine($"    Status: {schema.Status}");
             System.Console.WriteLine($"    Total Rows: {schema.TotalRowCount:N0}");
 
-            if (!string.IsNullOrEmpty(schema.AISummary))
-            {
-                System.Console.ForegroundColor = ConsoleColor.Cyan;
-                System.Console.WriteLine($"    AI Summary: {schema.AISummary}");
-                System.Console.ResetColor();
-            }
-
             System.Console.WriteLine($"\n    Tables ({schema.Tables.Count}):");
             foreach (var table in schema.Tables)
             {
