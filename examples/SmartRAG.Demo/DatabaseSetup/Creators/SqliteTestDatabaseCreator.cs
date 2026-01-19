@@ -322,8 +322,8 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
         }
         catch (Exception ex)
         {
-            var safeBackupFileName = Path.GetFileName(backupFilePath);
-            _logger?.LogError(ex, "Error restoring backup file: {BackupFileName}. Error: {Error}", safeBackupFileName, ex.Message);
+            var safeIdentifier = !string.IsNullOrEmpty(_configurationName) ? _configurationName : _databaseName;
+            _logger?.LogError(ex, "Error restoring backup file for database {DatabaseName}. Error occurred during restore operation.", safeIdentifier);
             throw;
         }
     }
