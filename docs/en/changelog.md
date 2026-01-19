@@ -12,6 +12,87 @@ redirect_from: /en/changelog.html
 
 This page has been moved. Please visit the [Changelog Index]({{ site.baseurl }}/en/changelog/).
 
+## [3.7.0] - 2026-01-19
+
+### Cross-Database Mapping Detector & Security Improvements
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> MINOR Release</h4>
+    <p class="mb-0">
+        This release adds cross-database relationship detection and includes important security improvements.
+        All changes are backward compatible.
+    </p>
+</div>
+
+### ✨ Added
+
+#### Cross-Database Mapping Detector
+- **Automatic Relationship Detection**: New service for detecting relationships between columns across different databases
+- **Primary Key and Foreign Key Analysis**: Automatic detection based on schema analysis
+- **Semantic Column Matching**: Intelligent matching of related columns across databases
+- **Files Modified**:
+  - `src/SmartRAG/Models/Configuration/CrossDatabaseMapping.cs` - New model for cross-database mappings
+  - `src/SmartRAG/Services/Database/CrossDatabaseMappingDetector.cs` - New detection service
+  - `src/SmartRAG/Models/Configuration/DatabaseConnectionConfig.cs` - Added CrossDatabaseMappings property
+
+### 🔧 Improved
+
+#### SQL Script Extraction
+- **DRY Principle Applied**: Extracted SQL scripts from database creator classes to separate files
+- **Better Code Organization**: Centralized SQL scripts for easier maintenance
+- **Files Modified**:
+  - `src/SmartRAG/Services/Database/DatabaseParserService.cs` - Updated to use extracted scripts
+  - `src/SmartRAG/Services/Database/DatabaseSchemaAnalyzer.cs` - Improved schema handling
+
+#### Database Query Generation
+- **Enhanced Query Generation**: Improved accuracy and validation of generated queries
+- **Better Error Prevention**: Enhanced validation logic
+- **Files Modified**:
+  - `src/SmartRAG/Services/Database/SQLQueryGenerator.cs` - Query generation improvements
+  - `src/SmartRAG/Services/Database/Validation/SqlValidator.cs` - Enhanced validation
+  - `src/SmartRAG/Services/Database/Prompts/SqlPromptBuilder.cs` - Improved prompt building
+
+#### Database Parser and Document Search
+- **Better Service Integration**: Improved coordination between database and document services
+- **Files Modified**:
+  - `src/SmartRAG/Services/Database/DatabaseParserService.cs` - Service improvements
+  - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Integration improvements
+
+### 🐛 Fixed
+
+#### Security Improvements
+- **SQL Injection Prevention**: Enhanced input validation and parameterized query usage
+- **Command Injection Prevention**: Removed shell command execution, enhanced input sanitization
+- **Sensitive Data Leakage Prevention**: Removed sensitive data from error messages and logs
+  - Removed backup file paths from exception messages
+  - Enhanced error message sanitization
+- **Files Modified**:
+  - `src/SmartRAG/Services/Database/DatabaseConnectionManager.cs` - Enhanced error handling
+  - `src/SmartRAG/Services/Database/DatabaseQueryExecutor.cs` - Improved error messages
+
+### 📝 Notes
+
+- **Backward Compatibility**: All changes are backward compatible
+- **Migration**: No migration required
+- **Breaking Changes**: None
+- **Security**: Important security improvements included
+
+---
+
+## [3.6.0] - 2025-12-30
+
+### CancellationToken Support & Performance Improvements
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> MINOR Release</h4>
+    <p class="mb-0">
+        This release adds comprehensive CancellationToken support and improves performance.
+        All changes are backward compatible.
+    </p>
+</div>
+
+---
+
 ## [3.3.0] - 2025-12-01
 
 ### Redis Vector Search & Storage Improvements
@@ -734,6 +815,11 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
             </tr>
         </thead>
         <tbody>
+            <tr>
+                <td><strong>3.7.0</strong></td>
+                <td>2026-01-19</td>
+                <td>Cross-Database Mapping Detector, Security Improvements, SQL Script Extraction</td>
+            </tr>
             <tr>
                 <td><strong>3.6.0</strong></td>
                 <td>2025-12-30</td>

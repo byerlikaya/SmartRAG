@@ -5,7 +5,7 @@
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
-    <PackageVersion>3.6.0</PackageVersion>
+    <PackageVersion>3.7.0</PackageVersion>
     <Authors>Barış Yerlikaya</Authors>
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
@@ -20,30 +20,38 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Release 3.6.0: CancellationToken Support &amp; Performance Improvements (MINOR Release - 2025-12-30)
+    <PackageReleaseNotes>Release 3.7.0: Cross-Database Mapping Detector &amp; Security Improvements (MINOR Release - 2026-01-19)
 
 ADDED:
-- CancellationToken Support: Comprehensive CancellationToken support across all async methods and interfaces
-  - All async interface methods now accept CancellationToken parameter
-  - Private helper methods updated for cancellation support
-  - Better resource management and graceful cancellation handling
-  - XML documentation updated for all methods with CancellationToken
+- Cross-Database Mapping Detector: Automatic detection of relationships between columns across different databases
+  - New CrossDatabaseMapping model for defining cross-database relationships
+  - New CrossDatabaseMappingDetector service for automatic relationship detection
+  - Automatic detection based on Primary Key and Foreign Key analysis
+  - Support for Primary Key and Foreign Key relationship types
+  - Semantic column name matching for relationship detection
 
 IMPROVEMENTS:
-- Performance: Replaced Task.Run with native async file I/O methods for better performance
-  - Improved file I/O operations using native async methods
-  - Better resource utilization and reduced overhead
-- Code Quality: Removed unnecessary service and repository logs
-  - Cleaned up excessive logging in service layer
-  - Improved log readability and reduced noise
+- SQL Script Extraction: Extracted SQL scripts from database creator classes to separate files
+  - Applied DRY principle by centralizing SQL scripts
+  - Better maintainability and reusability of database setup scripts
+- Database Query Generation: Enhanced query generation and validation logic
+  - Improved database query generation accuracy
+  - Better validation logic for generated queries
+- Database Parser and Document Search: Updated services for better integration
+
+SECURITY:
+- SQL Injection Prevention: Enhanced input validation and parameterized query usage
+- Command Injection Prevention: Removed shell command execution, enhanced input sanitization
+- Sensitive Data Leakage Prevention: Removed sensitive data from error messages and logs
+  - Removed backup file paths from exception messages
+  - Enhanced error message sanitization
 
 TECHNICAL DETAILS:
-- 59 files changed: 635 insertions(+), 802 deletions(-)
 - Maintained 0 errors, 0 warnings
-- Full backward compatibility maintained (CancellationToken parameters have default values)
-- Enhanced async/await patterns throughout codebase
+- Full backward compatibility maintained
+- Important security improvements included
 
-This release adds comprehensive CancellationToken support for better resource management and cancellation handling, while improving performance and code quality.</PackageReleaseNotes>
+This release adds cross-database relationship detection capabilities and includes important security improvements for better data protection.</PackageReleaseNotes>
     
     <!-- Build Configuration -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -54,8 +62,8 @@ This release adds comprehensive CancellationToken support for better resource ma
     <AssemblyTitle>SmartRAG</AssemblyTitle>
     <AssemblyDescription>High-performance RAG library with conversation history management for .NET</AssemblyDescription>
     <AssemblyCopyright>Copyright © 2025 Barış Yerlikaya</AssemblyCopyright>
-    <AssemblyVersion>3.6.0.0</AssemblyVersion>
-    <FileVersion>3.6.0.0</FileVersion>
+    <AssemblyVersion>3.7.0.0</AssemblyVersion>
+    <FileVersion>3.7.0.0</FileVersion>
     <NeutralLanguage>en</NeutralLanguage>
     <Culture>en-US</Culture>
   </PropertyGroup>
