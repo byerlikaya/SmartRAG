@@ -11,8 +11,15 @@ BACKUP_DIR="$DEMO_DIR/DatabaseBackups"
 CONTAINER_NAME="smartrag-sqlserver-test"
 DB_NAME="AdventureWorks2022"
 DB_USER="sa"
-DB_PASSWORD="SmartRAG2025!"
+DB_PASSWORD="${SQLSERVER_SA_PASSWORD:-}"
 BACKUP_FILE="$BACKUP_DIR/AdventureWorks2022.bak"
+
+if [ -z "$DB_PASSWORD" ]; then
+    echo "❌ Error: SQLSERVER_SA_PASSWORD environment variable is not set"
+    echo "   Please set it before running this script:"
+    echo "   export SQLSERVER_SA_PASSWORD='your-password'"
+    exit 1
+fi
 PYTHON_SCRIPT="$SCRIPT_DIR/copy_adventureworks_data.py"
 
 echo "═══════════════════════════════════════════════════════════════════"

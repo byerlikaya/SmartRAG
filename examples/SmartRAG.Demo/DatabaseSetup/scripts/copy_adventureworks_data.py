@@ -53,8 +53,12 @@ TYPE_MAPPING = {
     'hierarchyid': {'pg': 'TEXT', 'mysql': 'VARCHAR(892)', 'sqlite': 'TEXT'},
 }
 
-def run_sql_mssql(server, database, query, password='SmartRAG2025!', timeout=600, delimiter='\t', binary_mode=False):
+def run_sql_mssql(server, database, query, password=None, timeout=600, delimiter='\t', binary_mode=False):
     """SQL Server'da query çalıştır (tab-delimited output için)"""
+    if password is None:
+        password = os.environ.get('SQLSERVER_SA_PASSWORD', '')
+        if not password:
+            raise ValueError("SQLSERVER_SA_PASSWORD environment variable is not set")
     # Query içindeki tek tırnakları shell escape ile escape et: ' -> '\''
     query_escaped = query.replace("'", "'\\''")
     # Tab-delimited output için -W (wide format) kullan
@@ -617,7 +621,12 @@ def run_sql_mysql(database, query, timeout=600):
         query_str = query.decode('utf-8')
     else:
         query_str = query
-    cmd = f"docker exec -i smartrag-mysql-test mysql -uroot -pSmartRAG2025! {database} 2>&1"
+    
+    password = os.environ.get('MYSQL_ROOT_PASSWORD', '')
+    if not password:
+        raise ValueError("MYSQL_ROOT_PASSWORD environment variable is not set")
+    
+    cmd = f"docker exec -i smartrag-mysql-test mysql -uroot -p{password} {database} 2>&1"
     try:
         result = subprocess.run(cmd, shell=True, input=query_str, capture_output=True, text=True, timeout=timeout)
         return result.stdout, result.returncode
@@ -1686,7 +1695,11 @@ if __name__ == "__main__":
     
     # MySQL veritabanını oluştur (yoksa)
     print("MySQL veritabanı kontrol ediliyor...")
-    db_create_cmd = "docker exec smartrag-mysql-test mysql -uroot -pSmartRAG2025! -e 'CREATE DATABASE IF NOT EXISTS inventorymanagement CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;' 2>&1"
+    mysql_password = os.environ.get('MYSQL_ROOT_PASSWORD', '')
+    if not mysql_password:
+        raise ValueError("MYSQL_ROOT_PASSWORD environment variable is not set")
+    
+    db_create_cmd = f"docker exec smartrag-mysql-test mysql -uroot -p{mysql_password} -e 'CREATE DATABASE IF NOT EXISTS inventorymanagement CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;' 2>&1"
     db_result = subprocess.run(db_create_cmd, shell=True, capture_output=True, text=True, timeout=30)
     if db_result.returncode == 0:
         print("  ✓ Veritabanı hazır")
