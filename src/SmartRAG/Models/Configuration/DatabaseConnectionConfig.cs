@@ -1,4 +1,5 @@
 using SmartRAG.Enums;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
 namespace SmartRAG.Models
@@ -27,12 +28,6 @@ namespace SmartRAG.Models
         public DatabaseType DatabaseType { get; set; }
 
         /// <summary>
-        /// Optional description to help AI understand the database content.
-        /// Example: "Table A metrics, reference mappings, lookup values"
-        /// </summary>
-        public string Description { get; set; }
-
-        /// <summary>
         /// Whether this connection is enabled
         /// </summary>
         public bool Enabled { get; set; } = true;
@@ -51,6 +46,11 @@ namespace SmartRAG.Models
         /// Exclude specific tables from analysis
         /// </summary>
         public string[] ExcludedTables { get; set; }
+
+        /// <summary>
+        /// Cross-database column mappings for joining data across different databases
+        /// </summary>
+        public List<CrossDatabaseMapping> CrossDatabaseMappings { get; set; } = new List<CrossDatabaseMapping>();
     }
 }
 

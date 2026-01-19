@@ -6,6 +6,72 @@ All notable changes to SmartRAG will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.7.0] - 2026-01-19
+
+### ✨ Added
+- **Cross-Database Mapping Detector**: Automatic detection of relationships between columns across different databases
+  - New `CrossDatabaseMapping` model for defining cross-database relationships
+  - New `CrossDatabaseMappingDetector` service for automatic relationship detection
+  - Automatic detection based on Primary Key and Foreign Key analysis
+  - Support for Primary Key and Foreign Key relationship types
+  - Semantic column name matching for relationship detection
+  - **Files Modified**:
+    - `src/SmartRAG/Models/Configuration/CrossDatabaseMapping.cs` - New model for cross-database mappings
+    - `src/SmartRAG/Services/Database/CrossDatabaseMappingDetector.cs` - New service for automatic detection
+    - `src/SmartRAG/Models/Configuration/DatabaseConnectionConfig.cs` - Added CrossDatabaseMappings property
+  - **Benefits**: Better cross-database query coordination, automatic relationship discovery, improved query accuracy
+
+### 🔧 Improved
+- **SQL Script Extraction**: Extracted SQL scripts from database creator classes to separate files
+  - Applied DRY principle by centralizing SQL scripts
+  - Better maintainability and reusability of database setup scripts
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Database/DatabaseParserService.cs` - Updated to use extracted scripts
+    - `src/SmartRAG/Services/Database/DatabaseSchemaAnalyzer.cs` - Improved schema handling
+  - **Benefits**: Better code organization, reduced duplication, easier maintenance
+
+- **Database Query Generation**: Enhanced query generation and validation logic
+  - Improved database query generation accuracy
+  - Better validation logic for generated queries
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Database/SQLQueryGenerator.cs` - Query generation improvements
+    - `src/SmartRAG/Services/Database/Validation/SqlValidator.cs` - Enhanced validation
+    - `src/SmartRAG/Services/Database/Prompts/SqlPromptBuilder.cs` - Improved prompt building
+  - **Benefits**: More accurate queries, better error prevention, improved reliability
+
+- **Database Parser and Document Search**: Updated services for better integration
+  - Improved database parser service integration
+  - Enhanced document search service coordination with database queries
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Database/DatabaseParserService.cs` - Service improvements
+    - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Integration improvements
+  - **Benefits**: Better service coordination, improved query accuracy
+
+### 🐛 Fixed
+- **Security**: Prevented SQL injection in database creator classes
+  - Enhanced input validation and parameterized query usage
+  - **Benefits**: Improved security, prevention of SQL injection attacks
+
+- **Security**: Prevented command injection in database creator classes
+  - Removed shell command execution
+  - Enhanced input sanitization
+  - **Benefits**: Improved security, prevention of command injection attacks
+
+- **Security**: Prevented sensitive data leakage in logs and database handlers
+  - Removed sensitive data from error messages and logs
+  - Enhanced error message sanitization
+  - Removed backup file paths from exception messages
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Database/DatabaseConnectionManager.cs` - Enhanced error handling
+    - `src/SmartRAG/Services/Database/DatabaseQueryExecutor.cs` - Improved error messages
+  - **Benefits**: Better data privacy, reduced information disclosure, improved security
+
+### 📝 Notes
+- **Backward Compatibility**: All changes are backward compatible
+- **Migration**: No migration required - existing code continues to work without changes
+- **Breaking Changes**: None
+- **Code Quality**: Maintained 0 errors, 0 warnings
+
 ## [3.6.0] - 2025-12-30
 
 ### ✨ Added
@@ -1347,6 +1413,8 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 
 ## Version History
 
+- **3.7.0** (2026-01-19) - Cross-Database Mapping Detector, Security Improvements, SQL Script Extraction
+- **3.6.0** (2025-12-30) - CancellationToken Support, Performance Improvements, Code Quality Enhancements
 - **3.5.0** (2025-12-27) - Code Quality Improvements & Architecture Refactoring
 - **3.4.0** (2025-12-12) - MCP Integration, File Watcher, Query Strategy Optimization
 - **3.3.0** (2025-12-01) - Redis Vector Search & Storage Improvements

@@ -14,7 +14,8 @@ namespace SmartRAG.Interfaces.Database
         /// <param name="sql">SQL query to validate</param>
         /// <param name="schema">Database schema information</param>
         /// <param name="requiredTables">List of required table names</param>
+        /// <param name="allDatabaseNames">List of all database names in the system (for cross-database reference detection). Can be null.</param>
         /// <returns>List of validation errors, empty if valid</returns>
-        List<string> ValidateQuery(string sql, DatabaseSchemaInfo schema, List<string> requiredTables);
+        List<string> ValidateQuery(string sql, DatabaseSchemaInfo schema, List<string> requiredTables, List<string> allDatabaseNames = null);
     }
 }

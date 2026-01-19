@@ -84,20 +84,85 @@ namespace SmartRAG.Services.Database
                 }
             }
 
+            if (enabledConnections.Count >= 2 && _options.EnableAutoSchemaAnalysis)
+            {
+                try
+                {
+                    await DetectAndApplyCrossDatabaseMappingsAsync(enabledConnections, cancellationToken);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to detect cross-database mappings");
+                }
+            }
+
             _initialized = true;
             _logger.LogInformation("Database connection manager initialized with {Count} connections",
                 _connections.Count);
         }
 
-        public async Task<List<DatabaseConnectionConfig>> GetAllConnectionsAsync(CancellationToken cancellationToken = default)
+        private async Task DetectAndApplyCrossDatabaseMappingsAsync(
+            List<DatabaseConnectionConfig> connections,
+            CancellationToken cancellationToken)
         {
-            return await Task.FromResult(_connections.Values.ToList());
+            var manualMappingCount = connections.Sum(c => c.CrossDatabaseMappings?.Count ?? 0);
+            if (manualMappingCount > 0)
+            {
+                _logger.LogInformation("Found {Count} manually configured cross-database mappings in appsettings.json", manualMappingCount);
+            }
+
+            var detectorLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<CrossDatabaseMappingDetector>.Instance;
+            var detector = new CrossDatabaseMappingDetector(_schemaAnalyzer, detectorLogger);
+            var autoDetectedMappings = await detector.DetectMappingsAsync(connections, cancellationToken);
+
+            foreach (var mapping in autoDetectedMappings)
+            {
+                var sourceConfig = connections.FirstOrDefault(c =>
+                    (c.Name ?? string.Empty).Equals(mapping.SourceDatabase, StringComparison.OrdinalIgnoreCase));
+                if (sourceConfig != null)
+                {
+                    if (sourceConfig.CrossDatabaseMappings == null)
+                        sourceConfig.CrossDatabaseMappings = new List<CrossDatabaseMapping>();
+
+                    var exists = sourceConfig.CrossDatabaseMappings.Any(m =>
+                        m.SourceColumn.Equals(mapping.SourceColumn, StringComparison.OrdinalIgnoreCase) &&
+                        m.TargetColumn.Equals(mapping.TargetColumn, StringComparison.OrdinalIgnoreCase) &&
+                        m.TargetDatabase.Equals(mapping.TargetDatabase, StringComparison.OrdinalIgnoreCase) &&
+                        (string.IsNullOrEmpty(m.SourceTable) || m.SourceTable.Equals(mapping.SourceTable, StringComparison.OrdinalIgnoreCase)) &&
+                        (string.IsNullOrEmpty(m.TargetTable) || m.TargetTable.Equals(mapping.TargetTable, StringComparison.OrdinalIgnoreCase)));
+
+                    if (!exists)
+                    {
+                        sourceConfig.CrossDatabaseMappings.Add(mapping);
+                        _logger.LogInformation(
+                            "Auto-detected and added cross-database mapping: {SourceDB}.{SourceTable}.{SourceColumn} -> {TargetDB}.{TargetTable}.{TargetColumn}",
+                            mapping.SourceDatabase, mapping.SourceTable, mapping.SourceColumn,
+                            mapping.TargetDatabase, mapping.TargetTable, mapping.TargetColumn);
+                    }
+                    else
+                    {
+                        _logger.LogDebug(
+                            "Skipped auto-detected mapping (already exists in appsettings.json): {SourceDB}.{SourceColumn} -> {TargetDB}.{TargetColumn}",
+                            mapping.SourceDatabase, mapping.SourceColumn,
+                            mapping.TargetDatabase, mapping.TargetColumn);
+                    }
+                }
+            }
+
+            var totalMappingCount = connections.Sum(c => c.CrossDatabaseMappings?.Count ?? 0);
+            _logger.LogInformation("Total cross-database mappings: {Total} ({Manual} manual + {Auto} auto-detected)",
+                totalMappingCount, manualMappingCount, totalMappingCount - manualMappingCount);
         }
 
-        public async Task<DatabaseConnectionConfig> GetConnectionAsync(string databaseId, CancellationToken cancellationToken = default)
+        public Task<List<DatabaseConnectionConfig>> GetAllConnectionsAsync(CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(_connections.Values.ToList());
+        }
+
+        public Task<DatabaseConnectionConfig> GetConnectionAsync(string databaseId, CancellationToken cancellationToken = default)
         {
             _connections.TryGetValue(databaseId, out var config);
-            return await Task.FromResult(config);
+            return Task.FromResult(config);
         }
 
         public async Task<bool> ValidateConnectionAsync(string databaseId, CancellationToken cancellationToken = default)
@@ -141,7 +206,7 @@ namespace SmartRAG.Services.Database
             }
         }
 
-        private async Task<string> ExtractDatabaseNameAsync(DatabaseConnectionConfig config, CancellationToken cancellationToken = default)
+        private Task<string> ExtractDatabaseNameAsync(DatabaseConnectionConfig config, CancellationToken cancellationToken = default)
         {
             var connectionString = config.ConnectionString.ToLower();
 
@@ -154,7 +219,7 @@ namespace SmartRAG.Services.Database
 
                 if (match.Success)
                 {
-                    return match.Groups[1].Value.Trim();
+                    return Task.FromResult(match.Groups[1].Value.Trim());
                 }
             }
 
@@ -168,11 +233,11 @@ namespace SmartRAG.Services.Database
                 if (match.Success)
                 {
                     var path = match.Groups[1].Value.Trim();
-                    return System.IO.Path.GetFileNameWithoutExtension(path);
+                    return Task.FromResult(System.IO.Path.GetFileNameWithoutExtension(path));
                 }
             }
 
-            return await Task.FromResult("UnknownDB");
+            return Task.FromResult("UnknownDB");
         }
     }
 }

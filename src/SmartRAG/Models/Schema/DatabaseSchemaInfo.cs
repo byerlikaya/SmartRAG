@@ -25,11 +25,6 @@ namespace SmartRAG.Models
         public DatabaseType DatabaseType { get; set; }
 
         /// <summary>
-        /// User-provided or auto-generated description
-        /// </summary>
-        public string Description { get; set; }
-
-        /// <summary>
         /// When this schema was last analyzed
         /// </summary>
         public DateTime LastAnalyzed { get; set; } = DateTime.UtcNow;
@@ -38,11 +33,6 @@ namespace SmartRAG.Models
         /// Tables in this database
         /// </summary>
         public List<TableSchemaInfo> Tables { get; set; } = new List<TableSchemaInfo>();
-
-        /// <summary>
-        /// AI-generated summary of database content
-        /// </summary>
-        public string AISummary { get; set; }
 
         /// <summary>
         /// Total row count across all tables (approximate)

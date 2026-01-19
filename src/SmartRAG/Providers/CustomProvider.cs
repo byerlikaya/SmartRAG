@@ -47,7 +47,15 @@ namespace SmartRAG.Providers
             var (success, response, error) = await MakeHttpRequestAsync(client, config.Endpoint, payload, cancellationToken: cancellationToken);
 
             if (!success)
+            {
+                if (error.Contains("model", StringComparison.OrdinalIgnoreCase) && 
+                    error.Contains("not found", StringComparison.OrdinalIgnoreCase))
+                {
+                    Logger.LogWarning("Model '{ModelName}' not found at endpoint '{Endpoint}'. This might indicate the service needs to refresh its model registry.", config.Model, config.Endpoint);
+                    return $"{error}\n\nTip: If using Ollama, ensure the model is registered with the API service. Try running 'ollama run {config.Model}' once to register the model, or restart the Ollama service.";
+                }
                 return error;
+            }
 
             try
             {
@@ -555,5 +563,6 @@ namespace SmartRAG.Providers
 
             return new List<float>();
         }
+
     }
 }

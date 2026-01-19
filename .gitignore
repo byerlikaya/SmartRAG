@@ -271,6 +271,16 @@ config.json
 *.backup
 *.bak
 
+# Exception: DatabaseBackups folder (required for test database restoration)
+!examples/SmartRAG.Demo/DatabaseBackups/*.db
+!examples/SmartRAG.Demo/DatabaseBackups/*.sql
+# Exclude large backup files that exceed GitHub's 100MB limit
+examples/SmartRAG.Demo/DatabaseBackups/*.bak
+# Exception: Allow salesmanagement.backup.bak (under 100MB limit)
+!examples/SmartRAG.Demo/DatabaseBackups/salesmanagement.backup.bak
+# Exclude LargeFiles directory (contains files >100MB)
+examples/SmartRAG.Demo/DatabaseBackups/LargeFiles/
+
 # Package outputs
 nupkgs/
 *.nupkg
@@ -357,6 +367,7 @@ models/
 TODO.md
 NOTES.md
 DEVELOPMENT.md
+SMARTRAG_TEST_SORULARI.md
 
 # Documentation publishing scripts
 docs/*.bat

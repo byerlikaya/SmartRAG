@@ -12,6 +12,87 @@ redirect_from: /en/changelog.html
 
 This page has been moved. Please visit the [Changelog Index]({{ site.baseurl }}/en/changelog/).
 
+## [3.7.0] - 2026-01-19
+
+### Cross-Database Mapping Detector & Security Improvements
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> MINOR Release</h4>
+    <p class="mb-0">
+        This release adds cross-database relationship detection and includes important security improvements.
+        All changes are backward compatible.
+    </p>
+</div>
+
+### ✨ Added
+
+#### Cross-Database Mapping Detector
+- **Automatic Relationship Detection**: New service for detecting relationships between columns across different databases
+- **Primary Key and Foreign Key Analysis**: Automatic detection based on schema analysis
+- **Semantic Column Matching**: Intelligent matching of related columns across databases
+- **Files Modified**:
+  - `src/SmartRAG/Models/Configuration/CrossDatabaseMapping.cs` - New model for cross-database mappings
+  - `src/SmartRAG/Services/Database/CrossDatabaseMappingDetector.cs` - New detection service
+  - `src/SmartRAG/Models/Configuration/DatabaseConnectionConfig.cs` - Added CrossDatabaseMappings property
+
+### 🔧 Improved
+
+#### SQL Script Extraction
+- **DRY Principle Applied**: Extracted SQL scripts from database creator classes to separate files
+- **Better Code Organization**: Centralized SQL scripts for easier maintenance
+- **Files Modified**:
+  - `src/SmartRAG/Services/Database/DatabaseParserService.cs` - Updated to use extracted scripts
+  - `src/SmartRAG/Services/Database/DatabaseSchemaAnalyzer.cs` - Improved schema handling
+
+#### Database Query Generation
+- **Enhanced Query Generation**: Improved accuracy and validation of generated queries
+- **Better Error Prevention**: Enhanced validation logic
+- **Files Modified**:
+  - `src/SmartRAG/Services/Database/SQLQueryGenerator.cs` - Query generation improvements
+  - `src/SmartRAG/Services/Database/Validation/SqlValidator.cs` - Enhanced validation
+  - `src/SmartRAG/Services/Database/Prompts/SqlPromptBuilder.cs` - Improved prompt building
+
+#### Database Parser and Document Search
+- **Better Service Integration**: Improved coordination between database and document services
+- **Files Modified**:
+  - `src/SmartRAG/Services/Database/DatabaseParserService.cs` - Service improvements
+  - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Integration improvements
+
+### 🐛 Fixed
+
+#### Security Improvements
+- **SQL Injection Prevention**: Enhanced input validation and parameterized query usage
+- **Command Injection Prevention**: Removed shell command execution, enhanced input sanitization
+- **Sensitive Data Leakage Prevention**: Removed sensitive data from error messages and logs
+  - Removed backup file paths from exception messages
+  - Enhanced error message sanitization
+- **Files Modified**:
+  - `src/SmartRAG/Services/Database/DatabaseConnectionManager.cs` - Enhanced error handling
+  - `src/SmartRAG/Services/Database/DatabaseQueryExecutor.cs` - Improved error messages
+
+### 📝 Notes
+
+- **Backward Compatibility**: All changes are backward compatible
+- **Migration**: No migration required
+- **Breaking Changes**: None
+- **Security**: Important security improvements included
+
+---
+
+## [3.6.0] - 2025-12-30
+
+### CancellationToken Support & Performance Improvements
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> MINOR Release</h4>
+    <p class="mb-0">
+        This release adds comprehensive CancellationToken support and improves performance.
+        All changes are backward compatible.
+    </p>
+</div>
+
+---
+
 ## [3.3.0] - 2025-12-01
 
 ### Redis Vector Search & Storage Improvements
@@ -67,11 +148,6 @@ This page has been moved. Please visit the [Changelog Index]({{ site.baseurl }}/
 - **FileSystemDocumentRepository**: Removed unused file system storage implementation
 - **SqliteDocumentRepository**: Removed unused SQLite storage implementation
 - **StorageConfig Properties**: Removed FileSystemPath and SqliteConfig (unused)
-
-### 📚 Documentation
-
-- **Redis Storage Documentation**: Updated with RediSearch requirements and setup instructions
-- **InMemory Storage Documentation**: Added configuration examples and use cases
 
 ### ⚠️ Breaking Changes
 
@@ -456,11 +532,6 @@ If you're using OCR or Audio Transcription features:
 - `src/SmartRAG/Enums/AudioProvider.cs` - Removed GoogleCloud enum value
 - `src/SmartRAG/Services/ServiceLogMessages.cs` - Updated log messages for Whisper.net
 
-#### **Documentation Updates**
-- **README.md**: Updated to reflect Whisper.net-only audio processing
-- **README.tr.md**: Updated Turkish documentation
-- **docs/**: Updated all documentation files to remove Google Speech references
-
 ### ✨ Benefits
 - **100% Local Processing**: All audio transcription happens locally with Whisper.net
 - **Enhanced Privacy**: No data leaves your infrastructure
@@ -495,7 +566,6 @@ If you were using Google Speech-to-Text:
 ### 🔧 Technical Improvements
 - **ServiceLogMessages.cs**: Updated LoggerMessage definitions to match parameter counts correctly
 - **EventId Management**: Reassigned conflicting EventIds to ensure unique logging identifiers
-- **Documentation**: Cleaned up README files for better NuGet package display
 
 ---
 
@@ -567,23 +637,14 @@ If you were using Google Speech-to-Text:
 ### ✨ Added
 - **Multi-language README**: Available in English, Turkish, German, and Russian
 - **Multi-language CHANGELOG**: Available in 4 languages
-- **Enhanced documentation**: Comprehensive on-premise deployment docs
 - **Local AI setup examples**: Configuration for Ollama and LM Studio
 - **Enterprise use cases**: Banking, Healthcare, Legal, Government, Manufacturing
 
 ### 🔧 Improved
 - **Retry mechanism**: Enhanced retry prompts with language-specific instructions
 - **Error handling**: Better error messages with database type information
-- **Documentation structure**: Cleaner README with CHANGELOG links
 - **Code quality**: SOLID/DRY principles maintained
 - **Performance**: Optimized multi-database query coordination
-
-### 📚 Documentation
-- **On-Premise guide**: Comprehensive deployment documentation
-- **Privacy guide**: Data privacy and compliance documentation
-- **OCR limitations**: Clear capabilities and limitations
-- **Audio processing**: Clear requirements and limitations
-- **Enterprise scenarios**: Real-world use cases
 
 ### ✅ Quality Assurance
 - **Zero Warnings Policy**: Maintained 0 errors, 0 warnings standard
@@ -644,33 +705,17 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Audio Processing Pipeline**: Enhanced with Google Cloud AI
 - **Configuration Management**: Updated to use GoogleSpeechConfig
 - **Error Handling**: Enhanced for audio transcription
-- **Documentation**: Updated with Speech-to-Text examples
-
-### 📚 Documentation
-- **Audio Processing**: Comprehensive feature documentation
-- **Google Speech-to-Text**: Enhanced README with capabilities
-- **Multi-language Support**: Highlighted 100+ language support
-- **Developer Experience**: Better feature visibility
 
 ---
 
 ## [2.2.0] - 2025-09-15
 
 ### ✨ Added
-- **Enhanced OCR Documentation**: Comprehensive with real-world use cases
-- **Improved README**: Detailed image processing features
 - **Use Case Examples**: Scanned documents, receipts, image content
 
 ### 🔧 Improved
 - **Package Metadata**: Updated project URLs and release notes
-- **Documentation Structure**: Enhanced OCR showcase
 - **User Guidance**: Improved image processing workflows
-
-### 📚 Documentation
-- **OCR Capabilities**: Comprehensive with real-world examples
-- **Image Processing**: Enhanced capabilities documentation
-- **WebP Support**: Highlighted WebP to PNG conversion
-- **Developer Experience**: Better visibility of features
 
 ---
 
@@ -687,10 +732,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Format Consistency**: Standardized across storage providers
 - **Thread Safety**: Enhanced concurrent access handling
 - **Platform Agnostic**: Compatible across .NET environments
-
-### 📚 Documentation
-- **Multi-language Updates**: All languages (EN, TR, DE, RU) updated
-- **100% Compliance**: All established rules maintained
 
 ---
 
@@ -715,11 +756,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Language Compatibility**: C# 7.3 syntax for .NET Standard 2.1
 - **Package Versions**: Updated to .NET Standard compatible versions
 - **API Compatibility**: Maintained functionality while ensuring framework compatibility
-
-### 📚 Documentation
-- **Framework Requirements**: Updated for .NET Standard
-- **Installation Guide**: Updated package references
-- **Migration Guide**: Comprehensive guide for .NET 9.0 users
 
 ### 🧪 Testing
 - **Framework Compatibility**: Verified .NET Standard 2.1 compatibility
@@ -747,11 +783,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Content Processing**: More robust document parsing
 - **Performance**: Optimized Excel extraction and validation
 
-### 📚 Documentation
-- **Excel Format Support**: Comprehensive Excel processing documentation
-- **API Reliability**: Updated error handling documentation
-- **Installation Guide**: Updated package references
-
 ### 🧪 Testing
 - **Excel Parsing**: Verified with various Excel formats
 - **API Retry**: Tested retry mechanism
@@ -770,10 +801,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - Provider logging message implementations
 - Service collection registration issues
 
-### 📚 Documentation
-- Updated README with latest features
-- Improved installation instructions
-
 ---
 
 ## Version History
@@ -788,6 +815,11 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
             </tr>
         </thead>
         <tbody>
+            <tr>
+                <td><strong>3.7.0</strong></td>
+                <td>2026-01-19</td>
+                <td>Cross-Database Mapping Detector, Security Improvements, SQL Script Extraction</td>
+            </tr>
             <tr>
                 <td><strong>3.6.0</strong></td>
                 <td>2025-12-30</td>
@@ -826,7 +858,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
             <tr>
                 <td><strong>2.2.0</strong></td>
                 <td>2025-09-15</td>
-                <td>Enhanced OCR documentation</td>
+                <td>OCR capabilities and image processing</td>
             </tr>
             <tr>
                 <td><strong>2.1.0</strong></td>

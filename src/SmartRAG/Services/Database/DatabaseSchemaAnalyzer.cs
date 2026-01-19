@@ -13,6 +13,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -57,7 +58,6 @@ namespace SmartRAG.Services.Database
             {
                 DatabaseId = databaseId,
                 DatabaseType = connectionConfig.DatabaseType,
-                Description = connectionConfig.Description,
                 Status = SchemaAnalysisStatus.InProgress,
                 LastAnalyzed = DateTime.UtcNow
             };
@@ -90,11 +90,6 @@ namespace SmartRAG.Services.Database
                 }
 
                 schemaInfo.TotalRowCount = totalRows;
-
-                if (string.IsNullOrEmpty(schemaInfo.Description))
-                {
-                    schemaInfo.AISummary = await GenerateAISummaryAsync(schemaInfo, cancellationToken);
-                }
 
                 schemaInfo.Status = SchemaAnalysisStatus.Completed;
 
@@ -137,21 +132,6 @@ namespace SmartRAG.Services.Database
         {
             _schemaCache.TryGetValue(databaseId, out var schema);
             return Task.FromResult(schema);
-        }
-
-        private async Task<string> GenerateAISummaryAsync(DatabaseSchemaInfo schemaInfo, CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                var prompt = BuildSummaryPrompt(schemaInfo);
-                var summary = await _aiService.GenerateResponseAsync(prompt, new List<string>(), cancellationToken);
-                return summary?.Trim() ?? "Database schema analysis completed.";
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Failed to generate AI summary for database");
-                return GenerateFallbackSummary(schemaInfo);
-            }
         }
 
         private async Task<string> GetDatabaseIdAsync(DatabaseConnectionConfig config, CancellationToken cancellationToken = default)
@@ -347,7 +327,17 @@ namespace SmartRAG.Services.Database
             }
             else
             {
-                schema = connection.GetSchema("Columns", new[] { null, null, tableName, null });
+                string schemaName = null;
+                string actualTableName = tableName;
+                
+                if (tableName.Contains('.'))
+                {
+                    var parts = tableName.Split('.', 2);
+                    schemaName = parts[0];
+                    actualTableName = parts[1];
+                }
+                
+                schema = connection.GetSchema("Columns", new[] { null, schemaName, actualTableName, null });
             }
 
             foreach (DataRow row in schema.Rows)
@@ -362,7 +352,32 @@ namespace SmartRAG.Services.Database
                 if (row.Table.Columns.Contains("CHARACTER_MAXIMUM_LENGTH") &&
                     row["CHARACTER_MAXIMUM_LENGTH"] != DBNull.Value)
                 {
-                    column.MaxLength = Convert.ToInt32(row["CHARACTER_MAXIMUM_LENGTH"]);
+                    var maxLengthValue = row["CHARACTER_MAXIMUM_LENGTH"];
+                    // Handle LONGBLOB/BLOB types that may return -1 or very large values
+                    if (maxLengthValue is long longValue)
+                    {
+                        if (longValue > int.MaxValue || longValue < int.MinValue)
+                        {
+                            // For BLOB types, set to null or a reasonable max
+                            column.MaxLength = null;
+                        }
+                        else
+                        {
+                            column.MaxLength = (int)longValue;
+                        }
+                    }
+                    else
+                    {
+                        try
+                        {
+                            column.MaxLength = Convert.ToInt32(maxLengthValue);
+                        }
+                        catch (OverflowException)
+                        {
+                            // For BLOB/LONGBLOB types, set to null
+                            column.MaxLength = null;
+                        }
+                    }
                 }
 
                 columns.Add(column);
@@ -372,7 +387,17 @@ namespace SmartRAG.Services.Database
             {
                 try
                 {
-                    var pkSchema = connection.GetSchema("IndexColumns", new[] { null, null, tableName, null });
+                    string schemaName = null;
+                    string actualTableName = tableName;
+                    
+                    if (tableName.Contains('.'))
+                    {
+                        var parts = tableName.Split('.', 2);
+                        schemaName = parts[0];
+                        actualTableName = parts[1];
+                    }
+                    
+                    var pkSchema = connection.GetSchema("IndexColumns", new[] { null, schemaName, actualTableName, null });
                     var primaryKeyColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
                     foreach (DataRow row in pkSchema.Rows)
@@ -447,9 +472,35 @@ namespace SmartRAG.Services.Database
             try
             {
                 using var cmd = connection.CreateCommand();
+                
+                string schemaName = null;
+                string actualTableName = tableName;
+                
+                if (tableName.Contains('.'))
+                {
+                    var parts = tableName.Split('.', 2);
+                    schemaName = parts[0];
+                    actualTableName = parts[1];
+                }
+                
                 if (databaseType == DatabaseType.SqlServer)
                 {
-                    cmd.CommandText = $@"
+                    if (!string.IsNullOrEmpty(schemaName))
+                    {
+                        cmd.CommandText = $@"
+                            SELECT 
+                                fk.name AS ForeignKeyName,
+                                COL_NAME(fkc.parent_object_id, fkc.parent_column_id) AS ColumnName,
+                                SCHEMA_NAME(OBJECTPROPERTY(fkc.referenced_object_id, 'SchemaId')) + '.' + OBJECT_NAME(fkc.referenced_object_id) AS ReferencedTable,
+                                COL_NAME(fkc.referenced_object_id, fkc.referenced_column_id) AS ReferencedColumn
+                            FROM sys.foreign_keys AS fk
+                            INNER JOIN sys.foreign_key_columns AS fkc ON fk.object_id = fkc.constraint_object_id
+                            WHERE SCHEMA_NAME(OBJECTPROPERTY(fk.parent_object_id, 'SchemaId')) = '{schemaName}'
+                            AND OBJECT_NAME(fk.parent_object_id) = '{actualTableName}'";
+                    }
+                    else
+                    {
+                        cmd.CommandText = $@"
                             SELECT 
                                 fk.name AS ForeignKeyName,
                                 COL_NAME(fkc.parent_object_id, fkc.parent_column_id) AS ColumnName,
@@ -457,23 +508,42 @@ namespace SmartRAG.Services.Database
                                 COL_NAME(fkc.referenced_object_id, fkc.referenced_column_id) AS ReferencedColumn
                             FROM sys.foreign_keys AS fk
                             INNER JOIN sys.foreign_key_columns AS fkc ON fk.object_id = fkc.constraint_object_id
-                            WHERE OBJECT_NAME(fk.parent_object_id) = '{tableName}'";
+                            WHERE OBJECT_NAME(fk.parent_object_id) = '{actualTableName}'";
+                    }
                 }
                 else if (databaseType == DatabaseType.MySQL)
                 {
                     cmd.CommandText = $@"
-                            SELECT 
-                                CONSTRAINT_NAME AS ForeignKeyName,
-                                COLUMN_NAME AS ColumnName,
-                                REFERENCED_TABLE_NAME AS ReferencedTable,
-                                REFERENCED_COLUMN_NAME AS ReferencedColumn
-                            FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
-                            WHERE TABLE_NAME = '{tableName}' 
-                            AND REFERENCED_TABLE_NAME IS NOT NULL";
+                        SELECT 
+                            CONSTRAINT_NAME AS ForeignKeyName,
+                            COLUMN_NAME AS ColumnName,
+                            REFERENCED_TABLE_NAME AS ReferencedTable,
+                            REFERENCED_COLUMN_NAME AS ReferencedColumn
+                        FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+                        WHERE TABLE_SCHEMA = DATABASE()
+                        AND TABLE_NAME = '{actualTableName}' 
+                        AND REFERENCED_TABLE_NAME IS NOT NULL";
                 }
                 else if (databaseType == DatabaseType.PostgreSQL)
                 {
-                    cmd.CommandText = $@"
+                    if (!string.IsNullOrEmpty(schemaName))
+                    {
+                        cmd.CommandText = $@"
+                            SELECT 
+                                tc.constraint_name AS ForeignKeyName,
+                                kcu.column_name AS ColumnName,
+                                ccu.table_schema || '.' || ccu.table_name AS ReferencedTable,
+                                ccu.column_name AS ReferencedColumn
+                            FROM information_schema.table_constraints AS tc 
+                            JOIN information_schema.key_column_usage AS kcu ON tc.constraint_name = kcu.constraint_name
+                            JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name
+                            WHERE tc.constraint_type = 'FOREIGN KEY' 
+                            AND tc.table_schema = '{schemaName}'
+                            AND tc.table_name = '{actualTableName}'";
+                    }
+                    else
+                    {
+                        cmd.CommandText = $@"
                             SELECT 
                                 tc.constraint_name AS ForeignKeyName,
                                 kcu.column_name AS ColumnName,
@@ -482,7 +552,9 @@ namespace SmartRAG.Services.Database
                             FROM information_schema.table_constraints AS tc 
                             JOIN information_schema.key_column_usage AS kcu ON tc.constraint_name = kcu.constraint_name
                             JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name
-                            WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_name = '{tableName}'";
+                            WHERE tc.constraint_type = 'FOREIGN KEY' 
+                            AND tc.table_name = '{actualTableName}'";
+                    }
                 }
                 else
                 {
@@ -557,19 +629,43 @@ namespace SmartRAG.Services.Database
 
                 if (connectionType == "SqlConnection")
                 {
-                    quotedTable = $"[{tableName}]";
+                    if (tableName.Contains('.'))
+                    {
+                        var parts = tableName.Split('.', 2);
+                        quotedTable = $"[{parts[0]}].[{parts[1]}]";
+                    }
+                    else
+                    {
+                        quotedTable = $"[{tableName}]";
+                    }
                 }
                 else if (connectionType == "MySqlConnection")
                 {
-                    quotedTable = $"`{tableName}`";
+                    if (tableName.Contains('.'))
+                    {
+                        var parts = tableName.Split('.', 2);
+                        quotedTable = $"`{parts[0]}`.`{parts[1]}`";
+                    }
+                    else
+                    {
+                        quotedTable = $"`{tableName}`";
+                    }
                 }
                 else if (connectionType == "NpgsqlConnection")
                 {
-                    quotedTable = $"\"{tableName}\"";
+                    if (tableName.Contains('.'))
+                    {
+                        var parts = tableName.Split('.', 2);
+                        quotedTable = $"\"{parts[0]}\".\"{parts[1]}\"";
+                    }
+                    else
+                    {
+                        quotedTable = $"\"{tableName}\"";
+                    }
                 }
                 else
                 {
-                    quotedTable = tableName; // SQLite doesn't require quotes for simple table names
+                    quotedTable = tableName;
                 }
 
                 cmd.CommandText = $"SELECT COUNT(*) FROM {quotedTable}";
@@ -590,12 +686,56 @@ namespace SmartRAG.Services.Database
         {
             try
             {
+                string quotedTable;
+                var connectionType = connection.GetType().Name;
+                
+                if (connectionType == "SqlConnection")
+                {
+                    if (tableName.Contains('.'))
+                    {
+                        var parts = tableName.Split('.', 2);
+                        quotedTable = $"[{parts[0]}].[{parts[1]}]";
+                    }
+                    else
+                    {
+                        quotedTable = $"[{tableName}]";
+                    }
+                }
+                else if (connectionType == "MySqlConnection")
+                {
+                    if (tableName.Contains('.'))
+                    {
+                        var parts = tableName.Split('.', 2);
+                        quotedTable = $"`{parts[0]}`.`{parts[1]}`";
+                    }
+                    else
+                    {
+                        quotedTable = $"`{tableName}`";
+                    }
+                }
+                else if (connectionType == "NpgsqlConnection")
+                {
+                    if (tableName.Contains('.'))
+                    {
+                        var parts = tableName.Split('.', 2);
+                        quotedTable = $"\"{parts[0]}\".\"{parts[1]}\"";
+                    }
+                    else
+                    {
+                        quotedTable = $"\"{tableName}\"";
+                    }
+                }
+                else
+                {
+                    quotedTable = tableName;
+                }
+                
                 string query = databaseType switch
                 {
-                    DatabaseType.SqlServer => $"SELECT TOP 3 * FROM [{tableName}]",
-                    DatabaseType.MySQL => $"SELECT * FROM `{tableName}` LIMIT 3",
-                    DatabaseType.PostgreSQL => $"SELECT * FROM \"{tableName}\" LIMIT 3",
-                    _ => $"SELECT * FROM {tableName} LIMIT 3",
+                    DatabaseType.SqlServer => $"SELECT TOP 3 * FROM {quotedTable}",
+                    DatabaseType.MySQL => $"SELECT * FROM {quotedTable} LIMIT 3",
+                    DatabaseType.PostgreSQL => $"SELECT * FROM {quotedTable} LIMIT 3",
+                    _ => $"SELECT * FROM {quotedTable} LIMIT 3",
                 };
                 using var cmd = connection.CreateCommand();
                 cmd.CommandText = query;
@@ -625,9 +765,14 @@ namespace SmartRAG.Services.Database
 
         private DbConnection CreateConnection(string connectionString, DatabaseType databaseType)
         {
+            if (databaseType == DatabaseType.SQLite)
+            {
+                var sanitizedConnectionString = ValidateAndSanitizeSQLiteConnectionString(connectionString);
+                return new SqliteConnection(sanitizedConnectionString);
+            }
+            
             return databaseType switch
             {
-                DatabaseType.SQLite => new SqliteConnection(connectionString),
                 DatabaseType.SqlServer => new SqlConnection(connectionString),
                 DatabaseType.MySQL => new MySqlConnection(connectionString),
                 DatabaseType.PostgreSQL => new NpgsqlConnection(connectionString),
@@ -635,35 +780,72 @@ namespace SmartRAG.Services.Database
             };
         }
 
-        private string BuildSummaryPrompt(DatabaseSchemaInfo schemaInfo)
+        private string ValidateAndSanitizeSQLiteConnectionString(string connectionString)
         {
-            var sb = new StringBuilder();
-            sb.AppendLine("Analyze this database schema and provide a concise summary of its purpose and content:");
-            sb.AppendLine();
-            sb.AppendLine($"Database: {schemaInfo.DatabaseName} ({schemaInfo.DatabaseType})");
-            sb.AppendLine($"Total Tables: {schemaInfo.Tables.Count}");
-            sb.AppendLine($"Total Rows: {schemaInfo.TotalRowCount:N0}");
-            sb.AppendLine();
-            sb.AppendLine("Tables:");
+            if (string.IsNullOrWhiteSpace(connectionString))
+                throw new ArgumentException("Connection string cannot be null or empty", nameof(connectionString));
 
-            foreach (var table in schemaInfo.Tables.Take(10))
+            try
             {
-                sb.AppendLine($"- {table.TableName} ({table.RowCount:N0} rows, {table.Columns.Count} columns)");
-                sb.AppendLine($"  Columns: {string.Join(", ", table.Columns.Take(5).Select(c => c.ColumnName))}");
+                var builder = new SqliteConnectionStringBuilder(connectionString);
+
+                if (!string.IsNullOrEmpty(builder.DataSource))
+                {
+                    var dataSource = builder.DataSource;
+
+                    if (Path.IsPathRooted(dataSource))
+                    {
+                        builder.DataSource = Path.GetFullPath(dataSource);
+                    }
+                    else
+                    {
+                        var currentDir = Directory.GetCurrentDirectory();
+                        var resolvedPath = Path.Combine(currentDir, dataSource);
+                        
+                        if (!File.Exists(resolvedPath))
+                        {
+                            var projectRoot = FindProjectRoot(currentDir);
+                            if (!string.IsNullOrEmpty(projectRoot))
+                            {
+                                var projectRootPath = Path.Combine(projectRoot, dataSource);
+                                resolvedPath = projectRootPath;
+                            }
+                        }
+                        
+                        var fullPath = Path.GetFullPath(resolvedPath);
+                        var directory = Path.GetDirectoryName(fullPath);
+                        
+                        if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                        {
+                            Directory.CreateDirectory(directory);
+                        }
+                        
+                        builder.DataSource = fullPath;
+                    }
+                }
+
+                return builder.ConnectionString;
             }
-
-            sb.AppendLine();
-            sb.AppendLine("Provide a 2-3 sentence summary describing what kind of data this database contains and its likely purpose.");
-
-            return sb.ToString();
+            catch (Exception ex)
+            {
+                throw new ArgumentException($"Invalid SQLite connection string format: {ex.Message}", nameof(connectionString), ex);
+            }
         }
 
-        private string GenerateFallbackSummary(DatabaseSchemaInfo schemaInfo)
+        private static string FindProjectRoot(string startDir)
         {
-            return $"Database '{schemaInfo.DatabaseName}' contains {schemaInfo.Tables.Count} tables " +
-                   $"with approximately {schemaInfo.TotalRowCount:N0} total rows. " +
-                   $"Main tables: {string.Join(", ", schemaInfo.Tables.Take(5).Select(t => t.TableName))}.";
+            var dir = new DirectoryInfo(startDir);
+            while (dir != null)
+            {
+                if (File.Exists(Path.Combine(dir.FullName, "SmartRAG.sln")))
+                {
+                    return Path.Combine(dir.FullName, "examples", "SmartRAG.Demo");
+                }
+                dir = dir.Parent;
+            }
+            return null;
         }
+
     }
 }
 

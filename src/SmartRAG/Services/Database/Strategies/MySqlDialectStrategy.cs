@@ -31,5 +31,19 @@ namespace SmartRAG.Services.Database.Strategies
         {
             return $"LIMIT {limit}";
         }
+
+        public override string EscapeIdentifier(string identifier)
+        {
+            // MySQL uses backticks for identifiers with spaces/special chars
+            if (string.IsNullOrWhiteSpace(identifier)) return identifier;
+            
+            // If identifier contains space or special chars, wrap in backticks
+            if (identifier.Contains(" ") || identifier.Contains("-") || identifier.Contains("."))
+            {
+                return $"`{identifier}`";
+            }
+            
+            return identifier;
+        }
     }
 }

@@ -44,6 +44,21 @@ For detailed Docker configuration and management:
 - **Step 6**: Create SQLite test database
 - **Step 7**: View database schemas and relationships
 
+#### **📁 Database Scripts**
+The demo uses sample data from AdventureWorks2022 database distributed across multiple databases:
+- **SQL Server (SalesManagement)**: Sales schema (SalesOrderHeader, SalesOrderDetail, Customer, SalesPerson, SalesTerritory, etc.) - Restored from backup file
+- **PostgreSQL (PersonManagement)**: Person + HumanResources schemas (Person: Address, BusinessEntity, Person, ContactType, CountryRegion, StateProvince; HumanResources: Employee, EmployeeDepartmentHistory, EmployeePayHistory, JobCandidate)
+- **MySQL (InventoryManagement)**: Production schema (Product, ProductCategory, ProductSubcategory, ProductInventory, BillOfMaterials, WorkOrder, etc.)
+- **SQLite (LogisticsManagement)**: Purchasing + dbo schemas (Purchasing: Vendor, PurchaseOrderHeader, PurchaseOrderDetail, ShipMethod, ProductVendor; dbo: ErrorLog, DatabaseLog, AWBuildVersion)
+
+Each database contains:
+- CREATE TABLE statements with proper data types for each database system
+- Indexes for optimal query performance
+- Foreign key constraints where applicable
+- Sample data extracted from source database
+
+**Note**: Source database is the master database. Other databases contain subsets of source data distributed logically across database systems.
+
 ### **🤖 AI & Query Testing**
 - **Step 8**: Query analysis - see how natural language converts to SQL
 - **Step 9**: Automatic test queries - pre-built scenarios

@@ -12,6 +12,7 @@ using System.Data.Common;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -175,7 +176,11 @@ namespace SmartRAG.Services.Database
 
             foreach (var keyword in dangerousKeywords)
             {
-                if (upperQuery.Contains(keyword, StringComparison.Ordinal))
+                var pattern = keyword.EndsWith("_") 
+                    ? $@"\b{Regex.Escape(keyword)}" 
+                    : $@"\b{Regex.Escape(keyword)}\b";
+                
+                if (Regex.IsMatch(upperQuery, pattern, RegexOptions.IgnoreCase))
                 {
                     throw new ArgumentException($"Query contains dangerous keyword: {keyword}", nameof(query));
                 }
@@ -479,11 +484,11 @@ namespace SmartRAG.Services.Database
         {
             using var command = connection.CreateCommand();
             command.CommandText = @"
-                    SELECT TABLE_NAME 
+                    SELECT TABLE_SCHEMA + '.' + TABLE_NAME AS FullTableName
                     FROM INFORMATION_SCHEMA.TABLES 
                     WHERE TABLE_TYPE = 'BASE TABLE' 
                     AND TABLE_SCHEMA != 'sys'
-                    ORDER BY TABLE_NAME";
+                    ORDER BY TABLE_SCHEMA, TABLE_NAME";
 
             var tables = new List<string>();
             using (var reader = await command.ExecuteReaderAsync())
@@ -827,17 +832,21 @@ namespace SmartRAG.Services.Database
         {
             using var command = connection.CreateCommand();
             command.CommandText = @"
-                    SELECT tablename 
-                    FROM pg_tables 
-                    WHERE schemaname = 'public'
-                    ORDER BY tablename";
+                    SELECT 
+                        nspname || '.' || relname AS full_table_name
+                    FROM pg_class c
+                    JOIN pg_namespace n ON n.oid = c.relnamespace
+                    WHERE c.relkind = 'r'
+                    AND nspname NOT IN ('pg_catalog', 'information_schema')
+                    ORDER BY nspname, relname";
 
             var tables = new List<string>();
             using (var reader = await command.ExecuteReaderAsync())
             {
                 while (await reader.ReadAsync())
                 {
-                    tables.Add(reader.GetString(0));
+                    var tableName = reader.GetString(0);
+                    tables.Add(tableName);
                 }
             }
 
@@ -938,15 +947,40 @@ namespace SmartRAG.Services.Database
                 {
                     var dataSource = builder.DataSource;
 
-                    // Check for path traversal patterns
                     if (dataSource.Contains("..") || dataSource.Contains("//") || dataSource.Contains("\\\\"))
                     {
                         throw new ArgumentException("Invalid path in connection string: path traversal detected", nameof(connectionString));
                     }
 
-                    // For absolute paths, ensure they are within allowed boundaries
-                    if (Path.IsPathRooted(dataSource))
+                    if (!Path.IsPathRooted(dataSource))
                     {
+                        var currentDir = Directory.GetCurrentDirectory();
+                        var resolvedPath = Path.Combine(currentDir, dataSource);
+                        
+                        // If file doesn't exist in current directory, try to find project root
+                        if (!File.Exists(resolvedPath))
+                        {
+                            var projectRoot = FindProjectRoot(currentDir);
+                            if (!string.IsNullOrEmpty(projectRoot))
+                            {
+                                var projectRootPath = Path.Combine(projectRoot, dataSource);
+                                resolvedPath = projectRootPath;
+                            }
+                        }
+                        
+                        var fullPath = Path.GetFullPath(resolvedPath);
+                        var directory = Path.GetDirectoryName(fullPath);
+                        
+                        if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+                        {
+                            Directory.CreateDirectory(directory);
+                        }
+                        
+                        builder.DataSource = fullPath;
+                    }
+                    else
+                    {
+                        // For absolute paths, ensure they are within allowed boundaries
                         var fullPath = Path.GetFullPath(dataSource);
                         if (fullPath != dataSource)
                         {
@@ -965,6 +999,20 @@ namespace SmartRAG.Services.Database
             {
                 throw new ArgumentException($"Invalid SQLite connection string format: {ex.Message}", nameof(connectionString), ex);
             }
+        }
+
+        private static string FindProjectRoot(string startDir)
+        {
+            var dir = new DirectoryInfo(startDir);
+            while (dir != null)
+            {
+                if (File.Exists(Path.Combine(dir.FullName, "SmartRAG.sln")))
+                {
+                    return Path.Combine(dir.FullName, "examples", "SmartRAG.Demo");
+                }
+                dir = dir.Parent;
+            }
+            return string.Empty;
         }
 
         /// <summary>
