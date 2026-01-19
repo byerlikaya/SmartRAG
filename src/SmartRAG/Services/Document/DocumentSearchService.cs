@@ -205,8 +205,6 @@ namespace SmartRAG.Services.Document
               
                 await _conversationManager.AddToConversationAsync(sessionId, query, intentAnalysis.Answer, cancellationToken);
                 return _responseBuilder.CreateRagResponse(query, intentAnalysis.Answer, new List<SearchSource>());
-
-                // Fallback to full conversation handler if answer not provided
             }
 
             RagResponse? response = null;
@@ -933,8 +931,6 @@ namespace SmartRAG.Services.Document
 
             try
             {
-                // SearchDocumentsAsync already performs comprehensive scoring, prioritization, and returns best results
-                // We only need simple checks: results exist, top score is sufficient, and content length is adequate
                 var searchResults = await _documentSearchStrategy.SearchDocumentsAsync(query, FallbackSearchMaxResults, searchOptions, queryTokens, cancellationToken);
 
                 if (searchResults.Count == MinSearchResultsCount)
@@ -942,14 +938,11 @@ namespace SmartRAG.Services.Document
                     return (false, searchResults);
                 }
 
-                // Strategy service already applies relevance threshold filtering
-                // We only need to check if results exist and have substantial content
                 if (searchResults.Count == 0)
                 {
                     return (false, searchResults);
                 }
 
-                // Check if we have substantial content (minimum content length)
                 var totalContentLength = searchResults.Sum(c => c.Content.Length);
                 var hasSubstantialContent = totalContentLength > MinSubstantialContentLength;
 

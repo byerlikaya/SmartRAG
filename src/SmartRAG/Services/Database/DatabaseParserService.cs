@@ -947,13 +947,11 @@ namespace SmartRAG.Services.Database
                 {
                     var dataSource = builder.DataSource;
 
-                    // Check for path traversal patterns
                     if (dataSource.Contains("..") || dataSource.Contains("//") || dataSource.Contains("\\\\"))
                     {
                         throw new ArgumentException("Invalid path in connection string: path traversal detected", nameof(connectionString));
                     }
 
-                    // Resolve relative paths to absolute paths
                     if (!Path.IsPathRooted(dataSource))
                     {
                         var currentDir = Directory.GetCurrentDirectory();
@@ -973,7 +971,6 @@ namespace SmartRAG.Services.Database
                         var fullPath = Path.GetFullPath(resolvedPath);
                         var directory = Path.GetDirectoryName(fullPath);
                         
-                        // Create directory if it doesn't exist
                         if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
                         {
                             Directory.CreateDirectory(directory);
