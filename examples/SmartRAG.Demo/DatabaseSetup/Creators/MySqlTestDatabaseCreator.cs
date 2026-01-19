@@ -124,11 +124,14 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
         try
         {
             var masterConnectionString = $"Server={_server};Port={_port};User={_user};Password={GetPassword()};";
+            var validatedName = ValidateDatabaseName(_databaseName);
+            var escapedNameForString = validatedName.Replace("'", "''");
+            
             using var connection = new MySqlConnection(masterConnectionString);
             await connection.OpenAsync(cancellationToken);
 
             using var cmd = connection.CreateCommand();
-            cmd.CommandText = $"SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = '{_databaseName}'";
+            cmd.CommandText = $"SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = '{escapedNameForString}'";
             var result = await cmd.ExecuteScalarAsync(cancellationToken);
             return Convert.ToInt32(result) > 0;
         }
@@ -169,6 +172,25 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
     #endregion
 
     #region Private Methods
+
+    private static string EscapeMySqlIdentifier(string identifier)
+    {
+        if (string.IsNullOrWhiteSpace(identifier))
+            throw new ArgumentException("Identifier cannot be null or empty", nameof(identifier));
+        
+        return $"`{identifier.Replace("`", "``")}`";
+    }
+
+    private static string ValidateDatabaseName(string databaseName)
+    {
+        if (string.IsNullOrWhiteSpace(databaseName))
+            throw new ArgumentException("Database name cannot be null or empty", nameof(databaseName));
+        
+        if (!System.Text.RegularExpressions.Regex.IsMatch(databaseName, @"^[a-zA-Z0-9_]+$"))
+            throw new ArgumentException("Database name contains invalid characters. Only alphanumeric characters and underscores are allowed.", nameof(databaseName));
+        
+        return databaseName;
+    }
 
     /// <summary>
     /// Executes an action with retry logic for transient connection errors
@@ -224,6 +246,9 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
     /// <param name="cancellationToken">Token to cancel the operation</param>
     private async Task CreateDatabaseAsync(CancellationToken cancellationToken = default)
     {
+        var validatedName = ValidateDatabaseName(_databaseName);
+        var escapedName = EscapeMySqlIdentifier(validatedName);
+        
         var masterConnectionString = $"Server={_server};Port={_port};User={_user};Password={GetPassword()};";
 
         using (var connection = new MySqlConnection(masterConnectionString))
@@ -232,13 +257,13 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
 
             using (var cmd = connection.CreateCommand())
             {
-                cmd.CommandText = $"DROP DATABASE IF EXISTS {_databaseName}";
+                cmd.CommandText = $"DROP DATABASE IF EXISTS {escapedName}";
                 await cmd.ExecuteNonQueryAsync(cancellationToken);
             }
 
             using (var cmd = connection.CreateCommand())
             {
-                cmd.CommandText = $"CREATE DATABASE {_databaseName} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci";
+                cmd.CommandText = $"CREATE DATABASE {escapedName} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci";
                 await cmd.ExecuteNonQueryAsync(cancellationToken);
             }
         }
@@ -302,11 +327,13 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
         
         await Task.Run(() =>
         {
+            var validatedName = ValidateDatabaseName(_databaseName);
             var escapedPath = containerBackupPath.Replace("'", "'\"'\"'");
+            var escapedPassword = password.Replace("'", "'\"'\"'");
             var processInfo = new System.Diagnostics.ProcessStartInfo
             {
                 FileName = "docker",
-                Arguments = $"exec {containerName} sh -c \"grep -v '^mysqldump:' {escapedPath} | mysql -u {_user} -p'{password}' {_databaseName}\"",
+                Arguments = $"exec {containerName} sh -c \"grep -v '^mysqldump:' {escapedPath} | mysql -u {_user} -p'{escapedPassword}' {validatedName}\"",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
@@ -342,9 +369,11 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
     {
         await Task.Run(() =>
         {
+            var validatedName = ValidateDatabaseName(_databaseName);
             var escapedPath = backupFilePath.Replace("'", "'\"'\"'");
+            var escapedPassword = password.Replace("'", "'\"'\"'");
             var shellCommand = "/bin/sh";
-            var shellArgs = $"-c \"grep -v '^mysqldump:' '{escapedPath}' | mysql -h {_server} -P {_port} -u {_user} -p'{password}' {_databaseName}\"";
+            var shellArgs = $"-c \"grep -v '^mysqldump:' '{escapedPath}' | mysql -h {_server} -P {_port} -u {_user} -p'{escapedPassword}' {validatedName}\"";
             
             var processInfo = new System.Diagnostics.ProcessStartInfo
             {

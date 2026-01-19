@@ -121,8 +121,11 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
             using var connection = new SqlConnection(masterConnectionString);
             await connection.OpenAsync(cancellationToken);
 
+            var validatedName = ValidateDatabaseName(_databaseName);
+            var escapedNameForString = validatedName.Replace("'", "''");
+            
             using var cmd = connection.CreateCommand();
-            cmd.CommandText = $"SELECT COUNT(*) FROM sys.databases WHERE name = '{_databaseName}'";
+            cmd.CommandText = $"SELECT COUNT(*) FROM sys.databases WHERE name = '{escapedNameForString}'";
             var result = await cmd.ExecuteScalarAsync(cancellationToken);
             return Convert.ToInt32(result) > 0;
         }
@@ -163,12 +166,35 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
 
     #region Private Methods
 
+    private static string EscapeSqlServerIdentifier(string identifier)
+    {
+        if (string.IsNullOrWhiteSpace(identifier))
+            throw new ArgumentException("Identifier cannot be null or empty", nameof(identifier));
+        
+        return $"[{identifier.Replace("]", "]]")}]";
+    }
+
+    private static string ValidateDatabaseName(string databaseName)
+    {
+        if (string.IsNullOrWhiteSpace(databaseName))
+            throw new ArgumentException("Database name cannot be null or empty", nameof(databaseName));
+        
+        if (!System.Text.RegularExpressions.Regex.IsMatch(databaseName, @"^[a-zA-Z0-9_]+$"))
+            throw new ArgumentException("Database name contains invalid characters. Only alphanumeric characters and underscores are allowed.", nameof(databaseName));
+        
+        return databaseName;
+    }
+
     /// <summary>
     /// Creates the SQL Server database, dropping it first if it exists
     /// </summary>
     /// <param name="cancellationToken">Token to cancel the operation</param>
     private async Task CreateDatabaseAsync(CancellationToken cancellationToken = default)
     {
+        var validatedName = ValidateDatabaseName(_databaseName);
+        var escapedName = EscapeSqlServerIdentifier(validatedName);
+        var escapedNameForString = validatedName.Replace("'", "''");
+        
         var masterConnectionString = $"Server={_server};Database=master;User Id=sa;Password={GetPassword()};TrustServerCertificate=true;";
 
         using (var connection = new SqlConnection(masterConnectionString))
@@ -178,17 +204,17 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
             using (var cmd = connection.CreateCommand())
             {
                 cmd.CommandText = $@"
-                    IF EXISTS (SELECT name FROM sys.databases WHERE name = '{_databaseName}')
+                    IF EXISTS (SELECT name FROM sys.databases WHERE name = '{escapedNameForString}')
                     BEGIN
-                        ALTER DATABASE {_databaseName} SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-                        DROP DATABASE {_databaseName};
+                        ALTER DATABASE {escapedName} SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+                        DROP DATABASE {escapedName};
                     END";
                 await cmd.ExecuteNonQueryAsync(cancellationToken);
             }
 
             using (var cmd = connection.CreateCommand())
             {
-                cmd.CommandText = $"CREATE DATABASE {_databaseName}";
+                cmd.CommandText = $"CREATE DATABASE {escapedName}";
                 await cmd.ExecuteNonQueryAsync(cancellationToken);
             }
         }
@@ -237,12 +263,16 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
             
             await SetFilePermissionsAsync(containerName, finalBackupPath);
             
+            var validatedName = ValidateDatabaseName(_databaseName);
+            var escapedName = EscapeSqlServerIdentifier(validatedName);
+            var escapedPath = finalBackupPath.Replace("'", "''");
+            
             var restoreCommand = $@"
-                ALTER DATABASE [{_databaseName}] SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
-                RESTORE DATABASE [{_databaseName}]
-                FROM DISK = N'{finalBackupPath}'
+                ALTER DATABASE {escapedName} SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+                RESTORE DATABASE {escapedName}
+                FROM DISK = N'{escapedPath}'
                 WITH REPLACE, RECOVERY, STATS = 10;
-                ALTER DATABASE [{_databaseName}] SET MULTI_USER;
+                ALTER DATABASE {escapedName} SET MULTI_USER;
             ";
             
             using var command = new SqlCommand(restoreCommand, connection);

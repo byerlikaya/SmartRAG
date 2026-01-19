@@ -123,11 +123,14 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
         try
         {
             var masterConnectionString = $"Server={_server};Port={_port};User Id={_user};Password={GetPassword()};Database=postgres;";
+            var validatedName = ValidateDatabaseName(_databaseName);
+            var escapedNameForString = validatedName.Replace("'", "''");
+            
             using var connection = new NpgsqlConnection(masterConnectionString);
             await connection.OpenAsync(cancellationToken);
 
             using var cmd = connection.CreateCommand();
-            cmd.CommandText = $"SELECT 1 FROM pg_database WHERE datname = '{_databaseName}'";
+            cmd.CommandText = $"SELECT 1 FROM pg_database WHERE datname = '{escapedNameForString}'";
             var result = await cmd.ExecuteScalarAsync(cancellationToken);
             return result != null;
         }
@@ -172,9 +175,24 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
 
         #region Private Methods
 
-    #endregion
+    private static string EscapePostgreSqlIdentifier(string identifier)
+    {
+        if (string.IsNullOrWhiteSpace(identifier))
+            throw new ArgumentException("Identifier cannot be null or empty", nameof(identifier));
+        
+        return $"\"{identifier.Replace("\"", "\"\"")}\"";
+    }
 
-    #region Private Methods
+    private static string ValidateDatabaseName(string databaseName)
+    {
+        if (string.IsNullOrWhiteSpace(databaseName))
+            throw new ArgumentException("Database name cannot be null or empty", nameof(databaseName));
+        
+        if (!System.Text.RegularExpressions.Regex.IsMatch(databaseName, @"^[a-zA-Z0-9_]+$"))
+            throw new ArgumentException("Database name contains invalid characters. Only alphanumeric characters and underscores are allowed.", nameof(databaseName));
+        
+        return databaseName;
+    }
 
     /// <summary>
     /// Executes an action with retry logic for transient connection errors
@@ -230,6 +248,10 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
     /// <param name="cancellationToken">Token to cancel the operation</param>
     private async Task CreateDatabaseAsync(CancellationToken cancellationToken = default)
     {
+        var validatedName = ValidateDatabaseName(_databaseName);
+        var escapedName = EscapePostgreSqlIdentifier(validatedName);
+        var escapedNameForString = validatedName.Replace("'", "''");
+        
         var masterConnectionString = $"Server={_server};Port={_port};User Id={_user};Password={GetPassword()};Database=postgres;";
 
         using (var connection = new NpgsqlConnection(masterConnectionString))
@@ -238,7 +260,7 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
 
             using (var cmd = connection.CreateCommand())
             {
-                cmd.CommandText = $"SELECT 1 FROM pg_database WHERE datname = '{_databaseName}'";
+                cmd.CommandText = $"SELECT 1 FROM pg_database WHERE datname = '{escapedNameForString}'";
                 var exists = await cmd.ExecuteScalarAsync(cancellationToken) != null;
 
                 if (exists)
@@ -248,7 +270,7 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
                         terminateCmd.CommandText = $@"
                             SELECT pg_terminate_backend(pg_stat_activity.pid)
                             FROM pg_stat_activity
-                            WHERE pg_stat_activity.datname = '{_databaseName}'
+                            WHERE pg_stat_activity.datname = '{escapedNameForString}'
                             AND pid <> pg_backend_pid();";
                         await terminateCmd.ExecuteNonQueryAsync(cancellationToken);
                     }
@@ -257,7 +279,7 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
 
                     using (var dropCmd = connection.CreateCommand())
                     {
-                        dropCmd.CommandText = $"DROP DATABASE IF EXISTS \"{_databaseName}\"";
+                        dropCmd.CommandText = $"DROP DATABASE IF EXISTS {escapedName}";
                         await dropCmd.ExecuteNonQueryAsync(cancellationToken);
                     }
                     
@@ -267,7 +289,7 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
 
             using (var cmd = connection.CreateCommand())
             {
-                cmd.CommandText = $"CREATE DATABASE \"{_databaseName}\" WITH ENCODING='UTF8'";
+                cmd.CommandText = $"CREATE DATABASE {escapedName} WITH ENCODING='UTF8'";
                 await cmd.ExecuteNonQueryAsync(cancellationToken);
             }
         }
@@ -330,7 +352,7 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
             var processInfo = new System.Diagnostics.ProcessStartInfo
             {
                 FileName = "docker",
-                Arguments = $"exec {containerName} sh -c \"sed '/^\\\\\\\\restrict/d' {escapedPath} | sed -E 's/^CREATE SCHEMA (\\\"[^\\\"]+\\\"|\\w+)/CREATE SCHEMA IF NOT EXISTS \\1/i' > /tmp/restore_cleaned.sql && PGPASSWORD='{password}' psql -U {_user} -d {_databaseName} -f /tmp/restore_cleaned.sql 2>&1 | grep -v 'already exists' || true\"",
+                Arguments = $"exec {containerName} sh -c \"sed '/^\\\\\\\\restrict/d' {escapedPath} | sed -E 's/^CREATE SCHEMA (\\\"[^\\\"]+\\\"|\\w+)/CREATE SCHEMA IF NOT EXISTS \\1/i' > /tmp/restore_cleaned.sql && PGPASSWORD='{password.Replace("'", "'\"'\"'")}' psql -U {_user} -d {ValidateDatabaseName(_databaseName)} -f /tmp/restore_cleaned.sql 2>&1 | grep -v 'already exists' || true\"",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
@@ -402,11 +424,12 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
                     .ToArray();
                 File.WriteAllLines(tempCleanedPath, cleanedContent);
                 
+                var validatedName = ValidateDatabaseName(_databaseName);
                 var escapedPath = tempCleanedPath.Replace("'", "'\"'\"'");
                 var processInfo = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = "psql",
-                    Arguments = $"-h {_server} -p {_port} -U {_user} -d {_databaseName} -f \"{escapedPath}\"",
+                    Arguments = $"-h {_server} -p {_port} -U {_user} -d {validatedName} -f \"{escapedPath}\"",
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
