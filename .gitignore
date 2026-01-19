@@ -367,6 +367,7 @@ models/
 TODO.md
 NOTES.md
 DEVELOPMENT.md
+SMARTRAG_TEST_SORULARI.md
 
 # Documentation publishing scripts
 docs/*.bat
