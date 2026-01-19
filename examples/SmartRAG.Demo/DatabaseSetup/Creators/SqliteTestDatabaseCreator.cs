@@ -307,7 +307,8 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
         
         if (!File.Exists(backupFilePath))
         {
-            throw new FileNotFoundException($"Backup file not found. Expected: {backupFilePath}");
+            var safeBackupFileName = Path.GetFileName(backupFileName);
+            throw new FileNotFoundException($"Backup file not found. Expected file name: {safeBackupFileName}");
         }
         
         cancellationToken.ThrowIfCancellationRequested();
@@ -349,7 +350,8 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
             {
                 return alternativePath;
             }
-            throw new FileNotFoundException($"Backup file not found. Searched: {backupFilePath}");
+            var safeFileName = Path.GetFileName(fileName);
+            throw new FileNotFoundException($"Backup file not found. Searched for file: {safeFileName}");
         }
         
         return backupFilePath;
