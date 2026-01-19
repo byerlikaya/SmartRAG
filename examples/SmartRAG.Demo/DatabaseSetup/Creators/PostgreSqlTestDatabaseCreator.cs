@@ -397,21 +397,65 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
             throw new InvalidOperationException($"Failed to copy backup file to container: {validatedContainerName}");
         }
         
-        await Task.Run(() =>
+        await Task.Run(async () =>
         {
-            var escapedPath = containerBackupPath.Replace("'", "'\"'\"'");
-            var escapedPassword = password.Replace("'", "'\"'\"'");
-            var shellCommand = $"sed '/^\\\\restrict/d' {escapedPath} | sed -E 's/^CREATE SCHEMA (\\\"[^\\\"]+\\\"|\\w+)/CREATE SCHEMA IF NOT EXISTS \\1/i' > /tmp/restore_cleaned.sql && PGPASSWORD='{escapedPassword}' psql -U {validatedUser} -d {validatedDatabaseName} -f /tmp/restore_cleaned.sql 2>&1 | grep -v 'already exists' || true";
-            
-            var processInfo = new System.Diagnostics.ProcessStartInfo
+            var sedProcessInfo = new System.Diagnostics.ProcessStartInfo
             {
                 FileName = "docker",
-                ArgumentList = { "exec", validatedContainerName, "sh", "-c", shellCommand },
+                ArgumentList = { "exec", validatedContainerName, "sed", "/^\\\\restrict/d", containerBackupPath },
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 CreateNoWindow = true
             };
+            
+            using var sedProcess = System.Diagnostics.Process.Start(sedProcessInfo);
+            if (sedProcess == null)
+            {
+                throw new InvalidOperationException("Failed to start sed process");
+            }
+            
+            var sedOutput = await sedProcess.StandardOutput.ReadToEndAsync();
+            await sedProcess.WaitForExitAsync();
+            
+            var cleanedContent = System.Text.RegularExpressions.Regex.Replace(
+                sedOutput,
+                @"^CREATE SCHEMA (""[^""]+""|\w+)",
+                "CREATE SCHEMA IF NOT EXISTS $1",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Multiline);
+            
+            var writeProcessInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "docker",
+                ArgumentList = { "exec", "-i", validatedContainerName, "sh", "-c", "cat > /tmp/restore_cleaned.sql" },
+                UseShellExecute = false,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+            
+            using var writeProcess = System.Diagnostics.Process.Start(writeProcessInfo);
+            if (writeProcess == null)
+            {
+                throw new InvalidOperationException("Failed to start write process");
+            }
+            
+            await writeProcess.StandardInput.WriteAsync(cleanedContent);
+            writeProcess.StandardInput.Close();
+            await writeProcess.WaitForExitAsync();
+            
+            var processInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "docker",
+                ArgumentList = { "exec", validatedContainerName, "psql", "-U", validatedUser, "-d", validatedDatabaseName, "-f", "/tmp/restore_cleaned.sql" },
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+            
+            processInfo.Environment["PGPASSWORD"] = password;
             
             using var process = System.Diagnostics.Process.Start(processInfo);
             if (process == null)
@@ -419,10 +463,10 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
                 throw new InvalidOperationException("Failed to start docker exec process");
             }
             
-            var output = process.StandardOutput.ReadToEnd();
-            var error = process.StandardError.ReadToEnd();
+            var output = await process.StandardOutput.ReadToEndAsync();
+            var error = await process.StandardError.ReadToEndAsync();
             
-            process.WaitForExit(600000);
+            await process.WaitForExitAsync();
             
             var allOutput = output + error;
             

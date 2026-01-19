@@ -398,33 +398,48 @@ public class SqlServerTestDatabaseCreator : ITestDatabaseCreator
         var validatedContainerName = ValidateContainerName(containerName);
         var validatedContainerPath = ValidatePath(containerPath, nameof(containerPath));
         
-        await Task.Run(() =>
+        await Task.Run(async () =>
         {
             try
             {
-                var escapedPath = validatedContainerPath.Replace("'", "'\"'\"'");
-                var processInfo = new System.Diagnostics.ProcessStartInfo
+                var chownProcessInfo = new System.Diagnostics.ProcessStartInfo
                 {
                     FileName = "docker",
-                    ArgumentList = { "exec", "-u", "root", validatedContainerName, "sh", "-c", $"chown mssql:mssql '{escapedPath}' && chmod 644 '{escapedPath}'" },
+                    ArgumentList = { "exec", "-u", "root", validatedContainerName, "chown", "mssql:mssql", validatedContainerPath },
                     UseShellExecute = false,
                     RedirectStandardOutput = true,
                     RedirectStandardError = true,
                     CreateNoWindow = true
                 };
                 
-                using var process = System.Diagnostics.Process.Start(processInfo);
-                if (process == null)
+                using var chownProcess = System.Diagnostics.Process.Start(chownProcessInfo);
+                if (chownProcess != null)
+                {
+                    await chownProcess.WaitForExitAsync();
+                }
+                
+                var chmodProcessInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "docker",
+                    ArgumentList = { "exec", "-u", "root", validatedContainerName, "chmod", "644", validatedContainerPath },
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+                
+                using var chmodProcess = System.Diagnostics.Process.Start(chmodProcessInfo);
+                if (chmodProcess == null)
                 {
                     throw new InvalidOperationException("Failed to start docker exec process for setting file permissions");
                 }
                 
-                var output = process.StandardOutput.ReadToEnd();
-                var error = process.StandardError.ReadToEnd();
+                var output = chmodProcess.StandardOutput.ReadToEnd();
+                var error = chmodProcess.StandardError.ReadToEnd();
                 
-                process.WaitForExit(30000);
+                await chmodProcess.WaitForExitAsync();
                 
-                if (process.ExitCode != 0)
+                if (chmodProcess.ExitCode != 0)
                 {
                     var errorMessage = string.IsNullOrWhiteSpace(error) ? output : error;
                     _logger?.LogWarning("Failed to set file permissions in container: {Error}. This may not be critical if SQL Server can still read the file.", errorMessage);

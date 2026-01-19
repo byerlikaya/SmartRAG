@@ -376,39 +376,60 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
             throw new InvalidOperationException($"Failed to copy backup file to container: {validatedContainerName}");
         }
         
-        await Task.Run(() =>
+        await Task.Run(async () =>
         {
-            var escapedPath = containerBackupPath.Replace("'", "'\"'\"'");
-            var escapedPassword = password.Replace("'", "'\"'\"'");
-            var shellCommand = $"grep -v '^mysqldump:' {escapedPath} | mysql -u {validatedUser} -p'{escapedPassword}' {validatedDatabaseName}";
-            
-            var processInfo = new System.Diagnostics.ProcessStartInfo
+            var grepProcessInfo = new System.Diagnostics.ProcessStartInfo
             {
                 FileName = "docker",
-                ArgumentList = { "exec", validatedContainerName, "sh", "-c", shellCommand },
+                ArgumentList = { "exec", validatedContainerName, "grep", "-v", "^mysqldump:", containerBackupPath },
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 CreateNoWindow = true
             };
             
-            using var process = System.Diagnostics.Process.Start(processInfo);
-            if (process == null)
+            using var grepProcess = System.Diagnostics.Process.Start(grepProcessInfo);
+            if (grepProcess == null)
             {
-                throw new InvalidOperationException("Failed to start docker exec process");
+                throw new InvalidOperationException("Failed to start grep process");
             }
             
-            var output = process.StandardOutput.ReadToEnd();
-            var error = process.StandardError.ReadToEnd();
+            var grepOutput = await grepProcess.StandardOutput.ReadToEndAsync();
+            await grepProcess.WaitForExitAsync();
             
-            process.WaitForExit(600000);
+            var mysqlProcessInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "docker",
+                ArgumentList = { "exec", "-i", validatedContainerName, "mysql", "-u", validatedUser, "-p" + password, validatedDatabaseName },
+                UseShellExecute = false,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
             
-            if (process.ExitCode != 0)
+            using var mysqlProcess = System.Diagnostics.Process.Start(mysqlProcessInfo);
+            if (mysqlProcess == null)
+            {
+                throw new InvalidOperationException("Failed to start mysql process");
+            }
+            
+            await mysqlProcess.StandardInput.WriteAsync(grepOutput);
+            mysqlProcess.StandardInput.Close();
+            
+            var processInfo = mysqlProcessInfo;
+            
+            var output = await mysqlProcess.StandardOutput.ReadToEndAsync();
+            var error = await mysqlProcess.StandardError.ReadToEndAsync();
+            
+            await mysqlProcess.WaitForExitAsync();
+            
+            if (mysqlProcess.ExitCode != 0)
             {
                 var errorMessage = string.IsNullOrWhiteSpace(error) ? output : error;
                 if (!errorMessage.Contains("[Warning] Using a password"))
                 {
-                    throw new InvalidOperationException($"MySQL restore failed with exit code {process.ExitCode}: {errorMessage}");
+                    throw new InvalidOperationException($"MySQL restore failed with exit code {mysqlProcess.ExitCode}: {errorMessage}");
                 }
             }
         }, cancellationToken);
@@ -424,39 +445,58 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
         var validatedUser = ValidateUser(_user);
         var validatedDatabaseName = ValidateDatabaseName(_databaseName);
         
-        await Task.Run(() =>
+        await Task.Run(async () =>
         {
-            var escapedPath = validatedBackupPath.Replace("'", "'\"'\"'");
-            var escapedPassword = password.Replace("'", "'\"'\"'");
-            var shellCommand = $"grep -v '^mysqldump:' '{escapedPath}' | mysql -h {validatedServer} -P {_port} -u {validatedUser} -p'{escapedPassword}' {validatedDatabaseName}";
-            
-            var processInfo = new System.Diagnostics.ProcessStartInfo
+            var grepProcessInfo = new System.Diagnostics.ProcessStartInfo
             {
-                FileName = "/bin/sh",
-                ArgumentList = { "-c", shellCommand },
+                FileName = "grep",
+                ArgumentList = { "-v", "^mysqldump:", validatedBackupPath },
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 CreateNoWindow = true
             };
             
-            using var process = System.Diagnostics.Process.Start(processInfo);
-            if (process == null)
+            using var grepProcess = System.Diagnostics.Process.Start(grepProcessInfo);
+            if (grepProcess == null)
+            {
+                throw new InvalidOperationException("Failed to start grep process. Make sure grep is installed and in PATH.");
+            }
+            
+            var grepOutput = await grepProcess.StandardOutput.ReadToEndAsync();
+            await grepProcess.WaitForExitAsync();
+            
+            var mysqlProcessInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "mysql",
+                ArgumentList = { "-h", validatedServer, "-P", _port.ToString(), "-u", validatedUser, "-p" + password, validatedDatabaseName },
+                UseShellExecute = false,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+            
+            using var mysqlProcess = System.Diagnostics.Process.Start(mysqlProcessInfo);
+            if (mysqlProcess == null)
             {
                 throw new InvalidOperationException("Failed to start mysql restore process. Make sure MySQL client tools are installed and mysql is in PATH.");
             }
             
-            var output = process.StandardOutput.ReadToEnd();
-            var error = process.StandardError.ReadToEnd();
+            await mysqlProcess.StandardInput.WriteAsync(grepOutput);
+            mysqlProcess.StandardInput.Close();
             
-            process.WaitForExit(600000);
+            var output = await mysqlProcess.StandardOutput.ReadToEndAsync();
+            var error = await mysqlProcess.StandardError.ReadToEndAsync();
             
-            if (process.ExitCode != 0)
+            await mysqlProcess.WaitForExitAsync();
+            
+            if (mysqlProcess.ExitCode != 0)
             {
                 var errorMessage = string.IsNullOrWhiteSpace(error) ? output : error;
                 if (!errorMessage.Contains("[Warning] Using a password"))
                 {
-                    throw new InvalidOperationException($"MySQL restore failed with exit code {process.ExitCode}: {errorMessage}");
+                    throw new InvalidOperationException($"MySQL restore failed with exit code {mysqlProcess.ExitCode}: {errorMessage}");
                 }
             }
         }, cancellationToken);
