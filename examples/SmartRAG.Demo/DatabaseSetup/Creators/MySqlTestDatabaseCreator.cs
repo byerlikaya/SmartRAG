@@ -1,16 +1,15 @@
 using MySqlConnector;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using SmartRAG.Demo.DatabaseSetup.Helpers;
 using SmartRAG.Demo.DatabaseSetup.Interfaces;
 using SmartRAG.Enums;
-using System.Text;
+using System.Linq;
 
 namespace SmartRAG.Demo.DatabaseSetup.Creators;
 
 /// <summary>
 /// MySQL test database creator implementation
-/// Domain: Warehouse & Inventory Management
+/// Restores database from backup file based on configuration
 /// Follows SOLID principles - Single Responsibility Principle
 /// </summary>
 public class MySqlTestDatabaseCreator : ITestDatabaseCreator
@@ -37,12 +36,10 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
     #region Constructor
 
     public MySqlTestDatabaseCreator(IConfiguration? configuration = null, ILogger<MySqlTestDatabaseCreator>? logger = null)
-
     {
         _configuration = configuration;
         _logger = logger;
         
-        // Try to get connection details from configuration first
         string? server = null;
         int port = 3306;
         string? user = null;
@@ -50,8 +47,7 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
         
         if (_configuration != null)
         {
-            var connectionString = _configuration.GetConnectionString("InventoryManagement") ?? 
-                                 _configuration["DatabaseConnections:2:ConnectionString"];
+            var connectionString = FindConnectionStringByType(DatabaseType.MySQL);
             
             if (!string.IsNullOrEmpty(connectionString))
             {
@@ -63,11 +59,10 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
             }
         }
         
-        // Fallback to defaults if not found in config
         _server = server ?? "localhost";
         _port = port;
         _user = user ?? "root";
-        _databaseName = databaseName ?? "InventoryManagement";
+        _databaseName = databaseName ?? "TestDatabase";
     }
 
     #endregion
@@ -85,8 +80,7 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
         {
             if (_configuration != null)
             {
-                var connectionString = _configuration.GetConnectionString("InventoryManagement") ?? 
-                                     _configuration["DatabaseConnections:2:ConnectionString"];
+                var connectionString = FindConnectionStringByType(DatabaseType.MySQL);
                 
                 if (!string.IsNullOrEmpty(connectionString))
                 {
@@ -102,11 +96,6 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
             return string.IsNullOrEmpty(envPassword)
                 ? throw new InvalidOperationException("MySQL password not found in configuration or environment variables")
                 : envPassword;
-        }
-
-        public string GetDescription()
-        {
-            return "MySQL - Warehouse & Inventory Management (ProductID and SupplierID reference SQLite)";
         }
 
         public bool ValidateConnectionString(string connectionString)
@@ -127,31 +116,50 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
 
     public async Task CreateSampleDatabaseAsync(string connectionString)
     {
-        _logger?.LogInformation("Starting MySQL test database creation");
+        await CreateSampleDatabaseAsync(connectionString, CancellationToken.None);
+    }
+
+    public async Task<bool> DatabaseExistsAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var masterConnectionString = $"Server={_server};Port={_port};User={_user};Password={GetPassword()};";
+            var validatedName = ValidateDatabaseName(_databaseName);
+            var escapedNameForString = validatedName.Replace("'", "''");
+            
+            using var connection = new MySqlConnection(masterConnectionString);
+            await connection.OpenAsync(cancellationToken);
+
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = $"SELECT COUNT(*) FROM information_schema.SCHEMATA WHERE SCHEMA_NAME = '{escapedNameForString}'";
+            var result = await cmd.ExecuteScalarAsync(cancellationToken);
+            return Convert.ToInt32(result) > 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async Task CreateSampleDatabaseAsync(string connectionString, CancellationToken cancellationToken)
+    {
+        if (await DatabaseExistsAsync(cancellationToken))
+        {
+            _logger?.LogInformation("MySQL database {DatabaseName} already exists, skipping creation", _databaseName);
+            return;
+        }
 
         try
         {
-            _logger?.LogInformation("Step 1/3: Creating database");
-            await CreateDatabaseAsync();
-            _logger?.LogInformation("Database {DatabaseName} created successfully", _databaseName);
-
-            await Task.Delay(DatabaseCreationDelayMilliseconds);
-
-            _logger?.LogInformation("Step 2/3: Creating tables");
-            await ExecuteWithRetryAsync(connectionString, CreateTablesAsync, DefaultMaxRetries);
-            _logger?.LogInformation("7 tables created successfully");
-
-            _logger?.LogInformation("Step 3/3: Inserting sample data");
-            await ExecuteWithRetryAsync(connectionString, InsertSampleDataAsync, DefaultMaxRetries);
-            _logger?.LogInformation("Sample data inserted successfully");
-
-            _logger?.LogInformation("MySQL test database created successfully");
-            
-            await VerifyDatabaseAsync(connectionString);
+            await CreateDatabaseAsync(cancellationToken);
+            await Task.Delay(DatabaseCreationDelayMilliseconds, cancellationToken);
+            await RestoreFromBackupAsync(connectionString, cancellationToken);
+            _logger?.LogInformation("MySQL database {DatabaseName} created successfully", _databaseName);
+            await VerifyDatabaseAsync(connectionString, cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to create MySQL test database");
+            _logger?.LogError(ex, "Failed to create MySQL database {DatabaseName}", _databaseName);
             throw;
         }
     }
@@ -164,6 +172,72 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
     #endregion
 
     #region Private Methods
+
+    private static string ValidateContainerName(string containerName)
+    {
+        if (string.IsNullOrWhiteSpace(containerName))
+            throw new ArgumentException("Container name cannot be null or empty", nameof(containerName));
+        
+        if (!System.Text.RegularExpressions.Regex.IsMatch(containerName, @"^[a-zA-Z0-9_\-]+$"))
+            throw new ArgumentException("Container name contains invalid characters. Only alphanumeric characters, underscores, and hyphens are allowed.", nameof(containerName));
+        
+        return containerName;
+    }
+
+    private static string ValidatePath(string path, string parameterName)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            throw new ArgumentException($"{parameterName} cannot be null or empty", parameterName);
+        
+        if (path.Contains("..") || path.Contains("//") || path.Contains("\\\\"))
+            throw new ArgumentException($"{parameterName} contains invalid path characters. Path traversal is not allowed.", parameterName);
+        
+        if (path.Contains(";") || path.Contains("&") || path.Contains("|") || path.Contains("`") || path.Contains("$"))
+            throw new ArgumentException($"{parameterName} contains invalid characters that could be used for command injection.", parameterName);
+        
+        return path;
+    }
+
+    private static string ValidateServer(string server)
+    {
+        if (string.IsNullOrWhiteSpace(server))
+            throw new ArgumentException("Server cannot be null or empty", nameof(server));
+        
+        if (!System.Text.RegularExpressions.Regex.IsMatch(server, @"^[a-zA-Z0-9._\-]+$"))
+            throw new ArgumentException("Server contains invalid characters. Only alphanumeric characters, dots, underscores, and hyphens are allowed.", nameof(server));
+        
+        return server;
+    }
+
+    private static string ValidateUser(string user)
+    {
+        if (string.IsNullOrWhiteSpace(user))
+            throw new ArgumentException("User cannot be null or empty", nameof(user));
+        
+        if (!System.Text.RegularExpressions.Regex.IsMatch(user, @"^[a-zA-Z0-9_]+$"))
+            throw new ArgumentException("User contains invalid characters. Only alphanumeric characters and underscores are allowed.", nameof(user));
+        
+        return user;
+    }
+
+    private static string EscapeMySqlIdentifier(string identifier)
+    {
+        if (string.IsNullOrWhiteSpace(identifier))
+            throw new ArgumentException("Identifier cannot be null or empty", nameof(identifier));
+        
+        return $"`{identifier.Replace("`", "``")}`";
+    }
+
+    private static string ValidateDatabaseName(string databaseName)
+    {
+        if (string.IsNullOrWhiteSpace(databaseName))
+            throw new ArgumentException("Database name cannot be null or empty", nameof(databaseName));
+        
+        if (!System.Text.RegularExpressions.Regex.IsMatch(databaseName, @"^[a-zA-Z0-9_]+$"))
+            throw new ArgumentException("Database name contains invalid characters. Only alphanumeric characters and underscores are allowed.", nameof(databaseName));
+        
+        return databaseName;
+    }
 
     /// <summary>
     /// Executes an action with retry logic for transient connection errors
@@ -196,7 +270,6 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
                 if (retryCount < maxRetries)
                 {
                     var delay = BaseRetryDelayMilliseconds * retryCount;
-                    _logger?.LogWarning(ex, "Connection interrupted, retrying ({RetryCount}/{MaxRetries}) after {Delay}ms", retryCount, maxRetries, delay);
                     await Task.Delay(delay);
                 }
             }
@@ -217,408 +290,403 @@ public class MySqlTestDatabaseCreator : ITestDatabaseCreator
     /// <summary>
     /// Creates the MySQL database, dropping it first if it exists
     /// </summary>
-    private async Task CreateDatabaseAsync()
+    /// <param name="cancellationToken">Token to cancel the operation</param>
+    private async Task CreateDatabaseAsync(CancellationToken cancellationToken = default)
     {
+        var validatedName = ValidateDatabaseName(_databaseName);
+        var escapedName = EscapeMySqlIdentifier(validatedName);
+        
         var masterConnectionString = $"Server={_server};Port={_port};User={_user};Password={GetPassword()};";
 
         using (var connection = new MySqlConnection(masterConnectionString))
         {
-            await connection.OpenAsync();
+            await connection.OpenAsync(cancellationToken);
 
             using (var cmd = connection.CreateCommand())
             {
-                cmd.CommandText = $"DROP DATABASE IF EXISTS {_databaseName}";
-                await cmd.ExecuteNonQueryAsync();
+                cmd.CommandText = $"DROP DATABASE IF EXISTS {escapedName}";
+                await cmd.ExecuteNonQueryAsync(cancellationToken);
             }
 
             using (var cmd = connection.CreateCommand())
             {
-                cmd.CommandText = $"CREATE DATABASE {_databaseName} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci";
-                await cmd.ExecuteNonQueryAsync();
+                cmd.CommandText = $"CREATE DATABASE {escapedName} CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci";
+                await cmd.ExecuteNonQueryAsync(cancellationToken);
             }
         }
     }
 
     /// <summary>
-    /// Creates all required tables in the database
-    /// </summary>
-    /// <param name="connection">Database connection</param>
-    private async Task CreateTablesAsync(MySqlConnection connection)
-        {
-            var createTablesSql = @"
--- Warehouses Table (Enhanced)
-CREATE TABLE Warehouses (
-    WarehouseID INT PRIMARY KEY AUTO_INCREMENT,
-    WarehouseName VARCHAR(100) NOT NULL,
-    Location VARCHAR(200) NOT NULL,
-    Capacity INT NOT NULL,
-    ManagerName VARCHAR(100),
-    ManagerEmail VARCHAR(100),
-    ManagerPhone VARCHAR(50),
-    WarehouseType VARCHAR(50),
-    IsActive TINYINT DEFAULT 1,
-    EstablishedDate DATE,
-    CreatedDate DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_location (Location),
-    INDEX idx_active (IsActive)
-);
-
--- Stock Table (ProductID and SupplierID reference SQLite)
-CREATE TABLE Stock (
-    StockID INT PRIMARY KEY AUTO_INCREMENT,
-    ProductID INT NOT NULL COMMENT 'References SQLite Products.ProductID',
-    SupplierID INT COMMENT 'References SQLite Suppliers.SupplierID',
-    WarehouseID INT NOT NULL,
-    Quantity INT NOT NULL DEFAULT 0,
-    LastUpdated DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    MinimumLevel INT DEFAULT 10,
-    MaximumLevel INT DEFAULT 1000,
-    ReorderPoint INT DEFAULT 20,
-    FOREIGN KEY (WarehouseID) REFERENCES Warehouses(WarehouseID),
-    INDEX idx_product (ProductID),
-    INDEX idx_supplier (SupplierID),
-    INDEX idx_warehouse (WarehouseID)
-);
-
--- Stock Movements Table
-CREATE TABLE StockMovements (
-    MovementID INT PRIMARY KEY AUTO_INCREMENT,
-    StockID INT NOT NULL,
-    MovementType VARCHAR(20) NOT NULL COMMENT 'IN, OUT, TRANSFER, ADJUSTMENT',
-    Quantity INT NOT NULL,
-    MovementDate DATETIME DEFAULT CURRENT_TIMESTAMP,
-    ReferenceNumber VARCHAR(100),
-    Notes VARCHAR(500),
-    CreatedBy VARCHAR(100),
-    FOREIGN KEY (StockID) REFERENCES Stock(StockID),
-    INDEX idx_stock (StockID),
-    INDEX idx_date (MovementDate),
-    INDEX idx_type (MovementType)
-);
-
--- WarehouseZones Table (NEW)
-CREATE TABLE WarehouseZones (
-    ZoneID INT PRIMARY KEY AUTO_INCREMENT,
-    WarehouseID INT NOT NULL,
-    ZoneName VARCHAR(100) NOT NULL,
-    ZoneType VARCHAR(50) COMMENT 'Storage, Refrigerated, Hazardous, High-Value',
-    Capacity INT NOT NULL,
-    CurrentUtilization DECIMAL(5,2) DEFAULT 0.00 COMMENT 'Percentage 0-100',
-    Temperature DECIMAL(5,2) COMMENT 'Temperature in Celsius',
-    IsClimateControlled TINYINT DEFAULT 0,
-    FOREIGN KEY (WarehouseID) REFERENCES Warehouses(WarehouseID),
-    INDEX idx_warehouse (WarehouseID),
-    INDEX idx_type (ZoneType)
-);
-
--- StockAlerts Table (NEW)
-CREATE TABLE StockAlerts (
-    AlertID INT PRIMARY KEY AUTO_INCREMENT,
-    ProductID INT NOT NULL COMMENT 'References SQLite Products.ProductID',
-    WarehouseID INT NOT NULL,
-    AlertType VARCHAR(50) NOT NULL COMMENT 'Low Stock, Overstock, Expired, Damaged',
-    Threshold INT,
-    CurrentLevel INT,
-    AlertDate DATETIME DEFAULT CURRENT_TIMESTAMP,
-    IsResolved TINYINT DEFAULT 0,
-    ResolvedDate DATETIME,
-    Notes TEXT,
-    FOREIGN KEY (WarehouseID) REFERENCES Warehouses(WarehouseID),
-    INDEX idx_product (ProductID),
-    INDEX idx_warehouse (WarehouseID),
-    INDEX idx_resolved (IsResolved)
-);
-
--- InventoryAudits Table (NEW)
-CREATE TABLE InventoryAudits (
-    AuditID INT PRIMARY KEY AUTO_INCREMENT,
-    WarehouseID INT NOT NULL,
-    ProductID INT NOT NULL COMMENT 'References SQLite Products.ProductID',
-    AuditDate DATE NOT NULL,
-    ExpectedQty INT NOT NULL,
-    ActualQty INT NOT NULL,
-    Variance INT AS (ActualQty - ExpectedQty) STORED,
-    VarianceReason VARCHAR(200),
-    AuditorName VARCHAR(100),
-    Status VARCHAR(50) DEFAULT 'Completed',
-    FOREIGN KEY (WarehouseID) REFERENCES Warehouses(WarehouseID),
-    INDEX idx_warehouse (WarehouseID),
-    INDEX idx_product (ProductID),
-    INDEX idx_date (AuditDate)
-);
-
--- StockReservations Table (NEW)
-CREATE TABLE StockReservations (
-    ReservationID INT PRIMARY KEY AUTO_INCREMENT,
-    ProductID INT NOT NULL COMMENT 'References SQLite Products.ProductID',
-    WarehouseID INT NOT NULL,
-    OrderID INT NOT NULL COMMENT 'References SQL Server Orders.OrderID',
-    ReservedQty INT NOT NULL,
-    ReservationDate DATETIME DEFAULT CURRENT_TIMESTAMP,
-    ExpiryDate DATETIME,
-    Status VARCHAR(50) DEFAULT 'Active',
-    FOREIGN KEY (WarehouseID) REFERENCES Warehouses(WarehouseID),
-    INDEX idx_product (ProductID),
-    INDEX idx_warehouse (WarehouseID),
-    INDEX idx_order (OrderID),
-    INDEX idx_status (Status)
-);";
-
-        using (var cmd = connection.CreateCommand())
-        {
-            cmd.CommandText = createTablesSql;
-            await cmd.ExecuteNonQueryAsync();
-        }
-    }
-
-    /// <summary>
-    /// Inserts sample data into all tables
-    /// </summary>
-    /// <param name="connection">Database connection</param>
-    private async Task InsertSampleDataAsync(MySqlConnection connection)
-        {
-            var random = new Random(42); // Fixed seed for reproducible data
-            
-            // Generate 35 Warehouses
-            var warehousesSql = new StringBuilder("INSERT INTO Warehouses (WarehouseName, Location, Capacity, ManagerName, ManagerEmail, ManagerPhone, WarehouseType, IsActive, EstablishedDate, CreatedDate) VALUES \n");
-            var warehouseTypes = new[] { "Distribution Center", "Fulfillment Center", "Regional Hub", "Cold Storage", "Hazmat Facility" };
-            
-            for (int i = 0; i < 35; i++)
-            {
-                var city = SampleDataGenerator.GetRandomCity(random);
-                var country = SampleDataGenerator.GetRandomCountry(random);
-                var warehouseName = $"{city} {warehouseTypes[random.Next(warehouseTypes.Length)]}";
-                var location = $"{city}, {country}";
-                var capacity = random.Next(2000, 8000);
-                var firstName = SampleDataGenerator.GetRandomFirstName(random);
-                var lastName = SampleDataGenerator.GetRandomLastName(random);
-                var managerName = $"{firstName} {lastName}";
-                var managerEmail = SampleDataGenerator.GenerateEmail(firstName, lastName, random);
-                var managerPhone = SampleDataGenerator.GeneratePhone(random);
-                var warehouseType = warehouseTypes[random.Next(warehouseTypes.Length)];
-                var isActive = random.NextDouble() > 0.1 ? 1 : 0;
-                var year = random.Next(2020, 2025);
-                var month = random.Next(1, 13);
-                var day = random.Next(1, 29);
-                var establishedDate = $"{year}-{month:00}-{day:00}";
-                var createdDate = $"{year}-{month:00}-{day:00} 09:00:00";
-
-                warehousesSql.Append($"    ('{warehouseName}', '{location}', {capacity}, '{managerName}', '{managerEmail}', '{managerPhone}', '{warehouseType}', {isActive}, '{establishedDate}', '{createdDate}')");
-                warehousesSql.Append(i < 34 ? ",\n" : ";\n");
-            }
-
-        using (var cmd = connection.CreateCommand())
-        {
-            cmd.CommandText = warehousesSql.ToString();
-            await cmd.ExecuteNonQueryAsync();
-        }
-        _logger?.LogInformation("Warehouses: 35 rows inserted");
-
-            // Generate 500 Stock entries (ProductID 1-250 from SQLite, SupplierID 1-30 from SQLite)
-            var stockSql = new StringBuilder("INSERT INTO Stock (ProductID, SupplierID, WarehouseID, Quantity, MinimumLevel, MaximumLevel, ReorderPoint) VALUES \n");
-            
-            for (int i = 0; i < 500; i++)
-            {
-                // CRITICAL: ProductID must reference actual SQLite Products (1-250)
-                var productId = (i % 250) + 1;
-                // CRITICAL: SupplierID must reference actual SQLite Suppliers (1-30)
-                var supplierId = (i % 30) + 1;
-                var warehouseId = (i % 35) + 1;
-                var quantity = random.Next(10, 500);
-                var minimumLevel = random.Next(5, 50);
-                var maximumLevel = minimumLevel + random.Next(100, 500);
-                var reorderPoint = minimumLevel + (int)((maximumLevel - minimumLevel) * 0.2);
-
-                stockSql.Append($"    ({productId}, {supplierId}, {warehouseId}, {quantity}, {minimumLevel}, {maximumLevel}, {reorderPoint})");
-                stockSql.Append(i < 499 ? ",\n" : ";\n");
-            }
-
-        using (var cmd = connection.CreateCommand())
-        {
-            cmd.CommandText = stockSql.ToString();
-            await cmd.ExecuteNonQueryAsync();
-        }
-        _logger?.LogInformation("Stock: 500 rows inserted");
-
-            // Generate 800 Stock Movements
-            var movementsSql = new StringBuilder("INSERT INTO StockMovements (StockID, MovementType, Quantity, MovementDate, ReferenceNumber, Notes, CreatedBy) VALUES \n");
-            var movementTypes = new[] { "IN", "OUT", "ADJUSTMENT", "TRANSFER" };
-            var createdByUsers = new[] { "System", "Warehouse Staff", "Manager", "Inventory Team", "Auto-Reorder System" };
-            
-            for (int i = 0; i < 800; i++)
-            {
-                var stockId = random.Next(1, 501);
-                var movementType = movementTypes[random.Next(movementTypes.Length)];
-                var quantity = random.Next(1, 100);
-                var month = random.Next(1, 11);
-                var day = random.Next(1, 29);
-                var hour = random.Next(6, 20);
-                var minute = random.Next(0, 60);
-                var movementDate = $"2025-{month:00}-{day:00} {hour:00}:{minute:00}:00";
-                var refNumber = $"REF-{random.Next(10000, 99999)}";
-                var notes = $"{movementType} movement #{i + 1}";
-                var createdBy = createdByUsers[random.Next(createdByUsers.Length)];
-
-                movementsSql.Append($"    ({stockId}, '{movementType}', {quantity}, '{movementDate}', '{refNumber}', '{notes}', '{createdBy}')");
-                movementsSql.Append(i < 799 ? ",\n" : ";\n");
-            }
-
-        using (var cmd = connection.CreateCommand())
-        {
-            cmd.CommandText = movementsSql.ToString();
-            await cmd.ExecuteNonQueryAsync();
-        }
-        _logger?.LogInformation("StockMovements: 800 rows inserted");
-
-            // Generate 140 WarehouseZones
-            var zonesSql = new StringBuilder("INSERT INTO WarehouseZones (WarehouseID, ZoneName, ZoneType, Capacity, CurrentUtilization, Temperature, IsClimateControlled) VALUES \n");
-            var zoneTypes = new[] { "Storage", "Refrigerated", "Hazardous", "High-Value", "Bulk Storage" };
-            
-            for (int i = 0; i < 140; i++)
-            {
-                var warehouseId = (i % 35) + 1;
-                var zoneLetter = (char)('A' + (i % 26));
-                var zoneName = $"Zone {zoneLetter}-{(i / 26) + 1}";
-                var zoneType = zoneTypes[random.Next(zoneTypes.Length)];
-                var capacity = random.Next(100, 1000);
-                var utilization = Math.Round(random.NextDouble() * 100, 2);
-                var temperature = zoneType == "Refrigerated" ? Math.Round(random.NextDouble() * 10 - 5, 2) : (double?)null;
-                var isClimateControlled = zoneType == "Refrigerated" || zoneType == "High-Value" ? 1 : 0;
-                var tempValue = temperature.HasValue ? temperature.Value.ToString(System.Globalization.CultureInfo.InvariantCulture) : "NULL";
-
-                zonesSql.Append($"    ({warehouseId}, '{zoneName}', '{zoneType}', {capacity}, {utilization.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {tempValue}, {isClimateControlled})");
-                zonesSql.Append(i < 139 ? ",\n" : ";\n");
-            }
-
-        using (var cmd = connection.CreateCommand())
-        {
-            cmd.CommandText = zonesSql.ToString();
-            await cmd.ExecuteNonQueryAsync();
-        }
-        _logger?.LogInformation("WarehouseZones: 140 rows inserted");
-
-            // Generate 150 StockAlerts
-            var alertsSql = new StringBuilder("INSERT INTO StockAlerts (ProductID, WarehouseID, AlertType, Threshold, CurrentLevel, AlertDate, IsResolved, ResolvedDate, Notes) VALUES \n");
-            var alertTypes = new[] { "Low Stock", "Overstock", "Expired", "Damaged", "Missing" };
-            
-            for (int i = 0; i < 150; i++)
-            {
-                var productId = random.Next(1, 251);
-                var warehouseId = random.Next(1, 36);
-                var alertType = alertTypes[random.Next(alertTypes.Length)];
-                var threshold = random.Next(10, 100);
-                var currentLevel = alertType == "Low Stock" ? random.Next(0, threshold) : random.Next(threshold, threshold * 3);
-                var month = random.Next(1, 11);
-                var day = random.Next(1, 29);
-                var alertDate = $"2025-{month:00}-{day:00} 10:00:00";
-                var isResolved = random.NextDouble() > 0.4 ? 1 : 0;
-                var resolvedDate = isResolved == 1 ? $"'2025-{month:00}-{Math.Min(day + random.Next(1, 5), 28):00} 15:00:00'" : "NULL";
-                var notes = $"Alert for {alertType} - Product {productId}";
-
-                alertsSql.Append($"    ({productId}, {warehouseId}, '{alertType}', {threshold}, {currentLevel}, '{alertDate}', {isResolved}, {resolvedDate}, '{notes}')");
-                alertsSql.Append(i < 149 ? ",\n" : ";\n");
-            }
-
-        using (var cmd = connection.CreateCommand())
-        {
-            cmd.CommandText = alertsSql.ToString();
-            await cmd.ExecuteNonQueryAsync();
-        }
-        _logger?.LogInformation("StockAlerts: 150 rows inserted");
-
-            // Generate 200 InventoryAudits
-            var auditsSql = new StringBuilder("INSERT INTO InventoryAudits (WarehouseID, ProductID, AuditDate, ExpectedQty, ActualQty, VarianceReason, AuditorName, Status) VALUES \n");
-            var varianceReasons = new[] { "Theft", "Damage", "Counting Error", "System Error", "Spoilage", "Returns" };
-            var auditorNames = new[] { "John Auditor", "Jane Inspector", "Mike Counter", "Sarah Checker", "Tom Analyst" };
-            var auditStatuses = new[] { "Completed", "In Progress", "Pending Review" };
-            
-            for (int i = 0; i < 200; i++)
-            {
-                var warehouseId = random.Next(1, 36);
-                var productId = random.Next(1, 251);
-                var month = random.Next(1, 11);
-                var day = random.Next(1, 29);
-                var auditDate = $"2025-{month:00}-{day:00}";
-                var expectedQty = random.Next(50, 500);
-                var actualQty = expectedQty + random.Next(-50, 51);
-                var variance = actualQty - expectedQty;
-                var varianceReason = variance != 0 ? varianceReasons[random.Next(varianceReasons.Length)] : "No Variance";
-                var auditorName = auditorNames[random.Next(auditorNames.Length)];
-                var status = auditStatuses[random.Next(auditStatuses.Length)];
-
-                auditsSql.Append($"    ({warehouseId}, {productId}, '{auditDate}', {expectedQty}, {actualQty}, '{varianceReason}', '{auditorName}', '{status}')");
-                auditsSql.Append(i < 199 ? ",\n" : ";\n");
-            }
-
-        using (var cmd = connection.CreateCommand())
-        {
-            cmd.CommandText = auditsSql.ToString();
-            await cmd.ExecuteNonQueryAsync();
-        }
-        _logger?.LogInformation("InventoryAudits: 200 rows inserted");
-
-            // Generate 250 StockReservations
-            var reservationsSql = new StringBuilder("INSERT INTO StockReservations (ProductID, WarehouseID, OrderID, ReservedQty, ReservationDate, ExpiryDate, Status) VALUES \n");
-            var reservationStatuses = new[] { "Active", "Expired", "Fulfilled", "Cancelled" };
-            
-            for (int i = 0; i < 250; i++)
-            {
-                var productId = random.Next(1, 251);
-                var warehouseId = random.Next(1, 36);
-                // CRITICAL: OrderID must reference actual SQL Server Orders (1-300)
-                var orderId = random.Next(1, 301);
-                var reservedQty = random.Next(1, 20);
-                var month = random.Next(1, 11);
-                var day = random.Next(1, 29);
-                var hour = random.Next(9, 18);
-                var reservationDate = $"2025-{month:00}-{day:00} {hour:00}:00:00";
-                var expiryDay = Math.Min(day + random.Next(3, 8), 28);
-                var expiryDate = $"2025-{month:00}-{expiryDay:00} 23:59:59";
-                var status = reservationStatuses[random.Next(reservationStatuses.Length)];
-
-                reservationsSql.Append($"    ({productId}, {warehouseId}, {orderId}, {reservedQty}, '{reservationDate}', '{expiryDate}', '{status}')");
-                reservationsSql.Append(i < 249 ? ",\n" : ";\n");
-            }
-
-        using (var cmd = connection.CreateCommand())
-        {
-            cmd.CommandText = reservationsSql.ToString();
-            await cmd.ExecuteNonQueryAsync();
-        }
-        _logger?.LogInformation("StockReservations: 250 rows inserted");
-    }
-
-    /// <summary>
-    /// Verifies the database by querying table row counts
+    /// Restores MySQL database from backup file
     /// </summary>
     /// <param name="connectionString">Database connection string</param>
-    private async Task VerifyDatabaseAsync(string connectionString)
+    /// <param name="cancellationToken">Token to cancel the operation</param>
+    /// <summary>
+    /// Restores MySQL database from backup file using mysql command (supports both Docker and local installations)
+    /// </summary>
+    /// <param name="connectionString">Database connection string</param>
+    /// <param name="cancellationToken">Token to cancel the operation</param>
+    private async Task RestoreFromBackupAsync(string connectionString, CancellationToken cancellationToken = default)
     {
-        using (var connection = new MySqlConnection(connectionString))
+        var backupFileName = GetBackupFileName();
+        var backupFilePath = FindBackupFilePath(backupFileName);
+        
+        if (!File.Exists(backupFilePath))
         {
-            await connection.OpenAsync();
-
-            using (var cmd = connection.CreateCommand())
+            throw new FileNotFoundException($"Backup file not found. Expected: {backupFilePath}");
+        }
+        
+        cancellationToken.ThrowIfCancellationRequested();
+        
+        try
+        {
+            var password = GetPassword();
+            var containerName = await FindMySqlContainerNameAsync();
+            
+            if (!string.IsNullOrEmpty(containerName))
             {
-                cmd.CommandText = @"
-                    SELECT 
-                        TABLE_NAME as TableName,
-                        TABLE_ROWS as TotalRows
-                    FROM information_schema.TABLES
-                    WHERE TABLE_SCHEMA = @dbName
-                    ORDER BY TABLE_NAME";
-                
-                cmd.Parameters.AddWithValue("@dbName", _databaseName);
-
-                using (var reader = await cmd.ExecuteReaderAsync())
+                await RestoreInDockerContainerAsync(containerName, backupFilePath, password, cancellationToken);
+            }
+            else
+            {
+                await RestoreLocalAsync(backupFilePath, password, cancellationToken);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error restoring backup file: {BackupPath}. Error: {Error}", backupFilePath, ex.Message);
+            throw;
+        }
+    }
+    
+    /// <summary>
+    /// Restores MySQL database in Docker container
+    /// </summary>
+    private async Task RestoreInDockerContainerAsync(string containerName, string backupFilePath, string password, CancellationToken cancellationToken)
+    {
+        var validatedContainerName = ValidateContainerName(containerName);
+        var validatedBackupPath = ValidatePath(backupFilePath, nameof(backupFilePath));
+        var validatedUser = ValidateUser(_user);
+        var validatedDatabaseName = ValidateDatabaseName(_databaseName);
+        var containerBackupPath = "/tmp/restore.sql";
+        
+        var copyResult = await CopyBackupToContainerAsync(validatedBackupPath, validatedContainerName, containerBackupPath);
+        if (!copyResult)
+        {
+            throw new InvalidOperationException($"Failed to copy backup file to container: {validatedContainerName}");
+        }
+        
+        await Task.Run(async () =>
+        {
+            var grepProcessInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "docker",
+                ArgumentList = { "exec", validatedContainerName, "grep", "-v", "^mysqldump:", containerBackupPath },
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+            
+            using var grepProcess = System.Diagnostics.Process.Start(grepProcessInfo);
+            if (grepProcess == null)
+            {
+                throw new InvalidOperationException("Failed to start grep process");
+            }
+            
+            var grepOutput = await grepProcess.StandardOutput.ReadToEndAsync();
+            await grepProcess.WaitForExitAsync();
+            
+            var mysqlProcessInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "docker",
+                ArgumentList = { "exec", "-i", validatedContainerName, "mysql", "-u", validatedUser, "-p" + password, validatedDatabaseName },
+                UseShellExecute = false,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+            
+            using var mysqlProcess = System.Diagnostics.Process.Start(mysqlProcessInfo);
+            if (mysqlProcess == null)
+            {
+                throw new InvalidOperationException("Failed to start mysql process");
+            }
+            
+            await mysqlProcess.StandardInput.WriteAsync(grepOutput);
+            mysqlProcess.StandardInput.Close();
+            
+            var processInfo = mysqlProcessInfo;
+            
+            var output = await mysqlProcess.StandardOutput.ReadToEndAsync();
+            var error = await mysqlProcess.StandardError.ReadToEndAsync();
+            
+            await mysqlProcess.WaitForExitAsync();
+            
+            if (mysqlProcess.ExitCode != 0)
+            {
+                var errorMessage = string.IsNullOrWhiteSpace(error) ? output : error;
+                if (!errorMessage.Contains("[Warning] Using a password"))
                 {
-                    while (await reader.ReadAsync())
-                    {
-                        _logger?.LogInformation("Table {TableName}: {TotalRows} rows", reader["TableName"], reader["TotalRows"]);
-                    }
+                    throw new InvalidOperationException($"MySQL restore failed with exit code {mysqlProcess.ExitCode}: {errorMessage}");
+                }
+            }
+        }, cancellationToken);
+    }
+    
+    /// <summary>
+    /// Restores MySQL database using local mysql command
+    /// </summary>
+    private async Task RestoreLocalAsync(string backupFilePath, string password, CancellationToken cancellationToken)
+    {
+        var validatedBackupPath = ValidatePath(backupFilePath, nameof(backupFilePath));
+        var validatedServer = ValidateServer(_server);
+        var validatedUser = ValidateUser(_user);
+        var validatedDatabaseName = ValidateDatabaseName(_databaseName);
+        
+        await Task.Run(async () =>
+        {
+            var grepProcessInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "grep",
+                ArgumentList = { "-v", "^mysqldump:", validatedBackupPath },
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+            
+            using var grepProcess = System.Diagnostics.Process.Start(grepProcessInfo);
+            if (grepProcess == null)
+            {
+                throw new InvalidOperationException("Failed to start grep process. Make sure grep is installed and in PATH.");
+            }
+            
+            var grepOutput = await grepProcess.StandardOutput.ReadToEndAsync();
+            await grepProcess.WaitForExitAsync();
+            
+            var mysqlProcessInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "mysql",
+                ArgumentList = { "-h", validatedServer, "-P", _port.ToString(), "-u", validatedUser, "-p" + password, validatedDatabaseName },
+                UseShellExecute = false,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+            
+            using var mysqlProcess = System.Diagnostics.Process.Start(mysqlProcessInfo);
+            if (mysqlProcess == null)
+            {
+                throw new InvalidOperationException("Failed to start mysql restore process. Make sure MySQL client tools are installed and mysql is in PATH.");
+            }
+            
+            await mysqlProcess.StandardInput.WriteAsync(grepOutput);
+            mysqlProcess.StandardInput.Close();
+            
+            var output = await mysqlProcess.StandardOutput.ReadToEndAsync();
+            var error = await mysqlProcess.StandardError.ReadToEndAsync();
+            
+            await mysqlProcess.WaitForExitAsync();
+            
+            if (mysqlProcess.ExitCode != 0)
+            {
+                var errorMessage = string.IsNullOrWhiteSpace(error) ? output : error;
+                if (!errorMessage.Contains("[Warning] Using a password"))
+                {
+                    throw new InvalidOperationException($"MySQL restore failed with exit code {mysqlProcess.ExitCode}: {errorMessage}");
+                }
+            }
+        }, cancellationToken);
+    }
+    
+    /// <summary>
+    /// Finds MySQL Docker container name by checking port 3306
+    /// </summary>
+    private async Task<string?> FindMySqlContainerNameAsync()
+    {
+        return await Task.Run(() =>
+        {
+            try
+            {
+                var processInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "docker",
+                    Arguments = "ps --filter \"publish=3306\" --format \"{{.Names}}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+                
+                using var process = System.Diagnostics.Process.Start(processInfo);
+                if (process == null) return null;
+                
+                var output = process.StandardOutput.ReadToEnd();
+                process.WaitForExit(5000);
+                
+                if (process.ExitCode == 0 && !string.IsNullOrWhiteSpace(output))
+                {
+                    var containerName = output.Trim().Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+                    return containerName;
+                }
+                
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to find MySQL container: {Error}", ex.Message);
+                return null;
+            }
+        });
+    }
+    
+    /// <summary>
+    /// Copies backup file to Docker container
+    /// </summary>
+    private async Task<bool> CopyBackupToContainerAsync(string localBackupPath, string containerName, string containerPath)
+    {
+        var validatedContainerName = ValidateContainerName(containerName);
+        var validatedLocalPath = ValidatePath(localBackupPath, nameof(localBackupPath));
+        var validatedContainerPath = ValidatePath(containerPath, nameof(containerPath));
+        
+        return await Task.Run(() =>
+        {
+            try
+            {
+                var processInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "docker",
+                    ArgumentList = { "cp", validatedLocalPath, $"{validatedContainerName}:{validatedContainerPath}" },
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+                
+                using var process = System.Diagnostics.Process.Start(processInfo);
+                if (process == null) return false;
+                
+                process.WaitForExit(300000);
+                return process.ExitCode == 0;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to copy backup to container: {Error}", ex.Message);
+                return false;
+            }
+        });
+    }
+    
+    /// <summary>
+    /// Finds the backup file path relative to the project root
+    /// </summary>
+    private static string FindBackupFilePath(string fileName)
+    {
+        var assemblyLocation = System.Reflection.Assembly.GetExecutingAssembly().Location;
+        var currentDir = Path.GetDirectoryName(assemblyLocation) ?? Directory.GetCurrentDirectory();
+        
+        var projectRoot = FindProjectRoot(currentDir);
+        if (projectRoot == null)
+        {
+            throw new FileNotFoundException("Could not find project root directory.");
+        }
+        
+        var backupFilePath = Path.Combine(projectRoot, "examples", "SmartRAG.Demo", "DatabaseBackups", fileName);
+        
+        if (!File.Exists(backupFilePath))
+        {
+            throw new FileNotFoundException($"Backup file not found. Searched: {backupFilePath}");
+        }
+        
+        return backupFilePath;
+    }
+    
+    /// <summary>
+    /// Finds the project root directory by searching upwards from the current directory
+    /// </summary>
+    private static string? FindProjectRoot(string startDir)
+    {
+        var dir = new DirectoryInfo(startDir);
+        while (dir != null)
+        {
+            if (File.Exists(Path.Combine(dir.FullName, "SmartRAG.sln")))
+            {
+                return dir.FullName;
+            }
+            dir = dir.Parent;
+        }
+        return null;
+    }
+    
+    /// <summary>
+    /// Verifies the database by checking table existence
+    /// </summary>
+    /// <param name="connectionString">Database connection string</param>
+    /// <param name="cancellationToken">Token to cancel the operation</param>
+    private async Task VerifyDatabaseAsync(string connectionString, CancellationToken cancellationToken = default)
+    {
+        using var connection = new MySqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = @"
+            SELECT COUNT(*) 
+            FROM information_schema.TABLES 
+            WHERE TABLE_SCHEMA = @dbName";
+        
+        cmd.Parameters.AddWithValue("@dbName", _databaseName);
+        var tableCount = await cmd.ExecuteScalarAsync(cancellationToken);
+        
+        if (tableCount == null || Convert.ToInt32(tableCount) == 0)
+        {
+            throw new InvalidOperationException("Database verification failed: No tables found");
+        }
+    }
+
+    /// <summary>
+    /// Finds connection string from DatabaseConnections array by database type
+    /// </summary>
+    private string? FindConnectionStringByType(DatabaseType databaseType)
+    {
+        if (_configuration == null)
+            return null;
+        
+        var databaseTypeStr = databaseType.ToString();
+        var connectionsSection = _configuration.GetSection("DatabaseConnections");
+        
+        if (!connectionsSection.Exists())
+            return null;
+        
+        var connections = connectionsSection.GetChildren();
+        foreach (var connection in connections)
+        {
+            var type = connection["DatabaseType"];
+            if (string.Equals(type, databaseTypeStr, StringComparison.OrdinalIgnoreCase))
+            {
+                var connectionString = connection["ConnectionString"];
+                if (!string.IsNullOrEmpty(connectionString))
+                {
+                    return connectionString;
                 }
             }
         }
+        
+        return null;
+    }
+    
+    /// <summary>
+    /// Generates backup file name from database name (lowercase, sanitized)
+    /// </summary>
+    private string GetBackupFileName()
+    {
+        var sanitizedName = _databaseName.ToLowerInvariant()
+            .Replace(" ", "")
+            .Replace("-", "")
+            .Replace("_", "");
+        return $"{sanitizedName}.backup.sql";
     }
 
     #endregion

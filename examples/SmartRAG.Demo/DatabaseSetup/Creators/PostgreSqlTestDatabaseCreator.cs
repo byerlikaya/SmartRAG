@@ -1,16 +1,16 @@
 using Npgsql;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using SmartRAG.Demo.DatabaseSetup.Helpers;
 using SmartRAG.Demo.DatabaseSetup.Interfaces;
 using SmartRAG.Enums;
-using System.Text;
+using System.Linq;
 
 namespace SmartRAG.Demo.DatabaseSetup.Creators;
 
 /// <summary>
 /// PostgreSQL test database creator implementation
-/// Domain: Logistics & Distribution
+/// Restores database from backup file based on configuration
+/// Follows SOLID principles - Single Responsibility Principle
 /// </summary>
 public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
 {
@@ -46,8 +46,7 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
         
         if (_configuration != null)
         {
-            var connectionString = _configuration.GetConnectionString("LogisticsManagement") ?? 
-                                 _configuration["DatabaseConnections:3:ConnectionString"];
+            var connectionString = FindConnectionStringByType(DatabaseType.PostgreSQL);
             
             if (!string.IsNullOrEmpty(connectionString))
             {
@@ -59,11 +58,10 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
             }
         }
         
-        // Fallback to defaults if not found in config
         _server = server ?? "localhost";
         _port = port;
         _user = user ?? "postgres";
-        _databaseName = databaseName ?? "LogisticsManagement";
+        _databaseName = databaseName ?? "TestDatabase";
     }
 
         #endregion
@@ -81,8 +79,7 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
         {
             if (_configuration != null)
             {
-                var connectionString = _configuration.GetConnectionString("LogisticsManagement") ?? 
-                                     _configuration["DatabaseConnections:3:ConnectionString"];
+                var connectionString = FindConnectionStringByType(DatabaseType.PostgreSQL);
                 
                 if (!string.IsNullOrEmpty(connectionString))
                 {
@@ -98,11 +95,6 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
             return string.IsNullOrEmpty(envPassword)
                 ? throw new InvalidOperationException("PostgreSQL password not found in configuration or environment variables")
                 : envPassword;
-        }
-
-        public string GetDescription()
-        {
-            return "PostgreSQL - Logistics & Distribution (OrderID, ProductID, CustomerID, WarehouseID reference other databases)";
         }
 
         public bool ValidateConnectionString(string connectionString)
@@ -123,33 +115,53 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
 
     public async Task CreateSampleDatabaseAsync(string connectionString)
     {
-        _logger?.LogInformation("Starting PostgreSQL test database creation");
+        await CreateSampleDatabaseAsync(connectionString, CancellationToken.None);
+    }
+
+    public async Task<bool> DatabaseExistsAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var masterConnectionString = $"Server={_server};Port={_port};User Id={_user};Password={GetPassword()};Database=postgres;";
+            var validatedName = ValidateDatabaseName(_databaseName);
+            var escapedNameForString = validatedName.Replace("'", "''");
+            
+            using var connection = new NpgsqlConnection(masterConnectionString);
+            await connection.OpenAsync(cancellationToken);
+
+            using var cmd = connection.CreateCommand();
+            cmd.CommandText = $"SELECT 1 FROM pg_database WHERE datname = '{escapedNameForString}'";
+            var result = await cmd.ExecuteScalarAsync(cancellationToken);
+            return result != null;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    public async Task CreateSampleDatabaseAsync(string connectionString, CancellationToken cancellationToken)
+    {
+        if (await DatabaseExistsAsync(cancellationToken))
+        {
+            _logger?.LogInformation("PostgreSQL database {DatabaseName} already exists, skipping creation", _databaseName);
+            return;
+        }
 
         try
         {
             NpgsqlConnection.ClearAllPools();
 
-            _logger?.LogInformation("Step 1/3: Creating database");
-            await CreateDatabaseAsync();
-            _logger?.LogInformation("Database {DatabaseName} created successfully", _databaseName);
-
-            await Task.Delay(DatabaseCreationDelayMilliseconds);
-
-            _logger?.LogInformation("Step 2/3: Creating tables");
-            await ExecuteWithRetryAsync(connectionString, CreateTablesAsync, DefaultMaxRetries);
-            _logger?.LogInformation("8 tables created successfully");
-
-            _logger?.LogInformation("Step 3/3: Inserting sample data");
-            await ExecuteWithRetryAsync(connectionString, InsertSampleDataAsync, DefaultMaxRetries);
-            _logger?.LogInformation("Sample data inserted successfully");
-
-            _logger?.LogInformation("PostgreSQL test database created successfully");
+            await CreateDatabaseAsync(cancellationToken);
+            await Task.Delay(DatabaseCreationDelayMilliseconds, cancellationToken);
+            await RestoreFromBackupAsync(connectionString, cancellationToken);
+            _logger?.LogInformation("PostgreSQL database {DatabaseName} created successfully", _databaseName);
             
-            await VerifyDatabaseAsync(connectionString);
+            await VerifyDatabaseAsync(connectionString, cancellationToken);
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Failed to create PostgreSQL test database");
+            _logger?.LogError(ex, "Failed to create PostgreSQL database {DatabaseName}", _databaseName);
             throw;
         }
     }
@@ -163,9 +175,71 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
 
         #region Private Methods
 
-    #endregion
+    private static string ValidateContainerName(string containerName)
+    {
+        if (string.IsNullOrWhiteSpace(containerName))
+            throw new ArgumentException("Container name cannot be null or empty", nameof(containerName));
+        
+        if (!System.Text.RegularExpressions.Regex.IsMatch(containerName, @"^[a-zA-Z0-9_\-]+$"))
+            throw new ArgumentException("Container name contains invalid characters. Only alphanumeric characters, underscores, and hyphens are allowed.", nameof(containerName));
+        
+        return containerName;
+    }
 
-    #region Private Methods
+    private static string ValidatePath(string path, string parameterName)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            throw new ArgumentException($"{parameterName} cannot be null or empty", parameterName);
+        
+        if (path.Contains("..") || path.Contains("//") || path.Contains("\\\\"))
+            throw new ArgumentException($"{parameterName} contains invalid path characters. Path traversal is not allowed.", parameterName);
+        
+        if (path.Contains(";") || path.Contains("&") || path.Contains("|") || path.Contains("`") || path.Contains("$"))
+            throw new ArgumentException($"{parameterName} contains invalid characters that could be used for command injection.", parameterName);
+        
+        return path;
+    }
+
+    private static string ValidateServer(string server)
+    {
+        if (string.IsNullOrWhiteSpace(server))
+            throw new ArgumentException("Server cannot be null or empty", nameof(server));
+        
+        if (!System.Text.RegularExpressions.Regex.IsMatch(server, @"^[a-zA-Z0-9._\-]+$"))
+            throw new ArgumentException("Server contains invalid characters. Only alphanumeric characters, dots, underscores, and hyphens are allowed.", nameof(server));
+        
+        return server;
+    }
+
+    private static string ValidateUser(string user)
+    {
+        if (string.IsNullOrWhiteSpace(user))
+            throw new ArgumentException("User cannot be null or empty", nameof(user));
+        
+        if (!System.Text.RegularExpressions.Regex.IsMatch(user, @"^[a-zA-Z0-9_]+$"))
+            throw new ArgumentException("User contains invalid characters. Only alphanumeric characters and underscores are allowed.", nameof(user));
+        
+        return user;
+    }
+
+    private static string EscapePostgreSqlIdentifier(string identifier)
+    {
+        if (string.IsNullOrWhiteSpace(identifier))
+            throw new ArgumentException("Identifier cannot be null or empty", nameof(identifier));
+        
+        return $"\"{identifier.Replace("\"", "\"\"")}\"";
+    }
+
+    private static string ValidateDatabaseName(string databaseName)
+    {
+        if (string.IsNullOrWhiteSpace(databaseName))
+            throw new ArgumentException("Database name cannot be null or empty", nameof(databaseName));
+        
+        if (!System.Text.RegularExpressions.Regex.IsMatch(databaseName, @"^[a-zA-Z0-9_]+$"))
+            throw new ArgumentException("Database name contains invalid characters. Only alphanumeric characters and underscores are allowed.", nameof(databaseName));
+        
+        return databaseName;
+    }
 
     /// <summary>
     /// Executes an action with retry logic for transient connection errors
@@ -198,7 +272,6 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
                 if (retryCount < maxRetries)
                 {
                     var delay = BaseRetryDelayMilliseconds * retryCount;
-                    _logger?.LogWarning(ex, "Connection interrupted, retrying ({RetryCount}/{MaxRetries}) after {Delay}ms", retryCount, maxRetries, delay);
                     await Task.Delay(delay);
                 }
             }
@@ -219,18 +292,23 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
     /// <summary>
     /// Creates the PostgreSQL database, dropping it first if it exists
     /// </summary>
-    private async Task CreateDatabaseAsync()
+    /// <param name="cancellationToken">Token to cancel the operation</param>
+    private async Task CreateDatabaseAsync(CancellationToken cancellationToken = default)
     {
+        var validatedName = ValidateDatabaseName(_databaseName);
+        var escapedName = EscapePostgreSqlIdentifier(validatedName);
+        var escapedNameForString = validatedName.Replace("'", "''");
+        
         var masterConnectionString = $"Server={_server};Port={_port};User Id={_user};Password={GetPassword()};Database=postgres;";
 
         using (var connection = new NpgsqlConnection(masterConnectionString))
         {
-            await connection.OpenAsync();
+            await connection.OpenAsync(cancellationToken);
 
             using (var cmd = connection.CreateCommand())
             {
-                cmd.CommandText = $"SELECT 1 FROM pg_database WHERE datname = '{_databaseName}'";
-                var exists = await cmd.ExecuteScalarAsync() != null;
+                cmd.CommandText = $"SELECT 1 FROM pg_database WHERE datname = '{escapedNameForString}'";
+                var exists = await cmd.ExecuteScalarAsync(cancellationToken) != null;
 
                 if (exists)
                 {
@@ -239,523 +317,462 @@ public class PostgreSqlTestDatabaseCreator : ITestDatabaseCreator
                         terminateCmd.CommandText = $@"
                             SELECT pg_terminate_backend(pg_stat_activity.pid)
                             FROM pg_stat_activity
-                            WHERE pg_stat_activity.datname = '{_databaseName}'
+                            WHERE pg_stat_activity.datname = '{escapedNameForString}'
                             AND pid <> pg_backend_pid();";
-                        await terminateCmd.ExecuteNonQueryAsync();
+                        await terminateCmd.ExecuteNonQueryAsync(cancellationToken);
                     }
+
+                    await Task.Delay(1000, cancellationToken);
 
                     using (var dropCmd = connection.CreateCommand())
                     {
-                        dropCmd.CommandText = $"DROP DATABASE IF EXISTS \"{_databaseName}\"";
-                        await dropCmd.ExecuteNonQueryAsync();
+                        dropCmd.CommandText = $"DROP DATABASE IF EXISTS {escapedName}";
+                        await dropCmd.ExecuteNonQueryAsync(cancellationToken);
                     }
+                    
+                    await Task.Delay(500, cancellationToken);
                 }
             }
 
             using (var cmd = connection.CreateCommand())
             {
-                cmd.CommandText = $"CREATE DATABASE \"{_databaseName}\" WITH ENCODING='UTF8'";
-                await cmd.ExecuteNonQueryAsync();
+                cmd.CommandText = $"CREATE DATABASE {escapedName} WITH ENCODING='UTF8'";
+                await cmd.ExecuteNonQueryAsync(cancellationToken);
             }
         }
     }
 
     /// <summary>
-    /// Creates all required tables in the database
-    /// </summary>
-    /// <param name="connection">Database connection</param>
-    private async Task CreateTablesAsync(NpgsqlConnection connection)
-        {
-            var createTablesSql = @"
--- Facilities Table (Distribution centers, hubs)
-CREATE TABLE Facilities (
-    FacilityID SERIAL PRIMARY KEY,
-    FacilityName VARCHAR(100) NOT NULL,
-    LocationCode VARCHAR(50) NOT NULL,
-    Address TEXT,
-    City VARCHAR(100),
-    Country VARCHAR(100),
-    Capacity INTEGER NOT NULL,
-    OperationalStatus VARCHAR(20) DEFAULT 'Active',
-    EstablishedDate TIMESTAMP DEFAULT NOW(),
-    ContactInfo TEXT
-);
-
-CREATE INDEX idx_facilities_location ON Facilities(LocationCode);
-CREATE INDEX idx_facilities_status ON Facilities(OperationalStatus);
-CREATE INDEX idx_facilities_city ON Facilities(City);
-
--- Shipments Table (References SQL Server Orders, SQLite Customers, MySQL Warehouses)
-CREATE TABLE Shipments (
-    ShipmentID SERIAL PRIMARY KEY,
-    OrderID INTEGER NOT NULL, -- References SQL Server Orders.OrderID
-    CustomerID INTEGER NOT NULL, -- References SQLite Customers.CustomerID
-    OriginWarehouseID INTEGER, -- References MySQL Warehouses.WarehouseID
-    DestinationFacilityID INTEGER,
-    DestinationAddress TEXT NOT NULL,
-    ShipmentWeight DECIMAL(10,2),
-    ShipmentValue DECIMAL(12,2),
-    StatusCode VARCHAR(30) NOT NULL,
-    CarrierID INTEGER, -- References Carriers.CarrierID
-    ScheduledDate TIMESTAMP,
-    ShippedDate TIMESTAMP,
-    DeliveredDate TIMESTAMP,
-    TrackingNumber VARCHAR(100) UNIQUE,
-    Notes TEXT,
-    FOREIGN KEY (DestinationFacilityID) REFERENCES Facilities(FacilityID)
-);
-
-CREATE INDEX idx_shipments_order ON Shipments(OrderID);
-CREATE INDEX idx_shipments_customer ON Shipments(CustomerID);
-CREATE INDEX idx_shipments_warehouse ON Shipments(OriginWarehouseID);
-CREATE INDEX idx_shipments_facility ON Shipments(DestinationFacilityID);
-CREATE INDEX idx_shipments_status ON Shipments(StatusCode);
-CREATE INDEX idx_shipments_scheduled ON Shipments(ScheduledDate);
-
--- ShipmentItems Table (NEW - Individual items in shipments)
-CREATE TABLE ShipmentItems (
-    ShipmentItemID SERIAL PRIMARY KEY,
-    ShipmentID INTEGER NOT NULL,
-    ProductID INTEGER NOT NULL, -- References SQLite Products.ProductID
-    Quantity INTEGER NOT NULL DEFAULT 0,
-    PackageWeight DECIMAL(10,2),
-    PackageDimensions VARCHAR(50),
-    HandlingInstructions TEXT,
-    FOREIGN KEY (ShipmentID) REFERENCES Shipments(ShipmentID)
-);
-
-CREATE INDEX idx_shipmentitems_shipment ON ShipmentItems(ShipmentID);
-CREATE INDEX idx_shipmentitems_product ON ShipmentItems(ProductID);
-
--- Routes Table (Delivery routes and assignments)
-CREATE TABLE Routes (
-    RouteID SERIAL PRIMARY KEY,
-    ShipmentID INTEGER NOT NULL,
-    OriginFacilityID INTEGER NOT NULL,
-    DestinationFacilityID INTEGER NOT NULL,
-    Distance DECIMAL(8,2),
-    EstimatedDuration INTEGER, -- in minutes
-    ActualDuration INTEGER,
-    TransportMode VARCHAR(30),
-    AssignedDriverID INTEGER,
-    RouteDate TIMESTAMP DEFAULT NOW(),
-    CompletionStatus VARCHAR(20),
-    FOREIGN KEY (ShipmentID) REFERENCES Shipments(ShipmentID),
-    FOREIGN KEY (OriginFacilityID) REFERENCES Facilities(FacilityID),
-    FOREIGN KEY (DestinationFacilityID) REFERENCES Facilities(FacilityID)
-);
-
-CREATE INDEX idx_routes_shipment ON Routes(ShipmentID);
-CREATE INDEX idx_routes_origin ON Routes(OriginFacilityID);
-CREATE INDEX idx_routes_destination ON Routes(DestinationFacilityID);
-CREATE INDEX idx_routes_date ON Routes(RouteDate);
-CREATE INDEX idx_routes_status ON Routes(CompletionStatus);
-CREATE INDEX idx_routes_driver ON Routes(AssignedDriverID);
-
--- Drivers Table (NEW)
-CREATE TABLE Drivers (
-    DriverID SERIAL PRIMARY KEY,
-    FirstName VARCHAR(100) NOT NULL,
-    LastName VARCHAR(100) NOT NULL,
-    LicenseNumber VARCHAR(50) UNIQUE NOT NULL,
-    Phone VARCHAR(50),
-    Email VARCHAR(100),
-    HireDate DATE DEFAULT CURRENT_DATE,
-    VehicleType VARCHAR(50),
-    Status VARCHAR(20) DEFAULT 'Active',
-    Rating DECIMAL(3,2) DEFAULT 5.00
-);
-
-CREATE INDEX idx_drivers_status ON Drivers(Status);
-CREATE INDEX idx_drivers_license ON Drivers(LicenseNumber);
-
--- DeliveryEvents Table (NEW - Real-time shipment tracking)
-CREATE TABLE DeliveryEvents (
-    EventID SERIAL PRIMARY KEY,
-    ShipmentID INTEGER NOT NULL,
-    EventType VARCHAR(50) NOT NULL, -- 'Picked Up', 'In Transit', 'Out for Delivery', 'Delivered', 'Exception'
-    EventDate DATE NOT NULL,
-    EventTime TIME NOT NULL,
-    Location TEXT,
-    Latitude DECIMAL(10,7),
-    Longitude DECIMAL(10,7),
-    Notes TEXT,
-    RecordedBy VARCHAR(100),
-    FOREIGN KEY (ShipmentID) REFERENCES Shipments(ShipmentID)
-);
-
-CREATE INDEX idx_deliveryevents_shipment ON DeliveryEvents(ShipmentID);
-CREATE INDEX idx_deliveryevents_type ON DeliveryEvents(EventType);
-CREATE INDEX idx_deliveryevents_date ON DeliveryEvents(EventDate);
-
--- Carriers Table (NEW - Third-party carrier information)
-CREATE TABLE Carriers (
-    CarrierID SERIAL PRIMARY KEY,
-    CarrierName VARCHAR(100) NOT NULL,
-    ServiceType VARCHAR(50), -- 'Air', 'Ground', 'Sea', 'Rail'
-    ContactEmail VARCHAR(100),
-    ContactPhone VARCHAR(50),
-    TrackingURLTemplate TEXT,
-    IsActive BOOLEAN DEFAULT TRUE,
-    Rating DECIMAL(3,2) DEFAULT 5.00
-);
-
-CREATE INDEX idx_carriers_active ON Carriers(IsActive);
-
--- VehicleFleet Table (NEW)
-CREATE TABLE VehicleFleet (
-    VehicleID SERIAL PRIMARY KEY,
-    VehiclePlate VARCHAR(20) UNIQUE NOT NULL,
-    VehicleType VARCHAR(50) NOT NULL, -- 'Van', 'Truck', 'Semi-Truck', 'Motorcycle'
-    Brand VARCHAR(50),
-    Model VARCHAR(50),
-    Year INTEGER,
-    Capacity INTEGER, -- in kg
-    FuelType VARCHAR(30),
-    Status VARCHAR(20) DEFAULT 'Active',
-    LastMaintenanceDate DATE,
-    NextMaintenanceDate DATE
-);
-
-CREATE INDEX idx_vehiclefleet_status ON VehicleFleet(Status);
-CREATE INDEX idx_vehiclefleet_type ON VehicleFleet(VehicleType);
-CREATE INDEX idx_vehiclefleet_plate ON VehicleFleet(VehiclePlate);
-";
-
-        using (var cmd = connection.CreateCommand())
-        {
-            cmd.CommandText = createTablesSql;
-            await cmd.ExecuteNonQueryAsync();
-        }
-    }
-
-    /// <summary>
-    /// Inserts sample data into all tables
-    /// </summary>
-    /// <param name="connection">Database connection</param>
-    private async Task InsertSampleDataAsync(NpgsqlConnection connection)
-        {
-            var random = new Random(42); // Fixed seed for reproducible data
-            
-            // Generate 40 Facilities
-            var facilitiesSql = new StringBuilder("INSERT INTO Facilities (FacilityName, LocationCode, Address, City, Country, Capacity, OperationalStatus, EstablishedDate, ContactInfo) VALUES \n");
-            var facilityTypes = new[] { "Hub", "Distribution Center", "Logistics Center", "Operations Center", "Fulfillment Center" };
-            var statuses = new[] { "Active", "Maintenance", "Expanding", "Under Construction" };
-            
-            for (int i = 0; i < 40; i++)
-            {
-                var city = SampleDataGenerator.GetRandomCity(random);
-                var country = SampleDataGenerator.GetRandomCountry(random);
-                var facilityType = facilityTypes[random.Next(facilityTypes.Length)];
-                var facilityName = $"{city} {facilityType}";
-                var locationCode = $"{city.Substring(0, Math.Min(3, city.Length)).ToUpper()}-{i + 1:000}";
-                var address = SampleDataGenerator.GenerateAddress(random);
-                var capacity = random.Next(5000, 15000);
-                var status = statuses[random.Next(statuses.Length)];
-                var year = random.Next(2020, 2025);
-                var month = random.Next(1, 13);
-                var day = random.Next(1, 29);
-                var establishedDate = $"{year}-{month:00}-{day:00} 08:00:00";
-                var contactInfo = $"Contact: {city.ToLower()}@logistics.com, Phone: {SampleDataGenerator.GeneratePhone(random)}";
-
-                facilitiesSql.Append($"    ('{facilityName}', '{locationCode}', '{address}', '{city}', '{country}', {capacity}, '{status}', '{establishedDate}', '{contactInfo}')");
-                facilitiesSql.Append(i < 39 ? ",\n" : ";\n");
-            }
-
-        using (var cmd = connection.CreateCommand())
-        {
-            cmd.CommandText = facilitiesSql.ToString();
-            await cmd.ExecuteNonQueryAsync();
-        }
-        _logger?.LogInformation("Facilities: 40 rows inserted");
-
-            // Generate 350 Shipments
-            var shipmentsSql = new StringBuilder("INSERT INTO Shipments (OrderID, CustomerID, OriginWarehouseID, DestinationFacilityID, DestinationAddress, ShipmentWeight, ShipmentValue, StatusCode, CarrierID, ScheduledDate, ShippedDate, DeliveredDate, TrackingNumber, Notes) VALUES \n");
-            var shipmentStatuses = new[] { "Completed", "In Transit", "Processing", "Scheduled", "Delivered", "Out for Delivery", "Exception" };
-            
-            for (int i = 0; i < 350; i++)
-            {
-                // CRITICAL: OrderID references SQL Server Orders (1-300)
-                var orderId = (i % 300) + 1;
-                // CRITICAL: CustomerID references SQLite Customers (1-150)
-                var customerId = (i % 150) + 1;
-                // CRITICAL: OriginWarehouseID references MySQL Warehouses (1-35)
-                var originWarehouseId = (i % 35) + 1;
-                var destinationFacilityId = random.Next(1, 41);
-                var city = SampleDataGenerator.GetRandomCity(random);
-                var address = SampleDataGenerator.GenerateAddress(random);
-                var destinationAddress = $"{address}, {city}";
-                var weight = Math.Round(random.NextDouble() * 500 + 10, 2);
-                var value = Math.Round(random.NextDouble() * 50000 + 500, 2);
-                var status = shipmentStatuses[random.Next(shipmentStatuses.Length)];
-                // IMPORTANT: CarrierID references Carriers (1-20)
-                var carrierId = random.Next(1, 21);
-                var month = random.Next(1, 11);
-                var day = random.Next(1, 29);
-                var hour = random.Next(6, 20);
-                var scheduledDate = $"2025-{month:00}-{day:00} {hour:00}:00:00";
-                
-                var shippedDate = status != "Scheduled" && status != "Processing" 
-                    ? $"'2025-{month:00}-{Math.Min(day + 1, 28):00} {hour:00}:00:00'" 
-                    : "NULL";
-                
-                var deliveredDate = status == "Completed" || status == "Delivered" 
-                    ? $"'2025-{month:00}-{Math.Min(day + random.Next(2, 5), 28):00} {Math.Min(hour + random.Next(1, 8), 23):00}:00:00'" 
-                    : "NULL";
-                
-                var trackingNumber = $"TRK-LOG-{10000 + i}";
-                var notes = $"Shipment #{i + 1} - {status}";
-
-                shipmentsSql.Append($"    ({orderId}, {customerId}, {originWarehouseId}, {destinationFacilityId}, '{destinationAddress}', {weight.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {value.ToString(System.Globalization.CultureInfo.InvariantCulture)}, '{status}', {carrierId}, '{scheduledDate}', {shippedDate}, {deliveredDate}, '{trackingNumber}', '{notes}')");
-                shipmentsSql.Append(i < 349 ? ",\n" : ";\n");
-            }
-
-        using (var cmd = connection.CreateCommand())
-        {
-            cmd.CommandText = shipmentsSql.ToString();
-            await cmd.ExecuteNonQueryAsync();
-        }
-        _logger?.LogInformation("Shipments: 350 rows inserted");
-
-            // Generate 700 ShipmentItems
-            var shipmentItemsSql = new StringBuilder("INSERT INTO ShipmentItems (ShipmentID, ProductID, Quantity, PackageWeight, PackageDimensions, HandlingInstructions) VALUES \n");
-            var handlingInstructions = new[] { "Handle with care", "Fragile", "Keep upright", "Temperature sensitive", "Standard handling", "Heavy item" };
-            
-            for (int i = 0; i < 700; i++)
-            {
-                var shipmentId = (i % 350) + 1;
-                // CRITICAL: ProductID references SQLite Products (1-250)
-                var productId = random.Next(1, 251);
-                var quantity = random.Next(1, 10);
-                var packageWeight = Math.Round(random.NextDouble() * 50 + 1, 2);
-                var length = random.Next(10, 100);
-                var width = random.Next(10, 100);
-                var height = random.Next(10, 100);
-                var packageDimensions = $"{length}x{width}x{height} cm";
-                var handling = handlingInstructions[random.Next(handlingInstructions.Length)];
-
-                shipmentItemsSql.Append($"    ({shipmentId}, {productId}, {quantity}, {packageWeight.ToString(System.Globalization.CultureInfo.InvariantCulture)}, '{packageDimensions}', '{handling}')");
-                shipmentItemsSql.Append(i < 699 ? ",\n" : ";\n");
-            }
-
-        using (var cmd = connection.CreateCommand())
-        {
-            cmd.CommandText = shipmentItemsSql.ToString();
-            await cmd.ExecuteNonQueryAsync();
-        }
-        _logger?.LogInformation("ShipmentItems: 700 rows inserted");
-
-            // Generate 100 Drivers
-            var driversSql = new StringBuilder("INSERT INTO Drivers (FirstName, LastName, LicenseNumber, Phone, Email, HireDate, VehicleType, Status, Rating) VALUES \n");
-            var vehicleTypes = new[] { "Van", "Truck", "Semi-Truck", "Motorcycle", "Car" };
-            var driverStatuses = new[] { "Active", "On Leave", "Training", "Inactive" };
-            
-            for (int i = 0; i < 100; i++)
-            {
-                var firstName = SampleDataGenerator.GetRandomFirstName(random);
-                var lastName = SampleDataGenerator.GetRandomLastName(random);
-                var licenseNumber = $"DL-{random.Next(100000, 999999)}";
-                var phone = SampleDataGenerator.GeneratePhone(random);
-                var email = SampleDataGenerator.GenerateEmail(firstName, lastName, random);
-                var year = random.Next(2018, 2025);
-                var month = random.Next(1, 13);
-                var day = random.Next(1, 29);
-                var hireDate = $"{year}-{month:00}-{day:00}";
-                var vehicleType = vehicleTypes[random.Next(vehicleTypes.Length)];
-                var status = driverStatuses[random.Next(driverStatuses.Length)];
-                var rating = Math.Round(random.NextDouble() * 2 + 3, 2); // 3.0-5.0
-
-                driversSql.Append($"    ('{firstName}', '{lastName}', '{licenseNumber}', '{phone}', '{email}', '{hireDate}', '{vehicleType}', '{status}', {rating.ToString(System.Globalization.CultureInfo.InvariantCulture)})");
-                driversSql.Append(i < 99 ? ",\n" : ";\n");
-            }
-
-        using (var cmd = connection.CreateCommand())
-        {
-            cmd.CommandText = driversSql.ToString();
-            await cmd.ExecuteNonQueryAsync();
-        }
-        _logger?.LogInformation("Drivers: 100 rows inserted");
-
-            // Generate 400 Routes
-            var routesSql = new StringBuilder("INSERT INTO Routes (ShipmentID, OriginFacilityID, DestinationFacilityID, Distance, EstimatedDuration, ActualDuration, TransportMode, AssignedDriverID, RouteDate, CompletionStatus) VALUES \n");
-            var transportModes = new[] { "Truck", "Van", "Heavy Truck", "Express Van", "Container Truck", "Air Freight" };
-            var routeStatuses = new[] { "Completed", "In Transit", "Scheduled", "Delayed", "Cancelled" };
-            
-            for (int i = 0; i < 400; i++)
-            {
-                var shipmentId = (i % 350) + 1;
-                var originFacilityId = random.Next(1, 41);
-                var destinationFacilityId = random.Next(1, 41);
-                
-                while (destinationFacilityId == originFacilityId)
-                {
-                    destinationFacilityId = random.Next(1, 41);
-                }
-                
-                var distance = Math.Round(random.NextDouble() * 500 + 50, 2);
-                var estimatedDuration = (int)(distance * 0.8 + random.Next(30, 120));
-                var routeStatus = routeStatuses[random.Next(routeStatuses.Length)];
-                var actualDuration = routeStatus == "Completed" 
-                    ? (estimatedDuration + random.Next(-30, 60)).ToString() 
-                    : "NULL";
-                var transportMode = transportModes[random.Next(transportModes.Length)];
-                var driverId = random.Next(1, 101);
-                var month = random.Next(1, 11);
-                var day = random.Next(1, 29);
-                var hour = random.Next(6, 20);
-                var routeDate = $"2025-{month:00}-{day:00} {hour:00}:00:00";
-
-                routesSql.Append($"    ({shipmentId}, {originFacilityId}, {destinationFacilityId}, {distance.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {estimatedDuration}, {actualDuration}, '{transportMode}', {driverId}, '{routeDate}', '{routeStatus}')");
-                routesSql.Append(i < 399 ? ",\n" : ";\n");
-            }
-
-        using (var cmd = connection.CreateCommand())
-        {
-            cmd.CommandText = routesSql.ToString();
-            await cmd.ExecuteNonQueryAsync();
-        }
-        _logger?.LogInformation("Routes: 400 rows inserted");
-
-            // Generate 1200 DeliveryEvents
-            var eventsSql = new StringBuilder("INSERT INTO DeliveryEvents (ShipmentID, EventType, EventDate, EventTime, Location, Latitude, Longitude, Notes, RecordedBy) VALUES \n");
-            var eventTypes = new[] { "Picked Up", "In Transit", "Arrived at Hub", "Out for Delivery", "Delivered", "Exception", "Delayed" };
-            var recordedByUsers = new[] { "System", "Driver", "Warehouse Staff", "Customer Service", "Operations Center" };
-            
-            for (int i = 0; i < 1200; i++)
-            {
-                var shipmentId = (i % 350) + 1;
-                var eventType = eventTypes[random.Next(eventTypes.Length)];
-                var month = random.Next(1, 11);
-                var day = random.Next(1, 29);
-                var eventDate = $"2025-{month:00}-{day:00}";
-                var hour = random.Next(0, 24);
-                var minute = random.Next(0, 60);
-                var eventTime = $"{hour:00}:{minute:00}:00";
-                var location = $"{SampleDataGenerator.GetRandomCity(random)}, {SampleDataGenerator.GetRandomCountry(random)}";
-                var latitude = Math.Round((random.NextDouble() * 60) + 20, 7); // 20-80 degrees
-                var longitude = Math.Round((random.NextDouble() * 60) - 30, 7); // -30 to 30 degrees
-                var notes = $"{eventType} event for shipment #{shipmentId}";
-                var recordedBy = recordedByUsers[random.Next(recordedByUsers.Length)];
-
-                eventsSql.Append($"    ({shipmentId}, '{eventType}', '{eventDate}', '{eventTime}', '{location}', {latitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}, {longitude.ToString(System.Globalization.CultureInfo.InvariantCulture)}, '{notes}', '{recordedBy}')");
-                eventsSql.Append(i < 1199 ? ",\n" : ";\n");
-            }
-
-        using (var cmd = connection.CreateCommand())
-        {
-            cmd.CommandText = eventsSql.ToString();
-            await cmd.ExecuteNonQueryAsync();
-        }
-        _logger?.LogInformation("DeliveryEvents: 1200 rows inserted");
-
-            // Generate 20 Carriers
-            var carriersSql = new StringBuilder("INSERT INTO Carriers (CarrierName, ServiceType, ContactEmail, ContactPhone, TrackingURLTemplate, IsActive, Rating) VALUES \n");
-            var serviceTypes = new[] { "Air", "Ground", "Sea", "Rail", "Express" };
-            var carrierNames = new[] { "FastShip Express", "Global Logistics", "Prime Carriers", "Swift Transport", "EuroFreight", 
-                                      "TransWorld Shipping", "QuickDeliver", "Reliable Cargo", "Premium Express", "Economy Freight" };
-            
-            for (int i = 0; i < 20; i++)
-            {
-                var carrierName = i < carrierNames.Length 
-                    ? carrierNames[i] 
-                    : $"Carrier #{i + 1}";
-                var serviceType = serviceTypes[random.Next(serviceTypes.Length)];
-                var email = $"contact@{carrierName.ToLower().Replace(" ", "")}.com";
-                var phone = SampleDataGenerator.GeneratePhone(random);
-                var trackingURL = $"https://track.{carrierName.ToLower().Replace(" ", "")}.com/{{trackingNumber}}";
-                var isActive = random.NextDouble() > 0.2 ? "TRUE" : "FALSE";
-                var rating = Math.Round(random.NextDouble() * 2 + 3, 2);
-
-                carriersSql.Append($"    ('{carrierName}', '{serviceType}', '{email}', '{phone}', '{trackingURL}', {isActive}, {rating.ToString(System.Globalization.CultureInfo.InvariantCulture)})");
-                carriersSql.Append(i < 19 ? ",\n" : ";\n");
-            }
-
-        using (var cmd = connection.CreateCommand())
-        {
-            cmd.CommandText = carriersSql.ToString();
-            await cmd.ExecuteNonQueryAsync();
-        }
-        _logger?.LogInformation("Carriers: 20 rows inserted");
-
-            // Generate 120 VehicleFleet
-            var vehiclesSql = new StringBuilder("INSERT INTO VehicleFleet (VehiclePlate, VehicleType, Brand, Model, Year, Capacity, FuelType, Status, LastMaintenanceDate, NextMaintenanceDate) VALUES \n");
-            var vehicleFleetTypes = new[] { "Van", "Truck", "Semi-Truck", "Motorcycle" };
-            var brands = new[] { "Mercedes", "Ford", "Volvo", "MAN", "Scania", "Iveco", "DAF" };
-            var fuelTypes = new[] { "Diesel", "Gasoline", "Electric", "Hybrid", "CNG" };
-            var vehicleStatuses = new[] { "Active", "Maintenance", "Out of Service", "Reserved" };
-            
-            for (int i = 0; i < 120; i++)
-            {
-                var plate = $"{(char)('A' + random.Next(26))}{(char)('A' + random.Next(26))}-{random.Next(100, 999)}-{(char)('A' + random.Next(26))}{(char)('A' + random.Next(26))}";
-                var vehicleType = vehicleFleetTypes[random.Next(vehicleFleetTypes.Length)];
-                var brand = brands[random.Next(brands.Length)];
-                var model = $"{brand} Model {random.Next(100, 999)}";
-                var year = random.Next(2015, 2025);
-                var capacity = vehicleType == "Semi-Truck" ? random.Next(10000, 25000) 
-                             : vehicleType == "Truck" ? random.Next(3000, 10000)
-                             : random.Next(500, 3000);
-                var fuelType = fuelTypes[random.Next(fuelTypes.Length)];
-                var status = vehicleStatuses[random.Next(vehicleStatuses.Length)];
-                var lastMaintenanceMonth = random.Next(1, 11);
-                var lastMaintenanceDay = random.Next(1, 29);
-                var lastMaintenanceDate = $"2025-{lastMaintenanceMonth:00}-{lastMaintenanceDay:00}";
-                var nextMaintenanceMonth = Math.Min(lastMaintenanceMonth + random.Next(1, 4), 12);
-                var nextMaintenanceDay = random.Next(1, 29);
-                var nextMaintenanceDate = $"2025-{nextMaintenanceMonth:00}-{nextMaintenanceDay:00}";
-
-                vehiclesSql.Append($"    ('{plate}', '{vehicleType}', '{brand}', '{model}', {year}, {capacity}, '{fuelType}', '{status}', '{lastMaintenanceDate}', '{nextMaintenanceDate}')");
-                vehiclesSql.Append(i < 119 ? ",\n" : ";\n");
-            }
-
-        using (var cmd = connection.CreateCommand())
-        {
-            cmd.CommandText = vehiclesSql.ToString();
-            await cmd.ExecuteNonQueryAsync();
-        }
-        _logger?.LogInformation("VehicleFleet: 120 rows inserted");
-    }
-
-    /// <summary>
-    /// Verifies the database by querying table row counts
+    /// Restores PostgreSQL database from backup file using psql command (supports both Docker and local installations)
     /// </summary>
     /// <param name="connectionString">Database connection string</param>
-    private async Task VerifyDatabaseAsync(string connectionString)
+    /// <param name="cancellationToken">Token to cancel the operation</param>
+    private async Task RestoreFromBackupAsync(string connectionString, CancellationToken cancellationToken = default)
     {
-        using (var connection = new NpgsqlConnection(connectionString))
+        var backupFileName = GetBackupFileName();
+        var backupFilePath = FindBackupFilePath(backupFileName);
+        
+        if (!File.Exists(backupFilePath))
         {
-            await connection.OpenAsync();
-
-            using (var cmd = connection.CreateCommand())
+            throw new FileNotFoundException($"Backup file not found. Expected: {backupFilePath}");
+        }
+        
+        cancellationToken.ThrowIfCancellationRequested();
+        
+        try
+        {
+            var password = GetPassword();
+            var containerName = await FindPostgreSqlContainerNameAsync();
+            
+            if (!string.IsNullOrEmpty(containerName))
             {
-                cmd.CommandText = @"
-                    SELECT 
-                        table_name as TableName,
-                        (SELECT COUNT(*) FROM information_schema.columns WHERE table_name = t.table_name) as TotalColumns
-                    FROM information_schema.tables t
-                    WHERE table_schema = 'public'
-                    AND table_type = 'BASE TABLE'
-                    ORDER BY table_name";
-
-                using (var reader = await cmd.ExecuteReaderAsync())
+                await RestoreInDockerContainerAsync(containerName, backupFilePath, password, cancellationToken);
+            }
+            else
+            {
+                await RestoreLocalAsync(backupFilePath, password, cancellationToken);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error restoring backup file: {BackupPath}. Error: {Error}", backupFilePath, ex.Message);
+            throw;
+        }
+    }
+    
+    /// <summary>
+    /// Restores PostgreSQL database in Docker container
+    /// </summary>
+    private async Task RestoreInDockerContainerAsync(string containerName, string backupFilePath, string password, CancellationToken cancellationToken)
+    {
+        var validatedContainerName = ValidateContainerName(containerName);
+        var validatedBackupPath = ValidatePath(backupFilePath, nameof(backupFilePath));
+        var validatedUser = ValidateUser(_user);
+        var validatedDatabaseName = ValidateDatabaseName(_databaseName);
+        var containerBackupPath = "/tmp/restore.sql";
+        
+        var copyResult = await CopyBackupToContainerAsync(validatedBackupPath, validatedContainerName, containerBackupPath);
+        if (!copyResult)
+        {
+            throw new InvalidOperationException($"Failed to copy backup file to container: {validatedContainerName}");
+        }
+        
+        await Task.Run(async () =>
+        {
+            var sedProcessInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "docker",
+                ArgumentList = { "exec", validatedContainerName, "sed", "/^\\\\restrict/d", containerBackupPath },
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+            
+            using var sedProcess = System.Diagnostics.Process.Start(sedProcessInfo);
+            if (sedProcess == null)
+            {
+                throw new InvalidOperationException("Failed to start sed process");
+            }
+            
+            var sedOutput = await sedProcess.StandardOutput.ReadToEndAsync();
+            await sedProcess.WaitForExitAsync();
+            
+            var cleanedContent = System.Text.RegularExpressions.Regex.Replace(
+                sedOutput,
+                @"^CREATE SCHEMA (""[^""]+""|\w+)",
+                "CREATE SCHEMA IF NOT EXISTS $1",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Multiline);
+            
+            var writeProcessInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "docker",
+                ArgumentList = { "exec", "-i", validatedContainerName, "sh", "-c", "cat > /tmp/restore_cleaned.sql" },
+                UseShellExecute = false,
+                RedirectStandardInput = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+            
+            using var writeProcess = System.Diagnostics.Process.Start(writeProcessInfo);
+            if (writeProcess == null)
+            {
+                throw new InvalidOperationException("Failed to start write process");
+            }
+            
+            await writeProcess.StandardInput.WriteAsync(cleanedContent);
+            writeProcess.StandardInput.Close();
+            await writeProcess.WaitForExitAsync();
+            
+            var processInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "docker",
+                ArgumentList = { "exec", validatedContainerName, "psql", "-U", validatedUser, "-d", validatedDatabaseName, "-f", "/tmp/restore_cleaned.sql" },
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+            
+            processInfo.Environment["PGPASSWORD"] = password;
+            
+            using var process = System.Diagnostics.Process.Start(processInfo);
+            if (process == null)
+            {
+                throw new InvalidOperationException("Failed to start docker exec process");
+            }
+            
+            var output = await process.StandardOutput.ReadToEndAsync();
+            var error = await process.StandardError.ReadToEndAsync();
+            
+            await process.WaitForExitAsync();
+            
+            var allOutput = output + error;
+            
+            var ignoreableErrors = new[]
+            {
+                "already exists",
+                "duplicate key",
+                "multiple primary keys",
+                "constraint.*already exists"
+            };
+            
+            var hasIgnorableError = ignoreableErrors.Any(err => 
+                allOutput.Contains(err, StringComparison.OrdinalIgnoreCase));
+            
+            var hasFatalError = allOutput.Contains("FATAL:", StringComparison.OrdinalIgnoreCase) ||
+                               (process.ExitCode != 0 && !hasIgnorableError && 
+                                !string.IsNullOrWhiteSpace(allOutput.Trim()));
+            
+            if (hasFatalError)
+            {
+                var errorMessage = string.IsNullOrWhiteSpace(error) ? output : error;
+                if (!string.IsNullOrWhiteSpace(allOutput))
                 {
-                    while (await reader.ReadAsync())
+                    errorMessage = allOutput;
+                }
+                throw new InvalidOperationException($"PostgreSQL restore failed with exit code {process.ExitCode}: {errorMessage}");
+            }
+        }, cancellationToken);
+    }
+    
+    /// <summary>
+    /// Restores PostgreSQL database using local psql command
+    /// </summary>
+    private async Task RestoreLocalAsync(string backupFilePath, string password, CancellationToken cancellationToken)
+    {
+        var validatedBackupPath = ValidatePath(backupFilePath, nameof(backupFilePath));
+        var validatedServer = ValidateServer(_server);
+        var validatedUser = ValidateUser(_user);
+        var validatedDatabaseName = ValidateDatabaseName(_databaseName);
+        
+        await Task.Run(() =>
+        {
+            var tempCleanedPath = Path.Combine(Path.GetTempPath(), $"restore_cleaned_{Guid.NewGuid():N}.sql");
+            
+            try
+            {
+                var cleanedContent = File.ReadAllLines(validatedBackupPath)
+                    .Where(line => !line.StartsWith("\\restrict", StringComparison.OrdinalIgnoreCase))
+                    .Select(line => 
                     {
-                        var tableName = reader["TableName"].ToString();
-                        
-                        using (var countConn = new NpgsqlConnection(connectionString))
+                        if (line.TrimStart().StartsWith("CREATE SCHEMA", StringComparison.OrdinalIgnoreCase) &&
+                            !line.Contains("IF NOT EXISTS", StringComparison.OrdinalIgnoreCase))
                         {
-                            await countConn.OpenAsync();
-                            using (var countCmd = countConn.CreateCommand())
-                            {
-                                countCmd.CommandText = $"SELECT COUNT(*) FROM \"{tableName}\"";
-                                var rowCount = await countCmd.ExecuteScalarAsync();
-                                _logger?.LogInformation("Table {TableName}: {RowCount} rows", tableName, rowCount);
-                            }
+                            return line.Replace("CREATE SCHEMA", "CREATE SCHEMA IF NOT EXISTS", StringComparison.OrdinalIgnoreCase);
                         }
+                        return line;
+                    })
+                    .ToArray();
+                File.WriteAllLines(tempCleanedPath, cleanedContent);
+                
+                var validatedPath = ValidatePath(tempCleanedPath, nameof(tempCleanedPath));
+                var processInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "psql",
+                    ArgumentList = { "-h", validatedServer, "-p", _port.ToString(), "-U", validatedUser, "-d", validatedDatabaseName, "-f", validatedPath },
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+                
+                processInfo.Environment["PGPASSWORD"] = password;
+                
+                using var process = System.Diagnostics.Process.Start(processInfo);
+                if (process == null)
+                {
+                    throw new InvalidOperationException("Failed to start psql process. Make sure PostgreSQL client tools are installed and psql is in PATH.");
+                }
+                
+                var output = process.StandardOutput.ReadToEnd();
+                var error = process.StandardError.ReadToEnd();
+                
+                process.WaitForExit(600000);
+                
+                var allOutput = output + error;
+                
+                var ignoreableErrors = new[]
+                {
+                    "already exists",
+                    "duplicate key",
+                    "multiple primary keys",
+                    "constraint.*already exists"
+                };
+                
+                var hasIgnorableError = ignoreableErrors.Any(err => 
+                    allOutput.Contains(err, StringComparison.OrdinalIgnoreCase));
+                
+                var hasFatalError = allOutput.Contains("FATAL:", StringComparison.OrdinalIgnoreCase) ||
+                                   (process.ExitCode != 0 && !hasIgnorableError && 
+                                    !string.IsNullOrWhiteSpace(allOutput.Trim()));
+                
+                if (hasFatalError)
+                {
+                    var errorMessage = string.IsNullOrWhiteSpace(error) ? output : error;
+                    if (!string.IsNullOrWhiteSpace(allOutput))
+                    {
+                        errorMessage = allOutput;
                     }
+                    throw new InvalidOperationException($"PostgreSQL restore failed with exit code {process.ExitCode}: {errorMessage}");
+                }
+            }
+            finally
+            {
+                if (File.Exists(tempCleanedPath))
+                {
+                    try { File.Delete(tempCleanedPath); } catch { }
+                }
+            }
+        }, cancellationToken);
+    }
+    
+    /// <summary>
+    /// Finds PostgreSQL Docker container name by checking port 5432
+    /// </summary>
+    private async Task<string?> FindPostgreSqlContainerNameAsync()
+    {
+        return await Task.Run(() =>
+        {
+            try
+            {
+                var processInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "docker",
+                    Arguments = "ps --filter \"publish=5432\" --format \"{{.Names}}\"",
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+                
+                using var process = System.Diagnostics.Process.Start(processInfo);
+                if (process == null) return null;
+                
+                var output = process.StandardOutput.ReadToEnd();
+                process.WaitForExit(5000);
+                
+                if (process.ExitCode == 0 && !string.IsNullOrWhiteSpace(output))
+                {
+                    var containerName = output.Trim().Split('\n', StringSplitOptions.RemoveEmptyEntries).FirstOrDefault();
+                    return containerName;
+                }
+                
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to find PostgreSQL container: {Error}", ex.Message);
+                return null;
+            }
+        });
+    }
+    
+    /// <summary>
+    /// Copies backup file to Docker container
+    /// </summary>
+    private async Task<bool> CopyBackupToContainerAsync(string localBackupPath, string containerName, string containerPath)
+    {
+        var validatedContainerName = ValidateContainerName(containerName);
+        var validatedLocalPath = ValidatePath(localBackupPath, nameof(localBackupPath));
+        var validatedContainerPath = ValidatePath(containerPath, nameof(containerPath));
+        
+        return await Task.Run(() =>
+        {
+            try
+            {
+                var processInfo = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "docker",
+                    ArgumentList = { "cp", validatedLocalPath, $"{validatedContainerName}:{validatedContainerPath}" },
+                    UseShellExecute = false,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    CreateNoWindow = true
+                };
+                
+                using var process = System.Diagnostics.Process.Start(processInfo);
+                if (process == null) return false;
+                
+                process.WaitForExit(300000);
+                return process.ExitCode == 0;
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogError(ex, "Failed to copy backup to container: {Error}", ex.Message);
+                return false;
+            }
+        });
+    }
+    
+    /// <summary>
+    /// Finds the backup file path relative to the project root
+    /// </summary>
+    private static string FindBackupFilePath(string fileName)
+    {
+        var assemblyLocation = System.Reflection.Assembly.GetExecutingAssembly().Location;
+        var currentDir = Path.GetDirectoryName(assemblyLocation) ?? Directory.GetCurrentDirectory();
+        
+        var projectRoot = FindProjectRoot(currentDir);
+        if (projectRoot == null)
+        {
+            throw new FileNotFoundException("Could not find project root directory.");
+        }
+        
+        var backupFilePath = Path.Combine(projectRoot, "examples", "SmartRAG.Demo", "DatabaseBackups", fileName);
+        
+        if (!File.Exists(backupFilePath))
+        {
+            throw new FileNotFoundException($"Backup file not found. Searched: {backupFilePath}");
+        }
+        
+        return backupFilePath;
+    }
+    
+    /// <summary>
+    /// Finds the project root directory by searching upwards from the current directory
+    /// </summary>
+    private static string? FindProjectRoot(string startDir)
+    {
+        var dir = new DirectoryInfo(startDir);
+        while (dir != null)
+        {
+            if (File.Exists(Path.Combine(dir.FullName, "SmartRAG.sln")))
+            {
+                return dir.FullName;
+            }
+            dir = dir.Parent;
+        }
+        return null;
+    }
+    
+    /// <summary>
+    /// Verifies the database by checking table existence
+    /// </summary>
+    /// <param name="connectionString">Database connection string</param>
+    /// <param name="cancellationToken">Token to cancel the operation</param>
+    private async Task VerifyDatabaseAsync(string connectionString, CancellationToken cancellationToken = default)
+    {
+        using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        using var cmd = connection.CreateCommand();
+        cmd.CommandText = @"
+            SELECT COUNT(*) 
+            FROM information_schema.tables 
+            WHERE table_schema NOT IN ('pg_catalog', 'information_schema') 
+            AND table_type = 'BASE TABLE'";
+        
+        var tableCount = await cmd.ExecuteScalarAsync(cancellationToken);
+        
+        if (tableCount == null || Convert.ToInt32(tableCount) == 0)
+        {
+            throw new InvalidOperationException("Database verification failed: No tables found");
+        }
+    }
+
+    /// <summary>
+    /// Finds connection string from DatabaseConnections array by database type
+    /// </summary>
+    private string? FindConnectionStringByType(DatabaseType databaseType)
+    {
+        if (_configuration == null)
+            return null;
+        
+        var databaseTypeStr = databaseType.ToString();
+        var connectionsSection = _configuration.GetSection("DatabaseConnections");
+        
+        if (!connectionsSection.Exists())
+            return null;
+        
+        var connections = connectionsSection.GetChildren();
+        foreach (var connection in connections)
+        {
+            var type = connection["DatabaseType"];
+            if (string.Equals(type, databaseTypeStr, StringComparison.OrdinalIgnoreCase))
+            {
+                var connectionString = connection["ConnectionString"];
+                if (!string.IsNullOrEmpty(connectionString))
+                {
+                    return connectionString;
                 }
             }
         }
+        
+        return null;
+    }
+    
+    /// <summary>
+    /// Generates backup file name from database name (lowercase, sanitized)
+    /// </summary>
+    private string GetBackupFileName()
+    {
+        var sanitizedName = _databaseName.ToLowerInvariant()
+            .Replace(" ", "")
+            .Replace("-", "")
+            .Replace("_", "");
+        return $"{sanitizedName}.backup.sql";
     }
 
     #endregion

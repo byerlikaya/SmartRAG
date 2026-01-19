@@ -31,24 +31,134 @@ public class InitializationService(
 
     public async Task SetupTestDatabasesAsync()
     {
-        var sqliteDbPath = Path.Combine(Directory.GetCurrentDirectory(), "TestSQLiteData", "ProductCatalog.db");
-        var sqliteDir = Path.GetDirectoryName(sqliteDbPath);
-
-        if (!string.IsNullOrEmpty(sqliteDir) && !Directory.Exists(sqliteDir))
+        var enableAutoSchemaAnalysis = _configuration.GetValue<bool>("SmartRAG:EnableAutoSchemaAnalysis", false);
+        
+        if (!enableAutoSchemaAnalysis)
         {
-            Directory.CreateDirectory(sqliteDir);
+            await Task.CompletedTask;
+            return;
         }
 
-        var sqliteCreator = new SqliteTestDatabaseCreator();
+        System.Console.Write("📁 Creating test databases... ");
+        System.Console.WriteLine();
 
-        if (!File.Exists(sqliteDbPath))
+        var databasesCreated = 0;
+        var databasesSkipped = 0;
+
+        try
         {
-            System.Console.Write("📁 Creating SQLite test database... ");
-            sqliteCreator.CreateSampleDatabase($"Data Source={sqliteDbPath}");
-            _console.WriteSuccess("✓");
-        }
+            var sqlServerCreator = new SqlServerTestDatabaseCreator(_configuration);
+            var sqlServerConnectionString = sqlServerCreator.GetDefaultConnectionString();
+            System.Console.Write("  • SQL Server (SalesManagement)... ");
+            try
+            {
+                if (await sqlServerCreator.DatabaseExistsAsync())
+                {
+                    _console.WriteInfo("✓ Exists");
+                    databasesSkipped++;
+                }
+                else
+                {
+                    await sqlServerCreator.CreateSampleDatabaseAsync(sqlServerConnectionString);
+                    _console.WriteSuccess("✓ Created");
+                    databasesCreated++;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "SQL Server database creation skipped");
+                _console.WriteWarning("⚠ Skipped");
+                databasesSkipped++;
+            }
 
-        await Task.CompletedTask;
+            var mysqlCreator = new MySqlTestDatabaseCreator(_configuration);
+            var mysqlConnectionString = mysqlCreator.GetDefaultConnectionString();
+            System.Console.Write("  • MySQL (InventoryManagement)... ");
+            try
+            {
+                if (await mysqlCreator.DatabaseExistsAsync())
+                {
+                    _console.WriteInfo("✓ Exists");
+                    databasesSkipped++;
+                }
+                else
+                {
+                    await mysqlCreator.CreateSampleDatabaseAsync(mysqlConnectionString);
+                    _console.WriteSuccess("✓ Created");
+                    databasesCreated++;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "MySQL database creation skipped");
+                _console.WriteWarning("⚠ Skipped");
+                databasesSkipped++;
+            }
+
+            var postgresqlCreator = new PostgreSqlTestDatabaseCreator(_configuration);
+            var postgresqlConnectionString = postgresqlCreator.GetDefaultConnectionString();
+            System.Console.Write("  • PostgreSQL (PersonManagement)... ");
+            try
+            {
+                if (await postgresqlCreator.DatabaseExistsAsync())
+                {
+                    _console.WriteInfo("✓ Exists");
+                    databasesSkipped++;
+                }
+                else
+                {
+                    await postgresqlCreator.CreateSampleDatabaseAsync(postgresqlConnectionString);
+                    _console.WriteSuccess("✓ Created");
+                    databasesCreated++;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "PostgreSQL database creation skipped");
+                _console.WriteWarning("⚠ Skipped");
+                databasesSkipped++;
+            }
+
+            var sqliteCreator = new SqliteTestDatabaseCreator(_configuration);
+            var sqliteConnectionString = sqliteCreator.GetDefaultConnectionString();
+            System.Console.Write("  • SQLite (LogisticsManagement)... ");
+            try
+            {
+                if (await sqliteCreator.DatabaseExistsAsync())
+                {
+                    _console.WriteInfo("✓ Exists");
+                    databasesSkipped++;
+                }
+                else
+                {
+                    await sqliteCreator.CreateSampleDatabaseAsync(sqliteConnectionString);
+                    _console.WriteSuccess("✓ Created");
+                    databasesCreated++;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger?.LogWarning(ex, "SQLite database creation skipped");
+                _console.WriteWarning("⚠ Skipped");
+                databasesSkipped++;
+            }
+
+            System.Console.WriteLine();
+            if (databasesCreated > 0)
+            {
+                _console.WriteSuccess($"✓ Created {databasesCreated} database(s)");
+            }
+            if (databasesSkipped > 0)
+            {
+                _console.WriteWarning($"⚠ Skipped {databasesSkipped} database(s) (may already exist or services not available)");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error during database setup");
+            System.Console.WriteLine();
+            _console.WriteWarning("⚠ Some databases could not be created");
+        }
     }
 
     public async Task<(bool UseLocal, AIProvider AIProvider, StorageProvider StorageProvider, ConversationStorageProvider ConversationStorageProvider)> SelectEnvironmentAsync()
@@ -340,9 +450,9 @@ public class InitializationService(
             {
                 var instruction = schema.DatabaseType switch
                 {
-                    DatabaseType.SqlServer => "3. 🗄️  Create SQL Server Test Database → SalesManagement",
-                    DatabaseType.MySQL => "4. 🐬 Create MySQL Test Database → InventoryManagement",
-                    DatabaseType.PostgreSQL => "5. 🐘 Create PostgreSQL Test Database → LogisticsManagement",
+                    DatabaseType.SqlServer => "Select option 3 → 🗄️ Create SQL Server Test Database → SalesManagement",
+                    DatabaseType.MySQL => "Select option 4 → 🐬 Create MySQL Test Database → InventoryManagement",
+                    DatabaseType.PostgreSQL => "Select option 5 → 🐘 Create PostgreSQL Test Database → PersonManagement",
                     _ => null
                 };
 

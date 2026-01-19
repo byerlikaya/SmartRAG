@@ -21,15 +21,18 @@ namespace SmartRAG.Services.Database
 
         private readonly IDatabaseSchemaAnalyzer _schemaAnalyzer;
         private readonly IAIService _aiService;
+        private readonly IDatabaseConnectionManager _connectionManager;
         private readonly ILogger<QueryIntentAnalyzer> _logger;
 
         public QueryIntentAnalyzer(
             IDatabaseSchemaAnalyzer schemaAnalyzer,
             IAIService aiService,
+            IDatabaseConnectionManager connectionManager,
             ILogger<QueryIntentAnalyzer> logger)
         {
             _schemaAnalyzer = schemaAnalyzer;
             _aiService = aiService;
+            _connectionManager = connectionManager;
             _logger = logger;
         }
 
@@ -77,219 +80,412 @@ namespace SmartRAG.Services.Database
             return queryIntent;
         }
 
+        private bool QueryRequiresCrossDatabaseMapping(string userQuery, List<CrossDatabaseMapping> mappings)
+        {
+            if (mappings == null || !mappings.Any())
+                return false;
+
+            var schemas = _schemaAnalyzer.GetAllSchemasAsync().GetAwaiter().GetResult();
+            if (schemas == null || !schemas.Any())
+                return false;
+
+            var hasDescriptiveKeywords = ContainsDescriptiveKeywords(userQuery, schemas);
+            var hasAggregationKeywords = ContainsAggregationKeywords(userQuery, schemas);
+
+            return hasDescriptiveKeywords && hasAggregationKeywords;
+        }
+
+        private bool ContainsDescriptiveKeywords(string query, List<DatabaseSchemaInfo> schemas)
+        {
+            if (string.IsNullOrWhiteSpace(query) || schemas == null || !schemas.Any())
+                return false;
+
+            var lowerQuery = query.ToLowerInvariant();
+            
+            var descriptivePatterns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var schema in schemas)
+            {
+                foreach (var table in schema.Tables)
+                {
+                    foreach (var column in table.Columns)
+                    {
+                        var columnLower = column.ColumnName.ToLowerInvariant();
+                        if (IsDescriptiveColumnPattern(columnLower))
+                        {
+                            var words = ExtractWords(columnLower);
+                            foreach (var word in words)
+                            {
+                                if (word.Length > 2)
+                                {
+                                    descriptivePatterns.Add(word);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            return descriptivePatterns.Any(pattern => lowerQuery.Contains(pattern)) ||
+                   ContainsGenericDescriptivePatterns(lowerQuery);
+        }
+
+        private bool ContainsAggregationKeywords(string query, List<DatabaseSchemaInfo> schemas)
+        {
+            if (string.IsNullOrWhiteSpace(query) || schemas == null || !schemas.Any())
+                return false;
+
+            var lowerQuery = query.ToLowerInvariant();
+            
+            var hasNumericColumns = schemas.Any(schema => 
+                schema.Tables.Any(table => 
+                    table.Columns.Any(col => IsNumericDataType(col.DataType))));
+
+            var aggregationPatterns = new[] { "count", "sum", "avg", "total", "most", "top", "max", "min", "highest", "lowest", "first", "order", "sort" };
+            var hasAggregationPattern = aggregationPatterns.Any(pattern => lowerQuery.Contains(pattern));
+
+            return hasNumericColumns && hasAggregationPattern;
+        }
+
+        private bool IsDescriptiveColumnPattern(string columnName)
+        {
+            var descriptiveTerms = new[] { "name", "title", "description", "label", "text", "value" };
+            return descriptiveTerms.Any(term => columnName.Contains(term, StringComparison.OrdinalIgnoreCase));
+        }
+
+        private bool IsNumericDataType(string dataType)
+        {
+            return IsNumericType(dataType);
+        }
+
+        private bool IsNumericType(string dataType)
+        {
+            if (string.IsNullOrWhiteSpace(dataType))
+                return false;
+
+            var typeLower = dataType.ToLowerInvariant();
+            var numericTypes = new[] { "int", "bigint", "smallint", "tinyint", "decimal", "numeric", "money", "float", "real", "double", "number" };
+            return numericTypes.Any(nt => typeLower.Contains(nt));
+        }
+
+        private bool IsTextType(string dataType)
+        {
+            if (string.IsNullOrWhiteSpace(dataType))
+                return false;
+
+            var typeLower = dataType.ToLowerInvariant();
+            var textTypes = new[] { "varchar", "nvarchar", "text", "char", "nchar", "string", "ntext" };
+            return textTypes.Any(tt => typeLower.Contains(tt));
+        }
+
+        private bool ContainsGenericDescriptivePatterns(string lowerQuery)
+        {
+            var genericPatterns = new[] { "who", "which", "what", "name", "title", "description", "entity", "entities" };
+            return genericPatterns.Any(pattern => lowerQuery.Contains(pattern));
+        }
+
+        private List<string> ExtractWords(string text)
+        {
+            var words = new List<string>();
+            var currentWord = new StringBuilder();
+
+            foreach (var ch in text)
+            {
+                if (char.IsLetter(ch) || ch == '_')
+                {
+                    currentWord.Append(ch);
+                }
+                else
+                {
+                    if (currentWord.Length > 0)
+                    {
+                        words.Add(currentWord.ToString());
+                        currentWord.Clear();
+                    }
+                }
+            }
+
+            if (currentWord.Length > 0)
+            {
+                words.Add(currentWord.ToString());
+            }
+
+            return words;
+        }
+
         private string BuildQueryAnalysisPrompt(string userQuery, List<DatabaseSchemaInfo> schemas)
         {
             var sb = new StringBuilder();
-            sb.AppendLine("You are a database query analyzer. Analyze the user's query and determine which databases and tables are needed.");
-            sb.AppendLine();
-            sb.AppendLine($"User Query: {userQuery}");
-            sb.AppendLine();
-
-            // CRITICAL: Show database-table mapping upfront
+            var allMappings = GetAllCrossDatabaseMappings();
+            
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
-            sb.AppendLine("DATABASE-TABLE MAPPING (READ THIS FIRST!)");
+            sb.AppendLine("DATABASE QUERY ANALYZER");
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
             sb.AppendLine();
+            sb.AppendLine($"User Query: \"{userQuery}\"");
+            sb.AppendLine();
 
-            var tableToDatabase = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            foreach (var schema in schemas)
+            if (allMappings.Any())
             {
-                foreach (var table in schema.Tables.Take(20))
+                var requiresMapping = QueryRequiresCrossDatabaseMapping(userQuery, allMappings);
+                
+                sb.AppendLine("═══════════════════════════════════════════════════════════════");
+                sb.AppendLine("🚨 CRITICAL: CROSS-DATABASE MAPPINGS");
+                sb.AppendLine("═══════════════════════════════════════════════════════════════");
+                sb.AppendLine();
+                
+                if (requiresMapping)
                 {
-                    tableToDatabase[table.TableName] = schema.DatabaseName;
+                    sb.AppendLine("⚠️ THIS QUERY REQUIRES MULTI-DATABASE ACCESS!");
+                    sb.AppendLine();
                 }
-            }
-
-            foreach (var schema in schemas)
-            {
-                sb.AppendLine($"DATABASE: {schema.DatabaseName}");
-                foreach (var table in schema.Tables.Take(10)) // Limit to prevent token overflow
+                
+                sb.AppendLine("Mapping Format: SourceDatabase.SourceTable.SourceColumn → TargetDatabase.TargetTable.TargetColumn");
+                sb.AppendLine();
+                foreach (var mapping in allMappings)
                 {
-                    var keyColumns = table.Columns.Take(5).Select(c => c.ColumnName).ToList();
-                    sb.AppendLine($"  • {table.TableName}: {string.Join(", ", keyColumns)}{(table.Columns.Count > 5 ? ", ..." : "")}");
-                    sb.AppendLine($"    (exists ONLY in {schema.DatabaseName})");
+                    sb.AppendLine($"  • {mapping.SourceDatabase}.{mapping.SourceTable}.{mapping.SourceColumn}");
+                    sb.AppendLine($"    → {mapping.TargetDatabase}.{mapping.TargetTable}.{mapping.TargetColumn}");
                 }
+                sb.AppendLine();
+                sb.AppendLine("⚠️⚠️ CRITICAL DECISION RULE: SINGLE vs MULTI-DATABASE ⚠️⚠️");
+                sb.AppendLine();
+                sb.AppendLine("BEFORE creating multiple queries, check:");
+                sb.AppendLine("  → Are ALL required tables in the SAME database?");
+                sb.AppendLine("    • YES → Create ONE query with JOINs (NOT multiple queries!)");
+                sb.AppendLine("    • NO → Create multiple queries (only if tables are in DIFFERENT databases)");
+                sb.AppendLine();
+                sb.AppendLine("Example: Query asks for 'classification with most items and total quantity'");
+                sb.AppendLine("  Scenario A: All tables in Database1");
+                sb.AppendLine("    ✓ CORRECT: ONE query → JOIN TableA + TableB + TableC");
+                sb.AppendLine("    ✗ WRONG: Multiple queries for same database");
+                sb.AppendLine("  Scenario B: TableA in Database1, TableC in Database2");
+                sb.AppendLine("    ✓ CORRECT: TWO queries → Database1(aggregation) + Database2(descriptive)");
+                sb.AppendLine();
+                sb.AppendLine("RULE: If query asks for descriptive info + aggregation ACROSS DIFFERENT databases:");
+                sb.AppendLine("      Descriptive: queries asking for names, titles, descriptions, or entity identification");
+                sb.AppendLine("      Aggregation: queries containing count, sum, top, most, highest, total, etc.");
+                sb.AppendLine("      → Mapping: Database1.SchemaName.TableA.ColumnX → Database2.SchemaName.TableB.ColumnY");
+                sb.AppendLine("      → Solution: Include BOTH Database1 AND Database2!");
+                sb.AppendLine("        • Database1 (priority: 1): Get aggregation (COUNT, SUM, etc.) and foreign key IDs");
+                sb.AppendLine("        • Database2 (priority: 2): Get descriptive data (Name, Title columns) using the IDs");
+                sb.AppendLine();
+                sb.AppendLine("🎯 MULTI-DATABASE EXECUTION ORDER (ONLY when tables are in different databases):");
+                sb.AppendLine("  1. AGGREGATION FIRST (priority: 1)");
+                sb.AppendLine("     → Database with COUNT/SUM/numeric operations");
+                sb.AppendLine("     → Select TOP N + foreign key column for mapping");
+                sb.AppendLine("  2. DESCRIPTIVE SECOND (priority: 2)");
+                sb.AppendLine("     → Database with Name/Title/text columns");
+                sb.AppendLine("     → Filter using foreign key values from step 1");
+                sb.AppendLine();
+                sb.AppendLine("  Example (MULTI-DATABASE):");
+                sb.AppendLine("    Query: 'Which entities have the most records? Show top 5 names.'");
+                sb.AppendLine("    Tables: EntityTable in Database1, NameTable in Database2");
+                sb.AppendLine("    Step 1 (priority: 1): Database1 → Aggregate data, get TOP 5 ForeignKeyColumnIDs");
+                sb.AppendLine("    Step 2 (priority: 2): Database2 → Get descriptive data WHERE KeyColumn IN (...)");
+                sb.AppendLine();
+                sb.AppendLine("CORRECT Response:");
+                sb.AppendLine("  {");
+                sb.AppendLine("    \"databases\": [");
+                sb.AppendLine("      {");
+                sb.AppendLine("        \"databaseId\": \"database1-id\",");
+                sb.AppendLine("        \"databaseName\": \"Database1\",");
+                sb.AppendLine("        \"requiredTables\": [\"SchemaName.TableA\"],");
+                sb.AppendLine("        \"purpose\": \"Get numeric data for calculations and foreign key IDs\"");
+                sb.AppendLine("      },");
+                sb.AppendLine("      {");
+                sb.AppendLine("        \"databaseId\": \"database2-id\",");
+                sb.AppendLine("        \"databaseName\": \"Database2\",");
+                sb.AppendLine("        \"requiredTables\": [\"SchemaName.TableB\"],");
+                sb.AppendLine("        \"purpose\": \"Get descriptive text data and foreign key IDs\"");
+                sb.AppendLine("      }");
+                sb.AppendLine("    ]");
+                sb.AppendLine("  }");
                 sb.AppendLine();
             }
 
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
-            sb.AppendLine("VERIFICATION CHECKLIST - USE THIS BEFORE WRITING JSON:");
+            sb.AppendLine("AVAILABLE SCHEMAS");
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
-            sb.AppendLine();
-            sb.AppendLine("For EACH table you want to add to \"requiredTables\":");
-            sb.AppendLine();
-            sb.AppendLine("Step 1: Find the table name in the list above");
-            sb.AppendLine("Step 2: Note which database it belongs to");
-            sb.AppendLine("Step 3: Add it ONLY to that database's requiredTables array");
-            sb.AppendLine();
-            sb.AppendLine("EXAMPLE:");
-            if (tableToDatabase.Count > 0)
-            {
-                var exampleTable = tableToDatabase.First();
-                sb.AppendLine($"  - Want to query '{exampleTable.Key}'?");
-                sb.AppendLine($"  - Look above → '{exampleTable.Key}' is in '{exampleTable.Value}'");
-                sb.AppendLine($"  - Add to JSON → \"databaseName\": \"{exampleTable.Value}\", \"requiredTables\": [\"{exampleTable.Key}\"]");
-            }
-            sb.AppendLine();
-            sb.AppendLine("NEVER add a table to the wrong database!");
-            sb.AppendLine("Each table exists in EXACTLY ONE database!");
-            sb.AppendLine("If unsure, leave it out – system will handle missing tables safely.");
-            sb.AppendLine();
-            sb.AppendLine("BEFORE YOU RESPOND:");
-            sb.AppendLine("✓ Re-check the mapping above for every table you list");
-            sb.AppendLine("✓ Confirm the database actually contains that table");
-            sb.AppendLine("✓ Remove any table you cannot verify");
-            sb.AppendLine("✓ If the user question references multiple concepts (descriptive context + transactional metrics), you must use multiple databases");
-            sb.AppendLine("✗ NEVER return only one database if the question clearly needs multiple sources");
-            sb.AppendLine();
-            sb.AppendLine("═══════════════════════════════════════════════════════════════");
-            sb.AppendLine();
-            sb.AppendLine("Available Databases:");
             sb.AppendLine();
 
             foreach (var schema in schemas)
             {
-                sb.AppendLine("═══════════════════════════════════════");
-                sb.AppendLine($"DATABASE #{schemas.IndexOf(schema) + 1}: {schema.DatabaseName}");
-                sb.AppendLine("═══════════════════════════════════════");
-                sb.AppendLine($"Database ID: {schema.DatabaseId}");
-                sb.AppendLine($"Database Type: {schema.DatabaseType}");
-
-                if (!string.IsNullOrEmpty(schema.Description))
-                {
-                    sb.AppendLine($"Description: {schema.Description}");
-                }
-
-                sb.AppendLine();
-                sb.AppendLine($"TABLES AVAILABLE IN {schema.DatabaseName.ToUpperInvariant()} DATABASE:");
-
-                var tableList = new List<string>();
+                sb.AppendLine($"DATABASE: {schema.DatabaseName} (ID: {schema.DatabaseId})");
+                sb.AppendLine($"  Type: {schema.DatabaseType}, Total Rows: {schema.TotalRowCount:N0}");
+                sb.AppendLine("  Tables:");
+                
                 foreach (var table in schema.Tables.Take(20))
                 {
-                    tableList.Add(table.TableName);
-                    sb.AppendLine($"  [{table.TableName}]");
-                    sb.AppendLine($"    • {table.RowCount} rows");
-                    sb.AppendLine($"    • Columns: {string.Join(", ", table.Columns.Take(8).Select(c => c.ColumnName))}");
-
+                    var tableType = table.RowCount > 10000 ? "TRANSACTIONAL" : (table.RowCount > 1000 ? "LOOKUP" : "MASTER");
+                    
+                    sb.AppendLine($"    • {table.TableName} (Rows: {table.RowCount:N0}, Type: {tableType})");
+                    
+                    var pkColumns = table.PrimaryKeys.Any() ? table.PrimaryKeys : table.Columns.Where(c => c.IsPrimaryKey).Select(c => c.ColumnName).ToList();
+                    if (pkColumns.Any())
+                    {
+                        sb.AppendLine($"      PK: {string.Join(", ", pkColumns)}");
+                    }
+                    
                     if (table.ForeignKeys.Any())
                     {
-                        sb.AppendLine($"    • Links to: {string.Join(", ", table.ForeignKeys.Select(fk => fk.ReferencedTable).Distinct())}");
+                        sb.AppendLine("      Foreign Keys:");
+                        foreach (var fk in table.ForeignKeys.Take(5))
+                        {
+                            sb.AppendLine($"        {fk.ColumnName} → {fk.ReferencedTable}.{fk.ReferencedColumn}");
+                        }
                     }
+                    
+                    var importantColumns = table.Columns
+                        .Where(c => c.IsPrimaryKey || c.IsForeignKey || 
+                                   IsNumericType(c.DataType) || IsTextType(c.DataType))
+                        .Take(10)
+                        .Select(c => {
+                            var markers = new List<string>();
+                            if (c.IsPrimaryKey) markers.Add("PK");
+                            if (c.IsForeignKey) markers.Add("FK");
+                            var markerStr = markers.Any() ? $" [{string.Join(",", markers)}]" : "";
+                            return $"{c.ColumnName}({c.DataType}){markerStr}";
+                        });
+                    
+                    sb.AppendLine($"      Columns: {string.Join(", ", importantColumns)}");
                 }
-
-                sb.AppendLine();
-                sb.AppendLine($"IMPORTANT: These tables ONLY exist in {schema.DatabaseName}:");
-                sb.AppendLine($"    {string.Join(", ", tableList)}");
                 sb.AppendLine();
             }
 
-            sb.AppendLine("═══════════════════════════════════════");
-            sb.AppendLine("CRITICAL RULES - READ CAREFULLY:");
-            sb.AppendLine("═══════════════════════════════════════");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("🎯 TABLE SELECTION GUIDE (LANGUAGE & DOMAIN AGNOSTIC)");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
             sb.AppendLine();
-            sb.AppendLine("RULE #1: VERIFY TABLE LOCATION BEFORE ADDING TO JSON!");
-            sb.AppendLine("   Before adding a table to 'requiredTables', SCROLL UP and verify:");
-            sb.AppendLine("   - Is this table listed under THIS database's 'TABLES AVAILABLE' section?");
-            sb.AppendLine("   - If NO, find which database ACTUALLY contains this table");
-            sb.AppendLine("   - Only add tables that are ACTUALLY in that database!");
+            sb.AppendLine("Match query intent to table structure patterns (NOT specific names!):");
             sb.AppendLine();
-            sb.AppendLine("Example: If you want to query a table named 'TableA':");
-            sb.AppendLine("   1. Search above for 'TableA' in each database's table list");
-            sb.AppendLine("   2. Found in Database1? → Add to Database1 requiredTables");
-            sb.AppendLine("   3. NOT listed under Database2? → DO NOT add to Database2 requiredTables!");
+            sb.AppendLine("PATTERN 1: Hierarchical Classification");
+            sb.AppendLine("  Query intent: Grouping, categorization, classification questions");
+            sb.AppendLine("  Table structure: Tables that represent classification hierarchies");
+            sb.AppendLine("  Column patterns: Foreign keys pointing to parent/classification tables");
+            sb.AppendLine("  JOIN path: TableA (MASTER) → TableB (LOOKUP) → TableC (DETAIL) via foreign key relationships");
+            sb.AppendLine("  Example structure: TableA → TableB → TableC (where TableA classifies TableB, TableB references TableC)");
             sb.AppendLine();
-            sb.AppendLine("RULE #2: Identify ALL data sources the question needs!");
-            sb.AppendLine("   - Does the question mention descriptive attributes (names, classifications)?");
-            sb.AppendLine("     → Include the database containing those descriptive tables.");
-            sb.AppendLine("   - Does the question mention quantitative events (transactions, measurements, timelines)?");
-            sb.AppendLine("     → Include the database containing those transactional tables.");
-            sb.AppendLine("   - When the question spans multiple concepts, you MUST return multiple databases.");
-            sb.AppendLine("   - Returning only one database is allowed ONLY when every required concept lives in that single database.");
+            sb.AppendLine("PATTERN 2: Numeric Aggregation");
+            sb.AppendLine("  Query intent: Quantity, amount, count, sum, total calculations");
+            sb.AppendLine("  Table structure: Tables containing numeric accumulation data");
+            sb.AppendLine("  Column patterns: Integer or decimal columns representing quantities/amounts");
+            sb.AppendLine("  Data types: int, bigint, decimal, numeric, money, float (numeric types)");
+            sb.AppendLine("  JOIN requirement: Must join to master entity tables via foreign keys");
             sb.AppendLine();
-            sb.AppendLine("   QUICK CHECK FOR MULTI-DB NEEDS:");
-            sb.AppendLine("   • Descriptive attributes + Aggregated metrics → requires multiple databases");
-            sb.AppendLine("   • Reference data + Activity logs → requires multiple databases");
-            sb.AppendLine("   • Classification names + Recent events → requires multiple databases");
+            sb.AppendLine("PATTERN 3: Descriptive Entity Lookup");
+            sb.AppendLine("  Query intent: Who, which, name, identifier questions");
+            sb.AppendLine("  Table structure: Tables containing entity master data");
+            sb.AppendLine("  Column patterns: Text/varchar columns containing human-readable identifiers");
+            sb.AppendLine("  Data types: varchar, nvarchar, text, char (text types)");
+            sb.AppendLine("  Purpose: Provides descriptive information (not numeric calculations)");
             sb.AppendLine();
-            sb.AppendLine("2. Each table exists in ONLY ONE database");
-            sb.AppendLine("3. Before selecting a table, look at 'TABLES IN THIS DATABASE' section above");
-            sb.AppendLine("4. Only select tables that are listed under that specific database");
-            sb.AppendLine("5. For cross-database queries, identify which tables are in which database");
-            sb.AppendLine("6. Use Foreign Key relationships to understand how tables connect across databases");
-            sb.AppendLine("7. Use EXACT Database IDs and Table Names from the schema above");
-            sb.AppendLine("8. If a query needs data from multiple databases, create separate database entries for each");
+            sb.AppendLine("PATTERN 4: Spatial/Location Reference");
+            sb.AppendLine("  Query intent: Where, location, geography, address questions");
+            sb.AppendLine("  Table structure: Tables representing geographic or location data");
+            sb.AppendLine("  Column patterns: Text columns representing locations, coordinates, or geographic hierarchies");
+            sb.AppendLine("  JOIN path: Location → Entity (entities reference locations via foreign keys)");
             sb.AppendLine();
-            sb.AppendLine("═══════════════════════════════════════");
-            sb.AppendLine("HOW TO WRITE 'PURPOSE' FIELD:");
-            sb.AppendLine("═══════════════════════════════════════");
-            sb.AppendLine("The 'purpose' field MUST specify WHAT DATA TYPES to retrieve:");
+            sb.AppendLine("PATTERN 5: Transactional Activity (CRITICAL FOR COUNT QUERIES!)");
+            sb.AppendLine("  Query intent: Count events, activities, transactions, historical records over time");
+            sb.AppendLine("  Query keywords: 'how many', 'count', 'most/least transactions', 'top N by activity'");
+            sb.AppendLine("  ⚠️ CRITICAL: For counting repeated events, use the TRANSACTIONAL table (high row count), NOT the master entity table!");
+            sb.AppendLine("  Table identification:");
+            sb.AppendLine("    • TRANSACTIONAL tables: Rows > 10,000 (each row = one event/transaction)");
+            sb.AppendLine("    • MASTER tables: Rows < 10,000 (each row = one entity, referenced by transactional tables)");
+            sb.AppendLine("  Column patterns: Date/time columns, status columns, foreign key references to master entities");
+            sb.AppendLine("  JOIN requirement: JOIN transactional table TO master table (using foreign keys from schema)");
+            sb.AppendLine("  Flow: COUNT(transactional rows) JOIN master table GROUP BY master entity");
             sb.AppendLine();
-            sb.AppendLine("✗ BAD Purpose Examples (too vague):");
-            sb.AppendLine("  'Get data from table'");
-            sb.AppendLine("  'Retrieve information'");
-            sb.AppendLine("  'Query records'");
+            sb.AppendLine("⚠️ CRITICAL: Match by STRUCTURE and DATA TYPE, NOT by specific column/table names!");
+            sb.AppendLine("  → Use schema's FOREIGN KEY RELATIONSHIPS to identify table relationships");
+            sb.AppendLine("  → Use DATA TYPES to identify numeric vs text columns");
+            sb.AppendLine("  → Use TABLE RELATIONSHIPS to identify master-detail or classification hierarchies");
             sb.AppendLine();
-            sb.AppendLine("✓ GOOD Purpose Examples (describes data types and patterns):");
-            sb.AppendLine("  'Get TEXT columns (look for columns with NAME pattern in column name) and foreign keys'");
-            sb.AppendLine("  'Get NUMERIC columns (INT/DECIMAL types for aggregation) and foreign keys'");
-            sb.AppendLine("  'Get DATETIME columns (temporal data) and foreign keys'");
-            sb.AppendLine("  'Get TEXT columns (classification data) and foreign keys'");
+
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("🚨 CRITICAL RULES");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
             sb.AppendLine();
-            sb.AppendLine("PATTERN: 'Get [DATA_TYPE] columns ([what pattern to match in schema]) and foreign keys'");
+            sb.AppendLine("RULE 1: Use EXACT table names from schema (case-sensitive for PostgreSQL)");
+            sb.AppendLine("RULE 2: Each table exists in ONLY ONE database - check schema before adding");
+            sb.AppendLine("RULE 3: Aggregation queries (COUNT, SUM, TOP, MOST) need tables with numeric columns (int, decimal, etc.)");
+            sb.AppendLine("RULE 4: Descriptive queries (identifiers, names, entities) need tables with text columns (varchar, text) for human-readable data");
+            if (allMappings.Any())
+            {
+                sb.AppendLine("RULE 5: If mappings exist AND query needs both aggregation + descriptive → Include BOTH databases!");
+                sb.AppendLine("RULE 6: SET PRIORITY CORRECTLY:");
+                sb.AppendLine("        • Aggregation database = priority: 1 (executes first)");
+                sb.AppendLine("        • Descriptive database = priority: 2 (executes second, uses values from first)");
+            }
+            sb.AppendLine("RULE 7: ALWAYS follow JOIN paths via foreign keys");
+            sb.AppendLine("        Example: If TableA → TableB → TableC (via FKs), include ALL three tables!");
             sb.AppendLine();
-            sb.AppendLine("HOW TO MAP USER KEYWORDS TO DATA TYPES:");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("❌ ANTI-PATTERNS (DO NOT DO THIS!)");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
             sb.AppendLine();
-            sb.AppendLine("  If user asks WHO/NAME questions:");
-            sb.AppendLine("  → Purpose: 'Get TEXT columns (find columns containing word NAME in their column name) and foreign keys'");
+            sb.AppendLine("WRONG #1: Ignoring foreign key chains");
+            sb.AppendLine("  Query: 'Which classification has most items and what is the total quantity?'");
+            sb.AppendLine("  ❌ WRONG: Select only TableA + TableC (skips intermediate TableB)");
+            sb.AppendLine("  ✓ CORRECT: Select TableA + TableB + TableC (follows FK chain)");
             sb.AppendLine();
-            sb.AppendLine("  If user asks WHERE/LOCATION questions:");
-            sb.AppendLine("  → Purpose: 'Get TEXT columns (find location-related column names) and foreign keys'");
+            sb.AppendLine("WRONG #2: Selecting irrelevant tables by name pattern only");
+            sb.AppendLine("  Query: 'Which group has most items?'");
+            sb.AppendLine("  ❌ WRONG: Select TableX (has text column matching pattern but represents different entity domain)");
+            sb.AppendLine("  ✓ CORRECT: Select TableA + TableB (tables that actually represent the queried entity via foreign key relationships)");
             sb.AppendLine();
-            sb.AppendLine("  If user asks NUMERIC VALUE questions:");
-            sb.AppendLine("  → Purpose: 'Get NUMERIC columns (INT/DECIMAL types for calculations) and foreign keys'");
+            sb.AppendLine("WRONG #3: Missing database when cross-join needed");
+            sb.AppendLine("  Query: 'Top 5 entities with most records + their names'");
+            sb.AppendLine("  ❌ WRONG: Only select one database");
+            sb.AppendLine("  ✓ CORRECT: Select Database1(aggregation) + Database2(names) with mapping");
             sb.AppendLine();
-            sb.AppendLine("  If user asks COUNT/QUANTITY questions:");
-            sb.AppendLine("  → Purpose: 'Get NUMERIC columns (INT types for counting) and foreign keys'");
+            sb.AppendLine("WRONG #4: Table names that don't exist");
+            sb.AppendLine("  ❌ WRONG: 'RequiredTables': ['TableX'] (not in schema!)");
+            sb.AppendLine("  ✓ CORRECT: Use ONLY tables listed in AVAILABLE SCHEMAS section above");
             sb.AppendLine();
-            sb.AppendLine("  If user asks TIME/DATE questions:");
-            sb.AppendLine("  → Purpose: 'Get DATETIME columns (DATE/TIMESTAMP types) and foreign keys'");
+            sb.AppendLine("WRONG #5: Using master entity table for counting repeated events");
+            sb.AppendLine("  Query: 'Who did the most [action]?' or 'Count [events] per [entity]'");
+            sb.AppendLine("  ❌ WRONG: Use master entity table (low row count) → COUNT always returns 1 per entity!");
+            sb.AppendLine("  ✓ CORRECT: Use TRANSACTIONAL table (high row count, Type: TRANSACTIONAL) JOIN master table");
+            sb.AppendLine("  ✓ Identify by: Check 'Rows' field in schema - transactional tables have Rows > 10,000");
+            sb.AppendLine("  ✓ JOIN path: Use foreign keys shown in schema (ColumnName → ReferencedTable.ReferencedColumn)");
             sb.AppendLine();
-            sb.AppendLine("  If user asks STATUS/STATE questions:");
-            sb.AppendLine("  → Purpose: 'Get TEXT columns (classification/state information) and foreign keys'");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("🎯 OUTPUT FORMAT (STRICT!)");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
             sb.AppendLine();
-            sb.AppendLine("PATTERN:");
-            sb.AppendLine("  Purpose = 'Get [DATA_TYPE] columns ([description of what to look for]) and foreign keys'");
+            sb.AppendLine("⚠️⚠️ CRITICAL: You MUST return ONLY valid JSON - NO markdown, NO ```json blocks, NO explanation text!");
             sb.AppendLine();
-            sb.AppendLine("PURPOSE MUST DESCRIBE DATA TYPES TO FIND, NOT SPECIFIC COLUMN NAMES!");
-            sb.AppendLine();
-            sb.AppendLine("═══════════════════════════════════════");
-            sb.AppendLine("CROSS-DATABASE DATA REQUIREMENTS:");
-            sb.AppendLine("═══════════════════════════════════════");
-            sb.AppendLine("If the query requires calculations using columns from multiple tables:");
-            sb.AppendLine("  ✓ Identify which tables contain the required columns");
-            sb.AppendLine("  ✓ Check Foreign Key relationships to understand table connections");
-            sb.AppendLine("  ✓ You MUST select ALL databases that contain required data!");
-            sb.AppendLine("  ✓ Set requiresCrossDatabaseJoin: true");
-            sb.AppendLine();
-            sb.AppendLine("Based on the user query, provide your analysis in the following JSON format:");
+            sb.AppendLine("REQUIRED JSON STRUCTURE:");
             sb.AppendLine("{");
-            sb.AppendLine("  \"understanding\": \"Brief explanation of what the user wants\",");
+            sb.AppendLine("  \"understanding\": \"Brief explanation\",");
             sb.AppendLine("  \"confidence\": 0.95,");
-            sb.AppendLine("  \"requiresCrossDatabaseJoin\": false,");
-            sb.AppendLine("  \"reasoning\": \"Why these databases and tables were selected\",");
+            sb.AppendLine("  \"requiresCrossDatabaseJoin\": " + (allMappings.Any() && QueryRequiresCrossDatabaseMapping(userQuery, allMappings) ? "true" : "false") + ",");
+            sb.AppendLine("  \"reasoning\": \"Why these were selected\",");
             sb.AppendLine("  \"databases\": [");
             sb.AppendLine("    {");
-            sb.AppendLine("      \"databaseId\": \"EXACT_DB_ID_FROM_ABOVE\",");
-            sb.AppendLine("      \"databaseName\": \"DatabaseName\",");
-            sb.AppendLine("      \"requiredTables\": [\"ExactTableName1\", \"ExactTableName2\"],");
-            sb.AppendLine("      \"purpose\": \"What data to get from this database\",");
+            sb.AppendLine("      \"databaseId\": \"EXACT_ID_FROM_SCHEMA\",");
+            sb.AppendLine("      \"databaseName\": \"EXACT_NAME_FROM_SCHEMA\",");
+            sb.AppendLine("      \"requiredTables\": [\"Table1\", \"Table2\"],");
+            sb.AppendLine("      \"purpose\": \"Get [numeric/text] data and foreign keys\",");
             sb.AppendLine("      \"priority\": 1");
             sb.AppendLine("    }");
             sb.AppendLine("  ]");
             sb.AppendLine("}");
             sb.AppendLine();
-            sb.AppendLine("IMPORTANT: Respond ONLY with valid JSON, no other text, no markdown.");
-            sb.AppendLine("Double-check that each table you reference EXISTS in the database you selected.");
+            sb.AppendLine("VALIDATION CHECKLIST:");
+            sb.AppendLine("  ✓ Output starts with '{' and ends with '}'");
+            sb.AppendLine("  ✓ NO markdown formatting (no ```json)");
+            sb.AppendLine("  ✓ NO explanatory text before/after JSON");
+            sb.AppendLine("  ✓ Each table in requiredTables EXISTS in that database's schema");
+            sb.AppendLine("  ✓ databaseId and databaseName are EXACT matches from AVAILABLE SCHEMAS");
+            sb.AppendLine("  ✓ priority field is set correctly (1 for aggregation, 2+ for descriptive)");
+            sb.AppendLine();
+            if (allMappings.Any() && QueryRequiresCrossDatabaseMapping(userQuery, allMappings))
+            {
+                sb.AppendLine("⚠️⚠️ FINAL CHECK: Query requires multi-database access - did you include BOTH databases with correct priorities?");
+                sb.AppendLine();
+            }
 
             return sb.ToString();
         }
@@ -427,6 +623,34 @@ namespace SmartRAG.Services.Database
             }
 
             return queryIntent;
+        }
+
+        private List<CrossDatabaseMapping> GetAllCrossDatabaseMappings()
+        {
+            var mappings = new List<CrossDatabaseMapping>();
+            
+            if (_connectionManager == null)
+                return mappings;
+
+            try
+            {
+                var connectionsTask = _connectionManager.GetAllConnectionsAsync();
+                var connections = connectionsTask.GetAwaiter().GetResult();
+                
+                foreach (var connection in connections)
+                {
+                    if (connection?.CrossDatabaseMappings == null)
+                        continue;
+                    
+                    mappings.AddRange(connection.CrossDatabaseMappings);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to retrieve cross-database mappings");
+            }
+
+            return mappings;
         }
 
         private QueryIntent CreateFallbackQueryIntent(string originalQuery, List<DatabaseSchemaInfo> schemas)

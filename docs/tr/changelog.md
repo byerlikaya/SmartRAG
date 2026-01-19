@@ -12,6 +12,87 @@ redirect_from: /tr/changelog.html
 
 Bu sayfa taşındı. Lütfen [Değişiklikler Ana Sayfası]({{ site.baseurl }}/tr/changelog/)'nı ziyaret edin.
 
+## [3.7.0] - 2026-01-19
+
+### Cross-Database Mapping Detector & Güvenlik İyileştirmeleri
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> MINOR Sürüm</h4>
+    <p class="mb-0">
+        Bu sürüm cross-database ilişki tespiti ekler ve önemli güvenlik iyileştirmeleri içerir.
+        Tüm değişiklikler geriye dönük uyumludur.
+    </p>
+</div>
+
+### ✨ Eklendi
+
+#### Cross-Database Mapping Detector
+- **Otomatik İlişki Tespiti**: Farklı veritabanları arasındaki kolon ilişkilerini tespit etmek için yeni servis
+- **Primary Key ve Foreign Key Analizi**: Şema analizine dayalı otomatik tespit
+- **Semantik Kolon Eşleştirme**: Veritabanları arası ilişkili kolonların akıllı eşleştirilmesi
+- **Dosyalar Güncellendi**:
+  - `src/SmartRAG/Models/Configuration/CrossDatabaseMapping.cs` - Cross-database mapping'ler için yeni model
+  - `src/SmartRAG/Services/Database/CrossDatabaseMappingDetector.cs` - Yeni tespit servisi
+  - `src/SmartRAG/Models/Configuration/DatabaseConnectionConfig.cs` - CrossDatabaseMappings özelliği eklendi
+
+### 🔧 İyileştirildi
+
+#### SQL Script Çıkarma
+- **DRY Prensibi Uygulandı**: Veritabanı oluşturucu sınıflarından SQL script'leri ayrı dosyalara çıkarıldı
+- **Daha İyi Kod Organizasyonu**: Bakımı kolaylaştırmak için merkezi SQL script'leri
+- **Dosyalar Güncellendi**:
+  - `src/SmartRAG/Services/Database/DatabaseParserService.cs` - Çıkarılan script'leri kullanacak şekilde güncellendi
+  - `src/SmartRAG/Services/Database/DatabaseSchemaAnalyzer.cs` - Şema işleme iyileştirildi
+
+#### Veritabanı Sorgu Üretimi
+- **Geliştirilmiş Sorgu Üretimi**: Üretilen sorguların doğruluğu ve doğrulaması iyileştirildi
+- **Daha İyi Hata Önleme**: Geliştirilmiş doğrulama mantığı
+- **Dosyalar Güncellendi**:
+  - `src/SmartRAG/Services/Database/SQLQueryGenerator.cs` - Sorgu üretimi iyileştirmeleri
+  - `src/SmartRAG/Services/Database/Validation/SqlValidator.cs` - Geliştirilmiş doğrulama
+  - `src/SmartRAG/Services/Database/Prompts/SqlPromptBuilder.cs` - İyileştirilmiş prompt oluşturma
+
+#### Veritabanı Parser ve Doküman Arama
+- **Daha İyi Servis Entegrasyonu**: Veritabanı ve doküman servisleri arası koordinasyon iyileştirildi
+- **Dosyalar Güncellendi**:
+  - `src/SmartRAG/Services/Database/DatabaseParserService.cs` - Servis iyileştirmeleri
+  - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Entegrasyon iyileştirmeleri
+
+### 🐛 Düzeltildi
+
+#### Güvenlik İyileştirmeleri
+- **SQL Injection Önleme**: Geliştirilmiş girdi doğrulaması ve parametreli sorgu kullanımı
+- **Command Injection Önleme**: Shell komut çalıştırma kaldırıldı, girdi sanitizasyonu geliştirildi
+- **Hassas Veri Sızıntısı Önleme**: Hata mesajlarından ve log'lardan hassas veriler kaldırıldı
+  - İstisna mesajlarından yedek dosya yolları kaldırıldı
+  - Geliştirilmiş hata mesajı sanitizasyonu
+- **Dosyalar Güncellendi**:
+  - `src/SmartRAG/Services/Database/DatabaseConnectionManager.cs` - Geliştirilmiş hata yönetimi
+  - `src/SmartRAG/Services/Database/DatabaseQueryExecutor.cs` - İyileştirilmiş hata mesajları
+
+### 📝 Notlar
+
+- **Geriye Dönük Uyumluluk**: Tüm değişiklikler geriye dönük uyumludur
+- **Taşınma**: Taşınma gerekmez
+- **Breaking Changes**: Yok
+- **Güvenlik**: Önemli güvenlik iyileştirmeleri dahil edildi
+
+---
+
+## [3.6.0] - 2025-12-30
+
+### CancellationToken Desteği & Performans İyileştirmeleri
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> MINOR Sürüm</h4>
+    <p class="mb-0">
+        Bu sürüm kapsamlı CancellationToken desteği ekler ve performansı iyileştirir.
+        Tüm değişiklikler geriye dönük uyumludur.
+    </p>
+</div>
+
+---
+
 ## [3.3.0] - 2025-12-01
 
 ### Redis Vector Search & Storage İyileştirmeleri
@@ -67,11 +148,6 @@ Bu sayfa taşındı. Lütfen [Değişiklikler Ana Sayfası]({{ site.baseurl }}/t
 - **FileSystemDocumentRepository**: Kullanılmayan file system storage implementasyonu kaldırıldı
 - **SqliteDocumentRepository**: Kullanılmayan SQLite storage implementasyonu kaldırıldı
 - **StorageConfig Özellikleri**: FileSystemPath ve SqliteConfig kaldırıldı (kullanılmıyor)
-
-### 📚 Dokümantasyon
-
-- **Redis Storage Dokümantasyonu**: RediSearch gereksinimleri ve kurulum talimatları ile güncellendi
-- **InMemory Storage Dokümantasyonu**: Configuration örnekleri ve kullanım senaryoları eklendi
 
 ### ⚠️ Breaking Changes
 
@@ -456,11 +532,6 @@ OCR veya Ses Transkripsiyonu özelliklerini kullanıyorsanız:
 - `src/SmartRAG/Enums/AudioProvider.cs` - GoogleCloud enum değeri kaldırıldı
 - `src/SmartRAG/Services/ServiceLogMessages.cs` - Whisper.net için log mesajları güncellendi
 
-#### **Dokümantasyon Güncellemeleri**
-- **README.md**: Whisper.net-only ses işleme için güncellendi
-- **README.tr.md**: Türkçe dokümantasyon güncellendi
-- **docs/**: Tüm dokümantasyon dosyalarından Google Speech referansları kaldırıldı
-
 ### ✨ Faydalar
 - **%100 Yerel İşleme**: Tüm ses transkripsiyonu Whisper.net ile yerel olarak yapılıyor
 - **Geliştirilmiş Gizlilik**: Veri altyapınızı terk etmiyor
@@ -495,7 +566,6 @@ Google Speech-to-Text kullanıyorsanız:
 ### 🔧 Teknik İyileştirmeler
 - **ServiceLogMessages.cs**: LoggerMessage tanımları parametre sayılarıyla doğru eşleşecek şekilde güncellendi
 - **EventId Yönetimi**: Benzersiz log tanımlayıcıları için çakışan EventId'ler yeniden atandı
-- **Dokümantasyon**: Daha iyi NuGet paket görüntüleme için README dosyaları temizlendi
 
 ---
 
@@ -567,23 +637,14 @@ Google Speech-to-Text kullanıyorsanız:
 ### ✨ Eklenenler
 - **Çok dilli README**: İngilizce, Türkçe, Almanca ve Rusça'da mevcut
 - **Çok dilli CHANGELOG**: 4 dilde mevcut
-- **Geliştirilmiş dokümantasyon**: Kapsamlı yerinde dağıtım dokümantasyonu
 - **Yerel AI kurulum örnekleri**: Ollama ve LM Studio için configuration
 - **Kurumsal kullanım senaryoları**: Bankacılık, Sağlık, Hukuk, Devlet, Üretim
 
 ### 🔧 İyileştirmeler
 - **Yeniden deneme mekanizması**: Dile özgü talimatlarla geliştirilmiş yeniden deneme istekleri
 - **Hata yönetimi**: Veritabanı tipi bilgisiyle daha iyi hata mesajları
-- **Dokümantasyon yapısı**: CHANGELOG bağlantılarıyla daha temiz README
 - **Kod kalitesi**: Boyunca sürdürülen SOLID/DRY prensipleri
 - **Performans**: Optimize edilmiş çoklu-veritabanı sorgu koordinasyonu
-
-### 📚 Dokümantasyon
-- **Yerinde kılavuz**: Kapsamlı dağıtım dokümantasyonu
-- **Gizlilik kılavuzu**: Veri gizliliği ve uyumluluk dokümantasyonu
-- **OCR kısıtlamaları**: Net yetenekler ve kısıtlamalar
-- **Ses işleme**: Net gereksinimler ve kısıtlamalar
-- **Kurumsal senaryolar**: Gerçek dünya kullanım senaryoları
 
 ### ✅ Kalite Güvencesi
 - **Sıfır Uyarı Politikası**: 0 hata, 0 uyarı standardı korundu
@@ -644,31 +705,17 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Ses İşleme Pipeline**: Google Cloud AI ile geliştirilmiş
 - **Configuration Yönetimi**: GoogleSpeechConfig kullanacak şekilde güncellendi
 - **Hata Yönetimi**: Ses transkripsiyonu için geliştirilmiş
-- **Dokümantasyon**: Speech-to-Text örnekleriyle güncellendi
-
-### 📚 Dokümantasyon
-- **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
-- **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
 
 ---
 
 ## [2.2.0] - 2025-09-15
 
 ### ✨ Eklenenler
-- **Geliştirilmiş OCR Dokümantasyonu**: Gerçek dünya kullanım senaryolarıyla kapsamlı
-- **İyileştirilmiş README**: Detaylı görsel işleme özellikleri
 - **Kullanım Senaryosu Örnekleri**: Taranmış dokümanlar, makbuzlar, görsel içeriği
 
 ### 🔧 İyileştirmeler
 - **Paket Metadata**: Güncellenmiş proje URL'leri ve sürüm notları
-- **Dokümantasyon Yapısı**: Geliştirilmiş OCR vitrini
 - **Kullanıcı Rehberliği**: İyileştirilmiş görsel işleme iş akışları
-
-### 📚 Dokümantasyon
-- **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
-- **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
 
 ---
 
@@ -685,11 +732,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Format Tutarlılığı**: Depolama sağlayıcıları arasında standardize edildi
 - **Thread Güvenliği**: Geliştirilmiş eşzamanlı erişim yönetimi
 - **Platform Agnostik**: .NET ortamlarında uyumlu
-
-### 📚 Dokümantasyon
-- **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
-- **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
 
 ---
 
@@ -714,11 +756,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Dil Uyumluluğu**: .NET Standard 2.1 için C# 7.3 sözdizimi
 - **Paket Versiyonları**: .NET Standard uyumlu versiyonlara güncellendi
 - **API Uyumluluğu**: Framework uyumluluğu sağlarken işlevselliği korundu
-
-### 📚 Dokümantasyon
-- **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
-- **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
 
 ### 🧪 Test
 - **Unit Testler**: Tüm yeni özellikler için kapsamlı test kapsamı
@@ -770,11 +807,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - Sağlayıcı günlükleme mesajı uygulamaları
 - Servis koleksiyonu kayıt sorunları
 
-### 📚 Dokümantasyon
-- **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
-- **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
-
 ---
 
 ## Versiyon Geçmişi
@@ -789,6 +821,11 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
             </tr>
         </thead>
         <tbody>
+            <tr>
+                <td><strong>3.7.0</strong></td>
+                <td>2026-01-19</td>
+                <td>Cross-Database Mapping Detector, Güvenlik İyileştirmeleri, SQL Script Çıkarma</td>
+            </tr>
             <tr>
                 <td><strong>3.6.0</strong></td>
                 <td>2025-12-30</td>
@@ -827,7 +864,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
             <tr>
                 <td><strong>2.2.0</strong></td>
                 <td>2025-09-15</td>
-                <td>Geliştirilmiş OCR dokümantasyonu</td>
+                <td>OCR yetenekleri ve görsel işleme</td>
             </tr>
             <tr>
                 <td><strong>2.1.0</strong></td>

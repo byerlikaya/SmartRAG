@@ -11,12 +11,91 @@ SmartRAG'deki tüm sürümler ve değişiklikler burada belgelenmiştir.
 
 <div class="accordion mt-4" id="versionAccordion">
     <div class="accordion-item">
+        <h2 class="accordion-header" id="headingversion370">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion370" aria-expanded="true" aria-controls="collapseversion370">
+                <strong>v3.7.0</strong> - 2026-01-19
+            </button>
+        </h2>
+        <div id="collapseversion370" class="accordion-collapse collapse show" aria-labelledby="headingversion370" >
+            <div class="accordion-body">
+{% capture version_content %}
+
+### Cross-Database Mapping Detector & Güvenlik İyileştirmeleri
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> MINOR Sürüm</h4>
+    <p class="mb-0">
+        Bu sürüm cross-database ilişki tespiti ekler ve önemli güvenlik iyileştirmeleri içerir.
+        Tüm değişiklikler geriye dönük uyumludur.
+    </p>
+</div>
+
+### ✨ Eklendi
+
+#### Cross-Database Mapping Detector
+- **Otomatik İlişki Tespiti**: Farklı veritabanları arasındaki kolon ilişkilerini tespit etmek için yeni servis
+- **Primary Key ve Foreign Key Analizi**: Şema analizine dayalı otomatik tespit
+- **Semantik Kolon Eşleştirme**: Veritabanları arası ilişkili kolonların akıllı eşleştirilmesi
+- **Dosyalar Güncellendi**:
+  - `src/SmartRAG/Models/Configuration/CrossDatabaseMapping.cs` - Cross-database mapping'ler için yeni model
+  - `src/SmartRAG/Services/Database/CrossDatabaseMappingDetector.cs` - Yeni tespit servisi
+  - `src/SmartRAG/Models/Configuration/DatabaseConnectionConfig.cs` - CrossDatabaseMappings özelliği eklendi
+
+### 🔧 İyileştirildi
+
+#### SQL Script Çıkarma
+- **DRY Prensibi Uygulandı**: Veritabanı oluşturucu sınıflarından SQL script'leri ayrı dosyalara çıkarıldı
+- **Daha İyi Kod Organizasyonu**: Bakımı kolaylaştırmak için merkezi SQL script'leri
+- **Dosyalar Güncellendi**:
+  - `src/SmartRAG/Services/Database/DatabaseParserService.cs` - Çıkarılan script'leri kullanacak şekilde güncellendi
+  - `src/SmartRAG/Services/Database/DatabaseSchemaAnalyzer.cs` - Şema işleme iyileştirildi
+
+#### Veritabanı Sorgu Üretimi
+- **Geliştirilmiş Sorgu Üretimi**: Üretilen sorguların doğruluğu ve doğrulaması iyileştirildi
+- **Daha İyi Hata Önleme**: Geliştirilmiş doğrulama mantığı
+- **Dosyalar Güncellendi**:
+  - `src/SmartRAG/Services/Database/SQLQueryGenerator.cs` - Sorgu üretimi iyileştirmeleri
+  - `src/SmartRAG/Services/Database/Validation/SqlValidator.cs` - Geliştirilmiş doğrulama
+  - `src/SmartRAG/Services/Database/Prompts/SqlPromptBuilder.cs` - İyileştirilmiş prompt oluşturma
+
+#### Veritabanı Parser ve Doküman Arama
+- **Daha İyi Servis Entegrasyonu**: Veritabanı ve doküman servisleri arası koordinasyon iyileştirildi
+- **Dosyalar Güncellendi**:
+  - `src/SmartRAG/Services/Database/DatabaseParserService.cs` - Servis iyileştirmeleri
+  - `src/SmartRAG/Services/Document/DocumentSearchService.cs` - Entegrasyon iyileştirmeleri
+
+### 🐛 Düzeltildi
+
+#### Güvenlik İyileştirmeleri
+- **SQL Injection Önleme**: Geliştirilmiş girdi doğrulaması ve parametreli sorgu kullanımı
+- **Command Injection Önleme**: Shell komut çalıştırma kaldırıldı, girdi sanitizasyonu geliştirildi
+- **Hassas Veri Sızıntısı Önleme**: Hata mesajlarından ve log'lardan hassas veriler kaldırıldı
+  - İstisna mesajlarından yedek dosya yolları kaldırıldı
+  - Geliştirilmiş hata mesajı sanitizasyonu
+- **Dosyalar Güncellendi**:
+  - `src/SmartRAG/Services/Database/DatabaseConnectionManager.cs` - Geliştirilmiş hata yönetimi
+  - `src/SmartRAG/Services/Database/DatabaseQueryExecutor.cs` - İyileştirilmiş hata mesajları
+
+### 📝 Notlar
+
+- **Geriye Dönük Uyumluluk**: Tüm değişiklikler geriye dönük uyumludur
+- **Taşınma**: Taşınma gerekmez
+- **Breaking Changes**: Yok
+- **Güvenlik**: Önemli güvenlik iyileştirmeleri dahil edildi
+
+---
+{% endcapture %}
+{{ version_content | markdownify }}
+            </div>
+        </div>
+    </div>
+    <div class="accordion-item">
         <h2 class="accordion-header" id="headingversion360">
-            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion360" aria-expanded="true" aria-controls="collapseversion360">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion360" aria-expanded="false" aria-controls="collapseversion360">
                 <strong>v3.6.0</strong> - 2025-12-30
             </button>
         </h2>
-        <div id="collapseversion360" class="accordion-collapse collapse show" aria-labelledby="headingversion360" >
+        <div id="collapseversion360" class="accordion-collapse collapse" aria-labelledby="headingversion360" >
             <div class="accordion-body">
 {% capture version_content %}
 

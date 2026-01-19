@@ -76,17 +76,17 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task ClearConversationAsync(string sessionId, CancellationToken cancellationToken = default)
+        public Task ClearConversationAsync(string sessionId, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(sessionId))
-                return;
+                return Task.CompletedTask;
 
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var filePath = GetConversationFilePath(sessionId);
                 if (File.Exists(filePath))
                 {
-                    cancellationToken.ThrowIfCancellationRequested();
                     File.Delete(filePath);
                 }
             }
@@ -94,23 +94,25 @@ namespace SmartRAG.Repositories
             {
                 _logger.LogError(ex, "Error clearing conversation");
             }
+
+            return Task.CompletedTask;
         }
 
-        public async Task<bool> SessionExistsAsync(string sessionId, CancellationToken cancellationToken = default)
+        public Task<bool> SessionExistsAsync(string sessionId, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(sessionId))
-                return false;
+                return Task.FromResult(false);
 
             try
             {
-                var filePath = GetConversationFilePath(sessionId);
                 cancellationToken.ThrowIfCancellationRequested();
-                return File.Exists(filePath);
+                var filePath = GetConversationFilePath(sessionId);
+                return Task.FromResult(File.Exists(filePath));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error checking session existence");
-                return false;
+                return Task.FromResult(false);
             }
         }
 
@@ -130,10 +132,11 @@ namespace SmartRAG.Repositories
             }
         }
 
-        public async Task ClearAllConversationsAsync(CancellationToken cancellationToken = default)
+        public Task ClearAllConversationsAsync(CancellationToken cancellationToken = default)
         {
             try
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 if (Directory.Exists(_conversationsPath))
                 {
                     var files = Directory.GetFiles(_conversationsPath, "*.txt");
@@ -149,6 +152,8 @@ namespace SmartRAG.Repositories
                 _logger.LogError(ex, "Error clearing all conversations from file system");
                 throw;
             }
+
+            return Task.CompletedTask;
         }
 
         private string GetConversationFilePath(string sessionId)

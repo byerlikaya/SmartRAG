@@ -166,7 +166,6 @@ public class TestQueryGenerator(
         foreach (var schema in schemas)
         {
             sb.AppendLine($"DATABASE: {schema.DatabaseName} ({schema.DatabaseType})");
-            sb.AppendLine($"Description: {schema.Description}");
             sb.AppendLine("TABLES:");
 
             foreach (var table in schema.Tables.Take(5))

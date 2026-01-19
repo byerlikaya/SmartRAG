@@ -16,14 +16,26 @@ namespace SmartRAG.Services.Database
     /// </summary>
     public class ResultMerger : IResultMerger
     {
+        private static readonly string[] DescriptiveColumnPatterns = { "Name", "Title", "Description", "City", "Address", "Location", "Text", "Label" };
+        private static readonly string[] NonDescriptivePatterns = { "ID", "Key", "Code", "Number", "Num", "Count", "Sum", "Total", "Amount", "Value" };
+        
         private readonly IAIService _aiService;
+        private readonly IDatabaseConnectionManager _connectionManager;
+        private readonly IDatabaseParserService _databaseParser;
+        private readonly IDatabaseSchemaAnalyzer _schemaAnalyzer;
         private readonly ILogger<ResultMerger> _logger;
 
         public ResultMerger(
             IAIService aiService,
+            IDatabaseConnectionManager connectionManager,
+            IDatabaseParserService databaseParser,
+            IDatabaseSchemaAnalyzer schemaAnalyzer,
             ILogger<ResultMerger> logger)
         {
             _aiService = aiService;
+            _connectionManager = connectionManager ?? throw new ArgumentNullException(nameof(connectionManager));
+            _databaseParser = databaseParser ?? throw new ArgumentNullException(nameof(databaseParser));
+            _schemaAnalyzer = schemaAnalyzer ?? throw new ArgumentNullException(nameof(schemaAnalyzer));
             _logger = logger;
         }
 
@@ -105,90 +117,95 @@ namespace SmartRAG.Services.Database
                     promptBuilder.AppendLine();
                 }
                 
-                promptBuilder.AppendLine("Answer the user's question using ONLY the database information provided.");
-                promptBuilder.AppendLine();
                 promptBuilder.AppendLine("╔═══════════════════════════════════════════════════════════════╗");
-                promptBuilder.AppendLine("║  🚨 CRITICAL: DATABASE DATA ANALYSIS RULES 🚨                ║");
+                promptBuilder.AppendLine("║  🚨🚨🚨 CRITICAL - READ THIS FIRST! 🚨🚨🚨                         ║");
                 promptBuilder.AppendLine("╚═══════════════════════════════════════════════════════════════╝");
                 promptBuilder.AppendLine();
-                promptBuilder.AppendLine("╔═══════════════════════════════════════════════════════════════╗");
-                promptBuilder.AppendLine("║  🚨 STEP-BY-STEP ANALYSIS PROCESS - FOLLOW EXACTLY! 🚨         ║");
-                promptBuilder.AppendLine("╚═══════════════════════════════════════════════════════════════╝");
+                promptBuilder.AppendLine("⛔⛔⛔ ABSOLUTELY FORBIDDEN - NEVER DO THESE:");
+                promptBuilder.AppendLine("  ✗✗✗ NEVER invent names, numbers, or example data!");
+                promptBuilder.AppendLine("  ✗✗✗ NEVER provide sample data, hypothetical values, or fictional examples!");
+                promptBuilder.AppendLine("  ✗✗✗ NEVER create fictional examples like 'EntityName - NumericValue' or 'DescriptiveColumn - AggregationValue'!");
+                promptBuilder.AppendLine("  ✗✗✗ NEVER provide suggestions or instructions to the user!");
+                promptBuilder.AppendLine("  ✗✗✗ NEVER write 'database connection failed', 'no data available', 'missing data'");
+                promptBuilder.AppendLine("  ✗✗✗ NEVER provide SQL examples, code snippets, or query explanations");
+                promptBuilder.AppendLine("  ✗✗✗ NEVER suggest SQL queries to the user");
                 promptBuilder.AppendLine();
-                promptBuilder.AppendLine("STEP 1: CHECK IF DATA EXISTS");
-                promptBuilder.AppendLine("  - Look at the 'Database Results' section below");
-                promptBuilder.AppendLine("  - If you see ANY rows (even 1 row), DATA EXISTS - proceed to STEP 2");
-                promptBuilder.AppendLine("  - If you see '0 rows' or 'Error', then use [NO_ANSWER_FOUND]");
+                promptBuilder.AppendLine("🚨🚨🚨 IF NO DATA AVAILABLE:");
+                promptBuilder.AppendLine("  → Say ONLY: 'I could not find the answer to your question'");
+                promptBuilder.AppendLine("  → DO NOT invent any data!");
+                promptBuilder.AppendLine("  → DO NOT provide examples!");
+                promptBuilder.AppendLine("  → DO NOT suggest anything!");
                 promptBuilder.AppendLine();
-                promptBuilder.AppendLine("STEP 2: ANALYZE THE DATA STRUCTURE");
-                promptBuilder.AppendLine("  - The first line contains column names (tab-separated)");
-                promptBuilder.AppendLine("  - Each subsequent line is a data row (tab-separated values)");
-                promptBuilder.AppendLine("  - Identify which columns contain: names, counts, IDs, values");
+                promptBuilder.AppendLine("✓ REQUIRED:");
+                promptBuilder.AppendLine("  ✓ If you see '📊 Total rows: X' where X > 0 → Data EXISTS, use it!");
+                promptBuilder.AppendLine("  ✓ Use EXACT values from database results - copy character by character");
+                promptBuilder.AppendLine("  ✓ If descriptive data missing → Say 'PrimaryKeyColumn: X (descriptive data not available in results)'");
                 promptBuilder.AppendLine();
-                promptBuilder.AppendLine("STEP 3: ANSWER THE QUESTION");
-                promptBuilder.AppendLine("  - For 'most'/'highest'/'lowest' questions:");
-                promptBuilder.AppendLine("    → Look for COUNT columns or numeric columns");
-                promptBuilder.AppendLine("    → Find the row with the HIGHEST number (for 'most'/'highest')");
-                promptBuilder.AppendLine("    → Find the row with the LOWEST number (for 'lowest')");
-                promptBuilder.AppendLine("    → Extract the name/ID from that row");
-                promptBuilder.AppendLine("  - For 'how much'/'price' questions:");
-                promptBuilder.AppendLine("    → Look for numeric columns (numeric fields containing amounts, values, or quantities)");
-                promptBuilder.AppendLine("    → Extract the numeric value from relevant rows");
-                promptBuilder.AppendLine("  - For 'what is' questions:");
-                promptBuilder.AppendLine("    → Look for text columns (description fields, name fields, or value fields)");
-                promptBuilder.AppendLine("    → Extract the relevant information");
+                promptBuilder.AppendLine("═══════════════════════════════════════════════════════════════");
+                promptBuilder.AppendLine("HOW TO READ DATABASE RESULTS:");
+                promptBuilder.AppendLine("═══════════════════════════════════════════════════════════════");
+                promptBuilder.AppendLine("Format: '📊 Total rows: X | Columns: Col1, Col2, Col3'");
+                promptBuilder.AppendLine("Then: Column names (tab-separated)");
+                promptBuilder.AppendLine("Then: Data rows (tab-separated values matching columns)");
                 promptBuilder.AppendLine();
-                promptBuilder.AppendLine("STEP 4: PROVIDE DIRECT ANSWER");
-                promptBuilder.AppendLine("  - Extract the EXACT value from the database results");
-                promptBuilder.AppendLine("  - Do NOT say 'the data shows' or 'according to the database'");
-                promptBuilder.AppendLine("  - Just provide the answer directly");
+                promptBuilder.AppendLine("ANSWER STRATEGY:");
+                promptBuilder.AppendLine("  1. Check: Do you see ANY rows? (📊 Total rows: X where X > 0)");
+                promptBuilder.AppendLine("     → If YES: Data EXISTS, answer using this data!");
+                promptBuilder.AppendLine("     → If NO (Total rows: 0) OR you see Error messages:");
+                promptBuilder.AppendLine("       → Say ONLY: 'I could not find the answer to your question'");
+                promptBuilder.AppendLine("       → DO NOT provide example data, sample names, or hypothetical values");
+                    promptBuilder.AppendLine("       → DO NOT create fictional examples like 'DescriptiveColumn - AggregationAlias'");
+                promptBuilder.AppendLine("       → Simply state that you could not find the requested information");
                 promptBuilder.AppendLine();
-                promptBuilder.AppendLine("CRITICAL RULES:");
-                promptBuilder.AppendLine("- If database results contain ANY rows, you MUST analyze them - DO NOT skip this step");
-                promptBuilder.AppendLine("- Database results are tab-separated: first line = headers, other lines = data rows");
-                promptBuilder.AppendLine("- For 'most'/'highest' questions: the answer is usually in the FIRST row (already sorted)");
-                promptBuilder.AppendLine("- For 'most'/'highest' questions: if multiple rows exist, find the one with highest count/value");
-                promptBuilder.AppendLine("- Look for columns that match the question: text fields for names, numeric fields for counts, numeric fields for amounts");
-                promptBuilder.AppendLine("- If the question asks for a specific entity name and you see text columns containing names, extract from the row with highest count");
-                promptBuilder.AppendLine("- ONLY use [NO_ANSWER_FOUND] if database results are COMPLETELY EMPTY (0 rows) or TOTALLY IRRELEVANT");
-                promptBuilder.AppendLine("- IMPORTANT: When you cannot find the answer, write a natural, user-friendly message AND add [NO_ANSWER_FOUND] at the end");
-                promptBuilder.AppendLine("- Do NOT explain data sources, methodology, or column names");
-                promptBuilder.AppendLine("- Do NOT repeat the question");
-                promptBuilder.AppendLine("- Keep response SHORT and TO THE POINT");
-
-                if (hasMultipleDatabases && !hasMergedResults)
-                {
-                    promptBuilder.AppendLine();
-                    promptBuilder.AppendLine("╔═══════════════════════════════════════════════════════════════╗");
-                    promptBuilder.AppendLine("║  🚨 MULTIPLE DATABASES - MANUAL DATA CORRELATION REQUIRED 🚨  ║");
-                    promptBuilder.AppendLine("╚═══════════════════════════════════════════════════════════════╝");
-                    promptBuilder.AppendLine();
-                    promptBuilder.AppendLine("The results below come from DIFFERENT databases that could not be automatically merged.");
-                    promptBuilder.AppendLine("You MUST manually correlate the data to answer the question:");
-                    promptBuilder.AppendLine();
-                    promptBuilder.AppendLine("1. Look for common ID columns (e.g., EntityID, ReferenceID, ForeignKeyID)");
-                    promptBuilder.AppendLine("2. Match rows from different databases using these ID columns");
-                    promptBuilder.AppendLine("3. Combine the information to provide a complete answer");
-                    promptBuilder.AppendLine("4. If you find matching IDs, use the corresponding data from each database");
-                    promptBuilder.AppendLine();
-                    promptBuilder.AppendLine("EXAMPLE:");
-                    promptBuilder.AppendLine("  Database A: EntityID=123, CountValue=5");
-                    promptBuilder.AppendLine("  Database B: EntityID=123, NameColumn='Value1', DescriptionColumn='Value2'");
-                    promptBuilder.AppendLine("  → Answer: Value1 Value2 (EntityID 123) has CountValue 5");
-                    promptBuilder.AppendLine();
-                }
-
+                promptBuilder.AppendLine("  2. Question type:");
+                promptBuilder.AppendLine("     → COUNT/Number: Return count value or row count");
+                promptBuilder.AppendLine("     → TOTAL/SUM: Return aggregated numeric value from results");
+                promptBuilder.AppendLine("     → LIST: Return all rows (format as list)");
+                promptBuilder.AppendLine("     → TOP N: Sort by numeric column (descending), take first N");
+                promptBuilder.AppendLine();
+                promptBuilder.AppendLine("  3. Multiple databases:");
+                promptBuilder.AppendLine("     → Find ID columns (ending with 'ID' or 'Id') in ALL results");
+                promptBuilder.AppendLine("     → Match rows by ID values (numeric comparison, then string)");
+                promptBuilder.AppendLine("     → IMPORTANT: Even if column names are different (e.g., ColumnA vs ColumnB),");
+                promptBuilder.AppendLine("       if the VALUES match (e.g., ValueX = ValueX), combine those rows!");
+                promptBuilder.AppendLine("     → Use semantic understanding: Different ID column names may represent the same entity");
+                promptBuilder.AppendLine("     → Combine matched rows (ID + all columns)");
+                promptBuilder.AppendLine("     → If no match: Use each database separately");
                 promptBuilder.AppendLine();
                 promptBuilder.AppendLine($"User Question: {userQuery}");
                 promptBuilder.AppendLine();
-                promptBuilder.AppendLine("Database Results:");
+                promptBuilder.AppendLine("═══════════════════════════════════════════════════════════════");
+                promptBuilder.AppendLine("📊 DATABASE RESULTS - USE ONLY THESE VALUES:");
+                promptBuilder.AppendLine("═══════════════════════════════════════════════════════════════");
+                promptBuilder.AppendLine();
                 promptBuilder.AppendLine(mergedData);
                 promptBuilder.AppendLine();
-                promptBuilder.AppendLine("Direct Answer:");
+                promptBuilder.AppendLine("═══════════════════════════════════════════════════════════════");
+                promptBuilder.AppendLine("🚨🚨🚨 NOW GENERATE YOUR ANSWER:");
+                promptBuilder.AppendLine("  ✓ Use ONLY data from results above");
+                promptBuilder.AppendLine("  ✓ Use EXACT values (no modifications)");
+                promptBuilder.AppendLine("  ✓ If descriptive data missing, say 'PrimaryKeyColumn: X (descriptive data not available)'");
+                promptBuilder.AppendLine();
+                promptBuilder.AppendLine("  ✗✗✗ If NO data is available (Total rows: 0 or Error messages):");
+                promptBuilder.AppendLine("    → Say ONLY: 'I could not find the answer to your question'");
+                promptBuilder.AppendLine("    → DO NOT invent names or descriptive data!");
+                promptBuilder.AppendLine("    → DO NOT invent numbers, counts, or aggregation values!");
+                promptBuilder.AppendLine("    → DO NOT provide example data, sample names, or hypothetical values!");
+                promptBuilder.AppendLine("    → DO NOT create fictional examples!");
+                promptBuilder.AppendLine("    → DO NOT write SQL code examples or suggest SQL queries!");
+                promptBuilder.AppendLine("    → DO NOT write code blocks with ```sql or ```!");
+                promptBuilder.AppendLine();
+                promptBuilder.AppendLine("🚨 REMEMBER: If you don't see data in results above, you MUST say:");
+                promptBuilder.AppendLine("    'I could not find the answer to your question'");
+                promptBuilder.AppendLine("    NOTHING ELSE! NO EXAMPLES! NO SUGGESTIONS!");
+                promptBuilder.AppendLine();
+                promptBuilder.AppendLine("Your answer (start directly, no preamble):");
 
                 var prompt = promptBuilder.ToString();
 
                 var answer = await _aiService.GenerateResponseAsync(prompt, new List<string>());
+
+                answer = RemoveSQLCodeBlocksFromAnswer(answer);
 
                 var sources = queryResults.DatabaseResults
                     .Where(r => r.Value.Success)
@@ -288,7 +305,6 @@ namespace SmartRAG.Services.Database
                     }
                 }
 
-                _logger.LogInformation("Parsed {RowCount} rows with {ColumnCount} columns", result.Rows.Count, result.Columns.Count);
                 return result;
             }
             catch (Exception ex)
@@ -304,23 +320,52 @@ namespace SmartRAG.Services.Database
             try
             {
                 if (parsedResults.Count < 2)
+                {
+                    var mappingBasedRetry = await TryMergeWithMappingWhenTargetMissingAsync(parsedResults);
+                    if (mappingBasedRetry != null && mappingBasedRetry.Rows.Count > 0)
+                    {
+                        _logger.LogInformation("Merge successful using mapping when target database result was missing");
+                        return mappingBasedRetry;
+                    }
                     return null;
-
-                _logger.LogInformation("Attempting smart merge of {Count} databases", parsedResults.Count);
+                }
 
                 var joinableResults = await FindJoinableTablesAsync(parsedResults);
 
                 if (joinableResults == null || joinableResults.Count < 2)
                 {
                     _logger.LogWarning("No joinable relationships found between databases");
+                    
+                    var mappingBasedRetry = await TryMergeWithMappingWhenTargetMissingAsync(parsedResults);
+                    if (mappingBasedRetry != null && mappingBasedRetry.Rows.Count > 0)
+                    {
+                        _logger.LogInformation("Merge successful using mapping when target database result was missing");
+                        return mappingBasedRetry;
+                    }
+                    
                     return null;
                 }
 
                 var merged = PerformInMemoryJoin(joinableResults);
-
-                if (_logger.IsEnabled(LogLevel.Debug))
+                if (merged == null || merged.Rows.Count == 0)
                 {
-                    _logger.LogDebug("Smart merge completed: {RowCount} merged rows", merged?.Rows.Count ?? 0);
+                    _logger.LogWarning("Smart merge failed: No matching rows found after join attempt");
+                    
+                    var retryMerged = await RetryMergeWithFilteredQueryAsync(joinableResults, parsedResults);
+                    if (retryMerged != null && retryMerged.Rows.Count > 0)
+                    {
+                        _logger.LogInformation("Retry merge successful with filtered query");
+                        return retryMerged;
+                    }
+                    
+                    var mappingBasedRetry = await TryMergeWithMappingWhenTargetMissingAsync(parsedResults);
+                    if (mappingBasedRetry != null && mappingBasedRetry.Rows.Count > 0)
+                    {
+                        _logger.LogInformation("Merge successful using mapping when target database result was missing");
+                        return mappingBasedRetry;
+                    }
+                    
+                    return null;
                 }
                 return merged;
             }
@@ -337,6 +382,13 @@ namespace SmartRAG.Services.Database
             await Task.CompletedTask;
 
             var joinable = new List<(ParsedQueryResult Result, string JoinColumn)>();
+
+            var mappingBasedMatches = await FindMappingBasedMatchesAsync(parsedResults);
+            if (mappingBasedMatches != null && mappingBasedMatches.Count >= 2)
+            {
+                _logger.LogInformation("Found mapping-based matches across {Count} databases", mappingBasedMatches.Count);
+                return mappingBasedMatches;
+            }
 
             var allJoinCandidates = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
 
@@ -359,25 +411,228 @@ namespace SmartRAG.Services.Database
 
             var commonJoinColumns = allJoinCandidates.Where(kvp => kvp.Value.Count >= 2).ToList();
 
-            if (commonJoinColumns.Count == 0)
+            if (commonJoinColumns.Count > 0)
             {
-                _logger.LogWarning("No common join columns found across databases");
-                return null;
+                var bestJoinColumn = commonJoinColumns.OrderByDescending(kvp => kvp.Value.Count).First().Key;
+
+                foreach (var kvp in parsedResults)
+                {
+                    var result = kvp.Value;
+
+                    if (result.Columns.Any(col => col.Equals(bestJoinColumn, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        joinable.Add((result, bestJoinColumn));
+                    }
+                }
+
+                if (joinable.Count >= 2)
+                {
+                    _logger.LogInformation("Found common join column: {JoinColumn} across {Count} databases", bestJoinColumn, joinable.Count);
+                    return joinable;
+                }
             }
 
-            var bestJoinColumn = commonJoinColumns.OrderByDescending(kvp => kvp.Value.Count).First().Key;
+            var valueBasedMatches = FindValueBasedMatches(parsedResults);
+            if (valueBasedMatches != null && valueBasedMatches.Count >= 2)
+            {
+                _logger.LogInformation("Found value-based matches across {Count} databases", valueBasedMatches.Count);
+                return valueBasedMatches;
+            }
+
+            _logger.LogWarning("No joinable relationships found between databases");
+            return null;
+        }
+
+        private async Task<List<(ParsedQueryResult Result, string JoinColumn)>> FindMappingBasedMatchesAsync(
+            Dictionary<string, ParsedQueryResult> parsedResults)
+        {
+            try
+            {
+                var connections = await _connectionManager.GetAllConnectionsAsync();
+                var databaseNameMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var kvp in parsedResults)
+                {
+                    var result = kvp.Value;
+                    var connection = connections.FirstOrDefault(c =>
+                        (c.Name ?? string.Empty).Equals(result.DatabaseName, StringComparison.OrdinalIgnoreCase));
+                    if (connection != null)
+                    {
+                        databaseNameMap[result.DatabaseId] = connection.Name ?? result.DatabaseName;
+                    }
+                }
+
+                var mappings = new List<(string SourceDatabaseId, string SourceColumn, string TargetDatabaseId, string TargetColumn)>();
+
+                foreach (var sourceKvp in parsedResults)
+                {
+                    var sourceResult = sourceKvp.Value;
+                    if (!databaseNameMap.TryGetValue(sourceResult.DatabaseId, out var sourceDbName))
+                        continue;
+
+                    var sourceConnection = connections.FirstOrDefault(c =>
+                        (c.Name ?? string.Empty).Equals(sourceDbName, StringComparison.OrdinalIgnoreCase));
+                    if (sourceConnection?.CrossDatabaseMappings == null)
+                        continue;
+
+                    foreach (var mapping in sourceConnection.CrossDatabaseMappings)
+                    {
+                        if (!mapping.SourceDatabase.Equals(sourceDbName, StringComparison.OrdinalIgnoreCase))
+                            continue;
+
+                        if (!sourceResult.Columns.Contains(mapping.SourceColumn, StringComparer.OrdinalIgnoreCase))
+                        {
+                            _logger.LogDebug("FindMappingBasedMatchesAsync: Source column '{SourceColumn}' not found in result columns: {AvailableColumns}",
+                                mapping.SourceColumn, string.Join(", ", sourceResult.Columns));
+                            continue;
+                        }
+
+                        var targetResultMatch = parsedResults.Values.FirstOrDefault(r =>
+                            (databaseNameMap.TryGetValue(r.DatabaseId, out var targetDbName) &&
+                             targetDbName.Equals(mapping.TargetDatabase, StringComparison.OrdinalIgnoreCase)));
+
+                        if (targetResultMatch != null &&
+                            targetResultMatch.Columns.Contains(mapping.TargetColumn, StringComparer.OrdinalIgnoreCase))
+                        {
+                            mappings.Add((sourceResult.DatabaseId, mapping.SourceColumn,
+                                         targetResultMatch.DatabaseId, mapping.TargetColumn));
+                        }
+                    }
+                }
+
+                if (mappings.Count == 0)
+                {
+                    _logger.LogWarning("FindMappingBasedMatchesAsync: No mappings found. Source columns available: {SourceColumns}, Target columns available: {TargetColumns}",
+                        string.Join(", ", parsedResults.Values.SelectMany(r => r.Columns).Distinct()),
+                        string.Join(", ", parsedResults.Values.SelectMany(r => r.Columns).Distinct()));
+                    return null;
+                }
+
+                _logger.LogDebug("FindMappingBasedMatchesAsync: Found {Count} potential mappings", mappings.Count);
+
+                var bestMapping = mappings.GroupBy(m => new { m.SourceDatabaseId, m.TargetDatabaseId })
+                    .OrderByDescending(g => g.Count())
+                    .FirstOrDefault();
+
+                if (bestMapping == null)
+                    return null;
+
+                _logger.LogInformation("FindMappingBasedMatchesAsync: Using mapping {SourceDb}.[{SourceCol}] → {TargetDb}.[{TargetCol}]",
+                    parsedResults[bestMapping.First().SourceDatabaseId].DatabaseName,
+                    bestMapping.First().SourceColumn,
+                    parsedResults[bestMapping.First().TargetDatabaseId].DatabaseName,
+                    bestMapping.First().TargetColumn);
+
+                var firstMapping = bestMapping.First();
+                var joinable = new List<(ParsedQueryResult Result, string JoinColumn)>();
+
+                if (parsedResults.TryGetValue(firstMapping.SourceDatabaseId, out var sourceResultForJoin))
+                {
+                    joinable.Add((sourceResultForJoin, firstMapping.SourceColumn));
+                }
+
+                if (parsedResults.TryGetValue(firstMapping.TargetDatabaseId, out var targetResultForJoin))
+                {
+                    joinable.Add((targetResultForJoin, firstMapping.TargetColumn));
+                }
+
+                return joinable.Count >= 2 ? joinable : null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error finding mapping-based matches");
+                return null;
+            }
+        }
+
+        private List<(ParsedQueryResult Result, string JoinColumn)> FindValueBasedMatches(
+            Dictionary<string, ParsedQueryResult> parsedResults)
+        {
+            var allIdColumns = new List<(string DatabaseId, string DatabaseName, string ColumnName, HashSet<string> Values)>();
 
             foreach (var kvp in parsedResults)
             {
                 var result = kvp.Value;
+                var idColumns = result.Columns.Where(col =>
+                    col.EndsWith("id", StringComparison.OrdinalIgnoreCase)).ToList();
 
-                if (result.Columns.Any(col => col.Equals(bestJoinColumn, StringComparison.OrdinalIgnoreCase)))
+                foreach (var idCol in idColumns)
                 {
-                    joinable.Add((result, bestJoinColumn));
+                    var values = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    foreach (var row in result.Rows)
+                    {
+                        if (row.TryGetValue(idCol, out var value) && !string.IsNullOrEmpty(value) && value != "NULL")
+                        {
+                            var normalizedValue = value.Trim();
+                            if (TryParseNumeric(normalizedValue, out _))
+                            {
+                                values.Add(normalizedValue);
+                            }
+                        }
+                    }
+
+                    if (values.Count > 0)
+                    {
+                        allIdColumns.Add((result.DatabaseId, result.DatabaseName, idCol, values));
+                    }
                 }
             }
 
+            if (allIdColumns.Count < 2)
+                return null;
+
+            var bestMatch = FindBestValueBasedMatch(allIdColumns);
+            if (bestMatch == null)
+                return null;
+
+            var joinable = new List<(ParsedQueryResult Result, string JoinColumn)>();
+            foreach (var match in bestMatch)
+            {
+                var result = parsedResults[match.DatabaseId];
+                joinable.Add((result, match.ColumnName));
+            }
+
             return joinable.Count >= 2 ? joinable : null;
+        }
+
+        private List<(string DatabaseId, string ColumnName)> FindBestValueBasedMatch(
+            List<(string DatabaseId, string DatabaseName, string ColumnName, HashSet<string> Values)> allIdColumns)
+        {
+            var bestMatch = new List<(string DatabaseId, string ColumnName)>();
+            int maxMatches = 0;
+
+            for (int i = 0; i < allIdColumns.Count; i++)
+            {
+                for (int j = i + 1; j < allIdColumns.Count; j++)
+                {
+                    var col1 = allIdColumns[i];
+                    var col2 = allIdColumns[j];
+
+                    if (col1.DatabaseId == col2.DatabaseId)
+                        continue;
+
+                    var intersection = col1.Values.Intersect(col2.Values, StringComparer.OrdinalIgnoreCase).ToList();
+                    var matchCount = intersection.Count;
+
+                    if (matchCount > maxMatches && matchCount >= Math.Min(2, Math.Min(col1.Values.Count, col2.Values.Count) * 0.1))
+                    {
+                        maxMatches = matchCount;
+                        bestMatch = new List<(string DatabaseId, string ColumnName)>
+                        {
+                            (col1.DatabaseId, col1.ColumnName),
+                            (col2.DatabaseId, col2.ColumnName)
+                        };
+                    }
+                }
+            }
+
+            if (maxMatches == 0)
+                return null;
+
+            _logger.LogInformation("Found value-based match: {MatchCount} matching values between {Col1} and {Col2}",
+                maxMatches, bestMatch[0].ColumnName, bestMatch[1].ColumnName);
+
+            return bestMatch;
         }
 
         private ParsedQueryResult PerformInMemoryJoin(List<(ParsedQueryResult Result, string JoinColumn)> joinableResults)
@@ -388,11 +643,18 @@ namespace SmartRAG.Services.Database
             var baseResult = joinableResults[0].Result;
             var baseJoinColumn = joinableResults[0].JoinColumn;
 
+            _logger.LogDebug("PerformInMemoryJoin: Base database={Database}, Base column={Column}, Base rows={RowCount}",
+                baseResult.DatabaseName, baseJoinColumn, baseResult.Rows.Count);
+
             var mergedColumns = new List<string>(baseResult.Columns);
 
             for (int i = 1; i < joinableResults.Count; i++)
             {
                 var otherResult = joinableResults[i].Result;
+                var otherJoinColumn = joinableResults[i].JoinColumn;
+                _logger.LogDebug("PerformInMemoryJoin: Other database={Database}, Other column={Column}, Other rows={RowCount}",
+                    otherResult.DatabaseName, otherJoinColumn, otherResult.Rows.Count);
+                
                 foreach (var col in otherResult.Columns)
                 {
                     if (!mergedColumns.Contains(col, StringComparer.OrdinalIgnoreCase))
@@ -408,10 +670,18 @@ namespace SmartRAG.Services.Database
                 DatabaseName = "Merged (" + string.Join(" + ", joinableResults.Select(j => j.Result.DatabaseName)) + ")"
             };
 
+            int processedRows = 0;
+            int matchedRows = 0;
+            int skippedRows = 0;
+
             foreach (var baseRow in baseResult.Rows)
             {
+                processedRows++;
                 if (!baseRow.TryGetValue(baseJoinColumn, out var joinValue) || string.IsNullOrEmpty(joinValue) || joinValue == "NULL")
+                {
+                    skippedRows++;
                     continue;
+                }
 
                 var mergedRow = new Dictionary<string, string>(baseRow, StringComparer.OrdinalIgnoreCase);
                 bool allJoinsSuccessful = true;
@@ -426,21 +696,7 @@ namespace SmartRAG.Services.Database
                         if (!row.TryGetValue(otherJoinColumn, out var otherJoinValue) || string.IsNullOrEmpty(otherJoinValue) || otherJoinValue == "NULL")
                             return false;
 
-                        // Try exact string match first (case-insensitive)
-                        if (joinValue.Equals(otherJoinValue, StringComparison.OrdinalIgnoreCase))
-                            return true;
-
-                        // Try numeric comparison (handles "123" vs "123.0" vs "123 ")
-                        if (TryParseNumeric(joinValue, out var baseNum) && TryParseNumeric(otherJoinValue, out var otherNum))
-                        {
-                            return baseNum == otherNum;
-                        }
-
-                        // Try trimmed comparison (handles whitespace differences)
-                        if (joinValue.Trim().Equals(otherJoinValue.Trim(), StringComparison.OrdinalIgnoreCase))
-                            return true;
-
-                        return false;
+                        return AreValuesEqual(joinValue, otherJoinValue);
                     });
 
                     if (matchingRow != null)
@@ -456,23 +712,430 @@ namespace SmartRAG.Services.Database
                     else
                     {
                         allJoinsSuccessful = false;
-                        break; // No match - skip this base row (INNER JOIN behavior)
+                        break;
                     }
                 }
 
                 if (allJoinsSuccessful)
                 {
                     merged.Rows.Add(mergedRow);
+                    matchedRows++;
                 }
             }
 
-            return merged;
+            _logger.LogInformation("PerformInMemoryJoin completed: Processed={Processed}, Matched={Matched}, Skipped={Skipped}, Final rows={FinalRows}",
+                processedRows, matchedRows, skippedRows, merged.Rows.Count);
+
+            if (merged.Rows.Count == 0)
+            {
+                _logger.LogWarning("PerformInMemoryJoin: No matching rows found. Base values sample: {SampleValues}",
+                    string.Join(", ", baseResult.Rows.Take(5).Select(r => r.TryGetValue(baseJoinColumn, out var v) ? v : "NULL")));
+            }
+
+            return merged.Rows.Count > 0 ? merged : null;
+        }
+
+        private async Task<ParsedQueryResult> RetryMergeWithFilteredQueryAsync(
+            List<(ParsedQueryResult Result, string JoinColumn)> joinableResults,
+            Dictionary<string, ParsedQueryResult> allParsedResults)
+        {
+            try
+            {
+                if (joinableResults.Count < 2)
+                {
+                    _logger.LogDebug("RetryMergeWithFilteredQueryAsync: Not enough joinable results ({Count})", joinableResults.Count);
+                    return null;
+                }
+
+                var aggregationResult = joinableResults.FirstOrDefault(j => 
+                    j.Result.Columns.Any(c => c.IndexOf("Count", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                              c.IndexOf("Sum", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                              c.IndexOf("Total", StringComparison.OrdinalIgnoreCase) >= 0));
+                ParsedQueryResult descriptiveResult = null;
+                foreach (var j in joinableResults)
+                {
+                    foreach (var col in j.Result.Columns)
+                    {
+                        if (await IsDescriptiveColumnAsync(col, j.Result, j.Result.DatabaseId))
+                        {
+                            descriptiveResult = j.Result;
+                            break;
+                        }
+                    }
+                    if (descriptiveResult != null)
+                        break;
+                }
+                
+                var descriptiveResultTuple = joinableResults.FirstOrDefault(j => j.Result == descriptiveResult);
+
+                if (aggregationResult.Result == null || descriptiveResultTuple.Result == null)
+                {
+                    _logger.LogDebug("RetryMergeWithFilteredQueryAsync: aggregationResult={Agg}, descriptiveResult={Desc}",
+                        aggregationResult.Result != null ? aggregationResult.Result.DatabaseName : "null",
+                        descriptiveResultTuple.Result != null ? descriptiveResultTuple.Result.DatabaseName : "null");
+                    return null;
+                }
+
+                var aggregationJoinColumn = aggregationResult.JoinColumn;
+                var descriptiveJoinColumn = descriptiveResultTuple.JoinColumn;
+
+                var idValues = new HashSet<string>();
+                foreach (var row in aggregationResult.Result.Rows)
+                {
+                    if (row.TryGetValue(aggregationJoinColumn, out var value) && 
+                        !string.IsNullOrEmpty(value) && value != "NULL")
+                    {
+                        idValues.Add(value.Trim());
+                    }
+                }
+
+                if (idValues.Count == 0)
+                {
+                    _logger.LogDebug("RetryMergeWithFilteredQueryAsync: No ID values found in aggregation result");
+                    return null;
+                }
+
+                _logger.LogInformation("RetryMergeWithFilteredQueryAsync: Found {Count} ID values: {Ids}",
+                    idValues.Count, string.Join(", ", idValues.Take(10)));
+
+                var connections = await _connectionManager.GetAllConnectionsAsync();
+                var descriptiveConnection = connections.FirstOrDefault(c =>
+                    (c.Name ?? string.Empty).Equals(descriptiveResultTuple.Result.DatabaseName, StringComparison.OrdinalIgnoreCase));
+
+                if (descriptiveConnection == null)
+                {
+                    _logger.LogWarning("RetryMergeWithFilteredQueryAsync: Connection not found for {Database}",
+                        descriptiveResultTuple.Result.DatabaseName);
+                    return null;
+                }
+
+                CrossDatabaseMapping mapping = null;
+                foreach (var connection in connections)
+                {
+                    if (connection?.CrossDatabaseMappings == null)
+                        continue;
+                    
+                    var foundMapping = connection.CrossDatabaseMappings.FirstOrDefault(m =>
+                        m.TargetDatabase.Equals(descriptiveResultTuple.Result.DatabaseName, StringComparison.OrdinalIgnoreCase) &&
+                        m.TargetColumn.Equals(descriptiveJoinColumn, StringComparison.OrdinalIgnoreCase));
+                    
+                    if (foundMapping != null)
+                    {
+                        mapping = foundMapping;
+                        break;
+                    }
+                }
+
+                if (mapping == null)
+                {
+                    _logger.LogWarning("RetryMergeWithFilteredQueryAsync: Mapping not found for {Database}.{Column} in any connection",
+                        descriptiveResultTuple.Result.DatabaseName, descriptiveJoinColumn);
+                    return null;
+                }
+                
+                _logger.LogInformation("RetryMergeWithFilteredQueryAsync: Found mapping {SourceDb}.{SourceTable}.{SourceCol} → {TargetDb}.{TargetTable}.{TargetCol}",
+                    mapping.SourceDatabase, mapping.SourceTable, mapping.SourceColumn,
+                    mapping.TargetDatabase, mapping.TargetTable, mapping.TargetColumn);
+
+                var tableName = mapping.TargetTable;
+                var numericIds = idValues.Where(v => TryParseNumeric(v, out _)).ToList();
+                
+                if (numericIds.Count == 0)
+                    return null;
+
+                var idList = string.Join(", ", numericIds);
+                
+                var descriptiveColumns = new List<string>();
+                foreach (var col in descriptiveResultTuple.Result.Columns)
+                {
+                    if (!col.Equals(descriptiveJoinColumn, StringComparison.OrdinalIgnoreCase) &&
+                        await IsDescriptiveColumnAsync(col, descriptiveResultTuple.Result, descriptiveResultTuple.Result.DatabaseId))
+                    {
+                        descriptiveColumns.Add(col);
+                        if (descriptiveColumns.Count >= 5)
+                            break;
+                    }
+                }
+
+                if (descriptiveColumns.Count == 0)
+                {
+                    descriptiveColumns = descriptiveResultTuple.Result.Columns
+                        .Where(c => !c.Equals(descriptiveJoinColumn, StringComparison.OrdinalIgnoreCase))
+                        .Take(5)
+                        .ToList();
+                }
+
+                var selectColumns = new List<string> { descriptiveJoinColumn };
+                selectColumns.AddRange(descriptiveColumns);
+                
+                string filterQuery;
+                if (descriptiveConnection.DatabaseType == SmartRAG.Enums.DatabaseType.PostgreSQL)
+                {
+                    var quotedTableName = string.Join(".", tableName.Split('.').Select(p => $"\"{p}\""));
+                    var quotedColumns = selectColumns.Select(c => $"\"{c}\"");
+                    filterQuery = $"SELECT {string.Join(", ", quotedColumns)} FROM {quotedTableName} WHERE \"{descriptiveJoinColumn}\" IN ({idList})";
+                }
+                else if (descriptiveConnection.DatabaseType == SmartRAG.Enums.DatabaseType.SqlServer)
+                {
+                    filterQuery = $"SELECT {string.Join(", ", selectColumns)} FROM {tableName} WHERE {descriptiveJoinColumn} IN ({idList})";
+                }
+                else
+                {
+                    filterQuery = $"SELECT {string.Join(", ", selectColumns)} FROM {tableName} WHERE {descriptiveJoinColumn} IN ({idList})";
+                }
+
+                _logger.LogInformation("Retrying merge with filtered query: {Query}", filterQuery);
+
+                var maxRows = descriptiveConnection.MaxRowsPerQuery > 0 ? descriptiveConnection.MaxRowsPerQuery : 100;
+                var filteredResult = await _databaseParser.ExecuteQueryAsync(
+                    descriptiveConnection.ConnectionString,
+                    filterQuery,
+                    descriptiveConnection.DatabaseType,
+                    maxRows);
+
+                var filteredParsed = ParseQueryResult(filteredResult);
+                if (filteredParsed == null || filteredParsed.Rows.Count == 0)
+                    return null;
+
+                filteredParsed.DatabaseName = descriptiveResultTuple.Result.DatabaseName;
+                filteredParsed.DatabaseId = descriptiveResultTuple.Result.DatabaseId;
+
+                var retryJoinable = new List<(ParsedQueryResult Result, string JoinColumn)>
+                {
+                    (aggregationResult.Result, aggregationJoinColumn),
+                    (filteredParsed, descriptiveJoinColumn)
+                };
+
+                return PerformInMemoryJoin(retryJoinable);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error in retry merge with filtered query");
+                return null;
+            }
+        }
+
+        private async Task<ParsedQueryResult> TryMergeWithMappingWhenTargetMissingAsync(
+            Dictionary<string, ParsedQueryResult> parsedResults)
+        {
+            try
+            {
+                if (parsedResults.Count == 0)
+                    return null;
+
+                var connections = await _connectionManager.GetAllConnectionsAsync();
+                var databaseNameMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+                foreach (var kvp in parsedResults)
+                {
+                    var result = kvp.Value;
+                    var connection = connections.FirstOrDefault(c =>
+                        (c.Name ?? string.Empty).Equals(result.DatabaseName, StringComparison.OrdinalIgnoreCase));
+                    if (connection != null)
+                    {
+                        databaseNameMap[result.DatabaseId] = connection.Name ?? result.DatabaseName;
+                    }
+                }
+
+                foreach (var sourceKvp in parsedResults)
+                {
+                    var sourceResult = sourceKvp.Value;
+                    if (!databaseNameMap.TryGetValue(sourceResult.DatabaseId, out var sourceDbName))
+                        continue;
+
+                    var sourceConnection = connections.FirstOrDefault(c =>
+                        (c.Name ?? string.Empty).Equals(sourceDbName, StringComparison.OrdinalIgnoreCase));
+                    if (sourceConnection?.CrossDatabaseMappings == null)
+                        continue;
+
+                    foreach (var mapping in sourceConnection.CrossDatabaseMappings)
+                    {
+                        if (!mapping.SourceDatabase.Equals(sourceDbName, StringComparison.OrdinalIgnoreCase))
+                            continue;
+
+                        if (!sourceResult.Columns.Any(c => c.Equals(mapping.SourceColumn, StringComparison.OrdinalIgnoreCase)))
+                            continue;
+
+                        var targetConnection = connections.FirstOrDefault(c =>
+                            (c.Name ?? string.Empty).Equals(mapping.TargetDatabase, StringComparison.OrdinalIgnoreCase));
+                        if (targetConnection == null)
+                            continue;
+
+                        var hasTargetResult = parsedResults.Values.Any(r =>
+                            databaseNameMap.TryGetValue(r.DatabaseId, out var targetDbName) &&
+                            targetDbName.Equals(mapping.TargetDatabase, StringComparison.OrdinalIgnoreCase));
+
+                        if (hasTargetResult)
+                            continue;
+
+                        _logger.LogInformation("Found mapping {SourceDb}.{SourceTable}.{SourceCol} → {TargetDb}.{TargetTable}.{TargetCol}, but target database result is missing. Generating filtered query...",
+                            mapping.SourceDatabase, mapping.SourceTable, mapping.SourceColumn,
+                            mapping.TargetDatabase, mapping.TargetTable, mapping.TargetColumn);
+
+                        var idValues = new HashSet<string>();
+                        foreach (var row in sourceResult.Rows)
+                        {
+                            if (row.TryGetValue(mapping.SourceColumn, out var value) &&
+                                !string.IsNullOrEmpty(value) && value != "NULL")
+                            {
+                                idValues.Add(value.Trim());
+                            }
+                        }
+
+                        if (idValues.Count == 0)
+                            continue;
+
+                        var numericIds = idValues.Where(v => TryParseNumeric(v, out _)).ToList();
+                        if (numericIds.Count == 0)
+                            continue;
+
+                        var idList = string.Join(", ", numericIds);
+
+                        var targetJoinColumn = mapping.TargetColumn;
+                        var tableName = mapping.TargetTable;
+
+                        var selectColumns = new List<string> { targetJoinColumn };
+                        
+                        var testQuery = targetConnection.DatabaseType == SmartRAG.Enums.DatabaseType.PostgreSQL
+                            ? $"SELECT * FROM {tableName} LIMIT 1"
+                            : targetConnection.DatabaseType == SmartRAG.Enums.DatabaseType.SqlServer
+                            ? $"SELECT TOP 1 * FROM {tableName}"
+                            : $"SELECT * FROM {tableName} LIMIT 1";
+
+                        try
+                        {
+                            var testResult = await _databaseParser.ExecuteQueryAsync(
+                                targetConnection.ConnectionString,
+                                testQuery,
+                                targetConnection.DatabaseType,
+                                1);
+
+                            var testParsed = ParseQueryResult(testResult);
+                            if (testParsed != null && testParsed.Columns.Any())
+                            {
+                                testParsed.DatabaseName = mapping.TargetDatabase;
+                                
+                                var descriptiveColumns = new List<string>();
+                                var targetDatabaseId = await _connectionManager.GetDatabaseIdAsync(targetConnection);
+                                
+                                foreach (var col in testParsed.Columns)
+                                {
+                                    if (!col.Equals(targetJoinColumn, StringComparison.OrdinalIgnoreCase) &&
+                                        await IsDescriptiveColumnAsync(col, testParsed, targetDatabaseId))
+                                    {
+                                        descriptiveColumns.Add(col);
+                                        if (descriptiveColumns.Count >= 5)
+                                            break;
+                                    }
+                                }
+
+                                if (descriptiveColumns.Any())
+                                {
+                                    selectColumns.AddRange(descriptiveColumns);
+                                }
+                                else
+                                {
+                                    var fallbackColumns = testParsed.Columns
+                                        .Where(c => !c.Equals(targetJoinColumn, StringComparison.OrdinalIgnoreCase))
+                                        .Take(5)
+                                        .ToList();
+                                    selectColumns.AddRange(fallbackColumns);
+                                }
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.LogWarning(ex, "Could not determine descriptive columns for table {Table}, using join column only", tableName);
+                        }
+                        
+                        selectColumns = selectColumns.Distinct().ToList();
+
+                        string filterQuery;
+                        if (targetConnection.DatabaseType == SmartRAG.Enums.DatabaseType.PostgreSQL)
+                        {
+                            var quotedColumns = selectColumns.Select(c => $"\"{c}\"");
+                            filterQuery = $"SELECT {string.Join(", ", quotedColumns)} FROM {tableName} WHERE \"{targetJoinColumn}\" IN ({idList}) LIMIT 100";
+                        }
+                        else if (targetConnection.DatabaseType == SmartRAG.Enums.DatabaseType.SqlServer)
+                        {
+                            filterQuery = $"SELECT TOP 100 {string.Join(", ", selectColumns)} FROM {tableName} WHERE {targetJoinColumn} IN ({idList})";
+                        }
+                        else
+                        {
+                            filterQuery = $"SELECT {string.Join(", ", selectColumns)} FROM {tableName} WHERE {targetJoinColumn} IN ({idList}) LIMIT 100";
+                        }
+
+                        _logger.LogInformation("Executing filtered query for missing target database: {Query}", filterQuery);
+
+                        var maxRows = targetConnection.MaxRowsPerQuery > 0 ? targetConnection.MaxRowsPerQuery : 100;
+                        var filteredResult = await _databaseParser.ExecuteQueryAsync(
+                            targetConnection.ConnectionString,
+                            filterQuery,
+                            targetConnection.DatabaseType,
+                            maxRows);
+
+                        var filteredParsed = ParseQueryResult(filteredResult);
+                        if (filteredParsed == null || filteredParsed.Rows.Count == 0)
+                            continue;
+
+                        filteredParsed.DatabaseName = mapping.TargetDatabase;
+                        filteredParsed.DatabaseId = targetConnection.Name ?? mapping.TargetDatabase;
+
+                        var joinableResults = new List<(ParsedQueryResult Result, string JoinColumn)>
+                        {
+                            (sourceResult, mapping.SourceColumn),
+                            (filteredParsed, targetJoinColumn)
+                        };
+
+                        var merged = PerformInMemoryJoin(joinableResults);
+                        if (merged != null && merged.Rows.Count > 0)
+                        {
+                            _logger.LogInformation("Successfully merged results using mapping when target database was missing. Merged {RowCount} rows.", merged.Rows.Count);
+                            return merged;
+                        }
+                    }
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Error trying merge with mapping when target missing");
+                return null;
+            }
+        }
+
+        private static bool AreValuesEqual(string value1, string value2)
+        {
+            if (string.IsNullOrWhiteSpace(value1) || string.IsNullOrWhiteSpace(value2))
+                return false;
+
+            var v1 = value1.Trim();
+            var v2 = value2.Trim();
+
+            if (v1.Equals(v2, StringComparison.OrdinalIgnoreCase))
+                return true;
+
+            if (TryParseNumeric(v1, out var num1) && TryParseNumeric(v2, out var num2))
+            {
+                return Math.Abs(num1 - num2) < 0.0001;
+            }
+
+            return false;
         }
 
         private string FormatParsedResult(ParsedQueryResult result)
         {
             var sb = new StringBuilder();
 
+            if (result.Rows.Count == 0)
+            {
+                sb.AppendLine("No rows found");
+                return sb.ToString();
+            }
+
+            sb.AppendLine($"📊 Total rows: {result.Rows.Count} | Columns: {string.Join(", ", result.Columns)}");
+            sb.AppendLine();
             sb.AppendLine(string.Join("\t", result.Columns));
 
             foreach (var row in result.Rows)
@@ -480,8 +1143,6 @@ namespace SmartRAG.Services.Database
                 var values = result.Columns.Select(col => row.TryGetValue(col, out var val) ? val : "NULL");
                 sb.AppendLine(string.Join("\t", values));
             }
-
-            sb.AppendLine($"\nMerged rows: {result.Rows.Count}");
 
             return sb.ToString();
         }
@@ -492,7 +1153,9 @@ namespace SmartRAG.Services.Database
             {
                 var result = kvp.Value;
                 sb.AppendLine($"=== {result.DatabaseName} ===");
+                sb.AppendLine("🚨 CRITICAL: Use ONLY the data shown below. DO NOT invent any names or values!");
                 sb.AppendLine(FormatParsedResult(result));
+                sb.AppendLine("🚨 REMINDER: If names are not shown above, use ID only - NEVER invent names!");
                 sb.AppendLine();
             }
         }
@@ -507,8 +1170,7 @@ namespace SmartRAG.Services.Database
                 var result = kvp.Value;
                 foreach (var col in result.Columns)
                 {
-                    if (col.EndsWith("id", StringComparison.OrdinalIgnoreCase) ||
-                        col.EndsWith("ID", StringComparison.OrdinalIgnoreCase))
+                    if (col.EndsWith("id", StringComparison.OrdinalIgnoreCase))
                     {
                         if (!allIdColumns.ContainsKey(col))
                         {
@@ -572,7 +1234,9 @@ namespace SmartRAG.Services.Database
             {
                 var result = kvp.Value;
                 sb.AppendLine($"=== {result.DatabaseName} ===");
+                sb.AppendLine("🚨 CRITICAL: Use ONLY the data shown below. DO NOT invent any names or values!");
                 sb.AppendLine(FormatParsedResult(result));
+                sb.AppendLine("🚨 REMINDER: If names are not shown above, use ID only - NEVER invent names!");
 
                 // Add join hints if common ID columns exist
                 if (commonIdColumns.Any())
@@ -627,7 +1291,7 @@ namespace SmartRAG.Services.Database
                     }
                     sb.AppendLine();
                     sb.AppendLine("CRITICAL: Use the ID values listed above to match rows across databases.");
-                    sb.AppendLine("For example, if EntityID=123 appears in both databases, combine those rows.");
+                    sb.AppendLine("For example, if PrimaryKeyColumn=ValueX appears in both databases, combine those rows.");
                 }
                 else
                 {
@@ -641,8 +1305,8 @@ namespace SmartRAG.Services.Database
                     sb.AppendLine();
                     sb.AppendLine("SOLUTION:");
                     sb.AppendLine("Look at the ID values in each result above.");
-                    sb.AppendLine("If one result has an ID (e.g., EntityID=123), use that ID to filter the other database.");
-                    sb.AppendLine("For example: If Database1 has EntityID=123, Database2 should query WHERE EntityID=123");
+                    sb.AppendLine("If one result has an ID (e.g., PrimaryKeyColumn=ValueX), use that ID to filter the other database.");
+                    sb.AppendLine("For example: If Database1 has PrimaryKeyColumn=ValueX, Database2 should query WHERE PrimaryKeyColumn=ValueX");
                 }
 
                 sb.AppendLine();
@@ -653,6 +1317,85 @@ namespace SmartRAG.Services.Database
                 sb.AppendLine();
             }
         }
+
+        /// <summary>
+        /// Determines if a column is descriptive (contains text data) using schema-based detection and fallback patterns
+        /// </summary>
+        private async Task<bool> IsDescriptiveColumnAsync(string columnName, ParsedQueryResult result, string databaseId)
+        {
+            var columnNameLower = columnName.ToLowerInvariant();
+            
+            if (NonDescriptivePatterns.Any(pattern => columnNameLower.Contains(pattern.ToLowerInvariant())))
+            {
+                return false;
+            }
+            
+            try
+            {
+                var schema = await _schemaAnalyzer.GetSchemaAsync(databaseId);
+                if (schema != null)
+                {
+                    foreach (var table in schema.Tables)
+                    {
+                        var column = table.Columns.FirstOrDefault(c => 
+                            c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase));
+                        
+                        if (column != null)
+                        {
+                            var dataTypeLower = column.DataType.ToLowerInvariant();
+                            
+                            if (column.IsPrimaryKey || column.IsForeignKey)
+                            {
+                                return false;
+                            }
+                            
+                            var textTypes = new[] { "varchar", "nvarchar", "char", "nchar", "text", "ntext", "string" };
+                            if (textTypes.Any(type => dataTypeLower.Contains(type)))
+                            {
+                                if (column.MaxLength.HasValue && column.MaxLength.Value > 10)
+                                {
+                                    return true;
+                                }
+                                if (!column.MaxLength.HasValue)
+                                {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Error checking schema for column {ColumnName} in database {DatabaseId}", columnName, databaseId);
+            }
+            
+            if (DescriptiveColumnPatterns.Any(pattern => 
+                columnNameLower.Contains(pattern.ToLowerInvariant())))
+            {
+                return true;
+            }
+            
+            if (result.Rows.Count > 0)
+            {
+                var sampleValues = result.Rows.Take(10)
+                    .Where(row => row.TryGetValue(columnName, out var val) && !string.IsNullOrEmpty(val) && val != "NULL")
+                    .Select(row => row[columnName])
+                    .ToList();
+                
+                if (sampleValues.Count > 0)
+                {
+                    var nonNumericCount = sampleValues.Count(v => !TryParseNumeric(v, out _));
+                    if (nonNumericCount > sampleValues.Count * 0.7)
+                    {
+                        return true;
+                    }
+                }
+            }
+            
+            return false;
+        }
+        
 
         /// <summary>
         /// Attempts to parse a string value as a numeric value for comparison
@@ -694,6 +1437,46 @@ namespace SmartRAG.Services.Database
             }
 
             return tables;
+        }
+
+        private static string RemoveSQLCodeBlocksFromAnswer(string answer)
+        {
+            if (string.IsNullOrWhiteSpace(answer))
+                return answer;
+
+            var result = answer;
+
+            result = System.Text.RegularExpressions.Regex.Replace(
+                result,
+                @"```sql\s*[\s\S]*?```",
+                string.Empty,
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            result = System.Text.RegularExpressions.Regex.Replace(
+                result,
+                @"```\s*[\s\S]*?```",
+                string.Empty,
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            result = System.Text.RegularExpressions.Regex.Replace(
+                result,
+                @"SELECT\s+[\w\s,\.\(\)\*]+\s+FROM\s+[\w\s,\.\(\)]+(?:\s+WHERE\s+[\w\s,\.\(\)=<>'""]+)?(?:\s+GROUP\s+BY\s+[\w\s,\.\(\)]+)?(?:\s+ORDER\s+BY\s+[\w\s,\.\(\)]+)?(?:\s+LIMIT\s+\d+)?;?",
+                string.Empty,
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Multiline);
+
+            result = System.Text.RegularExpressions.Regex.Replace(
+                result,
+                @"Please\s+.*?database\s+.*?run:?",
+                string.Empty,
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            result = System.Text.RegularExpressions.Regex.Replace(
+                result,
+                @"This\s+query\s+.*?will\s+show\.?",
+                string.Empty,
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+
+            return result.Trim();
         }
 
         private static string BuildDatabaseLocationDescription(string databaseName, string query, int rowCount)

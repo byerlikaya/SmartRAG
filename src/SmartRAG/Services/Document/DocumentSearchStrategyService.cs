@@ -637,14 +637,14 @@ namespace SmartRAG.Services.Document
                 return false;
 
             var hasPossessivePattern = System.Text.RegularExpressions.Regex.IsMatch(queryLower,
-                @"\b\p{L}{3,}[ıiuü]?n\s+\p{L}{3,}\b",
+                @"\b\p{L}{3,}\p{M}?n\s+\p{L}{3,}\b",
                 System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
             if (hasPossessivePattern)
                 return true;
 
             var hasPossessiveSuffixPattern = System.Text.RegularExpressions.Regex.IsMatch(queryLower,
-                @"\b\p{L}{3,}(?:[ıiuü]?n|[''']?[ıiuü]?n[ıi]|[''']?[ıiuü]?n[ıi]n)\s+\p{L}{3,}\b",
+                @"\b\p{L}{3,}(?:\p{M}?n|[''']?\p{M}?n\p{M}?|[''']?\p{M}?n\p{M}?n)\s+\p{L}{3,}\b",
                 System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
             if (hasPossessiveSuffixPattern)
@@ -665,7 +665,7 @@ namespace SmartRAG.Services.Document
                 return true;
 
             var hasNounWithSuffixPattern = System.Text.RegularExpressions.Regex.IsMatch(queryLower,
-                @"\b\p{L}{4,}[ıiuü]?\s+\p{L}{4,}[ıiuü]?\b",
+                @"\b\p{L}{4,}\p{M}?\s+\p{L}{4,}\p{M}?\b",
                 System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
             if (hasNounWithSuffixPattern)
