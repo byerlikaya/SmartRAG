@@ -68,11 +68,6 @@ This page has been moved. Please visit the [Changelog Index]({{ site.baseurl }}/
 - **SqliteDocumentRepository**: Removed unused SQLite storage implementation
 - **StorageConfig Properties**: Removed FileSystemPath and SqliteConfig (unused)
 
-### 📚 Documentation
-
-- **Redis Storage Documentation**: Updated with RediSearch requirements and setup instructions
-- **InMemory Storage Documentation**: Added configuration examples and use cases
-
 ### ⚠️ Breaking Changes
 
 - **FileSystem and SQLite Document Repositories Removed**
@@ -456,11 +451,6 @@ If you're using OCR or Audio Transcription features:
 - `src/SmartRAG/Enums/AudioProvider.cs` - Removed GoogleCloud enum value
 - `src/SmartRAG/Services/ServiceLogMessages.cs` - Updated log messages for Whisper.net
 
-#### **Documentation Updates**
-- **README.md**: Updated to reflect Whisper.net-only audio processing
-- **README.tr.md**: Updated Turkish documentation
-- **docs/**: Updated all documentation files to remove Google Speech references
-
 ### ✨ Benefits
 - **100% Local Processing**: All audio transcription happens locally with Whisper.net
 - **Enhanced Privacy**: No data leaves your infrastructure
@@ -495,7 +485,6 @@ If you were using Google Speech-to-Text:
 ### 🔧 Technical Improvements
 - **ServiceLogMessages.cs**: Updated LoggerMessage definitions to match parameter counts correctly
 - **EventId Management**: Reassigned conflicting EventIds to ensure unique logging identifiers
-- **Documentation**: Cleaned up README files for better NuGet package display
 
 ---
 
@@ -567,23 +556,14 @@ If you were using Google Speech-to-Text:
 ### ✨ Added
 - **Multi-language README**: Available in English, Turkish, German, and Russian
 - **Multi-language CHANGELOG**: Available in 4 languages
-- **Enhanced documentation**: Comprehensive on-premise deployment docs
 - **Local AI setup examples**: Configuration for Ollama and LM Studio
 - **Enterprise use cases**: Banking, Healthcare, Legal, Government, Manufacturing
 
 ### 🔧 Improved
 - **Retry mechanism**: Enhanced retry prompts with language-specific instructions
 - **Error handling**: Better error messages with database type information
-- **Documentation structure**: Cleaner README with CHANGELOG links
 - **Code quality**: SOLID/DRY principles maintained
 - **Performance**: Optimized multi-database query coordination
-
-### 📚 Documentation
-- **On-Premise guide**: Comprehensive deployment documentation
-- **Privacy guide**: Data privacy and compliance documentation
-- **OCR limitations**: Clear capabilities and limitations
-- **Audio processing**: Clear requirements and limitations
-- **Enterprise scenarios**: Real-world use cases
 
 ### ✅ Quality Assurance
 - **Zero Warnings Policy**: Maintained 0 errors, 0 warnings standard
@@ -644,33 +624,17 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Audio Processing Pipeline**: Enhanced with Google Cloud AI
 - **Configuration Management**: Updated to use GoogleSpeechConfig
 - **Error Handling**: Enhanced for audio transcription
-- **Documentation**: Updated with Speech-to-Text examples
-
-### 📚 Documentation
-- **Audio Processing**: Comprehensive feature documentation
-- **Google Speech-to-Text**: Enhanced README with capabilities
-- **Multi-language Support**: Highlighted 100+ language support
-- **Developer Experience**: Better feature visibility
 
 ---
 
 ## [2.2.0] - 2025-09-15
 
 ### ✨ Added
-- **Enhanced OCR Documentation**: Comprehensive with real-world use cases
-- **Improved README**: Detailed image processing features
 - **Use Case Examples**: Scanned documents, receipts, image content
 
 ### 🔧 Improved
 - **Package Metadata**: Updated project URLs and release notes
-- **Documentation Structure**: Enhanced OCR showcase
 - **User Guidance**: Improved image processing workflows
-
-### 📚 Documentation
-- **OCR Capabilities**: Comprehensive with real-world examples
-- **Image Processing**: Enhanced capabilities documentation
-- **WebP Support**: Highlighted WebP to PNG conversion
-- **Developer Experience**: Better visibility of features
 
 ---
 
@@ -687,10 +651,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Format Consistency**: Standardized across storage providers
 - **Thread Safety**: Enhanced concurrent access handling
 - **Platform Agnostic**: Compatible across .NET environments
-
-### 📚 Documentation
-- **Multi-language Updates**: All languages (EN, TR, DE, RU) updated
-- **100% Compliance**: All established rules maintained
 
 ---
 
@@ -715,11 +675,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Language Compatibility**: C# 7.3 syntax for .NET Standard 2.1
 - **Package Versions**: Updated to .NET Standard compatible versions
 - **API Compatibility**: Maintained functionality while ensuring framework compatibility
-
-### 📚 Documentation
-- **Framework Requirements**: Updated for .NET Standard
-- **Installation Guide**: Updated package references
-- **Migration Guide**: Comprehensive guide for .NET 9.0 users
 
 ### 🧪 Testing
 - **Framework Compatibility**: Verified .NET Standard 2.1 compatibility
@@ -747,11 +702,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Content Processing**: More robust document parsing
 - **Performance**: Optimized Excel extraction and validation
 
-### 📚 Documentation
-- **Excel Format Support**: Comprehensive Excel processing documentation
-- **API Reliability**: Updated error handling documentation
-- **Installation Guide**: Updated package references
-
 ### 🧪 Testing
 - **Excel Parsing**: Verified with various Excel formats
 - **API Retry**: Tested retry mechanism
@@ -769,10 +719,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - LoggerMessage parameter count mismatches
 - Provider logging message implementations
 - Service collection registration issues
-
-### 📚 Documentation
-- Updated README with latest features
-- Improved installation instructions
 
 ---
 
@@ -826,7 +772,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
             <tr>
                 <td><strong>2.2.0</strong></td>
                 <td>2025-09-15</td>
-                <td>Enhanced OCR documentation</td>
+                <td>OCR capabilities and image processing</td>
             </tr>
             <tr>
                 <td><strong>2.1.0</strong></td>

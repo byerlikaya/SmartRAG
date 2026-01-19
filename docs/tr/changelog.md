@@ -68,11 +68,6 @@ Bu sayfa taşındı. Lütfen [Değişiklikler Ana Sayfası]({{ site.baseurl }}/t
 - **SqliteDocumentRepository**: Kullanılmayan SQLite storage implementasyonu kaldırıldı
 - **StorageConfig Özellikleri**: FileSystemPath ve SqliteConfig kaldırıldı (kullanılmıyor)
 
-### 📚 Dokümantasyon
-
-- **Redis Storage Dokümantasyonu**: RediSearch gereksinimleri ve kurulum talimatları ile güncellendi
-- **InMemory Storage Dokümantasyonu**: Configuration örnekleri ve kullanım senaryoları eklendi
-
 ### ⚠️ Breaking Changes
 
 - **FileSystem ve SQLite Doküman Repository'leri Kaldırıldı**
@@ -456,11 +451,6 @@ OCR veya Ses Transkripsiyonu özelliklerini kullanıyorsanız:
 - `src/SmartRAG/Enums/AudioProvider.cs` - GoogleCloud enum değeri kaldırıldı
 - `src/SmartRAG/Services/ServiceLogMessages.cs` - Whisper.net için log mesajları güncellendi
 
-#### **Dokümantasyon Güncellemeleri**
-- **README.md**: Whisper.net-only ses işleme için güncellendi
-- **README.tr.md**: Türkçe dokümantasyon güncellendi
-- **docs/**: Tüm dokümantasyon dosyalarından Google Speech referansları kaldırıldı
-
 ### ✨ Faydalar
 - **%100 Yerel İşleme**: Tüm ses transkripsiyonu Whisper.net ile yerel olarak yapılıyor
 - **Geliştirilmiş Gizlilik**: Veri altyapınızı terk etmiyor
@@ -495,7 +485,6 @@ Google Speech-to-Text kullanıyorsanız:
 ### 🔧 Teknik İyileştirmeler
 - **ServiceLogMessages.cs**: LoggerMessage tanımları parametre sayılarıyla doğru eşleşecek şekilde güncellendi
 - **EventId Yönetimi**: Benzersiz log tanımlayıcıları için çakışan EventId'ler yeniden atandı
-- **Dokümantasyon**: Daha iyi NuGet paket görüntüleme için README dosyaları temizlendi
 
 ---
 
@@ -567,23 +556,14 @@ Google Speech-to-Text kullanıyorsanız:
 ### ✨ Eklenenler
 - **Çok dilli README**: İngilizce, Türkçe, Almanca ve Rusça'da mevcut
 - **Çok dilli CHANGELOG**: 4 dilde mevcut
-- **Geliştirilmiş dokümantasyon**: Kapsamlı yerinde dağıtım dokümantasyonu
 - **Yerel AI kurulum örnekleri**: Ollama ve LM Studio için configuration
 - **Kurumsal kullanım senaryoları**: Bankacılık, Sağlık, Hukuk, Devlet, Üretim
 
 ### 🔧 İyileştirmeler
 - **Yeniden deneme mekanizması**: Dile özgü talimatlarla geliştirilmiş yeniden deneme istekleri
 - **Hata yönetimi**: Veritabanı tipi bilgisiyle daha iyi hata mesajları
-- **Dokümantasyon yapısı**: CHANGELOG bağlantılarıyla daha temiz README
 - **Kod kalitesi**: Boyunca sürdürülen SOLID/DRY prensipleri
 - **Performans**: Optimize edilmiş çoklu-veritabanı sorgu koordinasyonu
-
-### 📚 Dokümantasyon
-- **Yerinde kılavuz**: Kapsamlı dağıtım dokümantasyonu
-- **Gizlilik kılavuzu**: Veri gizliliği ve uyumluluk dokümantasyonu
-- **OCR kısıtlamaları**: Net yetenekler ve kısıtlamalar
-- **Ses işleme**: Net gereksinimler ve kısıtlamalar
-- **Kurumsal senaryolar**: Gerçek dünya kullanım senaryoları
 
 ### ✅ Kalite Güvencesi
 - **Sıfır Uyarı Politikası**: 0 hata, 0 uyarı standardı korundu
@@ -644,31 +624,17 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Ses İşleme Pipeline**: Google Cloud AI ile geliştirilmiş
 - **Configuration Yönetimi**: GoogleSpeechConfig kullanacak şekilde güncellendi
 - **Hata Yönetimi**: Ses transkripsiyonu için geliştirilmiş
-- **Dokümantasyon**: Speech-to-Text örnekleriyle güncellendi
-
-### 📚 Dokümantasyon
-- **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
-- **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
 
 ---
 
 ## [2.2.0] - 2025-09-15
 
 ### ✨ Eklenenler
-- **Geliştirilmiş OCR Dokümantasyonu**: Gerçek dünya kullanım senaryolarıyla kapsamlı
-- **İyileştirilmiş README**: Detaylı görsel işleme özellikleri
 - **Kullanım Senaryosu Örnekleri**: Taranmış dokümanlar, makbuzlar, görsel içeriği
 
 ### 🔧 İyileştirmeler
 - **Paket Metadata**: Güncellenmiş proje URL'leri ve sürüm notları
-- **Dokümantasyon Yapısı**: Geliştirilmiş OCR vitrini
 - **Kullanıcı Rehberliği**: İyileştirilmiş görsel işleme iş akışları
-
-### 📚 Dokümantasyon
-- **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
-- **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
 
 ---
 
@@ -685,11 +651,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Format Tutarlılığı**: Depolama sağlayıcıları arasında standardize edildi
 - **Thread Güvenliği**: Geliştirilmiş eşzamanlı erişim yönetimi
 - **Platform Agnostik**: .NET ortamlarında uyumlu
-
-### 📚 Dokümantasyon
-- **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
-- **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
 
 ---
 
@@ -714,11 +675,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - **Dil Uyumluluğu**: .NET Standard 2.1 için C# 7.3 sözdizimi
 - **Paket Versiyonları**: .NET Standard uyumlu versiyonlara güncellendi
 - **API Uyumluluğu**: Framework uyumluluğu sağlarken işlevselliği korundu
-
-### 📚 Dokümantasyon
-- **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
-- **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
 
 ### 🧪 Test
 - **Unit Testler**: Tüm yeni özellikler için kapsamlı test kapsamı
@@ -769,11 +725,6 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
 - LoggerMessage parametre sayısı uyumsuzlukları
 - Sağlayıcı günlükleme mesajı uygulamaları
 - Servis koleksiyonu kayıt sorunları
-
-### 📚 Dokümantasyon
-- **Kapsamlı API Referansı**: Tüm interface'ler ve metodlar dokümante edildi
-- **Kullanım Örnekleri**: Gerçek dünya senaryolarıyla pratik örnekler
-- **Configuration Rehberi**: Detaylı ayar seçenekleri ve örnekleri
 
 ---
 
@@ -827,7 +778,7 @@ await _documentSearchService.QueryIntelligenceAsync(query, maxResults);
             <tr>
                 <td><strong>2.2.0</strong></td>
                 <td>2025-09-15</td>
-                <td>Geliştirilmiş OCR dokümantasyonu</td>
+                <td>OCR yetenekleri ve görsel işleme</td>
             </tr>
             <tr>
                 <td><strong>2.1.0</strong></td>
