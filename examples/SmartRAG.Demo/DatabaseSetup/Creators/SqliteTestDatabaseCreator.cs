@@ -3,6 +3,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using SmartRAG.Demo.DatabaseSetup.Interfaces;
 using SmartRAG.Enums;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace SmartRAG.Demo.DatabaseSetup.Creators;
 
@@ -21,6 +23,7 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
     private readonly IConfiguration? _configuration;
     private readonly ILogger<SqliteTestDatabaseCreator>? _logger;
     private readonly string? _configurationName;
+    private readonly string _databaseName;
 
     #endregion
 
@@ -31,10 +34,17 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
         _configuration = configuration;
         _logger = logger;
         
+        string? databaseName = null;
         if (_configuration != null)
         {
             _configurationName = FindConfigurationNameByType(DatabaseType.SQLite);
+            if (!string.IsNullOrEmpty(_configurationName))
+            {
+                databaseName = _configurationName;
+            }
         }
+        
+        _databaseName = databaseName ?? "SqliteTestDatabase";
     }
 
     #endregion
@@ -167,11 +177,10 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
     public async Task CreateSampleDatabaseAsync(string connectionString, CancellationToken cancellationToken)
     {
         var dbPath = ExtractFilePath(connectionString);
-        var dbName = Path.GetFileNameWithoutExtension(dbPath);
 
         if (await DatabaseExistsAsync(cancellationToken))
         {
-            _logger?.LogInformation("SQLite database {DatabaseName} already exists, skipping creation", dbName);
+            _logger?.LogInformation("SQLite database {DatabaseName} already exists, skipping creation", _databaseName);
             return;
         }
 
@@ -195,7 +204,7 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
             
             if (string.IsNullOrEmpty(directory))
             {
-                throw new InvalidOperationException($"Cannot determine directory for database path: {dbPath}");
+                throw new InvalidOperationException($"Cannot determine directory for database path for '{_databaseName}'");
             }
             
             if (!Directory.Exists(directory))
@@ -206,8 +215,9 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
                 }
                 catch (Exception ex)
                 {
-                    _logger?.LogError(ex, "Failed to create directory: {Directory}. Error: {Error}", directory, ex.Message);
-                    throw new InvalidOperationException($"Failed to create directory: {directory}. Error: {ex.Message}", ex);
+                    var directoryHash = ComputeSafeHash(directory);
+                    _logger?.LogError(ex, "Failed to create directory (hash: {DirectoryHash}). Error: {Error}", directoryHash, ex.Message);
+                    throw new InvalidOperationException($"Failed to create directory. Error: {ex.Message}", ex);
                 }
             }
 
@@ -227,17 +237,17 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
             if (File.Exists(dbPath))
             {
                 var fileSize = new FileInfo(dbPath).Length / 1024.0;
-                _logger?.LogInformation("SQLite database {DatabaseName} created successfully, Size: {FileSize:F2} KB", dbName, fileSize);
+                _logger?.LogInformation("SQLite database {DatabaseName} created successfully, Size: {FileSize:F2} KB", _databaseName, fileSize);
             }
             else
             {
-                _logger?.LogWarning("Database file was not created at expected path: {DbPath}", dbPath);
-                throw new InvalidOperationException($"Database file was not created at expected path: {dbPath}");
+                _logger?.LogWarning("Database file for {DatabaseName} was not created at the expected path", _databaseName);
+                throw new InvalidOperationException($"Database file for '{_databaseName}' was not created at the expected location.");
             }
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "SQLite database {DatabaseName} creation failed. Error: {Error}", dbName, ex.Message);
+            _logger?.LogError(ex, "SQLite database {DatabaseName} creation failed. Error: {Error}", _databaseName, ex.Message);
             throw;
         }
     }
@@ -250,6 +260,16 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
     #endregion
 
     #region Private Methods
+
+    private static string ComputeSafeHash(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return "empty";
+        
+        using var sha256 = SHA256.Create();
+        var hashBytes = sha256.ComputeHash(Encoding.UTF8.GetBytes(value));
+        return Convert.ToHexString(hashBytes).Substring(0, 8);
+    }
 
     /// <summary>
     /// Extracts the file path from SQLite connection string
@@ -301,7 +321,8 @@ public class SqliteTestDatabaseCreator : ITestDatabaseCreator
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error restoring backup file: {BackupPath}. Error: {Error}", backupFilePath, ex.Message);
+            var safeBackupFileName = Path.GetFileName(backupFilePath);
+            _logger?.LogError(ex, "Error restoring backup file: {BackupFileName}. Error: {Error}", safeBackupFileName, ex.Message);
             throw;
         }
     }

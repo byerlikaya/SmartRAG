@@ -486,7 +486,7 @@ public class DatabaseHandler(
 
         try
         {
-            var creator = TestDatabaseFactory.GetCreator(DatabaseType.MySQL, _configuration);
+            var creator = new MySqlTestDatabaseCreator(_configuration);
             var connectionString = creator.GetDefaultConnectionString();
             
             var databaseName = ExtractDatabaseName(connectionString, DatabaseType.MySQL);
