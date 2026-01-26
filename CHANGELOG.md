@@ -6,6 +6,78 @@ All notable changes to SmartRAG will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.0] - 2026-01-26
+
+### ✨ Added
+- **Schema RAG Implementation**: Automatic migration of database schemas to vectorized chunks for intelligent SQL generation
+  - New `ISchemaMigrationService` interface and `SchemaMigrationService` implementation for schema migration
+  - New `SchemaChunkService` for converting database schemas to vectorized document chunks
+  - Automatic schema chunk generation with embeddings for semantic search
+  - Schema chunks stored with metadata (`databaseId`, `databaseName`, `documentType: "Schema"`)
+  - Support for migrating all schemas or individual database schemas
+  - Schema update functionality (delete old and create new chunks)
+  - Semantic keyword extraction from table and column names for better query matching
+  - PostgreSQL-specific formatting with double quotes for identifiers
+  - Table type classification (TRANSACTIONAL, LOOKUP, MASTER) based on row count
+  - Comprehensive foreign key relationship documentation in chunks
+  - **Files Added**:
+    - `src/SmartRAG/Interfaces/Database/ISchemaMigrationService.cs` - Interface for schema migration
+    - `src/SmartRAG/Services/Database/SchemaMigrationService.cs` - Schema migration service implementation
+    - `src/SmartRAG/Services/Database/SchemaChunkService.cs` - Schema chunk conversion service
+  - **Benefits**: More accurate SQL generation through semantic search of schema information, better query intent understanding
+
+### 🔧 Improved
+- **SQL Query Generation**: Enhanced with schema chunk integration for better accuracy
+  - Schema information now retrieved from RAG chunks (primary source)
+  - Fallback to `DatabaseSchemaInfo` when schema chunks are not available
+  - Improved prompt building with schema context from chunks
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Database/SQLQueryGenerator.cs` - Enhanced with schema chunk integration
+    - `src/SmartRAG/Services/Database/Prompts/SqlPromptBuilder.cs` - Improved prompt structure with schema context
+  - **Benefits**: More accurate SQL queries, better understanding of database structure
+
+- **Database Connection Manager**: Added optional schema migration service integration
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Database/DatabaseConnectionManager.cs` - Added schema migration service support
+  - **Benefits**: Better integration with schema migration capabilities
+
+- **Result Merger**: Enhanced merging logic for better result combination
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Database/ResultMerger.cs` - Improved merging logic
+  - **Benefits**: Better result combination from multiple sources
+
+- **Document Validator**: Enhanced validation for schema documents
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Helpers/DocumentValidator.cs` - Enhanced validation logic
+  - **Benefits**: Better validation of schema documents
+
+- **Service Registration**: Added schema migration and chunk services to DI container
+  - **Files Modified**:
+    - `src/SmartRAG/Extensions/ServiceCollectionExtensions.cs` - Added service registrations
+  - **Benefits**: Proper dependency injection setup
+
+- **Storage Factory**: Updated for schema-related services
+  - **Files Modified**:
+    - `src/SmartRAG/Factories/StorageFactory.cs` - Updated factory configuration
+  - **Benefits**: Better factory integration
+
+- **Query Strategy Executor**: Enhanced with schema-aware query execution
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Document/QueryStrategyExecutorService.cs` - Enhanced query strategy
+  - **Benefits**: Better query routing and execution
+
+- **Qdrant Collection Manager**: Updated for schema document support
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Storage/Qdrant/QdrantCollectionManager.cs` - Enhanced collection management
+  - **Benefits**: Better support for schema documents in vector store
+
+### 📝 Notes
+- **Backward Compatibility**: All changes are backward compatible
+- **Migration**: No migration required - existing code continues to work without changes
+- **Breaking Changes**: None
+- **Code Quality**: Maintained 0 errors, 0 warnings
+- **Schema RAG Pattern**: Schema information is now stored as vectorized chunks, enabling semantic search for better SQL generation
+
 ## [3.7.0] - 2026-01-19
 
 ### ✨ Added

@@ -6,6 +6,78 @@ SmartRAG'deki tüm önemli değişiklikler bu dosyada belgelenecektir.
 Format [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)'a dayanmaktadır
 ve bu proje [Semantic Versioning](https://semver.org/spec/v2.0.0.html)'a uymaktadır.
 
+## [3.8.0] - 2026-01-26
+
+### ✨ Eklenenler
+- **Schema RAG Implementasyonu**: Akıllı SQL üretimi için veritabanı şemalarının otomatik olarak vektörleştirilmiş chunk'lara dönüştürülmesi
+  - Şema migrasyonu için yeni `ISchemaMigrationService` interface'i ve `SchemaMigrationService` implementasyonu
+  - Veritabanı şemalarını vektörleştirilmiş doküman chunk'larına dönüştürmek için yeni `SchemaChunkService`
+  - Semantik arama için embedding'lerle otomatik şema chunk üretimi
+  - Metadata ile saklanan şema chunk'ları (`databaseId`, `databaseName`, `documentType: "Schema"`)
+  - Tüm şemaları veya tek tek veritabanı şemalarını migrate etme desteği
+  - Şema güncelleme işlevselliği (eski chunk'ları sil ve yeni oluştur)
+  - Daha iyi sorgu eşleştirmesi için tablo ve kolon isimlerinden semantik anahtar kelime çıkarımı
+  - PostgreSQL için identifier'lar için çift tırnak ile özel formatlama
+  - Satır sayısına göre tablo tipi sınıflandırması (TRANSACTIONAL, LOOKUP, MASTER)
+  - Chunk'larda kapsamlı foreign key ilişki dokümantasyonu
+  - **Eklenen Dosyalar**:
+    - `src/SmartRAG/Interfaces/Database/ISchemaMigrationService.cs` - Şema migrasyonu için interface
+    - `src/SmartRAG/Services/Database/SchemaMigrationService.cs` - Şema migrasyon servisi implementasyonu
+    - `src/SmartRAG/Services/Database/SchemaChunkService.cs` - Şema chunk dönüştürme servisi
+  - **Faydalar**: Şema bilgilerinin semantik araması ile daha doğru SQL üretimi, daha iyi sorgu intent anlama
+
+### 🔧 İyileştirmeler
+- **SQL Sorgu Üretimi**: Daha iyi doğruluk için şema chunk entegrasyonu ile geliştirildi
+  - Şema bilgileri artık RAG chunk'larından alınıyor (birincil kaynak)
+  - Şema chunk'ları mevcut değilse `DatabaseSchemaInfo` fallback
+  - Chunk'lardan şema context'i ile geliştirilmiş prompt oluşturma
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/Database/SQLQueryGenerator.cs` - Şema chunk entegrasyonu ile geliştirildi
+    - `src/SmartRAG/Services/Database/Prompts/SqlPromptBuilder.cs` - Şema context'i ile geliştirilmiş prompt yapısı
+  - **Faydalar**: Daha doğru SQL sorguları, veritabanı yapısının daha iyi anlaşılması
+
+- **Veritabanı Bağlantı Yöneticisi**: Opsiyonel şema migrasyon servisi entegrasyonu eklendi
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/Database/DatabaseConnectionManager.cs` - Şema migrasyon servisi desteği eklendi
+  - **Faydalar**: Şema migrasyon yetenekleri ile daha iyi entegrasyon
+
+- **Sonuç Birleştirici**: Daha iyi sonuç birleştirmesi için geliştirilmiş birleştirme mantığı
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/Database/ResultMerger.cs` - Geliştirilmiş birleştirme mantığı
+  - **Faydalar**: Birden fazla kaynaktan daha iyi sonuç birleştirmesi
+
+- **Doküman Doğrulayıcı**: Şema dokümanları için geliştirilmiş doğrulama
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/Helpers/DocumentValidator.cs` - Geliştirilmiş doğrulama mantığı
+  - **Faydalar**: Şema dokümanlarının daha iyi doğrulanması
+
+- **Servis Kaydı**: DI container'a şema migrasyon ve chunk servisleri eklendi
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Extensions/ServiceCollectionExtensions.cs` - Servis kayıtları eklendi
+  - **Faydalar**: Uygun dependency injection kurulumu
+
+- **Storage Factory**: Şema ile ilgili servisler için güncellendi
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Factories/StorageFactory.cs` - Factory yapılandırması güncellendi
+  - **Faydalar**: Daha iyi factory entegrasyonu
+
+- **Sorgu Stratejisi Yürütücü**: Şema-farkındalıklı sorgu yürütme ile geliştirildi
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/Document/QueryStrategyExecutorService.cs` - Geliştirilmiş sorgu stratejisi
+  - **Faydalar**: Daha iyi sorgu yönlendirme ve yürütme
+
+- **Qdrant Koleksiyon Yöneticisi**: Şema doküman desteği için güncellendi
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/Storage/Qdrant/QdrantCollectionManager.cs` - Geliştirilmiş koleksiyon yönetimi
+  - **Faydalar**: Vektör deposunda şema dokümanları için daha iyi destek
+
+### 📝 Notlar
+- **Geriye Dönük Uyumluluk**: Tüm değişiklikler geriye dönük uyumludur
+- **Geçiş**: Geçiş gerekli değil - mevcut kod değişiklik olmadan çalışmaya devam ediyor
+- **Breaking Changes**: Yok
+- **Kod Kalitesi**: 0 hata, 0 uyarı korundu
+- **Schema RAG Pattern**: Şema bilgileri artık vektörleştirilmiş chunk'lar olarak saklanıyor, daha iyi SQL üretimi için semantik arama sağlıyor
+
 ## [3.6.0] - 2025-12-30
 
 ### ✨ Eklenenler

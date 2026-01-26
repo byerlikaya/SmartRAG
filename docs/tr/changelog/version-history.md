@@ -11,12 +11,99 @@ SmartRAG'deki tüm sürümler ve değişiklikler burada belgelenmiştir.
 
 <div class="accordion mt-4" id="versionAccordion">
     <div class="accordion-item">
+        <h2 class="accordion-header" id="headingversion380">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion380" aria-expanded="true" aria-controls="collapseversion380">
+                <strong>v3.8.0</strong> - 2026-01-26
+            </button>
+        </h2>
+        <div id="collapseversion380" class="accordion-collapse collapse show" aria-labelledby="headingversion380" >
+            <div class="accordion-body">
+{% capture version_content %}
+
+### Schema RAG Implementasyonu
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> MINOR Sürüm</h4>
+    <p class="mb-0">
+        Bu sürüm Schema RAG pattern'ini implemente eder, vektörleştirilmiş chunk'lar olarak saklanan veritabanı şema bilgilerinin semantik araması ile akıllı SQL üretimini sağlar.
+        Tüm değişiklikler geriye dönük uyumludur.
+    </p>
+</div>
+
+### ✨ Eklendi
+
+#### Schema RAG Implementasyonu
+- **Otomatik Şema Migrasyonu**: Veritabanı şemalarını vektörleştirilmiş chunk'lara migrate etmek için yeni servis
+- **Şema Chunk Servisi**: Veritabanı şemalarını embedding'lerle vektörleştirilmiş doküman chunk'larına dönüştürür
+- **Semantik Şema Arama**: Daha iyi SQL üretimi için RAG chunk'larından şema bilgisi alınması
+- **Şema Metadata**: Metadata ile saklanan chunk'lar (databaseId, databaseName, documentType: "Schema")
+- **Migrasyon Desteği**: Tüm şemaları veya tek tek veritabanı şemalarını migrate etme
+- **Şema Güncellemeleri**: Güncelleme işlevselliği (eski chunk'ları sil ve yeni oluştur)
+- **Semantik Anahtar Kelimeler**: Daha iyi sorgu eşleştirmesi için tablo ve kolon isimlerinden çıkarım
+- **PostgreSQL Desteği**: Identifier'lar için çift tırnak ile özel formatlama
+- **Tablo Sınıflandırması**: Satır sayısına göre tablo tipi sınıflandırması (TRANSACTIONAL, LOOKUP, MASTER)
+- **Foreign Key Dokümantasyonu**: Chunk'larda kapsamlı foreign key ilişki dokümantasyonu
+- **Eklenen Dosyalar**:
+  - `src/SmartRAG/Interfaces/Database/ISchemaMigrationService.cs` - Şema migrasyon interface'i
+  - `src/SmartRAG/Services/Database/SchemaMigrationService.cs` - Şema migrasyon servisi
+  - `src/SmartRAG/Services/Database/SchemaChunkService.cs` - Şema chunk dönüştürme servisi
+
+### 🔧 İyileştirildi
+
+#### SQL Sorgu Üretimi
+- **Şema Chunk Entegrasyonu**: Daha iyi doğruluk için şema chunk entegrasyonu ile geliştirildi
+- **RAG Pattern**: Şema bilgileri RAG chunk'larından alınıyor (birincil kaynak)
+- **Fallback Desteği**: Şema chunk'ları mevcut değilse DatabaseSchemaInfo fallback
+- **Geliştirilmiş Prompt'lar**: Chunk'lardan şema context'i ile geliştirilmiş prompt oluşturma
+- **Dosyalar Güncellendi**:
+  - `src/SmartRAG/Services/Database/SQLQueryGenerator.cs` - Şema chunk entegrasyonu ile geliştirildi
+  - `src/SmartRAG/Services/Database/Prompts/SqlPromptBuilder.cs` - İyileştirilmiş prompt yapısı
+
+#### Veritabanı Bağlantı Yöneticisi
+- **Şema Migrasyon Entegrasyonu**: Opsiyonel şema migrasyon servisi entegrasyonu eklendi
+- **Dosyalar Güncellendi**:
+  - `src/SmartRAG/Services/Database/DatabaseConnectionManager.cs` - Şema migrasyon desteği eklendi
+
+#### Sonuç Birleştirici
+- **Geliştirilmiş Birleştirme**: Daha iyi sonuç birleştirmesi için geliştirilmiş birleştirme mantığı
+- **Dosyalar Güncellendi**:
+  - `src/SmartRAG/Services/Database/ResultMerger.cs` - Geliştirilmiş birleştirme mantığı
+
+#### Doküman Doğrulayıcı
+- **Şema Doküman Doğrulaması**: Şema dokümanları için geliştirilmiş doğrulama
+- **Dosyalar Güncellendi**:
+  - `src/SmartRAG/Services/Helpers/DocumentValidator.cs` - Geliştirilmiş doğrulama mantığı
+
+#### Servis Kaydı
+- **DI Container**: DI container'a şema migrasyon ve chunk servisleri eklendi
+- **Dosyalar Güncellendi**:
+  - `src/SmartRAG/Extensions/ServiceCollectionExtensions.cs` - Servis kayıtları eklendi
+
+#### Diğer İyileştirmeler
+- **Storage Factory**: Şema ile ilgili servisler için güncellendi
+- **Sorgu Stratejisi Yürütücü**: Şema-farkındalıklı sorgu yürütme ile geliştirildi
+- **Qdrant Koleksiyon Yöneticisi**: Şema doküman desteği için güncellendi
+
+### 📝 Notlar
+
+- **Geriye Dönük Uyumluluk**: Tüm değişiklikler geriye dönük uyumludur
+- **Taşınma**: Taşınma gerekmez
+- **Breaking Changes**: Yok
+- **Schema RAG Pattern**: Şema bilgileri artık vektörleştirilmiş chunk'lar olarak saklanıyor, daha iyi SQL üretimi için semantik arama sağlıyor
+
+---
+{% endcapture %}
+{{ version_content | markdownify }}
+            </div>
+        </div>
+    </div>
+    <div class="accordion-item">
         <h2 class="accordion-header" id="headingversion370">
-            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion370" aria-expanded="true" aria-controls="collapseversion370">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion370" aria-expanded="false" aria-controls="collapseversion370">
                 <strong>v3.7.0</strong> - 2026-01-19
             </button>
         </h2>
-        <div id="collapseversion370" class="accordion-collapse collapse show" aria-labelledby="headingversion370" >
+        <div id="collapseversion370" class="accordion-collapse collapse" aria-labelledby="headingversion370" >
             <div class="accordion-body">
 {% capture version_content %}
 
