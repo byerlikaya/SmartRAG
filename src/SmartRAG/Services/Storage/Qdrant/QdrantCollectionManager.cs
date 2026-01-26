@@ -126,7 +126,25 @@ namespace SmartRAG.Services.Storage.Qdrant
                         return;
                 }
 
-                var vectorDimension = await GetVectorDimensionAsync(cancellationToken);
+                int vectorDimension;
+                
+                if (document?.Chunks != null && document.Chunks.Count > 0)
+                {
+                    var firstChunkWithEmbedding = document.Chunks.FirstOrDefault(c => c.Embedding != null && c.Embedding.Count > 0);
+                    if (firstChunkWithEmbedding != null)
+                    {
+                        vectorDimension = firstChunkWithEmbedding.Embedding.Count;
+                        _logger.LogDebug("Using embedding dimension {Dimension} from document chunk for collection {CollectionName}", vectorDimension, collectionName);
+                    }
+                    else
+                    {
+                        vectorDimension = await GetVectorDimensionAsync(cancellationToken);
+                    }
+                }
+                else
+                {
+                    vectorDimension = await GetVectorDimensionAsync(cancellationToken);
+                }
 
                 await CreateCollectionAsync(collectionName, vectorDimension, cancellationToken);
             }

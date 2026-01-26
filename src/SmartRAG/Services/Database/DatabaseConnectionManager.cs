@@ -1,3 +1,5 @@
+#nullable enable
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartRAG.Interfaces.Database;
@@ -19,6 +21,7 @@ namespace SmartRAG.Services.Database
         private readonly SmartRagOptions _options;
         private readonly IDatabaseParserService _databaseParserService;
         private readonly IDatabaseSchemaAnalyzer _schemaAnalyzer;
+        private readonly ISchemaMigrationService? _schemaMigrationService;
         private readonly ILogger<DatabaseConnectionManager> _logger;
         private readonly ConcurrentDictionary<string, DatabaseConnectionConfig> _connections;
         private bool _initialized;
@@ -27,11 +30,13 @@ namespace SmartRAG.Services.Database
             IOptions<SmartRagOptions> options,
             IDatabaseParserService databaseParserService,
             IDatabaseSchemaAnalyzer schemaAnalyzer,
+            ISchemaMigrationService? schemaMigrationService,
             ILogger<DatabaseConnectionManager> logger)
         {
             _options = options.Value;
             _databaseParserService = databaseParserService;
             _schemaAnalyzer = schemaAnalyzer;
+            _schemaMigrationService = schemaMigrationService;
             _logger = logger;
             _connections = new ConcurrentDictionary<string, DatabaseConnectionConfig>();
         }
@@ -56,7 +61,7 @@ namespace SmartRAG.Services.Database
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 
-                string databaseId = null;
+                string? databaseId = null;
                 try
                 {
                     databaseId = await GetDatabaseIdAsync(config, cancellationToken);
@@ -64,7 +69,7 @@ namespace SmartRAG.Services.Database
 
                     _logger.LogInformation("Registered database connection");
 
-                    if (_options.EnableAutoSchemaAnalysis)
+                    if (ShouldPerformSchemaAnalysis())
                     {
                         _logger.LogInformation("Starting schema analysis");
                         try
@@ -84,7 +89,7 @@ namespace SmartRAG.Services.Database
                 }
             }
 
-            if (enabledConnections.Count >= 2 && _options.EnableAutoSchemaAnalysis)
+            if (enabledConnections.Count >= 2 && ShouldPerformSchemaAnalysis())
             {
                 try
                 {
@@ -93,6 +98,20 @@ namespace SmartRAG.Services.Database
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Failed to detect cross-database mappings");
+                }
+            }
+
+            if (ShouldPerformSchemaAnalysis() && _schemaMigrationService != null)
+            {
+                try
+                {
+                    _logger.LogInformation("Starting schema migration to vector store");
+                    var migratedCount = await _schemaMigrationService.MigrateAllSchemasAsync(cancellationToken);
+                    _logger.LogInformation("Schema migration completed: {MigratedCount} schemas migrated", migratedCount);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Schema migration failed, continuing without schema chunks");
                 }
             }
 
@@ -238,6 +257,11 @@ namespace SmartRAG.Services.Database
             }
 
             return Task.FromResult("UnknownDB");
+        }
+
+        private bool ShouldPerformSchemaAnalysis()
+        {
+            return _options.EnableAutoSchemaAnalysis;
         }
     }
 }
