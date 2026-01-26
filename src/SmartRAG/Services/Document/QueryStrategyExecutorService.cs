@@ -84,6 +84,8 @@ namespace SmartRAG.Services.Document
 
                 var databaseResponse = await _multiDatabaseQueryCoordinator!.QueryMultipleDatabasesAsync(request.Query, request.QueryIntent, request.MaxResults, request.PreferredLanguage ?? _options.DefaultLanguage, cancellationToken);
 
+                
+                
                 if (_responseBuilder.HasMeaningfulData(databaseResponse))
                 {
                     return databaseResponse;

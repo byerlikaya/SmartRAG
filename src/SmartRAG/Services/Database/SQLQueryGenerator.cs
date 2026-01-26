@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using SmartRAG.Interfaces.AI;
 using SmartRAG.Interfaces.Database;
 using SmartRAG.Interfaces.Database.Strategies;
+using SmartRAG.Interfaces.Document;
 using SmartRAG.Models;
 using SmartRAG.Services.Database.Strategies;
 using System;
@@ -25,6 +26,7 @@ namespace SmartRAG.Services.Database
         private readonly ISqlValidator _validator;
         private readonly ISqlPromptBuilder _promptBuilder;
         private readonly IDatabaseConnectionManager _connectionManager;
+        private readonly IDocumentRepository _documentRepository;
         private readonly ILogger<SQLQueryGenerator> _logger;
 
         /// <summary>
@@ -36,6 +38,7 @@ namespace SmartRAG.Services.Database
         /// <param name="validator">SQL validator</param>
         /// <param name="promptBuilder">SQL prompt builder</param>
         /// <param name="connectionManager">Database connection manager</param>
+        /// <param name="documentRepository">Document repository for RAG-based schema retrieval</param>
         /// <param name="logger">Logger instance</param>
         public SQLQueryGenerator(
             IDatabaseSchemaAnalyzer schemaAnalyzer,
@@ -44,6 +47,7 @@ namespace SmartRAG.Services.Database
             ISqlValidator validator,
             ISqlPromptBuilder promptBuilder,
             IDatabaseConnectionManager connectionManager,
+            IDocumentRepository documentRepository,
             ILogger<SQLQueryGenerator> logger)
         {
             _schemaAnalyzer = schemaAnalyzer ?? throw new ArgumentNullException(nameof(schemaAnalyzer));
@@ -52,6 +56,7 @@ namespace SmartRAG.Services.Database
             _validator = validator ?? throw new ArgumentNullException(nameof(validator));
             _promptBuilder = promptBuilder ?? throw new ArgumentNullException(nameof(promptBuilder));
             _connectionManager = connectionManager ?? throw new ArgumentNullException(nameof(connectionManager));
+            _documentRepository = documentRepository ?? throw new ArgumentNullException(nameof(documentRepository));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
@@ -98,7 +103,69 @@ namespace SmartRAG.Services.Database
                 return queryIntent;
             }
 
-            var promptParts = _promptBuilder.BuildMultiDatabaseSeparated(queryIntent.OriginalQuery, queryIntent, schemas, strategies);
+            var schemaChunksMap = new Dictionary<string, List<Entities.DocumentChunk>>();
+            var allDocumentsCache = new Dictionary<Guid, Entities.Document>();
+            
+            try
+            {
+                var allDocuments = await _documentRepository.GetAllAsync(cancellationToken);
+                foreach (var doc in allDocuments)
+                {
+                    allDocumentsCache[doc.Id] = doc;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to load documents cache, schema chunk filtering may be limited");
+            }
+
+            foreach (var dbQuery in queryIntent.DatabaseQueries)
+            {
+                if (schemas.TryGetValue(dbQuery.DatabaseId, out var schema))
+                {
+                    try
+                    {
+                        var schemaDoc = allDocumentsCache.Values.FirstOrDefault(d =>
+                            d?.Metadata != null &&
+                            d.Metadata.TryGetValue("documentType", out var dt) && string.Equals(dt?.ToString(), "Schema", StringComparison.OrdinalIgnoreCase) &&
+                            d.Metadata.TryGetValue("databaseId", out var id) && id?.ToString() == dbQuery.DatabaseId);
+
+                        if (schemaDoc != null)
+                        {
+                            var fullDoc = await _documentRepository.GetByIdAsync(schemaDoc.Id, cancellationToken);
+                            if (fullDoc?.Chunks != null && fullDoc.Chunks.Count > 0)
+                            {
+                                schemaChunksMap[dbQuery.DatabaseId] = fullDoc.Chunks.OrderBy(c => c.ChunkIndex).ToList();
+                                _logger.LogInformation("Using {Count} schema chunks for database {DatabaseName} (from stored schema document)",
+                                    fullDoc.Chunks.Count, schema.DatabaseName);
+                            }
+                            else
+                            {
+                                _logger.LogDebug("Schema document for database {DatabaseName} has no chunks, using DatabaseSchemaInfo fallback",
+                                    schema.DatabaseName);
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogDebug("No schema document found for database {DatabaseName}, using DatabaseSchemaInfo fallback",
+                                schema.DatabaseName);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Failed to load schema chunks for database {DatabaseName}, falling back to DatabaseSchemaInfo",
+                            schema.DatabaseName);
+                    }
+                }
+            }
+
+            var promptParts = _promptBuilder.BuildMultiDatabaseSeparated(
+                queryIntent.OriginalQuery,
+                queryIntent,
+                schemas,
+                strategies,
+                schemaChunksMap,
+                requiredMappingColumns);
             
             var additionalInstructions = new StringBuilder();
             foreach (var kvp in requiredMappingColumns.Where(k => k.Value.Any()))
@@ -145,6 +212,10 @@ namespace SmartRAG.Services.Database
                 var strategy = strategies[dbQuery.DatabaseId];
                 
                 extractedSql = strategy.FormatSql(extractedSql);
+                
+                extractedSql = DetectAndFixCrossDatabaseReferences(extractedSql, schema, dbQuery.RequiredTables);
+                
+                extractedSql = FixAmbiguousColumnsInJoin(extractedSql, schema);
                 
                 _logger.LogDebug("AI generated SQL for database {DatabaseName}: {Sql}", schema.DatabaseName, extractedSql);
 
@@ -249,13 +320,28 @@ namespace SmartRAG.Services.Database
                     }
                     
                     var dbIndex = int.Parse(dbMatch.Groups[1].Value) - 1;
+                    var dbNameFromResponse = dbMatch.Groups[2].Value.Trim();
+                    
                     if (dbIndex >= 0 && dbIndex < databaseQueries.Count)
                     {
                         currentDatabase = databaseQueries[dbIndex].DatabaseId;
                         currentSql.Clear();
                         inSql = false;
                         waitingForConfirmed = true;
-                        _logger.LogDebug("Found database marker: {DatabaseId}", currentDatabase);
+                        _logger.LogDebug("Found database marker: {DatabaseId} (response had: {DbName})", currentDatabase, dbNameFromResponse);
+                    }
+                    else if (!string.IsNullOrWhiteSpace(dbNameFromResponse) && !dbNameFromResponse.Equals("DatabaseName", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var matchingDbQuery = databaseQueries.FirstOrDefault(q => 
+                            schemas[q.DatabaseId].DatabaseName.Equals(dbNameFromResponse, StringComparison.OrdinalIgnoreCase));
+                        if (matchingDbQuery != null)
+                        {
+                            currentDatabase = matchingDbQuery.DatabaseId;
+                            currentSql.Clear();
+                            inSql = false;
+                            waitingForConfirmed = true;
+                            _logger.LogDebug("Found database by name match: {DatabaseId} (from response: {DbName})", currentDatabase, dbNameFromResponse);
+                        }
                     }
                     else
                     {
@@ -276,6 +362,17 @@ namespace SmartRAG.Services.Database
                         waitingForConfirmed = false;
                         _logger.LogDebug("Found CONFIRMED marker for database {DatabaseId}", currentDatabase);
                     }
+                    continue;
+                }
+                
+                if (currentDatabase != null && waitingForConfirmed && 
+                    (trimmedLine.StartsWith("SELECT", StringComparison.OrdinalIgnoreCase) ||
+                     trimmedLine.StartsWith("WITH", StringComparison.OrdinalIgnoreCase)))
+                {
+                    inSql = true;
+                    waitingForConfirmed = false;
+                    currentSql.Clear();
+                    currentSql.Add(trimmedLine);
                     continue;
                 }
 
@@ -364,8 +461,70 @@ namespace SmartRAG.Services.Database
 
             if (result.Count == 0)
             {
-                _logger.LogWarning("Failed to extract any SQL from AI response. Response preview: {Preview}", 
-                    response?.Substring(0, Math.Min(500, response?.Length ?? 0)) ?? "null");
+                result = ExtractSqlBlocksWithoutDatabaseMarkers(response, databaseQueries, schemas);
+                if (result.Count > 0)
+                    _logger.LogDebug("Extracted {Count} SQL block(s) via fallback (no DATABASE N: markers)", result.Count);
+                else
+                    _logger.LogWarning("Failed to extract any SQL from AI response. Response preview: {Preview}", 
+                        response?.Substring(0, Math.Min(500, response?.Length ?? 0)) ?? "null");
+            }
+
+            return result;
+        }
+
+        private Dictionary<string, string> ExtractSqlBlocksWithoutDatabaseMarkers(string response, List<DatabaseQueryIntent> databaseQueries, Dictionary<string, DatabaseSchemaInfo> schemas)
+        {
+            var result = new Dictionary<string, string>();
+            if (string.IsNullOrWhiteSpace(response) || databaseQueries == null || databaseQueries.Count == 0)
+                return result;
+
+            response = Regex.Replace(response, @"```sql\s*", "", RegexOptions.IgnoreCase);
+            response = Regex.Replace(response, @"```\s*", "", RegexOptions.IgnoreCase);
+
+            var parts = Regex.Split(response, @"\s*;\s*", RegexOptions.Multiline);
+            var selectBlocks = new List<string>();
+            foreach (var part in parts)
+            {
+                var trimmed = part.Trim();
+                if (trimmed.StartsWith("SELECT", StringComparison.OrdinalIgnoreCase) || trimmed.StartsWith("WITH", StringComparison.OrdinalIgnoreCase))
+                {
+                    var sql = ExtractCompleteSQL(trimmed);
+                    if (!string.IsNullOrWhiteSpace(sql) && sql.Length > 20)
+                        selectBlocks.Add(sql);
+                }
+            }
+
+            if (selectBlocks.Count == 0)
+            {
+                var single = ExtractCompleteSQL(response);
+                if (!string.IsNullOrWhiteSpace(single) && single.Length > 20)
+                    selectBlocks.Add(single);
+            }
+
+            for (int i = 0; i < selectBlocks.Count && i < databaseQueries.Count; i++)
+            {
+                var dbQuery = databaseQueries[i];
+                var sql = selectBlocks[i];
+                var dbId = dbQuery.DatabaseId;
+
+                var bestSchema = schemas.GetValueOrDefault(dbId);
+                var bestScore = bestSchema != null
+                    ? bestSchema.Tables.Count(t => sql.IndexOf(t.TableName, StringComparison.OrdinalIgnoreCase) >= 0)
+                    : 0;
+
+                foreach (var kv in schemas)
+                {
+                    if (kv.Key == dbId || result.ContainsKey(kv.Key)) continue;
+                    var score = kv.Value.Tables.Count(t => sql.IndexOf(t.TableName, StringComparison.OrdinalIgnoreCase) >= 0);
+                    if (score > bestScore)
+                    {
+                        bestScore = score;
+                        dbId = kv.Key;
+                    }
+                }
+
+                if (!result.ContainsKey(dbId))
+                    result[dbId] = sql;
             }
 
             return result;
@@ -1016,5 +1175,327 @@ namespace SmartRAG.Services.Database
 
             return sql;
         }
+
+        /// <summary>
+        /// Fixes ambiguous column names in JOIN queries by adding table aliases
+        /// </summary>
+        private string FixAmbiguousColumnsInJoin(string sql, DatabaseSchemaInfo schema)
+        {
+            if (string.IsNullOrWhiteSpace(sql))
+                return sql;
+
+            if (!Regex.IsMatch(sql, @"\b(?:INNER|LEFT|RIGHT|FULL|CROSS)\s+JOIN\b", RegexOptions.IgnoreCase))
+            {
+                return sql;
+            }
+
+            var aliasToTable = ExtractTableAliases(sql);
+            if (aliasToTable.Count == 0)
+            {
+                return sql;
+            }
+
+            var columnToTables = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+            
+            foreach (var table in schema.Tables)
+            {
+                foreach (var column in table.Columns)
+                {
+                    if (!columnToTables.ContainsKey(column.ColumnName))
+                    {
+                        columnToTables[column.ColumnName] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                    }
+                    columnToTables[column.ColumnName].Add(table.TableName);
+                }
+            }
+
+            var ambiguousColumns = columnToTables
+                .Where(kvp => kvp.Value.Count > 1)
+                .Select(kvp => kvp.Key)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            if (ambiguousColumns.Count == 0)
+            {
+                return sql;
+            }
+
+            var usedTables = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var alias in aliasToTable.Keys)
+            {
+                usedTables.Add(aliasToTable[alias]);
+            }
+
+            var fixedSql = sql;
+
+            var selectPattern = @"SELECT\s+(.*?)\s+FROM";
+            var selectMatch = Regex.Match(fixedSql, selectPattern, RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            if (selectMatch.Success)
+            {
+                var selectClause = selectMatch.Groups[1].Value;
+                var fixedSelectClause = FixColumnReferences(selectClause, ambiguousColumns, aliasToTable, usedTables);
+                if (fixedSelectClause != selectClause)
+                {
+                    fixedSql = fixedSql.Substring(0, selectMatch.Groups[1].Index) + 
+                               fixedSelectClause + 
+                               fixedSql.Substring(selectMatch.Groups[1].Index + selectMatch.Groups[1].Length);
+                    _logger.LogDebug("Fixed ambiguous columns in SELECT clause");
+                }
+            }
+
+            var groupByPattern = @"GROUP\s+BY\s+(.*?)(?:\s+ORDER|\s+HAVING|$)";
+            var groupByMatch = Regex.Match(fixedSql, groupByPattern, RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            if (groupByMatch.Success)
+            {
+                var groupByClause = groupByMatch.Groups[1].Value;
+                var fixedGroupByClause = FixColumnReferences(groupByClause, ambiguousColumns, aliasToTable, usedTables);
+                if (fixedGroupByClause != groupByClause)
+                {
+                    fixedSql = fixedSql.Substring(0, groupByMatch.Groups[1].Index) + 
+                               fixedGroupByClause + 
+                               fixedSql.Substring(groupByMatch.Groups[1].Index + groupByMatch.Groups[1].Length);
+                    _logger.LogDebug("Fixed ambiguous columns in GROUP BY clause");
+                }
+            }
+
+            var orderByPattern = @"ORDER\s+BY\s+(.*?)(?:\s+LIMIT|$)";
+            var orderByMatch = Regex.Match(fixedSql, orderByPattern, RegexOptions.IgnoreCase | RegexOptions.Singleline);
+            if (orderByMatch.Success)
+            {
+                var orderByClause = orderByMatch.Groups[1].Value;
+                var fixedOrderByClause = FixColumnReferences(orderByClause, ambiguousColumns, aliasToTable, usedTables);
+                if (fixedOrderByClause != orderByClause)
+                {
+                    fixedSql = fixedSql.Substring(0, orderByMatch.Groups[1].Index) + 
+                               fixedOrderByClause + 
+                               fixedSql.Substring(orderByMatch.Groups[1].Index + orderByMatch.Groups[1].Length);
+                    _logger.LogDebug("Fixed ambiguous columns in ORDER BY clause");
+                }
+            }
+
+            return fixedSql;
+        }
+
+        private string FixColumnReferences(string clause, HashSet<string> ambiguousColumns, Dictionary<string, string> aliasToTable, HashSet<string> usedTables)
+        {
+            var parts = new List<string>();
+            var currentPart = new StringBuilder();
+            var parenDepth = 0;
+            var inQuotes = false;
+            var quoteChar = '\0';
+
+            for (int i = 0; i < clause.Length; i++)
+            {
+                var ch = clause[i];
+
+                if (!inQuotes && (ch == '\'' || ch == '"'))
+                {
+                    inQuotes = true;
+                    quoteChar = ch;
+                    currentPart.Append(ch);
+                }
+                else if (inQuotes && ch == quoteChar)
+                {
+                    inQuotes = false;
+                    quoteChar = '\0';
+                    currentPart.Append(ch);
+                }
+                else if (!inQuotes)
+                {
+                    if (ch == '(')
+                    {
+                        parenDepth++;
+                        currentPart.Append(ch);
+                    }
+                    else if (ch == ')')
+                    {
+                        parenDepth--;
+                        currentPart.Append(ch);
+                    }
+                    else if (ch == ',' && parenDepth == 0)
+                    {
+                        var part = currentPart.ToString().Trim();
+                        if (!string.IsNullOrWhiteSpace(part))
+                        {
+                            parts.Add(FixSingleColumnReference(part, ambiguousColumns, aliasToTable, usedTables));
+                        }
+                        currentPart.Clear();
+                    }
+                    else
+                    {
+                        currentPart.Append(ch);
+                    }
+                }
+                else
+                {
+                    currentPart.Append(ch);
+                }
+            }
+
+            var lastPart = currentPart.ToString().Trim();
+            if (!string.IsNullOrWhiteSpace(lastPart))
+            {
+                parts.Add(FixSingleColumnReference(lastPart, ambiguousColumns, aliasToTable, usedTables));
+            }
+
+            return string.Join(", ", parts);
+        }
+
+        private string FixSingleColumnReference(string columnRef, HashSet<string> ambiguousColumns, Dictionary<string, string> aliasToTable, HashSet<string> usedTables)
+        {
+            columnRef = columnRef.Trim();
+
+            if (string.IsNullOrWhiteSpace(columnRef))
+                return columnRef;
+
+            var trimmed = columnRef.Trim();
+
+            if (trimmed.Contains("."))
+            {
+                return columnRef;
+            }
+
+            if (Regex.IsMatch(trimmed, @"\b(?:COUNT|SUM|AVG|MAX|MIN|CONCAT|UPPER|LOWER|SUBSTRING|CAST|CONVERT)\s*\(.*\)", RegexOptions.IgnoreCase))
+            {
+                var functionMatch = Regex.Match(trimmed, @"\b(?:COUNT|SUM|AVG|MAX|MIN|CONCAT|UPPER|LOWER|SUBSTRING|CAST|CONVERT)\s*\(([^)]+)\)", RegexOptions.IgnoreCase);
+                if (functionMatch.Success)
+                {
+                    var innerColumn = functionMatch.Groups[1].Value.Trim();
+                    if (ambiguousColumns.Contains(innerColumn, StringComparer.OrdinalIgnoreCase) && !innerColumn.Contains("."))
+                    {
+                        var functionBestAlias = FindBestAliasForColumn(innerColumn, aliasToTable, usedTables);
+                        if (!string.IsNullOrEmpty(functionBestAlias))
+                        {
+                            var fixedInner = $"{functionBestAlias}.{innerColumn}";
+                            var fixedRef = columnRef.Replace(innerColumn, fixedInner);
+                            _logger.LogTrace("Fixed ambiguous column '{Column}' in function to '{Fixed}'", innerColumn, fixedRef);
+                            return fixedRef;
+                        }
+                    }
+                }
+                return columnRef;
+            }
+
+            if (trimmed.Contains(" AS ", StringComparison.OrdinalIgnoreCase))
+            {
+                var asMatch = Regex.Match(trimmed, @"^(.+?)\s+AS\s+", RegexOptions.IgnoreCase);
+                if (asMatch.Success)
+                {
+                    var beforeAs = asMatch.Groups[1].Value.Trim();
+                    return FixSingleColumnReference(beforeAs, ambiguousColumns, aliasToTable, usedTables) + " " + trimmed.Substring(asMatch.Index + asMatch.Length);
+                }
+            }
+
+            var columnMatch = Regex.Match(trimmed, @"\b([a-zA-Z0-9_]+)\b", RegexOptions.IgnoreCase);
+            if (!columnMatch.Success)
+                return columnRef;
+
+            var columnName = columnMatch.Groups[1].Value;
+
+            if (!ambiguousColumns.Contains(columnName))
+                return columnRef;
+
+            var sqlKeywords = new[] { "SELECT", "FROM", "WHERE", "JOIN", "ON", "AND", "OR", "GROUP", "BY", "ORDER", "HAVING", "AS", "COUNT", "SUM", "AVG", "MAX", "MIN", "TOP", "LIMIT" };
+            if (sqlKeywords.Contains(columnName.ToUpperInvariant()))
+                return columnRef;
+
+            var bestAlias = FindBestAliasForColumn(columnName, aliasToTable, usedTables);
+            if (!string.IsNullOrEmpty(bestAlias))
+            {
+                var fixedRef = Regex.Replace(columnRef, $@"\b{Regex.Escape(columnName)}\b", $"{bestAlias}.{columnName}", RegexOptions.IgnoreCase);
+                _logger.LogTrace("Fixed ambiguous column '{Column}' to '{Fixed}'", columnName, fixedRef);
+                return fixedRef;
+            }
+
+            return columnRef;
+        }
+
+        private string FindBestAliasForColumn(string columnName, Dictionary<string, string> aliasToTable, HashSet<string> usedTables)
+        {
+            foreach (var kvp in aliasToTable)
+            {
+                var alias = kvp.Key;
+                var tableName = kvp.Value;
+
+                if (!usedTables.Contains(tableName))
+                    continue;
+
+                var tableMatch = Regex.Match(tableName, @"\.([^.]+)$");
+                var shortTableName = tableMatch.Success ? tableMatch.Groups[1].Value : tableName;
+
+                if (alias.Equals(shortTableName, StringComparison.OrdinalIgnoreCase) ||
+                    alias.Equals(tableName.Replace(".", "_"), StringComparison.OrdinalIgnoreCase))
+                {
+                    return alias;
+                }
+            }
+
+            if (aliasToTable.Count > 0)
+            {
+                return aliasToTable.Keys.First();
+            }
+
+            return string.Empty;
+        }
+
+        private Dictionary<string, string> ExtractTableAliases(string sql)
+        {
+            var aliasToTable = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            var fromPattern = @"FROM\s+(\[?[a-zA-Z0-9_]+\]?(?:\]?\.\[?[a-zA-Z0-9_]+\]?)?)(?:\s+(?:AS\s+)?([a-zA-Z0-9_]+))?(?:\s|$|JOIN)";
+            var fromMatch = Regex.Match(sql, fromPattern, RegexOptions.IgnoreCase);
+            if (fromMatch.Success)
+            {
+                var tableName = NormalizeTableName(fromMatch.Groups[1].Value);
+                var alias = fromMatch.Groups[2].Value;
+                if (string.IsNullOrWhiteSpace(alias))
+                {
+                    var tableMatch = Regex.Match(tableName, @"\.([^.]+)$");
+                    alias = tableMatch.Success ? tableMatch.Groups[1].Value : tableName;
+                }
+                if (!string.IsNullOrWhiteSpace(alias) && !IsSqlKeyword(alias))
+                {
+                    aliasToTable[alias] = tableName;
+                }
+            }
+
+            var joinPattern = @"(?:INNER|LEFT|RIGHT|FULL|CROSS)\s+JOIN\s+(\[?[a-zA-Z0-9_]+\]?(?:\]?\.\[?[a-zA-Z0-9_]+\]?)?)(?:\s+(?:AS\s+)?([a-zA-Z0-9_]+))?(?:\s|$|ON)";
+            var joinMatches = Regex.Matches(sql, joinPattern, RegexOptions.IgnoreCase);
+            foreach (Match match in joinMatches)
+            {
+                var tableName = NormalizeTableName(match.Groups[1].Value);
+                var alias = match.Groups[2].Value;
+                if (string.IsNullOrWhiteSpace(alias))
+                {
+                    var tableMatch = Regex.Match(tableName, @"\.([^.]+)$");
+                    alias = tableMatch.Success ? tableMatch.Groups[1].Value : tableName;
+                }
+                if (!string.IsNullOrWhiteSpace(alias) && !IsSqlKeyword(alias))
+                {
+                    aliasToTable[alias] = tableName;
+                }
+            }
+
+            return aliasToTable;
+        }
+
+        private string NormalizeTableName(string tableName)
+        {
+            if (string.IsNullOrWhiteSpace(tableName))
+                return tableName;
+
+            return tableName
+                .Replace("[", "")
+                .Replace("]", "")
+                .Replace("\"", "")
+                .Replace("`", "")
+                .Trim();
+        }
+
+        private bool IsSqlKeyword(string word)
+        {
+            var keywords = new[] { "SELECT", "FROM", "WHERE", "JOIN", "ON", "AND", "OR", "GROUP", "BY", "ORDER", "LIMIT", "TOP", "AS", "LEFT", "RIGHT", "INNER", "OUTER", "CROSS", "HAVING" };
+            return keywords.Contains(word.ToUpperInvariant());
+        }
+
     }
 }

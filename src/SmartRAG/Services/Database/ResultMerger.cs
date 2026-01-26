@@ -162,6 +162,11 @@ namespace SmartRAG.Services.Database
                 promptBuilder.AppendLine("     → TOTAL/SUM: Return aggregated numeric value from results");
                 promptBuilder.AppendLine("     → LIST: Return all rows (format as list)");
                 promptBuilder.AppendLine("     → TOP N: Sort by numeric column (descending), take first N");
+                promptBuilder.AppendLine("     → GROUPING queries (e.g., 'which grouping has most'): Show ALL groupings from results, not just one!");
+                promptBuilder.AppendLine("       → If query asks about grouping level and results contain multiple groupings, show ALL of them");
+                promptBuilder.AppendLine("       → Format: List each grouping with its count/amount");
+                promptBuilder.AppendLine("       → Example: If results show 4 groupings, show all 4, not just the top one");
+                promptBuilder.AppendLine("       → Order by count/amount DESC (highest first) but show ALL results");
                 promptBuilder.AppendLine();
                 promptBuilder.AppendLine("  3. Multiple databases:");
                 promptBuilder.AppendLine("     → Find ID columns (ending with 'ID' or 'Id') in ALL results");
@@ -184,7 +189,15 @@ namespace SmartRAG.Services.Database
                 promptBuilder.AppendLine("🚨🚨🚨 NOW GENERATE YOUR ANSWER:");
                 promptBuilder.AppendLine("  ✓ Use ONLY data from results above");
                 promptBuilder.AppendLine("  ✓ Use EXACT values (no modifications)");
+                promptBuilder.AppendLine("  ✓ If query asks about grouping level and results contain multiple groupings, show ALL of them");
                 promptBuilder.AppendLine("  ✓ If descriptive data missing, say 'PrimaryKeyColumn: X (descriptive data not available)'");
+                promptBuilder.AppendLine();
+                promptBuilder.AppendLine("  🚨 GROUPING QUERIES - CRITICAL:");
+                promptBuilder.AppendLine("    → If query asks 'which grouping has most' and results show multiple groupings:");
+                promptBuilder.AppendLine("      → Show ALL groupings from results (not just the first one)");
+                promptBuilder.AppendLine("      → Format: List each grouping with its count/amount");
+                promptBuilder.AppendLine("      → Order by count/amount DESC but include ALL results");
+                promptBuilder.AppendLine("    → Example: If results show 4 groupings, show all 4 with their values");
                 promptBuilder.AppendLine();
                 promptBuilder.AppendLine("  ✗✗✗ If NO data is available (Total rows: 0 or Error messages):");
                 promptBuilder.AppendLine("    → Say ONLY: 'I could not find the answer to your question'");

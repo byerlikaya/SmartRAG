@@ -203,6 +203,8 @@ namespace SmartRAG.Extensions
         {
             services.AddScoped<IDatabaseParserService, DatabaseParserService>();
             services.AddScoped<IDatabaseSchemaAnalyzer, DatabaseSchemaAnalyzer>();
+            services.AddScoped<SchemaChunkService>();
+            services.AddScoped<ISchemaMigrationService, SchemaMigrationService>();
             services.AddScoped<IDatabaseConnectionManager, DatabaseConnectionManager>();
             services.AddScoped<IQueryIntentAnalyzer, QueryIntentAnalyzer>();
             services.AddScoped<ISqlDialectStrategy, SqliteDialectStrategy>();
