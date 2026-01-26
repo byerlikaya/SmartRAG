@@ -14,12 +14,11 @@ namespace SmartRAG.Services.Helpers
         private const int MinRelevanceScore = -1;
         private const int MaxRelevanceScore = 1;
         private const int MaxEmbeddingVectorSize = 10000;
+        private const int MinEmbeddingVectorSize = 64;
         private const int MinEmbeddingValue = -1000;
         private const int MaxEmbeddingValue = 1000;
         private const int MaxAbsoluteValue = 100;
         private const int MinValueThreshold = 0;
-        private const int OpenAIVectorDimension = 1536;
-        private const int SentenceTransformersDimension = 768;
 
         /// <summary>
         /// Validates basic document properties
@@ -112,16 +111,16 @@ namespace SmartRAG.Services.Helpers
             if (chunk.Embedding == null) return;
 
             if (chunk.Embedding.Count > MaxEmbeddingVectorSize)
-                throw new ArgumentException($"Chunk embedding vector too large ({chunk.Embedding.Count} dimensions) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+                throw new ArgumentException($"Chunk embedding vector too large ({chunk.Embedding.Count} dimensions, max: {MaxEmbeddingVectorSize}) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+
+            if (chunk.Embedding.Count > 0 && chunk.Embedding.Count < MinEmbeddingVectorSize)
+                throw new ArgumentException($"Chunk embedding vector too small ({chunk.Embedding.Count} dimensions, min: {MinEmbeddingVectorSize}) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
 
             if (chunk.Embedding.Any(f => float.IsNaN(f) || float.IsInfinity(f)))
                 throw new ArgumentException($"Chunk embedding contains invalid values (NaN or Infinity) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
 
             if (chunk.Embedding.Any(f => f < MinEmbeddingValue || f > MaxEmbeddingValue))
                 throw new ArgumentException($"Chunk embedding contains values outside reasonable range [{MinEmbeddingValue}, {MaxEmbeddingValue}] for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-            if (chunk.Embedding.Count != 0 && chunk.Embedding.Count != SentenceTransformersDimension && chunk.Embedding.Count != OpenAIVectorDimension)
-                throw new ArgumentException($"Chunk embedding vector size must be 0, {SentenceTransformersDimension}, or {OpenAIVectorDimension} dimensions, got {chunk.Embedding.Count} for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
 
             if (chunk.Embedding.Count > 0 && chunk.Embedding.All(f => f == 0))
                 throw new ArgumentException($"Chunk embedding vector contains only zeros for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");

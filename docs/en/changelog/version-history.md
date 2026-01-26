@@ -11,12 +11,99 @@ All releases and changes to SmartRAG are documented here.
 
 <div class="accordion mt-4" id="versionAccordion">
     <div class="accordion-item">
+        <h2 class="accordion-header" id="headingversion380">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion380" aria-expanded="true" aria-controls="collapseversion380">
+                <strong>v3.8.0</strong> - 2026-01-26
+            </button>
+        </h2>
+        <div id="collapseversion380" class="accordion-collapse collapse show" aria-labelledby="headingversion380" >
+            <div class="accordion-body">
+{% capture version_content %}
+
+### Schema RAG Implementation
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> MINOR Release</h4>
+    <p class="mb-0">
+        This release implements Schema RAG pattern, enabling intelligent SQL generation through semantic search of database schema information stored as vectorized chunks.
+        All changes are backward compatible.
+    </p>
+</div>
+
+### ✨ Added
+
+#### Schema RAG Implementation
+- **Automatic Schema Migration**: New service for migrating database schemas to vectorized chunks
+- **Schema Chunk Service**: Converts database schemas to vectorized document chunks with embeddings
+- **Semantic Schema Search**: Schema information retrieved from RAG chunks for better SQL generation
+- **Schema Metadata**: Chunks stored with metadata (databaseId, databaseName, documentType: "Schema")
+- **Migration Support**: Migrate all schemas or individual database schemas
+- **Schema Updates**: Update functionality (delete old and create new chunks)
+- **Semantic Keywords**: Extraction from table and column names for better query matching
+- **PostgreSQL Support**: Special formatting with double quotes for identifiers
+- **Table Classification**: Table type classification (TRANSACTIONAL, LOOKUP, MASTER) based on row count
+- **Foreign Key Documentation**: Comprehensive foreign key relationship documentation in chunks
+- **Files Added**:
+  - `src/SmartRAG/Interfaces/Database/ISchemaMigrationService.cs` - Schema migration interface
+  - `src/SmartRAG/Services/Database/SchemaMigrationService.cs` - Schema migration service
+  - `src/SmartRAG/Services/Database/SchemaChunkService.cs` - Schema chunk conversion service
+
+### 🔧 Improved
+
+#### SQL Query Generation
+- **Schema Chunk Integration**: Enhanced with schema chunk integration for better accuracy
+- **RAG Pattern**: Schema information retrieved from RAG chunks (primary source)
+- **Fallback Support**: Fallback to DatabaseSchemaInfo when schema chunks are not available
+- **Improved Prompts**: Enhanced prompt building with schema context from chunks
+- **Files Modified**:
+  - `src/SmartRAG/Services/Database/SQLQueryGenerator.cs` - Enhanced with schema chunk integration
+  - `src/SmartRAG/Services/Database/Prompts/SqlPromptBuilder.cs` - Improved prompt structure
+
+#### Database Connection Manager
+- **Schema Migration Integration**: Added optional schema migration service integration
+- **Files Modified**:
+  - `src/SmartRAG/Services/Database/DatabaseConnectionManager.cs` - Added schema migration support
+
+#### Result Merger
+- **Enhanced Merging**: Improved merging logic for better result combination
+- **Files Modified**:
+  - `src/SmartRAG/Services/Database/ResultMerger.cs` - Enhanced merging logic
+
+#### Document Validator
+- **Schema Document Validation**: Enhanced validation for schema documents
+- **Files Modified**:
+  - `src/SmartRAG/Services/Helpers/DocumentValidator.cs` - Enhanced validation logic
+
+#### Service Registration
+- **DI Container**: Added schema migration and chunk services to DI container
+- **Files Modified**:
+  - `src/SmartRAG/Extensions/ServiceCollectionExtensions.cs` - Added service registrations
+
+#### Other Improvements
+- **Storage Factory**: Updated for schema-related services
+- **Query Strategy Executor**: Enhanced with schema-aware query execution
+- **Qdrant Collection Manager**: Updated for schema document support
+
+### 📝 Notes
+
+- **Backward Compatibility**: All changes are backward compatible
+- **Migration**: No migration required
+- **Breaking Changes**: None
+- **Schema RAG Pattern**: Schema information is now stored as vectorized chunks, enabling semantic search for better SQL generation
+
+---
+{% endcapture %}
+{{ version_content | markdownify }}
+            </div>
+        </div>
+    </div>
+    <div class="accordion-item">
         <h2 class="accordion-header" id="headingversion370">
-            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion370" aria-expanded="true" aria-controls="collapseversion370">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion370" aria-expanded="false" aria-controls="collapseversion370">
                 <strong>v3.7.0</strong> - 2026-01-19
             </button>
         </h2>
-        <div id="collapseversion370" class="accordion-collapse collapse show" aria-labelledby="headingversion370" >
+        <div id="collapseversion370" class="accordion-collapse collapse" aria-labelledby="headingversion370" >
             <div class="accordion-body">
 {% capture version_content %}
 

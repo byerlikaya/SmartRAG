@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using SmartRAG.Enums;
 using SmartRAG.Interfaces.Document;
 using SmartRAG.Interfaces.Storage;
+using SmartRAG.Interfaces.Database;
 using SmartRAG.Models;
 using SmartRAG.Repositories;
 using SmartRAG.Services.Storage.Qdrant;

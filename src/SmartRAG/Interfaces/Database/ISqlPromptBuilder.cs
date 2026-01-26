@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using SmartRAG.Entities;
 using SmartRAG.Interfaces.Database.Strategies;
 using SmartRAG.Models;
 
@@ -42,7 +43,9 @@ namespace SmartRAG.Interfaces.Database
         /// <param name="queryIntent">Full query intent with all database queries</param>
         /// <param name="schemas">Dictionary of database schemas by database ID</param>
         /// <param name="strategies">Dictionary of SQL dialect strategies by database ID</param>
+        /// <param name="schemaChunksMap">Dictionary of relevant schema chunks by database ID (optional, for RAG-based schema retrieval)</param>
+        /// <param name="requiredMappingColumns">Dictionary of required mapping columns by database ID (optional, for cross-database queries)</param>
         /// <returns>SqlPromptParts containing system message (schema) and user message (rules)</returns>
-        SqlPromptParts BuildMultiDatabaseSeparated(string userQuery, QueryIntent queryIntent, Dictionary<string, DatabaseSchemaInfo> schemas, Dictionary<string, ISqlDialectStrategy> strategies);
+        SqlPromptParts BuildMultiDatabaseSeparated(string userQuery, QueryIntent queryIntent, Dictionary<string, DatabaseSchemaInfo> schemas, Dictionary<string, ISqlDialectStrategy> strategies, Dictionary<string, List<DocumentChunk>> schemaChunksMap = null, Dictionary<string, List<string>> requiredMappingColumns = null);
     }
 }
