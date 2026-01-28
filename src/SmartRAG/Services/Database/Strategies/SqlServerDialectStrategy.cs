@@ -7,8 +7,6 @@ namespace SmartRAG.Services.Database.Strategies
     public class SqlServerDialectStrategy : BaseSqlDialectStrategy
     {
         public override DatabaseType DatabaseType => DatabaseType.SqlServer;
-        protected override string GetDialectName() => "SQL Server";
-
         public override bool ValidateSyntax(string sql, out string errorMessage)
         {
             // First check base validation
@@ -111,18 +109,5 @@ namespace SmartRAG.Services.Database.Strategies
             return fixedSql;
         }
 
-        public override string EscapeIdentifier(string identifier)
-        {
-            // SQL Server uses square brackets for identifiers with spaces/special chars
-            if (string.IsNullOrWhiteSpace(identifier)) return identifier;
-            
-            // If identifier contains space or special chars, wrap in square brackets
-            if (identifier.Contains(" ") || identifier.Contains("-") || identifier.Contains("."))
-            {
-                return $"[{identifier}]";
-            }
-            
-            return identifier;
-        }
     }
 }

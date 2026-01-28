@@ -62,12 +62,5 @@ namespace SmartRAG.Services.Database.Strategies
 
             return quoteCount % 2 != 0;
         }
-
-        protected abstract string GetDialectName();
-
-        /// <summary>
-        /// Escapes table/column names for the specific SQL dialect
-        /// </summary>
-        public abstract string EscapeIdentifier(string identifier);
     }
 }
