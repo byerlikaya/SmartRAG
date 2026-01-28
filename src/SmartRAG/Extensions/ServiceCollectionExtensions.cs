@@ -258,7 +258,7 @@ namespace SmartRAG.Extensions
         {
             ConfigureStorageProvider(services, configuration);
 
-            services.AddSingleton(sp => sp.GetRequiredService<IStorageFactory>().GetCurrentRepository());
+            services.AddScoped<IDocumentRepository>(sp => sp.GetRequiredService<IStorageFactory>().GetCurrentRepository(sp));
             services.AddSingleton(sp => sp.GetRequiredService<IStorageFactory>().GetCurrentConversationRepository());
         }
 
