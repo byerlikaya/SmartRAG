@@ -105,9 +105,6 @@ namespace SmartRAG.Services.Database
         {
             try
             {
-                var hasMultipleDatabases = queryResults.DatabaseResults.Count(r => r.Value.Success) > 1;
-                var hasMergedResults = mergedData.Contains("SMART MERGED RESULTS");
-
                 var promptBuilder = new StringBuilder();
                 
                 // Add language instruction if preferred language is specified

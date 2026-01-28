@@ -2,7 +2,6 @@ using Microsoft.Extensions.Logging;
 using SmartRAG.Interfaces.Database;
 using SmartRAG.Models;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
@@ -19,18 +18,15 @@ namespace SmartRAG.Services.Database
 
         private readonly IDatabaseConnectionManager _connectionManager;
         private readonly IDatabaseParserService _databaseParser;
-        private readonly IDatabaseSchemaAnalyzer _schemaAnalyzer;
         private readonly ILogger<DatabaseQueryExecutor> _logger;
 
         public DatabaseQueryExecutor(
             IDatabaseConnectionManager connectionManager,
             IDatabaseParserService databaseParser,
-            IDatabaseSchemaAnalyzer schemaAnalyzer,
             ILogger<DatabaseQueryExecutor> logger)
         {
             _connectionManager = connectionManager;
             _databaseParser = databaseParser;
-            _schemaAnalyzer = schemaAnalyzer;
             _logger = logger;
         }
 
