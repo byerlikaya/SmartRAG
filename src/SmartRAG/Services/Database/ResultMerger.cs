@@ -653,18 +653,12 @@ namespace SmartRAG.Services.Database
             var baseResult = joinableResults[0].Result;
             var baseJoinColumn = joinableResults[0].JoinColumn;
 
-            _logger.LogDebug("PerformInMemoryJoin: Base database={Database}, Base column={Column}, Base rows={RowCount}",
-                baseResult.DatabaseName, baseJoinColumn, baseResult.Rows.Count);
-
             var mergedColumns = new List<string>(baseResult.Columns);
 
             for (int i = 1; i < joinableResults.Count; i++)
             {
                 var otherResult = joinableResults[i].Result;
                 var otherJoinColumn = joinableResults[i].JoinColumn;
-                _logger.LogDebug("PerformInMemoryJoin: Other database={Database}, Other column={Column}, Other rows={RowCount}",
-                    otherResult.DatabaseName, otherJoinColumn, otherResult.Rows.Count);
-                
                 foreach (var col in otherResult.Columns)
                 {
                     if (!mergedColumns.Contains(col, StringComparer.OrdinalIgnoreCase))
@@ -753,7 +747,6 @@ namespace SmartRAG.Services.Database
             {
                 if (joinableResults.Count < 2)
                 {
-                    _logger.LogDebug("RetryMergeWithFilteredQueryAsync: Not enough joinable results ({Count})", joinableResults.Count);
                     return null;
                 }
 
@@ -780,9 +773,6 @@ namespace SmartRAG.Services.Database
 
                 if (aggregationResult.Result == null || descriptiveResultTuple.Result == null)
                 {
-                    _logger.LogDebug("RetryMergeWithFilteredQueryAsync: aggregationResult={Agg}, descriptiveResult={Desc}",
-                        aggregationResult.Result != null ? aggregationResult.Result.DatabaseName : "null",
-                        descriptiveResultTuple.Result != null ? descriptiveResultTuple.Result.DatabaseName : "null");
                     return null;
                 }
 
@@ -801,7 +791,6 @@ namespace SmartRAG.Services.Database
 
                 if (idValues.Count == 0)
                 {
-                    _logger.LogDebug("RetryMergeWithFilteredQueryAsync: No ID values found in aggregation result");
                     return null;
                 }
 
@@ -1377,7 +1366,7 @@ namespace SmartRAG.Services.Database
             }
             catch (Exception ex)
             {
-                _logger.LogDebug(ex, "Error checking schema for column {ColumnName} in database {DatabaseId}", columnName, databaseId);
+                _logger.LogWarning(ex, "Error checking schema for column {ColumnName} in database {DatabaseId}", columnName, databaseId);
             }
             
             if (DescriptiveColumnPatterns.Any(pattern => 

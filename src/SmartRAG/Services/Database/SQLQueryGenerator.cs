@@ -130,26 +130,16 @@ namespace SmartRAG.Services.Database
                             d.Metadata.TryGetValue("documentType", out var dt) && string.Equals(dt?.ToString(), "Schema", StringComparison.OrdinalIgnoreCase) &&
                             d.Metadata.TryGetValue("databaseId", out var id) && id?.ToString() == dbQuery.DatabaseId);
 
-                        if (schemaDoc != null)
-                        {
-                            var fullDoc = await _documentRepository.GetByIdAsync(schemaDoc.Id, cancellationToken);
-                            if (fullDoc?.Chunks != null && fullDoc.Chunks.Count > 0)
-                            {
-                                schemaChunksMap[dbQuery.DatabaseId] = fullDoc.Chunks.OrderBy(c => c.ChunkIndex).ToList();
-                                _logger.LogInformation("Using {Count} schema chunks for database {DatabaseName} (from stored schema document)",
-                                    fullDoc.Chunks.Count, schema.DatabaseName);
-                            }
-                            else
-                            {
-                                _logger.LogDebug("Schema document for database {DatabaseName} has no chunks, using DatabaseSchemaInfo fallback",
-                                    schema.DatabaseName);
-                            }
-                        }
-                        else
-                        {
-                            _logger.LogDebug("No schema document found for database {DatabaseName}, using DatabaseSchemaInfo fallback",
-                                schema.DatabaseName);
-                        }
+                if (schemaDoc != null)
+                {
+                    var fullDoc = await _documentRepository.GetByIdAsync(schemaDoc.Id, cancellationToken);
+                    if (fullDoc?.Chunks != null && fullDoc.Chunks.Count > 0)
+                    {
+                        schemaChunksMap[dbQuery.DatabaseId] = fullDoc.Chunks.OrderBy(c => c.ChunkIndex).ToList();
+                        _logger.LogInformation("Using {Count} schema chunks for database {DatabaseName} (from stored schema document)",
+                            fullDoc.Chunks.Count, schema.DatabaseName);
+                    }
+                }
                     }
                     catch (Exception ex)
                     {
@@ -183,21 +173,13 @@ namespace SmartRAG.Services.Database
                 promptParts.UserMessage += "\n" + additionalInstructions.ToString();
             }
 
-            _logger.LogDebug("Sending separated multi-database prompt to AI for {DatabaseCount} databases (schema as context)", queryIntent.DatabaseQueries.Count);
-            _logger.LogTrace("Context (schema) length: {Length} characters", promptParts.SystemMessage?.Length ?? 0);
-            _logger.LogTrace("Query (rules) length: {Length} characters", promptParts.UserMessage?.Length ?? 0);
+            _logger.LogInformation("Sending separated multi-database prompt to AI for {DatabaseCount} databases", queryIntent.DatabaseQueries.Count);
             
             var context = new List<string> { promptParts.SystemMessage };
             var aiResponse = await _aiService.GenerateResponseAsync(promptParts.UserMessage, context, cancellationToken);
-            _logger.LogDebug("AI response length: {Length} characters", aiResponse?.Length ?? 0);
-            
-            if (_logger.IsEnabled(LogLevel.Trace))
-            {
-                _logger.LogTrace("Full AI response: {Response}", aiResponse);
-            }
+            _logger.LogInformation("AI response received for multi-database SQL generation");
             
             var databaseSqls = ExtractMultiDatabaseSQL(aiResponse, queryIntent.DatabaseQueries, schemas);
-            _logger.LogDebug("Extracted SQL for {ExtractedCount} out of {TotalCount} databases", databaseSqls.Count, queryIntent.DatabaseQueries.Count);
 
             foreach (var dbQuery in queryIntent.DatabaseQueries)
             {
@@ -281,7 +263,6 @@ namespace SmartRAG.Services.Database
                             if (!string.IsNullOrWhiteSpace(sql))
                             {
                                 result[currentDatabase] = sql;
-                                _logger.LogDebug("Extracted SQL for database {DatabaseId}: {SqlLength} chars", currentDatabase, sql.Length);
                             }
                         }
                         
@@ -309,14 +290,13 @@ namespace SmartRAG.Services.Database
                 var dbMatch = Regex.Match(trimmedLine, @"^DATABASE\s+(\d+):\s*(.+)$", RegexOptions.IgnoreCase);
                 if (dbMatch.Success)
                 {
-                    if (currentDatabase != null && currentSql.Any())
-                    {
-                        var sql = ExtractCompleteSQL(string.Join(" ", currentSql));
-                        if (!string.IsNullOrWhiteSpace(sql))
+                        if (currentDatabase != null && currentSql.Any())
                         {
-                            result[currentDatabase] = sql;
-                            _logger.LogDebug("Extracted SQL for database {DatabaseId}: {SqlLength} chars", currentDatabase, sql.Length);
-                        }
+                            var sql = ExtractCompleteSQL(string.Join(" ", currentSql));
+                            if (!string.IsNullOrWhiteSpace(sql))
+                            {
+                                result[currentDatabase] = sql;
+                            }
                     }
                     
                     var dbIndex = int.Parse(dbMatch.Groups[1].Value) - 1;
@@ -328,7 +308,6 @@ namespace SmartRAG.Services.Database
                         currentSql.Clear();
                         inSql = false;
                         waitingForConfirmed = true;
-                        _logger.LogDebug("Found database marker: {DatabaseId} (response had: {DbName})", currentDatabase, dbNameFromResponse);
                     }
                     else if (!string.IsNullOrWhiteSpace(dbNameFromResponse) && !dbNameFromResponse.Equals("DatabaseName", StringComparison.OrdinalIgnoreCase))
                     {
@@ -340,7 +319,6 @@ namespace SmartRAG.Services.Database
                             currentSql.Clear();
                             inSql = false;
                             waitingForConfirmed = true;
-                            _logger.LogDebug("Found database by name match: {DatabaseId} (from response: {DbName})", currentDatabase, dbNameFromResponse);
                         }
                     }
                     else
@@ -349,7 +327,6 @@ namespace SmartRAG.Services.Database
                         currentSql.Clear();
                         inSql = false;
                         waitingForConfirmed = true;
-                        _logger.LogDebug("Skipping database marker at index {DbIndex} (out of range, expected databases: {ExpectedCount})", dbIndex, databaseQueries.Count);
                     }
                     continue;
                 }
@@ -360,7 +337,6 @@ namespace SmartRAG.Services.Database
                     {
                         inSql = true;
                         waitingForConfirmed = false;
-                        _logger.LogDebug("Found CONFIRMED marker for database {DatabaseId}", currentDatabase);
                     }
                     continue;
                 }
@@ -441,7 +417,6 @@ namespace SmartRAG.Services.Database
                             if (!string.IsNullOrWhiteSpace(sql) && sql.Length > 20)
                             {
                                 result[currentDatabase] = sql;
-                                _logger.LogDebug("Completed SQL extraction for database {DatabaseId}", currentDatabase);
                             }
                             inSql = false;
                         }
@@ -455,18 +430,17 @@ namespace SmartRAG.Services.Database
                 if (!string.IsNullOrWhiteSpace(sql))
                 {
                     result[currentDatabase] = sql;
-                    _logger.LogDebug("Final SQL extraction for database {DatabaseId}: {SqlLength} chars", currentDatabase, sql.Length);
                 }
             }
 
             if (result.Count == 0)
             {
                 result = ExtractSqlBlocksWithoutDatabaseMarkers(response, databaseQueries, schemas);
-                if (result.Count > 0)
-                    _logger.LogDebug("Extracted {Count} SQL block(s) via fallback (no DATABASE N: markers)", result.Count);
-                else
+                if (result.Count == 0)
+                {
                     _logger.LogWarning("Failed to extract any SQL from AI response. Response preview: {Preview}", 
                         response?.Substring(0, Math.Min(500, response?.Length ?? 0)) ?? "null");
+                }
             }
 
             return result;
