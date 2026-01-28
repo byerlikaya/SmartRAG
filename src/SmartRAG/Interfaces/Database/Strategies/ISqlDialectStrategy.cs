@@ -14,11 +14,6 @@ namespace SmartRAG.Interfaces.Database.Strategies
         DatabaseType DatabaseType { get; }
 
         /// <summary>
-        /// Builds the system prompt for SQL generation specific to this dialect
-        /// </summary>
-        string BuildSystemPrompt(DatabaseSchemaInfo schema, string userQuery);
-
-        /// <summary>
         /// Validates the syntax of the generated SQL
         /// </summary>
         bool ValidateSyntax(string sql, out string errorMessage);
@@ -27,10 +22,5 @@ namespace SmartRAG.Interfaces.Database.Strategies
         /// Formats the SQL query according to dialect rules
         /// </summary>
         string FormatSql(string sql);
-
-        /// <summary>
-        /// Gets the limit clause format for this dialect
-        /// </summary>
-        string GetLimitClause(int limit);
     }
 }

@@ -1,8 +1,6 @@
 using SmartRAG.Enums;
 using SmartRAG.Interfaces.Database.Strategies;
-using SmartRAG.Models;
 using System;
-using System.Text;
 using System.Text.RegularExpressions;
 
 namespace SmartRAG.Services.Database.Strategies
@@ -13,8 +11,6 @@ namespace SmartRAG.Services.Database.Strategies
     public abstract class BaseSqlDialectStrategy : ISqlDialectStrategy
     {
         public abstract DatabaseType DatabaseType { get; }
-
-        public abstract string BuildSystemPrompt(DatabaseSchemaInfo schema, string queryIntent);
 
         public virtual bool ValidateSyntax(string sql, out string errorMessage)
         {
@@ -53,8 +49,6 @@ namespace SmartRAG.Services.Database.Strategies
             return formatted;
         }
 
-        public abstract string GetLimitClause(int limit);
-
         protected bool IsInsideStringLiteral(string sql, string keyword)
         {
             int index = sql.IndexOf(keyword, StringComparison.OrdinalIgnoreCase);
@@ -67,34 +61,6 @@ namespace SmartRAG.Services.Database.Strategies
             }
 
             return quoteCount % 2 != 0;
-        }
-
-
-        protected string FormatSchemaDescription(DatabaseSchemaInfo schema)
-        {
-            var sb = new StringBuilder();
-
-            foreach (var table in schema.Tables)
-            {
-                sb.AppendLine($"Table: {table.TableName}");
-                sb.AppendLine("Columns:");
-                foreach (var col in table.Columns)
-                {
-                    sb.AppendLine($"  - {col.ColumnName} ({col.DataType})");
-                }
-
-                if (table.ForeignKeys != null && table.ForeignKeys.Count > 0)
-                {
-                    sb.AppendLine("Foreign Keys:");
-                    foreach (var fk in table.ForeignKeys)
-                    {
-                        sb.AppendLine($"  - {fk.ColumnName} -> {fk.ReferencedTable}.{fk.ReferencedColumn}");
-                    }
-                }
-                sb.AppendLine();
-            }
-
-            return sb.ToString();
         }
 
         protected abstract string GetDialectName();
