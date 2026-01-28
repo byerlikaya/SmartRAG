@@ -5,7 +5,7 @@
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
-    <PackageVersion>3.8.0</PackageVersion>
+    <PackageVersion>3.8.1</PackageVersion>
     <Authors>Barış Yerlikaya</Authors>
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
@@ -20,38 +20,22 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Release 3.8.0: Schema RAG Implementation (MINOR Release - 2026-01-26)
+    <PackageReleaseNotes>Release 3.8.1: Schema RAG Refinements (PATCH Release - 2026-01-28)
 
 ADDED:
-- Schema RAG Implementation: Automatic migration of database schemas to vectorized chunks for intelligent SQL generation
-  - New ISchemaMigrationService interface and SchemaMigrationService implementation
-  - New SchemaChunkService for converting database schemas to vectorized document chunks
-  - Automatic schema chunk generation with embeddings for semantic search
-  - Schema chunks stored with metadata (databaseId, databaseName, documentType: "Schema")
-  - Support for migrating all schemas or individual database schemas
-  - Schema update functionality (delete old and create new chunks)
-  - Semantic keyword extraction from table and column names for better query matching
-  - PostgreSQL-specific formatting with double quotes for identifiers
-  - Table type classification (TRANSACTIONAL, LOOKUP, MASTER) based on row count
-  - Comprehensive foreign key relationship documentation in chunks
+- Comprehensive CancellationToken propagation in schema-related services for better cancellation handling
 
 IMPROVEMENTS:
-- SQL Query Generation: Enhanced with schema chunk integration for better accuracy
-  - Schema information now retrieved from RAG chunks (primary source)
-  - Fallback to DatabaseSchemaInfo when schema chunks are not available
-  - Improved prompt building with schema context from chunks
-- Database Connection Manager: Added optional schema migration service integration
-- Result Merger: Enhanced merging logic for better result combination
-- SQL Prompt Builder: Improved prompt structure with schema chunk context
-- Document Validator: Enhanced validation for schema documents
+- SQL Query Generation and Schema RAG: Removed unused SQL prompt and dialect helpers to simplify maintenance
+- Result Merger and query coordination: Simplified merging and removed dead code paths for cleaner flow
+- Storage Factory and QueryTokenizer: Reduced complexity and eliminated unused branches
+- Context Expansion and Qdrant search: Simplified logic and removed unused helpers while preserving behavior
+- Conversation and FileWatcher services: Removed unused events and helpers to reduce noise
 
 TECHNICAL DETAILS:
 - Maintained 0 errors, 0 warnings
-- Full backward compatibility maintained
-- Schema chunks enable more accurate SQL generation through semantic search
-- RAG pattern implementation for schema information retrieval
-
-This release implements Schema RAG pattern, enabling intelligent SQL generation through semantic search of database schema information stored as vectorized chunks.</PackageReleaseNotes>
+- No public API changes; all updates are internal refactorings and performance/maintainability improvements
+- Includes all features from 3.8.0 Schema RAG implementation (schema migration and chunking services)</PackageReleaseNotes>
     
     <!-- Build Configuration -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -62,8 +46,8 @@ This release implements Schema RAG pattern, enabling intelligent SQL generation 
     <AssemblyTitle>SmartRAG</AssemblyTitle>
     <AssemblyDescription>High-performance RAG library with conversation history management for .NET</AssemblyDescription>
     <AssemblyCopyright>Copyright © 2025 Barış Yerlikaya</AssemblyCopyright>
-    <AssemblyVersion>3.8.0.0</AssemblyVersion>
-    <FileVersion>3.8.0.0</FileVersion>
+    <AssemblyVersion>3.8.1.0</AssemblyVersion>
+    <FileVersion>3.8.1.0</FileVersion>
     <NeutralLanguage>en</NeutralLanguage>
     <Culture>en-US</Culture>
   </PropertyGroup>

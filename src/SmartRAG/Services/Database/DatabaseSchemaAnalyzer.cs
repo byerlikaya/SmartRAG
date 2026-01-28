@@ -27,7 +27,6 @@ namespace SmartRAG.Services.Database
     public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
     {
         private readonly IDatabaseParserService _databaseParserService;
-        private readonly IAIService _aiService;
         private readonly ILogger<DatabaseSchemaAnalyzer> _logger;
         private readonly ConcurrentDictionary<string, DatabaseSchemaInfo> _schemaCache;
         private readonly ConcurrentDictionary<string, DateTime> _lastRefreshTimes;
@@ -35,12 +34,10 @@ namespace SmartRAG.Services.Database
 
         public DatabaseSchemaAnalyzer(
             IDatabaseParserService databaseParserService,
-            IAIService aiService,
             ILogger<DatabaseSchemaAnalyzer> logger,
             IOptions<SmartRagOptions> options)
         {
             _databaseParserService = databaseParserService;
-            _aiService = aiService;
             _logger = logger;
             _schemaCache = new ConcurrentDictionary<string, DatabaseSchemaInfo>();
             _lastRefreshTimes = new ConcurrentDictionary<string, DateTime>();

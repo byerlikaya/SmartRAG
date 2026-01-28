@@ -69,7 +69,7 @@ namespace SmartRAG.Factories
                     var embeddingService = new QdrantEmbeddingService(Options.Create(config.Qdrant), _loggerFactory.CreateLogger<QdrantEmbeddingService>());
                     var aiService = _serviceProvider.GetRequiredService<IAIService>();
                     var cacheManager = new QdrantCacheManager(_loggerFactory.CreateLogger<QdrantCacheManager>());
-                    var searchService = new QdrantSearchService(Options.Create(config.Qdrant), _loggerFactory.CreateLogger<QdrantSearchService>(), embeddingService);
+                    var searchService = new QdrantSearchService(Options.Create(config.Qdrant), _loggerFactory.CreateLogger<QdrantSearchService>());
                     return new QdrantDocumentRepository(Options.Create(config.Qdrant), _loggerFactory.CreateLogger<QdrantDocumentRepository>(), collectionManager, embeddingService, aiService, cacheManager, searchService);
                 default:
                     throw new ArgumentException($"Unsupported storage provider: {config.Provider}");

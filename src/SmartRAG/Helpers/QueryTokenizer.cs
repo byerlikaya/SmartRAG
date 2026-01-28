@@ -94,9 +94,6 @@ namespace SmartRAG.Helpers
             var hasCurrencySymbol = query.Any(c => c == '€' || c == '$' || c == '£' || c == '¥' || c == '₺');
             return hasCurrencySymbol;
         }
-
-        // Intentionally no stemming logic here; language-specific normalization should be handled
-        // by higher-level services (for example via AI-based analysis) to remain language-agnostic.
     }
 }
 

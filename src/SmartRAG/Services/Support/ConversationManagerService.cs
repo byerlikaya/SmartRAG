@@ -1,11 +1,9 @@
 #nullable enable
 
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using SmartRAG.Interfaces.AI;
 using SmartRAG.Interfaces.Storage;
 using SmartRAG.Interfaces.Support;
-using SmartRAG.Models;
 using SmartRAG.Services.Shared;
 using System;
 using System.Collections.Concurrent;
@@ -26,7 +24,6 @@ namespace SmartRAG.Services.Support
         private const string ChatUnavailableMessage = "Sorry, I cannot chat right now. Please try again later.";
 
         private readonly IConversationRepository _conversationRepository;
-        private readonly SmartRagOptions _options;
         private readonly ILogger<ConversationManagerService> _logger;
         private readonly IAIService? _aiService;
         private readonly IPromptBuilderService? _promptBuilder;
@@ -37,19 +34,16 @@ namespace SmartRAG.Services.Support
         /// Initializes a new instance of the ConversationManagerService
         /// </summary>
         /// <param name="conversationRepository">Repository for conversation operations</param>
-        /// <param name="options">SmartRAG configuration options</param>
         /// <param name="logger">Logger instance for this service</param>
         /// <param name="aiService">Optional AI service for generating responses (uses AIService with retry and fallback logic)</param>
         /// <param name="promptBuilder">Optional service for building AI prompts</param>
         public ConversationManagerService(
             IConversationRepository conversationRepository,
-            IOptions<SmartRagOptions> options,
             ILogger<ConversationManagerService> logger,
             IAIService? aiService = null,
             IPromptBuilderService? promptBuilder = null)
         {
             _conversationRepository = conversationRepository;
-            _options = options.Value;
             _logger = logger;
             _aiService = aiService;
             _promptBuilder = promptBuilder;

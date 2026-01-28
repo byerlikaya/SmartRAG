@@ -253,7 +253,7 @@ namespace SmartRAG.Services.Document
         /// <summary>
         /// Gets RAG configuration from options and configuration
         /// </summary>
-        public RagConfiguration GetRagConfiguration()
+        private RagConfiguration GetRagConfiguration()
         {
             return new RagConfiguration
             {

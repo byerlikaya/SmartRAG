@@ -17,20 +17,16 @@ namespace SmartRAG.Services.Document
         private const double UniqueKeywordBonusMultiplier = 2500.0;
         private const double FrequencyBonusMultiplier = 75.0;
 
-        private readonly ILogger<DocumentRelevanceCalculatorService> _logger;
         private readonly IQueryWordMatcherService _queryWordMatcher;
 
         /// <summary>
         /// Initializes a new instance of the DocumentRelevanceCalculatorService
         /// </summary>
         /// <param name="queryWordMatcher">Service for query word matching operations</param>
-        /// <param name="logger">Logger instance for this service</param>
         public DocumentRelevanceCalculatorService(
-            IQueryWordMatcherService queryWordMatcher,
-            ILogger<DocumentRelevanceCalculatorService> logger)
+            IQueryWordMatcherService queryWordMatcher)
         {
             _queryWordMatcher = queryWordMatcher ?? throw new ArgumentNullException(nameof(queryWordMatcher));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         /// <summary>

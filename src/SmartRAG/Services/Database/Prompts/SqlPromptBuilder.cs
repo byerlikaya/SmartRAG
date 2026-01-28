@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Database.Prompts
 {
@@ -14,7 +13,6 @@ namespace SmartRAG.Services.Database.Prompts
     /// </summary>
     public class SqlPromptBuilder : ISqlPromptBuilder
     {
-        private const int SampleDataLimit = 200;
         private readonly IDatabaseConnectionManager _connectionManager;
 
         public SqlPromptBuilder(IDatabaseConnectionManager connectionManager = null)
@@ -111,7 +109,6 @@ namespace SmartRAG.Services.Database.Prompts
 
             return cleaned.Length > 0 && cleaned.All(char.IsDigit);
         }
-
         private List<CrossDatabaseMapping> GetAllCrossDatabaseMappings()
         {
             var mappings = new List<CrossDatabaseMapping>();
@@ -139,93 +136,10 @@ namespace SmartRAG.Services.Database.Prompts
             return mappings;
         }
 
-        private List<CrossDatabaseMapping> GetRelevantCrossDatabaseMappings(string databaseName, List<string> requiredTables)
-        {
-            var mappings = new List<CrossDatabaseMapping>();
-            
-            if (_connectionManager == null)
-                return mappings;
-
-            try
-            {
-                var connectionsTask = _connectionManager.GetAllConnectionsAsync();
-                var connections = connectionsTask.GetAwaiter().GetResult();
-                
-                foreach (var connection in connections)
-                {
-                    if (connection?.CrossDatabaseMappings == null)
-                        continue;
-                    
-                    foreach (var mapping in connection.CrossDatabaseMappings)
-                    {
-                        bool isRelevant = false;
-                        
-                        if (mapping.SourceDatabase.Equals(databaseName, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (requiredTables == null || requiredTables.Count == 0 ||
-                                requiredTables.Any(t => t.Equals(mapping.SourceTable, StringComparison.OrdinalIgnoreCase) ||
-                                                       t.Contains(mapping.SourceTable.Split('.').Last(), StringComparison.OrdinalIgnoreCase)))
-                            {
-                                isRelevant = true;
-                            }
-                        }
-                        
-                        if (mapping.TargetDatabase.Equals(databaseName, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (requiredTables == null || requiredTables.Count == 0 ||
-                                requiredTables.Any(t => t.Equals(mapping.TargetTable, StringComparison.OrdinalIgnoreCase) ||
-                                                       t.Contains(mapping.TargetTable.Split('.').Last(), StringComparison.OrdinalIgnoreCase)))
-                            {
-                                var reverseMapping = new CrossDatabaseMapping
-                                {
-                                    SourceDatabase = mapping.TargetDatabase,
-                                    SourceTable = mapping.TargetTable,
-                                    SourceColumn = mapping.TargetColumn,
-                                    TargetDatabase = mapping.SourceDatabase,
-                                    TargetTable = mapping.SourceTable,
-                                    TargetColumn = mapping.SourceColumn,
-                                    RelationshipType = mapping.RelationshipType
-                                };
-                                if (!mappings.Any(m => m.SourceDatabase == reverseMapping.SourceDatabase &&
-                                                      m.SourceTable == reverseMapping.SourceTable &&
-                                                      m.SourceColumn == reverseMapping.SourceColumn &&
-                                                      m.TargetDatabase == reverseMapping.TargetDatabase &&
-                                                      m.TargetTable == reverseMapping.TargetTable &&
-                                                      m.TargetColumn == reverseMapping.TargetColumn))
-                                {
-                                    mappings.Add(reverseMapping);
-                                }
-                                isRelevant = true;
-                            }
-                        }
-                        
-                        if (isRelevant && mapping.SourceDatabase.Equals(databaseName, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (!mappings.Any(m => m.SourceDatabase == mapping.SourceDatabase &&
-                                                  m.SourceTable == mapping.SourceTable &&
-                                                  m.SourceColumn == mapping.SourceColumn &&
-                                                  m.TargetDatabase == mapping.TargetDatabase &&
-                                                  m.TargetTable == mapping.TargetTable &&
-                                                  m.TargetColumn == mapping.TargetColumn))
-                            {
-                                mappings.Add(mapping);
-                            }
-                        }
-                    }
-                }
-            }
-            catch
-            {
-            }
-
-            return mappings;
-        }
-
-        public string BuildMultiDatabase(string userQuery, QueryIntent queryIntent, Dictionary<string, DatabaseSchemaInfo> schemas, Dictionary<string, ISqlDialectStrategy> strategies)
+        public SqlPromptParts BuildMultiDatabaseSeparated(string userQuery, QueryIntent queryIntent, Dictionary<string, DatabaseSchemaInfo> schemas, Dictionary<string, ISqlDialectStrategy> strategies, Dictionary<string, List<Entities.DocumentChunk>> schemaChunksMap = null, Dictionary<string, List<string>> requiredMappingColumns = null)
         {
             if (queryIntent == null || queryIntent.DatabaseQueries == null || queryIntent.DatabaseQueries.Count == 0)
                 throw new ArgumentException("QueryIntent must contain at least one database query", nameof(queryIntent));
-
 
             var sb = new StringBuilder();
             
@@ -676,15 +590,7 @@ namespace SmartRAG.Services.Database.Prompts
             sb.AppendLine("  → Always prefix columns: T1.ColumnName, T2.ColumnName");
             sb.AppendLine();
 
-            return sb.ToString();
-        }
-
-        public SqlPromptParts BuildMultiDatabaseSeparated(string userQuery, QueryIntent queryIntent, Dictionary<string, DatabaseSchemaInfo> schemas, Dictionary<string, ISqlDialectStrategy> strategies, Dictionary<string, List<Entities.DocumentChunk>> schemaChunksMap = null, Dictionary<string, List<string>> requiredMappingColumns = null)
-        {
-            if (queryIntent == null || queryIntent.DatabaseQueries == null || queryIntent.DatabaseQueries.Count == 0)
-                throw new ArgumentException("QueryIntent must contain at least one database query", nameof(queryIntent));
-
-            var systemMessage = BuildSystemMessage(queryIntent, schemas, strategies, schemaChunksMap, requiredMappingColumns);
+            var systemMessage = sb.ToString();
             var userMessage = BuildUserMessage(userQuery, queryIntent, schemas, strategies);
 
             return new SqlPromptParts

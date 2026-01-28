@@ -32,11 +32,6 @@ namespace SmartRAG.Services.Document
 
         private readonly IDocumentRepository _documentRepository;
         private readonly IDocumentService _documentService;
-        private readonly IDocumentScoringService _documentScoring;
-        private readonly IQueryWordMatcherService _queryWordMatcher;
-        private readonly IDocumentRelevanceCalculatorService _relevanceCalculator;
-        private readonly IChunkPrioritizerService _chunkPrioritizer;
-        private readonly IQueryPatternAnalyzerService _queryPatternAnalyzer;
         private readonly ILogger<DocumentSearchStrategyService> _logger;
         private readonly SearchOptions _defaultSearchOptions;
 
@@ -45,31 +40,16 @@ namespace SmartRAG.Services.Document
         /// </summary>
         /// <param name="documentRepository">Repository for document operations</param>
         /// <param name="documentService">Service for document operations</param>
-        /// <param name="documentScoring">Service for scoring documents</param>
-        /// <param name="queryWordMatcher">Service for matching query words</param>
-        /// <param name="relevanceCalculator">Service for calculating document relevance</param>
-        /// <param name="chunkPrioritizer">Service for prioritizing chunks</param>
-        /// <param name="queryPatternAnalyzer">Service for analyzing query patterns</param>
         /// <param name="options">SmartRAG configuration options</param>
         /// <param name="logger">Logger instance</param>
         public DocumentSearchStrategyService(
             IDocumentRepository documentRepository,
             IDocumentService documentService,
-            IDocumentScoringService documentScoring,
-            IQueryWordMatcherService queryWordMatcher,
-            IDocumentRelevanceCalculatorService relevanceCalculator,
-            IChunkPrioritizerService chunkPrioritizer,
-            IQueryPatternAnalyzerService queryPatternAnalyzer,
             IOptions<SmartRagOptions> options,
             ILogger<DocumentSearchStrategyService> logger)
         {
             _documentRepository = documentRepository ?? throw new ArgumentNullException(nameof(documentRepository));
             _documentService = documentService ?? throw new ArgumentNullException(nameof(documentService));
-            _documentScoring = documentScoring ?? throw new ArgumentNullException(nameof(documentScoring));
-            _queryWordMatcher = queryWordMatcher ?? throw new ArgumentNullException(nameof(queryWordMatcher));
-            _relevanceCalculator = relevanceCalculator ?? throw new ArgumentNullException(nameof(relevanceCalculator));
-            _chunkPrioritizer = chunkPrioritizer ?? throw new ArgumentNullException(nameof(chunkPrioritizer));
-            _queryPatternAnalyzer = queryPatternAnalyzer ?? throw new ArgumentNullException(nameof(queryPatternAnalyzer));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             
             var smartRagOptions = options?.Value ?? throw new ArgumentNullException(nameof(options));

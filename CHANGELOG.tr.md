@@ -6,6 +6,37 @@ SmartRAG'deki tüm önemli değişiklikler bu dosyada belgelenecektir.
 Format [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)'a dayanmaktadır
 ve bu proje [Semantic Versioning](https://semver.org/spec/v2.0.0.html)'a uymaktadır.
 
+## [3.8.1] - 2026-01-28
+
+### 🔧 İyileştirmeler
+- **Şema Servislerinde Cancellation Desteği**: Şema migrasyonu ve ilişkili servislerde `CancellationToken` akışı iyileştirildi
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Services/Database/SchemaMigrationService.cs` - Cancellation token propagasyonu
+    - `src/SmartRAG/Services/Database/QueryIntentAnalyzer.cs` - Küçük cancellation ile ilgili iyileştirmeler
+  - **Faydalar**: Daha güvenli iptal davranışı ve daha sağlam async akışlar
+
+- **Kod Temizliği ve Bakım Kolaylığı**: Veritabanı, arama ve watcher servisleri genelinde kullanılmayan helper'lar, stratejiler ve event'ler kaldırıldı
+  - **Değiştirilen Dosyalar** (yüksek seviye):
+    - `src/SmartRAG/Services/Database/Prompts/SqlPromptBuilder.cs` - Kullanılmayan prompt helper'ları ve dead code path'ler kaldırıldı
+    - `src/SmartRAG/Services/Database/Strategies/*` - Kullanılmayan SQL dialect helper metodları kaldırıldı
+    - `src/SmartRAG/Services/Document/*` - Skorlama ve strateji helper'ları sadeleştirildi, kullanılmayan kodlar kaldırıldı
+    - `src/SmartRAG/Services/Search/ContextExpansionService.cs` - Genişletme mantığı sadeleştirildi
+    - `src/SmartRAG/Services/Storage/Qdrant/QdrantSearchService.cs` - Kullanılmayan arama helper'ları kaldırıldı, davranış korunarak sadeleştirildi
+    - `src/SmartRAG/Services/FileWatcher/FileWatcherService.cs` ve `FileWatcherEventArgs.cs` - Kullanılmayan event ve özellikler kaldırıldı
+    - `src/SmartRAG/Services/Support/ConversationManagerService.cs` - Kullanılmayan helper'lar kaldırıldı
+    - `src/SmartRAG/Helpers/QueryTokenizer.cs` - Kullanılmayan token/helper'lar kaldırıldı
+  - **Faydalar**: Davranışı değiştirmeden daha küçük, bakımı kolay kod tabanı
+
+- **Logging ve Repository Mesajları**: Repository ve servis log mesajları sadeleştirildi, gürültü azaltıldı
+  - **Değiştirilen Dosyalar**:
+    - `src/SmartRAG/Repositories/RepositoryLogMessages.cs` - Gürültülü log tanımları azaltıldı
+    - `src/SmartRAG/Services/Database/DatabaseQueryExecutor.cs` - Küçük log temizliği
+  - **Faydalar**: Üretim ortamlarında daha okunabilir ve daha az gürültülü log'lar
+
+### 📝 Notlar
+- **Geriye Dönük Uyumluluk**: Breaking change yok; tüm güncellemeler iç refactoring ve davranış koruyan iyileştirmelerdir
+- **Kod Kalitesi**: 0 hata, 0 uyarı build politikası korunmuştur
+
 ## [3.8.0] - 2026-01-26
 
 ### ✨ Eklenenler

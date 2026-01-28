@@ -51,7 +51,7 @@ namespace SmartRAG.Repositories
         public static readonly Action<ILogger, string, Exception> LogSearchFailed = LoggerMessage.Define<string>(
             LogLevel.Error,
             new EventId(31002, "SearchFailed"),
-            "Search failed for query '{Query}'");
+            "Search failed during search operation for query: {Query}");
 
         public static readonly Action<ILogger, Exception> LogQdrantCollectionInitFailed = LoggerMessage.Define(
             LogLevel.Error,
@@ -146,7 +146,7 @@ namespace SmartRAG.Repositories
         public static readonly Action<ILogger, string, Exception> LogRedisSearchFailed = LoggerMessage.Define<string>(
             LogLevel.Error,
             new EventId(35015, "RedisSearchFailed"),
-            "Redis search failed for query '{Query}'");
+            "Redis search failed during search operation for query: {Query}");
 
         public static readonly Action<ILogger, int, int, Exception> LogOldDocumentsRemoved = LoggerMessage.Define<int, int>(
             LogLevel.Information,
@@ -171,7 +171,7 @@ namespace SmartRAG.Repositories
         public static readonly Action<ILogger, string, Exception> LogRedisVectorSearchFailed = LoggerMessage.Define<string>(
             LogLevel.Error,
             new EventId(35212, "RedisVectorSearchFailed"),
-            "Redis vector search failed for query '{Query}'. Falling back to text search.");
+            "Redis vector search failed for query: {Query}. Falling back to text search.");
 
         public static readonly Action<ILogger, Exception> LogRedisRediSearchModuleMissing = LoggerMessage.Define(
             LogLevel.Warning,

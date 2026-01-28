@@ -51,7 +51,7 @@ namespace SmartRAG.Services.Database
 
             try
             {
-                var schemas = await _schemaAnalyzer.GetAllSchemasAsync();
+                var schemas = await _schemaAnalyzer.GetAllSchemasAsync(cancellationToken);
 
                 if (schemas.Count == 0)
                 {
