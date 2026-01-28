@@ -1,5 +1,4 @@
 using SmartRAG.Enums;
-using SmartRAG.Models;
 using SmartRAG.Interfaces.Document;
 
 namespace SmartRAG.Interfaces.Storage

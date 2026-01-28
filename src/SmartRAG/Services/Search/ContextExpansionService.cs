@@ -265,20 +265,12 @@ namespace SmartRAG.Services.Search
 
             var sortedChunks = chunks;
 
-            if (sortedChunks.Count > 0)
-            {
-                var topChunk = sortedChunks[0];
-                var chunk0Included = sortedChunks.Any(c => c.ChunkIndex == 0);
-                var chunk0Position = chunk0Included ? sortedChunks.FindIndex(c => c.ChunkIndex == 0) : -1;
-                
-                _logger.LogDebug(
-                    "Top chunk in context: Chunk {ChunkIndex} (Type: {DocumentType}, Score: {Score:F4}, Position: 0/{Total}). Chunk 0 position: {Chunk0Position}",
-                    topChunk.ChunkIndex,
-                    topChunk.DocumentType ?? "Document",
-                    topChunk.RelevanceScore ?? 0.0,
-                    sortedChunks.Count,
-                    chunk0Position >= 0 ? chunk0Position.ToString() : "not found");
-            }
+                if (sortedChunks.Count > 0)
+                {
+                    var topChunk = sortedChunks[0];
+                    var chunk0Included = sortedChunks.Any(c => c.ChunkIndex == 0);
+                    var chunk0Position = chunk0Included ? sortedChunks.FindIndex(c => c.ChunkIndex == 0) : -1;
+                }
 
             var contextBuilder = new StringBuilder();
             var totalSize = 0;

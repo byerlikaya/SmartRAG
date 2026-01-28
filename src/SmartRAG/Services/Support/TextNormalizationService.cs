@@ -131,34 +131,6 @@ namespace SmartRAG.Services.Support
                     contentWord.ToLowerInvariant().Contains(searchWord.ToLowerInvariant())));
         }
 
-        /// <summary>
-        /// Sanitizes user input for safe logging by removing control characters and limiting length.
-        /// Prevents log injection attacks by removing newlines, carriage returns, and other control characters.
-        /// </summary>
-        public string SanitizeForLog(string input)
-        {
-            if (string.IsNullOrEmpty(input)) return string.Empty;
-
-            const int maxLogLength = 500;
-
-            var sanitized = new StringBuilder(input.Length);
-            foreach (var c in input)
-            {
-                if (!char.IsControl(c) || c == ' ')
-                {
-                    sanitized.Append(c);
-                }
-            }
-
-            var result = sanitized.ToString();
-
-            if (result.Length > maxLogLength)
-            {
-                result = result[..maxLogLength] + "... (truncated)";
-            }
-
-            return result;
-        }
     }
 }
 

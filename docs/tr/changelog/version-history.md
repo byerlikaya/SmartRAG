@@ -11,12 +11,60 @@ SmartRAG'deki tüm sürümler ve değişiklikler burada belgelenmiştir.
 
 <div class="accordion mt-4" id="versionAccordion">
     <div class="accordion-item">
+        <h2 class="accordion-header" id="headingversion381">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion381" aria-expanded="true" aria-controls="collapseversion381">
+                <strong>v3.8.1</strong> - 2026-01-28
+            </button>
+        </h2>
+        <div id="collapseversion381" class="accordion-collapse collapse show" aria-labelledby="headingversion381" >
+            <div class="accordion-body">
+{% capture version_content %}
+
+### Schema RAG İyileştirmeleri ve Kod Temizliği
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> PATCH Sürüm</h4>
+    <p class="mb-0">
+        Bu sürüm, 3.8.0 Schema RAG implementasyonunun üzerine ek şema iyileştirmeleri, iç refactoring'ler ve kod temizliği getirir.
+        Public API değişmeden davranış geriye dönük uyumlu kalır.
+    </p>
+</div>
+
+### 🔧 İyileştirmeler
+
+#### Şema Servislerinde Cancellation Desteği
+- Şema migrasyonu ve ilişkili servislerde `CancellationToken` akışı iyileştirildi
+- Daha sağlam async akışlar ve daha güvenli iptal davranışı
+
+#### Kod Temizliği ve Bakım Kolaylığı
+- Kullanılmayan SQL prompt ve dialect helper'ları kaldırıldı
+- Doküman skorlama ve strateji helper'ları sadeleştirildi
+- Context expansion ve Qdrant arama helper'ları temizlendi
+- Kullanılmayan dosya izleyici event'leri ve konuşma helper'ları kaldırıldı
+
+#### Logging ve Tanılama
+- Repository log mesajları sadeleştirildi
+- Veritabanı sorgu yürütücüsündeki gürültülü log'lar azaltıldı
+
+### 📝 Notlar
+
+- Geriye dönük uyumlu patch sürümü
+- 0 hata, 0 uyarı build politikası korunur
+- 3.8.0 Schema RAG implementasyonundaki tüm özellikleri içerir
+
+---
+{% endcapture %}
+{{ version_content | markdownify }}
+            </div>
+        </div>
+    </div>
+    <div class="accordion-item">
         <h2 class="accordion-header" id="headingversion380">
-            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion380" aria-expanded="true" aria-controls="collapseversion380">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion380" aria-expanded="false" aria-controls="collapseversion380">
                 <strong>v3.8.0</strong> - 2026-01-26
             </button>
         </h2>
-        <div id="collapseversion380" class="accordion-collapse collapse show" aria-labelledby="headingversion380" >
+        <div id="collapseversion380" class="accordion-collapse collapse" aria-labelledby="headingversion380" >
             <div class="accordion-body">
 {% capture version_content %}
 

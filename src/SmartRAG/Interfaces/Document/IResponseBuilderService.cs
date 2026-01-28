@@ -23,12 +23,6 @@ namespace SmartRAG.Interfaces.Document
         RagResponse CreateRagResponse(string query, string answer, List<SearchSource> sources, SearchMetadata? searchMetadata = null);
 
         /// <summary>
-        /// Gets RAG configuration from options and configuration
-        /// </summary>
-        /// <returns>RAG configuration object</returns>
-        RagConfiguration GetRagConfiguration();
-
-        /// <summary>
         /// Determines if a RAG response contains meaningful data
         /// </summary>
         /// <param name="response">RAG response to check</param>

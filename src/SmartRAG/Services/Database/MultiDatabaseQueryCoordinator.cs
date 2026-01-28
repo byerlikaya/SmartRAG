@@ -206,10 +206,9 @@ namespace SmartRAG.Services.Database
             var validQueries = new List<DatabaseQueryIntent>();
             var missingTables = new Dictionary<string, List<string>>(); // table -> databases that need it
             var allSchemas = await _schemaAnalyzer.GetAllSchemasAsync(cancellationToken);
-
             foreach (var dbQuery in queryIntent.DatabaseQueries)
             {
-                var schema = await _schemaAnalyzer.GetSchemaAsync(dbQuery.DatabaseId);
+                var schema = await _schemaAnalyzer.GetSchemaAsync(dbQuery.DatabaseId, cancellationToken);
                 if (schema == null)
                 {
                     _logger.LogWarning("Schema not found, removing from query list");

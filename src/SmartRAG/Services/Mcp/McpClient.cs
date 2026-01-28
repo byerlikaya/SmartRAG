@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using SmartRAG.Helpers;
 using SmartRAG.Interfaces.Mcp;
 using SmartRAG.Models;
@@ -27,8 +26,7 @@ namespace SmartRAG.Services.Mcp
 
         public McpClient(
             ILogger<McpClient> logger,
-            IHttpClientFactory httpClientFactory,
-            IOptions<SmartRagOptions> options)
+            IHttpClientFactory httpClientFactory)
         {
             _logger = logger;
             _httpClientFactory = httpClientFactory;
