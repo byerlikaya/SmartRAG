@@ -48,10 +48,10 @@ namespace SmartRAG.Repositories
             new EventId(30013, "DocumentCountRetrievalFailed"),
             "Failed to retrieve document count");
 
-        public static readonly Action<ILogger, Exception> LogSearchFailed = LoggerMessage.Define(
+        public static readonly Action<ILogger, string, Exception> LogSearchFailed = LoggerMessage.Define<string>(
             LogLevel.Error,
             new EventId(31002, "SearchFailed"),
-            "Search failed during search operation");
+            "Search failed during search operation for query: {Query}");
 
         public static readonly Action<ILogger, Exception> LogQdrantCollectionInitFailed = LoggerMessage.Define(
             LogLevel.Error,
@@ -143,10 +143,10 @@ namespace SmartRAG.Repositories
             new EventId(35013, "RedisDocumentCountRetrievalFailed"),
             "Failed to retrieve document count from Redis");
 
-        public static readonly Action<ILogger, Exception> LogRedisSearchFailed = LoggerMessage.Define(
+        public static readonly Action<ILogger, string, Exception> LogRedisSearchFailed = LoggerMessage.Define<string>(
             LogLevel.Error,
             new EventId(35015, "RedisSearchFailed"),
-            "Redis search failed during search operation");
+            "Redis search failed during search operation for query: {Query}");
 
         public static readonly Action<ILogger, int, int, Exception> LogOldDocumentsRemoved = LoggerMessage.Define<int, int>(
             LogLevel.Information,
@@ -168,10 +168,10 @@ namespace SmartRAG.Repositories
             new EventId(35211, "RedisVectorIndexCreationFailure"),
             "Failed to create Redis vector index '{IndexName}'");
 
-        public static readonly Action<ILogger, Exception> LogRedisVectorSearchFailed = LoggerMessage.Define(
+        public static readonly Action<ILogger, string, Exception> LogRedisVectorSearchFailed = LoggerMessage.Define<string>(
             LogLevel.Error,
             new EventId(35212, "RedisVectorSearchFailed"),
-            "Redis vector search failed. Falling back to text search.");
+            "Redis vector search failed for query: {Query}. Falling back to text search.");
 
         public static readonly Action<ILogger, Exception> LogRedisRediSearchModuleMissing = LoggerMessage.Define(
             LogLevel.Warning,

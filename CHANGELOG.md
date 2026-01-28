@@ -6,6 +6,37 @@ All notable changes to SmartRAG will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.8.1] - 2026-01-28
+
+### 🔧 Improved
+- **Schema Services Cancellation Support**: Propagated `CancellationToken` through schema migration and related services for better cancellation handling
+  - **Files Modified**:
+    - `src/SmartRAG/Services/Database/SchemaMigrationService.cs` - Cancellation token propagation
+    - `src/SmartRAG/Services/Database/QueryIntentAnalyzer.cs` - Minor cancellation-related refinements
+  - **Benefits**: Safer cancellation behavior and more robust async flows
+
+- **Codebase Cleanup and Maintainability**: Removed unused helpers, strategies, and events across database, search, and watcher services
+  - **Files Modified** (high level):
+    - `src/SmartRAG/Services/Database/Prompts/SqlPromptBuilder.cs` - Removed unused prompt helpers and dead code paths
+    - `src/SmartRAG/Services/Database/Strategies/*` - Removed unused SQL dialect helper methods
+    - `src/SmartRAG/Services/Document/*` - Simplified scoring and strategy helpers, removed unused code
+    - `src/SmartRAG/Services/Search/ContextExpansionService.cs` - Simplified expansion logic
+    - `src/SmartRAG/Services/Storage/Qdrant/QdrantSearchService.cs` - Removed unused search helpers, kept behavior intact
+    - `src/SmartRAG/Services/FileWatcher/FileWatcherService.cs` and `FileWatcherEventArgs.cs` - Removed unused events and properties
+    - `src/SmartRAG/Services/Support/ConversationManagerService.cs` - Removed unused helpers
+    - `src/SmartRAG/Helpers/QueryTokenizer.cs` - Removed unused tokens/helpers
+  - **Benefits**: Smaller, easier-to-maintain codebase with no change to public API
+
+- **Logging and Repository Messages**: Simplified and de-noised repository and service log messages
+  - **Files Modified**:
+    - `src/SmartRAG/Repositories/RepositoryLogMessages.cs` - Reduced noisy log definitions
+    - `src/SmartRAG/Services/Database/DatabaseQueryExecutor.cs` - Minor log cleanup
+  - **Benefits**: Clearer logs and reduced noise in production environments
+
+### 📝 Notes
+- **Backward Compatibility**: No breaking changes; all updates are internal refactors and behavior-preserving improvements
+- **Code Quality**: Maintains 0 errors, 0 warnings build policy
+
 ## [3.8.0] - 2026-01-26
 
 ### ✨ Added
