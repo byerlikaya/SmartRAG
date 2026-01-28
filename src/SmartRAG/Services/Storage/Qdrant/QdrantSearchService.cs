@@ -19,19 +19,11 @@ namespace SmartRAG.Services.Storage.Qdrant
     public class QdrantSearchService : IQdrantSearchService, IDisposable
     {
         private const double DefaultTextSearchScore = 0.5;
-        private const double BaseRelevanceScore = 1.0;
-        private const double TokenMatchScoreMultiplier = 0.1;
-        private const double AllTokensMatchBoost = 2.0;
-        private const double ExactPhraseMatchBoost = 1.5;
-        private const double AllTokensPresentBoost = 1.0;
-        private const double HybridSearchBaseScore = 4.0;
-        private const double HybridSearchDefaultScore = 5.0;
 
         private readonly QdrantClient _client;
         private readonly QdrantConfig _config;
         private readonly string _collectionName;
         private readonly ILogger<QdrantSearchService> _logger;
-        private readonly IQdrantEmbeddingService _embeddingService;
         private bool _isDisposed;
 
         /// <summary>
@@ -39,16 +31,13 @@ namespace SmartRAG.Services.Storage.Qdrant
         /// </summary>
         /// <param name="config">Qdrant configuration options</param>
         /// <param name="logger">Logger instance for this service</param>
-        /// <param name="embeddingService">Embedding service for generating query embeddings</param>
         public QdrantSearchService(
             IOptions<QdrantConfig> config,
-            ILogger<QdrantSearchService> logger,
-            IQdrantEmbeddingService embeddingService)
+            ILogger<QdrantSearchService> logger)
         {
             _config = config.Value;
             _collectionName = _config.CollectionName;
             _logger = logger;
-            _embeddingService = embeddingService;
 
             string host;
             bool useHttps;
@@ -276,70 +265,6 @@ namespace SmartRAG.Services.Storage.Qdrant
         }
 
         /// <summary>
-        /// [Document Query] Performs hybrid search combining vector and keyword matching
-        /// </summary>
-        /// <param name="query">Text query to search for</param>
-        /// <param name="maxResults">Maximum number of results to return</param>
-        /// <param name="cancellationToken">Token to cancel the operation</param>
-        /// <returns>List of relevant document chunks</returns>
-        private async Task<List<DocumentChunk>> HybridSearchAsync(string query, int maxResults, CancellationToken cancellationToken = default)
-        {
-            var hybridResults = new List<DocumentChunk>();
-
-            try
-            {
-                var collections = await _client.ListCollectionsAsync(cancellationToken);
-                var documentCollections = collections.Where(c => c.StartsWith($"{_collectionName}_doc_", StringComparison.OrdinalIgnoreCase)).ToList();
-
-                foreach (var collectionName in documentCollections)
-                {
-                    try
-                    {
-                        var chunks = await FallbackTextSearchForCollectionAsync(collectionName, query, maxResults * 2, cancellationToken);
-
-                        var queryLower = query.ToLowerInvariant();
-                        var queryTokens = query.Split(new[] { ' ', '.', ',', '?', '!', ';', ':' }, StringSplitOptions.RemoveEmptyEntries)
-                                              .Where(t => t.Length >= 3)
-                                              .ToList();
-
-                        foreach (var chunk in chunks)
-                        {
-                            var baseScore = chunk.RelevanceScore.HasValue ? chunk.RelevanceScore.Value + HybridSearchBaseScore : HybridSearchDefaultScore;
-                            var contentLower = chunk.Content.ToLowerInvariant();
-
-                            if (contentLower.Contains(queryLower))
-                            {
-                                baseScore += ExactPhraseMatchBoost;
-                            }
-
-                            if (queryTokens.Count > 1 && queryTokens.All(t => contentLower.Contains(t, StringComparison.OrdinalIgnoreCase)))
-                            {
-                                baseScore += AllTokensPresentBoost;
-                            }
-
-                            chunk.RelevanceScore = baseScore;
-                            hybridResults.Add(chunk);
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Hybrid search failed for collection: {Collection}", collectionName);
-                    }
-                }
-
-                return hybridResults
-                    .OrderByDescending(c => c.RelevanceScore ?? 0.0)
-                    .Take(maxResults)
-                    .ToList();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Hybrid search failed");
-                return new List<DocumentChunk>();
-            }
-        }
-
-        /// <summary>
         /// Disposes resources
         /// </summary>
         public void Dispose()
@@ -379,125 +304,6 @@ namespace SmartRAG.Services.Storage.Qdrant
                     return value.ToString();
             }
         }
-
-        private async Task<List<DocumentChunk>> FallbackTextSearchForCollectionAsync(string collectionName, string query, int maxResults, CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                var relevantChunks = new List<DocumentChunk>();
-
-                var tokens = query.Split(new[] { ' ', '.', ',', '?', '!', ';', ':' }, StringSplitOptions.RemoveEmptyEntries)
-                                  .Where(t => t.Length >= 3)
-                                  .ToList();
-
-                if (tokens.Count == 0)
-                {
-                    return relevantChunks;
-                }
-
-                var shouldConditions = tokens.Select(token => new global::Qdrant.Client.Grpc.Condition
-                {
-                    Field = new global::Qdrant.Client.Grpc.FieldCondition
-                    {
-                        Key = "content",
-                        Match = new global::Qdrant.Client.Grpc.Match { Text = token }
-                    }
-                }).ToList();
-
-                var filter = new global::Qdrant.Client.Grpc.Filter
-                {
-                    Should = { shouldConditions }
-                };
-
-                var scrollResult = await _client.ScrollAsync(collectionName, filter: filter, limit: (uint)maxResults * 2, cancellationToken: cancellationToken);
-
-                if (scrollResult.Result.Count == 0)
-                {
-                    scrollResult = await _client.ScrollAsync(collectionName, limit: (uint)maxResults * 10, cancellationToken: cancellationToken);
-                }
-
-                var queryLower = query.ToLowerInvariant();
-                var normalizedQuery = NormalizeQueryForFuzzyMatching(queryLower);
-
-                foreach (var point in scrollResult.Result)
-                {
-                    var payload = point.Payload;
-
-                    if (payload != null)
-                    {
-                        var content = GetPayloadString(payload, "content");
-                        var docId = GetPayloadString(payload, "documentId");
-                        var chunkIndex = GetPayloadString(payload, "chunkIndex");
-                        var documentType = GetPayloadString(payload, "documentType");
-                        var chunkIdStr = GetPayloadString(payload, "chunkId");
-                        var fileName = GetPayloadString(payload, "fileName");
-
-                        if (!string.IsNullOrEmpty(content) && !string.IsNullOrEmpty(docId) && !string.IsNullOrEmpty(chunkIndex))
-                        {
-                            if (string.IsNullOrWhiteSpace(documentType))
-                                documentType = "Document";
-
-                            var contentLower = content.ToLowerInvariant();
-                            var normalizedContent = NormalizeQueryForFuzzyMatching(contentLower);
-
-                            var matchCount = tokens.Count(t => contentLower.Contains(t, StringComparison.OrdinalIgnoreCase));
-
-                            var allTokensMatch = tokens.All(t => contentLower.Contains(t, StringComparison.OrdinalIgnoreCase));
-                            var baseScore = BaseRelevanceScore + (matchCount * TokenMatchScoreMultiplier);
-
-                            if (allTokensMatch && tokens.Count > 1)
-                            {
-                                baseScore += AllTokensMatchBoost;
-                            }
-
-                            if (contentLower.Contains(queryLower))
-                            {
-                                baseScore += ExactPhraseMatchBoost;
-                            }
-
-                            if (normalizedContent.Contains(normalizedQuery) && !contentLower.Contains(queryLower))
-                            {
-                                baseScore += ExactPhraseMatchBoost * 0.7;
-                            }
-
-                            // Use chunkId from payload if available to ensure consistency
-                            Guid chunkId;
-                            if (!string.IsNullOrWhiteSpace(chunkIdStr) && Guid.TryParse(chunkIdStr, out var parsedChunkId))
-                            {
-                                chunkId = parsedChunkId;
-                            }
-                            else
-                            {
-                                chunkId = Guid.NewGuid();
-                            }
-
-                            var chunk = new DocumentChunk
-                            {
-                                Id = chunkId, // Use original chunk ID from payload
-                                DocumentId = Guid.Parse(docId),
-                                FileName = fileName ?? string.Empty,
-                                Content = content,
-                                ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
-                                RelevanceScore = baseScore,
-                                StartPosition = 0,
-                                EndPosition = content.Length,
-                                DocumentType = documentType
-                            };
-                            relevantChunks.Add(chunk);
-                        }
-                    }
-                }
-
-                return relevantChunks.OrderByDescending(c => c.RelevanceScore).Take(maxResults).ToList();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Native text search failed for collection: {Collection}", collectionName);
-                return new List<DocumentChunk>();
-            }
-        }
-
-
 
         private static string NormalizeQueryForFuzzyMatching(string text)
         {
