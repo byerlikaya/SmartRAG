@@ -190,7 +190,6 @@ namespace SmartRAG.Extensions
                     sp.GetRequiredService<ILogger<QueryStrategyExecutorService>>(),
                     ragAnswerGeneratorLazy,
                     sp.GetRequiredService<IResponseBuilderService>(),
-                    sp.GetService<IConversationManagerService>(),
                     sp.GetRequiredService<IOptions<SmartRagOptions>>());
             });
             services.AddScoped<IDocumentSearchStrategyService, DocumentSearchStrategyService>();

@@ -1,7 +1,6 @@
 using SmartRAG.Entities;
 using SmartRAG.Interfaces.Document;
 using SmartRAG.Interfaces.Support;
-using SmartRAG.Services.Shared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -28,23 +27,18 @@ namespace SmartRAG.Services.Document
         private const int WordCountMax = 100;
         private const int PunctuationCountThreshold = 3;
         private const int MinPotentialNamesCount = 2;
-        private const int ChunkPreviewLength = 100;
         private const double DefaultScoreValue = 0.0;
 
         private readonly ITextNormalizationService _textNormalizationService;
-        private readonly Microsoft.Extensions.Logging.ILogger<DocumentScoringService> _logger;
 
         /// <summary>
         /// Initializes a new instance of the DocumentScoringService
         /// </summary>
         /// <param name="textNormalizationService">Service for text normalization operations</param>
-        /// <param name="logger">Logger instance for this service</param>
         public DocumentScoringService(
-            ITextNormalizationService textNormalizationService,
-            Microsoft.Extensions.Logging.ILogger<DocumentScoringService> logger)
+            ITextNormalizationService textNormalizationService)
         {
             _textNormalizationService = textNormalizationService;
-            _logger = logger;
         }
 
         /// <summary>

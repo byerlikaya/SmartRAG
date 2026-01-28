@@ -30,17 +30,7 @@ namespace SmartRAG.Services.Document
 
         private static readonly Regex NumericPattern = new Regex(@"\p{Nd}+", RegexOptions.Compiled);
         private static readonly Regex ListIndicatorPattern = new Regex(@"\d+[\.\)]\s", RegexOptions.Compiled);
-
-        private readonly ILogger<QueryPatternAnalyzerService> _logger;
-
-        /// <summary>
-        /// Initializes a new instance of the QueryPatternAnalyzerService
-        /// </summary>
-        /// <param name="logger">Logger instance for this service</param>
-        public QueryPatternAnalyzerService(ILogger<QueryPatternAnalyzerService> logger)
-        {
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        }
+        
 
         /// <summary>
         /// Detects if content contains numbered lists

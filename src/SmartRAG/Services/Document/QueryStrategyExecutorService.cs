@@ -5,7 +5,6 @@ using Microsoft.Extensions.Options;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces.Database;
 using SmartRAG.Interfaces.Document;
-using SmartRAG.Interfaces.Support;
 using SmartRAG.Models;
 using SmartRAG.Models.RequestResponse;
 using System;
@@ -25,7 +24,6 @@ namespace SmartRAG.Services.Document
         private readonly ILogger<QueryStrategyExecutorService> _logger;
         private readonly Lazy<IRagAnswerGeneratorService> _ragAnswerGenerator;
         private readonly IResponseBuilderService _responseBuilder;
-        private readonly IConversationManagerService _conversationManager;
         private readonly SmartRagOptions _options;
 
         /// <summary>
@@ -35,21 +33,18 @@ namespace SmartRAG.Services.Document
         /// <param name="logger">Logger instance</param>
         /// <param name="ragAnswerGenerator">Service for generating RAG answers (lazy to break circular dependency)</param>
         /// <param name="responseBuilder">Service for building RAG responses</param>
-        /// <param name="conversationManager">Service for managing conversations</param>
         /// <param name="options">SmartRAG configuration options</param>
         public QueryStrategyExecutorService(
             IMultiDatabaseQueryCoordinator? multiDatabaseQueryCoordinator,
             ILogger<QueryStrategyExecutorService> logger,
             Lazy<IRagAnswerGeneratorService> ragAnswerGenerator,
             IResponseBuilderService responseBuilder,
-            IConversationManagerService? conversationManager = null,
             IOptions<SmartRagOptions>? options = null)
         {
             _multiDatabaseQueryCoordinator = multiDatabaseQueryCoordinator;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _ragAnswerGenerator = ragAnswerGenerator ?? throw new ArgumentNullException(nameof(ragAnswerGenerator));
             _responseBuilder = responseBuilder ?? throw new ArgumentNullException(nameof(responseBuilder));
-            _conversationManager = conversationManager ?? throw new ArgumentNullException(nameof(conversationManager));
             _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         }
 

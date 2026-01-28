@@ -1,12 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using SmartRAG.Services.FileWatcher.Events;
 using SmartRAG.Helpers;
 using SmartRAG.Interfaces.Document;
 using SmartRAG.Interfaces.FileWatcher;
 using SmartRAG.Models;
-using SmartRAG.Models.RequestResponse;
 using System;
 using System.Collections.Generic;
 using System.IO;
