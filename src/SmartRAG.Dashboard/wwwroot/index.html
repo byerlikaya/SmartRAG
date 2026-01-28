@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <base href="{{BASE_PATH}}" />
+    <title>SmartRAG Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./assets/app.css" />
+</head>
+<body>
+    <header class="sr-nav">
+        <div class="sr-nav-brand">
+            <img src="./assets/logo.png" alt="SmartRAG" class="sr-logo" width="32" height="32" />
+            <span class="sr-brand-text">SmartRAG</span>
+        </div>
+        <nav class="sr-nav-menu">
+            <button type="button" class="sr-nav-item sr-nav-item-active" data-view="documents" aria-current="page">Documents</button>
+            <button type="button" class="sr-nav-item" data-view="chat">Chat</button>
+        </nav>
+    </header>
+
+    <main class="sr-main">
+        <section class="sr-view sr-view-documents" id="sr-view-documents">
+            <div class="sr-card">
+                <div class="sr-card-header">
+                    <h2 class="sr-card-title">Documents</h2>
+                    <p class="sr-doc-summary" id="sr-doc-summary">Loading...</p>
+                </div>
+                <div class="sr-upload-area">
+                    <input type="file" id="sr-file-input" accept="" class="sr-file-input" />
+                    <input type="text" id="sr-uploaded-by" placeholder="Uploaded by" value="dashboard" class="sr-text-input" />
+                    <button type="button" id="sr-upload-btn" class="sr-btn sr-btn-primary">Upload</button>
+                    <span class="sr-upload-status" id="sr-upload-status"></span>
+                </div>
+                <div class="sr-table-wrap">
+                    <table class="sr-doc-table" id="sr-doc-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Size</th>
+                                <th>Uploaded</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="sr-doc-tbody"></tbody>
+                    </table>
+                </div>
+                <div class="sr-card-actions">
+                    <button type="button" class="sr-btn sr-btn-secondary" id="sr-refresh-btn">Refresh</button>
+                </div>
+            </div>
+        </section>
+
+        <section class="sr-view sr-view-chat sr-view-hidden" id="sr-view-chat">
+            <div class="sr-card sr-card-chat">
+                <div class="sr-chat-header">
+                    <h2 class="sr-card-title">Chat</h2>
+                    <span class="sr-model-badge" id="sr-model-badge">Loading...</span>
+                </div>
+                <div class="sr-chat-messages" id="sr-chat-messages"></div>
+                <div class="sr-chat-input-wrap">
+                    <textarea id="sr-chat-input" rows="2" placeholder="Type a message..." class="sr-chat-input"></textarea>
+                    <button type="button" id="sr-chat-send" class="sr-btn sr-btn-primary">Send</button>
+                </div>
+            </div>
+        </section>
+    </main>
+    <script src="./assets/app.js"></script>
+</body>
+</html>

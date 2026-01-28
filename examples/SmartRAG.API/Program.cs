@@ -1,9 +1,10 @@
 using Microsoft.OpenApi.Models;
 using SmartRAG.API.Filters;
+using SmartRAG.Dashboard;
 using SmartRAG.Enums;
+using SmartRAG.Extensions;
 using System;
 using System.IO;
-using SmartRAG.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -89,12 +90,17 @@ static void RegisterServices(IServiceCollection services, IConfiguration configu
     });
 
    
-    // Add SmartRag services with minimal configuration
+    // Add SmartRag services (storage/provider aligned with Demo: Qdrant)
     services.UseSmartRag(configuration,
-        storageProvider: StorageProvider.Redis,
+        storageProvider: StorageProvider.Qdrant,
         aiProvider: AIProvider.Custom
     );
 
+    services.AddSmartRagDashboard(options =>
+    {
+        options.Path = "/smartrag";
+        options.EnableInDevelopmentOnly = true;
+    });
 
     services.AddCors(options =>
     {
@@ -129,7 +135,7 @@ static void ConfigureMiddleware(WebApplication app, IWebHostEnvironment environm
     app.UseHttpsRedirection();
     app.UseCors("AllowAll");
     app.UseAuthorization();
+
+    app.UseSmartRagDashboard("/smartrag");
     app.MapControllers();
-
-
 }
