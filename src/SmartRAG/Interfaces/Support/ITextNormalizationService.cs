@@ -20,12 +20,6 @@ namespace SmartRAG.Interfaces.Support
         /// <returns>True if name is found in content</returns>
         bool ContainsNormalizedName(string content, string searchName);
 
-        /// <summary>
-        /// Sanitizes user input for safe logging by removing control characters and limiting length
-        /// </summary>
-        /// <param name="input">Input to sanitize</param>
-        /// <returns>Sanitized input</returns>
-        string SanitizeForLog(string input);
     }
 }
 
