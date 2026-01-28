@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Database.Prompts
 {
@@ -14,7 +13,6 @@ namespace SmartRAG.Services.Database.Prompts
     /// </summary>
     public class SqlPromptBuilder : ISqlPromptBuilder
     {
-        private const int SampleDataLimit = 200;
         private readonly IDatabaseConnectionManager _connectionManager;
 
         public SqlPromptBuilder(IDatabaseConnectionManager connectionManager = null)
@@ -62,56 +60,6 @@ namespace SmartRAG.Services.Database.Prompts
             return false;
         }
 
-        private static bool IsNumericColumn(string dataType)
-        {
-            if (string.IsNullOrWhiteSpace(dataType))
-                return false;
-
-            var typeLower = dataType.ToLowerInvariant();
-            var numericTypes = new[] { "int", "bigint", "smallint", "tinyint", "decimal", "numeric", "money", "float", "real", "double", "number" };
-            return numericTypes.Any(nt => typeLower.Contains(nt));
-        }
-
-        private static bool IsTextColumn(string dataType)
-        {
-            if (string.IsNullOrWhiteSpace(dataType))
-                return false;
-
-            var typeLower = dataType.ToLowerInvariant();
-            var textTypes = new[] { "varchar", "nvarchar", "text", "char", "nchar", "string", "ntext" };
-            return textTypes.Any(tt => typeLower.Contains(tt));
-        }
-
-        /// <summary>
-        /// Extracts meaningful keywords from user query for SQL WHERE clause filtering.
-        /// Language-agnostic: Works with any language by filtering based on length and numeric patterns.
-        /// </summary>
-        private List<string> ExtractFilterKeywords(string query)
-        {
-            if (string.IsNullOrWhiteSpace(query)) return new List<string>();
-
-            var words = query.Split(new[] { ' ', ',', '.', '?', '!', ';', ':', '-', '_' }, StringSplitOptions.RemoveEmptyEntries);
-
-            return words
-                .Where(w =>
-                    w.Length > 2 &&
-                    !IsNumeric(w))
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .ToList();
-        }
-
-        /// <summary>
-        /// Checks if a word is purely numeric (e.g., "123", "45.67")
-        /// </summary>
-        private static bool IsNumeric(string word)
-        {
-            if (string.IsNullOrWhiteSpace(word)) return false;
-
-            var cleaned = word.Replace(".", "").Replace(",", "").Replace("-", "").Replace("+", "");
-
-            return cleaned.Length > 0 && cleaned.All(char.IsDigit);
-        }
-
         private List<CrossDatabaseMapping> GetAllCrossDatabaseMappings()
         {
             var mappings = new List<CrossDatabaseMapping>();
@@ -130,88 +78,6 @@ namespace SmartRAG.Services.Database.Prompts
                         continue;
                     
                     mappings.AddRange(connection.CrossDatabaseMappings);
-                }
-            }
-            catch
-            {
-            }
-
-            return mappings;
-        }
-
-        private List<CrossDatabaseMapping> GetRelevantCrossDatabaseMappings(string databaseName, List<string> requiredTables)
-        {
-            var mappings = new List<CrossDatabaseMapping>();
-            
-            if (_connectionManager == null)
-                return mappings;
-
-            try
-            {
-                var connectionsTask = _connectionManager.GetAllConnectionsAsync();
-                var connections = connectionsTask.GetAwaiter().GetResult();
-                
-                foreach (var connection in connections)
-                {
-                    if (connection?.CrossDatabaseMappings == null)
-                        continue;
-                    
-                    foreach (var mapping in connection.CrossDatabaseMappings)
-                    {
-                        bool isRelevant = false;
-                        
-                        if (mapping.SourceDatabase.Equals(databaseName, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (requiredTables == null || requiredTables.Count == 0 ||
-                                requiredTables.Any(t => t.Equals(mapping.SourceTable, StringComparison.OrdinalIgnoreCase) ||
-                                                       t.Contains(mapping.SourceTable.Split('.').Last(), StringComparison.OrdinalIgnoreCase)))
-                            {
-                                isRelevant = true;
-                            }
-                        }
-                        
-                        if (mapping.TargetDatabase.Equals(databaseName, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (requiredTables == null || requiredTables.Count == 0 ||
-                                requiredTables.Any(t => t.Equals(mapping.TargetTable, StringComparison.OrdinalIgnoreCase) ||
-                                                       t.Contains(mapping.TargetTable.Split('.').Last(), StringComparison.OrdinalIgnoreCase)))
-                            {
-                                var reverseMapping = new CrossDatabaseMapping
-                                {
-                                    SourceDatabase = mapping.TargetDatabase,
-                                    SourceTable = mapping.TargetTable,
-                                    SourceColumn = mapping.TargetColumn,
-                                    TargetDatabase = mapping.SourceDatabase,
-                                    TargetTable = mapping.SourceTable,
-                                    TargetColumn = mapping.SourceColumn,
-                                    RelationshipType = mapping.RelationshipType
-                                };
-                                if (!mappings.Any(m => m.SourceDatabase == reverseMapping.SourceDatabase &&
-                                                      m.SourceTable == reverseMapping.SourceTable &&
-                                                      m.SourceColumn == reverseMapping.SourceColumn &&
-                                                      m.TargetDatabase == reverseMapping.TargetDatabase &&
-                                                      m.TargetTable == reverseMapping.TargetTable &&
-                                                      m.TargetColumn == reverseMapping.TargetColumn))
-                                {
-                                    mappings.Add(reverseMapping);
-                                }
-                                isRelevant = true;
-                            }
-                        }
-                        
-                        if (isRelevant && mapping.SourceDatabase.Equals(databaseName, StringComparison.OrdinalIgnoreCase))
-                        {
-                            if (!mappings.Any(m => m.SourceDatabase == mapping.SourceDatabase &&
-                                                  m.SourceTable == mapping.SourceTable &&
-                                                  m.SourceColumn == mapping.SourceColumn &&
-                                                  m.TargetDatabase == mapping.TargetDatabase &&
-                                                  m.TargetTable == mapping.TargetTable &&
-                                                  m.TargetColumn == mapping.TargetColumn))
-                            {
-                                mappings.Add(mapping);
-                            }
-                        }
-                    }
                 }
             }
             catch
