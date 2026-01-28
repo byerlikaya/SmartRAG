@@ -130,16 +130,26 @@ namespace SmartRAG.Services.Database
                             d.Metadata.TryGetValue("documentType", out var dt) && string.Equals(dt?.ToString(), "Schema", StringComparison.OrdinalIgnoreCase) &&
                             d.Metadata.TryGetValue("databaseId", out var id) && id?.ToString() == dbQuery.DatabaseId);
 
-                if (schemaDoc != null)
-                {
-                    var fullDoc = await _documentRepository.GetByIdAsync(schemaDoc.Id, cancellationToken);
-                    if (fullDoc?.Chunks != null && fullDoc.Chunks.Count > 0)
-                    {
-                        schemaChunksMap[dbQuery.DatabaseId] = fullDoc.Chunks.OrderBy(c => c.ChunkIndex).ToList();
-                        _logger.LogInformation("Using {Count} schema chunks for database {DatabaseName} (from stored schema document)",
-                            fullDoc.Chunks.Count, schema.DatabaseName);
-                    }
-                }
+                        if (schemaDoc != null)
+                        {
+                            var fullDoc = await _documentRepository.GetByIdAsync(schemaDoc.Id, cancellationToken);
+                            if (fullDoc?.Chunks != null && fullDoc.Chunks.Count > 0)
+                            {
+                                schemaChunksMap[dbQuery.DatabaseId] = fullDoc.Chunks.OrderBy(c => c.ChunkIndex).ToList();
+                                _logger.LogInformation("Using {Count} schema chunks for database {DatabaseName} (from stored schema document)",
+                                    fullDoc.Chunks.Count, schema.DatabaseName);
+                            }
+                            else
+                            {
+                                _logger.LogDebug("Schema document for database {DatabaseName} has no chunks, using DatabaseSchemaInfo fallback",
+                                    schema.DatabaseName);
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogDebug("No schema document found for database {DatabaseName}, using DatabaseSchemaInfo fallback",
+                                schema.DatabaseName);
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -308,6 +318,7 @@ namespace SmartRAG.Services.Database
                         currentSql.Clear();
                         inSql = false;
                         waitingForConfirmed = true;
+                        _logger.LogDebug("Found database marker: {DatabaseId} (response had: {DbName})", currentDatabase, dbNameFromResponse);
                     }
                     else if (!string.IsNullOrWhiteSpace(dbNameFromResponse) && !dbNameFromResponse.Equals("DatabaseName", StringComparison.OrdinalIgnoreCase))
                     {
@@ -319,6 +330,7 @@ namespace SmartRAG.Services.Database
                             currentSql.Clear();
                             inSql = false;
                             waitingForConfirmed = true;
+                            _logger.LogDebug("Found database by name match: {DatabaseId} (from response: {DbName})", currentDatabase, dbNameFromResponse);
                         }
                     }
                     else
@@ -436,11 +448,11 @@ namespace SmartRAG.Services.Database
             if (result.Count == 0)
             {
                 result = ExtractSqlBlocksWithoutDatabaseMarkers(response, databaseQueries, schemas);
-                if (result.Count == 0)
-                {
+                if (result.Count > 0)
+                    _logger.LogDebug("Extracted {Count} SQL block(s) via fallback (no DATABASE N: markers)", result.Count);
+                else
                     _logger.LogWarning("Failed to extract any SQL from AI response. Response preview: {Preview}", 
                         response?.Substring(0, Math.Min(500, response?.Length ?? 0)) ?? "null");
-                }
             }
 
             return result;

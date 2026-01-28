@@ -1,6 +1,8 @@
 using Microsoft.Extensions.Logging;
+using SmartRAG.Entities;
 using SmartRAG.Interfaces.Database;
 using SmartRAG.Interfaces.Document;
+using SmartRAG.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;

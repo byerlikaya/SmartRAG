@@ -60,6 +60,55 @@ namespace SmartRAG.Services.Database.Prompts
             return false;
         }
 
+        private static bool IsNumericColumn(string dataType)
+        {
+            if (string.IsNullOrWhiteSpace(dataType))
+                return false;
+
+            var typeLower = dataType.ToLowerInvariant();
+            var numericTypes = new[] { "int", "bigint", "smallint", "tinyint", "decimal", "numeric", "money", "float", "real", "double", "number" };
+            return numericTypes.Any(nt => typeLower.Contains(nt));
+        }
+
+        private static bool IsTextColumn(string dataType)
+        {
+            if (string.IsNullOrWhiteSpace(dataType))
+                return false;
+
+            var typeLower = dataType.ToLowerInvariant();
+            var textTypes = new[] { "varchar", "nvarchar", "text", "char", "nchar", "string", "ntext" };
+            return textTypes.Any(tt => typeLower.Contains(tt));
+        }
+
+        /// <summary>
+        /// Extracts meaningful keywords from user query for SQL WHERE clause filtering.
+        /// Language-agnostic: Works with any language by filtering based on length and numeric patterns.
+        /// </summary>
+        private List<string> ExtractFilterKeywords(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query)) return new List<string>();
+
+            var words = query.Split(new[] { ' ', ',', '.', '?', '!', ';', ':', '-', '_' }, StringSplitOptions.RemoveEmptyEntries);
+
+            return words
+                .Where(w =>
+                    w.Length > 2 &&
+                    !IsNumeric(w))
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        /// <summary>
+        /// Checks if a word is purely numeric (e.g., "123", "45.67")
+        /// </summary>
+        private static bool IsNumeric(string word)
+        {
+            if (string.IsNullOrWhiteSpace(word)) return false;
+
+            var cleaned = word.Replace(".", "").Replace(",", "").Replace("-", "").Replace("+", "");
+
+            return cleaned.Length > 0 && cleaned.All(char.IsDigit);
+        }
         private List<CrossDatabaseMapping> GetAllCrossDatabaseMappings()
         {
             var mappings = new List<CrossDatabaseMapping>();
@@ -92,7 +141,456 @@ namespace SmartRAG.Services.Database.Prompts
             if (queryIntent == null || queryIntent.DatabaseQueries == null || queryIntent.DatabaseQueries.Count == 0)
                 throw new ArgumentException("QueryIntent must contain at least one database query", nameof(queryIntent));
 
-            var systemMessage = BuildSystemMessage(queryIntent, schemas, strategies, schemaChunksMap, requiredMappingColumns);
+            var sb = new StringBuilder();
+            
+            sb.AppendLine("╔═══════════════════════════════════════════════════════════════╗");
+            sb.AppendLine("║  🚨🚨🚨 MULTI-DATABASE QUERY - GENERATE SQL FOR ALL! 🚨🚨🚨  ║");
+            sb.AppendLine("╚═══════════════════════════════════════════════════════════════╝");
+            sb.AppendLine();
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("🚨🚨🚨🚨🚨 CRITICAL RULE #1 - READ THIS FIRST! 🚨🚨🚨🚨🚨");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine();
+            sb.AppendLine("EACH DATABASE IS COMPLETELY SEPARATE AND ISOLATED:");
+            sb.AppendLine($"  → You will write SQL queries for {queryIntent.DatabaseQueries.Count} different database(s)");
+            sb.AppendLine("  ✗✗✗ NEVER use tables from one database in another database's query!");
+            sb.AppendLine("  ✗✗✗ NEVER write: OtherDatabaseName.SchemaName.TableName");
+            sb.AppendLine("  ✗✗✗ NEVER write: [OtherDatabaseName].[SchemaName].[TableName]");
+            sb.AppendLine("  ✗✗✗ NEVER write: \"OtherDatabaseName\".SchemaName.TableName");
+            sb.AppendLine("  ✗✗✗ NEVER use subqueries that reference other databases!");
+            sb.AppendLine("  🚨🚨🚨 CRITICAL: If you see 'SchemaName.TableName' in SYSTEM message for Database X,");
+            sb.AppendLine("     → That table EXISTS ONLY in Database X");
+            sb.AppendLine("     → If you're writing SQL for Database Y, that table DOES NOT EXIST there!");
+            sb.AppendLine("     → Example: If SYSTEM shows 'SchemaA.TableA' for Database1,");
+            sb.AppendLine("       → You CANNOT use 'SchemaA.TableA' when writing SQL for Database2!");
+            sb.AppendLine("       → ✗ WRONG: SELECT ... FROM SchemaA.TableA (if writing for Database2)");
+            sb.AppendLine("       → ✓ CORRECT: Use ONLY tables listed for Database2");
+            sb.AppendLine();
+            sb.AppendLine("✓✓✓ CORRECT APPROACH:");
+            sb.AppendLine("  → Each database query uses ONLY tables from that specific database");
+            sb.AppendLine("  → Look at the table list for each database below - use ONLY those tables");
+            sb.AppendLine("  → If you need data from another database, use literal values or parameters");
+            sb.AppendLine("  → FIRST query: SELECT mapping columns + aggregation columns");
+            sb.AppendLine("  → SECOND+ queries: Use WHERE column IN (1, 2, 3) with numeric placeholders");
+            sb.AppendLine();
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine();
+            sb.AppendLine($"📊 USER QUERY: \"{userQuery}\"");
+            sb.AppendLine($"🎯 TOTAL DATABASES: {queryIntent.DatabaseQueries.Count}");
+            sb.AppendLine();
+            sb.AppendLine("🚨 CRITICAL: You will generate SQL queries for MULTIPLE databases.");
+            sb.AppendLine("Each database has different tables and columns.");
+            sb.AppendLine("You MUST understand the relationships between databases using CROSS-DATABASE MAPPINGS below.");
+            sb.AppendLine();
+            
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine($"🚨🚨🚨 CRITICAL: YOU ARE WRITING SQL FOR {queryIntent.DatabaseQueries.Count} DATABASE(S) 🚨🚨🚨");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine();
+
+            if (queryIntent.DatabaseQueries.Count == 1)
+            {
+                sb.AppendLine("⚠️⚠️⚠️ SINGLE DATABASE MODE ⚠️⚠️⚠️");
+                sb.AppendLine();
+                sb.AppendLine("CRITICAL: You are writing SQL for ONLY ONE database!");
+                sb.AppendLine($"  → Generate EXACTLY 1 SQL query for: {queryIntent.DatabaseQueries[0].DatabaseId}");
+                sb.AppendLine("  → Use JOINs to combine multiple tables in the SAME database");
+                sb.AppendLine("  → Do NOT create multiple SQL blocks for the same database!");
+                sb.AppendLine("  → Do NOT generate SQL for other databases!");
+                sb.AppendLine("  → 🚨🚨🚨 CRITICAL: If you see only 1 database listed, generate ONLY 1 SQL query!");
+                sb.AppendLine("  → 🚨🚨🚨 CRITICAL: Do NOT create DATABASE 1 and DATABASE 2 blocks if only 1 database exists!");
+                sb.AppendLine("  → 🚨🚨🚨 CRITICAL: Single database = Single SQL query with JOINs, NOT multiple queries!");
+                sb.AppendLine();
+                sb.AppendLine("✓ CORRECT: One SQL query with JOINs");
+                sb.AppendLine("✗ WRONG: Multiple SQL queries for same database");
+                sb.AppendLine("✗ WRONG: DATABASE 1: DatabaseName ... DATABASE 2: SameDatabaseName (if only 1 database!)");
+                sb.AppendLine();
+            }
+            else
+            {
+                sb.AppendLine("⚠️⚠️⚠️ MULTI-DATABASE MODE ⚠️⚠️⚠️");
+                sb.AppendLine();
+                sb.AppendLine($"CRITICAL: You are writing SQL for {queryIntent.DatabaseQueries.Count} DIFFERENT databases!");
+                sb.AppendLine($"  → Generate EXACTLY {queryIntent.DatabaseQueries.Count} SQL queries (one per database)");
+                sb.AppendLine("  → Each database gets ONE SQL block");
+                sb.AppendLine("  → Queries execute sequentially (first query results feed into second)");
+                sb.AppendLine();
+            }
+            
+            var allMappings = GetAllCrossDatabaseMappings();
+            if (allMappings.Any() && queryIntent.DatabaseQueries.Count > 1)
+            {
+                sb.AppendLine("═══════════════════════════════════════════════════════════════");
+                sb.AppendLine("🔗 CROSS-DATABASE MAPPINGS - UNDERSTAND RELATIONSHIPS!");
+                sb.AppendLine("═══════════════════════════════════════════════════════════════");
+                sb.AppendLine();
+                sb.AppendLine("These mappings show how columns in different databases relate:");
+                foreach (var mapping in allMappings)
+                {
+                    sb.AppendLine($"  • {mapping.SourceDatabase}.{mapping.SourceTable}.{mapping.SourceColumn}");
+                    sb.AppendLine($"    → {mapping.TargetDatabase}.{mapping.TargetTable}.{mapping.TargetColumn}");
+                }
+                sb.AppendLine();
+                sb.AppendLine("🚨 CRITICAL RULE:");
+                sb.AppendLine("  → If you SELECT from SourceTable, you MUST include SourceColumn in SELECT!");
+                sb.AppendLine("  → If you SELECT from TargetTable, you MUST include TargetColumn in SELECT!");
+                sb.AppendLine("  → These columns are needed to JOIN results from different databases!");
+                sb.AppendLine();
+            }
+
+            for (int i = 0; i < queryIntent.DatabaseQueries.Count; i++)
+            {
+                var dbQuery = queryIntent.DatabaseQueries[i];
+                var schema = schemas[dbQuery.DatabaseId];
+                var strategy = strategies[dbQuery.DatabaseId];
+
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+                sb.AppendLine($"📊 DATABASE #{i + 1}: {schema.DatabaseName} ({strategy.DatabaseType})");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine();
+                sb.AppendLine("═══════════════════════════════════════════════════════════════");
+                sb.AppendLine($"🚨🚨🚨🚨🚨 DATABASE #{i + 1}: {schema.DatabaseName} - CRITICAL RULES 🚨🚨🚨🚨🚨");
+                sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine();
+                sb.AppendLine("⚠️⚠️⚠️ BEFORE WRITING SQL FOR THIS DATABASE, READ THIS! ⚠️⚠️⚠️");
+                sb.AppendLine();
+                sb.AppendLine($"This is DATABASE #{i + 1}");
+                sb.AppendLine($"You are writing SQL query FOR THIS DATABASE ONLY!");
+                sb.AppendLine();
+                sb.AppendLine("✗✗✗✗✗ FORBIDDEN - NEVER DO THESE IN SQL FOR THIS DATABASE: ✗✗✗✗✗");
+                sb.AppendLine($"  1. ✗ NEVER write: OtherDatabaseName.SchemaName.TableName");
+                sb.AppendLine($"  2. ✗ NEVER write: [OtherDatabaseName].[SchemaName].[TableName]");
+                sb.AppendLine($"  3. ✗ NEVER write: SELECT * FROM OtherDatabase.Schema.Table");
+                sb.AppendLine($"  4. ✗ NEVER write: WHERE Column IN (SELECT Column FROM OtherDatabase.Table)");
+                sb.AppendLine($"  5. ✗ NEVER reference ANY table that belongs to ANOTHER database");
+                sb.AppendLine($"  6. ✗ If you see multiple databases listed → They are ALL COMPLETELY SEPARATE!");
+                sb.AppendLine($"  7. ✗ For this database query → ONLY use this database's tables!");
+                sb.AppendLine();
+                sb.AppendLine($"✓✓✓✓✓ ALLOWED - ONLY THESE TABLES EXIST IN THIS DATABASE: ✓✓✓✓✓");
+            foreach (var tableName in dbQuery.RequiredTables)
+            {
+                    sb.AppendLine($"  ✓ {tableName}");
+                }
+                    sb.AppendLine();
+                sb.AppendLine("🚨🚨🚨 REMEMBER: 🚨🚨🚨");
+                sb.AppendLine($"  → When writing SQL for DATABASE #{i + 1}");
+                sb.AppendLine($"  → Look at the table list ABOVE");
+                sb.AppendLine($"  → Use ONLY those tables in your SQL");
+                sb.AppendLine($"  → If a table name is NOT in the list above, it DOES NOT EXIST in this database!");
+                sb.AppendLine($"  → DO NOT invent tables from other databases!");
+                sb.AppendLine();
+                sb.AppendLine($"Purpose: {dbQuery.Purpose}");
+                sb.AppendLine();
+                
+                var dialectInfo = strategy.DatabaseType == SmartRAG.Enums.DatabaseType.SqlServer
+                    ? "SQL Server - Use [brackets] for identifiers with spaces"
+                    : strategy.DatabaseType == SmartRAG.Enums.DatabaseType.PostgreSQL
+                        ? "PostgreSQL - Use \"quotes\" for case-sensitive identifiers, case-sensitive!"
+                        : strategy.DatabaseType == SmartRAG.Enums.DatabaseType.MySQL
+                            ? "MySQL - Use backticks for identifiers with spaces"
+                            : "SQLite - Use double quotes for identifiers with spaces";
+                
+                sb.AppendLine($"💾 SQL DIALECT: {dialectInfo}");
+                
+                    if (strategy.DatabaseType == SmartRAG.Enums.DatabaseType.PostgreSQL)
+                    {
+                        sb.AppendLine();
+                    sb.AppendLine("🚨🚨🚨 POSTGRESQL RULES - CRITICAL! 🚨🚨🚨");
+                    sb.AppendLine("  → PostgreSQL is CASE-SENSITIVE for identifiers!");
+                    sb.AppendLine("  → You MUST use double quotes around ALL identifiers (table names, column names)!");
+                    sb.AppendLine("  ✓ CORRECT: SELECT \"ColumnName1\", \"ColumnName2\" FROM \"SchemaName\".\"TableName\"");
+                    sb.AppendLine("  ✗ WRONG: SELECT ColumnName1, ColumnName2 FROM SchemaName.TableName  -- Will fail with 'column does not exist'!");
+                        sb.AppendLine();
+                    sb.AppendLine("  → PostgreSQL uses LIMIT, NOT TOP!");
+                    sb.AppendLine("  ✓ CORRECT: SELECT \"ColumnName\" FROM \"SchemaName\".\"TableName\" ORDER BY \"ColumnName\" DESC LIMIT 5");
+                    sb.AppendLine("  ✗ WRONG: SELECT TOP 5 \"ColumnName\" FROM \"SchemaName\".\"TableName\"  -- SYNTAX ERROR! PostgreSQL does not support TOP!");
+                    sb.AppendLine("  → LIMIT MUST be at the END, after ORDER BY clause!");
+                        sb.AppendLine();
+                }
+                
+                if (strategy.DatabaseType == SmartRAG.Enums.DatabaseType.SqlServer)
+                {
+                    sb.AppendLine();
+                    sb.AppendLine("🚨🚨🚨 SQL SERVER TOP N RULE - CRITICAL! 🚨🚨🚨");
+                    sb.AppendLine("  ✗✗✗ LIMIT is FORBIDDEN in SQL Server! Use TOP N instead!");
+                    sb.AppendLine("  ✗✗✗ NEVER use LIMIT in SQL Server queries - it will cause SYNTAX ERROR!");
+                    sb.AppendLine("  ✓ CORRECT: SELECT TOP 5 ... FROM ... ORDER BY ...");
+                    sb.AppendLine("  ✗ WRONG: SELECT ... FROM ... ORDER BY ... LIMIT 5  -- SYNTAX ERROR!");
+                    sb.AppendLine("  ✗ WRONG: SELECT ... FROM ... GROUP BY ... ORDER BY ... LIMIT 5  -- SYNTAX ERROR!");
+                    sb.AppendLine("  → TOP N MUST be immediately after SELECT keyword");
+                    sb.AppendLine("  → Example: SELECT TOP 5 ColumnName FROM TableName ORDER BY ColumnName DESC");
+                    sb.AppendLine("  → Example: SELECT TOP 5 GroupingColumn, COUNT(...) FROM ... GROUP BY GroupingColumn ORDER BY COUNT(...) DESC");
+                    sb.AppendLine("  → 🚨🚨🚨 REMEMBER: SQL Server = TOP N (after SELECT), NOT LIMIT N (after ORDER BY)!");
+                }
+                else if (strategy.DatabaseType == SmartRAG.Enums.DatabaseType.MySQL)
+                {
+                    sb.AppendLine();
+                    sb.AppendLine("🚨🚨🚨 MySQL SYNTAX RULES - CRITICAL! 🚨🚨🚨");
+                    sb.AppendLine("  1. Use BACKTICKS for identifiers: `TableName`, `ColumnName`");
+                    sb.AppendLine("     ✓ CORRECT: SELECT `ColumnA`, `ColumnB` FROM `SchemaName`.`TableName`");
+                    sb.AppendLine("     ✗ WRONG: SELECT \"ColumnA\", \"ColumnB\" FROM \"SchemaName\".\"TableName\"  -- SYNTAX ERROR!");
+                    sb.AppendLine("  2. Use LIMIT, NOT TOP!");
+                    sb.AppendLine("     ✓ CORRECT: SELECT `ColumnA` FROM `TableName` ORDER BY `ColumnA` LIMIT 5");
+                    sb.AppendLine("     ✗ WRONG: SELECT TOP 5 `ColumnA` FROM `TableName`  -- SYNTAX ERROR!");
+                    sb.AppendLine("  → LIMIT N MUST be at the END, after ORDER BY clause");
+                }
+                else if (strategy.DatabaseType == SmartRAG.Enums.DatabaseType.PostgreSQL || 
+                         strategy.DatabaseType == SmartRAG.Enums.DatabaseType.SQLite)
+                {
+                    sb.AppendLine();
+                    sb.AppendLine("🚨🚨🚨 LIMIT RULE - CRITICAL! 🚨🚨🚨");
+                    sb.AppendLine("  → Use LIMIT, NOT TOP!");
+                    sb.AppendLine("  ✓ CORRECT: SELECT ... FROM ... ORDER BY ... LIMIT 5");
+                    sb.AppendLine("  ✗ WRONG: SELECT TOP 5 ... FROM ...  -- SYNTAX ERROR! TOP is not supported!");
+                    sb.AppendLine("  → LIMIT N MUST be at the END, after ORDER BY clause");
+                }
+                
+                    sb.AppendLine();
+                
+                foreach (var tableName in dbQuery.RequiredTables)
+                {
+                    var table = schema.Tables.FirstOrDefault(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase));
+                    if (table != null)
+                    {
+                        var tableType = table.RowCount > 10000 ? "TRANSACTIONAL" : (table.RowCount > 1000 ? "LOOKUP" : "MASTER");
+                        sb.AppendLine($"📋 TABLE: {table.TableName} (Rows: {table.RowCount:N0}, Type: {tableType})");
+                        
+                        var pkColumns = table.PrimaryKeys.Any() ? table.PrimaryKeys : table.Columns.Where(c => c.IsPrimaryKey).Select(c => c.ColumnName).ToList();
+                        if (pkColumns.Any())
+                        {
+                            sb.AppendLine($"   PK: {string.Join(", ", pkColumns)}");
+                        }
+
+                    if (table.ForeignKeys.Any())
+                    {
+                            sb.AppendLine("   Foreign Keys:");
+                            foreach (var fk in table.ForeignKeys.Take(5))
+                            {
+                                sb.AppendLine($"     {fk.ColumnName} → {fk.ReferencedTable}.{fk.ReferencedColumn}");
+                            }
+                        }
+                        
+                        if (strategy.DatabaseType == SmartRAG.Enums.DatabaseType.PostgreSQL)
+                        {
+                            var quotedTableName = QuotePostgreSqlIdentifier(table.TableName);
+                            sb.AppendLine($"   Use EXACT format: {quotedTableName}");
+                            sb.AppendLine($"   PostgreSQL columns (with quotes): {string.Join(", ", table.Columns.Select(c => QuotePostgreSqlIdentifier(c.ColumnName)))}");
+                            sb.AppendLine($"   🚨 REMEMBER: All PostgreSQL identifiers MUST be quoted!");
+                        }
+                        else
+                        {
+                            var importantColumns = table.Columns
+                                .Where(c => c.IsPrimaryKey || c.IsForeignKey || 
+                                           IsNumericColumn(c.DataType) || IsTextColumn(c.DataType))
+                                .Take(12)
+                                .Select(c => {
+                                    var markers = new List<string>();
+                                    if (c.IsPrimaryKey) markers.Add("PK");
+                                    if (c.IsForeignKey) markers.Add("FK");
+                                    var markerStr = markers.Any() ? $"[{string.Join(",", markers)}]" : "";
+                                    return $"{c.ColumnName}({c.DataType}){markerStr}";
+                                });
+                            sb.AppendLine($"   Columns: {string.Join(", ", importantColumns)}");
+                        }
+                        
+                        var relevantMappings = allMappings.Where(m =>
+                            (m.SourceTable.Equals(table.TableName, StringComparison.OrdinalIgnoreCase) ||
+                             m.TargetTable.Equals(table.TableName, StringComparison.OrdinalIgnoreCase))).ToList();
+                        
+                        if (relevantMappings.Any())
+                        {
+                            sb.AppendLine("   🚨 REQUIRED MAPPING COLUMNS (MUST include in SELECT):");
+                            foreach (var mapping in relevantMappings)
+                            {
+                                if (mapping.SourceTable.Equals(table.TableName, StringComparison.OrdinalIgnoreCase))
+                                {
+                                    sb.AppendLine($"     • {mapping.SourceColumn} (maps to TargetDatabase.{mapping.TargetColumn})");
+                                }
+                                else
+                                {
+                                    sb.AppendLine($"     • {mapping.TargetColumn} (maps from SourceDatabase.{mapping.SourceColumn})");
+                                }
+                            }
+                        }
+            sb.AppendLine();
+                    }
+                }
+                sb.AppendLine();
+            }
+
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("🚨🚨🚨 OUTPUT FORMAT - MANDATORY! NO MARKDOWN! 🚨🚨🚨");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine();
+            sb.AppendLine("❌❌❌ FORBIDDEN: Do NOT use markdown code blocks (```sql or ```)!");
+            sb.AppendLine("❌❌❌ FORBIDDEN: Do NOT use markdown headers (### or ##)!");
+            sb.AppendLine("❌❌❌ FORBIDDEN: Do NOT add explanations or notes after SQL!");
+            sb.AppendLine("❌❌❌ FORBIDDEN: Do NOT use TEXT placeholders like VALUE1, VALUE2, [values], or (something)!");
+            sb.AppendLine("❌❌❌ FORBIDDEN: Do NOT use bracket/parenthesis placeholders like [values from previous database results]!");
+            sb.AppendLine();
+            sb.AppendLine("⚠️⚠️⚠️ CRITICAL: All SQL queries must be EXECUTABLE AS-IS! ⚠️⚠️⚠️");
+            sb.AppendLine("  → For sequential queries: Use NUMERIC placeholder values (system will replace them)");
+            sb.AppendLine("  → These are EXAMPLE numbers - system replaces them with real values from first query");
+            sb.AppendLine("  → ✓ CORRECT: WHERE column IN (1, 2, 3)  -- Example numeric values, system replaces with real IDs");
+            sb.AppendLine("  → ✗ WRONG: WHERE column IN (VALUE1, VALUE2, VALUE3)  -- Text causes SQL error!");
+            sb.AppendLine("  → ✗ WRONG: WHERE column IN ([values from previous database results])  -- Bracket causes SQL error!");
+            sb.AppendLine("  → Use actual column/table names from the schema above");
+            sb.AppendLine();
+            sb.AppendLine("✓✓✓ REQUIRED: Use EXACTLY this format (copy-paste this structure):");
+            sb.AppendLine("MANDATORY: Each block MUST have: 1) 'DATABASE N: <Name>' (exact name from DATABASE # above), 2) 'CONFIRMED', 3) SQL. Parser cannot extract without these lines.");
+            sb.AppendLine();
+            for (int i = 0; i < queryIntent.DatabaseQueries.Count; i++)
+            {
+                var dbQuery = queryIntent.DatabaseQueries[i];
+                var schema = schemas[dbQuery.DatabaseId];
+                sb.AppendLine($"DATABASE {i + 1}: {schema.DatabaseName}");
+                sb.AppendLine("CONFIRMED");
+                sb.AppendLine("SELECT [columns] FROM [tables] WHERE [conditions] ORDER BY [columns] [TOP N or LIMIT N];");
+                sb.AppendLine();
+            }
+            sb.AppendLine("EXAMPLE FORMAT (STRUCTURE ONLY - REPLACE WITH ACTUAL DATABASE/TABLE/COLUMN NAMES):");
+            sb.AppendLine();
+            for (int i = 0; i < queryIntent.DatabaseQueries.Count && i < 3; i++)
+            {
+                var dbQuery = queryIntent.DatabaseQueries[i];
+                var schema = schemas[dbQuery.DatabaseId];
+                var strategy = strategies[dbQuery.DatabaseId];
+                
+                sb.AppendLine($"DATABASE {i + 1}: {schema.DatabaseName}");
+                sb.AppendLine("CONFIRMED");
+                
+                if (i == 0)
+                {
+                    if (strategy.DatabaseType == SmartRAG.Enums.DatabaseType.SqlServer)
+                    {
+                        sb.AppendLine("SELECT TOP 5 T1.JoinColumnID, COUNT(T2.RelatedID) AS CountValue FROM SchemaName.TableName1 T1 INNER JOIN SchemaName.TableName2 T2 ON T1.PrimaryKeyID = T2.ForeignKeyID GROUP BY T1.JoinColumnID ORDER BY CountValue DESC;");
+                    }
+                    else
+                    {
+                        sb.AppendLine("SELECT T1.JoinColumnID, COUNT(T2.RelatedID) AS CountValue FROM SchemaName.TableName1 T1 INNER JOIN SchemaName.TableName2 T2 ON T1.PrimaryKeyID = T2.ForeignKeyID GROUP BY T1.JoinColumnID ORDER BY CountValue DESC LIMIT 5;");
+                    }
+                }
+                else
+                {
+            if (strategy.DatabaseType == SmartRAG.Enums.DatabaseType.PostgreSQL)
+            {
+                        sb.AppendLine("SELECT \"JoinColumnID\", \"ColumnName1\", \"ColumnName2\" FROM \"SchemaName\".\"TableName1\" WHERE \"JoinColumnID\" IN (1, 5, 10, 15, 20);");
+            }
+            else
+            {
+                        sb.AppendLine("SELECT JoinColumnID, ColumnName1, ColumnName2 FROM SchemaName.TableName1 WHERE JoinColumnID IN (1, 5, 10, 15, 20);");
+            }
+                }
+            sb.AppendLine();
+            }
+            if (queryIntent.DatabaseQueries.Count > 3)
+            {
+                sb.AppendLine($"... (and {queryIntent.DatabaseQueries.Count - 3} more database(s)) ...");
+                sb.AppendLine();
+            }
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("⚠️⚠️⚠️ CRITICAL EXAMPLES - STUDY THESE CAREFULLY! ⚠️⚠️⚠️");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine();
+            sb.AppendLine($"SCENARIO: You need data from multiple databases ({queryIntent.DatabaseQueries.Count} database(s) listed above)");
+            sb.AppendLine();
+            sb.AppendLine("✗✗✗✗✗ WRONG - Using another database's tables (NEVER DO THIS!): ✗✗✗✗✗");
+            sb.AppendLine("DATABASE X: CurrentDatabaseName");
+            sb.AppendLine("CONFIRMED");
+            sb.AppendLine("SELECT ColumnName FROM OtherDatabaseName.SchemaName.TableName1 WHERE ...  -- ✗✗✗ FORBIDDEN!");
+            sb.AppendLine("-- REASON: OtherDatabaseName tables do NOT exist in CurrentDatabaseName!");
+            sb.AppendLine();
+            sb.AppendLine("✗✗✗✗✗ WRONG - Subquery with cross-database reference (NEVER DO THIS!): ✗✗✗✗✗");
+            sb.AppendLine("DATABASE X: CurrentDatabaseName");
+            sb.AppendLine("CONFIRMED");
+            sb.AppendLine("SELECT * FROM SchemaName.TableName1 WHERE JoinColumnID IN (SELECT JoinColumnID FROM OtherDatabaseName.SchemaName.TableName1);  -- ✗✗✗ FORBIDDEN!");
+            sb.AppendLine("-- REASON: Subquery references OtherDatabaseName, but we're in CurrentDatabaseName!");
+            sb.AppendLine();
+            sb.AppendLine("✗✗✗✗✗ WRONG - 3-part name with different database (NEVER DO THIS!): ✗✗✗✗✗");
+            sb.AppendLine("DATABASE X: CurrentDatabaseName");
+            sb.AppendLine("CONFIRMED");
+            sb.AppendLine("SELECT ColumnName FROM [OtherDatabaseName].[SchemaName].[TableName1] WHERE ...  -- ✗✗✗ FORBIDDEN!");
+            sb.AppendLine("-- REASON: [OtherDatabaseName] is a DIFFERENT database!");
+            sb.AppendLine();
+            sb.AppendLine("✓✓✓✓✓ CORRECT - Each database uses ONLY its own tables: ✓✓✓✓✓");
+            sb.AppendLine("DATABASE X: CurrentDatabaseName");
+            sb.AppendLine("CONFIRMED");
+            sb.AppendLine("SELECT JoinColumnID, ColumnName1, ColumnName2 FROM SchemaName.TableName1 WHERE JoinColumnID IN (1, 5, 10);");
+            sb.AppendLine("-- REASON: Uses ONLY tables that exist in CurrentDatabaseName (listed above)");
+            sb.AppendLine("-- NOTE: The values (1, 5, 10) come from previous database result - but we don't reference other databases!");
+            sb.AppendLine();
+            sb.AppendLine("🚨 KEY POINT: Each database query is INDEPENDENT!");
+            sb.AppendLine("  → Previous database query returns: JoinColumnID values (e.g., 1, 5, 10)");
+            sb.AppendLine("  → Current database query uses: WHERE JoinColumnID IN (1, 5, 10) - but ONLY uses current database tables!");
+            sb.AppendLine("  → NEVER reference tables from other databases in your SQL!");
+            sb.AppendLine();
+            sb.AppendLine("🚨🚨🚨 CRITICAL RULES - READ EVERY WORD! 🚨🚨🚨");
+            sb.AppendLine();
+            sb.AppendLine("RULE 1: Generate SQL for ALL databases listed above");
+            sb.AppendLine("  → You must generate SQL for EACH database separately");
+            sb.AppendLine();
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine("🚨🚨🚨🚨🚨 RULE 2: CROSS-DATABASE REFERENCE = FORBIDDEN! 🚨🚨🚨🚨🚨");
+            sb.AppendLine("═══════════════════════════════════════════════════════════════");
+            sb.AppendLine();
+            sb.AppendLine("⚠️⚠️⚠️ THIS IS THE MOST CRITICAL RULE - VIOLATION = QUERY FAILURE! ⚠️⚠️⚠️");
+            sb.AppendLine();
+            sb.AppendLine("FUNDAMENTAL PRINCIPLE:");
+            sb.AppendLine($"  → You have {queryIntent.DatabaseQueries.Count} separate, isolated database(s)");
+            sb.AppendLine("  → Each database has its OWN tables - they do NOT share tables!");
+            sb.AppendLine("  → Tables in one database do NOT exist in another database");
+            sb.AppendLine("  → You CANNOT query tables from one database while writing SQL for another!");
+            sb.AppendLine();
+            sb.AppendLine("✗✗✗✗✗ FORBIDDEN PATTERNS (NEVER USE THESE!): ✗✗✗✗✗");
+            sb.AppendLine();
+            sb.AppendLine("  1. ✗ OtherDatabaseName.SchemaName.TableName");
+            sb.AppendLine("     Example: SELECT * FROM DatabaseX.SchemaName.TableName1;  -- ✗ WRONG if writing for DatabaseY!");
+            sb.AppendLine();
+            sb.AppendLine("  2. ✗ [OtherDatabaseName].[SchemaName].[TableName]");
+            sb.AppendLine("     Example: SELECT * FROM [DatabaseX].[Schema].[Table];  -- ✗ WRONG if writing for DatabaseY!");
+            sb.AppendLine();
+            sb.AppendLine("  3. ✗ Subquery referencing other database");
+            sb.AppendLine("     Example: WHERE Column IN (SELECT Column FROM OtherDatabase.Table);  -- ✗ WRONG!");
+            sb.AppendLine();
+            sb.AppendLine("  4. ✗ JOIN with other database table");
+            sb.AppendLine("     Example: FROM Table1 T1 JOIN OtherDatabase.Schema.Table2 T2 ON ...  -- ✗ WRONG!");
+            sb.AppendLine();
+            sb.AppendLine("✓✓✓✓✓ CORRECT APPROACH: ✓✓✓✓✓");
+            sb.AppendLine();
+            sb.AppendLine("  For EACH database listed above:");
+            sb.AppendLine("    → Write SQL using ONLY tables from that specific database");
+            sb.AppendLine("    → Look at the table list for that database - use ONLY those tables");
+            sb.AppendLine("    → If you need values from a previous database's results, use literal values");
+            sb.AppendLine();
+            sb.AppendLine("  CORRECT EXAMPLE (2 databases):");
+            sb.AppendLine("    Database 1: Returns JoinColumnID values (e.g., 1, 5, 10)");
+            sb.AppendLine("    Database 2: SELECT * FROM SchemaName.TableName1 WHERE JoinColumnID IN (1, 5, 10);");
+            sb.AppendLine("    → Note: Values come from Database 1 result, but we don't reference Database 1 in Database 2 SQL!");
+            sb.AppendLine();
+            sb.AppendLine($"  CORRECT EXAMPLE ({queryIntent.DatabaseQueries.Count} databases):");
+            sb.AppendLine("    → Write {queryIntent.DatabaseQueries.Count} separate SQL queries");
+            sb.AppendLine("    → Each query uses ONLY its own database's tables");
+            sb.AppendLine("    → Use literal values from previous results, NOT subqueries to other databases!");
+            sb.AppendLine();
+            sb.AppendLine("RULE 3: SQL Server TOP N Rule (CRITICAL!)");
+            sb.AppendLine("  → For SQL Server: Use SELECT TOP N (immediately after SELECT)");
+            sb.AppendLine("  → Example: SELECT TOP 5 ColumnName FROM TableName ORDER BY ColumnName DESC");
+            sb.AppendLine("  ✗✗✗ NEVER use LIMIT in SQL Server - it will cause SYNTAX ERROR!");
+            sb.AppendLine();
+            sb.AppendLine("RULE 4: LIMIT Rule (for PostgreSQL/MySQL/SQLite)");
+            sb.AppendLine("  → For PostgreSQL/MySQL/SQLite: Use LIMIT N at the END (after ORDER BY)");
+            sb.AppendLine("  → Example: SELECT ColumnName FROM TableName ORDER BY ColumnName DESC LIMIT 5");
+            sb.AppendLine();
+            sb.AppendLine("RULE 5: Include ALL mapping columns in SELECT");
+            sb.AppendLine("  → If mapping columns are listed for a table, you MUST include them in SELECT");
+            sb.AppendLine("  → These columns are needed to JOIN results from different databases");
+            sb.AppendLine();
+            sb.AppendLine("RULE 6: Use table aliases in JOINs");
+            sb.AppendLine("  → Always use: FROM Table1 T1 JOIN Table2 T2 ON T1.Column = T2.Column");
+            sb.AppendLine("  → Always prefix columns: T1.ColumnName, T2.ColumnName");
+            sb.AppendLine();
+
+            var systemMessage = sb.ToString();
             var userMessage = BuildUserMessage(userQuery, queryIntent, schemas, strategies);
 
             return new SqlPromptParts
