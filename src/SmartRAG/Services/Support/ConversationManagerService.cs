@@ -185,6 +185,22 @@ namespace SmartRAG.Services.Support
             }
         }
 
+        /// <inheritdoc />
+        public Task AddSourcesForLastTurnAsync(string sessionId, string sourcesJson, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId))
+                return Task.CompletedTask;
+            return _conversationRepository.AppendSourcesForTurnAsync(sessionId, sourcesJson, cancellationToken);
+        }
+
+        /// <inheritdoc />
+        public Task<string> GetSourcesForSessionAsync(string sessionId, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId))
+                return Task.FromResult(string.Empty);
+            return _conversationRepository.GetSourcesForSessionAsync(sessionId, cancellationToken);
+        }
+
         /// <summary>
         /// Truncates conversation history to keep only the most recent turns
         /// </summary>

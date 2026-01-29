@@ -42,6 +42,16 @@ namespace SmartRAG.Interfaces.Support
         Task AddToConversationAsync(string sessionId, string question, string answer, CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Appends sources JSON for the latest assistant turn (one JSON array per turn).
+        /// </summary>
+        Task AddSourcesForLastTurnAsync(string sessionId, string sourcesJson, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Gets stored sources for a session as JSON array of arrays, or null if none.
+        /// </summary>
+        Task<string> GetSourcesForSessionAsync(string sessionId, CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Truncates conversation history to keep only the most recent turns
         /// </summary>
         /// <param name="history">Full conversation history</param>

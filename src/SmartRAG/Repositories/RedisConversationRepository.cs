@@ -4,7 +4,9 @@ using SmartRAG.Interfaces.Storage;
 using SmartRAG.Models;
 using StackExchange.Redis;
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -106,12 +108,60 @@ namespace SmartRAG.Repositories
         {
             try
             {
-                var conversationKey = $"conversation:{sessionId}";
-                await _database.KeyDeleteAsync(conversationKey);
+                await _database.KeyDeleteAsync($"conversation:{sessionId}");
+                await _database.KeyDeleteAsync($"conversation:sources:{sessionId}");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error clearing conversation");
+            }
+        }
+
+        public async Task AppendSourcesForTurnAsync(string sessionId, string sourcesJson, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId))
+                return;
+            try
+            {
+                var key = $"conversation:sources:{sessionId}";
+                var existing = await _database.StringGetAsync(key);
+                var list = new List<JsonElement>();
+                if (existing.HasValue && !existing.IsNullOrEmpty)
+                {
+                    try
+                    {
+                        var parsed = JsonSerializer.Deserialize<List<JsonElement>>(existing!);
+                        if (parsed != null)
+                            list = parsed;
+                    }
+                    catch
+                    {
+                        list = new List<JsonElement>();
+                    }
+                }
+                list.Add(JsonSerializer.Deserialize<JsonElement>(sourcesJson));
+                await _database.StringSetAsync(key, JsonSerializer.Serialize(list));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error appending sources for turn");
+            }
+        }
+
+        public async Task<string> GetSourcesForSessionAsync(string sessionId, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId))
+                return null;
+            try
+            {
+                var key = $"conversation:sources:{sessionId}";
+                var value = await _database.StringGetAsync(key);
+                return value.IsNullOrEmpty ? string.Empty : value.ToString();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting sources for session");
+                return null;
             }
         }
 
@@ -155,6 +205,40 @@ namespace SmartRAG.Repositories
             {
                 _logger.LogError(ex, "Error clearing all conversations from Redis");
                 throw;
+            }
+        }
+
+        public async Task<string[]> GetAllSessionIdsAsync(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                var endpoints = _redis.GetEndPoints();
+                if (endpoints == null || endpoints.Length == 0)
+                {
+                    _logger.LogWarning("No Redis endpoints available for listing conversations");
+                    return Array.Empty<string>();
+                }
+
+                var server = _redis.GetServer(endpoints.First());
+                var pattern = "conversation:*";
+                var ids = new System.Collections.Generic.List<string>();
+
+                await foreach (var key in server.KeysAsync(pattern: pattern))
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var keyStr = (string)key;
+                    if (keyStr.StartsWith("conversation:", StringComparison.Ordinal))
+                    {
+                        ids.Add(keyStr.Substring("conversation:".Length));
+                    }
+                }
+
+                return ids.ToArray();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error listing conversation sessions from Redis");
+                return Array.Empty<string>();
             }
         }
 
