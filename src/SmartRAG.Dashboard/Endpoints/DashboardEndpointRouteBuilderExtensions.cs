@@ -27,6 +27,8 @@ namespace SmartRAG.Dashboard.Endpoints;
 /// </summary>
 public static class DashboardEndpointRouteBuilderExtensions
 {
+    private const int RagConversationMaxTurns = 10;
+
     public static IEndpointRouteBuilder MapSmartRagDashboardEndpoints(
         IEndpointRouteBuilder endpoints,
         string basePath)
@@ -284,7 +286,7 @@ public static class DashboardEndpointRouteBuilderExtensions
                     .GetConversationHistoryAsync(sessionId, cancellationToken)
                     .ConfigureAwait(false);
 
-                var truncatedHistory = conversationManager.TruncateConversationHistory(fullHistory);
+                var truncatedHistory = conversationManager.TruncateConversationHistory(fullHistory, maxTurns: RagConversationMaxTurns);
 
                 var ragRequest = new GenerateRagAnswerRequest
                 {

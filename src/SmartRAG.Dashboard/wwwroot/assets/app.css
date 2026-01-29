@@ -678,6 +678,13 @@ body {
     white-space: pre-wrap;
 }
 
+.sr-chunk-highlight {
+    background: #fecaca;
+    color: #991b1b;
+    padding: 0.05em 0.1em;
+    border-radius: 2px;
+}
+
 .sr-msg-row {
     display: flex;
     align-items: flex-start;
@@ -745,6 +752,7 @@ body {
 
 .sr-source-pill {
     display: inline-flex;
+    align-items: center;
     padding: 0.2rem 0.5rem;
     border-radius: 999px;
     border: 1px solid var(--sr-border);
@@ -753,10 +761,8 @@ body {
     font-size: 0.75rem;
     cursor: pointer;
     font-family: inherit;
-    max-width: min(22rem, 100%);
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+    white-space: normal;
+    word-break: break-word;
 }
 
 .sr-source-pill:hover {

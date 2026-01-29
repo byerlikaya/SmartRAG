@@ -339,10 +339,10 @@
                 var label = group.fileName + (count > 1 ? ' (' + count + ' chunks)' : ' (1 chunk)');
                 pill.textContent = label;
                 pill.setAttribute('aria-label', 'View document chunks');
-                pill.setAttribute('title', label);
                 (function (docGroup) {
                     pill.addEventListener('click', function () {
-                        openSourceDetailByDocument(docGroup.fileName, docGroup.chunks);
+                        var query = getQueryForSourceDetail(pill);
+                        openSourceDetailByDocument(docGroup.fileName, docGroup.chunks, query);
                     });
                 })(group);
                 sourcesRow.appendChild(pill);
@@ -356,7 +356,47 @@
         container.scrollTop = container.scrollHeight;
     }
 
-    function openSourceDetailByDocument(fileName, chunks) {
+    function getQueryForSourceDetail(pillElement) {
+        var wrap = pillElement && pillElement.closest && pillElement.closest('.sr-msg-assistant-wrap');
+        if (!wrap || !wrap.previousElementSibling) return '';
+        var el = wrap.previousElementSibling;
+        while (el) {
+            if (el.classList && el.classList.contains('sr-msg-row') && el.classList.contains('sr-msg-row-user')) {
+                var msg = el.querySelector('.sr-msg');
+                return msg ? (msg.textContent || '').trim() : '';
+            }
+            el = el.previousElementSibling;
+        }
+        return '';
+    }
+
+    function escapeHtml(s) {
+        var div = document.createElement('div');
+        div.textContent = s;
+        return div.innerHTML;
+    }
+
+    function escapeRegex(s) {
+        return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    function highlightQueryInChunkText(text, query) {
+        if (!text) return '';
+        var escaped = escapeHtml(text);
+        var words = (query || '').split(/\s+/).filter(function (w) { return w.length >= 2; });
+        if (words.length === 0) return escaped;
+        var pattern;
+        try {
+            pattern = new RegExp('(' + words.map(escapeRegex).join('|') + ')', 'gi');
+        } catch (e) {
+            return escaped;
+        }
+        return escaped.replace(pattern, function (m) {
+            return '<span class="sr-chunk-highlight">' + m + '</span>';
+        });
+    }
+
+    function openSourceDetailByDocument(fileName, chunks, query) {
         var panel = document.getElementById('sr-source-details');
         var titleEl = document.getElementById('sr-source-details-title');
         var subtitleEl = document.getElementById('sr-source-details-subtitle');
@@ -374,7 +414,8 @@
                 header.textContent = 'Chunk #' + (chunk.chunkIndex != null ? chunk.chunkIndex : idx);
                 var body = document.createElement('pre');
                 body.className = 'sr-doc-chunk-body';
-                body.textContent = chunk.relevantContent || '';
+                var content = chunk.relevantContent || '';
+                body.innerHTML = highlightQueryInChunkText(content, query);
                 div.appendChild(header);
                 div.appendChild(body);
                 chunksEl.appendChild(div);
