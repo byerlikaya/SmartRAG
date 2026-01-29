@@ -40,6 +40,8 @@ namespace SmartRAG.Services.Document
         private const double NumberedListWordMatchBonus = 10.0;
         private const double SkipEagerDocumentAnswerConfidenceThreshold = 0.85;
         private const double StrongDocumentMatchThreshold = 4.8;
+        private const int PreviousQuerySearchMaxResults = 15;
+        private const double PreviousQueryChunkScoreBoost = 0.5;
 
         private const string DocumentTagPattern = @"\s*-d\s*$";
         private const string DatabaseTagPattern = @"\s*-db\s*$";
@@ -429,6 +431,8 @@ namespace SmartRAG.Services.Document
                 if (match.Success)
                 {
                     var adjustedOptions = factory(options);
+                    if (pattern == McpTagPattern)
+                        adjustedOptions.EnableMcpSearch = true;
                     cleanedQuery = cleanedQuery.Substring(0, match.Index).TrimEnd();
                     return (cleanedQuery, adjustedOptions);
                 }
@@ -457,10 +461,20 @@ namespace SmartRAG.Services.Document
             if (request == null)
                 throw new ArgumentNullException(nameof(request));
 
+            var (cleanedForTags, tagOptions) = ParseSourceTags(request.Query);
+            if (tagOptions.EnableMcpSearch && !tagOptions.EnableDocumentSearch && !string.IsNullOrWhiteSpace(cleanedForTags))
+            {
+                var meta = new SearchMetadata();
+                var mcpResponse = await ExecuteMcpSearchAsync(cleanedForTags, request.MaxResults, request.ConversationHistory ?? string.Empty, meta, null, cancellationToken).ConfigureAwait(false);
+                if (mcpResponse != null)
+                    return mcpResponse;
+            }
+
             var searchMaxResults = _queryAnalysis.DetermineInitialSearchCount(request.Query, request.MaxResults);
 
             List<DocumentChunk> chunks;
             var queryTokens = request.QueryTokens ?? QueryTokenizer.TokenizeQuery(request.Query);
+            var previousQueryChunkIds = new HashSet<Guid>();
 
             DocumentChunk? preservedChunk0 = null;
             List<Entities.Document>? allDocuments = null;
@@ -493,16 +507,54 @@ namespace SmartRAG.Services.Document
                 var searchResults = await _documentSearchStrategy.SearchDocumentsAsync(cleanedQuery, searchMaxResults, searchOptions, request.QueryTokens, cancellationToken);
                 chunks = searchResults.ToList();
 
+                var previousUserQuery = GetLastUserQueryDistinctFrom(request.ConversationHistory, cleanedQuery);
+                if (!string.IsNullOrWhiteSpace(previousUserQuery) &&
+                    !string.Equals(previousUserQuery.Trim(), cleanedQuery.Trim(), StringComparison.OrdinalIgnoreCase))
+                {
+                    var extraResults = await _documentSearchStrategy.SearchDocumentsAsync(
+                        previousUserQuery.Trim(),
+                        Math.Min(searchMaxResults, PreviousQuerySearchMaxResults),
+                        searchOptions,
+                        null,
+                        cancellationToken);
+                    var currentIds = new HashSet<Guid>(chunks.Select(c => c.Id));
+                    var maxScore = chunks.Count > 0 ? chunks.Max(c => c.RelevanceScore ?? 0.0) : 0.0;
+                    foreach (var c in extraResults)
+                    {
+                        if (!currentIds.Contains(c.Id))
+                        {
+                            c.RelevanceScore = maxScore + PreviousQueryChunkScoreBoost;
+                            previousQueryChunkIds.Add(c.Id);
+                            chunks.Add(c);
+                            currentIds.Add(c.Id);
+                        }
+                    }
+                }
+
                 preservedChunk0 = chunks.FirstOrDefault(c => c.ChunkIndex == 0);
                 if (preservedChunk0 != null && !Chunk0IsQueryRelevant(preservedChunk0, queryTokens))
                     preservedChunk0 = null;
                 var nonZeroChunksForSearch = chunks.Where(c => c.ChunkIndex != 0).ToList();
                 chunks = _chunkPrioritizer.PrioritizeChunksByQueryWords(nonZeroChunksForSearch, queryTokens);
                 chunks = _chunkPrioritizer.MergeChunksWithPreservedChunk0(chunks, preservedChunk0);
+
+                if (previousQueryChunkIds.Count > 0)
+                {
+                    var previousQueryChunks = chunks.Where(c => previousQueryChunkIds.Contains(c.Id)).ToList();
+                    var docScores = previousQueryChunks
+                        .GroupBy(c => c.DocumentId)
+                        .Select(g => new { DocumentId = g.Key, Score = g.Sum(c => c.RelevanceScore ?? 0.0) })
+                        .OrderByDescending(x => x.Score)
+                        .Take(1)
+                        .Select(x => x.DocumentId)
+                        .ToHashSet();
+                    chunks = chunks.Where(c => docScores.Contains(c.DocumentId)).ToList();
+                }
             }
 
             var topOriginalChunks = chunks
-                .OrderByDescending(c => c.ChunkIndex == 0)
+                .OrderByDescending(c => previousQueryChunkIds.Contains(c.Id))
+                .ThenByDescending(c => c.ChunkIndex == 0)
                 .ThenByDescending(c => c.RelevanceScore ?? 0.0)
                 .ThenBy(c => c.ChunkIndex)
                 .Take(Math.Min(chunks.Count, Math.Max(10, request.MaxResults * 2)))
@@ -510,7 +562,9 @@ namespace SmartRAG.Services.Document
 
             var originalChunkIds = new HashSet<Guid>(topOriginalChunks.Select(c => c.Id));
 
-            var needsAggressiveSearch = chunks.Count < 5 || _queryPatternAnalyzer.RequiresComprehensiveSearch(request.Query);
+            var isFollowUpWithContext = previousQueryChunkIds.Count > 0;
+            var needsAggressiveSearch = !isFollowUpWithContext &&
+                (chunks.Count < 5 || _queryPatternAnalyzer.RequiresComprehensiveSearch(request.Query));
             if (needsAggressiveSearch)
             {
                 preservedChunk0 ??= chunks.FirstOrDefault(c => c.ChunkIndex == 0);
@@ -748,6 +802,13 @@ namespace SmartRAG.Services.Document
 
             var context = _contextExpansion.BuildLimitedContext(chunks, MaxContextSize);
 
+            if (previousQueryChunkIds.Count > 0 && !string.IsNullOrWhiteSpace(request.ConversationHistory))
+            {
+                var lastAssistantAnswer = ExtractLastAssistantAnswer(request.ConversationHistory);
+                if (!string.IsNullOrWhiteSpace(lastAssistantAnswer))
+                    context = "[Previous turn answer from conversation]\n" + lastAssistantAnswer + "\n\n" + context;
+            }
+
             var answer = await GenerateRagAnswerFromContextAsync(request.Query, context, request.ConversationHistory, cancellationToken);
 
             var sourcesChunks = FilterChunksByOriginalIds(chunks, originalChunkIds);
@@ -781,6 +842,44 @@ namespace SmartRAG.Services.Document
                 return true;
             var contentLower = chunk0.Content.ToLowerInvariant();
             return significantWords.Any(w => contentLower.IndexOf(w, StringComparison.OrdinalIgnoreCase) >= 0);
+        }
+
+        private static string? GetLastUserQueryDistinctFrom(string? conversationHistory, string currentQuery)
+        {
+            if (string.IsNullOrWhiteSpace(conversationHistory))
+                return null;
+            var current = currentQuery?.Trim() ?? string.Empty;
+            const string userPrefix = "User: ";
+            var lines = conversationHistory.Split('\n');
+            for (var i = lines.Length - 1; i >= 0; i--)
+            {
+                var line = lines[i];
+                if (!line.StartsWith(userPrefix, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                var question = line.Substring(userPrefix.Length).Trim();
+                if (string.IsNullOrWhiteSpace(question))
+                    continue;
+                if (!string.Equals(question, current, StringComparison.OrdinalIgnoreCase))
+                    return question;
+            }
+            return null;
+        }
+
+        private static string? ExtractLastAssistantAnswer(string? conversationHistory)
+        {
+            if (string.IsNullOrWhiteSpace(conversationHistory))
+                return null;
+            const string assistantPrefix = "Assistant: ";
+            var lines = conversationHistory.Split('\n');
+            for (var i = lines.Length - 1; i >= 0; i--)
+            {
+                var line = lines[i];
+                if (!line.StartsWith(assistantPrefix, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                var answer = line.Substring(assistantPrefix.Length).Trim();
+                return string.IsNullOrWhiteSpace(answer) ? null : answer;
+            }
+            return null;
         }
 
         /// <summary>

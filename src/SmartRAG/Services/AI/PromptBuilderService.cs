@@ -78,6 +78,11 @@ SPECIAL INSTRUCTIONS FOR VAGUE QUESTIONS (questions referring to generic person/
 - Combine conversation history context with document context to provide a complete answer"
                 : "";
 
+            var followUpInstructions = !string.IsNullOrEmpty(conversationHistory)
+                ? @"
+FOLLOW-UP QUESTIONS: If the question refers to something you already stated in the Recent conversation context above (e.g. a value, quantity, or fact), you MAY use that information to answer. You may compute derived values (e.g. half, double, or other proportions) from data you previously stated, or explain why you did not. Prefer documents when the same data appears there; otherwise use the conversation context you already provided."
+                : "";
+
             var languageInstruction = !string.IsNullOrEmpty(_options.DefaultLanguage)
                 ? GetLanguageInstructionForCode(_options.DefaultLanguage)
                 : "respond in the SAME language as the query";
@@ -101,6 +106,7 @@ You are a document-based assistant. Answer questions using ONLY the documents pr
 
 {countingInstructions}
 {vagueQueryInstructions}
+{followUpInstructions}
 
 ### CONTEXT
 {historyContext}Question: {query}

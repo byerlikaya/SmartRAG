@@ -146,7 +146,7 @@ namespace SmartRAG.Services.Support
                 string currentHistory;
                 if (_conversationCache.TryGetValue(sessionId, out var cachedHistory))
                 {
-                    currentHistory = RemoveDuplicateEntries(cachedHistory ?? string.Empty);
+                    currentHistory = cachedHistory ?? string.Empty;
                 }
                 else
                 {
@@ -154,23 +154,6 @@ namespace SmartRAG.Services.Support
                 }
 
                 var newTurn = $"User: {question}\nAssistant: {answer}";
-
-                if (!string.IsNullOrEmpty(currentHistory))
-                {
-                    var lines = currentHistory.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-                    for (int i = 0; i < lines.Length; i++)
-                    {
-                        if (lines[i].StartsWith("User: ", StringComparison.OrdinalIgnoreCase) &&
-                            lines[i].Equals($"User: {question}", StringComparison.OrdinalIgnoreCase) &&
-                            i + 1 < lines.Length &&
-                            lines[i + 1].StartsWith("Assistant: ", StringComparison.OrdinalIgnoreCase) &&
-                            lines[i + 1].Equals($"Assistant: {answer}", StringComparison.OrdinalIgnoreCase))
-                        {
-                            return;
-                        }
-                    }
-                }
-
                 var newEntry = string.IsNullOrEmpty(currentHistory)
                     ? newTurn
                     : $"{currentHistory}\n{newTurn}";
@@ -337,70 +320,13 @@ namespace SmartRAG.Services.Support
             try
             {
                 var history = await _conversationRepository.GetConversationHistoryAsync(sessionId, cancellationToken);
-                return RemoveDuplicateEntries(history);
+                return history ?? string.Empty;
             }
             catch (Exception ex)
             {
                 ServiceLogMessages.LogConversationRetrievalFailed(_logger, sessionId, ex);
                 return string.Empty;
             }
-        }
-
-        /// <summary>
-        /// Removes duplicate conversation entries from history
-        /// </summary>
-        private string RemoveDuplicateEntries(string history)
-        {
-            if (string.IsNullOrWhiteSpace(history))
-                return string.Empty;
-
-            var lines = history.Split('\n', StringSplitOptions.RemoveEmptyEntries);
-            var seenEntries = new HashSet<string>();
-            var uniqueLines = new List<string>();
-
-            for (int i = 0; i < lines.Length; i++)
-            {
-                var line = lines[i];
-                if (line.StartsWith("User: ", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (i + 1 < lines.Length && lines[i + 1].StartsWith("Assistant: ", StringComparison.OrdinalIgnoreCase))
-                    {
-                        var userLine = line;
-                        var assistantLine = lines[i + 1];
-                        var entry = $"{userLine}\n{assistantLine}";
-
-                        if (!seenEntries.Contains(entry))
-                        {
-                            seenEntries.Add(entry);
-                            uniqueLines.Add(userLine);
-                            uniqueLines.Add(assistantLine);
-                            i++;
-                        }
-                        else
-                        {
-                            i++;
-                        }
-                    }
-                    else
-                    {
-                        uniqueLines.Add(line);
-                    }
-                }
-                else if (line.StartsWith("Assistant: ", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (i > 0 && lines[i - 1].StartsWith("User: ", StringComparison.OrdinalIgnoreCase))
-                    {
-                        continue;
-                    }
-                    uniqueLines.Add(line);
-                }
-                else
-                {
-                    uniqueLines.Add(line);
-                }
-            }
-
-            return string.Join("\n", uniqueLines);
         }
 
         /// <summary>
