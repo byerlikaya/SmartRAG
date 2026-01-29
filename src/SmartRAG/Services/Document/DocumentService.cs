@@ -205,10 +205,13 @@ namespace SmartRAG.Services.Document
             }
 
             return allDocuments.Where(d =>
-                (options.EnableDocumentSearch && IsTextDocument(d)) ||
-                (options.EnableAudioSearch && IsAudioDocument(d)) ||
-                (options.EnableImageSearch && IsImageDocument(d))
-            ).ToList();
+            {
+                if (!options.EnableDatabaseSearch && IsSchemaDocument(d))
+                    return false;
+                return (options.EnableDocumentSearch && IsTextDocument(d)) ||
+                       (options.EnableAudioSearch && IsAudioDocument(d)) ||
+                       (options.EnableImageSearch && IsImageDocument(d));
+            }).ToList();
         }
 
         public async Task<bool> DeleteDocumentAsync(Guid id, CancellationToken cancellationToken = default) => await _documentRepository.DeleteAsync(id, cancellationToken);
@@ -444,6 +447,13 @@ namespace SmartRAG.Services.Document
         private bool IsTextDocument(SmartRAG.Entities.Document doc)
         {
             return !IsAudioDocument(doc) && !IsImageDocument(doc);
+        }
+
+        private static bool IsSchemaDocument(SmartRAG.Entities.Document doc)
+        {
+            return doc.Metadata != null &&
+                   doc.Metadata.TryGetValue("documentType", out var dt) &&
+                   string.Equals(dt?.ToString(), "Schema", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

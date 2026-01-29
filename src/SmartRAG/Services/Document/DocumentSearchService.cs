@@ -464,6 +464,7 @@ namespace SmartRAG.Services.Document
 
             DocumentChunk? preservedChunk0 = null;
             List<Entities.Document>? allDocuments = null;
+            SearchOptions? effectiveOptions = request.Options;
 
             if (request.PreCalculatedResults != null && request.PreCalculatedResults.Count > 0)
             {
@@ -483,15 +484,18 @@ namespace SmartRAG.Services.Document
             else
             {
                 var (cleanedQuery, searchOptions) = ParseSourceTags(request.Query);
-                
+                effectiveOptions = searchOptions;
+
                 if (string.IsNullOrWhiteSpace(cleanedQuery))
                     throw new ArgumentException("Query cannot be empty", nameof(request.Query));
 
                 cancellationToken.ThrowIfCancellationRequested();
                 var searchResults = await _documentSearchStrategy.SearchDocumentsAsync(cleanedQuery, searchMaxResults, searchOptions, request.QueryTokens, cancellationToken);
                 chunks = searchResults.ToList();
-                
+
                 preservedChunk0 = chunks.FirstOrDefault(c => c.ChunkIndex == 0);
+                if (preservedChunk0 != null && !Chunk0IsQueryRelevant(preservedChunk0, queryTokens))
+                    preservedChunk0 = null;
                 var nonZeroChunksForSearch = chunks.Where(c => c.ChunkIndex != 0).ToList();
                 chunks = _chunkPrioritizer.PrioritizeChunksByQueryWords(nonZeroChunksForSearch, queryTokens);
                 chunks = _chunkPrioritizer.MergeChunksWithPreservedChunk0(chunks, preservedChunk0);
@@ -510,8 +514,10 @@ namespace SmartRAG.Services.Document
             if (needsAggressiveSearch)
             {
                 preservedChunk0 ??= chunks.FirstOrDefault(c => c.ChunkIndex == 0);
+                if (preservedChunk0 != null && !Chunk0IsQueryRelevant(preservedChunk0, queryTokens))
+                    preservedChunk0 = null;
 
-                allDocuments = await EnsureAllDocumentsLoadedAsync(allDocuments, request.Options, cancellationToken);
+                allDocuments = await EnsureAllDocumentsLoadedAsync(allDocuments, effectiveOptions, cancellationToken);
                 var allChunks = allDocuments.SelectMany(d => d.Chunks).ToList();
                 var queryWords = queryTokens;
                 var potentialNames = QueryTokenizer.ExtractPotentialNames(request.Query);
@@ -762,6 +768,19 @@ namespace SmartRAG.Services.Document
         {
             var prompt = _promptBuilder.BuildDocumentRagPrompt(query, context, conversationHistory);
             return await _aiService.GenerateResponseAsync(prompt, new List<string> { context }, cancellationToken);
+        }
+
+        private static bool Chunk0IsQueryRelevant(DocumentChunk chunk0, List<string>? queryTokens)
+        {
+            if (chunk0 == null || string.IsNullOrWhiteSpace(chunk0.Content))
+                return false;
+            if (queryTokens == null || queryTokens.Count == 0)
+                return true;
+            var significantWords = queryTokens.Where(w => w.Length >= 4).ToList();
+            if (significantWords.Count == 0)
+                return true;
+            var contentLower = chunk0.Content.ToLowerInvariant();
+            return significantWords.Any(w => contentLower.IndexOf(w, StringComparison.OrdinalIgnoreCase) >= 0);
         }
 
         /// <summary>

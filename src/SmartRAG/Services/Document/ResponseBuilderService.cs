@@ -362,102 +362,61 @@ namespace SmartRAG.Services.Document
             }
 
             var normalized = answer.Trim();
-            
-            // Check explicit negative patterns first
+
             if (IsExplicitlyNegative(normalized))
             {
                 return true;
             }
 
             var answerLower = normalized.ToLowerInvariant();
-            
-            // Generic patterns that work across languages (AI typically uses English patterns even in other languages)
-            // These patterns detect when AI says it couldn't find information
-            // Note: We rely primarily on [NO_ANSWER_FOUND] token, but also check for generic "not found" patterns
-            var notFoundPatterns = new[] 
-            { 
-                "not found", "not in", "does not contain", "doesn't contain", 
+
+            var notFoundPatterns = new[]
+            {
+                "not found", "not in", "does not contain", "doesn't contain",
                 "not mentioned", "not present", "couldn't find", "could not find",
                 "unable to find", "no information", "not available"
             };
-            
+
             var answerIndicatesNotFound = notFoundPatterns.Any(pattern => answerLower.Contains(pattern));
-            
-            // If answer explicitly says "not found" (using generic English patterns that AI typically uses),
-            // it's missing data - this is a fallback when [NO_ANSWER_FOUND] token is missing
-            if (answerIndicatesNotFound)
-            {
-                return true;
-            }
-            
-            // Additional check: If query contains important terms but those terms are not in sources,
-            // it's likely missing data (language-agnostic check)
-            // Uses QueryTokenizer to extract terms regardless of capitalization (works for all languages)
+
             if (!string.IsNullOrWhiteSpace(query) && sources != null && sources.Count > 0)
             {
-                // Extract important terms from query (language-agnostic, works for all languages)
-                var queryTerms = QueryTokenizer.TokenizeQuery(query);
-                
-                // Filter out very short terms (length < 3) as they're likely not meaningful
-                // Keep all terms >= 3 characters to remain language-agnostic (no language-specific stop words)
-                var importantTerms = queryTerms
-                    .Where(term => term.Length >= 3)
-                    .ToList();
-                
-                if (importantTerms.Count > 0)
+                var allSourceContent = string.Join(" ", sources
+                    .Where(s => !string.IsNullOrWhiteSpace(s.RelevantContent))
+                    .Select(s => s.RelevantContent));
+
+                if (!string.IsNullOrWhiteSpace(allSourceContent) && allSourceContent.Length >= 50)
                 {
-                    var allSourceContent = string.Join(" ", sources
-                        .Where(s => !string.IsNullOrWhiteSpace(s.RelevantContent))
-                        .Select(s => s.RelevantContent));
-                    
-                    if (!string.IsNullOrWhiteSpace(allSourceContent))
+                    var queryTerms = QueryTokenizer.TokenizeQuery(query);
+                    var importantTerms = queryTerms.Where(term => term.Length >= 3).ToList();
+
+                    if (importantTerms.Count > 0)
                     {
                         var sourceContentLower = allSourceContent.ToLowerInvariant();
-                        var termsInSources = importantTerms.Count(term => 
+                        var termsInSources = importantTerms.Count(term =>
                             sourceContentLower.Contains(term.ToLowerInvariant()));
-                        
-                        // If most important query terms are not in sources,
-                        // and answer is short (likely "not found" response), it's missing data
-                        // This is language-agnostic: we check if query terms exist in sources
-                        var termsNotInSourcesRatio = (importantTerms.Count - termsInSources) / (double)importantTerms.Count;
-                        if (termsNotInSourcesRatio > 0.5 && answer.Length < 200)
+                        var termsInSourcesRatio = termsInSources / (double)importantTerms.Count;
+
+                        if (termsInSourcesRatio >= 0.5)
                         {
-                            _logger?.LogDebug("IndicatesMissingData: {MissingRatio}% of important query terms not in sources. Terms: {Terms}", 
-                                (int)(termsNotInSourcesRatio * 100), string.Join(", ", importantTerms));
+                            return false;
+                        }
+
+                        if (termsInSourcesRatio < 0.5 && answer.Length < 200)
+                        {
+                            _logger?.LogDebug("IndicatesMissingData: {MissingRatio}% of important query terms not in sources. Terms: {Terms}",
+                                (int)((1.0 - termsInSourcesRatio) * 100), string.Join(", ", importantTerms));
                             return true;
                         }
                     }
                 }
             }
 
-            // If query contains specific terms (product/library names), check if answer mentions them
-            // If specific terms are in query but not in answer, and answer indicates "not found", return true
-            // This is a fallback check - primary check is [NO_ANSWER_FOUND] token via IsExplicitlyNegative
-            if (!string.IsNullOrWhiteSpace(query))
+            if (answerIndicatesNotFound)
             {
-                var specificTerms = ExtractSpecificTermsFromQuery(query);
-                if (specificTerms.Count > 0)
-                {
-                    // If answer says "not found" AND query term is not in answer, it's missing data
-                    if (answerIndicatesNotFound)
-                    {
-                        foreach (var term in specificTerms)
-                        {
-                            var termLower = term.ToLowerInvariant();
-                            // If the specific term from query is not in the answer, it's missing
-                            if (!answerLower.Contains(termLower))
-                            {
-                                return true;
-                            }
-                        }
-                    }
-                }
+                return true;
             }
 
-            // aggressive heuristics (length checks, question mark checks, etc.) are removed 
-            // to prevent false positives for valid short database answers.
-            // We rely on the [NO_ANSWER_FOUND] token and explicit negative symbols.
-            
             return false;
         }
 

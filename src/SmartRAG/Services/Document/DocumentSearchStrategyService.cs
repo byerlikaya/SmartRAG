@@ -26,6 +26,7 @@ namespace SmartRAG.Services.Document
         private const double FallbackVectorSearchThreshold = 30.0; // 0.3 similarity (fallback if no results with preferred)
         private const double MinTextSearchRelevanceThreshold = 3.0; // Text search uses different scale (4.0-6.0+)
         private const double MinChunk0RelevanceThreshold = 25.0; // Lower threshold for document introduction chunks
+        private const int MinChunksForSufficientResults = 5; // Use fallback threshold when we have few results but many candidates
         private const int ReciprocalRankFusionK = 60; // RRF k parameter (industry standard: 50-60, R2R uses 50)
         private const double KeywordSearchWeight = 1.0; // Weight for keyword search results (R2R standard)
         private const double VectorSearchWeight = 5.0; // Weight for vector search results (R2R standard)
@@ -109,11 +110,13 @@ namespace SmartRAG.Services.Document
                     var typeFilteredResults = normalizedResults.Where(chunk =>
                     {
                         var documentType = chunk.DocumentType ?? "Document";
-                        return documentType.Equals("Audio", StringComparison.OrdinalIgnoreCase)
-                            ? searchOptions.EnableAudioSearch
-                            : documentType.Equals("Image", StringComparison.OrdinalIgnoreCase)
-                                ? searchOptions.EnableImageSearch
-                                : searchOptions.EnableDocumentSearch;
+                        if (documentType.Equals("Schema", StringComparison.OrdinalIgnoreCase))
+                            return searchOptions.EnableDatabaseSearch;
+                        if (documentType.Equals("Audio", StringComparison.OrdinalIgnoreCase))
+                            return searchOptions.EnableAudioSearch;
+                        if (documentType.Equals("Image", StringComparison.OrdinalIgnoreCase))
+                            return searchOptions.EnableImageSearch;
+                        return searchOptions.EnableDocumentSearch;
                     }).ToList();
                     
                     if (typeFilteredResults.Count == 0)
@@ -121,9 +124,8 @@ namespace SmartRAG.Services.Document
                         return new List<DocumentChunk>();
                     }
                     
-                    // Adaptive threshold strategy: Try preferred threshold first, fallback if no results
                     var minRelevanceThreshold = isTextSearch ? MinTextSearchRelevanceThreshold : PreferredVectorSearchThreshold;
-                    
+
                     var filteredResults = typeFilteredResults.Where(chunk =>
                     {
                         var relevanceScore = chunk.RelevanceScore ?? 0.0;
@@ -131,7 +133,6 @@ namespace SmartRAG.Services.Document
                                (chunk.ChunkIndex == 0 && relevanceScore >= MinChunk0RelevanceThreshold);
                     }).ToList();
 
-                    // If no results with preferred threshold, try fallback threshold (adaptive)
                     if (filteredResults.Count == 0 && !isTextSearch)
                     {
                         filteredResults = typeFilteredResults.Where(chunk =>
@@ -141,7 +142,20 @@ namespace SmartRAG.Services.Document
                                    (chunk.ChunkIndex == 0 && relevanceScore >= MinChunk0RelevanceThreshold);
                         }).ToList();
                     }
-                    
+
+                    if (filteredResults.Count > 0 && filteredResults.Count < MinChunksForSufficientResults &&
+                        typeFilteredResults.Count >= 10 && !isTextSearch)
+                    {
+                        var fallbackFiltered = typeFilteredResults.Where(chunk =>
+                        {
+                            var relevanceScore = chunk.RelevanceScore ?? 0.0;
+                            return relevanceScore >= FallbackVectorSearchThreshold ||
+                                   (chunk.ChunkIndex == 0 && relevanceScore >= MinChunk0RelevanceThreshold);
+                        }).ToList();
+                        if (fallbackFiltered.Count > filteredResults.Count)
+                            filteredResults = fallbackFiltered;
+                    }
+
                     // If still no results, return top-K by score (better than nothing)
                     if (filteredResults.Count == 0)
                     {
