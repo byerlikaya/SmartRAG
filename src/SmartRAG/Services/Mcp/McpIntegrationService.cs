@@ -19,16 +19,20 @@ namespace SmartRAG.Services.Mcp
     {
         private const int MaxToolResults = 10;
         private static readonly string[] QueryParameterNames = new[] { "query", "libraryName", "text", "input", "prompt", "question", "search" };
+        private static readonly SemaphoreSlim ConnectLock = new SemaphoreSlim(1, 1);
 
         private readonly ILogger<McpIntegrationService> _logger;
         private readonly IMcpClient _mcpClient;
+        private readonly IMcpConnectionManager _mcpConnectionManager;
 
         public McpIntegrationService(
             ILogger<McpIntegrationService> logger,
-            IMcpClient mcpClient)
+            IMcpClient mcpClient,
+            IMcpConnectionManager mcpConnectionManager)
         {
             _logger = logger;
             _mcpClient = mcpClient;
+            _mcpConnectionManager = mcpConnectionManager;
         }
 
         /// <summary>
@@ -42,6 +46,12 @@ namespace SmartRAG.Services.Mcp
             var enrichedQuery = EnrichQueryWithContext(query, conversationHistory);
             var results = new List<McpToolResult>();
             var connectedServers = _mcpClient.GetConnectedServers();
+
+            if (connectedServers.Count == 0)
+            {
+                await EnsureMcpConnectedAsync(cancellationToken).ConfigureAwait(false);
+                connectedServers = _mcpClient.GetConnectedServers();
+            }
 
             if (connectedServers.Count == 0)
             {
@@ -106,6 +116,22 @@ namespace SmartRAG.Services.Mcp
             }
 
             return results.Take(MaxToolResults).ToList();
+        }
+
+        private async Task EnsureMcpConnectedAsync(CancellationToken cancellationToken)
+        {
+            await ConnectLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                if (_mcpClient.GetConnectedServers().Count > 0)
+                    return;
+                _logger.LogInformation("No MCP servers connected; attempting on-demand connect for MCP-tagged request.");
+                await _mcpConnectionManager.ConnectAllAsync().ConfigureAwait(false);
+            }
+            finally
+            {
+                ConnectLock.Release();
+            }
         }
 
         private Dictionary<string, object> BuildToolParameters(McpTool tool, string query)
