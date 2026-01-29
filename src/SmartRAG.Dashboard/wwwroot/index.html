@@ -117,15 +117,18 @@
                             <h2 class="sr-card-title">Chat</h2>
                             <span class="sr-model-badge" id="sr-model-badge">Loading...</span>
                         </div>
-                        <div class="sr-chat-session-row">
-                            <span class="sr-chat-session-label">Session</span>
-                            <span id="sr-chat-session-id" class="sr-chat-session-id" aria-live="polite">—</span>
-                        </div>
-                        <div class="sr-chat-meta" id="sr-chat-meta">
-                            <div class="sr-chat-feature-badges" id="sr-chat-features"></div>
-                        </div>
-                        <div class="sr-chat-mcp-row" id="sr-chat-mcp-row">
-                            <div class="sr-chat-mcp" id="sr-chat-mcp"></div>
+                        <div class="sr-chat-header-meta">
+                            <div class="sr-chat-meta-row sr-chat-meta-session">
+                                <span class="sr-chat-meta-label">Session</span>
+                                <span id="sr-chat-session-id" class="sr-chat-session-chip" aria-live="polite" title="">—</span>
+                            </div>
+                            <div class="sr-chat-meta-row sr-chat-meta-features" id="sr-chat-meta">
+                                <span class="sr-chat-meta-label">Features</span>
+                                <div class="sr-chat-feature-badges" id="sr-chat-features"></div>
+                            </div>
+                            <div class="sr-chat-meta-row sr-chat-meta-mcp" id="sr-chat-mcp-row">
+                                <div class="sr-chat-mcp" id="sr-chat-mcp"></div>
+                            </div>
                         </div>
                         <div class="sr-chat-messages" id="sr-chat-messages"></div>
                         <div class="sr-source-details" id="sr-source-details">
@@ -157,7 +160,7 @@
                                 <p class="sr-chat-flags-detail-note">Add the flag at the end of your message (e.g. <code>top customers -db</code>). Without flags, all enabled sources are used.</p>
                             </div>
                         </div>
-                        <div class="sr-chat-input-wrap">
+                        <div class="sr-chat-input-wrap" id="sr-chat-input-wrap">
                             <textarea id="sr-chat-input" rows="2" placeholder="Type a message..." class="sr-chat-input"></textarea>
                             <button type="button" id="sr-chat-send" class="sr-btn sr-btn-primary">Send</button>
                         </div>

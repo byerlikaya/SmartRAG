@@ -352,9 +352,13 @@ public static class DashboardEndpointRouteBuilderExtensions
             async (IConversationRepository conversationRepository, CancellationToken cancellationToken) =>
             {
                 var sessionIds = await conversationRepository.GetAllSessionIdsAsync(cancellationToken).ConfigureAwait(false);
+                var filteredIds = sessionIds
+                    .Where(id => !string.Equals(id, "smartrag-current-session", StringComparison.OrdinalIgnoreCase)
+                        && !id.StartsWith("sources:", StringComparison.OrdinalIgnoreCase))
+                    .ToList();
                 var summaries = new List<ChatSessionSummaryResponse>();
 
-                foreach (var id in sessionIds)
+                foreach (var id in filteredIds)
                 {
                     var history = await conversationRepository.GetConversationHistoryAsync(id, cancellationToken).ConfigureAwait(false);
                     var summary = BuildChatSessionSummary(id, history);

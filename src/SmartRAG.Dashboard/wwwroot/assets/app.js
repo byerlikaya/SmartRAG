@@ -229,11 +229,11 @@
                 if (servers.length === 0) {
                     mcpRow.style.display = 'none';
                 } else {
-                    mcpRow.style.display = 'block';
+                    mcpRow.style.display = 'flex';
                     mcpContainer.style.display = 'flex';
                     var label = document.createElement('span');
                     label.className = 'sr-chat-mcp-label';
-                    label.textContent = 'MCP servers:';
+                    label.textContent = 'MCP';
                     mcpContainer.appendChild(label);
 
                     servers.forEach(function (s) {
@@ -259,19 +259,33 @@
             if (badge) badge.textContent = 'Model unknown';
 
             var mcpRow = document.getElementById('sr-chat-mcp-row');
-            if (mcpRow) {
-                mcpRow.style.display = 'none';
-            }
+            if (mcpRow) mcpRow.style.display = 'none';
         });
+    }
+
+    function getUserAvatarSvg() {
+        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>';
+    }
+
+    function getAiAvatarSvg() {
+        return '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2l1.5 4.5L18 8l-4.5 1.5L12 14l-1.5-4.5L6 8l4.5-1.5L12 2z"/><path d="M5 16l.75 2.25L8 19l-2.25.75L5 22l-.75-2.25L2 19l2.25-.75L5 16zm14 0l.75 2.25L22 19l-2.25.75L19 22l-.75-2.25L16 19l2.25-.75L19 16z"/></svg>';
     }
 
     function appendChatMessage(role, text) {
         var container = document.getElementById('sr-chat-messages');
         if (!container) return;
-        var div = document.createElement('div');
-        div.className = 'sr-msg sr-msg-' + role;
-        div.textContent = text;
-        container.appendChild(div);
+        var row = document.createElement('div');
+        row.className = 'sr-msg-row sr-msg-row-' + role;
+        var avatar = document.createElement('div');
+        avatar.className = 'sr-msg-avatar sr-msg-avatar-' + role;
+        avatar.setAttribute('aria-hidden', 'true');
+        avatar.innerHTML = role === 'user' ? getUserAvatarSvg() : getAiAvatarSvg();
+        var body = document.createElement('div');
+        body.className = 'sr-msg sr-msg-' + role;
+        body.textContent = text;
+        row.appendChild(avatar);
+        row.appendChild(body);
+        container.appendChild(row);
         container.scrollTop = container.scrollHeight;
     }
 
@@ -297,10 +311,18 @@
         if (!container) return;
         var wrap = document.createElement('div');
         wrap.className = 'sr-msg-assistant-wrap';
+        var row = document.createElement('div');
+        row.className = 'sr-msg-row sr-msg-row-assistant';
+        var avatar = document.createElement('div');
+        avatar.className = 'sr-msg-avatar sr-msg-avatar-assistant';
+        avatar.setAttribute('aria-hidden', 'true');
+        avatar.innerHTML = getAiAvatarSvg();
+        var bodyWrap = document.createElement('div');
+        bodyWrap.className = 'sr-msg-body-wrap';
         var msgDiv = document.createElement('div');
         msgDiv.className = 'sr-msg sr-msg-assistant';
         msgDiv.textContent = text;
-        wrap.appendChild(msgDiv);
+        bodyWrap.appendChild(msgDiv);
         if (sources && sources.length > 0) {
             var groups = groupSourcesByDocument(sources);
             var sourcesRow = document.createElement('div');
@@ -314,8 +336,10 @@
                 pill.type = 'button';
                 pill.className = 'sr-source-pill';
                 var count = group.chunks.length;
-                pill.textContent = group.fileName + (count > 1 ? ' (' + count + ' chunks)' : ' (1 chunk)');
+                var label = group.fileName + (count > 1 ? ' (' + count + ' chunks)' : ' (1 chunk)');
+                pill.textContent = label;
                 pill.setAttribute('aria-label', 'View document chunks');
+                pill.setAttribute('title', label);
                 (function (docGroup) {
                     pill.addEventListener('click', function () {
                         openSourceDetailByDocument(docGroup.fileName, docGroup.chunks);
@@ -323,8 +347,11 @@
                 })(group);
                 sourcesRow.appendChild(pill);
             });
-            wrap.appendChild(sourcesRow);
+            bodyWrap.appendChild(sourcesRow);
         }
+        row.appendChild(avatar);
+        row.appendChild(bodyWrap);
+        wrap.appendChild(row);
         container.appendChild(wrap);
         container.scrollTop = container.scrollHeight;
     }
@@ -365,11 +392,17 @@
         var container = document.getElementById('sr-chat-messages');
         if (!container) return;
         removeChatTypingIndicator();
+        var row = document.createElement('div');
+        row.id = 'sr-chat-typing-indicator';
+        row.className = 'sr-msg-row sr-msg-row-assistant';
+        row.setAttribute('aria-live', 'polite');
+        row.setAttribute('aria-label', 'Waiting for response');
+        var avatar = document.createElement('div');
+        avatar.className = 'sr-msg-avatar sr-msg-avatar-assistant';
+        avatar.setAttribute('aria-hidden', 'true');
+        avatar.innerHTML = getAiAvatarSvg();
         var wrap = document.createElement('div');
-        wrap.id = 'sr-chat-typing-indicator';
         wrap.className = 'sr-msg sr-msg-assistant sr-msg-typing';
-        wrap.setAttribute('aria-live', 'polite');
-        wrap.setAttribute('aria-label', 'Waiting for response');
         var label = document.createElement('span');
         label.className = 'sr-typing-label';
         label.textContent = 'Thinking';
@@ -379,7 +412,9 @@
         dots.innerHTML = '<span class="sr-typing-dot"></span><span class="sr-typing-dot"></span><span class="sr-typing-dot"></span>';
         wrap.appendChild(label);
         wrap.appendChild(dots);
-        container.appendChild(wrap);
+        row.appendChild(avatar);
+        row.appendChild(wrap);
+        container.appendChild(row);
         container.scrollTop = container.scrollHeight;
     }
 
@@ -393,28 +428,35 @@
 
     function updateSessionIdDisplay() {
         var el = document.getElementById('sr-chat-session-id');
-        if (el) el.textContent = chatSessionId || '—';
+        if (el) {
+            el.textContent = chatSessionId || '—';
+            el.setAttribute('title', chatSessionId || '');
+        }
     }
 
     function setChatPending(pending) {
         isChatRequestPending = pending;
         var sidebar = document.getElementById('sr-chat-sidebar');
-        if (sidebar) {
-            sidebar.classList.toggle('sr-chat-sidebar-pending', pending);
-        }
+        if (sidebar) sidebar.classList.toggle('sr-chat-sidebar-pending', pending);
+        var input = document.getElementById('sr-chat-input');
+        var sendBtn = document.getElementById('sr-chat-send');
+        var inputWrap = document.getElementById('sr-chat-input-wrap');
+        if (input) input.disabled = pending;
+        if (sendBtn) sendBtn.disabled = pending;
+        if (inputWrap) inputWrap.classList.toggle('sr-chat-input-pending', pending);
     }
 
     function sendChat() {
+        if (isChatRequestPending) return;
         var input = document.getElementById('sr-chat-input');
         if (!input) return;
         var text = (input.value || '').trim();
         if (!text) return;
+        setChatPending(true);
         input.value = '';
         appendChatMessage('user', text);
         showChatTypingIndicator();
-        setChatPending(true);
         var sendBtn = document.getElementById('sr-chat-send');
-        if (sendBtn) sendBtn.disabled = true;
         sendChatMessage(text, chatSessionId).then(function (res) {
             removeChatTypingIndicator();
             if (res.sessionId) chatSessionId = res.sessionId;
@@ -429,7 +471,6 @@
             removeChatTypingIndicator();
             appendChatMessage('assistant', 'Error: ' + (err.message || 'Request failed'));
         }).finally(function () {
-            if (sendBtn) sendBtn.disabled = false;
             setChatPending(false);
         });
     }
@@ -741,7 +782,13 @@
         var clearBtn = document.getElementById('sr-chat-clear-all');
         if (!container) return;
         container.innerHTML = '';
-        if (!summaries || summaries.length === 0) {
+        var filtered = (summaries || []).filter(function (c) {
+            var id = (c.id || '').toString();
+            if (id === 'smartrag-current-session') return false;
+            if (id.toLowerCase().indexOf('sources:') === 0) return false;
+            return true;
+        });
+        if (filtered.length === 0) {
             if (clearBtn) clearBtn.style.display = 'none';
             var empty = document.createElement('div');
             empty.className = 'sr-chat-conversation-item';
@@ -750,7 +797,7 @@
             return;
         }
         if (clearBtn) clearBtn.style.display = 'inline-flex';
-        summaries.forEach(function (conv) {
+        filtered.forEach(function (conv) {
             var div = document.createElement('div');
             var isActive = conv.id === activeConversationId;
             div.className = 'sr-chat-conversation-item' + (isActive ? ' sr-chat-conversation-item-active' : '');
@@ -841,6 +888,8 @@
         }
         updateSessionIdDisplay();
         reloadConversations(null);
+        var input = document.getElementById('sr-chat-input');
+        if (input) input.focus();
     }
 
     function reloadConversations(preferredId) {
