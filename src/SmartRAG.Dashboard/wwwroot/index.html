@@ -40,8 +40,11 @@
                     </div>
                 </div>
                 <div class="sr-upload-area">
-                    <input type="file" id="sr-file-input" accept="" class="sr-file-input" />
-                    <input type="text" id="sr-uploaded-by" placeholder="Uploaded by" value="dashboard" class="sr-text-input" />
+                    <div class="sr-file-input-wrap">
+                        <label for="sr-file-input" class="sr-btn sr-btn-secondary sr-file-input-btn">Choose file</label>
+                        <input type="file" id="sr-file-input" accept="" class="sr-file-input" aria-label="Choose file to upload" />
+                    </div>
+                    <input type="text" id="sr-selected-file-name" class="sr-selected-file-name" readonly placeholder="No file chosen" value="" aria-label="Selected file name" />
                     <button type="button" id="sr-upload-btn" class="sr-btn sr-btn-primary">Upload</button>
                     <span class="sr-upload-status" id="sr-upload-status"></span>
                 </div>

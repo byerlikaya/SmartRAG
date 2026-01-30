@@ -56,9 +56,31 @@ lang: tr
                 <td><code>0</code></td>
                 <td>CPU thread sayısı (0 = otomatik algılama)</td>
             </tr>
+            <tr>
+                <td><code>ForceTranscribeOnly</code></td>
+                <td><code>bool</code></td>
+                <td><code>true</code></td>
+                <td>true ise yalnızca kaynak dilde transkripsiyon; İngilizceye çeviri yapılmaz.</td>
+            </tr>
+            <tr>
+                <td><code>UseGpu</code></td>
+                <td><code>bool</code></td>
+                <td><code>false</code></td>
+                <td>true ise ve uygulamanız bir GPU runtime referans ediyorsa (Windows/Linux CUDA, macOS CoreML) GPU kullanılır.</td>
+            </tr>
         </tbody>
     </table>
 </div>
+
+### GPU hızlandırma
+
+Varsayılan olarak Whisper **CPU** üzerinde çalışır (<code>Whisper.net.Runtime</code> paketi). **GPU** kullanmak için SmartRAG’ı referans eden uygulamanın ilgili Whisper.net runtime paketini eklemesi ve yapılandırmada <code>WhisperConfig.UseGpu = true</code> yapması gerekir.
+
+- **Windows (NVIDIA):** Projenize <code>Whisper.net.Runtime.Cuda.Windows</code> paketini ekleyin, ardından <code>SmartRAG:WhisperConfig</code> içinde <code>UseGpu = true</code> yapın.
+- **Linux (NVIDIA):** <code>Whisper.net.Runtime.Cuda.Linux</code> ekleyin, ardından <code>UseGpu = true</code> yapın.
+- **macOS (Apple Silicon):** <code>Whisper.net.Runtime.CoreML</code> ekleyin, ardından <code>UseGpu = true</code> yapın. Metal init hataları alırsanız <code>UseGpu = false</code> bırakın.
+
+SmartRAG varsayılan olarak GPU runtime referans etmez; böylece yalnızca CPU kullanan kurulumlar ek paket olmadan çalışır. GPU runtime’ı yalnızca hızlandırma istiyorsanız ve ortamınız destekliyorsa ekleyin.
 
 ### Whisper Model Boyutları
 
@@ -146,6 +168,15 @@ Whisper.net, ilk kullanımda Hugging Face'den GGML modellerini otomatik olarak i
 - On-premise dağıtımlar için, uygulamanın model dizinine yazma erişimi olduğundan emin olun
 - Cloud dağıtımlar için, modelleri önceden indirmeyi veya kalıcı depolama birimleri kullanmayı düşünün
 
+### Transkripsiyon vs Çeviri
+
+Whisper iki modu destekler:
+
+- **Transkripsiyon:** Çıktı metni **konuşulan dilde** üretilir.
+- **Çeviri:** Çıktı her zaman İngilizce (SmartRAG bu modu **hiç kullanmaz**).
+
+SmartRAG her zaman kaynak dilde transkripsiyon yapar, İngilizceye çeviri yapmaz. Dil belirtilmediğinde (API ve config "auto") Whisper dili otomatik algılar ve çıktıyı o dilde verir; sistem locale'e düşmüyoruz, sunucu locale (örn. "en") asla zorlanmaz. Çok dilli içerik için `DefaultLanguage: "auto"` kullanın; tüm yüklemelerde dili sabitlemek istediğinizde (örn. `"tr"`) somut kod verin. `ForceTranscribeOnly` (varsayılan true) çevirinin kapalı olduğunu belgeler.
+
 ### Yapılandırma Örneği
 
 ```json
@@ -154,6 +185,7 @@ Whisper.net, ilk kullanımda Hugging Face'den GGML modellerini otomatik olarak i
     "WhisperConfig": {
       "ModelPath": "models/ggml-large-v3.bin",
       "DefaultLanguage": "auto",
+      "ForceTranscribeOnly": true,
       "MinConfidenceThreshold": 0.3,
       "PromptHint": "",
       "MaxThreads": 0
@@ -169,6 +201,7 @@ builder.Services.AddSmartRag(configuration, options =>
     {
         ModelPath = "models/ggml-large-v3.bin",
         DefaultLanguage = "auto",
+        ForceTranscribeOnly = true,
         MinConfidenceThreshold = 0.3,
         PromptHint = "",
         MaxThreads = 0
@@ -176,7 +209,7 @@ builder.Services.AddSmartRag(configuration, options =>
 });
 ```
 
-- `auto` - Otomatik dil algılama (önerilen)
+- `auto` - Dili otomatik algıla ve o dilde transkripsiyon yap (çok dilli içerik için önerilen).
 - `tr` - Türkçe
 - `en` - İngilizce
 - `de` - Almanca

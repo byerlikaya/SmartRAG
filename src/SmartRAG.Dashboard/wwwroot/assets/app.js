@@ -1049,20 +1049,39 @@
             loadSchemaDocuments();
         });
 
+        var fileInput = document.getElementById('sr-file-input');
+        var selectedFileNameEl = document.getElementById('sr-selected-file-name');
+        if (fileInput && selectedFileNameEl) {
+            fileInput.addEventListener('change', function () {
+                var file = fileInput.files && fileInput.files[0];
+                selectedFileNameEl.value = file ? file.name : '';
+                selectedFileNameEl.placeholder = 'No file chosen';
+                if (file && file.name) {
+                    selectedFileNameEl.style.width = Math.min(60, Math.max(12, file.name.length + 2)) + 'ch';
+                } else {
+                    selectedFileNameEl.style.width = '';
+                }
+            });
+        }
+
         document.getElementById('sr-upload-btn').addEventListener('click', function () {
-            var fileInput = document.getElementById('sr-file-input');
-            var uploadedByInput = document.getElementById('sr-uploaded-by');
+            var fileInputEl = document.getElementById('sr-file-input');
             var statusEl = document.getElementById('sr-upload-status');
-            var file = fileInput && fileInput.files && fileInput.files[0];
+            var file = fileInputEl && fileInputEl.files && fileInputEl.files[0];
             if (!file) {
                 if (statusEl) statusEl.textContent = 'Select a file.';
                 return;
             }
-            var uploadedBy = (uploadedByInput && uploadedByInput.value) || 'dashboard';
             if (statusEl) statusEl.textContent = 'Uploading...';
-            uploadDoc(file, uploadedBy).then(function () {
+            uploadDoc(file, 'dashboard').then(function () {
                 if (statusEl) statusEl.textContent = 'Uploaded.';
-                if (fileInput) fileInput.value = '';
+                if (fileInputEl) fileInputEl.value = '';
+                var display = document.getElementById('sr-selected-file-name');
+                if (display) {
+                    display.value = '';
+                    display.placeholder = 'No file chosen';
+                    display.style.width = '';
+                }
                 loadDocuments();
                 loadSchemaDocuments();
             }).catch(function (err) {

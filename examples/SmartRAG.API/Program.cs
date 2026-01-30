@@ -90,11 +90,13 @@ static void RegisterServices(IServiceCollection services, IConfiguration configu
     });
 
    
-    // Add SmartRag services (storage/provider aligned with Demo: Qdrant)
-    services.UseSmartRag(configuration,
-        storageProvider: StorageProvider.Qdrant,
-        aiProvider: AIProvider.Custom
-    );
+    // Add SmartRag services (storage/provider aligned with Demo: Qdrant).
+    // Use AddSmartRag for Web API so IHost starts hosted services once; UseSmartRag would call StartAsync twice.
+    services.AddSmartRag(configuration, options =>
+    {
+        options.StorageProvider = StorageProvider.Qdrant;
+        options.AIProvider = AIProvider.Custom;
+    });
 
     services.AddSmartRagDashboard(options =>
     {
@@ -132,7 +134,11 @@ static void ConfigureMiddleware(WebApplication app, IWebHostEnvironment environm
     // Serve static files for simple upload page
     app.UseStaticFiles();
 
-    app.UseHttpsRedirection();
+    if (!environment.IsDevelopment())
+    {
+        app.UseHttpsRedirection();
+    }
+
     app.UseCors("AllowAll");
     app.UseAuthorization();
 

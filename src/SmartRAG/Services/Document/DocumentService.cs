@@ -78,6 +78,23 @@ namespace SmartRAG.Services.Document
                 throw new ArgumentException(string.Format(CultureInfo.InvariantCulture, UnsupportedContentTypeFormat, request.ContentType, list));
             }
 
+            if (request.AdditionalMetadata != null && request.AdditionalMetadata.TryGetValue("FileHash", out var incomingHash) && incomingHash != null)
+            {
+                var hashStr = incomingHash.ToString();
+                if (!string.IsNullOrEmpty(hashStr))
+                {
+                    var existingDocs = await _documentRepository.GetAllAsync(cancellationToken);
+                    foreach (var existing in existingDocs)
+                    {
+                        if (existing.Metadata != null && existing.Metadata.TryGetValue("FileHash", out var existingHash) && existingHash != null && string.Equals(existingHash.ToString(), hashStr, StringComparison.OrdinalIgnoreCase))
+                        {
+                            _logger.LogInformation("Skipping duplicate upload (same file hash): {FileName} - returning existing document Id: {DocumentId}", request.FileName, existing.Id);
+                            return existing;
+                        }
+                    }
+                }
+            }
+
             var document = await _documentParserService.ParseDocumentAsync(request.FileStream, request.FileName, request.ContentType, request.UploadedBy, request.Language);
 
             if (request.FileSize.HasValue && request.FileSize.Value > 0)
@@ -94,7 +111,18 @@ namespace SmartRAG.Services.Document
                 }
             }
 
-            var allChunkContents = document.Chunks.Select(c => c.Content).ToList();
+            var hasContent = !string.IsNullOrWhiteSpace(document.Content)
+                && document.Chunks != null
+                && document.Chunks.Count > 0
+                && document.Chunks.Any(c => !string.IsNullOrWhiteSpace(c.Content));
+            if (!hasContent)
+            {
+                throw new SmartRAG.Exceptions.DocumentSkippedException(
+                    string.Format(CultureInfo.InvariantCulture, "Document has no content to index (e.g. audio transcription unavailable). Skipping: {0}", request.FileName));
+            }
+
+            var chunks = document.Chunks!;
+            var allChunkContents = chunks.Select(c => c.Content).ToList();
 
             var successCount = 0;
 
@@ -102,11 +130,11 @@ namespace SmartRAG.Services.Document
             {
                 var allEmbeddings = await _aiService.GenerateEmbeddingsBatchAsync(allChunkContents, cancellationToken);
 
-                if (allEmbeddings != null && allEmbeddings.Count == document.Chunks.Count)
+                if (allEmbeddings != null && allEmbeddings.Count == chunks.Count)
                 {
-                    for (int i = 0; i < document.Chunks.Count; i++)
+                    for (int i = 0; i < chunks.Count; i++)
                     {
-                        var chunk = document.Chunks[i];
+                        var chunk = chunks[i];
                         chunk.DocumentId = document.Id;
 
                         if (allEmbeddings[i] != null && allEmbeddings[i].Count > 0)
@@ -125,8 +153,7 @@ namespace SmartRAG.Services.Document
                 }
                 else
                 {
-
-                    foreach (var chunk in document.Chunks)
+                    foreach (var chunk in chunks)
                     {
                         chunk.DocumentId = document.Id;
                         chunk.Embedding = new List<float>(); // Empty but not null
@@ -139,10 +166,10 @@ namespace SmartRAG.Services.Document
             {
                 ServiceLogMessages.LogBatchEmbeddingFailed(_logger, ex.Message, ex);
 
-                foreach (var chunk in document.Chunks)
+                foreach (var chunk in chunks)
                 {
                     chunk.DocumentId = document.Id;
-                    chunk.Embedding = new List<float>(); // Empty but not null
+                    chunk.Embedding = new List<float>();
                     if (chunk.CreatedAt == default)
                         chunk.CreatedAt = DateTime.UtcNow;
                 }

@@ -56,9 +56,31 @@ SmartRAG provides capabilities for converting audio files to text and extracting
                 <td><code>0</code></td>
                 <td>CPU threads (0 = auto-detect)</td>
             </tr>
+            <tr>
+                <td><code>ForceTranscribeOnly</code></td>
+                <td><code>bool</code></td>
+                <td><code>true</code></td>
+                <td>When true, only transcribe in the source language; never translate to English.</td>
+            </tr>
+            <tr>
+                <td><code>UseGpu</code></td>
+                <td><code>bool</code></td>
+                <td><code>false</code></td>
+                <td>When true, use GPU if your application references a GPU runtime (CUDA on Windows/Linux, CoreML on macOS).</td>
+            </tr>
         </tbody>
     </table>
 </div>
+
+### GPU acceleration
+
+By default Whisper runs on **CPU** (package <code>Whisper.net.Runtime</code>). To use **GPU**, the application that references SmartRAG must add the matching Whisper.net runtime package and set <code>WhisperConfig.UseGpu = true</code> in configuration.
+
+- **Windows (NVIDIA):** In your project, add package <code>Whisper.net.Runtime.Cuda.Windows</code>, then set <code>UseGpu = true</code> in <code>SmartRAG:WhisperConfig</code>.
+- **Linux (NVIDIA):** Add <code>Whisper.net.Runtime.Cuda.Linux</code>, then set <code>UseGpu = true</code>.
+- **macOS (Apple Silicon):** Add <code>Whisper.net.Runtime.CoreML</code>, then set <code>UseGpu = true</code>. If you see Metal init errors, leave <code>UseGpu = false</code>.
+
+SmartRAG does not reference GPU runtimes by default, so CPU-only deployments work without extra packages. Only add a GPU runtime if you want acceleration and your environment supports it.
 
 ### Whisper Model Sizes
 
@@ -146,6 +168,15 @@ Whisper.net automatically downloads GGML models from Hugging Face on first use. 
 - For on-premise deployments, ensure the application has write access to the model directory
 - For cloud deployments, consider pre-downloading models or using persistent storage volumes
 
+### Transcribe vs Translate
+
+Whisper supports two modes:
+
+- **Transcribe:** Output text in the **same language** as the speech.
+- **Translate:** Output always in English (SmartRAG **never** uses this mode).
+
+SmartRAG always transcribes in the source language and never translates to English. When no language is specified (API and config use "auto"), Whisper auto-detects the language and outputs text in that language; we do not fall back to system locale, so server locale (e.g. "en") is never forced. Use `DefaultLanguage: "auto"` for multi-language content; set a concrete code (e.g. `"tr"`) only when you want to pin the language for all uploads. `ForceTranscribeOnly` (default true) documents that translation is disabled.
+
 ### Configuration Example
 
 ```json
@@ -154,6 +185,7 @@ Whisper.net automatically downloads GGML models from Hugging Face on first use. 
     "WhisperConfig": {
       "ModelPath": "models/ggml-large-v3.bin",
       "DefaultLanguage": "auto",
+      "ForceTranscribeOnly": true,
       "MinConfidenceThreshold": 0.3,
       "PromptHint": "",
       "MaxThreads": 0
@@ -169,6 +201,7 @@ builder.Services.AddSmartRag(configuration, options =>
     {
         ModelPath = "models/ggml-large-v3.bin",
         DefaultLanguage = "auto",
+        ForceTranscribeOnly = true,
         MinConfidenceThreshold = 0.3,
         PromptHint = "",
         MaxThreads = 0
@@ -176,7 +209,7 @@ builder.Services.AddSmartRag(configuration, options =>
 });
 ```
 
-- `auto` - Automatic language detection (recommended)
+- `auto` - Auto-detect language and transcribe in that language (recommended for multi-language content).
 - `en` - English
 - `tr` - Turkish
 - `de` - German

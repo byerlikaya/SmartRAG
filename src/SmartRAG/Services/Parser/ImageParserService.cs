@@ -88,6 +88,8 @@ namespace SmartRAG.Services.Parser
         private bool _disposed = false;
         private static bool _dyldLibraryPathInitialized = false;
         private static readonly object _dyldLibraryPathLock = new object();
+        private static TesseractEngine _sharedEngEngine;
+        private static readonly object _sharedEngEngineLock = new object();
 
         /// <summary>
         /// Gets the OCR engine data path (lazy initialization to avoid blocking during service registration)
@@ -492,31 +494,55 @@ namespace SmartRAG.Services.Parser
                 try
                 {
                     var tessdataPath = string.IsNullOrEmpty(OcrEngineDataPath) ? "." : OcrEngineDataPath;
+                    var useSharedEngine = string.Equals(availableLanguage, DefaultLanguage, StringComparison.OrdinalIgnoreCase);
 
-                    using var engine = new TesseractEngine(tessdataPath, availableLanguage, EngineMode.Default);
-                    
-                    // CRITICAL: Do NOT use tessedit_char_whitelist - it breaks multi-language support
-                    // Tesseract already handles language-specific characters (special chars, accented letters, etc.) correctly
-                    // based on the language parameter. Using whitelist filters out these non-ASCII characters.
-                    
-                    // Optimize OCR for structured documents (PDFs, scanned documents)
-                    // PSM 6 = Assume single uniform block of text (best for PDF pages)
-                    // PSM 3 = Fully automatic (default, good for mixed layouts)
-                    engine.SetVariable("tessedit_pageseg_mode", "6");
-                    
-                    // Enable character-level confidence for better error detection
-                    engine.SetVariable("tessedit_create_hocr", "0");
+                    TesseractEngine engine = null;
+                    bool disposeEngine = true;
 
-                    using var img = Pix.LoadFromMemory(ReadStreamToByteArray(imageStream));
-                    using var page = engine.Process(img);
-                    
-                    // Table-aware OCR: Extract text with spatial positioning to preserve table structure
-                    var text = ExtractTableAwareText(page);
-                    var confidence = page.GetMeanConfidence();
+                    if (useSharedEngine)
+                    {
+                        engine = GetOrCreateSharedEngEngine(tessdataPath);
+                        disposeEngine = false;
+                    }
+                    else
+                    {
+                        engine = new TesseractEngine(tessdataPath, availableLanguage, EngineMode.Default);
+                    }
 
-                    var correctedText = CorrectCommonOcrMistakes(text, language, _logger);
+                    try
+                    {
+                        engine.SetVariable("tessedit_pageseg_mode", "6");
+                        engine.SetVariable("tessedit_create_hocr", "0");
 
-                    return (correctedText?.Trim() ?? string.Empty, confidence);
+                        using var img = Pix.LoadFromMemory(ReadStreamToByteArray(imageStream));
+                        string text;
+                        float confidence;
+                        if (useSharedEngine)
+                        {
+                            lock (_sharedEngEngineLock)
+                            {
+                                using var page = engine.Process(img);
+                                text = ExtractTableAwareText(page);
+                                confidence = page.GetMeanConfidence();
+                            }
+                        }
+                        else
+                        {
+                            using var page = engine.Process(img);
+                            text = ExtractTableAwareText(page);
+                            confidence = page.GetMeanConfidence();
+                        }
+
+                        var correctedText = CorrectCommonOcrMistakes(text, language, _logger);
+                        return (correctedText?.Trim() ?? string.Empty, confidence);
+                    }
+                    finally
+                    {
+                        if (disposeEngine)
+                        {
+                            engine?.Dispose();
+                        }
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -524,6 +550,22 @@ namespace SmartRAG.Services.Parser
                     return (string.Empty, 0f);
                 }
             });
+        }
+
+        /// <summary>
+        /// Gets or creates a single shared Tesseract engine for default language to reduce native ObjectCache references.
+        /// </summary>
+        private static TesseractEngine GetOrCreateSharedEngEngine(string tessdataPath)
+        {
+            if (_sharedEngEngine != null)
+                return _sharedEngEngine;
+            lock (_sharedEngEngineLock)
+            {
+                if (_sharedEngEngine != null)
+                    return _sharedEngEngine;
+                _sharedEngEngine = new TesseractEngine(tessdataPath, DefaultLanguage, EngineMode.Default);
+                return _sharedEngEngine;
+            }
         }
 
         /// <summary>

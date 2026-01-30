@@ -315,6 +315,10 @@ namespace SmartRAG.Repositories
                 var documentCollectionName = $"{_collectionName}_doc_{document.Id:N}".Replace("-", "");
                 RepositoryLogMessages.LogQdrantDocumentCollectionCreating(Logger, documentCollectionName, _collectionName, document.Id, null);
 
+                var allCollections = await _client.ListCollectionsAsync();
+                if (allCollections.Contains(documentCollectionName))
+                    await _collectionManager.DeleteCollectionAsync(documentCollectionName, cancellationToken);
+
                 await _collectionManager.EnsureDocumentCollectionExistsAsync(documentCollectionName, document, cancellationToken);
 
                 SmartRAG.Services.Helpers.DocumentValidator.ValidateDocument(document);
@@ -512,26 +516,12 @@ namespace SmartRAG.Repositories
         {
             try
             {
-                var filter = new Qdrant.Client.Grpc.Filter
-                {
-                    Must =
-                {
-                    new Qdrant.Client.Grpc.Condition
-                    {
-                        Field = new FieldCondition
-                        {
-                            Key = "id",
-                            Match = new Qdrant.Client.Grpc.Match
-                            {
-                                Keyword = id.ToString()
-                            }
-                        }
-                    }
-                }
-                };
+                var documentCollectionName = $"{_collectionName}_doc_{id:N}".Replace("-", "");
+                var allCollections = await _client.ListCollectionsAsync();
+                if (!allCollections.Contains(documentCollectionName))
+                    return true;
 
-                await _client.DeleteAsync(_collectionName, filter);
-
+                await _collectionManager.DeleteCollectionAsync(documentCollectionName, cancellationToken);
                 return true;
             }
             catch (Exception)
