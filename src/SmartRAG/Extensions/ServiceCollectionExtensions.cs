@@ -54,6 +54,8 @@ namespace SmartRAG.Extensions
         /// </summary>
         public static IServiceCollection AddSmartRag(this IServiceCollection services, IConfiguration configuration, Action<SmartRagOptions> configureOptions)
         {
+            WhisperNativeBootstrap.EnsureMacOsWhisperNativeLibraries();
+
             RegisterConfiguration(services, configuration, configureOptions);
 
             var options = BuildOptions(configuration, configureOptions);
