@@ -32,8 +32,39 @@ namespace SmartRAG.Services.AI
         /// <summary>
         /// Builds a prompt for document-based RAG answer generation
         /// </summary>
-        public string BuildDocumentRagPrompt(string query, string context, string? conversationHistory = null)
+        public string BuildDocumentRagPrompt(string query, string context, string? conversationHistory = null, bool extractionRetryMode = false)
         {
+            var languageInstruction = !string.IsNullOrEmpty(_options.DefaultLanguage)
+                ? GetLanguageInstructionForCode(_options.DefaultLanguage)
+                : "respond in the SAME language as the query";
+
+            if (extractionRetryMode)
+            {
+                return $@"### ROLE
+You are a document extraction assistant. The document context below CONTAINS the answer. Your task is to EXTRACT and STATE the exact values.
+
+### CRITICAL
+1. The requested data IS present in the documents below - scan carefully
+2. Extract and state EXACT values: dates, amounts, quantities, names as written
+3. Do NOT say you cannot find the information - it is in the context
+4. Do NOT give generic advice - provide the specific values found
+5. Look for equivalent terms for compensation, amounts, and dates in the document's language
+
+### OUTPUT FORMAT
+{languageInstruction}
+
+### CONTEXT
+Question: {query}
+
+Documents:
+{context}
+
+### TASK
+Extract and state the exact values from the documents. Answer the question with the specific data found.
+
+Answer:";
+            }
+
             var historyContext = !string.IsNullOrEmpty(conversationHistory)
                 ? $"\n\nRecent conversation context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 30)}\n"
                 : "";
@@ -83,23 +114,20 @@ SPECIAL INSTRUCTIONS FOR VAGUE QUESTIONS (questions referring to generic person/
 FOLLOW-UP QUESTIONS: If the question refers to something you already stated in the Recent conversation context above (e.g. a value, quantity, or fact), you MAY use that information to answer. You may compute derived values (e.g. half, double, or other proportions) from data you previously stated, or explain why you did not. Prefer documents when the same data appears there; otherwise use the conversation context you already provided."
                 : "";
 
-            var languageInstruction = !string.IsNullOrEmpty(_options.DefaultLanguage)
-                ? GetLanguageInstructionForCode(_options.DefaultLanguage)
-                : "respond in the SAME language as the query";
-
             return $@"### ROLE
 You are a document-based assistant. Answer questions using ONLY the documents provided below.
 
 ### CONSTRAINTS
 1. If the question mentions a specific term (word or phrase) that is NOT in the documents, you MUST say you couldn't find it and add [NO_ANSWER_FOUND] at the end
-2. DO NOT invent or assume information about terms not found in the documents
-3. If the question asks about multiple things and ANY part is missing from documents, mention what's missing and add [NO_ANSWER_FOUND]
-4. ONLY answer based on what is EXPLICITLY written in the documents below
-5. If you cannot find the answer, your response MUST end with: [NO_ANSWER_FOUND]
-6. WITHOUT [NO_ANSWER_FOUND] token, system CANNOT search other sources
-7. DO NOT provide example data, sample names, or hypothetical values when no data is available
-8. DO NOT create fictional examples when you cannot find the answer
-9. If you cannot find the answer, simply state that you could not find the requested information - do not provide examples
+2. When you CAN answer from the documents, do NOT add [NO_ANSWER_FOUND] or any explanation about it. Output only the answer.
+3. DO NOT invent or assume information about terms not found in the documents
+4. If the question asks about multiple things and ANY part is missing from documents, mention what's missing and add [NO_ANSWER_FOUND]
+5. ONLY answer based on what is EXPLICITLY written in the documents below
+6. If you cannot find the answer, your response MUST end with: [NO_ANSWER_FOUND]
+7. WITHOUT [NO_ANSWER_FOUND] token, system CANNOT search other sources
+8. DO NOT provide example data, sample names, or hypothetical values when no data is available
+9. DO NOT create fictional examples when you cannot find the answer
+10. If you cannot find the answer, simply state that you could not find the requested information - do not provide examples
 
 ### OUTPUT FORMAT
 {languageInstruction}
@@ -116,6 +144,7 @@ Documents:
 
 ### TASK
 Answer the question using ONLY the documents above. If any part of the question cannot be answered from the documents, add [NO_ANSWER_FOUND] at the end.
+When the question asks for specific values (dates, amounts, or quantities) from documents, extract and state the exact values found. Do not give generic advice when the data is present in the context.
 
 Answer:";
         }
@@ -150,14 +179,15 @@ You are a hybrid assistant. Answer questions using database and document sources
 
 ### CONSTRAINTS
 1. If the question mentions a specific term (word or phrase) that is NOT in the sources, you MUST say you couldn't find it and add [NO_ANSWER_FOUND] at the end
-2. DO NOT invent or assume information about terms not found in the sources
-3. If the question asks about multiple things and ANY part is missing from sources, mention what's missing and add [NO_ANSWER_FOUND]
-4. ONLY answer based on what is EXPLICITLY written in the sources below
-5. If you cannot find the answer, your response MUST end with: [NO_ANSWER_FOUND]
-6. WITHOUT [NO_ANSWER_FOUND] token, system CANNOT search other sources
-7. DO NOT provide example data, sample names, or hypothetical values when no data is available
-8. DO NOT create fictional examples like 'EntityName - CountValue' when you cannot find the answer
-9. If you cannot find the answer, simply state that you could not find the requested information - do not provide examples
+2. When you CAN answer from the sources, do NOT add [NO_ANSWER_FOUND] or any explanation about it. Output only the answer.
+3. DO NOT invent or assume information about terms not found in the sources
+4. If the question asks about multiple things and ANY part is missing from sources, mention what's missing and add [NO_ANSWER_FOUND]
+5. ONLY answer based on what is EXPLICITLY written in the sources below
+6. If you cannot find the answer, your response MUST end with: [NO_ANSWER_FOUND]
+7. WITHOUT [NO_ANSWER_FOUND] token, system CANNOT search other sources
+8. DO NOT provide example data, sample names, or hypothetical values when no data is available
+9. DO NOT create fictional examples like 'EntityName - CountValue' when you cannot find the answer
+10. If you cannot find the answer, simply state that you could not find the requested information - do not provide examples
 
 ### PRIORITY
 DATABASE INFORMATION = First priority (authoritative)

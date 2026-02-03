@@ -12,6 +12,7 @@ using SmartRAG.Services.Shared;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -65,8 +66,7 @@ namespace SmartRAG.Services.Document
         public RagResponse CreateRagResponse(string query, string answer, List<SearchSource> sources, SearchMetadata? searchMetadata = null)
         {
             var validatedAnswer = ValidateAnswerAgainstQuery(query, answer, sources);
-            
-            // Post-processing: If AI didn't include token but answer indicates missing data, add it
+
             if (!validatedAnswer.Contains("[NO_ANSWER_FOUND]"))
             {
                 if (ShouldAddMissingDataToken(validatedAnswer, query, sources))
@@ -75,8 +75,7 @@ namespace SmartRAG.Services.Document
                 }
             }
             
-            // Remove [NO_ANSWER_FOUND] token from answer before showing to user
-            var cleanedAnswer = validatedAnswer.Replace("[NO_ANSWER_FOUND]", "").Trim();
+            var cleanedAnswer = StripNoAnswerFoundTokenAndMetaCommentary(validatedAnswer);
             
             return new RagResponse
             {
@@ -89,27 +88,15 @@ namespace SmartRAG.Services.Document
             };
         }
         
-        /// <summary>
-        /// Determines if [NO_ANSWER_FOUND] token should be added based on answer characteristics
-        /// Uses generic, language-agnostic heuristics
-        /// </summary>
         private bool ShouldAddMissingDataToken(string answer, string query, List<SearchSource> sources)
         {
             if (string.IsNullOrWhiteSpace(answer) || string.IsNullOrWhiteSpace(query))
                 return false;
-            
-            // Primary check: Use existing IndicatesMissingData detection
-            // This checks for [NO_ANSWER_FOUND] token and generic "not found" patterns
-            var indicatesMissing = IndicatesMissingData(answer, query);
-            _logger?.LogDebug("ShouldAddMissingDataToken: IndicatesMissingData={IndicatesMissing}, AnswerLength={AnswerLength}, AnswerPreview={AnswerPreview}", 
-                indicatesMissing, answer.Length, answer.Length > 100 ? answer.Substring(0, 100) : answer);
-            
+
+            var indicatesMissing = IndicatesMissingData(answer, query, sources);
             if (indicatesMissing)
                 return true;
-            
-            // Fallback: Answer Length + Context (Generic, Language-Agnostic)
-            // If answer contains specific terms from query but those terms are not in sources,
-            // and answer is reasonably short → likely "not found" response
+
             var specificTerms = ExtractSpecificTermsFromQuery(query);
             if (specificTerms.Count > 0)
             {
@@ -117,8 +104,7 @@ namespace SmartRAG.Services.Document
                 var allSourceContent = string.Join(" ", sources
                     .Where(s => !string.IsNullOrWhiteSpace(s.RelevantContent))
                     .Select(s => s.RelevantContent));
-                
-                // If sources are empty or have no content, and answer mentions specific terms
+
                 if (string.IsNullOrWhiteSpace(allSourceContent))
                 {
                     foreach (var term in specificTerms)
@@ -132,7 +118,6 @@ namespace SmartRAG.Services.Document
                 }
                 else
                 {
-                    // Sources have content - check if terms are missing
                     var sourceContentLower = allSourceContent.ToLowerInvariant();
                     
                     foreach (var term in specificTerms)
@@ -140,8 +125,7 @@ namespace SmartRAG.Services.Document
                         var termLower = term.ToLowerInvariant();
                         var termInAnswer = answerLower.Contains(termLower);
                         var termInSources = sourceContentLower.Contains(termLower);
-                        
-                        // If term is in answer but NOT in sources, and answer is reasonably short
+
                         if (termInAnswer && !termInSources && answer.Length < 150)
                         {
                             return true;
@@ -153,53 +137,8 @@ namespace SmartRAG.Services.Document
             return false;
         }
 
-        /// <summary>
-        /// Validates answer against query to prevent hallucination
-        /// If query contains specific terms (product/library names) and they are not found in sources, 
-        /// checks if AI answer contains information about that term - if yes, logs warning
-        /// The AI should already return a user-friendly message based on the prompt instructions
-        /// </summary>
         private string ValidateAnswerAgainstQuery(string query, string answer, List<SearchSource> sources)
         {
-            if (string.IsNullOrWhiteSpace(query) || string.IsNullOrWhiteSpace(answer))
-                return answer;
-
-            var specificTerms = ExtractSpecificTermsFromQuery(query);
-            if (specificTerms.Count == 0)
-                return answer;
-
-            var allSourceContent = string.Join(" ", sources
-                .Where(s => !string.IsNullOrWhiteSpace(s.RelevantContent))
-                .Select(s => s.RelevantContent));
-
-            if (string.IsNullOrWhiteSpace(allSourceContent))
-            {
-                _logger?.LogDebug("No source content available for validation");
-                return answer;
-            }
-
-            var sourceContentLower = allSourceContent.ToLowerInvariant();
-            var answerLower = answer.ToLowerInvariant();
-            
-            // Generic negative indicators - AI should return user-friendly messages in any language
-            var negativeIndicators = new[] { "couldn't find", "could not find", "not found", "unable to find", "no information", "not available" };
-            var answerIndicatesNotFound = negativeIndicators.Any(indicator => answerLower.Contains(indicator));
-            
-            foreach (var term in specificTerms)
-            {
-                var termLower = term.ToLowerInvariant();
-                var termInSources = sourceContentLower.Contains(termLower);
-                var termInAnswer = answerLower.Contains(termLower);
-                
-                // Only check if term is in answer, NOT in sources, AND answer is long enough to be substantive
-                // Short answers (<150 chars) with term mentions are likely "not found" responses, not hallucinations
-                if (!termInSources && termInAnswer && !answerIndicatesNotFound && answer.Length >= 150)
-                {
-                    // Potential hallucination detected - AI should have followed prompt instructions
-                    // No logging to avoid user input in logs (CodeQL security)
-                }
-            }
-
             return answer;
         }
 
@@ -223,22 +162,30 @@ namespace SmartRAG.Services.Document
             {
                 var word = words[i].Trim();
                 
-                if (string.IsNullOrWhiteSpace(word) || word.Length < 2)
+                if (string.IsNullOrWhiteSpace(word))
+                    continue;
+
+                if (i + 1 < words.Length)
+                {
+                    var nextWord = words[i + 1].Trim();
+                    var isShortEntityPrefix = word.Length >= 1 && word.Length <= 2 && char.IsUpper(word[0]) &&
+                        nextWord.Length >= MinTermLength && char.IsUpper(nextWord[0]);
+                    var isLongEntityPair = word.Length >= MinTermLength && char.IsUpper(word[0]) &&
+                        nextWord.Length >= MinTermLength && char.IsUpper(nextWord[0]);
+
+                    if (isShortEntityPrefix || isLongEntityPair)
+                    {
+                        terms.Add($"{word} {nextWord}");
+                        i++;
+                        continue;
+                    }
+                }
+
+                if (word.Length < 2)
                     continue;
 
                 if (char.IsUpper(word[0]) && word.Length >= MinTermLength)
                 {
-                    if (i + 1 < words.Length)
-                    {
-                        var nextWord = words[i + 1].Trim();
-                        if (char.IsUpper(nextWord[0]) && nextWord.Length >= MinTermLength)
-                        {
-                            terms.Add($"{word} {nextWord}");
-                            i++;
-                            continue;
-                        }
-                    }
-                    
                     terms.Add(word);
                 }
                 else if (char.IsUpper(word[0]) && word.Length <= MaxQuestionWordLength)
@@ -274,12 +221,11 @@ namespace SmartRAG.Services.Document
                 return false;
             }
 
-            if (response.Sources?.Any(s => 
+            if (response.Sources?.Any(s =>
                 s.SourceType?.Equals("System", StringComparison.OrdinalIgnoreCase) == true &&
                 (s.RelevantContent?.Contains("Error", StringComparison.OrdinalIgnoreCase) == true ||
                  s.FileName?.Contains("Error", StringComparison.OrdinalIgnoreCase) == true)) == true)
             {
-                _logger?.LogDebug("Response contains system error notification, no meaningful data");
                 return false;
             }
 
@@ -318,19 +264,10 @@ namespace SmartRAG.Services.Document
                 }
                 
                 if (hasMeaningfulData && totalRows > 0)
-                {
-                    // CRITICAL: If database query returned rows, data EXISTS regardless of AI's interpretation
-                    // AI may incorrectly say "no data" or "connection failed" even when data is present
-                    // Trust the database results over AI's answer interpretation
-                    _logger?.LogInformation("Database query returned {TotalRows} rows - marking as meaningful data (ignoring AI's data interpretation)", totalRows);
                     return true;
-                }
-                
+
                 if (!hasMeaningfulData)
-                {
-                    _logger?.LogDebug("Database sources exist but all returned 0 rows, no meaningful data");
                     return false;
-                }
             }
 
             if (!string.IsNullOrWhiteSpace(response.Answer) && !IndicatesMissingData(response.Answer))
@@ -387,15 +324,27 @@ namespace SmartRAG.Services.Document
 
                 if (!string.IsNullOrWhiteSpace(allSourceContent) && allSourceContent.Length >= 50)
                 {
-                    var queryTerms = QueryTokenizer.TokenizeQuery(query);
-                    var importantTerms = queryTerms.Where(term => term.Length >= 3).ToList();
+                    var entityTerms = ExtractSpecificTermsFromQuery(query);
+                    var sourceContentLower = allSourceContent.ToLowerInvariant();
 
-                    if (importantTerms.Count > 0)
+                    if (entityTerms.Count > 0)
                     {
-                        var sourceContentLower = allSourceContent.ToLowerInvariant();
-                        var termsInSources = importantTerms.Count(term =>
+                        var entityTermsInSources = entityTerms.Count(term =>
                             sourceContentLower.Contains(term.ToLowerInvariant()));
-                        var termsInSourcesRatio = termsInSources / (double)importantTerms.Count;
+                        if (entityTermsInSources > 0)
+                        {
+                            return false;
+                        }
+                    }
+
+                    var queryTerms = QueryTokenizer.TokenizeQuery(query);
+                    var significantTerms = queryTerms.Where(term => term.Length >= 5).ToList();
+
+                    if (significantTerms.Count > 0)
+                    {
+                        var termsInSources = significantTerms.Count(term =>
+                            sourceContentLower.Contains(term.ToLowerInvariant()));
+                        var termsInSourcesRatio = termsInSources / (double)significantTerms.Count;
 
                         if (termsInSourcesRatio >= 0.5)
                         {
@@ -403,11 +352,7 @@ namespace SmartRAG.Services.Document
                         }
 
                         if (termsInSourcesRatio < 0.5 && answer.Length < 200)
-                        {
-                            _logger?.LogDebug("IndicatesMissingData: {MissingRatio}% of important query terms not in sources. Terms: {Terms}",
-                                (int)((1.0 - termsInSourcesRatio) * 100), string.Join(", ", importantTerms));
                             return true;
-                        }
                     }
                 }
             }
@@ -424,9 +369,16 @@ namespace SmartRAG.Services.Document
         {
             if (string.IsNullOrWhiteSpace(answer)) return true;
             
-            // Only check for the special token from prompt
-            // Token-based detection is language-agnostic and reliable
             return answer.Contains("[NO_ANSWER_FOUND]");
+        }
+
+        private static string StripNoAnswerFoundTokenAndMetaCommentary(string answer)
+        {
+            if (string.IsNullOrWhiteSpace(answer))
+                return answer;
+
+            var result = Regex.Replace(answer, @"\s*\[NO_ANSWER_FOUND[^\]]*\]", string.Empty, RegexOptions.IgnoreCase);
+            return result.Trim();
         }
 
         /// <summary>

@@ -266,6 +266,10 @@ namespace SmartRAG.Repositories
             {
                 chunkId = parsedChunkId;
             }
+            else if (point.Id?.Uuid != null && Guid.TryParse(point.Id.Uuid, out var pointIdGuid))
+            {
+                chunkId = pointIdGuid;
+            }
             else
             {
                 chunkId = Guid.NewGuid();
@@ -430,7 +434,9 @@ namespace SmartRAG.Repositories
                 }
 
                 var document = CreateDocumentFromMetadata(metadata, additionalMetadata);
-
+                document.Metadata ??= new Dictionary<string, object>();
+                document.Metadata["CollectionName"] = documentCollectionName;
+                
                 foreach (var point in result.Result)
                 {
                     var chunk = CreateDocumentChunk(point, document.Id, metadata.UploadedAt, document.FileName);
@@ -478,6 +484,9 @@ namespace SmartRAG.Repositories
                             continue;
 
                         var document = CreateDocumentFromMetadata(metadata, additionalMetadata);
+                        document.Metadata ??= new Dictionary<string, object>();
+                        document.Metadata["CollectionName"] = docCollection;
+
                         var collectionInfo = await _client.GetCollectionInfoAsync(docCollection);
                         var chunkCount = (int)collectionInfo.PointsCount;
 

@@ -227,6 +227,8 @@ namespace SmartRAG.Repositories
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     var keyStr = (string)key;
+                    if (keyStr.StartsWith("conversation:sources:", StringComparison.Ordinal))
+                        continue;
                     if (keyStr.StartsWith("conversation:", StringComparison.Ordinal))
                     {
                         ids.Add(keyStr.Substring("conversation:".Length));

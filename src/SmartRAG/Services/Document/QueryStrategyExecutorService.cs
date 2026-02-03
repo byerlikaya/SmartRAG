@@ -296,7 +296,10 @@ namespace SmartRAG.Services.Document
                 results = Results;
             }
 
-            if (canAnswer)
+            var options = request.Options ?? SearchOptions.FromConfig(_options);
+            var documentSearchEnabled = options.EnableDocumentSearch;
+
+            if (documentSearchEnabled)
             {
                 var ragRequest = new Models.RequestResponse.GenerateRagAnswerRequest
                 {
@@ -305,10 +308,15 @@ namespace SmartRAG.Services.Document
                     ConversationHistory = request.ConversationHistory,
                     PreferredLanguage = request.PreferredLanguage ?? _options.DefaultLanguage,
                     Options = request.Options,
-                    PreCalculatedResults = results,
+                    PreCalculatedResults = results ?? new List<DocumentChunk>(),
                     QueryTokens = request.QueryTokens
                 };
-                return await _ragAnswerGenerator.Value.GenerateBasicRagAnswerAsync(ragRequest, cancellationToken);
+                var ragResponse = await _ragAnswerGenerator.Value.GenerateBasicRagAnswerAsync(ragRequest, cancellationToken);
+                var hasDocumentSources = ragResponse.Sources?.Any(s => s.SourceType == "Document" && !string.IsNullOrWhiteSpace(s.RelevantContent)) ?? false;
+                if (hasDocumentSources || !string.IsNullOrWhiteSpace(ragResponse.Answer))
+                {
+                    return ragResponse;
+                }
             }
 
             return await _responseBuilder.CreateFallbackResponseAsync(request.Query, request.ConversationHistory, cancellationToken);

@@ -28,7 +28,8 @@ namespace SmartRAG.Services.Document
         }
 
         /// <summary>
-        /// Prioritizes chunks by query word matches
+        /// Prioritizes chunks by query word matches in content and fileName.
+        /// Chunks whose fileName contains multi-word phrases from the query get higher priority.
         /// </summary>
         public List<DocumentChunk> PrioritizeChunksByQueryWords(List<DocumentChunk> chunks, List<string> queryWords)
         {
@@ -42,17 +43,42 @@ namespace SmartRAG.Services.Document
                 return chunks.OrderByDescending(c => c.RelevanceScore ?? 0.0).ToList();
             }
 
+            var fileNamePhrases = GetTwoWordPhrases(queryWords);
+
             return chunks
                 .OrderByDescending(c =>
                 {
                     var contentLower = c.Content?.ToLowerInvariant() ?? string.Empty;
-                    return queryWords.Count(token =>
+                    var fileNameLower = c.FileName?.ToLowerInvariant() ?? string.Empty;
+                    var searchableText = string.Concat(contentLower, " ", fileNameLower);
+
+                    var wordMatchCount = queryWords.Count(token =>
                         token.Length >= MinTokenLength &&
-                        contentLower.IndexOf(token, StringComparison.OrdinalIgnoreCase) >= 0);
+                        searchableText.IndexOf(token, StringComparison.OrdinalIgnoreCase) >= 0);
+
+                    var fileNamePhraseBonus = fileNamePhrases.Count > 0 && fileNamePhrases.Any(p =>
+                        fileNameLower.IndexOf(p, StringComparison.OrdinalIgnoreCase) >= 0)
+                        ? queryWords.Count
+                        : 0;
+
+                    return wordMatchCount + fileNamePhraseBonus;
                 })
                 .ThenByDescending(c => c.RelevanceScore ?? 0.0)
                 .ThenBy(c => c.ChunkIndex)
                 .ToList();
+        }
+
+        private static List<string> GetTwoWordPhrases(List<string> queryWords)
+        {
+            var phrases = new List<string>();
+            for (int i = 0; i < queryWords.Count - 1; i++)
+            {
+                var w1 = queryWords[i];
+                var w2 = queryWords[i + 1];
+                if (w1.Length >= 1 && w2.Length >= 3)
+                    phrases.Add($"{w1} {w2}");
+            }
+            return phrases.Distinct().Take(5).ToList();
         }
 
         /// <summary>

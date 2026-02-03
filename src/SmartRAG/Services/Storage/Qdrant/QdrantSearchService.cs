@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Qdrant.Client;
 using SmartRAG.Entities;
+using SmartRAG.Helpers;
 using SmartRAG.Interfaces.Storage.Qdrant;
 using SmartRAG.Models;
 using System;
@@ -176,7 +177,22 @@ namespace SmartRAG.Services.Storage.Qdrant
         {
             try
             {
-                var queryLower = query.ToLowerInvariant();
+                var queryWords = QueryTokenizer.TokenizeQuery(query);
+                var queryWordsLower = queryWords.Select(w => w.ToLowerInvariant()).ToList();
+                var significantWords = queryWordsLower.Where(w => w.Length >= 4).ToList();
+                var searchTerms = significantWords.Count > 0 ? significantWords : queryWordsLower;
+                var minMatchCount = Math.Max(1, searchTerms.Count / 3);
+
+                var fileNamePhrases = new List<string>();
+                for (int i = 0; i < queryWordsLower.Count - 1; i++)
+                {
+                    var w1 = queryWordsLower[i];
+                    var w2 = queryWordsLower[i + 1];
+                    if (w1.Length >= 1 && w2.Length >= 3)
+                        fileNamePhrases.Add($"{w1} {w2}");
+                }
+                fileNamePhrases = fileNamePhrases.Distinct().Take(5).ToList();
+
                 var relevantChunks = new List<DocumentChunk>();
 
                 var collections = await _client.ListCollectionsAsync(cancellationToken);
@@ -210,11 +226,13 @@ namespace SmartRAG.Services.Storage.Qdrant
                                     if (string.IsNullOrWhiteSpace(documentType))
                                         documentType = "Document";
 
-                                    var contentStr = content.ToLowerInvariant();
+                                    var searchableText = string.Concat(content, " ", fileName ?? string.Empty).ToLowerInvariant();
+                                    var fileNameLower = (fileName ?? string.Empty).ToLowerInvariant();
+                                    var matchCount = searchTerms.Count(term => searchableText.Contains(term));
+                                    var hasFileNamePhraseMatch = fileNamePhrases.Count > 0 && fileNamePhrases.Any(p => fileNameLower.Contains(p));
 
-                                    if (contentStr.Contains(queryLower))
+                                    if (matchCount >= minMatchCount || hasFileNamePhraseMatch)
                                     {
-                                        // Use chunkId from payload if available to ensure consistency
                                         Guid chunkId;
                                         if (!string.IsNullOrWhiteSpace(chunkIdStr) && Guid.TryParse(chunkIdStr, out var parsedChunkId))
                                         {
@@ -225,28 +243,29 @@ namespace SmartRAG.Services.Storage.Qdrant
                                             chunkId = Guid.NewGuid();
                                         }
 
+                                        var score = DefaultTextSearchScore + (matchCount * 0.1);
                                         var chunk = new DocumentChunk
                                         {
-                                            Id = chunkId, // Use original chunk ID from payload
+                                            Id = chunkId,
                                             DocumentId = Guid.Parse(docId),
                                             FileName = fileName ?? string.Empty,
                                             Content = content,
                                             ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
-                                            RelevanceScore = DefaultTextSearchScore,
+                                            RelevanceScore = score,
                                             StartPosition = 0,
                                             EndPosition = content.Length,
                                             DocumentType = documentType
                                         };
                                         relevantChunks.Add(chunk);
 
-                                        if (relevantChunks.Count >= maxResults)
+                                        if (relevantChunks.Count >= maxResults * 2)
                                             break;
                                     }
                                 }
                             }
                         }
 
-                        if (relevantChunks.Count >= maxResults)
+                        if (relevantChunks.Count >= maxResults * 2)
                             break;
                     }
                     catch (Exception ex)
@@ -255,7 +274,11 @@ namespace SmartRAG.Services.Storage.Qdrant
                     }
                 }
 
-                return relevantChunks.Take(maxResults).ToList();
+                return relevantChunks
+                    .OrderByDescending(c => c.RelevanceScore ?? 0.0)
+                    .ThenBy(c => c.ChunkIndex)
+                    .Take(maxResults)
+                    .ToList();
             }
             catch (Exception ex)
             {
@@ -303,27 +326,6 @@ namespace SmartRAG.Services.Storage.Qdrant
                 default:
                     return value.ToString();
             }
-        }
-
-        private static string NormalizeQueryForFuzzyMatching(string text)
-        {
-            if (string.IsNullOrEmpty(text))
-                return text;
-
-            var normalized = text.Normalize(System.Text.NormalizationForm.FormD);
-
-            var sb = new System.Text.StringBuilder(normalized.Length);
-            foreach (var c in normalized)
-            {
-                var category = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c);
-                if (category == System.Globalization.UnicodeCategory.NonSpacingMark)
-                    continue;
-
-                var lower = char.ToLowerInvariant(c);
-                sb.Append(lower);
-            }
-
-            return sb.ToString();
         }
 
         private void Dispose(bool disposing)
