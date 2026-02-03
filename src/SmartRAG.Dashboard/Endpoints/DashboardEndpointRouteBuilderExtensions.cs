@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -257,7 +259,7 @@ public static class DashboardEndpointRouteBuilderExtensions
             "/messages",
             async (
                 HttpRequest request,
-                IRagAnswerGeneratorService ragAnswerGenerator,
+                IDocumentSearchService documentSearchService,
                 IConversationManagerService conversationManager,
                 CancellationToken cancellationToken) =>
             {
@@ -288,29 +290,11 @@ public static class DashboardEndpointRouteBuilderExtensions
 
                 var truncatedHistory = conversationManager.TruncateConversationHistory(fullHistory, maxTurns: RagConversationMaxTurns);
 
-                var ragRequest = new GenerateRagAnswerRequest
-                {
-                    Query = incomingMessage,
-                    MaxResults = 8,
-                    ConversationHistory = truncatedHistory
-                };
-
-                var ragResponse = await ragAnswerGenerator
-                    .GenerateBasicRagAnswerAsync(ragRequest, cancellationToken)
+                var ragResponse = await documentSearchService
+                    .QueryIntelligenceAsync(incomingMessage, 8, sessionId, truncatedHistory, cancellationToken)
                     .ConfigureAwait(false);
 
                 var answer = ragResponse.Answer ?? string.Empty;
-
-                try
-                {
-                    await conversationManager
-                        .AddToConversationAsync(sessionId, incomingMessage, answer, cancellationToken)
-                        .ConfigureAwait(false);
-                }
-                catch
-                {
-                    // Swallow conversation storage errors to avoid breaking chat
-                }
 
                 var sourceList = ragResponse.Sources ?? new List<SearchSource>();
                 var sources = sourceList
@@ -503,7 +487,8 @@ public static class DashboardEndpointRouteBuilderExtensions
                         ContentType = d.ContentType,
                         UploadedBy = d.UploadedBy,
                         UploadedAt = d.UploadedAt,
-                        FileSize = d.FileSize
+                        FileSize = d.FileSize,
+                        CollectionName = GetCollectionNameFromMetadata(d.Metadata)
                     })
                     .ToList();
 
@@ -543,14 +528,25 @@ public static class DashboardEndpointRouteBuilderExtensions
                     .OrderByDescending(d => d.UploadedAt)
                     .Skip(effectiveSkip)
                     .Take(effectiveTake)
-                    .Select(d => new DocumentSummaryResponse
+                    .Select(d =>
                     {
-                        Id = d.Id,
-                        FileName = d.FileName,
-                        ContentType = d.ContentType,
-                        UploadedBy = d.UploadedBy,
-                        UploadedAt = d.UploadedAt,
-                        FileSize = d.FileSize
+                        var dbType = string.Empty;
+                        if (d.Metadata != null && d.Metadata.TryGetValue("databaseType", out var dbTypeObj) && dbTypeObj != null)
+                        {
+                            dbType = dbTypeObj.ToString() ?? string.Empty;
+                        }
+
+                        return new DocumentSummaryResponse
+                        {
+                            Id = d.Id,
+                            FileName = d.FileName,
+                            ContentType = d.ContentType,
+                            UploadedBy = d.UploadedBy,
+                            UploadedAt = d.UploadedAt,
+                            FileSize = d.FileSize,
+                            DatabaseType = dbType,
+                            CollectionName = GetCollectionNameFromMetadata(d.Metadata)
+                        };
                     })
                     .ToList();
 
@@ -580,7 +576,8 @@ public static class DashboardEndpointRouteBuilderExtensions
                     ContentType = document.ContentType,
                     UploadedBy = document.UploadedBy,
                     UploadedAt = document.UploadedAt,
-                    FileSize = document.FileSize
+                    FileSize = document.FileSize,
+                    CollectionName = GetCollectionNameFromMetadata(document.Metadata)
                 };
 
                 return Results.Ok(response);
@@ -663,16 +660,22 @@ public static class DashboardEndpointRouteBuilderExtensions
 
                 var language = form["language"].ToString();
 
-                await using var stream = file.OpenReadStream();
+                await using var sourceStream = file.OpenReadStream();
+                using var buffer = new MemoryStream();
+                await sourceStream.CopyToAsync(buffer, cancellationToken).ConfigureAwait(false);
+                var bytes = buffer.ToArray();
+                var hashString = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
+                using var uploadStream = new MemoryStream(bytes);
 
                 var uploadRequest = new UploadDocumentRequest
                 {
-                    FileStream = stream,
+                    FileStream = uploadStream,
                     FileName = file.FileName,
                     ContentType = string.IsNullOrWhiteSpace(file.ContentType) ? "application/octet-stream" : file.ContentType,
                     UploadedBy = uploadedBy,
                     Language = string.IsNullOrWhiteSpace(language) ? null : language,
-                    FileSize = file.Length
+                    FileSize = file.Length,
+                    AdditionalMetadata = new Dictionary<string, object> { ["FileHash"] = hashString }
                 };
 
                 var document = await documentService.UploadDocumentAsync(uploadRequest, cancellationToken).ConfigureAwait(false);
@@ -719,6 +722,16 @@ public static class DashboardEndpointRouteBuilderExtensions
         }
 
         return string.Equals(docType.ToString(), "Schema", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GetCollectionNameFromMetadata(Dictionary<string, object>? metadata)
+    {
+        if (metadata == null || !metadata.TryGetValue("CollectionName", out var value) || value == null)
+        {
+            return string.Empty;
+        }
+
+        return value.ToString() ?? string.Empty;
     }
 
     private static ChatSessionSummaryResponse BuildChatSessionSummary(string sessionId, string history)

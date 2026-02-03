@@ -84,7 +84,13 @@
         }
     }
 
-    function renderDocTable(items, totalCount, tbodyId, summaryId, emptyText) {
+    function renderDocTable(items, totalCount, tbodyId, summaryId, emptyText, options) {
+        options = options || {};
+        var showFileType = options.showFileType === true;
+        var showDatabaseType = options.showDatabaseType === true;
+        var showCollectionName = options.showCollectionName === true;
+        var colCount = 4 + (showFileType ? 1 : 0) + (showDatabaseType ? 1 : 0) + (showCollectionName ? 1 : 0);
+
         var tbody = document.getElementById(tbodyId);
         var summary = document.getElementById(summaryId);
         if (summary) {
@@ -93,13 +99,26 @@
         if (!tbody) return;
         tbody.innerHTML = '';
         if (!items || items.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="4">' + (emptyText || 'No documents.') + '</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="' + colCount + '">' + (emptyText || 'No documents.') + '</td></tr>';
             return;
         }
         items.forEach(function (doc) {
             var tr = document.createElement('tr');
+            var nameCell = '<td>' + escapeHtml(doc.fileName) + '</td>';
+            var fileTypeCell = showFileType ? '<td>' + escapeHtml(doc.contentType || '') + '</td>' : '';
+            var dbTypeCell = showDatabaseType ? '<td>' + escapeHtml(doc.databaseType || '') + '</td>' : '';
+            var collectionValue = doc.collectionName || '';
+            var collectionCell = showCollectionName
+                ? '<td class="sr-doc-cell-collection" title="' + escapeAttr(collectionValue) + '">' +
+                    '<span class="sr-doc-collection-text">' + escapeHtml(collectionValue) + '</span> ' +
+                    '<button type="button" class="sr-btn sr-doc-copy-btn" data-collection="' + escapeAttr(collectionValue) + '" title="Copy collection name" aria-label="Copy collection name">Copy</button>' +
+                    '</td>'
+                : '';
             tr.innerHTML =
-                '<td>' + escapeHtml(doc.fileName) + '</td>' +
+                nameCell +
+                fileTypeCell +
+                dbTypeCell +
+                collectionCell +
                 '<td>' + formatBytes(doc.fileSize) + '</td>' +
                 '<td>' + formatDate(doc.uploadedAt) + '</td>' +
                 '<td>' +
@@ -131,6 +150,20 @@
                 }
             });
         });
+
+        tbody.querySelectorAll('.sr-doc-copy-btn').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var value = btn.getAttribute('data-collection') || '';
+                if (!value) return;
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(value).then(function () {
+                        var orig = btn.textContent;
+                        btn.textContent = 'Copied!';
+                        setTimeout(function () { btn.textContent = orig; }, 1500);
+                    });
+                }
+            });
+        });
     }
 
     function escapeHtml(s) {
@@ -140,6 +173,15 @@
         return div.innerHTML;
     }
 
+    function escapeAttr(s) {
+        if (s == null) return '';
+        return String(s)
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+    }
+
     function loadDocuments() {
         getDocList().then(function (data) {
             renderDocTable(
@@ -147,13 +189,14 @@
                 data.totalCount || 0,
                 'sr-doc-tbody-user',
                 'sr-doc-summary-user',
-                'No documents.'
+                'No documents.',
+                { showFileType: true, showCollectionName: true }
             );
         }).catch(function () {
             var summary = document.getElementById('sr-doc-summary-user');
             var tbody = document.getElementById('sr-doc-tbody-user');
             if (summary) summary.textContent = 'Failed to load documents.';
-            if (tbody) tbody.innerHTML = '<tr><td colspan="4">Error loading list.</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="6">Error loading list.</td></tr>';
         });
     }
 
@@ -164,13 +207,14 @@
                 data.totalCount || 0,
                 'sr-doc-tbody-schemas',
                 'sr-doc-summary-schemas',
-                'No schema documents.'
+                'No schema documents.',
+                { showDatabaseType: true, showCollectionName: true }
             );
         }).catch(function () {
             var summary = document.getElementById('sr-doc-summary-schemas');
             var tbody = document.getElementById('sr-doc-tbody-schemas');
             if (summary) summary.textContent = 'Failed to load schema documents.';
-            if (tbody) tbody.innerHTML = '<tr><td colspan="4">Error loading list.</td></tr>';
+            if (tbody) tbody.innerHTML = '<tr><td colspan="6">Error loading list.</td></tr>';
         });
     }
 
@@ -199,23 +243,19 @@
                     { key: 'enableDocumentSearch', label: 'Document search' },
                     { key: 'enableAudioSearch', label: 'Audio' },
                     { key: 'enableImageSearch', label: 'Image' },
-                    { key: 'enableMcpSearch', label: 'MCP' },
-                    { key: 'enableFileWatcher', label: 'File watcher' }
+                    { key: 'enableMcpSearch', label: 'MCP' }
                 ];
 
                 featureList.forEach(function (item) {
                     var enabled = !!f[item.key];
-                    var badgeEl = document.createElement('div');
+                    var badgeEl = document.createElement('span');
                     badgeEl.className = 'sr-chat-feature-badge ' + (enabled ? 'sr-chat-feature-badge--on' : 'sr-chat-feature-badge--off');
-
                     var labelEl = document.createElement('span');
                     labelEl.className = 'sr-chat-feature-badge-label';
                     labelEl.textContent = item.label;
-
                     var statusEl = document.createElement('span');
                     statusEl.className = 'sr-chat-feature-badge-status';
                     statusEl.textContent = enabled ? 'ON' : 'OFF';
-
                     badgeEl.appendChild(labelEl);
                     badgeEl.appendChild(statusEl);
                     featuresContainer.appendChild(badgeEl);
@@ -557,6 +597,11 @@
             sectionEl.appendChild(h3);
             if (typeof content === 'string') {
                 sectionEl.innerHTML = sectionEl.innerHTML + content;
+            } else if (content && content.tagName === 'TABLE') {
+                var wrap = document.createElement('div');
+                wrap.className = 'sr-settings-table-wrap';
+                wrap.appendChild(content);
+                sectionEl.appendChild(wrap);
             } else {
                 sectionEl.appendChild(content);
             }
@@ -613,6 +658,29 @@
             return span;
         }
 
+        function keyValueRow(rows) {
+            var rowEl = document.createElement('div');
+            rowEl.className = 'sr-settings-kv-row';
+            rows.forEach(function (row) {
+                var item = document.createElement('div');
+                item.className = 'sr-settings-kv-item';
+                var label = document.createElement('span');
+                label.className = 'sr-settings-kv-label';
+                label.textContent = row.key;
+                var valWrap = document.createElement('span');
+                valWrap.className = 'sr-settings-kv-value';
+                if (row.badge || isBooleanLike(row.value)) {
+                    valWrap.appendChild(badge(badgeValue(row.value)));
+                } else {
+                    valWrap.textContent = row.value != null ? String(row.value) : '—';
+                }
+                item.appendChild(label);
+                item.appendChild(valWrap);
+                rowEl.appendChild(item);
+            });
+            return rowEl;
+        }
+
         section('Providers', keyValueTable([
             { key: 'AI provider', value: data.providers && data.providers.ai ? data.providers.ai : '—' },
             { key: 'Storage provider', value: data.providers && data.providers.storage ? data.providers.storage : '—' },
@@ -632,9 +700,11 @@
             ];
             featNames.forEach(function (f) {
                 var on = data.features[f.k];
-                var wrap = document.createElement('span');
+                var wrap = document.createElement('div');
                 wrap.className = 'sr-settings-feature-item';
-                wrap.textContent = f.l + ' ';
+                var label = document.createElement('span');
+                label.textContent = f.l;
+                wrap.appendChild(label);
                 wrap.appendChild(badge(!!on));
                 featDiv.appendChild(wrap);
             });
@@ -719,19 +789,25 @@
         }
 
         if (data.remainingByCategory && typeof data.remainingByCategory === 'object') {
+            var allRows = [];
             var keys = Object.keys(data.remainingByCategory);
             keys.forEach(function (categoryName) {
                 var entries = data.remainingByCategory[categoryName];
                 if (entries && entries.length > 0) {
-                    var rows = entries.map(function (e) {
+                    entries.forEach(function (e) {
                         var v = e.value;
                         var keyLabel = e.path ? e.path.split(':').pop() : e.path;
-                        if (isBooleanLike(v)) return { key: keyLabel, value: badgeValue(v), badge: true };
-                        return { key: keyLabel, value: v };
+                        if (isBooleanLike(v)) {
+                            allRows.push({ key: keyLabel, value: badgeValue(v), badge: true });
+                        } else {
+                            allRows.push({ key: keyLabel, value: v });
+                        }
                     });
-                    section(categoryName, keyValueTable(rows));
                 }
             });
+            if (allRows.length > 0) {
+                section('Configuration', keyValueRow(allRows));
+            }
         }
     }
 
@@ -1129,6 +1205,13 @@
                 chatLayout.classList.remove('sr-chat-sidebar-open');
             });
         }
+        function closeChatSidebar() {
+            if (chatLayout) chatLayout.classList.remove('sr-chat-sidebar-open');
+        }
+        var sidebarCloseBtn = document.getElementById('sr-chat-sidebar-close');
+        if (sidebarCloseBtn) sidebarCloseBtn.addEventListener('click', closeChatSidebar);
+        var sidebarCloseMobile = document.getElementById('sr-chat-sidebar-close-mobile');
+        if (sidebarCloseMobile) sidebarCloseMobile.addEventListener('click', closeChatSidebar);
 
         document.querySelectorAll('.sr-doc-tab').forEach(function (tab) {
             tab.addEventListener('click', function () {

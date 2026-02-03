@@ -53,6 +53,8 @@
                         <thead>
                             <tr>
                                 <th>Name</th>
+                                <th>File Type</th>
+                                <th>Collection</th>
                                 <th>Size</th>
                                 <th>Uploaded</th>
                                 <th></th>
@@ -66,6 +68,8 @@
                         <thead>
                             <tr>
                                 <th>Name</th>
+                                <th>DB Type</th>
+                                <th>Collection</th>
                                 <th>Size</th>
                                 <th>Uploaded</th>
                                 <th></th>
@@ -101,11 +105,13 @@
             <div class="sr-card sr-card-chat">
                 <div class="sr-chat-layout" id="sr-chat-layout">
                     <aside class="sr-chat-sidebar" id="sr-chat-sidebar">
+                        <button type="button" id="sr-chat-sidebar-close-mobile" class="sr-chat-sidebar-close-mobile" aria-label="Close conversations panel">×</button>
                         <div class="sr-chat-sidebar-header">
                             <span class="sr-chat-sidebar-title">Conversations</span>
                             <div class="sr-chat-sidebar-actions">
                                 <button type="button" id="sr-chat-new" class="sr-btn sr-btn-secondary sr-chat-sidebar-btn sr-chat-new-btn">New</button>
                                 <button type="button" id="sr-chat-clear-all" class="sr-btn sr-btn-danger sr-chat-sidebar-btn sr-chat-clear-btn">Clear All</button>
+                                <button type="button" id="sr-chat-sidebar-close" class="sr-btn sr-btn-secondary sr-chat-sidebar-close-btn" aria-label="Close conversations">Close</button>
                             </div>
                         </div>
                         <div class="sr-chat-conversation-list" id="sr-chat-conversations"></div>
@@ -114,7 +120,7 @@
                     <section class="sr-chat-main">
                         <div class="sr-chat-header">
                             <button type="button" class="sr-chat-sidebar-toggle" id="sr-chat-sidebar-toggle" aria-label="Open conversations list">
-                                <span class="sr-chat-sidebar-toggle-icon" aria-hidden="true"></span>
+                                <span class="sr-chat-sidebar-toggle-icon" aria-hidden="true"><span class="sr-chat-sidebar-toggle-icon-lines"></span></span>
                                 <span class="sr-chat-sidebar-toggle-text">Conversations</span>
                             </button>
                             <h2 class="sr-card-title">Chat</h2>
