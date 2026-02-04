@@ -13,6 +13,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Document.Parsers
@@ -93,44 +94,46 @@ namespace SmartRAG.Services.Document.Parsers
                 var textIsSubstantial = !string.IsNullOrWhiteSpace(text) && text.Trim().Length >= MinTextLengthForOcrFallback;
                 var shouldUseOcr = false;
 
-                if (textIsSubstantial && !hasEncodingIssues)
+                // Primary rule:
+                // - If we already have substantial text from the PDF extraction, always trust and use it.
+                //   We do NOT replace it with OCR, even if the page has embedded images or mild encoding issues.
+                // - OCR is reserved for pages that effectively have no useful text (scanned/image-only PDFs),
+                //   so that clean digital PDFs like policy documents are not degraded by OCR noise.
+                if (textIsSubstantial)
                 {
                     var correctedText = _imageParserService.CorrectCurrencySymbols(text);
                     textBuilder.AppendLine(correctedText);
-                    _logger.LogDebug("PDF page {PageNumber} text extraction successful, using extracted text (length: {Length})", i, text.Length);
-                }
-                else if (hasEmbeddedImages)
-                {
-                    shouldUseOcr = true;
-                    if (hasEncodingIssues)
-                    {
-                        _logger.LogDebug("PDF page {PageNumber} has encoding issues and embedded images, using OCR (text length: {Length})", i, text?.Length ?? 0);
-                    }
-                    else if (!textIsSubstantial)
-                    {
-                        _logger.LogDebug("PDF page {PageNumber} has embedded images but insufficient text (length: {Length}), using OCR", i, text?.Length ?? 0);
-                    }
+                    _logger.LogDebug(
+                        "PDF page {PageNumber} has substantial extracted text, using text extraction only (length: {Length}, encodingIssues: {EncodingIssues}, hasImages: {HasImages})",
+                        i,
+                        text.Length,
+                        hasEncodingIssues,
+                        hasEmbeddedImages);
                 }
                 else
                 {
-                    if (hasEncodingIssues)
+                    if (hasEmbeddedImages || hasEncodingIssues)
                     {
+                        // No substantial text but we either have images (scanned page)
+                        // or serious encoding issues: try OCR as a fallback.
                         shouldUseOcr = true;
-                        _logger.LogDebug("PDF page {PageNumber} is text-based with encoding issues, attempting OCR fallback (text length: {Length})", i, text?.Length ?? 0);
+                        _logger.LogDebug(
+                            "PDF page {PageNumber} has no substantial text; attempting OCR (length: {Length}, encodingIssues: {EncodingIssues}, hasImages: {HasImages})",
+                            i,
+                            text?.Length ?? 0,
+                            hasEncodingIssues,
+                            hasEmbeddedImages);
                     }
-                    else
+                    else if (!string.IsNullOrWhiteSpace(text))
                     {
+                        // Some text exists but below the "substantial" threshold; still use it rather
+                        // than risking worse OCR output.
                         var correctedText = _imageParserService.CorrectCurrencySymbols(text);
                         textBuilder.AppendLine(correctedText);
-
-                        if (hasEncodingIssues)
-                        {
-                            _logger.LogDebug("PDF page {PageNumber} is text-based with encoding issues, using extracted text (length: {Length})", i, text?.Length ?? 0);
-                        }
-                        else if (!textIsSubstantial)
-                        {
-                            _logger.LogDebug("PDF page {PageNumber} is text-based with insufficient text (length: {Length}), using extracted text", i, text?.Length ?? 0);
-                        }
+                        _logger.LogDebug(
+                            "PDF page {PageNumber} has limited extracted text, using text extraction (length: {Length})",
+                            i,
+                            text.Length);
                     }
                 }
 
@@ -622,6 +625,8 @@ namespace SmartRAG.Services.Document.Parsers
 
                 normalizedText = RemoveInvalidUnicodeCharacters(normalizedText);
 
+                normalizedText = FixOWithTildeAsDotlessI(normalizedText);
+
                 return normalizedText;
             }
             catch (Exception ex)
@@ -649,6 +654,37 @@ namespace SmartRAG.Services.Document.Parsers
             }
 
             return result.ToString();
+        }
+
+        /// <summary>
+        /// Fixes PDF font encoding issues where dotless i (ı U+0131) is extracted as o with tilde (õ U+00F5)
+        /// or copyright symbol (© U+00A9). Only applies when the text contains other extended-Latin
+        /// characters that indicate the document uses a Latin script where õ/© are not valid in word context.
+        /// </summary>
+        private static string FixOWithTildeAsDotlessI(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return text;
+
+            const char oWithTilde = '\u00F5';
+            const char copyrightSymbol = '\u00A9';
+            const char dotlessI = '\u0131';
+
+            var hasIndicativeChars = text.IndexOf('\u011F') >= 0 || text.IndexOf('\u015F') >= 0 ||
+                                     text.IndexOf('\u00FC') >= 0 || text.IndexOf('\u00F6') >= 0 ||
+                                     text.IndexOf('\u00E7') >= 0 || text.IndexOf('\u0131') >= 0;
+
+            if (!hasIndicativeChars)
+                return text;
+
+            var result = text;
+            if (result.IndexOf(oWithTilde) >= 0)
+                result = result.Replace(oWithTilde, dotlessI);
+
+            if (result.IndexOf(copyrightSymbol) >= 0)
+                result = Regex.Replace(result, @"(\p{L})" + copyrightSymbol + @"(\p{L})", "$1" + dotlessI + "$2");
+
+            return result;
         }
 
     }

@@ -41,12 +41,14 @@ namespace SmartRAG.Services.Parser
 
         private const string CurrencyMisreadPatternMain = @"(\d+)\s*%(?=\s*(?:\p{Lu}|\d|$))";
         private const string CurrencyMisreadPatternCompact = @"(\d+)%(?=\p{Lu}|\s+\p{Lu}|$)";
-        private const string CurrencyMisreadPattern6 = @"(\d+)\s*6(?=\s*(?:\p{Lu}|\d|$))";
+        private const string CurrencyMisreadPattern6 = @"(\d+)\s*6(?=\s*(?:\p{Lu}|$))";
         private const string CurrencyMisreadPattern6Compact = @"(\d+)6(?=\s+\p{Lu}|\s+$|$)";
         private const string CurrencyMisreadPatternT = @"(\d+)\s*t(?=\s*(?:\p{Lu}|$))";
         private const string CurrencyMisreadPatternTCompact = @"(\d+)t(?=\s+\p{Lu}|\s+$|$)";
         private const string CurrencyMisreadPatternAmpersand = @"(\d+)\s*&(?=\s*(?:\p{Lu}|\d|$))";
         private const string CurrencyMisreadPatternAmpersandCompact = @"(\d+)&(?=\p{Lu}|\s+\p{Lu}|$)";
+        private const string CurrencyMisreadPatternCent = @"(\d+)\s*¢";
+        private const string CurrencyMisreadPatternCentCompact = @"(\d+)¢";
 
         private static readonly Dictionary<string, string> ReverseLanguageCodeMapping = new Dictionary<string, string>
         {
@@ -966,6 +968,26 @@ namespace SmartRAG.Services.Parser
                 CurrencyMisreadPatternAmpersandCompact,
                 $"$1{currencySymbol}"
             );
+
+            // Pattern 9: ¢ (cent) - OCR often misreads ₺ and similar symbols as ¢.
+            // Use document context, not locale: if the document contains $, it is likely
+            // US context where ¢ is a valid subunit; otherwise ¢ is probably a misread.
+            var hasDollarInDocument = text.IndexOf('$') >= 0;
+            if (!hasDollarInDocument)
+            {
+                text = Regex.Replace(
+                    text,
+                    CurrencyMisreadPatternCent,
+                    $"$1{currencySymbol}",
+                    RegexOptions.Multiline
+                );
+
+                text = Regex.Replace(
+                    text,
+                    CurrencyMisreadPatternCentCompact,
+                    $"$1{currencySymbol}"
+                );
+            }
 
             return text;
         }
