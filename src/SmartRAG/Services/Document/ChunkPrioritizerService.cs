@@ -15,6 +15,9 @@ namespace SmartRAG.Services.Document
     public class ChunkPrioritizerService : IChunkPrioritizerService
     {
         private const int MinTokenLength = 3;
+        private const int MinPrefixLength = 4;
+        private const int MinSingleWordFileNameLength = 4;
+        private const int FileNameSingleWordBonusMultiplier = 5;
 
         private readonly ILogger<ChunkPrioritizerService> _logger;
 
@@ -29,9 +32,10 @@ namespace SmartRAG.Services.Document
 
         /// <summary>
         /// Prioritizes chunks by query word matches in content and fileName.
-        /// Chunks whose fileName contains multi-word phrases from the query get higher priority.
+        /// Uses exact and prefix matching for morphological variants.
+        /// When phraseWords is provided, uses it for filename phrase matching (includes short tokens filtered by TokenizeQuery).
         /// </summary>
-        public List<DocumentChunk> PrioritizeChunksByQueryWords(List<DocumentChunk> chunks, List<string> queryWords)
+        public List<DocumentChunk> PrioritizeChunksByQueryWords(List<DocumentChunk> chunks, List<string> queryWords, List<string>? phraseWords = null)
         {
             if (chunks == null)
             {
@@ -43,7 +47,9 @@ namespace SmartRAG.Services.Document
                 return chunks.OrderByDescending(c => c.RelevanceScore ?? 0.0).ToList();
             }
 
-            var fileNamePhrases = GetTwoWordPhrases(queryWords);
+            var wordsForPhrases = (phraseWords != null && phraseWords.Count >= 2) ? phraseWords : queryWords;
+            var fileNamePhrases = GetTwoWordPhrases(wordsForPhrases);
+            var wordsForFileNameMatch = (phraseWords != null && phraseWords.Count > 0) ? phraseWords : queryWords;
 
             return chunks
                 .OrderByDescending(c =>
@@ -54,18 +60,35 @@ namespace SmartRAG.Services.Document
 
                     var wordMatchCount = queryWords.Count(token =>
                         token.Length >= MinTokenLength &&
-                        searchableText.IndexOf(token, StringComparison.OrdinalIgnoreCase) >= 0);
+                        MatchesInText(searchableText, token));
 
                     var fileNamePhraseBonus = fileNamePhrases.Count > 0 && fileNamePhrases.Any(p =>
                         fileNameLower.IndexOf(p, StringComparison.OrdinalIgnoreCase) >= 0)
                         ? queryWords.Count
                         : 0;
 
-                    return wordMatchCount + fileNamePhraseBonus;
+                    var fileNameSingleWordBonus = wordsForFileNameMatch.Count(token =>
+                        token.Length >= MinSingleWordFileNameLength &&
+                        MatchesInText(fileNameLower, token)) * FileNameSingleWordBonusMultiplier;
+
+                    return wordMatchCount + fileNamePhraseBonus + fileNameSingleWordBonus;
                 })
                 .ThenByDescending(c => c.RelevanceScore ?? 0.0)
                 .ThenBy(c => c.ChunkIndex)
                 .ToList();
+        }
+
+        private static bool MatchesInText(string text, string token)
+        {
+            if (text.IndexOf(token, StringComparison.OrdinalIgnoreCase) >= 0)
+                return true;
+            for (var len = MinPrefixLength; len < token.Length; len++)
+            {
+                var prefix = token.Substring(0, len);
+                if (text.IndexOf(prefix, StringComparison.OrdinalIgnoreCase) >= 0)
+                    return true;
+            }
+            return false;
         }
 
         private static List<string> GetTwoWordPhrases(List<string> queryWords)
