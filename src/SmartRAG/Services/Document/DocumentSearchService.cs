@@ -28,7 +28,7 @@ namespace SmartRAG.Services.Document
     public class DocumentSearchService : IDocumentSearchService, IRagAnswerGeneratorService
     {
         private const int MinSearchResultsCount = 0;
-        private const int FallbackSearchMaxResults = 10;
+        private const int FallbackSearchMaxResults = 30;
         private const int MinSubstantialContentLength = 30;
         private const int MaxExpandedChunks = 50;
         private const int MaxContextSize = 18000;
@@ -217,6 +217,50 @@ namespace SmartRAG.Services.Document
                     : commandPayload;
 
                 return await HandleConversationQueryAsync(conversationQuery, sessionId, conversationHistory, cancellationToken);
+            }
+
+            if (searchOptions.EnableDocumentSearch)
+            {
+                var coreFilenameWords = QueryTokenizer.GetWordsForPhraseExtraction(query).Where(w => w.Length >= 4).ToList();
+                var coreAllDocs = await _documentService.GetAllDocumentsFilteredAsync(searchOptions, cancellationToken);
+                var coreFilenameMatched = coreAllDocs
+                    .Where(d =>
+                    {
+                        var fn = (d.FileName ?? string.Empty).ToLowerInvariant();
+                        if (string.IsNullOrWhiteSpace(fn))
+                            return false;
+                        return coreFilenameWords.Any(w =>
+                        {
+                            var wl = w.ToLowerInvariant();
+                            if (fn.IndexOf(wl, StringComparison.OrdinalIgnoreCase) >= 0)
+                                return true;
+                            for (var len = 4; len < wl.Length; len++)
+                            {
+                                if (fn.IndexOf(wl.Substring(0, len), StringComparison.OrdinalIgnoreCase) >= 0)
+                                    return true;
+                            }
+                            return false;
+                        });
+                    })
+                    .ToList();
+                if (coreFilenameMatched.Count > 0)
+                {
+                    var coreChunks = await LoadChunksFromEntityMatchedDocumentsAsync(
+                        coreFilenameMatched.Select(d => d.Id).ToHashSet(),
+                        80,
+                        cancellationToken);
+                    if (coreChunks.Count > 0)
+                    {
+                        foreach (var c in coreChunks)
+                            c.RelevanceScore = DocumentBoostThreshold + 2.0;
+                        var coreContext = _contextExpansion.BuildLimitedContext(coreChunks, MaxContextSize);
+                        var coreAnswer = await GenerateRagAnswerFromContextAsync(query, coreContext, conversationHistory, cancellationToken);
+                        var coreSources = await _sourceBuilder.BuildSourcesAsync(coreChunks, _documentRepository);
+                        var coreResponse = _responseBuilder.CreateRagResponse(query, coreAnswer, coreSources);
+                        await _conversationManager.AddToConversationAsync(sessionId, query, coreResponse.Answer, cancellationToken);
+                        return coreResponse;
+                    }
+                }
             }
 
             cancellationToken.ThrowIfCancellationRequested();
@@ -508,6 +552,46 @@ namespace SmartRAG.Services.Document
                 throw new ArgumentNullException(nameof(request));
 
             var trimmedQuery = request.Query?.Trim() ?? string.Empty;
+
+            var filenameMatchWords = QueryTokenizer.GetWordsForPhraseExtraction(trimmedQuery).Where(w => w.Length >= 4).ToList();
+            var allDocsForFilename = await _documentService.GetAllDocumentsFilteredAsync(request.Options, cancellationToken);
+            var filenameMatchedDocs = allDocsForFilename
+                .Where(d =>
+                {
+                    var fn = (d.FileName ?? string.Empty).ToLowerInvariant();
+                    if (string.IsNullOrWhiteSpace(fn))
+                        return false;
+                    return filenameMatchWords.Any(w =>
+                    {
+                        var wl = w.ToLowerInvariant();
+                        if (fn.IndexOf(wl, StringComparison.OrdinalIgnoreCase) >= 0)
+                            return true;
+                        for (var len = 4; len < wl.Length; len++)
+                        {
+                            if (fn.IndexOf(wl.Substring(0, len), StringComparison.OrdinalIgnoreCase) >= 0)
+                                return true;
+                        }
+                        return false;
+                    });
+                })
+                .ToList();
+            if (filenameMatchedDocs.Count > 0 && !string.IsNullOrWhiteSpace(trimmedQuery))
+            {
+                var directChunks = await LoadChunksFromEntityMatchedDocumentsAsync(
+                    filenameMatchedDocs.Select(d => d.Id).ToHashSet(),
+                    80,
+                    cancellationToken);
+                if (directChunks.Count > 0)
+                {
+                    foreach (var c in directChunks)
+                        c.RelevanceScore = DocumentBoostThreshold + 2.0;
+                    var directContext = _contextExpansion.BuildLimitedContext(directChunks, MaxContextSize);
+                    var directAnswer = await GenerateRagAnswerFromContextAsync(trimmedQuery, directContext, request.ConversationHistory, cancellationToken);
+                    var directSources = await _sourceBuilder.BuildSourcesAsync(directChunks, _documentRepository);
+                    return _responseBuilder.CreateRagResponse(trimmedQuery, directAnswer, directSources);
+                }
+            }
+
             if (!string.IsNullOrWhiteSpace(trimmedQuery))
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -569,11 +653,15 @@ namespace SmartRAG.Services.Document
                 chunks = searchResults.ToList();
 
                 var previousUserQuery = GetLastUserQueryDistinctFrom(request.ConversationHistory, cleanedQuery);
-                if (!string.IsNullOrWhiteSpace(previousUserQuery) &&
-                    !string.Equals(previousUserQuery.Trim(), cleanedQuery.Trim(), StringComparison.OrdinalIgnoreCase))
+                const int MinSubstantiveQueryLength = 12;
+                var isSubstantivePreviousQuery = !string.IsNullOrWhiteSpace(previousUserQuery) &&
+                    previousUserQuery.Trim().Length >= MinSubstantiveQueryLength &&
+                    !string.Equals(previousUserQuery.Trim(), cleanedQuery.Trim(), StringComparison.OrdinalIgnoreCase);
+
+                if (isSubstantivePreviousQuery)
                 {
                     var extraResults = await _documentSearchStrategy.SearchDocumentsAsync(
-                        previousUserQuery.Trim(),
+                        previousUserQuery!.Trim(),
                         Math.Min(searchMaxResults, PreviousQuerySearchMaxResults),
                         searchOptions,
                         null,
@@ -597,25 +685,53 @@ namespace SmartRAG.Services.Document
                 if (preservedChunk0 != null && !Chunk0IsQueryRelevant(preservedChunk0, queryTokens, earlyPotentialNames))
                     preservedChunk0 = null;
                 var nonZeroChunksForSearch = chunks.Where(c => c.ChunkIndex != 0).ToList();
-                chunks = _chunkPrioritizer.PrioritizeChunksByQueryWords(nonZeroChunksForSearch, queryTokens);
+                var earlyPhraseWords = QueryTokenizer.GetWordsForPhraseExtraction(queryForSearch);
+                chunks = _chunkPrioritizer.PrioritizeChunksByQueryWords(nonZeroChunksForSearch, queryTokens, earlyPhraseWords);
                 chunks = _chunkPrioritizer.MergeChunksWithPreservedChunk0(chunks, preservedChunk0);
 
                 if (previousQueryChunkIds.Count > 0)
                 {
                     var previousQueryChunks = chunks.Where(c => previousQueryChunkIds.Contains(c.Id)).ToList();
-                    var docScores = previousQueryChunks
+                    var prevTopDocIds = previousQueryChunks
                         .GroupBy(c => c.DocumentId)
                         .Select(g => new { DocumentId = g.Key, Score = g.Sum(c => c.RelevanceScore ?? 0.0) })
                         .OrderByDescending(x => x.Score)
                         .Take(1)
                         .Select(x => x.DocumentId)
                         .ToHashSet();
-                    chunks = chunks.Where(c => docScores.Contains(c.DocumentId)).ToList();
+
+                    var currentMainChunks = chunks.Where(c => !previousQueryChunkIds.Contains(c.Id)).ToList();
+                    var currentTopDocId = currentMainChunks
+                        .OrderByDescending(c => c.RelevanceScore ?? 0.0)
+                        .Select(c => c.DocumentId)
+                        .FirstOrDefault();
+                    var prevTopDocId = prevTopDocIds.FirstOrDefault();
+                    var sameTopic = prevTopDocIds.Count > 0 && currentTopDocId != Guid.Empty &&
+                        currentTopDocId == prevTopDocId;
+                    if (sameTopic)
+                    {
+                        chunks = chunks.Where(c => prevTopDocIds.Contains(c.DocumentId)).ToList();
+                    }
                 }
             }
 
+            var currentTopDocIdForOrdering = Guid.Empty;
+            if (chunks.Count > 0)
+            {
+                var mainChunks = previousQueryChunkIds.Count > 0
+                    ? chunks.Where(c => !previousQueryChunkIds.Contains(c.Id)).ToList()
+                    : chunks;
+                currentTopDocIdForOrdering = mainChunks
+                    .OrderByDescending(c => c.RelevanceScore ?? 0.0)
+                    .Select(c => c.DocumentId)
+                    .FirstOrDefault();
+            }
+
+            var preferPreviousDoc = previousQueryChunkIds.Count > 0 && currentTopDocIdForOrdering != Guid.Empty &&
+                chunks.Any(c => previousQueryChunkIds.Contains(c.Id) && c.DocumentId == currentTopDocIdForOrdering);
+
             var topOriginalChunks = chunks
-                .OrderByDescending(c => previousQueryChunkIds.Contains(c.Id))
+                .OrderByDescending(c => preferPreviousDoc && previousQueryChunkIds.Contains(c.Id))
                 .ThenByDescending(c => c.ChunkIndex == 0)
                 .ThenByDescending(c => c.RelevanceScore ?? 0.0)
                 .ThenBy(c => c.ChunkIndex)
@@ -624,10 +740,12 @@ namespace SmartRAG.Services.Document
 
             var originalChunkIds = new HashSet<Guid>(topOriginalChunks.Select(c => c.Id));
             HashSet<Guid>? overlapChunkIds = null;
+            HashSet<Guid>? entityChunkIdsFromComprehensive = null;
 
             var isFollowUpWithContext = previousQueryChunkIds.Count > 0;
+            var requiresComprehensive = _queryPatternAnalyzer.RequiresComprehensiveSearch(queryForSearch);
             var needsAggressiveSearch = !isFollowUpWithContext &&
-                (chunks.Count < 5 || _queryPatternAnalyzer.RequiresComprehensiveSearch(queryForSearch));
+                (chunks.Count < 5 || requiresComprehensive);
             if (needsAggressiveSearch)
             {
                 var potentialNames = QueryTokenizer.ExtractPotentialNames(queryForSearch);
@@ -695,11 +813,32 @@ namespace SmartRAG.Services.Document
                 {
                     var words = queryWords ?? new List<string>();
                     var phraseWords = QueryTokenizer.GetWordsForPhraseExtraction(queryForSearch);
+                    var docIdsFromFilenameMatch = GetEntityMatchedDocumentIds(allDocuments, words, potentialNames, phraseWords);
                     var entityFileNameChunks = GetEntityFileNameChunks(allChunks, words, potentialNames, phraseWords)
                         .Take(Math.Max(searchMaxResults * 2, 50))
                         .ToList();
 
                     var entityMatchedDocIds = entityFileNameChunks.Select(c => c.DocumentId).Distinct().ToHashSet();
+                    if (entityMatchedDocIds.Count == 0 && docIdsFromFilenameMatch.Count > 0)
+                    {
+                        var loadedFromMatch = await LoadChunksFromEntityMatchedDocumentsAsync(
+                            docIdsFromFilenameMatch,
+                            Math.Max(searchMaxResults * 2, 50),
+                            cancellationToken);
+                        entityFileNameChunks = loadedFromMatch;
+                        entityMatchedDocIds = docIdsFromFilenameMatch;
+                    }
+                    else if (docIdsFromFilenameMatch.Count > 0)
+                    {
+                        var loadedWithTail = await LoadChunksFromEntityMatchedDocumentsAsync(
+                            docIdsFromFilenameMatch,
+                            Math.Max(searchMaxResults * 2, 50),
+                            cancellationToken);
+                        var existingIds = new HashSet<Guid>(entityFileNameChunks.Select(c => c.Id));
+                        var tailChunks = loadedWithTail.Where(c => !existingIds.Contains(c.Id)).ToList();
+                        entityFileNameChunks = entityFileNameChunks.Concat(tailChunks).ToList();
+                        entityMatchedDocIds = entityMatchedDocIds.Union(docIdsFromFilenameMatch).ToHashSet();
+                    }
                     
                     // For entity-matched documents, ensure longest header chunk (ChunkIndex 0) is included
                     var entityHeaderChunks = new List<DocumentChunk>();
@@ -759,6 +898,10 @@ namespace SmartRAG.Services.Document
                     if (mergedChunks.Count > 0 && (overlapChunks.Count > 0 || entityFileNameChunks.Count > 0 || mergedChunks.Count > chunks.Count))
                     {
                         chunks = mergedChunks;
+                        var entityChunkIds = new HashSet<Guid>(
+                            entityHeaderChunks.Concat(overlapChunks).Concat(entityFileNameChunks).Select(c => c.Id));
+                        if (entityChunkIds.Count > 0)
+                            entityChunkIdsFromComprehensive = entityChunkIds;
                     }
                 }
                 else
@@ -775,8 +918,47 @@ namespace SmartRAG.Services.Document
                     }
                 }
             }
+            else if (requiresComprehensive)
+            {
+                allDocuments = await EnsureAllDocumentsLoadedAsync(allDocuments, effectiveOptions, cancellationToken);
+                var potentialNames = QueryTokenizer.ExtractPotentialNames(queryForSearch);
+                var words = queryTokens ?? new List<string>();
+                var phraseWords = QueryTokenizer.GetWordsForPhraseExtraction(queryForSearch);
+                var docIdsFromFilenameMatch = GetEntityMatchedDocumentIds(allDocuments, words, potentialNames, phraseWords);
+                if (docIdsFromFilenameMatch.Count > 0)
+                {
+                    var entityChunks = await LoadChunksFromEntityMatchedDocumentsAsync(
+                        docIdsFromFilenameMatch,
+                        Math.Max(searchMaxResults * 2, 50),
+                        cancellationToken);
+                    var existingIds = new HashSet<Guid>(chunks.Select(c => c.Id));
+                    var newEntityChunks = entityChunks.Where(c => !existingIds.Contains(c.Id)).ToList();
+                    if (newEntityChunks.Count > 0)
+                    {
+                        var entityChunkScore = 150.0;
+                        foreach (var c in newEntityChunks)
+                        {
+                            c.RelevanceScore = entityChunkScore;
+                        }
+                        entityChunkIdsFromComprehensive = new HashSet<Guid>(newEntityChunks.Select(c => c.Id));
+                        chunks = _chunkPrioritizer.MergeChunksWithPreservedChunk0(
+                            newEntityChunks.Concat(chunks).ToList(),
+                            preservedChunk0);
+                    }
+                }
+            }
 
             chunks = _chunkPrioritizer.MergeChunksWithPreservedChunk0(chunks, preservedChunk0);
+
+            if (entityChunkIdsFromComprehensive != null && entityChunkIdsFromComprehensive.Count > 0)
+            {
+                foreach (var c in chunks.Where(c => entityChunkIdsFromComprehensive.Contains(c.Id)))
+                {
+                    var current = c.RelevanceScore ?? 0.0;
+                    if (current < DocumentBoostThreshold)
+                        c.RelevanceScore = DocumentBoostThreshold + 1.0;
+                }
+            }
 
             if (chunks.Count > 0)
             {
@@ -902,15 +1084,90 @@ namespace SmartRAG.Services.Document
 
             var potentialNamesForOrdering = QueryTokenizer.ExtractPotentialNames(queryForSearch);
             var entityHeaderChunkIds = GetEntityHeaderChunkIds(documentChunks, potentialNamesForOrdering);
+            var entityMatchedChunkIds = entityChunkIdsFromComprehensive ?? new HashSet<Guid>();
 
-            chunks = documentChunks
-                .OrderByDescending(c => entityHeaderChunkIds.Contains(c.Id))
+            // If we have entity-matched chunks from comprehensive search, restrict the
+            // primary document set to those documents. This guarantees that when the
+            // query clearly points to a specific entity (for example, a particular
+            // contract or policy identified via file name), the final context and
+            // answer are focused on that document instead of being diluted by
+            // unrelated documents from previous turns or generic matches.
+            if (entityMatchedChunkIds.Count > 0)
+            {
+                var entityMatchedDocumentIds = documentChunks
+                    .Where(c => entityMatchedChunkIds.Contains(c.Id))
+                    .Select(c => c.DocumentId)
+                    .Distinct()
+                    .ToHashSet();
+
+                if (entityMatchedDocumentIds.Count > 0)
+                {
+                    documentChunks = documentChunks
+                        .Where(c => entityMatchedDocumentIds.Contains(c.DocumentId))
+                        .ToList();
+
+                    // When the user query clearly targets a specific document (for example,
+                    // via strong file-name entity match), treat all chunks from that document
+                    // as highly relevant. This ensures that important structured fields such
+                    // as dates or validity periods that may appear in low-text / numeric
+                    // regions are still surfaced in the context window, rather than being
+                    // filtered out by adaptive thresholds that favor only text-heavy chunks.
+                    foreach (var c in documentChunks)
+                    {
+                        var currentScore = c.RelevanceScore ?? 0.0;
+                        if (currentScore < DocumentBoostThreshold)
+                        {
+                            c.RelevanceScore = DocumentBoostThreshold + 1.0;
+                        }
+                    }
+
+                    chunks = documentChunks
+                        .Concat(imageChunks)
+                        .ToList();
+                }
+            }
+
+            var orderedDocumentChunks = documentChunks
+                .OrderByDescending(c => entityMatchedChunkIds.Contains(c.Id))
+                .ThenByDescending(c => entityHeaderChunkIds.Contains(c.Id))
                 .ThenByDescending(c => originalChunkIds != null && originalChunkIds.Contains(c.Id))
                 .ThenByDescending(c => c.RelevanceScore ?? 0.0)
+                .ToList();
+
+            var finalQueryTokens = queryTokens ?? QueryTokenizer.TokenizeQuery(queryForSearch);
+            var finalPhraseWords = QueryTokenizer.GetWordsForPhraseExtraction(queryForSearch);
+            var reRankedDocumentChunks = _chunkPrioritizer.PrioritizeChunksByQueryWords(
+                orderedDocumentChunks,
+                finalQueryTokens,
+                finalPhraseWords);
+
+            chunks = reRankedDocumentChunks
                 .Concat(imageChunks
                     .OrderByDescending(c => originalChunkIds != null && originalChunkIds.Contains(c.Id))
                     .ThenByDescending(c => c.RelevanceScore ?? 0.0))
                 .ToList();
+
+            if (chunks.Count == 0)
+            {
+                var fallbackWords = QueryTokenizer.GetWordsForPhraseExtraction(queryForSearch)
+                    .Where(w => w.Length >= 4).ToList();
+                var fallbackDocs = await _documentService.GetAllDocumentsFilteredAsync(effectiveOptions, cancellationToken);
+                var filenameMatched = fallbackDocs
+                    .Where(d => fallbackWords.Any(w =>
+                        (d.FileName ?? string.Empty).IndexOf(w, StringComparison.OrdinalIgnoreCase) >= 0 ||
+                        (w.Length > 4 && Enumerable.Range(4, w.Length - 3).Any(len =>
+                            (d.FileName ?? string.Empty).IndexOf(w.Substring(0, len), StringComparison.OrdinalIgnoreCase) >= 0))))
+                    .ToList();
+                if (filenameMatched.Count > 0)
+                {
+                    var fallbackChunks = await LoadChunksFromEntityMatchedDocumentsAsync(
+                        filenameMatched.Select(d => d.Id).ToHashSet(),
+                        50,
+                        cancellationToken);
+                    if (fallbackChunks.Count > 0)
+                        chunks = fallbackChunks;
+                }
+            }
 
             var context = _contextExpansion.BuildLimitedContext(chunks, MaxContextSize);
 
@@ -929,9 +1186,14 @@ namespace SmartRAG.Services.Document
             if (overlapChunkIds != null)
                 foreach (var id in overlapChunkIds)
                     sourcesChunkIds.Add(id);
+            if (entityChunkIdsFromComprehensive != null)
+                foreach (var id in entityChunkIdsFromComprehensive)
+                    sourcesChunkIds.Add(id);
             var sourcesChunks = sourcesChunkIds.Count > 0
                 ? chunks.Where(c => sourcesChunkIds.Contains(c.Id)).ToList()
                 : chunks;
+            if (sourcesChunks.Count == 0 && chunks.Count > 0)
+                sourcesChunks = chunks;
 
             var sources = await _sourceBuilder.BuildSourcesAsync(sourcesChunks, _documentRepository);
             return _responseBuilder.CreateRagResponse(queryForSearch, answer, sources);
@@ -1156,10 +1418,168 @@ namespace SmartRAG.Services.Document
             return ids;
         }
 
+        private const int MinSingleWordLengthForFileNameMatch = 4;
+
+        private static HashSet<Guid> GetEntityMatchedDocumentIds(
+            List<Entities.Document> documents,
+            List<string> queryWords,
+            List<string> potentialNames,
+            List<string>? phraseWords)
+        {
+            if (documents == null || documents.Count == 0)
+                return new HashSet<Guid>();
+
+            var phrases = new List<(string W1, string W2)>();
+            if (potentialNames != null && potentialNames.Count >= 2)
+            {
+                for (int i = 0; i < potentialNames.Count - 1; i++)
+                {
+                    var w1 = potentialNames[i].ToLowerInvariant();
+                    var w2 = potentialNames[i + 1].ToLowerInvariant();
+                    if (w1.Length >= 1 && w2.Length >= 3)
+                        phrases.Add((w1, w2));
+                }
+            }
+            if (phraseWords != null && phraseWords.Count >= 2)
+            {
+                for (int i = 0; i < phraseWords.Count - 1; i++)
+                {
+                    var w1 = phraseWords[i].ToLowerInvariant();
+                    var w2 = phraseWords[i + 1].ToLowerInvariant();
+                    if (w1.Length >= 1 && w2.Length >= 3)
+                        phrases.Add((w1, w2));
+                }
+            }
+            if (queryWords != null && queryWords.Count >= 2)
+            {
+                for (int i = 0; i < queryWords.Count - 1; i++)
+                {
+                    var w1 = queryWords[i].ToLowerInvariant();
+                    var w2 = queryWords[i + 1].ToLowerInvariant();
+                    if (w1.Length >= 1 && w2.Length >= 3)
+                        phrases.Add((w1, w2));
+                }
+            }
+            phrases = phrases.Distinct().ToList();
+
+            var singleWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (phraseWords != null)
+            {
+                foreach (var w in phraseWords)
+                {
+                    var lower = w.ToLowerInvariant();
+                    if (lower.Length >= MinSingleWordLengthForFileNameMatch)
+                        singleWords.Add(lower);
+                }
+            }
+            if (queryWords != null)
+            {
+                foreach (var w in queryWords)
+                {
+                    var lower = w.ToLowerInvariant();
+                    if (lower.Length >= MinSingleWordLengthForFileNameMatch)
+                        singleWords.Add(lower);
+                }
+            }
+
+            var result = new HashSet<Guid>();
+            foreach (var doc in documents)
+            {
+                var fn = (doc.FileName ?? string.Empty).ToLowerInvariant();
+                if (string.IsNullOrWhiteSpace(fn))
+                    continue;
+
+                var phraseMatch = phrases.Count > 0 && phrases.Any(p =>
+                {
+                    if (fn.IndexOf(p.W1, StringComparison.OrdinalIgnoreCase) < 0)
+                        return false;
+                    if (fn.IndexOf(p.W2, StringComparison.OrdinalIgnoreCase) >= 0)
+                        return true;
+                    for (var len = Math.Min(4, p.W2.Length); len < p.W2.Length; len++)
+                    {
+                        var prefix = p.W2.Substring(0, len);
+                        if (fn.IndexOf(prefix, StringComparison.OrdinalIgnoreCase) >= 0)
+                            return true;
+                    }
+                    return false;
+                });
+
+                var singleWordMatch = singleWords.Count > 0 && singleWords.Any(word =>
+                {
+                    if (fn.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0)
+                        return true;
+                    for (var len = MinSingleWordLengthForFileNameMatch; len < word.Length; len++)
+                    {
+                        var prefix = word.Substring(0, len);
+                        if (fn.IndexOf(prefix, StringComparison.OrdinalIgnoreCase) >= 0)
+                            return true;
+                    }
+                    return false;
+                });
+
+                if (phraseMatch || singleWordMatch)
+                    result.Add(doc.Id);
+            }
+            return result;
+        }
+
+        private const int EntityDocTailChunkCount = 25;
+
+        private async Task<List<DocumentChunk>> LoadChunksFromEntityMatchedDocumentsAsync(
+            HashSet<Guid> documentIds,
+            int maxChunks,
+            CancellationToken cancellationToken)
+        {
+            if (documentIds == null || documentIds.Count == 0)
+                return new List<DocumentChunk>();
+
+            var result = new List<DocumentChunk>();
+            var seenIds = new HashSet<Guid>();
+            foreach (var docId in documentIds)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var doc = await _documentRepository.GetByIdAsync(docId, cancellationToken);
+                if (doc?.Chunks == null || doc.Chunks.Count == 0)
+                    continue;
+
+                var ordered = doc.Chunks
+                    .OrderBy(c => c.ChunkIndex)
+                    .ToList();
+
+                var headerChunks = ordered
+                    .Where(c => c.ChunkIndex <= 2 || c.ChunkIndex < 0)
+                    .OrderBy(c => c.ChunkIndex)
+                    .ThenByDescending(c => c.Content?.Length ?? 0)
+                    .ToList();
+                var restChunks = ordered
+                    .Where(c => c.ChunkIndex > 2)
+                    .ToList();
+
+                var headLimit = Math.Max(0, maxChunks - EntityDocTailChunkCount);
+                var headChunks = headerChunks.Concat(restChunks).Take(headLimit).ToList();
+                var tailChunks = restChunks.Count > EntityDocTailChunkCount
+                    ? restChunks.Skip(restChunks.Count - EntityDocTailChunkCount).ToList()
+                    : new List<DocumentChunk>();
+
+                foreach (var c in headChunks.Concat(tailChunks))
+                {
+                    if (seenIds.Contains(c.Id))
+                        continue;
+                    seenIds.Add(c.Id);
+                    result.Add(c);
+                    if (result.Count >= maxChunks)
+                        break;
+                }
+                if (result.Count >= maxChunks)
+                    break;
+            }
+            return result.Take(maxChunks).ToList();
+        }
+
         /// <summary>
         /// Returns chunks from documents whose filename matches query-derived phrases (potentialNames, queryWords, or phraseWords).
+        /// Also matches single significant words with prefix matching for morphological variants.
         /// Header chunks (index 0-2) are prioritized, then remaining chunks by relevance score.
-        /// Uses prefix matching for second word to handle morphological variants across languages.
         /// </summary>
         private static List<DocumentChunk> GetEntityFileNameChunks(List<DocumentChunk> chunks, List<string> queryWords, List<string> potentialNames, List<string>? phraseWords = null)
         {
@@ -1200,13 +1620,34 @@ namespace SmartRAG.Services.Document
                 }
             }
             phrases = phrases.Distinct().ToList();
-            if (phrases.Count == 0)
-                return new List<DocumentChunk>();
+
+            var singleWords = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            if (phraseWords != null)
+            {
+                foreach (var w in phraseWords)
+                {
+                    var lower = w.ToLowerInvariant();
+                    if (lower.Length >= MinSingleWordLengthForFileNameMatch)
+                        singleWords.Add(lower);
+                }
+            }
+            if (queryWords != null)
+            {
+                foreach (var w in queryWords)
+                {
+                    var lower = w.ToLowerInvariant();
+                    if (lower.Length >= MinSingleWordLengthForFileNameMatch)
+                        singleWords.Add(lower);
+                }
+            }
 
             foreach (var c in chunks)
             {
                 var fn = (c.FileName ?? string.Empty).ToLowerInvariant();
-                var matches = phrases.Any(p =>
+                if (string.IsNullOrWhiteSpace(fn))
+                    continue;
+
+                var phraseMatch = phrases.Count > 0 && phrases.Any(p =>
                 {
                     if (fn.IndexOf(p.W1, StringComparison.OrdinalIgnoreCase) < 0)
                         return false;
@@ -1220,7 +1661,21 @@ namespace SmartRAG.Services.Document
                     }
                     return false;
                 });
-                if (matches)
+
+                var singleWordMatch = singleWords.Count > 0 && singleWords.Any(word =>
+                {
+                    if (fn.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0)
+                        return true;
+                    for (var len = MinSingleWordLengthForFileNameMatch; len < word.Length; len++)
+                    {
+                        var prefix = word.Substring(0, len);
+                        if (fn.IndexOf(prefix, StringComparison.OrdinalIgnoreCase) >= 0)
+                            return true;
+                    }
+                    return false;
+                });
+
+                if (phraseMatch || singleWordMatch)
                     entityFileNameChunks.Add(c);
             }
             var deduped = entityFileNameChunks.GroupBy(c => c.Id).Select(g => g.First()).ToList();

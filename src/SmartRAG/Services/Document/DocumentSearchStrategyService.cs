@@ -306,6 +306,7 @@ namespace SmartRAG.Services.Document
             var potentialNamesLower = potentialNames.Select(n => n.ToLowerInvariant()).ToList();
             var fileNamePhrases = GetTwoWordPhrasesFromQuery(queryWordsLower, phraseWords);
 
+            const int MinPrefixLengthForFileName = 4;
             var matchingChunks = allChunks.Where(chunk =>
             {
                 var searchableText = string.Concat(chunk.Content ?? string.Empty, " ", chunk.FileName ?? string.Empty).ToLowerInvariant();
@@ -313,6 +314,14 @@ namespace SmartRAG.Services.Document
 
                 var hasFileNamePhraseMatch = fileNamePhrases.Count > 0 && fileNamePhrases.Any(p => fileNameLower.Contains(p));
                 if (hasFileNamePhraseMatch)
+                    return true;
+
+                var hasFileNamePrefixMatch = queryWordsLower.Any(word =>
+                    word.Length >= MinPrefixLengthForFileName &&
+                    (fileNameLower.Contains(word) ||
+                     Enumerable.Range(MinPrefixLengthForFileName, Math.Max(0, word.Length - MinPrefixLengthForFileName))
+                         .Any(len => fileNameLower.Contains(word.Substring(0, len)))));
+                if (hasFileNamePrefixMatch)
                     return true;
 
                 var matchCount = queryWordsLower.Count(word => searchableText.Contains(word));
@@ -354,6 +363,14 @@ namespace SmartRAG.Services.Document
 
                 if (fileNamePhrases.Count > 0 && fileNamePhrases.Any(p => fileNameLower.Contains(p)))
                     score += 60.0;
+
+                var hasFileNamePrefixMatch = queryWordsLower.Any(word =>
+                    word.Length >= MinPrefixLengthForFileName &&
+                    (fileNameLower.Contains(word) ||
+                     Enumerable.Range(MinPrefixLengthForFileName, Math.Max(0, word.Length - MinPrefixLengthForFileName))
+                         .Any(len => fileNameLower.Contains(word.Substring(0, len)))));
+                if (hasFileNamePrefixMatch)
+                    score += 55.0;
 
                 if (potentialNamesLower.Count >= 2)
                 {
@@ -423,6 +440,7 @@ namespace SmartRAG.Services.Document
                 }
             }
 
+            const int MinPrefixLen = 4;
             var matchingChunks = chunksWithContent.Where(chunk =>
             {
                 var searchableText = string.Concat(chunk.Content ?? string.Empty, " ", chunk.FileName ?? string.Empty).ToLowerInvariant();
@@ -432,6 +450,14 @@ namespace SmartRAG.Services.Document
                 var fileNameLower = (chunk.FileName ?? string.Empty).ToLowerInvariant();
                 var hasFileNamePhraseMatch = fileNamePhrases.Count > 0 && fileNamePhrases.Any(p => fileNameLower.Contains(p));
                 if (hasFileNamePhraseMatch)
+                    return true;
+
+                var hasFileNamePrefixMatch = queryWordsLower.Any(word =>
+                    word.Length >= MinPrefixLen &&
+                    (fileNameLower.Contains(word) ||
+                     Enumerable.Range(MinPrefixLen, Math.Max(0, word.Length - MinPrefixLen))
+                         .Any(len => fileNameLower.Contains(word.Substring(0, len)))));
+                if (hasFileNamePrefixMatch)
                     return true;
 
                 var hasCriticalPhrase = criticalPhrases.Count > 0 && criticalPhrases.Any(phrase => searchableText.Contains(phrase));
