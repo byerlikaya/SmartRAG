@@ -1,7 +1,11 @@
+#nullable enable
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Qdrant.Client;
+using Qdrant.Client.Grpc;
 using SmartRAG.Entities;
+using SmartRAG.Extensions;
 using SmartRAG.Helpers;
 using SmartRAG.Interfaces.Storage.Qdrant;
 using SmartRAG.Models;
@@ -19,7 +23,8 @@ namespace SmartRAG.Services.Storage.Qdrant
     /// </summary>
     public class QdrantSearchService : IQdrantSearchService, IDisposable
     {
-        private const double DefaultTextSearchScore = 0.5;
+        private const double DefaultTextSearchScore = 70.0;
+        private const double TextSearchScorePerMatch = 8.0;
 
         private readonly QdrantClient _client;
         private readonly QdrantConfig _config;
@@ -207,66 +212,71 @@ namespace SmartRAG.Services.Storage.Qdrant
                 {
                     try
                     {
-                        var scrollResult = await _client.ScrollAsync(collectionName, limit: 1000, cancellationToken: cancellationToken);
-
-                        foreach (var point in scrollResult.Result)
+                        PointId? nextOffset = null;
+                        do
                         {
-                            var payload = point.Payload;
-                            if (payload != null)
+                            var scrollResult = await _client.ScrollAsync(collectionName, offset: nextOffset, limit: 1000, cancellationToken: cancellationToken);
+
+                            foreach (var point in scrollResult.Result)
                             {
-                                var content = GetPayloadString(payload, "content");
-                                var docId = GetPayloadString(payload, "documentId");
-                                var chunkIndex = GetPayloadString(payload, "chunkIndex");
-                                var documentType = GetPayloadString(payload, "documentType");
-                                var chunkIdStr = GetPayloadString(payload, "chunkId");
-                                var fileName = GetPayloadString(payload, "fileName");
-
-                                if (!string.IsNullOrEmpty(content) && !string.IsNullOrEmpty(docId) && !string.IsNullOrEmpty(chunkIndex))
+                                var payload = point.Payload;
+                                if (payload != null)
                                 {
-                                    if (string.IsNullOrWhiteSpace(documentType))
-                                        documentType = "Document";
+                                    var content = GetPayloadString(payload, "content");
+                                    var docId = GetPayloadString(payload, "documentId");
+                                    var chunkIndex = GetPayloadString(payload, "chunkIndex");
+                                    var documentType = GetPayloadString(payload, "documentType");
+                                    var chunkIdStr = GetPayloadString(payload, "chunkId");
+                                    var fileName = GetPayloadString(payload, "fileName");
 
-                                    var searchableText = string.Concat(content, " ", fileName ?? string.Empty).ToLowerInvariant();
-                                    var fileNameLower = (fileName ?? string.Empty).ToLowerInvariant();
-                                    var matchCount = searchTerms.Count(term => searchableText.Contains(term));
-                                    var hasFileNamePhraseMatch = fileNamePhrases.Count > 0 && fileNamePhrases.Any(p => fileNameLower.Contains(p));
-
-                                    if (matchCount >= minMatchCount || hasFileNamePhraseMatch)
+                                    if (!string.IsNullOrEmpty(content) && !string.IsNullOrEmpty(docId) && !string.IsNullOrEmpty(chunkIndex))
                                     {
-                                        Guid chunkId;
-                                        if (!string.IsNullOrWhiteSpace(chunkIdStr) && Guid.TryParse(chunkIdStr, out var parsedChunkId))
-                                        {
-                                            chunkId = parsedChunkId;
-                                        }
-                                        else
-                                        {
-                                            chunkId = Guid.NewGuid();
-                                        }
+                                        if (string.IsNullOrWhiteSpace(documentType))
+                                            documentType = "Document";
 
-                                        var score = DefaultTextSearchScore + (matchCount * 0.1);
-                                        var chunk = new DocumentChunk
+                                        var searchableNormalized = string.Concat(content, " ", fileName ?? string.Empty).NormalizeForOcrTolerantMatch();
+                                        var fileNameLower = (fileName ?? string.Empty).ToLowerInvariant();
+                                        var matchCount = searchTerms.Count(term =>
                                         {
-                                            Id = chunkId,
-                                            DocumentId = Guid.Parse(docId),
-                                            FileName = fileName ?? string.Empty,
-                                            Content = content,
-                                            ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
-                                            RelevanceScore = score,
-                                            StartPosition = 0,
-                                            EndPosition = content.Length,
-                                            DocumentType = documentType
-                                        };
-                                        relevantChunks.Add(chunk);
+                                            var normalizedTerm = term.NormalizeForOcrTolerantMatch();
+                                            return !string.IsNullOrEmpty(normalizedTerm) &&
+                                                searchableNormalized.IndexOf(normalizedTerm, StringComparison.Ordinal) >= 0;
+                                        });
+                                        var hasFileNamePhraseMatch = fileNamePhrases.Count > 0 && fileNamePhrases.Any(p => fileNameLower.Contains(p));
 
-                                        if (relevantChunks.Count >= maxResults * 2)
-                                            break;
+                                        if (matchCount >= minMatchCount || hasFileNamePhraseMatch)
+                                        {
+                                            Guid chunkId;
+                                            if (!string.IsNullOrWhiteSpace(chunkIdStr) && Guid.TryParse(chunkIdStr, out var parsedChunkId))
+                                            {
+                                                chunkId = parsedChunkId;
+                                            }
+                                            else
+                                            {
+                                                chunkId = Guid.NewGuid();
+                                            }
+
+                                            var score = DefaultTextSearchScore + (matchCount * TextSearchScorePerMatch);
+                                            var chunk = new DocumentChunk
+                                            {
+                                                Id = chunkId,
+                                                DocumentId = Guid.Parse(docId),
+                                                FileName = fileName ?? string.Empty,
+                                                Content = content,
+                                                ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
+                                                RelevanceScore = score,
+                                                StartPosition = 0,
+                                                EndPosition = content.Length,
+                                                DocumentType = documentType
+                                            };
+                                            relevantChunks.Add(chunk);
+                                        }
                                     }
                                 }
                             }
-                        }
-
-                        if (relevantChunks.Count >= maxResults * 2)
-                            break;
+                            
+                            nextOffset = scrollResult.NextPageOffset;
+                        } while (nextOffset != null);
                     }
                     catch (Exception ex)
                     {

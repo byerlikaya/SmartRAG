@@ -349,6 +349,10 @@ body {
 .sr-chat-sidebar {
     border-right: 1px solid var(--sr-border);
     padding-right: 1rem;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .sr-chat-sidebar-header {
@@ -358,6 +362,7 @@ body {
     gap: 0.5rem;
     margin-bottom: 0.75rem;
     flex-wrap: wrap;
+    flex-shrink: 0;
 }
 
 .sr-chat-sidebar-title {
@@ -412,11 +417,14 @@ body {
 }
 
 .sr-chat-conversation-list {
-    max-height: 100%;
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
+    overflow-x: hidden;
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
+    -webkit-overflow-scrolling: touch;
 }
 
 .sr-chat-conversation-item {
@@ -1443,8 +1451,7 @@ body {
         padding-top: calc(var(--sr-nav-height) + 2rem);
         transform: translateX(-100%);
         transition: transform 0.2s ease;
-        overflow-y: auto;
-        overflow-x: hidden;
+        overflow: hidden;
         box-shadow: var(--sr-shadow-md);
     }
 

@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces.Database;
 using SmartRAG.Interfaces.Document;
+using SmartRAG.Helpers;
 using SmartRAG.Models;
 using SmartRAG.Models.RequestResponse;
 using System;
@@ -222,7 +223,7 @@ namespace SmartRAG.Services.Document
             if (documentResponse != null)
                 return documentResponse;
 
-            return await _responseBuilder.CreateFallbackResponseAsync(request.Query, request.ConversationHistory, cancellationToken);
+            return _responseBuilder.CreateRagResponse(request.Query, SmartRAG.Helpers.RagMessages.NoDocumentContext, new List<SearchSource>());
         }
 
         /// <summary>
@@ -312,14 +313,14 @@ namespace SmartRAG.Services.Document
                     QueryTokens = request.QueryTokens
                 };
                 var ragResponse = await _ragAnswerGenerator.Value.GenerateBasicRagAnswerAsync(ragRequest, cancellationToken);
-                var hasDocumentSources = ragResponse.Sources?.Any(s => s.SourceType == "Document" && !string.IsNullOrWhiteSpace(s.RelevantContent)) ?? false;
+                var hasDocumentSources = ragResponse.Sources?.Any(s => SearchSourceHelper.HasContentBearingSource(s) && !string.IsNullOrWhiteSpace(s.RelevantContent)) ?? false;
                 if (hasDocumentSources || !string.IsNullOrWhiteSpace(ragResponse.Answer))
                 {
                     return ragResponse;
                 }
             }
 
-            return await _responseBuilder.CreateFallbackResponseAsync(request.Query, request.ConversationHistory, cancellationToken);
+            return _responseBuilder.CreateRagResponse(request.Query, SmartRAG.Helpers.RagMessages.NoDocumentContext, new List<SearchSource>());
         }
 
         /// <summary>

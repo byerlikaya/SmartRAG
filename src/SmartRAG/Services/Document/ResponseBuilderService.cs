@@ -76,7 +76,12 @@ namespace SmartRAG.Services.Document
             }
             
             var cleanedAnswer = StripNoAnswerFoundTokenAndMetaCommentary(validatedAnswer);
-            
+
+            if (string.IsNullOrWhiteSpace(cleanedAnswer) && !string.IsNullOrWhiteSpace(query))
+            {
+                cleanedAnswer = SmartRAG.Helpers.RagMessages.NoDocumentContext;
+            }
+
             return new RagResponse
             {
                 Query = query,

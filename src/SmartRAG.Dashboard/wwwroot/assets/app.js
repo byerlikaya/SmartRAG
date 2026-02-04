@@ -553,6 +553,7 @@
             appendChatMessage('assistant', 'Error: ' + (err.message || 'Request failed'));
         }).finally(function () {
             setChatPending(false);
+            if (input) input.focus();
         });
     }
 

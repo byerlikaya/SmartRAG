@@ -52,7 +52,8 @@ namespace SmartRAG.Services.Document
             var wordsForFileNameMatch = (phraseWords != null && phraseWords.Count > 0) ? phraseWords : queryWords;
 
             return chunks
-                .OrderByDescending(c =>
+                .OrderByDescending(c => c.RelevanceScore ?? 0.0)  // Primary: Preserve RRF/keyword fallback scores
+                .ThenByDescending(c =>
                 {
                     var contentLower = c.Content?.ToLowerInvariant() ?? string.Empty;
                     var fileNameLower = c.FileName?.ToLowerInvariant() ?? string.Empty;
@@ -73,7 +74,6 @@ namespace SmartRAG.Services.Document
 
                     return wordMatchCount + fileNamePhraseBonus + fileNameSingleWordBonus;
                 })
-                .ThenByDescending(c => c.RelevanceScore ?? 0.0)
                 .ThenBy(c => c.ChunkIndex)
                 .ToList();
         }

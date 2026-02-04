@@ -314,7 +314,7 @@ namespace SmartRAG.Providers
             var embeddingEndpoint = GetEmbeddingEndpoint(config);
 
             using var client = CreateHttpClient(config.ApiKey);
-            string paramName = embeddingEndpoint.Contains("/api/embeddings") ? "prompt" : "input";
+            string paramName = IsOllamaNativeEmbedEndpoint(embeddingEndpoint) ? "input" : "prompt";
 
             var payload = new Dictionary<string, object>
             {
@@ -347,6 +347,16 @@ namespace SmartRAG.Providers
         private static bool IsMessagesFormat(string endpoint)
         {
             return endpoint.Contains("/chat") || endpoint.Contains("messages") || endpoint.Contains("completions");
+        }
+
+        /// <summary>
+        /// Ollama native /api/embed uses "input"; OpenAI-compatible /api/embeddings uses "prompt".
+        /// </summary>
+        private static bool IsOllamaNativeEmbedEndpoint(string endpoint)
+        {
+            return !string.IsNullOrEmpty(endpoint) &&
+                endpoint.Contains("/api/embed", StringComparison.OrdinalIgnoreCase) &&
+                !endpoint.Contains("/api/embeddings", StringComparison.OrdinalIgnoreCase);
         }
 
         /// <summary>

@@ -555,7 +555,7 @@ namespace SmartRAG.Services.Document.Parsers
         /// 4. Fixing replacement characters () by attempting to decode using common encodings
         /// 5. Removing invalid Unicode characters
         /// 
-        /// This approach is generic and works for all alphabets (Latin, Cyrillic, Arabic, Chinese, Japanese, Korean, etc.)
+        /// This approach is generic and works for all alphabets and writing systems
         /// without requiring language-specific character mappings.
         /// </summary>
         private string FixPdfTextEncoding(string text)
@@ -657,9 +657,8 @@ namespace SmartRAG.Services.Document.Parsers
         }
 
         /// <summary>
-        /// Fixes PDF font encoding issues where dotless i (ı U+0131) is extracted as o with tilde (õ U+00F5)
-        /// or copyright symbol (© U+00A9). Only applies when the text contains other extended-Latin
-        /// characters that indicate the document uses a Latin script where õ/© are not valid in word context.
+        /// Fixes PDF font encoding issues where U+0131 is incorrectly extracted as U+00F5 or U+00A9.
+        /// Only applies when the text contains Latin Extended characters indicating encoding mismatch.
         /// </summary>
         private static string FixOWithTildeAsDotlessI(string text)
         {
@@ -670,9 +669,7 @@ namespace SmartRAG.Services.Document.Parsers
             const char copyrightSymbol = '\u00A9';
             const char dotlessI = '\u0131';
 
-            var hasIndicativeChars = text.IndexOf('\u011F') >= 0 || text.IndexOf('\u015F') >= 0 ||
-                                     text.IndexOf('\u00FC') >= 0 || text.IndexOf('\u00F6') >= 0 ||
-                                     text.IndexOf('\u00E7') >= 0 || text.IndexOf('\u0131') >= 0;
+            var hasIndicativeChars = text.Any(c => c >= '\u0100' && c <= '\u024F');
 
             if (!hasIndicativeChars)
                 return text;
