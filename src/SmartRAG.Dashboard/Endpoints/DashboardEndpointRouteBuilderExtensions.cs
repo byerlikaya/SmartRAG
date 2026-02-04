@@ -310,18 +310,14 @@ public static class DashboardEndpointRouteBuilderExtensions
                     })
                     .ToList();
 
-                if (sources.Count > 0)
+                try
                 {
-                    try
-                    {
-                        await conversationManager
-                            .AddSourcesForLastTurnAsync(sessionId, JsonSerializer.Serialize(sources), cancellationToken)
-                            .ConfigureAwait(false);
-                    }
-                    catch
-                    {
-                        // Swallow sources storage errors
-                    }
+                    await conversationManager
+                        .AddSourcesForLastTurnAsync(sessionId, JsonSerializer.Serialize(sources), cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                catch
+                {
                 }
 
                 var response = new ChatMessageResponse
