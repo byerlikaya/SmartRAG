@@ -883,7 +883,7 @@ namespace SmartRAG.Services.Database
                     filterQuery = $"SELECT {string.Join(", ", selectColumns)} FROM {tableName} WHERE {descriptiveJoinColumn} IN ({idList})";
                 }
 
-                _logger.LogInformation("Retrying merge with filtered query: {Query}", filterQuery);
+                _logger.LogInformation("Retrying merge with filtered query");
 
                 var maxRows = descriptiveConnection.MaxRowsPerQuery > 0 ? descriptiveConnection.MaxRowsPerQuery : 100;
                 var filteredResult = await _databaseParser.ExecuteQueryAsync(
@@ -1064,7 +1064,7 @@ namespace SmartRAG.Services.Database
                             filterQuery = $"SELECT {string.Join(", ", selectColumns)} FROM {tableName} WHERE {targetJoinColumn} IN ({idList}) LIMIT 100";
                         }
 
-                        _logger.LogInformation("Executing filtered query for missing target database: {Query}", filterQuery);
+                        _logger.LogInformation("Executing filtered query for missing target database");
 
                         var maxRows = targetConnection.MaxRowsPerQuery > 0 ? targetConnection.MaxRowsPerQuery : 100;
                         var filteredResult = await _databaseParser.ExecuteQueryAsync(

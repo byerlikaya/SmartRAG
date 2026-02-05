@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using SmartRAG.Interfaces.Storage;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -10,6 +11,7 @@ namespace SmartRAG.Repositories
     public class InMemoryConversationRepository : IConversationRepository
     {
         private readonly Dictionary<string, string> _conversations = new Dictionary<string, string>();
+        private readonly Dictionary<string, List<string>> _sourcesBySession = new Dictionary<string, List<string>>();
         private readonly object _lock = new object();
 
         private const int MaxConversationLength = 2000;
@@ -72,9 +74,42 @@ namespace SmartRAG.Repositories
             lock (_lock)
             {
                 _conversations.Remove(sessionId);
+                _sourcesBySession.Remove(sessionId);
             }
 
             return Task.CompletedTask;
+        }
+
+        public Task AppendSourcesForTurnAsync(string sessionId, string sourcesJson, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId))
+                return Task.CompletedTask;
+
+            lock (_lock)
+            {
+                if (!_sourcesBySession.TryGetValue(sessionId, out var list))
+                {
+                    list = new List<string>();
+                    _sourcesBySession[sessionId] = list;
+                }
+                list.Add(sourcesJson);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        public Task<string> GetSourcesForSessionAsync(string sessionId, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId))
+                return Task.FromResult(string.Empty);
+
+            lock (_lock)
+            {
+                if (!_sourcesBySession.TryGetValue(sessionId, out var list) || list.Count == 0)
+                    return Task.FromResult(string.Empty);
+                var arrayOfArrays = list.Select(s => JsonSerializer.Deserialize<JsonElement>(s)).ToList();
+                return Task.FromResult(JsonSerializer.Serialize(arrayOfArrays));
+            }
         }
 
         public Task<bool> SessionExistsAsync(string sessionId, CancellationToken cancellationToken = default)
@@ -106,8 +141,17 @@ namespace SmartRAG.Repositories
             lock (_lock)
             {
                 _conversations.Clear();
+                _sourcesBySession.Clear();
             }
             return Task.CompletedTask;
+        }
+
+        public Task<string[]> GetAllSessionIdsAsync(CancellationToken cancellationToken = default)
+        {
+            lock (_lock)
+            {
+                return Task.FromResult(_conversations.Keys.ToArray());
+            }
         }
 
         private void CleanupOldSessions()

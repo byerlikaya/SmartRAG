@@ -15,8 +15,9 @@ namespace SmartRAG.Interfaces.Document
         /// </summary>
         /// <param name="chunks">List of chunks to prioritize</param>
         /// <param name="queryWords">List of query words to match</param>
+        /// <param name="phraseWords">Optional words for phrase extraction including short tokens filtered by TokenizeQuery</param>
         /// <returns>Prioritized list of chunks</returns>
-        List<DocumentChunk> PrioritizeChunksByQueryWords(List<DocumentChunk> chunks, List<string> queryWords);
+        List<DocumentChunk> PrioritizeChunksByQueryWords(List<DocumentChunk> chunks, List<string> queryWords, List<string>? phraseWords = null);
 
         /// <summary>
         /// Prioritizes chunks by relevance score

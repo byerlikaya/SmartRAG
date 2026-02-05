@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <base href="{{BASE_PATH}}" />
+    <title>SmartRAG Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="./assets/app.css" />
+</head>
+<body>
+    <header class="sr-nav">
+        <div class="sr-nav-brand">
+            <img src="./assets/logo.png" alt="SmartRAG" class="sr-logo" width="32" height="32" />
+            <span class="sr-brand-text">SmartRAG</span>
+        </div>
+        <nav class="sr-nav-menu">
+            <button type="button" class="sr-nav-item sr-nav-item-active" data-view="chat" aria-current="page">Chat</button>
+            <button type="button" class="sr-nav-item" data-view="documents">Documents</button>
+            <button type="button" class="sr-nav-item" data-view="settings">Settings</button>
+            <button type="button" class="sr-nav-item sr-theme-toggle" id="sr-theme-toggle" aria-label="Toggle theme"></button>
+        </nav>
+    </header>
+
+    <main class="sr-main">
+        <section class="sr-view sr-view-documents sr-view-hidden" id="sr-view-documents">
+            <div class="sr-card">
+                <div class="sr-card-header">
+                    <div>
+                        <h2 class="sr-card-title">Documents</h2>
+                        <div class="sr-doc-tabs">
+                            <button type="button" class="sr-doc-tab sr-doc-tab-active" data-doc-tab="user" aria-current="page">Files</button>
+                            <button type="button" class="sr-doc-tab" data-doc-tab="schemas">DB Schemas</button>
+                        </div>
+                    </div>
+                    <div class="sr-doc-summaries">
+                        <p class="sr-doc-summary" id="sr-doc-summary-user">Loading...</p>
+                        <p class="sr-doc-summary sr-doc-summary-hidden" id="sr-doc-summary-schemas">Loading...</p>
+                    </div>
+                </div>
+                <div class="sr-upload-area">
+                    <div class="sr-file-input-wrap">
+                        <label for="sr-file-input" class="sr-btn sr-btn-secondary sr-file-input-btn">Choose file</label>
+                        <input type="file" id="sr-file-input" accept="" class="sr-file-input" aria-label="Choose file to upload" />
+                    </div>
+                    <input type="text" id="sr-selected-file-name" class="sr-selected-file-name" readonly placeholder="No file chosen" value="" aria-label="Selected file name" />
+                    <button type="button" id="sr-upload-btn" class="sr-btn sr-btn-primary">Upload</button>
+                    <span class="sr-upload-status" id="sr-upload-status"></span>
+                </div>
+                <div class="sr-table-wrap" id="sr-doc-table-wrap-user">
+                    <table class="sr-doc-table" id="sr-doc-table-user">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>File Type</th>
+                                <th>Collection</th>
+                                <th>Size</th>
+                                <th>Uploaded</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="sr-doc-tbody-user"></tbody>
+                    </table>
+                </div>
+                <div class="sr-table-wrap sr-doc-table-wrap-hidden" id="sr-doc-table-wrap-schemas">
+                    <table class="sr-doc-table" id="sr-doc-table-schemas">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>DB Type</th>
+                                <th>Collection</th>
+                                <th>Size</th>
+                                <th>Uploaded</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody id="sr-doc-tbody-schemas"></tbody>
+                    </table>
+                </div>
+                <div class="sr-card-actions">
+                    <div class="sr-card-actions-left">
+                        <button type="button" class="sr-btn sr-btn-secondary" id="sr-refresh-btn">Refresh</button>
+                    </div>
+                    <div class="sr-card-actions-right">
+                        <button type="button" class="sr-btn sr-btn-danger" id="sr-doc-clear-all">Delete All</button>
+                    </div>
+                </div>
+                <div class="sr-doc-details" id="sr-doc-details">
+                    <div class="sr-doc-details-inner">
+                        <div class="sr-doc-details-header">
+                            <div>
+                                <h3 class="sr-doc-details-title" id="sr-doc-details-title">Document details</h3>
+                                <p class="sr-doc-details-subtitle" id="sr-doc-details-subtitle"></p>
+                            </div>
+                            <button type="button" class="sr-btn sr-btn-secondary sr-doc-details-close-btn" id="sr-doc-details-close">Close</button>
+                        </div>
+                        <div class="sr-doc-chunks" id="sr-doc-chunks"></div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="sr-view sr-view-chat" id="sr-view-chat">
+            <div class="sr-card sr-card-chat">
+                <div class="sr-chat-layout" id="sr-chat-layout">
+                    <aside class="sr-chat-sidebar" id="sr-chat-sidebar">
+                        <button type="button" id="sr-chat-sidebar-close-mobile" class="sr-chat-sidebar-close-mobile" aria-label="Close conversations panel">×</button>
+                        <div class="sr-chat-sidebar-header">
+                            <span class="sr-chat-sidebar-title">Conversations</span>
+                            <div class="sr-chat-sidebar-actions">
+                                <button type="button" id="sr-chat-new" class="sr-btn sr-btn-secondary sr-chat-sidebar-btn sr-chat-new-btn">New</button>
+                                <button type="button" id="sr-chat-clear-all" class="sr-btn sr-btn-danger sr-chat-sidebar-btn sr-chat-clear-btn">Clear All</button>
+                                <button type="button" id="sr-chat-sidebar-close" class="sr-btn sr-btn-secondary sr-chat-sidebar-close-btn" aria-label="Close conversations">Close</button>
+                            </div>
+                        </div>
+                        <div class="sr-chat-conversation-list" id="sr-chat-conversations"></div>
+                    </aside>
+                    <div class="sr-chat-sidebar-backdrop" id="sr-chat-sidebar-backdrop" aria-hidden="true"></div>
+                    <section class="sr-chat-main">
+                        <div class="sr-chat-header">
+                            <button type="button" class="sr-chat-sidebar-toggle" id="sr-chat-sidebar-toggle" aria-label="Open conversations list">
+                                <span class="sr-chat-sidebar-toggle-icon" aria-hidden="true"><span class="sr-chat-sidebar-toggle-icon-lines"></span></span>
+                                <span class="sr-chat-sidebar-toggle-text">Conversations</span>
+                            </button>
+                            <h2 class="sr-card-title">Chat</h2>
+                            <span class="sr-model-badge" id="sr-model-badge">Loading...</span>
+                        </div>
+                        <div class="sr-chat-header-meta">
+                            <div class="sr-chat-meta-row sr-chat-meta-session">
+                                <span class="sr-chat-meta-label">Session</span>
+                                <span id="sr-chat-session-id" class="sr-chat-session-chip" aria-live="polite" title="">—</span>
+                                <button type="button" id="sr-chat-session-copy" class="sr-btn sr-btn-secondary sr-chat-session-copy-btn" title="Copy session ID" aria-label="Copy session ID" style="display: none;"><span class="sr-copy-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></span></button>
+                            </div>
+                            <div class="sr-chat-meta-row sr-chat-meta-updated" id="sr-chat-last-updated-row" style="display: none;">
+                                <span class="sr-chat-meta-label">Last updated</span>
+                                <span id="sr-chat-last-updated" class="sr-chat-session-chip">—</span>
+                            </div>
+                            <div class="sr-chat-meta-row sr-chat-meta-features" id="sr-chat-meta">
+                                <span class="sr-chat-meta-label">Features</span>
+                                <div class="sr-chat-feature-badges" id="sr-chat-features"></div>
+                            </div>
+                            <div class="sr-chat-meta-row sr-chat-meta-mcp" id="sr-chat-mcp-row">
+                                <div class="sr-chat-mcp" id="sr-chat-mcp"></div>
+                            </div>
+                        </div>
+                        <div class="sr-chat-messages" id="sr-chat-messages"></div>
+                        <div class="sr-source-details" id="sr-source-details">
+                            <div class="sr-source-details-inner">
+                                <div class="sr-source-details-header">
+                                    <div>
+                                        <h3 class="sr-source-details-title" id="sr-source-details-title">Source</h3>
+                                        <p class="sr-source-details-subtitle" id="sr-source-details-subtitle"></p>
+                                    </div>
+                                    <button type="button" class="sr-btn sr-btn-secondary sr-source-details-close-btn" id="sr-source-details-close">Close</button>
+                                </div>
+                                <div class="sr-source-details-body">
+                                    <div class="sr-doc-chunks sr-source-details-chunks" id="sr-source-details-chunks"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="sr-chat-flags-wrap" id="sr-chat-flags-wrap">
+                            <div class="sr-chat-flags-summary">
+                                <span class="sr-chat-flags-label">Query flags:</span>
+                                <span class="sr-chat-flags-list"><code>-d</code> documents, <code>-db</code> database, <code>-mcp</code> MCP, <code>-a</code> audio, <code>-i</code> image</span>
+                                <button type="button" class="sr-chat-flags-toggle" id="sr-chat-flags-toggle" aria-expanded="false" aria-controls="sr-chat-flags-detail" aria-label="Show query flags help">?</button>
+                            </div>
+                            <div class="sr-chat-flags-detail sr-chat-flags-detail-hidden" id="sr-chat-flags-detail" role="region" aria-label="Query flags help">
+                                <p class="sr-chat-flags-detail-p"><code>-d</code> — search documents only</p>
+                                <p class="sr-chat-flags-detail-p"><code>-db</code> — search database(s) only</p>
+                                <p class="sr-chat-flags-detail-p"><code>-mcp</code> — search MCP tools only</p>
+                                <p class="sr-chat-flags-detail-p"><code>-a</code> — search audio/transcripts only</p>
+                                <p class="sr-chat-flags-detail-p"><code>-i</code> — search images (OCR) only</p>
+                                <p class="sr-chat-flags-detail-note">Add the flag at the end of your message (e.g. <code>top customers -db</code>). Without flags, all enabled sources are used.</p>
+                            </div>
+                        </div>
+                        <div class="sr-chat-input-wrap" id="sr-chat-input-wrap">
+                            <textarea id="sr-chat-input" rows="2" placeholder="Type a message..." class="sr-chat-input"></textarea>
+                            <button type="button" id="sr-chat-send" class="sr-btn sr-btn-primary">Send</button>
+                        </div>
+                    </section>
+                </div>
+            </div>
+        </section>
+        <section class="sr-view sr-view-settings sr-view-hidden" id="sr-view-settings">
+            <div class="sr-card">
+                <div class="sr-card-header">
+                    <h2 class="sr-card-title">Settings</h2>
+                    <p class="sr-settings-subtitle">Configuration from appsettings (SmartRAG section)</p>
+                </div>
+                <div class="sr-settings-content" id="sr-settings-content">
+                    <p class="sr-settings-loading" id="sr-settings-loading">Loading...</p>
+                </div>
+            </div>
+        </section>
+    </main>
+    <script src="./assets/app.js"></script>
+</body>
+</html>

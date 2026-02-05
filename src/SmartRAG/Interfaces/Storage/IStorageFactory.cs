@@ -1,3 +1,4 @@
+using System;
 using SmartRAG.Enums;
 using SmartRAG.Interfaces.Document;
 
@@ -16,10 +17,12 @@ namespace SmartRAG.Interfaces.Storage
         StorageProvider GetCurrentProvider();
 
         /// <summary>
-        /// Gets the currently active repository instance
+        /// Gets the document repository for the current storage provider using the given scoped service provider.
+        /// Use this overload when resolving from a request scope so that scoped dependencies (e.g. IAIConfigurationService) can be resolved.
         /// </summary>
-        /// <returns>Currently active document repository instance</returns>
-        IDocumentRepository GetCurrentRepository();
+        /// <param name="scopedProvider">The request/scoped service provider.</param>
+        /// <returns>Document repository instance.</returns>
+        IDocumentRepository GetCurrentRepository(IServiceProvider scopedProvider);
 
         /// <summary>
         /// Gets the currently active conversation repository instance

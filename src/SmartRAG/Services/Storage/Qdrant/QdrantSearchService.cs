@@ -1,7 +1,12 @@
+#nullable enable
+
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Qdrant.Client;
+using Qdrant.Client.Grpc;
 using SmartRAG.Entities;
+using SmartRAG.Extensions;
+using SmartRAG.Helpers;
 using SmartRAG.Interfaces.Storage.Qdrant;
 using SmartRAG.Models;
 using System;
@@ -18,7 +23,8 @@ namespace SmartRAG.Services.Storage.Qdrant
     /// </summary>
     public class QdrantSearchService : IQdrantSearchService, IDisposable
     {
-        private const double DefaultTextSearchScore = 0.5;
+        private const double DefaultTextSearchScore = 70.0;
+        private const double TextSearchScorePerMatch = 8.0;
 
         private readonly QdrantClient _client;
         private readonly QdrantConfig _config;
@@ -89,9 +95,9 @@ namespace SmartRAG.Services.Storage.Qdrant
                 // Calculate per-collection limit: distribute maxResults across collections
                 // If single collection, use maxResults directly; otherwise divide evenly
                 var collectionCount = Math.Max(1, documentCollections.Count);
-                var perCollectionLimit = collectionCount == 1 
-                    ? maxResults 
-                    : Math.Max(10, (int)Math.Ceiling((double)maxResults / collectionCount));
+                var perCollectionLimit = collectionCount == 1
+                    ? maxResults
+                    : Math.Max(15, (int)Math.Ceiling((double)(maxResults * 2) / collectionCount));
 
                 foreach (var collectionName in documentCollections)
                 {
@@ -100,7 +106,7 @@ namespace SmartRAG.Services.Storage.Qdrant
                         var searchResults = await _client.SearchAsync(
                             collectionName: collectionName,
                             vector: queryEmbedding.ToArray(),
-                            limit: (ulong)Math.Max(20, perCollectionLimit),
+                            limit: (ulong)Math.Max(30, perCollectionLimit),
                             cancellationToken: cancellationToken
                         );
 
@@ -176,7 +182,22 @@ namespace SmartRAG.Services.Storage.Qdrant
         {
             try
             {
-                var queryLower = query.ToLowerInvariant();
+                var queryWords = QueryTokenizer.TokenizeQuery(query);
+                var queryWordsLower = queryWords.Select(w => w.ToLowerInvariant()).ToList();
+                var significantWords = queryWordsLower.Where(w => w.Length >= 4).ToList();
+                var searchTerms = significantWords.Count > 0 ? significantWords : queryWordsLower;
+                var minMatchCount = Math.Max(1, searchTerms.Count / 4);
+
+                var fileNamePhrases = new List<string>();
+                for (int i = 0; i < queryWordsLower.Count - 1; i++)
+                {
+                    var w1 = queryWordsLower[i];
+                    var w2 = queryWordsLower[i + 1];
+                    if (w1.Length >= 1 && w2.Length >= 3)
+                        fileNamePhrases.Add($"{w1} {w2}");
+                }
+                fileNamePhrases = fileNamePhrases.Distinct().Take(5).ToList();
+
                 var relevantChunks = new List<DocumentChunk>();
 
                 var collections = await _client.ListCollectionsAsync(cancellationToken);
@@ -191,63 +212,79 @@ namespace SmartRAG.Services.Storage.Qdrant
                 {
                     try
                     {
-                        var scrollResult = await _client.ScrollAsync(collectionName, limit: 1000, cancellationToken: cancellationToken);
-
-                        foreach (var point in scrollResult.Result)
+                        PointId? nextOffset = null;
+                        do
                         {
-                            var payload = point.Payload;
-                            if (payload != null)
+                            var scrollResult = await _client.ScrollAsync(collectionName, offset: nextOffset, limit: 1000, cancellationToken: cancellationToken);
+
+                            foreach (var point in scrollResult.Result)
                             {
-                                var content = GetPayloadString(payload, "content");
-                                var docId = GetPayloadString(payload, "documentId");
-                                var chunkIndex = GetPayloadString(payload, "chunkIndex");
-                                var documentType = GetPayloadString(payload, "documentType");
-                                var chunkIdStr = GetPayloadString(payload, "chunkId");
-                                var fileName = GetPayloadString(payload, "fileName");
-
-                                if (!string.IsNullOrEmpty(content) && !string.IsNullOrEmpty(docId) && !string.IsNullOrEmpty(chunkIndex))
+                                var payload = point.Payload;
+                                if (payload != null)
                                 {
-                                    if (string.IsNullOrWhiteSpace(documentType))
-                                        documentType = "Document";
+                                    var content = GetPayloadString(payload, "content");
+                                    var docId = GetPayloadString(payload, "documentId");
+                                    var chunkIndex = GetPayloadString(payload, "chunkIndex");
+                                    var documentType = GetPayloadString(payload, "documentType");
+                                    var chunkIdStr = GetPayloadString(payload, "chunkId");
+                                    var fileName = GetPayloadString(payload, "fileName");
 
-                                    var contentStr = content.ToLowerInvariant();
-
-                                    if (contentStr.Contains(queryLower))
+                                    if (!string.IsNullOrEmpty(content) && !string.IsNullOrEmpty(docId) && !string.IsNullOrEmpty(chunkIndex))
                                     {
-                                        // Use chunkId from payload if available to ensure consistency
-                                        Guid chunkId;
-                                        if (!string.IsNullOrWhiteSpace(chunkIdStr) && Guid.TryParse(chunkIdStr, out var parsedChunkId))
-                                        {
-                                            chunkId = parsedChunkId;
-                                        }
-                                        else
-                                        {
-                                            chunkId = Guid.NewGuid();
-                                        }
+                                        if (string.IsNullOrWhiteSpace(documentType))
+                                            documentType = "Document";
 
-                                        var chunk = new DocumentChunk
+                                        var searchableNormalized = string.Concat(content, " ", fileName ?? string.Empty).NormalizeForOcrTolerantMatch();
+                                        var fileNameLower = (fileName ?? string.Empty).ToLowerInvariant();
+                                        var matchCount = searchTerms.Count(term =>
                                         {
-                                            Id = chunkId, // Use original chunk ID from payload
-                                            DocumentId = Guid.Parse(docId),
-                                            FileName = fileName ?? string.Empty,
-                                            Content = content,
-                                            ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
-                                            RelevanceScore = DefaultTextSearchScore,
-                                            StartPosition = 0,
-                                            EndPosition = content.Length,
-                                            DocumentType = documentType
-                                        };
-                                        relevantChunks.Add(chunk);
+                                            var normalizedTerm = term.NormalizeForOcrTolerantMatch();
+                                            if (string.IsNullOrEmpty(normalizedTerm))
+                                                return false;
+                                            if (searchableNormalized.IndexOf(normalizedTerm, StringComparison.Ordinal) >= 0)
+                                                return true;
+                                            foreach (var variant in normalizedTerm.GetSearchTermVariants(4))
+                                            {
+                                                if (searchableNormalized.IndexOf(variant, StringComparison.Ordinal) >= 0)
+                                                    return true;
+                                            }
+                                            return false;
+                                        });
+                                        var hasFileNamePhraseMatch = fileNamePhrases.Count > 0 && fileNamePhrases.Any(p => fileNameLower.Contains(p));
 
-                                        if (relevantChunks.Count >= maxResults)
-                                            break;
+                                        if (matchCount >= minMatchCount || hasFileNamePhraseMatch)
+                                        {
+                                            Guid chunkId;
+                                            if (!string.IsNullOrWhiteSpace(chunkIdStr) && Guid.TryParse(chunkIdStr, out var parsedChunkId))
+                                            {
+                                                chunkId = parsedChunkId;
+                                            }
+                                            else
+                                            {
+                                                chunkId = Guid.NewGuid();
+                                            }
+
+                                            var score = DefaultTextSearchScore + (matchCount * TextSearchScorePerMatch);
+                                            var chunk = new DocumentChunk
+                                            {
+                                                Id = chunkId,
+                                                DocumentId = Guid.Parse(docId),
+                                                FileName = fileName ?? string.Empty,
+                                                Content = content,
+                                                ChunkIndex = int.Parse(chunkIndex, CultureInfo.InvariantCulture),
+                                                RelevanceScore = score,
+                                                StartPosition = 0,
+                                                EndPosition = content.Length,
+                                                DocumentType = documentType
+                                            };
+                                            relevantChunks.Add(chunk);
+                                        }
                                     }
                                 }
                             }
-                        }
-
-                        if (relevantChunks.Count >= maxResults)
-                            break;
+                            
+                            nextOffset = scrollResult.NextPageOffset;
+                        } while (nextOffset != null);
                     }
                     catch (Exception ex)
                     {
@@ -255,7 +292,11 @@ namespace SmartRAG.Services.Storage.Qdrant
                     }
                 }
 
-                return relevantChunks.Take(maxResults).ToList();
+                return relevantChunks
+                    .OrderByDescending(c => c.RelevanceScore ?? 0.0)
+                    .ThenBy(c => c.ChunkIndex)
+                    .Take(maxResults)
+                    .ToList();
             }
             catch (Exception ex)
             {
@@ -303,27 +344,6 @@ namespace SmartRAG.Services.Storage.Qdrant
                 default:
                     return value.ToString();
             }
-        }
-
-        private static string NormalizeQueryForFuzzyMatching(string text)
-        {
-            if (string.IsNullOrEmpty(text))
-                return text;
-
-            var normalized = text.Normalize(System.Text.NormalizationForm.FormD);
-
-            var sb = new System.Text.StringBuilder(normalized.Length);
-            foreach (var c in normalized)
-            {
-                var category = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(c);
-                if (category == System.Globalization.UnicodeCategory.NonSpacingMark)
-                    continue;
-
-                var lower = char.ToLowerInvariant(c);
-                sb.Append(lower);
-            }
-
-            return sb.ToString();
         }
 
         private void Dispose(bool disposing)

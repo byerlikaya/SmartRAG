@@ -360,6 +360,10 @@ models/
 # Allow SmartRAG library models to be tracked
 !src/SmartRAG/Models/
 !src/SmartRAG/Models/**
+
+# Allow Dashboard models to be tracked
+!src/SmartRAG.Dashboard/Models/
+!src/SmartRAG.Dashboard/Models/**
 **/ggml-*.bin
 **/ggml-large-v3.bin
 

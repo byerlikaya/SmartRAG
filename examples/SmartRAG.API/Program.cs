@@ -1,9 +1,9 @@
-using Microsoft.OpenApi.Models;
+using System.Reflection;
 using SmartRAG.API.Filters;
+using SmartRAG.Dashboard;
 using SmartRAG.Enums;
-using System;
-using System.IO;
 using SmartRAG.Extensions;
+using Swashbuckle.AspNetCore.SwaggerUI;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -58,7 +58,7 @@ static void RegisterServices(IServiceCollection services, IConfiguration configu
         });
 
         // Include XML documentation
-        var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
+        var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
         var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
         if (File.Exists(xmlPath))
         {
@@ -80,7 +80,7 @@ static void RegisterServices(IServiceCollection services, IConfiguration configu
     });
 
     // Configure form options for file uploads
-    services.Configure<Microsoft.AspNetCore.Http.Features.FormOptions>(options =>
+    services.Configure<FormOptions>(options =>
     {
         options.MultipartBodyLengthLimit = 100 * 1024 * 1024; // 100 MB
         options.ValueLengthLimit = int.MaxValue;
@@ -89,12 +89,19 @@ static void RegisterServices(IServiceCollection services, IConfiguration configu
     });
 
    
-    // Add SmartRag services with minimal configuration
-    services.UseSmartRag(configuration,
-        storageProvider: StorageProvider.Redis,
-        aiProvider: AIProvider.Custom
-    );
+    // Add SmartRag services (storage/provider aligned with Demo: Qdrant).
+    // Use AddSmartRag for Web API so IHost starts hosted services once; UseSmartRag would call StartAsync twice.
+    services.AddSmartRag(configuration, options =>
+    {
+        options.StorageProvider = StorageProvider.Qdrant;
+        options.AIProvider = AIProvider.Custom;
+    });
 
+    services.AddSmartRagDashboard(options =>
+    {
+        options.Path = "/smartrag";
+        options.EnableInDevelopmentOnly = true;
+    });
 
     services.AddCors(options =>
     {
@@ -116,7 +123,7 @@ static void ConfigureMiddleware(WebApplication app, IWebHostEnvironment environm
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "SmartRAG API v2.4.0");
         c.DocumentTitle = "SmartRAG API Documentation";
-        c.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None); // All endpoints collapsed by default
+        c.DocExpansion(DocExpansion.None);
         c.DefaultModelsExpandDepth(-1); // Hide schemas section by default
         c.DisplayRequestDuration(); // Show request duration
         c.EnableFilter(); // Enable search filter
@@ -126,10 +133,14 @@ static void ConfigureMiddleware(WebApplication app, IWebHostEnvironment environm
     // Serve static files for simple upload page
     app.UseStaticFiles();
 
-    app.UseHttpsRedirection();
+    if (!environment.IsDevelopment())
+    {
+        app.UseHttpsRedirection();
+    }
+
     app.UseCors("AllowAll");
     app.UseAuthorization();
+
+    app.UseSmartRagDashboard("/smartrag");
     app.MapControllers();
-
-
 }

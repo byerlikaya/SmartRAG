@@ -81,6 +81,45 @@ const response = await fetch('/api/intelligence/query', { ... });
 
 ---
 
+### v3.8.x'ten v3.9.0'a Taşınma
+
+<div class="alert alert-warning">
+    <h4><i class="fas fa-exclamation-triangle me-2"></i> Kırıcı Değişiklikler</h4>
+    <p class="mb-0">v3.9.0, <code>IStorageFactory</code>, <code>IConversationRepository</code> için kırıcı değişiklikler içerir ve <code>IQdrantCacheManager</code>'ı kaldırır.</p>
+</div>
+
+#### Adım 1: IStorageFactory Kullanımını Güncelleyin
+
+<p><code>IStorageFactory</code> inject edip <code>GetCurrentRepository()</code> çağırıyorsanız, scoped <code>IServiceProvider</code> geçirin:</p>
+
+```csharp
+// Önce (v3.8.x)
+var repository = _storageFactory.GetCurrentRepository();
+
+// Sonra (v3.9.0)
+var repository = _storageFactory.GetCurrentRepository(_serviceProvider);
+```
+
+<p>DI kullanırken kayıt zaten scoped provider geçirir. <code>IDocumentRepository</code>'yi doğrudan çözümlüyorsanız değişiklik gerekmez.</p>
+
+#### Adım 2: Özel IConversationRepository Implementasyonlarını Güncelleyin
+
+<p>Özel <code>IConversationRepository</code> implementasyonunuz varsa bu metodları ekleyin:</p>
+
+```csharp
+Task AppendSourcesForTurnAsync(string sessionId, string sourcesJson, CancellationToken cancellationToken = default);
+Task<string> GetSourcesForSessionAsync(string sessionId, CancellationToken cancellationToken = default);
+Task<string[]> GetAllSessionIdsAsync(CancellationToken cancellationToken = default);
+```
+
+<p>Yerleşik implementasyonlar (Sqlite, Redis, FileSystem, InMemory) bunları zaten içerir.</p>
+
+#### Adım 3: IQdrantCacheManager Referanslarını Kaldırın (kullanıyorsanız)
+
+<p><code>IQdrantCacheManager</code> ve <code>QdrantCacheManager</code> kaldırıldı. Arama artık sorgu sonuç önbelleklemesi kullanmıyor. Bu tiplere referansları kaldırın.</p>
+
+---
+
 ### v1.x'ten v2.0.0'a Taşınma
 
 <div class="alert alert-warning">

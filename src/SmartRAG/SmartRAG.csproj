@@ -5,7 +5,7 @@
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
-    <PackageVersion>3.8.1</PackageVersion>
+    <PackageVersion>3.9.0</PackageVersion>
     <Authors>Barış Yerlikaya</Authors>
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
@@ -20,22 +20,13 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Release 3.8.1: Schema RAG Refinements (PATCH Release - 2026-01-28)
+    <PackageReleaseNotes>Release 3.9.0: Conversation Timestamps, RAG Improvements, Qdrant 1.16 (MINOR - 2026-02-05)
 
-ADDED:
-- Comprehensive CancellationToken propagation in schema-related services for better cancellation handling
+ADDED: Conversation timestamps and sources, explicit session RAG overload, duplicate upload prevention by hash, Whisper native bootstrap, MCP on-demand connection.
 
-IMPROVEMENTS:
-- SQL Query Generation and Schema RAG: Removed unused SQL prompt and dialect helpers to simplify maintenance
-- Result Merger and query coordination: Simplified merging and removed dead code paths for cleaner flow
-- Storage Factory and QueryTokenizer: Reduced complexity and eliminated unused branches
-- Context Expansion and Qdrant search: Simplified logic and removed unused helpers while preserving behavior
-- Conversation and FileWatcher services: Removed unused events and helpers to reduce noise
+IMPROVEMENTS: Document RAG search (filename early return, phrase/morphological matching), follow-up question handling, PDF/OCR encoding, storage factory scoping, Qdrant 1.16.1 compatibility, NuGet updates.
 
-TECHNICAL DETAILS:
-- Maintained 0 errors, 0 warnings
-- No public API changes; all updates are internal refactorings and performance/maintainability improvements
-- Includes all features from 3.8.0 Schema RAG implementation (schema migration and chunking services)</PackageReleaseNotes>
+BREAKING: IStorageFactory.GetCurrentRepository(IServiceProvider), IConversationRepository new methods, IQdrantCacheManager removed. See migration guide.</PackageReleaseNotes>
     
     <!-- Build Configuration -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
@@ -46,8 +37,8 @@ TECHNICAL DETAILS:
     <AssemblyTitle>SmartRAG</AssemblyTitle>
     <AssemblyDescription>High-performance RAG library with conversation history management for .NET</AssemblyDescription>
     <AssemblyCopyright>Copyright © 2025 Barış Yerlikaya</AssemblyCopyright>
-    <AssemblyVersion>3.8.1.0</AssemblyVersion>
-    <FileVersion>3.8.1.0</FileVersion>
+    <AssemblyVersion>3.9.0.0</AssemblyVersion>
+    <FileVersion>3.9.0.0</FileVersion>
     <NeutralLanguage>en</NeutralLanguage>
     <Culture>en-US</Culture>
   </PropertyGroup>
@@ -55,40 +46,40 @@ TECHNICAL DETAILS:
   <!-- Package References -->
   <ItemGroup>
     <!-- Microsoft Extensions -->
-    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="10.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="10.0.2" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="10.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Abstractions" Version="10.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="10.0.2" />
     
     <!-- HTTP Client -->
-    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.2" />
     <PackageReference Include="Npgsql" Version="8.0.8" />
-    <PackageReference Include="NRedisStack" Version="1.1.1" />
-    <PackageReference Include="Qdrant.Client" Version="1.15.1" />
+    <PackageReference Include="NRedisStack" Version="1.2.0" />
+    <PackageReference Include="Qdrant.Client" Version="1.16.1" />
     
     <!-- JSON Processing -->
-    <PackageReference Include="System.Text.Json" Version="10.0.0" />
+    <PackageReference Include="System.Text.Json" Version="10.0.2" />
     
     <!-- Vector Database Support -->
-    <PackageReference Include="StackExchange.Redis" Version="2.10.1" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
+    <PackageReference Include="StackExchange.Redis" Version="2.10.14" />
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.2" />
     
     <!-- Database Connectivity -->
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.3" />
-    <PackageReference Include="MySql.Data" Version="9.5.0" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
+    <PackageReference Include="MySql.Data" Version="9.6.0" />
     
     <!-- Validation -->
     <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
     <!-- Document Parsing -->
-    <PackageReference Include="DocumentFormat.OpenXml" Version="3.3.0" />
-    <PackageReference Include="itext" Version="9.4.0" />
-    <PackageReference Include="EPPlus" Version="8.3.1" />
+    <PackageReference Include="DocumentFormat.OpenXml" Version="3.4.1" />
+    <PackageReference Include="itext" Version="9.5.0" />
+    <PackageReference Include="EPPlus" Version="8.4.2" />
     
     <!-- PDF Rendering (for OCR fallback on text-based PDFs with encoding issues) -->
-    <PackageReference Include="PDFtoImage" Version="5.0.0" />
+    <PackageReference Include="PDFtoImage" Version="5.2.0" />
     
     <!-- OCR and Image Processing -->
     <PackageReference Include="Tesseract" Version="5.2.0" />

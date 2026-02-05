@@ -47,6 +47,9 @@ namespace SmartRAG.Services.Parser
         private const string CurrencyMisreadPatternTCompact = @"(\d+)t(?=\s+\p{Lu}|\s+$|$)";
         private const string CurrencyMisreadPatternAmpersand = @"(\d+)\s*&(?=\s*(?:\p{Lu}|\d|$))";
         private const string CurrencyMisreadPatternAmpersandCompact = @"(\d+)&(?=\p{Lu}|\s+\p{Lu}|$)";
+        private const string CurrencyMisreadPatternCent = @"(\d+)\s*¢";
+        private const string CurrencyMisreadPatternCentCompact = @"(\d+)¢";
+        private const string CurrencyMisreadPatternPercentCent = @"(\d+)%¢";
 
         private static readonly Dictionary<string, string> ReverseLanguageCodeMapping = new Dictionary<string, string>
         {
@@ -175,7 +178,8 @@ namespace SmartRAG.Services.Parser
             if (!imageStream.CanRead)
                 throw new ArgumentException("Stream cannot be read", nameof(imageStream));
 
-            language ??= GetDefaultLanguageFromSystemLocale();
+            if (string.IsNullOrWhiteSpace(language) || string.Equals(language, "auto", StringComparison.OrdinalIgnoreCase))
+                language = GetDefaultLanguageFromSystemLocale();
 
             var result = await ExtractTextWithConfidenceAsync(imageStream, language);
             return result.Text;
@@ -192,7 +196,8 @@ namespace SmartRAG.Services.Parser
             if (!imageStream.CanRead)
                 throw new ArgumentException("Stream cannot be read", nameof(imageStream));
 
-            language ??= GetDefaultLanguageFromSystemLocale();
+            if (string.IsNullOrWhiteSpace(language) || string.Equals(language, "auto", StringComparison.OrdinalIgnoreCase))
+                language = GetDefaultLanguageFromSystemLocale();
 
             var startTime = DateTime.UtcNow;
 
@@ -290,7 +295,8 @@ namespace SmartRAG.Services.Parser
         }
 
         /// <summary>
-        /// Gets the default OCR language from system locale
+        /// Gets the default OCR language from system locale.
+        /// Returns locale language even when traineddata is missing so GetAvailableTesseractLanguageAsync can attempt download.
         /// </summary>
         /// <returns>ISO 639-2 (3-letter) language code for Tesseract</returns>
         private string GetDefaultLanguageFromSystemLocale()
@@ -298,23 +304,15 @@ namespace SmartRAG.Services.Parser
             try
             {
                 var currentCulture = CultureInfo.CurrentCulture;
-                var twoLetterCode = currentCulture.TwoLetterISOLanguageName; // "tr", "en", "de", etc.
+                var twoLetterCode = currentCulture.TwoLetterISOLanguageName;
 
                 if (ReverseLanguageCodeMapping.TryGetValue(twoLetterCode, out var threeLetterCode))
                 {
-                    if (IsLanguageDataAvailable(threeLetterCode))
-                    {
-                        _logger.LogInformation("[OCR Language Detection] System locale detected");
-                        return threeLetterCode;
-                    }
-                    else
-                    {
-                        _logger.LogWarning("[OCR Language Detection] System locale not available, falling back to 'eng'");
-                        return DefaultLanguage;
-                    }
+                    _logger.LogInformation("[OCR Language Detection] System locale: {Code}", threeLetterCode);
+                    return threeLetterCode;
                 }
 
-                _logger.LogWarning("[OCR Language Detection] No mapping found, defaulting to 'eng'");
+                _logger.LogWarning("[OCR Language Detection] No mapping for locale, defaulting to 'eng'");
                 return DefaultLanguage;
             }
             catch (Exception ex)
@@ -494,28 +492,15 @@ namespace SmartRAG.Services.Parser
                     var tessdataPath = string.IsNullOrEmpty(OcrEngineDataPath) ? "." : OcrEngineDataPath;
 
                     using var engine = new TesseractEngine(tessdataPath, availableLanguage, EngineMode.Default);
-                    
-                    // CRITICAL: Do NOT use tessedit_char_whitelist - it breaks multi-language support
-                    // Tesseract already handles language-specific characters (special chars, accented letters, etc.) correctly
-                    // based on the language parameter. Using whitelist filters out these non-ASCII characters.
-                    
-                    // Optimize OCR for structured documents (PDFs, scanned documents)
-                    // PSM 6 = Assume single uniform block of text (best for PDF pages)
-                    // PSM 3 = Fully automatic (default, good for mixed layouts)
                     engine.SetVariable("tessedit_pageseg_mode", "6");
-                    
-                    // Enable character-level confidence for better error detection
                     engine.SetVariable("tessedit_create_hocr", "0");
 
                     using var img = Pix.LoadFromMemory(ReadStreamToByteArray(imageStream));
                     using var page = engine.Process(img);
-                    
-                    // Table-aware OCR: Extract text with spatial positioning to preserve table structure
                     var text = ExtractTableAwareText(page);
                     var confidence = page.GetMeanConfidence();
 
-                    var correctedText = CorrectCommonOcrMistakes(text, language, _logger);
-
+                    var correctedText = CorrectCommonOcrMistakes(text, _logger);
                     return (correctedText?.Trim() ?? string.Empty, confidence);
                 }
                 catch (Exception ex)
@@ -752,10 +737,9 @@ namespace SmartRAG.Services.Parser
         /// Corrects common OCR mistakes in the extracted text using universal patterns
         /// </summary>
         /// <param name="text">OCR extracted text</param>
-        /// <param name="language">Language code for context (e.g., "tur", "en", "de")</param>
         /// <param name="logger">Logger instance for logging currency detection</param>
         /// <returns>Corrected text</returns>
-        private static string CorrectCommonOcrMistakes(string text, string language, ILogger logger = null)
+        private static string CorrectCommonOcrMistakes(string text, ILogger logger = null)
         {
             if (string.IsNullOrWhiteSpace(text))
                 return text;
@@ -767,7 +751,6 @@ namespace SmartRAG.Services.Parser
                 text = CorrectCurrencySymbolMisreads(text, currencySymbol);
             }
 
-            // Generic OCR error corrections (work for all languages)
             text = CorrectPipeCharacterMisreads(text);
             text = CorrectCurrencySymbolMisplacements(text);
             text = NormalizeWhitespace(text);
@@ -781,8 +764,6 @@ namespace SmartRAG.Services.Parser
         /// </summary>
         private static string CorrectPipeCharacterMisreads(string text)
         {
-            // Pattern: digit + pipe + digit → digit + 1 + digit (e.g., "6|49" → "6149" or "649")
-            // This is a common OCR error where | is misread in numeric sequences
             text = Regex.Replace(text, @"(\d)\|(\d)", "$1$2");
             
             return text;
@@ -794,8 +775,6 @@ namespace SmartRAG.Services.Parser
         /// </summary>
         private static string CorrectCurrencySymbolMisplacements(string text)
         {
-            // Pattern: digit + currency symbol + digit → digit + space + digit
-            // Works for all currency symbols (₺, $, €, £, ¥, etc.)
             text = Regex.Replace(text, @"(\d)([\$€£¥₺₽¢₹₩])(\d)", "$1 $3");
             
             return text;
@@ -806,10 +785,7 @@ namespace SmartRAG.Services.Parser
         /// </summary>
         private static string NormalizeWhitespace(string text)
         {
-            // Replace multiple spaces/tabs with single space
             text = Regex.Replace(text, @"[ \t]+", " ");
-            
-            // Remove spaces before punctuation
             text = Regex.Replace(text, @"\s+([.,;:!?])", "$1");
             
             return text;
@@ -918,10 +894,32 @@ namespace SmartRAG.Services.Parser
                 RegexOptions.Multiline
             );
 
-            // Pattern 8: & (ampersand) - compact (no space)
             text = Regex.Replace(
                 text,
                 CurrencyMisreadPatternAmpersandCompact,
+                $"$1{currencySymbol}"
+            );
+
+            var hasDollarInDocument = text.IndexOf('$') >= 0;
+            if (!hasDollarInDocument)
+            {
+                text = Regex.Replace(
+                    text,
+                    CurrencyMisreadPatternCent,
+                    $"$1{currencySymbol}",
+                    RegexOptions.Multiline
+                );
+
+                text = Regex.Replace(
+                    text,
+                    CurrencyMisreadPatternCentCompact,
+                    $"$1{currencySymbol}"
+                );
+            }
+
+            text = Regex.Replace(
+                text,
+                CurrencyMisreadPatternPercentCent,
                 $"$1{currencySymbol}"
             );
 

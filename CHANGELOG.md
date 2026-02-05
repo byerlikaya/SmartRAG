@@ -6,6 +6,74 @@ All notable changes to SmartRAG will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [3.9.0] - 2026-02-05
+
+### ✨ Added
+- **Conversation Timestamps and Sources**: Extended conversation storage for dashboard and chat UIs
+  - `IConversationRepository.GetSessionTimestampsAsync` - Session created/last updated timestamps
+  - `IConversationRepository.AppendSourcesForTurnAsync` - Persist sources JSON per assistant turn
+  - `IConversationRepository.GetSourcesForSessionAsync` - Retrieve stored sources for a session
+  - `IConversationRepository.GetAllSessionIdsAsync` - List all known session IDs
+  - **Files Modified**: `IConversationRepository`, `SqliteConversationRepository`, `RedisConversationRepository`, `FileSystemConversationRepository`, `InMemoryConversationRepository`
+
+- **Explicit Session RAG Overload**: `IDocumentSearchService.QueryIntelligenceAsync` overload with `sessionId` and `conversationHistory` for explicit session context (dashboard/API integration)
+
+- **Duplicate Upload Prevention**: Hash-based skip for identical documents
+  - New `DocumentSkippedException` when upload is skipped due to duplicate content hash
+  - **Files Modified**: `DocumentService`, `DocumentParserService`, `FileWatcherService`, `SchemaChunkService`, `AudioFileParser`, `ImageParserService`
+
+- **Whisper Native Bootstrap**: `WhisperNativeBootstrap` service for proper Whisper.net native library initialization on startup
+  - **Files Modified**: `SmartRagStartupService`, `WhisperConfig`, `WhisperAudioParserService`
+
+- **MCP On-Demand Connection**: MCP servers connect only when `-mcp` tag is used in query
+  - **Files Modified**: `McpIntegrationService`
+
+### 🔧 Improved
+- **Document RAG Search**: Major improvements to search strategy, relevance scoring, and response building
+  - Filename-based early return when query matches document names
+  - Chunk prioritization with phrase words and morphological matching (`IChunkPrioritizerService`, `ChunkPrioritizerService`)
+  - Document relevance scoring with fileName phrase extraction (`IDocumentRelevanceCalculatorService`, `DocumentRelevanceCalculatorService`)
+  - Improved chunk selection respecting `-db` off for schema-only chunks
+  - Extraction retry mode in `IPromptBuilderService.BuildDocumentRagPrompt` when sources contain data but initial response indicated missing
+  - **Files Modified**: `DocumentSearchService`, `DocumentSearchStrategyService`, `DocumentScoringService`, `ResponseBuilderService`, `QueryStrategyExecutorService`, `QueryIntentClassifierService`, `SearchTextExtensions`, `SearchSourceHelper`, `RagMessages`, `QueryTokenizer`
+
+- **Follow-Up Question Handling**: Better conversation context for follow-up queries
+  - **Files Modified**: `PromptBuilderService`, `QueryIntentAnalyzer`, `ConversationManagerService`, `DocumentSearchService`
+
+- **PDF and OCR**: Improved text extraction and encoding
+  - Turkish encoding handling, OCR currency patterns
+  - **Files Modified**: `PdfFileParser`, `ImageParserService`
+
+- **Storage Factory Scoping**: `IStorageFactory.GetCurrentRepository(IServiceProvider scopedProvider)` for correct scoped resolution (e.g. `IAIConfigurationService`)
+  - **Files Modified**: `IStorageFactory`, `StorageFactory`, `ServiceCollectionExtensions`
+
+- **Qdrant Integration**: Qdrant.Client 1.16.1 compatibility and search refinements
+  - Vector read path: `Vector.Dense.Data` for dense/sparse API
+  - Simplified point creation with direct array assignment
+  - `VectorsCount` replaced with `PointsCount`
+  - Removed `IQdrantCacheManager` and `QdrantCacheManager` (simplified search path)
+  - **Files Modified**: `QdrantDocumentRepository`, `QdrantSearchService`
+
+- **Database and Result Merging**: Minor refinements
+  - **Files Modified**: `DatabaseQueryExecutor`, `ResultMerger`, `SchemaChunkService`
+
+- **NuGet Package Updates**: Updated dependencies
+  - Qdrant.Client: 1.15.1 → 1.16.1
+  - StackExchange.Redis: 2.10.1 → 2.10.14
+  - MySql.Data: 9.5.0 → 9.6.0
+  - itext: 9.4.0 → 9.5.0
+  - EPPlus: 8.4.1 → 8.4.2
+  - PDFtoImage: 5.0.0 → 5.2.0
+
+### ⚠️ Breaking Changes
+- **IStorageFactory**: `GetCurrentRepository()` replaced with `GetCurrentRepository(IServiceProvider scopedProvider)` - pass scoped `IServiceProvider` when resolving document repository
+- **IConversationRepository**: New required methods `AppendSourcesForTurnAsync`, `GetSourcesForSessionAsync`, `GetAllSessionIdsAsync` - custom implementations must implement these
+- **IQdrantCacheManager**: Interface and `QdrantCacheManager` removed - search no longer uses query result caching
+
+### 📝 Notes
+- **Migration**: See migration guide for `IStorageFactory` and `IConversationRepository` changes
+- **Code Quality**: Maintains 0 errors, 0 warnings build policy
+
 ## [3.8.1] - 2026-01-28
 
 ### 🔧 Improved

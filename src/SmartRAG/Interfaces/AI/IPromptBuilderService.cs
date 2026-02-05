@@ -13,8 +13,9 @@ namespace SmartRAG.Interfaces.AI
         /// <param name="query">User query</param>
         /// <param name="context">Document context</param>
         /// <param name="conversationHistory">Optional conversation history</param>
+        /// <param name="extractionRetryMode">When true, uses stronger extraction instructions for retry when sources contain data but initial response indicated missing</param>
         /// <returns>Built prompt</returns>
-        string BuildDocumentRagPrompt(string query, string context, string? conversationHistory = null);
+        string BuildDocumentRagPrompt(string query, string context, string? conversationHistory = null, bool extractionRetryMode = false);
 
         /// <summary>
         /// Builds a prompt for merging hybrid results (database + documents)

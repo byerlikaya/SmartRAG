@@ -138,7 +138,7 @@ namespace SmartRAG.Services.Database
             
             var hasNumericColumns = schemas.Any(schema => 
                 schema.Tables.Any(table => 
-                    table.Columns.Any(col => IsNumericDataType(col.DataType))));
+                    table.Columns.Any(col => IsNumericType(col.DataType))));
 
             var aggregationPatterns = new[] { "count", "sum", "avg", "total", "most", "top", "max", "min", "highest", "lowest", "first", "order", "sort" };
             var hasAggregationPattern = aggregationPatterns.Any(pattern => lowerQuery.Contains(pattern));
@@ -150,11 +150,6 @@ namespace SmartRAG.Services.Database
         {
             var descriptiveTerms = new[] { "name", "title", "description", "label", "text", "value" };
             return descriptiveTerms.Any(term => columnName.Contains(term, StringComparison.OrdinalIgnoreCase));
-        }
-
-        private bool IsNumericDataType(string dataType)
-        {
-            return IsNumericType(dataType);
         }
 
         private bool IsNumericType(string dataType)

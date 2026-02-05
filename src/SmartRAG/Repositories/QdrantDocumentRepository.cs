@@ -34,7 +34,6 @@ namespace SmartRAG.Repositories
         private readonly IQdrantCollectionManager _collectionManager;
         private readonly IQdrantEmbeddingService _embeddingService;
         private readonly IAIService _aiService;
-        private readonly IQdrantCacheManager _cacheManager;
         private readonly IQdrantSearchService _searchService;
 
         protected ILogger Logger => _logger;
@@ -45,7 +44,6 @@ namespace SmartRAG.Repositories
             IQdrantCollectionManager collectionManager,
             IQdrantEmbeddingService embeddingService,
             IAIService aiService,
-            IQdrantCacheManager cacheManager,
             IQdrantSearchService searchService)
         {
             _config = config.Value;
@@ -54,7 +52,6 @@ namespace SmartRAG.Repositories
             _collectionManager = collectionManager;
             _embeddingService = embeddingService ?? throw new ArgumentNullException(nameof(embeddingService));
             _aiService = aiService ?? throw new ArgumentNullException(nameof(aiService));
-            _cacheManager = cacheManager ?? throw new ArgumentNullException(nameof(cacheManager));
             _searchService = searchService ?? throw new ArgumentNullException(nameof(searchService));
 
             string host;
@@ -131,6 +128,14 @@ namespace SmartRAG.Repositories
             }
 
             return "Document";
+        }
+
+        private static string NormalizeContentForStorage(string content)
+        {
+            if (string.IsNullOrEmpty(content))
+                return string.Empty;
+
+            return content.Normalize(System.Text.NormalizationForm.FormC);
         }
 
         private static string GetPayloadString(Google.Protobuf.Collections.MapField<string, Value> payload, string key)
@@ -266,6 +271,10 @@ namespace SmartRAG.Repositories
             {
                 chunkId = parsedChunkId;
             }
+            else if (point.Id?.Uuid != null && Guid.TryParse(point.Id.Uuid, out var pointIdGuid))
+            {
+                chunkId = pointIdGuid;
+            }
             else
             {
                 chunkId = Guid.NewGuid();
@@ -284,7 +293,7 @@ namespace SmartRAG.Repositories
                 FileName = payloadFileName ?? fileName ?? string.Empty,
                 Content = chunkContent,
                 ChunkIndex = chunkIndex,
-                Embedding = point.Vectors?.Vector?.Data?.ToList() ?? new List<float>(),
+                Embedding = point.Vectors?.Vector?.Dense?.Data?.ToList() ?? new List<float>(),
                 CreatedAt = chunkCreatedAt,
                 DocumentType = documentType,
                 StartPosition = 0,
@@ -315,6 +324,10 @@ namespace SmartRAG.Repositories
                 var documentCollectionName = $"{_collectionName}_doc_{document.Id:N}".Replace("-", "");
                 RepositoryLogMessages.LogQdrantDocumentCollectionCreating(Logger, documentCollectionName, _collectionName, document.Id, null);
 
+                var allCollections = await _client.ListCollectionsAsync();
+                if (allCollections.Contains(documentCollectionName))
+                    await _collectionManager.DeleteCollectionAsync(documentCollectionName, cancellationToken);
+
                 await _collectionManager.EnsureDocumentCollectionExistsAsync(documentCollectionName, document, cancellationToken);
 
                 SmartRAG.Services.Helpers.DocumentValidator.ValidateDocument(document);
@@ -325,7 +338,8 @@ namespace SmartRAG.Repositories
                 {
                     if (chunk.Embedding == null || chunk.Embedding.Count == 0)
                     {
-                        chunk.Embedding = await _embeddingService.GenerateEmbeddingAsync(chunk.Content, cancellationToken) ?? new List<float>();
+                        var contentForEmbedding = NormalizeContentForStorage(chunk.Content);
+                        chunk.Embedding = await _embeddingService.GenerateEmbeddingAsync(contentForEmbedding, cancellationToken) ?? new List<float>();
                     }
                     return chunk;
                 }).ToList();
@@ -341,18 +355,14 @@ namespace SmartRAG.Repositories
                     var point = new PointStruct
                     {
                         Id = new PointId { Uuid = Guid.NewGuid().ToString() },
-                        Vectors = new Vectors
-                        {
-                            Vector = new Vector
-                            {
-                                Data = { chunk.Embedding }
-                            }
-                        }
+                        Vectors = chunk.Embedding.ToArray()
                     };
+
+                    var normalizedContent = NormalizeContentForStorage(chunk.Content);
 
                     point.Payload.Add("chunkId", chunk.Id.ToString());
                     point.Payload.Add("chunkIndex", chunk.ChunkIndex);
-                    point.Payload.Add("content", chunk.Content);
+                    point.Payload.Add("content", normalizedContent);
                     point.Payload.Add("documentId", document.Id.ToString());
                     point.Payload.Add("fileName", chunk.FileName ?? document.FileName);
                     point.Payload.Add("contentType", document.ContentType);
@@ -426,7 +436,9 @@ namespace SmartRAG.Repositories
                 }
 
                 var document = CreateDocumentFromMetadata(metadata, additionalMetadata);
-
+                document.Metadata ??= new Dictionary<string, object>();
+                document.Metadata["CollectionName"] = documentCollectionName;
+                
                 foreach (var point in result.Result)
                 {
                     var chunk = CreateDocumentChunk(point, document.Id, metadata.UploadedAt, document.FileName);
@@ -474,6 +486,9 @@ namespace SmartRAG.Repositories
                             continue;
 
                         var document = CreateDocumentFromMetadata(metadata, additionalMetadata);
+                        document.Metadata ??= new Dictionary<string, object>();
+                        document.Metadata["CollectionName"] = docCollection;
+
                         var collectionInfo = await _client.GetCollectionInfoAsync(docCollection);
                         var chunkCount = (int)collectionInfo.PointsCount;
 
@@ -512,26 +527,12 @@ namespace SmartRAG.Repositories
         {
             try
             {
-                var filter = new Qdrant.Client.Grpc.Filter
-                {
-                    Must =
-                {
-                    new Qdrant.Client.Grpc.Condition
-                    {
-                        Field = new FieldCondition
-                        {
-                            Key = "id",
-                            Match = new Qdrant.Client.Grpc.Match
-                            {
-                                Keyword = id.ToString()
-                            }
-                        }
-                    }
-                }
-                };
+                var documentCollectionName = $"{_collectionName}_doc_{id:N}".Replace("-", "");
+                var allCollections = await _client.ListCollectionsAsync();
+                if (!allCollections.Contains(documentCollectionName))
+                    return true;
 
-                await _client.DeleteAsync(_collectionName, filter);
-
+                await _collectionManager.DeleteCollectionAsync(documentCollectionName, cancellationToken);
                 return true;
             }
             catch (Exception)
@@ -580,7 +581,7 @@ namespace SmartRAG.Repositories
             try
             {
                 var collectionInfo = await _client.GetCollectionInfoAsync(_collectionName);
-                return (int)collectionInfo.VectorsCount;
+                return (int)collectionInfo.PointsCount;
             }
             catch (Exception)
             {
@@ -601,39 +602,37 @@ namespace SmartRAG.Repositories
         {
             try
             {
-                var queryHash = $"{query}_{maxResults}";
-                var cachedResults = _cacheManager.GetCachedResults(queryHash);
-                if (cachedResults != null)
-                {
-                    var cachedChunk0 = cachedResults.FirstOrDefault(c => c.ChunkIndex == 0);
-                    if (cachedChunk0 != null)
-                    {
-                        RepositoryLogMessages.LogQdrantFinalResultsReturned(Logger, cachedResults.Count, null);
-                        return cachedResults;
-                    }
-                    _logger.LogWarning("Cached results missing chunk 0, invalidating cache and performing fresh search");
-                    cachedResults = null;
-                }
-
                 await _collectionManager.EnsureCollectionExistsAsync(cancellationToken);
+
+                var normalizedQuery = NormalizeContentForStorage(query);
 
                 // Use AI embedding service for query embeddings (semantic similarity)
                 // Document embeddings are already stored using AI embeddings from DocumentService
                 // Hash-based embedding would break semantic similarity
-                var queryEmbedding = await _aiService.GenerateEmbeddingsAsync(query, cancellationToken);
+                var queryEmbedding = await _aiService.GenerateEmbeddingsAsync(normalizedQuery, cancellationToken);
                 if (queryEmbedding == null || queryEmbedding.Count == 0)
                 {
                     _logger.LogWarning("AI embedding generation failed, falling back to text search");
-                    var fallbackResults = await _searchService.FallbackTextSearchAsync(query, maxResults, cancellationToken);
-                    RepositoryLogMessages.LogQdrantFinalResultsReturned(Logger, fallbackResults.Count, null);
-                    return fallbackResults;
+                    var embeddingFallback = await _searchService.FallbackTextSearchAsync(query, maxResults, cancellationToken);
+                    RepositoryLogMessages.LogQdrantFinalResultsReturned(Logger, embeddingFallback.Count, null);
+                    return embeddingFallback;
                 }
 
-                var vectorResults = await _searchService.SearchAsync(queryEmbedding, maxResults, cancellationToken);
+                var vectorTask = _searchService.SearchAsync(queryEmbedding, maxResults, cancellationToken);
+                var fallbackTask = _searchService.FallbackTextSearchAsync(query, maxResults * 2, cancellationToken);
+                await Task.WhenAll(vectorTask, fallbackTask).ConfigureAwait(false);
 
-                var processedResults = ProcessSearchResults(vectorResults, maxResults);
+                var vectorResults = await vectorTask.ConfigureAwait(false);
+                var fallbackResults = await fallbackTask.ConfigureAwait(false);
 
-                _cacheManager.CacheResults(queryHash, processedResults);
+                var vectorIds = new HashSet<(Guid DocId, int ChunkIdx)>(
+                    vectorResults.Select(c => (c.DocumentId, c.ChunkIndex)));
+                var supplementalFromFallback = fallbackResults
+                    .Where(c => !vectorIds.Contains((c.DocumentId, c.ChunkIndex)))
+                    .ToList();
+
+                var mergedRaw = vectorResults.Concat(supplementalFromFallback).ToList();
+                var processedResults = ProcessSearchResults(mergedRaw, maxResults);
 
                 RepositoryLogMessages.LogQdrantFinalResultsReturned(Logger, processedResults.Count, null);
                 return processedResults;
@@ -641,9 +640,9 @@ namespace SmartRAG.Repositories
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Vector search failed, falling back to text search");
-                var fallbackResults = await _searchService.FallbackTextSearchAsync(query, maxResults, cancellationToken);
-                RepositoryLogMessages.LogQdrantFinalResultsReturned(Logger, fallbackResults.Count, null);
-                return fallbackResults;
+                var errorFallback = await _searchService.FallbackTextSearchAsync(query, maxResults, cancellationToken);
+                RepositoryLogMessages.LogQdrantFinalResultsReturned(Logger, errorFallback.Count, null);
+                return errorFallback;
             }
         }
 

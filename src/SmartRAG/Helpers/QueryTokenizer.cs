@@ -45,6 +45,21 @@ namespace SmartRAG.Helpers
                 .ToList();
         }
 
+        /// <summary>
+        /// Returns words for phrase extraction including short tokens.
+        /// Use for entity phrase extraction; TokenizeQuery filters these out for general matching.
+        /// </summary>
+        public static List<string> GetWordsForPhraseExtraction(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return new List<string>();
+            }
+
+            var tokens = TokenizeByAlphanumericCharacters(query.ToLowerInvariant());
+            return tokens.Where(w => w.Length >= 1).ToList();
+        }
+
         private static List<string> TokenizeByAlphanumericCharacters(string text)
         {
             var result = new List<string>();
