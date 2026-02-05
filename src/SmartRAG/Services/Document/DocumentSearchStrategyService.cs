@@ -24,7 +24,7 @@ namespace SmartRAG.Services.Document
         // Adaptive threshold strategy: Start with industry standard, fallback to lower if no results
         // Redis returns 0-100 scale (similarity * 100), Qdrant returns 0-1 scale (cosine similarity) - normalize to 0-100
         private const double PreferredVectorSearchThreshold = 50.0; // 0.5 similarity (preferred, industry standard)
-        private const double FallbackVectorSearchThreshold = 20.0; // 0.2 similarity (aggressive fallback for entity/contract queries)
+        private const double FallbackVectorSearchThreshold = 15.0; // 0.15 similarity (aggressive fallback for entity/contract/legal queries)
         private const double MinTextSearchRelevanceThreshold = 3.0; // Text search uses different scale (4.0-6.0+)
         private const double MinChunk0RelevanceThreshold = 25.0; // Lower threshold for document introduction chunks
         private const int MinChunksForSufficientResults = 5; // Use fallback threshold when we have few results but many candidates
@@ -326,7 +326,21 @@ namespace SmartRAG.Services.Document
                 if (hasFileNamePrefixMatch)
                     return true;
 
-                var matchCount = queryWordsLower.Count(word => searchableText.Contains(word));
+                var matchCount = queryWordsLower.Count(word =>
+                {
+                    var normalized = word.NormalizeForOcrTolerantMatch();
+                    if (string.IsNullOrEmpty(normalized))
+                        return false;
+                    var searchableNormalized = searchableText.NormalizeForOcrTolerantMatch();
+                    if (searchableNormalized.IndexOf(normalized, StringComparison.Ordinal) >= 0)
+                        return true;
+                    foreach (var variant in normalized.GetSearchTermVariants(4))
+                    {
+                        if (searchableNormalized.IndexOf(variant, StringComparison.Ordinal) >= 0)
+                            return true;
+                    }
+                    return false;
+                });
 
                 if (potentialNamesLower.Count >= 2)
                 {
@@ -348,7 +362,7 @@ namespace SmartRAG.Services.Document
                     var hasNumericValue = searchableText.Any(char.IsDigit);
                     return matchCount >= 1 && hasNumericValue;
                 }
-                return matchCount >= Math.Max(1, queryWordsLower.Count / 2);
+                return matchCount >= Math.Max(1, queryWordsLower.Count / 4);
             }).ToList();
 
             if (matchingChunks.Count == 0)
@@ -359,8 +373,22 @@ namespace SmartRAG.Services.Document
             var scoredChunks = matchingChunks.Select(chunk =>
             {
                 var searchableText = string.Concat(chunk.Content ?? string.Empty, " ", chunk.FileName ?? string.Empty).ToLowerInvariant();
+                var searchableNormalized = searchableText.NormalizeForOcrTolerantMatch();
                 var fileNameLower = (chunk.FileName ?? string.Empty).ToLowerInvariant();
-                var matchCount = queryWordsLower.Count(word => searchableText.Contains(word));
+                var matchCount = queryWordsLower.Count(word =>
+                {
+                    var normalized = word.NormalizeForOcrTolerantMatch();
+                    if (string.IsNullOrEmpty(normalized))
+                        return false;
+                    if (searchableNormalized.IndexOf(normalized, StringComparison.Ordinal) >= 0)
+                        return true;
+                    foreach (var variant in normalized.GetSearchTermVariants(4))
+                    {
+                        if (searchableNormalized.IndexOf(variant, StringComparison.Ordinal) >= 0)
+                            return true;
+                    }
+                    return false;
+                });
                 var score = matchCount * 10.0;
 
                 if (fileNamePhrases.Count > 0 && fileNamePhrases.Any(p => fileNameLower.Contains(p)))
@@ -464,7 +492,17 @@ namespace SmartRAG.Services.Document
                 if (hasCriticalPhrase)
                     return true;
 
-                var matchCount = queryWordsNormalized.Count(word => searchableText.IndexOf(word, StringComparison.Ordinal) >= 0);
+                var matchCount = queryWordsNormalized.Count(word =>
+                {
+                    if (searchableText.IndexOf(word, StringComparison.Ordinal) >= 0)
+                        return true;
+                    foreach (var variant in word.GetSearchTermVariants(4))
+                    {
+                        if (searchableText.IndexOf(variant, StringComparison.Ordinal) >= 0)
+                            return true;
+                    }
+                    return false;
+                });
                 
                 var significantWords = queryWordsNormalized.Where(w => w.Length >= 4).ToList();
                 if (significantWords.Count > 0)
@@ -491,9 +529,9 @@ namespace SmartRAG.Services.Document
                 if (requiresNumericContext)
                 {
                     var hasNumericValue = searchableText.Any(char.IsDigit);
-                    return matchCount >= Math.Max(1, queryWordsNormalized.Count / 3) && hasNumericValue;
+                    return matchCount >= Math.Max(1, queryWordsNormalized.Count / 4) && hasNumericValue;
                 }
-                return matchCount >= Math.Max(1, queryWordsNormalized.Count / 3);
+                return matchCount >= Math.Max(1, queryWordsNormalized.Count / 4);
             }).ToList();
 
             if (matchingChunks.Count == 0)
@@ -512,8 +550,18 @@ namespace SmartRAG.Services.Document
                 if (criticalPhraseMatches > 0)
                     score += criticalPhraseMatches * 100.0;
 
-                var matchCount = queryWordsNormalized.Count(word => searchableText.IndexOf(word, StringComparison.Ordinal) >= 0);
-                
+                var matchCount = queryWordsNormalized.Count(word =>
+                {
+                    if (searchableText.IndexOf(word, StringComparison.Ordinal) >= 0)
+                        return true;
+                    foreach (var variant in word.GetSearchTermVariants(4))
+                    {
+                        if (searchableText.IndexOf(variant, StringComparison.Ordinal) >= 0)
+                            return true;
+                    }
+                    return false;
+                });
+
                 var significantWords = queryWordsNormalized.Where(w => w.Length >= 4).ToList();
                 var significantMatchCount = significantWords.Count > 0 
                     ? significantWords.Count(word => searchableText.IndexOf(word, StringComparison.Ordinal) >= 0)

@@ -51,6 +51,7 @@ namespace SmartRAG.Repositories
                         CREATE TABLE IF NOT EXISTS Conversations (
                             SessionId TEXT PRIMARY KEY,
                             History TEXT,
+                            CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
                             LastUpdated DATETIME DEFAULT CURRENT_TIMESTAMP
                         );
                         CREATE TABLE IF NOT EXISTS ConversationSources (
@@ -58,6 +59,20 @@ namespace SmartRAG.Repositories
                             SourcesJson TEXT
                         );";
                     await command.ExecuteNonQueryAsync();
+
+                    try
+                    {
+                        var alterCmd = _connection.CreateCommand();
+                        alterCmd.CommandText = "ALTER TABLE Conversations ADD COLUMN CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP";
+                        await alterCmd.ExecuteNonQueryAsync();
+                        var backfillCmd = _connection.CreateCommand();
+                        backfillCmd.CommandText = "UPDATE Conversations SET CreatedAt = LastUpdated WHERE CreatedAt IS NULL";
+                        await backfillCmd.ExecuteNonQueryAsync();
+                    }
+                    catch
+                    {
+                        /* Column may already exist */
+                    }
                 }
 
                 _initialized = true;
@@ -102,8 +117,8 @@ namespace SmartRAG.Repositories
                 {
                     var updateCmd = _connection.CreateCommand();
                     updateCmd.CommandText = @"
-                        INSERT INTO Conversations (SessionId, History, LastUpdated) 
-                        VALUES (@sessionId, @history, CURRENT_TIMESTAMP)
+                        INSERT INTO Conversations (SessionId, History, CreatedAt, LastUpdated) 
+                        VALUES (@sessionId, @history, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                         ON CONFLICT(SessionId) DO UPDATE SET History = @history, LastUpdated = CURRENT_TIMESTAMP";
                     updateCmd.Parameters.AddWithValue("@sessionId", sessionId);
                     updateCmd.Parameters.AddWithValue("@history", answer);
@@ -128,8 +143,8 @@ namespace SmartRAG.Repositories
 
                 var command = _connection.CreateCommand();
                 command.CommandText = @"
-                    INSERT INTO Conversations (SessionId, History, LastUpdated) 
-                    VALUES (@sessionId, @history, CURRENT_TIMESTAMP)
+                    INSERT INTO Conversations (SessionId, History, CreatedAt, LastUpdated) 
+                    VALUES (@sessionId, @history, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                     ON CONFLICT(SessionId) DO UPDATE SET History = @history, LastUpdated = CURRENT_TIMESTAMP";
                 command.Parameters.AddWithValue("@sessionId", sessionId);
                 command.Parameters.AddWithValue("@history", newEntry);
@@ -273,8 +288,8 @@ namespace SmartRAG.Repositories
             {
                 var command = _connection.CreateCommand();
                 command.CommandText = @"
-                    INSERT INTO Conversations (SessionId, History, LastUpdated) 
-                    VALUES (@sessionId, @history, CURRENT_TIMESTAMP)
+                    INSERT INTO Conversations (SessionId, History, CreatedAt, LastUpdated) 
+                    VALUES (@sessionId, @history, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                     ON CONFLICT(SessionId) DO UPDATE SET History = @history, LastUpdated = CURRENT_TIMESTAMP";
                 command.Parameters.AddWithValue("@sessionId", sessionId);
                 command.Parameters.AddWithValue("@history", conversation);
@@ -308,6 +323,35 @@ namespace SmartRAG.Repositories
             {
                 _logger.LogError(ex, "Error clearing all conversations from SQLite");
                 throw;
+            }
+            finally
+            {
+                _semaphore.Release();
+            }
+        }
+
+        public async Task<(DateTime? CreatedAt, DateTime? LastUpdated)> GetSessionTimestampsAsync(string sessionId, CancellationToken cancellationToken = default)
+        {
+            await EnsureInitializedAsync();
+            await _semaphore.WaitAsync(cancellationToken);
+            try
+            {
+                var command = _connection.CreateCommand();
+                command.CommandText = "SELECT CreatedAt, LastUpdated FROM Conversations WHERE SessionId = @sessionId";
+                command.Parameters.AddWithValue("@sessionId", sessionId);
+                using var reader = await command.ExecuteReaderAsync(cancellationToken);
+                if (await reader.ReadAsync(cancellationToken))
+                {
+                    var createdAt = reader.IsDBNull(0) ? (DateTime?)null : reader.GetDateTime(0);
+                    var lastUpdated = reader.IsDBNull(1) ? (DateTime?)null : reader.GetDateTime(1);
+                    return (createdAt, lastUpdated);
+                }
+                return (null, null);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting session timestamps");
+                return (null, null);
             }
             finally
             {

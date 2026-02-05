@@ -95,9 +95,9 @@ namespace SmartRAG.Services.Storage.Qdrant
                 // Calculate per-collection limit: distribute maxResults across collections
                 // If single collection, use maxResults directly; otherwise divide evenly
                 var collectionCount = Math.Max(1, documentCollections.Count);
-                var perCollectionLimit = collectionCount == 1 
-                    ? maxResults 
-                    : Math.Max(10, (int)Math.Ceiling((double)maxResults / collectionCount));
+                var perCollectionLimit = collectionCount == 1
+                    ? maxResults
+                    : Math.Max(15, (int)Math.Ceiling((double)(maxResults * 2) / collectionCount));
 
                 foreach (var collectionName in documentCollections)
                 {
@@ -106,7 +106,7 @@ namespace SmartRAG.Services.Storage.Qdrant
                         var searchResults = await _client.SearchAsync(
                             collectionName: collectionName,
                             vector: queryEmbedding.ToArray(),
-                            limit: (ulong)Math.Max(20, perCollectionLimit),
+                            limit: (ulong)Math.Max(30, perCollectionLimit),
                             cancellationToken: cancellationToken
                         );
 
@@ -186,7 +186,7 @@ namespace SmartRAG.Services.Storage.Qdrant
                 var queryWordsLower = queryWords.Select(w => w.ToLowerInvariant()).ToList();
                 var significantWords = queryWordsLower.Where(w => w.Length >= 4).ToList();
                 var searchTerms = significantWords.Count > 0 ? significantWords : queryWordsLower;
-                var minMatchCount = Math.Max(1, searchTerms.Count / 3);
+                var minMatchCount = Math.Max(1, searchTerms.Count / 4);
 
                 var fileNamePhrases = new List<string>();
                 for (int i = 0; i < queryWordsLower.Count - 1; i++)
@@ -239,8 +239,16 @@ namespace SmartRAG.Services.Storage.Qdrant
                                         var matchCount = searchTerms.Count(term =>
                                         {
                                             var normalizedTerm = term.NormalizeForOcrTolerantMatch();
-                                            return !string.IsNullOrEmpty(normalizedTerm) &&
-                                                searchableNormalized.IndexOf(normalizedTerm, StringComparison.Ordinal) >= 0;
+                                            if (string.IsNullOrEmpty(normalizedTerm))
+                                                return false;
+                                            if (searchableNormalized.IndexOf(normalizedTerm, StringComparison.Ordinal) >= 0)
+                                                return true;
+                                            foreach (var variant in normalizedTerm.GetSearchTermVariants(4))
+                                            {
+                                                if (searchableNormalized.IndexOf(variant, StringComparison.Ordinal) >= 0)
+                                                    return true;
+                                            }
+                                            return false;
                                         });
                                         var hasFileNamePhraseMatch = fileNamePhrases.Count > 0 && fileNamePhrases.Any(p => fileNameLower.Contains(p));
 

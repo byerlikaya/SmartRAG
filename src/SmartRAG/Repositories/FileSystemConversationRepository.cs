@@ -218,6 +218,28 @@ namespace SmartRAG.Repositories
             return Task.CompletedTask;
         }
 
+        public async Task<(DateTime? CreatedAt, DateTime? LastUpdated)> GetSessionTimestampsAsync(string sessionId, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId))
+                return (null, null);
+
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var filePath = GetConversationFilePath(sessionId);
+                if (!File.Exists(filePath))
+                    return (null, null);
+
+                var info = new FileInfo(filePath);
+                return (info.CreationTimeUtc, info.LastWriteTimeUtc);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting session timestamps");
+                return (null, null);
+            }
+        }
+
         public Task<string[]> GetAllSessionIdsAsync(CancellationToken cancellationToken = default)
         {
             try

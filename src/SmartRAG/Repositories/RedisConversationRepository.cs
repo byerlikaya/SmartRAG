@@ -69,20 +69,28 @@ namespace SmartRAG.Repositories
             try
             {
                 var conversationKey = $"conversation:{sessionId}";
+                var metaKey = $"conversation:meta:{sessionId}";
+                var now = DateTime.UtcNow.ToString("o");
 
                 if (string.IsNullOrEmpty(question))
                 {
                     await _database.StringSetAsync(conversationKey, answer);
+                    await _database.HashSetAsync(metaKey, new[] { new HashEntry("CreatedAt", now), new HashEntry("LastUpdated", now) });
                     return;
                 }
 
                 var existingConversation = await GetConversationHistoryAsync(sessionId, cancellationToken);
+                var isNew = string.IsNullOrEmpty(existingConversation);
 
-                var newEntry = string.IsNullOrEmpty(existingConversation)
+                var newEntry = isNew
                     ? $"User: {question}\nAssistant: {answer}"
                     : $"{existingConversation}\nUser: {question}\nAssistant: {answer}";
 
                 await _database.StringSetAsync(conversationKey, newEntry);
+                if (isNew)
+                    await _database.HashSetAsync(metaKey, new[] { new HashEntry("CreatedAt", now), new HashEntry("LastUpdated", now) });
+                else
+                    await _database.HashSetAsync(metaKey, "LastUpdated", now);
             }
             catch (Exception ex)
             {
@@ -95,7 +103,14 @@ namespace SmartRAG.Repositories
             try
             {
                 var conversationKey = $"conversation:{sessionId}";
+                var metaKey = $"conversation:meta:{sessionId}";
+                var now = DateTime.UtcNow.ToString("o");
+                var metaExists = await _database.KeyExistsAsync(metaKey);
                 await _database.StringSetAsync(conversationKey, conversation);
+                if (metaExists)
+                    await _database.HashSetAsync(metaKey, "LastUpdated", now);
+                else
+                    await _database.HashSetAsync(metaKey, new[] { new HashEntry("CreatedAt", now), new HashEntry("LastUpdated", now) });
             }
             catch (Exception ex)
             {
@@ -110,6 +125,7 @@ namespace SmartRAG.Repositories
             {
                 await _database.KeyDeleteAsync($"conversation:{sessionId}");
                 await _database.KeyDeleteAsync($"conversation:sources:{sessionId}");
+                await _database.KeyDeleteAsync($"conversation:meta:{sessionId}");
             }
             catch (Exception ex)
             {
@@ -192,7 +208,7 @@ namespace SmartRAG.Repositories
 
                 var server = _redis.GetServer(endpoints.First());
                 var pattern = "conversation:*";
-                
+
                 await foreach (var key in server.KeysAsync(pattern: pattern))
                 {
                     cancellationToken.ThrowIfCancellationRequested();
@@ -205,6 +221,38 @@ namespace SmartRAG.Repositories
             {
                 _logger.LogError(ex, "Error clearing all conversations from Redis");
                 throw;
+            }
+        }
+
+        public async Task<(DateTime? CreatedAt, DateTime? LastUpdated)> GetSessionTimestampsAsync(string sessionId, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId))
+                return (null, null);
+
+            try
+            {
+                var metaKey = $"conversation:meta:{sessionId}";
+                var entries = await _database.HashGetAllAsync(metaKey);
+                if (entries == null || entries.Length == 0)
+                    return (null, null);
+
+                DateTime? createdAt = null;
+                DateTime? lastUpdated = null;
+                foreach (var e in entries)
+                {
+                    var val = e.Value.ToString();
+                    if (string.IsNullOrEmpty(val)) continue;
+                    if (string.Equals(e.Name, "CreatedAt", StringComparison.OrdinalIgnoreCase) && DateTime.TryParse(val, null, System.Globalization.DateTimeStyles.RoundtripKind, out var ca))
+                        createdAt = ca;
+                    else if (string.Equals(e.Name, "LastUpdated", StringComparison.OrdinalIgnoreCase) && DateTime.TryParse(val, null, System.Globalization.DateTimeStyles.RoundtripKind, out var lu))
+                        lastUpdated = lu;
+                }
+                return (createdAt, lastUpdated);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting session timestamps");
+                return (null, null);
             }
         }
 
@@ -227,7 +275,7 @@ namespace SmartRAG.Repositories
                 {
                     cancellationToken.ThrowIfCancellationRequested();
                     var keyStr = (string)key;
-                    if (keyStr.StartsWith("conversation:sources:", StringComparison.Ordinal))
+                    if (keyStr.StartsWith("conversation:sources:", StringComparison.Ordinal) || keyStr.StartsWith("conversation:meta:", StringComparison.Ordinal))
                         continue;
                     if (keyStr.StartsWith("conversation:", StringComparison.Ordinal))
                     {

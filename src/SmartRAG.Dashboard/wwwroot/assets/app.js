@@ -102,6 +102,7 @@
             tbody.innerHTML = '<tr><td colspan="' + colCount + '">' + (emptyText || 'No documents.') + '</td></tr>';
             return;
         }
+        var copyIconSvg = '<span class="sr-copy-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></span>';
         items.forEach(function (doc) {
             var tr = document.createElement('tr');
             var nameCell = '<td>' + escapeHtml(doc.fileName) + '</td>';
@@ -110,9 +111,10 @@
             var collectionValue = doc.collectionName || '';
             var collectionCell = showCollectionName
                 ? '<td class="sr-doc-cell-collection" title="' + escapeAttr(collectionValue) + '">' +
+                    '<div class="sr-doc-cell-collection-inner">' +
                     '<span class="sr-doc-collection-text">' + escapeHtml(collectionValue) + '</span> ' +
-                    '<button type="button" class="sr-btn sr-doc-copy-btn" data-collection="' + escapeAttr(collectionValue) + '" title="Copy collection name" aria-label="Copy collection name">Copy</button>' +
-                    '</td>'
+                    '<button type="button" class="sr-btn sr-btn-secondary sr-doc-copy-btn" data-collection="' + escapeAttr(collectionValue) + '" title="Copy collection name" aria-label="Copy collection name">' + copyIconSvg + '</button>' +
+                    '</div></td>'
                 : '';
             tr.innerHTML =
                 nameCell +
@@ -151,15 +153,20 @@
             });
         });
 
+        var copyIconSvg = '<span class="sr-copy-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></span>';
+        var checkIconSvg = '<span class="sr-copy-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span>';
         tbody.querySelectorAll('.sr-doc-copy-btn').forEach(function (btn) {
             btn.addEventListener('click', function () {
                 var value = btn.getAttribute('data-collection') || '';
                 if (!value) return;
                 if (navigator.clipboard && navigator.clipboard.writeText) {
                     navigator.clipboard.writeText(value).then(function () {
-                        var orig = btn.textContent;
-                        btn.textContent = 'Copied!';
-                        setTimeout(function () { btn.textContent = orig; }, 1500);
+                        btn.innerHTML = checkIconSvg;
+                        btn.setAttribute('title', 'Copied!');
+                        setTimeout(function () {
+                            btn.innerHTML = copyIconSvg;
+                            btn.setAttribute('title', 'Copy collection name');
+                        }, 1500);
                     });
                 }
             });
@@ -507,11 +514,27 @@
     var chatSessionId = null;
     var isChatRequestPending = false;
 
+    var chatLastUpdated = null;
+
     function updateSessionIdDisplay() {
         var el = document.getElementById('sr-chat-session-id');
         if (el) {
             el.textContent = chatSessionId || '—';
             el.setAttribute('title', chatSessionId || '');
+        }
+        var copyBtn = document.getElementById('sr-chat-session-copy');
+        if (copyBtn) {
+            copyBtn.style.display = chatSessionId ? 'inline-flex' : 'none';
+        }
+        var updatedRow = document.getElementById('sr-chat-last-updated-row');
+        var updatedEl = document.getElementById('sr-chat-last-updated');
+        if (updatedRow && updatedEl) {
+            if (chatSessionId && chatLastUpdated) {
+                updatedEl.textContent = new Date(chatLastUpdated).toLocaleString();
+                updatedRow.style.display = '';
+            } else {
+                updatedRow.style.display = 'none';
+            }
         }
     }
 
@@ -541,6 +564,7 @@
         sendChatMessage(text, chatSessionId).then(function (res) {
             removeChatTypingIndicator();
             if (res.sessionId) chatSessionId = res.sessionId;
+            if (res.lastUpdated) chatLastUpdated = res.lastUpdated;
             if (res.sources && res.sources.length > 0) {
                 appendAssistantMessageWithSources(res.answer || '', res.sources);
             } else {
@@ -881,6 +905,7 @@
                 if (activeConversationId === sessionId) {
                     activeConversationId = null;
                     chatSessionId = null;
+                    chatLastUpdated = null;
                     var messages = document.getElementById('sr-chat-messages');
                     if (messages) {
                         messages.innerHTML = '';
@@ -944,7 +969,7 @@
 
             var meta = document.createElement('div');
             meta.className = 'sr-chat-conversation-meta';
-            meta.textContent = conv.lastUpdated ? new Date(conv.lastUpdated).toLocaleString() : '';
+            meta.textContent = conv.createdAt ? new Date(conv.createdAt).toLocaleString() : (conv.lastUpdated ? new Date(conv.lastUpdated).toLocaleString() : '');
 
             div.appendChild(header);
             div.appendChild(meta);
@@ -984,6 +1009,7 @@
             if (!detail) return;
             activeConversationId = detail.id;
             chatSessionId = detail.id;
+            chatLastUpdated = detail.lastUpdated || null;
             var container = document.getElementById('sr-chat-messages');
             if (container) {
                 container.innerHTML = '';
@@ -1000,6 +1026,7 @@
         if (isChatRequestPending) return;
         chatSessionId = null;
         activeConversationId = null;
+        chatLastUpdated = null;
         var container = document.getElementById('sr-chat-messages');
         if (container) {
             container.innerHTML = '';
@@ -1093,6 +1120,7 @@
                 if (!r.ok) throw new Error('Failed to clear conversations');
                 activeConversationId = null;
                 chatSessionId = null;
+                chatLastUpdated = null;
                 var messages = document.getElementById('sr-chat-messages');
                 if (messages) {
                     messages.innerHTML = '';
@@ -1173,6 +1201,25 @@
                 sendChat();
             }
         });
+
+        var sessionCopyBtn = document.getElementById('sr-chat-session-copy');
+        if (sessionCopyBtn) {
+            var copyIconHtml = '<span class="sr-copy-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></span>';
+            var checkIconHtml = '<span class="sr-copy-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg></span>';
+            sessionCopyBtn.addEventListener('click', function () {
+                if (!chatSessionId) return;
+                if (navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(chatSessionId).then(function () {
+                        sessionCopyBtn.innerHTML = checkIconHtml;
+                        sessionCopyBtn.setAttribute('title', 'Copied!');
+                        setTimeout(function () {
+                            sessionCopyBtn.innerHTML = copyIconHtml;
+                            sessionCopyBtn.setAttribute('title', 'Copy session ID');
+                        }, 1500);
+                    });
+                }
+            });
+        }
 
         var flagsToggle = document.getElementById('sr-chat-flags-toggle');
         var flagsDetail = document.getElementById('sr-chat-flags-detail');

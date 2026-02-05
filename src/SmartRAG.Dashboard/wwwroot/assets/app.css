@@ -983,6 +983,7 @@ body {
     padding: 0.625rem 0.875rem;
     text-align: left;
     border-bottom: 1px solid var(--sr-border);
+    vertical-align: middle;
 }
 
 .sr-doc-table td:first-child,
@@ -995,7 +996,8 @@ body {
 
 .sr-doc-table td:nth-child(3),
 .sr-doc-table th:nth-child(3) {
-    max-width: 22rem;
+    max-width: 28rem;
+    min-width: 12rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1008,10 +1010,11 @@ body {
     width: 1%;
 }
 
-.sr-doc-cell-collection {
+.sr-doc-cell-collection .sr-doc-cell-collection-inner {
     display: flex;
     align-items: center;
     gap: 0.35rem;
+    min-width: 0;
 }
 
 .sr-doc-cell-collection .sr-doc-collection-text {
@@ -1023,8 +1026,22 @@ body {
 
 .sr-doc-copy-btn {
     flex-shrink: 0;
-    padding: 0.2rem 0.5rem;
-    font-size: 0.75rem;
+    padding: 0.25rem;
+    min-width: 28px;
+    min-height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sr-doc-copy-btn .sr-copy-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sr-doc-copy-btn .sr-copy-icon svg {
+    display: block;
 }
 
 .sr-doc-table th {
@@ -1111,6 +1128,26 @@ body {
     text-overflow: ellipsis;
     white-space: nowrap;
     min-width: 0;
+}
+
+.sr-chat-session-copy-btn {
+    flex-shrink: 0;
+    padding: 0.25rem;
+    min-width: 28px;
+    min-height: 28px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sr-chat-session-copy-btn .sr-copy-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sr-chat-session-copy-btn .sr-copy-icon svg {
+    display: block;
 }
 
 .sr-chat-meta-features {
@@ -1663,7 +1700,8 @@ body {
 
     .sr-doc-table td:nth-child(3),
     .sr-doc-table th:nth-child(3) {
-        max-width: 10rem;
+        max-width: 14rem;
+        min-width: 8rem;
     }
 
     .sr-doc-table .sr-btn {
@@ -1672,8 +1710,9 @@ body {
     }
 
     .sr-doc-copy-btn {
-        padding: 0.15rem 0.4rem;
-        font-size: 0.6875rem;
+        padding: 0.2rem;
+        min-width: 26px;
+        min-height: 26px;
     }
 
     .sr-settings-content {

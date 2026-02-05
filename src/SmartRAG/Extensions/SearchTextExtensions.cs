@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -69,6 +71,28 @@ namespace SmartRAG.Extensions
             normalized = normalized.Replace('\u0131', 'i');
             normalized = Regex.Replace(normalized, @"(\p{L})1\b", "$1i");
             return normalized;
+        }
+
+        /// <summary>
+        /// Generates search term variants for morphologically rich languages.
+        /// Adds prefix variants (term without trailing chars) so "term" can match "term" or "term" stem in document.
+        /// Generic: works for any language with suffix variations.
+        /// </summary>
+        /// <param name="term">Original search term</param>
+        /// <param name="minVariantLength">Minimum length for generated variants</param>
+        /// <returns>Distinct variants including original, for matching</returns>
+        public static List<string> GetSearchTermVariants(this string term, int minVariantLength = 4)
+        {
+            if (string.IsNullOrWhiteSpace(term) || term.Length < minVariantLength)
+                return new List<string> { term ?? string.Empty };
+
+            var variants = new List<string> { term };
+            if (term.Length >= minVariantLength + 1)
+                variants.Add(term.Substring(0, term.Length - 1));
+            if (term.Length >= minVariantLength + 2)
+                variants.Add(term.Substring(0, term.Length - 2));
+
+            return variants.Distinct().Where(v => v.Length >= minVariantLength).ToList();
         }
     }
 }

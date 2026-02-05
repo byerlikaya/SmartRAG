@@ -261,6 +261,7 @@ public static class DashboardEndpointRouteBuilderExtensions
                 HttpRequest request,
                 IDocumentSearchService documentSearchService,
                 IConversationManagerService conversationManager,
+                IConversationRepository conversationRepository,
                 CancellationToken cancellationToken) =>
             {
                 ChatMessageRequest? body;
@@ -320,11 +321,13 @@ public static class DashboardEndpointRouteBuilderExtensions
                 {
                 }
 
+                var (_, lastUpdated) = await conversationRepository.GetSessionTimestampsAsync(sessionId, cancellationToken).ConfigureAwait(false);
                 var response = new ChatMessageResponse
                 {
                     Answer = answer,
                     SessionId = sessionId,
-                    Sources = sources
+                    Sources = sources,
+                    LastUpdated = lastUpdated.HasValue ? lastUpdated.Value.ToString("o") : null
                 };
                 return Results.Json(response);
             });
@@ -343,9 +346,14 @@ public static class DashboardEndpointRouteBuilderExtensions
                 foreach (var id in filteredIds)
                 {
                     var history = await conversationRepository.GetConversationHistoryAsync(id, cancellationToken).ConfigureAwait(false);
-                    var summary = BuildChatSessionSummary(id, history);
+                    var (createdAt, lastUpdated) = await conversationRepository.GetSessionTimestampsAsync(id, cancellationToken).ConfigureAwait(false);
+                    var summary = BuildChatSessionSummary(id, history, createdAt, lastUpdated);
                     summaries.Add(summary);
                 }
+
+                summaries = summaries
+                    .OrderByDescending(s => ParseSortDate(s.LastUpdated ?? s.CreatedAt))
+                    .ToList();
 
                 return Results.Json(summaries);
             });
@@ -394,6 +402,7 @@ public static class DashboardEndpointRouteBuilderExtensions
 
                 var history = await conversationRepository.GetConversationHistoryAsync(sessionId, cancellationToken).ConfigureAwait(false);
                 var messages = ParseConversationHistory(history);
+                var (_, lastUpdated) = await conversationRepository.GetSessionTimestampsAsync(sessionId, cancellationToken).ConfigureAwait(false);
 
                 var sourcesJson = await conversationManager.GetSourcesForSessionAsync(sessionId, cancellationToken).ConfigureAwait(false);
                 if (!string.IsNullOrWhiteSpace(sourcesJson))
@@ -423,7 +432,8 @@ public static class DashboardEndpointRouteBuilderExtensions
                 var detail = new ChatSessionDetailResponse
                 {
                     Id = sessionId,
-                    Messages = messages
+                    Messages = messages,
+                    LastUpdated = lastUpdated.HasValue ? lastUpdated.Value.ToString("o") : null
                 };
 
                 return Results.Json(detail);
@@ -730,7 +740,13 @@ public static class DashboardEndpointRouteBuilderExtensions
         return value.ToString() ?? string.Empty;
     }
 
-    private static ChatSessionSummaryResponse BuildChatSessionSummary(string sessionId, string history)
+    private static DateTime ParseSortDate(string? dateStr)
+    {
+        if (string.IsNullOrWhiteSpace(dateStr)) return DateTime.MinValue;
+        return DateTime.TryParse(dateStr, null, System.Globalization.DateTimeStyles.RoundtripKind, out var d) ? d : DateTime.MinValue;
+    }
+
+    private static ChatSessionSummaryResponse BuildChatSessionSummary(string sessionId, string history, DateTime? createdAt, DateTime? lastUpdated)
     {
         var title = "Conversation";
         if (!string.IsNullOrWhiteSpace(history))
@@ -751,7 +767,8 @@ public static class DashboardEndpointRouteBuilderExtensions
         {
             Id = sessionId,
             Title = title,
-            LastUpdated = null
+            CreatedAt = createdAt.HasValue ? createdAt.Value.ToString("o") : null,
+            LastUpdated = lastUpdated.HasValue ? lastUpdated.Value.ToString("o") : null
         };
     }
 
