@@ -81,6 +81,45 @@ const response = await fetch('/api/intelligence/query', { ... });
 
 ---
 
+### Migrating from v3.8.x to v3.9.0
+
+<div class="alert alert-warning">
+    <h4><i class="fas fa-exclamation-triangle me-2"></i> Breaking Changes</h4>
+    <p class="mb-0">v3.9.0 contains breaking changes for <code>IStorageFactory</code>, <code>IConversationRepository</code>, and removes <code>IQdrantCacheManager</code>.</p>
+</div>
+
+#### Step 1: Update IStorageFactory Usage
+
+<p>If you inject <code>IStorageFactory</code> and call <code>GetCurrentRepository()</code>, pass the scoped <code>IServiceProvider</code>:</p>
+
+```csharp
+// Before (v3.8.x)
+var repository = _storageFactory.GetCurrentRepository();
+
+// After (v3.9.0)
+var repository = _storageFactory.GetCurrentRepository(_serviceProvider);
+```
+
+<p>When using DI, the registration already passes the scoped provider. If you resolve <code>IDocumentRepository</code> directly, no change is needed.</p>
+
+#### Step 2: Update Custom IConversationRepository Implementations
+
+<p>If you have a custom <code>IConversationRepository</code> implementation, add these methods:</p>
+
+```csharp
+Task AppendSourcesForTurnAsync(string sessionId, string sourcesJson, CancellationToken cancellationToken = default);
+Task<string> GetSourcesForSessionAsync(string sessionId, CancellationToken cancellationToken = default);
+Task<string[]> GetAllSessionIdsAsync(CancellationToken cancellationToken = default);
+```
+
+<p>Built-in implementations (Sqlite, Redis, FileSystem, InMemory) already include these.</p>
+
+#### Step 3: Remove IQdrantCacheManager References (if used)
+
+<p><code>IQdrantCacheManager</code> and <code>QdrantCacheManager</code> were removed. Search no longer uses query result caching. Remove any references to these types.</p>
+
+---
+
 ### Migrating from v1.x to v2.0.0
 
 <div class="alert alert-warning">
