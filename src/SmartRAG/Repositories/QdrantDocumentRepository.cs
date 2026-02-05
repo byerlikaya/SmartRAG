@@ -293,7 +293,7 @@ namespace SmartRAG.Repositories
                 FileName = payloadFileName ?? fileName ?? string.Empty,
                 Content = chunkContent,
                 ChunkIndex = chunkIndex,
-                Embedding = point.Vectors?.Vector?.Data?.ToList() ?? new List<float>(),
+                Embedding = point.Vectors?.Vector?.Dense?.Data?.ToList() ?? new List<float>(),
                 CreatedAt = chunkCreatedAt,
                 DocumentType = documentType,
                 StartPosition = 0,
@@ -355,13 +355,7 @@ namespace SmartRAG.Repositories
                     var point = new PointStruct
                     {
                         Id = new PointId { Uuid = Guid.NewGuid().ToString() },
-                        Vectors = new Vectors
-                        {
-                            Vector = new Vector
-                            {
-                                Data = { chunk.Embedding }
-                            }
-                        }
+                        Vectors = chunk.Embedding.ToArray()
                     };
 
                     var normalizedContent = NormalizeContentForStorage(chunk.Content);
@@ -587,7 +581,7 @@ namespace SmartRAG.Repositories
             try
             {
                 var collectionInfo = await _client.GetCollectionInfoAsync(_collectionName);
-                return (int)collectionInfo.VectorsCount;
+                return (int)collectionInfo.PointsCount;
             }
             catch (Exception)
             {
