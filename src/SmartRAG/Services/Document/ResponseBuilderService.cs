@@ -305,9 +305,21 @@ namespace SmartRAG.Services.Document
 
             var normalized = answer.Trim();
 
+            // Explicit negative token (internal)
             if (IsExplicitlyNegative(normalized))
             {
                 return true;
+            }
+
+            // CRITICAL: If we already have substantial document/audio/image context,
+            // we never force "no answer" just because the model used a pessimistic phrase.
+            // Responsibility for missing data lies in retrieval, not in the generated wording.
+            if (sources != null && sources.Any(s =>
+                    SearchSourceHelper.HasContentBearingSource(s) &&
+                    !string.IsNullOrWhiteSpace(s.RelevantContent) &&
+                    s.RelevantContent!.Length >= 50))
+            {
+                return false;
             }
 
             var answerLower = normalized.ToLowerInvariant();
@@ -351,13 +363,10 @@ namespace SmartRAG.Services.Document
                             sourceContentLower.Contains(term.ToLowerInvariant()));
                         var termsInSourcesRatio = termsInSources / (double)significantTerms.Count;
 
-                        if (termsInSourcesRatio >= 0.5)
+                        if (termsInSourcesRatio >= 0.3)
                         {
                             return false;
                         }
-
-                        if (termsInSourcesRatio < 0.5 && answer.Length < 200)
-                            return true;
                     }
                 }
             }
