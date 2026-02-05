@@ -111,6 +111,23 @@ var cevap = await searchService.QueryIntelligenceAsync(
 
 **SmartRAG'ı hemen test etmek ister misiniz?** → [Örnekler ve Test'e Git](#-örnekler-ve-test)
 
+### **Dashboard (Web Arayüzü)**
+
+Doküman yönetimi ve chat için tarayıcı tabanlı bir dashboard ekleyin:
+
+```bash
+dotnet add package SmartRAG.Dashboard
+```
+
+```csharp
+builder.Services.AddSmartRag(builder.Configuration);
+builder.Services.AddSmartRagDashboard(options => { options.Path = "/smartrag"; });
+
+app.UseSmartRagDashboard("/smartrag");
+app.MapSmartRagDashboard("/smartrag");
+```
+
+Ardından dokümanları listelemek, yüklemek/silmek ve aktif AI modeli ile sohbet etmek için `https://localhost:5000/smartrag` adresini açın. **Varsayılan olarak dashboard sadece Development ortamında açıktır.** Production için bu yolu kendi auth’unuzla koruyun veya `AuthorizationFilter` kullanın. Güvenlik ve seçenekler için [Dashboard dokümantasyonuna](https://byerlikaya.github.io/SmartRAG/tr/dashboard.html) bakın.
 
 ## 🏆 **Neden SmartRAG?**
 

@@ -11,12 +11,66 @@ SmartRAG'deki tüm sürümler ve değişiklikler burada belgelenmiştir.
 
 <div class="accordion mt-4" id="versionAccordion">
     <div class="accordion-item">
+        <h2 class="accordion-header" id="headingversion390">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion390" aria-expanded="true" aria-controls="collapseversion390">
+                <strong>v3.9.0</strong> - 2026-02-05
+            </button>
+        </h2>
+        <div id="collapseversion390" class="accordion-collapse collapse show" aria-labelledby="headingversion390" >
+            <div class="accordion-body">
+{% capture version_content %}
+
+### Konuşma Zaman Damgaları, RAG İyileştirmeleri, Qdrant 1.16
+
+<div class="alert alert-info">
+    <h4><i class="fas fa-info-circle me-2"></i> MINOR Sürüm</h4>
+    <p class="mb-0">
+        Bu sürüm konuşma zaman damgaları ve kaynakları, büyük RAG arama iyileştirmeleri, yinelenen yükleme önleme, Whisper bootstrap, MCP isteğe bağlı bağlantı ve Qdrant 1.16.1 uyumluluğu ekler.
+        IStorageFactory ve IConversationRepository için kırıcı değişiklikler içerir.
+    </p>
+</div>
+
+### ✨ Eklenenler
+
+- **Konuşma Zaman Damgaları ve Kaynaklar**: GetSessionTimestampsAsync, AppendSourcesForTurnAsync, GetSourcesForSessionAsync, GetAllSessionIdsAsync
+- **Açık Oturum RAG Overload**: sessionId ve conversationHistory ile QueryIntelligenceAsync
+- **Yinelenen Yükleme Önleme**: Hash tabanlı atlama, DocumentSkippedException
+- **Whisper Native Bootstrap**: Başlangıç başlatması için WhisperNativeBootstrap
+- **MCP İsteğe Bağlı**: MCP sunucuları yalnızca -mcp etiketi kullanıldığında bağlanır
+
+### 🔧 İyileştirmeler
+
+- **Doküman RAG Arama**: Dosya adı erken dönüşü, phrase/morfolojik chunk önceliklendirme, dosya adı eşleştirmeli relevance skorlama, extraction retry modu
+- **Takip Soruları**: Daha iyi konuşma context işleme
+- **PDF ve OCR**: Türkçe encoding, para birimi pattern'leri
+- **Storage Factory**: Scoped çözümleme için GetCurrentRepository(IServiceProvider)
+- **Qdrant**: 1.16.1 API uyumluluğu, IQdrantCacheManager kaldırıldı
+- **NuGet**: Qdrant.Client, StackExchange.Redis, MySql.Data, itext, EPPlus, PDFtoImage güncellendi
+
+### ⚠️ Kırıcı Değişiklikler
+
+- IStorageFactory: GetCurrentRepository(IServiceProvider scopedProvider)
+- IConversationRepository: AppendSourcesForTurnAsync, GetSourcesForSessionAsync, GetAllSessionIdsAsync zorunlu
+- IQdrantCacheManager: Kaldırıldı
+
+### 📝 Notlar
+
+- Kırıcı değişiklikler için migrasyon rehberine bakın
+- 0 hata, 0 uyarı build politikası korunur
+
+---
+{% endcapture %}
+{{ version_content | markdownify }}
+            </div>
+        </div>
+    </div>
+    <div class="accordion-item">
         <h2 class="accordion-header" id="headingversion381">
-            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion381" aria-expanded="true" aria-controls="collapseversion381">
+            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseversion381" aria-expanded="false" aria-controls="collapseversion381">
                 <strong>v3.8.1</strong> - 2026-01-28
             </button>
         </h2>
-        <div id="collapseversion381" class="accordion-collapse collapse show" aria-labelledby="headingversion381" >
+        <div id="collapseversion381" class="accordion-collapse collapse" aria-labelledby="headingversion381" >
             <div class="accordion-body">
 {% capture version_content %}
 

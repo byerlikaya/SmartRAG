@@ -50,41 +50,45 @@ namespace SmartRAG.Services.Document
             {
                 var score = DefaultScoreValue;
                 var content = chunk.Content.ToLowerInvariant();
+                var fileName = chunk.FileName?.ToLowerInvariant() ?? string.Empty;
+                var searchableText = string.Concat(content, " ", fileName);
 
                 if (potentialNames.Count >= MinPotentialNamesCount)
                 {
-                    var fullName = string.Join(" ", potentialNames);
-                    if (_textNormalizationService.ContainsNormalizedName(content, fullName))
+                    var fullName = string.Join(" ", potentialNames.Select(n => n.ToLowerInvariant()));
+                    if (_textNormalizationService.ContainsNormalizedName(searchableText, fullName))
                     {
                         score += FullNameMatchScoreBoost;
                     }
-                    else if (potentialNames.Any(name => _textNormalizationService.ContainsNormalizedName(content, name)))
+                    else if (potentialNames.Any(name => _textNormalizationService.ContainsNormalizedName(searchableText, name)))
                     {
                         score += PartialNameMatchScoreBoost;
                     }
                 }
 
+                var fileNamePhraseBonus = GetFileNamePhraseBonus(fileName, queryWords, potentialNames);
+                score += fileNamePhraseBonus;
+
                 var matchedWords = 0;
                 foreach (var word in queryWords)
                 {
                     var wordLower = word.ToLowerInvariant();
-                    var contentLower = content.ToLowerInvariant();
                     var wordMatched = false;
 
-                    if (contentLower.Contains(wordLower))
+                    if (searchableText.Contains(wordLower))
                     {
                         score += WordMatchScore;
                         matchedWords++;
                         wordMatched = true;
                     }
-                    else if (wordLower.Length >= 4) // Only for words 4+ chars to avoid false matches
+                    else if (wordLower.Length >= 4)
                     {
                         for (int len = Math.Min(wordLower.Length, 8); len >= 4; len--)
                         {
                             for (int start = 0; start <= wordLower.Length - len; start++)
                             {
                                 var substring = wordLower.Substring(start, len);
-                                if (contentLower.Contains(substring))
+                                if (searchableText.Contains(substring))
                                 {
                                     score += WordMatchScore * 0.5; // Partial match, lower score
                                     matchedWords++;
@@ -143,6 +147,35 @@ namespace SmartRAG.Services.Document
                 chunk.RelevanceScore = score;
                 return chunk;
             }).ToList();
+        }
+
+        private static double GetFileNamePhraseBonus(string fileNameLower, List<string> queryWords, List<string> potentialNames)
+        {
+            if (string.IsNullOrWhiteSpace(fileNameLower))
+                return 0;
+
+            if (potentialNames != null && potentialNames.Count >= 2)
+            {
+                var entityPhrase = string.Join(" ", potentialNames.Select(n => n.ToLowerInvariant()));
+                if (fileNameLower.Contains(entityPhrase))
+                    return FullNameMatchScoreBoost;
+            }
+
+            if (queryWords == null || queryWords.Count < 2)
+                return 0;
+
+            for (int i = 0; i < queryWords.Count - 1; i++)
+            {
+                var w1 = queryWords[i].ToLowerInvariant();
+                var w2 = queryWords[i + 1].ToLowerInvariant();
+                if (w1.Length >= 1 && w2.Length >= 3)
+                {
+                    var phrase = $"{w1} {w2}";
+                    if (fileNameLower.Contains(phrase))
+                        return FullNameMatchScoreBoost;
+                }
+            }
+            return 0;
         }
     }
 }

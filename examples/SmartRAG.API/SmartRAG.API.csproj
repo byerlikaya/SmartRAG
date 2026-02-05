@@ -9,13 +9,15 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.10" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="9.0.6" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.12" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="7.2.0" />
     <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.6.3" />
+    <PackageReference Include="Whisper.net.Runtime" Version="1.9.0" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\SmartRAG\SmartRAG.csproj" />
+    <ProjectReference Include="..\..\src\SmartRAG.Dashboard\SmartRAG.Dashboard.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,5 +28,14 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
+
+  <!-- Whisper.net.Runtime ships native libs under macos-arm64; .NET loads from osx-arm64/native. Copy so Whisper works on macOS ARM. -->
+  <Target Name="CopyWhisperNativeToOsxArm64" AfterTargets="Build" Condition="Exists('$(OutputPath)runtimes/macos-arm64')">
+    <ItemGroup>
+      <_WhisperDylibs Include="$(OutputPath)runtimes/macos-arm64/*.dylib" />
+    </ItemGroup>
+    <MakeDir Directories="$(OutputPath)runtimes/osx-arm64/native" Condition="!Exists('$(OutputPath)runtimes/osx-arm64/native')" />
+    <Copy SourceFiles="@(_WhisperDylibs)" DestinationFolder="$(OutputPath)runtimes/osx-arm64/native" SkipUnchangedFiles="true" />
+  </Target>
 
 </Project>

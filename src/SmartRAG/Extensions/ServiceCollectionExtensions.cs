@@ -54,6 +54,8 @@ namespace SmartRAG.Extensions
         /// </summary>
         public static IServiceCollection AddSmartRag(this IServiceCollection services, IConfiguration configuration, Action<SmartRagOptions> configureOptions)
         {
+            WhisperNativeBootstrap.EnsureMacOsWhisperNativeLibraries();
+
             RegisterConfiguration(services, configuration, configureOptions);
 
             var options = BuildOptions(configuration, configureOptions);
@@ -258,7 +260,7 @@ namespace SmartRAG.Extensions
         {
             ConfigureStorageProvider(services, configuration);
 
-            services.AddSingleton(sp => sp.GetRequiredService<IStorageFactory>().GetCurrentRepository());
+            services.AddScoped<IDocumentRepository>(sp => sp.GetRequiredService<IStorageFactory>().GetCurrentRepository(sp));
             services.AddSingleton(sp => sp.GetRequiredService<IStorageFactory>().GetCurrentConversationRepository());
         }
 

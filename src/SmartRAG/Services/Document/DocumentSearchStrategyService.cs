@@ -3,6 +3,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartRAG.Entities;
+using SmartRAG.Extensions;
 using SmartRAG.Helpers;
 using SmartRAG.Interfaces.Document;
 using SmartRAG.Models;
@@ -23,9 +24,10 @@ namespace SmartRAG.Services.Document
         // Adaptive threshold strategy: Start with industry standard, fallback to lower if no results
         // Redis returns 0-100 scale (similarity * 100), Qdrant returns 0-1 scale (cosine similarity) - normalize to 0-100
         private const double PreferredVectorSearchThreshold = 50.0; // 0.5 similarity (preferred, industry standard)
-        private const double FallbackVectorSearchThreshold = 30.0; // 0.3 similarity (fallback if no results with preferred)
+        private const double FallbackVectorSearchThreshold = 15.0; // 0.15 similarity (aggressive fallback for entity/contract/legal queries)
         private const double MinTextSearchRelevanceThreshold = 3.0; // Text search uses different scale (4.0-6.0+)
         private const double MinChunk0RelevanceThreshold = 25.0; // Lower threshold for document introduction chunks
+        private const int MinChunksForSufficientResults = 5; // Use fallback threshold when we have few results but many candidates
         private const int ReciprocalRankFusionK = 60; // RRF k parameter (industry standard: 50-60, R2R uses 50)
         private const double KeywordSearchWeight = 1.0; // Weight for keyword search results (R2R standard)
         private const double VectorSearchWeight = 5.0; // Weight for vector search results (R2R standard)
@@ -75,7 +77,9 @@ namespace SmartRAG.Services.Document
             var isVagueQuery = IsVagueQuery(query, hasNameQuery, requiresNumericContext);
             var queryWords = queryTokens ?? QueryTokenizer.TokenizeQuery(query);
             var queryWordsLower = queryWords.Select(w => w.ToLowerInvariant()).ToList();
-            
+            var phraseWords = QueryTokenizer.GetWordsForPhraseExtraction(query);
+            var criticalPhrases = ExtractCriticalPhrases(query.ToLowerInvariant(), queryWordsLower, phraseWords);
+
             // Stage 1: Try fast repository search (vector similarity search)
             // This is the primary strategy - fast and efficient for semantic queries
             // If successful, return immediately. If not, fall back to keyword-based search.
@@ -85,6 +89,8 @@ namespace SmartRAG.Services.Document
                 // For InMemory/Redis, repository handles search directly. No unnecessary wrapper needed.
                 var searchResults = await _documentRepository.SearchAsync(query, maxResults * InitialSearchMultiplier);
                 cancellationToken.ThrowIfCancellationRequested();
+
+                _logger.LogDebug("Repository search returned {Count} results for query length {QueryLength}", searchResults.Count, query.Length);
 
                 if (searchResults.Count > 0)
                 {
@@ -109,11 +115,13 @@ namespace SmartRAG.Services.Document
                     var typeFilteredResults = normalizedResults.Where(chunk =>
                     {
                         var documentType = chunk.DocumentType ?? "Document";
-                        return documentType.Equals("Audio", StringComparison.OrdinalIgnoreCase)
-                            ? searchOptions.EnableAudioSearch
-                            : documentType.Equals("Image", StringComparison.OrdinalIgnoreCase)
-                                ? searchOptions.EnableImageSearch
-                                : searchOptions.EnableDocumentSearch;
+                        if (documentType.Equals("Schema", StringComparison.OrdinalIgnoreCase))
+                            return searchOptions.EnableDatabaseSearch;
+                        if (documentType.Equals("Audio", StringComparison.OrdinalIgnoreCase))
+                            return searchOptions.EnableAudioSearch;
+                        if (documentType.Equals("Image", StringComparison.OrdinalIgnoreCase))
+                            return searchOptions.EnableImageSearch;
+                        return searchOptions.EnableDocumentSearch;
                     }).ToList();
                     
                     if (typeFilteredResults.Count == 0)
@@ -121,9 +129,8 @@ namespace SmartRAG.Services.Document
                         return new List<DocumentChunk>();
                     }
                     
-                    // Adaptive threshold strategy: Try preferred threshold first, fallback if no results
                     var minRelevanceThreshold = isTextSearch ? MinTextSearchRelevanceThreshold : PreferredVectorSearchThreshold;
-                    
+
                     var filteredResults = typeFilteredResults.Where(chunk =>
                     {
                         var relevanceScore = chunk.RelevanceScore ?? 0.0;
@@ -131,7 +138,6 @@ namespace SmartRAG.Services.Document
                                (chunk.ChunkIndex == 0 && relevanceScore >= MinChunk0RelevanceThreshold);
                     }).ToList();
 
-                    // If no results with preferred threshold, try fallback threshold (adaptive)
                     if (filteredResults.Count == 0 && !isTextSearch)
                     {
                         filteredResults = typeFilteredResults.Where(chunk =>
@@ -141,7 +147,20 @@ namespace SmartRAG.Services.Document
                                    (chunk.ChunkIndex == 0 && relevanceScore >= MinChunk0RelevanceThreshold);
                         }).ToList();
                     }
-                    
+
+                    if (filteredResults.Count > 0 && filteredResults.Count < MinChunksForSufficientResults &&
+                        typeFilteredResults.Count >= 10 && !isTextSearch)
+                    {
+                        var fallbackFiltered = typeFilteredResults.Where(chunk =>
+                        {
+                            var relevanceScore = chunk.RelevanceScore ?? 0.0;
+                            return relevanceScore >= FallbackVectorSearchThreshold ||
+                                   (chunk.ChunkIndex == 0 && relevanceScore >= MinChunk0RelevanceThreshold);
+                        }).ToList();
+                        if (fallbackFiltered.Count > filteredResults.Count)
+                            filteredResults = fallbackFiltered;
+                    }
+
                     // If still no results, return top-K by score (better than nothing)
                     if (filteredResults.Count == 0)
                     {
@@ -164,9 +183,6 @@ namespace SmartRAG.Services.Document
                     if (finalResults.Count > 0)
                     {
                         var topChunkContent = finalResults.FirstOrDefault()?.Content?.ToLowerInvariant() ?? string.Empty;
-                        var queryLower = query.ToLowerInvariant();
-                        
-                        var criticalPhrases = ExtractCriticalPhrases(queryLower, queryWordsLower);
                         var significantQueryWords = queryWordsLower.Where(w => w.Length >= 4).ToList();
                         
                         var shouldTriggerKeywordFallback = false;
@@ -226,7 +242,9 @@ namespace SmartRAG.Services.Document
                         }
                     }
                     
-                    if (requiresNumericContext && finalResults.Count > 0 && highestScore < PreferredVectorSearchThreshold)
+                    var significantWordCount = queryWordsLower.Count(w => w.Length >= 4);
+                    var runKeywordFallback = requiresNumericContext || significantWordCount >= 3;
+                    if (runKeywordFallback && finalResults.Count >= 0)
                     {
                         var keywordResults = await PerformKeywordFallbackAsync(query, maxResults, searchOptions, queryTokens, cancellationToken);
                         if (keywordResults.Count > 0)
@@ -256,37 +274,95 @@ namespace SmartRAG.Services.Document
 
             // Stage 2: Simple keyword-based fallback strategy
             // Only used when vector search completely fails or returns no results
-            // Simple word matching - if vector search doesn't work, basic keyword search is better than nothing
-            
+            // Load full documents with chunk content (some repositories may return empty chunk content from GetAllAsync)
             cancellationToken.ThrowIfCancellationRequested();
+
             var allDocuments = await _documentService.GetAllDocumentsFilteredAsync(searchOptions);
-            var allChunks = allDocuments.SelectMany(d => d.Chunks).ToList();
+            var fullNameLower = potentialNames.Count >= 2 ? string.Join(" ", potentialNames.Select(n => n.ToLowerInvariant())) : string.Empty;
+
+            var entityRelevantDocuments = allDocuments.Where(d =>
+            {
+                var fileNameLower = (d.FileName ?? string.Empty).ToLowerInvariant();
+                if (criticalPhrases.Count > 0 && criticalPhrases.Any(p => fileNameLower.Contains(p)))
+                    return true;
+                if (!string.IsNullOrEmpty(fullNameLower) && fileNameLower.Contains(fullNameLower))
+                    return true;
+                return false;
+            }).ToList();
+
+            var documentsToLoad = entityRelevantDocuments.Count > 0
+                ? entityRelevantDocuments.Concat(allDocuments.Except(entityRelevantDocuments)).ToList()
+                : allDocuments;
+
+            var chunksWithContent = new List<DocumentChunk>();
+            foreach (var document in documentsToLoad)
+            {
+                var fullDocument = await _documentService.GetDocumentAsync(document.Id);
+                if (fullDocument != null && fullDocument.Chunks != null)
+                {
+                    chunksWithContent.AddRange(fullDocument.Chunks);
+                }
+            }
+            var allChunks = chunksWithContent;
 
             var potentialNamesLower = potentialNames.Select(n => n.ToLowerInvariant()).ToList();
+            var fileNamePhrases = GetTwoWordPhrasesFromQuery(queryWordsLower, phraseWords);
 
+            const int MinPrefixLengthForFileName = 4;
             var matchingChunks = allChunks.Where(chunk =>
             {
-                var contentLower = chunk.Content.ToLowerInvariant();
-                var matchCount = queryWordsLower.Count(word => contentLower.Contains(word));
-                
+                var searchableText = string.Concat(chunk.Content ?? string.Empty, " ", chunk.FileName ?? string.Empty).ToLowerInvariant();
+                var fileNameLower = (chunk.FileName ?? string.Empty).ToLowerInvariant();
+
+                var hasFileNamePhraseMatch = fileNamePhrases.Count > 0 && fileNamePhrases.Any(p => fileNameLower.Contains(p));
+                if (hasFileNamePhraseMatch)
+                    return true;
+
+                var hasFileNamePrefixMatch = queryWordsLower.Any(word =>
+                    word.Length >= MinPrefixLengthForFileName &&
+                    (fileNameLower.Contains(word) ||
+                     Enumerable.Range(MinPrefixLengthForFileName, Math.Max(0, word.Length - MinPrefixLengthForFileName))
+                         .Any(len => fileNameLower.Contains(word.Substring(0, len)))));
+                if (hasFileNamePrefixMatch)
+                    return true;
+
+                var matchCount = queryWordsLower.Count(word =>
+                {
+                    var normalized = word.NormalizeForOcrTolerantMatch();
+                    if (string.IsNullOrEmpty(normalized))
+                        return false;
+                    var searchableNormalized = searchableText.NormalizeForOcrTolerantMatch();
+                    if (searchableNormalized.IndexOf(normalized, StringComparison.Ordinal) >= 0)
+                        return true;
+                    foreach (var variant in normalized.GetSearchTermVariants(4))
+                    {
+                        if (searchableNormalized.IndexOf(variant, StringComparison.Ordinal) >= 0)
+                            return true;
+                    }
+                    return false;
+                });
+
                 if (potentialNamesLower.Count >= 2)
                 {
-                    var fullNameLower = string.Join(" ", potentialNamesLower);
-                    var hasFullName = contentLower.Contains(fullNameLower);
-                    var hasPartialName = potentialNamesLower.Any(name => contentLower.Contains(name));
-                    
+                    var fullName = string.Join(" ", potentialNamesLower);
+                    var hasFullName = searchableText.Contains(fullName);
+                    var hasPartialName = potentialNamesLower.Any(name => searchableText.Contains(name));
+
                     if (hasFullName || hasPartialName)
                     {
                         matchCount += potentialNamesLower.Count;
                     }
                 }
-                
+
+                if (criticalPhrases.Count > 0 && criticalPhrases.Any(p => searchableText.Contains(p)))
+                    return true;
+
                 if (requiresNumericContext)
                 {
-                    var hasNumericValue = contentLower.Any(char.IsDigit);
-                    return matchCount >= Math.Max(1, queryWordsLower.Count / 3) && hasNumericValue;
+                    var hasNumericValue = searchableText.Any(char.IsDigit);
+                    return matchCount >= 1 && hasNumericValue;
                 }
-                return matchCount >= Math.Max(1, queryWordsLower.Count / 2);
+                return matchCount >= Math.Max(1, queryWordsLower.Count / 4);
             }).ToList();
 
             if (matchingChunks.Count == 0)
@@ -296,18 +372,44 @@ namespace SmartRAG.Services.Document
 
             var scoredChunks = matchingChunks.Select(chunk =>
             {
-                var contentLower = chunk.Content.ToLowerInvariant();
-                var matchCount = queryWordsLower.Count(word => contentLower.Contains(word));
+                var searchableText = string.Concat(chunk.Content ?? string.Empty, " ", chunk.FileName ?? string.Empty).ToLowerInvariant();
+                var searchableNormalized = searchableText.NormalizeForOcrTolerantMatch();
+                var fileNameLower = (chunk.FileName ?? string.Empty).ToLowerInvariant();
+                var matchCount = queryWordsLower.Count(word =>
+                {
+                    var normalized = word.NormalizeForOcrTolerantMatch();
+                    if (string.IsNullOrEmpty(normalized))
+                        return false;
+                    if (searchableNormalized.IndexOf(normalized, StringComparison.Ordinal) >= 0)
+                        return true;
+                    foreach (var variant in normalized.GetSearchTermVariants(4))
+                    {
+                        if (searchableNormalized.IndexOf(variant, StringComparison.Ordinal) >= 0)
+                            return true;
+                    }
+                    return false;
+                });
                 var score = matchCount * 10.0;
-                
+
+                if (fileNamePhrases.Count > 0 && fileNamePhrases.Any(p => fileNameLower.Contains(p)))
+                    score += 60.0;
+
+                var hasFileNamePrefixMatch = queryWordsLower.Any(word =>
+                    word.Length >= MinPrefixLengthForFileName &&
+                    (fileNameLower.Contains(word) ||
+                     Enumerable.Range(MinPrefixLengthForFileName, Math.Max(0, word.Length - MinPrefixLengthForFileName))
+                         .Any(len => fileNameLower.Contains(word.Substring(0, len)))));
+                if (hasFileNamePrefixMatch)
+                    score += 55.0;
+
                 if (potentialNamesLower.Count >= 2)
                 {
-                    var fullNameLower = string.Join(" ", potentialNamesLower);
-                    if (contentLower.Contains(fullNameLower))
+                    var fullName = string.Join(" ", potentialNamesLower);
+                    if (searchableText.Contains(fullName))
                     {
                         score += 50.0;
                     }
-                    else if (potentialNamesLower.Any(name => contentLower.Contains(name)))
+                    else if (potentialNamesLower.Any(name => searchableText.Contains(name)))
                     {
                         score += 25.0;
                     }
@@ -319,8 +421,8 @@ namespace SmartRAG.Services.Document
                 }
                 if (requiresNumericContext)
                 {
-                    var hasPercentage = contentLower.Contains('%');
-                    var hasNumericValue = contentLower.Any(char.IsDigit);
+                    var hasPercentage = searchableText.Contains('%');
+                    var hasNumericValue = searchableText.Any(char.IsDigit);
                     if (hasPercentage)
                     {
                         score += 15.0;
@@ -346,99 +448,138 @@ namespace SmartRAG.Services.Document
         {
             cancellationToken.ThrowIfCancellationRequested();
             var allDocuments = await _documentService.GetAllDocumentsFilteredAsync(searchOptions);
-            
+
             var queryWords = queryTokens ?? QueryTokenizer.TokenizeQuery(query);
-            var queryWordsLower = queryWords.Select(w => w.ToLowerInvariant()).ToList();
-            var queryLower = query.ToLowerInvariant();
-            var criticalPhrases = ExtractCriticalPhrases(queryLower, queryWordsLower);
+            var queryWordsNormalized = queryWords.Select(w => w.NormalizeForOcrTolerantMatch()).ToList();
+            var phraseWords = QueryTokenizer.GetWordsForPhraseExtraction(query);
+            var queryNormalized = query.NormalizeForOcrTolerantMatch();
+            var criticalPhrases = ExtractCriticalPhrases(queryNormalized, queryWordsNormalized, phraseWords);
+            var fileNamePhrases = GetTwoWordPhrasesFromQuery(queryWordsNormalized, phraseWords);
             var potentialNames = QueryTokenizer.ExtractPotentialNames(query);
-            var potentialNamesLower = potentialNames.Select(n => n.ToLowerInvariant()).ToList();
-            
+            var potentialNamesNormalized = potentialNames.Select(n => n.NormalizeForOcrTolerantMatch()).ToList();
 
             var requiresNumericContext = RequiresNumericContext(query);
-            
+
             var chunksWithContent = new List<DocumentChunk>();
             foreach (var document in allDocuments)
             {
                 var fullDocument = await _documentService.GetDocumentAsync(document.Id);
                 if (fullDocument != null && fullDocument.Chunks != null)
-                {
                     chunksWithContent.AddRange(fullDocument.Chunks);
-                }
             }
 
+            const int MinPrefixLen = 4;
             var matchingChunks = chunksWithContent.Where(chunk =>
             {
-                if (string.IsNullOrWhiteSpace(chunk.Content))
+                var searchableText = string.Concat(chunk.Content ?? string.Empty, " ", chunk.FileName ?? string.Empty).NormalizeForOcrTolerantMatch();
+                if (string.IsNullOrWhiteSpace(searchableText.Trim()))
                     return false;
-                    
-                var contentLower = chunk.Content.ToLowerInvariant();
-                
-                var hasCriticalPhrase = criticalPhrases.Count > 0 && criticalPhrases.Any(phrase => contentLower.Contains(phrase));
-                if (hasCriticalPhrase)
-                {
+
+                var fileNameNormalized = (chunk.FileName ?? string.Empty).NormalizeForOcrTolerantMatch();
+                var hasFileNamePhraseMatch = fileNamePhrases.Count > 0 && fileNamePhrases.Any(p => fileNameNormalized.IndexOf(p, StringComparison.Ordinal) >= 0);
+                if (hasFileNamePhraseMatch)
                     return true;
-                }
+
+                var hasFileNamePrefixMatch = queryWordsNormalized.Any(word =>
+                    word.Length >= MinPrefixLen &&
+                    (fileNameNormalized.IndexOf(word, StringComparison.Ordinal) >= 0 ||
+                     Enumerable.Range(MinPrefixLen, Math.Max(0, word.Length - MinPrefixLen))
+                         .Any(len => fileNameNormalized.IndexOf(word.Substring(0, len), StringComparison.Ordinal) >= 0)));
+                if (hasFileNamePrefixMatch)
+                    return true;
+
+                var hasCriticalPhrase = criticalPhrases.Count > 0 && criticalPhrases.Any(phrase => searchableText.IndexOf(phrase, StringComparison.Ordinal) >= 0);
+                if (hasCriticalPhrase)
+                    return true;
+
+                var matchCount = queryWordsNormalized.Count(word =>
+                {
+                    if (searchableText.IndexOf(word, StringComparison.Ordinal) >= 0)
+                        return true;
+                    foreach (var variant in word.GetSearchTermVariants(4))
+                    {
+                        if (searchableText.IndexOf(variant, StringComparison.Ordinal) >= 0)
+                            return true;
+                    }
+                    return false;
+                });
                 
-                var matchCount = queryWordsLower.Count(word => contentLower.Contains(word));
-                
-                var significantWords = queryWordsLower.Where(w => w.Length >= 4).ToList();
+                var significantWords = queryWordsNormalized.Where(w => w.Length >= 4).ToList();
                 if (significantWords.Count > 0)
                 {
-                    var significantMatchCount = significantWords.Count(word => contentLower.Contains(word));
+                    var significantMatchCount = significantWords.Count(word => searchableText.IndexOf(word, StringComparison.Ordinal) >= 0);
                     if (significantMatchCount > 0)
                     {
                         matchCount = Math.Max(matchCount, significantMatchCount * 2);
                     }
                 }
                 
-                if (potentialNamesLower.Count >= 2)
+                if (potentialNamesNormalized.Count >= 2)
                 {
-                    var fullNameLower = string.Join(" ", potentialNamesLower);
-                    var hasFullName = contentLower.Contains(fullNameLower);
-                    var hasPartialName = potentialNamesLower.Any(name => contentLower.Contains(name));
+                    var fullNameNormalized = string.Join(" ", potentialNamesNormalized);
+                    var hasFullName = searchableText.IndexOf(fullNameNormalized, StringComparison.Ordinal) >= 0;
+                    var hasPartialName = potentialNamesNormalized.Any(name => searchableText.IndexOf(name, StringComparison.Ordinal) >= 0);
                     
                     if (hasFullName || hasPartialName)
                     {
-                        matchCount += potentialNamesLower.Count;
+                        matchCount += potentialNamesNormalized.Count;
                     }
                 }
                 
                 if (requiresNumericContext)
                 {
-                    var hasNumericValue = contentLower.Any(char.IsDigit);
-                    return matchCount >= Math.Max(1, queryWordsLower.Count / 3) && hasNumericValue;
+                    var hasNumericValue = searchableText.Any(char.IsDigit);
+                    return matchCount >= Math.Max(1, queryWordsNormalized.Count / 4) && hasNumericValue;
                 }
-                return matchCount >= Math.Max(1, queryWordsLower.Count / 3);
+                return matchCount >= Math.Max(1, queryWordsNormalized.Count / 4);
             }).ToList();
 
             if (matchingChunks.Count == 0)
-            {
                 return new List<DocumentChunk>();
-            }
 
             var scoredChunks = matchingChunks.Select(chunk =>
             {
-                var contentLower = chunk.Content.ToLowerInvariant();
+                var searchableText = string.Concat(chunk.Content ?? string.Empty, " ", chunk.FileName ?? string.Empty).NormalizeForOcrTolerantMatch();
+                var fileNameNormalized = (chunk.FileName ?? string.Empty).NormalizeForOcrTolerantMatch();
                 var score = 0.0;
-                
-                var criticalPhraseMatches = criticalPhrases.Count(phrase => contentLower.Contains(phrase));
+
+                if (fileNamePhrases.Count > 0 && fileNamePhrases.Any(p => fileNameNormalized.IndexOf(p, StringComparison.Ordinal) >= 0))
+                    score += 60.0;
+
+                var criticalPhraseMatches = criticalPhrases.Count(phrase => searchableText.IndexOf(phrase, StringComparison.Ordinal) >= 0);
                 if (criticalPhraseMatches > 0)
-                {
                     score += criticalPhraseMatches * 100.0;
-                }
-                
-                var matchCount = queryWordsLower.Count(word => contentLower.Contains(word));
-                
-                var significantWords = queryWordsLower.Where(w => w.Length >= 4).ToList();
+
+                var matchCount = queryWordsNormalized.Count(word =>
+                {
+                    if (searchableText.IndexOf(word, StringComparison.Ordinal) >= 0)
+                        return true;
+                    foreach (var variant in word.GetSearchTermVariants(4))
+                    {
+                        if (searchableText.IndexOf(variant, StringComparison.Ordinal) >= 0)
+                            return true;
+                    }
+                    return false;
+                });
+
+                var significantWords = queryWordsNormalized.Where(w => w.Length >= 4).ToList();
                 var significantMatchCount = significantWords.Count > 0 
-                    ? significantWords.Count(word => contentLower.Contains(word))
+                    ? significantWords.Count(word => searchableText.IndexOf(word, StringComparison.Ordinal) >= 0)
                     : 0;
                 
                 var totalMatchCount = Math.Max(matchCount, significantMatchCount * 2);
+                
+                // Give base boost to chunks with strong keyword matches (3+ words matched)
+                // This ensures keyword fallback chunks compete well with vector search results
+                // Only applies to high-quality matches to avoid false positives
+                if (totalMatchCount >= 3)
+                {
+                    score += 50.0;
+                }
+                
                 score += totalMatchCount * 10.0;
                 
-                if (totalMatchCount == queryWordsLower.Count)
+                if (totalMatchCount == queryWordsNormalized.Count)
                 {
                     score += 20.0;
                 }
@@ -448,14 +589,14 @@ namespace SmartRAG.Services.Document
                     score += 30.0;
                 }
 
-                if (potentialNamesLower.Count >= 2)
+                if (potentialNamesNormalized.Count >= 2)
                 {
-                    var fullNameLower = string.Join(" ", potentialNamesLower);
-                    if (contentLower.Contains(fullNameLower))
+                    var fullNameNormalized = string.Join(" ", potentialNamesNormalized);
+                    if (searchableText.IndexOf(fullNameNormalized, StringComparison.Ordinal) >= 0)
                     {
                         score += 50.0;
                     }
-                    else if (potentialNamesLower.Any(name => contentLower.Contains(name)))
+                    else if (potentialNamesNormalized.Any(name => searchableText.IndexOf(name, StringComparison.Ordinal) >= 0))
                     {
                         score += 25.0;
                     }
@@ -463,8 +604,8 @@ namespace SmartRAG.Services.Document
 
                 if (requiresNumericContext)
                 {
-                    var hasPercentage = contentLower.Contains('%');
-                    var hasNumericValue = contentLower.Any(char.IsDigit);
+                    var hasPercentage = searchableText.Contains('%');
+                    var hasNumericValue = searchableText.Any(char.IsDigit);
                     if (hasPercentage)
                     {
                         score += 15.0;
@@ -484,13 +625,11 @@ namespace SmartRAG.Services.Document
                 return chunk;
             }).ToList();
 
-            var topScoredChunks = scoredChunks
+            return scoredChunks
                 .OrderByDescending(c => c.RelevanceScore ?? 0.0)
                 .ThenBy(c => c.ChunkIndex)
                 .Take(maxResults)
                 .ToList();
-
-            return topScoredChunks;
         }
 
         private static bool RequiresNumericContext(string query)
@@ -567,36 +706,52 @@ namespace SmartRAG.Services.Document
             return false;
         }
 
-        private static List<string> ExtractCriticalPhrases(string queryLower, List<string> queryWordsLower)
+        private static List<string> ExtractCriticalPhrases(string queryLower, List<string> queryWordsLower, List<string> phraseWords)
         {
             var criticalPhrases = new List<string>();
-            
-            if (queryWordsLower.Count < 2)
+            var wordsForPhrases = phraseWords.Count >= 2 ? phraseWords : queryWordsLower;
+
+            if (wordsForPhrases.Count < 2)
                 return criticalPhrases;
-            
-            for (int i = 0; i < queryWordsLower.Count - 1; i++)
+
+            for (int i = 0; i < wordsForPhrases.Count - 1; i++)
             {
-                var word1 = queryWordsLower[i];
-                var word2 = queryWordsLower[i + 1];
+                var word1 = wordsForPhrases[i];
+                var word2 = wordsForPhrases[i + 1];
+                var phrase = $"{word1} {word2}";
+                if (!queryLower.Contains(phrase))
+                    continue;
+
                 var totalLength = word1.Length + word2.Length;
-                
-                if (totalLength >= 7 && word1.Length >= 2 && word2.Length >= 3)
-                {
-                    var phrase = $"{word1} {word2}";
-                    if (queryLower.Contains(phrase))
-                    {
-                        criticalPhrases.Add(phrase);
-                    }
-                }
+                var isStandardPhrase = totalLength >= 7 && word1.Length >= 2 && word2.Length >= 3;
+                var isShortEntityPhrase = word1.Length <= 2 && word2.Length >= 4;
+
+                if (isStandardPhrase || isShortEntityPhrase)
+                    criticalPhrases.Add(phrase);
             }
-            
+
             if (criticalPhrases.Count == 0)
             {
                 var significantWords = queryWordsLower.Where(w => w.Length >= 5).ToList();
                 criticalPhrases.AddRange(significantWords);
             }
-            
+
             return criticalPhrases.Distinct().Take(5).ToList();
+        }
+
+        private static List<string> GetTwoWordPhrasesFromQuery(List<string> queryWordsLower, List<string> phraseWords)
+        {
+            var phrases = new List<string>();
+            var wordsForPhrases = phraseWords.Count >= 2 ? phraseWords : queryWordsLower;
+
+            for (int i = 0; i < wordsForPhrases.Count - 1; i++)
+            {
+                var word1 = wordsForPhrases[i];
+                var word2 = wordsForPhrases[i + 1];
+                if (word1.Length >= 1 && word2.Length >= 3)
+                    phrases.Add($"{word1} {word2}");
+            }
+            return phrases.Distinct().Take(5).ToList();
         }
 
         private static bool IsVagueQuery(string query, bool hasNameQuery, bool requiresNumericContext)
@@ -687,11 +842,17 @@ namespace SmartRAG.Services.Document
             {
                 var chunk = keywordResults[i];
                 var rank = i + 1;
-                var rrfScore = KeywordSearchWeight / (ReciprocalRankFusionK + rank);
+                var baseRRFScore = KeywordSearchWeight / (ReciprocalRankFusionK + rank);
+                
+                // Give extra boost to high-scoring keyword matches (100+)
+                // These are strong matches with 3+ keywords, should compete with vector search
+                var keywordScore = chunk.RelevanceScore ?? 0.0;
+                var rrfScore = keywordScore >= 100.0 
+                    ? baseRRFScore * 5.0  // Match vector search weight for strong keyword matches
+                    : baseRRFScore;
                 
                 if (chunkScores.TryGetValue(chunk.Id, out var existing))
                 {
-                    var keywordScore = chunk.RelevanceScore ?? 0.0;
                     var existingScore = existing.OriginalScore ?? 0.0;
                     var preservedOriginalScore = keywordScore > existingScore ? keywordScore : existingScore;
                     chunkScores[chunk.Id] = (existing.RRFScore + rrfScore, existing.Chunk, preservedOriginalScore);

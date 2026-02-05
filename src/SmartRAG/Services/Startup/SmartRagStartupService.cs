@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using SmartRAG.Interfaces.Database;
 using SmartRAG.Interfaces.FileWatcher;
 using SmartRAG.Interfaces.Mcp;
 using SmartRAG.Models;
@@ -33,7 +34,7 @@ namespace SmartRAG.Services.Startup
         }
 
         /// <summary>
-        /// Starts the service and initializes MCP connections and file watchers based on configuration
+        /// Starts the service and initializes MCP connections, file watchers, and database schema analysis based on configuration
         /// </summary>
         public async Task StartAsync(CancellationToken cancellationToken)
         {
@@ -74,6 +75,24 @@ namespace SmartRAG.Services.Startup
                         {
                             _logger.LogError(ex, "Failed to start watching folder: {FolderPath}", folderConfig.FolderPath);
                         }
+                    }
+                }
+            }
+
+            if (_options.DatabaseConnections != null && _options.DatabaseConnections.Count > 0)
+            {
+                using var dbScope = _serviceProvider.CreateScope();
+                var databaseConnectionManager = dbScope.ServiceProvider.GetService<IDatabaseConnectionManager>();
+                if (databaseConnectionManager != null)
+                {
+                    _logger.LogInformation("Initializing database connections and schema analysis...");
+                    try
+                    {
+                        await databaseConnectionManager.InitializeAsync(cancellationToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogWarning(ex, "Database connection manager initialization failed; schema scanning may be skipped.");
                     }
                 }
             }

@@ -1,8 +1,10 @@
 using Microsoft.Extensions.Logging;
 using SmartRAG.Interfaces.Storage;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -86,9 +88,10 @@ namespace SmartRAG.Repositories
                 cancellationToken.ThrowIfCancellationRequested();
                 var filePath = GetConversationFilePath(sessionId);
                 if (File.Exists(filePath))
-                {
                     File.Delete(filePath);
-                }
+                var sourcesPath = GetSourcesFilePath(sessionId);
+                if (File.Exists(sourcesPath))
+                    File.Delete(sourcesPath);
             }
             catch (Exception ex)
             {
@@ -96,6 +99,61 @@ namespace SmartRAG.Repositories
             }
 
             return Task.CompletedTask;
+        }
+
+        public async Task AppendSourcesForTurnAsync(string sessionId, string sourcesJson, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId))
+                return;
+
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var path = GetSourcesFilePath(sessionId);
+                var list = new List<JsonElement>();
+                if (File.Exists(path))
+                {
+                    var content = await File.ReadAllTextAsync(path, cancellationToken);
+                    if (!string.IsNullOrWhiteSpace(content))
+                    {
+                        try
+                        {
+                            var existing = JsonSerializer.Deserialize<List<JsonElement>>(content);
+                            if (existing != null)
+                                list = existing;
+                        }
+                        catch
+                        {
+                            list = new List<JsonElement>();
+                        }
+                    }
+                }
+                list.Add(JsonSerializer.Deserialize<JsonElement>(sourcesJson));
+                await File.WriteAllTextAsync(path, JsonSerializer.Serialize(list), cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error appending sources for turn");
+            }
+        }
+
+        public async Task<string> GetSourcesForSessionAsync(string sessionId, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId))
+                return null;
+
+            try
+            {
+                var path = GetSourcesFilePath(sessionId);
+                if (!File.Exists(path))
+                    return string.Empty;
+                return await File.ReadAllTextAsync(path, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting sources for session");
+                return string.Empty;
+            }
         }
 
         public Task<bool> SessionExistsAsync(string sessionId, CancellationToken cancellationToken = default)
@@ -139,8 +197,12 @@ namespace SmartRAG.Repositories
                 cancellationToken.ThrowIfCancellationRequested();
                 if (Directory.Exists(_conversationsPath))
                 {
-                    var files = Directory.GetFiles(_conversationsPath, "*.txt");
-                    foreach (var file in files)
+                    foreach (var file in Directory.GetFiles(_conversationsPath, "*.txt"))
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        File.Delete(file);
+                    }
+                    foreach (var file in Directory.GetFiles(_conversationsPath, "*.sources.json"))
                     {
                         cancellationToken.ThrowIfCancellationRequested();
                         File.Delete(file);
@@ -156,10 +218,61 @@ namespace SmartRAG.Repositories
             return Task.CompletedTask;
         }
 
+        public async Task<(DateTime? CreatedAt, DateTime? LastUpdated)> GetSessionTimestampsAsync(string sessionId, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(sessionId))
+                return (null, null);
+
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                var filePath = GetConversationFilePath(sessionId);
+                if (!File.Exists(filePath))
+                    return (null, null);
+
+                var info = new FileInfo(filePath);
+                return (info.CreationTimeUtc, info.LastWriteTimeUtc);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error getting session timestamps");
+                return (null, null);
+            }
+        }
+
+        public Task<string[]> GetAllSessionIdsAsync(CancellationToken cancellationToken = default)
+        {
+            try
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (!Directory.Exists(_conversationsPath))
+                {
+                    return Task.FromResult(Array.Empty<string>());
+                }
+
+                var files = Directory.GetFiles(_conversationsPath, "*.txt");
+                var ids = files
+                    .Select(Path.GetFileNameWithoutExtension)
+                    .Where(n => !string.IsNullOrWhiteSpace(n))
+                    .ToArray()!;
+
+                return Task.FromResult(ids);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error listing conversation sessions from file system");
+                return Task.FromResult(Array.Empty<string>());
+            }
+        }
+
         private string GetConversationFilePath(string sessionId)
         {
-            var fileName = $"{sessionId}.txt";
-            return Path.Combine(_conversationsPath, fileName);
+            return Path.Combine(_conversationsPath, $"{sessionId}.txt");
+        }
+
+        private string GetSourcesFilePath(string sessionId)
+        {
+            return Path.Combine(_conversationsPath, $"{sessionId}.sources.json");
         }
 
         private static string TruncateConversation(string conversation)

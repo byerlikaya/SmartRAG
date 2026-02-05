@@ -6,6 +6,74 @@ SmartRAG'deki tüm önemli değişiklikler bu dosyada belgelenecektir.
 Format [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)'a dayanmaktadır
 ve bu proje [Semantic Versioning](https://semver.org/spec/v2.0.0.html)'a uymaktadır.
 
+## [3.9.0] - 2026-02-05
+
+### ✨ Eklenenler
+- **Konuşma Zaman Damgaları ve Kaynaklar**: Dashboard ve chat UI'ları için konuşma depolama genişletildi
+  - `IConversationRepository.GetSessionTimestampsAsync` - Oturum oluşturulma/son güncelleme zamanları
+  - `IConversationRepository.AppendSourcesForTurnAsync` - Asistan turu başına kaynak JSON'u saklama
+  - `IConversationRepository.GetSourcesForSessionAsync` - Oturum için saklanan kaynakları getirme
+  - `IConversationRepository.GetAllSessionIdsAsync` - Tüm bilinen oturum ID'lerini listeleme
+  - **Değiştirilen Dosyalar**: `IConversationRepository`, `SqliteConversationRepository`, `RedisConversationRepository`, `FileSystemConversationRepository`, `InMemoryConversationRepository`
+
+- **Açık Oturum RAG Overload**: Dashboard/API entegrasyonu için `sessionId` ve `conversationHistory` ile `IDocumentSearchService.QueryIntelligenceAsync` overload'u
+
+- **Yinelenen Yükleme Önleme**: Özdeş dokümanlar için hash tabanlı atlama
+  - Yinelenen içerik hash'i nedeniyle atlandığında yeni `DocumentSkippedException`
+  - **Değiştirilen Dosyalar**: `DocumentService`, `DocumentParserService`, `FileWatcherService`, `SchemaChunkService`, `AudioFileParser`, `ImageParserService`
+
+- **Whisper Native Bootstrap**: Başlangıçta Whisper.net native kütüphane başlatması için `WhisperNativeBootstrap` servisi
+  - **Değiştirilen Dosyalar**: `SmartRagStartupService`, `WhisperConfig`, `WhisperAudioParserService`
+
+- **MCP İsteğe Bağlı Bağlantı**: MCP sunucuları yalnızca sorguda `-mcp` etiketi kullanıldığında bağlanır
+  - **Değiştirilen Dosyalar**: `McpIntegrationService`
+
+### 🔧 İyileştirmeler
+- **Doküman RAG Arama**: Arama stratejisi, relevance skorlama ve yanıt oluşturmada büyük iyileştirmeler
+  - Sorgu doküman adlarıyla eşleştiğinde dosya adı tabanlı erken dönüş
+  - Phrase kelimeleri ve morfolojik eşleştirme ile chunk önceliklendirme (`IChunkPrioritizerService`, `ChunkPrioritizerService`)
+  - Dosya adı phrase çıkarımı ile doküman relevance skorlama (`IDocumentRelevanceCalculatorService`, `DocumentRelevanceCalculatorService`)
+  - Şema chunk'ları için `-db` kapalıyken geliştirilmiş chunk seçimi
+  - Kaynaklar veri içerdiğinde ancak ilk yanıt eksik gösterdiğinde `IPromptBuilderService.BuildDocumentRagPrompt` içinde extraction retry modu
+  - **Değiştirilen Dosyalar**: `DocumentSearchService`, `DocumentSearchStrategyService`, `DocumentScoringService`, `ResponseBuilderService`, `QueryStrategyExecutorService`, `QueryIntentClassifierService`, `SearchTextExtensions`, `SearchSourceHelper`, `RagMessages`, `QueryTokenizer`
+
+- **Takip Sorusu İşleme**: Takip sorguları için daha iyi konuşma context'i
+  - **Değiştirilen Dosyalar**: `PromptBuilderService`, `QueryIntentAnalyzer`, `ConversationManagerService`, `DocumentSearchService`
+
+- **PDF ve OCR**: Geliştirilmiş metin çıkarımı ve encoding
+  - Türkçe encoding, OCR para birimi pattern'leri
+  - **Değiştirilen Dosyalar**: `PdfFileParser`, `ImageParserService`
+
+- **Storage Factory Scoping**: Doğru scoped çözümleme için `IStorageFactory.GetCurrentRepository(IServiceProvider scopedProvider)` (örn. `IAIConfigurationService`)
+  - **Değiştirilen Dosyalar**: `IStorageFactory`, `StorageFactory`, `ServiceCollectionExtensions`
+
+- **Qdrant Entegrasyonu**: Qdrant.Client 1.16.1 uyumluluğu ve arama iyileştirmeleri
+  - Vector okuma yolu: dense/sparse API için `Vector.Dense.Data`
+  - Doğrudan dizi ataması ile sadeleştirilmiş nokta oluşturma
+  - `VectorsCount` yerine `PointsCount`
+  - `IQdrantCacheManager` ve `QdrantCacheManager` kaldırıldı (sadeleştirilmiş arama yolu)
+  - **Değiştirilen Dosyalar**: `QdrantDocumentRepository`, `QdrantSearchService`
+
+- **Veritabanı ve Sonuç Birleştirme**: Küçük iyileştirmeler
+  - **Değiştirilen Dosyalar**: `DatabaseQueryExecutor`, `ResultMerger`, `SchemaChunkService`
+
+- **NuGet Paket Güncellemeleri**: Bağımlılıklar güncellendi
+  - Qdrant.Client: 1.15.1 → 1.16.1
+  - StackExchange.Redis: 2.10.1 → 2.10.14
+  - MySql.Data: 9.5.0 → 9.6.0
+  - itext: 9.4.0 → 9.5.0
+  - EPPlus: 8.4.1 → 8.4.2
+  - PDFtoImage: 5.0.0 → 5.2.0
+
+### ⚠️ Kırıcı Değişiklikler
+- **IStorageFactory**: `GetCurrentRepository()` yerine `GetCurrentRepository(IServiceProvider scopedProvider)` - doküman repository çözümlerken scoped `IServiceProvider` geçirin
+- **IConversationRepository**: Yeni zorunlu metodlar `AppendSourcesForTurnAsync`, `GetSourcesForSessionAsync`, `GetAllSessionIdsAsync` - özel implementasyonlar bunları implement etmeli
+- **IQdrantCacheManager**: Interface ve `QdrantCacheManager` kaldırıldı - arama artık sorgu sonuç önbelleklemesi kullanmıyor
+
+### 📝 Notlar
+- **Migrasyon**: `IStorageFactory` ve `IConversationRepository` değişiklikleri için migrasyon rehberine bakın
+- **Kod Kalitesi**: 0 hata, 0 uyarı build politikası korunmuştur
+
 ## [3.8.1] - 2026-01-28
 
 ### 🔧 İyileştirmeler

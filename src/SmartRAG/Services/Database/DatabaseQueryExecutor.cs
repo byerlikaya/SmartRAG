@@ -94,7 +94,7 @@ namespace SmartRAG.Services.Database
                     return result;
                 }
 
-                _logger.LogDebug("Executing SQL for database {DatabaseName}: {Sql}", dbQuery.DatabaseName, dbQuery.GeneratedQuery);
+                _logger.LogDebug("Executing SQL for database {DatabaseName}", dbQuery.DatabaseName);
 
                 var maxRows = connection.MaxRowsPerQuery > 0 ? connection.MaxRowsPerQuery : DefaultMaxRows;
                 var queryResult = await _databaseParser.ExecuteQueryAsync(
@@ -110,8 +110,7 @@ namespace SmartRAG.Services.Database
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error executing query on database {DatabaseName}. SQL: {Sql}", 
-                    dbQuery.DatabaseName, dbQuery.GeneratedQuery);
+                _logger.LogError(ex, "Error executing query on database {DatabaseName}", dbQuery.DatabaseName);
                 result.Success = false;
                 result.ErrorMessage = ex.Message;
             }
