@@ -67,28 +67,28 @@ TECHNICAL DETAILS:
     <PackageReference Include="Microsoft.Extensions.Http" Version="10.0.2" />
     <PackageReference Include="Npgsql" Version="8.0.8" />
     <PackageReference Include="NRedisStack" Version="1.2.0" />
-    <PackageReference Include="Qdrant.Client" Version="1.15.1" />
+    <PackageReference Include="Qdrant.Client" Version="1.16.1" />
     
     <!-- JSON Processing -->
     <PackageReference Include="System.Text.Json" Version="10.0.2" />
     
     <!-- Vector Database Support -->
-    <PackageReference Include="StackExchange.Redis" Version="2.10.1" />
+    <PackageReference Include="StackExchange.Redis" Version="2.10.14" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.2" />
     
     <!-- Database Connectivity -->
     <PackageReference Include="Microsoft.Data.SqlClient" Version="6.1.4" />
-    <PackageReference Include="MySql.Data" Version="9.5.0" />
+    <PackageReference Include="MySql.Data" Version="9.6.0" />
     
     <!-- Validation -->
     <PackageReference Include="System.ComponentModel.Annotations" Version="5.0.0" />
     <!-- Document Parsing -->
     <PackageReference Include="DocumentFormat.OpenXml" Version="3.4.1" />
-    <PackageReference Include="itext" Version="9.4.0" />
-    <PackageReference Include="EPPlus" Version="8.4.1" />
+    <PackageReference Include="itext" Version="9.5.0" />
+    <PackageReference Include="EPPlus" Version="8.4.2" />
     
     <!-- PDF Rendering (for OCR fallback on text-based PDFs with encoding issues) -->
-    <PackageReference Include="PDFtoImage" Version="5.0.0" />
+    <PackageReference Include="PDFtoImage" Version="5.2.0" />
     
     <!-- OCR and Image Processing -->
     <PackageReference Include="Tesseract" Version="5.2.0" />
