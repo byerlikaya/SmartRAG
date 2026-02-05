@@ -111,6 +111,23 @@ var response = await searchService.QueryIntelligenceAsync(
 
 **Want to test SmartRAG immediately?** → [Jump to Examples & Testing](#-examples--testing)
 
+### **Dashboard (Web UI)**
+
+Add a browser-based dashboard for document management and chat:
+
+```bash
+dotnet add package SmartRAG.Dashboard
+```
+
+```csharp
+builder.Services.AddSmartRag(builder.Configuration);
+builder.Services.AddSmartRagDashboard(options => { options.Path = "/smartrag"; });
+
+app.UseSmartRagDashboard("/smartrag");
+app.MapSmartRagDashboard("/smartrag");
+```
+
+Then open `https://localhost:5000/smartrag` to list/upload/delete documents and chat with the active AI model. **By default the dashboard is only enabled in Development.** For production, protect the path with your own auth or use `AuthorizationFilter`. See [Dashboard documentation](https://byerlikaya.github.io/SmartRAG/en/dashboard.html) for security and options.
 
 ## 🏆 **Why SmartRAG?**
 

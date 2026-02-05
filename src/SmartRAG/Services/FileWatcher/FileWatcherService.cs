@@ -330,6 +330,11 @@ namespace SmartRAG.Services.FileWatcher
                     _logger.LogInformation("Auto-uploaded file: {FilePath} (size: {Size} bytes, hash: {Hash})", filePath, fileInfo.Length, fileHash);
                     return;
                 }
+                catch (SmartRAG.Exceptions.DocumentSkippedException ex)
+                {
+                    _logger.LogInformation("Skipping file (no content to index): {FilePath}. {Message}", filePath, ex.Message);
+                    return;
+                }
                 catch (Exception ex)
                 {
                     retryCount++;

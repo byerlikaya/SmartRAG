@@ -77,16 +77,19 @@ namespace SmartRAG.Services.Database
 
             _logger.LogInformation("Generated embeddings for {Count} schema chunks", chunks.Count);
 
+            var content = string.Join("\n\n", chunks.Select(c => c.Content));
+            var fileSize = System.Text.Encoding.UTF8.GetByteCount(content);
+
             var document = new Entities.Document
             {
                 Id = documentId,
                 FileName = $"{schema.DatabaseName}_schema",
                 ContentType = "application/schema",
-                Content = string.Join("\n\n", chunks.Select(c => c.Content)),
+                Content = content,
                 UploadedBy = "system",
                 UploadedAt = DateTime.UtcNow,
                 Chunks = chunks,
-                FileSize = 0,
+                FileSize = fileSize,
                 Metadata = new Dictionary<string, object>
                 {
                     { "databaseId", schema.DatabaseId },

@@ -79,6 +79,7 @@ namespace SmartRAG.Services.Document
                 var documentId = Guid.NewGuid();
                 var documentType = DetermineDocumentType(fileName, contentType);
                 var chunks = CreateChunks(content, documentId, documentType, fileName);
+                chunks = DeduplicateChunksByContent(chunks);
 
                 var document = CreateDocument(documentId, fileName, contentType, content, uploadedBy, chunks);
                 document.FileSize = fileSize;
@@ -340,6 +341,38 @@ namespace SmartRAG.Services.Document
             }
 
             return chunks;
+        }
+
+        /// <summary>
+        /// Removes chunks with duplicate content (keeps first occurrence by order) and re-indexes ChunkIndex.
+        /// Overlap and repeated phrases in source (e.g. audio) can produce many identical chunks; dedup reduces redundancy.
+        /// </summary>
+        private static List<DocumentChunk> DeduplicateChunksByContent(List<DocumentChunk> chunks)
+        {
+            if (chunks == null || chunks.Count == 0)
+                return chunks;
+
+            var seen = new HashSet<string>(StringComparer.Ordinal);
+            var deduped = new List<DocumentChunk>();
+
+            foreach (var chunk in chunks)
+            {
+                var key = chunk.Content?.Trim() ?? string.Empty;
+                if (string.IsNullOrEmpty(key))
+                    continue;
+                if (seen.Add(key))
+                    deduped.Add(chunk);
+            }
+
+            if (deduped.Count == chunks.Count)
+                return chunks;
+
+            for (var i = 0; i < deduped.Count; i++)
+            {
+                deduped[i].ChunkIndex = i;
+            }
+
+            return deduped;
         }
 
         private static int FindOptimalBreakPoint(string content, int startIndex, int currentEndIndex, int minChunkSize)

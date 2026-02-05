@@ -9,15 +9,11 @@ using System.Threading.Tasks;
 
 namespace SmartRAG.Interfaces.Document
 {
-
     /// <summary>
     /// Service interface for AI-powered intelligence and RAG operations
     /// </summary>
     public interface IDocumentSearchService
     {
-
-
-
         /// <summary>
         /// Process intelligent query with RAG and automatic session management
         /// </summary>
@@ -29,13 +25,19 @@ namespace SmartRAG.Interfaces.Document
         Task<RagResponse> QueryIntelligenceAsync(string query, int maxResults = 5, bool startNewConversation = false, CancellationToken cancellationToken = default);
 
         /// <summary>
-        /// Generate RAG answer with automatic session management (Legacy method - use QueryIntelligenceAsync)
+        /// Process intelligent query with RAG using explicit session context
         /// </summary>
         /// <param name="query">Natural language query to process</param>
         /// <param name="maxResults">Maximum number of results to return</param>
-        /// <param name="startNewConversation">Whether to start a new conversation session</param>
+        /// <param name="sessionId">Session ID for conversation continuity</param>
+        /// <param name="conversationHistory">Conversation history for the session</param>
         /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>RAG response with AI-generated answer and relevant sources</returns>
+        Task<RagResponse> QueryIntelligenceAsync(string query, int maxResults, string sessionId, string conversationHistory, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Generate RAG answer with automatic session management (Legacy method - use QueryIntelligenceAsync)
+        /// </summary>
         [Obsolete("Use QueryIntelligenceAsync instead. This method will be removed in v4.0.0")]
         Task<RagResponse> GenerateRagAnswerAsync(string query, int maxResults = 5, bool startNewConversation = false, CancellationToken cancellationToken = default);
     }

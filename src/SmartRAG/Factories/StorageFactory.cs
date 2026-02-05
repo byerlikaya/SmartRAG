@@ -26,7 +26,6 @@ namespace SmartRAG.Factories
         private readonly ILoggerFactory _loggerFactory;
         private readonly IAIProvider _aiProvider;
         private readonly IServiceProvider _serviceProvider;
-        private IDocumentRepository _currentRepository;
 
         public StorageFactory(
             IConfiguration configuration,
@@ -55,32 +54,32 @@ namespace SmartRAG.Factories
             }
         }
 
-        private IDocumentRepository CreateRepository(StorageConfig config)
+        private IDocumentRepository CreateRepository(StorageConfig config, IServiceProvider scope)
         {
+            var resolver = scope ?? _serviceProvider;
             switch (config.Provider)
             {
                 case StorageProvider.InMemory:
                     return new InMemoryDocumentRepository(config.InMemory, _loggerFactory.CreateLogger<InMemoryDocumentRepository>());
                 case StorageProvider.Redis:
-                    var aiConfigService = _serviceProvider.GetRequiredService<IAIConfigurationService>();
+                    var aiConfigService = resolver.GetRequiredService<IAIConfigurationService>();
                     return new RedisDocumentRepository(Options.Create(config.Redis), _loggerFactory.CreateLogger<RedisDocumentRepository>(), _aiProvider, aiConfigService);
                 case StorageProvider.Qdrant:
                     var collectionManager = new QdrantCollectionManager(Options.Create(config.Qdrant), _loggerFactory.CreateLogger<QdrantCollectionManager>());
                     var embeddingService = new QdrantEmbeddingService(Options.Create(config.Qdrant), _loggerFactory.CreateLogger<QdrantEmbeddingService>());
-                    var aiService = _serviceProvider.GetRequiredService<IAIService>();
-                    var cacheManager = new QdrantCacheManager(_loggerFactory.CreateLogger<QdrantCacheManager>());
+                    var aiService = resolver.GetRequiredService<IAIService>();
                     var searchService = new QdrantSearchService(Options.Create(config.Qdrant), _loggerFactory.CreateLogger<QdrantSearchService>());
-                    return new QdrantDocumentRepository(Options.Create(config.Qdrant), _loggerFactory.CreateLogger<QdrantDocumentRepository>(), collectionManager, embeddingService, aiService, cacheManager, searchService);
+                    return new QdrantDocumentRepository(Options.Create(config.Qdrant), _loggerFactory.CreateLogger<QdrantDocumentRepository>(), collectionManager, embeddingService, aiService, searchService);
                 default:
                     throw new ArgumentException($"Unsupported storage provider: {config.Provider}");
             }
         }
 
-        private IDocumentRepository CreateRepository(StorageProvider provider)
+        private IDocumentRepository CreateRepository(StorageProvider provider, IServiceProvider scope)
         {
             var config = GetStorageConfig();
             config.Provider = provider;
-            return CreateRepository(config);
+            return CreateRepository(config, scope);
         }
 
         public StorageProvider GetCurrentProvider() => _currentProvider;
@@ -96,8 +95,12 @@ namespace SmartRAG.Factories
             return config;
         }
 
-        public IDocumentRepository GetCurrentRepository()
-            => _currentRepository ??= CreateRepository(_currentProvider);
+        public IDocumentRepository GetCurrentRepository(IServiceProvider scopedProvider)
+        {
+            if (scopedProvider == null)
+                throw new ArgumentNullException(nameof(scopedProvider));
+            return CreateRepository(_currentProvider, scopedProvider);
+        }
 
         private IConversationRepository CreateConversationRepository(ConversationStorageProvider provider)
         {

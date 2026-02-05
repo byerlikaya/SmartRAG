@@ -5,6 +5,8 @@ using SmartRAG.Models;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Whisper.net;
 using Whisper.net.Ggml;
@@ -17,11 +19,16 @@ namespace SmartRAG.Services.Parser
     /// </summary>
     public class WhisperAudioParserService : IAudioParserService
     {
+        private static readonly SemaphoreSlim DownloadLock = new SemaphoreSlim(1, 1);
+        private static readonly SemaphoreSlim TranscriptionLock = new SemaphoreSlim(1, 1);
+
         private readonly ILogger<WhisperAudioParserService> _logger;
         private readonly WhisperConfig _config;
         private readonly AudioConversionService _audioConversionService;
         private WhisperFactory _whisperFactory = null;
         private bool _disposed;
+        private bool _whisperUnavailable;
+        private bool _whisperUnavailableLogged;
 
         public WhisperAudioParserService(ILogger<WhisperAudioParserService> logger, IOptions<SmartRagOptions> options, AudioConversionService audioConversionService)
         {
@@ -40,6 +47,22 @@ namespace SmartRAG.Services.Parser
 
             if (string.IsNullOrEmpty(fileName))
                 throw new ArgumentException("File name cannot be null or empty", nameof(fileName));
+
+            if (_whisperUnavailable)
+            {
+                if (!_whisperUnavailableLogged)
+                {
+                    _whisperUnavailableLogged = true;
+                    _logger.LogWarning("Whisper is unavailable; returning empty transcription for audio files. Check native libraries and model path.");
+                }
+                return new AudioTranscriptionResult
+                {
+                    Language = language ?? _config?.DefaultLanguage,
+                    Confidence = 0.0,
+                    Text = string.Empty,
+                    Metadata = new Dictionary<string, object> { ["TranscriptionService"] = "Whisper.net (unavailable)" }
+                };
+            }
 
             try
             {
@@ -66,6 +89,19 @@ namespace SmartRAG.Services.Parser
         }
 
         /// <summary>
+        /// Resolves model path to absolute so it works regardless of current directory.
+        /// </summary>
+        private static string ResolveModelPath(string modelPath)
+        {
+            if (string.IsNullOrWhiteSpace(modelPath))
+                return modelPath;
+            if (Path.IsPathRooted(modelPath))
+                return modelPath;
+            var baseDir = AppContext.BaseDirectory ?? ".";
+            return Path.GetFullPath(Path.Combine(baseDir, modelPath));
+        }
+
+        /// <summary>
         /// Ensures Whisper factory is initialized and model is loaded
         /// </summary>
         private async Task EnsureWhisperFactoryInitializedAsync()
@@ -73,44 +109,144 @@ namespace SmartRAG.Services.Parser
             if (_whisperFactory != null)
                 return;
 
-            _logger.LogInformation("Initializing Whisper factory with model: {ModelPath}", _config.ModelPath);
+            Services.Startup.WhisperNativeBootstrap.EnsureMacOsWhisperNativeLibraries();
 
-            await EnsureModelExistsAsync();
+            var resolvedPath = ResolveModelPath(_config.ModelPath);
+            _logger.LogInformation("Initializing Whisper factory with model: {ModelPath}", resolvedPath);
 
-            _whisperFactory = WhisperFactory.FromPath(_config.ModelPath);
+            await EnsureModelExistsAsync(resolvedPath);
+
+            var modelType = DetermineModelType(resolvedPath);
+            var fileInfo = new FileInfo(resolvedPath);
+            var minSize = GetMinimumModelSizeBytes(modelType);
+            if (fileInfo.Length < minSize)
+            {
+                var minMb = minSize / (1024.0 * 1024);
+                var actualMb = fileInfo.Length / (1024.0 * 1024);
+                throw new InvalidOperationException(
+                    $"Whisper model file is too small for {modelType}. File size: {fileInfo.Length} bytes ({actualMb:F1} MB). " +
+                    $"Expected at least {minSize} bytes (~{minMb:F0} MB). The file may be truncated or corrupted. " +
+                    "Re-download the model or use a smaller model (e.g. ggml-base.bin or ggml-tiny.bin).");
+            }
+
+            var useGpu = _config.UseGpu;
+            var factoryOptions = new WhisperFactoryOptions { UseGpu = useGpu };
+            if (useGpu)
+            {
+                _logger.LogInformation("Whisper GPU acceleration enabled. Ensure the host app references the matching runtime (CUDA on Windows/Linux, CoreML on macOS).");
+            }
+            else
+            {
+                _logger.LogDebug("Whisper using CPU. Set WhisperConfig.UseGpu to true and add the GPU runtime package for acceleration.");
+            }
+
+            const long twoGb = 2L * 1024 * 1024 * 1024;
+            var usePathOnMac = RuntimeInformation.IsOSPlatform(OSPlatform.OSX) && fileInfo.Length >= twoGb;
+
+            try
+            {
+                if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) && !usePathOnMac)
+                {
+                    var modelBytes = await File.ReadAllBytesAsync(resolvedPath).ConfigureAwait(false);
+                    _logger.LogDebug("Loaded model into memory ({Size} bytes), initializing Whisper from buffer.", modelBytes.Length);
+                    _whisperFactory = WhisperFactory.FromBuffer(modelBytes, factoryOptions);
+                }
+                else
+                {
+                    _logger.LogDebug("Initializing Whisper from path ({Size} bytes).", fileInfo.Length);
+                    _whisperFactory = WhisperFactory.FromPath(resolvedPath, factoryOptions);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to load Whisper model from {ModelPath}. Ensure the file exists and Whisper native libraries (e.g. ggml) are available.", resolvedPath);
+                throw new InvalidOperationException(
+                    $"Failed to load the Whisper model at '{resolvedPath}'. Check that the file exists and that Whisper native runtime libraries are installed and loadable.",
+                    ex);
+            }
         }
 
         /// <summary>
-        /// Ensures Whisper model file exists, downloads if necessary
+        /// Ensures Whisper model file exists at the resolved path, downloads if necessary.
+        /// Download is serialized process-wide to avoid concurrent writes and truncated files.
+        /// Writes to a temp file then moves atomically so partial downloads are never used.
         /// </summary>
-        private async Task EnsureModelExistsAsync()
+        private async Task EnsureModelExistsAsync(string resolvedPath)
         {
-            if (File.Exists(_config.ModelPath))
+            await DownloadLock.WaitAsync().ConfigureAwait(false);
+            try
             {
-                _logger.LogDebug("Whisper model found at {ModelPath}", _config.ModelPath);
-                return;
+                var modelType = DetermineModelType(resolvedPath);
+                var minSize = GetMinimumModelSizeBytes(modelType);
+
+                if (File.Exists(resolvedPath))
+                {
+                    var length = new FileInfo(resolvedPath).Length;
+                    if (length >= minSize)
+                    {
+                        _logger.LogDebug("Whisper model found at {ModelPath} ({Size} bytes)", resolvedPath, length);
+                        return;
+                    }
+                    try
+                    {
+                        File.Delete(resolvedPath);
+                        _logger.LogInformation("Removing truncated Whisper model file ({Size} bytes, expected at least {MinSize} bytes). Re-downloading.", length, minSize);
+                    }
+                    catch (IOException ex)
+                    {
+                        _logger.LogWarning(ex, "Could not remove truncated model file. Another process may be writing. Will retry on next request.");
+                        return;
+                    }
+                }
+
+                var modelDirectory = Path.GetDirectoryName(resolvedPath);
+                if (!string.IsNullOrEmpty(modelDirectory) && !Directory.Exists(modelDirectory))
+                {
+                    Directory.CreateDirectory(modelDirectory);
+                    _logger.LogDebug("Created model directory: {Directory}", modelDirectory);
+                }
+
+                var tempPath = resolvedPath + ".tmp";
+                try
+                {
+                    if (File.Exists(tempPath))
+                    {
+                        try { File.Delete(tempPath); } catch { }
+                    }
+
+                    _logger.LogInformation("Downloading Whisper model: {ModelType} to {ModelPath}", modelType, resolvedPath);
+
+                    using (var modelStream = await WhisperGgmlDownloader.Default.GetGgmlModelAsync(modelType).ConfigureAwait(false))
+                    using (var fileWriter = File.Create(tempPath))
+                    {
+                        await modelStream.CopyToAsync(fileWriter).ConfigureAwait(false);
+                    }
+
+                    if (new FileInfo(tempPath).Length < minSize)
+                    {
+                        try { File.Delete(tempPath); } catch { }
+                        throw new InvalidOperationException(
+                            $"Downloaded Whisper model is too small (expected at least {minSize} bytes). Source may be unavailable or rate-limited.");
+                    }
+
+                    if (File.Exists(resolvedPath))
+                        File.Delete(resolvedPath);
+                    File.Move(tempPath, resolvedPath);
+
+                    _logger.LogInformation("Whisper model downloaded successfully to {ModelPath}", resolvedPath);
+                }
+                finally
+                {
+                    if (File.Exists(tempPath))
+                    {
+                        try { File.Delete(tempPath); } catch { }
+                    }
+                }
             }
-
-            _logger.LogInformation("Whisper model not found at {ModelPath}, downloading...", _config.ModelPath);
-
-            var modelDirectory = Path.GetDirectoryName(_config.ModelPath);
-            if (!string.IsNullOrEmpty(modelDirectory) && !Directory.Exists(modelDirectory))
+            finally
             {
-                Directory.CreateDirectory(modelDirectory);
-                _logger.LogDebug("Created model directory: {Directory}", modelDirectory);
+                DownloadLock.Release();
             }
-
-            var modelType = DetermineModelType(_config.ModelPath);
-
-            _logger.LogInformation("Downloading Whisper model: {ModelType}", modelType);
-
-            using (var modelStream = await WhisperGgmlDownloader.Default.GetGgmlModelAsync(modelType))
-            {
-                using var fileWriter = File.OpenWrite(_config.ModelPath);
-                await modelStream.CopyToAsync(fileWriter);
-            }
-
-            _logger.LogInformation("Whisper model downloaded successfully to {ModelPath}", _config.ModelPath);
         }
 
         /// <summary>
@@ -127,9 +263,29 @@ namespace SmartRAG.Services.Parser
             if (fileName.Contains("large-v1")) return GgmlType.LargeV1;
             if (fileName.Contains("large-v2")) return GgmlType.LargeV2;
             if (fileName.Contains("large-v3")) return GgmlType.LargeV3;
-            if (fileName.Contains("large")) return GgmlType.LargeV3; // Default large to v3
+            if (fileName.Contains("large")) return GgmlType.LargeV3;
 
             return GgmlType.Base;
+        }
+
+        /// <summary>
+        /// Minimum expected file size in bytes for each GGML model type (whisper.cpp reference).
+        /// Used to detect truncated or wrong model files before native load.
+        /// </summary>
+        private static long GetMinimumModelSizeBytes(GgmlType modelType)
+        {
+            const long mib = 1024L * 1024;
+            switch (modelType)
+            {
+                case GgmlType.Tiny: return 70 * mib;
+                case GgmlType.Base: return 130 * mib;
+                case GgmlType.Small: return 450 * mib;
+                case GgmlType.Medium: return 1400 * mib;
+                case GgmlType.LargeV1:
+                case GgmlType.LargeV2:
+                case GgmlType.LargeV3: return 2800 * mib;
+                default: return 70 * mib;
+            }
         }
 
         /// <summary>
@@ -160,22 +316,52 @@ namespace SmartRAG.Services.Parser
 
                 var threadCount = _config.MaxThreads > 0
                     ? _config.MaxThreads
-                    : Environment.ProcessorCount;
+                    : Math.Max(1, Environment.ProcessorCount - 1);
 
                 var languageToUse = GetLanguageForWhisper(language ?? _config.DefaultLanguage);
                 _logger.LogDebug("WhisperAudioParserService: Processing with Whisper");
 
-                var builder = _whisperFactory.CreateBuilder()
+                WhisperProcessorBuilder builder;
+                try
+                {
+                    builder = _whisperFactory.CreateBuilder();
+                }
+                catch (Exception ex)
+                {
+                    _whisperUnavailable = true;
+                    var resolvedPath = ResolveModelPath(_config.ModelPath);
+                    var modelFileSize = File.Exists(resolvedPath) ? new FileInfo(resolvedPath).Length : 0L;
+                    _logger.LogError(ex,
+                        "Whisper CreateBuilder failed. Model file size: {ModelSize} bytes. If this is much smaller than expected for the model type (e.g. large-v3 ~2.9 GB), the file may be corrupted or truncated. Re-download the model or use ggml-base.bin / ggml-tiny.bin for testing. Native libraries may also be missing.",
+                        modelFileSize);
+                    return new AudioTranscriptionResult
+                    {
+                        Language = originalLanguage,
+                        Confidence = 0.0,
+                        Text = string.Empty,
+                        Metadata = new Dictionary<string, object>
+                        {
+                            ["TranscriptionService"] = "Whisper.net (unavailable)",
+                            ["Timestamp"] = DateTime.UtcNow,
+                            ["FileName"] = fileName,
+                            ["ModelPath"] = _config.ModelPath,
+                            ["Error"] = ex.Message
+                        }
+                    };
+                }
+
+                // Do not call WithTranslate(); we always transcribe in the source language, never translate to English.
+                var builderWithOptions = builder
                     .WithLanguage(languageToUse)
                     .WithThreads(threadCount)
                     .WithProbabilities();
 
                 if (!string.IsNullOrEmpty(_config.PromptHint))
                 {
-                    builder = builder.WithPrompt(_config.PromptHint);
+                    builderWithOptions = builderWithOptions.WithPrompt(_config.PromptHint);
                 }
 
-                using var processor = builder.Build();
+                using var processor = builderWithOptions.Build();
                 Stream waveStream = null;
                 var needsConversion = AudioConversionService.RequiresConversion(fileName);
 
@@ -203,16 +389,24 @@ namespace SmartRAG.Services.Parser
 
                     _logger.LogDebug("Starting Whisper processing on WAV stream ({StreamLength} bytes)", waveStream.Length);
 
-                    var segments = processor.ProcessAsync(waveStream);
-                    var enumerator = segments.GetAsyncEnumerator();
+                    await TranscriptionLock.WaitAsync().ConfigureAwait(false);
                     try
                     {
-                        while (await enumerator.MoveNextAsync().ConfigureAwait(false))
-                        {
-                            var segment = enumerator.Current;
-                            var segmentText = segment.Text?.Trim() ?? string.Empty;
+                        _logger.LogInformation("Whisper inference started for {FileName} (large models on CPU may take 1-3 min for ~1 min of audio).", SanitizeFileName(fileName));
 
-                            if (segment.Probability < _config.MinConfidenceThreshold)
+                        var segments = processor.ProcessAsync(waveStream);
+                        var enumerator = segments.GetAsyncEnumerator();
+                        try
+                        {
+                            while (await enumerator.MoveNextAsync().ConfigureAwait(false))
+                            {
+                                var segment = enumerator.Current;
+                                var segmentText = segment.Text?.Trim() ?? string.Empty;
+
+                                if (segmentCount == 0)
+                                    _logger.LogInformation("Whisper first segment received, inference progressing.");
+
+                                if (segment.Probability < _config.MinConfidenceThreshold)
                             {
                                 _logger.LogDebug("Skipping low-confidence segment (P={Probability}): '{Text}'",
                                     segment.Probability, segmentText);
@@ -267,14 +461,22 @@ namespace SmartRAG.Services.Parser
                                 Text = segmentText,
                                 Probability = segment.Probability
                             });
-                        }
 
-                        _logger.LogInformation("Whisper processing completed: {SegmentCount} segments processed, {SkippedLowConf} low-confidence skipped, {SkippedDup} duplicates skipped",
-                            segmentCount, skippedLowConfidence, skippedDuplicates);
+                                if (segmentCount > 0 && segmentCount % 10 == 0)
+                                    _logger.LogInformation("Whisper progress: {SegmentCount} segments so far.", segmentCount);
+                            }
+
+                            _logger.LogInformation("Whisper processing completed: {SegmentCount} segments processed, {SkippedLowConf} low-confidence skipped, {SkippedDup} duplicates skipped",
+                                segmentCount, skippedLowConfidence, skippedDuplicates);
+                        }
+                        finally
+                        {
+                            await enumerator.DisposeAsync().ConfigureAwait(false);
+                        }
                     }
                     finally
                     {
-                        await enumerator.DisposeAsync().ConfigureAwait(false);
+                        TranscriptionLock.Release();
                     }
 
                     result.Text = transcriptionText.Trim();
@@ -306,13 +508,14 @@ namespace SmartRAG.Services.Parser
         }
 
         /// <summary>
-        /// Converts language parameter for Whisper.net: "auto" or null means auto-detect (null)
+        /// Converts language parameter for Whisper.net. Pass "auto" explicitly for auto-detect
+        /// so the native layer does not default to English (null can be interpreted as "en").
         /// </summary>
         private static string GetLanguageForWhisper(string language)
         {
             if (string.IsNullOrEmpty(language) || language.Equals("auto", StringComparison.OrdinalIgnoreCase))
             {
-                return null;
+                return "auto";
             }
             return language;
         }

@@ -16,6 +16,7 @@ namespace SmartRAG.Services.Document
         private const double QueryCoverageBonusMultiplier = 5000.0;
         private const double UniqueKeywordBonusMultiplier = 2500.0;
         private const double FrequencyBonusMultiplier = 75.0;
+        private const double FileNameEntityMatchBonus = 15000.0;
 
         private readonly IQueryWordMatcherService _queryWordMatcher;
 
@@ -37,7 +38,9 @@ namespace SmartRAG.Services.Document
             List<DocumentChunk> scoredChunks,
             List<string> queryWords,
             Dictionary<string, HashSet<Guid>> wordDocumentMap,
-            int topChunksPerDocument)
+            int topChunksPerDocument,
+            string query = null,
+            List<string> potentialNames = null)
         {
             if (documents == null)
                 throw new ArgumentNullException(nameof(documents));
@@ -82,6 +85,9 @@ namespace SmartRAG.Services.Document
                 var queryWordMatchBonus = uniqueKeywordBonus + queryCoverageBonus + frequencyBonus;
                 var finalScore = avgScore + queryWordMatchBonus;
 
+                var fileNameBonus = GetFileNameEntityBonus(doc.FileName, queryWords, query, potentialNames);
+                finalScore += fileNameBonus;
+
                 return new DocumentScoreResult
                 {
                     Document = doc,
@@ -92,6 +98,40 @@ namespace SmartRAG.Services.Document
             })
             .OrderByDescending(x => x.Score)
             .ToList();
+        }
+
+        private static double GetFileNameEntityBonus(string fileName, List<string> queryWords, string query, List<string> potentialNames)
+        {
+            if (string.IsNullOrWhiteSpace(fileName))
+                return 0;
+
+            var fileNameLower = fileName.ToLowerInvariant();
+
+            if (potentialNames != null && potentialNames.Count >= 2)
+            {
+                var entityPhrase = string.Join(" ", potentialNames.Select(n => n.ToLowerInvariant()));
+                if (fileNameLower.Contains(entityPhrase))
+                    return FileNameEntityMatchBonus;
+            }
+
+            if (!string.IsNullOrWhiteSpace(query) && queryWords != null && queryWords.Count >= 2)
+            {
+                var queryLower = query.ToLowerInvariant();
+                var words = queryLower.Split(new[] { ' ', '\t', '\n', '\r', '.', ',', '?', '!' }, StringSplitOptions.RemoveEmptyEntries);
+                for (int i = 0; i < words.Length - 1; i++)
+                {
+                    var w1 = words[i];
+                    var w2 = words[i + 1];
+                    if (w1.Length >= 1 && w2.Length >= 3)
+                    {
+                        var phrase = $"{w1} {w2}";
+                        if (fileNameLower.Contains(phrase))
+                            return FileNameEntityMatchBonus;
+                    }
+                }
+            }
+
+            return 0;
         }
 
         /// <summary>

@@ -23,6 +23,7 @@ namespace SmartRAG.Services.Support
         private const int MaxTokenCountForInformation = 12;
         private const int MaxHistoryLength = 400;
         private const int MinTokenLength = 2;
+        private const int MaxShortConversationLength = 25;
 
         private readonly IAIService _aiService;
         private readonly ILogger<QueryIntentClassifierService> _logger;
@@ -110,6 +111,8 @@ CRITICAL: Classify as CONVERSATION if:
 - Contains numbers/dates indicating data queries about external data
 - Contains specific entity references (not about the AI)
 - Topic has changed from AI to external subject (even if previous conversation was about AI)
+- CRITICAL: User asks about factual data that could exist in documents/databases - even if phrased as personal or possessive. ALWAYS classify as INFORMATION.
+- CRITICAL: Queries about data in contracts, agreements, or records - even when phrased as personal forgetfulness, possession, or help requests - are INFORMATION. Such data exists in uploaded documents.
 
 {1}
 
@@ -120,6 +123,7 @@ CRITICAL CONTEXT RULES:
 - If conversation history shows AI questions BUT current question is about external topic, classify as INFORMATION
 - Topic change detection: If user switches from AI questions to questions about external entities, it is INFORMATION
 - If the user asks about a specific external topic, concept, or entity (not the AI), it is INFORMATION
+- CRITICAL: If the message contains BOTH greeting/small-talk AND a clear data request (asking for dates, amounts, or specific info from documents), classify as INFORMATION. The data request takes precedence.
 - If unsure and no conversation history about AI, default to INFORMATION
 - If unsure but conversation history shows AI-related questions AND current question seems about AI, default to CONVERSATION
 - If unsure but current question contains external entity references, default to INFORMATION
@@ -219,6 +223,15 @@ IMPORTANT:
                             var typeValue = typeElement.GetString()?.Trim().ToUpperInvariant();
                             if (string.Equals(typeValue, "CONVERSATION", StringComparison.Ordinal))
                             {
+                                if (HasQuestionPunctuation(trimmedQuery) && trimmedQuery.Length > 40 &&
+                                    Tokenize(trimmedQuery).Length >= 6)
+                                {
+                                    _logger.LogDebug("Overriding LLM CONVERSATION to INFORMATION: query has data-request pattern");
+                                    var overrideTokens = _options.Features.EnableDocumentSearch
+                                        ? TokenizeForSearch(normalizedForMatching)
+                                        : Array.Empty<string>();
+                                    return new QueryIntentAnalysisResult(false, overrideTokens);
+                                }
                                 string? answer = null;
                                 if (root.TryGetProperty("answer", out var answerElement) && answerElement.ValueKind == JsonValueKind.String)
                                 {
@@ -275,6 +288,14 @@ IMPORTANT:
                                             var typeValue = typeElement.GetString()?.Trim().ToUpperInvariant();
                                             if (string.Equals(typeValue, "CONVERSATION", StringComparison.Ordinal))
                                             {
+                                                if (HasQuestionPunctuation(trimmedQuery) && trimmedQuery.Length > 40 &&
+                                                    Tokenize(trimmedQuery).Length >= 6)
+                                                {
+                                                    var overrideTokens = _options.Features.EnableDocumentSearch
+                                                        ? TokenizeForSearch(normalizedForMatching)
+                                                        : Array.Empty<string>();
+                                                    return new QueryIntentAnalysisResult(false, overrideTokens);
+                                                }
                                                 string? answer = null;
                                                 if (root.TryGetProperty("answer", out var answerElement) && answerElement.ValueKind == JsonValueKind.String)
                                                 {
@@ -380,6 +401,15 @@ IMPORTANT:
             if (HasDateOrTimePattern(trimmed)) score++;
             if (HasNumericRangeOrList(trimmed)) score++;
             if (HasIdLikeToken(tokens)) score++;
+            if (HasQuestionPunctuation(trimmed) && tokens.Length >= 6 && trimmed.Length > 40)
+                score += 2;
+
+            var hasNoTechnicalIndicators = !HasUnicodeDigits(trimmed) && !HasOperatorsOrSymbols(trimmed) &&
+                !HasDateOrTimePattern(trimmed) && !HasIdLikeToken(tokens);
+            if (trimmed.Length <= MaxShortConversationLength && tokens.Length <= 2 && hasNoTechnicalIndicators)
+            {
+                return HeuristicDecision.Conversation;
+            }
 
             var convoScore = 0;
             if (trimmed.Length <= 2) convoScore++;
