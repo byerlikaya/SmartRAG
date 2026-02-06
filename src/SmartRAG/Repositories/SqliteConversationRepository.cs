@@ -1,7 +1,4 @@
 using Microsoft.Data.Sqlite;
-using SmartRAG.Interfaces.Storage;
-using SmartRAG.Models;
-using System.Text.Json;
 
 namespace SmartRAG.Repositories;
 

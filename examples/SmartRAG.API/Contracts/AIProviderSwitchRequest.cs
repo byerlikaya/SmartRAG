@@ -1,6 +1,3 @@
-using SmartRAG.Enums;
-using System.ComponentModel;
-using System.ComponentModel.DataAnnotations;
 
 namespace SmartRAG.API.Contracts;
 

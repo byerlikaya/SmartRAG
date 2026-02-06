@@ -1,5 +1,3 @@
-using SmartRAG.Enums;
-using SmartRAG.Models;
 
 namespace SmartRAG.Interfaces.AI;
 

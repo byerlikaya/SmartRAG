@@ -1,8 +1,5 @@
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
-using SmartRAG.Interfaces.Storage.Qdrant;
-using SmartRAG.Models;
-using System.Globalization;
 
 namespace SmartRAG.Services.Storage.Qdrant;
 

@@ -1,12 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using SmartRAG.Demo.Models;
-using SmartRAG.Demo.Services.Console;
-using SmartRAG.Demo.Services.TestQuery;
-using SmartRAG.Interfaces.Mcp;
-using SmartRAG.Models.RequestResponse;
-using SmartRAG.Models.Schema;
-using System.Text;
 
 namespace SmartRAG.Demo.Handlers.QueryHandlers;
 

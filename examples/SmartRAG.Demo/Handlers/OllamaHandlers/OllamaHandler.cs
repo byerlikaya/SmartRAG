@@ -1,8 +1,3 @@
-using Microsoft.Extensions.Logging;
-using SmartRAG.Demo.Models;
-using SmartRAG.Demo.Services;
-using SmartRAG.Demo.Services.Console;
-using SmartRAG.Enums;
 
 namespace SmartRAG.Demo.Handlers.OllamaHandlers;
 

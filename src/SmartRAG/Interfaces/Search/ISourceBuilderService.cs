@@ -1,6 +1,3 @@
-using SmartRAG.Entities;
-using SmartRAG.Models;
-using SmartRAG.Interfaces.Document;
 
 namespace SmartRAG.Interfaces.Search;
 

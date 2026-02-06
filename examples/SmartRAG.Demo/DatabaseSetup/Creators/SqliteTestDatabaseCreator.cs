@@ -1,10 +1,3 @@
-using Microsoft.Data.Sqlite;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using SmartRAG.Demo.DatabaseSetup.Interfaces;
-using SmartRAG.Enums;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace SmartRAG.Demo.DatabaseSetup.Creators;
 

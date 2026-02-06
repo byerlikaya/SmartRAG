@@ -1,11 +1,3 @@
-using Microsoft.Extensions.Logging;
-using SmartRAG.Demo.Models;
-using SmartRAG.Demo.Services.Translation;
-using SmartRAG.Enums;
-using SmartRAG.Interfaces;
-using SmartRAG.Models.Schema;
-using System.Text;
-using System.Text.Json;
 
 namespace SmartRAG.Demo.Services.TestQuery;
 

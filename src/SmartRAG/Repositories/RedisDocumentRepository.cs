@@ -1,14 +1,8 @@
-using SmartRAG.Entities;
-using SmartRAG.Interfaces.AI;
-using SmartRAG.Interfaces.Document;
-using SmartRAG.Models;
 using StackExchange.Redis;
 using NRedisStack;
 using NRedisStack.RedisStackCommands;
 using NRedisStack.Search;
 using NRedisStack.Search.Literals.Enums;
-using System.Globalization;
-using System.Text.Json;
 
 namespace SmartRAG.Repositories;
 

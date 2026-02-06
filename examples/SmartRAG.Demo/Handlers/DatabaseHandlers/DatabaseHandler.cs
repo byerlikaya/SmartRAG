@@ -1,14 +1,3 @@
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using SmartRAG.Demo.DatabaseSetup.Creators;
-using SmartRAG.Demo.Models;
-using SmartRAG.Demo.Services;
-using SmartRAG.Demo.Services.Console;
-using SmartRAG.Enums;
-using SmartRAG.Interfaces;
-using SmartRAG.Interfaces.AI;
-using SmartRAG.Models.Configuration;
 
 namespace SmartRAG.Demo.Handlers.DatabaseHandlers;
 

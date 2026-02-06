@@ -1,6 +1,3 @@
-using Microsoft.Extensions.Configuration;
-using SmartRAG.Demo.DatabaseSetup.Interfaces;
-using SmartRAG.Enums;
 
 namespace SmartRAG.Demo.DatabaseSetup.Creators;
 

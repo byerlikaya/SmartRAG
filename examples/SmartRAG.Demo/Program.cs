@@ -1,16 +1,3 @@
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using SmartRAG.Demo.Handlers.DatabaseHandlers;
-using SmartRAG.Demo.Handlers.DocumentHandlers;
-using SmartRAG.Demo.Handlers.OllamaHandlers;
-using SmartRAG.Demo.Handlers.QueryHandlers;
-using SmartRAG.Demo.Services.Console;
-using SmartRAG.Demo.Services.Initialization;
-using SmartRAG.Demo.Services.Menu;
-using SmartRAG.Demo.Services.TestQuery;
-using SmartRAG.Demo.Services.Translation;
-using SmartRAG.Enums;
 
 namespace SmartRAG.Demo;
 

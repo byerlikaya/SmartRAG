@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 
 namespace SmartRAG.Demo.Services.Console;
 

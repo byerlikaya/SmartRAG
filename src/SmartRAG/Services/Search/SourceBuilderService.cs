@@ -1,12 +1,4 @@
-using SmartRAG.Entities;
-using SmartRAG.Interfaces.Document;
 using SmartRAG.Interfaces.Search;
-using SmartRAG.Interfaces.Support;
-using SmartRAG.Models;
-using System.Globalization;
-using System.IO;
-using System.Text;
-using System.Text.Json;
 using DocumentEntity = SmartRAG.Entities.Document;
 
 namespace SmartRAG.Services.Search;

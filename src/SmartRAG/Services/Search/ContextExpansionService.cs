@@ -1,9 +1,4 @@
-using SmartRAG.Entities;
-using SmartRAG.Helpers;
-using SmartRAG.Interfaces.Document;
 using SmartRAG.Interfaces.Search;
-using SmartRAG.Services.Shared;
-using System.Text;
 using IQueryPatternAnalyzerService = SmartRAG.Interfaces.Document.IQueryPatternAnalyzerService;
 
 namespace SmartRAG.Services.Search;

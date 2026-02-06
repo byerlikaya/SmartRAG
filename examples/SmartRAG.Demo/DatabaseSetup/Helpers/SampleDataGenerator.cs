@@ -1,4 +1,3 @@
-using System.Text;
 
 namespace SmartRAG.Demo.DatabaseSetup.Helpers;
 

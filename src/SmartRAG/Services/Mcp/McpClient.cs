@@ -1,10 +1,3 @@
-using SmartRAG.Helpers;
-using SmartRAG.Interfaces.Mcp;
-using SmartRAG.Models;
-using System.Net.Http;
-using System.Net.Http.Headers;
-using System.Text;
-using System.Text.Json;
 
 namespace SmartRAG.Services.Mcp;
 

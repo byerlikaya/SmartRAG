@@ -2,15 +2,8 @@ using iText.Kernel.Pdf;
 using iText.Kernel.Pdf.Canvas.Parser;
 using iText.Kernel.Pdf.Canvas.Parser.Listener;
 using iText.Kernel.Pdf.Xobject;
-using SmartRAG.Interfaces.Parser;
-using SmartRAG.Interfaces.Parser.Strategies;
-using SmartRAG.Models;
-using SmartRAG.Services.Helpers;
 using SkiaSharp;
 using PDFtoImage;
-using System.IO;
-using System.Text;
-using System.Text.RegularExpressions;
 
 namespace SmartRAG.Services.Document.Parsers;
 

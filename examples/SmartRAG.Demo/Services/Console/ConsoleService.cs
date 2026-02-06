@@ -1,4 +1,3 @@
-using SmartRAG.Demo.Models;
 
 namespace SmartRAG.Demo.Services.Console;
 

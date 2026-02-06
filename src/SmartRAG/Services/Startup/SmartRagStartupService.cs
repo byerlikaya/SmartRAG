@@ -1,9 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
-using SmartRAG.Interfaces.Database;
-using SmartRAG.Interfaces.FileWatcher;
-using SmartRAG.Interfaces.Mcp;
-using SmartRAG.Models;
 
 namespace SmartRAG.Services.Startup;
 

@@ -1,9 +1,4 @@
-using System.Reflection;
-using SmartRAG.API.Filters;
 using SmartRAG.Dashboard;
-using SmartRAG.Enums;
-using SmartRAG.Extensions;
-using Swashbuckle.AspNetCore.SwaggerUI;
 
 var builder = WebApplication.CreateBuilder(args);
 

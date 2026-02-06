@@ -1,5 +1,3 @@
-using SmartRAG.Interfaces.Database;
-using SmartRAG.Models;
 
 namespace SmartRAG.Services.Database;
 

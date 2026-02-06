@@ -1,13 +1,4 @@
-using Microsoft.Extensions.Logging;
 using System.Data.Common;
-using System.Net.Http.Json;
-using System.Text.Json;
-using Microsoft.Data.SqlClient;
-using Microsoft.Data.Sqlite;
-using MySqlConnector;
-using Npgsql;
-using SmartRAG.Demo.Models;
-using StackExchange.Redis;
 
 namespace SmartRAG.Demo.Services;
 

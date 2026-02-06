@@ -1,4 +1,3 @@
-using SmartRAG.Entities;
 
 namespace SmartRAG.Models.RequestResponse;
 

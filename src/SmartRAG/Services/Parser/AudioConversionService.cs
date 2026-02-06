@@ -1,5 +1,4 @@
 using FFMpegCore;
-using System.IO;
 using Xabe.FFmpeg.Downloader;
 
 namespace SmartRAG.Services.Parser;

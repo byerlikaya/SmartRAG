@@ -1,10 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
-using SmartRAG.Helpers;
-using SmartRAG.Interfaces.Document;
-using SmartRAG.Interfaces.FileWatcher;
-using SmartRAG.Models;
-using System.IO;
-using System.Security.Cryptography;
 
 namespace SmartRAG.Services.FileWatcher;
 

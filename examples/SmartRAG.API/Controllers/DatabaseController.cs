@@ -1,18 +1,3 @@
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.DependencyInjection;
-using SmartRAG.API.Contracts;
-using SmartRAG.Enums;
-using SmartRAG.Interfaces;
-using SmartRAG.Models.Configuration;
-using SmartRAG.Models.Schema;
-using SmartRAG.Models.RequestResponse;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace SmartRAG.API.Controllers;
 

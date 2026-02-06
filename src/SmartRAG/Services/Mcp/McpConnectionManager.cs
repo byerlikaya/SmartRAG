@@ -1,5 +1,3 @@
-using SmartRAG.Interfaces.Mcp;
-using SmartRAG.Models;
 
 namespace SmartRAG.Services.Mcp;
 

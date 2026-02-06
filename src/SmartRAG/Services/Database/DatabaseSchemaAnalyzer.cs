@@ -2,15 +2,6 @@ using Microsoft.Data.Sqlite;
 using Microsoft.Data.SqlClient;
 using MySql.Data.MySqlClient;
 using Npgsql;
-using SmartRAG.Enums;
-using SmartRAG.Interfaces.AI;
-using SmartRAG.Interfaces.Database;
-using SmartRAG.Models;
-using System.Collections.Concurrent;
-using System.Data;
-using System.Data.Common;
-using System.IO;
-using System.Text;
 
 namespace SmartRAG.Services.Database;
 

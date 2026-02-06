@@ -1,9 +1,3 @@
-using Microsoft.Data.SqlClient;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Logging;
-using SmartRAG.Demo.DatabaseSetup.Interfaces;
-using SmartRAG.Enums;
-using System.Linq;
 
 namespace SmartRAG.Demo.DatabaseSetup.Creators;
 

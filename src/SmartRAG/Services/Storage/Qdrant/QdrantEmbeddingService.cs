@@ -1,5 +1,3 @@
-using SmartRAG.Interfaces.Storage.Qdrant;
-using SmartRAG.Models;
 
 namespace SmartRAG.Services.Storage.Qdrant;
 

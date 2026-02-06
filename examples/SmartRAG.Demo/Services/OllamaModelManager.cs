@@ -1,7 +1,3 @@
-using Microsoft.Extensions.Logging;
-using System.Net.Http.Json;
-using System.Text;
-using System.Text.Json;
 
 namespace SmartRAG.Demo.Services;
 

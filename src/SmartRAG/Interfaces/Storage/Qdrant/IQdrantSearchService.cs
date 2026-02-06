@@ -1,4 +1,3 @@
-using SmartRAG.Entities;
 
 namespace SmartRAG.Interfaces.Storage.Qdrant;
 

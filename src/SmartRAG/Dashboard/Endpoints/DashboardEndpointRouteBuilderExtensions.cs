@@ -1,17 +1,3 @@
-using System.IO;
-using System.Security.Cryptography;
-using System.Text.Json;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Routing;
-using Microsoft.Extensions.Configuration;
-using SmartRAG.Dashboard.Models;
-using SmartRAG.Interfaces.AI;
-using SmartRAG.Interfaces.Document;
-using SmartRAG.Interfaces.Storage;
-using SmartRAG.Interfaces.Support;
-using SmartRAG.Entities;
-
 namespace SmartRAG.Dashboard.Endpoints;
 
 /// <summary>

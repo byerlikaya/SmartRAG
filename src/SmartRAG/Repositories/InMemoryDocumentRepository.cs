@@ -1,6 +1,3 @@
-using SmartRAG.Entities;
-using SmartRAG.Interfaces.Document;
-using SmartRAG.Models;
 
 namespace SmartRAG.Repositories;
 

@@ -1,6 +1,3 @@
-using SmartRAG.Interfaces.Mcp;
-using SmartRAG.Models;
-using System.Text.Json;
 
 namespace SmartRAG.Services.Mcp;
 
