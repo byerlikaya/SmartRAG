@@ -11,6 +11,57 @@ lang: tr
 
 ---
 
+### v3.x'ten v4.0.0'a Taşınma
+
+<div class="alert alert-warning">
+    <h4><i class="fas fa-exclamation-triangle me-2"></i> Kırıcı Değişiklikler</h4>
+    <p class="mb-0">v4.0.0 .NET 6 hedefler ve SmartRAG.Dashboard projesi ana SmartRAG paketine birleştirilmiştir.</p>
+</div>
+
+<p>Bu taşınma kılavuzu, SmartRAG v3.x'ten v4.0.0'a yükseltme sırasındaki framework ve proje yapısı değişikliklerini kapsar.</p>
+
+<p><strong>Not:</strong> SmartRAG.Dashboard hiçbir zaman NuGet paketi olarak yayınlanmadı. v3.x'te solution içinde ayrı bir proje olarak yer alıyordu; v4.0'da bu proje kaldırıldı ve Dashboard kodu SmartRAG paketine dahil edildi.</p>
+
+#### Adım 1: Hedef Framework'ü Güncelleyin
+
+<p>Projeniz .NET 6 veya üzerini hedeflemelidir:</p>
+
+```xml
+<TargetFramework>net6.0</TargetFramework>
+<!-- veya net7.0, net8.0, net9.0 -->
+```
+
+<p>.NET Core 3.0, .NET 5 veya .NET Standard 2.1 hedefleyen projeler en az .NET 6'ya yükseltmelidir.</p>
+
+#### Adım 2: SmartRAG.Dashboard Proje Referansını Kaldırın
+
+<p>Dashboard artık SmartRAG paketinde. SmartRAG.Dashboard projesine ProjectReference kullandıysanız, bu referansı kaldırın:</p>
+
+```xml
+<!-- Bu satırı kaldırın -->
+<ProjectReference Include="..\..\src\SmartRAG.Dashboard\SmartRAG.Dashboard.csproj" />
+```
+
+<p>Sadece SmartRAG NuGet paketini veya ana SmartRAG projesini referans alıyorsanız, değişiklik yapmanız gerekmez.</p>
+
+#### Adım 3: Aynı API'yi Kullanmaya Devam Edin
+
+<p>Kod değişikliği gerekmez. Dashboard API aynı kalır:</p>
+
+```csharp
+using SmartRAG.Dashboard;
+
+builder.Services.AddSmartRag(builder.Configuration);
+builder.Services.AddSmartRagDashboard(options => { options.Path = "/smartrag"; });
+
+app.UseSmartRagDashboard("/smartrag");
+app.MapSmartRagDashboard("/smartrag");
+```
+
+<p><code>SmartRAG.Dashboard</code> namespace ve extension metodları artık SmartRAG paketinin bir parçasıdır.</p>
+
+---
+
 ### v2.x'ten v3.0.0'a Taşınma
 
 <div class="alert alert-info">

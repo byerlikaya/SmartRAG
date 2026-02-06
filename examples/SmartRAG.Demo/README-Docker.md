@@ -198,6 +198,8 @@ curl http://localhost:11434/api/tags
 - **Container**: smartrag-qdrant
 - **Volume**: qdrant-data
 
+**Note**: SmartRAG Dashboard (document management + chat) is at your app URL + `/smartrag`, not Qdrant's dashboard.
+
 **Test Connection:**
 ```bash
 curl http://localhost:6333/health

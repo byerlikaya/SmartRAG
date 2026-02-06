@@ -11,6 +11,57 @@ lang: en
 
 ---
 
+### Migrating from v3.x to v4.0.0
+
+<div class="alert alert-warning">
+    <h4><i class="fas fa-exclamation-triangle me-2"></i> Breaking Changes</h4>
+    <p class="mb-0">v4.0.0 targets .NET 6 and merges the SmartRAG.Dashboard project into the main SmartRAG package.</p>
+</div>
+
+<p>This migration guide covers the framework and project structure changes when upgrading from SmartRAG v3.x to v4.0.0.</p>
+
+<p><strong>Note:</strong> SmartRAG.Dashboard was never published as a NuGet package. In v3.x it existed as a separate project within the solution; in v4.0 that project was removed and the Dashboard code is now included in the SmartRAG package.</p>
+
+#### Step 1: Update Target Framework
+
+<p>Your project must target .NET 6 or higher:</p>
+
+```xml
+<TargetFramework>net6.0</TargetFramework>
+<!-- or net7.0, net8.0, net9.0 -->
+```
+
+<p>Projects targeting .NET Core 3.0, .NET 5, or .NET Standard 2.1 must upgrade to at least .NET 6.</p>
+
+#### Step 2: Remove SmartRAG.Dashboard Project Reference
+
+<p>The Dashboard is now included in the SmartRAG package. If you had a ProjectReference to the SmartRAG.Dashboard project, remove it:</p>
+
+```xml
+<!-- Remove this line -->
+<ProjectReference Include="..\..\src\SmartRAG.Dashboard\SmartRAG.Dashboard.csproj" />
+```
+
+<p>If you only reference the SmartRAG NuGet package or the main SmartRAG project, no changes are needed.</p>
+
+#### Step 3: Keep Using the Same API
+
+<p>No code changes needed. The Dashboard API remains the same:</p>
+
+```csharp
+using SmartRAG.Dashboard;
+
+builder.Services.AddSmartRag(builder.Configuration);
+builder.Services.AddSmartRagDashboard(options => { options.Path = "/smartrag"; });
+
+app.UseSmartRagDashboard("/smartrag");
+app.MapSmartRagDashboard("/smartrag");
+```
+
+<p>The <code>SmartRAG.Dashboard</code> namespace and extension methods are now part of the SmartRAG package.</p>
+
+---
+
 ### Migrating from v2.x to v3.0.0
 
 <div class="alert alert-info">
@@ -140,7 +191,7 @@ Task<string[]> GetAllSessionIdsAsync(CancellationToken cancellationToken = defau
 <TargetFramework>net461</TargetFramework>
 <TargetFramework>net5.0</TargetFramework>
 <TargetFramework>net6.0</TargetFramework>
-<TargetFramework>net7.0</TargetFramework>
+<TargetFramework>net6.0</TargetFramework>
 <TargetFramework>net8.0</TargetFramework>
 <TargetFramework>net9.0</TargetFramework>
 ```

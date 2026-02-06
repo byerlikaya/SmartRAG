@@ -80,6 +80,10 @@ The `.gitignore` file protects:
 - ✅ Use environment variables in production
 - ✅ Rotate API keys regularly
 
+### Dashboard Security
+
+If using SmartRAG.API with the built-in Dashboard, note that the dashboard has no built-in authentication. Protect the `/smartrag` path in production (e.g., with reverse proxy, IP allowlist, or your app's auth middleware).
+
 ### DON'T:
 - ❌ Commit `appsettings.Development.json`
 - ❌ Put real API keys in `appsettings.json`

@@ -15,7 +15,7 @@
 
 <p align="center">
   <a href="https://github.com/byerlikaya/SmartRAG/actions"><img src="https://img.shields.io/github/actions/workflow/status/byerlikaya/SmartRAG/ci.yml?style=for-the-badge&logo=github" alt="Build Status"/></a>
-  <a href="https://www.nuget.org/packages/SmartRAG"><img src="https://img.shields.io/badge/.NET%20Standard-2.1-blue?style=for-the-badge&logo=.net" alt=".NET Standard 2.1"/></a>
+  <a href="https://www.nuget.org/packages/SmartRAG"><img src="https://img.shields.io/badge/.NET-6.0-blue?style=for-the-badge&logo=.net" alt=".NET 6"/></a>
 </p>
 
 <p align="center">
@@ -113,11 +113,7 @@ var response = await searchService.QueryIntelligenceAsync(
 
 ### **Dashboard (Web UI)**
 
-Add a browser-based dashboard for document management and chat:
-
-```bash
-dotnet add package SmartRAG.Dashboard
-```
+SmartRAG includes a built-in browser-based dashboard for document management and chat (no separate package needed):
 
 ```csharp
 builder.Services.AddSmartRag(builder.Configuration);

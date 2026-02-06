@@ -198,6 +198,8 @@ curl http://localhost:11434/api/tags
 - **Container**: smartrag-qdrant
 - **Volume**: qdrant-data
 
+**Not**: SmartRAG Dashboard (doküman yönetimi ve chat) uygulama URL'niz + `/smartrag` adresindedir; Qdrant'ın dashboard'u değildir.
+
 **Bağlantı Testi:**
 ```bash
 curl http://localhost:6333/health

@@ -14,7 +14,7 @@ hide_title: true
                 <div class="hero-content">
                     <div class="hero-badge">
                         <i class="fas fa-star"></i>
-                        <span>.NET Standard 2.1</span>
+                        <span>.NET 6+</span>
                     </div>
                     <div class="hero-premise-badge">
                         <i class="fas fa-cloud-upload-alt"></i>

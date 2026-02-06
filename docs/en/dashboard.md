@@ -7,7 +7,7 @@ lang: en
 
 ## Overview
 
-The **SmartRAG.Dashboard** package adds a browser-based web UI to your application. When you add the dashboard, you get:
+SmartRAG includes a built-in browser-based web UI (Dashboard). When you enable the dashboard, you get:
 
 - **Document management**: List, upload, and delete documents from the browser
 - **Supported types**: Only SmartRAG-supported document types can be uploaded (PDF, Word, Excel, text, images, audio, etc.)
@@ -17,11 +17,10 @@ The dashboard is served at a configurable path (default: `/smartrag`) and is int
 
 ## Installation
 
-Add the SmartRAG core and the Dashboard package to your ASP.NET Core project:
+Add the SmartRAG package to your ASP.NET Core project (Dashboard is included):
 
 ```bash
 dotnet add package SmartRAG
-dotnet add package SmartRAG.Dashboard
 ```
 
 ## Configuration
@@ -90,6 +89,11 @@ All endpoints are relative to the configured path (e.g. `/smartrag`).
 | GET | `/api/upload/supported-types` | Supported file extensions and MIME types |
 | GET | `/api/chat/config` | Active AI provider and model name |
 | POST | `/api/chat/messages` | Send a chat message (JSON: `message`, optional `sessionId`) |
+| GET | `/api/chat/sessions` | List chat sessions |
+| GET | `/api/chat/sessions/{sessionId}` | Get one chat session with messages |
+| DELETE | `/api/chat/sessions` | Delete all chat sessions |
+| DELETE | `/api/chat/sessions/{sessionId}` | Delete one chat session |
+| GET | `/api/settings` | Dashboard configuration (providers, features, chunking, etc.) |
 
 ## Usage
 
@@ -99,3 +103,15 @@ All endpoints are relative to the configured path (e.g. `/smartrag`).
 4. Use the **Chat** panel to send messages to the currently configured AI model; the active provider/model is shown in the header.
 
 The dashboard uses the same SmartRAG services (`IDocumentService`, `IAIService`, etc.) as the rest of your application, so documents and chat are consistent with your existing configuration.
+
+## Screenshots
+
+- **Documents panel**: Upload, list, and manage documents.
+- **Chat panel**: Send messages and view conversation history.
+- **Settings panel**: View configuration (providers, features, chunking).
+
+Placeholder images (replace with actual screenshots from SmartRAG.API or Demo):
+
+![Dashboard Documents](assets/images/dashboard-documents.png)
+![Dashboard Chat](assets/images/dashboard-chat.png)
+![Dashboard Settings](assets/images/dashboard-settings.png)

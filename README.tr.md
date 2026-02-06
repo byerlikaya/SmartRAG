@@ -15,7 +15,7 @@
 
 <p align="center">
   <a href="https://github.com/byerlikaya/SmartRAG/actions"><img src="https://img.shields.io/github/actions/workflow/status/byerlikaya/SmartRAG/ci.yml?style=for-the-badge&logo=github" alt="Build Status"/></a>
-  <a href="https://www.nuget.org/packages/SmartRAG"><img src="https://img.shields.io/badge/.NET%20Standard-2.1-blue?style=for-the-badge&logo=.net" alt=".NET Standard 2.1"/></a>
+  <a href="https://www.nuget.org/packages/SmartRAG"><img src="https://img.shields.io/badge/.NET-6.0-blue?style=for-the-badge&logo=.net" alt=".NET 6"/></a>
 </p>
 
 <p align="center">
@@ -113,11 +113,7 @@ var cevap = await searchService.QueryIntelligenceAsync(
 
 ### **Dashboard (Web Arayüzü)**
 
-Doküman yönetimi ve chat için tarayıcı tabanlı bir dashboard ekleyin:
-
-```bash
-dotnet add package SmartRAG.Dashboard
-```
+SmartRAG, doküman yönetimi ve chat için yerleşik tarayıcı tabanlı bir dashboard içerir (ayrı paket gerekmez):
 
 ```csharp
 builder.Services.AddSmartRag(builder.Configuration);
@@ -142,6 +138,8 @@ Ardından dokümanları listelemek, yüklemek/silmek ve aktif AI modeli ile sohb
 🔌 **MCP Client Entegrasyonu** - Harici MCP sunucularına bağlan ve dış araçlarla yetenekleri genişlet
 
 📁 **Otomatik Dosya İzleme** - Klasörleri izle ve yeni belgeleri manuel yükleme olmadan otomatik indeksle
+
+🧩 **Modüler Mimari** - SQL diyalektleri, skorlama ve dosya ayrıştırma için Strateji Deseni
 
 🏠 **%100 Yerel İşleme** - GDPR, KVKK, HIPAA uyumlu
 

@@ -6,7 +6,7 @@ Bu klasör, SmartRAG'ın farklı senaryolarda nasıl kullanılacağını göster
 
 ### **SmartRAG.API** - ASP.NET Core Web API Örneği
 - **Konum**: `SmartRAG.API/`
-- **Açıklama**: Doküman yükleme, arama ve RAG işlemlerini gösteren tam web API implementasyonu
+- **Açıklama**: Doküman yükleme, arama ve RAG işlemlerini gösteren tam web API implementasyonu. Doküman yönetimi ve chat için `/smartrag` yolunda yerleşik Dashboard içerir.
 
 - **Özellikler**: 
   - **Birleşik Sorgu Zekası**: Tek endpoint ile belgeler, görüntüler (OCR), ses (transkripsiyon) ve veritabanlarında arama
@@ -47,7 +47,7 @@ dotnet restore
 dotnet run
 ```
 
-İnteraktif API dokümantasyonu için `https://localhost:5001/swagger` adresine gidin.
+İnteraktif API dokümantasyonu için `https://localhost:5001/swagger` adresine gidin. Yerleşik Dashboard için `https://localhost:5001/smartrag` adresine gidin.
 
 ### SmartRAG.Demo Örneği
 ```bash
@@ -77,8 +77,8 @@ cp appsettings.Development.template.json appsettings.Development.json
 ## 📚 Dokümantasyon
 
 - **Ana Dokümantasyon**: [SmartRAG README](../../README.tr.md)
-- **API Referansı**: [API Dokümantasyonu](../../docs/tr/api-reference.md)
-- **Yapılandırma Rehberi**: [Yapılandırma Rehberi](../../docs/tr/configuration/basic.md)
+- **API Referansı**: [API Dokümantasyonu](https://byerlikaya.github.io/SmartRAG/tr/api-reference)
+- **Yapılandırma Rehberi**: [Yapılandırma Rehberi](https://byerlikaya.github.io/SmartRAG/tr/configuration/basic)
 
 ## 🤝 Katkıda Bulunma
 

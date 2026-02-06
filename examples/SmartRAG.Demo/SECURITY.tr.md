@@ -80,6 +80,10 @@ Bu proje **iki ayrı yapılandırma dosyası** kullanır:
 - ✅ Production'da ortam değişkenlerini kullanın
 - ✅ API anahtarlarını düzenli olarak rotate edin
 
+### Dashboard Güvenliği
+
+SmartRAG.API ile yerleşik Dashboard kullanıyorsanız, dashboard'un yerleşik kimlik doğrulaması olmadığını unutmayın. Production'da `/smartrag` yolunu koruyun (örn. reverse proxy, IP listesi veya uygulamanızın auth middleware'i ile).
+
 ### YAPILMAYACAKLAR:
 - ❌ `appsettings.Development.json`'ı commit etmeyin
 - ❌ `appsettings.json`'a gerçek API anahtarları koymayın

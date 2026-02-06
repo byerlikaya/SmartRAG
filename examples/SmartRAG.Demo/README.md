@@ -26,7 +26,7 @@ dotnet run
 ```
 
 ### **Prerequisites**
-- **.NET 9.0 SDK** - Required for running the demo
+- **.NET 6.0 SDK or later** - SmartRAG targets .NET 6; Demo targets .NET 9.0
 - **Docker Desktop** (optional) - For local services (AI, databases, vector stores)
 - **OR Cloud AI API Keys** (optional) - For cloud AI providers
 
