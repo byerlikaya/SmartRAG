@@ -16,12 +16,12 @@ SmartRAG'a katkıda bulunmaya ilgi gösterdiğiniz için teşekkür ederiz! Topl
 
 ### Önkoşullar
 
-- **.NET SDK** (örnekleri derlemek için 6.0 veya üzeri, kütüphane için .NET Standard 2.1 uyumlu)
+- **.NET SDK** (örnekler ve kütüphane için 6.0 veya üzeri)
 - **Git**
 - **Visual Studio 2022**, **VS Code** veya **JetBrains Rider**
 - **C#** ve **RAG (Retrieval-Augmented Generation)** temel bilgisi
 
-**Not**: SmartRAG kütüphanesi (`src/SmartRAG/`) maksimum uyumluluk için **.NET Standard 2.1**'i hedefler. Örnek projeler daha yeni .NET sürümlerini hedefleyebilir.
+**Not**: SmartRAG kütüphanesi (`src/SmartRAG/`) geniş uyumluluk için **.NET 6** hedefler. Örnek projeler daha yeni .NET sürümlerini hedefleyebilir.
 
 ### Geliştirme Kurulumu
 
@@ -125,8 +125,7 @@ git commit -m "feat: add new feature"
    - Interface'lere `I` öneki ekleyin (örn. `IAIProvider`)
 
 2. **Constructor'lar**
-   - Standart constructor'ları kullanın (primary constructor'lar C# 12+ özelliğidir ve .NET Standard 2.1'de mevcut değildir)
-   - **Not**: Primary constructor'lar .NET 6+ hedefleyen örnek projelerde kullanılabilir, ancak kütüphane (`src/SmartRAG/`) .NET Standard 2.1 uyumluluğu için standart constructor'ları kullanmalıdır.
+   - Primary constructor (C# 12+) ve standart constructor'ların ikisi de kullanılabilir. Kod tabanında tutarlı kullanın.
 
 3. **Logging**
    - **MUTLAKA** logging için `ILogger<T>` kullanın

@@ -16,12 +16,12 @@ Thank you for your interest in contributing to SmartRAG! We welcome contribution
 
 ### Prerequisites
 
-- **.NET SDK** (version 6.0 or later for building examples, .NET Standard 2.1 compatible for library)
+- **.NET SDK** (version 6.0 or later for building examples and library)
 - **Git**
 - **Visual Studio 2022**, **VS Code**, or **JetBrains Rider**
 - Basic knowledge of **C#** and **RAG (Retrieval-Augmented Generation)**
 
-**Note**: The SmartRAG library (`src/SmartRAG/`) targets **.NET Standard 2.1** for maximum compatibility. Example projects may target newer .NET versions.
+**Note**: The SmartRAG library (`src/SmartRAG/`) targets **.NET 6** for wide compatibility. Example projects may target newer .NET versions.
 
 ### Development Setup
 
@@ -125,8 +125,7 @@ git commit -m "feat: add new feature"
    - Prefix interfaces with `I` (e.g., `IAIProvider`)
 
 2. **Constructors**
-   - Use standard constructors (primary constructors are C# 12+ and not available in .NET Standard 2.1)
-   - **Note**: Primary constructors can be used in example projects that target .NET 6+, but the library (`src/SmartRAG/`) must use standard constructors for .NET Standard 2.1 compatibility.
+   - Primary constructors (C# 12+) and standard constructors are both allowed. Use consistently within the codebase.
 
 3. **Logging**
    - **ALWAYS** use `ILogger<T>` for logging

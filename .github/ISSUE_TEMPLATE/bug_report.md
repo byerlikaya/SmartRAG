@@ -24,7 +24,7 @@ A clear and concise description of what actually happened.
 
 ## 📱 Environment
 - SmartRAG Version: [e.g. 1.0.0]
-- .NET Version: [e.g. .NET 9.0]
+- .NET Version: [e.g. .NET 6, 7, 8, 9]
 - OS: [e.g. Windows 11, Ubuntu 20.04]
 - AI Provider: [e.g. OpenAI, Anthropic]
 - Storage Provider: [e.g. Redis, Qdrant]
