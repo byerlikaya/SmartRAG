@@ -122,11 +122,10 @@ const response = await fetch('/api/intelligence/generate-answer', { ... });
 const response = await fetch('/api/intelligence/query', { ... });
 ```
 
-<div class="alert alert-success">
-    <h4><i class="fas fa-check-circle me-2"></i> No Immediate Action Required</h4>
+<div class="alert alert-warning">
+    <h4><i class="fas fa-exclamation-triangle me-2"></i> v4.0.0 Update</h4>
     <p class="mb-0">
-        The old <code>GenerateRagAnswerAsync</code> method still works (marked as deprecated). 
-        You can migrate gradually before v4.0.0 is released.
+        <code>GenerateRagAnswerAsync</code> was removed in v4.0.0. You must use <code>QueryIntelligenceAsync</code> when upgrading to v4.
     </p>
 </div>
 

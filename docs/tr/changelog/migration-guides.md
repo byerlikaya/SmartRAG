@@ -122,11 +122,10 @@ const response = await fetch('/api/intelligence/generate-answer', { ... });
 const response = await fetch('/api/intelligence/query', { ... });
 ```
 
-<div class="alert alert-success">
-    <h4><i class="fas fa-check-circle me-2"></i> Acil Eylem Gerekmez</h4>
+<div class="alert alert-warning">
+    <h4><i class="fas fa-exclamation-triangle me-2"></i> v4.0.0 Güncellemesi</h4>
     <p class="mb-0">
-        Eski <code>GenerateRagAnswerAsync</code> metodu hala çalışıyor (kullanımdan kaldırıldı olarak işaretli). 
-        v4.0.0 yayınlanmadan önce kademeli olarak taşınabilirsiniz.
+        <code>GenerateRagAnswerAsync</code> v4.0.0'da kaldırıldı. v4'e yükseltirken <code>QueryIntelligenceAsync</code> kullanmanız gerekir.
     </p>
 </div>
 
