@@ -34,7 +34,7 @@ public class SchemaMigrationService : ISchemaMigrationService
         try
         {
             var schemas = await _schemaAnalyzer.GetAllSchemasAsync(cancellationToken);
-            if (schemas == null || schemas.Count == 0)
+            if (schemas.Count == 0)
             {
                 _logger.LogInformation("No schemas found to migrate");
                 return 0;
@@ -59,25 +59,18 @@ public class SchemaMigrationService : ISchemaMigrationService
                         schema.DatabaseName, schema.DatabaseId);
 
                     var document = await _schemaChunkService.ConvertSchemaToDocumentAsync(schema, cancellationToken);
-                    if (document == null || document.Chunks == null || document.Chunks.Count == 0)
+                    if (document == null || document.Chunks.Count == 0)
                     {
                         _logger.LogWarning("No chunks generated for database {DatabaseName} ({DatabaseId})",
                             schema.DatabaseName, schema.DatabaseId);
                         continue;
                     }
 
-                    var addedDocument = await _documentRepository.AddAsync(document, cancellationToken);
-                    if (addedDocument != null)
-                    {
-                        migratedCount++;
-                        _logger.LogInformation("Successfully migrated schema for database {DatabaseName} ({DatabaseId}) - {ChunkCount} chunks",
-                            schema.DatabaseName, schema.DatabaseId, document.Chunks.Count);
-                    }
-                    else
-                    {
-                        _logger.LogError("Failed to store schema chunks for database {DatabaseName} ({DatabaseId})",
-                            schema.DatabaseName, schema.DatabaseId);
-                    }
+                    await _documentRepository.AddAsync(document, cancellationToken);
+
+                    migratedCount++;
+                    _logger.LogInformation("Successfully migrated schema for database {DatabaseName} ({DatabaseId}) - {ChunkCount} chunks",
+                        schema.DatabaseName, schema.DatabaseId, document.Chunks.Count);
                 }
                 catch (Exception ex)
                 {
@@ -119,8 +112,7 @@ public class SchemaMigrationService : ISchemaMigrationService
 
     private static Func<Entities.Document, bool> IsSchemaDocumentForDatabase(string databaseId)
     {
-        return d => d.Metadata != null &&
-                   d.Metadata.TryGetValue("databaseId", out var id) &&
+        return d => d.Metadata.TryGetValue("databaseId", out var id) &&
                    id?.ToString() == databaseId &&
                    d.Metadata.TryGetValue("documentType", out var docType) &&
                    docType?.ToString() == "Schema";

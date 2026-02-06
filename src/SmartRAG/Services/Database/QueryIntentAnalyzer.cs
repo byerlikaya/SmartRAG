@@ -52,7 +52,7 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
 
             var prompt = BuildQueryAnalysisPrompt(userQuery, schemas);
 
-            var aiResponse = await _aiService.GenerateResponseAsync(prompt, new List<string>());
+            var aiResponse = await _aiService.GenerateResponseAsync(prompt, new List<string>(), cancellationToken);
 
             queryIntent = ParseAIResponse(aiResponse, userQuery, schemas);
 
@@ -70,7 +70,7 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
         return queryIntent;
     }
 
-    private bool QueryRequiresCrossDatabaseMapping(string userQuery, List<CrossDatabaseMapping> mappings)
+    private bool QueryRequiresCrossDatabaseMapping(string userQuery, List<CrossDatabaseMapping>? mappings)
     {
         if (mappings == null || !mappings.Any())
             return false;
@@ -85,13 +85,13 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
         return hasDescriptiveKeywords && hasAggregationKeywords;
     }
 
-    private bool ContainsDescriptiveKeywords(string query, List<DatabaseSchemaInfo> schemas)
+    private bool ContainsDescriptiveKeywords(string query, List<DatabaseSchemaInfo>? schemas)
     {
         if (string.IsNullOrWhiteSpace(query) || schemas == null || !schemas.Any())
             return false;
 
         var lowerQuery = query.ToLowerInvariant();
-        
+
         var descriptivePatterns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         foreach (var schema in schemas)
         {
@@ -100,16 +100,13 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
                 foreach (var column in table.Columns)
                 {
                     var columnLower = column.ColumnName.ToLowerInvariant();
-                    if (IsDescriptiveColumnPattern(columnLower))
+                    if (!IsDescriptiveColumnPattern(columnLower))
+                        continue;
+
+                    var words = ExtractWords(columnLower);
+                    foreach (var word in words.Where(word => word.Length > 2))
                     {
-                        var words = ExtractWords(columnLower);
-                        foreach (var word in words)
-                        {
-                            if (word.Length > 2)
-                            {
-                                descriptivePatterns.Add(word);
-                            }
-                        }
+                        descriptivePatterns.Add(word);
                     }
                 }
             }
@@ -119,15 +116,15 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
                ContainsGenericDescriptivePatterns(lowerQuery);
     }
 
-    private bool ContainsAggregationKeywords(string query, List<DatabaseSchemaInfo> schemas)
+    private bool ContainsAggregationKeywords(string query, List<DatabaseSchemaInfo>? schemas)
     {
         if (string.IsNullOrWhiteSpace(query) || schemas == null || !schemas.Any())
             return false;
 
         var lowerQuery = query.ToLowerInvariant();
-        
-        var hasNumericColumns = schemas.Any(schema => 
-            schema.Tables.Any(table => 
+
+        var hasNumericColumns = schemas.Any(schema =>
+            schema.Tables.Any(table =>
                 table.Columns.Any(col => IsNumericType(col.DataType))));
 
         var aggregationPatterns = new[] { "count", "sum", "avg", "total", "most", "top", "max", "min", "highest", "lowest", "first", "order", "sort" };
@@ -136,13 +133,13 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
         return hasNumericColumns && hasAggregationPattern;
     }
 
-    private bool IsDescriptiveColumnPattern(string columnName)
+    private static bool IsDescriptiveColumnPattern(string columnName)
     {
         var descriptiveTerms = new[] { "name", "title", "description", "label", "text", "value" };
         return descriptiveTerms.Any(term => columnName.Contains(term, StringComparison.OrdinalIgnoreCase));
     }
 
-    private bool IsNumericType(string dataType)
+    private static bool IsNumericType(string dataType)
     {
         if (string.IsNullOrWhiteSpace(dataType))
             return false;
@@ -152,7 +149,7 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
         return numericTypes.Any(nt => typeLower.Contains(nt));
     }
 
-    private bool IsTextType(string dataType)
+    private static bool IsTextType(string dataType)
     {
         if (string.IsNullOrWhiteSpace(dataType))
             return false;
@@ -162,13 +159,13 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
         return textTypes.Any(tt => typeLower.Contains(tt));
     }
 
-    private bool ContainsGenericDescriptivePatterns(string lowerQuery)
+    private static bool ContainsGenericDescriptivePatterns(string lowerQuery)
     {
         var genericPatterns = new[] { "who", "which", "what", "name", "title", "description", "entity", "entities" };
-        return genericPatterns.Any(pattern => lowerQuery.Contains(pattern));
+        return genericPatterns.Any(lowerQuery.Contains);
     }
 
-    private List<string> ExtractWords(string text)
+    private static List<string> ExtractWords(string text)
     {
         var words = new List<string>();
         var currentWord = new StringBuilder();
@@ -181,11 +178,9 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
             }
             else
             {
-                if (currentWord.Length > 0)
-                {
-                    words.Add(currentWord.ToString());
-                    currentWord.Clear();
-                }
+                if (currentWord.Length <= 0) continue;
+                words.Add(currentWord.ToString());
+                currentWord.Clear();
             }
         }
 
@@ -201,7 +196,7 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
     {
         var sb = new StringBuilder();
         var allMappings = GetAllCrossDatabaseMappings();
-        
+
         sb.AppendLine("═══════════════════════════════════════════════════════════════");
         sb.AppendLine("DATABASE QUERY ANALYZER");
         sb.AppendLine("═══════════════════════════════════════════════════════════════");
@@ -212,18 +207,18 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
         if (allMappings.Any())
         {
             var requiresMapping = QueryRequiresCrossDatabaseMapping(userQuery, allMappings);
-            
+
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
             sb.AppendLine("🚨 CRITICAL: CROSS-DATABASE MAPPINGS");
             sb.AppendLine("═══════════════════════════════════════════════════════════════");
             sb.AppendLine();
-            
+
             if (requiresMapping)
             {
                 sb.AppendLine("⚠️ THIS QUERY REQUIRES MULTI-DATABASE ACCESS!");
                 sb.AppendLine();
             }
-            
+
             sb.AppendLine("Mapping Format: SourceDatabase.SourceTable.SourceColumn → TargetDatabase.TargetTable.TargetColumn");
             sb.AppendLine();
             foreach (var mapping in allMappings)
@@ -298,19 +293,19 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
             sb.AppendLine($"DATABASE: {schema.DatabaseName} (ID: {schema.DatabaseId})");
             sb.AppendLine($"  Type: {schema.DatabaseType}, Total Rows: {schema.TotalRowCount:N0}");
             sb.AppendLine("  Tables:");
-            
+
             foreach (var table in schema.Tables.Take(20))
             {
                 var tableType = table.RowCount > 10000 ? "TRANSACTIONAL" : (table.RowCount > 1000 ? "LOOKUP" : "MASTER");
-                
+
                 sb.AppendLine($"    • {table.TableName} (Rows: {table.RowCount:N0}, Type: {tableType})");
-                
+
                 var pkColumns = table.PrimaryKeys.Any() ? table.PrimaryKeys : table.Columns.Where(c => c.IsPrimaryKey).Select(c => c.ColumnName).ToList();
                 if (pkColumns.Any())
                 {
                     sb.AppendLine($"      PK: {string.Join(", ", pkColumns)}");
                 }
-                
+
                 if (table.ForeignKeys.Any())
                 {
                     sb.AppendLine("      Foreign Keys:");
@@ -319,9 +314,9 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
                         sb.AppendLine($"        {fk.ColumnName} → {fk.ReferencedTable}.{fk.ReferencedColumn}");
                     }
                 }
-                
+
                 var importantColumns = table.Columns
-                    .Where(c => c.IsPrimaryKey || c.IsForeignKey || 
+                    .Where(c => c.IsPrimaryKey || c.IsForeignKey ||
                                IsNumericType(c.DataType) || IsTextType(c.DataType))
                     .Take(10)
                     .Select(c => {
@@ -331,7 +326,7 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
                         var markerStr = markers.Any() ? $" [{string.Join(",", markers)}]" : "";
                         return $"{c.ColumnName}({c.DataType}){markerStr}";
                     });
-                
+
                 sb.AppendLine($"      Columns: {string.Join(", ", importantColumns)}");
             }
             sb.AppendLine();
@@ -466,11 +461,12 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
         sb.AppendLine("  ✓ databaseId and databaseName are EXACT matches from AVAILABLE SCHEMAS");
         sb.AppendLine("  ✓ priority field is set correctly (1 for aggregation, 2+ for descriptive)");
         sb.AppendLine();
-        if (allMappings.Any() && QueryRequiresCrossDatabaseMapping(userQuery, allMappings))
-        {
-            sb.AppendLine("⚠️⚠️ FINAL CHECK: Query requires multi-database access - did you include BOTH databases with correct priorities?");
-            sb.AppendLine();
-        }
+
+        if (!allMappings.Any() || !QueryRequiresCrossDatabaseMapping(userQuery, allMappings))
+            return sb.ToString();
+
+        sb.AppendLine("⚠️⚠️ FINAL CHECK: Query requires multi-database access - did you include BOTH databases with correct priorities?");
+        sb.AppendLine();
 
         return sb.ToString();
     }
@@ -613,20 +609,17 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
     private List<CrossDatabaseMapping> GetAllCrossDatabaseMappings()
     {
         var mappings = new List<CrossDatabaseMapping>();
-        
-        if (_connectionManager == null)
-            return mappings;
 
         try
         {
             var connectionsTask = _connectionManager.GetAllConnectionsAsync();
             var connections = connectionsTask.GetAwaiter().GetResult();
-            
+
             foreach (var connection in connections)
             {
                 if (connection?.CrossDatabaseMappings == null)
                     continue;
-                
+
                 mappings.AddRange(connection.CrossDatabaseMappings);
             }
         }
@@ -640,14 +633,14 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
 
     private QueryIntent CreateFallbackQueryIntent(string originalQuery, List<DatabaseSchemaInfo> schemas)
     {
-        const int MaxTablesInFallback = 5;
-        const double FallbackConfidence = 0.3;
+        const int maxTablesInFallback = 5;
+        const double fallbackConfidence = 0.3;
 
         var queryIntent = new QueryIntent
         {
             OriginalQuery = originalQuery,
             QueryUnderstanding = "Querying all available databases",
-            Confidence = FallbackConfidence,
+            Confidence = fallbackConfidence,
             Reasoning = "Fallback: AI analysis failed, querying all databases"
         };
 
@@ -657,7 +650,7 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
             {
                 DatabaseId = schema.DatabaseId,
                 DatabaseName = schema.DatabaseName,
-                RequiredTables = schema.Tables.Take(MaxTablesInFallback).Select(t => t.TableName).ToList(),
+                RequiredTables = schema.Tables.Take(maxTablesInFallback).Select(t => t.TableName).ToList(),
                 Purpose = "Retrieve relevant data",
                 Priority = 1
             });
@@ -666,7 +659,7 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
         return queryIntent;
     }
 
-    private void ExpandTablesWithForeignKeyDependencies(DatabaseQueryIntent dbQuery, DatabaseSchemaInfo schema)
+    private void ExpandTablesWithForeignKeyDependencies(DatabaseQueryIntent dbQuery, DatabaseSchemaInfo? schema)
     {
         if (schema == null || dbQuery.RequiredTables.Count == 0)
         {
@@ -702,12 +695,11 @@ public class QueryIntentAnalyzer : IQueryIntentAnalyzer
                     continue;
                 }
 
-                if (existingTables.Add(referencedTable.TableName))
-                {
-                    dbQuery.RequiredTables.Add(referencedTable.TableName);
-                    processingQueue.Enqueue(referencedTable.TableName);
-
-                }
+                if (!existingTables.Add(referencedTable.TableName))
+                    continue;
+                
+                dbQuery.RequiredTables.Add(referencedTable.TableName);
+                processingQueue.Enqueue(referencedTable.TableName);
             }
         }
     }

@@ -61,7 +61,7 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
             foreach (var tableName in tableNames)
             {
                 cancellationToken.ThrowIfCancellationRequested();
-                
+
                 var tableInfo = await AnalyzeTableAsync(
                     connectionConfig.ConnectionString,
                     tableName,
@@ -91,20 +91,20 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
 
     public async Task<List<DatabaseSchemaInfo>> GetAllSchemasAsync(CancellationToken cancellationToken = default)
     {
-        if (_schemaCache.IsEmpty && _options.DatabaseConnections != null && _options.DatabaseConnections.Count > 0)
+        if (!_schemaCache.IsEmpty || _options.DatabaseConnections is not { Count: > 0 })
+            return _schemaCache.Values.ToList();
+
+        foreach (var connection in _options.DatabaseConnections)
         {
-            foreach (var connection in _options.DatabaseConnections)
+            cancellationToken.ThrowIfCancellationRequested();
+
+            try
             {
-                cancellationToken.ThrowIfCancellationRequested();
-                
-                try
-                {
-                    await AnalyzeDatabaseSchemaAsync(connection, cancellationToken);
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to analyze schema for configured database connection");
-                }
+                await AnalyzeDatabaseSchemaAsync(connection, cancellationToken);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to analyze schema for configured database connection");
             }
         }
 
@@ -138,7 +138,7 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
                 case DatabaseType.SqlServer:
                     try
                     {
-                        var builder = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder(config.ConnectionString);
+                        var builder = new SqlConnectionStringBuilder(config.ConnectionString);
                         if (!string.IsNullOrEmpty(builder.InitialCatalog))
                         {
                             return builder.InitialCatalog;
@@ -152,21 +152,21 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
                     break;
 
                 case DatabaseType.SQLite:
-                    var match = System.Text.RegularExpressions.Regex.Match(
+                    var match = Regex.Match(
                         config.ConnectionString,
                         @"Data Source=(.+?)(;|$)");
 
                     if (match.Success)
                     {
                         var path = match.Groups[1].Value;
-                        return System.IO.Path.GetFileNameWithoutExtension(path);
+                        return Path.GetFileNameWithoutExtension(path);
                     }
                     break;
 
                 case DatabaseType.MySQL:
                     try
                     {
-                        var builder = new MySql.Data.MySqlClient.MySqlConnectionStringBuilder(config.ConnectionString);
+                        var builder = new MySqlConnectionStringBuilder(config.ConnectionString);
                         if (!string.IsNullOrEmpty(builder.Database))
                         {
                             return builder.Database;
@@ -182,7 +182,7 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
                 case DatabaseType.PostgreSQL:
                     try
                     {
-                        var builder = new Npgsql.NpgsqlConnectionStringBuilder(config.ConnectionString);
+                        var builder = new NpgsqlConnectionStringBuilder(config.ConnectionString);
                         if (!string.IsNullOrEmpty(builder.Database))
                         {
                             return builder.Database;
@@ -198,7 +198,7 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
 
             try
             {
-                using var connection = CreateConnection(config.ConnectionString, config.DatabaseType);
+                await using var connection = CreateConnection(config.ConnectionString, config.DatabaseType);
                 await connection.OpenAsync(cancellationToken);
                 var databaseName = connection.Database;
 
@@ -212,25 +212,25 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
                 _logger.LogWarning(ex, "Could not open connection to extract database name, using connection string info");
             }
 
-            return config.Name ?? "UnknownDatabase";
+            return config.Name;
         }
         catch (Exception ex)
         {
             _logger.LogWarning(ex, "Could not extract database name from connection string");
-            return config.Name ?? "UnknownDatabase";
+            return config.Name;
         }
     }
 
-    private List<string> FilterTables(List<string> tableNames, DatabaseConnectionConfig config)
+    private static List<string> FilterTables(List<string> tableNames, DatabaseConnectionConfig config)
     {
-        if (config.IncludedTables != null && config.IncludedTables.Length > 0)
+        if (config.IncludedTables.Length > 0)
         {
             tableNames = tableNames
                 .Where(t => config.IncludedTables.Contains(t, StringComparer.OrdinalIgnoreCase))
                 .ToList();
         }
 
-        if (config.ExcludedTables != null && config.ExcludedTables.Length > 0)
+        if (config.ExcludedTables.Length > 0)
         {
             tableNames = tableNames
                 .Where(t => !config.ExcludedTables.Contains(t, StringComparer.OrdinalIgnoreCase))
@@ -253,7 +253,7 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
 
         try
         {
-            using var connection = CreateConnection(connectionString, databaseType);
+            await using var connection = CreateConnection(connectionString, databaseType);
             await connection.OpenAsync(cancellationToken);
 
             tableInfo.Columns = await GetColumnsAsync(connection, tableName, databaseType);
@@ -278,7 +278,7 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
 
             tableInfo.SampleData = await GetSampleDataAsync(connection, tableName, databaseType);
         }
-        catch (Microsoft.Data.SqlClient.SqlException sqlEx) when (databaseType == DatabaseType.SqlServer)
+        catch (SqlException sqlEx) when (databaseType == DatabaseType.SqlServer)
         {
             if (sqlEx.Number == 4060 || sqlEx.Message.Contains("Cannot open database"))
             {
@@ -312,15 +312,15 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
         else
         {
             string schemaName = null;
-            string actualTableName = tableName;
-            
+            var actualTableName = tableName;
+
             if (tableName.Contains('.'))
             {
                 var parts = tableName.Split('.', 2);
                 schemaName = parts[0];
                 actualTableName = parts[1];
             }
-            
+
             schema = connection.GetSchema("Columns", new[] { null, schemaName, actualTableName, null });
         }
 
@@ -340,7 +340,7 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
                 // Handle LONGBLOB/BLOB types that may return -1 or very large values
                 if (maxLengthValue is long longValue)
                 {
-                    if (longValue > int.MaxValue || longValue < int.MinValue)
+                    if (longValue is > int.MaxValue or < int.MinValue)
                     {
                         // For BLOB types, set to null or a reasonable max
                         column.MaxLength = null;
@@ -367,45 +367,42 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
             columns.Add(column);
         }
 
-        if (databaseType != DatabaseType.SQLite)
+        try
         {
-            try
+            string schemaName = null;
+            var actualTableName = tableName;
+
+            if (tableName.Contains('.'))
             {
-                string schemaName = null;
-                string actualTableName = tableName;
-                
-                if (tableName.Contains('.'))
-                {
-                    var parts = tableName.Split('.', 2);
-                    schemaName = parts[0];
-                    actualTableName = parts[1];
-                }
-                
-                var pkSchema = connection.GetSchema("IndexColumns", new[] { null, schemaName, actualTableName, null });
-                var primaryKeyColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+                var parts = tableName.Split('.', 2);
+                schemaName = parts[0];
+                actualTableName = parts[1];
+            }
 
-                foreach (DataRow row in pkSchema.Rows)
-                {
-                    if (row.Table.Columns.Contains("constraint_name") &&
-                        row["constraint_name"].ToString()?.IndexOf("PK", StringComparison.OrdinalIgnoreCase) >= 0)
-                    {
-                        var columnName = row["column_name"].ToString();
-                        if (!string.IsNullOrEmpty(columnName))
-                        {
-                            primaryKeyColumns.Add(columnName);
-                        }
-                    }
-                }
+            var pkSchema = connection.GetSchema("IndexColumns", new[] { null, schemaName, actualTableName, null });
+            var primaryKeyColumns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-                foreach (var column in columns)
+            foreach (DataRow row in pkSchema.Rows)
+            {
+                if (!row.Table.Columns.Contains("constraint_name") ||
+                    !(row["constraint_name"].ToString()?.IndexOf("PK", StringComparison.OrdinalIgnoreCase) >=
+                      0))
+                    continue;
+                var columnName = row["column_name"].ToString();
+                if (!string.IsNullOrEmpty(columnName))
                 {
-                    column.IsPrimaryKey = primaryKeyColumns.Contains(column.ColumnName);
+                    primaryKeyColumns.Add(columnName);
                 }
             }
-            catch (Exception ex)
+
+            foreach (var column in columns)
             {
-                _logger.LogDebug(ex, "Could not retrieve primary key information for table {TableName}", tableName);
+                column.IsPrimaryKey = primaryKeyColumns.Contains(column.ColumnName);
             }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Could not retrieve primary key information for table {TableName}", tableName);
         }
 
         return Task.FromResult(columns);
@@ -456,23 +453,22 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
         try
         {
             using var cmd = connection.CreateCommand();
-            
+
             string schemaName = null;
             string actualTableName = tableName;
-            
+
             if (tableName.Contains('.'))
             {
                 var parts = tableName.Split('.', 2);
                 schemaName = parts[0];
                 actualTableName = parts[1];
             }
-            
-            if (databaseType == DatabaseType.SqlServer)
+
+            switch (databaseType)
             {
-                if (!string.IsNullOrEmpty(schemaName))
-                {
-                    cmd.CommandText = $@"
-                        SELECT 
+                case DatabaseType.SqlServer:
+                    cmd.CommandText = !string.IsNullOrEmpty(schemaName) ? $@"
+                        SELECT
                             fk.name AS ForeignKeyName,
                             COL_NAME(fkc.parent_object_id, fkc.parent_column_id) AS ColumnName,
                             SCHEMA_NAME(OBJECTPROPERTY(fkc.referenced_object_id, 'SchemaId')) + '.' + OBJECT_NAME(fkc.referenced_object_id) AS ReferencedTable,
@@ -480,12 +476,8 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
                         FROM sys.foreign_keys AS fk
                         INNER JOIN sys.foreign_key_columns AS fkc ON fk.object_id = fkc.constraint_object_id
                         WHERE SCHEMA_NAME(OBJECTPROPERTY(fk.parent_object_id, 'SchemaId')) = '{schemaName}'
-                        AND OBJECT_NAME(fk.parent_object_id) = '{actualTableName}'";
-                }
-                else
-                {
-                    cmd.CommandText = $@"
-                        SELECT 
+                        AND OBJECT_NAME(fk.parent_object_id) = '{actualTableName}'" : $@"
+                        SELECT
                             fk.name AS ForeignKeyName,
                             COL_NAME(fkc.parent_object_id, fkc.parent_column_id) AS ColumnName,
                             OBJECT_NAME(fkc.referenced_object_id) AS ReferencedTable,
@@ -493,56 +485,48 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
                         FROM sys.foreign_keys AS fk
                         INNER JOIN sys.foreign_key_columns AS fkc ON fk.object_id = fkc.constraint_object_id
                         WHERE OBJECT_NAME(fk.parent_object_id) = '{actualTableName}'";
-                }
-            }
-            else if (databaseType == DatabaseType.MySQL)
-            {
-                cmd.CommandText = $@"
-                    SELECT 
+                    break;
+                case DatabaseType.MySQL:
+                    cmd.CommandText = $@"
+                    SELECT
                         CONSTRAINT_NAME AS ForeignKeyName,
                         COLUMN_NAME AS ColumnName,
                         REFERENCED_TABLE_NAME AS ReferencedTable,
                         REFERENCED_COLUMN_NAME AS ReferencedColumn
                     FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
                     WHERE TABLE_SCHEMA = DATABASE()
-                    AND TABLE_NAME = '{actualTableName}' 
+                    AND TABLE_NAME = '{actualTableName}'
                     AND REFERENCED_TABLE_NAME IS NOT NULL";
-            }
-            else if (databaseType == DatabaseType.PostgreSQL)
-            {
-                if (!string.IsNullOrEmpty(schemaName))
-                {
+                    break;
+                case DatabaseType.PostgreSQL when !string.IsNullOrEmpty(schemaName):
                     cmd.CommandText = $@"
-                        SELECT 
+                        SELECT
                             tc.constraint_name AS ForeignKeyName,
                             kcu.column_name AS ColumnName,
                             ccu.table_schema || '.' || ccu.table_name AS ReferencedTable,
                             ccu.column_name AS ReferencedColumn
-                        FROM information_schema.table_constraints AS tc 
+                        FROM information_schema.table_constraints AS tc
                         JOIN information_schema.key_column_usage AS kcu ON tc.constraint_name = kcu.constraint_name
                         JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name
-                        WHERE tc.constraint_type = 'FOREIGN KEY' 
+                        WHERE tc.constraint_type = 'FOREIGN KEY'
                         AND tc.table_schema = '{schemaName}'
                         AND tc.table_name = '{actualTableName}'";
-                }
-                else
-                {
+                    break;
+                case DatabaseType.PostgreSQL:
                     cmd.CommandText = $@"
-                        SELECT 
+                        SELECT
                             tc.constraint_name AS ForeignKeyName,
                             kcu.column_name AS ColumnName,
                             ccu.table_name AS ReferencedTable,
                             ccu.column_name AS ReferencedColumn
-                        FROM information_schema.table_constraints AS tc 
+                        FROM information_schema.table_constraints AS tc
                         JOIN information_schema.key_column_usage AS kcu ON tc.constraint_name = kcu.constraint_name
                         JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name
-                        WHERE tc.constraint_type = 'FOREIGN KEY' 
+                        WHERE tc.constraint_type = 'FOREIGN KEY'
                         AND tc.table_name = '{actualTableName}'";
-                }
-            }
-            else
-            {
-                return Task.FromResult(foreignKeys);
+                    break;
+                default:
+                    return Task.FromResult(foreignKeys);
             }
 
             using var reader = cmd.ExecuteReader();
@@ -550,10 +534,10 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
             {
                 var fk = new ForeignKeyInfo
                 {
-                    ForeignKeyName = reader["ForeignKeyName"]?.ToString() ?? string.Empty,
-                    ColumnName = reader["ColumnName"]?.ToString() ?? string.Empty,
-                    ReferencedTable = reader["ReferencedTable"]?.ToString() ?? string.Empty,
-                    ReferencedColumn = reader["ReferencedColumn"]?.ToString() ?? string.Empty
+                    ForeignKeyName = reader["ForeignKeyName"].ToString() ?? string.Empty,
+                    ColumnName = reader["ColumnName"].ToString() ?? string.Empty,
+                    ReferencedTable = reader["ReferencedTable"].ToString() ?? string.Empty,
+                    ReferencedColumn = reader["ReferencedColumn"].ToString() ?? string.Empty
                 };
 
                 if (!string.IsNullOrEmpty(fk.ColumnName) && !string.IsNullOrEmpty(fk.ReferencedTable))
@@ -607,49 +591,42 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
     {
         try
         {
-            using var cmd = connection.CreateCommand();
+            await using var cmd = connection.CreateCommand();
             string quotedTable;
             var connectionType = connection.GetType().Name;
 
-            if (connectionType == "SqlConnection")
+            switch (connectionType)
             {
-                if (tableName.Contains('.'))
+                case "SqlConnection" when tableName.Contains('.'):
                 {
                     var parts = tableName.Split('.', 2);
                     quotedTable = $"[{parts[0]}].[{parts[1]}]";
+                    break;
                 }
-                else
-                {
+                case "SqlConnection":
                     quotedTable = $"[{tableName}]";
-                }
-            }
-            else if (connectionType == "MySqlConnection")
-            {
-                if (tableName.Contains('.'))
+                    break;
+                case "MySqlConnection" when tableName.Contains('.'):
                 {
                     var parts = tableName.Split('.', 2);
                     quotedTable = $"`{parts[0]}`.`{parts[1]}`";
+                    break;
                 }
-                else
-                {
+                case "MySqlConnection":
                     quotedTable = $"`{tableName}`";
-                }
-            }
-            else if (connectionType == "NpgsqlConnection")
-            {
-                if (tableName.Contains('.'))
+                    break;
+                case "NpgsqlConnection" when tableName.Contains('.'):
                 {
                     var parts = tableName.Split('.', 2);
                     quotedTable = $"\"{parts[0]}\".\"{parts[1]}\"";
+                    break;
                 }
-                else
-                {
+                case "NpgsqlConnection":
                     quotedTable = $"\"{tableName}\"";
-                }
-            }
-            else
-            {
-                quotedTable = tableName;
+                    break;
+                default:
+                    quotedTable = tableName;
+                    break;
             }
 
             cmd.CommandText = $"SELECT COUNT(*) FROM {quotedTable}";
@@ -672,65 +649,59 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
         {
             string quotedTable;
             var connectionType = connection.GetType().Name;
-            
-            if (connectionType == "SqlConnection")
+
+            switch (connectionType)
             {
-                if (tableName.Contains('.'))
+                case "SqlConnection" when tableName.Contains('.'):
                 {
                     var parts = tableName.Split('.', 2);
                     quotedTable = $"[{parts[0]}].[{parts[1]}]";
+                    break;
                 }
-                else
-                {
+                case "SqlConnection":
                     quotedTable = $"[{tableName}]";
-                }
-            }
-            else if (connectionType == "MySqlConnection")
-            {
-                if (tableName.Contains('.'))
+                    break;
+                case "MySqlConnection" when tableName.Contains('.'):
                 {
                     var parts = tableName.Split('.', 2);
                     quotedTable = $"`{parts[0]}`.`{parts[1]}`";
+                    break;
                 }
-                else
-                {
+                case "MySqlConnection":
                     quotedTable = $"`{tableName}`";
-                }
-            }
-            else if (connectionType == "NpgsqlConnection")
-            {
-                if (tableName.Contains('.'))
+                    break;
+                case "NpgsqlConnection" when tableName.Contains('.'):
                 {
                     var parts = tableName.Split('.', 2);
                     quotedTable = $"\"{parts[0]}\".\"{parts[1]}\"";
+                    break;
                 }
-                else
-                {
+                case "NpgsqlConnection":
                     quotedTable = $"\"{tableName}\"";
-                }
+                    break;
+                default:
+                    quotedTable = tableName;
+                    break;
             }
-            else
-            {
-                quotedTable = tableName;
-            }
-            
-            string query = databaseType switch
+
+            var query = databaseType switch
             {
                 DatabaseType.SqlServer => $"SELECT TOP 3 * FROM {quotedTable}",
                 DatabaseType.MySQL => $"SELECT * FROM {quotedTable} LIMIT 3",
                 DatabaseType.PostgreSQL => $"SELECT * FROM {quotedTable} LIMIT 3",
                 _ => $"SELECT * FROM {quotedTable} LIMIT 3",
             };
-            using var cmd = connection.CreateCommand();
+
+            await using var cmd = connection.CreateCommand();
             cmd.CommandText = query;
 
-            using var reader = await cmd.ExecuteReaderAsync();
+            await using var reader = await cmd.ExecuteReaderAsync();
             var sb = new StringBuilder();
             var rowCount = 0;
 
             while (await reader.ReadAsync() && rowCount < 3)
             {
-                for (int i = 0; i < reader.FieldCount; i++)
+                for (var i = 0; i < reader.FieldCount; i++)
                 {
                     sb.Append($"{reader.GetName(i)}: {reader.GetValue(i)}, ");
                 }
@@ -749,19 +720,17 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
 
     private DbConnection CreateConnection(string connectionString, DatabaseType databaseType)
     {
-        if (databaseType == DatabaseType.SQLite)
-        {
-            var sanitizedConnectionString = ValidateAndSanitizeSQLiteConnectionString(connectionString);
-            return new SqliteConnection(sanitizedConnectionString);
-        }
-        
-        return databaseType switch
-        {
-            DatabaseType.SqlServer => new SqlConnection(connectionString),
-            DatabaseType.MySQL => new MySqlConnection(connectionString),
-            DatabaseType.PostgreSQL => new NpgsqlConnection(connectionString),
-            _ => throw new NotSupportedException($"Database type {databaseType} is not supported"),
-        };
+        if (databaseType != DatabaseType.SQLite)
+            return databaseType switch
+            {
+                DatabaseType.SqlServer => new SqlConnection(connectionString),
+                DatabaseType.MySQL => new MySqlConnection(connectionString),
+                DatabaseType.PostgreSQL => new NpgsqlConnection(connectionString),
+                _ => throw new NotSupportedException($"Database type {databaseType} is not supported"),
+            };
+        var sanitizedConnectionString = ValidateAndSanitizeSQLiteConnectionString(connectionString);
+        return new SqliteConnection(sanitizedConnectionString);
+
     }
 
     private string ValidateAndSanitizeSQLiteConnectionString(string connectionString)
@@ -773,39 +742,39 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
         {
             var builder = new SqliteConnectionStringBuilder(connectionString);
 
-            if (!string.IsNullOrEmpty(builder.DataSource))
-            {
-                var dataSource = builder.DataSource;
+            if (string.IsNullOrEmpty(builder.DataSource))
+                return builder.ConnectionString;
 
-                if (Path.IsPathRooted(dataSource))
+            var dataSource = builder.DataSource;
+
+            if (Path.IsPathRooted(dataSource))
+            {
+                builder.DataSource = Path.GetFullPath(dataSource);
+            }
+            else
+            {
+                var currentDir = Directory.GetCurrentDirectory();
+                var resolvedPath = Path.Combine(currentDir, dataSource);
+
+                if (!File.Exists(resolvedPath))
                 {
-                    builder.DataSource = Path.GetFullPath(dataSource);
+                    var projectRoot = FindProjectRoot(currentDir);
+                    if (!string.IsNullOrEmpty(projectRoot))
+                    {
+                        var projectRootPath = Path.Combine(projectRoot, dataSource);
+                        resolvedPath = projectRootPath;
+                    }
                 }
-                else
+
+                var fullPath = Path.GetFullPath(resolvedPath);
+                var directory = Path.GetDirectoryName(fullPath);
+
+                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
                 {
-                    var currentDir = Directory.GetCurrentDirectory();
-                    var resolvedPath = Path.Combine(currentDir, dataSource);
-                    
-                    if (!File.Exists(resolvedPath))
-                    {
-                        var projectRoot = FindProjectRoot(currentDir);
-                        if (!string.IsNullOrEmpty(projectRoot))
-                        {
-                            var projectRootPath = Path.Combine(projectRoot, dataSource);
-                            resolvedPath = projectRootPath;
-                        }
-                    }
-                    
-                    var fullPath = Path.GetFullPath(resolvedPath);
-                    var directory = Path.GetDirectoryName(fullPath);
-                    
-                    if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-                    {
-                        Directory.CreateDirectory(directory);
-                    }
-                    
-                    builder.DataSource = fullPath;
+                    Directory.CreateDirectory(directory);
                 }
+
+                builder.DataSource = fullPath;
             }
 
             return builder.ConnectionString;
@@ -816,7 +785,7 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
         }
     }
 
-    private static string FindProjectRoot(string startDir)
+    private static string? FindProjectRoot(string startDir)
     {
         var dir = new DirectoryInfo(startDir);
         while (dir != null)

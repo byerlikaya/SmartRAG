@@ -49,11 +49,11 @@ public class SQLQueryGenerator : ISqlQueryGenerator
     public async Task<QueryIntent> GenerateDatabaseQueriesAsync(QueryIntent queryIntent, CancellationToken cancellationToken = default)
     {
         queryIntent.DatabaseQueries = queryIntent.DatabaseQueries.OrderBy(q => q.Priority).ToList();
-        
+
         _logger.LogInformation("Executing {Count} database queries in priority order: {Order}",
             queryIntent.DatabaseQueries.Count,
             string.Join(" → ", queryIntent.DatabaseQueries.Select(q => $"{q.DatabaseName}(priority:{q.Priority})")));
-        
+
         var schemas = new Dictionary<string, DatabaseSchemaInfo>();
 
         var strategies = new Dictionary<string, ISqlDialectStrategy>();
@@ -62,12 +62,6 @@ public class SQLQueryGenerator : ISqlQueryGenerator
         foreach (var dbQuery in queryIntent.DatabaseQueries)
         {
             var schema = await _schemaAnalyzer.GetSchemaAsync(dbQuery.DatabaseId, cancellationToken);
-            if (schema == null)
-            {
-                _logger.LogWarning("Schema not found for database {DatabaseId}", dbQuery.DatabaseId);
-                dbQuery.GeneratedQuery = null;
-                continue;
-            }
 
             schemas[dbQuery.DatabaseId] = schema;
             strategies[dbQuery.DatabaseId] = _strategyFactory.GetStrategy(schema.DatabaseType);
@@ -91,7 +85,7 @@ public class SQLQueryGenerator : ISqlQueryGenerator
             queryIntent,
             schemas,
             strategies);
-        
+
         var additionalInstructions = new StringBuilder();
         foreach (var kvp in requiredMappingColumns.Where(k => k.Value.Any()))
         {
@@ -102,18 +96,18 @@ public class SQLQueryGenerator : ISqlQueryGenerator
                 additionalInstructions.AppendLine($"  • {col}");
             }
         }
-        
+
         if (additionalInstructions.Length > 0)
         {
-            promptParts.UserMessage += "\n" + additionalInstructions.ToString();
+            promptParts.UserMessage += "\n" + additionalInstructions;
         }
 
         _logger.LogInformation("Sending separated multi-database prompt to AI for {DatabaseCount} databases", queryIntent.DatabaseQueries.Count);
-        
+
         var context = new List<string> { promptParts.SystemMessage };
         var aiResponse = await _aiService.GenerateResponseAsync(promptParts.UserMessage, context, cancellationToken);
         _logger.LogInformation("AI response received for multi-database SQL generation");
-        
+
         var databaseSqls = ExtractMultiDatabaseSQL(aiResponse, queryIntent.DatabaseQueries, schemas);
 
         foreach (var dbQuery in queryIntent.DatabaseQueries)
@@ -127,13 +121,13 @@ public class SQLQueryGenerator : ISqlQueryGenerator
 
             var schema = schemas[dbQuery.DatabaseId];
             var strategy = strategies[dbQuery.DatabaseId];
-            
+
             extractedSql = strategy.FormatSql(extractedSql);
-            
+
             extractedSql = DetectAndFixCrossDatabaseReferences(extractedSql, schema, dbQuery.RequiredTables);
-            
+
             extractedSql = FixAmbiguousColumnsInJoin(extractedSql, schema);
-            
+
             _logger.LogDebug("AI generated SQL for database {DatabaseName}: {Sql}", schema.DatabaseName, extractedSql);
 
             var allDatabaseNames = schemas.Values.Select(s => s.DatabaseName).Distinct().ToList();
@@ -161,7 +155,7 @@ public class SQLQueryGenerator : ISqlQueryGenerator
     private Dictionary<string, string> ExtractMultiDatabaseSQL(string response, List<DatabaseQueryIntent> databaseQueries, Dictionary<string, DatabaseSchemaInfo> schemas)
     {
         var result = new Dictionary<string, string>();
-        
+
         if (string.IsNullOrWhiteSpace(response))
         {
             _logger.LogWarning("AI response is empty, cannot extract SQL");
@@ -174,19 +168,19 @@ public class SQLQueryGenerator : ISqlQueryGenerator
         var lines = response.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
         string currentDatabase = null;
         var currentSql = new List<string>();
-        bool inSql = false;
-        bool waitingForConfirmed = true;
+        var inSql = false;
+        var waitingForConfirmed = true;
 
         foreach (var line in lines)
         {
             var trimmedLine = line.Trim();
-            
+
             if (string.IsNullOrWhiteSpace(trimmedLine))
                 continue;
-            
+
             if (trimmedLine.StartsWith("```", StringComparison.OrdinalIgnoreCase))
                 continue;
-            
+
             if (trimmedLine.StartsWith("###", StringComparison.OrdinalIgnoreCase))
             {
                 var dbHeaderMatch = Regex.Match(trimmedLine, @"###\s+DATABASE\s+(\d+):\s*(.+)", RegexOptions.IgnoreCase);
@@ -200,7 +194,7 @@ public class SQLQueryGenerator : ISqlQueryGenerator
                             result[currentDatabase] = sql;
                         }
                     }
-                    
+
                     var dbIndex = int.Parse(dbHeaderMatch.Groups[1].Value) - 1;
                     if (dbIndex >= 0 && dbIndex < databaseQueries.Count)
                     {
@@ -221,7 +215,7 @@ public class SQLQueryGenerator : ISqlQueryGenerator
                 }
                 continue;
             }
-            
+
             var dbMatch = Regex.Match(trimmedLine, @"^DATABASE\s+(\d+):\s*(.+)$", RegexOptions.IgnoreCase);
             if (dbMatch.Success)
             {
@@ -232,40 +226,40 @@ public class SQLQueryGenerator : ISqlQueryGenerator
                         {
                             result[currentDatabase] = sql;
                         }
-                }
-                
-                var dbIndex = int.Parse(dbMatch.Groups[1].Value) - 1;
-                var dbNameFromResponse = dbMatch.Groups[2].Value.Trim();
-                
-                if (dbIndex >= 0 && dbIndex < databaseQueries.Count)
-                {
-                    currentDatabase = databaseQueries[dbIndex].DatabaseId;
-                    currentSql.Clear();
-                    inSql = false;
-                    waitingForConfirmed = true;
-                    _logger.LogDebug("Found database marker: {DatabaseId} (response had: {DbName})", currentDatabase, dbNameFromResponse);
-                }
-                else if (!string.IsNullOrWhiteSpace(dbNameFromResponse) && !dbNameFromResponse.Equals("DatabaseName", StringComparison.OrdinalIgnoreCase))
-                {
-                    var matchingDbQuery = databaseQueries.FirstOrDefault(q => 
-                        schemas[q.DatabaseId].DatabaseName.Equals(dbNameFromResponse, StringComparison.OrdinalIgnoreCase));
-                    if (matchingDbQuery != null)
+                    }
+
+                    var dbIndex = int.Parse(dbMatch.Groups[1].Value) - 1;
+                    var dbNameFromResponse = dbMatch.Groups[2].Value.Trim();
+
+                    if (dbIndex >= 0 && dbIndex < databaseQueries.Count)
                     {
-                        currentDatabase = matchingDbQuery.DatabaseId;
+                        currentDatabase = databaseQueries[dbIndex].DatabaseId;
                         currentSql.Clear();
                         inSql = false;
                         waitingForConfirmed = true;
-                        _logger.LogDebug("Found database by name match: {DatabaseId} (from response: {DbName})", currentDatabase, dbNameFromResponse);
+                        _logger.LogDebug("Found database marker: {DatabaseId} (response had: {DbName})", currentDatabase, dbNameFromResponse);
                     }
-                }
-                else
-                {
-                    currentDatabase = null;
-                    currentSql.Clear();
-                    inSql = false;
-                    waitingForConfirmed = true;
-                }
-                continue;
+                    else if (!string.IsNullOrWhiteSpace(dbNameFromResponse) && !dbNameFromResponse.Equals("DatabaseName", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var matchingDbQuery = databaseQueries.FirstOrDefault(q =>
+                            schemas[q.DatabaseId].DatabaseName.Equals(dbNameFromResponse, StringComparison.OrdinalIgnoreCase));
+                        if (matchingDbQuery != null)
+                        {
+                            currentDatabase = matchingDbQuery.DatabaseId;
+                            currentSql.Clear();
+                            inSql = false;
+                            waitingForConfirmed = true;
+                            _logger.LogDebug("Found database by name match: {DatabaseId} (from response: {DbName})", currentDatabase, dbNameFromResponse);
+                        }
+                    }
+                    else
+                    {
+                        currentDatabase = null;
+                        currentSql.Clear();
+                        inSql = false;
+                        waitingForConfirmed = true;
+                    }
+                    continue;
             }
 
             if (trimmedLine.Equals("CONFIRMED", StringComparison.OrdinalIgnoreCase))
@@ -277,8 +271,8 @@ public class SQLQueryGenerator : ISqlQueryGenerator
                 }
                 continue;
             }
-            
-            if (currentDatabase != null && waitingForConfirmed && 
+
+            if (currentDatabase != null && waitingForConfirmed &&
                 (trimmedLine.StartsWith("SELECT", StringComparison.OrdinalIgnoreCase) ||
                  trimmedLine.StartsWith("WITH", StringComparison.OrdinalIgnoreCase)))
             {
@@ -293,7 +287,7 @@ public class SQLQueryGenerator : ISqlQueryGenerator
             {
                 continue;
             }
-            
+
             if (trimmedLine.StartsWith("Explanation:", StringComparison.OrdinalIgnoreCase) ||
                 trimmedLine.StartsWith("Note:", StringComparison.OrdinalIgnoreCase) ||
                 trimmedLine.StartsWith("Note that", StringComparison.OrdinalIgnoreCase))
@@ -305,58 +299,53 @@ public class SQLQueryGenerator : ISqlQueryGenerator
                 continue;
             }
 
-            if (currentDatabase != null && (inSql || !waitingForConfirmed))
+            if (currentDatabase == null || (!inSql && waitingForConfirmed))
+                continue;
+
+            if (trimmedLine.StartsWith("SELECT", StringComparison.OrdinalIgnoreCase) ||
+                trimmedLine.StartsWith("WITH", StringComparison.OrdinalIgnoreCase))
             {
-                if (trimmedLine.StartsWith("SELECT", StringComparison.OrdinalIgnoreCase) ||
-                    trimmedLine.StartsWith("WITH", StringComparison.OrdinalIgnoreCase))
+                inSql = true;
+                currentSql.Clear();
+                currentSql.Add(trimmedLine);
+            }
+            else if (inSql && currentSql.Any())
+            {
+                var lowerLine = trimmedLine.ToLowerInvariant();
+                if (lowerLine.StartsWith("select") ||
+                    lowerLine.StartsWith("from") ||
+                    lowerLine.StartsWith("where") ||
+                    lowerLine.StartsWith("join") ||
+                    lowerLine.StartsWith("inner") ||
+                    lowerLine.StartsWith("left") ||
+                    lowerLine.StartsWith("right") ||
+                    lowerLine.StartsWith("on") ||
+                    lowerLine.StartsWith("group") ||
+                    lowerLine.StartsWith("order") ||
+                    lowerLine.StartsWith("having") ||
+                    lowerLine.StartsWith("limit") ||
+                    lowerLine.StartsWith("top") ||
+                    lowerLine.StartsWith("as") ||
+                    lowerLine.StartsWith("and") ||
+                    lowerLine.StartsWith("or") ||
+                    lowerLine.Contains("(") ||
+                    lowerLine.Contains(")") ||
+                    lowerLine.Contains(",") ||
+                    lowerLine.Contains("=") ||
+                    lowerLine.Contains("'") ||
+                    trimmedLine.EndsWith(";") ||
+                    char.IsDigit(trimmedLine[0]) || trimmedLine.Length > 50 && !lowerLine.Contains("database") && !lowerLine.Contains("explanation"))
                 {
-                    inSql = true;
-                    waitingForConfirmed = false;
-                    currentSql.Clear();
                     currentSql.Add(trimmedLine);
                 }
-                else if (inSql && currentSql.Any())
+                else
                 {
-                    var lowerLine = trimmedLine.ToLowerInvariant();
-                    if (lowerLine.StartsWith("select") || 
-                        lowerLine.StartsWith("from") || 
-                        lowerLine.StartsWith("where") ||
-                        lowerLine.StartsWith("join") ||
-                        lowerLine.StartsWith("inner") ||
-                        lowerLine.StartsWith("left") ||
-                        lowerLine.StartsWith("right") ||
-                        lowerLine.StartsWith("on") ||
-                        lowerLine.StartsWith("group") ||
-                        lowerLine.StartsWith("order") ||
-                        lowerLine.StartsWith("having") ||
-                        lowerLine.StartsWith("limit") ||
-                        lowerLine.StartsWith("top") ||
-                        lowerLine.StartsWith("as") ||
-                        lowerLine.StartsWith("and") ||
-                        lowerLine.StartsWith("or") ||
-                        lowerLine.Contains("(") ||
-                        lowerLine.Contains(")") ||
-                        lowerLine.Contains(",") ||
-                        lowerLine.Contains("=") ||
-                        lowerLine.Contains("'") ||
-                        trimmedLine.EndsWith(";") ||
-                        char.IsDigit(trimmedLine[0]))
+                    var sql = ExtractCompleteSQL(string.Join(" ", currentSql));
+                    if (!string.IsNullOrWhiteSpace(sql) && sql.Length > 20)
                     {
-                        currentSql.Add(trimmedLine);
+                        result[currentDatabase] = sql;
                     }
-                    else if (trimmedLine.Length > 50 && !lowerLine.Contains("database") && !lowerLine.Contains("explanation"))
-                    {
-                        currentSql.Add(trimmedLine);
-                    }
-                    else
-                    {
-                        var sql = ExtractCompleteSQL(string.Join(" ", currentSql));
-                        if (!string.IsNullOrWhiteSpace(sql) && sql.Length > 20)
-                        {
-                            result[currentDatabase] = sql;
-                        }
-                        inSql = false;
-                    }
+                    inSql = false;
                 }
             }
         }
@@ -370,20 +359,20 @@ public class SQLQueryGenerator : ISqlQueryGenerator
             }
         }
 
-        if (result.Count == 0)
-        {
-            result = ExtractSqlBlocksWithoutDatabaseMarkers(response, databaseQueries, schemas);
-            if (result.Count > 0)
-                _logger.LogDebug("Extracted {Count} SQL block(s) via fallback (no DATABASE N: markers)", result.Count);
-            else
-                _logger.LogWarning("Failed to extract any SQL from AI response. Response preview: {Preview}", 
-                    response?.Substring(0, Math.Min(500, response?.Length ?? 0)) ?? "null");
-        }
+        if (result.Count != 0)
+            return result;
+
+        result = ExtractSqlBlocksWithoutDatabaseMarkers(response, databaseQueries, schemas);
+        if (result.Count > 0)
+            _logger.LogDebug("Extracted {Count} SQL block(s) via fallback (no DATABASE N: markers)", result.Count);
+        else
+            _logger.LogWarning("Failed to extract any SQL from AI response. Response preview: {Preview}",
+                response?.Substring(0, Math.Min(500, (int)response?.Length)));
 
         return result;
     }
 
-    private Dictionary<string, string> ExtractSqlBlocksWithoutDatabaseMarkers(string response, List<DatabaseQueryIntent> databaseQueries, Dictionary<string, DatabaseSchemaInfo> schemas)
+    private Dictionary<string, string> ExtractSqlBlocksWithoutDatabaseMarkers(string response, List<DatabaseQueryIntent>? databaseQueries, Dictionary<string, DatabaseSchemaInfo> schemas)
     {
         var result = new Dictionary<string, string>();
         if (string.IsNullOrWhiteSpace(response) || databaseQueries == null || databaseQueries.Count == 0)
@@ -394,15 +383,15 @@ public class SQLQueryGenerator : ISqlQueryGenerator
 
         var parts = Regex.Split(response, @"\s*;\s*", RegexOptions.Multiline);
         var selectBlocks = new List<string>();
+
         foreach (var part in parts)
         {
             var trimmed = part.Trim();
-            if (trimmed.StartsWith("SELECT", StringComparison.OrdinalIgnoreCase) || trimmed.StartsWith("WITH", StringComparison.OrdinalIgnoreCase))
-            {
-                var sql = ExtractCompleteSQL(trimmed);
-                if (!string.IsNullOrWhiteSpace(sql) && sql.Length > 20)
-                    selectBlocks.Add(sql);
-            }
+            if (!trimmed.StartsWith("SELECT", StringComparison.OrdinalIgnoreCase) &&
+                !trimmed.StartsWith("WITH", StringComparison.OrdinalIgnoreCase)) continue;
+            var sql = ExtractCompleteSQL(trimmed);
+            if (!string.IsNullOrWhiteSpace(sql) && sql.Length > 20)
+                selectBlocks.Add(sql);
         }
 
         if (selectBlocks.Count == 0)
@@ -412,7 +401,7 @@ public class SQLQueryGenerator : ISqlQueryGenerator
                 selectBlocks.Add(single);
         }
 
-        for (int i = 0; i < selectBlocks.Count && i < databaseQueries.Count; i++)
+        for (var i = 0; i < selectBlocks.Count && i < databaseQueries.Count; i++)
         {
             var dbQuery = databaseQueries[i];
             var sql = selectBlocks[i];
@@ -427,30 +416,29 @@ public class SQLQueryGenerator : ISqlQueryGenerator
             {
                 if (kv.Key == dbId || result.ContainsKey(kv.Key)) continue;
                 var score = kv.Value.Tables.Count(t => sql.IndexOf(t.TableName, StringComparison.OrdinalIgnoreCase) >= 0);
-                if (score > bestScore)
-                {
-                    bestScore = score;
-                    dbId = kv.Key;
-                }
+                if (score <= bestScore)
+                    continue;
+
+                bestScore = score;
+                dbId = kv.Key;
             }
 
-            if (!result.ContainsKey(dbId))
-                result[dbId] = sql;
+            result.TryAdd(dbId, sql);
         }
 
         return result;
     }
 
-    private async Task<List<string>> GetRequiredMappingColumnsAsync(string databaseName, List<string> requiredTables)
+    private async Task<List<string>> GetRequiredMappingColumnsAsync(string databaseName, List<string>? requiredTables)
     {
         var requiredColumns = new List<string>();
-        
+
         try
         {
             var connections = await _connectionManager.GetAllConnectionsAsync();
             var connection = connections.FirstOrDefault(c =>
                 (c.Name ?? string.Empty).Equals(databaseName, StringComparison.OrdinalIgnoreCase));
-            
+
             if (connection?.CrossDatabaseMappings == null)
                 return requiredColumns;
 
@@ -459,7 +447,7 @@ public class SQLQueryGenerator : ISqlQueryGenerator
                 if (!mapping.SourceDatabase.Equals(databaseName, StringComparison.OrdinalIgnoreCase))
                     continue;
 
-                if (requiredTables != null && requiredTables.Count > 0)
+                if (requiredTables is { Count: > 0 })
                 {
                     var tableName = mapping.SourceTable;
                     if (tableName.Contains('.'))
@@ -467,7 +455,7 @@ public class SQLQueryGenerator : ISqlQueryGenerator
                         var parts = tableName.Split('.');
                         tableName = parts.Length > 1 ? parts[1] : parts[0];
                     }
-                    
+
                     if (!requiredTables.Any(t => t.Equals(tableName, StringComparison.OrdinalIgnoreCase) ||
                                                  t.Equals(mapping.SourceTable, StringComparison.OrdinalIgnoreCase) ||
                                                  mapping.SourceTable.Contains(t, StringComparison.OrdinalIgnoreCase)))
@@ -491,27 +479,25 @@ public class SQLQueryGenerator : ISqlQueryGenerator
     }
 
 
-    private async Task<List<string>> ValidateCrossDatabaseMappingColumnsAsync(string sql, string databaseName, List<string> requiredTables)
+    private async Task<List<string>> ValidateCrossDatabaseMappingColumnsAsync(string sql, string databaseName, List<string>? requiredTables)
     {
         var missingColumns = new List<string>();
-        
+
         try
         {
             var connections = await _connectionManager.GetAllConnectionsAsync();
             var connection = connections.FirstOrDefault(c =>
-                (c.Name ?? string.Empty).Equals(databaseName, StringComparison.OrdinalIgnoreCase));
-            
+                c.Name.Equals(databaseName, StringComparison.OrdinalIgnoreCase));
+
             if (connection?.CrossDatabaseMappings == null)
                 return missingColumns;
 
-            var sqlUpper = sql.ToUpperInvariant();
-            
             foreach (var mapping in connection.CrossDatabaseMappings)
             {
                 if (!mapping.SourceDatabase.Equals(databaseName, StringComparison.OrdinalIgnoreCase))
                     continue;
 
-                if (requiredTables != null && requiredTables.Count > 0)
+                if (requiredTables is { Count: > 0 })
                 {
                     var tableName = mapping.SourceTable;
                     if (tableName.Contains('.'))
@@ -519,7 +505,7 @@ public class SQLQueryGenerator : ISqlQueryGenerator
                         var parts = tableName.Split('.');
                         tableName = parts.Length > 1 ? parts[1] : parts[0];
                     }
-                    
+
                     if (!requiredTables.Any(t => t.Equals(tableName, StringComparison.OrdinalIgnoreCase) ||
                                                  t.Equals(mapping.SourceTable, StringComparison.OrdinalIgnoreCase) ||
                                                  mapping.SourceTable.Contains(t, StringComparison.OrdinalIgnoreCase)))
@@ -559,7 +545,7 @@ public class SQLQueryGenerator : ISqlQueryGenerator
         return errors.Count == 0;
     }
 
-    private string ExtractCompleteSQL(string sqlText)
+    private static string ExtractCompleteSQL(string sqlText)
     {
         if (string.IsNullOrWhiteSpace(sqlText)) return string.Empty;
 
@@ -570,15 +556,15 @@ public class SQLQueryGenerator : ISqlQueryGenerator
 
         var lines = sqlText.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
         var sqlLines = new List<string>();
-        bool foundSelect = false;
+        var foundSelect = false;
 
         foreach (var line in lines)
         {
             var trimmed = line.Trim();
-            
+
             if (string.IsNullOrWhiteSpace(trimmed))
                 continue;
-            
+
             if (trimmed.StartsWith("```", StringComparison.OrdinalIgnoreCase) ||
                 trimmed.StartsWith("###", StringComparison.OrdinalIgnoreCase) ||
                 trimmed.StartsWith("Explanation:", StringComparison.OrdinalIgnoreCase))
@@ -595,9 +581,9 @@ public class SQLQueryGenerator : ISqlQueryGenerator
                     continue;
 
                 var sqlKeywords = new[] { "FROM", "WHERE", "GROUP", "ORDER", "HAVING", "LIMIT", "TOP", "JOIN", "INNER", "LEFT", "RIGHT", "ON", "AND", "OR", "AS", "UNION", "EXCEPT", "INTERSECT" };
-                var isSQLKeyword = Array.Exists(sqlKeywords, kw => trimmed.StartsWith(kw, StringComparison.OrdinalIgnoreCase));
-                
-                if (!isSQLKeyword && trimmed.Length > 0 && char.IsLetter(trimmed[0]) && !trimmed.Contains("(") && !trimmed.Contains(")") && !trimmed.Contains(",") && !trimmed.Contains("=") && !trimmed.Contains("'") && !trimmed.Contains("\""))
+                var isSqlKeyword = Array.Exists(sqlKeywords, kw => trimmed.StartsWith(kw, StringComparison.OrdinalIgnoreCase));
+
+                if (!isSqlKeyword && trimmed.Length > 0 && char.IsLetter(trimmed[0]) && !trimmed.Contains("(") && !trimmed.Contains(")") && !trimmed.Contains(",") && !trimmed.Contains("=") && !trimmed.Contains("'") && !trimmed.Contains("\""))
                 {
                     break;
                 }
@@ -616,7 +602,7 @@ public class SQLQueryGenerator : ISqlQueryGenerator
 
         var fixedSql = sql;
         var validTableNames = schema.Tables.Select(t => t.TableName).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        
+
         var databasePrefixPatterns = new[]
         {
             @"\b(\w+)\.(\w+)\.(\w+)\b",
@@ -627,31 +613,32 @@ public class SQLQueryGenerator : ISqlQueryGenerator
             @"\[(\w+)\]\.\[(\w+)\]\.\[(\w+)\]",
             @"(\w+)\.""(\w+)""\.(\w+)"
         };
-        
+
         var replacements = new List<(string Original, string Replacement)>();
-        
+
         foreach (var pattern in databasePrefixPatterns)
         {
             var matches = Regex.Matches(fixedSql, pattern, RegexOptions.IgnoreCase);
-            
+
             foreach (Match match in matches)
-        {
-            var fullMatch = match.Value;
-            var databaseName = match.Groups[1].Value.Trim('"', '[', ']');
-            var schemaName = match.Groups[2].Value.Trim('"', '[', ']');
-            var tableName = match.Groups[3].Value.Trim('"', '[', ']');
-            var twoPartName = $"{schemaName}.{tableName}";
-            
-            if (!schema.DatabaseName.Equals(databaseName, StringComparison.OrdinalIgnoreCase))
             {
-                string replacement = null;
-                
-                var foundValidTable = validTableNames.FirstOrDefault(vt => 
+                var fullMatch = match.Value;
+                var databaseName = match.Groups[1].Value.Trim('"', '[', ']');
+                var schemaName = match.Groups[2].Value.Trim('"', '[', ']');
+                var tableName = match.Groups[3].Value.Trim('"', '[', ']');
+                var twoPartName = $"{schemaName}.{tableName}";
+
+                if (schema.DatabaseName.Equals(databaseName, StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                string replacement;
+
+                var foundValidTable = validTableNames.FirstOrDefault(vt =>
                     vt.Equals(tableName, StringComparison.OrdinalIgnoreCase) ||
                     vt.Equals(twoPartName, StringComparison.OrdinalIgnoreCase) ||
                     (vt.Contains('.') && vt.Split('.').Last().Equals(tableName, StringComparison.OrdinalIgnoreCase)) ||
                     (vt.Contains('.') && vt.Equals(twoPartName, StringComparison.OrdinalIgnoreCase)));
-                
+
                 if (foundValidTable != null)
                 {
                     _logger.LogWarning("Removing database prefix from table reference: {Full} -> {Table}", fullMatch, foundValidTable);
@@ -659,13 +646,13 @@ public class SQLQueryGenerator : ISqlQueryGenerator
                 }
                 else
                 {
-                    var requiredTableMatch = requiredTables.FirstOrDefault(rt => 
+                    var requiredTableMatch = requiredTables.FirstOrDefault(rt =>
                         rt.Equals(tableName, StringComparison.OrdinalIgnoreCase) ||
                         rt.Equals(twoPartName, StringComparison.OrdinalIgnoreCase) ||
                         rt.EndsWith($".{tableName}", StringComparison.OrdinalIgnoreCase) ||
                         rt.EndsWith($"\".{tableName}\"", StringComparison.OrdinalIgnoreCase) ||
                         (rt.Contains('.') && rt.Split('.').Last().Equals(tableName, StringComparison.OrdinalIgnoreCase)));
-                    
+
                     if (requiredTableMatch != null)
                     {
                         _logger.LogWarning("Removing database prefix from table reference: {Full} -> {Table}", fullMatch, requiredTableMatch);
@@ -677,25 +664,17 @@ public class SQLQueryGenerator : ISqlQueryGenerator
                         replacement = string.Empty;
                     }
                 }
-                
-                if (replacement != null && !replacements.Any(r => r.Original.Equals(fullMatch, StringComparison.OrdinalIgnoreCase)))
+
+                if (!replacements.Any(r => r.Original.Equals(fullMatch, StringComparison.OrdinalIgnoreCase)))
                 {
                     replacements.Add((fullMatch, replacement));
                 }
             }
         }
-        }
-        
+
         foreach (var (original, replacement) in replacements.OrderByDescending(r => r.Original.Length))
         {
-            if (string.IsNullOrEmpty(replacement))
-            {
-                fixedSql = Regex.Replace(fixedSql, Regex.Escape(original), string.Empty, RegexOptions.IgnoreCase);
-            }
-            else
-            {
-                fixedSql = Regex.Replace(fixedSql, Regex.Escape(original), replacement, RegexOptions.IgnoreCase);
-            }
+            fixedSql = Regex.Replace(fixedSql, Regex.Escape(original), string.IsNullOrEmpty(replacement) ? string.Empty : replacement, RegexOptions.IgnoreCase);
         }
 
         fixedSql = FixInvalidFromClauses(fixedSql);
@@ -722,26 +701,21 @@ public class SQLQueryGenerator : ISqlQueryGenerator
             @"FROM\s+\s+GROUP"
         };
 
-        foreach (var pattern in invalidPatterns)
+        if (!invalidPatterns.Any(pattern => Regex.IsMatch(fixedSql, pattern, RegexOptions.IgnoreCase)))
+            return fixedSql;
+
+        _logger.LogWarning("Detected invalid FROM clause after removing cross-database reference. Attempting to fix SQL.");
+
+        fixedSql = Regex.Replace(fixedSql, @"FROM\s+GROUP\s+BY", "WHERE 1=0 GROUP BY", RegexOptions.IgnoreCase);
+        fixedSql = Regex.Replace(fixedSql, @"FROM\s+WHERE\s+", "FROM (SELECT NULL) AS InvalidTable WHERE ", RegexOptions.IgnoreCase);
+        fixedSql = Regex.Replace(fixedSql, @"FROM\s+ORDER\s+BY", "FROM (SELECT NULL) AS InvalidTable ORDER BY", RegexOptions.IgnoreCase);
+        fixedSql = Regex.Replace(fixedSql, @"FROM\s+HAVING\s+", "FROM (SELECT NULL) AS InvalidTable HAVING ", RegexOptions.IgnoreCase);
+        fixedSql = Regex.Replace(fixedSql, @"FROM\s+LIMIT\s+", "FROM (SELECT NULL) AS InvalidTable LIMIT ", RegexOptions.IgnoreCase);
+
+        var fromSubqueryMatch = Regex.Match(fixedSql, @"\(([^)]*FROM\s*)\)", RegexOptions.IgnoreCase);
+        if (fromSubqueryMatch.Success)
         {
-            if (Regex.IsMatch(fixedSql, pattern, RegexOptions.IgnoreCase))
-            {
-                _logger.LogWarning("Detected invalid FROM clause after removing cross-database reference. Attempting to fix SQL.");
-                
-                fixedSql = Regex.Replace(fixedSql, @"FROM\s+GROUP\s+BY", "WHERE 1=0 GROUP BY", RegexOptions.IgnoreCase);
-                fixedSql = Regex.Replace(fixedSql, @"FROM\s+WHERE\s+", "FROM (SELECT NULL) AS InvalidTable WHERE ", RegexOptions.IgnoreCase);
-                fixedSql = Regex.Replace(fixedSql, @"FROM\s+ORDER\s+BY", "FROM (SELECT NULL) AS InvalidTable ORDER BY", RegexOptions.IgnoreCase);
-                fixedSql = Regex.Replace(fixedSql, @"FROM\s+HAVING\s+", "FROM (SELECT NULL) AS InvalidTable HAVING ", RegexOptions.IgnoreCase);
-                fixedSql = Regex.Replace(fixedSql, @"FROM\s+LIMIT\s+", "FROM (SELECT NULL) AS InvalidTable LIMIT ", RegexOptions.IgnoreCase);
-                
-                var fromSubqueryMatch = Regex.Match(fixedSql, @"\(([^)]*FROM\s*)\)", RegexOptions.IgnoreCase);
-                if (fromSubqueryMatch.Success)
-                {
-                    fixedSql = fixedSql.Replace(fromSubqueryMatch.Value, "(SELECT NULL) AS InvalidSubquery");
-                }
-                
-                break;
-            }
+            fixedSql = fixedSql.Replace(fromSubqueryMatch.Value, "(SELECT NULL) AS InvalidSubquery");
         }
 
         return fixedSql;
@@ -752,22 +726,18 @@ public class SQLQueryGenerator : ISqlQueryGenerator
     /// </summary>
     private string FixAmbiguousColumnsInJoin(string sql, DatabaseSchemaInfo schema)
     {
-        if (string.IsNullOrWhiteSpace(sql))
+        if (string.IsNullOrWhiteSpace(sql) || !Regex.IsMatch(sql, @"\b(?:INNER|LEFT|RIGHT|FULL|CROSS)\s+JOIN\b", RegexOptions.IgnoreCase))
             return sql;
-
-        if (!Regex.IsMatch(sql, @"\b(?:INNER|LEFT|RIGHT|FULL|CROSS)\s+JOIN\b", RegexOptions.IgnoreCase))
-        {
-            return sql;
-        }
 
         var aliasToTable = ExtractTableAliases(sql);
+
         if (aliasToTable.Count == 0)
         {
             return sql;
         }
 
         var columnToTables = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
-        
+
         foreach (var table in schema.Tables)
         {
             foreach (var column in table.Columns)
@@ -798,7 +768,7 @@ public class SQLQueryGenerator : ISqlQueryGenerator
 
         var fixedSql = sql;
 
-        var selectPattern = @"SELECT\s+(.*?)\s+FROM";
+        const string selectPattern = @"SELECT\s+(.*?)\s+FROM";
         var selectMatch = Regex.Match(fixedSql, selectPattern, RegexOptions.IgnoreCase | RegexOptions.Singleline);
         if (selectMatch.Success)
         {
@@ -806,14 +776,14 @@ public class SQLQueryGenerator : ISqlQueryGenerator
             var fixedSelectClause = FixColumnReferences(selectClause, ambiguousColumns, aliasToTable, usedTables);
             if (fixedSelectClause != selectClause)
             {
-                fixedSql = fixedSql.Substring(0, selectMatch.Groups[1].Index) + 
-                           fixedSelectClause + 
-                           fixedSql.Substring(selectMatch.Groups[1].Index + selectMatch.Groups[1].Length);
+                fixedSql = fixedSql[..selectMatch.Groups[1].Index] +
+                           fixedSelectClause +
+                           fixedSql[(selectMatch.Groups[1].Index + selectMatch.Groups[1].Length)..];
                 _logger.LogDebug("Fixed ambiguous columns in SELECT clause");
             }
         }
 
-        var groupByPattern = @"GROUP\s+BY\s+(.*?)(?:\s+ORDER|\s+HAVING|$)";
+        const string groupByPattern = @"GROUP\s+BY\s+(.*?)(?:\s+ORDER|\s+HAVING|$)";
         var groupByMatch = Regex.Match(fixedSql, groupByPattern, RegexOptions.IgnoreCase | RegexOptions.Singleline);
         if (groupByMatch.Success)
         {
@@ -821,27 +791,28 @@ public class SQLQueryGenerator : ISqlQueryGenerator
             var fixedGroupByClause = FixColumnReferences(groupByClause, ambiguousColumns, aliasToTable, usedTables);
             if (fixedGroupByClause != groupByClause)
             {
-                fixedSql = fixedSql.Substring(0, groupByMatch.Groups[1].Index) + 
-                           fixedGroupByClause + 
-                           fixedSql.Substring(groupByMatch.Groups[1].Index + groupByMatch.Groups[1].Length);
+                fixedSql = fixedSql[..groupByMatch.Groups[1].Index] +
+                           fixedGroupByClause +
+                           fixedSql[(groupByMatch.Groups[1].Index + groupByMatch.Groups[1].Length)..];
                 _logger.LogDebug("Fixed ambiguous columns in GROUP BY clause");
             }
         }
 
-        var orderByPattern = @"ORDER\s+BY\s+(.*?)(?:\s+LIMIT|$)";
+        const string orderByPattern = @"ORDER\s+BY\s+(.*?)(?:\s+LIMIT|$)";
         var orderByMatch = Regex.Match(fixedSql, orderByPattern, RegexOptions.IgnoreCase | RegexOptions.Singleline);
-        if (orderByMatch.Success)
-        {
-            var orderByClause = orderByMatch.Groups[1].Value;
-            var fixedOrderByClause = FixColumnReferences(orderByClause, ambiguousColumns, aliasToTable, usedTables);
-            if (fixedOrderByClause != orderByClause)
-            {
-                fixedSql = fixedSql.Substring(0, orderByMatch.Groups[1].Index) + 
-                           fixedOrderByClause + 
-                           fixedSql.Substring(orderByMatch.Groups[1].Index + orderByMatch.Groups[1].Length);
-                _logger.LogDebug("Fixed ambiguous columns in ORDER BY clause");
-            }
-        }
+        if (!orderByMatch.Success)
+            return fixedSql;
+
+        var orderByClause = orderByMatch.Groups[1].Value;
+        var fixedOrderByClause = FixColumnReferences(orderByClause, ambiguousColumns, aliasToTable, usedTables);
+        if (fixedOrderByClause == orderByClause)
+            return fixedSql;
+
+        fixedSql = fixedSql[..orderByMatch.Groups[1].Index] +
+                   fixedOrderByClause +
+                   fixedSql[(orderByMatch.Groups[1].Index + orderByMatch.Groups[1].Length)..];
+
+        _logger.LogDebug("Fixed ambiguous columns in ORDER BY clause");
 
         return fixedSql;
     }
@@ -854,35 +825,29 @@ public class SQLQueryGenerator : ISqlQueryGenerator
         var inQuotes = false;
         var quoteChar = '\0';
 
-        for (int i = 0; i < clause.Length; i++)
+        foreach (var ch in clause)
         {
-            var ch = clause[i];
-
-            if (!inQuotes && (ch == '\'' || ch == '"'))
+            switch (inQuotes)
             {
-                inQuotes = true;
-                quoteChar = ch;
-                currentPart.Append(ch);
-            }
-            else if (inQuotes && ch == quoteChar)
-            {
-                inQuotes = false;
-                quoteChar = '\0';
-                currentPart.Append(ch);
-            }
-            else if (!inQuotes)
-            {
-                if (ch == '(')
-                {
+                case false when ch is '\'' or '"':
+                    inQuotes = true;
+                    quoteChar = ch;
+                    currentPart.Append(ch);
+                    break;
+                case true when ch == quoteChar:
+                    inQuotes = false;
+                    quoteChar = '\0';
+                    currentPart.Append(ch);
+                    break;
+                case false when ch == '(':
                     parenDepth++;
                     currentPart.Append(ch);
-                }
-                else if (ch == ')')
-                {
+                    break;
+                case false when ch == ')':
                     parenDepth--;
                     currentPart.Append(ch);
-                }
-                else if (ch == ',' && parenDepth == 0)
+                    break;
+                case false when ch == ',' && parenDepth == 0:
                 {
                     var part = currentPart.ToString().Trim();
                     if (!string.IsNullOrWhiteSpace(part))
@@ -890,15 +855,11 @@ public class SQLQueryGenerator : ISqlQueryGenerator
                         parts.Add(FixSingleColumnReference(part, ambiguousColumns, aliasToTable, usedTables));
                     }
                     currentPart.Clear();
+                    break;
                 }
-                else
-                {
+                default:
                     currentPart.Append(ch);
-                }
-            }
-            else
-            {
-                currentPart.Append(ch);
+                    break;
             }
         }
 
@@ -925,25 +886,26 @@ public class SQLQueryGenerator : ISqlQueryGenerator
             return columnRef;
         }
 
+        string fixedRef;
         if (Regex.IsMatch(trimmed, @"\b(?:COUNT|SUM|AVG|MAX|MIN|CONCAT|UPPER|LOWER|SUBSTRING|CAST|CONVERT)\s*\(.*\)", RegexOptions.IgnoreCase))
         {
             var functionMatch = Regex.Match(trimmed, @"\b(?:COUNT|SUM|AVG|MAX|MIN|CONCAT|UPPER|LOWER|SUBSTRING|CAST|CONVERT)\s*\(([^)]+)\)", RegexOptions.IgnoreCase);
-            if (functionMatch.Success)
-            {
-                var innerColumn = functionMatch.Groups[1].Value.Trim();
-                if (ambiguousColumns.Contains(innerColumn, StringComparer.OrdinalIgnoreCase) && !innerColumn.Contains("."))
-                {
-                    var functionBestAlias = FindBestAliasForColumn(innerColumn, aliasToTable, usedTables);
-                    if (!string.IsNullOrEmpty(functionBestAlias))
-                    {
-                        var fixedInner = $"{functionBestAlias}.{innerColumn}";
-                        var fixedRef = columnRef.Replace(innerColumn, fixedInner);
-                        _logger.LogTrace("Fixed ambiguous column '{Column}' in function to '{Fixed}'", innerColumn, fixedRef);
-                        return fixedRef;
-                    }
-                }
-            }
-            return columnRef;
+            if (!functionMatch.Success)
+                return columnRef;
+
+            var innerColumn = functionMatch.Groups[1].Value.Trim();
+            if (!Enumerable.Contains(ambiguousColumns, innerColumn, StringComparer.OrdinalIgnoreCase) ||
+                innerColumn.Contains("."))
+                return columnRef;
+
+            var functionBestAlias = FindBestAliasForColumn(aliasToTable, usedTables);
+            if (string.IsNullOrEmpty(functionBestAlias))
+                return columnRef;
+
+            var fixedInner = $"{functionBestAlias}.{innerColumn}";
+            fixedRef = columnRef.Replace(innerColumn, fixedInner);
+            _logger.LogTrace("Fixed ambiguous column '{Column}' in function to '{Fixed}'", innerColumn, fixedRef);
+            return fixedRef;
         }
 
         if (trimmed.Contains(" AS ", StringComparison.OrdinalIgnoreCase))
@@ -969,18 +931,17 @@ public class SQLQueryGenerator : ISqlQueryGenerator
         if (sqlKeywords.Contains(columnName.ToUpperInvariant()))
             return columnRef;
 
-        var bestAlias = FindBestAliasForColumn(columnName, aliasToTable, usedTables);
-        if (!string.IsNullOrEmpty(bestAlias))
-        {
-            var fixedRef = Regex.Replace(columnRef, $@"\b{Regex.Escape(columnName)}\b", $"{bestAlias}.{columnName}", RegexOptions.IgnoreCase);
-            _logger.LogTrace("Fixed ambiguous column '{Column}' to '{Fixed}'", columnName, fixedRef);
-            return fixedRef;
-        }
+        var bestAlias = FindBestAliasForColumn(aliasToTable, usedTables);
+        if (string.IsNullOrEmpty(bestAlias))
+            return columnRef;
 
-        return columnRef;
+        fixedRef = Regex.Replace(columnRef, $@"\b{Regex.Escape(columnName)}\b", $"{bestAlias}.{columnName}", RegexOptions.IgnoreCase);
+        _logger.LogTrace("Fixed ambiguous column '{Column}' to '{Fixed}'", columnName, fixedRef);
+        return fixedRef;
+
     }
 
-    private string FindBestAliasForColumn(string columnName, Dictionary<string, string> aliasToTable, HashSet<string> usedTables)
+    private static string FindBestAliasForColumn(Dictionary<string, string> aliasToTable, HashSet<string> usedTables)
     {
         foreach (var kvp in aliasToTable)
         {
@@ -1000,19 +961,14 @@ public class SQLQueryGenerator : ISqlQueryGenerator
             }
         }
 
-        if (aliasToTable.Count > 0)
-        {
-            return aliasToTable.Keys.First();
-        }
-
-        return string.Empty;
+        return aliasToTable.Count > 0 ? aliasToTable.Keys.First() : string.Empty;
     }
 
     private Dictionary<string, string> ExtractTableAliases(string sql)
     {
         var aliasToTable = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-        var fromPattern = @"FROM\s+(\[?[a-zA-Z0-9_]+\]?(?:\]?\.\[?[a-zA-Z0-9_]+\]?)?)(?:\s+(?:AS\s+)?([a-zA-Z0-9_]+))?(?:\s|$|JOIN)";
+        const string fromPattern = @"FROM\s+(\[?[a-zA-Z0-9_]+\]?(?:\]?\.\[?[a-zA-Z0-9_]+\]?)?)(?:\s+(?:AS\s+)?([a-zA-Z0-9_]+))?(?:\s|$|JOIN)";
         var fromMatch = Regex.Match(sql, fromPattern, RegexOptions.IgnoreCase);
         if (fromMatch.Success)
         {
@@ -1029,7 +985,7 @@ public class SQLQueryGenerator : ISqlQueryGenerator
             }
         }
 
-        var joinPattern = @"(?:INNER|LEFT|RIGHT|FULL|CROSS)\s+JOIN\s+(\[?[a-zA-Z0-9_]+\]?(?:\]?\.\[?[a-zA-Z0-9_]+\]?)?)(?:\s+(?:AS\s+)?([a-zA-Z0-9_]+))?(?:\s|$|ON)";
+        const string joinPattern = @"(?:INNER|LEFT|RIGHT|FULL|CROSS)\s+JOIN\s+(\[?[a-zA-Z0-9_]+\]?(?:\]?\.\[?[a-zA-Z0-9_]+\]?)?)(?:\s+(?:AS\s+)?([a-zA-Z0-9_]+))?(?:\s|$|ON)";
         var joinMatches = Regex.Matches(sql, joinPattern, RegexOptions.IgnoreCase);
         foreach (Match match in joinMatches)
         {
@@ -1049,7 +1005,7 @@ public class SQLQueryGenerator : ISqlQueryGenerator
         return aliasToTable;
     }
 
-    private string NormalizeTableName(string tableName)
+    private static string NormalizeTableName(string tableName)
     {
         if (string.IsNullOrWhiteSpace(tableName))
             return tableName;
@@ -1062,7 +1018,7 @@ public class SQLQueryGenerator : ISqlQueryGenerator
             .Trim();
     }
 
-    private bool IsSqlKeyword(string word)
+    private static bool IsSqlKeyword(string word)
     {
         var keywords = new[] { "SELECT", "FROM", "WHERE", "JOIN", "ON", "AND", "OR", "GROUP", "BY", "ORDER", "LIMIT", "TOP", "AS", "LEFT", "RIGHT", "INNER", "OUTER", "CROSS", "HAVING" };
         return keywords.Contains(word.ToUpperInvariant());

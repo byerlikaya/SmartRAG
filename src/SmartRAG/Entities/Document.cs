@@ -40,7 +40,7 @@ public class Document
     /// <summary>
     /// Collection of text chunks derived from this document
     /// </summary>
-    public List<DocumentChunk> Chunks { get; set; } = new();
+    public List<DocumentChunk>? Chunks { get; set; } = new();
 
     /// <summary>
     /// Optional metadata associated with the document

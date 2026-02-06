@@ -29,7 +29,7 @@ public class PdfFileParser : IFileParser
                contentType == SupportedContentType;
     }
 
-    public async Task<FileParserResult> ParseAsync(Stream fileStream, string fileName, string language = null)
+    public async Task<FileParserResult> ParseAsync(Stream fileStream, string fileName, string? language = null)
     {
         try
         {
@@ -63,11 +63,11 @@ public class PdfFileParser : IFileParser
     /// Extracts text from PDF pages using text extraction, with OCR fallback for image-based PDFs
     /// Tries multiple extraction strategies to handle different PDF encoding issues
     /// </summary>
-    private async Task ExtractTextFromPdfPagesAsync(PdfDocument pdfDocument, StringBuilder textBuilder, string language = null, byte[] pdfBytes = null)
+    private async Task ExtractTextFromPdfPagesAsync(PdfDocument pdfDocument, StringBuilder textBuilder, string? language = null, byte[]? pdfBytes = null)
     {
         var pageCount = pdfDocument.GetNumberOfPages();
 
-        for (int i = 1; i <= pageCount; i++)
+        for (var i = 1; i <= pageCount; i++)
         {
             var page = pdfDocument.GetPage(i);
             var locationStrategy = new LocationTextExtractionStrategy();
@@ -127,33 +127,24 @@ public class PdfFileParser : IFileParser
                 }
             }
 
-            if (shouldUseOcr)
+            if (!shouldUseOcr)
+                continue;
+
+            try
             {
-                try
+                var pageImageStream = await RenderPdfPageAsImageAsync(page, pdfBytes, i - 1);
+                if (pageImageStream != null)
                 {
-                    var pageImageStream = await RenderPdfPageAsImageAsync(page, pdfBytes, i - 1);
-                    if (pageImageStream != null)
+                    var ocrText = await _imageParserService.ExtractTextFromImageAsync(pageImageStream, language);
+                    if (!string.IsNullOrWhiteSpace(ocrText))
                     {
-                        var ocrText = await _imageParserService.ExtractTextFromImageAsync(pageImageStream, language);
-                        if (!string.IsNullOrWhiteSpace(ocrText))
-                        {
-                            textBuilder.AppendLine(ocrText);
-                            _logger.LogDebug("Used OCR for PDF page {PageNumber} from embedded image (extracted text length: {Length} chars)",
-                                i, ocrText.Length);
-                        }
-                        else
-                        {
-                            _logger.LogWarning("OCR failed to extract text from embedded image on PDF page {PageNumber}, using extracted text fallback", i);
-                            if (!string.IsNullOrWhiteSpace(text))
-                            {
-                                var correctedText = _imageParserService.CorrectCurrencySymbols(text);
-                                textBuilder.AppendLine(correctedText);
-                            }
-                        }
+                        textBuilder.AppendLine(ocrText);
+                        _logger.LogDebug("Used OCR for PDF page {PageNumber} from embedded image (extracted text length: {Length} chars)",
+                            i, ocrText.Length);
                     }
                     else
                     {
-                        _logger.LogWarning("PDF page {PageNumber} was expected to have embedded images but none were found, using extracted text", i);
+                        _logger.LogWarning("OCR failed to extract text from embedded image on PDF page {PageNumber}, using extracted text fallback", i);
                         if (!string.IsNullOrWhiteSpace(text))
                         {
                             var correctedText = _imageParserService.CorrectCurrencySymbols(text);
@@ -161,14 +152,23 @@ public class PdfFileParser : IFileParser
                         }
                     }
                 }
-                catch (Exception ex)
+                else
                 {
-                    _logger.LogWarning(ex, "Failed to extract text via OCR for PDF page {PageNumber}, using extracted text fallback", i);
+                    _logger.LogWarning("PDF page {PageNumber} was expected to have embedded images but none were found, using extracted text", i);
                     if (!string.IsNullOrWhiteSpace(text))
                     {
                         var correctedText = _imageParserService.CorrectCurrencySymbols(text);
                         textBuilder.AppendLine(correctedText);
                     }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to extract text via OCR for PDF page {PageNumber}, using extracted text fallback", i);
+                if (!string.IsNullOrWhiteSpace(text))
+                {
+                    var correctedText = _imageParserService.CorrectCurrencySymbols(text);
+                    textBuilder.AppendLine(correctedText);
                 }
             }
         }
@@ -182,24 +182,24 @@ public class PdfFileParser : IFileParser
         try
         {
             var resources = page.GetResources();
-            if (resources == null) return false;
 
-            var xObjects = resources.GetResource(iText.Kernel.Pdf.PdfName.XObject);
-            if (xObjects == null || !(xObjects is PdfDictionary)) return false;
+            var xObjects = resources?.GetResource(PdfName.XObject);
+
+            if (xObjects is not PdfDictionary)
+                return false;
 
             var xObjectDict = (PdfDictionary)xObjects;
 
             foreach (var key in xObjectDict.KeySet())
             {
                 var obj = xObjectDict.Get(key);
-                if (obj is PdfStream stream)
-                {
-                    var subtype = stream.GetAsName(iText.Kernel.Pdf.PdfName.Subtype);
+                if (obj is not PdfStream stream)
+                    continue;
+                var subtype = stream.GetAsName(PdfName.Subtype);
 
-                    if (subtype != null && subtype.GetValue() == iText.Kernel.Pdf.PdfName.Image.GetValue())
-                    {
-                        return true;
-                    }
+                if (subtype != null && subtype.GetValue() == PdfName.Image.GetValue())
+                {
+                    return true;
                 }
             }
 
@@ -222,61 +222,55 @@ public class PdfFileParser : IFileParser
 
         var hasBrokenSpacing = false;
         var brokenSpacingCount = 0;
-        for (int i = 0; i < text.Length - 1; i++)
+        for (var i = 0; i < text.Length - 1; i++)
         {
-            if (char.IsLower(text[i]) && char.IsUpper(text[i + 1]))
-            {
-                var before = i > 0 ? text[i - 1] : ' ';
-                var after = i + 2 < text.Length ? text[i + 2] : ' ';
+            if (!char.IsLower(text[i]) || !char.IsUpper(text[i + 1]))
+                continue;
 
-                if (char.IsLetter(before) && char.IsLetter(after))
-                {
-                    var isAtWordStart = i == 0 || !char.IsLetter(text[i - 1]);
-                    if (!isAtWordStart)
-                    {
-                        brokenSpacingCount++;
-                        if (brokenSpacingCount >= 2)
-                        {
-                            hasBrokenSpacing = true;
-                            _logger.LogDebug("Detected broken spacing at position {Position}: '{Before}{Char1}{Char2}{After}' (count: {Count})",
-                                i, before, text[i], text[i + 1], after, brokenSpacingCount);
-                            break;
-                        }
-                    }
-                }
-            }
+            var before = i > 0 ? text[i - 1] : ' ';
+            var after = i + 2 < text.Length ? text[i + 2] : ' ';
+
+            if (!char.IsLetter(before) || !char.IsLetter(after))
+                continue;
+            var isAtWordStart = i == 0 || !char.IsLetter(text[i - 1]);
+            if (isAtWordStart)
+                continue;
+            brokenSpacingCount++;
+            if (brokenSpacingCount < 2)
+                continue;
+
+            hasBrokenSpacing = true;
+            _logger.LogDebug("Detected broken spacing at position {Position}: '{Before}{Char1}{Char2}{After}' (count: {Count})",
+                i, before, text[i], text[i + 1], after, brokenSpacingCount);
+            break;
         }
 
         var hasUnusualConsonantClusters = false;
-        var asciiConsonants = "bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ";
+        const string asciiConsonants = "bcdfghjklmnpqrstvwxyzBCDFGHJKLMNPQRSTVWXYZ";
         var consecutiveConsonants = 0;
 
-        for (int i = 0; i < text.Length; i++)
+        for (var i = 0; i < text.Length; i++)
         {
             var c = text[i];
             if (asciiConsonants.Contains(c))
             {
                 consecutiveConsonants++;
-                if (consecutiveConsonants >= 4)
-                {
-                    var before = i - consecutiveConsonants >= 0 ? text[i - consecutiveConsonants] : ' ';
-                    var after = i + 1 < text.Length ? text[i + 1] : ' ';
-                    if (char.IsLetter(before) && char.IsLetter(after))
-                    {
-                        hasUnusualConsonantClusters = true;
-                        _logger.LogDebug("Detected unusual consonant cluster: {Count} consecutive ASCII consonants at position {Position}",
-                            consecutiveConsonants, i);
-                        break;
-                    }
-                }
+                if (consecutiveConsonants < 4)
+                    continue;
+                var before = i - consecutiveConsonants >= 0 ? text[i - consecutiveConsonants] : ' ';
+                var after = i + 1 < text.Length ? text[i + 1] : ' ';
+                if (!char.IsLetter(before) || !char.IsLetter(after))
+                    continue;
+                hasUnusualConsonantClusters = true;
+                _logger.LogDebug("Detected unusual consonant cluster: {Count} consecutive ASCII consonants at position {Position}",
+                    consecutiveConsonants, i);
+                break;
             }
-            else
-            {
-                consecutiveConsonants = 0;
-            }
+
+            consecutiveConsonants = 0;
         }
 
-        var hasBrokenWordPatterns = false;
+        const bool hasBrokenWordPatterns = false;
         var nonAsciiCharCount = text.Count(c => c > 127);
         var totalCharCount = text.Count(char.IsLetter);
 
@@ -296,7 +290,7 @@ public class PdfFileParser : IFileParser
         var hasSuspiciousCharacters = false;
         var suspiciousChars = new[] { '\u00F5', '\u00A9', '\u00AA', '\u00BA', '\u00B5', '\u00B1', '\u00A7' };
         var suspiciousCharCount = text.Count(c => suspiciousChars.Contains(c));
-        
+
         if (totalCharCount > 100 && suspiciousCharCount >= 3)
         {
             var ratio = (double)suspiciousCharCount / totalCharCount;
@@ -332,6 +326,7 @@ public class PdfFileParser : IFileParser
             {
                 // Try embedded images first (for scanned PDFs)
                 var embeddedImageResult = RenderPdfPageUsingEmbeddedImages(page);
+
                 if (embeddedImageResult != null)
                 {
                     _logger.LogDebug("Extracted embedded image from PDF page {PageIndex} for OCR", pageIndex + 1);
@@ -339,7 +334,7 @@ public class PdfFileParser : IFileParser
                 }
 
                 // Try PDF page rendering for text-based PDFs (if pdfBytes available)
-                if (pdfBytes != null && pdfBytes.Length > 0)
+                if (pdfBytes is { Length: > 0 })
                 {
                     var renderedResult = RenderTextBasedPdfPageToImage(pdfBytes, pageIndex);
                     if (renderedResult != null)
@@ -363,14 +358,14 @@ public class PdfFileParser : IFileParser
     /// <summary>
     /// Renders PDF page using embedded images (for scanned PDFs)
     /// </summary>
-    private Stream RenderPdfPageUsingEmbeddedImages(PdfPage page)
+    private Stream? RenderPdfPageUsingEmbeddedImages(PdfPage page)
     {
         try
         {
             var pageSize = page.GetPageSize();
             var width = (float)pageSize.GetWidth();
             var height = (float)pageSize.GetHeight();
-            var scale = 2.0f;
+            const float scale = 2.0f;
             var scaledWidth = (int)(width * scale);
             var scaledHeight = (int)(height * scale);
 
@@ -408,10 +403,9 @@ public class PdfFileParser : IFileParser
         try
         {
             var resources = page.GetResources();
-            if (resources == null) return false;
 
-            var xObjects = resources.GetResource(iText.Kernel.Pdf.PdfName.XObject);
-            if (xObjects == null || !(xObjects is PdfDictionary)) return false;
+            var xObjects = resources?.GetResource(iText.Kernel.Pdf.PdfName.XObject);
+            if (xObjects is not PdfDictionary) return false;
 
             var xObjectDict = (PdfDictionary)xObjects;
             var imageFound = false;
@@ -419,47 +413,45 @@ public class PdfFileParser : IFileParser
             foreach (var key in xObjectDict.KeySet())
             {
                 var obj = xObjectDict.Get(key);
-                if (obj is PdfStream stream)
+                if (obj is not PdfStream stream)
+                    continue;
+                var subtype = stream.GetAsName(PdfName.Subtype);
+
+                if (subtype == null || subtype.GetValue() != PdfName.Image.GetValue())
+                    continue;
+                try
                 {
-                    var subtype = stream.GetAsName(iText.Kernel.Pdf.PdfName.Subtype);
+                    var pdfImage = new PdfImageXObject((PdfStream)stream);
+                    var imageBytes = pdfImage.GetImageBytes();
 
-                    if (subtype != null && subtype.GetValue() == iText.Kernel.Pdf.PdfName.Image.GetValue())
+                    if (imageBytes is { Length: > 0 })
                     {
-                        try
+                        using var imageStream = new MemoryStream(imageBytes);
+                        using var skImage = SKImage.FromEncodedData(imageStream);
+                        if (skImage != null)
                         {
-                            var pdfImage = new PdfImageXObject((PdfStream)stream);
-                            var imageBytes = pdfImage.GetImageBytes();
+                            var imageWidth = pdfImage.GetWidth();
+                            var imageHeight = pdfImage.GetHeight();
+                            var pageSize = page.GetPageSize();
+                            var pageWidth = pageSize.GetWidth();
+                            var pageHeight = pageSize.GetHeight();
+                            var scaleX = (pageWidth * scale) / imageWidth;
+                            var scaleY = (pageHeight * scale) / imageHeight;
+                            var finalScale = Math.Min(scaleX, scaleY);
+                            var destWidth = imageWidth * finalScale;
+                            var destHeight = imageHeight * finalScale;
+                            var x = (pageWidth * scale - destWidth) / 2;
+                            var y = (pageHeight * scale - destHeight) / 2;
 
-                            if (imageBytes != null && imageBytes.Length > 0)
-                            {
-                                using var imageStream = new MemoryStream(imageBytes);
-                                using var skImage = SKImage.FromEncodedData(imageStream);
-                                if (skImage != null)
-                                {
-                                    var imageWidth = pdfImage.GetWidth();
-                                    var imageHeight = pdfImage.GetHeight();
-                                    var pageSize = page.GetPageSize();
-                                    var pageWidth = (float)pageSize.GetWidth();
-                                    var pageHeight = (float)pageSize.GetHeight();
-                                    var scaleX = (pageWidth * scale) / imageWidth;
-                                    var scaleY = (pageHeight * scale) / imageHeight;
-                                    var finalScale = Math.Min(scaleX, scaleY);
-                                    var destWidth = imageWidth * finalScale;
-                                    var destHeight = imageHeight * finalScale;
-                                    var x = (pageWidth * scale - destWidth) / 2;
-                                    var y = (pageHeight * scale - destHeight) / 2;
-
-                                    var destRect = new SKRect(x, y, x + destWidth, y + destHeight);
-                                    canvas.DrawImage(skImage, destRect);
-                                    imageFound = true;
-                                }
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogDebug(ex, "Failed to extract image from PDF page");
+                            var destRect = new SKRect(x, y, x + destWidth, y + destHeight);
+                            canvas.DrawImage(skImage, destRect);
+                            imageFound = true;
                         }
                     }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Failed to extract image from PDF page");
                 }
             }
 
@@ -477,18 +469,12 @@ public class PdfFileParser : IFileParser
     /// This allows OCR to be performed on text-based PDFs with encoding issues
     /// Uses PDF rendering library to convert page to bitmap
     /// </summary>
-    private Stream RenderTextBasedPdfPageToImage(byte[] pdfBytes, int pageIndex)
+    private Stream? RenderTextBasedPdfPageToImage(byte[] pdfBytes, int pageIndex)
     {
         try
         {
             // Render PDF page to bitmap
             using var originalBitmap = Conversion.ToImage(pdfBytes, page: pageIndex);
-            
-            if (originalBitmap == null)
-            {
-                _logger.LogDebug("Failed to render PDF page {PageIndex} to bitmap", pageIndex);
-                return null;
-            }
 
             // Upscale for better OCR accuracy (2x scale = ~600 DPI equivalent)
             // Higher resolution helps OCR distinguish similar characters (|/1, O/0, etc.)
@@ -497,22 +483,22 @@ public class PdfFileParser : IFileParser
             var targetHeight = (int)(originalBitmap.Height * upscaleFactorForOcr);
 
             using var scaledBitmap = originalBitmap.Resize(
-                new SKImageInfo(targetWidth, targetHeight), 
+                new SKImageInfo(targetWidth, targetHeight),
                 SKSamplingOptions.Default);
 
             if (scaledBitmap == null)
             {
                 _logger.LogDebug("Failed to upscale bitmap for PDF page {PageIndex}, using original resolution", pageIndex);
-                
+
                 // Fallback to original bitmap
                 using var image = SKImage.FromBitmap(originalBitmap);
                 using var data = image.Encode(SKEncodedImageFormat.Png, 100);
                 var stream = new MemoryStream(data.ToArray());
                 stream.Position = 0;
-                
-                _logger.LogDebug("Successfully rendered PDF page {PageIndex} to bitmap ({Width}x{Height})", 
+
+                _logger.LogDebug("Successfully rendered PDF page {PageIndex} to bitmap ({Width}x{Height})",
                     pageIndex, originalBitmap.Width, originalBitmap.Height);
-                
+
                 return stream;
             }
 
@@ -522,9 +508,9 @@ public class PdfFileParser : IFileParser
             var finalStream = new MemoryStream(scaledData.ToArray());
             finalStream.Position = 0;
 
-            _logger.LogDebug("Successfully rendered and upscaled PDF page {PageIndex} to bitmap ({OriginalWidth}x{OriginalHeight} → {ScaledWidth}x{ScaledHeight})", 
+            _logger.LogDebug("Successfully rendered and upscaled PDF page {PageIndex} to bitmap ({OriginalWidth}x{OriginalHeight} → {ScaledWidth}x{ScaledHeight})",
                 pageIndex, originalBitmap.Width, originalBitmap.Height, scaledBitmap.Width, scaledBitmap.Height);
-            
+
             return finalStream;
         }
         catch (Exception ex)
@@ -544,7 +530,7 @@ public class PdfFileParser : IFileParser
     /// 3. Applying Unicode normalization (FormD - Canonical Decomposition) and recomposing
     /// 4. Fixing replacement characters () by attempting to decode using common encodings
     /// 5. Removing invalid Unicode characters
-    /// 
+    ///
     /// This approach is generic and works for all alphabets and writing systems
     /// without requiring language-specific character mappings.
     /// </summary>
@@ -556,8 +542,8 @@ public class PdfFileParser : IFileParser
         try
         {
             var fixedText = text;
-            var replacementChar = '\uFFFD';
-            var suspiciousChar = '\u00F5';
+            const char replacementChar = '\uFFFD';
+            const char suspiciousChar = '\u00F5';
 
             var totalLetterCount = text.Count(char.IsLetter);
             var latinLikeLetterCount = text.Count(c => char.IsLetter(c) && c <= 0x024F);
@@ -586,18 +572,22 @@ public class PdfFileParser : IFileParser
                         var originalSuspiciousCount = text.Count(c => c == suspiciousChar);
                         var correctedSuspiciousCount = correctedText.Count(c => c == suspiciousChar);
 
-                        if ((correctedReplacementCount < originalReplacementCount) ||
-                            (correctedReplacementCount == originalReplacementCount && correctedSuspiciousCount < originalSuspiciousCount) ||
-                            (correctedReplacementCount == originalReplacementCount && correctedSuspiciousCount == originalSuspiciousCount && correctedText.Length > text.Length * 0.9))
-                        {
-                            fixedText = correctedText;
-                            _logger.LogDebug("Fixed PDF text encoding using {Encoding}: replacement chars {Original}->{Corrected}, suspicious chars {OriginalSusp}->{CorrectedSusp}",
-                                encodingName, originalReplacementCount, correctedReplacementCount, originalSuspiciousCount, correctedSuspiciousCount);
-                            break;
-                        }
+                        if ((correctedReplacementCount >= originalReplacementCount) &&
+                            (correctedReplacementCount != originalReplacementCount ||
+                             correctedSuspiciousCount >= originalSuspiciousCount) &&
+                            (correctedReplacementCount != originalReplacementCount ||
+                             correctedSuspiciousCount != originalSuspiciousCount ||
+                             !(correctedText.Length > text.Length * 0.9)))
+                            continue;
+
+                        fixedText = correctedText;
+                        _logger.LogDebug("Fixed PDF text encoding using {Encoding}: replacement chars {Original}->{Corrected}, suspicious chars {OriginalSusp}->{CorrectedSusp}",
+                            encodingName, originalReplacementCount, correctedReplacementCount, originalSuspiciousCount, correctedSuspiciousCount);
+                        break;
                     }
                     catch
                     {
+                        // ignored
                     }
                 }
             }
@@ -629,12 +619,13 @@ public class PdfFileParser : IFileParser
     /// <summary>
     /// Removes or fixes invalid Unicode characters that might cause issues
     /// </summary>
-    private string RemoveInvalidUnicodeCharacters(string text)
+    private static string RemoveInvalidUnicodeCharacters(string text)
     {
         if (string.IsNullOrEmpty(text))
             return text;
 
         var result = new StringBuilder(text.Length);
+
         foreach (var c in text)
         {
             if (!char.IsControl(c) || c == '\n' || c == '\r' || c == '\t')

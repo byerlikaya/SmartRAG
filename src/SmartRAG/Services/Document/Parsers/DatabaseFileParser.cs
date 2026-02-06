@@ -21,10 +21,10 @@ public class DatabaseFileParser : IFileParser
     public bool CanParse(string fileName, string contentType)
     {
         return SupportedExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) ||
-               SupportedContentTypes.Any(ct => contentType.Contains(ct));
+               SupportedContentTypes.Any(contentType.Contains);
     }
 
-    public async Task<FileParserResult> ParseAsync(Stream fileStream, string fileName, string language = null)
+    public async Task<FileParserResult> ParseAsync(Stream fileStream, string fileName, string? language = null)
     {
         try
         {

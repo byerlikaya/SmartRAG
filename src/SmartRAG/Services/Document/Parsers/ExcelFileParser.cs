@@ -18,10 +18,10 @@ public class ExcelFileParser : IFileParser
     public bool CanParse(string fileName, string contentType)
     {
         return SupportedExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) ||
-               SupportedContentTypes.Any(ct => contentType.Contains(ct));
+               SupportedContentTypes.Any(contentType.Contains);
     }
 
-    public async Task<FileParserResult> ParseAsync(Stream fileStream, string fileName, string language = null)
+    public async Task<FileParserResult> ParseAsync(Stream fileStream, string fileName, string? language = null)
     {
         try
         {
@@ -45,12 +45,12 @@ public class ExcelFileParser : IFileParser
                     var colCount = worksheet.Dimension.Columns;
 
                     var hasData = false;
-                    for (int row = 1; row <= rowCount; row++)
+                    for (var row = 1; row <= rowCount; row++)
                     {
                         var rowBuilder = new StringBuilder();
                         var rowHasData = false;
 
-                        for (int col = 1; col <= colCount; col++)
+                        for (var col = 1; col <= colCount; col++)
                         {
                             var cellValue = worksheet.Cells[row, col].Value;
                             if (cellValue != null)
@@ -60,26 +60,26 @@ public class ExcelFileParser : IFileParser
                                 {
                                     rowBuilder.Append(cellText);
                                     rowHasData = true;
-                                    if (col < colCount) rowBuilder.Append('\t');
                                 }
                                 else
                                 {
                                     rowBuilder.Append(' ');
-                                    if (col < colCount) rowBuilder.Append('\t');
                                 }
                             }
                             else
                             {
                                 rowBuilder.Append(' ');
-                                if (col < colCount) rowBuilder.Append('\t');
                             }
+
+                            if (col < colCount)
+                                rowBuilder.Append('\t');
                         }
 
-                        if (rowHasData)
-                        {
-                            textBuilder.AppendLine(rowBuilder.ToString());
-                            hasData = true;
-                        }
+                        if (!rowHasData)
+                            continue;
+
+                        textBuilder.AppendLine(rowBuilder.ToString());
+                        hasData = true;
                     }
 
                     if (!hasData)
@@ -98,12 +98,9 @@ public class ExcelFileParser : IFileParser
             var content = textBuilder.ToString();
             var cleanedContent = TextCleaningHelper.CleanContent(content);
 
-            if (string.IsNullOrWhiteSpace(cleanedContent))
-            {
-                return new FileParserResult { Content = "Excel file processed but no text content extracted" };
-            }
-
-            return new FileParserResult { Content = cleanedContent };
+            return string.IsNullOrWhiteSpace(cleanedContent) ?
+                new FileParserResult { Content = "Excel file processed but no text content extracted" } :
+                new FileParserResult { Content = cleanedContent };
         }
         catch (Exception ex)
         {

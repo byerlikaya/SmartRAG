@@ -11,12 +11,12 @@ public class DocumentParserService : IDocumentParserService
     private const int DynamicSearchRangeDivisor = 10;
     private const int UltimateSearchRange = 1000;
 
-    private static readonly char[] SentenceEndings = new char[] { '.', '!', '?', ';' };
-    private static readonly string[] ParagraphEndings = new string[] { "\n\n", "\r\n\r\n" };
-    private static readonly char[] WordBoundaries = new char[] { ' ', '\t', '\n', '\r' };
-    private static readonly char[] PunctuationBoundaries = new char[] { ',', ':', ';', '-', '–', '—' };
-    private static readonly char[] ExtendedWordBoundaries = new char[] { ' ', '\t', '\n', '\r', '.', '!', '?', ';', ',', ':', '-', '–', '—' };
-    private static readonly char[] UltimateBoundaries = new char[] { ' ', '\t', '\n', '\r', '.', '!', '?', ';', ',', ':', '-', '–', '—', '(', ')', '[', ']', '{', '}' };
+    private static readonly char[] SentenceEndings = { '.', '!', '?', ';' };
+    private static readonly string[] ParagraphEndings = { "\n\n", "\r\n\r\n" };
+    private static readonly char[] WordBoundaries = { ' ', '\t', '\n', '\r' };
+    private static readonly char[] PunctuationBoundaries = { ',', ':', ';', '-', '–', '—' };
+    private static readonly char[] ExtendedWordBoundaries = { ' ', '\t', '\n', '\r', '.', '!', '?', ';', ',', ':', '-', '–', '—' };
+    private static readonly char[] UltimateBoundaries = { ' ', '\t', '\n', '\r', '.', '!', '?', ';', ',', ':', '-', '–', '—', '(', ')', '[', ']', '{', '}' };
 
     private readonly SmartRagOptions _options;
     private readonly IEnumerable<IFileParser> _parsers;
@@ -32,7 +32,7 @@ public class DocumentParserService : IDocumentParserService
         _logger = logger;
     }
 
-    public async Task<SmartRAG.Entities.Document> ParseDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy, string language = null)
+    public async Task<SmartRAG.Entities.Document> ParseDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy, string? language = null)
     {
         try
         {
@@ -72,13 +72,13 @@ public class DocumentParserService : IDocumentParserService
             var document = CreateDocument(documentId, fileName, contentType, content, uploadedBy, chunks);
             document.FileSize = fileSize;
 
-            if (result.Metadata != null && result.Metadata.Count > 0)
+            if (result.Metadata.Count > 0)
             {
                 document.Metadata = new Dictionary<string, object>(result.Metadata);
             }
 
             PopulateMetadata(document);
-            AnnotateDocumentMetadata(document, content);
+            AnnotateAudioMetadata(document, content);
 
             return document;
         }
@@ -99,7 +99,7 @@ public class DocumentParserService : IDocumentParserService
         return new[] { "text/", "application/", "audio/", "image/" };
     }
 
-    private static SmartRAG.Entities.Document CreateDocument(Guid documentId, string fileName, string contentType, string content, string uploadedBy, List<DocumentChunk> chunks)
+    private static SmartRAG.Entities.Document CreateDocument(Guid documentId, string fileName, string contentType, string content, string uploadedBy, List<DocumentChunk>? chunks)
     {
         return new SmartRAG.Entities.Document
         {
@@ -115,24 +115,15 @@ public class DocumentParserService : IDocumentParserService
 
     private static void PopulateMetadata(SmartRAG.Entities.Document document)
     {
-        document.Metadata ??= new Dictionary<string, object>();
-
         document.Metadata["FileName"] = document.FileName;
         document.Metadata["ContentType"] = document.ContentType;
         document.Metadata["UploadedBy"] = document.UploadedBy;
         document.Metadata["UploadedAt"] = document.UploadedAt;
-        document.Metadata["ContentLength"] = document.Content?.Length ?? 0;
-        document.Metadata["ChunkCount"] = document.Chunks?.Count ?? 0;
+        document.Metadata["ContentLength"] = document.Content.Length;
+        document.Metadata["ChunkCount"] = document.Chunks!.Count;
     }
 
-    private void AnnotateDocumentMetadata(SmartRAG.Entities.Document document, string content)
-    {
-        if (document == null || document.Metadata == null) return;
-
-        AnnotateAudioMetadata(document, content);
-    }
-
-    private void AnnotateAudioMetadata(SmartRAG.Entities.Document document, string content)
+    private static void AnnotateAudioMetadata(SmartRAG.Entities.Document document, string content)
     {
         if (!document.Metadata.TryGetValue("Segments", out var segmentsObj)) return;
 
@@ -162,31 +153,26 @@ public class DocumentParserService : IDocumentParserService
 
     private static List<AudioSegmentMetadata> ConvertToAudioSegments(object segmentsObj)
     {
-        if (segmentsObj is List<AudioSegmentMetadata> typedList)
+        switch (segmentsObj)
         {
-            return typedList;
+            case List<AudioSegmentMetadata> typedList:
+                return typedList;
+            case AudioSegmentMetadata[] typedArray:
+                return new List<AudioSegmentMetadata>(typedArray);
         }
 
-        if (segmentsObj is AudioSegmentMetadata[] typedArray)
+        if (segmentsObj is not JsonElement { ValueKind: JsonValueKind.Array } jsonElement)
+            return new List<AudioSegmentMetadata>();
+        try
         {
-            return new List<AudioSegmentMetadata>(typedArray);
+            var json = jsonElement.GetRawText();
+            var deserialized = JsonSerializer.Deserialize<List<AudioSegmentMetadata>>(json);
+            return deserialized ?? new List<AudioSegmentMetadata>();
         }
-
-        if (segmentsObj is JsonElement jsonElement && jsonElement.ValueKind == JsonValueKind.Array)
+        catch
         {
-            try
-            {
-                var json = jsonElement.GetRawText();
-                var deserialized = JsonSerializer.Deserialize<List<AudioSegmentMetadata>>(json);
-                return deserialized ?? new List<AudioSegmentMetadata>();
-            }
-            catch
-            {
-                return new List<AudioSegmentMetadata>();
-            }
+            return new List<AudioSegmentMetadata>();
         }
-
-        return new List<AudioSegmentMetadata>();
     }
 
     private static string NormalizeForMatching(string value)
@@ -229,29 +215,16 @@ public class DocumentParserService : IDocumentParserService
             return "Audio";
         }
 
-        var extension = Path.GetExtension(fileName)?.ToLowerInvariant();
-        if (!string.IsNullOrWhiteSpace(extension))
-        {
-            switch (extension)
-            {
-                case ".wav":
-                case ".mp3":
-                case ".m4a":
-                case ".flac":
-                case ".ogg":
-                    return "Audio";
-                case ".jpg":
-                case ".jpeg":
-                case ".png":
-                case ".gif":
-                case ".bmp":
-                case ".tiff":
-                case ".webp":
-                    return "Image";
-            }
-        }
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(extension))
+            return "Document";
 
-        return "Document";
+        return extension switch
+        {
+            ".wav" or ".mp3" or ".m4a" or ".flac" or ".ogg" => "Audio",
+            ".jpg" or ".jpeg" or ".png" or ".gif" or ".bmp" or ".tiff" or ".webp" => "Image",
+            _ => "Document"
+        };
     }
 
     private List<DocumentChunk> CreateChunks(string content, Guid documentId, string documentType, string fileName)
@@ -261,22 +234,20 @@ public class DocumentParserService : IDocumentParserService
         var chunkOverlap = Math.Max(0, _options.ChunkOverlap);
         var minChunkSize = Math.Max(1, _options.MinChunkSize);
 
-        if (content.Length <= maxChunkSize)
-        {
-            chunks.Add(CreateSingleChunk(content, documentId, 0, 0, content.Length, documentType, fileName));
-            return chunks;
-        }
+        if (content.Length > maxChunkSize)
+            return CreateMultipleChunks(content, documentId, maxChunkSize, chunkOverlap, minChunkSize, documentType, fileName);
+        chunks.Add(CreateSingleChunk(content, documentId, 0, 0, content.Length, documentType, fileName));
+        return chunks;
 
-        return CreateMultipleChunks(content, documentId, maxChunkSize, chunkOverlap, minChunkSize, documentType, fileName);
     }
 
     private static DocumentChunk CreateSingleChunk(string content, Guid documentId, int chunkIndex, int startPosition, int endPosition, string documentType, string fileName)
     {
-        return new SmartRAG.Entities.DocumentChunk
+        return new DocumentChunk
         {
             Id = Guid.NewGuid(),
             DocumentId = documentId,
-            FileName = fileName ?? string.Empty,
+            FileName = fileName,
             Content = content,
             ChunkIndex = chunkIndex,
             StartPosition = startPosition,
@@ -313,14 +284,7 @@ public class DocumentParserService : IDocumentParserService
 
             var nextStartIndex = CalculateNextStartPosition(content, startIndex, endIndex, chunkOverlap);
 
-            if (nextStartIndex <= startIndex)
-            {
-                startIndex = endIndex;
-            }
-            else
-            {
-                startIndex = nextStartIndex;
-            }
+            startIndex = nextStartIndex <= startIndex ? endIndex : nextStartIndex;
 
             if (startIndex >= content.Length)
             {
@@ -335,7 +299,7 @@ public class DocumentParserService : IDocumentParserService
     /// Removes chunks with duplicate content (keeps first occurrence by order) and re-indexes ChunkIndex.
     /// Overlap and repeated phrases in source (e.g. audio) can produce many identical chunks; dedup reduces redundancy.
     /// </summary>
-    private static List<DocumentChunk> DeduplicateChunksByContent(List<DocumentChunk> chunks)
+    private static List<DocumentChunk>? DeduplicateChunksByContent(List<DocumentChunk>? chunks)
     {
         if (chunks == null || chunks.Count == 0)
             return chunks;
@@ -345,7 +309,7 @@ public class DocumentParserService : IDocumentParserService
 
         foreach (var chunk in chunks)
         {
-            var key = chunk.Content?.Trim() ?? string.Empty;
+            var key = chunk.Content.Trim();
             if (string.IsNullOrEmpty(key))
                 continue;
             if (seen.Add(key))
@@ -366,32 +330,31 @@ public class DocumentParserService : IDocumentParserService
     private static int FindOptimalBreakPoint(string content, int startIndex, int currentEndIndex, int minChunkSize)
     {
         var searchStartFromStart = startIndex + minChunkSize;
-        var searchEndFromEnd = currentEndIndex;
         var contentLength = content.Length;
         var dynamicSearchRange = Math.Min(DefaultDynamicSearchRange, contentLength / DynamicSearchRangeDivisor);
 
-        var sentenceEndIndex = FindLastSentenceEnd(content, searchStartFromStart, searchEndFromEnd);
+        var sentenceEndIndex = FindLastSentenceEnd(content, searchStartFromStart, currentEndIndex);
         if (sentenceEndIndex > searchStartFromStart)
         {
             var validatedIndex = ValidateWordBoundary(content, sentenceEndIndex);
             return validatedIndex + 1;
         }
 
-        var paragraphEndIndex = FindLastParagraphEnd(content, searchStartFromStart, searchEndFromEnd);
+        var paragraphEndIndex = FindLastParagraphEnd(content, searchStartFromStart, currentEndIndex);
         if (paragraphEndIndex > searchStartFromStart)
         {
             var validatedIndex = ValidateWordBoundary(content, paragraphEndIndex);
             return validatedIndex;
         }
 
-        var wordBoundaryIndex = FindLastWordBoundary(content, searchStartFromStart, searchEndFromEnd);
+        var wordBoundaryIndex = FindLastWordBoundary(content, searchStartFromStart, currentEndIndex);
         if (wordBoundaryIndex > searchStartFromStart)
         {
             var validatedIndex = ValidateWordBoundary(content, wordBoundaryIndex);
             return validatedIndex;
         }
 
-        var punctuationIndex = FindLastPunctuationBoundary(content, searchStartFromStart, searchEndFromEnd);
+        var punctuationIndex = FindLastPunctuationBoundary(content, searchStartFromStart, currentEndIndex);
         if (punctuationIndex > searchStartFromStart)
         {
             return punctuationIndex + 1;
@@ -408,35 +371,29 @@ public class DocumentParserService : IDocumentParserService
 
         var ultimateSearchStart = Math.Max(startIndex, currentEndIndex - UltimateSearchRange);
         var ultimateWordBoundary = FindUltimateWordBoundary(content, ultimateSearchStart, currentEndIndex);
-        if (ultimateWordBoundary > ultimateSearchStart)
-        {
-            return ultimateWordBoundary;
-        }
-
-        return currentEndIndex;
+        return ultimateWordBoundary > ultimateSearchStart ? ultimateWordBoundary : currentEndIndex;
     }
 
     private static int ValidateWordBoundary(string content, int breakPoint)
     {
-        if (breakPoint > 0 && breakPoint < content.Length)
-        {
-            var currentChar = content[breakPoint];
-            var previousChar = content[breakPoint - 1];
+        if (breakPoint <= 0 || breakPoint >= content.Length)
+            return breakPoint;
 
-            if (char.IsLetterOrDigit(currentChar) && char.IsLetterOrDigit(previousChar))
+        var currentChar = content[breakPoint];
+        var previousChar = content[breakPoint - 1];
+
+        if (!char.IsLetterOrDigit(currentChar) || !char.IsLetterOrDigit(previousChar))
+            return breakPoint;
+
+        for (var i = breakPoint - 1; i >= 0; i--)
+        {
+            if (char.IsWhiteSpace(content[i]) || char.IsPunctuation(content[i]))
             {
-                for (int i = breakPoint - 1; i >= 0; i--)
-                {
-                    if (char.IsWhiteSpace(content[i]) || char.IsPunctuation(content[i]))
-                    {
-                        return i;
-                    }
-                }
-                return 0;
+                return i;
             }
         }
+        return 0;
 
-        return breakPoint;
     }
 
     private static (int start, int end) ValidateChunkBoundaries(string content, int startIndex, int endIndex)
@@ -444,24 +401,22 @@ public class DocumentParserService : IDocumentParserService
         var validatedStart = ValidateWordBoundary(content, startIndex);
         var validatedEnd = ValidateWordBoundary(content, endIndex);
 
-        if (validatedEnd < content.Length)
+        if (validatedEnd >= content.Length)
+            return (validatedStart, validatedEnd);
+
+        var nextChar = content[validatedEnd];
+        if (!char.IsLetterOrDigit(nextChar))
+            return (validatedStart, validatedEnd);
+
+        for (var i = validatedEnd; i < content.Length; i++)
         {
-            var nextChar = content[validatedEnd];
-            if (char.IsLetterOrDigit(nextChar))
-            {
-                for (int i = validatedEnd; i < content.Length; i++)
-                {
-                    if (char.IsWhiteSpace(content[i]) || char.IsPunctuation(content[i]))
-                    {
-                        validatedEnd = i;
-                        break;
-                    }
-                }
-                if (validatedEnd == endIndex)
-                {
-                    validatedEnd = content.Length;
-                }
-            }
+            if (!char.IsWhiteSpace(content[i]) && !char.IsPunctuation(content[i])) continue;
+            validatedEnd = i;
+            break;
+        }
+        if (validatedEnd == endIndex)
+        {
+            validatedEnd = content.Length;
         }
 
         return (validatedStart, validatedEnd);
@@ -469,18 +424,7 @@ public class DocumentParserService : IDocumentParserService
 
     private static int FindLastSentenceEnd(string content, int searchStart, int searchEnd)
     {
-        var maxIndex = -1;
-
-        foreach (var ending in SentenceEndings)
-        {
-            var index = content.LastIndexOf(ending, searchEnd - 1, searchEnd - searchStart);
-            if (index > maxIndex)
-            {
-                maxIndex = index;
-            }
-        }
-
-        return maxIndex;
+        return SentenceEndings.Select(ending => content.LastIndexOf(ending, searchEnd - 1, searchEnd - searchStart)).Prepend(-1).Max();
     }
 
     private static int FindLastParagraphEnd(string content, int searchStart, int searchEnd)
@@ -512,16 +456,13 @@ public class DocumentParserService : IDocumentParserService
             }
         }
 
-        if (maxIndex > searchStart)
+        if (maxIndex <= searchStart || maxIndex + 1 >= content.Length || !char.IsLetter(content[maxIndex + 1]))
+            return maxIndex;
+
+        var prevBoundary = FindPreviousCompleteWordBoundary(content, searchStart, maxIndex);
+        if (prevBoundary > searchStart)
         {
-            if (maxIndex + 1 < content.Length && char.IsLetter(content[maxIndex + 1]))
-            {
-                var prevBoundary = FindPreviousCompleteWordBoundary(content, searchStart, maxIndex);
-                if (prevBoundary > searchStart)
-                {
-                    maxIndex = prevBoundary;
-                }
-            }
+            maxIndex = prevBoundary;
         }
 
         return maxIndex;
@@ -529,14 +470,13 @@ public class DocumentParserService : IDocumentParserService
 
     private static int FindPreviousCompleteWordBoundary(string content, int searchStart, int currentBoundary)
     {
-        for (int i = currentBoundary - 1; i >= searchStart; i--)
+        for (var i = currentBoundary - 1; i >= searchStart; i--)
         {
-            if (char.IsWhiteSpace(content[i]) || char.IsPunctuation(content[i]))
+            if (!char.IsWhiteSpace(content[i]) && !char.IsPunctuation(content[i]))
+                continue;
+            if (i + 1 < content.Length && char.IsLetterOrDigit(content[i + 1]))
             {
-                if (i + 1 < content.Length && char.IsLetterOrDigit(content[i + 1]))
-                {
-                    return i;
-                }
+                return i;
             }
         }
         return searchStart;
@@ -544,31 +484,18 @@ public class DocumentParserService : IDocumentParserService
 
     private static int FindLastPunctuationBoundary(string content, int searchStart, int searchEnd)
     {
-        var maxIndex = -1;
-
-        foreach (var boundary in PunctuationBoundaries)
-        {
-            var index = content.LastIndexOf(boundary, searchEnd - 1, searchEnd - searchStart);
-            if (index > maxIndex)
-            {
-                maxIndex = index;
-            }
-        }
-
-        return maxIndex;
+        return PunctuationBoundaries.Select(boundary => content.LastIndexOf(boundary, searchEnd - 1, searchEnd - searchStart)).Prepend(-1).Max();
     }
 
     private static int FindAnyWordBoundary(string content, int searchStart, int searchEnd)
     {
         var maxIndex = -1;
 
-        for (int i = searchEnd - 1; i >= searchStart; i--)
+        for (var i = searchEnd - 1; i >= searchStart; i--)
         {
-            if (ExtendedWordBoundaries.Contains(content[i]))
-            {
-                maxIndex = i;
-                break;
-            }
+            if (!ExtendedWordBoundaries.Contains(content[i])) continue;
+            maxIndex = i;
+            break;
         }
 
         return maxIndex;
@@ -578,13 +505,11 @@ public class DocumentParserService : IDocumentParserService
     {
         var maxIndex = -1;
 
-        for (int i = searchEnd - 1; i >= searchStart; i--)
+        for (var i = searchEnd - 1; i >= searchStart; i--)
         {
-            if (UltimateBoundaries.Contains(content[i]))
-            {
-                maxIndex = i;
-                break;
-            }
+            if (!UltimateBoundaries.Contains(content[i])) continue;
+            maxIndex = i;
+            break;
         }
 
         return maxIndex;
@@ -604,12 +529,7 @@ public class DocumentParserService : IDocumentParserService
             nextStart = currentStart + 1;
         }
 
-        if (nextStart >= content.Length)
-        {
-            return content.Length;
-        }
-
-        return nextStart;
+        return nextStart >= content.Length ? content.Length : nextStart;
     }
 }
 

@@ -33,8 +33,8 @@ public class DocumentRelevanceCalculatorService : IDocumentRelevanceCalculatorSe
         List<string> queryWords,
         Dictionary<string, HashSet<Guid>> wordDocumentMap,
         int topChunksPerDocument,
-        string query = null,
-        List<string> potentialNames = null)
+        string? query = null,
+        List<string>? potentialNames = null)
     {
         if (documents == null)
             throw new ArgumentNullException(nameof(documents));
@@ -94,35 +94,34 @@ public class DocumentRelevanceCalculatorService : IDocumentRelevanceCalculatorSe
         .ToList();
     }
 
-    private static double GetFileNameEntityBonus(string fileName, List<string> queryWords, string query, List<string> potentialNames)
+    private static double GetFileNameEntityBonus(string fileName, List<string>? queryWords, string? query, List<string>? potentialNames)
     {
         if (string.IsNullOrWhiteSpace(fileName))
             return 0;
 
         var fileNameLower = fileName.ToLowerInvariant();
 
-        if (potentialNames != null && potentialNames.Count >= 2)
+        if (potentialNames is { Count: >= 2 })
         {
             var entityPhrase = string.Join(" ", potentialNames.Select(n => n.ToLowerInvariant()));
             if (fileNameLower.Contains(entityPhrase))
                 return FileNameEntityMatchBonus;
         }
 
-        if (!string.IsNullOrWhiteSpace(query) && queryWords != null && queryWords.Count >= 2)
+        if (string.IsNullOrWhiteSpace(query) || queryWords is not { Count: >= 2 })
+            return 0;
+
+        var queryLower = query.ToLowerInvariant();
+        var words = queryLower.Split(new[] { ' ', '\t', '\n', '\r', '.', ',', '?', '!' }, StringSplitOptions.RemoveEmptyEntries);
+        for (var i = 0; i < words.Length - 1; i++)
         {
-            var queryLower = query.ToLowerInvariant();
-            var words = queryLower.Split(new[] { ' ', '\t', '\n', '\r', '.', ',', '?', '!' }, StringSplitOptions.RemoveEmptyEntries);
-            for (int i = 0; i < words.Length - 1; i++)
-            {
-                var w1 = words[i];
-                var w2 = words[i + 1];
-                if (w1.Length >= 1 && w2.Length >= 3)
-                {
-                    var phrase = $"{w1} {w2}";
-                    if (fileNameLower.Contains(phrase))
-                        return FileNameEntityMatchBonus;
-                }
-            }
+            var w1 = words[i];
+            var w2 = words[i + 1];
+            if (w1.Length < 1 || w2.Length < 3)
+                continue;
+            var phrase = $"{w1} {w2}";
+            if (fileNameLower.Contains(phrase))
+                return FileNameEntityMatchBonus;
         }
 
         return 0;
@@ -132,7 +131,7 @@ public class DocumentRelevanceCalculatorService : IDocumentRelevanceCalculatorSe
     /// Identifies relevant documents based on calculated scores
     /// </summary>
     public List<Entities.Document> IdentifyRelevantDocuments(
-        List<DocumentScoreResult> documentScores,
+        List<DocumentScoreResult>? documentScores,
         double scoreThreshold)
     {
         if (documentScores == null || documentScores.Count == 0)
@@ -144,15 +143,14 @@ public class DocumentRelevanceCalculatorService : IDocumentRelevanceCalculatorSe
         var secondDocument = documentScores.Skip(1).FirstOrDefault();
 
         var relevantDocuments = new List<Entities.Document>();
-        if (topDocument != null && topDocument.Score > 0)
-        {
-            relevantDocuments.Add(topDocument.Document);
+        if (topDocument is not { Score: > 0 })
+            return relevantDocuments;
+        relevantDocuments.Add(topDocument.Document);
 
-            if (secondDocument != null && secondDocument.Score > 0 &&
-                secondDocument.Score >= topDocument.Score * scoreThreshold)
-            {
-                relevantDocuments.Add(secondDocument.Document);
-            }
+        if (secondDocument is { Score: > 0 } &&
+            secondDocument.Score >= topDocument.Score * scoreThreshold)
+        {
+            relevantDocuments.Add(secondDocument.Document);
         }
 
         return relevantDocuments;

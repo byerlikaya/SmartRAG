@@ -34,7 +34,7 @@ public class QueryIntent
     /// <summary>
     /// AI reasoning for the query plan
     /// </summary>
-    public string Reasoning { get; set; }
+    public string? Reasoning { get; set; }
 
     /// <summary>
     /// Maximum number of rows to return per query (0 = use connection config)

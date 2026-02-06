@@ -62,7 +62,7 @@ public class MultiDatabaseQueryCoordinator : IMultiDatabaseQueryCoordinator
     /// <returns>RAG response with data from multiple databases</returns>
     /// <exception cref="ArgumentException">Thrown when <paramref name="userQuery"/> is null or empty.</exception>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="preAnalyzedIntent"/> is null.</exception>
-    public async Task<RagResponse> QueryMultipleDatabasesAsync(string userQuery, QueryIntent preAnalyzedIntent, int maxResults = 5, string preferredLanguage = null, CancellationToken cancellationToken = default)
+    public async Task<RagResponse> QueryMultipleDatabasesAsync(string userQuery, QueryIntent preAnalyzedIntent, int maxResults = 5, string? preferredLanguage = null, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (string.IsNullOrWhiteSpace(userQuery))
@@ -84,7 +84,7 @@ public class MultiDatabaseQueryCoordinator : IMultiDatabaseQueryCoordinator
 
             queryIntent.MaxResults = maxResults;
 
-            queryIntent = await GenerateDatabaseQueriesAsync(queryIntent, cancellationToken);
+            queryIntent = await _sqlQueryGenerator.GenerateDatabaseQueriesAsync(queryIntent, cancellationToken);
 
             var queryResults = await _databaseQueryExecutor.ExecuteMultiDatabaseQueryAsync(queryIntent, cancellationToken);
 
@@ -123,7 +123,7 @@ public class MultiDatabaseQueryCoordinator : IMultiDatabaseQueryCoordinator
     /// Creates a RagResponse with no database matches
     /// </summary>
     /// <returns>RagResponse indicating no databases matched</returns>
-    private RagResponse CreateNoDatabaseMatchResponse()
+    private static RagResponse CreateNoDatabaseMatchResponse()
     {
         return new RagResponse
         {
@@ -153,7 +153,7 @@ public class MultiDatabaseQueryCoordinator : IMultiDatabaseQueryCoordinator
             Answer = $"Some database queries failed: {string.Join(", ", errors)}",
             Sources = new List<SearchSource>
             {
-                new SearchSource
+                new()
                 {
                     SourceType = "System",
                     FileName = "Error in query execution",
@@ -169,14 +169,14 @@ public class MultiDatabaseQueryCoordinator : IMultiDatabaseQueryCoordinator
     /// </summary>
     /// <param name="ex">Exception that occurred</param>
     /// <returns>RagResponse with error information</returns>
-    private RagResponse CreateExceptionResponse(Exception ex)
+    private static RagResponse CreateExceptionResponse(Exception ex)
     {
         return new RagResponse
         {
             Answer = $"An error occurred while processing your query: {ex.Message}",
             Sources = new List<SearchSource>
             {
-                new SearchSource
+                new()
                 {
                     SourceType = "System",
                     FileName = "Error",
@@ -195,11 +195,6 @@ public class MultiDatabaseQueryCoordinator : IMultiDatabaseQueryCoordinator
         foreach (var dbQuery in queryIntent.DatabaseQueries)
         {
             var schema = await _schemaAnalyzer.GetSchemaAsync(dbQuery.DatabaseId, cancellationToken);
-            if (schema == null)
-            {
-                _logger.LogWarning("Schema not found, removing from query list");
-                continue;
-            }
 
             var validTables = new List<string>();
             var invalidTables = new List<string>();
@@ -255,13 +250,12 @@ public class MultiDatabaseQueryCoordinator : IMultiDatabaseQueryCoordinator
             if (validQueries.Any(q => q.DatabaseId == correctSchema.DatabaseId))
             {
                 var existingQuery = validQueries.First(q => q.DatabaseId == correctSchema.DatabaseId);
-                if (!existingQuery.RequiredTables.Contains(tableName, StringComparer.OrdinalIgnoreCase))
-                {
-                    var exactTableName = correctSchema.Tables.First(t =>
-                        t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)).TableName;
+                if (existingQuery.RequiredTables.Contains(tableName, StringComparer.OrdinalIgnoreCase))
+                    continue;
+                var exactTableName = correctSchema.Tables.First(t =>
+                    t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase)).TableName;
 
-                    existingQuery.RequiredTables.Add(exactTableName);
-                }
+                existingQuery.RequiredTables.Add(exactTableName);
             }
             else
             {

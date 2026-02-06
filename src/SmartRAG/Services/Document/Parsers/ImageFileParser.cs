@@ -22,10 +22,10 @@ public class ImageFileParser : IFileParser
     public bool CanParse(string fileName, string contentType)
     {
         return SupportedExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) ||
-               SupportedContentTypes.Any(ct => contentType.Contains(ct));
+               SupportedContentTypes.Any(contentType.Contains);
     }
 
-    public async Task<FileParserResult> ParseAsync(Stream fileStream, string fileName, string language = null)
+    public async Task<FileParserResult> ParseAsync(Stream fileStream, string fileName, string? language = null)
     {
         try
         {
@@ -33,12 +33,9 @@ public class ImageFileParser : IFileParser
             // Language parameter ensures correct handling of all language characters
             var extractedText = await _imageParserService.ExtractTextFromImageAsync(fileStream, language);
 
-            if (string.IsNullOrWhiteSpace(extractedText))
-            {
-                return new FileParserResult { Content = string.Empty };
-            }
-
-            return new FileParserResult { Content = TextCleaningHelper.CleanContent(extractedText) };
+            return string.IsNullOrWhiteSpace(extractedText) ?
+                new FileParserResult { Content = string.Empty } :
+                new FileParserResult { Content = TextCleaningHelper.CleanContent(extractedText) };
         }
         catch (Exception ex)
         {

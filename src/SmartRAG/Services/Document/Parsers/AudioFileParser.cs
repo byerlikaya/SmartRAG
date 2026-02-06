@@ -17,16 +17,16 @@ public class AudioFileParser : IFileParser
     {
         _audioParserService = audioParserService;
         _logger = logger;
-        _whisperConfig = options?.Value?.WhisperConfig ?? new WhisperConfig();
+        _whisperConfig = options.Value.WhisperConfig;
     }
 
     public bool CanParse(string fileName, string contentType)
     {
         return SupportedExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) ||
-               SupportedContentTypes.Any(ct => contentType.Contains(ct));
+               SupportedContentTypes.Any(contentType.Contains);
     }
 
-    public async Task<FileParserResult> ParseAsync(Stream fileStream, string fileName, string language = null)
+    public async Task<FileParserResult> ParseAsync(Stream fileStream, string fileName, string? language = null)
     {
         var detectedLanguage = DetectAudioLanguage(language, fileName);
         _logger.LogDebug("AudioFileParser: Language detected");
@@ -35,9 +35,7 @@ public class AudioFileParser : IFileParser
         var result = new FileParserResult
         {
             Content = string.Empty,
-            Metadata = transcriptionResult.Metadata != null
-                ? new Dictionary<string, object>(transcriptionResult.Metadata)
-                : new Dictionary<string, object>()
+            Metadata = new Dictionary<string, object>(transcriptionResult.Metadata)
         };
 
         if (!string.IsNullOrWhiteSpace(transcriptionResult.Text))
@@ -48,7 +46,7 @@ public class AudioFileParser : IFileParser
         return result;
     }
 
-    private string DetectAudioLanguage(string apiLanguage, string fileName)
+    private string DetectAudioLanguage(string? apiLanguage, string fileName)
     {
         if (!string.IsNullOrEmpty(apiLanguage) && !apiLanguage.Equals("auto", StringComparison.OrdinalIgnoreCase))
         {
@@ -56,20 +54,19 @@ public class AudioFileParser : IFileParser
         }
 
         var fileNameLower = fileName.ToLowerInvariant();
-        var iso6391Pattern = @"\b([a-z]{2})(?:[-_]([a-z]{2}))?\b";
+        const string iso6391Pattern = @"\b([a-z]{2})(?:[-_]([a-z]{2}))?\b";
         var matches = Regex.Matches(fileNameLower, iso6391Pattern);
 
         foreach (Match match in matches)
         {
             var languageCode = match.Groups[1].Value;
-            if (languageCode.Length == 2 && char.IsLetter(languageCode[0]) && char.IsLetter(languageCode[1]))
-            {
-                _logger.LogDebug("Detected language from filename: {Language}", languageCode);
-                return languageCode;
-            }
+            if (languageCode.Length != 2 || !char.IsLetter(languageCode[0]) ||
+                !char.IsLetter(languageCode[1])) continue;
+            _logger.LogDebug("Detected language from filename: {Language}", languageCode);
+            return languageCode;
         }
 
-        var configDefault = _whisperConfig?.DefaultLanguage;
+        var configDefault = _whisperConfig.DefaultLanguage;
         if (!string.IsNullOrEmpty(configDefault) && !configDefault.Equals("auto", StringComparison.OrdinalIgnoreCase))
         {
             var code = configDefault.Length >= 2 ? configDefault.Substring(0, 2).ToLowerInvariant() : configDefault;

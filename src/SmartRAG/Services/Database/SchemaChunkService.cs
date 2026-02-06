@@ -27,14 +27,14 @@ public class SchemaChunkService
     /// <param name="schema">Database schema information to convert</param>
     /// <param name="cancellationToken">Token to cancel the operation</param>
     /// <returns>Document entity containing schema chunks with embeddings</returns>
-    public async Task<Entities.Document> ConvertSchemaToDocumentAsync(
+    public async Task<Entities.Document?> ConvertSchemaToDocumentAsync(
         DatabaseSchemaInfo schema,
         CancellationToken cancellationToken = default)
     {
         if (schema == null)
             throw new ArgumentNullException(nameof(schema));
 
-        if (schema.Tables == null || schema.Tables.Count == 0)
+        if (schema.Tables.Count == 0)
         {
             _logger.LogWarning("Schema {DatabaseName} has no tables to convert", schema.DatabaseName);
             return null;
@@ -54,14 +54,14 @@ public class SchemaChunkService
         var chunkContents = chunks.Select(c => c.Content).ToList();
         var embeddings = await _aiService.GenerateEmbeddingsBatchAsync(chunkContents, cancellationToken);
 
-        if (embeddings == null || embeddings.Count != chunks.Count)
+        if (embeddings.Count != chunks.Count)
         {
             _logger.LogError("Failed to generate embeddings for schema chunks. Expected {Expected}, got {Actual}",
-                chunks.Count, embeddings?.Count ?? 0);
+                chunks.Count, embeddings.Count);
             throw new InvalidOperationException("Failed to generate embeddings for schema chunks");
         }
 
-        for (int i = 0; i < chunks.Count; i++)
+        for (var i = 0; i < chunks.Count; i++)
         {
             chunks[i].Embedding = embeddings[i];
         }
@@ -69,7 +69,7 @@ public class SchemaChunkService
         _logger.LogInformation("Generated embeddings for {Count} schema chunks", chunks.Count);
 
         var content = string.Join("\n\n", chunks.Select(c => c.Content));
-        var fileSize = System.Text.Encoding.UTF8.GetByteCount(content);
+        var fileSize = Encoding.UTF8.GetByteCount(content);
 
         var document = new Entities.Document
         {
@@ -133,12 +133,12 @@ public class SchemaChunkService
         sb.AppendLine($"Type: {DetermineTableType(table.RowCount)}");
         sb.AppendLine($"Row Count: {table.RowCount:N0}");
 
-        if (table.PrimaryKeys != null && table.PrimaryKeys.Count > 0)
+        if (table.PrimaryKeys.Count > 0)
         {
             sb.AppendLine($"Primary Key(s): {string.Join(", ", table.PrimaryKeys)}");
         }
 
-        if (table.Columns != null && table.Columns.Count > 0)
+        if (table.Columns is { Count: > 0 })
         {
             sb.AppendLine("Available Columns in this table (use these exact column names in SQL):");
             var pkColumns = table.Columns.Where(c => c.IsPrimaryKey).ToList();
@@ -160,7 +160,7 @@ public class SchemaChunkService
                 sb.AppendLine("  Foreign Key columns:");
                 foreach (var column in fkColumns)
                 {
-                    var fkInfo = table.ForeignKeys?.FirstOrDefault(fk => fk.ColumnName.Equals(column.ColumnName, StringComparison.OrdinalIgnoreCase));
+                    var fkInfo = table.ForeignKeys.FirstOrDefault(fk => fk.ColumnName.Equals(column.ColumnName, StringComparison.OrdinalIgnoreCase));
                     var fkRef = fkInfo != null ? $" → {FormatColumnNameForDatabase(fkInfo.ReferencedTable, schema.DatabaseType)}.{FormatColumnNameForDatabase(fkInfo.ReferencedColumn, schema.DatabaseType)}" : "";
                     var columnName = FormatColumnNameForDatabase(column.ColumnName, schema.DatabaseType);
                     sb.AppendLine($"    • {columnName}({column.DataType}) [FK]{fkRef}");
@@ -183,7 +183,7 @@ public class SchemaChunkService
             }
         }
 
-        if (table.ForeignKeys != null && table.ForeignKeys.Count > 0)
+        if (table.ForeignKeys.Count > 0)
         {
             sb.AppendLine("Outgoing Foreign Keys (this table references other tables):");
             foreach (var fk in table.ForeignKeys)
@@ -208,55 +208,46 @@ public class SchemaChunkService
             }
         }
 
-        if (schema.DatabaseType == SmartRAG.Enums.DatabaseType.PostgreSQL)
-        {
-            sb.AppendLine();
-            sb.AppendLine("⚠️⚠️⚠️ POSTGRESQL CRITICAL: Use DOUBLE QUOTES for ALL identifiers! ⚠️⚠️⚠️");
-            sb.AppendLine("  ✓ CORRECT: SELECT \"ColumnName1\", \"ColumnName2\" FROM \"SchemaName\".\"TableName\"");
-            sb.AppendLine("  ✗ WRONG: SELECT ColumnName1, ColumnName2 FROM SchemaName.TableName  -- Will fail!");
-            sb.AppendLine();
-            sb.AppendLine("🚨🚨🚨 POSTGRESQL ALIAS RULE - CRITICAL! 🚨🚨🚨");
-            sb.AppendLine("  → Alias WITHOUT quotes, column WITH quotes!");
-            sb.AppendLine("  ✓ CORRECT: SELECT T1.\"ColumnName\" FROM \"SchemaName\".\"TableName\" T1");
-            sb.AppendLine("  ✓ CORRECT: SELECT T1.\"ColumnName\", T2.\"OtherColumn\" FROM \"SchemaName\".\"TableName\" T1 JOIN \"SchemaName\".\"OtherTable\" T2 ON T1.\"FK\" = T2.\"PK\"");
-            sb.AppendLine("  ✓ CORRECT: SELECT T1.\"ColumnName\" FROM \"SchemaName\".\"TableName\" T1 WHERE T1.\"ID\" IN (1, 2, 3)");
-            sb.AppendLine("  ✗ WRONG: SELECT \"T1\".\"ColumnName\" FROM \"SchemaName\".\"TableName\" \"T1\"  -- SYNTAX ERROR!");
-            sb.AppendLine("  ✗ WRONG: SELECT \"T1\".\"ColumnName\" FROM \"SchemaName\".\"TableName\" T1  -- SYNTAX ERROR (alias mismatch)!");
-            sb.AppendLine("  ✗ WRONG: WHERE \"T1\".\"ID\" IN (...)  -- SYNTAX ERROR! Use WHERE T1.\"ID\" IN (...)");
-            sb.AppendLine("  Rule: Alias NEVER in quotes - T1, T2, T3 (NOT \"T1\", \"T2\", \"T3\")");
-            sb.AppendLine("  Rule: Column ALWAYS in quotes when using alias - T1.\"ColumnName\" (NOT T1.ColumnName)");
-        }
+        if (schema.DatabaseType != DatabaseType.PostgreSQL)
+            return sb.ToString();
+
+        sb.AppendLine();
+        sb.AppendLine("⚠️⚠️⚠️ POSTGRESQL CRITICAL: Use DOUBLE QUOTES for ALL identifiers! ⚠️⚠️⚠️");
+        sb.AppendLine("  ✓ CORRECT: SELECT \"ColumnName1\", \"ColumnName2\" FROM \"SchemaName\".\"TableName\"");
+        sb.AppendLine("  ✗ WRONG: SELECT ColumnName1, ColumnName2 FROM SchemaName.TableName  -- Will fail!");
+        sb.AppendLine();
+        sb.AppendLine("🚨🚨🚨 POSTGRESQL ALIAS RULE - CRITICAL! 🚨🚨🚨");
+        sb.AppendLine("  → Alias WITHOUT quotes, column WITH quotes!");
+        sb.AppendLine("  ✓ CORRECT: SELECT T1.\"ColumnName\" FROM \"SchemaName\".\"TableName\" T1");
+        sb.AppendLine("  ✓ CORRECT: SELECT T1.\"ColumnName\", T2.\"OtherColumn\" FROM \"SchemaName\".\"TableName\" T1 JOIN \"SchemaName\".\"OtherTable\" T2 ON T1.\"FK\" = T2.\"PK\"");
+        sb.AppendLine("  ✓ CORRECT: SELECT T1.\"ColumnName\" FROM \"SchemaName\".\"TableName\" T1 WHERE T1.\"ID\" IN (1, 2, 3)");
+        sb.AppendLine("  ✗ WRONG: SELECT \"T1\".\"ColumnName\" FROM \"SchemaName\".\"TableName\" \"T1\"  -- SYNTAX ERROR!");
+        sb.AppendLine("  ✗ WRONG: SELECT \"T1\".\"ColumnName\" FROM \"SchemaName\".\"TableName\" T1  -- SYNTAX ERROR (alias mismatch)!");
+        sb.AppendLine("  ✗ WRONG: WHERE \"T1\".\"ID\" IN (...)  -- SYNTAX ERROR! Use WHERE T1.\"ID\" IN (...)");
+        sb.AppendLine("  Rule: Alias NEVER in quotes - T1, T2, T3 (NOT \"T1\", \"T2\", \"T3\")");
+        sb.AppendLine("  Rule: Column ALWAYS in quotes when using alias - T1.\"ColumnName\" (NOT T1.ColumnName)");
 
         return sb.ToString();
     }
 
-    private static string FormatColumnNameForDatabase(string identifier, SmartRAG.Enums.DatabaseType databaseType)
+    private static string FormatColumnNameForDatabase(string identifier, DatabaseType databaseType)
     {
-        if (string.IsNullOrWhiteSpace(identifier))
+        if (string.IsNullOrWhiteSpace(identifier) || databaseType != DatabaseType.PostgreSQL)
             return identifier;
 
-        if (databaseType == SmartRAG.Enums.DatabaseType.PostgreSQL)
-        {
-            if (identifier.Contains('.'))
-            {
-                var parts = identifier.Split('.', 2);
-                var schemaPart = HasUpperCase(parts[0]) ? $"\"{parts[0]}\"" : parts[0];
-                var tablePart = HasUpperCase(parts[1]) ? $"\"{parts[1]}\"" : parts[1];
-                return $"{schemaPart}.{tablePart}";
-            }
-            
+        if (!identifier.Contains('.'))
             return HasUpperCase(identifier) ? $"\"{identifier}\"" : identifier;
-        }
 
-        return identifier;
+        var parts = identifier.Split('.', 2);
+        var schemaPart = HasUpperCase(parts[0]) ? $"\"{parts[0]}\"" : parts[0];
+        var tablePart = HasUpperCase(parts[1]) ? $"\"{parts[1]}\"" : parts[1];
+        return $"{schemaPart}.{tablePart}";
+
     }
 
     private static bool HasUpperCase(string text)
     {
-        if (string.IsNullOrWhiteSpace(text))
-            return false;
-
-        return text.Any(c => char.IsUpper(c));
+        return !string.IsNullOrWhiteSpace(text) && text.Any(char.IsUpper);
     }
 
     private static List<string> ExtractSemanticKeywords(string identifier)
@@ -323,19 +314,13 @@ public class SchemaChunkService
         return parts;
     }
 
-    private List<(string ReferencingTable, string ReferencingColumn, string ReferencedColumn)> FindReverseForeignKeys(string tableName, DatabaseSchemaInfo schema)
+    private static List<(string ReferencingTable, string ReferencingColumn, string ReferencedColumn)> FindReverseForeignKeys(string tableName, DatabaseSchemaInfo schema)
     {
         var reverseFks = new List<(string ReferencingTable, string ReferencingColumn, string ReferencedColumn)>();
-        
-        if (schema.Tables == null)
-            return reverseFks;
 
         foreach (var otherTable in schema.Tables)
         {
             if (otherTable.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase))
-                continue;
-
-            if (otherTable.ForeignKeys == null)
                 continue;
 
             foreach (var fk in otherTable.ForeignKeys)
@@ -350,13 +335,14 @@ public class SchemaChunkService
         return reverseFks;
     }
 
-    private string DetermineTableType(long rowCount)
+    private static string DetermineTableType(long rowCount)
     {
-        if (rowCount > TransactionalTableThreshold)
-            return "TRANSACTIONAL";
-        if (rowCount > LookupTableThreshold)
-            return "LOOKUP";
-        return "MASTER";
+        return rowCount switch
+        {
+            > TransactionalTableThreshold => "TRANSACTIONAL",
+            > LookupTableThreshold => "LOOKUP",
+            _ => "MASTER"
+        };
     }
 }
 

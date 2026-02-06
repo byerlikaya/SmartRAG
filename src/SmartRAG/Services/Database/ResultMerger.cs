@@ -9,7 +9,7 @@ public class ResultMerger : IResultMerger
 {
     private static readonly string[] DescriptiveColumnPatterns = { "Name", "Title", "Description", "City", "Address", "Location", "Text", "Label" };
     private static readonly string[] NonDescriptivePatterns = { "ID", "Key", "Code", "Number", "Num", "Count", "Sum", "Total", "Amount", "Value" };
-    
+
     private readonly IAIService _aiService;
     private readonly IDatabaseConnectionManager _connectionManager;
     private readonly IDatabaseParserService _databaseParser;
@@ -54,18 +54,17 @@ public class ResultMerger : IResultMerger
             }
 
             var parsedData = ParseQueryResult(dbResult.ResultData);
-            if (parsedData != null && parsedData.Rows.Count > 0)
-            {
-                parsedResults[dbResult.DatabaseId] = parsedData;
-                parsedData.DatabaseName = dbResult.DatabaseName;
-                parsedData.DatabaseId = dbResult.DatabaseId;
-            }
+            if (parsedData.Rows.Count <= 0)
+                continue;
+            parsedResults[dbResult.DatabaseId] = parsedData;
+            parsedData.DatabaseName = dbResult.DatabaseName;
+            parsedData.DatabaseId = dbResult.DatabaseId;
         }
 
         if (parsedResults.Count > 1)
         {
             var mergedData = await SmartMergeResultsAsync(parsedResults);
-            if (mergedData != null && mergedData.Rows.Count > 0)
+            if (mergedData.Rows.Count > 0)
             {
                 sb.AppendLine("=== SMART MERGED RESULTS (Cross-Database JOIN) ===");
                 sb.AppendLine(FormatParsedResult(mergedData));
@@ -92,19 +91,19 @@ public class ResultMerger : IResultMerger
         string userQuery,
         string mergedData,
         MultiDatabaseQueryResult queryResults,
-        string preferredLanguage = null)
+        string? preferredLanguage = null)
     {
         try
         {
             var promptBuilder = new StringBuilder();
-            
+
             // Add language instruction if preferred language is specified
             if (!string.IsNullOrWhiteSpace(preferredLanguage))
             {
                 promptBuilder.AppendLine($"IMPORTANT: Respond in {preferredLanguage.ToUpperInvariant()} language.");
                 promptBuilder.AppendLine();
             }
-            
+
             promptBuilder.AppendLine("╔═══════════════════════════════════════════════════════════════╗");
             promptBuilder.AppendLine("║  🚨🚨🚨 CRITICAL - READ THIS FIRST! 🚨🚨🚨                         ║");
             promptBuilder.AppendLine("╚═══════════════════════════════════════════════════════════════╝");
@@ -218,15 +217,15 @@ public class ResultMerger : IResultMerger
                     FileName = $"{r.Value.DatabaseName} ({r.Value.RowCount} rows)",
                     RelevantContent = r.Value.ResultData,
                     ExecutedQuery = r.Value.ExecutedQuery,
-                    Tables = ExtractTableNames(r.Value.ExecutedQuery ?? string.Empty),
-                    Location = BuildDatabaseLocationDescription(r.Value.DatabaseName, r.Value.ExecutedQuery ?? string.Empty, r.Value.RowCount)
+                    Tables = ExtractTableNames(r.Value.ExecutedQuery),
+                    Location = BuildDatabaseLocationDescription(r.Value.DatabaseName, r.Value.ExecutedQuery, r.Value.RowCount)
                 })
                 .ToList();
 
             return new RagResponse
             {
                 Query = userQuery,
-                Answer = answer ?? "Unable to generate answer",
+                Answer = answer,
                 Sources = sources,
                 SearchedAt = DateTime.UtcNow
             };
@@ -239,7 +238,7 @@ public class ResultMerger : IResultMerger
                 Answer = mergedData,
                 Sources = new List<SearchSource>
                 {
-                    new SearchSource
+                    new()
                     {
                         SourceType = "System",
                         FileName = "Raw data (AI generation failed)",
@@ -253,16 +252,16 @@ public class ResultMerger : IResultMerger
         }
     }
 
-    private ParsedQueryResult ParseQueryResult(string resultData)
+    private ParsedQueryResult? ParseQueryResult(string resultData)
     {
         try
         {
             var lines = resultData.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
 
             string[] headers = null;
-            int headerIndex = -1;
+            var headerIndex = -1;
 
-            for (int i = 0; i < lines.Length; i++)
+            for (var i = 0; i < lines.Length; i++)
             {
                 if (string.IsNullOrWhiteSpace(lines[i]) ||
                     lines[i].StartsWith("===") ||
@@ -288,22 +287,23 @@ public class ResultMerger : IResultMerger
                 Columns = headers.ToList()
             };
 
-            for (int i = headerIndex + 1; i < lines.Length; i++)
+            for (var i = headerIndex + 1; i < lines.Length; i++)
             {
                 var line = lines[i];
                 if (line.StartsWith("Rows extracted:") || line.StartsWith("==="))
                     break;
 
                 var values = line.Split('\t');
-                if (values.Length == headers.Length)
+                if (values.Length != headers.Length)
+                    continue;
+
+                var row = new Dictionary<string, string>();
+
+                for (var j = 0; j < headers.Length; j++)
                 {
-                    var row = new Dictionary<string, string>();
-                    for (int j = 0; j < headers.Length; j++)
-                    {
-                        row[headers[j]] = values[j];
-                    }
-                    result.Rows.Add(row);
+                    row[headers[j]] = values[j];
                 }
+                result.Rows.Add(row);
             }
 
             return result;
@@ -315,60 +315,61 @@ public class ResultMerger : IResultMerger
         }
     }
 
-    private async Task<ParsedQueryResult> SmartMergeResultsAsync(
+    private async Task<ParsedQueryResult?> SmartMergeResultsAsync(
         Dictionary<string, ParsedQueryResult> parsedResults)
     {
         try
         {
+            ParsedQueryResult mappingBasedRetry;
             if (parsedResults.Count < 2)
             {
-                var mappingBasedRetry = await TryMergeWithMappingWhenTargetMissingAsync(parsedResults);
-                if (mappingBasedRetry != null && mappingBasedRetry.Rows.Count > 0)
-                {
-                    _logger.LogInformation("Merge successful using mapping when target database result was missing");
-                    return mappingBasedRetry;
-                }
-                return null;
+                mappingBasedRetry = await TryMergeWithMappingWhenTargetMissingAsync(parsedResults);
+
+                if (mappingBasedRetry!.Rows.Count <= 0)
+                    return null;
+
+                _logger.LogInformation("Merge successful using mapping when target database result was missing");
+                return mappingBasedRetry;
             }
 
             var joinableResults = await FindJoinableTablesAsync(parsedResults);
 
-            if (joinableResults == null || joinableResults.Count < 2)
+            if (joinableResults is { Count: < 2 })
             {
                 _logger.LogWarning("No joinable relationships found between databases");
-                
-                var mappingBasedRetry = await TryMergeWithMappingWhenTargetMissingAsync(parsedResults);
-                if (mappingBasedRetry != null && mappingBasedRetry.Rows.Count > 0)
-                {
-                    _logger.LogInformation("Merge successful using mapping when target database result was missing");
-                    return mappingBasedRetry;
-                }
-                
-                return null;
+
+                mappingBasedRetry = await TryMergeWithMappingWhenTargetMissingAsync(parsedResults);
+
+                if (mappingBasedRetry!.Rows.Count <= 0)
+                    return null;
+
+                _logger.LogInformation("Merge successful using mapping when target database result was missing");
+                return mappingBasedRetry;
+
             }
 
             var merged = PerformInMemoryJoin(joinableResults);
-            if (merged == null || merged.Rows.Count == 0)
+            if (merged.Rows.Count != 0)
+                return merged;
+
+            _logger.LogWarning("Smart merge failed: No matching rows found after join attempt");
+
+            var retryMerged = await RetryMergeWithFilteredQueryAsync(joinableResults);
+
+            if (retryMerged.Rows.Count > 0)
             {
-                _logger.LogWarning("Smart merge failed: No matching rows found after join attempt");
-                
-                var retryMerged = await RetryMergeWithFilteredQueryAsync(joinableResults, parsedResults);
-                if (retryMerged != null && retryMerged.Rows.Count > 0)
-                {
-                    _logger.LogInformation("Retry merge successful with filtered query");
-                    return retryMerged;
-                }
-                
-                var mappingBasedRetry = await TryMergeWithMappingWhenTargetMissingAsync(parsedResults);
-                if (mappingBasedRetry != null && mappingBasedRetry.Rows.Count > 0)
-                {
-                    _logger.LogInformation("Merge successful using mapping when target database result was missing");
-                    return mappingBasedRetry;
-                }
-                
-                return null;
+                _logger.LogInformation("Retry merge successful with filtered query");
+                return retryMerged;
             }
-            return merged;
+
+            mappingBasedRetry = await TryMergeWithMappingWhenTargetMissingAsync(parsedResults);
+
+            if (mappingBasedRetry.Rows.Count <= 0)
+                return null;
+
+            _logger.LogInformation("Merge successful using mapping when target database result was missing");
+            return mappingBasedRetry;
+
         }
         catch (Exception ex)
         {
@@ -377,7 +378,7 @@ public class ResultMerger : IResultMerger
         }
     }
 
-    private async Task<List<(ParsedQueryResult Result, string JoinColumn)>> FindJoinableTablesAsync(
+    private async Task<List<(ParsedQueryResult Result, string JoinColumn)>?> FindJoinableTablesAsync(
         Dictionary<string, ParsedQueryResult> parsedResults)
     {
         await Task.CompletedTask;
@@ -385,7 +386,7 @@ public class ResultMerger : IResultMerger
         var joinable = new List<(ParsedQueryResult Result, string JoinColumn)>();
 
         var mappingBasedMatches = await FindMappingBasedMatchesAsync(parsedResults);
-        if (mappingBasedMatches != null && mappingBasedMatches.Count >= 2)
+        if (mappingBasedMatches.Count >= 2)
         {
             _logger.LogInformation("Found mapping-based matches across {Count} databases", mappingBasedMatches.Count);
             return mappingBasedMatches;
@@ -434,7 +435,7 @@ public class ResultMerger : IResultMerger
         }
 
         var valueBasedMatches = FindValueBasedMatches(parsedResults);
-        if (valueBasedMatches != null && valueBasedMatches.Count >= 2)
+        if (valueBasedMatches.Count >= 2)
         {
             _logger.LogInformation("Found value-based matches across {Count} databases", valueBasedMatches.Count);
             return valueBasedMatches;
@@ -444,7 +445,7 @@ public class ResultMerger : IResultMerger
         return null;
     }
 
-    private async Task<List<(ParsedQueryResult Result, string JoinColumn)>> FindMappingBasedMatchesAsync(
+    private async Task<List<(ParsedQueryResult Result, string JoinColumn)>?> FindMappingBasedMatchesAsync(
         Dictionary<string, ParsedQueryResult> parsedResults)
     {
         try
@@ -456,10 +457,10 @@ public class ResultMerger : IResultMerger
             {
                 var result = kvp.Value;
                 var connection = connections.FirstOrDefault(c =>
-                    (c.Name ?? string.Empty).Equals(result.DatabaseName, StringComparison.OrdinalIgnoreCase));
+                    c.Name.Equals(result.DatabaseName, StringComparison.OrdinalIgnoreCase));
                 if (connection != null)
                 {
-                    databaseNameMap[result.DatabaseId] = connection.Name ?? result.DatabaseName;
+                    databaseNameMap[result.DatabaseId] = connection.Name;
                 }
             }
 
@@ -472,7 +473,7 @@ public class ResultMerger : IResultMerger
                     continue;
 
                 var sourceConnection = connections.FirstOrDefault(c =>
-                    (c.Name ?? string.Empty).Equals(sourceDbName, StringComparison.OrdinalIgnoreCase));
+                    (c.Name).Equals(sourceDbName, StringComparison.OrdinalIgnoreCase));
                 if (sourceConnection?.CrossDatabaseMappings == null)
                     continue;
 
@@ -546,7 +547,7 @@ public class ResultMerger : IResultMerger
         }
     }
 
-    private List<(ParsedQueryResult Result, string JoinColumn)> FindValueBasedMatches(
+    private List<(ParsedQueryResult Result, string JoinColumn)>? FindValueBasedMatches(
         Dictionary<string, ParsedQueryResult> parsedResults)
     {
         var allIdColumns = new List<(string DatabaseId, string DatabaseName, string ColumnName, HashSet<string> Values)>();
@@ -562,13 +563,13 @@ public class ResultMerger : IResultMerger
                 var values = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                 foreach (var row in result.Rows)
                 {
-                    if (row.TryGetValue(idCol, out var value) && !string.IsNullOrEmpty(value) && value != "NULL")
+                    if (!row.TryGetValue(idCol, out var value) || string.IsNullOrEmpty(value) ||
+                        value == "NULL") continue;
+
+                    var normalizedValue = value.Trim();
+                    if (TryParseNumeric(normalizedValue, out _))
                     {
-                        var normalizedValue = value.Trim();
-                        if (TryParseNumeric(normalizedValue, out _))
-                        {
-                            values.Add(normalizedValue);
-                        }
+                        values.Add(normalizedValue);
                     }
                 }
 
@@ -583,10 +584,9 @@ public class ResultMerger : IResultMerger
             return null;
 
         var bestMatch = FindBestValueBasedMatch(allIdColumns);
-        if (bestMatch == null)
-            return null;
 
         var joinable = new List<(ParsedQueryResult Result, string JoinColumn)>();
+
         foreach (var match in bestMatch)
         {
             var result = parsedResults[match.DatabaseId];
@@ -596,15 +596,15 @@ public class ResultMerger : IResultMerger
         return joinable.Count >= 2 ? joinable : null;
     }
 
-    private List<(string DatabaseId, string ColumnName)> FindBestValueBasedMatch(
+    private List<(string DatabaseId, string ColumnName)>? FindBestValueBasedMatch(
         List<(string DatabaseId, string DatabaseName, string ColumnName, HashSet<string> Values)> allIdColumns)
     {
         var bestMatch = new List<(string DatabaseId, string ColumnName)>();
-        int maxMatches = 0;
+        var maxMatches = 0;
 
-        for (int i = 0; i < allIdColumns.Count; i++)
+        for (var i = 0; i < allIdColumns.Count; i++)
         {
-            for (int j = i + 1; j < allIdColumns.Count; j++)
+            for (var j = i + 1; j < allIdColumns.Count; j++)
             {
                 var col1 = allIdColumns[i];
                 var col2 = allIdColumns[j];
@@ -615,15 +615,14 @@ public class ResultMerger : IResultMerger
                 var intersection = col1.Values.Intersect(col2.Values, StringComparer.OrdinalIgnoreCase).ToList();
                 var matchCount = intersection.Count;
 
-                if (matchCount > maxMatches && matchCount >= Math.Min(2, Math.Min(col1.Values.Count, col2.Values.Count) * 0.1))
+                if (matchCount <= maxMatches || !(matchCount >= Math.Min(2, Math.Min(col1.Values.Count, col2.Values.Count) * 0.1)))
+                    continue;
+                maxMatches = matchCount;
+                bestMatch = new List<(string DatabaseId, string ColumnName)>
                 {
-                    maxMatches = matchCount;
-                    bestMatch = new List<(string DatabaseId, string ColumnName)>
-                    {
-                        (col1.DatabaseId, col1.ColumnName),
-                        (col2.DatabaseId, col2.ColumnName)
-                    };
-                }
+                    (col1.DatabaseId, col1.ColumnName),
+                    (col2.DatabaseId, col2.ColumnName)
+                };
             }
         }
 
@@ -636,7 +635,7 @@ public class ResultMerger : IResultMerger
         return bestMatch;
     }
 
-    private ParsedQueryResult PerformInMemoryJoin(List<(ParsedQueryResult Result, string JoinColumn)> joinableResults)
+    private ParsedQueryResult? PerformInMemoryJoin(List<(ParsedQueryResult Result, string JoinColumn)> joinableResults)
     {
         if (joinableResults.Count < 2)
             return null;
@@ -646,7 +645,7 @@ public class ResultMerger : IResultMerger
 
         var mergedColumns = new List<string>(baseResult.Columns);
 
-        for (int i = 1; i < joinableResults.Count; i++)
+        for (var i = 1; i < joinableResults.Count; i++)
         {
             var otherResult = joinableResults[i].Result;
             var otherJoinColumn = joinableResults[i].JoinColumn;
@@ -665,9 +664,9 @@ public class ResultMerger : IResultMerger
             DatabaseName = "Merged (" + string.Join(" + ", joinableResults.Select(j => j.Result.DatabaseName)) + ")"
         };
 
-        int processedRows = 0;
-        int matchedRows = 0;
-        int skippedRows = 0;
+        var processedRows = 0;
+        var matchedRows = 0;
+        var skippedRows = 0;
 
         foreach (var baseRow in baseResult.Rows)
         {
@@ -679,9 +678,9 @@ public class ResultMerger : IResultMerger
             }
 
             var mergedRow = new Dictionary<string, string>(baseRow, StringComparer.OrdinalIgnoreCase);
-            bool allJoinsSuccessful = true;
+            var allJoinsSuccessful = true;
 
-            for (int i = 1; i < joinableResults.Count; i++)
+            for (var i = 1; i < joinableResults.Count; i++)
             {
                 var otherResult = joinableResults[i].Result;
                 var otherJoinColumn = joinableResults[i].JoinColumn;
@@ -711,11 +710,10 @@ public class ResultMerger : IResultMerger
                 }
             }
 
-            if (allJoinsSuccessful)
-            {
-                merged.Rows.Add(mergedRow);
-                matchedRows++;
-            }
+            if (!allJoinsSuccessful)
+                continue;
+            merged.Rows.Add(mergedRow);
+            matchedRows++;
         }
 
         _logger.LogInformation("PerformInMemoryJoin completed: Processed={Processed}, Matched={Matched}, Skipped={Skipped}, Final rows={FinalRows}",
@@ -730,9 +728,8 @@ public class ResultMerger : IResultMerger
         return merged.Rows.Count > 0 ? merged : null;
     }
 
-    private async Task<ParsedQueryResult> RetryMergeWithFilteredQueryAsync(
-        List<(ParsedQueryResult Result, string JoinColumn)> joinableResults,
-        Dictionary<string, ParsedQueryResult> allParsedResults)
+    private async Task<ParsedQueryResult?> RetryMergeWithFilteredQueryAsync(
+        List<(ParsedQueryResult Result, string JoinColumn)> joinableResults)
     {
         try
         {
@@ -741,7 +738,7 @@ public class ResultMerger : IResultMerger
                 return null;
             }
 
-            var aggregationResult = joinableResults.FirstOrDefault(j => 
+            var aggregationResult = joinableResults.FirstOrDefault(j =>
                 j.Result.Columns.Any(c => c.IndexOf("Count", StringComparison.OrdinalIgnoreCase) >= 0 ||
                                           c.IndexOf("Sum", StringComparison.OrdinalIgnoreCase) >= 0 ||
                                           c.IndexOf("Total", StringComparison.OrdinalIgnoreCase) >= 0));
@@ -750,16 +747,16 @@ public class ResultMerger : IResultMerger
             {
                 foreach (var col in j.Result.Columns)
                 {
-                    if (await IsDescriptiveColumnAsync(col, j.Result, j.Result.DatabaseId))
-                    {
-                        descriptiveResult = j.Result;
-                        break;
-                    }
+                    if (!await IsDescriptiveColumnAsync(col, j.Result, j.Result.DatabaseId))
+                        continue;
+
+                    descriptiveResult = j.Result;
+                    break;
                 }
                 if (descriptiveResult != null)
                     break;
             }
-            
+
             var descriptiveResultTuple = joinableResults.FirstOrDefault(j => j.Result == descriptiveResult);
 
             if (aggregationResult.Result == null || descriptiveResultTuple.Result == null)
@@ -773,7 +770,7 @@ public class ResultMerger : IResultMerger
             var idValues = new HashSet<string>();
             foreach (var row in aggregationResult.Result.Rows)
             {
-                if (row.TryGetValue(aggregationJoinColumn, out var value) && 
+                if (row.TryGetValue(aggregationJoinColumn, out var value) &&
                     !string.IsNullOrEmpty(value) && value != "NULL")
                 {
                     idValues.Add(value.Trim());
@@ -804,16 +801,16 @@ public class ResultMerger : IResultMerger
             {
                 if (connection?.CrossDatabaseMappings == null)
                     continue;
-                
+
                 var foundMapping = connection.CrossDatabaseMappings.FirstOrDefault(m =>
                     m.TargetDatabase.Equals(descriptiveResultTuple.Result.DatabaseName, StringComparison.OrdinalIgnoreCase) &&
                     m.TargetColumn.Equals(descriptiveJoinColumn, StringComparison.OrdinalIgnoreCase));
-                
-                if (foundMapping != null)
-                {
-                    mapping = foundMapping;
-                    break;
-                }
+
+                if (foundMapping == null)
+                    continue;
+
+                mapping = foundMapping;
+                break;
             }
 
             if (mapping == null)
@@ -822,29 +819,30 @@ public class ResultMerger : IResultMerger
                     descriptiveResultTuple.Result.DatabaseName, descriptiveJoinColumn);
                 return null;
             }
-            
+
             _logger.LogInformation("RetryMergeWithFilteredQueryAsync: Found mapping {SourceDb}.{SourceTable}.{SourceCol} → {TargetDb}.{TargetTable}.{TargetCol}",
                 mapping.SourceDatabase, mapping.SourceTable, mapping.SourceColumn,
                 mapping.TargetDatabase, mapping.TargetTable, mapping.TargetColumn);
 
             var tableName = mapping.TargetTable;
             var numericIds = idValues.Where(v => TryParseNumeric(v, out _)).ToList();
-            
+
             if (numericIds.Count == 0)
                 return null;
 
             var idList = string.Join(", ", numericIds);
-            
+
             var descriptiveColumns = new List<string>();
             foreach (var col in descriptiveResultTuple.Result.Columns)
             {
-                if (!col.Equals(descriptiveJoinColumn, StringComparison.OrdinalIgnoreCase) &&
-                    await IsDescriptiveColumnAsync(col, descriptiveResultTuple.Result, descriptiveResultTuple.Result.DatabaseId))
-                {
-                    descriptiveColumns.Add(col);
-                    if (descriptiveColumns.Count >= 5)
-                        break;
-                }
+                if (col.Equals(descriptiveJoinColumn, StringComparison.OrdinalIgnoreCase) ||
+                    !await IsDescriptiveColumnAsync(col, descriptiveResultTuple.Result,
+                        descriptiveResultTuple.Result.DatabaseId))
+                    continue;
+
+                descriptiveColumns.Add(col);
+                if (descriptiveColumns.Count >= 5)
+                    break;
             }
 
             if (descriptiveColumns.Count == 0)
@@ -857,21 +855,22 @@ public class ResultMerger : IResultMerger
 
             var selectColumns = new List<string> { descriptiveJoinColumn };
             selectColumns.AddRange(descriptiveColumns);
-            
+
             string filterQuery;
-            if (descriptiveConnection.DatabaseType == SmartRAG.Enums.DatabaseType.PostgreSQL)
+
+            switch (descriptiveConnection.DatabaseType)
             {
-                var quotedTableName = string.Join(".", tableName.Split('.').Select(p => $"\"{p}\""));
-                var quotedColumns = selectColumns.Select(c => $"\"{c}\"");
-                filterQuery = $"SELECT {string.Join(", ", quotedColumns)} FROM {quotedTableName} WHERE \"{descriptiveJoinColumn}\" IN ({idList})";
-            }
-            else if (descriptiveConnection.DatabaseType == SmartRAG.Enums.DatabaseType.SqlServer)
-            {
-                filterQuery = $"SELECT {string.Join(", ", selectColumns)} FROM {tableName} WHERE {descriptiveJoinColumn} IN ({idList})";
-            }
-            else
-            {
-                filterQuery = $"SELECT {string.Join(", ", selectColumns)} FROM {tableName} WHERE {descriptiveJoinColumn} IN ({idList})";
+                case DatabaseType.PostgreSQL:
+                {
+                    var quotedTableName = string.Join(".", tableName.Split('.').Select(p => $"\"{p}\""));
+                    var quotedColumns = selectColumns.Select(c => $"\"{c}\"");
+                    filterQuery = $"SELECT {string.Join(", ", quotedColumns)} FROM {quotedTableName} WHERE \"{descriptiveJoinColumn}\" IN ({idList})";
+                    break;
+                }
+                case DatabaseType.SqlServer:
+                default:
+                    filterQuery = $"SELECT {string.Join(", ", selectColumns)} FROM {tableName} WHERE {descriptiveJoinColumn} IN ({idList})";
+                    break;
             }
 
             _logger.LogInformation("Retrying merge with filtered query");
@@ -905,7 +904,7 @@ public class ResultMerger : IResultMerger
         }
     }
 
-    private async Task<ParsedQueryResult> TryMergeWithMappingWhenTargetMissingAsync(
+    private async Task<ParsedQueryResult?> TryMergeWithMappingWhenTargetMissingAsync(
         Dictionary<string, ParsedQueryResult> parsedResults)
     {
         try
@@ -920,10 +919,10 @@ public class ResultMerger : IResultMerger
             {
                 var result = kvp.Value;
                 var connection = connections.FirstOrDefault(c =>
-                    (c.Name ?? string.Empty).Equals(result.DatabaseName, StringComparison.OrdinalIgnoreCase));
+                    (c.Name).Equals(result.DatabaseName, StringComparison.OrdinalIgnoreCase));
                 if (connection != null)
                 {
-                    databaseNameMap[result.DatabaseId] = connection.Name ?? result.DatabaseName;
+                    databaseNameMap[result.DatabaseId] = connection.Name;
                 }
             }
 
@@ -934,7 +933,7 @@ public class ResultMerger : IResultMerger
                     continue;
 
                 var sourceConnection = connections.FirstOrDefault(c =>
-                    (c.Name ?? string.Empty).Equals(sourceDbName, StringComparison.OrdinalIgnoreCase));
+                    (c.Name).Equals(sourceDbName, StringComparison.OrdinalIgnoreCase));
                 if (sourceConnection?.CrossDatabaseMappings == null)
                     continue;
 
@@ -985,10 +984,10 @@ public class ResultMerger : IResultMerger
                     var tableName = mapping.TargetTable;
 
                     var selectColumns = new List<string> { targetJoinColumn };
-                    
-                    var testQuery = targetConnection.DatabaseType == SmartRAG.Enums.DatabaseType.PostgreSQL
+
+                    var testQuery = targetConnection.DatabaseType == DatabaseType.PostgreSQL
                         ? $"SELECT * FROM {tableName} LIMIT 1"
-                        : targetConnection.DatabaseType == SmartRAG.Enums.DatabaseType.SqlServer
+                        : targetConnection.DatabaseType == DatabaseType.SqlServer
                         ? $"SELECT TOP 1 * FROM {tableName}"
                         : $"SELECT * FROM {tableName} LIMIT 1";
 
@@ -1004,10 +1003,10 @@ public class ResultMerger : IResultMerger
                         if (testParsed != null && testParsed.Columns.Any())
                         {
                             testParsed.DatabaseName = mapping.TargetDatabase;
-                            
+
                             var descriptiveColumns = new List<string>();
                             var targetDatabaseId = await _connectionManager.GetDatabaseIdAsync(targetConnection);
-                            
+
                             foreach (var col in testParsed.Columns)
                             {
                                 if (!col.Equals(targetJoinColumn, StringComparison.OrdinalIgnoreCase) &&
@@ -1037,22 +1036,25 @@ public class ResultMerger : IResultMerger
                     {
                         _logger.LogWarning(ex, "Could not determine descriptive columns for table {Table}, using join column only", tableName);
                     }
-                    
+
                     selectColumns = selectColumns.Distinct().ToList();
 
                     string filterQuery;
-                    if (targetConnection.DatabaseType == SmartRAG.Enums.DatabaseType.PostgreSQL)
+
+                    switch (targetConnection.DatabaseType)
                     {
-                        var quotedColumns = selectColumns.Select(c => $"\"{c}\"");
-                        filterQuery = $"SELECT {string.Join(", ", quotedColumns)} FROM {tableName} WHERE \"{targetJoinColumn}\" IN ({idList}) LIMIT 100";
-                    }
-                    else if (targetConnection.DatabaseType == SmartRAG.Enums.DatabaseType.SqlServer)
-                    {
-                        filterQuery = $"SELECT TOP 100 {string.Join(", ", selectColumns)} FROM {tableName} WHERE {targetJoinColumn} IN ({idList})";
-                    }
-                    else
-                    {
-                        filterQuery = $"SELECT {string.Join(", ", selectColumns)} FROM {tableName} WHERE {targetJoinColumn} IN ({idList}) LIMIT 100";
+                        case DatabaseType.PostgreSQL:
+                        {
+                            var quotedColumns = selectColumns.Select(c => $"\"{c}\"");
+                            filterQuery = $"SELECT {string.Join(", ", quotedColumns)} FROM {tableName} WHERE \"{targetJoinColumn}\" IN ({idList}) LIMIT 100";
+                            break;
+                        }
+                        case SmartRAG.Enums.DatabaseType.SqlServer:
+                            filterQuery = $"SELECT TOP 100 {string.Join(", ", selectColumns)} FROM {tableName} WHERE {targetJoinColumn} IN ({idList})";
+                            break;
+                        default:
+                            filterQuery = $"SELECT {string.Join(", ", selectColumns)} FROM {tableName} WHERE {targetJoinColumn} IN ({idList}) LIMIT 100";
+                            break;
                     }
 
                     _logger.LogInformation("Executing filtered query for missing target database");
@@ -1078,11 +1080,12 @@ public class ResultMerger : IResultMerger
                     };
 
                     var merged = PerformInMemoryJoin(joinableResults);
-                    if (merged != null && merged.Rows.Count > 0)
-                    {
-                        _logger.LogInformation("Successfully merged results using mapping when target database was missing. Merged {RowCount} rows.", merged.Rows.Count);
-                        return merged;
-                    }
+
+                    if (merged == null || merged.Rows.Count <= 0)
+                        continue;
+                    _logger.LogInformation("Successfully merged results using mapping when target database was missing. Merged {RowCount} rows.", merged.Rows.Count);
+
+                    return merged;
                 }
             }
 
@@ -1114,7 +1117,7 @@ public class ResultMerger : IResultMerger
         return false;
     }
 
-    private string FormatParsedResult(ParsedQueryResult result)
+    private static string FormatParsedResult(ParsedQueryResult result)
     {
         var sb = new StringBuilder();
 
@@ -1137,7 +1140,7 @@ public class ResultMerger : IResultMerger
         return sb.ToString();
     }
 
-    private void AppendSeparateResults(StringBuilder sb, Dictionary<string, ParsedQueryResult> parsedResults)
+    private static void AppendSeparateResults(StringBuilder sb, Dictionary<string, ParsedQueryResult> parsedResults)
     {
         foreach (var kvp in parsedResults.OrderBy(x => x.Value.DatabaseName))
         {
@@ -1150,7 +1153,7 @@ public class ResultMerger : IResultMerger
         }
     }
 
-    private void AppendSeparateResultsWithJoinHints(StringBuilder sb, Dictionary<string, ParsedQueryResult> parsedResults)
+    private static void AppendSeparateResultsWithJoinHints(StringBuilder sb, Dictionary<string, ParsedQueryResult> parsedResults)
     {
         // Find common ID columns that could be used for joining
         var allIdColumns = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
@@ -1160,14 +1163,14 @@ public class ResultMerger : IResultMerger
             var result = kvp.Value;
             foreach (var col in result.Columns)
             {
-                if (col.EndsWith("id", StringComparison.OrdinalIgnoreCase))
+                if (!col.EndsWith("id", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
+                if (!allIdColumns.ContainsKey(col))
                 {
-                    if (!allIdColumns.ContainsKey(col))
-                    {
-                        allIdColumns[col] = new HashSet<string>();
-                    }
-                    allIdColumns[col].Add(result.DatabaseName);
+                    allIdColumns[col] = new HashSet<string>();
                 }
+                allIdColumns[col].Add(result.DatabaseName);
             }
         }
 
@@ -1186,19 +1189,19 @@ public class ResultMerger : IResultMerger
             foreach (var kvp in parsedResults)
             {
                 var result = kvp.Value;
-                if (result.Columns.Contains(idCol, StringComparer.OrdinalIgnoreCase))
+                if (!result.Columns.Contains(idCol, StringComparer.OrdinalIgnoreCase))
+                    continue;
+
+                foreach (var row in result.Rows)
                 {
-                    foreach (var row in result.Rows)
+                    if (!row.TryGetValue(idCol, out var idValue) || string.IsNullOrEmpty(idValue) ||
+                        idValue == "NULL") continue;
+
+                    if (!idValueMap[idCol].ContainsKey(idValue))
                     {
-                        if (row.TryGetValue(idCol, out var idValue) && !string.IsNullOrEmpty(idValue) && idValue != "NULL")
-                        {
-                            if (!idValueMap[idCol].ContainsKey(idValue))
-                            {
-                                idValueMap[idCol][idValue] = new List<string>();
-                            }
-                            idValueMap[idCol][idValue].Add(result.DatabaseName);
-                        }
+                        idValueMap[idCol][idValue] = new List<string>();
                     }
+                    idValueMap[idCol][idValue].Add(result.DatabaseName);
                 }
             }
         }
@@ -1209,14 +1212,13 @@ public class ResultMerger : IResultMerger
         {
             foreach (var kvp in idValueMap[idCol])
             {
-                if (kvp.Value.Count >= 2) // ID appears in at least 2 databases
+                if (kvp.Value.Count < 2)
+                    continue; // ID appears in at least 2 databases
+                if (!matchingIds.ContainsKey(idCol))
                 {
-                    if (!matchingIds.ContainsKey(idCol))
-                    {
-                        matchingIds[idCol] = new List<string>();
-                    }
-                    matchingIds[idCol].Add(kvp.Key);
+                    matchingIds[idCol] = new List<string>();
                 }
+                matchingIds[idCol].Add(kvp.Key);
             }
         }
 
@@ -1260,52 +1262,52 @@ public class ResultMerger : IResultMerger
             sb.AppendLine();
         }
 
-        if (commonIdColumns.Any())
+        if (!commonIdColumns.Any())
+            return;
+
+        sb.AppendLine("═══════════════════════════════════════════════════════════════");
+        sb.AppendLine("🔗 CROSS-DATABASE JOIN INSTRUCTIONS:");
+        sb.AppendLine("═══════════════════════════════════════════════════════════════");
+        sb.AppendLine($"Common ID columns found: {string.Join(", ", commonIdColumns)}");
+        sb.AppendLine();
+
+        // Show matching ID values if found
+        if (matchingIds.Any())
         {
-            sb.AppendLine("═══════════════════════════════════════════════════════════════");
-            sb.AppendLine("🔗 CROSS-DATABASE JOIN INSTRUCTIONS:");
-            sb.AppendLine("═══════════════════════════════════════════════════════════════");
-            sb.AppendLine($"Common ID columns found: {string.Join(", ", commonIdColumns)}");
-            sb.AppendLine();
-
-            // Show matching ID values if found
-            if (matchingIds.Any())
+            sb.AppendLine("✅ MATCHING ID VALUES FOUND (use these for joining):");
+            foreach (var idCol in commonIdColumns)
             {
-                sb.AppendLine("✅ MATCHING ID VALUES FOUND (use these for joining):");
-                foreach (var idCol in commonIdColumns)
+                if (matchingIds.ContainsKey(idCol) && matchingIds[idCol].Any())
                 {
-                    if (matchingIds.ContainsKey(idCol) && matchingIds[idCol].Any())
-                    {
-                        sb.AppendLine($"   {idCol}: {string.Join(", ", matchingIds[idCol])}");
-                    }
+                    sb.AppendLine($"   {idCol}: {string.Join(", ", matchingIds[idCol])}");
                 }
-                sb.AppendLine();
-                sb.AppendLine("CRITICAL: Use the ID values listed above to match rows across databases.");
-                sb.AppendLine("For example, if PrimaryKeyColumn=ValueX appears in both databases, combine those rows.");
             }
-            else
-            {
-                sb.AppendLine("⚠️ WARNING: No matching ID values found across databases.");
-                sb.AppendLine("This means the results cannot be automatically joined.");
-                sb.AppendLine();
-                sb.AppendLine("POSSIBLE REASONS:");
-                sb.AppendLine("1. The queries returned different ID values (e.g., different entities)");
-                sb.AppendLine("2. One query needs to be filtered using the ID from the other query");
-                sb.AppendLine("3. The queries are not related (wrong database selection)");
-                sb.AppendLine();
-                sb.AppendLine("SOLUTION:");
-                sb.AppendLine("Look at the ID values in each result above.");
-                sb.AppendLine("If one result has an ID (e.g., PrimaryKeyColumn=ValueX), use that ID to filter the other database.");
-                sb.AppendLine("For example: If Database1 has PrimaryKeyColumn=ValueX, Database2 should query WHERE PrimaryKeyColumn=ValueX");
-            }
-
             sb.AppendLine();
-            sb.AppendLine("To answer the question correctly:");
-            sb.AppendLine("1. Find matching ID values across different database results");
-            sb.AppendLine("2. Combine information from rows that have the same ID value");
-            sb.AppendLine("3. Use the combined information to provide the final answer");
-            sb.AppendLine();
+            sb.AppendLine("CRITICAL: Use the ID values listed above to match rows across databases.");
+            sb.AppendLine("For example, if PrimaryKeyColumn=ValueX appears in both databases, combine those rows.");
         }
+        else
+        {
+            sb.AppendLine("⚠️ WARNING: No matching ID values found across databases.");
+            sb.AppendLine("This means the results cannot be automatically joined.");
+            sb.AppendLine();
+            sb.AppendLine("POSSIBLE REASONS:");
+            sb.AppendLine("1. The queries returned different ID values (e.g., different entities)");
+            sb.AppendLine("2. One query needs to be filtered using the ID from the other query");
+            sb.AppendLine("3. The queries are not related (wrong database selection)");
+            sb.AppendLine();
+            sb.AppendLine("SOLUTION:");
+            sb.AppendLine("Look at the ID values in each result above.");
+            sb.AppendLine("If one result has an ID (e.g., PrimaryKeyColumn=ValueX), use that ID to filter the other database.");
+            sb.AppendLine("For example: If Database1 has PrimaryKeyColumn=ValueX, Database2 should query WHERE PrimaryKeyColumn=ValueX");
+        }
+
+        sb.AppendLine();
+        sb.AppendLine("To answer the question correctly:");
+        sb.AppendLine("1. Find matching ID values across different database results");
+        sb.AppendLine("2. Combine information from rows that have the same ID value");
+        sb.AppendLine("3. Use the combined information to provide the final answer");
+        sb.AppendLine();
     }
 
     /// <summary>
@@ -1314,44 +1316,40 @@ public class ResultMerger : IResultMerger
     private async Task<bool> IsDescriptiveColumnAsync(string columnName, ParsedQueryResult result, string databaseId)
     {
         var columnNameLower = columnName.ToLowerInvariant();
-        
+
         if (NonDescriptivePatterns.Any(pattern => columnNameLower.Contains(pattern.ToLowerInvariant())))
         {
             return false;
         }
-        
+
         try
         {
             var schema = await _schemaAnalyzer.GetSchemaAsync(databaseId);
-            if (schema != null)
+
+            foreach (var table in schema.Tables)
             {
-                foreach (var table in schema.Tables)
+                var column = table.Columns.FirstOrDefault(c =>
+                    c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase));
+
+                if (column == null)
+                    continue;
+
+                var dataTypeLower = column.DataType.ToLowerInvariant();
+
+                if (column.IsPrimaryKey || column.IsForeignKey)
                 {
-                    var column = table.Columns.FirstOrDefault(c => 
-                        c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase));
-                    
-                    if (column != null)
-                    {
-                        var dataTypeLower = column.DataType.ToLowerInvariant();
-                        
-                        if (column.IsPrimaryKey || column.IsForeignKey)
-                        {
-                            return false;
-                        }
-                        
-                        var textTypes = new[] { "varchar", "nvarchar", "char", "nchar", "text", "ntext", "string" };
-                        if (textTypes.Any(type => dataTypeLower.Contains(type)))
-                        {
-                            if (column.MaxLength.HasValue && column.MaxLength.Value > 10)
-                            {
-                                return true;
-                            }
-                            if (!column.MaxLength.HasValue)
-                            {
-                                return true;
-                            }
-                        }
-                    }
+                    return false;
+                }
+
+                var textTypes = new[] { "varchar", "nvarchar", "char", "nchar", "text", "ntext", "string" };
+                if (!textTypes.Any(type => dataTypeLower.Contains(type)))
+                    continue;
+
+                switch (column.MaxLength)
+                {
+                    case > 10:
+                    case null:
+                        return true;
                 }
             }
         }
@@ -1359,33 +1357,28 @@ public class ResultMerger : IResultMerger
         {
             _logger.LogWarning(ex, "Error checking schema for column {ColumnName} in database {DatabaseId}", columnName, databaseId);
         }
-        
-        if (DescriptiveColumnPatterns.Any(pattern => 
+
+        if (DescriptiveColumnPatterns.Any(pattern =>
             columnNameLower.Contains(pattern.ToLowerInvariant())))
         {
             return true;
         }
-        
-        if (result.Rows.Count > 0)
-        {
-            var sampleValues = result.Rows.Take(10)
-                .Where(row => row.TryGetValue(columnName, out var val) && !string.IsNullOrEmpty(val) && val != "NULL")
-                .Select(row => row[columnName])
-                .ToList();
-            
-            if (sampleValues.Count > 0)
-            {
-                var nonNumericCount = sampleValues.Count(v => !TryParseNumeric(v, out _));
-                if (nonNumericCount > sampleValues.Count * 0.7)
-                {
-                    return true;
-                }
-            }
-        }
-        
-        return false;
+
+        if (result.Rows.Count <= 0)
+            return false;
+
+        var sampleValues = result.Rows.Take(10)
+            .Where(row => row.TryGetValue(columnName, out var val) && !string.IsNullOrEmpty(val) && val != "NULL")
+            .Select(row => row[columnName])
+            .ToList();
+
+        if (sampleValues.Count <= 0)
+            return false;
+
+        var nonNumericCount = sampleValues.Count(v => !TryParseNumeric(v, out _));
+        return nonNumericCount > sampleValues.Count * 0.7;
     }
-    
+
 
     /// <summary>
     /// Attempts to parse a string value as a numeric value for comparison
@@ -1398,10 +1391,7 @@ public class ResultMerger : IResultMerger
 
         // Remove whitespace and try parsing
         var trimmed = value.Trim();
-        if (double.TryParse(trimmed, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out numericValue))
-            return true;
-
-        return false;
+        return double.TryParse(trimmed, NumberStyles.Any, CultureInfo.InvariantCulture, out numericValue);
     }
 
     private static List<string> ExtractTableNames(string query)
@@ -1436,35 +1426,35 @@ public class ResultMerger : IResultMerger
 
         var result = answer;
 
-        result = System.Text.RegularExpressions.Regex.Replace(
+        result = Regex.Replace(
             result,
             @"```sql\s*[\s\S]*?```",
             string.Empty,
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            RegexOptions.IgnoreCase);
 
-        result = System.Text.RegularExpressions.Regex.Replace(
+        result = Regex.Replace(
             result,
             @"```\s*[\s\S]*?```",
             string.Empty,
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            RegexOptions.IgnoreCase);
 
-        result = System.Text.RegularExpressions.Regex.Replace(
+        result = Regex.Replace(
             result,
             @"SELECT\s+[\w\s,\.\(\)\*]+\s+FROM\s+[\w\s,\.\(\)]+(?:\s+WHERE\s+[\w\s,\.\(\)=<>'""]+)?(?:\s+GROUP\s+BY\s+[\w\s,\.\(\)]+)?(?:\s+ORDER\s+BY\s+[\w\s,\.\(\)]+)?(?:\s+LIMIT\s+\d+)?;?",
             string.Empty,
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Multiline);
+            RegexOptions.IgnoreCase | RegexOptions.Multiline);
 
-        result = System.Text.RegularExpressions.Regex.Replace(
+        result = Regex.Replace(
             result,
             @"Please\s+.*?database\s+.*?run:?",
             string.Empty,
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            RegexOptions.IgnoreCase);
 
-        result = System.Text.RegularExpressions.Regex.Replace(
+        result = Regex.Replace(
             result,
             @"This\s+query\s+.*?will\s+show\.?",
             string.Empty,
-            System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            RegexOptions.IgnoreCase);
 
         return result.Trim();
     }
@@ -1475,17 +1465,17 @@ public class ResultMerger : IResultMerger
         builder.Append($"Database: {databaseName}");
         builder.Append($" | Rows: {rowCount}");
 
-        if (!string.IsNullOrWhiteSpace(query))
-        {
-            var sanitizedQuery = Regex.Replace(query, @"\s+", " ").Trim();
-            if (sanitizedQuery.Length > 160)
-            {
-                sanitizedQuery = sanitizedQuery[..160] + "...";
-            }
+        if (string.IsNullOrWhiteSpace(query))
+            return builder.ToString();
 
-            builder.Append(" | Query: ");
-            builder.Append(sanitizedQuery);
+        var sanitizedQuery = Regex.Replace(query, @"\s+", " ").Trim();
+        if (sanitizedQuery.Length > 160)
+        {
+            sanitizedQuery = sanitizedQuery[..160] + "...";
         }
+
+        builder.Append(" | Query: ");
+        builder.Append(sanitizedQuery);
 
         return builder.ToString();
     }
@@ -1494,8 +1484,8 @@ public class ResultMerger : IResultMerger
     {
         public string DatabaseName { get; set; }
         public string DatabaseId { get; set; }
-        public List<string> Columns { get; set; } = new List<string>();
-        public List<Dictionary<string, string>> Rows { get; set; } = new List<Dictionary<string, string>>();
+        public List<string> Columns { get; set; } = new();
+        public List<Dictionary<string, string>> Rows { get; set; } = new();
     }
 }
 

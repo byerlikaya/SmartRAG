@@ -16,10 +16,10 @@ public class WordFileParser : IFileParser
     public bool CanParse(string fileName, string contentType)
     {
         return SupportedExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) ||
-               SupportedContentTypes.Any(ct => contentType.Contains(ct));
+               SupportedContentTypes.Any(contentType.Contains);
     }
 
-    public async Task<FileParserResult> ParseAsync(Stream fileStream, string fileName, string language = null)
+    public async Task<FileParserResult> ParseAsync(Stream fileStream, string fileName, string? language = null)
     {
         try
         {
@@ -56,23 +56,22 @@ public class WordFileParser : IFileParser
     {
         foreach (var child in element.Elements())
         {
-            if (child is DocumentFormat.OpenXml.Wordprocessing.Text text)
+            switch (child)
             {
-                textBuilder.Append(text.Text);
-            }
-            else if (child is DocumentFormat.OpenXml.Wordprocessing.Paragraph paragraph)
-            {
-                ExtractTextFromElement(paragraph, textBuilder);
-                textBuilder.AppendLine();
-            }
-            else if (child is DocumentFormat.OpenXml.Wordprocessing.Table table)
-            {
-                ExtractTextFromElement(table, textBuilder);
-                textBuilder.AppendLine();
-            }
-            else
-            {
-                ExtractTextFromElement(child, textBuilder);
+                case DocumentFormat.OpenXml.Wordprocessing.Text text:
+                    textBuilder.Append(text.Text);
+                    break;
+                case DocumentFormat.OpenXml.Wordprocessing.Paragraph paragraph:
+                    ExtractTextFromElement(paragraph, textBuilder);
+                    textBuilder.AppendLine();
+                    break;
+                case DocumentFormat.OpenXml.Wordprocessing.Table table:
+                    ExtractTextFromElement(table, textBuilder);
+                    textBuilder.AppendLine();
+                    break;
+                default:
+                    ExtractTextFromElement(child, textBuilder);
+                    break;
             }
         }
     }

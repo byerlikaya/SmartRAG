@@ -12,15 +12,11 @@ public class ChunkPrioritizerService : IChunkPrioritizerService
     private const int MinSingleWordFileNameLength = 4;
     private const int FileNameSingleWordBonusMultiplier = 5;
 
-    private readonly ILogger<ChunkPrioritizerService> _logger;
-
     /// <summary>
     /// Initializes a new instance of the ChunkPrioritizerService
     /// </summary>
-    /// <param name="logger">Logger instance for this service</param>
-    public ChunkPrioritizerService(ILogger<ChunkPrioritizerService> logger)
+    public ChunkPrioritizerService()
     {
-        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
     /// <summary>
@@ -28,7 +24,7 @@ public class ChunkPrioritizerService : IChunkPrioritizerService
     /// Uses exact and prefix matching for morphological variants.
     /// When phraseWords is provided, uses it for filename phrase matching (includes short tokens filtered by TokenizeQuery).
     /// </summary>
-    public List<DocumentChunk> PrioritizeChunksByQueryWords(List<DocumentChunk> chunks, List<string> queryWords, List<string>? phraseWords = null)
+    public List<DocumentChunk> PrioritizeChunksByQueryWords(List<DocumentChunk> chunks, List<string>? queryWords, List<string>? phraseWords = null)
     {
         if (chunks == null)
         {
@@ -40,16 +36,16 @@ public class ChunkPrioritizerService : IChunkPrioritizerService
             return chunks.OrderByDescending(c => c.RelevanceScore ?? 0.0).ToList();
         }
 
-        var wordsForPhrases = (phraseWords != null && phraseWords.Count >= 2) ? phraseWords : queryWords;
+        var wordsForPhrases = phraseWords is { Count: >= 2 } ? phraseWords : queryWords;
         var fileNamePhrases = GetTwoWordPhrases(wordsForPhrases);
-        var wordsForFileNameMatch = (phraseWords != null && phraseWords.Count > 0) ? phraseWords : queryWords;
+        var wordsForFileNameMatch = phraseWords is { Count: > 0 } ? phraseWords : queryWords;
 
         return chunks
             .OrderByDescending(c => c.RelevanceScore ?? 0.0)  // Primary: Preserve RRF/keyword fallback scores
             .ThenByDescending(c =>
             {
-                var contentLower = c.Content?.ToLowerInvariant() ?? string.Empty;
-                var fileNameLower = c.FileName?.ToLowerInvariant() ?? string.Empty;
+                var contentLower = c.Content.ToLowerInvariant();
+                var fileNameLower = c.FileName.ToLowerInvariant();
                 var searchableText = string.Concat(contentLower, " ", fileNameLower);
 
                 var wordMatchCount = queryWords.Count(token =>
@@ -77,7 +73,7 @@ public class ChunkPrioritizerService : IChunkPrioritizerService
             return true;
         for (var len = MinPrefixLength; len < token.Length; len++)
         {
-            var prefix = token.Substring(0, len);
+            var prefix = token[..len];
             if (text.IndexOf(prefix, StringComparison.OrdinalIgnoreCase) >= 0)
                 return true;
         }
@@ -87,7 +83,7 @@ public class ChunkPrioritizerService : IChunkPrioritizerService
     private static List<string> GetTwoWordPhrases(List<string> queryWords)
     {
         var phrases = new List<string>();
-        for (int i = 0; i < queryWords.Count - 1; i++)
+        for (var i = 0; i < queryWords.Count - 1; i++)
         {
             var w1 = queryWords[i];
             var w2 = queryWords[i + 1];
@@ -130,12 +126,7 @@ public class ChunkPrioritizerService : IChunkPrioritizerService
         }
 
         var chunk0InList = chunks.Any(c => c.Id == chunk0.Id);
-        if (chunk0InList)
-        {
-            return chunks;
-        }
-
-        return new List<DocumentChunk> { chunk0 }.Concat(chunks).ToList();
+        return chunk0InList ? chunks : new List<DocumentChunk> { chunk0 }.Concat(chunks).ToList();
     }
 }
 
