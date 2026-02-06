@@ -22,13 +22,12 @@ public static class SmartRagDashboardApplicationBuilderExtensions
             throw new ArgumentNullException(nameof(app));
         }
 
-        if (!string.IsNullOrWhiteSpace(path))
+        if (string.IsNullOrWhiteSpace(path))
+            return app.UseMiddleware<SmartRagDashboardMiddleware>();
+
+        if (app.ApplicationServices.GetService(typeof(SmartRagDashboardOptions)) is SmartRagDashboardOptions options)
         {
-            var options = app.ApplicationServices.GetService(typeof(SmartRagDashboardOptions)) as SmartRagDashboardOptions;
-            if (options != null)
-            {
-                options.Path = path;
-            }
+            options.Path = path;
         }
 
         return app.UseMiddleware<SmartRagDashboardMiddleware>();
@@ -54,11 +53,11 @@ public static class SmartRagDashboardApplicationBuilderExtensions
             throw new ArgumentNullException(nameof(app));
         }
 
-        SmartRagDashboardApplicationBuilderExtensions.UseSmartRagDashboard((IApplicationBuilder)app, path);
+        ((IApplicationBuilder)app).UseSmartRagDashboard(path);
 
         if (mapApiEndpoints)
         {
-            SmartRagDashboardApplicationBuilderExtensions.MapSmartRagDashboard(app, path);
+            app.MapSmartRagDashboard(path);
         }
 
         return app;

@@ -25,10 +25,7 @@ public class InitializationService(
         var enableAutoSchemaAnalysis = _configuration.GetValue<bool>("SmartRAG:EnableAutoSchemaAnalysis", false);
 
         if (!enableAutoSchemaAnalysis)
-        {
-            await Task.CompletedTask;
             return;
-        }
 
         System.Console.Write("📁 Creating test databases... ");
         System.Console.WriteLine();

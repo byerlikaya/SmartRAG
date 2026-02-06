@@ -22,7 +22,7 @@ namespace SmartRAG.Extensions;
 public static class ServiceCollectionExtensions
 {
     public static IServiceCollection AddSmartRag(this IServiceCollection services, IConfiguration configuration)
-        => services.AddSmartRag(configuration, options => { });
+        => services.AddSmartRag(configuration, _ => { });
 
     /// <summary>
     /// Adds SmartRag services with custom configuration.
@@ -111,7 +111,6 @@ public static class ServiceCollectionExtensions
         var featuresSection = configuration.GetSection("SmartRAG:Features");
         if (featuresSection.Exists())
         {
-            options.Features ??= new FeatureToggles();
             featuresSection.Bind(options.Features);
         }
 
@@ -125,7 +124,7 @@ public static class ServiceCollectionExtensions
         services.AddHttpClient();
         services.AddSingleton<IAIProviderFactory, AIProviderFactory>();
 
-        services.AddSingleton<IAIProvider>(sp =>
+        services.AddSingleton(sp =>
         {
             var factory = sp.GetRequiredService<IAIProviderFactory>();
             var options = sp.GetRequiredService<IOptions<SmartRagOptions>>().Value;
@@ -139,7 +138,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IConversationManagerService, ConversationManagerService>();
         services.AddScoped<IPromptBuilderService>(sp =>
         {
-            var conversationManagerLazy = new Lazy<IConversationManagerService>(() => sp.GetRequiredService<IConversationManagerService>());
+            var conversationManagerLazy = new Lazy<IConversationManagerService>(sp.GetRequiredService<IConversationManagerService>);
             var options = sp.GetRequiredService<IOptions<SmartRagOptions>>();
             return new PromptBuilderService(conversationManagerLazy, options);
         });
@@ -174,7 +173,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IDocumentSearchStrategyService, DocumentSearchStrategyService>();
         services.AddScoped<IDocumentParserService, DocumentParserService>();
         services.AddScoped<IDocumentSearchService, DocumentSearchService>();
-        services.AddScoped<IRagAnswerGeneratorService>(sp => sp.GetRequiredService<IDocumentSearchService>() as IRagAnswerGeneratorService ?? throw new InvalidOperationException("DocumentSearchService must implement IRagAnswerGeneratorService"));
+        services.AddScoped(sp => sp.GetRequiredService<IDocumentSearchService>() as IRagAnswerGeneratorService ?? throw new InvalidOperationException("DocumentSearchService must implement IRagAnswerGeneratorService"));
     }
 
     private static void RegisterDatabaseServices(IServiceCollection services)
@@ -212,12 +211,12 @@ public static class ServiceCollectionExtensions
             services.AddScoped<IFileParser, ImageFileParser>();
         }
 
-        if (options.Features.EnableAudioSearch)
-        {
-            services.AddScoped<IFileParser, AudioFileParser>();
-            services.AddScoped<AudioConversionService>();
-            services.AddScoped<IAudioParserService, WhisperAudioParserService>();
-        }
+        if (!options.Features.EnableAudioSearch)
+            return;
+
+        services.AddScoped<IFileParser, AudioFileParser>();
+        services.AddScoped<AudioConversionService>();
+        services.AddScoped<IAudioParserService, WhisperAudioParserService>();
     }
 
     private static void RegisterFeatureBasedServices(IServiceCollection services, SmartRagOptions options)
@@ -237,14 +236,12 @@ public static class ServiceCollectionExtensions
     {
         ConfigureStorageProvider(services, configuration);
 
-        services.AddScoped<IDocumentRepository>(sp => sp.GetRequiredService<IStorageFactory>().GetCurrentRepository(sp));
+        services.AddScoped(sp => sp.GetRequiredService<IStorageFactory>().GetCurrentRepository(sp));
         services.AddSingleton(sp => sp.GetRequiredService<IStorageFactory>().GetCurrentConversationRepository());
     }
 
     private static void RegisterStartupServices(IServiceCollection services, SmartRagOptions options)
     {
-        options.Features ??= new FeatureToggles();
-
         var enableMcp = options.Features.EnableMcpSearch;
         var enableFileWatcher = options.Features.EnableFileWatcher;
 
@@ -268,7 +265,7 @@ public static class ServiceCollectionExtensions
     /// For console applications: Automatically detects and starts hosted services (MCP client, file watcher).
     /// For Web API with IHost: Automatic startup not needed - IHost manages lifecycle.
     /// </summary>
-    public static IServiceProvider BuildServiceProviderWithSmartRag(this IServiceCollection services, bool validateScopes = false)
+    private static IServiceProvider BuildServiceProviderWithSmartRag(this IServiceCollection services, bool validateScopes = false)
     {
         var serviceProvider = services.BuildServiceProvider(validateScopes);
 

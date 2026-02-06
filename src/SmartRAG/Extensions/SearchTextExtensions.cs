@@ -7,8 +7,8 @@ namespace SmartRAG.Extensions;
 /// </summary>
 public static class SearchTextExtensions
 {
-    private static readonly Regex NonWordRegex = new Regex(@"[^\p{L}\p{Nd}\s]", RegexOptions.Compiled);
-    private static readonly Regex MultiSpaceRegex = new Regex(@"\s+", RegexOptions.Compiled);
+    private static readonly Regex NonWordRegex = new(@"[^\p{L}\p{Nd}\s]", RegexOptions.Compiled);
+    private static readonly Regex MultiSpaceRegex = new(@"\s+", RegexOptions.Compiled);
 
     /// <summary>
     /// Culture-agnostic normalization for international text search
@@ -34,7 +34,7 @@ public static class SearchTextExtensions
     /// characters with diacritics match their base forms (e.g. e + acute -> e).
     /// Works for all scripts and languages without language-specific mappings.
     /// </summary>
-    public static string NormalizeForSearchMatch(this string input)
+    private static string NormalizeForSearchMatch(this string input)
     {
         if (string.IsNullOrWhiteSpace(input))
             return string.Empty;
@@ -80,13 +80,13 @@ public static class SearchTextExtensions
     public static List<string> GetSearchTermVariants(this string term, int minVariantLength = 4)
     {
         if (string.IsNullOrWhiteSpace(term) || term.Length < minVariantLength)
-            return new List<string> { term ?? string.Empty };
+            return new List<string> { term };
 
         var variants = new List<string> { term };
         if (term.Length >= minVariantLength + 1)
-            variants.Add(term.Substring(0, term.Length - 1));
+            variants.Add(term[..^1]);
         if (term.Length >= minVariantLength + 2)
-            variants.Add(term.Substring(0, term.Length - 2));
+            variants.Add(term[..^2]);
 
         return variants.Distinct().Where(v => v.Length >= minVariantLength).ToList();
     }

@@ -13,20 +13,17 @@ public class StorageFactory : IStorageFactory
     private readonly SmartRagOptions _options;
     private readonly ILoggerFactory _loggerFactory;
     private readonly IAIProvider _aiProvider;
-    private readonly IServiceProvider _serviceProvider;
 
     public StorageFactory(
         IConfiguration configuration,
         IOptions<SmartRagOptions> options,
         ILoggerFactory loggerFactory,
-        IAIProvider aiProvider,
-        IServiceProvider serviceProvider)
+        IAIProvider aiProvider)
     {
         _configuration = configuration;
         _options = options.Value;
         _loggerFactory = loggerFactory;
         _aiProvider = aiProvider;
-        _serviceProvider = serviceProvider;
 
         if (Enum.IsDefined(typeof(StorageProvider), _options.StorageProvider))
         {
@@ -36,26 +33,25 @@ public class StorageFactory : IStorageFactory
         {
             var providerString = _configuration["Storage:Provider"] ?? "InMemory";
 
-            _currentProvider = Enum.TryParse<StorageProvider>(providerString, true, out var provider) ? 
-                provider : 
+            _currentProvider = Enum.TryParse<StorageProvider>(providerString, true, out var provider) ?
+                provider :
                 StorageProvider.InMemory;
         }
     }
 
     private IDocumentRepository CreateRepository(StorageConfig config, IServiceProvider scope)
     {
-        var resolver = scope ?? _serviceProvider;
         switch (config.Provider)
         {
             case StorageProvider.InMemory:
                 return new InMemoryDocumentRepository(config.InMemory, _loggerFactory.CreateLogger<InMemoryDocumentRepository>());
             case StorageProvider.Redis:
-                var aiConfigService = resolver.GetRequiredService<IAIConfigurationService>();
+                var aiConfigService = scope.GetRequiredService<IAIConfigurationService>();
                 return new RedisDocumentRepository(Options.Create(config.Redis), _loggerFactory.CreateLogger<RedisDocumentRepository>(), _aiProvider, aiConfigService);
             case StorageProvider.Qdrant:
                 var collectionManager = new QdrantCollectionManager(Options.Create(config.Qdrant), _loggerFactory.CreateLogger<QdrantCollectionManager>());
                 var embeddingService = new QdrantEmbeddingService(Options.Create(config.Qdrant), _loggerFactory.CreateLogger<QdrantEmbeddingService>());
-                var aiService = resolver.GetRequiredService<IAIService>();
+                var aiService = scope.GetRequiredService<IAIService>();
                 var searchService = new QdrantSearchService(Options.Create(config.Qdrant), _loggerFactory.CreateLogger<QdrantSearchService>());
                 return new QdrantDocumentRepository(Options.Create(config.Qdrant), _loggerFactory.CreateLogger<QdrantDocumentRepository>(), collectionManager, embeddingService, aiService, searchService);
             default:
@@ -83,9 +79,9 @@ public class StorageFactory : IStorageFactory
         return config;
     }
 
-    public IDocumentRepository GetCurrentRepository(IServiceProvider scopedProvider) 
-        => scopedProvider == null 
-            ? throw new ArgumentNullException(nameof(scopedProvider)) 
+    public IDocumentRepository GetCurrentRepository(IServiceProvider scopedProvider)
+        => scopedProvider == null
+            ? throw new ArgumentNullException(nameof(scopedProvider))
             : CreateRepository(_currentProvider, scopedProvider);
 
     private IConversationRepository CreateConversationRepository(ConversationStorageProvider provider)
@@ -114,9 +110,9 @@ public class StorageFactory : IStorageFactory
 
     public IConversationRepository GetCurrentConversationRepository()
     {
-        if (_currentConversationRepository != null) 
+        if (_currentConversationRepository != null)
             return _currentConversationRepository;
-        
+
         var conversationProvider = _options.ConversationStorageProvider ?? ConversationStorageProvider.InMemory;
         _currentConversationRepository = CreateConversationRepository(conversationProvider);
         return _currentConversationRepository;

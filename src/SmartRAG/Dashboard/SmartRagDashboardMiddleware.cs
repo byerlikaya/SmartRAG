@@ -106,7 +106,7 @@ public sealed class SmartRagDashboardMiddleware
 
     private async Task ServeIndexHtmlAsync(HttpContext context)
     {
-        const string Placeholder = "{{BASE_PATH}}";
+        const string placeholder = "{{BASE_PATH}}";
         var fileInfo = _embeddedFileProvider.GetFileInfo("index.html");
         if (!fileInfo.Exists)
         {
@@ -115,7 +115,7 @@ public sealed class SmartRagDashboardMiddleware
         }
 
         var basePath = _options.Path.HasValue ? _options.Path.Value : "/smartrag";
-        if (!basePath.EndsWith("/", StringComparison.Ordinal))
+        if (!basePath!.EndsWith("/", StringComparison.Ordinal))
         {
             basePath += "/";
         }
@@ -123,7 +123,7 @@ public sealed class SmartRagDashboardMiddleware
         await using var stream = fileInfo.CreateReadStream();
         using var reader = new StreamReader(stream, Encoding.UTF8);
         var html = await reader.ReadToEndAsync().ConfigureAwait(false);
-        html = html.Replace(Placeholder, basePath);
+        html = html.Replace(placeholder, basePath);
 
         context.Response.StatusCode = StatusCodes.Status200OK;
         context.Response.ContentType = "text/html; charset=utf-8";

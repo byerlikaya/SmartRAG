@@ -43,8 +43,8 @@ public static class DashboardEndpointRouteBuilderExtensions
             {
                 var opts = options.Value;
                 var aiProviderConfig = aiConfig.GetAIProviderConfig();
-                var features = opts.Features ?? new FeatureToggles();
-                var whisper = opts.WhisperConfig ?? new WhisperConfig();
+                var features = opts.Features;
+                var whisper = opts.WhisperConfig;
 
                 var response = new SettingsResponse
                 {
@@ -75,12 +75,12 @@ public static class DashboardEndpointRouteBuilderExtensions
                         RetryDelayMs = opts.RetryDelayMs,
                         RetryPolicy = opts.RetryPolicy.ToString(),
                         EnableFallbackProviders = opts.EnableFallbackProviders,
-                        FallbackProviders = opts.FallbackProviders?.Select(p => p.ToString()).ToList() ?? new List<string>()
+                        FallbackProviders = opts.FallbackProviders.Select(p => p.ToString()).ToList()
                     },
                     Whisper = new SettingsWhisper
                     {
-                        ModelPath = whisper.ModelPath ?? string.Empty,
-                        DefaultLanguage = whisper.DefaultLanguage ?? "auto",
+                        ModelPath = whisper.ModelPath,
+                        DefaultLanguage = whisper.DefaultLanguage,
                         MinConfidenceThreshold = whisper.MinConfidenceThreshold,
                         IncludeWordTimestamps = false,
                         MaxThreads = whisper.MaxThreads
@@ -93,7 +93,7 @@ public static class DashboardEndpointRouteBuilderExtensions
                         Temperature = aiProviderConfig?.Temperature ?? 0.3,
                         Endpoint = aiProviderConfig?.Endpoint ?? string.Empty
                     },
-                    McpServers = (opts.McpServers ?? new List<McpServerConfig>())
+                    McpServers = opts.McpServers
                         .Select(s => new SettingsMcpServer
                         {
                             ServerId = s.ServerId,
@@ -102,20 +102,20 @@ public static class DashboardEndpointRouteBuilderExtensions
                             TimeoutSeconds = s.TimeoutSeconds
                         })
                         .ToList(),
-                    WatchedFolders = (opts.WatchedFolders ?? new List<WatchedFolderConfig>())
+                    WatchedFolders = opts.WatchedFolders
                         .Select(w => new SettingsWatchedFolder
                         {
                             FolderPath = w.FolderPath,
-                            AllowedExtensions = w.AllowedExtensions ?? new List<string>(),
+                            AllowedExtensions = w.AllowedExtensions,
                             IncludeSubdirectories = w.IncludeSubdirectories,
                             AutoUpload = w.AutoUpload,
-                            UserId = w.UserId ?? "system"
+                            UserId = w.UserId
                         })
                         .ToList(),
-                    DatabaseConnections = (opts.DatabaseConnections ?? new List<DatabaseConnectionConfig>())
+                    DatabaseConnections = opts.DatabaseConnections
                         .Select(d => new SettingsDatabaseConnection
                         {
-                            Name = d.Name ?? string.Empty,
+                            Name = d.Name,
                             DatabaseType = d.DatabaseType.ToString(),
                             Enabled = d.Enabled
                         })
@@ -202,8 +202,8 @@ public static class DashboardEndpointRouteBuilderExtensions
                 var opts = options.Value;
                 var config = aiConfig.GetAIProviderConfig();
 
-                var features = opts.Features ?? new FeatureToggles();
-                var mcpServers = opts.McpServers ?? new List<McpServerConfig>();
+                var features = opts.Features;
+                var mcpServers = opts.McpServers;
 
                 var response = new ChatConfigResponse
                 {
@@ -271,17 +271,17 @@ public static class DashboardEndpointRouteBuilderExtensions
                     .QueryIntelligenceAsync(incomingMessage, 8, sessionId, truncatedHistory, cancellationToken)
                     .ConfigureAwait(false);
 
-                var answer = ragResponse.Answer ?? string.Empty;
+                var answer = ragResponse.Answer;
 
-                var sourceList = ragResponse.Sources ?? new List<SearchSource>();
+                var sourceList = ragResponse.Sources;
                 var sources = sourceList
                     .Select(s => new ChatSourceItem
                     {
                         DocumentId = s.DocumentId.ToString(),
-                        FileName = s.FileName ?? string.Empty,
-                        SourceType = s.SourceType ?? "Document",
+                        FileName = s.FileName,
+                        SourceType = s.SourceType,
                         ChunkIndex = s.ChunkIndex,
-                        RelevantContent = s.RelevantContent ?? string.Empty,
+                        RelevantContent = s.RelevantContent,
                         Location = s.Location,
                         RelevanceScore = s.RelevanceScore
                     })
@@ -295,6 +295,7 @@ public static class DashboardEndpointRouteBuilderExtensions
                 }
                 catch
                 {
+                    // ignored
                 }
 
                 var (_, lastUpdated) = await conversationRepository.GetSessionTimestampsAsync(sessionId, cancellationToken).ConfigureAwait(false);
@@ -303,7 +304,7 @@ public static class DashboardEndpointRouteBuilderExtensions
                     Answer = answer,
                     SessionId = sessionId,
                     Sources = sources,
-                    LastUpdated = lastUpdated.HasValue ? lastUpdated.Value.ToString("o") : null
+                    LastUpdated = lastUpdated?.ToString("o")
                 };
                 return Results.Json(response);
             });
@@ -386,16 +387,16 @@ public static class DashboardEndpointRouteBuilderExtensions
                     try
                     {
                         var sourcesByTurn = JsonSerializer.Deserialize<List<List<ChatSourceItem>>>(sourcesJson);
-                        if (sourcesByTurn != null && sourcesByTurn.Count > 0)
+                        if (sourcesByTurn is { Count: > 0 })
                         {
                             var assistantIndex = 0;
                             foreach (var msg in messages)
                             {
-                                if (string.Equals(msg.Role, "assistant", StringComparison.OrdinalIgnoreCase) && assistantIndex < sourcesByTurn.Count)
-                                {
-                                    msg.Sources = sourcesByTurn[assistantIndex];
-                                    assistantIndex++;
-                                }
+                                if (!string.Equals(msg.Role, "assistant", StringComparison.OrdinalIgnoreCase) || assistantIndex >= sourcesByTurn.Count)
+                                    continue;
+
+                                msg.Sources = sourcesByTurn[assistantIndex];
+                                assistantIndex++;
                             }
                         }
                     }
@@ -409,7 +410,7 @@ public static class DashboardEndpointRouteBuilderExtensions
                 {
                     Id = sessionId,
                     Messages = messages,
-                    LastUpdated = lastUpdated.HasValue ? lastUpdated.Value.ToString("o") : null
+                    LastUpdated = lastUpdated?.ToString("o")
                 };
 
                 return Results.Json(detail);
@@ -513,7 +514,7 @@ public static class DashboardEndpointRouteBuilderExtensions
                     .Select(d =>
                     {
                         var dbType = string.Empty;
-                        if (d.Metadata != null && d.Metadata.TryGetValue("databaseType", out var dbTypeObj) && dbTypeObj != null)
+                        if (d.Metadata.TryGetValue("databaseType", out var dbTypeObj) && dbTypeObj != null)
                         {
                             dbType = dbTypeObj.ToString() ?? string.Empty;
                         }
@@ -546,10 +547,6 @@ public static class DashboardEndpointRouteBuilderExtensions
             async (Guid id, IDocumentService documentService, CancellationToken cancellationToken) =>
             {
                 var document = await documentService.GetDocumentAsync(id, cancellationToken).ConfigureAwait(false);
-                if (document == null)
-                {
-                    return Results.NotFound();
-                }
 
                 var response = new DocumentSummaryResponse
                 {
@@ -570,10 +567,6 @@ public static class DashboardEndpointRouteBuilderExtensions
             async (Guid id, IDocumentService documentService, CancellationToken cancellationToken) =>
             {
                 var document = await documentService.GetDocumentAsync(id, cancellationToken).ConfigureAwait(false);
-                if (document == null)
-                {
-                    return Results.NotFound();
-                }
 
                 var chunks = document.Chunks
                     .OrderBy(c => c.ChunkIndex)
@@ -596,12 +589,7 @@ public static class DashboardEndpointRouteBuilderExtensions
             async (Guid id, IDocumentService documentService, CancellationToken cancellationToken) =>
             {
                 var deleted = await documentService.DeleteDocumentAsync(id, cancellationToken).ConfigureAwait(false);
-                if (!deleted)
-                {
-                    return Results.NotFound();
-                }
-
-                return Results.NoContent();
+                return !deleted ? Results.NotFound() : Results.NoContent();
             });
 
         endpoints.MapDelete(
@@ -609,12 +597,7 @@ public static class DashboardEndpointRouteBuilderExtensions
             async (IDocumentService documentService, CancellationToken cancellationToken) =>
             {
                 var success = await documentService.ClearAllDocumentsAsync(cancellationToken).ConfigureAwait(false);
-                if (!success)
-                {
-                    return Results.StatusCode(StatusCodes.Status500InternalServerError);
-                }
-
-                return Results.NoContent();
+                return !success ? Results.StatusCode(StatusCodes.Status500InternalServerError) : Results.NoContent();
             });
 
         endpoints.MapPost(
@@ -693,11 +676,6 @@ public static class DashboardEndpointRouteBuilderExtensions
 
     private static bool IsSchemaDocument(Document document)
     {
-        if (document?.Metadata == null)
-        {
-            return false;
-        }
-
         if (!document.Metadata.TryGetValue("documentType", out var docType) || docType == null)
         {
             return false;
@@ -719,32 +697,47 @@ public static class DashboardEndpointRouteBuilderExtensions
     private static DateTime ParseSortDate(string? dateStr)
     {
         if (string.IsNullOrWhiteSpace(dateStr)) return DateTime.MinValue;
-        return DateTime.TryParse(dateStr, null, System.Globalization.DateTimeStyles.RoundtripKind, out var d) ? d : DateTime.MinValue;
+        return DateTime.TryParse(dateStr, null, DateTimeStyles.RoundtripKind, out var d) ? d : DateTime.MinValue;
     }
 
     private static ChatSessionSummaryResponse BuildChatSessionSummary(string sessionId, string history, DateTime? createdAt, DateTime? lastUpdated)
     {
         var title = "Conversation";
-        if (!string.IsNullOrWhiteSpace(history))
-        {
-            var lines = history.Split('\n');
-            var firstUserLine = lines.FirstOrDefault(l => l.StartsWith("User:", StringComparison.OrdinalIgnoreCase));
-            if (!string.IsNullOrWhiteSpace(firstUserLine))
+
+        if (string.IsNullOrWhiteSpace(history))
+            return new ChatSessionSummaryResponse
             {
-                var text = firstUserLine.Substring("User:".Length).Trim();
-                if (!string.IsNullOrEmpty(text))
-                {
-                    title = text.Length > 40 ? text[..37] + "..." : text;
-                }
-            }
+                Id = sessionId,
+                Title = title,
+                CreatedAt = createdAt?.ToString("o"),
+                LastUpdated = lastUpdated?.ToString("o")
+            };
+
+        var lines = history.Split('\n');
+        var firstUserLine = lines.FirstOrDefault(l => l.StartsWith("User:", StringComparison.OrdinalIgnoreCase));
+
+        if (string.IsNullOrWhiteSpace(firstUserLine))
+            return new ChatSessionSummaryResponse
+            {
+                Id = sessionId,
+                Title = title,
+                CreatedAt = createdAt?.ToString("o"),
+                LastUpdated = lastUpdated?.ToString("o")
+            };
+
+        var text = firstUserLine.Substring("User:".Length).Trim();
+
+        if (!string.IsNullOrEmpty(text))
+        {
+            title = text.Length > 40 ? text[..37] + "..." : text;
         }
 
         return new ChatSessionSummaryResponse
         {
             Id = sessionId,
             Title = title,
-            CreatedAt = createdAt.HasValue ? createdAt.Value.ToString("o") : null,
-            LastUpdated = lastUpdated.HasValue ? lastUpdated.Value.ToString("o") : null
+            CreatedAt = createdAt?.ToString("o"),
+            LastUpdated = lastUpdated?.ToString("o")
         };
     }
 
@@ -777,7 +770,7 @@ public static class DashboardEndpointRouteBuilderExtensions
             }
             else if (result.Count > 0)
             {
-                var last = result[result.Count - 1];
+                var last = result[^1];
                 last.Text = last.Text + "\n" + line;
             }
         }
