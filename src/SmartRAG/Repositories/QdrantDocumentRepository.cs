@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
 using SmartRAG.Entities;
@@ -7,12 +5,7 @@ using SmartRAG.Interfaces.Document;
 using SmartRAG.Interfaces.Storage.Qdrant;
 using SmartRAG.Interfaces.AI;
 using SmartRAG.Models;
-using System;
-using System.Collections.Generic;
 using System.Globalization;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace SmartRAG.Repositories;
 

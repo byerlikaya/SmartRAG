@@ -1,9 +1,6 @@
 using SmartRAG.Interfaces.Database;
 using SmartRAG.Interfaces.Database.Strategies;
 using SmartRAG.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
 
 namespace SmartRAG.Services.Database.Prompts;

@@ -1,15 +1,9 @@
-using Microsoft.Extensions.Logging;
 using SmartRAG.Interfaces.AI;
 using SmartRAG.Interfaces.Storage;
 using SmartRAG.Interfaces.Support;
 using SmartRAG.Services.Shared;
-using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Support;
 

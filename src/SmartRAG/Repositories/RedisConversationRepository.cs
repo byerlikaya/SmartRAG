@@ -1,14 +1,7 @@
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using SmartRAG.Interfaces.Storage;
 using SmartRAG.Models;
 using StackExchange.Redis;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace SmartRAG.Repositories;
 

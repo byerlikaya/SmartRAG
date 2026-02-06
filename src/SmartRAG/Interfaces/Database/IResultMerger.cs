@@ -1,5 +1,4 @@
 using SmartRAG.Models;
-using System.Threading.Tasks;
 
 namespace SmartRAG.Interfaces.Database;
 

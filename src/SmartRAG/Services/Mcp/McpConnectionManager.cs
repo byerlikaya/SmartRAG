@@ -1,9 +1,5 @@
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using SmartRAG.Interfaces.Mcp;
 using SmartRAG.Models;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Mcp;
 

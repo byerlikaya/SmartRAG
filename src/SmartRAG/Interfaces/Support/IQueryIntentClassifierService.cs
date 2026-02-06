@@ -1,6 +1,5 @@
 using SmartRAG.Enums;
 using SmartRAG.Models.Results;
-using System.Threading.Tasks;
 
 namespace SmartRAG.Interfaces.Support;
 

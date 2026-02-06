@@ -3,11 +3,8 @@ using DocumentFormat.OpenXml.Packaging;
 using SmartRAG.Interfaces.Parser.Strategies;
 using SmartRAG.Models;
 using SmartRAG.Services.Helpers;
-using System;
 using System.IO;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Document.Parsers;
 

@@ -5,8 +5,6 @@ using SmartRAG.Demo.DatabaseSetup.Creators;
 using SmartRAG.Demo.Services.Console;
 using SmartRAG.Enums;
 using SmartRAG.Extensions;
-using SmartRAG.Interfaces;
-using SmartRAG.Models;
 
 namespace SmartRAG.Demo.Services.Initialization;
 
@@ -32,7 +30,7 @@ public class InitializationService(
     public async Task SetupTestDatabasesAsync()
     {
         var enableAutoSchemaAnalysis = _configuration.GetValue<bool>("SmartRAG:EnableAutoSchemaAnalysis", false);
-        
+
         if (!enableAutoSchemaAnalysis)
         {
             await Task.CompletedTask;
@@ -198,13 +196,13 @@ public class InitializationService(
             System.Console.WriteLine();
             _console.WriteSuccess("✓ LOCAL Environment selected");
             System.Console.WriteLine("  AI Provider: Ollama (via Custom provider)");
-            
+
             System.Console.WriteLine();
             System.Console.WriteLine("Select Storage Provider:");
             System.Console.WriteLine("1. Qdrant (Vector Database)");
             System.Console.WriteLine("2. Redis (Key-Value + Vector Search)");
             System.Console.WriteLine("3. InMemory (Non-persistent, for testing)");
-            
+
             var storageChoice = _console.ReadLine("Selection (default: Qdrant): ");
             var selectedStorage = storageChoice switch
             {
@@ -217,7 +215,7 @@ public class InitializationService(
             System.Console.WriteLine($"  Storage: {selectedStorage}");
             System.Console.WriteLine("  Audio: Whisper.net (Local transcription)");
             System.Console.WriteLine();
-            
+
             if (selectedStorage == StorageProvider.Redis)
             {
                 _console.WriteWarning("⚠️  IMPORTANT: Redis with RediSearch module required for vector search");
@@ -226,13 +224,13 @@ public class InitializationService(
                 System.Console.WriteLine("     • Without RediSearch: Only text search will work (no vector search)");
                 System.Console.WriteLine();
             }
-            
+
             System.Console.WriteLine("Select Conversation History Storage:");
             System.Console.WriteLine("1. Redis (Persistent, recommended)");
             System.Console.WriteLine("2. SQLite (Local database file)");
             System.Console.WriteLine("3. FileSystem (File-based storage)");
             System.Console.WriteLine("4. InMemory (Non-persistent, for testing)");
-            
+
             var conversationStorageChoice = _console.ReadLine("Selection (default: Redis): ");
             var selectedConversationStorage = conversationStorageChoice switch
             {
@@ -245,7 +243,7 @@ public class InitializationService(
 
             System.Console.WriteLine($"  Conversation History Storage: {selectedConversationStorage}");
             System.Console.WriteLine();
-            
+
             _console.WriteWarning("⚠️  Note: Make sure Ollama endpoint is configured in appsettings");
             System.Console.WriteLine("     (AI:Custom:Endpoint = http://localhost:11434)");
             System.Console.WriteLine();
@@ -278,13 +276,13 @@ public class InitializationService(
         System.Console.WriteLine("  Storage: Redis (Document storage)");
         System.Console.WriteLine("  Audio: Whisper.net (Local transcription)");
         System.Console.WriteLine();
-        
+
         System.Console.WriteLine("Select Conversation History Storage:");
         System.Console.WriteLine("1. Redis (Persistent, recommended)");
         System.Console.WriteLine("2. SQLite (Local database file)");
         System.Console.WriteLine("3. FileSystem (File-based storage)");
         System.Console.WriteLine("4. InMemory (Non-persistent, for testing)");
-        
+
         var cloudConversationStorageChoice = _console.ReadLine("Selection (default: Redis): ");
         var cloudSelectedConversationStorage = cloudConversationStorageChoice switch
         {
@@ -327,7 +325,7 @@ public class InitializationService(
             "5" => GetCustomLanguageCode(),
             _ => "tr"
         };
-        
+
         var displayName = choice switch
         {
             "1" => "English",

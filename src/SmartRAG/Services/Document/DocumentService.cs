@@ -1,18 +1,10 @@
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces.AI;
 using SmartRAG.Interfaces.Document;
 using SmartRAG.Models;
-using SmartRAG.Models.RequestResponse;
 using SmartRAG.Services.Shared;
-using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Document;
 

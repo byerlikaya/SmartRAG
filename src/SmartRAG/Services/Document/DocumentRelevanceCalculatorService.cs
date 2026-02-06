@@ -1,9 +1,6 @@
 using SmartRAG.Entities;
 using SmartRAG.Interfaces.Document;
 using SmartRAG.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace SmartRAG.Services.Document;
 

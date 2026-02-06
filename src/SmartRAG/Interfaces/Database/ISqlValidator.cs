@@ -1,5 +1,4 @@
 using SmartRAG.Models;
-using System.Collections.Generic;
 
 namespace SmartRAG.Interfaces.Database;
 

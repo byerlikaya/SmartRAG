@@ -1,17 +1,12 @@
-using Microsoft.Extensions.Logging;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces.Document;
 using SmartRAG.Interfaces.Search;
 using SmartRAG.Interfaces.Support;
 using SmartRAG.Models;
-using System;
-using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 using DocumentEntity = SmartRAG.Entities.Document;
 
 namespace SmartRAG.Services.Search;

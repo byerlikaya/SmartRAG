@@ -1,10 +1,7 @@
-using Microsoft.Extensions.Logging;
 using System.Net.Http;
 using SmartRAG.Enums;
 using SmartRAG.Interfaces.AI;
 using SmartRAG.Providers;
-using System;
-using System.Collections.Generic;
 
 namespace SmartRAG.Factories;
 

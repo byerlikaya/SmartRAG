@@ -1,9 +1,5 @@
-using Microsoft.Extensions.Logging;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces.Document;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace SmartRAG.Services.Document;
 

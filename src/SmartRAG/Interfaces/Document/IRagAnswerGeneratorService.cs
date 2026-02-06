@@ -1,9 +1,5 @@
 using SmartRAG.Entities;
 using SmartRAG.Models;
-using SmartRAG.Models.RequestResponse;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace SmartRAG.Interfaces.Document;
 

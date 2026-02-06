@@ -1,8 +1,5 @@
 using FFMpegCore;
-using Microsoft.Extensions.Logging;
-using System;
 using System.IO;
-using System.Threading.Tasks;
 using Xabe.FFmpeg.Downloader;
 
 namespace SmartRAG.Services.Parser;

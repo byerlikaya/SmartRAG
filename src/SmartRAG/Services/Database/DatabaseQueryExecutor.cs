@@ -1,11 +1,6 @@
-using Microsoft.Extensions.Logging;
 using SmartRAG.Interfaces.Database;
 using SmartRAG.Models;
-using System;
 using System.Diagnostics;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Database;
 

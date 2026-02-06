@@ -1,12 +1,6 @@
-using Microsoft.Extensions.Logging;
 using SmartRAG.Interfaces.Mcp;
 using SmartRAG.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Mcp;
 

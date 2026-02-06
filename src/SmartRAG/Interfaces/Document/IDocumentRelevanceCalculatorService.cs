@@ -1,7 +1,5 @@
 using SmartRAG.Entities;
 using SmartRAG.Models;
-using System;
-using System.Collections.Generic;
 
 namespace SmartRAG.Interfaces.Document;
 

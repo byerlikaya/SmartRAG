@@ -1,15 +1,9 @@
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using SmartRAG.Enums;
 using SmartRAG.Interfaces.AI;
 using SmartRAG.Interfaces.Support;
 using SmartRAG.Models;
-using SmartRAG.Models.Results;
-using System;
 using System.Globalization;
-using System.Linq;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Support;
 

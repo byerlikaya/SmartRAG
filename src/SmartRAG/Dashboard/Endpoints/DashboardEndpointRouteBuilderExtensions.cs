@@ -1,25 +1,15 @@
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
-
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Options;
-
 using SmartRAG.Dashboard.Models;
 using SmartRAG.Interfaces.AI;
 using SmartRAG.Interfaces.Document;
 using SmartRAG.Interfaces.Storage;
 using SmartRAG.Interfaces.Support;
-using SmartRAG.Models;
-using SmartRAG.Models.RequestResponse;
 using SmartRAG.Entities;
 
 namespace SmartRAG.Dashboard.Endpoints;

@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.Options;
 using SmartRAG.Interfaces.AI;
 using SmartRAG.Enums;
 using SmartRAG.Models;

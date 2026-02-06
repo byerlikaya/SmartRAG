@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces.Database.Strategies;
 using SmartRAG.Models;

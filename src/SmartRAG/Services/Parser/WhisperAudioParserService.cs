@@ -1,13 +1,7 @@
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using SmartRAG.Interfaces.Parser;
 using SmartRAG.Models;
-using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Threading;
-using System.Threading.Tasks;
 using Whisper.net;
 using Whisper.net.Ggml;
 

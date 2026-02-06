@@ -1,11 +1,5 @@
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using SmartRAG.Interfaces.Storage.Qdrant;
 using SmartRAG.Models;
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace SmartRAG.Services.Storage.Qdrant;
 

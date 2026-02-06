@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using SmartRAG.Entities;
 using SmartRAG.Enums;
 using SmartRAG.Interfaces.Document;
@@ -10,12 +8,7 @@ using SmartRAG.Services.Shared;
 using SmartRAG.Models;
 using SmartRAG.Interfaces.Database;
 using SmartRAG.Interfaces.Mcp;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using SmartRAG.Helpers;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Text.RegularExpressions;
 
 namespace SmartRAG.Services.Document;
