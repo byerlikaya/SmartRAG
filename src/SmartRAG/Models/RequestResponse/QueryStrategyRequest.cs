@@ -1,5 +1,3 @@
-#nullable enable
-
 using SmartRAG.Entities;
 using System.Collections.Generic;
 

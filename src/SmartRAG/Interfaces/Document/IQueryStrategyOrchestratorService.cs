@@ -1,5 +1,3 @@
-#nullable enable
-
 using SmartRAG.Enums;
 
 namespace SmartRAG.Interfaces.Document;

@@ -1,5 +1,3 @@
-#nullable enable
-
 using SmartRAG.Interfaces.Document;
 using System;
 

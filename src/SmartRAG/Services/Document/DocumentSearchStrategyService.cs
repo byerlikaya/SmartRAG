@@ -1,5 +1,3 @@
-#nullable enable
-
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using SmartRAG.Entities;

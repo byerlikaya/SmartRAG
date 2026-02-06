@@ -1,5 +1,3 @@
-#nullable enable
-
 using SmartRAG.Interfaces.Support;
 using System;
 using System.Linq;

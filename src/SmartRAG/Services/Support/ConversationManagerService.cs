@@ -1,5 +1,3 @@
-#nullable enable
-
 using Microsoft.Extensions.Logging;
 using SmartRAG.Interfaces.AI;
 using SmartRAG.Interfaces.Storage;

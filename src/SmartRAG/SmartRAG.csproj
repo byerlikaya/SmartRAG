@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
+    <Nullable>annotations</Nullable>
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>

@@ -1,5 +1,3 @@
-#nullable enable
-
 using Microsoft.Extensions.Logging;
 using SmartRAG.Interfaces.Mcp;
 using SmartRAG.Models;
