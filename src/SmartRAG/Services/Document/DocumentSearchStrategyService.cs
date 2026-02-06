@@ -86,7 +86,7 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
         {
             // Use repository directly. For Qdrant, repository's SearchAsync delegates to orchestration service internally.
             // For InMemory/Redis, repository handles search directly. No unnecessary wrapper needed.
-            var searchResults = await _documentRepository.SearchAsync(query, maxResults * InitialSearchMultiplier);
+            var searchResults = await _documentRepository.SearchAsync(query, maxResults * InitialSearchMultiplier, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
 
             _logger.LogDebug("Repository search returned {Count} results for query length {QueryLength}", searchResults.Count, query.Length);
@@ -276,7 +276,7 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
         // Load full documents with chunk content (some repositories may return empty chunk content from GetAllAsync)
         cancellationToken.ThrowIfCancellationRequested();
 
-        var allDocuments = await _documentService.GetAllDocumentsFilteredAsync(searchOptions);
+        var allDocuments = await _documentService.GetAllDocumentsFilteredAsync(searchOptions, cancellationToken);
         var fullNameLower = potentialNames.Count >= 2 ? string.Join(" ", potentialNames.Select(n => n.ToLowerInvariant())) : string.Empty;
 
         var entityRelevantDocuments = allDocuments.Where(d =>
@@ -296,7 +296,8 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
         var chunksWithContent = new List<DocumentChunk>();
         foreach (var document in documentsToLoad)
         {
-            var fullDocument = await _documentService.GetDocumentAsync(document.Id);
+            cancellationToken.ThrowIfCancellationRequested();
+            var fullDocument = await _documentService.GetDocumentAsync(document.Id, cancellationToken);
             if (fullDocument != null && fullDocument.Chunks != null)
             {
                 chunksWithContent.AddRange(fullDocument.Chunks);
@@ -446,7 +447,7 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
     private async Task<List<DocumentChunk>> PerformKeywordFallbackAsync(string query, int maxResults, SearchOptions searchOptions, List<string>? queryTokens, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        var allDocuments = await _documentService.GetAllDocumentsFilteredAsync(searchOptions);
+        var allDocuments = await _documentService.GetAllDocumentsFilteredAsync(searchOptions, cancellationToken);
 
         var queryWords = queryTokens ?? QueryTokenizer.TokenizeQuery(query);
         var queryWordsNormalized = queryWords.Select(w => w.NormalizeForOcrTolerantMatch()).ToList();
@@ -462,7 +463,8 @@ public class DocumentSearchStrategyService : IDocumentSearchStrategyService
         var chunksWithContent = new List<DocumentChunk>();
         foreach (var document in allDocuments)
         {
-            var fullDocument = await _documentService.GetDocumentAsync(document.Id);
+            cancellationToken.ThrowIfCancellationRequested();
+            var fullDocument = await _documentService.GetDocumentAsync(document.Id, cancellationToken);
             if (fullDocument != null && fullDocument.Chunks != null)
                 chunksWithContent.AddRange(fullDocument.Chunks);
         }

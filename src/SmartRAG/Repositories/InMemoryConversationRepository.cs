@@ -24,6 +24,7 @@ public class InMemoryConversationRepository : IConversationRepository
 
     public Task<string> GetConversationHistoryAsync(string sessionId, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (string.IsNullOrWhiteSpace(sessionId))
             return Task.FromResult(string.Empty);
 
@@ -35,6 +36,7 @@ public class InMemoryConversationRepository : IConversationRepository
 
     public Task AddToConversationAsync(string sessionId, string question, string answer, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (string.IsNullOrWhiteSpace(sessionId))
             return Task.CompletedTask;
 
@@ -69,6 +71,7 @@ public class InMemoryConversationRepository : IConversationRepository
 
     public Task ClearConversationAsync(string sessionId, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (string.IsNullOrWhiteSpace(sessionId))
             return Task.CompletedTask;
 
@@ -83,6 +86,7 @@ public class InMemoryConversationRepository : IConversationRepository
 
     public Task AppendSourcesForTurnAsync(string sessionId, string sourcesJson, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (string.IsNullOrWhiteSpace(sessionId))
             return Task.CompletedTask;
 
@@ -101,6 +105,7 @@ public class InMemoryConversationRepository : IConversationRepository
 
     public Task<string> GetSourcesForSessionAsync(string sessionId, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (string.IsNullOrWhiteSpace(sessionId))
             return Task.FromResult(string.Empty);
 
@@ -115,6 +120,7 @@ public class InMemoryConversationRepository : IConversationRepository
 
     public Task<bool> SessionExistsAsync(string sessionId, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (string.IsNullOrWhiteSpace(sessionId))
             return Task.FromResult(false);
 
@@ -126,6 +132,7 @@ public class InMemoryConversationRepository : IConversationRepository
 
     public Task SetConversationHistoryAsync(string sessionId, string conversation, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (string.IsNullOrWhiteSpace(sessionId))
             return Task.CompletedTask;
 
@@ -139,6 +146,7 @@ public class InMemoryConversationRepository : IConversationRepository
 
     public Task ClearAllConversationsAsync(CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         lock (_lock)
         {
             _conversations.Clear();
@@ -149,6 +157,7 @@ public class InMemoryConversationRepository : IConversationRepository
 
     public Task<string[]> GetAllSessionIdsAsync(CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         lock (_lock)
         {
             return Task.FromResult(_conversations.Keys.ToArray());

@@ -4,7 +4,6 @@ using Microsoft.Extensions.Options;
 using SmartRAG.Helpers;
 using SmartRAG.Interfaces.AI;
 using SmartRAG.Interfaces.Document;
-using SmartRAG.Interfaces.Support;
 using SmartRAG.Models;
 using SmartRAG.Services.Shared;
 using System;
@@ -24,7 +23,6 @@ public class ResponseBuilderService : IResponseBuilderService
 {
     private readonly SmartRagOptions _options;
     private readonly IConfiguration _configuration;
-    private readonly IConversationManagerService _conversationManager;
     private readonly ILogger<ResponseBuilderService> _logger;
     private readonly IAIService _aiService;
     private readonly IPromptBuilderService _promptBuilder;
@@ -34,21 +32,18 @@ public class ResponseBuilderService : IResponseBuilderService
     /// </summary>
     /// <param name="options">SmartRAG configuration options</param>
     /// <param name="configuration">Application configuration</param>
-    /// <param name="conversationManager">Service for managing conversations</param>
     /// <param name="logger">Logger instance</param>
     /// <param name="aiService">AI service for merging responses</param>
     /// <param name="promptBuilder">Prompt builder service for merging responses</param>
     public ResponseBuilderService(
         IOptions<SmartRagOptions> options,
         IConfiguration configuration,
-        IConversationManagerService conversationManager,
         ILogger<ResponseBuilderService> logger,
         IAIService aiService,
         IPromptBuilderService promptBuilder)
     {
         _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-        _conversationManager = conversationManager ?? throw new ArgumentNullException(nameof(conversationManager));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _aiService = aiService ?? throw new ArgumentNullException(nameof(aiService));
         _promptBuilder = promptBuilder ?? throw new ArgumentNullException(nameof(promptBuilder));
@@ -392,15 +387,6 @@ public class ResponseBuilderService : IResponseBuilderService
 
         var result = Regex.Replace(answer, @"\s*\[NO_ANSWER_FOUND[^\]]*\]", string.Empty, RegexOptions.IgnoreCase);
         return result.Trim();
-    }
-
-    /// <summary>
-    /// Creates a fallback response when document query cannot answer the question
-    /// </summary>
-    public async Task<RagResponse> CreateFallbackResponseAsync(string query, string conversationHistory, CancellationToken cancellationToken = default)
-    {
-        var chatResponse = await _conversationManager.HandleGeneralConversationAsync(query, conversationHistory, cancellationToken);
-        return CreateRagResponse(query, chatResponse, new List<SearchSource>());
     }
 
     /// <summary>

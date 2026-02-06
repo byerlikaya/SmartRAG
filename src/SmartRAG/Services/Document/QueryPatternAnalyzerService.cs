@@ -1,4 +1,3 @@
-using Microsoft.Extensions.Logging;
 using SmartRAG.Entities;
 using SmartRAG.Interfaces.Document;
 using System;

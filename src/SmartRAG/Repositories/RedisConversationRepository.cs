@@ -101,6 +101,7 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
 
     public async Task SetConversationHistoryAsync(string sessionId, string conversation, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         try
         {
             var conversationKey = $"conversation:{sessionId}";
@@ -122,6 +123,7 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
 
     public async Task ClearConversationAsync(string sessionId, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         try
         {
             await _database.KeyDeleteAsync($"conversation:{sessionId}");
@@ -138,6 +140,7 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
     {
         if (string.IsNullOrWhiteSpace(sessionId))
             return;
+        cancellationToken.ThrowIfCancellationRequested();
         try
         {
             var key = $"conversation:sources:{sessionId}";
@@ -169,6 +172,7 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
     {
         if (string.IsNullOrWhiteSpace(sessionId))
             return null;
+        cancellationToken.ThrowIfCancellationRequested();
         try
         {
             var key = $"conversation:sources:{sessionId}";
@@ -184,6 +188,7 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
 
     public async Task<bool> SessionExistsAsync(string sessionId, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         try
         {
             var conversationKey = $"conversation:{sessionId}";
@@ -198,6 +203,7 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
 
     public async Task ClearAllConversationsAsync(CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         try
         {
             var endpoints = _redis.GetEndPoints();

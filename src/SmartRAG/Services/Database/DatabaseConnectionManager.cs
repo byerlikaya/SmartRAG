@@ -174,11 +174,13 @@ public class DatabaseConnectionManager : IDatabaseConnectionManager
 
     public Task<List<DatabaseConnectionConfig>> GetAllConnectionsAsync(CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(_connections.Values.ToList());
     }
 
     public Task<DatabaseConnectionConfig?> GetConnectionAsync(string databaseId, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         _connections.TryGetValue(databaseId, out var config);
         return Task.FromResult<DatabaseConnectionConfig?>(config);
     }

@@ -38,15 +38,6 @@ public interface IResponseBuilderService
     bool IndicatesMissingData(string answer, string? query = null, List<SearchSource>? sources = null);
 
     /// <summary>
-    /// Creates a fallback response when document query cannot answer the question
-    /// </summary>
-    /// <param name="query">User query</param>
-    /// <param name="conversationHistory">Conversation history</param>
-    /// <param name="cancellationToken">Token to cancel the operation</param>
-    /// <returns>Fallback RAG response</returns>
-    Task<RagResponse> CreateFallbackResponseAsync(string query, string conversationHistory, CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Merges results from database and document queries into a unified response
     /// </summary>
     /// <param name="query">Original user query</param>

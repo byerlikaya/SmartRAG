@@ -19,7 +19,7 @@ public interface IRagAnswerGeneratorService
     /// <param name="request">Request containing query parameters</param>
     /// <param name="cancellationToken">Token to cancel the operation</param>
     /// <returns>RAG response with answer and sources</returns>
-    Task<RagResponse> GenerateBasicRagAnswerAsync(Models.RequestResponse.GenerateRagAnswerRequest request, CancellationToken cancellationToken = default);
+    Task<RagResponse> GenerateBasicRagAnswerAsync(GenerateRagAnswerRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Determines if a query can be answered from documents using language-agnostic content-based analysis
@@ -29,7 +29,7 @@ public interface IRagAnswerGeneratorService
     /// <param name="queryTokens">Pre-computed query tokens for performance</param>
     /// <param name="cancellationToken">Token to cancel the operation</param>
     /// <returns>Tuple containing whether documents can answer and the found chunks</returns>
-    Task<(bool CanAnswer, List<DocumentChunk> Results)> CanAnswerFromDocumentsAsync(string query, SearchOptions searchOptions, List<string>? queryTokens = null, System.Threading.CancellationToken cancellationToken = default);
+    Task<(bool CanAnswer, List<DocumentChunk> Results)> CanAnswerFromDocumentsAsync(string query, SearchOptions searchOptions, List<string>? queryTokens = null, CancellationToken cancellationToken = default);
 }
 
 
