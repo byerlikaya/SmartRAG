@@ -46,23 +46,23 @@ public static class DashboardEndpointRouteBuilderExtensions
         }
 
         var normalizedBasePath = NormalizeBasePath(basePath);
-        var documentsGroup = endpoints.MapGroup($"{normalizedBasePath}/api/documents");
-        var chatGroup = endpoints.MapGroup($"{normalizedBasePath}/api/chat");
-        var uploadGroup = endpoints.MapGroup($"{normalizedBasePath}/api/upload");
-        var settingsGroup = endpoints.MapGroup($"{normalizedBasePath}/api/settings");
+        var docsBase = $"{normalizedBasePath}/api/documents";
+        var chatBase = $"{normalizedBasePath}/api/chat";
+        var uploadBase = $"{normalizedBasePath}/api/upload";
+        var settingsBase = $"{normalizedBasePath}/api/settings";
 
-        MapDocumentEndpoints(documentsGroup);
-        MapChatEndpoints(chatGroup);
-        MapUploadEndpoints(uploadGroup);
-        MapSettingsEndpoints(settingsGroup);
+        MapDocumentEndpoints(endpoints, docsBase);
+        MapChatEndpoints(endpoints, chatBase);
+        MapUploadEndpoints(endpoints, uploadBase);
+        MapSettingsEndpoints(endpoints, settingsBase);
 
         return endpoints;
     }
 
-    private static void MapSettingsEndpoints(RouteGroupBuilder group)
+    private static void MapSettingsEndpoints(IEndpointRouteBuilder endpoints, string basePath)
     {
-        group.MapGet(
-            string.Empty,
+        endpoints.MapGet(
+            basePath,
             (IOptions<SmartRagOptions> options, IAIConfigurationService aiConfig, IConfiguration configuration) =>
             {
                 var opts = options.Value;
@@ -217,10 +217,10 @@ public static class DashboardEndpointRouteBuilderExtensions
             || lower.Contains("token") || lower.Contains("authorization") || lower.Contains("connectionstring");
     }
 
-    private static void MapChatEndpoints(RouteGroupBuilder group)
+    private static void MapChatEndpoints(IEndpointRouteBuilder endpoints, string basePath)
     {
-        group.MapGet(
-            "/config",
+        endpoints.MapGet(
+            $"{basePath}/config",
             (IOptions<SmartRagOptions> options, IAIConfigurationService aiConfig) =>
             {
                 var opts = options.Value;
@@ -255,8 +255,8 @@ public static class DashboardEndpointRouteBuilderExtensions
                 return Results.Json(response);
             });
 
-        group.MapPost(
-            "/messages",
+        endpoints.MapPost(
+            $"{basePath}/messages",
             async (
                 HttpRequest request,
                 IDocumentSearchService documentSearchService,
@@ -332,8 +332,8 @@ public static class DashboardEndpointRouteBuilderExtensions
                 return Results.Json(response);
             });
 
-        group.MapGet(
-            "/sessions",
+        endpoints.MapGet(
+            $"{basePath}/sessions",
             async (IConversationRepository conversationRepository, CancellationToken cancellationToken) =>
             {
                 var sessionIds = await conversationRepository.GetAllSessionIdsAsync(cancellationToken).ConfigureAwait(false);
@@ -358,16 +358,16 @@ public static class DashboardEndpointRouteBuilderExtensions
                 return Results.Json(summaries);
             });
 
-        group.MapDelete(
-            "/sessions",
+        endpoints.MapDelete(
+            $"{basePath}/sessions",
             async (IConversationManagerService conversationManager, CancellationToken cancellationToken) =>
             {
                 await conversationManager.ClearAllConversationsAsync(cancellationToken).ConfigureAwait(false);
                 return Results.NoContent();
             });
 
-        group.MapDelete(
-            "/sessions/{sessionId}",
+        endpoints.MapDelete(
+            $"{basePath}/sessions/{{sessionId}}",
             async (string sessionId, IConversationRepository conversationRepository, CancellationToken cancellationToken) =>
             {
                 if (string.IsNullOrWhiteSpace(sessionId))
@@ -385,8 +385,8 @@ public static class DashboardEndpointRouteBuilderExtensions
                 return Results.NoContent();
             });
 
-        group.MapGet(
-            "/sessions/{sessionId}",
+        endpoints.MapGet(
+            $"{basePath}/sessions/{{sessionId}}",
             async (string sessionId, IConversationRepository conversationRepository, IConversationManagerService conversationManager, CancellationToken cancellationToken) =>
             {
                 if (string.IsNullOrWhiteSpace(sessionId))
@@ -440,10 +440,10 @@ public static class DashboardEndpointRouteBuilderExtensions
             });
     }
 
-    private static void MapUploadEndpoints(RouteGroupBuilder group)
+    private static void MapUploadEndpoints(IEndpointRouteBuilder endpoints, string basePath)
     {
-        group.MapGet(
-            "/supported-types",
+        endpoints.MapGet(
+            $"{basePath}/supported-types",
             (IDocumentParserService documentParserService) =>
             {
                 var extensions = documentParserService.GetSupportedFileTypes().ToList();
@@ -457,10 +457,10 @@ public static class DashboardEndpointRouteBuilderExtensions
             });
     }
 
-    private static void MapDocumentEndpoints(RouteGroupBuilder group)
+    private static void MapDocumentEndpoints(IEndpointRouteBuilder endpoints, string basePath)
     {
-        group.MapGet(
-            string.Empty,
+        endpoints.MapGet(
+            basePath,
             async (int? skip, int? take, IDocumentService documentService, CancellationToken cancellationToken) =>
             {
                 var allDocuments = await documentService.GetAllDocumentsAsync(cancellationToken).ConfigureAwait(false);
@@ -507,8 +507,8 @@ public static class DashboardEndpointRouteBuilderExtensions
                 return Results.Ok(response);
             });
 
-        group.MapGet(
-            "/schemas",
+        endpoints.MapGet(
+            $"{basePath}/schemas",
             async (int? skip, int? take, IDocumentService documentService, CancellationToken cancellationToken) =>
             {
                 var allDocuments = await documentService.GetAllDocumentsAsync(cancellationToken).ConfigureAwait(false);
@@ -565,8 +565,8 @@ public static class DashboardEndpointRouteBuilderExtensions
                 return Results.Ok(response);
             });
 
-        group.MapGet(
-            "/{id:guid}",
+        endpoints.MapGet(
+            $"{basePath}/{{id:guid}}",
             async (Guid id, IDocumentService documentService, CancellationToken cancellationToken) =>
             {
                 var document = await documentService.GetDocumentAsync(id, cancellationToken).ConfigureAwait(false);
@@ -589,8 +589,8 @@ public static class DashboardEndpointRouteBuilderExtensions
                 return Results.Ok(response);
             });
 
-        group.MapGet(
-            "/{id:guid}/chunks",
+        endpoints.MapGet(
+            $"{basePath}/{{id:guid}}/chunks",
             async (Guid id, IDocumentService documentService, CancellationToken cancellationToken) =>
             {
                 var document = await documentService.GetDocumentAsync(id, cancellationToken).ConfigureAwait(false);
@@ -615,8 +615,8 @@ public static class DashboardEndpointRouteBuilderExtensions
                 return Results.Json(chunks);
             });
 
-        group.MapDelete(
-            "/{id:guid}",
+        endpoints.MapDelete(
+            $"{basePath}/{{id:guid}}",
             async (Guid id, IDocumentService documentService, CancellationToken cancellationToken) =>
             {
                 var deleted = await documentService.DeleteDocumentAsync(id, cancellationToken).ConfigureAwait(false);
@@ -628,8 +628,8 @@ public static class DashboardEndpointRouteBuilderExtensions
                 return Results.NoContent();
             });
 
-        group.MapDelete(
-            string.Empty,
+        endpoints.MapDelete(
+            basePath,
             async (IDocumentService documentService, CancellationToken cancellationToken) =>
             {
                 var success = await documentService.ClearAllDocumentsAsync(cancellationToken).ConfigureAwait(false);
@@ -641,8 +641,8 @@ public static class DashboardEndpointRouteBuilderExtensions
                 return Results.NoContent();
             });
 
-        group.MapPost(
-            string.Empty,
+        endpoints.MapPost(
+            basePath,
             async (HttpRequest request, IDocumentService documentService, CancellationToken cancellationToken) =>
             {
                 if (!request.HasFormContentType)

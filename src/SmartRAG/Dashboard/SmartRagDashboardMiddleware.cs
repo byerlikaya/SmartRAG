@@ -33,7 +33,7 @@ public sealed class SmartRagDashboardMiddleware
         _options = options ?? throw new ArgumentNullException(nameof(options));
 
         var assembly = Assembly.GetExecutingAssembly();
-        var baseNamespace = assembly.GetName().Name + ".wwwroot";
+        var baseNamespace = assembly.GetName().Name + ".Dashboard.wwwroot";
         _embeddedFileProvider = new EmbeddedFileProvider(assembly, baseNamespace);
     }
 
@@ -133,7 +133,7 @@ public sealed class SmartRagDashboardMiddleware
 
         await using var stream = fileInfo.CreateReadStream();
         using var reader = new StreamReader(stream, Encoding.UTF8);
-        var html = await reader.ReadToEndAsync(context.RequestAborted).ConfigureAwait(false);
+        var html = await reader.ReadToEndAsync().ConfigureAwait(false);
         html = html.Replace(Placeholder, basePath);
 
         context.Response.StatusCode = StatusCodes.Status200OK;

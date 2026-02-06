@@ -17,7 +17,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\SmartRAG\SmartRAG.csproj" />
-    <ProjectReference Include="..\..\src\SmartRAG.Dashboard\SmartRAG.Dashboard.csproj" />
   </ItemGroup>
 
   <ItemGroup>

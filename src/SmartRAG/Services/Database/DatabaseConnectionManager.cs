@@ -178,10 +178,10 @@ namespace SmartRAG.Services.Database
             return Task.FromResult(_connections.Values.ToList());
         }
 
-        public Task<DatabaseConnectionConfig> GetConnectionAsync(string databaseId, CancellationToken cancellationToken = default)
+        public Task<DatabaseConnectionConfig?> GetConnectionAsync(string databaseId, CancellationToken cancellationToken = default)
         {
             _connections.TryGetValue(databaseId, out var config);
-            return Task.FromResult(config);
+            return Task.FromResult<DatabaseConnectionConfig?>(config);
         }
 
         public async Task<bool> ValidateConnectionAsync(string databaseId, CancellationToken cancellationToken = default)

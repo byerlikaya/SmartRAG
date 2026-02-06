@@ -1,15 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>netstandard2.1</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     
     <!-- NuGet Package Configuration -->
     <PackageId>SmartRAG</PackageId>
-    <PackageVersion>3.9.0</PackageVersion>
+    <PackageVersion>4.0.0</PackageVersion>
     <Authors>Barış Yerlikaya</Authors>
     <Company>Barış Yerlikaya</Company>
     <Product>SmartRAG</Product>
-    <Description>Ask questions about your documents, databases, images and audio in natural language. Multi-database RAG library for .NET that queries SQL Server, MySQL, PostgreSQL, SQLite together with AI. On-premise ready with Ollama, Whisper.net. GDPR/KVKK/HIPAA compliant. Compatible with .NET Core 3.0+ and .NET 5/6/7/8/9.</Description>
+    <Description>Ask questions about your documents, databases, images and audio in natural language. Multi-database RAG library for .NET that queries SQL Server, MySQL, PostgreSQL, SQLite together with AI. On-premise ready with Ollama, Whisper.net. GDPR/KVKK/HIPAA compliant. Compatible with .NET 6+. Includes built-in Dashboard for document management and chat.</Description>
     <PackageTags>rag multi-database vector-database document-qa ollama ocr speech-to-text openai qdrant redis</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -20,28 +20,33 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
-    <PackageReleaseNotes>Release 3.9.0: Conversation Timestamps, RAG Improvements, Qdrant 1.16 (MINOR - 2026-02-05)
+    <PackageReleaseNotes>Release 4.0.0: .NET 6 target, Dashboard merged (MAJOR - 2026-02-06)
 
-ADDED: Conversation timestamps and sources, explicit session RAG overload, duplicate upload prevention by hash, Whisper native bootstrap, MCP on-demand connection.
+BREAKING: Target framework netstandard2.1 → net6.0. SmartRAG.Dashboard project merged into SmartRAG; Dashboard is now included. Projects must target .NET 6+.
 
-IMPROVEMENTS: Document RAG search (filename early return, phrase/morphological matching), follow-up question handling, PDF/OCR encoding, storage factory scoping, Qdrant 1.16.1 compatibility, NuGet updates.
+ADDED: Built-in Dashboard (document management, chat UI) in main SmartRAG package.
 
-BREAKING: IStorageFactory.GetCurrentRepository(IServiceProvider), IConversationRepository new methods, IQdrantCacheManager removed. See migration guide.</PackageReleaseNotes>
+See migration guide for upgrade instructions.</PackageReleaseNotes>
     
     <!-- Build Configuration -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <NoWarn>$(NoWarn);1591;NU5128</NoWarn>
+    <NoWarn>$(NoWarn);1591;NU5128;CS8632</NoWarn>
+    <SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
     <TreatWarningsAsErrors Condition="'$(Configuration)' != 'Release'">true</TreatWarningsAsErrors>
     
     <!-- Assembly Information -->
     <AssemblyTitle>SmartRAG</AssemblyTitle>
     <AssemblyDescription>High-performance RAG library with conversation history management for .NET</AssemblyDescription>
-    <AssemblyCopyright>Copyright © 2025 Barış Yerlikaya</AssemblyCopyright>
-    <AssemblyVersion>3.9.0.0</AssemblyVersion>
-    <FileVersion>3.9.0.0</FileVersion>
+    <AssemblyCopyright>Copyright © 2026 Barış Yerlikaya</AssemblyCopyright>
+    <AssemblyVersion>4.0.0.0</AssemblyVersion>
+    <FileVersion>4.0.0.0</FileVersion>
     <NeutralLanguage>en</NeutralLanguage>
     <Culture>en-US</Culture>
   </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
 
   <!-- Package References -->
   <ItemGroup>
@@ -94,6 +99,14 @@ BREAKING: IStorageFactory.GetCurrentRepository(IServiceProvider), IConversationR
     
     <!-- Xabe.FFmpeg for automatic FFmpeg binary download (self-contained) -->
     <PackageReference Include="Xabe.FFmpeg.Downloader" Version="6.0.2" />
+
+    <!-- Dashboard (embedded wwwroot) -->
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Embedded" Version="6.0.0" />
+  </ItemGroup>
+
+  <!-- Dashboard embedded resources -->
+  <ItemGroup>
+    <EmbeddedResource Include="Dashboard\wwwroot\**\*" />
   </ItemGroup>
 
 

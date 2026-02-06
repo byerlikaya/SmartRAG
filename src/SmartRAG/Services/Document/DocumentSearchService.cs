@@ -1001,7 +1001,7 @@ namespace SmartRAG.Services.Document
                         else
                         {
                             var content = chunk.Content.ToLowerInvariant();
-                            var wordMatches = queryWords.Count(word =>
+                            var wordMatches = (queryWords ?? Enumerable.Empty<string>()).Count(word =>
                                 content.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0);
 
                             var expandedScore = wordMatches * 0.05;

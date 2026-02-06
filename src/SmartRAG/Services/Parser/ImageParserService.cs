@@ -690,8 +690,8 @@ namespace SmartRAG.Services.Parser
             var commonTessdataPaths = new[]
             {
                 Path.Combine(baseDir, "tessdata"),
-                Path.Combine(baseDir, "bin", "Debug", "netstandard2.1", "tessdata"),
-                Path.Combine(baseDir, "bin", "Release", "netstandard2.1", "tessdata"),
+                Path.Combine(baseDir, "bin", "Debug", "net6.0", "tessdata"),
+                Path.Combine(baseDir, "bin", "Release", "net6.0", "tessdata"),
                 Path.Combine(baseDir, "bin", "Debug", "net9.0", "tessdata"),
                 Path.Combine(baseDir, "bin", "Release", "net9.0", "tessdata")
             };

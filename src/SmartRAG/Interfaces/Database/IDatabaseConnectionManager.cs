@@ -29,7 +29,7 @@ namespace SmartRAG.Interfaces.Database
         /// <param name="databaseId">Database identifier</param>
         /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>Connection configuration or null</returns>
-        Task<DatabaseConnectionConfig> GetConnectionAsync(string databaseId, CancellationToken cancellationToken = default);
+        Task<DatabaseConnectionConfig?> GetConnectionAsync(string databaseId, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Validates a specific connection
