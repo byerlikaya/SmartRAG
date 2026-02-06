@@ -8,39 +8,40 @@ using SmartRAG.Interfaces.Support;
 using SmartRAG.Interfaces.AI;
 using SmartRAG.Models;
 
-namespace SmartRAG.Services.AI
+namespace SmartRAG.Services.AI;
+
+
+/// <summary>
+/// Service for building AI prompts
+/// </summary>
+public class PromptBuilderService : IPromptBuilderService
 {
+    private readonly Lazy<IConversationManagerService> _conversationManager;
+    private readonly SmartRagOptions _options;
+
     /// <summary>
-    /// Service for building AI prompts
+    /// Initializes a new instance of the PromptBuilderService
     /// </summary>
-    public class PromptBuilderService : IPromptBuilderService
+    /// <param name="conversationManager">Service for managing conversation sessions and history (lazy to break circular dependency)</param>
+    /// <param name="options">SmartRAG configuration options</param>
+    public PromptBuilderService(Lazy<IConversationManagerService> conversationManager, IOptions<SmartRagOptions> options)
     {
-        private readonly Lazy<IConversationManagerService> _conversationManager;
-        private readonly SmartRagOptions _options;
+        _conversationManager = conversationManager;
+        _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
+    }
 
-        /// <summary>
-        /// Initializes a new instance of the PromptBuilderService
-        /// </summary>
-        /// <param name="conversationManager">Service for managing conversation sessions and history (lazy to break circular dependency)</param>
-        /// <param name="options">SmartRAG configuration options</param>
-        public PromptBuilderService(Lazy<IConversationManagerService> conversationManager, IOptions<SmartRagOptions> options)
+    /// <summary>
+    /// Builds a prompt for document-based RAG answer generation
+    /// </summary>
+    public string BuildDocumentRagPrompt(string query, string context, string? conversationHistory = null, bool extractionRetryMode = false)
+    {
+        var languageInstruction = !string.IsNullOrEmpty(_options.DefaultLanguage)
+            ? GetLanguageInstructionForCode(_options.DefaultLanguage)
+            : "respond in the SAME language as the query";
+
+        if (extractionRetryMode)
         {
-            _conversationManager = conversationManager;
-            _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
-        }
-
-        /// <summary>
-        /// Builds a prompt for document-based RAG answer generation
-        /// </summary>
-        public string BuildDocumentRagPrompt(string query, string context, string? conversationHistory = null, bool extractionRetryMode = false)
-        {
-            var languageInstruction = !string.IsNullOrEmpty(_options.DefaultLanguage)
-                ? GetLanguageInstructionForCode(_options.DefaultLanguage)
-                : "respond in the SAME language as the query";
-
-            if (extractionRetryMode)
-            {
-                return $@"### ROLE
+            return $@"### ROLE
 You are a document extraction assistant. The document context below CONTAINS the answer. Your task is to EXTRACT and STATE the exact values.
 
 ### CRITICAL
@@ -63,31 +64,31 @@ Documents:
 Extract and state the exact values from the documents. Answer the question with the specific data found.
 
 Answer:";
-            }
+        }
 
-            var historyContext = !string.IsNullOrEmpty(conversationHistory)
-                ? $"\n\nRecent conversation context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 30)}\n"
-                : "";
+        var historyContext = !string.IsNullOrEmpty(conversationHistory)
+            ? $"\n\nRecent conversation context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 30)}\n"
+            : "";
 
-            var isVagueQuery = IsVagueQuery(query);
+        var isVagueQuery = IsVagueQuery(query);
 
-            var hasQuestionPunctuation = query.IndexOf('?', StringComparison.Ordinal) >= 0 ||
-                                       query.IndexOf('¿', StringComparison.Ordinal) >= 0 ||
-                                       query.IndexOf('؟', StringComparison.Ordinal) >= 0;
-            var hasNumbers = query.Any(char.IsDigit);
-            var queryTokens = query.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
-            var queryLength = queryTokens.Length;
+        var hasQuestionPunctuation = query.IndexOf('?', StringComparison.Ordinal) >= 0 ||
+                                   query.IndexOf('¿', StringComparison.Ordinal) >= 0 ||
+                                   query.IndexOf('؟', StringComparison.Ordinal) >= 0;
+        var hasNumbers = query.Any(char.IsDigit);
+        var queryTokens = query.Split(new[] { ' ', '\t', '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries);
+        var queryLength = queryTokens.Length;
 
 
-            var isCountingOrListingQuery = hasQuestionPunctuation && (
-                hasNumbers ||
-                queryLength >= 5 ||
-                HasNumericRangeOrList(query) ||
-                HasMultipleNumericGroups(query)
-            );
+        var isCountingOrListingQuery = hasQuestionPunctuation && (
+            hasNumbers ||
+            queryLength >= 5 ||
+            HasNumericRangeOrList(query) ||
+            HasMultipleNumericGroups(query)
+        );
 
-            var countingInstructions = isCountingOrListingQuery
-                ? @"
+        var countingInstructions = isCountingOrListingQuery
+            ? @"
 SPECIAL INSTRUCTIONS FOR COUNTING/LISTING QUESTIONS (applies to all languages):
 - Look carefully for numbered lists (1., 2., 3., etc.) or bullet points in the context
 - Count all items mentioned, even if they are in different parts of the context
@@ -96,10 +97,10 @@ SPECIAL INSTRUCTIONS FOR COUNTING/LISTING QUESTIONS (applies to all languages):
 - If the question asks for a count or quantity (regardless of the language used), provide the exact count AND list all items
 - If the question asks for locations or places (regardless of the language used), list all locations mentioned
 - Be thorough - scan the ENTIRE context for related information"
-                : "";
+            : "";
 
-            var vagueQueryInstructions = isVagueQuery && !string.IsNullOrEmpty(conversationHistory)
-                ? @"
+        var vagueQueryInstructions = isVagueQuery && !string.IsNullOrEmpty(conversationHistory)
+            ? @"
 SPECIAL INSTRUCTIONS FOR VAGUE QUESTIONS (questions referring to generic person/entity without naming them):
 - The current question is vague and refers to a person/entity without naming them
 - Use the conversation history above to identify the specific person/entity being discussed
@@ -107,14 +108,14 @@ SPECIAL INSTRUCTIONS FOR VAGUE QUESTIONS (questions referring to generic person/
 - If conversation history mentions a specific name, search for that name in the document context
 - If the question asks about attributes (title, position, role, etc.) without naming the person, look for that information about the person mentioned in conversation history
 - Combine conversation history context with document context to provide a complete answer"
-                : "";
+            : "";
 
-            var followUpInstructions = !string.IsNullOrEmpty(conversationHistory)
-                ? @"
+        var followUpInstructions = !string.IsNullOrEmpty(conversationHistory)
+            ? @"
 FOLLOW-UP QUESTIONS: If the question refers to something you already stated in the Recent conversation context above (e.g. a value, quantity, or fact), you MAY use that information to answer. You may compute derived values (e.g. half, double, or other proportions) from data you previously stated, or explain why you did not. Prefer documents when the same data appears there; otherwise use the conversation context you already provided."
-                : "";
+            : "";
 
-            return $@"### ROLE
+        return $@"### ROLE
 You are a document-based assistant. Answer questions using ONLY the documents provided below.
 
 ### CONSTRAINTS
@@ -147,34 +148,34 @@ Answer the question using ONLY the documents above. If any part of the question 
 When the question asks for specific values (dates, amounts, or quantities) from documents, extract and state the exact values found. Do not give generic advice when the data is present in the context.
 
 Answer:";
+    }
+
+    /// <summary>
+    /// Builds a prompt for merging hybrid results (database + documents)
+    /// </summary>
+    public string BuildHybridMergePrompt(string query, string? databaseContext, string? documentContext, string? conversationHistory = null)
+    {
+        var combinedContext = new System.Collections.Generic.List<string>();
+
+        if (!string.IsNullOrEmpty(databaseContext))
+        {
+            combinedContext.Add($"=== DATABASE INFORMATION ===\n{databaseContext}");
         }
 
-        /// <summary>
-        /// Builds a prompt for merging hybrid results (database + documents)
-        /// </summary>
-        public string BuildHybridMergePrompt(string query, string? databaseContext, string? documentContext, string? conversationHistory = null)
+        if (!string.IsNullOrEmpty(documentContext))
         {
-            var combinedContext = new System.Collections.Generic.List<string>();
+            combinedContext.Add($"=== DOCUMENT INFORMATION ===\n{documentContext}");
+        }
 
-            if (!string.IsNullOrEmpty(databaseContext))
-            {
-                combinedContext.Add($"=== DATABASE INFORMATION ===\n{databaseContext}");
-            }
+        var historyContext = !string.IsNullOrEmpty(conversationHistory)
+            ? $"\n\nRecent context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 30)}\n"
+            : "";
 
-            if (!string.IsNullOrEmpty(documentContext))
-            {
-                combinedContext.Add($"=== DOCUMENT INFORMATION ===\n{documentContext}");
-            }
+        var languageInstruction = !string.IsNullOrEmpty(_options.DefaultLanguage)
+            ? GetLanguageInstructionForCode(_options.DefaultLanguage)
+            : "respond in the same language as the query";
 
-            var historyContext = !string.IsNullOrEmpty(conversationHistory)
-                ? $"\n\nRecent context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 30)}\n"
-                : "";
-
-            var languageInstruction = !string.IsNullOrEmpty(_options.DefaultLanguage)
-                ? GetLanguageInstructionForCode(_options.DefaultLanguage)
-                : "respond in the same language as the query";
-
-            return $@"### ROLE
+        return $@"### ROLE
 You are a hybrid assistant. Answer questions using database and document sources below.
 
 ### CONSTRAINTS
@@ -206,96 +207,96 @@ Sources:
 Answer the question using the sources above. Prioritize database information over document information. If any part of the question cannot be answered from the sources, add [NO_ANSWER_FOUND] at the end.
 
 Answer:";
-        }
+    }
 
-        /// <summary>
-        /// Builds a prompt for general conversation
-        /// </summary>
-        public string BuildConversationPrompt(string query, string? conversationHistory = null)
-        {
-            var historyContext = !string.IsNullOrEmpty(conversationHistory)
-                ? $"\n\nRecent conversation context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 30)}\n"
-                : "";
+    /// <summary>
+    /// Builds a prompt for general conversation
+    /// </summary>
+    public string BuildConversationPrompt(string query, string? conversationHistory = null)
+    {
+        var historyContext = !string.IsNullOrEmpty(conversationHistory)
+            ? $"\n\nRecent conversation context:\n{_conversationManager.Value.TruncateConversationHistory(conversationHistory, maxTurns: 30)}\n"
+            : "";
 
-            var languageInstruction = !string.IsNullOrEmpty(_options.DefaultLanguage)
-                ? GetLanguageInstructionForCode(_options.DefaultLanguage)
-                : "respond naturally in the same language as the user's question";
+        var languageInstruction = !string.IsNullOrEmpty(_options.DefaultLanguage)
+            ? GetLanguageInstructionForCode(_options.DefaultLanguage)
+            : "respond naturally in the same language as the user's question";
 
-            return $@"You are a helpful AI assistant. Answer the user's question naturally and friendly.
+        return $@"You are a helpful AI assistant. Answer the user's question naturally and friendly.
 Keep responses concise and relevant to the current question.
 {languageInstruction}
 
 {historyContext}Current question: {query}
 
 Answer:";
-        }
+    }
 
-        /// <summary>
-        /// Gets language-specific instruction for AI prompt
-        /// </summary>
-        /// <param name="languageCode">ISO 639-1 language code (e.g., "tr", "en", "de")</param>
-        /// <returns>Explicit language instruction for AI</returns>
-        private static string GetLanguageInstructionForCode(string languageCode)
+    /// <summary>
+    /// Gets language-specific instruction for AI prompt
+    /// </summary>
+    /// <param name="languageCode">ISO 639-1 language code (e.g., "tr", "en", "de")</param>
+    /// <returns>Explicit language instruction for AI</returns>
+    private static string GetLanguageInstructionForCode(string languageCode)
+    {
+        // Generic language instruction - works for any language without hardcoding specific language names
+        // The AI model understands ISO 639-1 codes and will respond in the appropriate language
+        return languageCode.ToLowerInvariant() switch
         {
-            // Generic language instruction - works for any language without hardcoding specific language names
-            // The AI model understands ISO 639-1 codes and will respond in the appropriate language
-            return languageCode.ToLowerInvariant() switch
-            {
-                "en" => "you MUST respond in English",
-                _ => $"you MUST respond in the language with ISO code: {languageCode}. Use the appropriate language for user queries and responses."
-            };
-        }
+            "en" => "you MUST respond in English",
+            _ => $"you MUST respond in the language with ISO code: {languageCode}. Use the appropriate language for user queries and responses."
+        };
+    }
 
-        /// <summary>
-        /// Detects numeric ranges or lists in query (language-agnostic)
-        /// Examples: "1-5", "1, 2, 3", "10-20" (works for all languages)
-        /// </summary>
-        private static bool HasNumericRangeOrList(string input)
-        {
-            return Regex.IsMatch(input, @"\b\d+\s*[-–—]\s*\d+\b") || // Range pattern: "1-5"
-                   Regex.IsMatch(input, @"\b\d+\s*,\s*\d+(\s*,\s*\d+)+\b"); // List pattern: "1, 2, 3"
-        }
+    /// <summary>
+    /// Detects numeric ranges or lists in query (language-agnostic)
+    /// Examples: "1-5", "1, 2, 3", "10-20" (works for all languages)
+    /// </summary>
+    private static bool HasNumericRangeOrList(string input)
+    {
+        return Regex.IsMatch(input, @"\b\d+\s*[-–—]\s*\d+\b") || // Range pattern: "1-5"
+               Regex.IsMatch(input, @"\b\d+\s*,\s*\d+(\s*,\s*\d+)+\b"); // List pattern: "1, 2, 3"
+    }
 
-        /// <summary>
-        /// Detects multiple numeric groups in query (language-agnostic)
-        /// Example: "Show items 1, 2, 3" has 3 numeric groups
-        /// </summary>
-        private static bool HasMultipleNumericGroups(string input)
-        {
-            var matches = Regex.Matches(input, @"\p{Nd}+");
-            return matches.Count >= 2;
-        }
+    /// <summary>
+    /// Detects multiple numeric groups in query (language-agnostic)
+    /// Example: "Show items 1, 2, 3" has 3 numeric groups
+    /// </summary>
+    private static bool HasMultipleNumericGroups(string input)
+    {
+        var matches = Regex.Matches(input, @"\p{Nd}+");
+        return matches.Count >= 2;
+    }
 
-        /// <summary>
-        /// Detects if query is vague (refers to generic person/entity without naming them)
-        /// CONSERVATIVE: Only marks as vague if query explicitly uses generic terms AND conversation history exists
-        /// This prevents false positives for queries that can be answered directly from document context
-        /// Language-agnostic: Uses structural patterns that work for all languages
-        /// </summary>
-        private static bool IsVagueQuery(string query)
-        {
-            if (string.IsNullOrWhiteSpace(query))
-                return false;
+    /// <summary>
+    /// Detects if query is vague (refers to generic person/entity without naming them)
+    /// CONSERVATIVE: Only marks as vague if query explicitly uses generic terms AND conversation history exists
+    /// This prevents false positives for queries that can be answered directly from document context
+    /// Language-agnostic: Uses structural patterns that work for all languages
+    /// </summary>
+    private static bool IsVagueQuery(string query)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+            return false;
 
-            var hasName = Regex.IsMatch(query, @"\b\p{Lu}\p{Ll}+\s+\p{Lu}\p{Ll}+\b", RegexOptions.None);
-            if (hasName)
-                return false;
+        var hasName = Regex.IsMatch(query, @"\b\p{Lu}\p{Ll}+\s+\p{Lu}\p{Ll}+\b", RegexOptions.None);
+        if (hasName)
+            return false;
 
-            var lowerQuery = query.ToLowerInvariant();
-            
-            var articleGenericPattern = @"\b\p{L}{1,3}\s+\p{L}{4,}\b";
-            var hasArticleGenericStructure = Regex.IsMatch(lowerQuery, articleGenericPattern, RegexOptions.None);
+        var lowerQuery = query.ToLowerInvariant();
+        
+        var articleGenericPattern = @"\b\p{L}{1,3}\s+\p{L}{4,}\b";
+        var hasArticleGenericStructure = Regex.IsMatch(lowerQuery, articleGenericPattern, RegexOptions.None);
 
-            var possessivePattern = @"\b\p{L}+\p{M}*\p{L}*\s+\p{L}+\b";
-            var hasPossessiveStructure = Regex.IsMatch(lowerQuery, possessivePattern, RegexOptions.None);
+        var possessivePattern = @"\b\p{L}+\p{M}*\p{L}*\s+\p{L}+\b";
+        var hasPossessiveStructure = Regex.IsMatch(lowerQuery, possessivePattern, RegexOptions.None);
 
-            var genericQuestionPattern = @"\b\p{L}{4,}\s+\p{L}{2,6}\b";
-            var hasGenericQuestionStructure = Regex.IsMatch(lowerQuery, genericQuestionPattern, RegexOptions.None);
+        var genericQuestionPattern = @"\b\p{L}{4,}\s+\p{L}{2,6}\b";
+        var hasGenericQuestionStructure = Regex.IsMatch(lowerQuery, genericQuestionPattern, RegexOptions.None);
 
-            var isVague = hasArticleGenericStructure || hasPossessiveStructure || hasGenericQuestionStructure;
+        var isVague = hasArticleGenericStructure || hasPossessiveStructure || hasGenericQuestionStructure;
 
-            return isVague;
-        }
+        return isVague;
     }
 }
+
 

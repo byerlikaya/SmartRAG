@@ -1,28 +1,29 @@
-namespace SmartRAG.Enums
+namespace SmartRAG.Enums;
+
+
+/// <summary>
+/// Supported database types for data extraction and analysis
+/// </summary>
+public enum DatabaseType
 {
     /// <summary>
-    /// Supported database types for data extraction and analysis
+    /// SQLite embedded database
     /// </summary>
-    public enum DatabaseType
-    {
-        /// <summary>
-        /// SQLite embedded database
-        /// </summary>
-        SQLite,
+    SQLite,
 
-        /// <summary>
-        /// Microsoft SQL Server database
-        /// </summary>
-        SqlServer,
+    /// <summary>
+    /// Microsoft SQL Server database
+    /// </summary>
+    SqlServer,
 
-        /// <summary>
-        /// MySQL database
-        /// </summary>
-        MySQL,
+    /// <summary>
+    /// MySQL database
+    /// </summary>
+    MySQL,
 
-        /// <summary>
-        /// PostgreSQL database
-        /// </summary>
-        PostgreSQL
-    }
+    /// <summary>
+    /// PostgreSQL database
+    /// </summary>
+    PostgreSQL
 }
+

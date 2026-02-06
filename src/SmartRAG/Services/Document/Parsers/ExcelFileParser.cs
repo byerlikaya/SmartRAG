@@ -9,72 +9,67 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SmartRAG.Services.Document.Parsers
+namespace SmartRAG.Services.Document.Parsers;
+
+
+public class ExcelFileParser : IFileParser
 {
-    public class ExcelFileParser : IFileParser
+    private static readonly string[] SupportedExtensions = { ".xlsx", ".xls" };
+    private static readonly string[] SupportedContentTypes = {
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-excel",
+        "application/vnd.ms-excel.sheet.macroEnabled.12"
+    };
+
+    private const string WorksheetFormat = "Worksheet: {0}";
+    private const string EmptyWorksheetFormat = "Worksheet: {0} (empty)";
+
+    public bool CanParse(string fileName, string contentType)
     {
-        private static readonly string[] SupportedExtensions = { ".xlsx", ".xls" };
-        private static readonly string[] SupportedContentTypes = {
-            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            "application/vnd.ms-excel",
-            "application/vnd.ms-excel.sheet.macroEnabled.12"
-        };
+        return SupportedExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) ||
+               SupportedContentTypes.Any(ct => contentType.Contains(ct));
+    }
 
-        private const string WorksheetFormat = "Worksheet: {0}";
-        private const string EmptyWorksheetFormat = "Worksheet: {0} (empty)";
-
-        public bool CanParse(string fileName, string contentType)
+    public async Task<FileParserResult> ParseAsync(Stream fileStream, string fileName, string language = null)
+    {
+        try
         {
-            return SupportedExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) ||
-                   SupportedContentTypes.Any(ct => contentType.Contains(ct));
-        }
+            var memoryStream = await CreateMemoryStreamCopy(fileStream);
 
-        public async Task<FileParserResult> ParseAsync(Stream fileStream, string fileName, string language = null)
-        {
-            try
+            using var package = new ExcelPackage(memoryStream);
+            var textBuilder = new StringBuilder();
+
+            if (package.Workbook.Worksheets.Count == 0)
             {
-                var memoryStream = await CreateMemoryStreamCopy(fileStream);
+                return new FileParserResult { Content = "Excel file contains no worksheets" };
+            }
 
-                using var package = new ExcelPackage(memoryStream);
-                var textBuilder = new StringBuilder();
-
-                if (package.Workbook.Worksheets.Count == 0)
+            foreach (var worksheet in package.Workbook.Worksheets)
+            {
+                if (worksheet.Dimension != null)
                 {
-                    return new FileParserResult { Content = "Excel file contains no worksheets" };
-                }
+                    textBuilder.AppendLine(string.Format(CultureInfo.InvariantCulture, WorksheetFormat, worksheet.Name));
 
-                foreach (var worksheet in package.Workbook.Worksheets)
-                {
-                    if (worksheet.Dimension != null)
+                    var rowCount = worksheet.Dimension.Rows;
+                    var colCount = worksheet.Dimension.Columns;
+
+                    var hasData = false;
+                    for (int row = 1; row <= rowCount; row++)
                     {
-                        textBuilder.AppendLine(string.Format(CultureInfo.InvariantCulture, WorksheetFormat, worksheet.Name));
+                        var rowBuilder = new StringBuilder();
+                        var rowHasData = false;
 
-                        var rowCount = worksheet.Dimension.Rows;
-                        var colCount = worksheet.Dimension.Columns;
-
-                        var hasData = false;
-                        for (int row = 1; row <= rowCount; row++)
+                        for (int col = 1; col <= colCount; col++)
                         {
-                            var rowBuilder = new StringBuilder();
-                            var rowHasData = false;
-
-                            for (int col = 1; col <= colCount; col++)
+                            var cellValue = worksheet.Cells[row, col].Value;
+                            if (cellValue != null)
                             {
-                                var cellValue = worksheet.Cells[row, col].Value;
-                                if (cellValue != null)
+                                var cellText = cellValue.ToString();
+                                if (!string.IsNullOrWhiteSpace(cellText))
                                 {
-                                    var cellText = cellValue.ToString();
-                                    if (!string.IsNullOrWhiteSpace(cellText))
-                                    {
-                                        rowBuilder.Append(cellText);
-                                        rowHasData = true;
-                                        if (col < colCount) rowBuilder.Append('\t');
-                                    }
-                                    else
-                                    {
-                                        rowBuilder.Append(' ');
-                                        if (col < colCount) rowBuilder.Append('\t');
-                                    }
+                                    rowBuilder.Append(cellText);
+                                    rowHasData = true;
+                                    if (col < colCount) rowBuilder.Append('\t');
                                 }
                                 else
                                 {
@@ -82,49 +77,55 @@ namespace SmartRAG.Services.Document.Parsers
                                     if (col < colCount) rowBuilder.Append('\t');
                                 }
                             }
-
-                            if (rowHasData)
+                            else
                             {
-                                textBuilder.AppendLine(rowBuilder.ToString());
-                                hasData = true;
+                                rowBuilder.Append(' ');
+                                if (col < colCount) rowBuilder.Append('\t');
                             }
                         }
 
-                        if (!hasData)
+                        if (rowHasData)
                         {
-                            textBuilder.AppendLine("Worksheet contains no data");
+                            textBuilder.AppendLine(rowBuilder.ToString());
+                            hasData = true;
                         }
-
-                        textBuilder.AppendLine();
                     }
-                    else
+
+                    if (!hasData)
                     {
-                        textBuilder.AppendLine(string.Format(CultureInfo.InvariantCulture, EmptyWorksheetFormat, worksheet.Name));
+                        textBuilder.AppendLine("Worksheet contains no data");
                     }
+
+                    textBuilder.AppendLine();
                 }
-
-                var content = textBuilder.ToString();
-                var cleanedContent = TextCleaningHelper.CleanContent(content);
-
-                if (string.IsNullOrWhiteSpace(cleanedContent))
+                else
                 {
-                    return new FileParserResult { Content = "Excel file processed but no text content extracted" };
+                    textBuilder.AppendLine(string.Format(CultureInfo.InvariantCulture, EmptyWorksheetFormat, worksheet.Name));
                 }
-
-                return new FileParserResult { Content = cleanedContent };
             }
-            catch (Exception ex)
+
+            var content = textBuilder.ToString();
+            var cleanedContent = TextCleaningHelper.CleanContent(content);
+
+            if (string.IsNullOrWhiteSpace(cleanedContent))
             {
-                return new FileParserResult { Content = $"Error parsing Excel file: {ex.Message}" };
+                return new FileParserResult { Content = "Excel file processed but no text content extracted" };
             }
-        }
 
-        private static async Task<MemoryStream> CreateMemoryStreamCopy(Stream fileStream)
+            return new FileParserResult { Content = cleanedContent };
+        }
+        catch (Exception ex)
         {
-            var memoryStream = new MemoryStream();
-            await fileStream.CopyToAsync(memoryStream);
-            memoryStream.Position = 0;
-            return memoryStream;
+            return new FileParserResult { Content = $"Error parsing Excel file: {ex.Message}" };
         }
     }
+
+    private static async Task<MemoryStream> CreateMemoryStreamCopy(Stream fileStream)
+    {
+        var memoryStream = new MemoryStream();
+        await fileStream.CopyToAsync(memoryStream);
+        memoryStream.Position = 0;
+        return memoryStream;
+    }
 }
+

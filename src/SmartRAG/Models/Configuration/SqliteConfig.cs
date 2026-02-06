@@ -1,13 +1,14 @@
-namespace SmartRAG.Models
+namespace SmartRAG.Models;
+
+
+/// <summary>
+/// SQLite storage configuration
+/// </summary>
+public class SqliteConfig
 {
     /// <summary>
-    /// SQLite storage configuration
+    /// Path to the SQLite database file
     /// </summary>
-    public class SqliteConfig
-    {
-        /// <summary>
-        /// Path to the SQLite database file
-        /// </summary>
-        public string DatabasePath { get; set; } = "SmartRag.db";
-    }
+    public string DatabasePath { get; set; } = "SmartRag.db";
 }
+

@@ -1,24 +1,25 @@
-namespace SmartRAG.Enums
+namespace SmartRAG.Enums;
+
+
+/// <summary>
+/// Command types that can be parsed from user input
+/// </summary>
+public enum QueryCommandType
 {
     /// <summary>
-    /// Command types that can be parsed from user input
+    /// No command detected
     /// </summary>
-    public enum QueryCommandType
-    {
-        /// <summary>
-        /// No command detected
-        /// </summary>
-        None,
+    None,
 
-        /// <summary>
-        /// Start a new conversation
-        /// </summary>
-        NewConversation,
+    /// <summary>
+    /// Start a new conversation
+    /// </summary>
+    NewConversation,
 
-        /// <summary>
-        /// Force conversation mode regardless of query content
-        /// </summary>
-        ForceConversation
-    }
+    /// <summary>
+    /// Force conversation mode regardless of query content
+    /// </summary>
+    ForceConversation
 }
+
 

@@ -1,24 +1,25 @@
-namespace SmartRAG.Enums
+namespace SmartRAG.Enums;
+
+
+/// <summary>
+/// Strategy for query execution
+/// </summary>
+public enum QueryStrategy
 {
     /// <summary>
-    /// Strategy for query execution
+    /// Execute database query only
     /// </summary>
-    public enum QueryStrategy
-    {
-        /// <summary>
-        /// Execute database query only
-        /// </summary>
-        DatabaseOnly,
+    DatabaseOnly,
 
-        /// <summary>
-        /// Execute document query only
-        /// </summary>
-        DocumentOnly,
+    /// <summary>
+    /// Execute document query only
+    /// </summary>
+    DocumentOnly,
 
-        /// <summary>
-        /// Execute both database and document queries
-        /// </summary>
-        Hybrid
-    }
+    /// <summary>
+    /// Execute both database and document queries
+    /// </summary>
+    Hybrid
 }
+
 

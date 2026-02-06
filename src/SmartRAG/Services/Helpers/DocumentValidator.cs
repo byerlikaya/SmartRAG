@@ -2,140 +2,141 @@ using SmartRAG.Entities;
 using System;
 using System.Linq;
 
-namespace SmartRAG.Services.Helpers
+namespace SmartRAG.Services.Helpers;
+
+
+/// <summary>
+/// Provides document and chunk validation for ensuring data integrity
+/// </summary>
+public static class DocumentValidator
 {
+    private const int MaxChunkContentLength = 1000000;
+    private const int MaxChunkIndex = 10000;
+    private const int MinRelevanceScore = -1;
+    private const int MaxRelevanceScore = 1;
+    private const int MaxEmbeddingVectorSize = 10000;
+    private const int MinEmbeddingVectorSize = 64;
+    private const int MinEmbeddingValue = -1000;
+    private const int MaxEmbeddingValue = 1000;
+    private const int MaxAbsoluteValue = 100;
+    private const int MinValueThreshold = 0;
+
     /// <summary>
-    /// Provides document and chunk validation for ensuring data integrity
+    /// Validates basic document properties
     /// </summary>
-    public static class DocumentValidator
+    /// <param name="document">Document to validate</param>
+    /// <exception cref="ArgumentNullException">When document is null</exception>
+    /// <exception cref="ArgumentException">When document properties are invalid</exception>
+    public static void ValidateDocument(SmartRAG.Entities.Document document)
     {
-        private const int MaxChunkContentLength = 1000000;
-        private const int MaxChunkIndex = 10000;
-        private const int MinRelevanceScore = -1;
-        private const int MaxRelevanceScore = 1;
-        private const int MaxEmbeddingVectorSize = 10000;
-        private const int MinEmbeddingVectorSize = 64;
-        private const int MinEmbeddingValue = -1000;
-        private const int MaxEmbeddingValue = 1000;
-        private const int MaxAbsoluteValue = 100;
-        private const int MinValueThreshold = 0;
-
-        /// <summary>
-        /// Validates basic document properties
-        /// </summary>
-        /// <param name="document">Document to validate</param>
-        /// <exception cref="ArgumentNullException">When document is null</exception>
-        /// <exception cref="ArgumentException">When document properties are invalid</exception>
-        public static void ValidateDocument(SmartRAG.Entities.Document document)
+        if (document == null)
         {
-            if (document == null)
-            {
-                throw new ArgumentNullException(nameof(document));
-            }
-
-            if (document.Id == Guid.Empty)
-            {
-                throw new ArgumentException("Document ID cannot be empty", nameof(document));
-            }
-
-            if (string.IsNullOrWhiteSpace(document.FileName))
-            {
-                throw new ArgumentException("Document filename cannot be empty", nameof(document));
-            }
-
-            if (string.IsNullOrWhiteSpace(document.Content))
-            {
-                throw new ArgumentException("Document content cannot be empty", nameof(document));
-            }
+            throw new ArgumentNullException(nameof(document));
         }
 
-        /// <summary>
-        /// Validates document chunks including content, embeddings, and metadata
-        /// </summary>
-        /// <param name="document">Document containing chunks to validate</param>
-        /// <exception cref="ArgumentException">When chunk properties are invalid</exception>
-        public static void ValidateChunks(SmartRAG.Entities.Document document)
+        if (document.Id == Guid.Empty)
         {
-            if (document.Chunks == null || !document.Chunks.Any())
-            {
-                return;
-            }
-
-            foreach (var chunk in document.Chunks)
-            {
-                if (chunk == null)
-                    throw new ArgumentException($"Chunk cannot be null for document {document.FileName} (ID: {document.Id})");
-
-                if (chunk.Id == Guid.Empty)
-                {
-                    throw new ArgumentException($"Chunk ID cannot be empty for document {document.Id}", nameof(document));
-                }
-
-                if (chunk.DocumentId != document.Id)
-                {
-                    throw new ArgumentException($"Chunk {chunk.Id} belongs to document {chunk.DocumentId} but is attached to {document.Id}", nameof(document));
-                }
-
-                if (string.IsNullOrWhiteSpace(chunk.Content))
-                {
-                    throw new ArgumentException($"Chunk {chunk.Id} content cannot be empty", nameof(document));
-                }
-
-                if (chunk.ChunkIndex < 0)
-                    throw new ArgumentException($"Chunk index cannot be negative for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-                if (chunk.CreatedAt == default)
-                    throw new ArgumentException($"Chunk CreatedAt cannot be default for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-                if (chunk.Content.Length > MaxChunkContentLength)
-                    throw new ArgumentException($"Chunk content too large ({chunk.Content.Length} characters) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-                if (chunk.ChunkIndex > MaxChunkIndex)
-                    throw new ArgumentException($"Chunk index too large ({chunk.ChunkIndex}) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-                if (chunk.RelevanceScore < MinRelevanceScore || chunk.RelevanceScore > MaxRelevanceScore)
-                    throw new ArgumentException($"Chunk RelevanceScore must be between {MinRelevanceScore} and {MaxRelevanceScore} for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-                ValidateChunkEmbedding(chunk, document);
-            }
+            throw new ArgumentException("Document ID cannot be empty", nameof(document));
         }
 
-        /// <summary>
-        /// Validates chunk embedding vector for dimension, range, and validity
-        /// </summary>
-        /// <param name="chunk">Chunk containing embedding to validate</param>
-        /// <param name="document">Parent document for error reporting</param>
-        /// <exception cref="ArgumentException">When embedding is invalid</exception>
-        private static void ValidateChunkEmbedding(DocumentChunk chunk, SmartRAG.Entities.Document document)
+        if (string.IsNullOrWhiteSpace(document.FileName))
         {
-            if (chunk.Embedding == null) return;
+            throw new ArgumentException("Document filename cannot be empty", nameof(document));
+        }
 
-            if (chunk.Embedding.Count > MaxEmbeddingVectorSize)
-                throw new ArgumentException($"Chunk embedding vector too large ({chunk.Embedding.Count} dimensions, max: {MaxEmbeddingVectorSize}) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-            if (chunk.Embedding.Count > 0 && chunk.Embedding.Count < MinEmbeddingVectorSize)
-                throw new ArgumentException($"Chunk embedding vector too small ({chunk.Embedding.Count} dimensions, min: {MinEmbeddingVectorSize}) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-            if (chunk.Embedding.Any(f => float.IsNaN(f) || float.IsInfinity(f)))
-                throw new ArgumentException($"Chunk embedding contains invalid values (NaN or Infinity) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-            if (chunk.Embedding.Any(f => f < MinEmbeddingValue || f > MaxEmbeddingValue))
-                throw new ArgumentException($"Chunk embedding contains values outside reasonable range [{MinEmbeddingValue}, {MaxEmbeddingValue}] for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-            if (chunk.Embedding.Count > 0 && chunk.Embedding.All(f => f == 0))
-                throw new ArgumentException($"Chunk embedding vector contains only zeros for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-            if (chunk.Embedding.Count > 0 && chunk.Embedding.All(f => Math.Abs(f) < MinValueThreshold))
-                throw new ArgumentException($"Chunk embedding vector contains only very small values (< {MinValueThreshold}) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-            if (chunk.Embedding.Count > 0 && chunk.Embedding.Any(f => Math.Abs(f) > MaxAbsoluteValue))
-                throw new ArgumentException($"Chunk embedding vector contains values with absolute value > {MaxAbsoluteValue} for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-            if (chunk.Embedding.Count > 0 && chunk.Embedding.Any(f => f != 0 && Math.Abs(f) < float.Epsilon))
-                throw new ArgumentException($"Chunk embedding vector contains subnormal values for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
-
-            if (chunk.Embedding.Count > 0 && chunk.Embedding.Any(f => float.IsNegativeInfinity(f) || float.IsPositiveInfinity(f)))
-                throw new ArgumentException($"Chunk embedding vector contains infinity values for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+        if (string.IsNullOrWhiteSpace(document.Content))
+        {
+            throw new ArgumentException("Document content cannot be empty", nameof(document));
         }
     }
+
+    /// <summary>
+    /// Validates document chunks including content, embeddings, and metadata
+    /// </summary>
+    /// <param name="document">Document containing chunks to validate</param>
+    /// <exception cref="ArgumentException">When chunk properties are invalid</exception>
+    public static void ValidateChunks(SmartRAG.Entities.Document document)
+    {
+        if (document.Chunks == null || !document.Chunks.Any())
+        {
+            return;
+        }
+
+        foreach (var chunk in document.Chunks)
+        {
+            if (chunk == null)
+                throw new ArgumentException($"Chunk cannot be null for document {document.FileName} (ID: {document.Id})");
+
+            if (chunk.Id == Guid.Empty)
+            {
+                throw new ArgumentException($"Chunk ID cannot be empty for document {document.Id}", nameof(document));
+            }
+
+            if (chunk.DocumentId != document.Id)
+            {
+                throw new ArgumentException($"Chunk {chunk.Id} belongs to document {chunk.DocumentId} but is attached to {document.Id}", nameof(document));
+            }
+
+            if (string.IsNullOrWhiteSpace(chunk.Content))
+            {
+                throw new ArgumentException($"Chunk {chunk.Id} content cannot be empty", nameof(document));
+            }
+
+            if (chunk.ChunkIndex < 0)
+                throw new ArgumentException($"Chunk index cannot be negative for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+
+            if (chunk.CreatedAt == default)
+                throw new ArgumentException($"Chunk CreatedAt cannot be default for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+
+            if (chunk.Content.Length > MaxChunkContentLength)
+                throw new ArgumentException($"Chunk content too large ({chunk.Content.Length} characters) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+
+            if (chunk.ChunkIndex > MaxChunkIndex)
+                throw new ArgumentException($"Chunk index too large ({chunk.ChunkIndex}) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+
+            if (chunk.RelevanceScore < MinRelevanceScore || chunk.RelevanceScore > MaxRelevanceScore)
+                throw new ArgumentException($"Chunk RelevanceScore must be between {MinRelevanceScore} and {MaxRelevanceScore} for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+
+            ValidateChunkEmbedding(chunk, document);
+        }
+    }
+
+    /// <summary>
+    /// Validates chunk embedding vector for dimension, range, and validity
+    /// </summary>
+    /// <param name="chunk">Chunk containing embedding to validate</param>
+    /// <param name="document">Parent document for error reporting</param>
+    /// <exception cref="ArgumentException">When embedding is invalid</exception>
+    private static void ValidateChunkEmbedding(DocumentChunk chunk, SmartRAG.Entities.Document document)
+    {
+        if (chunk.Embedding == null) return;
+
+        if (chunk.Embedding.Count > MaxEmbeddingVectorSize)
+            throw new ArgumentException($"Chunk embedding vector too large ({chunk.Embedding.Count} dimensions, max: {MaxEmbeddingVectorSize}) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+
+        if (chunk.Embedding.Count > 0 && chunk.Embedding.Count < MinEmbeddingVectorSize)
+            throw new ArgumentException($"Chunk embedding vector too small ({chunk.Embedding.Count} dimensions, min: {MinEmbeddingVectorSize}) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+
+        if (chunk.Embedding.Any(f => float.IsNaN(f) || float.IsInfinity(f)))
+            throw new ArgumentException($"Chunk embedding contains invalid values (NaN or Infinity) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+
+        if (chunk.Embedding.Any(f => f < MinEmbeddingValue || f > MaxEmbeddingValue))
+            throw new ArgumentException($"Chunk embedding contains values outside reasonable range [{MinEmbeddingValue}, {MaxEmbeddingValue}] for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+
+        if (chunk.Embedding.Count > 0 && chunk.Embedding.All(f => f == 0))
+            throw new ArgumentException($"Chunk embedding vector contains only zeros for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+
+        if (chunk.Embedding.Count > 0 && chunk.Embedding.All(f => Math.Abs(f) < MinValueThreshold))
+            throw new ArgumentException($"Chunk embedding vector contains only very small values (< {MinValueThreshold}) for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+
+        if (chunk.Embedding.Count > 0 && chunk.Embedding.Any(f => Math.Abs(f) > MaxAbsoluteValue))
+            throw new ArgumentException($"Chunk embedding vector contains values with absolute value > {MaxAbsoluteValue} for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+
+        if (chunk.Embedding.Count > 0 && chunk.Embedding.Any(f => f != 0 && Math.Abs(f) < float.Epsilon))
+            throw new ArgumentException($"Chunk embedding vector contains subnormal values for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+
+        if (chunk.Embedding.Count > 0 && chunk.Embedding.Any(f => float.IsNegativeInfinity(f) || float.IsPositiveInfinity(f)))
+            throw new ArgumentException($"Chunk embedding vector contains infinity values for chunk {chunk.Id} in document {document.FileName} (ID: {document.Id})");
+    }
 }
+

@@ -1,9 +1,10 @@
 using SmartRAG.Enums;
 
-namespace SmartRAG.Services.Database.Strategies
+namespace SmartRAG.Services.Database.Strategies;
+
+
+public class MySqlDialectStrategy : BaseSqlDialectStrategy
 {
-    public class MySqlDialectStrategy : BaseSqlDialectStrategy
-    {
-        public override DatabaseType DatabaseType => DatabaseType.MySQL;
-    }
+    public override DatabaseType DatabaseType => DatabaseType.MySQL;
 }
+

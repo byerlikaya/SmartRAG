@@ -7,272 +7,273 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace SmartRAG.Services.Database
+namespace SmartRAG.Services.Database;
+
+
+/// <summary>
+/// Detects cross-database relationships based on Primary Key and Foreign Key information
+/// </summary>
+public class CrossDatabaseMappingDetector
 {
-    /// <summary>
-    /// Detects cross-database relationships based on Primary Key and Foreign Key information
-    /// </summary>
-    public class CrossDatabaseMappingDetector
+    private readonly IDatabaseSchemaAnalyzer _schemaAnalyzer;
+    private readonly ILogger<CrossDatabaseMappingDetector> _logger;
+
+    public CrossDatabaseMappingDetector(
+        IDatabaseSchemaAnalyzer schemaAnalyzer,
+        ILogger<CrossDatabaseMappingDetector> logger)
     {
-        private readonly IDatabaseSchemaAnalyzer _schemaAnalyzer;
-        private readonly ILogger<CrossDatabaseMappingDetector> _logger;
+        _schemaAnalyzer = schemaAnalyzer ?? throw new ArgumentNullException(nameof(schemaAnalyzer));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+    }
 
-        public CrossDatabaseMappingDetector(
-            IDatabaseSchemaAnalyzer schemaAnalyzer,
-            ILogger<CrossDatabaseMappingDetector> logger)
+    /// <summary>
+    /// Detects cross-database mappings by analyzing Primary Keys and Foreign Keys across all databases
+    /// </summary>
+    public async Task<List<CrossDatabaseMapping>> DetectMappingsAsync(
+        List<DatabaseConnectionConfig> connections,
+        CancellationToken cancellationToken = default)
+    {
+        var mappings = new List<CrossDatabaseMapping>();
+
+        if (connections == null || connections.Count < 2)
         {
-            _schemaAnalyzer = schemaAnalyzer ?? throw new ArgumentNullException(nameof(schemaAnalyzer));
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-        }
-
-        /// <summary>
-        /// Detects cross-database mappings by analyzing Primary Keys and Foreign Keys across all databases
-        /// </summary>
-        public async Task<List<CrossDatabaseMapping>> DetectMappingsAsync(
-            List<DatabaseConnectionConfig> connections,
-            CancellationToken cancellationToken = default)
-        {
-            var mappings = new List<CrossDatabaseMapping>();
-
-            if (connections == null || connections.Count < 2)
-            {
-                _logger.LogInformation("Less than 2 databases configured, no cross-database mappings to detect");
-                return mappings;
-            }
-
-            var allSchemas = await _schemaAnalyzer.GetAllSchemasAsync(cancellationToken);
-            if (allSchemas == null || allSchemas.Count < 2)
-            {
-                _logger.LogInformation("Less than 2 schemas available, no cross-database mappings to detect");
-                return mappings;
-            }
-
-            var connectionMap = new Dictionary<string, DatabaseConnectionConfig>(StringComparer.OrdinalIgnoreCase);
-            foreach (var c in connections)
-            {
-                var key = c.Name ?? GetDatabaseIdFromConnection(c);
-                connectionMap[key] = c;
-            }
-
-            for (int i = 0; i < allSchemas.Count; i++)
-            {
-                var sourceSchema = allSchemas[i];
-                if (!connectionMap.TryGetValue(sourceSchema.DatabaseName, out var sourceConnection))
-                    continue;
-
-                for (int j = i + 1; j < allSchemas.Count; j++)
-                {
-                    var targetSchema = allSchemas[j];
-                    if (!connectionMap.TryGetValue(targetSchema.DatabaseName, out var targetConnection))
-                        continue;
-
-                    var detectedMappings = DetectMappingsBetweenSchemas(
-                        sourceSchema,
-                        sourceConnection,
-                        targetSchema,
-                        targetConnection);
-
-                    mappings.AddRange(detectedMappings);
-                }
-            }
-
-            _logger.LogInformation("Detected {Count} cross-database mappings", mappings.Count);
+            _logger.LogInformation("Less than 2 databases configured, no cross-database mappings to detect");
             return mappings;
         }
 
-        private List<CrossDatabaseMapping> DetectMappingsBetweenSchemas(
-            DatabaseSchemaInfo sourceSchema,
-            DatabaseConnectionConfig sourceConnection,
-            DatabaseSchemaInfo targetSchema,
-            DatabaseConnectionConfig targetConnection)
+        var allSchemas = await _schemaAnalyzer.GetAllSchemasAsync(cancellationToken);
+        if (allSchemas == null || allSchemas.Count < 2)
         {
-            var mappings = new List<CrossDatabaseMapping>();
+            _logger.LogInformation("Less than 2 schemas available, no cross-database mappings to detect");
+            return mappings;
+        }
 
-            foreach (var sourceTable in sourceSchema.Tables)
+        var connectionMap = new Dictionary<string, DatabaseConnectionConfig>(StringComparer.OrdinalIgnoreCase);
+        foreach (var c in connections)
+        {
+            var key = c.Name ?? GetDatabaseIdFromConnection(c);
+            connectionMap[key] = c;
+        }
+
+        for (int i = 0; i < allSchemas.Count; i++)
+        {
+            var sourceSchema = allSchemas[i];
+            if (!connectionMap.TryGetValue(sourceSchema.DatabaseName, out var sourceConnection))
+                continue;
+
+            for (int j = i + 1; j < allSchemas.Count; j++)
             {
-                foreach (var sourceColumn in sourceTable.Columns)
+                var targetSchema = allSchemas[j];
+                if (!connectionMap.TryGetValue(targetSchema.DatabaseName, out var targetConnection))
+                    continue;
+
+                var detectedMappings = DetectMappingsBetweenSchemas(
+                    sourceSchema,
+                    sourceConnection,
+                    targetSchema,
+                    targetConnection);
+
+                mappings.AddRange(detectedMappings);
+            }
+        }
+
+        _logger.LogInformation("Detected {Count} cross-database mappings", mappings.Count);
+        return mappings;
+    }
+
+    private List<CrossDatabaseMapping> DetectMappingsBetweenSchemas(
+        DatabaseSchemaInfo sourceSchema,
+        DatabaseConnectionConfig sourceConnection,
+        DatabaseSchemaInfo targetSchema,
+        DatabaseConnectionConfig targetConnection)
+    {
+        var mappings = new List<CrossDatabaseMapping>();
+
+        foreach (var sourceTable in sourceSchema.Tables)
+        {
+            foreach (var sourceColumn in sourceTable.Columns)
+            {
+                if (!sourceColumn.IsPrimaryKey && !sourceColumn.IsForeignKey)
+                    continue;
+
+                var matchingTarget = FindMatchingColumn(
+                    sourceColumn,
+                    targetSchema);
+
+                if (matchingTarget != null)
                 {
-                    if (!sourceColumn.IsPrimaryKey && !sourceColumn.IsForeignKey)
-                        continue;
+                    var targetColumn = matchingTarget.Columns.FirstOrDefault(c =>
+                        (sourceColumn.IsPrimaryKey && c.IsPrimaryKey) ||
+                        (sourceColumn.IsForeignKey && c.IsPrimaryKey));
 
-                    var matchingTarget = FindMatchingColumn(
-                        sourceColumn,
-                        targetSchema);
-
-                    if (matchingTarget != null)
-                    {
-                        var targetColumn = matchingTarget.Columns.FirstOrDefault(c =>
-                            (sourceColumn.IsPrimaryKey && c.IsPrimaryKey) ||
-                            (sourceColumn.IsForeignKey && c.IsPrimaryKey));
-
-                        if (targetColumn != null)
-                        {
-                            var mapping = new CrossDatabaseMapping
-                            {
-                                SourceDatabase = sourceConnection.Name ?? sourceSchema.DatabaseName,
-                                SourceTable = sourceTable.TableName,
-                                SourceColumn = sourceColumn.ColumnName,
-                                TargetDatabase = targetConnection.Name ?? targetSchema.DatabaseName,
-                                TargetTable = matchingTarget.TableName,
-                                TargetColumn = targetColumn.ColumnName,
-                                RelationshipType = sourceColumn.IsPrimaryKey ? "PrimaryKey" : "ForeignKey"
-                            };
-
-                            mappings.Add(mapping);
-                            _logger.LogDebug(
-                                "Detected mapping: {SourceDB}.{SourceTable}.{SourceColumn} -> {TargetDB}.{TargetTable}.{TargetColumn}",
-                                mapping.SourceDatabase, mapping.SourceTable, mapping.SourceColumn,
-                                mapping.TargetDatabase, mapping.TargetTable, mapping.TargetColumn);
-                        }
-                    }
-                }
-
-                foreach (var foreignKey in sourceTable.ForeignKeys)
-                {
-                    var matchingTarget = FindMatchingTableByForeignKey(
-                        foreignKey,
-                        targetSchema);
-
-                    if (matchingTarget != null)
+                    if (targetColumn != null)
                     {
                         var mapping = new CrossDatabaseMapping
                         {
                             SourceDatabase = sourceConnection.Name ?? sourceSchema.DatabaseName,
                             SourceTable = sourceTable.TableName,
-                            SourceColumn = foreignKey.ColumnName,
+                            SourceColumn = sourceColumn.ColumnName,
                             TargetDatabase = targetConnection.Name ?? targetSchema.DatabaseName,
                             TargetTable = matchingTarget.TableName,
-                            TargetColumn = foreignKey.ReferencedColumn,
-                            RelationshipType = "ForeignKey"
+                            TargetColumn = targetColumn.ColumnName,
+                            RelationshipType = sourceColumn.IsPrimaryKey ? "PrimaryKey" : "ForeignKey"
                         };
 
-                        if (!mappings.Any(m => m.SourceColumn == mapping.SourceColumn &&
-                                             m.TargetColumn == mapping.TargetColumn &&
-                                             m.SourceDatabase == mapping.SourceDatabase &&
-                                             m.TargetDatabase == mapping.TargetDatabase))
-                        {
-                            mappings.Add(mapping);
-                            _logger.LogDebug(
-                                "Detected FK mapping: {SourceDB}.{SourceTable}.{SourceColumn} -> {TargetDB}.{TargetTable}.{TargetColumn}",
-                                mapping.SourceDatabase, mapping.SourceTable, mapping.SourceColumn,
-                                mapping.TargetDatabase, mapping.TargetTable, mapping.TargetColumn);
-                        }
+                        mappings.Add(mapping);
+                        _logger.LogDebug(
+                            "Detected mapping: {SourceDB}.{SourceTable}.{SourceColumn} -> {TargetDB}.{TargetTable}.{TargetColumn}",
+                            mapping.SourceDatabase, mapping.SourceTable, mapping.SourceColumn,
+                            mapping.TargetDatabase, mapping.TargetTable, mapping.TargetColumn);
                     }
                 }
             }
 
-            return mappings;
-        }
-
-        private TableSchemaInfo FindMatchingColumn(
-            ColumnSchemaInfo sourceColumn,
-            DatabaseSchemaInfo targetSchema)
-        {
-            foreach (var targetTable in targetSchema.Tables)
+            foreach (var foreignKey in sourceTable.ForeignKeys)
             {
-                foreach (var targetColumn in targetTable.Columns)
-                {
-                    if (targetColumn.DataType != sourceColumn.DataType)
-                        continue;
+                var matchingTarget = FindMatchingTableByForeignKey(
+                    foreignKey,
+                    targetSchema);
 
-                    if ((sourceColumn.IsPrimaryKey && targetColumn.IsPrimaryKey) ||
-                        (sourceColumn.IsForeignKey && targetColumn.IsPrimaryKey))
+                if (matchingTarget != null)
+                {
+                    var mapping = new CrossDatabaseMapping
                     {
-                        if (AreColumnsSemanticallyRelated(sourceColumn.ColumnName, targetColumn.ColumnName))
-                        {
-                            return targetTable;
-                        }
+                        SourceDatabase = sourceConnection.Name ?? sourceSchema.DatabaseName,
+                        SourceTable = sourceTable.TableName,
+                        SourceColumn = foreignKey.ColumnName,
+                        TargetDatabase = targetConnection.Name ?? targetSchema.DatabaseName,
+                        TargetTable = matchingTarget.TableName,
+                        TargetColumn = foreignKey.ReferencedColumn,
+                        RelationshipType = "ForeignKey"
+                    };
+
+                    if (!mappings.Any(m => m.SourceColumn == mapping.SourceColumn &&
+                                         m.TargetColumn == mapping.TargetColumn &&
+                                         m.SourceDatabase == mapping.SourceDatabase &&
+                                         m.TargetDatabase == mapping.TargetDatabase))
+                    {
+                        mappings.Add(mapping);
+                        _logger.LogDebug(
+                            "Detected FK mapping: {SourceDB}.{SourceTable}.{SourceColumn} -> {TargetDB}.{TargetTable}.{TargetColumn}",
+                            mapping.SourceDatabase, mapping.SourceTable, mapping.SourceColumn,
+                            mapping.TargetDatabase, mapping.TargetTable, mapping.TargetColumn);
                     }
                 }
             }
-
-            return null;
         }
 
-        private TableSchemaInfo FindMatchingTableByForeignKey(
-            ForeignKeyInfo foreignKey,
-            DatabaseSchemaInfo targetSchema)
-        {
-            foreach (var targetTable in targetSchema.Tables)
-            {
-                if (targetTable.TableName.Equals(foreignKey.ReferencedTable, StringComparison.OrdinalIgnoreCase) ||
-                    targetTable.TableName.EndsWith(foreignKey.ReferencedTable, StringComparison.OrdinalIgnoreCase))
-                {
-                    var targetColumn = targetTable.Columns.FirstOrDefault(c =>
-                        c.ColumnName.Equals(foreignKey.ReferencedColumn, StringComparison.OrdinalIgnoreCase) &&
-                        c.IsPrimaryKey);
+        return mappings;
+    }
 
-                    if (targetColumn != null)
+    private TableSchemaInfo FindMatchingColumn(
+        ColumnSchemaInfo sourceColumn,
+        DatabaseSchemaInfo targetSchema)
+    {
+        foreach (var targetTable in targetSchema.Tables)
+        {
+            foreach (var targetColumn in targetTable.Columns)
+            {
+                if (targetColumn.DataType != sourceColumn.DataType)
+                    continue;
+
+                if ((sourceColumn.IsPrimaryKey && targetColumn.IsPrimaryKey) ||
+                    (sourceColumn.IsForeignKey && targetColumn.IsPrimaryKey))
+                {
+                    if (AreColumnsSemanticallyRelated(sourceColumn.ColumnName, targetColumn.ColumnName))
                     {
                         return targetTable;
                     }
                 }
             }
-
-            return null;
         }
 
-        private bool AreColumnsSemanticallyRelated(string column1, string column2)
+        return null;
+    }
+
+    private TableSchemaInfo FindMatchingTableByForeignKey(
+        ForeignKeyInfo foreignKey,
+        DatabaseSchemaInfo targetSchema)
+    {
+        foreach (var targetTable in targetSchema.Tables)
         {
-            var normalized1 = NormalizeColumnName(column1);
-            var normalized2 = NormalizeColumnName(column2);
-
-            if (normalized1.Equals(normalized2, StringComparison.OrdinalIgnoreCase))
-                return true;
-
-            var base1 = RemoveIdSuffix(normalized1);
-            var base2 = RemoveIdSuffix(normalized2);
-
-            if (base1.Equals(base2, StringComparison.OrdinalIgnoreCase))
-                return true;
-
-            return false;
-        }
-
-        private string NormalizeColumnName(string columnName)
-        {
-            return columnName?.Replace("_", "").Replace(" ", "") ?? string.Empty;
-        }
-
-        private string RemoveIdSuffix(string columnName)
-        {
-            if (string.IsNullOrEmpty(columnName))
-                return columnName;
-
-            if (columnName.EndsWith("ID", StringComparison.OrdinalIgnoreCase))
-                return columnName[..^2];
-
-            if (columnName.EndsWith("Id", StringComparison.OrdinalIgnoreCase))
-                return columnName[..^2];
-
-            if (columnName.EndsWith("_ID", StringComparison.OrdinalIgnoreCase))
-                return columnName[..^3];
-
-            if (columnName.EndsWith("_Id", StringComparison.OrdinalIgnoreCase))
-                return columnName[..^3];
-
-            return columnName;
-        }
-
-        private string GetDatabaseIdFromConnection(DatabaseConnectionConfig connection)
-        {
-            try
+            if (targetTable.TableName.Equals(foreignKey.ReferencedTable, StringComparison.OrdinalIgnoreCase) ||
+                targetTable.TableName.EndsWith(foreignKey.ReferencedTable, StringComparison.OrdinalIgnoreCase))
             {
-                var parts = connection.ConnectionString.Split(';');
-                var dbNamePart = parts.FirstOrDefault(p => p.Contains("Database=", StringComparison.OrdinalIgnoreCase) ||
-                                                          p.Contains("Initial Catalog=", StringComparison.OrdinalIgnoreCase));
-                if (!string.IsNullOrEmpty(dbNamePart))
+                var targetColumn = targetTable.Columns.FirstOrDefault(c =>
+                    c.ColumnName.Equals(foreignKey.ReferencedColumn, StringComparison.OrdinalIgnoreCase) &&
+                    c.IsPrimaryKey);
+
+                if (targetColumn != null)
                 {
-                    var dbName = dbNamePart.Split('=')[1].Trim();
-                    return $"{connection.DatabaseType}_{dbName}";
+                    return targetTable;
                 }
             }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Error extracting database ID from connection string");
-            }
-
-            return $"DB_{Guid.NewGuid():N}";
         }
+
+        return null;
+    }
+
+    private bool AreColumnsSemanticallyRelated(string column1, string column2)
+    {
+        var normalized1 = NormalizeColumnName(column1);
+        var normalized2 = NormalizeColumnName(column2);
+
+        if (normalized1.Equals(normalized2, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        var base1 = RemoveIdSuffix(normalized1);
+        var base2 = RemoveIdSuffix(normalized2);
+
+        if (base1.Equals(base2, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        return false;
+    }
+
+    private string NormalizeColumnName(string columnName)
+    {
+        return columnName?.Replace("_", "").Replace(" ", "") ?? string.Empty;
+    }
+
+    private string RemoveIdSuffix(string columnName)
+    {
+        if (string.IsNullOrEmpty(columnName))
+            return columnName;
+
+        if (columnName.EndsWith("ID", StringComparison.OrdinalIgnoreCase))
+            return columnName[..^2];
+
+        if (columnName.EndsWith("Id", StringComparison.OrdinalIgnoreCase))
+            return columnName[..^2];
+
+        if (columnName.EndsWith("_ID", StringComparison.OrdinalIgnoreCase))
+            return columnName[..^3];
+
+        if (columnName.EndsWith("_Id", StringComparison.OrdinalIgnoreCase))
+            return columnName[..^3];
+
+        return columnName;
+    }
+
+    private string GetDatabaseIdFromConnection(DatabaseConnectionConfig connection)
+    {
+        try
+        {
+            var parts = connection.ConnectionString.Split(';');
+            var dbNamePart = parts.FirstOrDefault(p => p.Contains("Database=", StringComparison.OrdinalIgnoreCase) ||
+                                                      p.Contains("Initial Catalog=", StringComparison.OrdinalIgnoreCase));
+            if (!string.IsNullOrEmpty(dbNamePart))
+            {
+                var dbName = dbNamePart.Split('=')[1].Trim();
+                return $"{connection.DatabaseType}_{dbName}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Error extracting database ID from connection string");
+        }
+
+        return $"DB_{Guid.NewGuid():N}";
     }
 }
+

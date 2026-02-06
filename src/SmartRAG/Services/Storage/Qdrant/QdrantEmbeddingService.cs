@@ -7,92 +7,93 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace SmartRAG.Services.Storage.Qdrant
+namespace SmartRAG.Services.Storage.Qdrant;
+
+
+/// <summary>
+/// Service for generating embeddings for text content using hash-based approach
+/// </summary>
+public class QdrantEmbeddingService : IQdrantEmbeddingService
 {
+    private const int DefaultVectorDimension = 768;
+
+    private readonly ILogger<QdrantEmbeddingService> _logger;
+    private readonly QdrantConfig _config;
+
     /// <summary>
-    /// Service for generating embeddings for text content using hash-based approach
+    /// Initializes a new instance of the QdrantEmbeddingService
     /// </summary>
-    public class QdrantEmbeddingService : IQdrantEmbeddingService
+    /// <param name="config">Qdrant configuration options</param>
+    /// <param name="logger">Logger instance for this service</param>
+    public QdrantEmbeddingService(IOptions<QdrantConfig> config, ILogger<QdrantEmbeddingService> logger)
     {
-        private const int DefaultVectorDimension = 768;
+        _config = config.Value;
+        _logger = logger;
+    }
 
-        private readonly ILogger<QdrantEmbeddingService> _logger;
-        private readonly QdrantConfig _config;
-
-        /// <summary>
-        /// Initializes a new instance of the QdrantEmbeddingService
-        /// </summary>
-        /// <param name="config">Qdrant configuration options</param>
-        /// <param name="logger">Logger instance for this service</param>
-        public QdrantEmbeddingService(IOptions<QdrantConfig> config, ILogger<QdrantEmbeddingService> logger)
+    /// <summary>
+    /// Generates an embedding vector for the given text using hash-based approach
+    /// </summary>
+    /// <param name="text">Text to generate embedding for</param>
+    /// <param name="cancellationToken">Token to cancel the operation</param>
+    /// <returns>List of float values representing the embedding vector</returns>
+    public async Task<List<float>> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken = default)
+    {
+        try
         {
-            _config = config.Value;
-            _logger = logger;
-        }
 
-        /// <summary>
-        /// Generates an embedding vector for the given text using hash-based approach
-        /// </summary>
-        /// <param name="text">Text to generate embedding for</param>
-        /// <param name="cancellationToken">Token to cancel the operation</param>
-        /// <returns>List of float values representing the embedding vector</returns>
-        public async Task<List<float>> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken = default)
-        {
-            try
+            var vectorDimension = await GetVectorDimensionAsync();
+
+            var hash = text.GetHashCode();
+            var random = new Random(hash);
+            var embedding = new List<float>(vectorDimension);
+
+            for (int i = 0; i < vectorDimension; i++)
             {
+                embedding.Add((float)(random.NextDouble() * 2 - 1)); // -1 to 1
+            }
 
-                var vectorDimension = await GetVectorDimensionAsync();
+            var sumSquares = 0.0f;
+            for (int i = 0; i < embedding.Count; i++)
+            {
+                sumSquares += embedding[i] * embedding[i];
+            }
 
-                var hash = text.GetHashCode();
-                var random = new Random(hash);
-                var embedding = new List<float>(vectorDimension);
-
-                for (int i = 0; i < vectorDimension; i++)
-                {
-                    embedding.Add((float)(random.NextDouble() * 2 - 1)); // -1 to 1
-                }
-
-                var sumSquares = 0.0f;
+            var magnitude = (float)Math.Sqrt(sumSquares);
+            if (magnitude > 0.001f) // Avoid division by very small numbers
+            {
+                var invMagnitude = 1.0f / magnitude;
                 for (int i = 0; i < embedding.Count; i++)
                 {
-                    sumSquares += embedding[i] * embedding[i];
+                    embedding[i] *= invMagnitude;
                 }
-
-                var magnitude = (float)Math.Sqrt(sumSquares);
-                if (magnitude > 0.001f) // Avoid division by very small numbers
-                {
-                    var invMagnitude = 1.0f / magnitude;
-                    for (int i = 0; i < embedding.Count; i++)
-                    {
-                        embedding[i] *= invMagnitude;
-                    }
-                }
-
-                return embedding;
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to generate embedding for text");
-                return new List<float>();
-            }
+
+            return embedding;
         }
-
-        private Task<int> GetVectorDimensionAsync()
+        catch (Exception ex)
         {
-            try
-            {
-                if (_config.VectorSize > 0)
-                {
-                    return Task.FromResult(_config.VectorSize);
-                }
+            _logger.LogError(ex, "Failed to generate embedding for text");
+            return new List<float>();
+        }
+    }
 
-                return Task.FromResult(DefaultVectorDimension);
-            }
-            catch (Exception ex)
+    private Task<int> GetVectorDimensionAsync()
+    {
+        try
+        {
+            if (_config.VectorSize > 0)
             {
-                _logger.LogError(ex, "Failed to get vector dimension, using default");
-                return Task.FromResult(DefaultVectorDimension);
+                return Task.FromResult(_config.VectorSize);
             }
+
+            return Task.FromResult(DefaultVectorDimension);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to get vector dimension, using default");
+            return Task.FromResult(DefaultVectorDimension);
         }
     }
 }
+

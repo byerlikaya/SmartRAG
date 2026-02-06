@@ -10,333 +10,334 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace SmartRAG.Repositories
+namespace SmartRAG.Repositories;
+
+
+public class RedisConversationRepository : IConversationRepository, IDisposable
 {
-    public class RedisConversationRepository : IConversationRepository, IDisposable
+    private readonly ConnectionMultiplexer _redis;
+    private readonly IDatabase _database;
+    private readonly ILogger<RedisConversationRepository> _logger;
+    private bool _disposed;
+
+    private const int DefaultConnectionTimeoutMs = 1000;
+    private const int DefaultKeepAliveSeconds = 180;
+
+    public RedisConversationRepository(IOptions<RedisConfig> config, ILogger<RedisConversationRepository> logger)
     {
-        private readonly ConnectionMultiplexer _redis;
-        private readonly IDatabase _database;
-        private readonly ILogger<RedisConversationRepository> _logger;
-        private bool _disposed;
+        var redisConfig = config.Value;
+        _logger = logger;
 
-        private const int DefaultConnectionTimeoutMs = 1000;
-        private const int DefaultKeepAliveSeconds = 180;
+        var options = CreateConnectionOptions(redisConfig);
+        ConfigureAuthentication(options, redisConfig);
+        ConfigureSsl(options, redisConfig);
 
-        public RedisConversationRepository(IOptions<RedisConfig> config, ILogger<RedisConversationRepository> logger)
+        try
         {
-            var redisConfig = config.Value;
-            _logger = logger;
-
-            var options = CreateConnectionOptions(redisConfig);
-            ConfigureAuthentication(options, redisConfig);
-            ConfigureSsl(options, redisConfig);
-
-            try
-            {
-                _redis = ConnectionMultiplexer.Connect(options);
-                _database = _redis.GetDatabase(redisConfig.Database);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to connect to Redis server");
-                throw;
-            }
+            _redis = ConnectionMultiplexer.Connect(options);
+            _database = _redis.GetDatabase(redisConfig.Database);
         }
-
-        public async Task<string> GetConversationHistoryAsync(string sessionId, CancellationToken cancellationToken = default)
+        catch (Exception ex)
         {
-            try
-            {
-                var conversationKey = $"conversation:{sessionId}";
-                var conversationJson = await _database.StringGetAsync(conversationKey);
+            _logger.LogError(ex, "Failed to connect to Redis server");
+            throw;
+        }
+    }
 
-                if (conversationJson.IsNull)
-                {
-                    return string.Empty;
-                }
+    public async Task<string> GetConversationHistoryAsync(string sessionId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var conversationKey = $"conversation:{sessionId}";
+            var conversationJson = await _database.StringGetAsync(conversationKey);
 
-                return conversationJson;
-            }
-            catch (Exception ex)
+            if (conversationJson.IsNull)
             {
-                _logger.LogError(ex, "Error getting conversation history");
                 return string.Empty;
             }
+
+            return conversationJson;
         }
-
-        public async Task AddToConversationAsync(string sessionId, string question, string answer, CancellationToken cancellationToken = default)
+        catch (Exception ex)
         {
-            try
-            {
-                var conversationKey = $"conversation:{sessionId}";
-                var metaKey = $"conversation:meta:{sessionId}";
-                var now = DateTime.UtcNow.ToString("o");
-
-                if (string.IsNullOrEmpty(question))
-                {
-                    await _database.StringSetAsync(conversationKey, answer);
-                    await _database.HashSetAsync(metaKey, new[] { new HashEntry("CreatedAt", now), new HashEntry("LastUpdated", now) });
-                    return;
-                }
-
-                var existingConversation = await GetConversationHistoryAsync(sessionId, cancellationToken);
-                var isNew = string.IsNullOrEmpty(existingConversation);
-
-                var newEntry = isNew
-                    ? $"User: {question}\nAssistant: {answer}"
-                    : $"{existingConversation}\nUser: {question}\nAssistant: {answer}";
-
-                await _database.StringSetAsync(conversationKey, newEntry);
-                if (isNew)
-                    await _database.HashSetAsync(metaKey, new[] { new HashEntry("CreatedAt", now), new HashEntry("LastUpdated", now) });
-                else
-                    await _database.HashSetAsync(metaKey, "LastUpdated", now);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error adding to conversation");
-            }
+            _logger.LogError(ex, "Error getting conversation history");
+            return string.Empty;
         }
+    }
 
-        public async Task SetConversationHistoryAsync(string sessionId, string conversation, CancellationToken cancellationToken = default)
+    public async Task AddToConversationAsync(string sessionId, string question, string answer, CancellationToken cancellationToken = default)
+    {
+        try
         {
-            try
-            {
-                var conversationKey = $"conversation:{sessionId}";
-                var metaKey = $"conversation:meta:{sessionId}";
-                var now = DateTime.UtcNow.ToString("o");
-                var metaExists = await _database.KeyExistsAsync(metaKey);
-                await _database.StringSetAsync(conversationKey, conversation);
-                if (metaExists)
-                    await _database.HashSetAsync(metaKey, "LastUpdated", now);
-                else
-                    await _database.HashSetAsync(metaKey, new[] { new HashEntry("CreatedAt", now), new HashEntry("LastUpdated", now) });
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error setting conversation history");
-            }
-        }
+            var conversationKey = $"conversation:{sessionId}";
+            var metaKey = $"conversation:meta:{sessionId}";
+            var now = DateTime.UtcNow.ToString("o");
 
-
-        public async Task ClearConversationAsync(string sessionId, CancellationToken cancellationToken = default)
-        {
-            try
+            if (string.IsNullOrEmpty(question))
             {
-                await _database.KeyDeleteAsync($"conversation:{sessionId}");
-                await _database.KeyDeleteAsync($"conversation:sources:{sessionId}");
-                await _database.KeyDeleteAsync($"conversation:meta:{sessionId}");
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error clearing conversation");
-            }
-        }
-
-        public async Task AppendSourcesForTurnAsync(string sessionId, string sourcesJson, CancellationToken cancellationToken = default)
-        {
-            if (string.IsNullOrWhiteSpace(sessionId))
+                await _database.StringSetAsync(conversationKey, answer);
+                await _database.HashSetAsync(metaKey, new[] { new HashEntry("CreatedAt", now), new HashEntry("LastUpdated", now) });
                 return;
-            try
+            }
+
+            var existingConversation = await GetConversationHistoryAsync(sessionId, cancellationToken);
+            var isNew = string.IsNullOrEmpty(existingConversation);
+
+            var newEntry = isNew
+                ? $"User: {question}\nAssistant: {answer}"
+                : $"{existingConversation}\nUser: {question}\nAssistant: {answer}";
+
+            await _database.StringSetAsync(conversationKey, newEntry);
+            if (isNew)
+                await _database.HashSetAsync(metaKey, new[] { new HashEntry("CreatedAt", now), new HashEntry("LastUpdated", now) });
+            else
+                await _database.HashSetAsync(metaKey, "LastUpdated", now);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding to conversation");
+        }
+    }
+
+    public async Task SetConversationHistoryAsync(string sessionId, string conversation, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var conversationKey = $"conversation:{sessionId}";
+            var metaKey = $"conversation:meta:{sessionId}";
+            var now = DateTime.UtcNow.ToString("o");
+            var metaExists = await _database.KeyExistsAsync(metaKey);
+            await _database.StringSetAsync(conversationKey, conversation);
+            if (metaExists)
+                await _database.HashSetAsync(metaKey, "LastUpdated", now);
+            else
+                await _database.HashSetAsync(metaKey, new[] { new HashEntry("CreatedAt", now), new HashEntry("LastUpdated", now) });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error setting conversation history");
+        }
+    }
+
+
+    public async Task ClearConversationAsync(string sessionId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            await _database.KeyDeleteAsync($"conversation:{sessionId}");
+            await _database.KeyDeleteAsync($"conversation:sources:{sessionId}");
+            await _database.KeyDeleteAsync($"conversation:meta:{sessionId}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error clearing conversation");
+        }
+    }
+
+    public async Task AppendSourcesForTurnAsync(string sessionId, string sourcesJson, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(sessionId))
+            return;
+        try
+        {
+            var key = $"conversation:sources:{sessionId}";
+            var existing = await _database.StringGetAsync(key);
+            var list = new List<JsonElement>();
+            if (existing.HasValue && !existing.IsNullOrEmpty)
             {
-                var key = $"conversation:sources:{sessionId}";
-                var existing = await _database.StringGetAsync(key);
-                var list = new List<JsonElement>();
-                if (existing.HasValue && !existing.IsNullOrEmpty)
+                try
                 {
-                    try
-                    {
-                        var parsed = JsonSerializer.Deserialize<List<JsonElement>>(existing!);
-                        if (parsed != null)
-                            list = parsed;
-                    }
-                    catch
-                    {
-                        list = new List<JsonElement>();
-                    }
+                    var parsed = JsonSerializer.Deserialize<List<JsonElement>>(existing!);
+                    if (parsed != null)
+                        list = parsed;
                 }
-                list.Add(JsonSerializer.Deserialize<JsonElement>(sourcesJson));
-                await _database.StringSetAsync(key, JsonSerializer.Serialize(list));
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error appending sources for turn");
-            }
-        }
-
-        public async Task<string> GetSourcesForSessionAsync(string sessionId, CancellationToken cancellationToken = default)
-        {
-            if (string.IsNullOrWhiteSpace(sessionId))
-                return null;
-            try
-            {
-                var key = $"conversation:sources:{sessionId}";
-                var value = await _database.StringGetAsync(key);
-                return value.IsNullOrEmpty ? string.Empty : value.ToString();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting sources for session");
-                return null;
-            }
-        }
-
-        public async Task<bool> SessionExistsAsync(string sessionId, CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                var conversationKey = $"conversation:{sessionId}";
-                return await _database.KeyExistsAsync(conversationKey);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error checking session existence");
-                return false;
-            }
-        }
-
-        public async Task ClearAllConversationsAsync(CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                var endpoints = _redis.GetEndPoints();
-                if (endpoints == null || endpoints.Length == 0)
+                catch
                 {
-                    _logger.LogWarning("No Redis endpoints available for clearing conversations");
-                    return;
+                    list = new List<JsonElement>();
                 }
-
-                var server = _redis.GetServer(endpoints.First());
-                var pattern = "conversation:*";
-
-                await foreach (var key in server.KeysAsync(pattern: pattern))
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    await _database.KeyDeleteAsync(key);
-                }
-
-                _logger.LogInformation("Cleared all conversation history from Redis");
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error clearing all conversations from Redis");
-                throw;
-            }
+            list.Add(JsonSerializer.Deserialize<JsonElement>(sourcesJson));
+            await _database.StringSetAsync(key, JsonSerializer.Serialize(list));
         }
-
-        public async Task<(DateTime? CreatedAt, DateTime? LastUpdated)> GetSessionTimestampsAsync(string sessionId, CancellationToken cancellationToken = default)
+        catch (Exception ex)
         {
-            if (string.IsNullOrWhiteSpace(sessionId))
+            _logger.LogError(ex, "Error appending sources for turn");
+        }
+    }
+
+    public async Task<string> GetSourcesForSessionAsync(string sessionId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(sessionId))
+            return null;
+        try
+        {
+            var key = $"conversation:sources:{sessionId}";
+            var value = await _database.StringGetAsync(key);
+            return value.IsNullOrEmpty ? string.Empty : value.ToString();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting sources for session");
+            return null;
+        }
+    }
+
+    public async Task<bool> SessionExistsAsync(string sessionId, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var conversationKey = $"conversation:{sessionId}";
+            return await _database.KeyExistsAsync(conversationKey);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error checking session existence");
+            return false;
+        }
+    }
+
+    public async Task ClearAllConversationsAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var endpoints = _redis.GetEndPoints();
+            if (endpoints == null || endpoints.Length == 0)
+            {
+                _logger.LogWarning("No Redis endpoints available for clearing conversations");
+                return;
+            }
+
+            var server = _redis.GetServer(endpoints.First());
+            var pattern = "conversation:*";
+
+            await foreach (var key in server.KeysAsync(pattern: pattern))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                await _database.KeyDeleteAsync(key);
+            }
+
+            _logger.LogInformation("Cleared all conversation history from Redis");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error clearing all conversations from Redis");
+            throw;
+        }
+    }
+
+    public async Task<(DateTime? CreatedAt, DateTime? LastUpdated)> GetSessionTimestampsAsync(string sessionId, CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(sessionId))
+            return (null, null);
+
+        try
+        {
+            var metaKey = $"conversation:meta:{sessionId}";
+            var entries = await _database.HashGetAllAsync(metaKey);
+            if (entries == null || entries.Length == 0)
                 return (null, null);
 
-            try
+            DateTime? createdAt = null;
+            DateTime? lastUpdated = null;
+            foreach (var e in entries)
             {
-                var metaKey = $"conversation:meta:{sessionId}";
-                var entries = await _database.HashGetAllAsync(metaKey);
-                if (entries == null || entries.Length == 0)
-                    return (null, null);
-
-                DateTime? createdAt = null;
-                DateTime? lastUpdated = null;
-                foreach (var e in entries)
-                {
-                    var val = e.Value.ToString();
-                    if (string.IsNullOrEmpty(val)) continue;
-                    if (string.Equals(e.Name, "CreatedAt", StringComparison.OrdinalIgnoreCase) && DateTime.TryParse(val, null, System.Globalization.DateTimeStyles.RoundtripKind, out var ca))
-                        createdAt = ca;
-                    else if (string.Equals(e.Name, "LastUpdated", StringComparison.OrdinalIgnoreCase) && DateTime.TryParse(val, null, System.Globalization.DateTimeStyles.RoundtripKind, out var lu))
-                        lastUpdated = lu;
-                }
-                return (createdAt, lastUpdated);
+                var val = e.Value.ToString();
+                if (string.IsNullOrEmpty(val)) continue;
+                if (string.Equals(e.Name, "CreatedAt", StringComparison.OrdinalIgnoreCase) && DateTime.TryParse(val, null, System.Globalization.DateTimeStyles.RoundtripKind, out var ca))
+                    createdAt = ca;
+                else if (string.Equals(e.Name, "LastUpdated", StringComparison.OrdinalIgnoreCase) && DateTime.TryParse(val, null, System.Globalization.DateTimeStyles.RoundtripKind, out var lu))
+                    lastUpdated = lu;
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error getting session timestamps");
-                return (null, null);
-            }
+            return (createdAt, lastUpdated);
         }
-
-        public async Task<string[]> GetAllSessionIdsAsync(CancellationToken cancellationToken = default)
+        catch (Exception ex)
         {
-            try
+            _logger.LogError(ex, "Error getting session timestamps");
+            return (null, null);
+        }
+    }
+
+    public async Task<string[]> GetAllSessionIdsAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var endpoints = _redis.GetEndPoints();
+            if (endpoints == null || endpoints.Length == 0)
             {
-                var endpoints = _redis.GetEndPoints();
-                if (endpoints == null || endpoints.Length == 0)
-                {
-                    _logger.LogWarning("No Redis endpoints available for listing conversations");
-                    return Array.Empty<string>();
-                }
-
-                var server = _redis.GetServer(endpoints.First());
-                var pattern = "conversation:*";
-                var ids = new System.Collections.Generic.List<string>();
-
-                await foreach (var key in server.KeysAsync(pattern: pattern))
-                {
-                    cancellationToken.ThrowIfCancellationRequested();
-                    var keyStr = (string)key;
-                    if (keyStr.StartsWith("conversation:sources:", StringComparison.Ordinal) || keyStr.StartsWith("conversation:meta:", StringComparison.Ordinal))
-                        continue;
-                    if (keyStr.StartsWith("conversation:", StringComparison.Ordinal))
-                    {
-                        ids.Add(keyStr.Substring("conversation:".Length));
-                    }
-                }
-
-                return ids.ToArray();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error listing conversation sessions from Redis");
+                _logger.LogWarning("No Redis endpoints available for listing conversations");
                 return Array.Empty<string>();
             }
-        }
 
-        private static ConfigurationOptions CreateConnectionOptions(RedisConfig config)
-        {
-            return new ConfigurationOptions
-            {
-                EndPoints = { config.ConnectionString },
-                ConnectTimeout = config.ConnectionTimeout * DefaultConnectionTimeoutMs,
-                SyncTimeout = config.ConnectionTimeout * DefaultConnectionTimeoutMs,
-                ConnectRetry = config.RetryCount,
-                ReconnectRetryPolicy = new ExponentialRetry(config.RetryDelay),
-                AllowAdmin = true,
-                AbortOnConnectFail = false,
-                KeepAlive = DefaultKeepAliveSeconds
-            };
-        }
+            var server = _redis.GetServer(endpoints.First());
+            var pattern = "conversation:*";
+            var ids = new System.Collections.Generic.List<string>();
 
-        private static void ConfigureAuthentication(ConfigurationOptions options, RedisConfig config)
-        {
-            if (!string.IsNullOrEmpty(config.Username))
+            await foreach (var key in server.KeysAsync(pattern: pattern))
             {
-                options.User = config.Username;
+                cancellationToken.ThrowIfCancellationRequested();
+                var keyStr = (string)key;
+                if (keyStr.StartsWith("conversation:sources:", StringComparison.Ordinal) || keyStr.StartsWith("conversation:meta:", StringComparison.Ordinal))
+                    continue;
+                if (keyStr.StartsWith("conversation:", StringComparison.Ordinal))
+                {
+                    ids.Add(keyStr.Substring("conversation:".Length));
+                }
             }
 
-            if (!string.IsNullOrEmpty(config.Password))
-            {
-                options.Password = config.Password;
-            }
+            return ids.ToArray();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error listing conversation sessions from Redis");
+            return Array.Empty<string>();
+        }
+    }
+
+    private static ConfigurationOptions CreateConnectionOptions(RedisConfig config)
+    {
+        return new ConfigurationOptions
+        {
+            EndPoints = { config.ConnectionString },
+            ConnectTimeout = config.ConnectionTimeout * DefaultConnectionTimeoutMs,
+            SyncTimeout = config.ConnectionTimeout * DefaultConnectionTimeoutMs,
+            ConnectRetry = config.RetryCount,
+            ReconnectRetryPolicy = new ExponentialRetry(config.RetryDelay),
+            AllowAdmin = true,
+            AbortOnConnectFail = false,
+            KeepAlive = DefaultKeepAliveSeconds
+        };
+    }
+
+    private static void ConfigureAuthentication(ConfigurationOptions options, RedisConfig config)
+    {
+        if (!string.IsNullOrEmpty(config.Username))
+        {
+            options.User = config.Username;
         }
 
-        private static void ConfigureSsl(ConfigurationOptions options, RedisConfig config)
+        if (!string.IsNullOrEmpty(config.Password))
         {
-            if (config.EnableSsl)
-            {
-                options.Ssl = true;
-                options.SslProtocols = System.Security.Authentication.SslProtocols.Tls12;
-            }
+            options.Password = config.Password;
         }
+    }
 
-        public void Dispose()
+    private static void ConfigureSsl(ConfigurationOptions options, RedisConfig config)
+    {
+        if (config.EnableSsl)
         {
-            if (!_disposed)
-            {
-                _redis?.Close();
-                _redis?.Dispose();
-                _disposed = true;
-            }
+            options.Ssl = true;
+            options.SslProtocols = System.Security.Authentication.SslProtocols.Tls12;
+        }
+    }
+
+    public void Dispose()
+    {
+        if (!_disposed)
+        {
+            _redis?.Close();
+            _redis?.Dispose();
+            _disposed = true;
         }
     }
 }
+

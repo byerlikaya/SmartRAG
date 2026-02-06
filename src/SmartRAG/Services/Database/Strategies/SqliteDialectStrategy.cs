@@ -1,9 +1,10 @@
 using SmartRAG.Enums;
 
-namespace SmartRAG.Services.Database.Strategies
+namespace SmartRAG.Services.Database.Strategies;
+
+
+public class SqliteDialectStrategy : BaseSqlDialectStrategy
 {
-    public class SqliteDialectStrategy : BaseSqlDialectStrategy
-    {
-        public override DatabaseType DatabaseType => DatabaseType.SQLite;
-    }
+    public override DatabaseType DatabaseType => DatabaseType.SQLite;
 }
+

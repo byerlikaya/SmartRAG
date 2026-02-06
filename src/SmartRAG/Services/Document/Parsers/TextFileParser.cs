@@ -7,31 +7,32 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SmartRAG.Services.Document.Parsers
+namespace SmartRAG.Services.Document.Parsers;
+
+
+public class TextFileParser : IFileParser
 {
-    public class TextFileParser : IFileParser
+    private static readonly string[] SupportedExtensions = { ".txt", ".md", ".json", ".xml", ".csv", ".html", ".htm" };
+    private static readonly string[] SupportedContentTypes = { "text/", "application/json", "application/xml", "application/csv" };
+
+    public bool CanParse(string fileName, string contentType)
     {
-        private static readonly string[] SupportedExtensions = { ".txt", ".md", ".json", ".xml", ".csv", ".html", ".htm" };
-        private static readonly string[] SupportedContentTypes = { "text/", "application/json", "application/xml", "application/csv" };
+        return SupportedExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) ||
+               SupportedContentTypes.Any(contentType.StartsWith);
+    }
 
-        public bool CanParse(string fileName, string contentType)
+    public async Task<FileParserResult> ParseAsync(Stream fileStream, string fileName, string language = null)
+    {
+        try
         {
-            return SupportedExtensions.Any(ext => fileName.EndsWith(ext, StringComparison.OrdinalIgnoreCase)) ||
-                   SupportedContentTypes.Any(contentType.StartsWith);
+            using var reader = new StreamReader(fileStream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+            var content = await reader.ReadToEndAsync();
+            return new FileParserResult { Content = TextCleaningHelper.CleanContent(content) };
         }
-
-        public async Task<FileParserResult> ParseAsync(Stream fileStream, string fileName, string language = null)
+        catch (Exception)
         {
-            try
-            {
-                using var reader = new StreamReader(fileStream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
-                var content = await reader.ReadToEndAsync();
-                return new FileParserResult { Content = TextCleaningHelper.CleanContent(content) };
-            }
-            catch (Exception)
-            {
-                return new FileParserResult { Content = string.Empty };
-            }
+            return new FileParserResult { Content = string.Empty };
         }
     }
 }
+

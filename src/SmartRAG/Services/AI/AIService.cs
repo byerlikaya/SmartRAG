@@ -9,154 +9,155 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace SmartRAG.Services.AI
+namespace SmartRAG.Services.AI;
+
+
+/// <summary>
+/// AI Service that orchestrates AI requests with retry and fallback logic
+/// </summary>
+public class AIService : IAIService
 {
-    /// <summary>
-    /// AI Service that orchestrates AI requests with retry and fallback logic
-    /// </summary>
-    public class AIService : IAIService
+    private readonly IAIRequestExecutor _requestExecutor;
+    private readonly SmartRagOptions _options;
+    private readonly ILogger<AIService> _logger;
+
+    private const int MinRetryAttempts = 1;
+    private const int MinRetryDelayMs = 0;
+    private const string FallbackUnavailableMessage = "I'm sorry, all AI providers are currently unavailable.";
+    private const string ErrorMessage = "I encountered an error while processing your request. Please try again later.";
+
+    public AIService(
+        IAIRequestExecutor requestExecutor,
+        IOptions<SmartRagOptions> options,
+        ILogger<AIService> logger)
     {
-        private readonly IAIRequestExecutor _requestExecutor;
-        private readonly SmartRagOptions _options;
-        private readonly ILogger<AIService> _logger;
+        _requestExecutor = requestExecutor;
+        _options = options.Value;
+        _logger = logger;
+    }
 
-        private const int MinRetryAttempts = 1;
-        private const int MinRetryDelayMs = 0;
-        private const string FallbackUnavailableMessage = "I'm sorry, all AI providers are currently unavailable.";
-        private const string ErrorMessage = "I encountered an error while processing your request. Please try again later.";
-
-        public AIService(
-            IAIRequestExecutor requestExecutor,
-            IOptions<SmartRagOptions> options,
-            ILogger<AIService> logger)
+    /// <summary>
+    /// [AI Query] Generates a response using the configured AI provider with retry logic
+    /// </summary>
+    public async Task<string> GenerateResponseAsync(string query, IEnumerable<string> context, CancellationToken cancellationToken = default)
+    {
+        try
         {
-            _requestExecutor = requestExecutor;
-            _options = options.Value;
-            _logger = logger;
+            return await GenerateResponseWithRetryAsync(_options.AIProvider, query, context, cancellationToken);
         }
-
-        /// <summary>
-        /// [AI Query] Generates a response using the configured AI provider with retry logic
-        /// </summary>
-        public async Task<string> GenerateResponseAsync(string query, IEnumerable<string> context, CancellationToken cancellationToken = default)
+        catch (Exception ex)
         {
-            try
-            {
-                return await GenerateResponseWithRetryAsync(_options.AIProvider, query, context, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                ServiceLogMessages.LogAIServiceGenerateResponseError(_logger, _options.AIProvider.ToString(), ex);
+            ServiceLogMessages.LogAIServiceGenerateResponseError(_logger, _options.AIProvider.ToString(), ex);
 
-                if (_options.EnableFallbackProviders && _options.FallbackProviders.Count > 0)
-                {
-                    try
-                    {
-                        return await TryFallbackProvidersAsync(query, context, cancellationToken);
-                    }
-                    catch (Exception fallbackEx)
-                    {
-                        _logger.LogError(fallbackEx, "Fallback providers failed");
-                    }
-                }
-
-                return ErrorMessage;
-            }
-        }
-
-        /// <summary>
-        /// [AI Query] Generates embeddings for a single text
-        /// </summary>
-        public async Task<List<float>> GenerateEmbeddingsAsync(string text, CancellationToken cancellationToken = default)
-        {
-            try
+            if (_options.EnableFallbackProviders && _options.FallbackProviders.Count > 0)
             {
-                return await _requestExecutor.GenerateEmbeddingsAsync(_options.AIProvider, text, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error generating embeddings");
-                throw;
-            }
-        }
-
-        /// <summary>
-        /// [AI Query] Generates embeddings for a batch of texts
-        /// </summary>
-        public async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, CancellationToken cancellationToken = default)
-        {
-            try
-            {
-                return await _requestExecutor.GenerateEmbeddingsBatchAsync(_options.AIProvider, texts, cancellationToken);
-            }
-            catch (Exception ex)
-            {
-                ServiceLogMessages.LogAIServiceBatchEmbeddingError(_logger, _options.AIProvider.ToString(), ex);
-                return new List<List<float>>();
-            }
-        }
-
-        private async Task<string> GenerateResponseWithRetryAsync(AIProvider provider, string query, IEnumerable<string> context, CancellationToken cancellationToken = default)
-        {
-            var attempt = 0;
-            var maxAttempts = Math.Max(MinRetryAttempts, _options.MaxRetryAttempts);
-            var delayMs = Math.Max(MinRetryDelayMs, _options.RetryDelayMs);
-
-            while (true)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                
                 try
                 {
-                    return await _requestExecutor.GenerateResponseAsync(provider, query, context, cancellationToken);
+                    return await TryFallbackProvidersAsync(query, context, cancellationToken);
                 }
-                catch (Exception ex) when (_options.RetryPolicy != RetryPolicy.None && attempt < maxAttempts - 1)
+                catch (Exception fallbackEx)
                 {
-                    attempt++;
-                    var backoff = CalculateRetryDelay(attempt, delayMs);
-
-                    ServiceLogMessages.LogAIServiceRetryAttempt(_logger, attempt, provider.ToString(), backoff, ex);
-
-                    await Task.Delay(backoff, cancellationToken);
-                }
-            }
-        }
-
-        private int CalculateRetryDelay(int attempt, int baseDelayMs)
-        {
-            return _options.RetryPolicy switch
-            {
-                RetryPolicy.FixedDelay => baseDelayMs,
-                RetryPolicy.LinearBackoff => baseDelayMs * attempt,
-                RetryPolicy.ExponentialBackoff => baseDelayMs * (int)Math.Pow(2, attempt - 1),
-                _ => baseDelayMs,
-            };
-        }
-
-        private async Task<string> TryFallbackProvidersAsync(string query, IEnumerable<string> context, CancellationToken cancellationToken = default)
-        {
-            foreach (var fallbackProvider in _options.FallbackProviders)
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                
-                try
-                {
-                    var response = await _requestExecutor.GenerateResponseAsync(fallbackProvider, query, context, cancellationToken);
-
-                    if (!string.IsNullOrEmpty(response))
-                    {
-                        return response;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    ServiceLogMessages.LogAIServiceFallbackFailed(_logger, fallbackProvider.ToString(), ex);
-                    continue;
+                    _logger.LogError(fallbackEx, "Fallback providers failed");
                 }
             }
 
-            _logger.LogWarning("All fallback providers failed");
-            return FallbackUnavailableMessage;
+            return ErrorMessage;
         }
     }
+
+    /// <summary>
+    /// [AI Query] Generates embeddings for a single text
+    /// </summary>
+    public async Task<List<float>> GenerateEmbeddingsAsync(string text, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _requestExecutor.GenerateEmbeddingsAsync(_options.AIProvider, text, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error generating embeddings");
+            throw;
+        }
+    }
+
+    /// <summary>
+    /// [AI Query] Generates embeddings for a batch of texts
+    /// </summary>
+    public async Task<List<List<float>>> GenerateEmbeddingsBatchAsync(IEnumerable<string> texts, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await _requestExecutor.GenerateEmbeddingsBatchAsync(_options.AIProvider, texts, cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            ServiceLogMessages.LogAIServiceBatchEmbeddingError(_logger, _options.AIProvider.ToString(), ex);
+            return new List<List<float>>();
+        }
+    }
+
+    private async Task<string> GenerateResponseWithRetryAsync(AIProvider provider, string query, IEnumerable<string> context, CancellationToken cancellationToken = default)
+    {
+        var attempt = 0;
+        var maxAttempts = Math.Max(MinRetryAttempts, _options.MaxRetryAttempts);
+        var delayMs = Math.Max(MinRetryDelayMs, _options.RetryDelayMs);
+
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            
+            try
+            {
+                return await _requestExecutor.GenerateResponseAsync(provider, query, context, cancellationToken);
+            }
+            catch (Exception ex) when (_options.RetryPolicy != RetryPolicy.None && attempt < maxAttempts - 1)
+            {
+                attempt++;
+                var backoff = CalculateRetryDelay(attempt, delayMs);
+
+                ServiceLogMessages.LogAIServiceRetryAttempt(_logger, attempt, provider.ToString(), backoff, ex);
+
+                await Task.Delay(backoff, cancellationToken);
+            }
+        }
+    }
+
+    private int CalculateRetryDelay(int attempt, int baseDelayMs)
+    {
+        return _options.RetryPolicy switch
+        {
+            RetryPolicy.FixedDelay => baseDelayMs,
+            RetryPolicy.LinearBackoff => baseDelayMs * attempt,
+            RetryPolicy.ExponentialBackoff => baseDelayMs * (int)Math.Pow(2, attempt - 1),
+            _ => baseDelayMs,
+        };
+    }
+
+    private async Task<string> TryFallbackProvidersAsync(string query, IEnumerable<string> context, CancellationToken cancellationToken = default)
+    {
+        foreach (var fallbackProvider in _options.FallbackProviders)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            
+            try
+            {
+                var response = await _requestExecutor.GenerateResponseAsync(fallbackProvider, query, context, cancellationToken);
+
+                if (!string.IsNullOrEmpty(response))
+                {
+                    return response;
+                }
+            }
+            catch (Exception ex)
+            {
+                ServiceLogMessages.LogAIServiceFallbackFailed(_logger, fallbackProvider.ToString(), ex);
+                continue;
+            }
+        }
+
+        _logger.LogWarning("All fallback providers failed");
+        return FallbackUnavailableMessage;
+    }
 }
+
