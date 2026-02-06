@@ -41,7 +41,7 @@ public interface IDocumentService
     /// <param name="options">Search options to filter documents</param>
     /// <param name="cancellationToken">Token to cancel the operation</param>
     /// <returns>Filtered list of documents</returns>
-    Task<List<Entities.Document>> GetAllDocumentsFilteredAsync(Models.SearchOptions? options, CancellationToken cancellationToken = default);
+    Task<List<Entities.Document>> GetAllDocumentsFilteredAsync(SearchOptions? options, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Delete document

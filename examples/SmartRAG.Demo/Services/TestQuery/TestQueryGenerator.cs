@@ -3,7 +3,7 @@ using SmartRAG.Demo.Models;
 using SmartRAG.Demo.Services.Translation;
 using SmartRAG.Enums;
 using SmartRAG.Interfaces;
-using SmartRAG.Models;
+using SmartRAG.Models.Schema;
 using System.Text;
 using System.Text.Json;
 

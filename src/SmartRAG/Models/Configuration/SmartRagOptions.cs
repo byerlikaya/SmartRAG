@@ -1,7 +1,7 @@
 using SmartRAG.Enums;
 using System.Collections.Generic;
 
-namespace SmartRAG.Models;
+namespace SmartRAG.Models.Configuration;
 
 
 

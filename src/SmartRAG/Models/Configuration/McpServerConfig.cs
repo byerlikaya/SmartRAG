@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
-namespace SmartRAG.Models;
+namespace SmartRAG.Models.Configuration;
 
 
 /// <summary>

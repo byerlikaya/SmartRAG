@@ -1,6 +1,6 @@
 using SmartRAG.Enums;
 
-namespace SmartRAG.Models;
+namespace SmartRAG.Models.Configuration;
 
 
 

@@ -193,7 +193,7 @@ public class DocumentService : IDocumentService
     /// <summary>
     /// Retrieves all documents filtered by the enabled search options (text, audio, image)
     /// </summary>
-    public async Task<List<SmartRAG.Entities.Document>> GetAllDocumentsFilteredAsync(Models.SearchOptions? options, CancellationToken cancellationToken = default)
+    public async Task<List<SmartRAG.Entities.Document>> GetAllDocumentsFilteredAsync(SearchOptions? options, CancellationToken cancellationToken = default)
     {
         var allDocuments = await _documentRepository.GetAllAsync(cancellationToken);
 

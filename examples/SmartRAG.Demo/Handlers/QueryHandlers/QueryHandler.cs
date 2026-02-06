@@ -4,7 +4,8 @@ using SmartRAG.Demo.Models;
 using SmartRAG.Demo.Services.Console;
 using SmartRAG.Demo.Services.TestQuery;
 using SmartRAG.Interfaces.Mcp;
-using SmartRAG.Models;
+using SmartRAG.Models.RequestResponse;
+using SmartRAG.Models.Schema;
 using System.Text;
 
 namespace SmartRAG.Demo.Handlers.QueryHandlers;
@@ -473,7 +474,7 @@ public class QueryHandler(
     /// <param name="errorMessage">Error message to parse</param>
     /// <param name="schemas">Database schemas for context</param>
     /// <returns>Formatted error information</returns>
-    private static string ExtractSQLFromError(string errorMessage, List<SmartRAG.Models.DatabaseSchemaInfo> schemas)
+    private static string ExtractSQLFromError(string errorMessage, List<DatabaseSchemaInfo> schemas)
     {
         if (string.IsNullOrEmpty(errorMessage))
             return string.Empty;

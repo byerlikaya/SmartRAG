@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace SmartRAG.Models;
+namespace SmartRAG.Models.RequestResponse;
 
 
 /// <summary>

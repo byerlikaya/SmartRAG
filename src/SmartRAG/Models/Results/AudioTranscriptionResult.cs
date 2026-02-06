@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace SmartRAG.Models;
+namespace SmartRAG.Models.Results;
 
 
 /// <summary>

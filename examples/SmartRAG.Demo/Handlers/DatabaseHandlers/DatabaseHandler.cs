@@ -8,7 +8,7 @@ using SmartRAG.Demo.Services.Console;
 using SmartRAG.Enums;
 using SmartRAG.Interfaces;
 using SmartRAG.Interfaces.AI;
-using SmartRAG.Models;
+using SmartRAG.Models.Configuration;
 
 namespace SmartRAG.Demo.Handlers.DatabaseHandlers;
 

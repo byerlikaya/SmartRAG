@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using SmartRAG.Interfaces.Mcp;
-using SmartRAG.Models;
+using SmartRAG.Models.Results;
 using System;
 using System.Collections.Generic;
 using System.Linq;

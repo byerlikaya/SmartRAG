@@ -1,6 +1,6 @@
 using SmartRAG.Entities;
 
-namespace SmartRAG.Models;
+namespace SmartRAG.Models.Results;
 
 
 /// <summary>

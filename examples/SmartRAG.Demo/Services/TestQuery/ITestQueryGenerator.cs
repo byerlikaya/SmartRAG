@@ -1,5 +1,5 @@
 using SmartRAG.Demo.Models;
-using SmartRAG.Models;
+using SmartRAG.Models.Schema;
 
 namespace SmartRAG.Demo.Services.TestQuery;
 

@@ -1,4 +1,4 @@
-namespace SmartRAG.Models;
+namespace SmartRAG.Models.Configuration;
 
 
 /// <summary>
