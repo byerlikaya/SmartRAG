@@ -23,7 +23,7 @@ public class McpServerConfig
     /// <summary>
     /// Optional HTTP headers for authentication or custom configuration
     /// </summary>
-    public Dictionary<string, string> Headers { get; set; } = new Dictionary<string, string>();
+    public Dictionary<string, string> Headers { get; set; } = new();
 
     /// <summary>
     /// Whether to automatically connect on startup

@@ -18,7 +18,7 @@ public class SqlValidator : ISqlValidator
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
-    public List<string> ValidateQuery(string sql, DatabaseSchemaInfo schema, List<string> requiredTables, List<string> allDatabaseNames = null)
+    public List<string> ValidateQuery(string sql, DatabaseSchemaInfo schema, List<string> requiredTables, List<string>? allDatabaseNames = null)
     {
         var errors = new List<string>();
 
@@ -40,7 +40,7 @@ public class SqlValidator : ISqlValidator
         return errors;
     }
 
-    private List<string> ValidateTables(string sql, DatabaseSchemaInfo schema, List<string> requiredTables, List<string> allDatabaseNames = null)
+    private List<string> ValidateTables(string sql, DatabaseSchemaInfo schema, List<string> requiredTables, List<string>? allDatabaseNames = null)
     {
         var errors = new List<string>();
 
@@ -55,7 +55,7 @@ public class SqlValidator : ISqlValidator
         foreach (var pattern in threePartPatterns)
         {
             var matches = Regex.Matches(sql, pattern, RegexOptions.IgnoreCase);
-            
+
             foreach (Match match in matches)
             {
                 var fullTableName = match.Groups[1].Value;
@@ -64,18 +64,18 @@ public class SqlValidator : ISqlValidator
                     .Replace("]", string.Empty)
                     .Replace("\"", string.Empty);
                 var parts = normalized.Split('.');
-                
-                if (parts.Length == 3)
-                {
-                    var databaseName = parts[0];
-                    if (!schema.DatabaseName.Equals(databaseName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        errors.Add($"Cross-database reference not allowed: '{fullTableName}'. Use only tables from '{schema.DatabaseName}' database.");
-                        _logger.LogWarning(
-                            "Detected cross-database table reference: {Reference} in database {Database}",
-                            fullTableName, schema.DatabaseName);
-                    }
-                }
+
+                if (parts.Length != 3)
+                    continue;
+
+                var databaseName = parts[0];
+
+                if (schema.DatabaseName.Equals(databaseName, StringComparison.OrdinalIgnoreCase))
+                    continue;
+                errors.Add($"Cross-database reference not allowed: '{fullTableName}'. Use only tables from '{schema.DatabaseName}' database.");
+                _logger.LogWarning(
+                    "Detected cross-database table reference: {Reference} in database {Database}",
+                    fullTableName, schema.DatabaseName);
             }
         }
 
@@ -107,13 +107,13 @@ public class SqlValidator : ISqlValidator
         {
             if (tableNameRaw.Split('.').Length == 3)
                 continue;
-            
+
             var tableName = NormalizeTableName(tableNameRaw);
 
             if (IsSqlKeyword(tableName)) continue;
 
             var normalizedParts = tableName.Split('.');
-            if (normalizedParts.Length == 2 && allDatabaseNames != null && allDatabaseNames.Count > 1)
+            if (normalizedParts.Length == 2 && allDatabaseNames is { Count: > 1 })
             {
                 var schemaPart = normalizedParts[0];
                 foreach (var otherDbName in allDatabaseNames)
@@ -121,19 +121,19 @@ public class SqlValidator : ISqlValidator
                     if (otherDbName.Equals(schema.DatabaseName, StringComparison.OrdinalIgnoreCase))
                         continue;
 
-                    if (otherDbName.Contains(schemaPart, StringComparison.OrdinalIgnoreCase) ||
-                        schemaPart.Equals(otherDbName, StringComparison.OrdinalIgnoreCase))
-                    {
-                        errors.Add($"Cross-database reference detected: '{tableNameRaw}' appears to reference schema or database '{otherDbName}', but you are querying '{schema.DatabaseName}' database. Use ONLY tables from '{schema.DatabaseName}' database.");
-                        _logger.LogWarning(
-                            "Detected potential cross-database reference: {Reference} in database {Database}, possibly referencing {OtherDatabase}",
-                            tableNameRaw, schema.DatabaseName, otherDbName);
-                        break;
-                    }
+                    if (!otherDbName.Contains(schemaPart, StringComparison.OrdinalIgnoreCase) &&
+                        !schemaPart.Equals(otherDbName, StringComparison.OrdinalIgnoreCase))
+                        continue;
+
+                    errors.Add($"Cross-database reference detected: '{tableNameRaw}' appears to reference schema or database '{otherDbName}', but you are querying '{schema.DatabaseName}' database. Use ONLY tables from '{schema.DatabaseName}' database.");
+                    _logger.LogWarning(
+                        "Detected potential cross-database reference: {Reference} in database {Database}, possibly referencing {OtherDatabase}",
+                        tableNameRaw, schema.DatabaseName, otherDbName);
+                    break;
                 }
             }
 
-            if (schema.DatabaseType == SmartRAG.Enums.DatabaseType.PostgreSQL)
+            if (schema.DatabaseType == DatabaseType.PostgreSQL)
             {
                 var exactMatch = schema.Tables.FirstOrDefault(t => t.TableName.Equals(tableName, StringComparison.Ordinal));
                 if (exactMatch != null)
@@ -148,9 +148,9 @@ public class SqlValidator : ISqlValidator
                     continue;
                 }
 
-                var caseInsensitiveMatch = schema.Tables.FirstOrDefault(t => 
+                var caseInsensitiveMatch = schema.Tables.FirstOrDefault(t =>
                     t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase));
-                
+
                 if (caseInsensitiveMatch != null)
                 {
                     errors.Add($"Table '{tableNameRaw}' case mismatch in PostgreSQL. Use exact case: '{caseInsensitiveMatch.TableName}'");
@@ -158,7 +158,7 @@ public class SqlValidator : ISqlValidator
                 }
             }
 
-            var tableExists = schema.Tables.Any(t => 
+            var tableExists = schema.Tables.Any(t =>
                 t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase) ||
                 t.TableName.Equals(tableNameRaw, StringComparison.OrdinalIgnoreCase));
             if (!tableExists)
@@ -167,7 +167,7 @@ public class SqlValidator : ISqlValidator
                 continue;
             }
 
-            var matchedTable = schema.Tables.FirstOrDefault(t => 
+            var matchedTable = schema.Tables.FirstOrDefault(t =>
                 t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase) ||
                 t.TableName.Equals(tableNameRaw, StringComparison.OrdinalIgnoreCase));
             var tableNameForRequiredCheck = matchedTable?.TableName ?? tableName;
@@ -200,11 +200,11 @@ public class SqlValidator : ISqlValidator
 
             if (columnName.Equals("*", StringComparison.OrdinalIgnoreCase)) continue;
 
-            string tableName = prefix;
+            var tableName = prefix;
 
-            if (aliasToTable.ContainsKey(prefix))
+            if (aliasToTable.TryGetValue(prefix, out var value))
             {
-                tableName = aliasToTable[prefix];
+                tableName = value;
             }
 
             var table = schema.Tables.FirstOrDefault(t => t.TableName.Equals(tableName, StringComparison.OrdinalIgnoreCase));
@@ -214,7 +214,7 @@ public class SqlValidator : ISqlValidator
             if (!requiredTables.Contains(table.TableName, StringComparer.OrdinalIgnoreCase)) continue;
 
             // For PostgreSQL, check case-sensitive matching first
-            if (schema.DatabaseType == SmartRAG.Enums.DatabaseType.PostgreSQL)
+            if (schema.DatabaseType == DatabaseType.PostgreSQL)
             {
                 var exactMatch = table.Columns.FirstOrDefault(c => c.ColumnName.Equals(columnName, StringComparison.Ordinal));
                 if (exactMatch != null)
@@ -231,7 +231,8 @@ public class SqlValidator : ISqlValidator
 
             var columnExists = table.Columns.Any(c => c.ColumnName.Equals(columnName, StringComparison.OrdinalIgnoreCase));
 
-            if (!columnExists)
+            if (columnExists)
+                continue;
             {
                 var aliasInfo = aliasToTable.ContainsKey(prefix) ? $" (via alias '{prefix}')" : "";
                 errors.Add($"Column '{columnName}' does not exist in table '{tableName}'{aliasInfo}");
@@ -268,33 +269,39 @@ public class SqlValidator : ISqlValidator
             errors.Add("Too many nested subqueries (max 2 levels allowed).");
         }
 
-        if (schema.DatabaseType == SmartRAG.Enums.DatabaseType.PostgreSQL)
+        switch (schema.DatabaseType)
         {
-            if (Regex.IsMatch(sql, @"\bSELECT\s+TOP\s+\d+\b", RegexOptions.IgnoreCase))
+            case DatabaseType.PostgreSQL:
             {
-                errors.Add("PostgreSQL does not support TOP. Use LIMIT at the end of the query instead (e.g., ORDER BY ... LIMIT 5).");
-            }
-        }
+                if (Regex.IsMatch(sql, @"\bSELECT\s+TOP\s+\d+\b", RegexOptions.IgnoreCase))
+                {
+                    errors.Add("PostgreSQL does not support TOP. Use LIMIT at the end of the query instead (e.g., ORDER BY ... LIMIT 5).");
+                }
 
-        if (schema.DatabaseType == SmartRAG.Enums.DatabaseType.SqlServer)
-        {
-            if (Regex.IsMatch(sql, @"\bLIMIT\s+\d+", RegexOptions.IgnoreCase) && 
-                !sql.Contains("FETCH", StringComparison.OrdinalIgnoreCase))
+                break;
+            }
+            case DatabaseType.SqlServer:
             {
-                errors.Add("SQL Server does not support LIMIT. Use TOP N immediately after SELECT instead (e.g., SELECT TOP 5 ...).");
+                if (Regex.IsMatch(sql, @"\bLIMIT\s+\d+", RegexOptions.IgnoreCase) &&
+                    !sql.Contains("FETCH", StringComparison.OrdinalIgnoreCase))
+                {
+                    errors.Add("SQL Server does not support LIMIT. Use TOP N immediately after SELECT instead (e.g., SELECT TOP 5 ...).");
+                }
+
+                break;
             }
         }
 
         return errors;
     }
 
-    private bool IsSqlKeyword(string word)
+    private static bool IsSqlKeyword(string word)
     {
         var keywords = new[] { "SELECT", "FROM", "WHERE", "JOIN", "ON", "AND", "OR", "GROUP", "BY", "ORDER", "LIMIT", "TOP", "AS", "LEFT", "RIGHT", "INNER", "OUTER" };
         return keywords.Contains(word.ToUpperInvariant());
     }
 
-    private string NormalizeTableName(string tableName)
+    private static string NormalizeTableName(string tableName)
     {
         if (string.IsNullOrWhiteSpace(tableName))
             return tableName;

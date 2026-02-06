@@ -136,7 +136,7 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
             var key = $"conversation:sources:{sessionId}";
             var existing = await _database.StringGetAsync(key);
             var list = new List<JsonElement>();
-            if (existing.HasValue && !existing.IsNullOrEmpty)
+            if (existing is { HasValue: true, IsNullOrEmpty: false })
             {
                 try
                 {
@@ -158,10 +158,11 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
         }
     }
 
-    public async Task<string> GetSourcesForSessionAsync(string sessionId, CancellationToken cancellationToken = default)
+    public async Task<string?> GetSourcesForSessionAsync(string sessionId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(sessionId))
             return null;
+
         cancellationToken.ThrowIfCancellationRequested();
         try
         {
@@ -197,7 +198,7 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
         try
         {
             var endpoints = _redis.GetEndPoints();
-            if (endpoints == null || endpoints.Length == 0)
+            if (endpoints.Length == 0)
             {
                 _logger.LogWarning("No Redis endpoints available for clearing conversations");
                 return;
@@ -206,7 +207,7 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
             var server = _redis.GetServer(endpoints.First());
             var pattern = "conversation:*";
 
-            await foreach (var key in server.KeysAsync(pattern: pattern))
+            await foreach (var key in server.KeysAsync(pattern: pattern).WithCancellation(cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 await _database.KeyDeleteAsync(key);
@@ -230,7 +231,7 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
         {
             var metaKey = $"conversation:meta:{sessionId}";
             var entries = await _database.HashGetAllAsync(metaKey);
-            if (entries == null || entries.Length == 0)
+            if (entries.Length == 0)
                 return (null, null);
 
             DateTime? createdAt = null;
@@ -239,9 +240,9 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
             {
                 var val = e.Value.ToString();
                 if (string.IsNullOrEmpty(val)) continue;
-                if (string.Equals(e.Name, "CreatedAt", StringComparison.OrdinalIgnoreCase) && DateTime.TryParse(val, null, System.Globalization.DateTimeStyles.RoundtripKind, out var ca))
+                if (string.Equals(e.Name, "CreatedAt", StringComparison.OrdinalIgnoreCase) && DateTime.TryParse(val, null, DateTimeStyles.RoundtripKind, out var ca))
                     createdAt = ca;
-                else if (string.Equals(e.Name, "LastUpdated", StringComparison.OrdinalIgnoreCase) && DateTime.TryParse(val, null, System.Globalization.DateTimeStyles.RoundtripKind, out var lu))
+                else if (string.Equals(e.Name, "LastUpdated", StringComparison.OrdinalIgnoreCase) && DateTime.TryParse(val, null, DateTimeStyles.RoundtripKind, out var lu))
                     lastUpdated = lu;
             }
             return (createdAt, lastUpdated);
@@ -258,7 +259,7 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
         try
         {
             var endpoints = _redis.GetEndPoints();
-            if (endpoints == null || endpoints.Length == 0)
+            if (endpoints.Length == 0)
             {
                 _logger.LogWarning("No Redis endpoints available for listing conversations");
                 return Array.Empty<string>();
@@ -266,17 +267,17 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
 
             var server = _redis.GetServer(endpoints.First());
             var pattern = "conversation:*";
-            var ids = new System.Collections.Generic.List<string>();
+            var ids = new List<string>();
 
-            await foreach (var key in server.KeysAsync(pattern: pattern))
+            await foreach (var key in server.KeysAsync(pattern: pattern).WithCancellation(cancellationToken))
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 var keyStr = (string)key;
-                if (keyStr.StartsWith("conversation:sources:", StringComparison.Ordinal) || keyStr.StartsWith("conversation:meta:", StringComparison.Ordinal))
+                if (keyStr!.StartsWith("conversation:sources:", StringComparison.Ordinal) || keyStr.StartsWith("conversation:meta:", StringComparison.Ordinal))
                     continue;
                 if (keyStr.StartsWith("conversation:", StringComparison.Ordinal))
                 {
-                    ids.Add(keyStr.Substring("conversation:".Length));
+                    ids.Add(keyStr["conversation:".Length..]);
                 }
             }
 
@@ -319,21 +320,20 @@ public class RedisConversationRepository : IConversationRepository, IDisposable
 
     private static void ConfigureSsl(ConfigurationOptions options, RedisConfig config)
     {
-        if (config.EnableSsl)
-        {
-            options.Ssl = true;
-            options.SslProtocols = System.Security.Authentication.SslProtocols.Tls12;
-        }
+        if (!config.EnableSsl)
+            return;
+
+        options.Ssl = true;
+        options.SslProtocols = System.Security.Authentication.SslProtocols.Tls12;
     }
 
     public void Dispose()
     {
-        if (!_disposed)
-        {
-            _redis?.Close();
-            _redis?.Dispose();
-            _disposed = true;
-        }
+        if (_disposed)
+            return;
+        _redis.Close();
+        _redis.Dispose();
+        _disposed = true;
     }
 }
 

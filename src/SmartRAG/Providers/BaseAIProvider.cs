@@ -17,17 +17,16 @@ public abstract class BaseAIProvider : IAIProvider
     private const string DefaultMessageProperty = "message";
     private const string DefaultContentProperty = "content";
 
-    private readonly ILogger _logger;
     private readonly IHttpClientFactory _httpClientFactory;
 
     /// <summary>
     /// Logger instance for derived classes
     /// </summary>
-    protected ILogger Logger => _logger;
+    protected ILogger Logger { get; }
 
     protected BaseAIProvider(ILogger logger, IHttpClientFactory httpClientFactory)
     {
-        _logger = logger;
+        Logger = logger;
         _httpClientFactory = httpClientFactory;
     }
 
@@ -68,7 +67,7 @@ public abstract class BaseAIProvider : IAIProvider
 
         Logger.LogInformation("Starting batch embedding generation: {Total} texts", textList.Count);
 
-        using (var semaphore = new System.Threading.SemaphoreSlim(3))
+        using (var semaphore = new SemaphoreSlim(3))
         {
             var tasks = textList.Select(async (text, index) =>
             {
@@ -93,7 +92,7 @@ public abstract class BaseAIProvider : IAIProvider
             await Task.WhenAll(tasks);
         }
 
-        var successCount = results.Count(r => r != null && r.Count > 0);
+        var successCount = results.Count(r => r is { Count: > 0 });
         Logger.LogInformation("Batch embedding generation completed: {Success}/{Total} successful",
             successCount, textList.Count);
 
@@ -120,7 +119,7 @@ public abstract class BaseAIProvider : IAIProvider
     /// <summary>
     /// Creates HttpClient with common headers using IHttpClientFactory
     /// </summary>
-    protected HttpClient CreateHttpClient(string apiKey = null, Dictionary<string, string> additionalHeaders = null)
+    protected HttpClient CreateHttpClient(string? apiKey = null, Dictionary<string, string>? additionalHeaders = null)
     {
         var client = _httpClientFactory.CreateClient();
         client.Timeout = TimeSpan.FromSeconds(180);
@@ -143,7 +142,7 @@ public abstract class BaseAIProvider : IAIProvider
     /// <summary>
     /// Creates HTTP client without automatic Authorization header (for providers like Anthropic that use custom headers)
     /// </summary>
-    protected HttpClient CreateHttpClientWithoutAuth(Dictionary<string, string> additionalHeaders)
+    protected HttpClient CreateHttpClientWithoutAuth(Dictionary<string, string>? additionalHeaders)
     {
         var client = _httpClientFactory.CreateClient();
         client.Timeout = TimeSpan.FromSeconds(180);
@@ -167,7 +166,7 @@ public abstract class BaseAIProvider : IAIProvider
         while (attempt < maxRetries)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            
+
             try
             {
                 var (success, response, error) = await ExecuteHttpRequestAsync(client, endpoint, payload, cancellationToken);
@@ -175,35 +174,31 @@ public abstract class BaseAIProvider : IAIProvider
                 if (success)
                     return (true, response, string.Empty);
 
-                bool shouldRetry = error.Contains("429") || error.Contains("TooManyRequests") ||
-                    error.Contains("529") || error.Contains("Overloaded") ||
-                    error.Contains("EOF") ||  // Retry EOF errors (Ollama runner crashes)
-                    error.Contains("llama runner process no longer running") ||  // Ollama crash
-                    error.Contains("InternalServerError");  // General server errors
+                var shouldRetry = error.Contains("429") || error.Contains("TooManyRequests") ||
+                                  error.Contains("529") || error.Contains("Overloaded") ||
+                                  error.Contains("EOF") ||  // Retry EOF errors (Ollama runner crashes)
+                                  error.Contains("llama runner process no longer running") ||  // Ollama crash
+                                  error.Contains("InternalServerError");  // General server errors
 
-                if (shouldRetry)
-                {
-                    attempt++;
-                    if (attempt < maxRetries)
-                    {
-                        int delayMs = error.Contains("EOF") ? 1000 : MinRetryDelayMs * attempt;
-                        await Task.Delay(delayMs, cancellationToken);
-                        continue;
-                    }
-                }
+                if (!shouldRetry)
+                    return (false, string.Empty, error);
 
-                return (false, string.Empty, error);
+                attempt++;
+
+                if (attempt >= maxRetries)
+                    return (false, string.Empty, error);
+
+                var delayMs = error.Contains("EOF") ? 1000 : MinRetryDelayMs * attempt;
+                await Task.Delay(delayMs, cancellationToken);
             }
             catch (Exception ex)
             {
                 attempt++;
-                if (attempt < maxRetries)
-                {
-                    var delay = BaseDelayMs * (int)Math.Pow(2, attempt - 1);
-                    await Task.Delay(delay, cancellationToken);
-                    continue;
-                }
-                return (false, string.Empty, $"{ProviderType} request failed: {ex.Message}");
+                if (attempt >= maxRetries)
+                    return (false, string.Empty, $"{ProviderType} request failed: {ex.Message}");
+
+                var delay = BaseDelayMs * (int)Math.Pow(2, attempt - 1);
+                await Task.Delay(delay, cancellationToken);
             }
         }
 
@@ -230,7 +225,7 @@ public abstract class BaseAIProvider : IAIProvider
     private async Task<(bool success, string response, string error)> ExecuteHttpRequestAsync(
         HttpClient client, string endpoint, object payload, CancellationToken cancellationToken = default)
     {
-        var json = JsonSerializer.Serialize(payload, _jsonOptions);
+        var json = JsonSerializer.Serialize(payload, JsonOptions);
 
         var content = new StringContent(json, Encoding.UTF8, "application/json");
 
@@ -238,11 +233,11 @@ public abstract class BaseAIProvider : IAIProvider
 
         if (response.IsSuccessStatusCode)
         {
-            var responseBody = await response.Content.ReadAsStringAsync();
+            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken);
             return (true, responseBody, string.Empty);
         }
 
-        var errorBody = await response.Content.ReadAsStringAsync();
+        var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
 
         return (false, string.Empty, $"{ProviderType} error: {response.StatusCode} - {errorBody}");
     }
@@ -307,6 +302,7 @@ public abstract class BaseAIProvider : IAIProvider
         }
         catch
         {
+            // ignored
         }
 
         return Enumerable.Range(0, expectedCount)
@@ -320,13 +316,14 @@ public abstract class BaseAIProvider : IAIProvider
     protected static string ParseTextResponse(string responseBody, string choicesProperty = DefaultChoicesProperty, string messageProperty = DefaultMessageProperty, string contentProperty = DefaultContentProperty)
     {
         using var doc = JsonDocument.Parse(responseBody);
-        if (doc.RootElement.TryGetProperty(choicesProperty, out var choices) && choices.ValueKind == JsonValueKind.Array)
-        {
-            var firstChoice = choices.EnumerateArray().FirstOrDefault();
 
-            if (firstChoice.TryGetProperty(messageProperty, out var message) && message.TryGetProperty(contentProperty, out var contentProp))
-                return contentProp.GetString() ?? "No response generated";
-        }
+        if (!doc.RootElement.TryGetProperty(choicesProperty, out var choices) || choices.ValueKind != JsonValueKind.Array)
+            return "No response generated";
+
+        var firstChoice = choices.EnumerateArray().FirstOrDefault();
+
+        if (firstChoice.TryGetProperty(messageProperty, out var message) && message.TryGetProperty(contentProperty, out var contentProp))
+            return contentProp.GetString() ?? "No response generated";
 
         return "No response generated";
     }
@@ -334,7 +331,7 @@ public abstract class BaseAIProvider : IAIProvider
     /// <summary>
     /// Shared JsonSerializerOptions for consistent serialization
     /// </summary>
-    private static readonly JsonSerializerOptions _jsonOptions = new JsonSerializerOptions()
+    private static readonly JsonSerializerOptions JsonOptions = new()
     {
         Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping
     };

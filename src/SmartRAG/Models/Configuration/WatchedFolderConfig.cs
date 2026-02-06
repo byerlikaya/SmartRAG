@@ -15,7 +15,7 @@ public class WatchedFolderConfig
     /// Allowed file extensions (e.g., ".pdf", ".docx")
     /// If empty, all supported file types are allowed
     /// </summary>
-    public List<string> AllowedExtensions { get; set; } = new List<string>();
+    public List<string> AllowedExtensions { get; set; } = new();
 
     /// <summary>
     /// Whether to include subdirectories

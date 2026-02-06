@@ -89,7 +89,7 @@ public class StorageFactory : IStorageFactory
         switch (provider)
         {
             case ConversationStorageProvider.InMemory:
-                return new InMemoryConversationRepository(_loggerFactory.CreateLogger<InMemoryConversationRepository>());
+                return new InMemoryConversationRepository();
             case ConversationStorageProvider.Redis:
                 var redisConfig = new RedisConfig();
                 _configuration.GetSection("Storage:Redis").Bind(redisConfig);
@@ -106,16 +106,10 @@ public class StorageFactory : IStorageFactory
         }
     }
 
-    private IConversationRepository _currentConversationRepository;
-
     public IConversationRepository GetCurrentConversationRepository()
     {
-        if (_currentConversationRepository != null)
-            return _currentConversationRepository;
-
         var conversationProvider = _options.ConversationStorageProvider ?? ConversationStorageProvider.InMemory;
-        _currentConversationRepository = CreateConversationRepository(conversationProvider);
-        return _currentConversationRepository;
+        return CreateConversationRepository(conversationProvider);
     }
 }
 

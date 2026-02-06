@@ -20,7 +20,7 @@ public class RagResponse
     /// <summary>
     /// Sources that were used to generate the answer
     /// </summary>
-    public List<SearchSource> Sources { get; set; } = new List<SearchSource>();
+    public List<SearchSource> Sources { get; set; } = new();
 
     /// <summary>
     /// Timestamp when the search was performed
@@ -30,12 +30,12 @@ public class RagResponse
     /// <summary>
     /// Configuration information for this RAG response
     /// </summary>
-    public RagConfiguration Configuration { get; set; } = new RagConfiguration();
+    public RagConfiguration Configuration { get; set; } = new();
 
     /// <summary>
     /// Information about which search operations were performed for this query
     /// </summary>
-    public SearchMetadata SearchMetadata { get; set; } = new SearchMetadata();
+    public SearchMetadata SearchMetadata { get; set; } = new();
 }
 
 /// <summary>

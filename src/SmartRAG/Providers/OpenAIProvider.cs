@@ -109,7 +109,7 @@ public class OpenAIProvider : BaseAIProvider
             return new List<List<float>>();
         }
 
-        var inputList = texts?.ToList() ?? new List<string>();
+        var inputList = texts.ToList();
         if (inputList.Count == 0)
             return new List<List<float>>();
 
@@ -175,15 +175,16 @@ public class OpenAIProvider : BaseAIProvider
     private static string ParseOpenAITextResponse(string response)
     {
         using var doc = JsonDocument.Parse(response);
-        if (doc.RootElement.TryGetProperty("choices", out var choices) && choices.ValueKind == JsonValueKind.Array)
-        {
-            var firstChoice = choices.EnumerateArray().FirstOrDefault();
 
-            if (firstChoice.TryGetProperty("message", out var message) &&
-                message.TryGetProperty("content", out var content))
-            {
-                return content.GetString() ?? "No response generated";
-            }
+        if (!doc.RootElement.TryGetProperty("choices", out var choices) || choices.ValueKind != JsonValueKind.Array)
+            return "No response generated";
+
+        var firstChoice = choices.EnumerateArray().FirstOrDefault();
+
+        if (firstChoice.TryGetProperty("message", out var message) &&
+            message.TryGetProperty("content", out var content))
+        {
+            return content.GetString() ?? "No response generated";
         }
 
         return "No response generated";
@@ -195,23 +196,25 @@ public class OpenAIProvider : BaseAIProvider
     private static List<float> ParseOpenAIEmbeddingResponse(string response)
     {
         using var doc = JsonDocument.Parse(response);
-        if (doc.RootElement.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
-        {
-            var firstItem = data.EnumerateArray().FirstOrDefault();
 
-            if (firstItem.TryGetProperty("embedding", out var embedding) && embedding.ValueKind == JsonValueKind.Array)
-            {
-                var floats = new List<float>();
-                foreach (var value in embedding.EnumerateArray())
-                {
-                    if (value.TryGetSingle(out var f))
-                        floats.Add(f);
-                }
-                return floats;
-            }
+        if (!doc.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
+            return new List<float>();
+
+        var firstItem = data.EnumerateArray().FirstOrDefault();
+
+        if (!firstItem.TryGetProperty("embedding", out var embedding) || embedding.ValueKind != JsonValueKind.Array)
+            return new List<float>();
+
+        var floats = new List<float>();
+
+        foreach (var value in embedding.EnumerateArray())
+        {
+            if (value.TryGetSingle(out var f))
+                floats.Add(f);
         }
 
-        return new List<float>();
+        return floats;
+
     }
 
     /// <summary>
@@ -247,6 +250,7 @@ public class OpenAIProvider : BaseAIProvider
         }
         catch
         {
+            // ignored
         }
 
         return Enumerable.Range(0, expectedCount)

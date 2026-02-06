@@ -48,7 +48,7 @@ public class DatabaseConnectionConfig
     /// <summary>
     /// Cross-database column mappings for joining data across different databases
     /// </summary>
-    public List<CrossDatabaseMapping> CrossDatabaseMappings { get; set; } = new List<CrossDatabaseMapping>();
+    public List<CrossDatabaseMapping> CrossDatabaseMappings { get; set; } = new();
 }
 
 

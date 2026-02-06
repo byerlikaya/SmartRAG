@@ -32,7 +32,7 @@ public class SqlServerDialectStrategy : BaseSqlDialectStrategy
         // Remove LIMIT clause (SQL Server doesn't support it)
         if (formatted.ToUpper().Contains("LIMIT "))
         {
-            var index = formatted.LastIndexOf("LIMIT ", System.StringComparison.OrdinalIgnoreCase);
+            var index = formatted.LastIndexOf("LIMIT ", StringComparison.OrdinalIgnoreCase);
             if (index > formatted.Length - 20) // Only if near end
             {
                 formatted = formatted[..index].Trim();
@@ -49,7 +49,7 @@ public class SqlServerDialectStrategy : BaseSqlDialectStrategy
     /// Fixes TOP clause placement in SQL Server queries.
     /// Moves TOP from after ORDER BY to immediately after SELECT.
     /// </summary>
-    private string FixTopClausePlacement(string sql)
+    private static string FixTopClausePlacement(string sql)
     {
         if (string.IsNullOrWhiteSpace(sql))
         {

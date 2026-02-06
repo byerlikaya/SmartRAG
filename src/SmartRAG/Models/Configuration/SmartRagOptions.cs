@@ -62,17 +62,17 @@ public class SmartRagOptions
     /// <summary>
     /// List of fallback AI providers to try when primary provider fails
     /// </summary>
-    public List<AIProvider> FallbackProviders { get; set; } = new List<AIProvider>();
+    public List<AIProvider> FallbackProviders { get; set; } = new();
 
     /// <summary>
     /// Whisper configuration for local audio transcription
     /// </summary>
-    public WhisperConfig WhisperConfig { get; set; } = new WhisperConfig();
+    public WhisperConfig WhisperConfig { get; set; } = new();
 
     /// <summary>
     /// Multi-database connections for intelligent cross-database querying
     /// </summary>
-    public List<DatabaseConnectionConfig> DatabaseConnections { get; set; } = new List<DatabaseConnectionConfig>();
+    public List<DatabaseConnectionConfig> DatabaseConnections { get; set; } = new();
 
     /// <summary>
     /// Enable automatic schema analysis on startup
@@ -87,12 +87,12 @@ public class SmartRagOptions
     /// <summary>
     /// MCP Server configurations for external MCP server connections
     /// </summary>
-    public List<McpServerConfig> McpServers { get; set; } = new List<McpServerConfig>();
+    public List<McpServerConfig> McpServers { get; set; } = new();
 
     /// <summary>
     /// Watched folder configurations for automatic document indexing
     /// </summary>
-    public List<WatchedFolderConfig> WatchedFolders { get; set; } = new List<WatchedFolderConfig>();
+    public List<WatchedFolderConfig> WatchedFolders { get; set; } = new();
 
     /// <summary>
     /// Default language code for document processing (ISO 639-1 format, e.g., "tr", "en", "de")

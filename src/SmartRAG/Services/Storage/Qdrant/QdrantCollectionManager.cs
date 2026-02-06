@@ -262,6 +262,7 @@ public class QdrantCollectionManager : IQdrantCollectionManager, IDisposable
     /// </summary>
     public async Task DeleteCollectionAsync(string collectionName, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         try
         {
             await _client.DeleteCollectionAsync(collectionName);

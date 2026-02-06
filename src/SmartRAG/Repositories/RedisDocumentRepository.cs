@@ -3,6 +3,7 @@ using NRedisStack;
 using NRedisStack.RedisStackCommands;
 using NRedisStack.Search;
 using NRedisStack.Search.Literals.Enums;
+using Document = SmartRAG.Entities.Document;
 
 namespace SmartRAG.Repositories;
 
@@ -82,12 +83,12 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
         }
     }
 
-    public async Task<SmartRAG.Entities.Document> AddAsync(SmartRAG.Entities.Document document, CancellationToken cancellationToken = default)
+    public async Task<Document> AddAsync(Document document, CancellationToken cancellationToken = default)
     {
         try
         {
-            SmartRAG.Services.Helpers.DocumentValidator.ValidateDocument(document);
-            SmartRAG.Services.Helpers.DocumentValidator.ValidateChunks(document);
+            DocumentValidator.ValidateDocument(document);
+            DocumentValidator.ValidateChunks(document);
 
             var documentKey = CreateDocumentKey(document.Id);
             var metadataKey = CreateMetadataKey(document.Id);
@@ -108,7 +109,7 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
                     var chunkKey = $"{_config.KeyPrefix}{ChunkKeySuffix}{chunk.Id}";
                     var embedding = chunk.Embedding;
 
-                    if (embedding == null || embedding.Count == 0)
+                    if (embedding.Count == 0)
                     {
                         try
                         {
@@ -124,11 +125,11 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
 
                     var hashEntries = new HashEntry[]
                     {
-                        new HashEntry("documentId", document.Id.ToString()),
-                        new HashEntry("fileName", chunk.FileName ?? document.FileName),
-                        new HashEntry("content", chunk.Content),
-                        new HashEntry("chunkIndex", chunk.ChunkIndex),
-                        new HashEntry("embedding", SerializeEmbedding(embedding))
+                        new("documentId", document.Id.ToString()),
+                        new("fileName", chunk.FileName),
+                        new("content", chunk.Content),
+                        new("chunkIndex", chunk.ChunkIndex),
+                        new("embedding", SerializeEmbedding(embedding))
                     };
 
                     tasks.Add(batch.HashSetAsync(chunkKey, hashEntries));
@@ -150,8 +151,9 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
         }
     }
 
-    public async Task<SmartRAG.Entities.Document> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Document?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         try
         {
             var documentKey = CreateDocumentKey(id);
@@ -162,7 +164,7 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
                 return null;
             }
 
-            var document = JsonSerializer.Deserialize<SmartRAG.Entities.Document>(documentJson);
+            var document = JsonSerializer.Deserialize<Document>(documentJson);
             return document;
         }
         catch (Exception ex)
@@ -172,25 +174,23 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
         }
     }
 
-    public async Task<List<SmartRAG.Entities.Document>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task<List<Document>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         try
         {
             var documentIds = await _database.ListRangeAsync(_documentsKey);
-            var documents = new List<SmartRAG.Entities.Document>();
+            var documents = new List<Document>();
             var processedDocumentIds = new HashSet<Guid>();
 
             foreach (var idString in documentIds)
             {
-                if (Guid.TryParse(idString, out var id))
-                {
-                    var document = await GetByIdAsync(id, cancellationToken);
-                    if (document != null)
-                    {
-                        documents.Add(document);
-                        processedDocumentIds.Add(id);
-                    }
-                }
+                if (!Guid.TryParse(idString, out var id))
+                    continue;
+                var document = await GetByIdAsync(id, cancellationToken);
+                if (document == null)
+                    continue;
+                documents.Add(document);
+                processedDocumentIds.Add(id);
             }
 
             if (_config.EnableVectorSearch && documents.Count == 0)
@@ -203,10 +203,11 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
                     foreach (var chunkKey in chunkKeys)
                     {
                         var chunkData = await _database.HashGetAllAsync(chunkKey);
-                        if (chunkData == null || chunkData.Length == 0) continue;
+                        if (chunkData.Length == 0)
+                            continue;
 
                         var docIdEntry = chunkData.FirstOrDefault(h => h.Name == "documentId");
-                        if (docIdEntry.Equals(default(HashEntry)) || docIdEntry.Value.IsNull ||
+                        if (docIdEntry.Equals(default) || docIdEntry.Value.IsNull ||
                             !Guid.TryParse(docIdEntry.Value.ToString(), out var docId)) continue;
 
                         var contentEntry = chunkData.FirstOrDefault(h => h.Name == "content");
@@ -218,49 +219,49 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
                             documentMap[docId] = new DocumentData
                             {
                                 Id = docId,
-                                FileName = fileNameEntry.Equals(default(HashEntry)) || fileNameEntry.Value.IsNull
+                                FileName = fileNameEntry.Equals(default) || fileNameEntry.Value.IsNull
                                     ? string.Empty
                                     : fileNameEntry.Value.ToString()
                             };
                         }
 
-                        if (!contentEntry.Equals(default(HashEntry)) && !contentEntry.Value.IsNull &&
-                            int.TryParse(chunkIndexEntry.Equals(default(HashEntry)) || chunkIndexEntry.Value.IsNull
+                        if (contentEntry.Equals(default) || contentEntry.Value.IsNull ||
+                            !int.TryParse(chunkIndexEntry.Equals(default) || chunkIndexEntry.Value.IsNull
                                 ? "0"
                                 : chunkIndexEntry.Value.ToString(), out var chunkIndex))
-                        {
-                            var fileName = fileNameEntry.Equals(default(HashEntry)) || fileNameEntry.Value.IsNull
-                                ? documentMap[docId].FileName
-                                : fileNameEntry.Value.ToString();
+                            continue;
 
-                            documentMap[docId].Chunks.Add(new DocumentChunk
-                            {
-                                Id = Guid.Parse(chunkKey.Replace($"{_config.KeyPrefix}{ChunkKeySuffix}", "")),
-                                DocumentId = docId,
-                                FileName = fileName,
-                                Content = contentEntry.Value.ToString(),
-                                ChunkIndex = chunkIndex
-                            });
-                        }
+                        var fileName = fileNameEntry.Equals(default) || fileNameEntry.Value.IsNull
+                            ? documentMap[docId].FileName
+                            : fileNameEntry.Value.ToString();
+
+                        documentMap[docId].Chunks.Add(new DocumentChunk
+                        {
+                            Id = Guid.Parse(chunkKey.Replace($"{_config.KeyPrefix}{ChunkKeySuffix}", "")),
+                            DocumentId = docId,
+                            FileName = fileName,
+                            Content = contentEntry.Value.ToString(),
+                            ChunkIndex = chunkIndex
+                        });
                     }
 
                     foreach (var docData in documentMap.Values)
                     {
-                        if (!processedDocumentIds.Contains(docData.Id))
+                        if (processedDocumentIds.Contains(docData.Id))
+                            continue;
+
+                        var orderedChunks = docData.Chunks.OrderBy(c => c.ChunkIndex).ToList();
+                        documents.Add(new Document
                         {
-                            var orderedChunks = docData.Chunks.OrderBy(c => c.ChunkIndex).ToList();
-                            documents.Add(new SmartRAG.Entities.Document
-                            {
-                                Id = docData.Id,
-                                FileName = docData.FileName,
-                                ContentType = "application/octet-stream",
-                                Content = string.Join("\n", orderedChunks.Select(c => c.Content)),
-                                UploadedBy = "system",
-                                UploadedAt = DateTime.UtcNow,
-                                Chunks = orderedChunks,
-                                FileSize = 0
-                            });
-                        }
+                            Id = docData.Id,
+                            FileName = docData.FileName,
+                            ContentType = "application/octet-stream",
+                            Content = string.Join("\n", orderedChunks.Select(c => c.Content)),
+                            UploadedBy = "system",
+                            UploadedAt = DateTime.UtcNow,
+                            Chunks = orderedChunks,
+                            FileSize = 0
+                        });
                     }
                 }
                 catch (Exception ex)
@@ -275,7 +276,7 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
         catch (Exception ex)
         {
             RepositoryLogMessages.LogRedisDocumentsRetrievalFailed(Logger, ex);
-            return new List<SmartRAG.Entities.Document>();
+            return new List<Document>();
         }
     }
 
@@ -284,16 +285,16 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
         var chunkKeys = new List<string>();
         var pattern = $"{_config.KeyPrefix}{ChunkKeySuffix}*";
         var endpoints = _redis.GetEndPoints();
-        
-        if (endpoints == null || endpoints.Length == 0)
+
+        if (endpoints.Length == 0)
         {
             _logger.LogWarning("No Redis endpoints available for chunk key retrieval");
             return chunkKeys;
         }
 
         var server = _redis.GetServer(endpoints.First());
-        
-        await foreach (var key in server.KeysAsync(pattern: pattern))
+
+        await foreach (var key in server.KeysAsync(pattern: pattern).WithCancellation(cancellationToken))
         {
             cancellationToken.ThrowIfCancellationRequested();
             chunkKeys.Add(key);
@@ -321,15 +322,15 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
                     {
                         var batch = _database.CreateBatch();
                         var tasks = new List<Task>();
-                        
+
                         foreach (var chunkKey in chunkKeys)
                         {
                             tasks.Add(batch.KeyDeleteAsync(chunkKey));
                         }
-                        
+
                         batch.Execute();
                         await Task.WhenAll(tasks);
-                        
+
                         _logger.LogInformation("Cleared {Count} chunks from Redis", chunkKeys.Count);
                     }
                 }
@@ -340,7 +341,7 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
             }
 
             await _database.KeyDeleteAsync(_documentsKey);
-            
+
             return true;
         }
         catch (Exception ex)
@@ -417,46 +418,46 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
             {
                 var properties = doc.GetProperties().ToDictionary(x => x.Key, x => x.Value);
 
-                if (properties.TryGetValue("content", out var content) &&
-                    properties.TryGetValue("documentId", out var docIdStr) &&
-                    properties.TryGetValue("chunkIndex", out var chunkIndexStr) &&
-                    properties.TryGetValue("score", out var scoreStr))
+                if (!properties.TryGetValue("content", out var content) ||
+                    !properties.TryGetValue("documentId", out var docIdStr) ||
+                    !properties.TryGetValue("chunkIndex", out var chunkIndexStr) ||
+                    !properties.TryGetValue("score", out var scoreStr))
+                    continue;
+
+                if (!Guid.TryParse(docIdStr.ToString(), out var docId) ||
+                    !int.TryParse(chunkIndexStr.ToString(), out var chunkIndex))
+                    continue;
+
+                var score = 0.0;
+                if (scoreStr is { HasValue: true, IsNull: false } && double.TryParse(scoreStr.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedScore))
                 {
-                    if (Guid.TryParse(docIdStr.ToString(), out var docId) &&
-                        int.TryParse(chunkIndexStr.ToString(), out var chunkIndex))
-                    {
-                        double score = 0.0;
-                        if (scoreStr.HasValue && !scoreStr.IsNull && double.TryParse(scoreStr.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out var parsedScore))
-                        {
-                            score = parsedScore;
-                        }
-
-                        var distanceMetric = _config.DistanceMetric?.ToUpperInvariant() ?? "COSINE";
-                        var similarity = distanceMetric switch
-                        {
-                            "COSINE" => (float)Math.Max(0.0, Math.Min(1.0, 1.0 - (score / 2.0))),
-                            "L2" => (float)(1.0 / (1.0 + score)),
-                            "IP" => (float)Math.Max(0.0, Math.Min(1.0, (score + 1.0) / 2.0)),
-                            _ => (float)Math.Max(0.0, Math.Min(1.0, 1.0 - score)),
-                        };
-                        var relevanceScore = similarity * 100.0;
-
-                        var fileName = properties.TryGetValue("fileName", out var fileNameValue) 
-                            ? fileNameValue.ToString() 
-                            : string.Empty;
-
-                        results.Add(new DocumentChunk
-                        {
-                            Id = Guid.Parse(doc.Id.Replace($"{_config.KeyPrefix}{ChunkKeySuffix}", "")),
-                            DocumentId = docId,
-                            FileName = fileName,
-                            Content = content.ToString(),
-                            ChunkIndex = chunkIndex,
-                            Embedding = new List<float>(),
-                            RelevanceScore = relevanceScore
-                        });
-                    }
+                    score = parsedScore;
                 }
+
+                var distanceMetric = _config.DistanceMetric.ToUpperInvariant();
+                var similarity = distanceMetric switch
+                {
+                    "COSINE" => (float)Math.Max(0.0, Math.Min(1.0, 1.0 - score / 2.0)),
+                    "L2" => (float)(1.0 / (1.0 + score)),
+                    "IP" => (float)Math.Max(0.0, Math.Min(1.0, (score + 1.0) / 2.0)),
+                    _ => (float)Math.Max(0.0, Math.Min(1.0, 1.0 - score)),
+                };
+                var relevanceScore = similarity * 100.0;
+
+                var fileName = properties.TryGetValue("fileName", out var fileNameValue)
+                    ? fileNameValue.ToString()
+                    : string.Empty;
+
+                results.Add(new DocumentChunk
+                {
+                    Id = Guid.Parse(doc.Id.Replace($"{_config.KeyPrefix}{ChunkKeySuffix}", "")),
+                    DocumentId = docId,
+                    FileName = fileName,
+                    Content = content.ToString(),
+                    ChunkIndex = chunkIndex,
+                    Embedding = new List<float>(),
+                    RelevanceScore = relevanceScore
+                });
             }
 
             return results;
@@ -472,7 +473,7 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
     {
         try
         {
-            var normalizedQuery = Extensions.SearchTextExtensions.NormalizeForSearch(query);
+            var normalizedQuery = query.NormalizeForSearch();
             var relevantChunks = new List<DocumentChunk>();
 
             var documents = await GetAllAsync(cancellationToken);
@@ -481,13 +482,12 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
             {
                 foreach (var chunk in document.Chunks)
                 {
-                    var normalizedChunk = SmartRAG.Extensions.SearchTextExtensions.NormalizeForSearch(chunk.Content);
-                    if (normalizedChunk.Contains(normalizedQuery))
-                    {
-                        relevantChunks.Add(chunk);
-                        if (relevantChunks.Count >= maxResults)
-                            break;
-                    }
+                    var normalizedChunk = chunk.Content.NormalizeForSearch();
+                    if (!normalizedChunk.Contains(normalizedQuery))
+                        continue;
+                    relevantChunks.Add(chunk);
+                    if (relevantChunks.Count >= maxResults)
+                        break;
                 }
                 if (relevantChunks.Count >= maxResults)
                     break;
@@ -532,11 +532,11 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
 
     private static void ConfigureSsl(ConfigurationOptions options, RedisConfig config)
     {
-        if (config.UseSsl)
-        {
-            options.Ssl = true;
-            options.SslProtocols = System.Security.Authentication.SslProtocols.Tls12;
-        }
+        if (!config.UseSsl)
+            return;
+
+        options.Ssl = true;
+        options.SslProtocols = System.Security.Authentication.SslProtocols.Tls12;
     }
 
     private void ValidateConnection()
@@ -551,27 +551,24 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
 
     private string CreateMetadataKey(Guid id) => $"{_documentPrefix}{MetadataKeySuffix}{id}";
 
-    private static HashEntry[] CreateDocumentMetadata(SmartRAG.Entities.Document document)
+    private static HashEntry[] CreateDocumentMetadata(Document document)
     {
         var entries = new List<HashEntry>
         {
-        new HashEntry("id", document.Id.ToString()),
-        new HashEntry("fileName", document.FileName),
-        new HashEntry("contentType", document.ContentType),
-        new HashEntry("fileSize", document.FileSize.ToString(CultureInfo.InvariantCulture)),
-        new HashEntry("uploadedAt", document.UploadedAt.ToString(DateTimeFormat)),
-        new HashEntry("uploadedBy", document.UploadedBy),
-        new HashEntry("chunkCount", document.Chunks.Count.ToString(CultureInfo.InvariantCulture))
+        new("id", document.Id.ToString()),
+        new("fileName", document.FileName),
+        new("contentType", document.ContentType),
+        new("fileSize", document.FileSize.ToString(CultureInfo.InvariantCulture)),
+        new("uploadedAt", document.UploadedAt.ToString(DateTimeFormat)),
+        new("uploadedBy", document.UploadedBy),
+        new("chunkCount", document.Chunks.Count.ToString(CultureInfo.InvariantCulture))
         };
 
-        if (document.Metadata != null)
+        foreach (var metadataItem in document.Metadata)
         {
-            foreach (var metadataItem in document.Metadata)
+            if (metadataItem.Value != null)
             {
-                if (metadataItem.Value != null)
-                {
-                    entries.Add(new HashEntry($"metadata_{metadataItem.Key}", metadataItem.Value.ToString()));
-                }
+                entries.Add(new HashEntry($"metadata_{metadataItem.Key}", metadataItem.Value.ToString()));
             }
         }
 
@@ -596,7 +593,7 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
         try
         {
             var schema = new Schema()
-                .AddTextField("content", 1.0)
+                .AddTextField("content")
                 .AddTagField("documentId")
                 .AddTagField("fileName")
                 .AddNumericField("chunkIndex")
@@ -625,7 +622,7 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
         {
             RepositoryLogMessages.LogRedisVectorIndexCreationFailure(Logger, _config.VectorIndexName, ex);
 
-            var errorMessage = ex.Message ?? string.Empty;
+            var errorMessage = ex.Message;
             if (errorMessage.Contains("unknown command 'FT.CREATE'", StringComparison.OrdinalIgnoreCase) ||
                 errorMessage.Contains("FT.CREATE", StringComparison.OrdinalIgnoreCase))
             {
@@ -678,6 +675,7 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
             }
             catch
             {
+                // ignored
             }
         }
 
@@ -687,19 +685,18 @@ public class RedisDocumentRepository : IDocumentRepository, IDisposable
 
     public void Dispose()
     {
-        if (!_disposed)
-        {
-            _redis?.Close();
-            _redis?.Dispose();
-            _disposed = true;
-        }
+        if (_disposed)
+            return;
+        _redis.Close();
+        _redis.Dispose();
+        _disposed = true;
     }
 
     private class DocumentData
     {
         public Guid Id { get; set; }
         public string FileName { get; set; } = string.Empty;
-        public List<DocumentChunk> Chunks { get; set; } = new List<DocumentChunk>();
+        public List<DocumentChunk> Chunks { get; set; } = new();
     }
 }
 

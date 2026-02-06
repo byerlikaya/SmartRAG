@@ -19,7 +19,7 @@ public class McpTool
     /// <summary>
     /// Tool input parameters schema
     /// </summary>
-    public Dictionary<string, object> InputSchema { get; set; } = new Dictionary<string, object>();
+    public Dictionary<string, object> InputSchema { get; set; } = new();
 
     /// <summary>
     /// Server ID that provides this tool

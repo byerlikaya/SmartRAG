@@ -48,11 +48,11 @@ public abstract class BaseSqlDialectStrategy : ISqlDialectStrategy
 
     protected bool IsInsideStringLiteral(string sql, string keyword)
     {
-        int index = sql.IndexOf(keyword, StringComparison.OrdinalIgnoreCase);
+        var index = sql.IndexOf(keyword, StringComparison.OrdinalIgnoreCase);
         if (index < 0) return false;
 
-        int quoteCount = 0;
-        for (int i = 0; i < index; i++)
+        var quoteCount = 0;
+        for (var i = 0; i < index; i++)
         {
             if (sql[i] == '\'') quoteCount++;
         }

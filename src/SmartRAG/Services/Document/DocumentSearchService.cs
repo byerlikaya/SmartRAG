@@ -712,7 +712,7 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
             allDocuments = await EnsureAllDocumentsLoadedAsync(allDocuments, effectiveOptions, cancellationToken);
             var allChunks = allDocuments.SelectMany(d => d.Chunks).ToList();
             var queryWords = queryTokens;
-            var scoredChunks = _documentScoring.ScoreChunks(allChunks, queryForSearch, queryWords, potentialNames);
+            var scoredChunks = _documentScoring.ScoreChunks(allChunks, queryWords, potentialNames);
 
             var queryWordDocumentMap = _queryWordMatcher.MapQueryWordsToDocuments(
                 queryWords,

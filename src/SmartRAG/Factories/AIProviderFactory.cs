@@ -31,8 +31,8 @@ public class AIProviderFactory : IAIProviderFactory
 
     public IAIProvider CreateProvider(AIProvider providerType)
     {
-        return _providers.TryGetValue(providerType, out var provider) ? 
-            provider : 
+        return _providers.TryGetValue(providerType, out var provider) ?
+            provider :
             throw new InvalidOperationException($"AI Provider '{providerType}' is not supported or not implemented.");
     }
 }

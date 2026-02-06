@@ -129,7 +129,7 @@ public class FileSystemConversationRepository : IConversationRepository
         }
     }
 
-    public async Task<string> GetSourcesForSessionAsync(string sessionId, CancellationToken cancellationToken = default)
+    public async Task<string?> GetSourcesForSessionAsync(string sessionId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(sessionId))
             return null;
@@ -270,10 +270,7 @@ public class FileSystemConversationRepository : IConversationRepository
     private static string TruncateConversation(string conversation)
     {
         var lines = conversation.Split('\n');
-        if (lines.Length <= 6)
-            return conversation;
-
-        return string.Join("\n", lines.Skip(lines.Length - 6));
+        return lines.Length <= 6 ? conversation : string.Join("\n", lines.Skip(lines.Length - 6));
     }
 }
 

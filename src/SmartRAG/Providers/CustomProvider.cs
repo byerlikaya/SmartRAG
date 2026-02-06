@@ -30,21 +30,19 @@ public class CustomProvider : BaseAIProvider
             return errorMessage;
 
         using var client = CreateHttpClient(config.ApiKey);
-        bool useMessagesFormat = IsMessagesFormat(config.Endpoint);
+        var useMessagesFormat = IsMessagesFormat(config.Endpoint);
 
-        object payload = CreatePayload(prompt, config, useMessagesFormat);
+        var payload = CreatePayload(prompt, config, useMessagesFormat);
 
         var (success, response, error) = await MakeHttpRequestAsync(client, config.Endpoint, payload, cancellationToken: cancellationToken);
 
         if (!success)
         {
-            if (error.Contains("model", StringComparison.OrdinalIgnoreCase) && 
-                error.Contains("not found", StringComparison.OrdinalIgnoreCase))
-            {
-                Logger.LogWarning("Model '{ModelName}' not found at endpoint '{Endpoint}'. This might indicate the service needs to refresh its model registry.", config.Model, config.Endpoint);
-                return $"{error}\n\nTip: If using Ollama, ensure the model is registered with the API service. Try running 'ollama run {config.Model}' once to register the model, or restart the Ollama service.";
-            }
-            return error;
+            if (!error.Contains("model", StringComparison.OrdinalIgnoreCase) || !error.Contains("not found", StringComparison.OrdinalIgnoreCase))
+                return error;
+
+            Logger.LogWarning("Model '{ModelName}' not found at endpoint '{Endpoint}'. This might indicate the service needs to refresh its model registry.", config.Model, config.Endpoint);
+            return $"{error}\n\nTip: If using Ollama, ensure the model is registered with the API service. Try running 'ollama run {config.Model}' once to register the model, or restart the Ollama service.";
         }
 
         try
@@ -86,8 +84,8 @@ public class CustomProvider : BaseAIProvider
 
         using (var client = CreateHttpClient(config.ApiKey))
         {
-            const int BatchSize = 200;
-            const int MaxConcurrentBatches = 3;
+            const int batchSize = 200;
+            const int maxConcurrentBatches = 3;
 
             var sanitizedTexts = textList.Select(t =>
             {
@@ -102,33 +100,31 @@ public class CustomProvider : BaseAIProvider
 
                 cleaned = new string(cleaned.Where(c => !char.IsControl(c) || c == '\n' || c == '\t').ToArray());
 
-                if (cleaned.Length > 8000)
-                {
-                    Logger.LogWarning("Text truncated from {OriginalLength} to 8000 characters to prevent Ollama crash", cleaned.Length);
-                    cleaned = cleaned[..8000];
-                }
+                if (cleaned.Length <= 8000)
+                    return cleaned;
+
+                Logger.LogWarning("Text truncated from {OriginalLength} to 8000 characters to prevent Ollama crash", cleaned.Length);
+                cleaned = cleaned[..8000];
 
                 return cleaned;
             }).ToList();
 
             var batchTasks = new List<Task>();
-            var semaphore = new SemaphoreSlim(MaxConcurrentBatches, MaxConcurrentBatches);
+            var semaphore = new SemaphoreSlim(maxConcurrentBatches, maxConcurrentBatches);
             var lockObject = new object();
 
-            for (int batchStart = 0; batchStart < textList.Count; batchStart += BatchSize)
+            for (var batchStart = 0; batchStart < textList.Count; batchStart += batchSize)
             {
-                var batchEnd = Math.Min(batchStart + BatchSize, textList.Count);
-                var batch = sanitizedTexts.Skip(batchStart).Take(BatchSize).ToList();
+                var batch = sanitizedTexts.Skip(batchStart).Take(batchSize).ToList();
                 var batchIndices = Enumerable.Range(batchStart, batch.Count).ToList();
-                var batchNum = (batchStart / BatchSize) + 1;
+                var batchNum = (batchStart / batchSize) + 1;
 
                 var batchTask = Task.Run(async () =>
                 {
                     await semaphore.WaitAsync(cancellationToken);
                     try
                     {
-                        await ProcessBatchAsync(client, embeddingEndpoint, config, batch, batchIndices, batchNum,
-                            batchStart, batchEnd, textList.Count, results, lockObject, cancellationToken);
+                        await ProcessBatchAsync(client, embeddingEndpoint, config, batch, batchIndices, batchNum, results, lockObject, cancellationToken);
                     }
                     finally
                     {
@@ -142,7 +138,7 @@ public class CustomProvider : BaseAIProvider
             await Task.WhenAll(batchTasks);
         }
 
-        var successCount = results.Count(r => r != null && r.Count > 0);
+        var successCount = results.Count(r => r is { Count: > 0 });
         Logger.LogInformation("Batch embedding completed: {Success}/{Total} successful",
             successCount, textList.Count);
 
@@ -150,7 +146,7 @@ public class CustomProvider : BaseAIProvider
     }
 
     private async Task ProcessBatchAsync(HttpClient client, string embeddingEndpoint, AIProviderConfig config,
-        List<string> batch, List<int> batchIndices, int batchNum, int batchStart, int batchEnd, int totalCount,
+        List<string> batch, List<int> batchIndices, int batchNum,
         List<List<float>> results, object lockObject, CancellationToken cancellationToken = default)
     {
         try
@@ -221,14 +217,14 @@ public class CustomProvider : BaseAIProvider
     private async Task ProcessIndividualTextsOnFailure(HttpClient client, string embeddingEndpoint, AIProviderConfig config,
         List<string> batch, List<int> batchIndices, List<List<float>> results, int batchNum, CancellationToken cancellationToken = default)
     {
-        for (int i = 0; i < batch.Count; i++)
+        for (var i = 0; i < batch.Count; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            
+
             try
             {
                 var text = batch[i];
-                var textLength = text?.Length ?? 0;
+                var textLength = text?.Length;
                 var textPreview = textLength > 100 ? text[..100] + "..." : text;
 
                 var singlePayload = new Dictionary<string, object>
@@ -304,12 +300,12 @@ public class CustomProvider : BaseAIProvider
         var embeddingEndpoint = GetEmbeddingEndpoint(config);
 
         using var client = CreateHttpClient(config.ApiKey);
-        string paramName = IsOllamaNativeEmbedEndpoint(embeddingEndpoint) ? "input" : "prompt";
+        var paramName = IsOllamaNativeEmbedEndpoint(embeddingEndpoint) ? "input" : "prompt";
 
         var payload = new Dictionary<string, object>
         {
             ["model"] = config.EmbeddingModel,
-            [paramName] = text ?? ""
+            [paramName] = text
         };
 
         var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload, cancellationToken: cancellationToken);
@@ -376,14 +372,11 @@ public class CustomProvider : BaseAIProvider
                 return endpoint.Replace("/chat/completions", "/embeddings");
             }
 
-            if (endpoint.Contains("/v1/"))
-            {
-                var v1Index = endpoint.IndexOf("/v1/");
-                var baseUrlFromEndpoint = endpoint[..(v1Index + 4)];
-                return $"{baseUrlFromEndpoint}embeddings";
-            }
+            if (!endpoint.Contains("/v1/")) return $"{baseUrl}/api/embeddings";
+            var v1Index = endpoint.IndexOf("/v1/", StringComparison.Ordinal);
+            var baseUrlFromEndpoint = endpoint[..(v1Index + 4)];
+            return $"{baseUrlFromEndpoint}embeddings";
 
-            return $"{baseUrl}/api/embeddings";
         }
         catch
         {
@@ -486,22 +479,22 @@ public class CustomProvider : BaseAIProvider
             using var document = JsonDocument.Parse(response);
             var root = document.RootElement;
 
-            if (root.TryGetProperty("embeddings", out var embeddingsArray))
-            {
-                var result = new List<List<float>>();
-                foreach (var embedding in embeddingsArray.EnumerateArray())
-                {
-                    var vector = new List<float>();
-                    foreach (var value in embedding.EnumerateArray())
-                    {
-                        vector.Add((float)value.GetDouble());
-                    }
-                    result.Add(vector);
-                }
-                return result;
-            }
+            if (!root.TryGetProperty("embeddings", out var embeddingsArray))
+                return new List<List<float>>();
 
-            return new List<List<float>>();
+            var result = new List<List<float>>();
+
+            foreach (var embedding in embeddingsArray.EnumerateArray())
+            {
+                var vector = new List<float>();
+                foreach (var value in embedding.EnumerateArray())
+                {
+                    vector.Add((float)value.GetDouble());
+                }
+                result.Add(vector);
+            }
+            return result;
+
         }
         catch
         {
@@ -544,24 +537,24 @@ public class CustomProvider : BaseAIProvider
             }
         }
 
-        if (responseData.TryGetProperty("data", out var data) && data.ValueKind == JsonValueKind.Array)
+        if (!responseData.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
+            return new List<float>();
         {
             var firstData = data.EnumerateArray().FirstOrDefault();
-            if (firstData.TryGetProperty("embedding", out var dataEmbedding) && dataEmbedding.ValueKind == JsonValueKind.Array)
+
+            if (!firstData.TryGetProperty("embedding", out var dataEmbedding) ||
+                dataEmbedding.ValueKind != JsonValueKind.Array) return new List<float>();
+            var floats = new List<float>();
+            foreach (var value in dataEmbedding.EnumerateArray())
             {
-                var floats = new List<float>();
-                foreach (var value in dataEmbedding.EnumerateArray())
-                {
-                    if (value.TryGetSingle(out var f))
-                        floats.Add(f);
-                    else if (value.TryGetDouble(out var d))
-                        floats.Add((float)d);
-                }
-                return floats;
+                if (value.TryGetSingle(out var f))
+                    floats.Add(f);
+                else if (value.TryGetDouble(out var d))
+                    floats.Add((float)d);
             }
+            return floats;
         }
 
-        return new List<float>();
     }
 
 }

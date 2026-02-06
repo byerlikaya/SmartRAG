@@ -23,7 +23,7 @@ public class McpRequest
     /// Request parameters
     /// </summary>
     [JsonPropertyName("params")]
-    public Dictionary<string, object> Params { get; set; } = new Dictionary<string, object>();
+    public Dictionary<string, object> Params { get; set; } = new();
 
     /// <summary>
     /// Request ID for correlation

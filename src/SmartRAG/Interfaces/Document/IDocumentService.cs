@@ -13,7 +13,7 @@ public interface IDocumentService
     /// <param name="request">Request containing document upload parameters</param>
     /// <param name="cancellationToken">Token to cancel the operation</param>
     /// <returns>Created document entity</returns>
-    Task<Entities.Document> UploadDocumentAsync(Models.RequestResponse.UploadDocumentRequest request, CancellationToken cancellationToken = default);
+    Task<Entities.Document> UploadDocumentAsync(UploadDocumentRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Get document by ID

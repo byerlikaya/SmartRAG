@@ -50,7 +50,7 @@ public class SearchSource
     /// <summary>
     /// Tables referenced in the database query (if applicable)
     /// </summary>
-    public List<string> Tables { get; set; } = new List<string>();
+    public List<string> Tables { get; set; } = new();
 
     /// <summary>
     /// Executed query for database sources (if applicable)

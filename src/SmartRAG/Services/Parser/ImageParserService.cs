@@ -157,6 +157,7 @@ public class ImageParserService : IImageParserService, IDisposable
     /// </summary>
     public async Task<string> ExtractTextFromImageAsync(Stream imageStream, string language = null, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (_disposed)
             throw new ObjectDisposedException(nameof(ImageParserService));
 
@@ -169,11 +170,11 @@ public class ImageParserService : IImageParserService, IDisposable
         if (string.IsNullOrWhiteSpace(language) || string.Equals(language, "auto", StringComparison.OrdinalIgnoreCase))
             language = GetDefaultLanguageFromSystemLocale();
 
-        var result = await ExtractTextWithConfidenceAsync(imageStream, language);
+        var result = await ExtractTextWithConfidenceAsync(imageStream, language, cancellationToken);
         return result.Text;
     }
 
-    private async Task<OcrResult> ExtractTextWithConfidenceAsync(Stream imageStream, string language = null)
+    private async Task<OcrResult> ExtractTextWithConfidenceAsync(Stream imageStream, string language = null, CancellationToken cancellationToken = default)
     {
         if (_disposed)
             throw new ObjectDisposedException(nameof(ImageParserService));
@@ -187,14 +188,16 @@ public class ImageParserService : IImageParserService, IDisposable
         if (string.IsNullOrWhiteSpace(language) || string.Equals(language, "auto", StringComparison.OrdinalIgnoreCase))
             language = GetDefaultLanguageFromSystemLocale();
 
+        cancellationToken.ThrowIfCancellationRequested();
         var startTime = DateTime.UtcNow;
 
         try
         {
-            using var preprocessedStream = await PreprocessImageAsync(imageStream);
+            using var preprocessedStream = await PreprocessImageAsync(imageStream, cancellationToken);
             preprocessedStream.Position = 0;
 
-            var (Text, Confidence) = await PerformOcrAsync(preprocessedStream, language);
+            cancellationToken.ThrowIfCancellationRequested();
+            var (Text, Confidence) = await PerformOcrAsync(preprocessedStream, language, cancellationToken);
 
             var processingTime = (DateTime.UtcNow - startTime).TotalMilliseconds;
 
@@ -223,11 +226,11 @@ public class ImageParserService : IImageParserService, IDisposable
     }
 
 
-    private async Task<Stream> PreprocessImageAsync(Stream imageStream)
+    private async Task<Stream> PreprocessImageAsync(Stream imageStream, CancellationToken cancellationToken = default)
     {
         try
         {
-            var convertedStream = await ConvertToPngIfNeededAsync(imageStream);
+            var convertedStream = await ConvertToPngIfNeededAsync(imageStream, cancellationToken);
 
             return convertedStream;
         }
@@ -243,14 +246,14 @@ public class ImageParserService : IImageParserService, IDisposable
     /// <summary>
     /// Converts WebP images to PNG format for Tesseract compatibility using SkiaSharp
     /// </summary>
-    private async Task<Stream> ConvertToPngIfNeededAsync(Stream imageStream)
+    private async Task<Stream> ConvertToPngIfNeededAsync(Stream imageStream, CancellationToken cancellationToken = default)
     {
         try
         {
             imageStream.Position = 0;
 
             var header = new byte[WebPHeaderSize];
-            await imageStream.ReadAsync(header, 0, header.Length);
+            await imageStream.ReadAsync(header, 0, header.Length, cancellationToken);
             imageStream.Position = 0;
 
             bool isWebP = header.Length >= WebPHeaderSize &&
@@ -348,7 +351,7 @@ public class ImageParserService : IImageParserService, IDisposable
     /// Gets available Tesseract language (downloads if missing, falls back to English if download fails)
     /// Returns null if no language data is available at all
     /// </summary>
-    private async Task<string> GetAvailableTesseractLanguageAsync(string requestedLanguage)
+    private async Task<string> GetAvailableTesseractLanguageAsync(string requestedLanguage, CancellationToken cancellationToken = default)
     {
         var tessdataPath = string.IsNullOrEmpty(OcrEngineDataPath) ? "." : OcrEngineDataPath;
 
@@ -371,7 +374,7 @@ public class ImageParserService : IImageParserService, IDisposable
         }
 
         _logger.LogInformation("Tesseract data not found. Attempting to download...");
-        var downloaded = await TryDownloadTesseractDataAsync(requestedLanguage, tessdataPath);
+        var downloaded = await TryDownloadTesseractDataAsync(requestedLanguage, tessdataPath, cancellationToken);
 
         if (downloaded)
         {
@@ -389,7 +392,7 @@ public class ImageParserService : IImageParserService, IDisposable
             }
 
             _logger.LogInformation("Attempting to download fallback language...");
-            var fallbackDownloaded = await TryDownloadTesseractDataAsync(DefaultLanguage, tessdataPath);
+            var fallbackDownloaded = await TryDownloadTesseractDataAsync(DefaultLanguage, tessdataPath, cancellationToken);
 
             if (fallbackDownloaded)
             {
@@ -406,10 +409,11 @@ public class ImageParserService : IImageParserService, IDisposable
     /// Attempts to download Tesseract traineddata file from GitHub
     /// Generic implementation that works for any language (eng, tur, deu, fra, etc.)
     /// </summary>
-    private async Task<bool> TryDownloadTesseractDataAsync(string languageCode, string tessdataPath)
+    private async Task<bool> TryDownloadTesseractDataAsync(string languageCode, string tessdataPath, CancellationToken cancellationToken = default)
     {
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
             var fileName = $"{languageCode}.traineddata";
             var targetPath = Path.Combine(tessdataPath, fileName);
             var downloadUrl = $"https://github.com/tesseract-ocr/tessdata/raw/main/{fileName}";
@@ -419,7 +423,7 @@ public class ImageParserService : IImageParserService, IDisposable
             using var httpClient = new System.Net.Http.HttpClient();
             httpClient.Timeout = TimeSpan.FromSeconds(60);
 
-            var response = await httpClient.GetAsync(downloadUrl);
+            var response = await httpClient.GetAsync(downloadUrl, cancellationToken);
 
             if (!response.IsSuccessStatusCode)
             {
@@ -427,8 +431,8 @@ public class ImageParserService : IImageParserService, IDisposable
                 return false;
             }
 
-            var content = await response.Content.ReadAsByteArrayAsync();
-            await File.WriteAllBytesAsync(targetPath, content);
+            var content = await response.Content.ReadAsByteArrayAsync(cancellationToken);
+            await File.WriteAllBytesAsync(targetPath, content, cancellationToken);
 
             _logger.LogDebug("Downloaded Tesseract data: {File} ({Size} bytes)", fileName, content.Length);
             return true;
@@ -453,10 +457,11 @@ public class ImageParserService : IImageParserService, IDisposable
     /// <summary>
     /// Performs OCR on the image stream
     /// </summary>
-    private async Task<(string Text, float Confidence)> PerformOcrAsync(Stream imageStream, string language)
+    private async Task<(string Text, float Confidence)> PerformOcrAsync(Stream imageStream, string language, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         var tesseractLanguageCode = NormalizeTesseractLanguageCode(language);
-        var availableLanguage = await GetAvailableTesseractLanguageAsync(tesseractLanguageCode);
+        var availableLanguage = await GetAvailableTesseractLanguageAsync(tesseractLanguageCode, cancellationToken);
 
         if (string.IsNullOrEmpty(availableLanguage))
         {
@@ -473,8 +478,10 @@ public class ImageParserService : IImageParserService, IDisposable
             _logger.LogDebug("Using Tesseract language");
         }
 
+        cancellationToken.ThrowIfCancellationRequested();
         return await Task.Run(() =>
         {
+            cancellationToken.ThrowIfCancellationRequested();
             try
             {
                 var tessdataPath = string.IsNullOrEmpty(OcrEngineDataPath) ? "." : OcrEngineDataPath;
@@ -496,7 +503,7 @@ public class ImageParserService : IImageParserService, IDisposable
                 ServiceLogMessages.LogImageOcrFailed(_logger, ex);
                 return (string.Empty, 0f);
             }
-        });
+        }, cancellationToken);
     }
 
     /// <summary>

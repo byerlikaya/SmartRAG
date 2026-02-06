@@ -34,10 +34,12 @@ public class DatabaseQueryExecutor : IDatabaseQueryExecutor
             Success = true
         };
 
+        var maxResultsOverride = queryIntent.MaxResults > 0 ? queryIntent.MaxResults : (int?)null;
+
         var tasks = queryIntent.DatabaseQueries.Select(async dbQuery =>
         {
             cancellationToken.ThrowIfCancellationRequested();
-            var dbResult = await ExecuteSingleDatabaseQueryAsync(dbQuery, cancellationToken);
+            var dbResult = await ExecuteSingleDatabaseQueryAsync(dbQuery, maxResultsOverride, cancellationToken);
             return (dbQuery.DatabaseId, dbResult);
         });
 
@@ -60,7 +62,7 @@ public class DatabaseQueryExecutor : IDatabaseQueryExecutor
         return result;
     }
 
-    private async Task<DatabaseQueryResult> ExecuteSingleDatabaseQueryAsync(DatabaseQueryIntent dbQuery, CancellationToken cancellationToken = default)
+    private async Task<DatabaseQueryResult> ExecuteSingleDatabaseQueryAsync(DatabaseQueryIntent dbQuery, int? maxResultsOverride, CancellationToken cancellationToken = default)
     {
         var stopwatch = Stopwatch.StartNew();
         var result = new DatabaseQueryResult
@@ -89,7 +91,8 @@ public class DatabaseQueryExecutor : IDatabaseQueryExecutor
 
             _logger.LogDebug("Executing SQL for database {DatabaseName}", dbQuery.DatabaseName);
 
-            var maxRows = connection.MaxRowsPerQuery > 0 ? connection.MaxRowsPerQuery : DefaultMaxRows;
+            var configMaxRows = connection.MaxRowsPerQuery > 0 ? connection.MaxRowsPerQuery : DefaultMaxRows;
+            var maxRows = maxResultsOverride.HasValue ? Math.Min(maxResultsOverride.Value, configMaxRows) : configMaxRows;
             var queryResult = await _databaseParser.ExecuteQueryAsync(
                 connection.ConnectionString,
                 dbQuery.GeneratedQuery,
@@ -126,17 +129,16 @@ public class DatabaseQueryExecutor : IDatabaseQueryExecutor
         var lines = resultData.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
         foreach (var line in lines)
         {
-            if (line.StartsWith("Rows extracted:"))
+            if (!line.StartsWith("Rows extracted:"))
+                continue;
+            if (int.TryParse(line["Rows extracted:".Length..].Trim(), out var count))
             {
-                if (int.TryParse(line["Rows extracted:".Length..].Trim(), out int count))
-                {
-                    return count;
-                }
+                return count;
             }
         }
 
-        int dataRows = 0;
-        bool headerFound = false;
+        var dataRows = 0;
+        var headerFound = false;
 
         foreach (var line in lines)
         {

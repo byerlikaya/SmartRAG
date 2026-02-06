@@ -107,16 +107,16 @@ public class GeminiProvider : BaseAIProvider
             return new List<List<float>>();
         }
 
-        var textList = texts?.ToList() ?? new List<string>();
+        var textList = texts.ToList();
         if (textList.Count == 0)
             return new List<List<float>>();
 
         var results = new List<List<float>>();
 
-        for (int i = 0; i < textList.Count; i += DefaultMaxBatchSize)
+        for (var i = 0; i < textList.Count; i += DefaultMaxBatchSize)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            
+
             var batchTexts = textList.Skip(i).Take(DefaultMaxBatchSize).ToList();
 
             try
@@ -204,20 +204,21 @@ public class GeminiProvider : BaseAIProvider
     private static string ParseGeminiTextResponse(string response)
     {
         using var doc = JsonDocument.Parse(response);
-        if (doc.RootElement.TryGetProperty("candidates", out var candidates) &&
-            candidates.ValueKind == JsonValueKind.Array)
-        {
-            var firstCandidate = candidates.EnumerateArray().FirstOrDefault();
 
-            if (firstCandidate.TryGetProperty("content", out var contentProp) &&
-                contentProp.TryGetProperty("parts", out var parts) &&
-                parts.ValueKind == JsonValueKind.Array)
-            {
-                var firstPart = parts.EnumerateArray().FirstOrDefault();
-                if (firstPart.TryGetProperty("text", out var text))
-                    return text.GetString() ?? "No response generated";
-            }
-        }
+        if (!doc.RootElement.TryGetProperty("candidates", out var candidates) ||
+            candidates.ValueKind != JsonValueKind.Array)
+            return "No response generated";
+
+        var firstCandidate = candidates.EnumerateArray().FirstOrDefault();
+
+        if (!firstCandidate.TryGetProperty("content", out var contentProp) ||
+            !contentProp.TryGetProperty("parts", out var parts) ||
+            parts.ValueKind != JsonValueKind.Array)
+            return "No response generated";
+
+        var firstPart = parts.EnumerateArray().FirstOrDefault();
+        if (firstPart.TryGetProperty("text", out var text))
+            return text.GetString() ?? "No response generated";
 
         return "No response generated";
     }
@@ -228,20 +229,19 @@ public class GeminiProvider : BaseAIProvider
     private static List<float> ParseGeminiEmbeddingResponse(string response)
     {
         using var doc = JsonDocument.Parse(response);
-        if (doc.RootElement.TryGetProperty("embedding", out var embedding) &&
-            embedding.TryGetProperty("values", out var values) &&
-            values.ValueKind == JsonValueKind.Array)
-        {
-            var floats = new List<float>();
-            foreach (var value in values.EnumerateArray())
-            {
-                if (value.TryGetSingle(out var f))
-                    floats.Add(f);
-            }
-            return floats;
-        }
+        if (!doc.RootElement.TryGetProperty("embedding", out var embedding) ||
+            !embedding.TryGetProperty("values", out var values) ||
+            values.ValueKind != JsonValueKind.Array)
+            return new List<float>();
 
-        return new List<float>();
+        var floats = new List<float>();
+        foreach (var value in values.EnumerateArray())
+        {
+            if (value.TryGetSingle(out var f))
+                floats.Add(f);
+        }
+        return floats;
+
     }
 
     /// <summary>
@@ -290,29 +290,28 @@ public class GeminiProvider : BaseAIProvider
     {
         var results = new List<List<float>>();
 
-        using (var doc = JsonDocument.Parse(response))
+        using var doc = JsonDocument.Parse(response);
+
+        if (!doc.RootElement.TryGetProperty("embeddings", out var embeddings) ||
+            embeddings.ValueKind != JsonValueKind.Array)
+            return results;
+
+        foreach (var embedding in embeddings.EnumerateArray())
         {
-            if (doc.RootElement.TryGetProperty("embeddings", out var embeddings) &&
-                embeddings.ValueKind == JsonValueKind.Array)
+            if (embedding.TryGetProperty("values", out var values) &&
+                values.ValueKind == JsonValueKind.Array)
             {
-                foreach (var embedding in embeddings.EnumerateArray())
+                var floats = new List<float>();
+                foreach (var value in values.EnumerateArray())
                 {
-                    if (embedding.TryGetProperty("values", out var values) &&
-                        values.ValueKind == JsonValueKind.Array)
-                    {
-                        var floats = new List<float>();
-                        foreach (var value in values.EnumerateArray())
-                        {
-                            if (value.TryGetSingle(out var f))
-                                floats.Add(f);
-                        }
-                        results.Add(floats);
-                    }
-                    else
-                    {
-                        results.Add(new List<float>());
-                    }
+                    if (value.TryGetSingle(out var f))
+                        floats.Add(f);
                 }
+                results.Add(floats);
+            }
+            else
+            {
+                results.Add(new List<float>());
             }
         }
 

@@ -64,6 +64,7 @@ public class MultiDatabaseQueryCoordinator : IMultiDatabaseQueryCoordinator
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="preAnalyzedIntent"/> is null.</exception>
     public async Task<RagResponse> QueryMultipleDatabasesAsync(string userQuery, QueryIntent preAnalyzedIntent, int maxResults = 5, string preferredLanguage = null, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (string.IsNullOrWhiteSpace(userQuery))
             throw new ArgumentException("User query cannot be null or empty", nameof(userQuery));
 
@@ -81,6 +82,8 @@ public class MultiDatabaseQueryCoordinator : IMultiDatabaseQueryCoordinator
 
             queryIntent = await ValidateAndCorrectQueryIntentAsync(queryIntent, cancellationToken);
 
+            queryIntent.MaxResults = maxResults;
+
             queryIntent = await GenerateDatabaseQueriesAsync(queryIntent, cancellationToken);
 
             var queryResults = await _databaseQueryExecutor.ExecuteMultiDatabaseQueryAsync(queryIntent, cancellationToken);
@@ -90,8 +93,10 @@ public class MultiDatabaseQueryCoordinator : IMultiDatabaseQueryCoordinator
                 return CreateQueryExecutionErrorResponse(queryResults.Errors);
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
             var mergedData = await _resultMerger.MergeResultsAsync(queryResults, userQuery);
 
+            cancellationToken.ThrowIfCancellationRequested();
             var finalAnswer = await _resultMerger.GenerateFinalAnswerAsync(userQuery, mergedData, queryResults, preferredLanguage);
 
             return finalAnswer;

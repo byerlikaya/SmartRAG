@@ -39,7 +39,7 @@ public class AIRequestExecutor : IAIRequestExecutor
                 : response);
         }
 
-        return response ?? string.Empty;
+        return response;
     }
 
     /// <summary>
@@ -73,7 +73,7 @@ public class AIRequestExecutor : IAIRequestExecutor
         var aiProvider = _aiProviderFactory.CreateProvider(provider);
         var embeddings = await aiProvider.GenerateEmbeddingsBatchAsync(texts, providerConfig, cancellationToken);
 
-        var filteredEmbeddings = embeddings?.Where(e => e != null && e.Count > 0).ToList() ?? new List<List<float>>();
+        var filteredEmbeddings = embeddings.Where(e => e is { Count: > 0 }).ToList();
 
         return filteredEmbeddings;
     }
@@ -108,8 +108,6 @@ public class AIRequestExecutor : IAIRequestExecutor
             return true;
         }
 
-        if (trimmed.Contains("ServiceUnavailable", StringComparison.OrdinalIgnoreCase)) return true;
-
-        return false;
+        return trimmed.Contains("ServiceUnavailable", StringComparison.OrdinalIgnoreCase);
     }
 }

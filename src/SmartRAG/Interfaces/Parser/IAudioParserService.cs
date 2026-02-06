@@ -15,7 +15,7 @@ public interface IAudioParserService : IDisposable
     /// <param name="fileName">The name of the audio file for format detection</param>
     /// <param name="language">Culture code for transcription (e.g., en-US)</param>
     /// <returns>Audio transcription result containing text and metadata</returns>
-    Task<AudioTranscriptionResult> TranscribeAudioAsync(Stream audioStream, string fileName, string language = null);
+    Task<AudioTranscriptionResult> TranscribeAudioAsync(Stream audioStream, string fileName, string? language = null);
 
 }
 

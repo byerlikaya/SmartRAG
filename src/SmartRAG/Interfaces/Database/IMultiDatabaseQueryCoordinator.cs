@@ -25,7 +25,7 @@ public interface IMultiDatabaseQueryCoordinator
     /// <param name="preferredLanguage">Preferred language for the response (ISO code, e.g., "tr", "en")</param>
     /// <param name="cancellationToken">Token to cancel the operation</param>
     /// <returns>RAG response with data from multiple databases</returns>
-    Task<RagResponse> QueryMultipleDatabasesAsync(string userQuery, QueryIntent preAnalyzedIntent, int maxResults = 5, string preferredLanguage = null, CancellationToken cancellationToken = default);
+    Task<RagResponse> QueryMultipleDatabasesAsync(string userQuery, QueryIntent preAnalyzedIntent, int maxResults = 5, string? preferredLanguage = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Generates optimized SQL queries for each database based on intent

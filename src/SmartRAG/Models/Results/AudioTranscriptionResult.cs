@@ -25,6 +25,6 @@ public class AudioTranscriptionResult
     /// <summary>
     /// Additional metadata from the transcription process
     /// </summary>
-    public Dictionary<string, object> Metadata { get; set; } = new Dictionary<string, object>();
+    public Dictionary<string, object> Metadata { get; set; } = new();
 }
 

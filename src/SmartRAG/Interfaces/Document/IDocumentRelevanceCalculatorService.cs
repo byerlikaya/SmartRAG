@@ -24,8 +24,8 @@ public interface IDocumentRelevanceCalculatorService
         List<string> queryWords,
         Dictionary<string, HashSet<Guid>> wordDocumentMap,
         int topChunksPerDocument,
-        string query = null,
-        List<string> potentialNames = null);
+        string? query = null,
+        List<string>? potentialNames = null);
 
     /// <summary>
     /// Identifies relevant documents based on calculated scores

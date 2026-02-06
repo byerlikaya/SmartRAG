@@ -5,7 +5,7 @@ namespace SmartRAG.Interfaces.Mcp;
 /// <summary>
 /// Interface for MCP (Model Context Protocol) client operations
 /// </summary>
-public interface IMcpClient : System.IDisposable
+public interface IMcpClient : IDisposable
 {
     /// <summary>
     /// Connects to an MCP server

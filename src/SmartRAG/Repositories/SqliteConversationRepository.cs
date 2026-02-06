@@ -5,19 +5,19 @@ namespace SmartRAG.Repositories;
 
 public class SqliteConversationRepository : IConversationRepository, IDisposable
 {
-    private readonly string _connectionString;
     private readonly ILogger<SqliteConversationRepository> _logger;
-    private SqliteConnection _connection;
-    private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
-    private readonly SemaphoreSlim _initSemaphore = new SemaphoreSlim(1, 1);
-    private bool _initialized = false;
+    private readonly SqliteConnection _connection;
+    private readonly SemaphoreSlim _semaphore = new(1, 1);
+    private readonly SemaphoreSlim _initSemaphore = new(1, 1);
+    private bool _initialized;
 
     private const int MaxConversationLength = 2000;
 
     public SqliteConversationRepository(IOptions<SqliteConfig> config, ILogger<SqliteConversationRepository> logger)
     {
         var sqliteConfig = config.Value;
-        _connectionString = $"Data Source={sqliteConfig.DatabasePath};";
+        var connectionString = $"Data Source={sqliteConfig.DatabasePath};";
+        _connection = new SqliteConnection(connectionString);
         _logger = logger;
     }
 
@@ -31,40 +31,6 @@ public class SqliteConversationRepository : IConversationRepository, IDisposable
         {
             if (_initialized)
                 return;
-
-            if (_connection == null)
-            {
-                _connection = new SqliteConnection(_connectionString);
-                await _connection.OpenAsync();
-
-                var command = _connection.CreateCommand();
-                command.CommandText = @"
-                    CREATE TABLE IF NOT EXISTS Conversations (
-                        SessionId TEXT PRIMARY KEY,
-                        History TEXT,
-                        CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-                        LastUpdated DATETIME DEFAULT CURRENT_TIMESTAMP
-                    );
-                    CREATE TABLE IF NOT EXISTS ConversationSources (
-                        SessionId TEXT PRIMARY KEY,
-                        SourcesJson TEXT
-                    );";
-                await command.ExecuteNonQueryAsync();
-
-                try
-                {
-                    var alterCmd = _connection.CreateCommand();
-                    alterCmd.CommandText = "ALTER TABLE Conversations ADD COLUMN CreatedAt DATETIME DEFAULT CURRENT_TIMESTAMP";
-                    await alterCmd.ExecuteNonQueryAsync();
-                    var backfillCmd = _connection.CreateCommand();
-                    backfillCmd.CommandText = "UPDATE Conversations SET CreatedAt = LastUpdated WHERE CreatedAt IS NULL";
-                    await backfillCmd.ExecuteNonQueryAsync();
-                }
-                catch
-                {
-                    /* Column may already exist */
-                }
-            }
 
             _initialized = true;
         }
@@ -108,7 +74,7 @@ public class SqliteConversationRepository : IConversationRepository, IDisposable
             {
                 var updateCmd = _connection.CreateCommand();
                 updateCmd.CommandText = @"
-                    INSERT INTO Conversations (SessionId, History, CreatedAt, LastUpdated) 
+                    INSERT INTO Conversations (SessionId, History, CreatedAt, LastUpdated)
                     VALUES (@sessionId, @history, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                     ON CONFLICT(SessionId) DO UPDATE SET History = @history, LastUpdated = CURRENT_TIMESTAMP";
                 updateCmd.Parameters.AddWithValue("@sessionId", sessionId);
@@ -134,7 +100,7 @@ public class SqliteConversationRepository : IConversationRepository, IDisposable
 
             var command = _connection.CreateCommand();
             command.CommandText = @"
-                INSERT INTO Conversations (SessionId, History, CreatedAt, LastUpdated) 
+                INSERT INTO Conversations (SessionId, History, CreatedAt, LastUpdated)
                 VALUES (@sessionId, @history, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 ON CONFLICT(SessionId) DO UPDATE SET History = @history, LastUpdated = CURRENT_TIMESTAMP";
             command.Parameters.AddWithValue("@sessionId", sessionId);
@@ -279,7 +245,7 @@ public class SqliteConversationRepository : IConversationRepository, IDisposable
         {
             var command = _connection.CreateCommand();
             command.CommandText = @"
-                INSERT INTO Conversations (SessionId, History, CreatedAt, LastUpdated) 
+                INSERT INTO Conversations (SessionId, History, CreatedAt, LastUpdated)
                 VALUES (@sessionId, @history, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
                 ON CONFLICT(SessionId) DO UPDATE SET History = @history, LastUpdated = CURRENT_TIMESTAMP";
             command.Parameters.AddWithValue("@sessionId", sessionId);
@@ -385,18 +351,15 @@ public class SqliteConversationRepository : IConversationRepository, IDisposable
     private static string TruncateConversation(string conversation)
     {
         var lines = conversation.Split('\n');
-        if (lines.Length <= 6)
-            return conversation;
-
-        return string.Join("\n", lines.Skip(lines.Length - 6));
+        return lines.Length <= 6 ? conversation : string.Join("\n", lines.Skip(lines.Length - 6));
     }
 
     public void Dispose()
     {
-        _semaphore?.Dispose();
-        _initSemaphore?.Dispose();
-        _connection?.Close();
-        _connection?.Dispose();
+        _semaphore.Dispose();
+        _initSemaphore.Dispose();
+        _connection.Close();
+        _connection.Dispose();
     }
 }
 

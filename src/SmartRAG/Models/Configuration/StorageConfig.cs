@@ -16,16 +16,16 @@ public class StorageConfig
     /// <summary>
     /// Redis storage configuration
     /// </summary>
-    public RedisConfig Redis { get; set; } = new RedisConfig();
+    public RedisConfig Redis { get; set; } = new();
 
     /// <summary>
     /// In-memory storage configuration
     /// </summary>
-    public InMemoryConfig InMemory { get; set; } = new InMemoryConfig();
+    public InMemoryConfig InMemory { get; set; } = new();
 
     /// <summary>
     /// Qdrant vector database storage configuration
     /// </summary>
-    public QdrantConfig Qdrant { get; set; } = new QdrantConfig();
+    public QdrantConfig Qdrant { get; set; } = new();
 }
 

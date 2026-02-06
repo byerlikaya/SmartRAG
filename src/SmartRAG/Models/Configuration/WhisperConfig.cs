@@ -41,12 +41,6 @@ public class WhisperConfig
     public int MaxThreads { get; set; } = 0;
 
     /// <summary>
-    /// When true (default), only transcribe in the source language; never translate to English.
-    /// Ensures output text is in the same language as the speech for any detected language.
-    /// </summary>
-    public bool ForceTranscribeOnly { get; set; } = true;
-
-    /// <summary>
     /// When true, use GPU acceleration if the host app has the matching Whisper.net runtime installed.
     /// Windows/Linux: reference Whisper.net.Runtime.Cuda.Windows or Whisper.net.Runtime.Cuda.Linux (NVIDIA GPU).
     /// macOS: reference Whisper.net.Runtime.CoreML for Metal/Apple Silicon. Default is false (CPU only).

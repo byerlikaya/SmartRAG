@@ -39,16 +39,16 @@ public class AIService : IAIService
         {
             ServiceLogMessages.LogAIServiceGenerateResponseError(_logger, _options.AIProvider.ToString(), ex);
 
-            if (_options.EnableFallbackProviders && _options.FallbackProviders.Count > 0)
+            if (!_options.EnableFallbackProviders || _options.FallbackProviders.Count <= 0)
+                return ErrorMessage;
+
+            try
             {
-                try
-                {
-                    return await TryFallbackProvidersAsync(query, context, cancellationToken);
-                }
-                catch (Exception fallbackEx)
-                {
-                    _logger.LogError(fallbackEx, "Fallback providers failed");
-                }
+                return await TryFallbackProvidersAsync(query, context, cancellationToken);
+            }
+            catch (Exception fallbackEx)
+            {
+                _logger.LogError(fallbackEx, "Fallback providers failed");
             }
 
             return ErrorMessage;
@@ -96,7 +96,7 @@ public class AIService : IAIService
         while (true)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            
+
             try
             {
                 return await _requestExecutor.GenerateResponseAsync(provider, query, context, cancellationToken);
@@ -129,7 +129,7 @@ public class AIService : IAIService
         foreach (var fallbackProvider in _options.FallbackProviders)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            
+
             try
             {
                 var response = await _requestExecutor.GenerateResponseAsync(fallbackProvider, query, context, cancellationToken);
@@ -142,7 +142,6 @@ public class AIService : IAIService
             catch (Exception ex)
             {
                 ServiceLogMessages.LogAIServiceFallbackFailed(_logger, fallbackProvider.ToString(), ex);
-                continue;
             }
         }
 

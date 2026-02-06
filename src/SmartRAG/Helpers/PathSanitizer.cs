@@ -41,8 +41,8 @@ public static class PathSanitizer
                 var normalizedUserHome = Path.GetFullPath(userHomeDir);
                 var normalizedPath = Path.GetFullPath(fullPath);
 
-                effectiveBaseDir = normalizedPath.StartsWith(normalizedUserHome, StringComparison.OrdinalIgnoreCase) ? 
-                    normalizedUserHome : 
+                effectiveBaseDir = normalizedPath.StartsWith(normalizedUserHome, StringComparison.OrdinalIgnoreCase) ?
+                    normalizedUserHome :
                     Path.GetPathRoot(fullPath);
             }
             else
@@ -57,11 +57,11 @@ public static class PathSanitizer
             effectiveBaseDir = baseDir;
         }
 
-        var normalizedBaseDir = Path.GetFullPath(effectiveBaseDir);
+        var normalizedBaseDir = Path.GetFullPath(effectiveBaseDir!);
         var normalizedFullPath = Path.GetFullPath(fullPath);
 
-        return !normalizedFullPath.StartsWith(normalizedBaseDir, StringComparison.OrdinalIgnoreCase) ? 
-            throw new System.Security.SecurityException("Path traversal detected") : 
+        return !normalizedFullPath.StartsWith(normalizedBaseDir, StringComparison.OrdinalIgnoreCase) ?
+            throw new System.Security.SecurityException("Path traversal detected") :
             normalizedFullPath;
     }
 }

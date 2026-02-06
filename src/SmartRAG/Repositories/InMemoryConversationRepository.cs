@@ -4,16 +4,12 @@ namespace SmartRAG.Repositories;
 
 public class InMemoryConversationRepository : IConversationRepository
 {
-    private readonly Dictionary<string, string> _conversations = new Dictionary<string, string>();
-    private readonly Dictionary<string, List<string>> _sourcesBySession = new Dictionary<string, List<string>>();
-    private readonly object _lock = new object();
+    private readonly Dictionary<string, string> _conversations = new();
+    private readonly Dictionary<string, List<string>> _sourcesBySession = new();
+    private readonly object _lock = new();
 
     private const int MaxConversationLength = 2000;
     private const int MaxSessions = 1000;
-
-    public InMemoryConversationRepository(ILogger<InMemoryConversationRepository> logger)
-    {
-    }
 
     public Task<string> GetConversationHistoryAsync(string sessionId, CancellationToken cancellationToken = default)
     {
@@ -171,10 +167,7 @@ public class InMemoryConversationRepository : IConversationRepository
     private static string TruncateConversation(string conversation)
     {
         var lines = conversation.Split('\n');
-        if (lines.Length <= 6)
-            return conversation;
-
-        return string.Join("\n", lines.Skip(lines.Length - 6));
+        return lines.Length <= 6 ? conversation : string.Join("\n", lines.Skip(lines.Length - 6));
     }
 }
 

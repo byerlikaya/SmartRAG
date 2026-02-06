@@ -22,7 +22,7 @@ public interface IAIProvider
     /// <param name="config">AI provider configuration settings</param>
     /// <param name="cancellationToken">Token to cancel the operation</param>
     /// <returns>List of float values representing the embedding vector</returns>
-    Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig config, CancellationToken cancellationToken = default);
+    Task<List<float>> GenerateEmbeddingAsync(string text, AIProviderConfig? config, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Generates embeddings for multiple texts in a single request (if supported)

@@ -13,7 +13,6 @@ public class SQLQueryGenerator : ISqlQueryGenerator
     private readonly ISqlValidator _validator;
     private readonly ISqlPromptBuilder _promptBuilder;
     private readonly IDatabaseConnectionManager _connectionManager;
-    private readonly IDocumentRepository _documentRepository;
     private readonly ILogger<SQLQueryGenerator> _logger;
 
     /// <summary>
@@ -25,7 +24,6 @@ public class SQLQueryGenerator : ISqlQueryGenerator
     /// <param name="validator">SQL validator</param>
     /// <param name="promptBuilder">SQL prompt builder</param>
     /// <param name="connectionManager">Database connection manager</param>
-    /// <param name="documentRepository">Document repository for RAG-based schema retrieval</param>
     /// <param name="logger">Logger instance</param>
     public SQLQueryGenerator(
         IDatabaseSchemaAnalyzer schemaAnalyzer,
@@ -34,7 +32,6 @@ public class SQLQueryGenerator : ISqlQueryGenerator
         ISqlValidator validator,
         ISqlPromptBuilder promptBuilder,
         IDatabaseConnectionManager connectionManager,
-        IDocumentRepository documentRepository,
         ILogger<SQLQueryGenerator> logger)
     {
         _schemaAnalyzer = schemaAnalyzer ?? throw new ArgumentNullException(nameof(schemaAnalyzer));
@@ -43,7 +40,6 @@ public class SQLQueryGenerator : ISqlQueryGenerator
         _validator = validator ?? throw new ArgumentNullException(nameof(validator));
         _promptBuilder = promptBuilder ?? throw new ArgumentNullException(nameof(promptBuilder));
         _connectionManager = connectionManager ?? throw new ArgumentNullException(nameof(connectionManager));
-        _documentRepository = documentRepository ?? throw new ArgumentNullException(nameof(documentRepository));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -90,69 +86,11 @@ public class SQLQueryGenerator : ISqlQueryGenerator
             return queryIntent;
         }
 
-        var schemaChunksMap = new Dictionary<string, List<Entities.DocumentChunk>>();
-        var allDocumentsCache = new Dictionary<Guid, Entities.Document>();
-        
-        try
-        {
-            var allDocuments = await _documentRepository.GetAllAsync(cancellationToken);
-            foreach (var doc in allDocuments)
-            {
-                allDocumentsCache[doc.Id] = doc;
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Failed to load documents cache, schema chunk filtering may be limited");
-        }
-
-        foreach (var dbQuery in queryIntent.DatabaseQueries)
-        {
-            if (schemas.TryGetValue(dbQuery.DatabaseId, out var schema))
-            {
-                try
-                {
-                    var schemaDoc = allDocumentsCache.Values.FirstOrDefault(d =>
-                        d?.Metadata != null &&
-                        d.Metadata.TryGetValue("documentType", out var dt) && string.Equals(dt?.ToString(), "Schema", StringComparison.OrdinalIgnoreCase) &&
-                        d.Metadata.TryGetValue("databaseId", out var id) && id?.ToString() == dbQuery.DatabaseId);
-
-                    if (schemaDoc != null)
-                    {
-                        var fullDoc = await _documentRepository.GetByIdAsync(schemaDoc.Id, cancellationToken);
-                        if (fullDoc?.Chunks != null && fullDoc.Chunks.Count > 0)
-                        {
-                            schemaChunksMap[dbQuery.DatabaseId] = fullDoc.Chunks.OrderBy(c => c.ChunkIndex).ToList();
-                            _logger.LogInformation("Using {Count} schema chunks for database {DatabaseName} (from stored schema document)",
-                                fullDoc.Chunks.Count, schema.DatabaseName);
-                        }
-                        else
-                        {
-                            _logger.LogDebug("Schema document for database {DatabaseName} has no chunks, using DatabaseSchemaInfo fallback",
-                                schema.DatabaseName);
-                        }
-                    }
-                    else
-                    {
-                        _logger.LogDebug("No schema document found for database {DatabaseName}, using DatabaseSchemaInfo fallback",
-                            schema.DatabaseName);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogWarning(ex, "Failed to load schema chunks for database {DatabaseName}, falling back to DatabaseSchemaInfo",
-                        schema.DatabaseName);
-                }
-            }
-        }
-
         var promptParts = _promptBuilder.BuildMultiDatabaseSeparated(
             queryIntent.OriginalQuery,
             queryIntent,
             schemas,
-            strategies,
-            schemaChunksMap,
-            requiredMappingColumns);
+            strategies);
         
         var additionalInstructions = new StringBuilder();
         foreach (var kvp in requiredMappingColumns.Where(k => k.Value.Any()))

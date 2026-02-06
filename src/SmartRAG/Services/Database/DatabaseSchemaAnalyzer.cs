@@ -34,7 +34,8 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
     /// </summary>
     public async Task<DatabaseSchemaInfo> AnalyzeDatabaseSchemaAsync(DatabaseConnectionConfig connectionConfig, CancellationToken cancellationToken = default)
     {
-        var databaseId = await GetDatabaseIdAsync(connectionConfig);
+        cancellationToken.ThrowIfCancellationRequested();
+        var databaseId = await GetDatabaseIdAsync(connectionConfig, cancellationToken);
 
         var schemaInfo = new DatabaseSchemaInfo
         {
@@ -112,6 +113,7 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
 
     public Task<DatabaseSchemaInfo> GetSchemaAsync(string databaseId, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         _schemaCache.TryGetValue(databaseId, out var schema);
         return Task.FromResult(schema);
     }
@@ -197,7 +199,7 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
             try
             {
                 using var connection = CreateConnection(config.ConnectionString, config.DatabaseType);
-                await connection.OpenAsync();
+                await connection.OpenAsync(cancellationToken);
                 var databaseName = connection.Database;
 
                 if (!string.IsNullOrEmpty(databaseName))

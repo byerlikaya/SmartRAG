@@ -127,7 +127,7 @@ public class AzureOpenAIProvider : BaseAIProvider, IDisposable
             return new List<List<float>>();
         }
 
-        var inputList = texts?.ToList() ?? new List<string>();
+        var inputList = texts.ToList();
         if (inputList.Count == 0)
             return new List<List<float>>();
 

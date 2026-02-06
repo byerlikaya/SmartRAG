@@ -18,7 +18,7 @@ public class PromptBuilderService : IPromptBuilderService
     public PromptBuilderService(Lazy<IConversationManagerService> conversationManager, IOptions<SmartRagOptions> options)
     {
         _conversationManager = conversationManager;
-        _options = options?.Value ?? throw new ArgumentNullException(nameof(options));
+        _options = options.Value;
     }
 
     /// <summary>
@@ -146,7 +146,7 @@ Answer:";
     /// </summary>
     public string BuildHybridMergePrompt(string query, string? databaseContext, string? documentContext, string? conversationHistory = null)
     {
-        var combinedContext = new System.Collections.Generic.List<string>();
+        var combinedContext = new List<string>();
 
         if (!string.IsNullOrEmpty(databaseContext))
         {
@@ -274,14 +274,14 @@ Answer:";
             return false;
 
         var lowerQuery = query.ToLowerInvariant();
-        
-        var articleGenericPattern = @"\b\p{L}{1,3}\s+\p{L}{4,}\b";
+
+        const string articleGenericPattern = @"\b\p{L}{1,3}\s+\p{L}{4,}\b";
         var hasArticleGenericStructure = Regex.IsMatch(lowerQuery, articleGenericPattern, RegexOptions.None);
 
-        var possessivePattern = @"\b\p{L}+\p{M}*\p{L}*\s+\p{L}+\b";
+        const string possessivePattern = @"\b\p{L}+\p{M}*\p{L}*\s+\p{L}+\b";
         var hasPossessiveStructure = Regex.IsMatch(lowerQuery, possessivePattern, RegexOptions.None);
 
-        var genericQuestionPattern = @"\b\p{L}{4,}\s+\p{L}{2,6}\b";
+        const string genericQuestionPattern = @"\b\p{L}{4,}\s+\p{L}{2,6}\b";
         var hasGenericQuestionStructure = Regex.IsMatch(lowerQuery, genericQuestionPattern, RegexOptions.None);
 
         var isVague = hasArticleGenericStructure || hasPossessiveStructure || hasGenericQuestionStructure;

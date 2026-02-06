@@ -14,7 +14,7 @@ public class FileParserResult
     /// <summary>
     /// Additional metadata extracted from the file (page counts, creation date, etc.)
     /// </summary>
-    public Dictionary<string, object> Metadata { get; set; } = new Dictionary<string, object>();
+    public Dictionary<string, object> Metadata { get; set; } = new();
 }
 
 

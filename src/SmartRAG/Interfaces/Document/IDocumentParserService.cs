@@ -17,7 +17,7 @@ public interface IDocumentParserService
     /// <param name="uploadedBy">Identifier of the user uploading the document</param>
     /// <param name="language">Language code for document processing (optional)</param>
     /// <returns>Parsed document entity with extracted content</returns>
-    Task<Entities.Document> ParseDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy, string language = null);
+    Task<Entities.Document> ParseDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy, string? language = null);
 
     /// <summary>
     /// Gets list of supported file extensions

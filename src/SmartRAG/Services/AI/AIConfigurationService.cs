@@ -39,7 +39,7 @@ public class AIConfigurationService : IAIConfigurationService
         var providerKey = provider.ToString();
         var providerConfig = _configuration.GetSection($"AI:{providerKey}").Get<AIProviderConfig>();
 
-        if (providerConfig == null || (provider != Enums.AIProvider.Custom && string.IsNullOrEmpty(providerConfig.ApiKey)))
+        if (providerConfig == null || (provider != AIProvider.Custom && string.IsNullOrEmpty(providerConfig.ApiKey)))
         {
             return null;
         }

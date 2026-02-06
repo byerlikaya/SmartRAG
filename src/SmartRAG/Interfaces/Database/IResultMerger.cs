@@ -23,7 +23,7 @@ public interface IResultMerger
     /// <param name="queryResults">Query results</param>
     /// <param name="preferredLanguage">Preferred language for the response (ISO code, e.g., "tr", "en")</param>
     /// <returns>RAG response with AI-generated answer</returns>
-    Task<RagResponse> GenerateFinalAnswerAsync(string userQuery, string mergedData, MultiDatabaseQueryResult queryResults, string preferredLanguage = null);
+    Task<RagResponse> GenerateFinalAnswerAsync(string userQuery, string mergedData, MultiDatabaseQueryResult queryResults, string? preferredLanguage = null);
 }
 
 

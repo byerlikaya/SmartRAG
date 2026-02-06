@@ -22,12 +22,12 @@ public class InMemoryDocumentRepository : IDocumentRepository
     private const int DefaultMaxSearchResults = 5;
     private const int MinDocumentCapacity = 1;
 
-    private readonly List<SmartRAG.Entities.Document> _documents = new List<SmartRAG.Entities.Document>();
-    private readonly object _lock = new object();
+    private readonly List<Document> _documents = new();
+    private readonly object _lock = new();
 
     protected ILogger Logger => _logger;
 
-    public Task<SmartRAG.Entities.Document> AddAsync(SmartRAG.Entities.Document document, CancellationToken cancellationToken = default)
+    public Task<Document> AddAsync(Document document, CancellationToken cancellationToken = default)
     {
         lock (_lock)
         {
@@ -39,8 +39,8 @@ public class InMemoryDocumentRepository : IDocumentRepository
                     RepositoryLogMessages.LogOldDocumentsRemoved(Logger, removedCount, _config.MaxDocuments, null);
                 }
 
-                SmartRAG.Services.Helpers.DocumentValidator.ValidateDocument(document);
-                SmartRAG.Services.Helpers.DocumentValidator.ValidateChunks(document);
+                DocumentValidator.ValidateDocument(document);
+                DocumentValidator.ValidateChunks(document);
 
                 _documents.Add(document);
                 RepositoryLogMessages.LogDocumentAdded(Logger, document.FileName, document.Id, null);
@@ -54,8 +54,9 @@ public class InMemoryDocumentRepository : IDocumentRepository
         }
     }
 
-    public Task<SmartRAG.Entities.Document> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public Task<Document> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         lock (_lock)
         {
             try
@@ -71,7 +72,7 @@ public class InMemoryDocumentRepository : IDocumentRepository
         }
     }
 
-    public Task<List<Entities.Document>> GetAllAsync(CancellationToken cancellationToken = default)
+    public Task<List<Document>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         lock (_lock)
         {
@@ -150,7 +151,7 @@ public class InMemoryDocumentRepository : IDocumentRepository
         {
             try
             {
-                var normalizedQuery = SmartRAG.Extensions.SearchTextExtensions.NormalizeForSearch(query);
+                var normalizedQuery = query.NormalizeForSearch();
                 var relevantChunks = PerformSearch(normalizedQuery, maxResults);
 
                 return Task.FromResult(relevantChunks);
@@ -193,13 +194,13 @@ public class InMemoryDocumentRepository : IDocumentRepository
         {
             foreach (var chunk in document.Chunks)
             {
-                var normalizedChunk = SmartRAG.Extensions.SearchTextExtensions.NormalizeForSearch(chunk.Content);
-                if (normalizedChunk.Contains(normalizedQuery))
-                {
-                    relevantChunks.Add(chunk);
-                    if (relevantChunks.Count >= maxResults)
-                        break;
-                }
+                var normalizedChunk = chunk.Content.NormalizeForSearch();
+                if (!normalizedChunk.Contains(normalizedQuery))
+                    continue;
+
+                relevantChunks.Add(chunk);
+                if (relevantChunks.Count >= maxResults)
+                    break;
             }
             if (relevantChunks.Count >= maxResults)
                 break;

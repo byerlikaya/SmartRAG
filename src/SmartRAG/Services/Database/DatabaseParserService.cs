@@ -42,9 +42,9 @@ public class DatabaseParserService : IDatabaseParserService
 
         try
         {
-            using (var fileStream = File.Create(tempPath))
+            await using (var fileStream = File.Create(tempPath))
             {
-                await dbStream.CopyToAsync(fileStream);
+                await dbStream.CopyToAsync(fileStream, cancellationToken);
             }
 
             var connectionString = $"Data Source={tempPath};Mode=ReadOnly;";
@@ -58,7 +58,7 @@ public class DatabaseParserService : IDatabaseParserService
                 SanitizeSensitiveData = true
             };
 
-            var result = await ParseSQLiteDatabaseAsync(connectionString, config);
+            var result = await ParseSQLiteDatabaseAsync(connectionString, config, cancellationToken);
 
             _logger.LogInformation("Database file parsing completed for: {FileName}", fileName);
             return result;
@@ -94,16 +94,16 @@ public class DatabaseParserService : IDatabaseParserService
 
         try
         {
-            if (config.Type == DatabaseType.SQLite)
-                return await ParseSQLiteDatabaseAsync(connectionString, config);
-            else if (config.Type == DatabaseType.SqlServer)
-                return await ParseSqlServerDatabaseAsync(connectionString, config);
-            else if (config.Type == DatabaseType.MySQL)
-                return await ParseMySqlDatabaseAsync(connectionString, config);
-            else if (config.Type == DatabaseType.PostgreSQL)
-                return await ParsePostgreSqlDatabaseAsync(connectionString, config);
-            else
-                throw new NotSupportedException($"Database type {config.Type} is not supported");
+            return config.Type switch
+            {
+                DatabaseType.SQLite => await ParseSQLiteDatabaseAsync(connectionString, config, cancellationToken),
+                DatabaseType.SqlServer =>
+                    await ParseSqlServerDatabaseAsync(connectionString, config, cancellationToken),
+                DatabaseType.MySQL => await ParseMySqlDatabaseAsync(connectionString, config, cancellationToken),
+                DatabaseType.PostgreSQL => await ParsePostgreSqlDatabaseAsync(connectionString, config,
+                    cancellationToken),
+                _ => throw new NotSupportedException($"Database type {config.Type} is not supported")
+            };
         }
         catch (Exception ex)
         {
@@ -119,16 +119,14 @@ public class DatabaseParserService : IDatabaseParserService
     {
         if (string.IsNullOrWhiteSpace(connectionString)) throw new ArgumentNullException(nameof(connectionString));
 
-        if (databaseType == DatabaseType.SQLite)
-            return await GetSQLiteTableNamesAsync(connectionString);
-        else if (databaseType == DatabaseType.SqlServer)
-            return await GetSqlServerTableNamesAsync(connectionString);
-        else if (databaseType == DatabaseType.MySQL)
-            return await GetMySqlTableNamesAsync(connectionString);
-        else if (databaseType == DatabaseType.PostgreSQL)
-            return await GetPostgreSqlTableNamesAsync(connectionString);
-        else
-            throw new NotSupportedException($"Database type {databaseType} is not supported");
+        return databaseType switch
+        {
+            DatabaseType.SQLite => await GetSQLiteTableNamesAsync(connectionString, cancellationToken),
+            DatabaseType.SqlServer => await GetSqlServerTableNamesAsync(connectionString, cancellationToken),
+            DatabaseType.MySQL => await GetMySqlTableNamesAsync(connectionString, cancellationToken),
+            DatabaseType.PostgreSQL => await GetPostgreSqlTableNamesAsync(connectionString, cancellationToken),
+            _ => throw new NotSupportedException($"Database type {databaseType} is not supported")
+        };
     }
 
 
@@ -142,16 +140,18 @@ public class DatabaseParserService : IDatabaseParserService
 
         var sanitizedQuery = ValidateAndSanitizeQuery(query);
 
-        if (databaseType == DatabaseType.SQLite)
-            return await ExecuteSQLiteQueryAsync(connectionString, sanitizedQuery, maxRows);
-        else if (databaseType == DatabaseType.SqlServer)
-            return await ExecuteSqlServerQueryAsync(connectionString, sanitizedQuery, maxRows);
-        else if (databaseType == DatabaseType.MySQL)
-            return await ExecuteMySqlQueryAsync(connectionString, sanitizedQuery, maxRows);
-        else if (databaseType == DatabaseType.PostgreSQL)
-            return await ExecutePostgreSqlQueryAsync(connectionString, sanitizedQuery, maxRows);
-        else
-            throw new NotSupportedException($"Database type {databaseType} is not supported");
+        return databaseType switch
+        {
+            DatabaseType.SQLite => await ExecuteSQLiteQueryAsync(connectionString, sanitizedQuery, maxRows,
+                cancellationToken),
+            DatabaseType.SqlServer => await ExecuteSqlServerQueryAsync(connectionString, sanitizedQuery, maxRows,
+                cancellationToken),
+            DatabaseType.MySQL => await ExecuteMySqlQueryAsync(connectionString, sanitizedQuery, maxRows,
+                cancellationToken),
+            DatabaseType.PostgreSQL => await ExecutePostgreSqlQueryAsync(connectionString, sanitizedQuery, maxRows,
+                cancellationToken),
+            _ => throw new NotSupportedException($"Database type {databaseType} is not supported")
+        };
     }
 
     private static string ValidateAndSanitizeQuery(string query)
@@ -164,10 +164,10 @@ public class DatabaseParserService : IDatabaseParserService
 
         foreach (var keyword in dangerousKeywords)
         {
-            var pattern = keyword.EndsWith("_") 
-                ? $@"\b{Regex.Escape(keyword)}" 
+            var pattern = keyword.EndsWith("_")
+                ? $@"\b{Regex.Escape(keyword)}"
                 : $@"\b{Regex.Escape(keyword)}\b";
-            
+
             if (Regex.IsMatch(upperQuery, pattern, RegexOptions.IgnoreCase))
             {
                 throw new ArgumentException($"Query contains dangerous keyword: {keyword}", nameof(query));
@@ -175,7 +175,7 @@ public class DatabaseParserService : IDatabaseParserService
         }
 
         var sanitized = query.Trim();
-        
+
         if (sanitized.Contains(";--", StringComparison.Ordinal) ||
             sanitized.Contains(";/*", StringComparison.Ordinal) ||
             sanitized.Contains("UNION", StringComparison.OrdinalIgnoreCase) ||
@@ -194,7 +194,7 @@ public class DatabaseParserService : IDatabaseParserService
             throw new ArgumentException("Table name cannot be null or empty", nameof(tableName));
 
         var sanitized = tableName.Trim();
-        
+
         if (sanitized.Contains(";", StringComparison.Ordinal) ||
             sanitized.Contains("--", StringComparison.Ordinal) ||
             sanitized.Contains("/*", StringComparison.Ordinal) ||
@@ -219,16 +219,14 @@ public class DatabaseParserService : IDatabaseParserService
 
         try
         {
-            if (databaseType == DatabaseType.SQLite)
-                return await ValidateSQLiteConnectionAsync(connectionString);
-            else if (databaseType == DatabaseType.SqlServer)
-                return await ValidateSqlServerConnectionAsync(connectionString);
-            else if (databaseType == DatabaseType.MySQL)
-                return await ValidateMySqlConnectionAsync(connectionString);
-            else if (databaseType == DatabaseType.PostgreSQL)
-                return await ValidatePostgreSqlConnectionAsync(connectionString);
-            else
-                return false;
+            return databaseType switch
+            {
+                DatabaseType.SQLite => await ValidateSQLiteConnectionAsync(connectionString, cancellationToken),
+                DatabaseType.SqlServer => await ValidateSqlServerConnectionAsync(connectionString, cancellationToken),
+                DatabaseType.MySQL => await ValidateMySqlConnectionAsync(connectionString, cancellationToken),
+                DatabaseType.PostgreSQL => await ValidatePostgreSqlConnectionAsync(connectionString, cancellationToken),
+                _ => false
+            };
         }
         catch (Exception ex)
         {
@@ -259,35 +257,36 @@ public class DatabaseParserService : IDatabaseParserService
         return DatabaseFileExtensions;
     }
 
-    private async Task<string> ParseSQLiteDatabaseAsync(string connectionString, DatabaseConfig config)
+    private async Task<string> ParseSQLiteDatabaseAsync(string connectionString, DatabaseConfig config, CancellationToken cancellationToken = default)
     {
         var sanitizedConnectionString = ValidateAndSanitizeSQLiteConnectionString(connectionString);
-        using var connection = new SqliteConnection(sanitizedConnectionString);
-        await connection.OpenAsync();
+        await using var connection = new SqliteConnection(sanitizedConnectionString);
+        await connection.OpenAsync(cancellationToken);
 
         var content = new StringBuilder();
         content.AppendLine("=== SQLite Database Content ===");
         content.AppendLine($"Database: {connection.DataSource}");
         content.AppendLine();
 
-        var allTables = await GetSQLiteTableNamesInternalAsync(connection);
+        var allTables = await GetSQLiteTableNamesInternalAsync(connection, cancellationToken);
         var tablesToProcess = FilterTables(allTables, config);
 
         _logger.LogInformation("Processing {TableCount} tables from SQLite database", tablesToProcess.Count);
 
         foreach (var tableName in tablesToProcess)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             try
             {
                 content.AppendLine($"--- Table: {tableName} ---");
 
                 if (config.IncludeSchema)
                 {
-                    var schema = await GetSQLiteTableSchemaInternalAsync(connection, tableName);
+                    var schema = await GetSQLiteTableSchemaInternalAsync(connection, tableName, cancellationToken);
                     content.AppendLine(schema);
                 }
 
-                var tableData = await GetSQLiteTableDataInternalAsync(connection, tableName, config);
+                var tableData = await GetSQLiteTableDataInternalAsync(connection, tableName, config, cancellationToken);
                 content.AppendLine(tableData);
                 content.AppendLine();
             }
@@ -302,34 +301,32 @@ public class DatabaseParserService : IDatabaseParserService
         return content.ToString();
     }
 
-    private async Task<List<string>> GetSQLiteTableNamesAsync(string connectionString)
+    private async Task<List<string>> GetSQLiteTableNamesAsync(string connectionString, CancellationToken cancellationToken = default)
     {
         var sanitizedConnectionString = ValidateAndSanitizeSQLiteConnectionString(connectionString);
-        using var connection = new SqliteConnection(sanitizedConnectionString);
-        await connection.OpenAsync();
-        return await GetSQLiteTableNamesInternalAsync(connection);
+        await using var connection = new SqliteConnection(sanitizedConnectionString);
+        await connection.OpenAsync(cancellationToken);
+        return await GetSQLiteTableNamesInternalAsync(connection, cancellationToken);
     }
 
-    private async Task<List<string>> GetSQLiteTableNamesInternalAsync(SqliteConnection connection)
+    private async Task<List<string>> GetSQLiteTableNamesInternalAsync(SqliteConnection connection, CancellationToken cancellationToken = default)
     {
-        using var command = connection.CreateCommand();
+        await using var command = connection.CreateCommand();
         command.CommandText = "SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%' ORDER BY name";
 
         var tables = new List<string>();
-        using (var reader = await command.ExecuteReaderAsync())
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
         {
-            while (await reader.ReadAsync())
-            {
-                tables.Add(reader.GetString(0));
-            }
+            tables.Add(reader.GetString(0));
         }
 
         return tables;
     }
 
-    private async Task<string> GetSQLiteTableSchemaInternalAsync(SqliteConnection connection, string tableName)
+    private async Task<string> GetSQLiteTableSchemaInternalAsync(SqliteConnection connection, string tableName, CancellationToken cancellationToken = default)
     {
-        using var command = connection.CreateCommand();
+        await using var command = connection.CreateCommand();
         var sanitizedTableName = SanitizeTableName(tableName);
         command.CommandText = $"PRAGMA table_info({sanitizedTableName})";
 
@@ -337,9 +334,9 @@ public class DatabaseParserService : IDatabaseParserService
         schema.AppendLine($"Table: {tableName}");
         schema.AppendLine("Columns:");
 
-        using (var reader = await command.ExecuteReaderAsync())
+        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
         {
-            while (await reader.ReadAsync())
+            while (await reader.ReadAsync(cancellationToken))
             {
                 var columnName = reader.GetString(1);
                 var dataType = reader.GetString(2);
@@ -356,45 +353,45 @@ public class DatabaseParserService : IDatabaseParserService
         return schema.ToString();
     }
 
-    private async Task<string> GetSQLiteTableDataInternalAsync(SqliteConnection connection, string tableName, DatabaseConfig config)
+    private async Task<string> GetSQLiteTableDataInternalAsync(SqliteConnection connection, string tableName, DatabaseConfig config, CancellationToken cancellationToken = default)
     {
-        using var command = connection.CreateCommand();
+        await using var command = connection.CreateCommand();
         var sanitizedTableName = SanitizeTableName(tableName);
         command.CommandText = $"SELECT * FROM [{sanitizedTableName}] LIMIT {config.MaxRowsPerTable}";
         command.CommandTimeout = config.QueryTimeoutSeconds;
 
-        return await GetTableDataInternalAsync(command, config);
+        return await GetTableDataInternalAsync(command, config, cancellationToken);
     }
 
-    private async Task<string> ExecuteSQLiteQueryAsync(string connectionString, string query, int maxRows)
+    private async Task<string> ExecuteSQLiteQueryAsync(string connectionString, string query, int maxRows, CancellationToken cancellationToken = default)
     {
         var sanitizedQuery = ValidateAndSanitizeQuery(query);
         var sanitizedConnectionString = ValidateAndSanitizeSQLiteConnectionString(connectionString);
-        using var connection = new SqliteConnection(sanitizedConnectionString);
-        await connection.OpenAsync();
+        await using var connection = new SqliteConnection(sanitizedConnectionString);
+        await connection.OpenAsync(cancellationToken);
 
-        using var command = connection.CreateCommand();
+        await using var command = connection.CreateCommand();
         command.CommandText = sanitizedQuery;
         command.CommandTimeout = DefaultQueryTimeout;
 
-        return await ExecuteQueryInternalAsync(command, maxRows);
+        return await ExecuteQueryInternalAsync(command, maxRows, cancellationToken);
     }
 
-    private async Task<bool> ValidateSQLiteConnectionAsync(string connectionString)
+    private async Task<bool> ValidateSQLiteConnectionAsync(string connectionString, CancellationToken cancellationToken = default)
     {
         var sanitizedConnectionString = ValidateAndSanitizeSQLiteConnectionString(connectionString);
-        using var connection = new SqliteConnection(sanitizedConnectionString);
-        await connection.OpenAsync();
-        return connection.State == System.Data.ConnectionState.Open;
+        await using var connection = new SqliteConnection(sanitizedConnectionString);
+        await connection.OpenAsync(cancellationToken);
+        return connection.State == ConnectionState.Open;
     }
 
-    private async Task<string> ParseSqlServerDatabaseAsync(string connectionString, DatabaseConfig config)
+    private async Task<string> ParseSqlServerDatabaseAsync(string connectionString, DatabaseConfig config, CancellationToken cancellationToken = default)
     {
         try
         {
             var sanitizedConnectionString = ValidateAndSanitizeSqlServerConnectionString(connectionString);
-            using var connection = new SqlConnection(sanitizedConnectionString);
-            await connection.OpenAsync();
+            await using var connection = new SqlConnection(sanitizedConnectionString);
+            await connection.OpenAsync(cancellationToken);
 
             var content = new StringBuilder();
             content.AppendLine("=== SQL Server Database Content ===");
@@ -402,24 +399,25 @@ public class DatabaseParserService : IDatabaseParserService
             content.AppendLine($"Server: {connection.DataSource}");
             content.AppendLine();
 
-            var allTables = await GetSqlServerTableNamesInternalAsync(connection);
+            var allTables = await GetSqlServerTableNamesInternalAsync(connection, cancellationToken);
             var tablesToProcess = FilterTables(allTables, config);
 
             _logger.LogInformation("Processing {TableCount} tables from SQL Server database", tablesToProcess.Count);
 
             foreach (var tableName in tablesToProcess)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
                     content.AppendLine($"--- Table: {tableName} ---");
 
                     if (config.IncludeSchema)
                     {
-                        var schema = await GetSqlServerTableSchemaInternalAsync(connection, tableName);
+                        var schema = await GetSqlServerTableSchemaInternalAsync(connection, tableName, cancellationToken);
                         content.AppendLine(schema);
                     }
 
-                    var tableData = await GetSqlServerTableDataInternalAsync(connection, tableName, config);
+                    var tableData = await GetSqlServerTableDataInternalAsync(connection, tableName, config, cancellationToken);
                     content.AppendLine(tableData);
                     content.AppendLine();
                 }
@@ -446,14 +444,14 @@ public class DatabaseParserService : IDatabaseParserService
         }
     }
 
-    private async Task<List<string>> GetSqlServerTableNamesAsync(string connectionString)
+    private async Task<List<string>> GetSqlServerTableNamesAsync(string connectionString, CancellationToken cancellationToken = default)
     {
         try
         {
             var sanitizedConnectionString = ValidateAndSanitizeSqlServerConnectionString(connectionString);
-            using var connection = new SqlConnection(sanitizedConnectionString);
-            await connection.OpenAsync();
-            return await GetSqlServerTableNamesInternalAsync(connection);
+            await using var connection = new SqlConnection(sanitizedConnectionString);
+            await connection.OpenAsync(cancellationToken);
+            return await GetSqlServerTableNamesInternalAsync(connection, cancellationToken);
         }
         catch (SqlException sqlEx)
         {
@@ -468,39 +466,37 @@ public class DatabaseParserService : IDatabaseParserService
         }
     }
 
-    private async Task<List<string>> GetSqlServerTableNamesInternalAsync(SqlConnection connection)
+    private async Task<List<string>> GetSqlServerTableNamesInternalAsync(SqlConnection connection, CancellationToken cancellationToken = default)
     {
-        using var command = connection.CreateCommand();
+        await using var command = connection.CreateCommand();
         command.CommandText = @"
                 SELECT TABLE_SCHEMA + '.' + TABLE_NAME AS FullTableName
-                FROM INFORMATION_SCHEMA.TABLES 
-                WHERE TABLE_TYPE = 'BASE TABLE' 
+                FROM INFORMATION_SCHEMA.TABLES
+                WHERE TABLE_TYPE = 'BASE TABLE'
                 AND TABLE_SCHEMA != 'sys'
                 ORDER BY TABLE_SCHEMA, TABLE_NAME";
 
         var tables = new List<string>();
-        using (var reader = await command.ExecuteReaderAsync())
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
         {
-            while (await reader.ReadAsync())
-            {
-                tables.Add(reader.GetString(0));
-            }
+            tables.Add(reader.GetString(0));
         }
 
         return tables;
     }
 
-    private async Task<string> GetSqlServerTableSchemaInternalAsync(SqlConnection connection, string tableName)
+    private async Task<string> GetSqlServerTableSchemaInternalAsync(SqlConnection connection, string tableName, CancellationToken cancellationToken = default)
     {
         var sanitizedTableName = SanitizeTableName(tableName);
-        using var command = connection.CreateCommand();
+        await using var command = connection.CreateCommand();
         command.CommandText = @"
-                SELECT 
+                SELECT
                     COLUMN_NAME,
                     DATA_TYPE,
                     IS_NULLABLE,
                     COLUMN_DEFAULT
-                FROM INFORMATION_SCHEMA.COLUMNS 
+                FROM INFORMATION_SCHEMA.COLUMNS
                 WHERE TABLE_NAME = @tableName
                 ORDER BY ORDINAL_POSITION";
 
@@ -510,9 +506,9 @@ public class DatabaseParserService : IDatabaseParserService
         schema.AppendLine($"Table: {sanitizedTableName}");
         schema.AppendLine("Columns:");
 
-        using (var reader = await command.ExecuteReaderAsync())
+        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
         {
-            while (await reader.ReadAsync())
+            while (await reader.ReadAsync(cancellationToken))
             {
                 var columnName = reader.GetString(0);
                 var dataType = reader.GetString(1);
@@ -529,30 +525,30 @@ public class DatabaseParserService : IDatabaseParserService
         return schema.ToString();
     }
 
-    private async Task<string> GetSqlServerTableDataInternalAsync(SqlConnection connection, string tableName, DatabaseConfig config)
+    private async Task<string> GetSqlServerTableDataInternalAsync(SqlConnection connection, string tableName, DatabaseConfig config, CancellationToken cancellationToken = default)
     {
-        using var command = connection.CreateCommand();
+        await using var command = connection.CreateCommand();
         var sanitizedTableName = SanitizeTableName(tableName);
         command.CommandText = $"SELECT TOP ({config.MaxRowsPerTable}) * FROM [{sanitizedTableName}]";
         command.CommandTimeout = config.QueryTimeoutSeconds;
 
-        return await GetTableDataInternalAsync(command, config);
+        return await GetTableDataInternalAsync(command, config, cancellationToken);
     }
 
-    private async Task<string> ExecuteSqlServerQueryAsync(string connectionString, string query, int maxRows)
+    private async Task<string> ExecuteSqlServerQueryAsync(string connectionString, string query, int maxRows, CancellationToken cancellationToken = default)
     {
         try
         {
             var sanitizedConnectionString = ValidateAndSanitizeSqlServerConnectionString(connectionString);
-            using var connection = new SqlConnection(sanitizedConnectionString);
-            await connection.OpenAsync();
+            await using var connection = new SqlConnection(sanitizedConnectionString);
+            await connection.OpenAsync(cancellationToken);
 
             var sanitizedQuery = ValidateAndSanitizeQuery(query);
-            using var command = connection.CreateCommand();
+            await using var command = connection.CreateCommand();
             command.CommandText = sanitizedQuery;
             command.CommandTimeout = DefaultQueryTimeout;
 
-            return await ExecuteQueryInternalAsync(command, maxRows);
+            return await ExecuteQueryInternalAsync(command, maxRows, cancellationToken);
         }
         catch (SqlException sqlEx)
         {
@@ -567,14 +563,14 @@ public class DatabaseParserService : IDatabaseParserService
         }
     }
 
-    private async Task<bool> ValidateSqlServerConnectionAsync(string connectionString)
+    private async Task<bool> ValidateSqlServerConnectionAsync(string connectionString, CancellationToken cancellationToken = default)
     {
         try
         {
             var sanitizedConnectionString = ValidateAndSanitizeSqlServerConnectionString(connectionString);
-            using var connection = new SqlConnection(sanitizedConnectionString);
-            await connection.OpenAsync();
-            return connection.State == System.Data.ConnectionState.Open;
+            await using var connection = new SqlConnection(sanitizedConnectionString);
+            await connection.OpenAsync(cancellationToken);
+            return connection.State == ConnectionState.Open;
         }
         catch (SqlException sqlEx)
         {
@@ -587,8 +583,8 @@ public class DatabaseParserService : IDatabaseParserService
                     var targetDatabase = builder.InitialCatalog;
                     builder.InitialCatalog = "master";
 
-                    using var masterConnection = new SqlConnection(builder.ConnectionString);
-                    await masterConnection.OpenAsync();
+                    await using var masterConnection = new SqlConnection(builder.ConnectionString);
+                    await masterConnection.OpenAsync(cancellationToken);
                     _logger.LogInformation($"SQL Server is accessible but database '{targetDatabase}' does not exist yet. This is expected for first-time setup.");
                     return true; // Server is accessible, database can be created
                 }
@@ -598,11 +594,9 @@ public class DatabaseParserService : IDatabaseParserService
                     return false;
                 }
             }
-            else
-            {
-                _logger.LogWarning(sqlEx, $"SQL Server connection validation failed with error {sqlEx.Number}: {sqlEx.Message}");
-                return false;
-            }
+
+            _logger.LogWarning(sqlEx, $"SQL Server connection validation failed with error {sqlEx.Number}: {sqlEx.Message}");
+            return false;
         }
         catch (Exception ex)
         {
@@ -611,11 +605,11 @@ public class DatabaseParserService : IDatabaseParserService
         }
     }
 
-    private async Task<string> ParseMySqlDatabaseAsync(string connectionString, DatabaseConfig config)
+    private async Task<string> ParseMySqlDatabaseAsync(string connectionString, DatabaseConfig config, CancellationToken cancellationToken = default)
     {
         var sanitizedConnectionString = ValidateAndSanitizeMySqlConnectionString(connectionString);
-        using var connection = new MySqlConnection(sanitizedConnectionString);
-        await connection.OpenAsync();
+        await using var connection = new MySqlConnection(sanitizedConnectionString);
+        await connection.OpenAsync(cancellationToken);
 
         var content = new StringBuilder();
         content.AppendLine("=== MySQL Database Content ===");
@@ -624,24 +618,25 @@ public class DatabaseParserService : IDatabaseParserService
         content.AppendLine($"Version: {connection.ServerVersion}");
         content.AppendLine();
 
-        var allTables = await GetMySqlTableNamesInternalAsync(connection);
+        var allTables = await GetMySqlTableNamesInternalAsync(connection, cancellationToken);
         var tablesToProcess = FilterTables(allTables, config);
 
         _logger.LogInformation("Processing {TableCount} tables from MySQL database", tablesToProcess.Count);
 
         foreach (var tableName in tablesToProcess)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             try
             {
                 content.AppendLine($"--- Table: {tableName} ---");
 
                 if (config.IncludeSchema)
                 {
-                    var schema = await GetMySqlTableSchemaInternalAsync(connection, tableName);
+                    var schema = await GetMySqlTableSchemaInternalAsync(connection, tableName, cancellationToken);
                     content.AppendLine(schema);
                 }
 
-                var tableData = await GetMySqlTableDataInternalAsync(connection, tableName, config);
+                var tableData = await GetMySqlTableDataInternalAsync(connection, tableName, config, cancellationToken);
                 content.AppendLine(tableData);
                 content.AppendLine();
             }
@@ -656,50 +651,48 @@ public class DatabaseParserService : IDatabaseParserService
         return content.ToString();
     }
 
-    private async Task<List<string>> GetMySqlTableNamesAsync(string connectionString)
+    private async Task<List<string>> GetMySqlTableNamesAsync(string connectionString, CancellationToken cancellationToken = default)
     {
         var sanitizedConnectionString = ValidateAndSanitizeMySqlConnectionString(connectionString);
-        using var connection = new MySqlConnection(sanitizedConnectionString);
-        await connection.OpenAsync();
-        return await GetMySqlTableNamesInternalAsync(connection);
+        await using var connection = new MySqlConnection(sanitizedConnectionString);
+        await connection.OpenAsync(cancellationToken);
+        return await GetMySqlTableNamesInternalAsync(connection, cancellationToken);
     }
 
-    private async Task<List<string>> GetMySqlTableNamesInternalAsync(MySqlConnection connection)
+    private async Task<List<string>> GetMySqlTableNamesInternalAsync(MySqlConnection connection, CancellationToken cancellationToken = default)
     {
-        using var command = connection.CreateCommand();
+        await using var command = connection.CreateCommand();
         command.CommandText = @"
-                SELECT TABLE_NAME 
-                FROM INFORMATION_SCHEMA.TABLES 
-                WHERE TABLE_SCHEMA = DATABASE() 
+                SELECT TABLE_NAME
+                FROM INFORMATION_SCHEMA.TABLES
+                WHERE TABLE_SCHEMA = DATABASE()
                 AND TABLE_TYPE = 'BASE TABLE'
                 ORDER BY TABLE_NAME";
 
         var tables = new List<string>();
-        using (var reader = await command.ExecuteReaderAsync())
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
         {
-            while (await reader.ReadAsync())
-            {
-                tables.Add(reader.GetString(0));
-            }
+            tables.Add(reader.GetString(0));
         }
 
         return tables;
     }
 
-    private async Task<string> GetMySqlTableSchemaInternalAsync(MySqlConnection connection, string tableName)
+    private static async Task<string> GetMySqlTableSchemaInternalAsync(MySqlConnection connection, string tableName, CancellationToken cancellationToken = default)
     {
         var sanitizedTableName = SanitizeTableName(tableName);
-        using var command = connection.CreateCommand();
+        await using var command = connection.CreateCommand();
         command.CommandText = @"
-                SELECT 
+                SELECT
                     COLUMN_NAME,
                     DATA_TYPE,
                     IS_NULLABLE,
                     COLUMN_DEFAULT,
                     COLUMN_KEY,
                     EXTRA
-                FROM INFORMATION_SCHEMA.COLUMNS 
-                WHERE TABLE_SCHEMA = DATABASE() 
+                FROM INFORMATION_SCHEMA.COLUMNS
+                WHERE TABLE_SCHEMA = DATABASE()
                 AND TABLE_NAME = @tableName
                 ORDER BY ORDINAL_POSITION";
 
@@ -709,9 +702,9 @@ public class DatabaseParserService : IDatabaseParserService
         schema.AppendLine($"Table: {sanitizedTableName}");
         schema.AppendLine("Columns:");
 
-        using (var reader = await command.ExecuteReaderAsync())
+        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
         {
-            while (await reader.ReadAsync())
+            while (await reader.ReadAsync(cancellationToken))
             {
                 var columnName = reader.GetString(0);
                 var dataType = reader.GetString(1);
@@ -732,43 +725,43 @@ public class DatabaseParserService : IDatabaseParserService
         return schema.ToString();
     }
 
-    private async Task<string> GetMySqlTableDataInternalAsync(MySqlConnection connection, string tableName, DatabaseConfig config)
+    private async Task<string> GetMySqlTableDataInternalAsync(MySqlConnection connection, string tableName, DatabaseConfig config, CancellationToken cancellationToken = default)
     {
-        using var command = connection.CreateCommand();
+        await using var command = connection.CreateCommand();
         var sanitizedTableName = SanitizeTableName(tableName);
         command.CommandText = $"SELECT * FROM `{sanitizedTableName}` LIMIT {config.MaxRowsPerTable}";
         command.CommandTimeout = config.QueryTimeoutSeconds;
 
-        return await GetTableDataInternalAsync(command, config);
+        return await GetTableDataInternalAsync(command, config, cancellationToken);
     }
 
-    private async Task<string> ExecuteMySqlQueryAsync(string connectionString, string query, int maxRows)
+    private async Task<string> ExecuteMySqlQueryAsync(string connectionString, string query, int maxRows, CancellationToken cancellationToken = default)
     {
         var sanitizedConnectionString = ValidateAndSanitizeMySqlConnectionString(connectionString);
-        using var connection = new MySqlConnection(sanitizedConnectionString);
-        await connection.OpenAsync();
+        await using var connection = new MySqlConnection(sanitizedConnectionString);
+        await connection.OpenAsync(cancellationToken);
 
         var sanitizedQuery = ValidateAndSanitizeQuery(query);
-        using var command = connection.CreateCommand();
+        await using var command = connection.CreateCommand();
         command.CommandText = sanitizedQuery;
         command.CommandTimeout = DefaultQueryTimeout;
 
-        return await ExecuteQueryInternalAsync(command, maxRows);
+        return await ExecuteQueryInternalAsync(command, maxRows, cancellationToken);
     }
 
-    private async Task<bool> ValidateMySqlConnectionAsync(string connectionString)
+    private async Task<bool> ValidateMySqlConnectionAsync(string connectionString, CancellationToken cancellationToken = default)
     {
         var sanitizedConnectionString = ValidateAndSanitizeMySqlConnectionString(connectionString);
-        using var connection = new MySqlConnection(sanitizedConnectionString);
-        await connection.OpenAsync();
-        return connection.State == System.Data.ConnectionState.Open;
+        await using var connection = new MySqlConnection(sanitizedConnectionString);
+        await connection.OpenAsync(cancellationToken);
+        return connection.State == ConnectionState.Open;
     }
 
-    private async Task<string> ParsePostgreSqlDatabaseAsync(string connectionString, DatabaseConfig config)
+    private async Task<string> ParsePostgreSqlDatabaseAsync(string connectionString, DatabaseConfig config, CancellationToken cancellationToken = default)
     {
         var sanitizedConnectionString = ValidateAndSanitizePostgreSqlConnectionString(connectionString);
-        using var connection = new NpgsqlConnection(sanitizedConnectionString);
-        await connection.OpenAsync();
+        await using var connection = new NpgsqlConnection(sanitizedConnectionString);
+        await connection.OpenAsync(cancellationToken);
 
         var content = new StringBuilder();
         content.AppendLine("=== PostgreSQL Database Content ===");
@@ -776,24 +769,25 @@ public class DatabaseParserService : IDatabaseParserService
         content.AppendLine($"Server: {connection.Host}:{connection.Port}");
         content.AppendLine();
 
-        var allTables = await GetPostgreSqlTableNamesInternalAsync(connection);
+        var allTables = await GetPostgreSqlTableNamesInternalAsync(connection, cancellationToken);
         var tablesToProcess = FilterTables(allTables, config);
 
         _logger.LogInformation("Processing {TableCount} tables from PostgreSQL database", tablesToProcess.Count);
 
         foreach (var tableName in tablesToProcess)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             try
             {
                 content.AppendLine($"--- Table: {tableName} ---");
 
                 if (config.IncludeSchema)
                 {
-                    var schema = await GetPostgreSqlTableSchemaInternalAsync(connection, tableName);
+                    var schema = await GetPostgreSqlTableSchemaInternalAsync(connection, tableName, cancellationToken);
                     content.AppendLine(schema);
                 }
 
-                var tableData = await GetPostgreSqlTableDataInternalAsync(connection, tableName, config);
+                var tableData = await GetPostgreSqlTableDataInternalAsync(connection, tableName, config, cancellationToken);
                 content.AppendLine(tableData);
                 content.AppendLine();
             }
@@ -808,19 +802,19 @@ public class DatabaseParserService : IDatabaseParserService
         return content.ToString();
     }
 
-    private async Task<List<string>> GetPostgreSqlTableNamesAsync(string connectionString)
+    private async Task<List<string>> GetPostgreSqlTableNamesAsync(string connectionString, CancellationToken cancellationToken = default)
     {
         var sanitizedConnectionString = ValidateAndSanitizePostgreSqlConnectionString(connectionString);
-        using var connection = new NpgsqlConnection(sanitizedConnectionString);
-        await connection.OpenAsync();
-        return await GetPostgreSqlTableNamesInternalAsync(connection);
+        await using var connection = new NpgsqlConnection(sanitizedConnectionString);
+        await connection.OpenAsync(cancellationToken);
+        return await GetPostgreSqlTableNamesInternalAsync(connection, cancellationToken);
     }
 
-    private async Task<List<string>> GetPostgreSqlTableNamesInternalAsync(NpgsqlConnection connection)
+    private async Task<List<string>> GetPostgreSqlTableNamesInternalAsync(NpgsqlConnection connection, CancellationToken cancellationToken = default)
     {
-        using var command = connection.CreateCommand();
+        await using var command = connection.CreateCommand();
         command.CommandText = @"
-                SELECT 
+                SELECT
                     nspname || '.' || relname AS full_table_name
                 FROM pg_class c
                 JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -829,30 +823,28 @@ public class DatabaseParserService : IDatabaseParserService
                 ORDER BY nspname, relname";
 
         var tables = new List<string>();
-        using (var reader = await command.ExecuteReaderAsync())
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+        while (await reader.ReadAsync(cancellationToken))
         {
-            while (await reader.ReadAsync())
-            {
-                var tableName = reader.GetString(0);
-                tables.Add(tableName);
-            }
+            var tableName = reader.GetString(0);
+            tables.Add(tableName);
         }
 
         return tables;
     }
 
-    private async Task<string> GetPostgreSqlTableSchemaInternalAsync(NpgsqlConnection connection, string tableName)
+    private async Task<string> GetPostgreSqlTableSchemaInternalAsync(NpgsqlConnection connection, string tableName, CancellationToken cancellationToken = default)
     {
         var sanitizedTableName = SanitizeTableName(tableName);
-        using var command = connection.CreateCommand();
+        await using var command = connection.CreateCommand();
         command.CommandText = @"
-                SELECT 
+                SELECT
                     column_name,
                     data_type,
                     is_nullable,
                     column_default
-                FROM information_schema.columns 
-                WHERE table_schema = 'public' 
+                FROM information_schema.columns
+                WHERE table_schema = 'public'
                 AND table_name = @tableName
                 ORDER BY ordinal_position";
 
@@ -862,9 +854,9 @@ public class DatabaseParserService : IDatabaseParserService
         schema.AppendLine($"Table: {sanitizedTableName}");
         schema.AppendLine("Columns:");
 
-        using (var reader = await command.ExecuteReaderAsync())
+        await using (var reader = await command.ExecuteReaderAsync(cancellationToken))
         {
-            while (await reader.ReadAsync())
+            while (await reader.ReadAsync(cancellationToken))
             {
                 var columnName = reader.GetString(0);
                 var dataType = reader.GetString(1);
@@ -886,36 +878,36 @@ public class DatabaseParserService : IDatabaseParserService
         return schema.ToString();
     }
 
-    private async Task<string> GetPostgreSqlTableDataInternalAsync(NpgsqlConnection connection, string tableName, DatabaseConfig config)
+    private async Task<string> GetPostgreSqlTableDataInternalAsync(NpgsqlConnection connection, string tableName, DatabaseConfig config, CancellationToken cancellationToken = default)
     {
-        using var command = connection.CreateCommand();
+        await using var command = connection.CreateCommand();
         var sanitizedTableName = SanitizeTableName(tableName);
         command.CommandText = $"SELECT * FROM \"{sanitizedTableName}\" LIMIT {config.MaxRowsPerTable}";
         command.CommandTimeout = config.QueryTimeoutSeconds;
 
-        return await GetTableDataInternalAsync(command, config);
+        return await GetTableDataInternalAsync(command, config, cancellationToken);
     }
 
-    private async Task<string> ExecutePostgreSqlQueryAsync(string connectionString, string query, int maxRows)
+    private async Task<string> ExecutePostgreSqlQueryAsync(string connectionString, string query, int maxRows, CancellationToken cancellationToken = default)
     {
         var sanitizedConnectionString = ValidateAndSanitizePostgreSqlConnectionString(connectionString);
-        using var connection = new NpgsqlConnection(sanitizedConnectionString);
-        await connection.OpenAsync();
+        await using var connection = new NpgsqlConnection(sanitizedConnectionString);
+        await connection.OpenAsync(cancellationToken);
 
         var sanitizedQuery = ValidateAndSanitizeQuery(query);
-        using var command = connection.CreateCommand();
+        await using var command = connection.CreateCommand();
         command.CommandText = sanitizedQuery;
         command.CommandTimeout = DefaultQueryTimeout;
 
-        return await ExecuteQueryInternalAsync(command, maxRows);
+        return await ExecuteQueryInternalAsync(command, maxRows, cancellationToken);
     }
 
-    private async Task<bool> ValidatePostgreSqlConnectionAsync(string connectionString)
+    private async Task<bool> ValidatePostgreSqlConnectionAsync(string connectionString, CancellationToken cancellationToken = default)
     {
         var sanitizedConnectionString = ValidateAndSanitizePostgreSqlConnectionString(connectionString);
-        using var connection = new NpgsqlConnection(sanitizedConnectionString);
-        await connection.OpenAsync();
-        return connection.State == System.Data.ConnectionState.Open;
+        await using var connection = new NpgsqlConnection(sanitizedConnectionString);
+        await connection.OpenAsync(cancellationToken);
+        return connection.State == ConnectionState.Open;
     }
 
     /// <summary>
@@ -931,49 +923,49 @@ public class DatabaseParserService : IDatabaseParserService
             var builder = new SqliteConnectionStringBuilder(connectionString);
 
             // Validate Data Source path to prevent path traversal
-            if (!string.IsNullOrEmpty(builder.DataSource))
+            if (string.IsNullOrEmpty(builder.DataSource))
+                return builder.ConnectionString;
+
+            var dataSource = builder.DataSource;
+
+            if (dataSource.Contains("..") || dataSource.Contains("//") || dataSource.Contains("\\\\"))
             {
-                var dataSource = builder.DataSource;
+                throw new ArgumentException("Invalid path in connection string: path traversal detected", nameof(connectionString));
+            }
 
-                if (dataSource.Contains("..") || dataSource.Contains("//") || dataSource.Contains("\\\\"))
+            if (!Path.IsPathRooted(dataSource))
+            {
+                var currentDir = Directory.GetCurrentDirectory();
+                var resolvedPath = Path.Combine(currentDir, dataSource);
+
+                // If file doesn't exist in current directory, try to find project root
+                if (!File.Exists(resolvedPath))
                 {
-                    throw new ArgumentException("Invalid path in connection string: path traversal detected", nameof(connectionString));
+                    var projectRoot = FindProjectRoot(currentDir);
+                    if (!string.IsNullOrEmpty(projectRoot))
+                    {
+                        var projectRootPath = Path.Combine(projectRoot, dataSource);
+                        resolvedPath = projectRootPath;
+                    }
                 }
 
-                if (!Path.IsPathRooted(dataSource))
+                var fullPath = Path.GetFullPath(resolvedPath);
+                var directory = Path.GetDirectoryName(fullPath);
+
+                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
                 {
-                    var currentDir = Directory.GetCurrentDirectory();
-                    var resolvedPath = Path.Combine(currentDir, dataSource);
-                    
-                    // If file doesn't exist in current directory, try to find project root
-                    if (!File.Exists(resolvedPath))
-                    {
-                        var projectRoot = FindProjectRoot(currentDir);
-                        if (!string.IsNullOrEmpty(projectRoot))
-                        {
-                            var projectRootPath = Path.Combine(projectRoot, dataSource);
-                            resolvedPath = projectRootPath;
-                        }
-                    }
-                    
-                    var fullPath = Path.GetFullPath(resolvedPath);
-                    var directory = Path.GetDirectoryName(fullPath);
-                    
-                    if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-                    {
-                        Directory.CreateDirectory(directory);
-                    }
-                    
-                    builder.DataSource = fullPath;
+                    Directory.CreateDirectory(directory);
                 }
-                else
+
+                builder.DataSource = fullPath;
+            }
+            else
+            {
+                // For absolute paths, ensure they are within allowed boundaries
+                var fullPath = Path.GetFullPath(dataSource);
+                if (fullPath != dataSource)
                 {
-                    // For absolute paths, ensure they are within allowed boundaries
-                    var fullPath = Path.GetFullPath(dataSource);
-                    if (fullPath != dataSource)
-                    {
-                        throw new ArgumentException("Invalid path in connection string: resolved path differs from provided path", nameof(connectionString));
-                    }
+                    throw new ArgumentException("Invalid path in connection string: resolved path differs from provided path", nameof(connectionString));
                 }
             }
 
@@ -1025,7 +1017,7 @@ public class DatabaseParserService : IDatabaseParserService
     /// <summary>
     /// Validates and sanitizes MySQL connection string using connection string builder
     /// </summary>
-    private string ValidateAndSanitizeMySqlConnectionString(string connectionString)
+    private static string ValidateAndSanitizeMySqlConnectionString(string connectionString)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
             throw new ArgumentException("Connection string cannot be null or empty", nameof(connectionString));
@@ -1044,7 +1036,7 @@ public class DatabaseParserService : IDatabaseParserService
     /// <summary>
     /// Validates and sanitizes PostgreSQL connection string using connection string builder
     /// </summary>
-    private string ValidateAndSanitizePostgreSqlConnectionString(string connectionString)
+    private static string ValidateAndSanitizePostgreSqlConnectionString(string connectionString)
     {
         if (string.IsNullOrWhiteSpace(connectionString))
             throw new ArgumentException("Connection string cannot be null or empty", nameof(connectionString));
@@ -1085,7 +1077,7 @@ public class DatabaseParserService : IDatabaseParserService
     /// </summary>
     private static bool IsSensitiveColumn(string columnName, List<string> sensitiveColumns)
     {
-        if (sensitiveColumns == null || !sensitiveColumns.Any())
+        if (!sensitiveColumns.Any())
         {
             return false;
         }
@@ -1097,15 +1089,15 @@ public class DatabaseParserService : IDatabaseParserService
     /// <summary>
     /// Internal method to get table data
     /// </summary>
-    private async Task<string> GetTableDataInternalAsync(DbCommand command, DatabaseConfig config)
+    private async Task<string> GetTableDataInternalAsync(DbCommand command, DatabaseConfig config, CancellationToken cancellationToken = default)
     {
         var result = new StringBuilder();
-        using var reader = await command.ExecuteReaderAsync();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         var columnCount = reader.FieldCount;
         var columnNames = new string[columnCount];
         var isSensitiveColumn = new bool[columnCount];
 
-        for (int i = 0; i < columnCount; i++)
+        for (var i = 0; i < columnCount; i++)
         {
             columnNames[i] = reader.GetName(i);
             isSensitiveColumn[i] = config.SanitizeSensitiveData &&
@@ -1115,10 +1107,10 @@ public class DatabaseParserService : IDatabaseParserService
         result.AppendLine(string.Join("\t", columnNames));
 
         var rowCount = 0;
-        while (await reader.ReadAsync() && rowCount < config.MaxRowsPerTable)
+        while (await reader.ReadAsync(cancellationToken) && rowCount < config.MaxRowsPerTable)
         {
             var values = new string[columnCount];
-            for (int i = 0; i < columnCount; i++)
+            for (var i = 0; i < columnCount; i++)
             {
                 if (reader.IsDBNull(i))
                 {
@@ -1144,27 +1136,27 @@ public class DatabaseParserService : IDatabaseParserService
     /// <summary>
     /// Internal method to execute query and format results
     /// </summary>
-    private async Task<string> ExecuteQueryInternalAsync(DbCommand command, int maxRows)
+    private static async Task<string> ExecuteQueryInternalAsync(DbCommand command, int maxRows, CancellationToken cancellationToken = default)
     {
         var result = new StringBuilder();
         result.AppendLine($"=== Query Results ===");
         result.AppendLine();
 
-        using var reader = await command.ExecuteReaderAsync();
+        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         var rowCount = 0;
         var columnCount = reader.FieldCount;
         var headers = new string[columnCount];
 
-        for (int i = 0; i < columnCount; i++)
+        for (var i = 0; i < columnCount; i++)
         {
             headers[i] = reader.GetName(i);
         }
         result.AppendLine(string.Join("\t", headers));
 
-        while (await reader.ReadAsync() && rowCount < maxRows)
+        while (await reader.ReadAsync(cancellationToken) && rowCount < maxRows)
         {
             var values = new string[columnCount];
-            for (int i = 0; i < columnCount; i++)
+            for (var i = 0; i < columnCount; i++)
             {
                 values[i] = reader.IsDBNull(i) ? "NULL" : reader.GetValue(i).ToString();
             }

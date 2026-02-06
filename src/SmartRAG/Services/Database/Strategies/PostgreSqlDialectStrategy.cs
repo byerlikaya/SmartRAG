@@ -10,9 +10,9 @@ public class PostgreSqlDialectStrategy : BaseSqlDialectStrategy
         if (string.IsNullOrWhiteSpace(sql)) return sql;
 
         var formatted = base.FormatSql(sql);
-        
+
         formatted = QuotePostgreSqlTableNames(formatted);
-        
+
         return formatted;
     }
 
@@ -21,8 +21,8 @@ public class PostgreSqlDialectStrategy : BaseSqlDialectStrategy
         if (string.IsNullOrWhiteSpace(sql)) return sql;
 
         var pattern = @"\b(?:FROM|JOIN)\s+([a-zA-Z_][a-zA-Z0-9_]*\.[a-zA-Z_][a-zA-Z0-9_]*)";
-        var regex = new System.Text.RegularExpressions.Regex(pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase);
-        
+        var regex = new Regex(pattern, RegexOptions.IgnoreCase);
+
         return regex.Replace(sql, match =>
         {
             var tableName = match.Groups[1].Value;
@@ -35,32 +35,23 @@ public class PostgreSqlDialectStrategy : BaseSqlDialectStrategy
     {
         if (string.IsNullOrWhiteSpace(tableName)) return tableName;
 
-        if (tableName.Contains('.'))
-        {
-            var parts = tableName.Split('.', 2);
-            var schemaPart = parts[0];
-            var tablePart = parts[1];
-            
-            var quotedSchema = HasUpperCase(schemaPart) ? $"\"{schemaPart}\"" : schemaPart;
-            var quotedTable = HasUpperCase(tablePart) ? $"\"{tablePart}\"" : tablePart;
-            
-            return $"{quotedSchema}.{quotedTable}";
-        }
-        
-        return HasUpperCase(tableName) ? $"\"{tableName}\"" : tableName;
+        if (!tableName.Contains('.'))
+            return HasUpperCase(tableName) ? $"\"{tableName}\"" : tableName;
+
+        var parts = tableName.Split('.', 2);
+        var schemaPart = parts[0];
+        var tablePart = parts[1];
+
+        var quotedSchema = HasUpperCase(schemaPart) ? $"\"{schemaPart}\"" : schemaPart;
+        var quotedTable = HasUpperCase(tablePart) ? $"\"{tablePart}\"" : tablePart;
+
+        return $"{quotedSchema}.{quotedTable}";
+
     }
 
     private static bool HasUpperCase(string str)
     {
-        if (string.IsNullOrWhiteSpace(str)) return false;
-        
-        foreach (var c in str)
-        {
-            if (char.IsUpper(c))
-                return true;
-        }
-        
-        return false;
+        return !string.IsNullOrWhiteSpace(str) && str.Any(char.IsUpper);
     }
 }
 

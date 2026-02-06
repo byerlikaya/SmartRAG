@@ -38,7 +38,7 @@ public class DocumentScoringService : IDocumentScoringService
     /// <summary>
     /// Scores document chunks based on query relevance
     /// </summary>
-    public List<DocumentChunk> ScoreChunks(List<DocumentChunk> chunks, string query, List<string> queryWords, List<string> potentialNames)
+    public List<DocumentChunk> ScoreChunks(List<DocumentChunk> chunks, List<string> queryWords, List<string> potentialNames)
     {
         return chunks.Select(chunk =>
         {

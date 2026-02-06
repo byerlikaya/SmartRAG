@@ -17,8 +17,6 @@ public class AnthropicProvider : BaseAIProvider
     {
     }
 
-    private const string DefaultAnthropicApiVersion = "2023-06-01";
-    private const string DefaultVoyageEndpoint = "https://api.voyageai.com";
     private const string VoyageInputType = "document";
 
     public override AIProvider ProviderType => AIProvider.Anthropic;
@@ -30,7 +28,7 @@ public class AnthropicProvider : BaseAIProvider
         if (!isValid)
             return errorMessage;
 
-        var apiVersion = config.ApiVersion ?? DefaultAnthropicApiVersion;
+        var apiVersion = config.ApiVersion;
         var additionalHeaders = new Dictionary<string, string>
                 {
                     { "x-api-key", config.ApiKey },
@@ -90,7 +88,7 @@ public class AnthropicProvider : BaseAIProvider
             return new List<float>();
         }
 
-        var voyageApiKey = config.EmbeddingApiKey ?? config.ApiKey;
+        var voyageApiKey = config.EmbeddingApiKey;
         var voyageModel = config.EmbeddingModel;
 
         var additionalHeaders = new Dictionary<string, string>
@@ -106,7 +104,7 @@ public class AnthropicProvider : BaseAIProvider
             input_type = VoyageInputType
         };
 
-        var voyageEndpoint = config.EmbeddingEndpoint ?? DefaultVoyageEndpoint;
+        var voyageEndpoint = config.EmbeddingEndpoint;
         var embeddingEndpoint = BuildVoyageUrl(voyageEndpoint, "v1/embeddings");
 
         var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload, cancellationToken: cancellationToken);
@@ -137,7 +135,7 @@ public class AnthropicProvider : BaseAIProvider
             return new List<List<float>>();
         }
 
-        var inputList = texts?.ToList() ?? new List<string>();
+        var inputList = texts.ToList();
         if (inputList.Count == 0)
             return new List<List<float>>();
 
@@ -155,7 +153,7 @@ public class AnthropicProvider : BaseAIProvider
             return new List<List<float>>();
         }
 
-        var voyageApiKey = config.EmbeddingApiKey ?? config.ApiKey;
+        var voyageApiKey = config.EmbeddingApiKey;
         var voyageModel = config.EmbeddingModel;
 
         var additionalHeaders = new Dictionary<string, string>
@@ -171,7 +169,7 @@ public class AnthropicProvider : BaseAIProvider
             input_type = VoyageInputType
         };
 
-        var voyageEndpoint = config.EmbeddingEndpoint ?? DefaultVoyageEndpoint;
+        var voyageEndpoint = config.EmbeddingEndpoint;
         var embeddingEndpoint = BuildVoyageUrl(voyageEndpoint, "v1/embeddings");
 
         var (success, response, error) = await MakeHttpRequestAsync(client, embeddingEndpoint, payload, cancellationToken: cancellationToken);
@@ -185,7 +183,7 @@ public class AnthropicProvider : BaseAIProvider
         try
         {
             var validEmbeddings = ParseVoyageBatchEmbeddingResponse(response, validInputs.Count);
-            return MapEmbeddingsToOriginalInputs(validEmbeddings, inputList, validInputs);
+            return MapEmbeddingsToOriginalInputs(validEmbeddings, inputList);
         }
         catch (Exception ex)
         {
@@ -207,7 +205,7 @@ public class AnthropicProvider : BaseAIProvider
     /// </summary>
     private static (bool isValid, string errorMessage) ValidateEmbeddingConfig(AIProviderConfig config)
     {
-        var voyageApiKey = config.EmbeddingApiKey ?? config.ApiKey;
+        var voyageApiKey = config.EmbeddingApiKey;
 
         if (string.IsNullOrEmpty(voyageApiKey))
             return (false, "Voyage API key is required for embeddings");
@@ -283,6 +281,7 @@ public class AnthropicProvider : BaseAIProvider
         }
         catch
         {
+            // ignored
         }
 
         return Enumerable.Range(0, expectedCount)
@@ -293,14 +292,14 @@ public class AnthropicProvider : BaseAIProvider
     /// <summary>
     /// Maps valid embeddings back to original input positions, filling empty positions with empty embeddings
     /// </summary>
-    private static List<List<float>> MapEmbeddingsToOriginalInputs(List<List<float>> validEmbeddings, List<string> originalInputs, List<string> validInputs)
+    private static List<List<float>> MapEmbeddingsToOriginalInputs(List<List<float>> validEmbeddings, List<string> originalInputs)
     {
         var result = new List<List<float>>();
         var validIndex = 0;
 
-        for (int i = 0; i < originalInputs.Count; i++)
+        foreach (var t in originalInputs)
         {
-            if (string.IsNullOrWhiteSpace(originalInputs[i]))
+            if (string.IsNullOrWhiteSpace(t))
             {
                 result.Add(new List<float>());
             }

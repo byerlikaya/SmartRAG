@@ -52,7 +52,7 @@ public interface IDocumentRepository
     /// <param name="maxResults">Maximum number of results to return</param>
     /// <param name="cancellationToken">Token to cancel the operation</param>
     /// <returns>List of relevant document chunks</returns>
-    Task<List<SmartRAG.Entities.DocumentChunk>> SearchAsync(string query, int maxResults = 5, CancellationToken cancellationToken = default);
+    Task<List<DocumentChunk>> SearchAsync(string query, int maxResults = 5, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Clear all documents from storage (efficient bulk delete)

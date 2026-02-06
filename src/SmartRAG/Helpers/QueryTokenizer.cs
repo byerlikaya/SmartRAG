@@ -36,7 +36,7 @@ public static class QueryTokenizer
             return new List<string>();
         }
 
-        return query.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
+        return query.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries)
             .Where(w => w.Length > MinTokenLength && char.IsUpper(w[0]))
             .ToList();
     }

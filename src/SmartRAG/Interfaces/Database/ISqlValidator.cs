@@ -15,6 +15,6 @@ public interface ISqlValidator
     /// <param name="requiredTables">List of required table names</param>
     /// <param name="allDatabaseNames">List of all database names in the system (for cross-database reference detection). Can be null.</param>
     /// <returns>List of validation errors, empty if valid</returns>
-    List<string> ValidateQuery(string sql, DatabaseSchemaInfo schema, List<string> requiredTables, List<string> allDatabaseNames = null);
+    List<string> ValidateQuery(string sql, DatabaseSchemaInfo schema, List<string> requiredTables, List<string>? allDatabaseNames = null);
 }
 

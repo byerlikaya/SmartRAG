@@ -31,10 +31,10 @@ public class QdrantEmbeddingService : IQdrantEmbeddingService
     /// <returns>List of float values representing the embedding vector</returns>
     public async Task<List<float>> GenerateEmbeddingAsync(string text, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         try
         {
-
-            var vectorDimension = await GetVectorDimensionAsync();
+            var vectorDimension = await GetVectorDimensionAsync(cancellationToken);
 
             var hash = text.GetHashCode();
             var random = new Random(hash);
@@ -42,9 +42,12 @@ public class QdrantEmbeddingService : IQdrantEmbeddingService
 
             for (int i = 0; i < vectorDimension; i++)
             {
+                if (i % 64 == 0)
+                    cancellationToken.ThrowIfCancellationRequested();
                 embedding.Add((float)(random.NextDouble() * 2 - 1)); // -1 to 1
             }
 
+            cancellationToken.ThrowIfCancellationRequested();
             var sumSquares = 0.0f;
             for (int i = 0; i < embedding.Count; i++)
             {
@@ -70,8 +73,9 @@ public class QdrantEmbeddingService : IQdrantEmbeddingService
         }
     }
 
-    private Task<int> GetVectorDimensionAsync()
+    private Task<int> GetVectorDimensionAsync(CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         try
         {
             if (_config.VectorSize > 0)

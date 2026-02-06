@@ -9,7 +9,7 @@ public class MultiDatabaseQueryResult
     /// <summary>
     /// Results per database
     /// </summary>
-    public Dictionary<string, DatabaseQueryResult> DatabaseResults { get; set; } = new Dictionary<string, DatabaseQueryResult>();
+    public Dictionary<string, DatabaseQueryResult> DatabaseResults { get; set; } = new();
 
     /// <summary>
     /// Overall success status
@@ -19,7 +19,7 @@ public class MultiDatabaseQueryResult
     /// <summary>
     /// Any errors encountered
     /// </summary>
-    public List<string> Errors { get; set; } = new List<string>();
+    public List<string> Errors { get; set; } = new();
 
     /// <summary>
     /// Total execution time in milliseconds

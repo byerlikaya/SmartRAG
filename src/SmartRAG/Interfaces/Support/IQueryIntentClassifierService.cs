@@ -14,7 +14,7 @@ public interface IQueryIntentClassifierService
     /// <param name="conversationHistory">Optional conversation history for context.</param>
     /// <param name="cancellationToken">Token to cancel the operation</param>
     /// <returns>Analysis result containing conversation flag and normalized tokens for non-conversational queries.</returns>
-    Task<QueryIntentAnalysisResult> AnalyzeQueryAsync(string query, string? conversationHistory = null, System.Threading.CancellationToken cancellationToken = default);
+    Task<QueryIntentAnalysisResult> AnalyzeQueryAsync(string query, string? conversationHistory = null, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Parses command from user input and extracts payload if available

@@ -30,7 +30,7 @@ public class DatabaseSchemaInfo
     /// <summary>
     /// Tables in this database
     /// </summary>
-    public List<TableSchemaInfo> Tables { get; set; } = new List<TableSchemaInfo>();
+    public List<TableSchemaInfo> Tables { get; set; } = new();
 
     /// <summary>
     /// Total row count across all tables (approximate)
@@ -61,17 +61,17 @@ public class TableSchemaInfo
     /// <summary>
     /// Columns in this table
     /// </summary>
-    public List<ColumnSchemaInfo> Columns { get; set; } = new List<ColumnSchemaInfo>();
+    public List<ColumnSchemaInfo> Columns { get; set; } = new();
 
     /// <summary>
     /// Primary key columns
     /// </summary>
-    public List<string> PrimaryKeys { get; set; } = new List<string>();
+    public List<string> PrimaryKeys { get; set; } = new();
 
     /// <summary>
     /// Foreign key relationships
     /// </summary>
-    public List<ForeignKeyInfo> ForeignKeys { get; set; } = new List<ForeignKeyInfo>();
+    public List<ForeignKeyInfo> ForeignKeys { get; set; } = new();
 
     /// <summary>
     /// Approximate row count

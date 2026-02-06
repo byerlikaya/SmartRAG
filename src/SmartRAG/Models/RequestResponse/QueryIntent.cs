@@ -19,7 +19,7 @@ public class QueryIntent
     /// <summary>
     /// Required database queries
     /// </summary>
-    public List<DatabaseQueryIntent> DatabaseQueries { get; set; } = new List<DatabaseQueryIntent>();
+    public List<DatabaseQueryIntent> DatabaseQueries { get; set; } = new();
 
     /// <summary>
     /// Confidence level (0-1)
@@ -35,6 +35,11 @@ public class QueryIntent
     /// AI reasoning for the query plan
     /// </summary>
     public string Reasoning { get; set; }
+
+    /// <summary>
+    /// Maximum number of rows to return per query (0 = use connection config)
+    /// </summary>
+    public int MaxResults { get; set; }
 }
 
 /// <summary>
@@ -55,7 +60,7 @@ public class DatabaseQueryIntent
     /// <summary>
     /// Tables to query
     /// </summary>
-    public List<string> RequiredTables { get; set; } = new List<string>();
+    public List<string> RequiredTables { get; set; } = new();
 
     /// <summary>
     /// Generated SQL query

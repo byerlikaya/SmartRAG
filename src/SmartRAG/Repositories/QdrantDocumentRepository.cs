@@ -1,5 +1,6 @@
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
+using Document = SmartRAG.Entities.Document;
 
 namespace SmartRAG.Repositories;
 
@@ -15,7 +16,6 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
     private const int DefaultGrpcTimeoutMinutes = 5;
 
     private readonly QdrantClient _client;
-    private readonly QdrantConfig _config;
     private readonly string _collectionName;
     private readonly ILogger<QdrantDocumentRepository> _logger;
 
@@ -34,8 +34,8 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
         IAIService aiService,
         IQdrantSearchService searchService)
     {
-        _config = config.Value;
-        _collectionName = _config.CollectionName;
+        var config1 = config.Value;
+        _collectionName = config1.CollectionName;
         _logger = logger;
         _collectionManager = collectionManager;
         _embeddingService = embeddingService ?? throw new ArgumentNullException(nameof(embeddingService));
@@ -77,70 +77,23 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
             });
     }
 
-    /// <summary>
-    /// Determines document type from ContentType and file extension
-    /// </summary>
-    private static string DetermineDocumentType(SmartRAG.Entities.Document document)
-    {
-        if (document == null)
-        {
-            return "Document";
-        }
-
-        if (!string.IsNullOrWhiteSpace(document.ContentType) &&
-            document.ContentType.StartsWith("audio", StringComparison.OrdinalIgnoreCase))
-        {
-            return "Audio";
-        }
-
-        var extension = System.IO.Path.GetExtension(document.FileName)?.ToLowerInvariant();
-        if (!string.IsNullOrWhiteSpace(extension))
-        {
-            switch (extension)
-            {
-                case ".wav":
-                case ".mp3":
-                case ".m4a":
-                case ".flac":
-                case ".ogg":
-                    return "Audio";
-                case ".jpg":
-                case ".jpeg":
-                case ".png":
-                case ".gif":
-                case ".bmp":
-                case ".tiff":
-                case ".webp":
-                    return "Image";
-            }
-        }
-
-        return "Document";
-    }
-
     private static string NormalizeContentForStorage(string content)
     {
-        if (string.IsNullOrEmpty(content))
-            return string.Empty;
-
-        return content.Normalize(System.Text.NormalizationForm.FormC);
+        return string.IsNullOrEmpty(content) ? string.Empty : content.Normalize(NormalizationForm.FormC);
     }
 
-    private static string GetPayloadString(Google.Protobuf.Collections.MapField<string, Value> payload, string key)
+    private static string? GetPayloadString(Google.Protobuf.Collections.MapField<string, Value> payload, string key)
     {
-        if (payload == null) return string.Empty;
-
-        if (!payload.TryGetValue(key, out Value value) || value == null)
+        if (!payload.TryGetValue(key, out var value))
             return string.Empty;
 
-        string result;
         switch (value.KindCase)
         {
             case Value.KindOneofCase.StringValue:
-                result = value.StringValue ?? string.Empty;
+                var result = value.StringValue ?? string.Empty;
                 if (!string.IsNullOrEmpty(result))
                 {
-                    result = result.Normalize(System.Text.NormalizationForm.FormC);
+                    result = result.Normalize(NormalizationForm.FormC);
                 }
                 return result;
             case Value.KindOneofCase.DoubleValue:
@@ -153,9 +106,14 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
                 return value.StructValue.ToString();
             case Value.KindOneofCase.ListValue:
                 return string.Join(",", value.ListValue.Values.Select(v => v.ToString()));
+            case Value.KindOneofCase.None:
+            case Value.KindOneofCase.NullValue:
+                break;
             default:
                 return value.ToString();
         }
+
+        return null;
     }
 
     /// <summary>
@@ -171,9 +129,9 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
         var content = GetPayloadString(payload, "content");
         var idStr = GetPayloadString(payload, "documentId");
 
-        long.TryParse(fileSizeStr, NumberStyles.Any, CultureInfo.InvariantCulture, out long fileSize);
+        long.TryParse(fileSizeStr, NumberStyles.Any, CultureInfo.InvariantCulture, out var fileSize);
 
-        if (!DateTime.TryParse(uploadedAtStr, null, DateTimeStyles.RoundtripKind, out DateTime uploadedAt))
+        if (!DateTime.TryParse(uploadedAtStr, null, DateTimeStyles.RoundtripKind, out var uploadedAt))
             uploadedAt = DateTime.UtcNow;
 
         if (!Guid.TryParse(idStr, out var docGuid))
@@ -197,14 +155,14 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
 
         foreach (var item in payload)
         {
-            if (item.Key.StartsWith("metadata_", StringComparison.OrdinalIgnoreCase))
+            if (!item.Key.StartsWith("metadata_", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var key = item.Key["metadata_".Length..];
+            var value = GetPayloadString(payload, item.Key);
+            if (!string.IsNullOrEmpty(value))
             {
-                var key = item.Key["metadata_".Length..];
-                var value = GetPayloadString(payload, item.Key);
-                if (!string.IsNullOrEmpty(value))
-                {
-                    metadata[key] = value;
-                }
+                metadata[key] = value;
             }
         }
 
@@ -214,9 +172,9 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
     /// <summary>
     /// Creates Document from metadata
     /// </summary>
-    private static SmartRAG.Entities.Document CreateDocumentFromMetadata(DocumentMetadata metadata, Dictionary<string, object> additionalMetadata = null)
+    private static Document CreateDocumentFromMetadata(DocumentMetadata metadata, Dictionary<string, object>? additionalMetadata = null)
     {
-        var document = new SmartRAG.Entities.Document()
+        var document = new Document
         {
             Id = metadata.Id,
             FileName = metadata.FileName,
@@ -228,7 +186,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
             Chunks = new List<DocumentChunk>()
         };
 
-        if (additionalMetadata != null && additionalMetadata.Count > 0)
+        if (additionalMetadata is { Count: > 0 })
         {
             document.Metadata = new Dictionary<string, object>(additionalMetadata);
         }
@@ -239,7 +197,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
     /// <summary>
     /// Creates DocumentChunk from Qdrant point
     /// </summary>
-    private static DocumentChunk CreateDocumentChunk(RetrievedPoint point, Guid documentId, DateTime fallbackCreatedAt, string fileName = null)
+    private static DocumentChunk CreateDocumentChunk(RetrievedPoint point, Guid documentId, DateTime fallbackCreatedAt)
     {
         var chunkContent = GetPayloadString(point.Payload, "content");
         var chunkUploadedAtStr = GetPayloadString(point.Payload, "uploadedAt");
@@ -248,7 +206,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
         var chunkIndexStr = GetPayloadString(point.Payload, "chunkIndex");
         var payloadFileName = GetPayloadString(point.Payload, "fileName");
 
-        if (!DateTime.TryParse(chunkUploadedAtStr, null, DateTimeStyles.RoundtripKind, out DateTime chunkCreatedAt))
+        if (!DateTime.TryParse(chunkUploadedAtStr, null, DateTimeStyles.RoundtripKind, out var chunkCreatedAt))
             chunkCreatedAt = fallbackCreatedAt;
 
         if (string.IsNullOrWhiteSpace(documentType))
@@ -268,7 +226,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
             chunkId = Guid.NewGuid();
         }
 
-        int chunkIndex = 0;
+        var chunkIndex = 0;
         if (!string.IsNullOrWhiteSpace(chunkIndexStr) && int.TryParse(chunkIndexStr, out var parsedChunkIndex))
         {
             chunkIndex = parsedChunkIndex;
@@ -278,14 +236,14 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
         {
             Id = chunkId,
             DocumentId = documentId,
-            FileName = payloadFileName ?? fileName ?? string.Empty,
+            FileName = payloadFileName,
             Content = chunkContent,
             ChunkIndex = chunkIndex,
             Embedding = point.Vectors?.Vector?.Dense?.Data?.ToList() ?? new List<float>(),
             CreatedAt = chunkCreatedAt,
             DocumentType = documentType,
             StartPosition = 0,
-            EndPosition = chunkContent?.Length ?? 0
+            EndPosition = chunkContent.Length
         };
     }
 
@@ -303,7 +261,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
         public string Content { get; set; } = string.Empty;
     }
 
-    public async Task<SmartRAG.Entities.Document> AddAsync(SmartRAG.Entities.Document document, CancellationToken cancellationToken = default)
+    public async Task<Document> AddAsync(Document document, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -312,23 +270,24 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
             var documentCollectionName = $"{_collectionName}_doc_{document.Id:N}".Replace("-", "");
             RepositoryLogMessages.LogQdrantDocumentCollectionCreating(Logger, documentCollectionName, _collectionName, document.Id, null);
 
-            var allCollections = await _client.ListCollectionsAsync();
+            var allCollections = await _client.ListCollectionsAsync(cancellationToken);
             if (allCollections.Contains(documentCollectionName))
                 await _collectionManager.DeleteCollectionAsync(documentCollectionName, cancellationToken);
 
             await _collectionManager.EnsureDocumentCollectionExistsAsync(documentCollectionName, document, cancellationToken);
 
-            SmartRAG.Services.Helpers.DocumentValidator.ValidateDocument(document);
-            SmartRAG.Services.Helpers.DocumentValidator.ValidateChunks(document);
+            DocumentValidator.ValidateDocument(document);
+            DocumentValidator.ValidateChunks(document);
 
             RepositoryLogMessages.LogQdrantEmbeddingsGenerationStarted(Logger, document.Chunks.Count, null);
-            var embeddingTasks = document.Chunks.Select(async (chunk, index) =>
+            var embeddingTasks = document.Chunks.Select(async (chunk, _) =>
             {
-                if (chunk.Embedding == null || chunk.Embedding.Count == 0)
-                {
-                    var contentForEmbedding = NormalizeContentForStorage(chunk.Content);
-                    chunk.Embedding = await _embeddingService.GenerateEmbeddingAsync(contentForEmbedding, cancellationToken) ?? new List<float>();
-                }
+                if (chunk.Embedding.Count != 0)
+                    return chunk;
+
+                var contentForEmbedding = NormalizeContentForStorage(chunk.Content);
+                chunk.Embedding = await _embeddingService.GenerateEmbeddingAsync(contentForEmbedding, cancellationToken);
+
                 return chunk;
             }).ToList();
 
@@ -352,31 +311,28 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
                 point.Payload.Add("chunkIndex", chunk.ChunkIndex);
                 point.Payload.Add("content", normalizedContent);
                 point.Payload.Add("documentId", document.Id.ToString());
-                point.Payload.Add("fileName", chunk.FileName ?? document.FileName);
+                point.Payload.Add("fileName", chunk.FileName);
                 point.Payload.Add("contentType", document.ContentType);
                 point.Payload.Add("fileSize", document.FileSize);
                 point.Payload.Add("uploadedAt", document.UploadedAt.ToString("O"));
                 point.Payload.Add("uploadedBy", document.UploadedBy);
-                point.Payload.Add("documentType", chunk.DocumentType ?? DetermineDocumentType(document));
+                point.Payload.Add("documentType", chunk.DocumentType);
 
-                if (document.Metadata != null)
+                foreach (var metadataItem in document.Metadata)
                 {
-                    foreach (var metadataItem in document.Metadata)
+                    if (metadataItem.Value != null)
                     {
-                        if (metadataItem.Value != null)
-                        {
-                            point.Payload.Add($"metadata_{metadataItem.Key}", metadataItem.Value.ToString());
-                        }
+                        point.Payload.Add($"metadata_{metadataItem.Key}", metadataItem.Value.ToString());
                     }
                 }
 
                 allPoints.Add(point);
             }
 
-            for (int i = 0; i < allPoints.Count; i += DefaultBatchSize)
+            for (var i = 0; i < allPoints.Count; i += DefaultBatchSize)
             {
                 var batch = allPoints.Skip(i).Take(DefaultBatchSize).ToList();
-                await _client.UpsertAsync(documentCollectionName, batch);
+                await _client.UpsertAsync(documentCollectionName, batch, cancellationToken: cancellationToken);
                 var batchNumber = i / DefaultBatchSize + 1;
                 var totalBatches = (allPoints.Count + DefaultBatchSize - 1) / DefaultBatchSize;
                 RepositoryLogMessages.LogQdrantBatchUploadProgress(Logger, batchNumber, totalBatches, batch.Count, null);
@@ -392,20 +348,21 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
         }
     }
 
-    public async Task<SmartRAG.Entities.Document> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
+    public async Task<Document?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         try
         {
             var documentCollectionName = $"{_collectionName}_doc_{id:N}".Replace("-", "");
-            
-            var allCollections = await _client.ListCollectionsAsync();
+
+            var allCollections = await _client.ListCollectionsAsync(cancellationToken);
             if (!allCollections.Contains(documentCollectionName))
             {
                 Logger.LogDebug("Document collection {Collection} not found for document {DocumentId}", documentCollectionName, id);
                 return null;
             }
 
-            var result = await _client.ScrollAsync(documentCollectionName, limit: 10000);
+            var result = await _client.ScrollAsync(documentCollectionName, limit: 10000, cancellationToken: cancellationToken);
 
             if (result.Result.Count == 0)
             {
@@ -424,16 +381,15 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
             }
 
             var document = CreateDocumentFromMetadata(metadata, additionalMetadata);
-            document.Metadata ??= new Dictionary<string, object>();
             document.Metadata["CollectionName"] = documentCollectionName;
-            
+
             foreach (var point in result.Result)
             {
-                var chunk = CreateDocumentChunk(point, document.Id, metadata.UploadedAt, document.FileName);
+                var chunk = CreateDocumentChunk(point, document.Id, metadata.UploadedAt);
                 document.Chunks.Add(chunk);
             }
 
-            Logger.LogDebug("Retrieved document {DocumentId} with {ChunkCount} chunks from collection {Collection}", 
+            Logger.LogDebug("Retrieved document {DocumentId} with {ChunkCount} chunks from collection {Collection}",
                 id, document.Chunks.Count, documentCollectionName);
 
             return document;
@@ -445,12 +401,12 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
         }
     }
 
-    public async Task<List<SmartRAG.Entities.Document>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task<List<Document>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         try
         {
-            var documents = new List<SmartRAG.Entities.Document>();
-            var allCollections = await _client.ListCollectionsAsync();
+            var documents = new List<Document>();
+            var allCollections = await _client.ListCollectionsAsync(cancellationToken);
             var documentCollections = allCollections
                 .Where(c => c.StartsWith($"{_collectionName}_doc_", StringComparison.OrdinalIgnoreCase))
                 .ToList();
@@ -461,7 +417,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
                 {
                     var result = await _client.ScrollAsync(
                         docCollection,
-                        limit: 1);
+                        limit: 1, cancellationToken: cancellationToken);
 
                     if (result.Result.Count == 0)
                         continue;
@@ -474,13 +430,12 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
                         continue;
 
                     var document = CreateDocumentFromMetadata(metadata, additionalMetadata);
-                    document.Metadata ??= new Dictionary<string, object>();
                     document.Metadata["CollectionName"] = docCollection;
 
-                    var collectionInfo = await _client.GetCollectionInfoAsync(docCollection);
+                    var collectionInfo = await _client.GetCollectionInfoAsync(docCollection, cancellationToken);
                     var chunkCount = (int)collectionInfo.PointsCount;
 
-                    for (int i = 0; i < chunkCount; i++)
+                    for (var i = 0; i < chunkCount; i++)
                     {
                         document.Chunks.Add(new DocumentChunk
                         {
@@ -498,7 +453,6 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
                 catch (Exception ex)
                 {
                     _logger.LogWarning(ex, "Failed to retrieve document from collection: {Collection}", docCollection);
-                    continue;
                 }
             }
 
@@ -507,7 +461,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to retrieve all documents");
-            return new List<SmartRAG.Entities.Document>();
+            return new List<Document>();
         }
     }
 
@@ -516,7 +470,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
         try
         {
             var documentCollectionName = $"{_collectionName}_doc_{id:N}".Replace("-", "");
-            var allCollections = await _client.ListCollectionsAsync();
+            var allCollections = await _client.ListCollectionsAsync(cancellationToken);
             if (!allCollections.Contains(documentCollectionName))
                 return true;
 
@@ -536,16 +490,17 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
     {
         try
         {
-            var allCollections = await _client.ListCollectionsAsync();
+            var allCollections = await _client.ListCollectionsAsync(cancellationToken);
             var documentCollections = allCollections
                 .Where(c => c.StartsWith($"{_collectionName}_doc_", StringComparison.OrdinalIgnoreCase))
                 .ToList();
 
             foreach (var docCollection in documentCollections)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 try
                 {
-                    await _collectionManager.DeleteCollectionAsync(docCollection);
+                    await _collectionManager.DeleteCollectionAsync(docCollection, cancellationToken);
                 }
                 catch (Exception ex)
                 {
@@ -553,7 +508,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
                 }
             }
 
-            await _collectionManager.RecreateCollectionAsync(_collectionName);
+            await _collectionManager.RecreateCollectionAsync(_collectionName, cancellationToken);
 
             return true;
         }
@@ -568,7 +523,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
     {
         try
         {
-            var collectionInfo = await _client.GetCollectionInfoAsync(_collectionName);
+            var collectionInfo = await _client.GetCollectionInfoAsync(_collectionName, cancellationToken);
             return (int)collectionInfo.PointsCount;
         }
         catch (Exception)
@@ -598,7 +553,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
             // Document embeddings are already stored using AI embeddings from DocumentService
             // Hash-based embedding would break semantic similarity
             var queryEmbedding = await _aiService.GenerateEmbeddingsAsync(normalizedQuery, cancellationToken);
-            if (queryEmbedding == null || queryEmbedding.Count == 0)
+            if (queryEmbedding.Count == 0)
             {
                 _logger.LogWarning("AI embedding generation failed, falling back to text search");
                 var embeddingFallback = await _searchService.FallbackTextSearchAsync(query, maxResults, cancellationToken);
@@ -640,7 +595,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
     /// <param name="rawResults">Raw search results from vector search</param>
     /// <param name="maxResults">Maximum number of results to return</param>
     /// <returns>Processed results with business logic applied</returns>
-    private List<DocumentChunk> ProcessSearchResults(List<DocumentChunk> rawResults, int maxResults)
+    private static List<DocumentChunk> ProcessSearchResults(List<DocumentChunk> rawResults, int maxResults)
     {
         var allChunks = rawResults.ToList();
 
@@ -670,7 +625,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
             .OrderByDescending(c => c.RelevanceScore ?? 0.0)
             .ToList();
 
-        if (chunk0 != null && !finalResults.Any(c => c.ChunkIndex == 0))
+        if (chunk0 != null && finalResults.All(c => c.ChunkIndex != 0))
         {
             finalResults = new List<DocumentChunk> { chunk0 }.Concat(finalResults).ToList();
         }
@@ -680,8 +635,7 @@ public class QdrantDocumentRepository : IDocumentRepository, IDisposable
 
     public void Dispose()
     {
-        _client?.Dispose();
+        _client.Dispose();
         GC.SuppressFinalize(this);
     }
 }
-
