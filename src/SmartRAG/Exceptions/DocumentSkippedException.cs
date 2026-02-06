@@ -9,7 +9,5 @@ namespace SmartRAG.Exceptions
     public sealed class DocumentSkippedException : InvalidOperationException
     {
         public DocumentSkippedException(string message) : base(message) { }
-
-        public DocumentSkippedException(string message, Exception innerException) : base(message, innerException) { }
     }
 }

@@ -182,34 +182,6 @@ namespace SmartRAG.Services.Document
         }
 
         /// <summary>
-        /// [AI Query] [Document Query] Uploads a document, generates embeddings, and saves it
-        /// </summary>
-        /// <param name="fileStream">File stream containing document content</param>
-        /// <param name="fileName">Name of the file</param>
-        /// <param name="contentType">MIME content type of the file</param>
-        /// <param name="uploadedBy">Identifier of the user uploading the document</param>
-        /// <param name="language">Language code for document processing (optional)</param>
-        /// <param name="fileSize">File size in bytes (optional, will be calculated from stream if not provided)</param>
-        /// <param name="additionalMetadata">Additional metadata to add to document (optional)</param>
-        /// <param name="cancellationToken">Token to cancel the operation</param>
-        /// <returns>Created document entity</returns>
-        [Obsolete("Use UploadDocumentAsync(UploadDocumentRequest) instead. This method will be removed in v4.0.0")]
-        public async Task<SmartRAG.Entities.Document> UploadDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy, string? language = null, long? fileSize = null, Dictionary<string, object>? additionalMetadata = null, CancellationToken cancellationToken = default)
-        {
-            var request = new Models.RequestResponse.UploadDocumentRequest
-            {
-                FileStream = fileStream,
-                FileName = fileName,
-                ContentType = contentType,
-                UploadedBy = uploadedBy,
-                Language = language,
-                FileSize = fileSize,
-                AdditionalMetadata = additionalMetadata
-            };
-            return await UploadDocumentAsync(request, cancellationToken);
-        }
-
-        /// <summary>
         /// [Document Query] Retrieves a document by ID
         /// </summary>
         public async Task<SmartRAG.Entities.Document> GetDocumentAsync(Guid id, CancellationToken cancellationToken = default) => await _documentRepository.GetByIdAsync(id, cancellationToken);

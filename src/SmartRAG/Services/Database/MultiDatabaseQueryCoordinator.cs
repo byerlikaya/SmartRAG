@@ -43,18 +43,6 @@ namespace SmartRAG.Services.Database
         }
 
         /// <summary>
-        /// Legacy: Analyze natural-language query and produce database-intent
-        /// </summary>
-        /// <param name="userQuery">Natural language user query</param>
-        /// <param name="cancellationToken">Token to cancel the operation</param>
-        /// <returns>Structured query intent</returns>
-        [Obsolete("Use IQueryIntentAnalyzer.AnalyzeQueryIntentAsync instead. Will be removed in v4.0.0")]
-        public async Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery, CancellationToken cancellationToken = default)
-        {
-            return await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(userQuery, cancellationToken);
-        }
-
-        /// <summary>
         /// [AI Query] [DB Query] Executes a full intelligent query: analyze intent + execute + merge results
         /// </summary>
         /// <param name="userQuery">Natural language user query</param>

@@ -1,5 +1,4 @@
 using SmartRAG.Models;
-using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -10,15 +9,6 @@ namespace SmartRAG.Interfaces.Database
     /// </summary>
     public interface IMultiDatabaseQueryCoordinator
     {
-        /// <summary>
-        /// Legacy: Analyze natural-language query and produce database-intent
-        /// </summary>
-        /// <param name="userQuery">Natural language user query</param>
-        /// <param name="cancellationToken">Token to cancel the operation</param>
-        /// <returns>Structured query intent</returns>
-        [Obsolete("Use IQueryIntentAnalyzer.AnalyzeQueryIntentAsync instead. Will be removed in v4.0.0")]
-        Task<QueryIntent> AnalyzeQueryIntentAsync(string userQuery, CancellationToken cancellationToken = default);
-
         /// <summary>
         /// Executes a full intelligent query: analyze intent + execute + merge results
         /// </summary>

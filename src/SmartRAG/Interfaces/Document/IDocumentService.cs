@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -21,22 +20,6 @@ namespace SmartRAG.Interfaces.Document
         /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>Created document entity</returns>
         Task<Entities.Document> UploadDocumentAsync(Models.RequestResponse.UploadDocumentRequest request, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Upload a single document
-        /// </summary>
-        /// <param name="fileStream">File stream containing document content</param>
-        /// <param name="fileName">Name of the file</param>
-        /// <param name="contentType">MIME content type of the file</param>
-        /// <param name="uploadedBy">Identifier of the user uploading the document</param>
-        /// <param name="language">Language code for document processing (optional)</param>
-        /// <param name="fileSize">File size in bytes (optional, will be calculated from stream if not provided)</param>
-        /// <param name="additionalMetadata">Additional metadata to add to document (optional)</param>
-        /// <param name="cancellationToken">Token to cancel the operation</param>
-        /// <returns>Created document entity</returns>
-        [Obsolete("Use UploadDocumentAsync(UploadDocumentRequest) instead. This method will be removed in v4.0.0")]
-        Task<Entities.Document> UploadDocumentAsync(Stream fileStream, string fileName, string contentType, string uploadedBy, string? language = null, long? fileSize = null, Dictionary<string, object>? additionalMetadata = null, CancellationToken cancellationToken = default);
-
 
         /// <summary>
         /// Get document by ID

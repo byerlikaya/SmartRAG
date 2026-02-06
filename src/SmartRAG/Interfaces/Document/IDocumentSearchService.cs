@@ -2,7 +2,6 @@
 
 using SmartRAG.Entities;
 using SmartRAG.Models;
-using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
@@ -34,11 +33,5 @@ namespace SmartRAG.Interfaces.Document
         /// <param name="cancellationToken">Token to cancel the operation</param>
         /// <returns>RAG response with AI-generated answer and relevant sources</returns>
         Task<RagResponse> QueryIntelligenceAsync(string query, int maxResults, string sessionId, string conversationHistory, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Generate RAG answer with automatic session management (Legacy method - use QueryIntelligenceAsync)
-        /// </summary>
-        [Obsolete("Use QueryIntelligenceAsync instead. This method will be removed in v4.0.0")]
-        Task<RagResponse> GenerateRagAnswerAsync(string query, int maxResults = 5, bool startNewConversation = false, CancellationToken cancellationToken = default);
     }
 }
