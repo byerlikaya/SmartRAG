@@ -1,4 +1,3 @@
-
 namespace SmartRAG.Services.Database;
 
 
@@ -14,6 +13,7 @@ public class DatabaseConnectionManager : IDatabaseConnectionManager
     private readonly ILogger<DatabaseConnectionManager> _logger;
     private readonly ConcurrentDictionary<string, DatabaseConnectionConfig> _connections;
     private bool _initialized;
+    private readonly SemaphoreSlim _initLock = new(1, 1);
 
     public DatabaseConnectionManager(
         IOptions<SmartRagOptions> options,
@@ -34,19 +34,21 @@ public class DatabaseConnectionManager : IDatabaseConnectionManager
     {
         if (_initialized)
         {
-            _logger.LogWarning("DatabaseConnectionManager already initialized");
+            DatabaseLogMessages.LogConnectionManagerAlreadyInitialized(_logger, null!);
             return;
         }
         if (_options.DatabaseConnections == null || _options.DatabaseConnections.Count == 0)
         {
-            _logger.LogInformation("No database connections configured");
+            DatabaseLogMessages.LogNoDatabaseConnectionsConfigured(_logger, null!);
             _initialized = true;
             return;
         }
 
         var enabledConnections = _options.DatabaseConnections
             .Where(c => c.Enabled)
-            .ToList(); foreach (var config in enabledConnections)
+            .ToList();
+
+        foreach (var config in enabledConnections)
         {
             cancellationToken.ThrowIfCancellationRequested();
             
@@ -56,25 +58,25 @@ public class DatabaseConnectionManager : IDatabaseConnectionManager
                 databaseId = await GetDatabaseIdAsync(config, cancellationToken);
                 _connections[databaseId] = config;
 
-                _logger.LogInformation("Registered database connection");
+                DatabaseLogMessages.LogRegisteredDatabaseConnection(_logger, null!);
 
                 if (ShouldPerformSchemaAnalysis())
                 {
-                    _logger.LogInformation("Starting schema analysis");
+                    DatabaseLogMessages.LogSchemaAnalysisStarted(_logger, null!);
                     try
                     {
                         await _schemaAnalyzer.AnalyzeDatabaseSchemaAsync(config, cancellationToken);
-                        _logger.LogInformation("Schema analysis completed");
+                        DatabaseLogMessages.LogSchemaAnalysisCompleted(_logger, null!);
                     }
                     catch (Exception ex)
                     {
-                        _logger.LogError(ex, "Schema analysis failed");
+                        DatabaseLogMessages.LogSchemaAnalysisFailed(_logger, ex);
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to initialize database connection");
+                DatabaseLogMessages.LogDatabaseConnectionInitFailed(_logger, ex);
             }
         }
 
@@ -86,7 +88,7 @@ public class DatabaseConnectionManager : IDatabaseConnectionManager
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Failed to detect cross-database mappings");
+                DatabaseLogMessages.LogCrossDatabaseMappingsDetectFailed(_logger, ex);
             }
         }
 
@@ -94,19 +96,18 @@ public class DatabaseConnectionManager : IDatabaseConnectionManager
         {
             try
             {
-                _logger.LogInformation("Starting schema migration to vector store");
+                DatabaseLogMessages.LogSchemaMigrationStarted(_logger, null!);
                 var migratedCount = await _schemaMigrationService.MigrateAllSchemasAsync(cancellationToken);
-                _logger.LogInformation("Schema migration completed: {MigratedCount} schemas migrated", migratedCount);
+                DatabaseLogMessages.LogSchemaMigrationCompleted(_logger, migratedCount, null!);
             }
             catch (Exception ex)
             {
-                _logger.LogWarning(ex, "Schema migration failed, continuing without schema chunks");
+                DatabaseLogMessages.LogSchemaMigrationFailed(_logger, ex);
             }
         }
 
         _initialized = true;
-        _logger.LogInformation("Database connection manager initialized with {Count} connections",
-            _connections.Count);
+        DatabaseLogMessages.LogConnectionManagerInitialized(_logger, _connections.Count, null!);
     }
 
     private async Task DetectAndApplyCrossDatabaseMappingsAsync(
@@ -116,7 +117,7 @@ public class DatabaseConnectionManager : IDatabaseConnectionManager
         var manualMappingCount = connections.Sum(c => c.CrossDatabaseMappings?.Count ?? 0);
         if (manualMappingCount > 0)
         {
-            _logger.LogInformation("Found {Count} manually configured cross-database mappings in appsettings.json", manualMappingCount);
+            DatabaseLogMessages.LogManualCrossDatabaseMappingsFound(_logger, manualMappingCount, null!);
         }
 
         var detectorLogger = Microsoft.Extensions.Logging.Abstractions.NullLogger<CrossDatabaseMappingDetector>.Instance;
@@ -142,44 +143,87 @@ public class DatabaseConnectionManager : IDatabaseConnectionManager
                 if (!exists)
                 {
                     sourceConfig.CrossDatabaseMappings.Add(mapping);
-                    _logger.LogInformation(
-                        "Auto-detected and added cross-database mapping: {SourceDB}.{SourceTable}.{SourceColumn} -> {TargetDB}.{TargetTable}.{TargetColumn}",
-                        mapping.SourceDatabase, mapping.SourceTable, mapping.SourceColumn,
-                        mapping.TargetDatabase, mapping.TargetTable, mapping.TargetColumn);
+                    DatabaseLogMessages.LogCrossDatabaseMappingAdded(_logger,
+                        mapping.SourceDatabase, mapping.SourceTable ?? string.Empty, mapping.SourceColumn,
+                        mapping.TargetDatabase, mapping.TargetTable ?? string.Empty, mapping.TargetColumn, null!);
                 }
                 else
                 {
-                    _logger.LogDebug(
-                        "Skipped auto-detected mapping (already exists in appsettings.json): {SourceDB}.{SourceColumn} -> {TargetDB}.{TargetColumn}",
+                    DatabaseLogMessages.LogCrossDatabaseMappingSkipped(_logger,
                         mapping.SourceDatabase, mapping.SourceColumn,
-                        mapping.TargetDatabase, mapping.TargetColumn);
+                        mapping.TargetDatabase, mapping.TargetColumn, null!);
                 }
             }
         }
 
         var totalMappingCount = connections.Sum(c => c.CrossDatabaseMappings?.Count ?? 0);
-        _logger.LogInformation("Total cross-database mappings: {Total} ({Manual} manual + {Auto} auto-detected)",
-            totalMappingCount, manualMappingCount, totalMappingCount - manualMappingCount);
+        DatabaseLogMessages.LogTotalCrossDatabaseMappings(_logger, totalMappingCount, manualMappingCount, totalMappingCount - manualMappingCount, null!);
     }
 
-    public Task<List<DatabaseConnectionConfig>> GetAllConnectionsAsync(CancellationToken cancellationToken = default)
+    public async Task<List<DatabaseConnectionConfig>> GetAllConnectionsAsync(CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.FromResult(_connections.Values.ToList());
+        await EnsureConnectionsPopulatedAsync(cancellationToken).ConfigureAwait(false);
+        return _connections.Values.ToList();
     }
 
-    public Task<DatabaseConnectionConfig?> GetConnectionAsync(string databaseId, CancellationToken cancellationToken = default)
+    private async Task EnsureConnectionsPopulatedAsync(CancellationToken cancellationToken)
+    {
+        if (_initialized || _connections.Count > 0)
+        {
+            return;
+        }
+
+        await _initLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_initialized || _connections.Count > 0)
+            {
+                return;
+            }
+
+            if (_options.DatabaseConnections == null || _options.DatabaseConnections.Count == 0)
+            {
+                _initialized = true;
+                return;
+            }
+
+            foreach (var config in _options.DatabaseConnections.Where(c => c.Enabled))
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                try
+                {
+                    var databaseId = await GetDatabaseIdAsync(config, cancellationToken).ConfigureAwait(false);
+                    _connections[databaseId] = config;
+                }
+                catch (Exception ex)
+                {
+                    DatabaseLogMessages.LogDatabaseConnectionRegisterFailed(_logger, config.Name, ex);
+                }
+            }
+
+            _initialized = true;
+        }
+        finally
+        {
+            _initLock.Release();
+        }
+    }
+
+    public async Task<DatabaseConnectionConfig?> GetConnectionAsync(string databaseId, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        await EnsureConnectionsPopulatedAsync(cancellationToken).ConfigureAwait(false);
         _connections.TryGetValue(databaseId, out var config);
-        return Task.FromResult<DatabaseConnectionConfig?>(config);
+        return config;
     }
 
     public async Task<bool> ValidateConnectionAsync(string databaseId, CancellationToken cancellationToken = default)
     {
+        await EnsureConnectionsPopulatedAsync(cancellationToken).ConfigureAwait(false);
         if (!_connections.TryGetValue(databaseId, out var config))
         {
-            _logger.LogWarning("Database connection not found");
+            DatabaseLogMessages.LogDatabaseConnectionNotFound(_logger, null!);
             return false;
         }
 
@@ -192,7 +236,7 @@ public class DatabaseConnectionManager : IDatabaseConnectionManager
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Validation failed for database");
+            DatabaseLogMessages.LogDatabaseValidationFailed(_logger, ex);
             return false;
         }
     }
@@ -211,7 +255,7 @@ public class DatabaseConnectionManager : IDatabaseConnectionManager
         }
         catch (Exception ex)
         {
-            _logger.LogWarning(ex, "Could not extract database name, using GUID");
+            DatabaseLogMessages.LogDatabaseNameExtractFailed(_logger, ex);
             return $"DB_{Guid.NewGuid():N}";
         }
     }
