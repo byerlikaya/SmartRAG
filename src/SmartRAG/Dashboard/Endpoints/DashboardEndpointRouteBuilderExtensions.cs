@@ -1,3 +1,9 @@
+using SmartRAG.Dashboard.Models;
+using SmartRAG.Interfaces.Database;
+using SmartRAG.Interfaces.Health;
+using SmartRAG.Models.Configuration;
+using SmartRAG.Models.Schema;
+
 namespace SmartRAG.Dashboard.Endpoints;
 
 /// <summary>
@@ -26,11 +32,19 @@ public static class DashboardEndpointRouteBuilderExtensions
         var chatBase = $"{normalizedBasePath}/api/chat";
         var uploadBase = $"{normalizedBasePath}/api/upload";
         var settingsBase = $"{normalizedBasePath}/api/settings";
+        var connectionsBase = $"{normalizedBasePath}/api/connections";
+        var healthBase = $"{normalizedBasePath}/api/health";
+        var schemasBase = $"{normalizedBasePath}/api/schemas";
+        var queryAnalysisBase = $"{normalizedBasePath}/api/query-analysis";
 
         MapDocumentEndpoints(endpoints, docsBase);
         MapChatEndpoints(endpoints, chatBase);
         MapUploadEndpoints(endpoints, uploadBase);
         MapSettingsEndpoints(endpoints, settingsBase);
+        MapConnectionsEndpoints(endpoints, connectionsBase);
+        MapHealthEndpoints(endpoints, healthBase);
+        MapSchemasEndpoints(endpoints, schemasBase);
+        MapQueryAnalysisEndpoints(endpoints, queryAnalysisBase);
 
         return endpoints;
     }
@@ -414,6 +428,175 @@ public static class DashboardEndpointRouteBuilderExtensions
                 };
 
                 return Results.Json(detail);
+            });
+    }
+
+    private static void MapConnectionsEndpoints(IEndpointRouteBuilder endpoints, string basePath)
+    {
+        endpoints.MapGet(
+            basePath,
+            async (
+                IOptions<SmartRagOptions> options,
+                IDatabaseConnectionManager? connectionManager,
+                IDatabaseSchemaAnalyzer? schemaAnalyzer,
+                CancellationToken cancellationToken) =>
+            {
+                if (!options.Value.Features.EnableDatabaseSearch || connectionManager == null || schemaAnalyzer == null)
+                {
+                    return Results.Json(new List<ConnectionStatusResponse>());
+                }
+
+                await schemaAnalyzer.GetAllSchemasAsync(cancellationToken).ConfigureAwait(false);
+                var connections = await connectionManager.GetAllConnectionsAsync(cancellationToken).ConfigureAwait(false);
+                var items = new List<ConnectionStatusResponse>();
+
+                foreach (var conn in connections)
+                {
+                    var dbId = await connectionManager.GetDatabaseIdAsync(conn, cancellationToken).ConfigureAwait(false);
+                    var isValid = false;
+                    try
+                    {
+                        isValid = await connectionManager.ValidateConnectionAsync(dbId, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch
+                    {
+                    }
+
+                    var schema = await schemaAnalyzer.GetSchemaAsync(dbId, cancellationToken).ConfigureAwait(false);
+                    var tableCount = schema?.Tables?.Count ?? 0;
+                    var totalRowCount = schema?.TotalRowCount ?? 0;
+                    var status = schema?.Status.ToString() ?? "Unknown";
+
+                    items.Add(new ConnectionStatusResponse
+                    {
+                        Name = conn.Name ?? dbId,
+                        DatabaseType = conn.DatabaseType.ToString(),
+                        IsValid = isValid,
+                        TableCount = tableCount,
+                        TotalRowCount = totalRowCount,
+                        Status = status
+                    });
+                }
+
+                return Results.Json(items);
+            });
+    }
+
+    private static void MapHealthEndpoints(IEndpointRouteBuilder endpoints, string basePath)
+    {
+        endpoints.MapGet(
+            basePath,
+            async (IHealthCheckService healthCheckService, CancellationToken cancellationToken) =>
+            {
+                var result = await healthCheckService.RunFullHealthCheckAsync(cancellationToken).ConfigureAwait(false);
+                var response = new HealthCheckResponse
+                {
+                    Ai = result.Ai,
+                    Storage = result.Storage,
+                    Conversation = result.Conversation,
+                    Databases = result.Databases
+                };
+                return Results.Json(response);
+            });
+    }
+
+    private static void MapSchemasEndpoints(IEndpointRouteBuilder endpoints, string basePath)
+    {
+        endpoints.MapGet(
+            basePath,
+            async (
+                IOptions<SmartRagOptions> options,
+                IDatabaseSchemaAnalyzer? schemaAnalyzer,
+                CancellationToken cancellationToken) =>
+            {
+                if (!options.Value.Features.EnableDatabaseSearch || schemaAnalyzer == null)
+                {
+                    return Results.Json(new List<SchemaDetailResponse>());
+                }
+
+                var schemas = await schemaAnalyzer.GetAllSchemasAsync(cancellationToken).ConfigureAwait(false);
+                var items = schemas.Select(s => new SchemaDetailResponse
+                {
+                    DatabaseName = s.DatabaseName,
+                    DatabaseType = s.DatabaseType.ToString(),
+                    Status = s.Status.ToString(),
+                    TotalRowCount = s.TotalRowCount,
+                    Tables = s.Tables.Select(t => new TableSchemaItem
+                    {
+                        TableName = t.TableName,
+                        RowCount = t.RowCount,
+                        Columns = t.Columns.Select(c => new ColumnSchemaItem
+                        {
+                            ColumnName = c.ColumnName,
+                            DataType = c.DataType,
+                            IsNullable = c.IsNullable,
+                            IsPrimaryKey = c.IsPrimaryKey,
+                            IsForeignKey = c.IsForeignKey
+                        }).ToList(),
+                        ForeignKeys = t.ForeignKeys.Select(fk => new ForeignKeyItem
+                        {
+                            ColumnName = fk.ColumnName,
+                            ReferencedTable = fk.ReferencedTable,
+                            ReferencedColumn = fk.ReferencedColumn
+                        }).ToList()
+                    }).ToList()
+                }).ToList();
+
+                return Results.Json(items);
+            });
+    }
+
+    private static void MapQueryAnalysisEndpoints(IEndpointRouteBuilder endpoints, string basePath)
+    {
+        endpoints.MapPost(
+            basePath,
+            async (
+                HttpRequest request,
+                IOptions<SmartRagOptions> options,
+                IQueryIntentAnalyzer? queryIntentAnalyzer,
+                IMultiDatabaseQueryCoordinator? multiDbCoordinator,
+                CancellationToken cancellationToken) =>
+            {
+                if (!options.Value.Features.EnableDatabaseSearch || queryIntentAnalyzer == null || multiDbCoordinator == null)
+                {
+                    return Results.Json(new { error = "Database search is disabled" }, statusCode: StatusCodes.Status503ServiceUnavailable);
+                }
+
+                QueryAnalysisRequest? body;
+                try
+                {
+                    body = await request.ReadFromJsonAsync<QueryAnalysisRequest>(cancellationToken).ConfigureAwait(false);
+                }
+                catch (JsonException)
+                {
+                    return Results.BadRequest("Invalid JSON body.");
+                }
+
+                if (body == null || string.IsNullOrWhiteSpace(body.Query))
+                {
+                    return Results.BadRequest("Query is required.");
+                }
+
+                var queryIntent = await queryIntentAnalyzer.AnalyzeQueryIntentAsync(body.Query.Trim(), cancellationToken).ConfigureAwait(false);
+                queryIntent = await multiDbCoordinator.GenerateDatabaseQueriesAsync(queryIntent, cancellationToken).ConfigureAwait(false);
+
+                var response = new QueryAnalysisResponse
+                {
+                    OriginalQuery = queryIntent.OriginalQuery,
+                    QueryUnderstanding = queryIntent.QueryUnderstanding,
+                    Confidence = queryIntent.Confidence,
+                    Reasoning = queryIntent.Reasoning,
+                    DatabaseQueries = queryIntent.DatabaseQueries.Select(dq => new DatabaseQueryItem
+                    {
+                        DatabaseName = dq.DatabaseName,
+                        RequiredTables = dq.RequiredTables,
+                        GeneratedQuery = dq.GeneratedQuery ?? string.Empty,
+                        Purpose = dq.Purpose ?? string.Empty,
+                        Priority = dq.Priority
+                    }).ToList()
+                };
+
+                return Results.Json(response);
             });
     }
 

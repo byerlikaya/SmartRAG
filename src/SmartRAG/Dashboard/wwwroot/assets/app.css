@@ -315,6 +315,9 @@ body {
 }
 
 .sr-nav-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
     padding: 0.5rem 1rem;
     font-family: inherit;
     font-size: 0.9375rem;
@@ -325,6 +328,17 @@ body {
     border-radius: var(--sr-radius-sm);
     cursor: pointer;
     transition: color 0.15s ease, background 0.15s ease;
+}
+
+.sr-nav-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.sr-nav-icon svg {
+    display: block;
 }
 
 .sr-nav-item:hover {
@@ -858,6 +872,363 @@ body {
 
 .sr-doc-summary-hidden {
     display: none;
+}
+
+.sr-view-database .sr-card {
+    min-width: 0;
+}
+
+.sr-db-tabs {
+    display: inline-flex;
+    gap: 0;
+    margin-top: 0.5rem;
+    padding: 0.25rem;
+    background: var(--sr-surface-alt);
+    border-radius: var(--sr-radius);
+    border: 1px solid var(--sr-border);
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.sr-db-tab {
+    padding: 0.5rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border-radius: calc(var(--sr-radius) - 2px);
+    border: none;
+    background: transparent;
+    color: var(--sr-text-muted);
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sr-db-tab:hover {
+    background: rgba(255, 255, 255, 0.7);
+    color: var(--sr-text);
+}
+
+.sr-db-tab-active,
+.sr-db-tab[aria-current="page"] {
+    background: #fff;
+    color: var(--sr-accent);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.sr-db-panel {
+    margin-top: 1rem;
+}
+
+.sr-db-panel-hidden {
+    display: none !important;
+}
+
+.sr-db-actions {
+    margin-bottom: 1rem;
+}
+
+.sr-db-health-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+}
+
+.sr-db-health-card {
+    padding: 1rem 1.25rem;
+    background: var(--sr-surface-alt);
+    border: 1px solid var(--sr-border);
+    border-radius: var(--sr-radius);
+}
+
+.sr-db-health-card-header {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.sr-db-health-card-status {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+}
+
+.sr-db-health-card-status--ok {
+    background: #22c55e;
+}
+
+.sr-db-health-card-status--error {
+    background: #ef4444;
+}
+
+.sr-db-health-card-title {
+    margin: 0;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: var(--sr-text);
+}
+
+.sr-db-health-card-message {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--sr-text-muted);
+}
+
+.sr-db-health-card-details {
+    margin-top: 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--sr-text-muted);
+}
+
+.sr-db-schemas-accordion {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.sr-db-schema-item {
+    border: 1px solid var(--sr-border);
+    border-radius: var(--sr-radius);
+    background: var(--sr-surface-alt);
+    overflow: hidden;
+}
+
+.sr-db-schema-header {
+    padding: 0.75rem 1rem;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--sr-surface);
+}
+
+.sr-db-schema-header:hover {
+    background: var(--sr-surface-alt);
+}
+
+.sr-db-schema-chevron {
+    flex-shrink: 0;
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--sr-text-muted);
+    transition: transform 0.2s ease;
+}
+
+.sr-db-schema-item-open .sr-db-schema-chevron {
+    transform: rotate(180deg);
+}
+
+.sr-db-schema-icon-wrap {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sr-db-schema-icon-wrap.sr-db-icon-sqlite {
+    color: #0d9488;
+}
+
+.sr-db-schema-icon-wrap.sr-db-icon-postgresql {
+    color: #2563eb;
+}
+
+.sr-db-schema-icon-wrap.sr-db-icon-mysql {
+    color: #ea580c;
+}
+
+.sr-db-schema-icon-wrap.sr-db-icon-sqlserver {
+    color: #c2410c;
+}
+
+.sr-db-schema-icon-wrap.sr-db-icon-default {
+    color: var(--sr-text-muted);
+}
+
+.sr-db-schema-title {
+    flex: 1;
+}
+
+.sr-db-schema-meta {
+    font-weight: normal;
+    color: var(--sr-text-muted);
+}
+
+.sr-db-schema-body {
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--sr-border);
+}
+
+.sr-db-table-item {
+    margin-bottom: 1.25rem;
+}
+
+.sr-db-table-item:last-child {
+    margin-bottom: 0;
+}
+
+.sr-db-table-name {
+    font-weight: 600;
+    font-size: 0.875rem;
+    margin-bottom: 0.5rem;
+}
+
+.sr-db-table-scroll {
+    overflow-x: auto;
+    border: 1px solid var(--sr-border);
+    border-radius: var(--sr-radius);
+}
+
+.sr-db-schema-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+}
+
+.sr-db-schema-table th,
+.sr-db-schema-table td {
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    border-bottom: 1px solid var(--sr-border);
+}
+
+.sr-db-schema-table th {
+    background: var(--sr-surface);
+    font-weight: 600;
+    color: var(--sr-text-muted);
+}
+
+.sr-db-schema-table tbody tr:hover {
+    background: var(--sr-surface-alt);
+}
+
+.sr-db-schema-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.sr-db-fk-list {
+    font-size: 0.75rem;
+    color: var(--sr-text-muted);
+}
+
+.sr-db-query-input-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.sr-db-query-input-wrap textarea {
+    width: 100%;
+    min-height: 100px;
+    padding: 0.75rem 1rem;
+    font-family: inherit;
+    font-size: 0.9375rem;
+    border: 1px solid var(--sr-border);
+    border-radius: var(--sr-radius);
+    resize: vertical;
+}
+
+.sr-db-query-result {
+    padding: 1rem;
+    background: var(--sr-surface-alt);
+    border: 1px solid var(--sr-border);
+    border-radius: var(--sr-radius);
+}
+
+.sr-db-query-result-block {
+    margin-bottom: 1rem;
+}
+
+.sr-db-query-result-block:last-child {
+    margin-bottom: 0;
+}
+
+.sr-db-query-result-label {
+    font-weight: 600;
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+}
+
+.sr-db-query-result-content {
+    font-size: 0.875rem;
+}
+
+.sr-db-query-result pre {
+    margin: 0.5rem 0 0;
+    padding: 0.75rem 1rem;
+    background: var(--sr-primary);
+    color: #fff;
+    border-radius: var(--sr-radius-sm);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    max-width: 100%;
+    overflow-x: hidden;
+    font-size: 0.8125rem;
+}
+
+.sr-db-query-typing-wrap {
+    padding: 1rem 0;
+}
+
+
+.sr-db-connections-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.sr-db-connections-name-cell .sr-db-schema-icon-wrap {
+    flex-shrink: 0;
+}
+
+.sr-db-connections-name-cell .sr-db-schema-icon {
+    width: 18px;
+    height: 18px;
+}
+
+.sr-db-status-badge {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: var(--sr-radius-sm);
+}
+
+.sr-db-status-badge--ok {
+    background: rgba(34, 197, 94, 0.15);
+    color: #15803d;
+}
+
+.sr-db-status-badge--error {
+    background: rgba(239, 68, 68, 0.15);
+    color: #b91c1c;
+}
+
+[data-theme="dark"] .sr-db-status-badge--ok {
+    background: rgba(34, 197, 94, 0.25);
+    color: #4ade80;
+}
+
+[data-theme="dark"] .sr-db-status-badge--error {
+    background: rgba(239, 68, 68, 0.25);
+    color: #fca5a5;
+}
+
+[data-theme="dark"] .sr-db-health-card-status--ok {
+    background: #22c55e;
+}
+
+[data-theme="dark"] .sr-db-health-card-status--error {
+    background: #ef4444;
+}
+
+[data-theme="dark"] .sr-db-query-result pre {
+    background: #202C33;
+    color: #e9edef;
 }
 
 .sr-upload-area {

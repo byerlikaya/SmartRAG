@@ -17,9 +17,22 @@
             <span class="sr-brand-text">SmartRAG</span>
         </div>
         <nav class="sr-nav-menu">
-            <button type="button" class="sr-nav-item sr-nav-item-active" data-view="chat" aria-current="page">Chat</button>
-            <button type="button" class="sr-nav-item" data-view="documents">Documents</button>
-            <button type="button" class="sr-nav-item" data-view="settings">Settings</button>
+            <button type="button" class="sr-nav-item sr-nav-item-active" data-view="chat" aria-current="page">
+                <span class="sr-nav-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/></svg></span>
+                Chat
+            </button>
+            <button type="button" class="sr-nav-item" data-view="documents">
+                <span class="sr-nav-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg></span>
+                Documents
+            </button>
+            <button type="button" class="sr-nav-item" data-view="database">
+                <span class="sr-nav-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M12 4C8.14 4 5 5.5 5 7.5v9c0 2 3.14 3.5 7 3.5s7-1.5 7-3.5v-9c0-2-3.14-3.5-7-3.5zm0 14c-3.31 0-5-1.19-5-2.5V9.36C8.18 10.47 9.94 11 12 11s3.82-.53 5-1.64V15.5c0 1.31-1.69 2.5-5 2.5zm0-12c3.31 0 5 1.19 5 2.5S15.31 11 12 11 7 9.81 7 8.5 8.69 6 12 6z"/></svg></span>
+                Database
+            </button>
+            <button type="button" class="sr-nav-item" data-view="settings">
+                <span class="sr-nav-icon" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg></span>
+                Settings
+            </button>
             <button type="button" class="sr-nav-item sr-theme-toggle" id="sr-theme-toggle" aria-label="Toggle theme"></button>
         </nav>
     </header>
@@ -180,6 +193,65 @@
                             <button type="button" id="sr-chat-send" class="sr-btn sr-btn-primary">Send</button>
                         </div>
                     </section>
+                </div>
+            </div>
+        </section>
+        <section class="sr-view sr-view-database sr-view-hidden" id="sr-view-database">
+            <div class="sr-card">
+                <div class="sr-card-header">
+                    <h2 class="sr-card-title">Database</h2>
+                    <div class="sr-db-tabs">
+                        <button type="button" class="sr-db-tab sr-db-tab-active" data-db-tab="connections">Connections</button>
+                        <button type="button" class="sr-db-tab" data-db-tab="health">Health</button>
+                        <button type="button" class="sr-db-tab" data-db-tab="schemas">Schemas</button>
+                        <button type="button" class="sr-db-tab" data-db-tab="query-analysis">Query Analysis</button>
+                    </div>
+                </div>
+                <div class="sr-db-panel sr-db-panel-connections" id="sr-db-panel-connections">
+                    <div class="sr-db-connections-wrap" id="sr-db-connections-wrap">
+                        <div class="sr-db-actions">
+                            <button type="button" class="sr-btn sr-btn-secondary" id="sr-connections-refresh">Refresh</button>
+                        </div>
+                        <div class="sr-table-wrap">
+                            <table class="sr-doc-table">
+                                <thead>
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Type</th>
+                                        <th>Status</th>
+                                        <th>Tables</th>
+                                        <th>Rows</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="sr-connections-tbody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                <div class="sr-db-panel sr-db-panel-hidden" id="sr-db-panel-health">
+                    <div class="sr-db-health-wrap" id="sr-db-health-wrap">
+                        <div class="sr-db-actions">
+                            <button type="button" class="sr-btn sr-btn-secondary" id="sr-health-refresh">Refresh</button>
+                        </div>
+                        <div class="sr-db-health-cards" id="sr-db-health-cards"></div>
+                    </div>
+                </div>
+                <div class="sr-db-panel sr-db-panel-hidden" id="sr-db-panel-schemas">
+                    <div class="sr-db-schemas-wrap" id="sr-db-schemas-wrap">
+                        <div class="sr-db-actions">
+                            <button type="button" class="sr-btn sr-btn-secondary" id="sr-schemas-refresh">Refresh</button>
+                        </div>
+                        <div class="sr-db-schemas-accordion" id="sr-db-schemas-accordion"></div>
+                    </div>
+                </div>
+                <div class="sr-db-panel sr-db-panel-hidden" id="sr-db-panel-query-analysis">
+                    <div class="sr-db-query-wrap" id="sr-db-query-wrap">
+                        <div class="sr-db-query-input-wrap">
+                            <textarea id="sr-query-analysis-input" rows="4" placeholder="Enter a natural language query to analyze (e.g. Show top 10 customers)"></textarea>
+                            <button type="button" id="sr-query-analysis-btn" class="sr-btn sr-btn-primary">Analyze</button>
+                        </div>
+                        <div class="sr-db-query-result" id="sr-db-query-result"></div>
+                    </div>
                 </div>
             </div>
         </section>
