@@ -92,15 +92,14 @@ public class CrossDatabaseMappingDetector
                     sourceColumn,
                     targetSchema);
 
-                {
-                    var targetColumn = matchingTarget!.Columns.FirstOrDefault(c =>
-                        (sourceColumn.IsPrimaryKey && c.IsPrimaryKey) ||
-                        (sourceColumn.IsForeignKey && c.IsPrimaryKey));
+                var targetColumn = matchingTarget?.Columns.FirstOrDefault(c =>
+                    (sourceColumn.IsPrimaryKey && c.IsPrimaryKey) ||
+                    (sourceColumn.IsForeignKey && c.IsPrimaryKey));
 
-                    if (targetColumn == null)
-                        continue;
+                if (targetColumn == null)
+                    continue;
 
-                    var mapping = new CrossDatabaseMapping
+                var mapping = new CrossDatabaseMapping
                     {
                         SourceDatabase = sourceConnection.Name,
                         SourceTable = sourceTable.TableName,
@@ -112,11 +111,10 @@ public class CrossDatabaseMappingDetector
                     };
 
                     mappings.Add(mapping);
-                    _logger.LogDebug(
-                        "Detected mapping: {SourceDB}.{SourceTable}.{SourceColumn} -> {TargetDB}.{TargetTable}.{TargetColumn}",
-                        mapping.SourceDatabase, mapping.SourceTable, mapping.SourceColumn,
-                        mapping.TargetDatabase, mapping.TargetTable, mapping.TargetColumn);
-                }
+                _logger.LogDebug(
+                    "Detected mapping: {SourceDB}.{SourceTable}.{SourceColumn} -> {TargetDB}.{TargetTable}.{TargetColumn}",
+                    mapping.SourceDatabase, mapping.SourceTable, mapping.SourceColumn,
+                    mapping.TargetDatabase, mapping.TargetTable, mapping.TargetColumn);
             }
 
             foreach (var foreignKey in sourceTable.ForeignKeys)
@@ -125,13 +123,16 @@ public class CrossDatabaseMappingDetector
                     foreignKey,
                     targetSchema);
 
+                if (matchingTarget == null)
+                    continue;
+
                 var mapping = new CrossDatabaseMapping
                 {
                     SourceDatabase = sourceConnection.Name,
                     SourceTable = sourceTable.TableName,
                     SourceColumn = foreignKey.ColumnName,
                     TargetDatabase = targetConnection.Name,
-                    TargetTable = matchingTarget!.TableName,
+                    TargetTable = matchingTarget.TableName,
                     TargetColumn = foreignKey.ReferencedColumn,
                     RelationshipType = "ForeignKey"
                 };

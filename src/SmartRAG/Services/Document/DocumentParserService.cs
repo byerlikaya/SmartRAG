@@ -84,7 +84,7 @@ public class DocumentParserService : IDocumentParserService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Document upload failed for {FileName}", fileName);
+            ServiceLogMessages.LogDocumentUploadFailed(_logger, fileName, ex);
             throw;
         }
     }
@@ -115,12 +115,13 @@ public class DocumentParserService : IDocumentParserService
 
     private static void PopulateMetadata(SmartRAG.Entities.Document document)
     {
+        document.Metadata ??= new Dictionary<string, object>();
         document.Metadata["FileName"] = document.FileName;
         document.Metadata["ContentType"] = document.ContentType;
         document.Metadata["UploadedBy"] = document.UploadedBy;
         document.Metadata["UploadedAt"] = document.UploadedAt;
         document.Metadata["ContentLength"] = document.Content.Length;
-        document.Metadata["ChunkCount"] = document.Chunks!.Count;
+        document.Metadata["ChunkCount"] = document.Chunks?.Count ?? 0;
     }
 
     private static void AnnotateAudioMetadata(SmartRAG.Entities.Document document, string content)

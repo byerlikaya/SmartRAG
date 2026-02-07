@@ -38,12 +38,12 @@ public class DatabaseConnectionConfig
     /// <summary>
     /// Include/Exclude specific tables (empty = all tables)
     /// </summary>
-    public string[] IncludedTables { get; set; }
+    public string[] IncludedTables { get; set; } = Array.Empty<string>();
 
     /// <summary>
     /// Exclude specific tables from analysis
     /// </summary>
-    public string[] ExcludedTables { get; set; }
+    public string[] ExcludedTables { get; set; } = Array.Empty<string>();
 
     /// <summary>
     /// Cross-database column mappings for joining data across different databases

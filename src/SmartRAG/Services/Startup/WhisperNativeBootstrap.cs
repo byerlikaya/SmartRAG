@@ -117,7 +117,7 @@ internal static class WhisperNativeBootstrap
         }
     }
 
-    private static IntPtr ResolveDllImport(string name)
+    private static IntPtr ResolveDllImport(string libraryName, Assembly assembly, DllImportSearchPath? searchPath)
     {
         var nativeDir = _nativeDirPath;
         if (string.IsNullOrEmpty(nativeDir))
@@ -132,10 +132,10 @@ internal static class WhisperNativeBootstrap
             return IntPtr.Zero;
 
         string dylibName;
-        if (name.Contains(".dylib"))
-            dylibName = name;
+        if (libraryName.Contains(".dylib"))
+            dylibName = libraryName;
         else
-            dylibName = (name.StartsWith("lib", StringComparison.Ordinal) ? name : "lib" + name) + ".dylib";
+            dylibName = (libraryName.StartsWith("lib", StringComparison.Ordinal) ? libraryName : "lib" + libraryName) + ".dylib";
 
         var fullPath = Path.Combine(nativeDir, dylibName);
         if (File.Exists(fullPath))

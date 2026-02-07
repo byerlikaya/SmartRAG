@@ -11,6 +11,11 @@ public static class ServiceLogMessages
         new EventId(1001, "DocumentUploaded"),
         "Document uploaded successfully: {FileName}");
 
+    public static readonly Action<ILogger, string, Exception> LogDocumentUploadFailed = LoggerMessage.Define<string>(
+        LogLevel.Error,
+        new EventId(1002, "DocumentUploadFailed"),
+        "Document upload failed for {FileName}");
+
     public static readonly Action<ILogger, int, Exception> LogChunkEmbeddingFailed = LoggerMessage.Define<int>(
         LogLevel.Warning,
         new EventId(2002, "ChunkEmbeddingFailed"),

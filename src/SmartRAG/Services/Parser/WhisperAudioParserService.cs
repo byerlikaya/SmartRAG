@@ -17,7 +17,7 @@ public class WhisperAudioParserService : IAudioParserService
     private readonly ILogger<WhisperAudioParserService> _logger;
     private readonly WhisperConfig _config;
     private readonly AudioConversionService _audioConversionService;
-    private WhisperFactory _whisperFactory;
+    private WhisperFactory? _whisperFactory;
     private bool _disposed;
     private bool _whisperUnavailable;
     private bool _whisperUnavailableLogged;
@@ -70,7 +70,6 @@ public class WhisperAudioParserService : IAudioParserService
 
             await EnsureWhisperFactoryInitializedAsync();
 
-            _logger.LogDebug("WhisperAudioParserService: Processing audio file");
             var result = await PerformTranscriptionAsync(audioStream, fileName, language);
 
             _logger.LogInformation("Whisper transcription completed: {Length} characters with {Confidence} confidence",
@@ -328,7 +327,6 @@ public class WhisperAudioParserService : IAudioParserService
                 : Math.Max(1, Environment.ProcessorCount - 1);
 
             var languageToUse = GetLanguageForWhisper(language);
-            _logger.LogDebug("WhisperAudioParserService: Processing with Whisper");
 
             WhisperProcessorBuilder builder;
             try
@@ -396,8 +394,6 @@ public class WhisperAudioParserService : IAudioParserService
                 var skippedLowConfidence = 0;
                 var skippedDuplicates = 0;
 
-                _logger.LogDebug("Starting Whisper processing on WAV stream ({StreamLength} bytes)", waveStream.Length);
-
                 await TranscriptionLock.WaitAsync().ConfigureAwait(false);
                 try
                 {
@@ -412,13 +408,8 @@ public class WhisperAudioParserService : IAudioParserService
                             var segment = enumerator.Current;
                             var segmentText = segment.Text.Trim();
 
-                            if (segmentCount == 0)
-                                _logger.LogInformation("Whisper first segment received, inference progressing.");
-
                             if (segment.Probability < _config.MinConfidenceThreshold)
                             {
-                                _logger.LogDebug("Skipping low-confidence segment (P={Probability}): '{Text}'",
-                                    segment.Probability, segmentText);
                                 skippedLowConfidence++;
                                 continue;
                             }
@@ -428,8 +419,6 @@ public class WhisperAudioParserService : IAudioParserService
                                 duplicateCount++;
                                 if (duplicateCount > 2)
                                 {
-                                    _logger.LogDebug("Skipping duplicate segment (#{Count}): '{Text}'",
-                                        duplicateCount, segmentText);
                                     skippedDuplicates++;
                                     continue;
                                 }
@@ -439,9 +428,6 @@ public class WhisperAudioParserService : IAudioParserService
                                 duplicateCount = 0;
                                 lastSegmentText = segmentText;
                             }
-
-                            _logger.LogDebug("Whisper segment: Start={Start}, End={End}, Text='{Text}', Probability={Probability}",
-                                segment.Start, segment.End, segment.Text, segment.Probability);
 
                             transcriptionText += segment.Text + " ";
                             totalConfidence += segment.Probability;
@@ -470,9 +456,6 @@ public class WhisperAudioParserService : IAudioParserService
                                 Text = segmentText,
                                 Probability = segment.Probability
                             });
-
-                            if (segmentCount > 0 && segmentCount % 10 == 0)
-                                _logger.LogInformation("Whisper progress: {SegmentCount} segments so far.", segmentCount);
                         }
 
                         _logger.LogInformation("Whisper processing completed: {SegmentCount} segments processed, {SkippedLowConf} low-confidence skipped, {SkippedDup} duplicates skipped",
@@ -552,11 +535,9 @@ public class WhisperAudioParserService : IAudioParserService
     {
         if (_disposed)
             return;
-        _whisperFactory.Dispose();
+        _whisperFactory?.Dispose();
         _whisperFactory = null;
-
         _disposed = true;
-
         GC.SuppressFinalize(this);
     }
 }

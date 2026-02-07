@@ -223,17 +223,23 @@ public class DatabaseSchemaAnalyzer : IDatabaseSchemaAnalyzer
 
     private static List<string> FilterTables(List<string> tableNames, DatabaseConnectionConfig config)
     {
-        if (config.IncludedTables.Length > 0)
+        if (tableNames == null)
+            return new List<string>();
+
+        var includedTables = config.IncludedTables ?? Array.Empty<string>();
+        var excludedTables = config.ExcludedTables ?? Array.Empty<string>();
+
+        if (includedTables.Length > 0)
         {
             tableNames = tableNames
-                .Where(t => config.IncludedTables.Contains(t, StringComparer.OrdinalIgnoreCase))
+                .Where(t => includedTables.Contains(t, StringComparer.OrdinalIgnoreCase))
                 .ToList();
         }
 
-        if (config.ExcludedTables.Length > 0)
+        if (excludedTables.Length > 0)
         {
             tableNames = tableNames
-                .Where(t => !config.ExcludedTables.Contains(t, StringComparer.OrdinalIgnoreCase))
+                .Where(t => !excludedTables.Contains(t, StringComparer.OrdinalIgnoreCase))
                 .ToList();
         }
 
