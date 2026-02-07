@@ -26,9 +26,6 @@ public class SmartRagStartupService : IHostedService
     /// </summary>
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("SmartRagStartupService.StartAsync called. EnableMcpSearch: {EnableMcpSearch}, EnableFileWatcher: {EnableFileWatcher}",
-            _options.Features.EnableMcpSearch, _options.Features.EnableFileWatcher);
-
         if (_options.Features.EnableMcpSearch)
         {
             var mcpConnectionManager = _serviceProvider.GetService<IMcpConnectionManager>();

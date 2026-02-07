@@ -678,7 +678,7 @@ public class ImageParserService : IImageParserService, IDisposable
             }
         }
 
-        ServiceLogMessages.LogOcrDataPathNotFound(logger, "No tessdata with eng.traineddata found, using current directory", null);
+        ServiceLogMessages.LogOcrDataPathNotFound(logger, ".", null);
         return ".";
     }
 
