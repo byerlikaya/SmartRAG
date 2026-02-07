@@ -1,3 +1,5 @@
+using SmartRAG.Interfaces.Health;
+using SmartRAG.Models.Health;
 
 namespace SmartRAG.Demo.Handlers.DatabaseHandlers;
 
@@ -9,7 +11,7 @@ public class DatabaseHandler(
     IConfiguration configuration,
     IDatabaseConnectionManager connectionManager,
     IDatabaseSchemaAnalyzer schemaAnalyzer,
-    IServiceProvider? serviceProvider = null,
+    IHealthCheckService healthCheckService,
     ILogger<DatabaseHandler>? logger = null) : IDatabaseHandler
 {
     #region Fields
@@ -18,7 +20,7 @@ public class DatabaseHandler(
     private readonly IConfiguration _configuration = configuration;
     private readonly IDatabaseConnectionManager _connectionManager = connectionManager;
     private readonly IDatabaseSchemaAnalyzer _schemaAnalyzer = schemaAnalyzer;
-    private readonly IServiceProvider? _serviceProvider = serviceProvider;
+    private readonly IHealthCheckService _healthCheckService = healthCheckService;
     private readonly ILogger<DatabaseHandler>? _logger = logger;
 
     #endregion
@@ -29,158 +31,54 @@ public class DatabaseHandler(
     {
         _console.WriteSectionHeader("🔧 System Health Check");
 
-        var healthCheck = new HealthCheckService();
-
         System.Console.WriteLine("Checking all services...");
         System.Console.WriteLine();
 
+        var result = await _healthCheckService.RunFullHealthCheckAsync(CancellationToken.None);
+
         System.Console.WriteLine("AI Services:");
-        
-        AIProvider activeAIProvider = AIProvider.Custom;
-        if (_serviceProvider != null)
-        {
-            try
-            {
-                var options = _serviceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<SmartRagOptions>>().Value;
-                activeAIProvider = options.AIProvider;
-            }
-            catch
-            {
-                activeAIProvider = AIProvider.Custom;
-            }
-        }
-        
-        var aiProviderName = GetAIProviderDisplayName(activeAIProvider);
-        System.Console.Write($"  • {aiProviderName} (AI Provider)... ");
-        
-        HealthStatus aiStatus;
-        switch (activeAIProvider)
-        {
-            case AIProvider.Custom:
-                var ollamaEndpointRaw = _configuration["AI:Custom:Endpoint"] ?? "http://localhost:11434";
-                var ollamaBaseEndpoint = ExtractOllamaBaseEndpoint(ollamaEndpointRaw);
-                aiStatus = await healthCheck.CheckOllamaAsync(ollamaBaseEndpoint);
-                break;
-            case AIProvider.Gemini:
-                var geminiApiKey = _configuration["AI:Gemini:ApiKey"];
-                aiStatus = new HealthStatus
-                {
-                    ServiceName = aiProviderName,
-                    IsHealthy = !string.IsNullOrWhiteSpace(geminiApiKey),
-                    Message = !string.IsNullOrWhiteSpace(geminiApiKey) ? "API key configured" : "API key not configured",
-                    Details = !string.IsNullOrWhiteSpace(geminiApiKey) ? "Endpoint: https://generativelanguage.googleapis.com" : "Please configure AI:Gemini:ApiKey in appsettings"
-                };
-                break;
-            case AIProvider.OpenAI:
-                var openAiApiKey = _configuration["AI:OpenAI:ApiKey"];
-                aiStatus = new HealthStatus
-                {
-                    ServiceName = aiProviderName,
-                    IsHealthy = !string.IsNullOrWhiteSpace(openAiApiKey),
-                    Message = !string.IsNullOrWhiteSpace(openAiApiKey) ? "API key configured" : "API key not configured",
-                    Details = !string.IsNullOrWhiteSpace(openAiApiKey) ? "Endpoint: https://api.openai.com" : "Please configure AI:OpenAI:ApiKey in appsettings"
-                };
-                break;
-            case AIProvider.AzureOpenAI:
-                var azureApiKey = _configuration["AI:AzureOpenAI:ApiKey"];
-                var azureEndpoint = _configuration["AI:AzureOpenAI:Endpoint"];
-                aiStatus = new HealthStatus
-                {
-                    ServiceName = aiProviderName,
-                    IsHealthy = !string.IsNullOrWhiteSpace(azureApiKey) && !string.IsNullOrWhiteSpace(azureEndpoint),
-                    Message = (!string.IsNullOrWhiteSpace(azureApiKey) && !string.IsNullOrWhiteSpace(azureEndpoint)) ? "API key and endpoint configured" : "API key or endpoint not configured",
-                    Details = (!string.IsNullOrWhiteSpace(azureApiKey) && !string.IsNullOrWhiteSpace(azureEndpoint)) ? $"Endpoint: {azureEndpoint}" : "Please configure AI:AzureOpenAI:ApiKey and AI:AzureOpenAI:Endpoint in appsettings"
-                };
-                break;
-            case AIProvider.Anthropic:
-                var anthropicApiKey = _configuration["AI:Anthropic:ApiKey"];
-                aiStatus = new HealthStatus
-                {
-                    ServiceName = aiProviderName,
-                    IsHealthy = !string.IsNullOrWhiteSpace(anthropicApiKey),
-                    Message = !string.IsNullOrWhiteSpace(anthropicApiKey) ? "API key configured" : "API key not configured",
-                    Details = !string.IsNullOrWhiteSpace(anthropicApiKey) ? "Endpoint: https://api.anthropic.com" : "Please configure AI:Anthropic:ApiKey in appsettings"
-                };
-                break;
-            default:
-                aiStatus = new HealthStatus
-                {
-                    ServiceName = aiProviderName,
-                    IsHealthy = false,
-                    Message = "Unknown AI provider",
-                    Details = $"Provider: {activeAIProvider}"
-                };
-                break;
-        }
-        
-        _console.WriteHealthStatus(aiStatus, inline: true);
-        if (!aiStatus.IsHealthy && !string.IsNullOrEmpty(aiStatus.Details))
+        System.Console.Write($"  • {result.Ai.ServiceName} (AI Provider)... ");
+        _console.WriteHealthStatus(result.Ai, inline: true);
+        if (!result.Ai.IsHealthy && !string.IsNullOrEmpty(result.Ai.Details))
         {
             System.Console.ForegroundColor = ConsoleColor.DarkGray;
-            System.Console.WriteLine($"     {aiStatus.Details}");
+            System.Console.WriteLine($"     {result.Ai.Details}");
             System.Console.ResetColor();
         }
 
         System.Console.WriteLine();
         System.Console.WriteLine("Storage Services:");
-        var storageProvider = _configuration["SmartRAG:StorageProvider"] ?? "Redis";
-        if (storageProvider == "Qdrant")
+        if (result.Storage != null)
         {
-            var qdrantHost = _configuration["SmartRAG:Storage:Qdrant:Host"] ?? "http://localhost:6333";
-            System.Console.Write($"  • Qdrant (Vector Store)... ");
-            var qdrantStatus = await healthCheck.CheckQdrantAsync(qdrantHost);
-            _console.WriteHealthStatus(qdrantStatus, inline: true);
-            if (!qdrantStatus.IsHealthy && !string.IsNullOrEmpty(qdrantStatus.Details))
+            System.Console.Write($"  • {result.Storage.ServiceName} (Vector Store)... ");
+            _console.WriteHealthStatus(result.Storage, inline: true);
+            if (!result.Storage.IsHealthy && !string.IsNullOrEmpty(result.Storage.Details))
             {
                 System.Console.ForegroundColor = ConsoleColor.DarkGray;
-                System.Console.WriteLine($"     {qdrantStatus.Details}");
+                System.Console.WriteLine($"     {result.Storage.Details}");
                 System.Console.ResetColor();
             }
         }
 
-        var redisConnection = _configuration["SmartRAG:Storage:Redis:ConnectionString"] ?? 
-                              _configuration["ConnectionStrings:Redis"] ?? 
-                              "localhost:6379";
-        System.Console.Write($"  • Redis (Cache/Conversation History)... ");
-        var redisStatus = await healthCheck.CheckRedisAsync(redisConnection);
-        _console.WriteHealthStatus(redisStatus, inline: true);
-        if (!redisStatus.IsHealthy && !string.IsNullOrEmpty(redisStatus.Details))
+        System.Console.Write($"  • {result.Conversation.ServiceName} (Cache/Conversation History)... ");
+        _console.WriteHealthStatus(result.Conversation, inline: true);
+        if (!result.Conversation.IsHealthy && !string.IsNullOrEmpty(result.Conversation.Details))
         {
             System.Console.ForegroundColor = ConsoleColor.DarkGray;
-            System.Console.WriteLine($"     {redisStatus.Details}");
+            System.Console.WriteLine($"     {result.Conversation.Details}");
             System.Console.ResetColor();
         }
 
         System.Console.WriteLine();
         System.Console.WriteLine("Databases:");
-
-        var connections = await _connectionManager.GetAllConnectionsAsync(CancellationToken.None);
-        foreach (var conn in connections)
+        foreach (var dbStatus in result.Databases)
         {
-            System.Console.Write($"  • {conn.Name} ({conn.DatabaseType})... ");
-
-            HealthStatus? dbStatus = null;
-            try
+            System.Console.Write($"  • {dbStatus.ServiceName}... ");
+            _console.WriteHealthStatus(dbStatus, inline: true);
+            if (!dbStatus.IsHealthy && !string.IsNullOrEmpty(dbStatus.Details))
             {
-                dbStatus = conn.DatabaseType switch
-                {
-                    DatabaseType.SQLite => await healthCheck.CheckSqliteAsync(conn.ConnectionString),
-                    DatabaseType.SqlServer => await healthCheck.CheckSqlServerAsync(conn.ConnectionString),
-                    DatabaseType.MySQL => await healthCheck.CheckMySqlAsync(conn.ConnectionString),
-                    DatabaseType.PostgreSQL => await healthCheck.CheckPostgreSqlAsync(conn.ConnectionString),
-                    _ => null
-                };
-
-                if (dbStatus != null)
-                {
-                    _console.WriteHealthStatus(dbStatus, inline: true);
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger?.LogError(ex, "Error checking database health for {DatabaseName}", conn.Name);
-                System.Console.ForegroundColor = ConsoleColor.Red;
-                System.Console.WriteLine("✗ Error");
+                System.Console.ForegroundColor = ConsoleColor.DarkGray;
+                System.Console.WriteLine($"     {dbStatus.Details}");
                 System.Console.ResetColor();
             }
         }
@@ -696,52 +594,6 @@ public class DatabaseHandler(
             System.Text.RegularExpressions.RegexOptions.IgnoreCase);
 
         return match.Success ? match.Groups[1].Value.Trim() : null;
-    }
-
-    #endregion
-
-    #region Private Helper Methods
-
-    /// <summary>
-    /// Extracts base endpoint URL from Ollama endpoint configuration
-    /// Example: http://localhost:11434/v1/chat/completions -> http://localhost:11434
-    /// </summary>
-    private static string ExtractOllamaBaseEndpoint(string endpoint)
-    {
-        if (string.IsNullOrWhiteSpace(endpoint))
-        {
-            return "http://localhost:11434";
-        }
-
-        try
-        {
-            var uri = new Uri(endpoint);
-            return $"{uri.Scheme}://{uri.Authority}";
-        }
-        catch
-        {
-            if (endpoint.Contains("localhost:11434"))
-            {
-                return "http://localhost:11434";
-            }
-            return endpoint;
-        }
-    }
-    
-    /// <summary>
-    /// Gets display name for AI provider
-    /// </summary>
-    private static string GetAIProviderDisplayName(AIProvider provider)
-    {
-        return provider switch
-        {
-            AIProvider.Custom => "Ollama",
-            AIProvider.Gemini => "Google Gemini",
-            AIProvider.OpenAI => "OpenAI GPT",
-            AIProvider.AzureOpenAI => "Azure OpenAI",
-            AIProvider.Anthropic => "Anthropic Claude",
-            _ => provider.ToString()
-        };
     }
 
     #endregion

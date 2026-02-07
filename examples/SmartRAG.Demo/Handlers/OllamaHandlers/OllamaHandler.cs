@@ -1,3 +1,5 @@
+using SmartRAG.Interfaces.Health;
+using SmartRAG.Models.Health;
 
 namespace SmartRAG.Demo.Handlers.OllamaHandlers;
 
@@ -6,11 +8,13 @@ namespace SmartRAG.Demo.Handlers.OllamaHandlers;
 /// </summary>
 public class OllamaHandler(
     IConsoleService console,
+    IHealthCheckService healthCheckService,
     ILogger<OllamaHandler>? logger = null) : IOllamaHandler
 {
     #region Fields
 
     private readonly IConsoleService _console = console;
+    private readonly IHealthCheckService _healthCheckService = healthCheckService;
     private readonly ILogger<OllamaHandler>? _logger = logger;
 
     #endregion
@@ -129,8 +133,6 @@ public class OllamaHandler(
     {
         _console.WriteSectionHeader("📦 Test Vector Store");
 
-        var healthCheck = new HealthCheckService();
-
         System.Console.WriteLine($"Testing {storageProvider} vector store...");
         System.Console.WriteLine();
 
@@ -140,19 +142,23 @@ public class OllamaHandler(
             return;
         }
 
-        HealthStatus status;
-        if (provider == StorageProvider.Qdrant)
-        {
-            status = await healthCheck.CheckQdrantAsync();
-        }
-        else if (provider == StorageProvider.Redis)
-        {
-            status = await healthCheck.CheckRedisAsync();
-        }
-        else
+        if (provider != StorageProvider.Qdrant && provider != StorageProvider.Redis)
         {
             _console.WriteWarning($"{storageProvider} does not require health check (file-based or in-memory)");
             return;
+        }
+
+        var result = await _healthCheckService.RunFullHealthCheckAsync(CancellationToken.None);
+        var status = provider == StorageProvider.Qdrant ? result.Storage : result.Conversation;
+        if (status == null)
+        {
+            status = new HealthStatus
+            {
+                ServiceName = provider.ToString(),
+                IsHealthy = false,
+                Message = "Service not configured",
+                Details = provider == StorageProvider.Qdrant ? "Storage provider is not Qdrant" : "Conversation storage not available"
+            };
         }
 
         if (status.IsHealthy)

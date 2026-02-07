@@ -30,6 +30,7 @@ global using SmartRAG.Extensions;
 global using SmartRAG.Interfaces;
 global using SmartRAG.Interfaces.AI;
 global using SmartRAG.Interfaces.Database;
+global using SmartRAG.Interfaces.Health;
 global using SmartRAG.Interfaces.Document;
 global using SmartRAG.Interfaces.Mcp;
 global using SmartRAG.Interfaces.Parser;

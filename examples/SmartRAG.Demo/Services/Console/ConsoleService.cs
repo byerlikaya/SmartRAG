@@ -1,3 +1,4 @@
+using SmartRAG.Models.Health;
 
 namespace SmartRAG.Demo.Services.Console;
 
