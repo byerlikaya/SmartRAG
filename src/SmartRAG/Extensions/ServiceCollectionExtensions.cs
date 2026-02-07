@@ -12,6 +12,8 @@ using SmartRAG.Services.Support;
 using SmartRAG.Services.Mcp;
 using SmartRAG.Services.FileWatcher;
 using SmartRAG.Services.Startup;
+using SmartRAG.Interfaces.Health;
+using SmartRAG.Services.Health;
 
 namespace SmartRAG.Extensions;
 
@@ -40,6 +42,7 @@ public static class ServiceCollectionExtensions
         RegisterCoreServices(services);
         RegisterDocumentServices(services);
         RegisterDatabaseServices(services);
+        RegisterHealthServices(services);
         RegisterParserServices(services, options);
         RegisterFeatureBasedServices(services, options);
         RegisterStorageServices(services, configuration);
@@ -117,6 +120,11 @@ public static class ServiceCollectionExtensions
         configureOptions(options);
 
         return options;
+    }
+
+    private static void RegisterHealthServices(IServiceCollection services)
+    {
+        services.AddScoped<IHealthCheckService, HealthCheckService>();
     }
 
     private static void RegisterCoreServices(IServiceCollection services)
@@ -244,8 +252,9 @@ public static class ServiceCollectionExtensions
     {
         var enableMcp = options.Features.EnableMcpSearch;
         var enableFileWatcher = options.Features.EnableFileWatcher;
+        var hasDatabaseConnections = options.DatabaseConnections?.Count > 0;
 
-        if (enableMcp || enableFileWatcher)
+        if (enableMcp || enableFileWatcher || hasDatabaseConnections)
         {
             services.AddHostedService<SmartRagStartupService>();
         }
