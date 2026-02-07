@@ -146,7 +146,7 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
         }
         var sessionId = await _conversationManager.GetOrCreateSessionIdAsync(cancellationToken);
         var conversationHistory = await _conversationManager.GetConversationHistoryAsync(sessionId, cancellationToken);
-        return await QueryIntelligenceCoreAsync(query, maxResults, sessionId, conversationHistory, cancellationToken);
+        return await QueryIntelligenceAsync(query, maxResults, sessionId, conversationHistory, cancellationToken);
     }
 
     /// <summary>
@@ -158,16 +158,6 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
         string sessionId,
         string conversationHistory,
         CancellationToken cancellationToken = default)
-    {
-        return await QueryIntelligenceCoreAsync(query, maxResults, sessionId, conversationHistory, cancellationToken);
-    }
-
-    private async Task<RagResponse> QueryIntelligenceCoreAsync(
-        string query,
-        int maxResults,
-        string sessionId,
-        string conversationHistory,
-        CancellationToken cancellationToken)
     {
         var trimmedQuery = query.Trim();
         var hasCommand = _queryIntentClassifier.TryParseCommand(trimmedQuery, out var commandType, out var commandPayload);
@@ -236,21 +226,21 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
             // If answer is already provided by the intent classifier, use it directly to avoid redundant LLM call
             if (string.IsNullOrWhiteSpace(intentAnalysis.Answer))
                 return await HandleConversationQueryAsync(query, sessionId, conversationHistory, cancellationToken);
-          
+
             await _conversationManager.AddToConversationAsync(sessionId, query, intentAnalysis.Answer, cancellationToken);
             return _responseBuilder.CreateRagResponse(query, intentAnalysis.Answer, new List<SearchSource>());
         }
 
-        RagResponse? response = null;
+        RagResponse? response;
         var searchMetadata = new SearchMetadata();
 
         var queryTokens = intentAnalysis.Tokens.ToList();
 
         cancellationToken.ThrowIfCancellationRequested();
-        var (CanAnswer, Results) = await CanAnswerFromDocumentsAsync(query, searchOptions, queryTokens, cancellationToken);
+        var (canAnswer, results) = await CanAnswerFromDocumentsAsync(query, searchOptions, queryTokens, cancellationToken);
 
         QueryIntent? preAnalyzedQueryIntent = null;
-        
+
         if (searchOptions.EnableDatabaseSearch)
         {
             preAnalyzedQueryIntent = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(query, cancellationToken);
@@ -259,35 +249,30 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
         if (searchOptions.EnableDocumentSearch)
         {
             searchMetadata.DocumentSearchPerformed = true;
-            searchMetadata.DocumentChunksFound = Results.Count;
+            searchMetadata.DocumentChunksFound = results.Count;
         }
 
-        var topScore = Results.Count > 0 ? Results.Max(r => r.RelevanceScore ?? 0) : 0;
+        var topScore = results.Count > 0 ? results.Max(r => r.RelevanceScore ?? 0) : 0;
         var hasStrongDocumentMatch = topScore > StrongDocumentMatchThreshold;
 
         var hasHighConfidenceForSkip = preAnalyzedQueryIntent?.Confidence > SkipEagerDocumentAnswerConfidenceThreshold;
         var skipEagerDocumentAnswer = !hasStrongDocumentMatch && hasHighConfidenceForSkip;
 
         RagResponse? earlyDocumentResponse = null;
-        if (searchOptions.EnableDocumentSearch && CanAnswer && Results.Count > 0 && !skipEagerDocumentAnswer)
+        if (searchOptions.EnableDocumentSearch && canAnswer && results.Count > 0 && !skipEagerDocumentAnswer)
         {
-            var docRequest = CreateStrategyRequest(query, maxResults, conversationHistory, CanAnswer, searchOptions, queryTokens, preCalculatedResults: Results);
+            var docRequest = CreateStrategyRequest(new StrategyRequestParams(query, maxResults, conversationHistory, canAnswer, searchOptions, queryTokens, PreCalculatedResults: results));
             earlyDocumentResponse = await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(docRequest, cancellationToken);
 
-            QueryIntent? queryIntentForCheck = preAnalyzedQueryIntent;
-            if (queryIntentForCheck == null && searchOptions.EnableDatabaseSearch)
+            var queryIntentForCheck = preAnalyzedQueryIntent;
+            if (queryIntentForCheck == null && searchOptions.EnableDatabaseSearch || queryIntentForCheck != null &&
+                queryIntentForCheck.DatabaseQueries.Count == 0 &&
+                searchOptions.EnableDatabaseSearch)
             {
                 queryIntentForCheck = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(query, cancellationToken);
                 preAnalyzedQueryIntent = queryIntentForCheck;
             }
-            else if (queryIntentForCheck != null && 
-                    (queryIntentForCheck.DatabaseQueries == null || queryIntentForCheck.DatabaseQueries.Count == 0) && 
-                    searchOptions.EnableDatabaseSearch)
-            {
-                queryIntentForCheck = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(query, cancellationToken);
-                preAnalyzedQueryIntent = queryIntentForCheck;
-            }
-            
+
             var indicatesMissingData = _responseBuilder.IndicatesMissingData(
                 earlyDocumentResponse.Answer,
                 query,
@@ -302,8 +287,8 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
 
             var documentSourcesWithContent = earlyDocumentResponse.Sources?
                 .Where(s => SearchSourceHelper.HasContentBearingSource(s) && !string.IsNullOrWhiteSpace(s.RelevantContent))
-                .ToList() ?? new List<SearchSource>();
-            var totalSourceContentLength = documentSourcesWithContent.Sum(s => (s.RelevantContent?.Length ?? 0));
+                .ToList();
+            var totalSourceContentLength = documentSourcesWithContent.Sum(s => s.RelevantContent.Length);
 
             if (documentSourcesWithContent.Count > 0 && totalSourceContentLength >= 50)
             {
@@ -313,7 +298,7 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
                 if (!string.IsNullOrWhiteSpace(retryAnswer) &&
                     !_responseBuilder.IndicatesMissingData(retryAnswer, query, earlyDocumentResponse.Sources))
                 {
-                    var retryResponse = _responseBuilder.CreateRagResponse(query, retryAnswer.Trim(), earlyDocumentResponse.Sources ?? new List<SearchSource>(), searchMetadata);
+                    var retryResponse = _responseBuilder.CreateRagResponse(query, retryAnswer.Trim(), earlyDocumentResponse.Sources, searchMetadata);
                     await _conversationManager.AddToConversationAsync(sessionId, query, retryResponse.Answer, cancellationToken);
                     return retryResponse;
                 }
@@ -325,7 +310,7 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
                 RagResponse fallbackResponse;
                 if (hasNoDocumentContext)
                 {
-                    fallbackResponse = _responseBuilder.CreateRagResponse(query, SmartRAG.Helpers.RagMessages.NoDocumentContext, new List<SearchSource>(), searchMetadata);
+                    fallbackResponse = _responseBuilder.CreateRagResponse(query, RagMessages.NoDocumentContext, new List<SearchSource>(), searchMetadata);
                 }
                 else
                 {
@@ -341,37 +326,30 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
         {
             try
             {
-                QueryIntent? queryIntent = preAnalyzedQueryIntent;
-                if (queryIntent == null)
-                {
-                    queryIntent = await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(query);
-                }
+                var queryIntent = preAnalyzedQueryIntent ?? await _queryIntentAnalyzer.AnalyzeQueryIntentAsync(query, cancellationToken);
 
-                var confidence = queryIntent?.Confidence ?? 0.0;
-                var hasDatabaseQueries = queryIntent?.DatabaseQueries != null && queryIntent.DatabaseQueries.Count > 0;
+                var confidence = queryIntent.Confidence;
+                var hasDatabaseQueries = queryIntent.DatabaseQueries.Count > 0;
 
-                var strategy = _strategyOrchestrator.DetermineQueryStrategy(confidence, hasDatabaseQueries, CanAnswer);
+                var strategy = _strategyOrchestrator.DetermineQueryStrategy(confidence, hasDatabaseQueries, canAnswer);
 
-                bool? hasDatabaseQueriesForRequest = strategy == QueryStrategy.Hybrid ? (bool?)hasDatabaseQueries : null;
-                
-                var strategyRequest = CreateStrategyRequest(
-                    query, maxResults, conversationHistory, CanAnswer, searchOptions, queryTokens,
-                    queryIntent: queryIntent,
-                    preCalculatedResults: Results,
-                    hasDatabaseQueries: hasDatabaseQueriesForRequest);
+                var hasDatabaseQueriesForRequest = strategy == QueryStrategy.Hybrid ? (bool?)hasDatabaseQueries : null;
+
+                var strategyRequest = CreateStrategyRequest(new StrategyRequestParams(query, maxResults, conversationHistory, canAnswer, searchOptions, queryTokens,
+                    queryIntent, results, hasDatabaseQueriesForRequest));
 
                 response = strategy switch
                 {
-                    QueryStrategy.DatabaseOnly => await _strategyExecutor.ExecuteDatabaseOnlyStrategyAsync(strategyRequest),
-                    QueryStrategy.DocumentOnly => earlyDocumentResponse ?? await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(strategyRequest),
-                    QueryStrategy.Hybrid => await _strategyExecutor.ExecuteHybridStrategyAsync(strategyRequest),
-                    _ => earlyDocumentResponse ?? await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(strategyRequest)
+                    QueryStrategy.DatabaseOnly => await _strategyExecutor.ExecuteDatabaseOnlyStrategyAsync(strategyRequest, cancellationToken),
+                    QueryStrategy.DocumentOnly => earlyDocumentResponse ?? await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(strategyRequest, cancellationToken),
+                    QueryStrategy.Hybrid => await _strategyExecutor.ExecuteHybridStrategyAsync(strategyRequest, cancellationToken),
+                    _ => earlyDocumentResponse ?? await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(strategyRequest, cancellationToken)
                 };
 
-                if (strategy == QueryStrategy.DatabaseOnly || strategy == QueryStrategy.Hybrid)
+                if (strategy is QueryStrategy.DatabaseOnly or QueryStrategy.Hybrid)
                 {
                     searchMetadata.DatabaseSearchPerformed = true;
-                    searchMetadata.DatabaseResultsFound = response.Sources?.Count(s => s.SourceType == "Database") ?? 0;
+                    searchMetadata.DatabaseResultsFound = response.Sources.Count(s => s.SourceType == "Database");
                 }
             }
             catch (Exception ex)
@@ -380,12 +358,12 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
                 response = earlyDocumentResponse;
                 if (response == null)
                 {
-                    var docRequest = CreateStrategyRequest(query, maxResults, conversationHistory, CanAnswer, searchOptions, queryTokens, preCalculatedResults: Results);
-                    response = await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(docRequest);
+                    var docRequest = CreateStrategyRequest(new StrategyRequestParams(query, maxResults, conversationHistory, canAnswer, searchOptions, queryTokens, PreCalculatedResults: results));
+                    response = await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(docRequest, cancellationToken);
                 }
             }
 
-            if (response != null && response.SearchMetadata == null)
+            if (response is { SearchMetadata: null })
             {
                 response.SearchMetadata = searchMetadata;
             }
@@ -394,13 +372,8 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
         {
             if (searchOptions.EnableDocumentSearch)
             {
-                var docRequest = CreateStrategyRequest(query, maxResults, conversationHistory, CanAnswer, searchOptions, queryTokens, preCalculatedResults: Results);
-                response = await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(docRequest);
-
-                if (response != null && response.SearchMetadata == null)
-                {
-                    response.SearchMetadata = searchMetadata;
-                }
+                var docRequest = CreateStrategyRequest(new StrategyRequestParams(query, maxResults, conversationHistory, canAnswer, searchOptions, queryTokens, PreCalculatedResults: results));
+                response = await _strategyExecutor.ExecuteDocumentOnlyStrategyAsync(docRequest, cancellationToken);
             }
             else
             {
@@ -431,7 +404,7 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
             !string.IsNullOrWhiteSpace(response.Answer);
 
         var hasDocumentAnswer = response != null && !string.IsNullOrWhiteSpace(response.Answer) &&
-            (response.Sources?.Any(s => SearchSourceHelper.HasContentBearingSource(s)) ?? false);
+            (response.Sources?.Any(SearchSourceHelper.HasContentBearingSource) ?? false);
 
         var documentAnswerIsSufficient = hasDocumentAnswer && response != null &&
             !_responseBuilder!.IndicatesMissingData(response.Answer, query);
@@ -451,17 +424,14 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
 
         if (response != null)
         {
-            if (response.SearchMetadata == null)
-            {
-                response.SearchMetadata = searchMetadata;
-            }
+            response.SearchMetadata ??= searchMetadata;
 
             await _conversationManager.AddToConversationAsync(sessionId, query, response.Answer, cancellationToken);
 
             return response;
         }
 
-        var finalFallbackResponse = _responseBuilder!.CreateRagResponse(query, SmartRAG.Helpers.RagMessages.NoDocumentContext, new List<SearchSource>(), searchMetadata);
+        var finalFallbackResponse = _responseBuilder!.CreateRagResponse(query, RagMessages.NoDocumentContext, new List<SearchSource>(), searchMetadata);
         await _conversationManager.AddToConversationAsync(sessionId, query, finalFallbackResponse.Answer, cancellationToken);
         return finalFallbackResponse;
     }
@@ -488,14 +458,14 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
         foreach (var (pattern, factory) in tagHandlers)
         {
             var match = Regex.Match(cleanedQuery, CreateTagPatternWithOptionalPunctuation(pattern), TagRegexOptions);
-            if (match.Success)
-            {
-                var adjustedOptions = factory(options);
-                if (pattern == McpTagPattern)
-                    adjustedOptions.EnableMcpSearch = true;
-                cleanedQuery = cleanedQuery.Substring(0, match.Index).TrimEnd();
-                return (cleanedQuery, adjustedOptions);
-            }
+            if (!match.Success)
+                continue;
+
+            var adjustedOptions = factory(options);
+            if (pattern == McpTagPattern)
+                adjustedOptions.EnableMcpSearch = true;
+            cleanedQuery = cleanedQuery.Substring(0, match.Index).TrimEnd();
+            return (cleanedQuery, adjustedOptions);
         }
 
         return (cleanedQuery, options);
@@ -515,13 +485,14 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
     /// </summary>
     /// <param name="request">Request containing query parameters</param>
     /// <param name="cancellationToken">Token to cancel the operation</param>
+    /// <exception cref="ArgumentException"></exception>
     /// <returns>RAG response with answer and sources</returns>
-    public async Task<RagResponse> GenerateBasicRagAnswerAsync(Models.RequestResponse.GenerateRagAnswerRequest request, CancellationToken cancellationToken = default)
+    public async Task<RagResponse> GenerateBasicRagAnswerAsync(GenerateRagAnswerRequest request, CancellationToken cancellationToken = default)
     {
         if (request == null)
             throw new ArgumentNullException(nameof(request));
 
-        var trimmedQuery = request.Query?.Trim() ?? string.Empty;
+        var trimmedQuery = request.Query.Trim();
 
         var filenameMatchWords = QueryTokenizer.GetWordsForPhraseExtraction(trimmedQuery).Where(w => w.Length >= 4).ToList();
         var allDocsForFilename = await _documentService.GetAllDocumentsFilteredAsync(request.Options, cancellationToken);
@@ -554,21 +525,21 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
             {
                 var conversationAnswer = !string.IsNullOrWhiteSpace(intentAnalysis.Answer)
                     ? intentAnalysis.Answer
-                    : await _conversationManager.HandleGeneralConversationAsync(trimmedQuery, request.ConversationHistory ?? string.Empty, cancellationToken).ConfigureAwait(false);
+                    : await _conversationManager.HandleGeneralConversationAsync(trimmedQuery, request.ConversationHistory, cancellationToken).ConfigureAwait(false);
                 return _responseBuilder.CreateRagResponse(trimmedQuery, conversationAnswer ?? string.Empty, new List<SearchSource>());
             }
         }
 
-        var (cleanedForTags, tagOptions) = ParseSourceTags(request.Query ?? string.Empty);
+        var (cleanedForTags, tagOptions) = ParseSourceTags(request.Query);
         if (tagOptions.EnableMcpSearch && !tagOptions.EnableDocumentSearch && !string.IsNullOrWhiteSpace(cleanedForTags))
         {
             var meta = new SearchMetadata();
-            var mcpResponse = await ExecuteMcpSearchAsync(cleanedForTags, request.MaxResults, request.ConversationHistory ?? string.Empty, meta, null, cancellationToken).ConfigureAwait(false);
+            var mcpResponse = await ExecuteMcpSearchAsync(cleanedForTags, request.MaxResults, request.ConversationHistory, meta, null, cancellationToken).ConfigureAwait(false);
             if (mcpResponse != null)
                 return mcpResponse;
         }
 
-        var queryForSearch = request.Query ?? string.Empty;
+        var queryForSearch = request.Query;
         var searchMaxResults = _queryAnalysis.DetermineInitialSearchCount(queryForSearch, request.MaxResults);
 
         List<DocumentChunk> chunks;
@@ -577,14 +548,14 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
 
         DocumentChunk? preservedChunk0 = null;
         List<Entities.Document>? allDocuments = null;
-        SearchOptions? effectiveOptions = request.Options;
+        var effectiveOptions = request.Options;
 
-        if (request.PreCalculatedResults != null && request.PreCalculatedResults.Count > 0)
+        if (request.PreCalculatedResults is { Count: > 0 })
         {
             var filteredPreCalculatedResults = request.PreCalculatedResults;
             if (request.Options != null)
             {
-                allDocuments = await _documentService.GetAllDocumentsFilteredAsync(request.Options);
+                allDocuments = await _documentService.GetAllDocumentsFilteredAsync(request.Options, cancellationToken);
                 var allowedDocIds = new HashSet<Guid>(allDocuments.Select(d => d.Id));
                 var optionFiltered = request.PreCalculatedResults.Where(c => allowedDocIds.Contains(c.DocumentId)).ToList();
                 if (optionFiltered.Count > 0)
@@ -609,9 +580,9 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
             chunks = searchResults.ToList();
 
             var previousUserQuery = GetLastUserQueryDistinctFrom(request.ConversationHistory, cleanedQuery);
-            const int MinSubstantiveQueryLength = 12;
+            const int minSubstantiveQueryLength = 12;
             var isSubstantivePreviousQuery = !string.IsNullOrWhiteSpace(previousUserQuery) &&
-                previousUserQuery.Trim().Length >= MinSubstantiveQueryLength &&
+                previousUserQuery.Trim().Length >= minSubstantiveQueryLength &&
                 !string.Equals(previousUserQuery.Trim(), cleanedQuery.Trim(), StringComparison.OrdinalIgnoreCase);
 
             if (isSubstantivePreviousQuery)
@@ -624,15 +595,12 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
                     cancellationToken);
                 var currentIds = new HashSet<Guid>(chunks.Select(c => c.Id));
                 var maxScore = chunks.Count > 0 ? chunks.Max(c => c.RelevanceScore ?? 0.0) : 0.0;
-                foreach (var c in extraResults)
+                foreach (var c in extraResults.Where(c => !currentIds.Contains(c.Id)))
                 {
-                    if (!currentIds.Contains(c.Id))
-                    {
-                        c.RelevanceScore = maxScore + PreviousQueryChunkScoreBoost;
-                        previousQueryChunkIds.Add(c.Id);
-                        chunks.Add(c);
-                        currentIds.Add(c.Id);
-                    }
+                    c.RelevanceScore = maxScore + PreviousQueryChunkScoreBoost;
+                    previousQueryChunkIds.Add(c.Id);
+                    chunks.Add(c);
+                    currentIds.Add(c.Id);
                 }
             }
 
@@ -754,7 +722,7 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
                     .SelectMany(d => scoredChunks.Where(c => c.DocumentId == d.Id))
             ).ToList();
 
-            if (preservedChunk0 != null && !allChunks.Any(c => c.Id == preservedChunk0.Id))
+            if (preservedChunk0 != null && allChunks.All(c => c.Id != preservedChunk0.Id))
             {
                 allChunks.Insert(0, preservedChunk0);
             }
@@ -795,19 +763,20 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
                     entityFileNameChunks = entityFileNameChunks.Concat(tailChunks).ToList();
                     entityMatchedDocIds = entityMatchedDocIds.Union(docIdsFromFilenameMatch).ToHashSet();
                 }
-                
+
                 // For entity-matched documents, ensure longest header chunk (ChunkIndex 0) is included
                 var entityHeaderChunks = new List<DocumentChunk>();
+
                 foreach (var docId in entityMatchedDocIds)
                 {
                     var longestHeader = allChunks
                         .Where(c => c.DocumentId == docId && c.ChunkIndex == 0)
-                        .OrderByDescending(c => c.Content?.Length ?? 0)
+                        .OrderByDescending(c => c.Content.Length)
                         .FirstOrDefault();
                     if (longestHeader != null)
                         entityHeaderChunks.Add(longestHeader);
                 }
-                
+
                 var existingChunkIds = new HashSet<Guid>(entityFileNameChunks.Concat(chunks).Concat(entityHeaderChunks).Select(c => c.Id));
                 var overlapChunks = new List<DocumentChunk>();
                 if (entityMatchedDocIds.Count > 0 && words.Count > 0)
@@ -842,11 +811,10 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
 
                 foreach (var chunk in entityHeaderChunks.Concat(overlapChunks).Concat(entityFileNameChunks).Concat(queryWordsOnly).Concat(numberedListWithQueryWords).Concat(numberedListOnly).Concat(chunks))
                 {
-                    if (!seenIds.Contains(chunk.Id) && mergedChunks.Count < searchMaxResults * 4)
-                    {
-                        mergedChunks.Add(chunk);
-                        seenIds.Add(chunk.Id);
-                    }
+                    if (seenIds.Contains(chunk.Id) || mergedChunks.Count >= searchMaxResults * 4)
+                        continue;
+                    mergedChunks.Add(chunk);
+                    seenIds.Add(chunk.Id);
                 }
 
                 mergedChunks = _chunkPrioritizer.MergeChunksWithPreservedChunk0(mergedChunks, preservedChunk0);
@@ -891,7 +859,7 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
                 var newEntityChunks = entityChunks.Where(c => !existingIds.Contains(c.Id)).ToList();
                 if (newEntityChunks.Count > 0)
                 {
-                    var entityChunkScore = 150.0;
+                    const double entityChunkScore = 150.0;
                     foreach (var c in newEntityChunks)
                     {
                         c.RelevanceScore = entityChunkScore;
@@ -906,7 +874,7 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
 
         chunks = _chunkPrioritizer.MergeChunksWithPreservedChunk0(chunks, preservedChunk0);
 
-        if (entityChunkIdsFromComprehensive != null && entityChunkIdsFromComprehensive.Count > 0)
+        if (entityChunkIdsFromComprehensive is { Count: > 0 })
         {
             foreach (var c in chunks.Where(c => entityChunkIdsFromComprehensive.Contains(c.Id)))
             {
@@ -975,9 +943,9 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
                 // Expanded chunks are context-only and should have much lower scores than original search results
                 foreach (var chunk in expandedChunks)
                 {
-                    if (originalScores.ContainsKey(chunk.Id))
+                    if (originalScores.TryGetValue(chunk.Id, out var score))
                     {
-                        chunk.RelevanceScore = originalScores[chunk.Id];
+                        chunk.RelevanceScore = score;
                     }
                     else
                     {
@@ -992,7 +960,7 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
                 }
 
                 var relevantNotExpanded = relevantDocumentChunks
-                    .Where(c => !expandedChunks.Any(e => e.Id == c.Id))
+                    .Where(c => expandedChunks.All(e => e.Id != c.Id))
                     .OrderByDescending(c => c.RelevanceScore ?? 0.0)
                     .ThenBy(c => c.ChunkIndex)
                     .ToList();
@@ -1171,14 +1139,13 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
             return false;
         var fnTokens = fn.Split(new[] { ' ', '.', '-', '_', '(', ')' }, StringSplitOptions.RemoveEmptyEntries)
             .Where(t => t.Length >= 4).ToHashSet();
-        foreach (var w in queryWords)
+        foreach (var wl in queryWords.Select(w => w.ToLowerInvariant()))
         {
-            var wl = w.ToLowerInvariant();
             if (fn.IndexOf(wl, StringComparison.OrdinalIgnoreCase) >= 0)
                 return true;
             for (var len = 4; len < wl.Length; len++)
             {
-                var prefix = wl.Substring(0, len);
+                var prefix = wl[..len];
                 if (fnTokens.Contains(prefix))
                     return true;
             }
@@ -1186,32 +1153,34 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
         return false;
     }
 
-    private static bool Chunk0IsQueryRelevant(DocumentChunk chunk0, List<string> queryTokens, List<string>? potentialNames = null)
+    private static bool Chunk0IsQueryRelevant(DocumentChunk? chunk0, List<string>? queryTokens, List<string>? potentialNames = null)
     {
         if (chunk0 == null)
             return false;
+
         if (queryTokens == null || queryTokens.Count == 0)
             return true;
-        var searchableText = string.Concat(chunk0.Content ?? string.Empty, " ", chunk0.FileName ?? string.Empty).ToLowerInvariant();
+
+        var searchableText = string.Concat(chunk0.Content, " ", chunk0.FileName).ToLowerInvariant();
+
         if (string.IsNullOrWhiteSpace(searchableText.Trim()))
             return false;
-        if (potentialNames != null && potentialNames.Count >= 2)
+
+        if (potentialNames is { Count: >= 2 })
         {
             var entityPhrase = string.Join(" ", potentialNames.Select(n => n.ToLowerInvariant()));
             if (searchableText.Contains(entityPhrase))
                 return true;
         }
         var significantWords = queryTokens.Where(w => w.Length >= 4).ToList();
-        if (significantWords.Count == 0)
-            return true;
-        return significantWords.Any(w => searchableText.IndexOf(w, StringComparison.OrdinalIgnoreCase) >= 0);
+        return significantWords.Count == 0 || significantWords.Any(w => searchableText.IndexOf(w, StringComparison.OrdinalIgnoreCase) >= 0);
     }
 
-    private static string? GetLastUserQueryDistinctFrom(string? conversationHistory, string currentQuery)
+    private static string? GetLastUserQueryDistinctFrom(string? conversationHistory, string? currentQuery)
     {
         if (string.IsNullOrWhiteSpace(conversationHistory))
             return null;
-        var current = currentQuery?.Trim() ?? string.Empty;
+        var current = currentQuery?.Trim();
         const string userPrefix = "User: ";
         var lines = conversationHistory.Split('\n');
         for (var i = lines.Length - 1; i >= 0; i--)
@@ -1219,7 +1188,7 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
             var line = lines[i];
             if (!line.StartsWith(userPrefix, StringComparison.OrdinalIgnoreCase))
                 continue;
-            var question = line.Substring(userPrefix.Length).Trim();
+            var question = line[userPrefix.Length..].Trim();
             if (string.IsNullOrWhiteSpace(question))
                 continue;
             if (!string.Equals(question, current, StringComparison.OrdinalIgnoreCase))
@@ -1239,7 +1208,7 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
             var line = lines[i];
             if (!line.StartsWith(assistantPrefix, StringComparison.OrdinalIgnoreCase))
                 continue;
-            var answer = line.Substring(assistantPrefix.Length).Trim();
+            var answer = line[assistantPrefix.Length..].Trim();
             return string.IsNullOrWhiteSpace(answer) ? null : answer;
         }
         return null;
@@ -1252,23 +1221,13 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
     /// </summary>
     private async Task<List<Entities.Document>> EnsureAllDocumentsLoadedAsync(List<Entities.Document>? allDocuments, SearchOptions? options, CancellationToken cancellationToken = default)
     {
-        if (allDocuments == null)
-        {
-            allDocuments = await _documentService.GetAllDocumentsFilteredAsync(options, cancellationToken);
-        }
+        allDocuments ??= await _documentService.GetAllDocumentsFilteredAsync(options, cancellationToken);
 
         var loaded = new List<Entities.Document>();
         foreach (var doc in allDocuments)
         {
             var fullDoc = await _documentService.GetDocumentAsync(doc.Id, cancellationToken);
-            if (fullDoc != null && fullDoc.Chunks != null && fullDoc.Chunks.Count > 0)
-            {
-                loaded.Add(fullDoc);
-            }
-            else
-            {
-                loaded.Add(doc);
-            }
+            loaded.Add(fullDoc.Chunks is { Count: > 0 } ? fullDoc : doc);
         }
         return loaded;
     }
@@ -1284,8 +1243,8 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
     /// <param name="useScoreRangeCheck">Whether to apply score range validation for high-score range (default: true for CanAnswer)</param>
     /// <param name="fixedHighScoreThreshold">Fixed threshold to use when maxScore > highScoreThreshold and useScoreRangeCheck is false (default: null, uses percentile)</param>
     /// <returns>Adaptive threshold value</returns>
-    private double CalculateAdaptiveThreshold(
-        List<DocumentChunk> chunks,
+    private static double CalculateAdaptiveThreshold(
+        List<DocumentChunk>? chunks,
         double highScoreThreshold = 3.0,
         double highScorePercentile = 0.7,
         double lowScorePercentile = 0.4,
@@ -1315,16 +1274,14 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
 
                 var minScore = sortedByScore.LastOrDefault()?.RelevanceScore ?? 0.0;
                 var scoreRange = maxScore - minScore;
-                
+
                 // If scores are very close together, use stricter threshold
                 if (scoreRange < 0.5 && sortedByScore.Count > 1)
                 {
                     return Math.Max(4.5, maxScore - 0.5);
                 }
-                else
-                {
-                    return Math.Max(4.0, percentileScore - 0.01);
-                }
+
+                return Math.Max(4.0, percentileScore - 0.01);
             }
             else
             {
@@ -1343,35 +1300,15 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
     }
 
     /// <summary>
-    /// Filters chunks to include only those from the original search results
-    /// </summary>
-    private List<DocumentChunk> FilterChunksByOriginalIds(List<DocumentChunk> chunks, HashSet<Guid>? originalChunkIds)
-    {
-        if (originalChunkIds == null || originalChunkIds.Count == 0)
-        {
-            return chunks;
-        }
-
-        var filteredChunks = chunks.Where(c => originalChunkIds.Contains(c.Id)).ToList();
-
-        if (filteredChunks.Count > 0)
-        {
-            return filteredChunks;
-        }
-
-        return chunks;
-    }
-
-    /// <summary>
     /// Returns chunk IDs to prioritize: header chunks (index 0-2) from documents whose filename matches potential name phrases from the query.
     /// </summary>
     private static HashSet<Guid> GetEntityHeaderChunkIds(List<DocumentChunk> chunks, List<string> potentialNames)
     {
         var ids = new HashSet<Guid>();
-        if (chunks == null || potentialNames == null || potentialNames.Count < 2)
+        if (potentialNames.Count < 2)
             return ids;
         var directPhrases = new List<string>();
-        for (int i = 0; i < potentialNames.Count - 1; i++)
+        for (var i = 0; i < potentialNames.Count - 1; i++)
         {
             var phrase = $"{potentialNames[i].ToLowerInvariant()} {potentialNames[i + 1].ToLowerInvariant()}";
             if (phrase.Length >= 4)
@@ -1381,12 +1318,11 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
             return ids;
         foreach (var c in chunks)
         {
-            if (c.ChunkIndex <= 2)
-            {
-                var fn = (c.FileName ?? string.Empty).ToLowerInvariant();
-                if (directPhrases.Any(p => fn.Contains(p)))
-                    ids.Add(c.Id);
-            }
+            if (c.ChunkIndex > 2)
+                continue;
+            var fn = c.FileName.ToLowerInvariant();
+            if (directPhrases.Any(p => fn.Contains(p)))
+                ids.Add(c.Id);
         }
         return ids;
     }
@@ -1394,18 +1330,18 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
     private const int MinSingleWordLengthForFileNameMatch = 4;
 
     private static HashSet<Guid> GetEntityMatchedDocumentIds(
-        List<Entities.Document> documents,
-        List<string> queryWords,
-        List<string> potentialNames,
+        List<Entities.Document>? documents,
+        List<string>? queryWords,
+        List<string>? potentialNames,
         List<string>? phraseWords)
     {
         if (documents == null || documents.Count == 0)
             return new HashSet<Guid>();
 
         var phrases = new List<(string W1, string W2)>();
-        if (potentialNames != null && potentialNames.Count >= 2)
+        if (potentialNames is { Count: >= 2 })
         {
-            for (int i = 0; i < potentialNames.Count - 1; i++)
+            for (var i = 0; i < potentialNames.Count - 1; i++)
             {
                 var w1 = potentialNames[i].ToLowerInvariant();
                 var w2 = potentialNames[i + 1].ToLowerInvariant();
@@ -1413,9 +1349,9 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
                     phrases.Add((w1, w2));
             }
         }
-        if (phraseWords != null && phraseWords.Count >= 2)
+        if (phraseWords is { Count: >= 2 })
         {
-            for (int i = 0; i < phraseWords.Count - 1; i++)
+            for (var i = 0; i < phraseWords.Count - 1; i++)
             {
                 var w1 = phraseWords[i].ToLowerInvariant();
                 var w2 = phraseWords[i + 1].ToLowerInvariant();
@@ -1423,9 +1359,9 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
                     phrases.Add((w1, w2));
             }
         }
-        if (queryWords != null && queryWords.Count >= 2)
+        if (queryWords is { Count: >= 2 })
         {
-            for (int i = 0; i < queryWords.Count - 1; i++)
+            for (var i = 0; i < queryWords.Count - 1; i++)
             {
                 var w1 = queryWords[i].ToLowerInvariant();
                 var w2 = queryWords[i + 1].ToLowerInvariant();
@@ -1458,7 +1394,7 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
         var result = new HashSet<Guid>();
         foreach (var doc in documents)
         {
-            var fn = (doc.FileName ?? string.Empty).ToLowerInvariant();
+            var fn = doc.FileName.ToLowerInvariant();
             if (string.IsNullOrWhiteSpace(fn))
                 continue;
 
@@ -1470,7 +1406,7 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
                     return true;
                 for (var len = Math.Min(4, p.W2.Length); len < p.W2.Length; len++)
                 {
-                    var prefix = p.W2.Substring(0, len);
+                    var prefix = p.W2[..len];
                     if (fn.IndexOf(prefix, StringComparison.OrdinalIgnoreCase) >= 0)
                         return true;
                 }
@@ -1483,7 +1419,7 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
                     return true;
                 for (var len = MinSingleWordLengthForFileNameMatch; len < word.Length; len++)
                 {
-                    var prefix = word.Substring(0, len);
+                    var prefix = word[..len];
                     if (fn.IndexOf(prefix, StringComparison.OrdinalIgnoreCase) >= 0)
                         return true;
                 }
@@ -1499,7 +1435,7 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
     private const int EntityDocTailChunkCount = 25;
 
     private async Task<List<DocumentChunk>> LoadChunksFromEntityMatchedDocumentsAsync(
-        HashSet<Guid> documentIds,
+        HashSet<Guid>? documentIds,
         int maxChunks,
         CancellationToken cancellationToken)
     {
@@ -1512,7 +1448,7 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
         {
             cancellationToken.ThrowIfCancellationRequested();
             var doc = await _documentRepository.GetByIdAsync(docId, cancellationToken);
-            if (doc?.Chunks == null || doc.Chunks.Count == 0)
+            if (doc.Chunks == null || doc.Chunks.Count == 0)
                 continue;
 
             var ordered = doc.Chunks
@@ -1520,9 +1456,9 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
                 .ToList();
 
             var headerChunks = ordered
-                .Where(c => c.ChunkIndex <= 2 || c.ChunkIndex < 0)
+                .Where(c => c.ChunkIndex is <= 2 or < 0)
                 .OrderBy(c => c.ChunkIndex)
-                .ThenByDescending(c => c.Content?.Length ?? 0)
+                .ThenByDescending(c => c.Content.Length)
                 .ToList();
             var restChunks = ordered
                 .Where(c => c.ChunkIndex > 2)
@@ -1536,9 +1472,8 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
 
             foreach (var c in headChunks.Concat(tailChunks))
             {
-                if (seenIds.Contains(c.Id))
+                if (!seenIds.Add(c.Id))
                     continue;
-                seenIds.Add(c.Id);
                 result.Add(c);
                 if (result.Count >= maxChunks)
                     break;
@@ -1554,7 +1489,7 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
     /// Also matches single significant words with prefix matching for morphological variants.
     /// Header chunks (index 0-2) are prioritized, then remaining chunks by relevance score.
     /// </summary>
-    private static List<DocumentChunk> GetEntityFileNameChunks(List<DocumentChunk> chunks, List<string> queryWords, List<string> potentialNames, List<string>? phraseWords = null)
+    private static List<DocumentChunk> GetEntityFileNameChunks(List<DocumentChunk>? chunks, List<string>? queryWords, List<string>? potentialNames, List<string>? phraseWords = null)
     {
         if (chunks == null || chunks.Count == 0)
             return new List<DocumentChunk>();
@@ -1562,9 +1497,9 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
         var entityFileNameChunks = new List<DocumentChunk>();
         var phrases = new List<(string W1, string W2)>();
 
-        if (potentialNames != null && potentialNames.Count >= 2)
+        if (potentialNames is { Count: >= 2 })
         {
-            for (int i = 0; i < potentialNames.Count - 1; i++)
+            for (var i = 0; i < potentialNames.Count - 1; i++)
             {
                 var w1 = potentialNames[i].ToLowerInvariant();
                 var w2 = potentialNames[i + 1].ToLowerInvariant();
@@ -1572,9 +1507,9 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
                     phrases.Add((w1, w2));
             }
         }
-        if (phraseWords != null && phraseWords.Count >= 2)
+        if (phraseWords is { Count: >= 2 })
         {
-            for (int i = 0; i < phraseWords.Count - 1; i++)
+            for (var i = 0; i < phraseWords.Count - 1; i++)
             {
                 var w1 = phraseWords[i].ToLowerInvariant();
                 var w2 = phraseWords[i + 1].ToLowerInvariant();
@@ -1582,9 +1517,9 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
                     phrases.Add((w1, w2));
             }
         }
-        if (queryWords != null && queryWords.Count >= 2)
+        if (queryWords is { Count: >= 2 })
         {
-            for (int i = 0; i < queryWords.Count - 1; i++)
+            for (var i = 0; i < queryWords.Count - 1; i++)
             {
                 var w1 = queryWords[i].ToLowerInvariant();
                 var w2 = queryWords[i + 1].ToLowerInvariant();
@@ -1616,7 +1551,7 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
 
         foreach (var c in chunks)
         {
-            var fn = (c.FileName ?? string.Empty).ToLowerInvariant();
+            var fn = (c.FileName).ToLowerInvariant();
             if (string.IsNullOrWhiteSpace(fn))
                 continue;
 
@@ -1628,7 +1563,7 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
                     return true;
                 for (var len = Math.Min(4, p.W2.Length); len < p.W2.Length; len++)
                 {
-                    var prefix = p.W2.Substring(0, len);
+                    var prefix = p.W2[..len];
                     if (fn.IndexOf(prefix, StringComparison.OrdinalIgnoreCase) >= 0)
                         return true;
                 }
@@ -1655,24 +1590,23 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
         // Prioritize chunks with index <= 2 or invalid index (-1), then by relevance and content length (longer = more info)
         var headerChunks = deduped.Where(c => c.ChunkIndex <= 2 || c.ChunkIndex < 0)
             .OrderBy(c => c.DocumentId)
-            .ThenByDescending(c => c.Content?.Length ?? 0)
+            .ThenByDescending(c => c.Content.Length )
             .ThenBy(c => c.ChunkIndex)
             .ToList();
         var rest = deduped.Where(c => c.ChunkIndex > 2).OrderByDescending(c => c.RelevanceScore ?? 0.0).ThenBy(c => c.ChunkIndex).ToList();
         return headerChunks.Concat(rest).ToList();
     }
 
-    private int CountQueryWordMatches(string content, List<string> queryWords, int chunkIndex = -1)
+    private int CountQueryWordMatches(string content, List<string>? queryWords)
     {
         if (string.IsNullOrEmpty(content) || queryWords == null || queryWords.Count == 0)
             return 0;
         var contentLower = content.ToLowerInvariant();
         var count = 0;
         var matchedWords = new List<string>();
-        foreach (var w in queryWords)
+
+        foreach (var w in queryWords.Where(w => w.Length >= 3))
         {
-            if (w.Length < 3)
-                continue;
             if (contentLower.IndexOf(w, StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 count++;
@@ -1680,18 +1614,17 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
                 continue;
             }
             var prefixLen = Math.Min(5, w.Length);
-            if (prefixLen >= 4 && contentLower.IndexOf(w.Substring(0, prefixLen), StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                count++;
-                matchedWords.Add($"{w}[prefix:{w.Substring(0, prefixLen)}]");
-            }
+            if (prefixLen < 4 ||
+                contentLower.IndexOf(w.Substring(0, prefixLen), StringComparison.OrdinalIgnoreCase) < 0) continue;
+            count++;
+            matchedWords.Add($"{w}[prefix:{w.Substring(0, prefixLen)}]");
         }
         return count;
     }
 
     private async Task<List<DocumentChunk>> LoadChunksWithQueryWordOverlapAsync(
-        HashSet<Guid> documentIds,
-        List<string> queryWords,
+        HashSet<Guid>? documentIds,
+        List<string>? queryWords,
         HashSet<Guid> existingChunkIds,
         int maxChunksPerDocument,
         CancellationToken cancellationToken)
@@ -1706,11 +1639,11 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
                 continue;
             var scoredWithAll = document.Chunks
                 .Where(c => !existingChunkIds.Contains(c.Id))
-                .Select(c => new { Chunk = c, MatchCount = CountQueryWordMatches(c.Content, queryWords, c.ChunkIndex) })
+                .Select(c => new { Chunk = c, MatchCount = CountQueryWordMatches(c.Content, queryWords) })
                 .OrderByDescending(x => x.MatchCount)
                 .ThenBy(x => x.Chunk.ChunkIndex)
                 .ToList();
-            
+
             var scored = scoredWithAll
                 .Where(x => x.MatchCount > 0)
                 .Take(maxChunksPerDocument)
@@ -1750,7 +1683,7 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
     /// <param name="queryTokens">Pre-computed query tokens for performance</param>
     /// <param name="cancellationToken">Token to cancel the operation</param>
     /// <returns>Tuple containing whether documents can answer and the found chunks</returns>
-    public async Task<(bool CanAnswer, List<DocumentChunk> Results)> CanAnswerFromDocumentsAsync(string query, SearchOptions searchOptions, List<string>? queryTokens = null, System.Threading.CancellationToken cancellationToken = default)
+    public async Task<(bool CanAnswer, List<DocumentChunk> Results)> CanAnswerFromDocumentsAsync(string query, SearchOptions searchOptions, List<string>? queryTokens = null, CancellationToken cancellationToken = default)
     {
         if (!searchOptions.EnableDocumentSearch)
         {
@@ -1761,12 +1694,7 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
         {
             var searchResults = await _documentSearchStrategy.SearchDocumentsAsync(query, FallbackSearchMaxResults, searchOptions, queryTokens, cancellationToken);
 
-            if (searchResults.Count == MinSearchResultsCount)
-            {
-                return (false, searchResults);
-            }
-
-            if (searchResults.Count == 0)
+            if (searchResults.Count is MinSearchResultsCount)
             {
                 return (false, searchResults);
             }
@@ -1790,31 +1718,33 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
         return _responseBuilder.CreateRagResponse(query, conversationAnswer, new List<SearchSource>());
     }
 
-    private Models.RequestResponse.QueryStrategyRequest CreateStrategyRequest(
-        string query,
-        int maxResults,
-        string conversationHistory,
-        bool? canAnswer,
-        SearchOptions options,
-        List<string>? queryTokens,
-        QueryIntent? queryIntent = null,
-        List<DocumentChunk>? preCalculatedResults = null,
-        bool? hasDatabaseQueries = null)
+    private QueryStrategyRequest CreateStrategyRequest(StrategyRequestParams p)
     {
-        return new Models.RequestResponse.QueryStrategyRequest
+        return new QueryStrategyRequest
         {
-            Query = query,
-            MaxResults = maxResults,
-            ConversationHistory = conversationHistory,
-            CanAnswerFromDocuments = canAnswer,
-            HasDatabaseQueries = hasDatabaseQueries,
-            QueryIntent = queryIntent,
+            Query = p.Query,
+            MaxResults = p.MaxResults,
+            ConversationHistory = p.ConversationHistory,
+            CanAnswerFromDocuments = p.CanAnswer,
+            HasDatabaseQueries = p.HasDatabaseQueries,
+            QueryIntent = p.QueryIntent,
             PreferredLanguage = _options.DefaultLanguage,
-            Options = options,
-            PreCalculatedResults = preCalculatedResults,
-            QueryTokens = queryTokens
+            Options = p.Options,
+            PreCalculatedResults = p.PreCalculatedResults,
+            QueryTokens = p.QueryTokens
         };
     }
+
+    private sealed record StrategyRequestParams(
+        string Query,
+        int MaxResults,
+        string ConversationHistory,
+        bool? CanAnswer,
+        SearchOptions Options,
+        List<string>? QueryTokens,
+        QueryIntent? QueryIntent = null,
+        List<DocumentChunk>? PreCalculatedResults = null,
+        bool? HasDatabaseQueries = null);
 
     private async Task<RagResponse?> ExecuteMcpSearchAsync(
         string query,
@@ -1828,9 +1758,9 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
         {
             var mcpResults = await _mcpIntegration.QueryWithMcpAsync(query, maxResults, conversationHistory, cancellationToken);
             searchMetadata.McpSearchPerformed = true;
-            searchMetadata.McpResultsFound = mcpResults?.Count(r => r.IsSuccess && !string.IsNullOrWhiteSpace(r.Content)) ?? 0;
+            searchMetadata.McpResultsFound = mcpResults.Count(r => r.IsSuccess && !string.IsNullOrWhiteSpace(r.Content));
 
-            if (mcpResults == null || mcpResults.Count == 0)
+            if (mcpResults.Count == 0)
             {
                 return existingResponse;
             }
@@ -1855,29 +1785,24 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
 
             if (existingResponse != null)
             {
-                if (existingResponse.Sources == null)
-                {
-                    existingResponse.Sources = new List<SearchSource>();
-                }
                 existingResponse.Sources.AddRange(mcpSources);
 
-                if (!string.IsNullOrWhiteSpace(mcpContext))
+                if (string.IsNullOrWhiteSpace(mcpContext))
+                    return existingResponse;
+                var existingContext = existingResponse.Sources
+                    .Where(s => s.SourceType != "MCP")
+                    .Select(s => s.RelevantContent)
+                    .Where(c => !string.IsNullOrWhiteSpace(c))
+                    .ToList();
+
+                var combinedContext = existingContext.Count > 0
+                    ? string.Join("\n\n", existingContext) + "\n\n[MCP Results]\n" + mcpContext
+                    : mcpContext;
+
+                var mergedAnswer = await GenerateRagAnswerFromContextAsync(query, combinedContext, conversationHistory, cancellationToken);
+                if (!string.IsNullOrWhiteSpace(mergedAnswer))
                 {
-                    var existingContext = existingResponse.Sources
-                        .Where(s => s.SourceType != "MCP")
-                        .Select(s => s.RelevantContent)
-                        .Where(c => !string.IsNullOrWhiteSpace(c))
-                        .ToList();
-
-                    var combinedContext = existingContext.Count > 0
-                        ? string.Join("\n\n", existingContext) + "\n\n[MCP Results]\n" + mcpContext
-                        : mcpContext;
-
-                    var mergedAnswer = await GenerateRagAnswerFromContextAsync(query, combinedContext, conversationHistory, cancellationToken);
-                    if (!string.IsNullOrWhiteSpace(mergedAnswer))
-                    {
-                        existingResponse.Answer = mergedAnswer;
-                    }
+                    existingResponse.Answer = mergedAnswer;
                 }
 
                 return existingResponse;
@@ -1886,17 +1811,12 @@ public class DocumentSearchService : IDocumentSearchService, IRagAnswerGenerator
             var chatResponse = await _conversationManager.HandleGeneralConversationAsync(query, conversationHistory, cancellationToken);
 
             if (string.IsNullOrWhiteSpace(mcpContext))
-            {                 
+            {
                 return _responseBuilder.CreateRagResponse(query, chatResponse, new List<SearchSource>(), searchMetadata);
             }
 
             var mcpAnswer = await GenerateRagAnswerFromContextAsync(query, mcpContext, conversationHistory, cancellationToken);
-            if (!string.IsNullOrWhiteSpace(mcpAnswer))
-            {
-                return _responseBuilder.CreateRagResponse(query, mcpAnswer, mcpSources, searchMetadata);
-            }
-            
-            return _responseBuilder.CreateRagResponse(query, chatResponse, mcpSources, searchMetadata);
+            return _responseBuilder.CreateRagResponse(query, !string.IsNullOrWhiteSpace(mcpAnswer) ? mcpAnswer : chatResponse, mcpSources, searchMetadata);
         }
         catch (Exception ex)
         {

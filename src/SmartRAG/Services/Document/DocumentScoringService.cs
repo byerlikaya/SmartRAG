@@ -77,43 +77,44 @@ public class DocumentScoringService : IDocumentScoringService
                 }
                 else if (wordLower.Length >= 4)
                 {
-                    for (int len = Math.Min(wordLower.Length, 8); len >= 4; len--)
+                    for (var len = Math.Min(wordLower.Length, 8); len >= 4; len--)
                     {
-                        for (int start = 0; start <= wordLower.Length - len; start++)
+                        for (var start = 0; start <= wordLower.Length - len; start++)
                         {
                             var substring = wordLower.Substring(start, len);
-                            if (searchableText.Contains(substring))
-                            {
-                                score += WordMatchScore * 0.5; // Partial match, lower score
-                                matchedWords++;
-                                wordMatched = true;
-                                break; // Found a match, no need to check shorter substrings
-                            }
+                            if (!searchableText.Contains(substring))
+                                continue;
+                            score += WordMatchScore * 0.5; // Partial match, lower score
+                            matchedWords++;
+                            wordMatched = true;
+                            break; // Found a match, no need to check shorter substrings
                         }
                         if (wordMatched) break;
                     }
                 }
             }
 
-            if (matchedWords >= 3)
+            switch (matchedWords)
             {
-                score += MultipleWordMatchBonus;
-            }
-            else if (matchedWords >= 2)
-            {
-                score += MultipleWordMatchBonus * 0.5; // Half bonus for 2 matches
+                case >= 3:
+                    score += MultipleWordMatchBonus;
+                    break;
+                case >= 2:
+                    score += MultipleWordMatchBonus * 0.5; // Half bonus for 2 matches
+                    break;
             }
 
             var isTitleLike = chunk.Content.Length < 200 &&
                 (chunk.Content.Contains(':') ||
-                 chunk.Content.Split(new char[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length <= 3);
+                 chunk.Content.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries).Length <= 3);
             if (isTitleLike && matchedWords > 0)
             {
                 score += TitlePatternBonus;
             }
 
-            var wordCount = content.Split(new char[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries).Length;
-            if (wordCount >= WordCountMin && wordCount <= WordCountMax) score += WordCountScoreBoost;
+            var wordCount = content.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).Length;
+            if (wordCount is >= WordCountMin and <= WordCountMax)
+                score += WordCountScoreBoost;
 
             var punctuationCount = content.Count(c => ".,;:!?()[]{}".Contains(c));
             if (punctuationCount >= PunctuationCountThreshold) score += PunctuationScoreBoost;
@@ -143,12 +144,12 @@ public class DocumentScoringService : IDocumentScoringService
         }).ToList();
     }
 
-    private static double GetFileNamePhraseBonus(string fileNameLower, List<string> queryWords, List<string> potentialNames)
+    private static double GetFileNamePhraseBonus(string fileNameLower, List<string>? queryWords, List<string>? potentialNames)
     {
         if (string.IsNullOrWhiteSpace(fileNameLower))
             return 0;
 
-        if (potentialNames != null && potentialNames.Count >= 2)
+        if (potentialNames is { Count: >= 2 })
         {
             var entityPhrase = string.Join(" ", potentialNames.Select(n => n.ToLowerInvariant()));
             if (fileNameLower.Contains(entityPhrase))
@@ -158,16 +159,16 @@ public class DocumentScoringService : IDocumentScoringService
         if (queryWords == null || queryWords.Count < 2)
             return 0;
 
-        for (int i = 0; i < queryWords.Count - 1; i++)
+        for (var i = 0; i < queryWords.Count - 1; i++)
         {
             var w1 = queryWords[i].ToLowerInvariant();
             var w2 = queryWords[i + 1].ToLowerInvariant();
-            if (w1.Length >= 1 && w2.Length >= 3)
-            {
-                var phrase = $"{w1} {w2}";
-                if (fileNameLower.Contains(phrase))
-                    return FullNameMatchScoreBoost;
-            }
+            if (w1.Length < 1 || w2.Length < 3)
+                continue;
+
+            var phrase = $"{w1} {w2}";
+            if (fileNameLower.Contains(phrase))
+                return FullNameMatchScoreBoost;
         }
         return 0;
     }
